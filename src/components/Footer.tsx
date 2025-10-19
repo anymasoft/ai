@@ -1,9 +1,10 @@
 "use client";
 
-import { Bot, MessageSquare, Settings, Zap, CheckCircle, Star } from "lucide-react";
+import { Bot, MessageSquare, Settings, Zap, CheckCircle, Star, TrendingUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import Header from "@/components/Header";
 
 const MarketplaceAutoResponder = () => {
   const problems = [
@@ -32,6 +33,10 @@ const MarketplaceAutoResponder = () => {
     {
       icon: CheckCircle,
       text: "Полуавтомат: AI предлагает варианты, вы публикуете один из них в один клик"
+    },
+    {
+      icon: TrendingUp,
+      text: "Аналитика ответов и мониторинг рейтинга в режиме реального времени"
     }
   ];
 
@@ -72,8 +77,10 @@ const MarketplaceAutoResponder = () => {
 
   return (
     <div className="min-h-screen bg-white">
+      <Header />
+      
       {/* Hero Section */}
-      <section className="py-24 px-4">
+      <section className="py-24 px-4" id="hero">
         <div className="container max-w-4xl mx-auto text-center">
           <h1 className="text-5xl font-bold text-gray-900 mb-6">
             Автоматические ответы на отзывы маркетплейсов
@@ -110,7 +117,7 @@ const MarketplaceAutoResponder = () => {
       </section>
 
       {/* Solutions Section */}
-      <section className="py-20 px-4">
+      <section className="py-20 px-4" id="features">
         <div className="container max-w-4xl mx-auto">
           <h2 className="text-3xl font-bold text-center mb-12">
             Как наш сервис решает эти проблемы
@@ -129,7 +136,7 @@ const MarketplaceAutoResponder = () => {
       </section>
 
       {/* Pricing Section */}
-      <section className="py-20 px-4 bg-gray-50">
+      <section className="py-20 px-4 bg-gray-50" id="pricing">
         <div className="container max-w-6xl mx-auto">
           <h2 className="text-3xl font-bold text-center mb-12">
             Тарифы
@@ -184,13 +191,13 @@ const MarketplaceAutoResponder = () => {
       </section>
 
       {/* Footer */}
-      <footer className="py-16 px-4 bg-gray-900 text-white">
+      <footer className="py-16 px-4 bg-gray-900 text-white" id="contacts">
         <div className="container max-w-6xl mx-auto">
           <div className="grid md:grid-cols-4 gap-8">
             <div className="col-span-2">
               <div className="flex items-center gap-2 text-2xl font-bold mb-4">
                 <Bot className="w-8 h-8" />
-                AI Автоответчик
+                RepIQ
               </div>
               <p className="text-gray-400">
                 Автоматизация ответов на отзывы для маркетплейсов
@@ -199,7 +206,7 @@ const MarketplaceAutoResponder = () => {
             <div>
               <h3 className="font-semibold mb-4">Контакты</h3>
               <ul className="space-y-2 text-gray-400">
-                <li>support@ai-responder.ru</li>
+                <li>support@repiq.ru</li>
                 <li>+7 (495) 123-45-67</li>
               </ul>
             </div>
@@ -212,7 +219,7 @@ const MarketplaceAutoResponder = () => {
             </div>
           </div>
           <div className="border-t border-gray-800 mt-12 pt-8 text-center text-gray-400">
-            <p>© 2025 AI Автоответчик. Все права защищены.</p>
+            <p>© 2025 RepIQ. Все права защищены.</p>
           </div>
         </div>
       </footer>
