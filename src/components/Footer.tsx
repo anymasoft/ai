@@ -10,7 +10,7 @@ export function Footer() {
           <div className="col-span-2">
             <div className="flex items-center gap-2 text-2xl font-bold mb-4">
               <Bot className="w-8 h-8" />
-              RepIQ
+              ReplIQ
             </div>
             <p className="text-gray-400">
               Автоматизация ответов на отзывы для маркетплейсов
@@ -19,7 +19,7 @@ export function Footer() {
           <div>
             <h3 className="font-semibold mb-4">Контакты</h3>
             <ul className="space-y-2 text-gray-400">
-              <li>support@repiq.ru</li>
+              <li>support@repliq.ru</li>
               <li>+7 (495) 123-45-67</li>
             </ul>
           </div>
@@ -32,7 +32,7 @@ export function Footer() {
           </div>
         </div>
         <div className="border-t border-gray-800 mt-12 pt-8 text-center text-gray-400">
-          <p>© 2025 RepIQ. Все права защищены.</p>
+          <p>© 2025 ReplIQ. Все права защищены.</p>
         </div>
       </div>
     </footer>
