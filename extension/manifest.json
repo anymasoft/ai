@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "YouTube Transcript Viewer",
-  "version": "2.0.3",
-  "description": "Показывает субтитры YouTube с предварительной обработкой",
+  "version": "3.0.0",
+  "description": "Premium YouTube transcript translation with multi-language support",
   "permissions": ["storage"],
   "host_permissions": [
     "https://www.youtube.com/*"

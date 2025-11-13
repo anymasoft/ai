@@ -81,9 +81,25 @@ def save_line_to_cache(video_id, line_number, original_text, translated_text, la
     conn.commit()
     conn.close()
 
+# Маппинг языковых кодов на полные названия
+LANGUAGE_NAMES = {
+    'ru': 'Russian',
+    'en': 'English',
+    'es': 'Spanish',
+    'de': 'German',
+    'fr': 'French',
+    'ja': 'Japanese',
+    'zh': 'Chinese',
+    'it': 'Italian',
+    'pt': 'Portuguese'
+}
+
 # Перевод одной строки через GPT-4o-mini с контекстом
 def translate_line_with_gpt(text, prev_context=None, lang='ru'):
     """Переводит одну строку субтитров с учетом предыдущего контекста"""
+
+    # Получаем полное название языка
+    target_language = LANGUAGE_NAMES.get(lang, 'Russian')
 
     # Формируем промпт с контекстом
     if prev_context and len(prev_context) > 0:
@@ -92,19 +108,19 @@ def translate_line_with_gpt(text, prev_context=None, lang='ru'):
     else:
         text_to_translate = f"[current] {text}"
 
-    system_prompt = """Ты профессиональный переводчик субтитров с английского на русский.
+    system_prompt = f"""You are a professional subtitle translator from English to {target_language}.
 
-ЗАДАЧА:
-1. Переведи строку [current] на русский язык
-2. Используй строки [prev] как контекст для точности перевода
-3. Сохрани естественность речи и контекст
-4. Исправь любые ошибки распознавания речи
-5. Если встречаются неразборчивые фрагменты - замени их на осмысленный перевод на основе контекста
+TASK:
+1. Translate the [current] line to {target_language}
+2. Use the [prev] lines as context for accurate translation
+3. Maintain natural speech and context
+4. Fix any speech recognition errors
+5. If there are unclear fragments - replace them with a meaningful translation based on context
 
-ВАЖНО:
-- Верни ТОЛЬКО переведённый текст строки [current]
-- НЕ добавляй никаких пояснений, комментариев или префиксов
-- НЕ переводи строки [prev] - они только для контекста"""
+IMPORTANT:
+- Return ONLY the translated text of the [current] line
+- Do NOT add any explanations, comments, or prefixes
+- Do NOT translate the [prev] lines - they are only for context"""
 
     try:
         response = client.chat.completions.create(
