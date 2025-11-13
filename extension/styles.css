@@ -31,6 +31,46 @@
   height: 20px;
 }
 
+/* Контейнер кнопок управления */
+#yt-transcript-controls {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+#yt-transcript-toggle-btn,
+#yt-transcript-close-btn {
+  background: transparent;
+  border: none;
+  color: var(--yt-spec-icon-inactive);
+  cursor: pointer;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  padding: 0;
+}
+
+#yt-transcript-toggle-btn:hover,
+#yt-transcript-close-btn:hover {
+  background: var(--yt-spec-badge-chip-background);
+  color: var(--yt-spec-text-primary);
+}
+
+#yt-transcript-toggle-btn svg,
+#yt-transcript-close-btn svg {
+  width: 20px;
+  height: 20px;
+}
+
+/* Тело панели */
+#yt-transcript-body {
+  display: block;
+}
+
 /* Кнопка получения транскрипта */
 #yt-transcript-get-btn {
   background: var(--yt-spec-call-to-action);
@@ -45,6 +85,9 @@
   align-items: center;
   gap: 6px;
   transition: background 0.2s ease;
+  margin-bottom: 12px;
+  width: 100%;
+  justify-content: center;
 }
 
 #yt-transcript-get-btn:hover {
@@ -65,7 +108,7 @@
 #yt-transcript-content {
   max-height: 600px;
   overflow-y: auto;
-  padding-right: 8px;
+  padding-right: 4px;
 }
 
 #yt-transcript-content::-webkit-scrollbar {
@@ -85,34 +128,46 @@
   background: var(--yt-spec-20-percent-layer);
 }
 
-/* Элемент транскрипта */
+/* Элемент транскрипта - как у нативных */
 .yt-transcript-item {
-  padding: 10px;
-  margin-bottom: 8px;
-  border-radius: 8px;
+  padding: 4px 0;
+  margin-bottom: 4px;
   cursor: pointer;
   transition: background 0.2s ease;
   display: flex;
   gap: 12px;
+  align-items: flex-start;
 }
 
 .yt-transcript-item:hover {
   background: var(--yt-spec-badge-chip-background);
+  border-radius: 4px;
+  padding-left: 4px;
+  padding-right: 4px;
 }
 
+/* Время - голубой фон как у нативных */
 .yt-transcript-item-time {
-  color: var(--yt-spec-text-secondary);
-  font-size: 13px;
+  background: #065fd4;
+  color: #fff;
+  font-size: 12px;
   font-weight: 500;
-  min-width: 50px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  min-width: 44px;
+  text-align: center;
   flex-shrink: 0;
+  line-height: 16px;
 }
 
+/* Текст субтитра */
 .yt-transcript-item-text {
   color: var(--yt-spec-text-primary);
   font-size: 14px;
-  line-height: 1.4;
+  line-height: 18px;
   word-break: break-word;
+  flex: 1;
+  padding-top: 1px;
 }
 
 /* Лоадер */
