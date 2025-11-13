@@ -3,8 +3,36 @@ const transcriptState = {
   videoId: null,
   isProcessing: false,
   isProcessed: false,
-  subtitles: null
+  subtitles: null,
+  selectedLang: 'ru' // По умолчанию русский
 };
+
+// Список поддерживаемых языков
+const SUPPORTED_LANGUAGES = [
+  { code: 'ru', flag: '🇷🇺', name: 'Russian' },
+  { code: 'en', flag: '🇺🇸', name: 'English' },
+  { code: 'es', flag: '🇪🇸', name: 'Spanish' },
+  { code: 'de', flag: '🇩🇪', name: 'German' },
+  { code: 'fr', flag: '🇫🇷', name: 'French' },
+  { code: 'ja', flag: '🇯🇵', name: 'Japanese' },
+  { code: 'zh', flag: '🇨🇳', name: 'Chinese' },
+  { code: 'it', flag: '🇮🇹', name: 'Italian' },
+  { code: 'pt', flag: '🇵🇹', name: 'Portuguese' }
+];
+
+// Загрузка сохраненного языка из localStorage
+function loadSavedLanguage() {
+  const saved = localStorage.getItem('yt-reader-lang');
+  if (saved && SUPPORTED_LANGUAGES.find(l => l.code === saved)) {
+    transcriptState.selectedLang = saved;
+  }
+}
+
+// Сохранение выбранного языка
+function saveLanguage(langCode) {
+  localStorage.setItem('yt-reader-lang', langCode);
+  transcriptState.selectedLang = langCode;
+}
 
 // Ждем загрузки элемента
 function waitForElement(selector, timeout = 10000) {
@@ -40,8 +68,10 @@ function getVideoId() {
   return urlParams.get('v');
 }
 
-// Создание панели транскрипта
+// Создание панели транскрипта с премиум UI
 function createTranscriptPanel() {
+  const currentLang = SUPPORTED_LANGUAGES.find(l => l.code === transcriptState.selectedLang) || SUPPORTED_LANGUAGES[0];
+
   const panel = document.createElement('div');
   panel.id = 'yt-transcript-panel';
   panel.innerHTML = `
@@ -59,12 +89,38 @@ function createTranscriptPanel() {
       </button>
     </div>
     <div id="yt-transcript-body">
-      <button id="yt-transcript-get-btn">
-        <svg viewBox="0 0 24 24" fill="currentColor">
-          <path d="M19 19H5V5h7V3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2v-7h-2v7zM14 3v2h3.59l-9.83 9.83 1.41 1.41L19 6.41V10h2V3h-7z"/>
-        </svg>
-        Get Transcript
-      </button>
+      <div class="yt-reader-controls">
+        <button class="yt-reader-btn" id="yt-reader-translate-btn">
+          <svg class="yt-reader-btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"/>
+            <path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+          </svg>
+          <span class="yt-reader-btn-text">Translate Transcript</span>
+        </button>
+        <div class="yt-reader-lang-selector">
+          <button class="yt-reader-lang-btn" id="yt-reader-lang-btn">
+            <span class="yt-reader-lang-flag">${currentLang.flag}</span>
+            <span class="yt-reader-lang-code">${currentLang.code}</span>
+            <svg class="yt-reader-lang-arrow" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M7 10l5 5 5-5z"/>
+            </svg>
+          </button>
+          <div class="yt-reader-lang-dropdown" id="yt-reader-lang-dropdown">
+            ${SUPPORTED_LANGUAGES.map(lang => `
+              <div class="yt-reader-lang-option ${lang.code === transcriptState.selectedLang ? 'selected' : ''}" data-lang="${lang.code}">
+                <span class="yt-reader-lang-option-flag">${lang.flag}</span>
+                <div class="yt-reader-lang-option-info">
+                  <span class="yt-reader-lang-option-code">${lang.code}</span>
+                  <span class="yt-reader-lang-option-name">${lang.name}</span>
+                </div>
+                <svg class="yt-reader-lang-option-check" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/>
+                </svg>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+      </div>
       <div id="yt-transcript-content"></div>
     </div>
   `;
@@ -75,6 +131,9 @@ function createTranscriptPanel() {
 // Вставка панели в страницу
 async function injectPanel() {
   try {
+    // Загружаем сохраненный язык
+    loadSavedLanguage();
+
     // Ищем secondary column (справа от видео)
     const secondary = await waitForElement('#secondary-inner, #secondary');
 
@@ -89,11 +148,31 @@ async function injectPanel() {
     secondary.insertBefore(panel, secondary.firstChild);
 
     // Привязываем обработчики
-    const getBtn = document.getElementById('yt-transcript-get-btn');
+    const translateBtn = document.getElementById('yt-reader-translate-btn');
     const toggleBtn = document.getElementById('yt-transcript-toggle-btn');
+    const langBtn = document.getElementById('yt-reader-lang-btn');
+    const langDropdown = document.getElementById('yt-reader-lang-dropdown');
 
-    getBtn.addEventListener('click', handleGetTranscript);
+    translateBtn.addEventListener('click', handleGetTranscript);
     toggleBtn.addEventListener('click', handleTogglePanel);
+    langBtn.addEventListener('click', handleLanguageToggle);
+
+    // Обработчики для опций языка
+    const langOptions = document.querySelectorAll('.yt-reader-lang-option');
+    langOptions.forEach(option => {
+      option.addEventListener('click', (e) => {
+        e.stopPropagation();
+        handleLanguageSelect(option.dataset.lang);
+      });
+    });
+
+    // Закрытие dropdown при клике вне его
+    document.addEventListener('click', (e) => {
+      if (!e.target.closest('.yt-reader-lang-selector')) {
+        langDropdown.classList.remove('show');
+        langBtn.classList.remove('active');
+      }
+    });
 
     console.log('Панель транскрипта добавлена');
   } catch (error) {
@@ -126,9 +205,45 @@ function handleTogglePanel() {
   }
 }
 
+// Обработчик переключения выпадающего списка языков
+function handleLanguageToggle(e) {
+  e.stopPropagation();
+  const langBtn = document.getElementById('yt-reader-lang-btn');
+  const langDropdown = document.getElementById('yt-reader-lang-dropdown');
+
+  const isActive = langBtn.classList.toggle('active');
+  langDropdown.classList.toggle('show', isActive);
+}
+
+// Обработчик выбора языка
+function handleLanguageSelect(langCode) {
+  const selectedLang = SUPPORTED_LANGUAGES.find(l => l.code === langCode);
+  if (!selectedLang) return;
+
+  // Сохраняем выбранный язык
+  saveLanguage(langCode);
+
+  // Обновляем UI кнопки
+  const langBtn = document.getElementById('yt-reader-lang-btn');
+  langBtn.querySelector('.yt-reader-lang-flag').textContent = selectedLang.flag;
+  langBtn.querySelector('.yt-reader-lang-code').textContent = selectedLang.code;
+
+  // Обновляем selected опции
+  document.querySelectorAll('.yt-reader-lang-option').forEach(opt => {
+    opt.classList.toggle('selected', opt.dataset.lang === langCode);
+  });
+
+  // Закрываем dropdown
+  const langDropdown = document.getElementById('yt-reader-lang-dropdown');
+  langDropdown.classList.remove('show');
+  langBtn.classList.remove('active');
+
+  console.log('Выбран язык:', selectedLang.name);
+}
+
 // Обработчик нажатия кнопки получения транскрипта
 async function handleGetTranscript() {
-  const btn = document.getElementById('yt-transcript-get-btn');
+  const btn = document.getElementById('yt-reader-translate-btn');
   const content = document.getElementById('yt-transcript-content');
   const videoId = getVideoId();
 
@@ -157,15 +272,18 @@ async function handleGetTranscript() {
   transcriptState.isProcessing = true;
   transcriptState.isProcessed = false;
 
-  // Блокируем кнопку
+  // Блокируем кнопку и показываем spinner
   btn.disabled = true;
-  btn.textContent = 'Processing...';
+  btn.innerHTML = `
+    <div class="yt-reader-spinner"></div>
+    <span class="yt-reader-btn-text">Loading...</span>
+  `;
 
   // Показываем лоадер
   content.innerHTML = `
     <div class="yt-transcript-loader">
       <div class="yt-transcript-loader-spinner"></div>
-      <span>Загрузка транскрипта...</span>
+      <span class="yt-transcript-loader-text">Загрузка транскрипта...</span>
     </div>
   `;
 
@@ -189,7 +307,10 @@ async function handleGetTranscript() {
     displayTranscript(subtitles);
 
     // Отправляем на сервер для перевода
-    btn.textContent = 'Translating...';
+    btn.innerHTML = `
+      <div class="yt-reader-spinner"></div>
+      <span class="yt-reader-btn-text">Translating...</span>
+    `;
     await translateSubtitles(videoId, subtitles);
 
     transcriptState.isProcessed = true;
@@ -205,10 +326,11 @@ async function handleGetTranscript() {
     transcriptState.isProcessing = false;
     btn.disabled = false;
     btn.innerHTML = `
-      <svg viewBox="0 0 24 24" fill="currentColor">
-        <path d="M19 19H5V5h7V3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2v-7h-2v7zM14 3v2h3.59l-9.83 9.83 1.41 1.41L19 6.41V10h2V3h-7z"/>
+      <svg class="yt-reader-btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <circle cx="12" cy="12" r="10"/>
+        <path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
       </svg>
-      Get Transcript
+      <span class="yt-reader-btn-text">Translate Transcript</span>
     `;
   }
 }
@@ -217,6 +339,9 @@ async function handleGetTranscript() {
 async function translateSubtitles(videoId, subtitles) {
   const SERVER_URL = 'http://localhost:5000/translate-line';
   const prevContext = [];
+  const selectedLang = transcriptState.selectedLang; // Используем выбранный язык
+
+  console.log(`Начинаем перевод на ${selectedLang}...`);
 
   try {
     // Переводим каждую строку по очереди
@@ -235,7 +360,7 @@ async function translateSubtitles(videoId, subtitles) {
             lineNumber: i,
             text: subtitle.text,
             prevContext: prevContext.slice(-2), // Последние 1-2 переведенные строки
-            lang: 'ru'
+            lang: selectedLang // Используем выбранный язык
           })
         });
 
@@ -272,7 +397,7 @@ async function translateSubtitles(videoId, subtitles) {
       }
     }
 
-    console.log(`Перевод завершен: ${subtitles.length} строк`);
+    console.log(`Перевод завершен: ${subtitles.length} строк на ${selectedLang}`);
 
   } catch (error) {
     console.error('Общая ошибка при переводе:', error);
