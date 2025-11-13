@@ -9,15 +9,15 @@ const transcriptState = {
 
 // Список поддерживаемых языков
 const SUPPORTED_LANGUAGES = [
-  { code: 'ru', flag: '🇷🇺', name: 'Russian' },
-  { code: 'en', flag: '🇺🇸', name: 'English' },
-  { code: 'es', flag: '🇪🇸', name: 'Spanish' },
-  { code: 'de', flag: '🇩🇪', name: 'German' },
-  { code: 'fr', flag: '🇫🇷', name: 'French' },
-  { code: 'ja', flag: '🇯🇵', name: 'Japanese' },
-  { code: 'zh', flag: '🇨🇳', name: 'Chinese' },
-  { code: 'it', flag: '🇮🇹', name: 'Italian' },
-  { code: 'pt', flag: '🇵🇹', name: 'Portuguese' }
+  { code: 'ru', name: 'Russian' },
+  { code: 'en', name: 'English' },
+  { code: 'es', name: 'Spanish' },
+  { code: 'de', name: 'German' },
+  { code: 'fr', name: 'French' },
+  { code: 'ja', name: 'Japanese' },
+  { code: 'zh', name: 'Chinese' },
+  { code: 'it', name: 'Italian' },
+  { code: 'pt', name: 'Portuguese' }
 ];
 
 // Загрузка сохраненного языка из localStorage
@@ -99,8 +99,8 @@ function createTranscriptPanel() {
         </button>
         <div class="yt-reader-lang-selector">
           <button class="yt-reader-lang-btn" id="yt-reader-lang-btn">
-            <span class="yt-reader-lang-flag">${currentLang.flag}</span>
-            <span class="yt-reader-lang-code">${currentLang.code}</span>
+            <span class="yt-reader-lang-flag" data-flag="${currentLang.code}"></span>
+            <span class="yt-reader-lang-code">${currentLang.code.toUpperCase()}</span>
             <svg class="yt-reader-lang-arrow" viewBox="0 0 24 24" fill="currentColor">
               <path d="M7 10l5 5 5-5z"/>
             </svg>
@@ -108,9 +108,9 @@ function createTranscriptPanel() {
           <div class="yt-reader-lang-dropdown" id="yt-reader-lang-dropdown">
             ${SUPPORTED_LANGUAGES.map(lang => `
               <div class="yt-reader-lang-option ${lang.code === transcriptState.selectedLang ? 'selected' : ''}" data-lang="${lang.code}">
-                <span class="yt-reader-lang-option-flag">${lang.flag}</span>
+                <span class="yt-reader-lang-option-flag" data-flag="${lang.code}"></span>
                 <div class="yt-reader-lang-option-info">
-                  <span class="yt-reader-lang-option-code">${lang.code}</span>
+                  <span class="yt-reader-lang-option-code">${lang.code.toUpperCase()}</span>
                   <span class="yt-reader-lang-option-name">${lang.name}</span>
                 </div>
                 <svg class="yt-reader-lang-option-check" viewBox="0 0 24 24" fill="currentColor">
@@ -124,6 +124,23 @@ function createTranscriptPanel() {
       <div id="yt-transcript-content"></div>
     </div>
   `;
+
+  // Вставляем SVG флаги после создания HTML
+  setTimeout(() => {
+    // Флаг в кнопке
+    const btnFlag = panel.querySelector('.yt-reader-lang-btn .yt-reader-lang-flag');
+    if (btnFlag) {
+      btnFlag.innerHTML = getFlagSVG(currentLang.code);
+    }
+
+    // Флаги в dropdown опциях
+    panel.querySelectorAll('.yt-reader-lang-option-flag').forEach(flagEl => {
+      const code = flagEl.getAttribute('data-flag');
+      if (code) {
+        flagEl.innerHTML = getFlagSVG(code);
+      }
+    });
+  }, 0);
 
   return panel;
 }
@@ -212,7 +229,35 @@ function handleLanguageToggle(e) {
   const langDropdown = document.getElementById('yt-reader-lang-dropdown');
 
   const isActive = langBtn.classList.toggle('active');
-  langDropdown.classList.toggle('show', isActive);
+
+  if (isActive) {
+    // Рассчитываем позицию dropdown
+    const btnRect = langBtn.getBoundingClientRect();
+    const dropdownHeight = 320; // примерная высота dropdown
+    const viewportHeight = window.innerHeight;
+
+    // Определяем, достаточно ли места снизу
+    const spaceBelow = viewportHeight - btnRect.bottom;
+    const shouldShowAbove = spaceBelow < dropdownHeight && btnRect.top > dropdownHeight;
+
+    if (shouldShowAbove) {
+      // Показываем сверху
+      langDropdown.style.top = 'auto';
+      langDropdown.style.bottom = `${viewportHeight - btnRect.top + 6}px`;
+    } else {
+      // Показываем снизу
+      langDropdown.style.top = `${btnRect.bottom + 6}px`;
+      langDropdown.style.bottom = 'auto';
+    }
+
+    // Выравниваем по правому краю кнопки
+    langDropdown.style.right = `${window.innerWidth - btnRect.right}px`;
+    langDropdown.style.left = 'auto';
+
+    langDropdown.classList.add('show');
+  } else {
+    langDropdown.classList.remove('show');
+  }
 }
 
 // Обработчик выбора языка
@@ -225,8 +270,10 @@ function handleLanguageSelect(langCode) {
 
   // Обновляем UI кнопки
   const langBtn = document.getElementById('yt-reader-lang-btn');
-  langBtn.querySelector('.yt-reader-lang-flag').textContent = selectedLang.flag;
-  langBtn.querySelector('.yt-reader-lang-code').textContent = selectedLang.code;
+  const flagEl = langBtn.querySelector('.yt-reader-lang-flag');
+  flagEl.innerHTML = getFlagSVG(langCode);
+  flagEl.setAttribute('data-flag', langCode);
+  langBtn.querySelector('.yt-reader-lang-code').textContent = langCode.toUpperCase();
 
   // Обновляем selected опции
   document.querySelectorAll('.yt-reader-lang-option').forEach(opt => {
