@@ -1,3 +1,11 @@
+// Глобальное состояние для предотвращения повторных запросов
+const transcriptState = {
+  videoId: null,
+  isProcessing: false,
+  isProcessed: false,
+  subtitles: null
+};
+
 // Ждем загрузки элемента
 function waitForElement(selector, timeout = 10000) {
   return new Promise((resolve, reject) => {
@@ -26,6 +34,12 @@ function waitForElement(selector, timeout = 10000) {
   });
 }
 
+// Получение videoId из URL
+function getVideoId() {
+  const urlParams = new URLSearchParams(window.location.search);
+  return urlParams.get('v');
+}
+
 // Создание панели транскрипта
 function createTranscriptPanel() {
   const panel = document.createElement('div');
@@ -38,18 +52,11 @@ function createTranscriptPanel() {
         </svg>
         Transcript
       </div>
-      <div id="yt-transcript-controls">
-        <button id="yt-transcript-toggle-btn" title="Свернуть/Развернуть">
-          <svg viewBox="0 0 24 24" fill="currentColor">
-            <path d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41z"/>
-          </svg>
-        </button>
-        <button id="yt-transcript-close-btn" title="Закрыть">
-          <svg viewBox="0 0 24 24" fill="currentColor">
-            <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12 19 6.41z"/>
-          </svg>
-        </button>
-      </div>
+      <button id="yt-transcript-toggle-btn" title="Свернуть/Развернуть">
+        <svg viewBox="0 0 24 24" fill="currentColor">
+          <path d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41z"/>
+        </svg>
+      </button>
     </div>
     <div id="yt-transcript-body">
       <button id="yt-transcript-get-btn">
@@ -84,11 +91,9 @@ async function injectPanel() {
     // Привязываем обработчики
     const getBtn = document.getElementById('yt-transcript-get-btn');
     const toggleBtn = document.getElementById('yt-transcript-toggle-btn');
-    const closeBtn = document.getElementById('yt-transcript-close-btn');
 
     getBtn.addEventListener('click', handleGetTranscript);
     toggleBtn.addEventListener('click', handleTogglePanel);
-    closeBtn.addEventListener('click', handleClosePanel);
 
     console.log('Панель транскрипта добавлена');
   } catch (error) {
@@ -121,22 +126,40 @@ function handleTogglePanel() {
   }
 }
 
-// Обработчик закрытия панели
-function handleClosePanel() {
-  const panel = document.getElementById('yt-transcript-panel');
-  if (panel) {
-    panel.remove();
-  }
-}
-
 // Обработчик нажатия кнопки получения транскрипта
 async function handleGetTranscript() {
   const btn = document.getElementById('yt-transcript-get-btn');
   const content = document.getElementById('yt-transcript-content');
+  const videoId = getVideoId();
+
+  if (!videoId) {
+    content.innerHTML = `
+      <div class="yt-transcript-error">
+        Не удалось получить ID видео
+      </div>
+    `;
+    return;
+  }
+
+  // Проверяем состояние
+  if (transcriptState.isProcessing) {
+    console.log('Обработка уже идет');
+    return;
+  }
+
+  if (transcriptState.isProcessed && transcriptState.videoId === videoId) {
+    console.log('Транскрипт уже обработан для этого видео');
+    return;
+  }
+
+  // Обновляем состояние
+  transcriptState.videoId = videoId;
+  transcriptState.isProcessing = true;
+  transcriptState.isProcessed = false;
 
   // Блокируем кнопку
   btn.disabled = true;
-  btn.textContent = 'Loading...';
+  btn.textContent = 'Processing...';
 
   // Показываем лоадер
   content.innerHTML = `
@@ -155,17 +178,21 @@ async function handleGetTranscript() {
           Субтитры не найдены для этого видео
         </div>
       `;
+      transcriptState.isProcessing = false;
       return;
     }
 
-    // Обрабатываем субтитры - переводим в верхний регистр
-    const processedSubtitles = subtitles.map(sub => ({
-      ...sub,
-      text: sub.text.toUpperCase() // ОБРАБОТКА: ВЕРХНИЙ РЕГИСТР
-    }));
+    // Сохраняем оригинальные субтитры
+    transcriptState.subtitles = subtitles;
 
-    // Отображаем
-    displayTranscript(processedSubtitles);
+    // Отображаем оригинальные субтитры сразу
+    displayTranscript(subtitles);
+
+    // Отправляем на сервер для перевода
+    btn.textContent = 'Translating...';
+    await translateSubtitles(videoId, subtitles);
+
+    transcriptState.isProcessed = true;
 
   } catch (error) {
     console.error('Ошибка при получении транскрипта:', error);
@@ -175,6 +202,7 @@ async function handleGetTranscript() {
       </div>
     `;
   } finally {
+    transcriptState.isProcessing = false;
     btn.disabled = false;
     btn.innerHTML = `
       <svg viewBox="0 0 24 24" fill="currentColor">
@@ -183,6 +211,67 @@ async function handleGetTranscript() {
       Get Transcript
     `;
   }
+}
+
+// Отправка субтитров на сервер и получение переводов
+async function translateSubtitles(videoId, subtitles) {
+  const SERVER_URL = 'http://localhost:5000/translate';
+
+  try {
+    // Отправляем на сервер
+    const response = await fetch(SERVER_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        videoId: videoId,
+        subtitles: subtitles.map(sub => ({
+          time: sub.time,
+          text: sub.text
+        }))
+      })
+    });
+
+    if (!response.ok) {
+      throw new Error(`Server error: ${response.status}`);
+    }
+
+    const data = await response.json();
+
+    // Проверяем, есть ли кешированный результат
+    if (data.cached) {
+      console.log('Используем кешированный перевод');
+      updateTranscriptWithTranslations(data.translations);
+    } else {
+      console.log('Получаем новый перевод');
+      updateTranscriptWithTranslations(data.translations);
+    }
+
+  } catch (error) {
+    console.error('Ошибка при переводе:', error);
+    // Оставляем оригинальные субтитры в случае ошибки
+  }
+}
+
+// Обновление транскрипта с переводами построчно
+function updateTranscriptWithTranslations(translations) {
+  translations.forEach((translation, index) => {
+    setTimeout(() => {
+      const item = document.querySelector(`[data-index="${index}"]`);
+      if (item) {
+        const textElement = item.querySelector('.yt-transcript-item-text');
+        if (textElement) {
+          // Плавное обновление
+          textElement.style.opacity = '0.5';
+          setTimeout(() => {
+            textElement.textContent = translation.text;
+            textElement.style.opacity = '1';
+          }, 100);
+        }
+      }
+    }, index * 50); // Задержка 50мс между обновлениями для плавности
+  });
 }
 
 // Получение транскрипта
@@ -224,7 +313,7 @@ async function getTranscript() {
       const timeText = timeElement?.textContent.trim() || '';
 
       subtitles.push({
-        index: index + 1,
+        index: index,
         time: timeText,
         text: text
       });
@@ -268,7 +357,7 @@ function displayTranscript(subtitles) {
   const content = document.getElementById('yt-transcript-content');
 
   content.innerHTML = subtitles.map(sub => `
-    <div class="yt-transcript-item" data-time="${sub.time}">
+    <div class="yt-transcript-item" data-time="${sub.time}" data-index="${sub.index}">
       <div class="yt-transcript-item-time">${sub.time}</div>
       <div class="yt-transcript-item-text">${sub.text}</div>
     </div>
@@ -298,12 +387,23 @@ function seekToTime(timeStr) {
   }
 }
 
+// Сброс состояния при смене видео
+function resetState() {
+  transcriptState.videoId = null;
+  transcriptState.isProcessing = false;
+  transcriptState.isProcessed = false;
+  transcriptState.subtitles = null;
+}
+
 // Отслеживание изменений URL
 let currentUrl = location.href;
 new MutationObserver(() => {
   if (location.href !== currentUrl) {
     currentUrl = location.href;
     if (currentUrl.includes('/watch')) {
+      // Сбрасываем состояние
+      resetState();
+
       // Удаляем старую панель
       const oldPanel = document.getElementById('yt-transcript-panel');
       if (oldPanel) {

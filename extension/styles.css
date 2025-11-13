@@ -31,15 +31,8 @@
   height: 20px;
 }
 
-/* Контейнер кнопок управления */
-#yt-transcript-controls {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
-
-#yt-transcript-toggle-btn,
-#yt-transcript-close-btn {
+/* Кнопка сворачивания */
+#yt-transcript-toggle-btn {
   background: transparent;
   border: none;
   color: var(--yt-spec-icon-inactive);
@@ -54,14 +47,12 @@
   padding: 0;
 }
 
-#yt-transcript-toggle-btn:hover,
-#yt-transcript-close-btn:hover {
+#yt-transcript-toggle-btn:hover {
   background: var(--yt-spec-badge-chip-background);
   color: var(--yt-spec-text-primary);
 }
 
-#yt-transcript-toggle-btn svg,
-#yt-transcript-close-btn svg {
+#yt-transcript-toggle-btn svg {
   width: 20px;
   height: 20px;
 }
@@ -168,6 +159,7 @@
   word-break: break-word;
   flex: 1;
   padding-top: 1px;
+  transition: opacity 0.2s ease;
 }
 
 /* Лоадер */
