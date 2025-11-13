@@ -1,4 +1,4 @@
-// Ждем загрузки плеера YouTube
+// Ждем загрузки элемента
 function waitForElement(selector, timeout = 10000) {
   return new Promise((resolve, reject) => {
     const element = document.querySelector(selector);
@@ -26,377 +26,244 @@ function waitForElement(selector, timeout = 10000) {
   });
 }
 
-// Функция для извлечения данных ytInitialPlayerResponse
-function getYTInitialPlayerResponse() {
+// Создание панели транскрипта
+function createTranscriptPanel() {
+  const panel = document.createElement('div');
+  panel.id = 'yt-transcript-panel';
+  panel.innerHTML = `
+    <div id="yt-transcript-panel-header">
+      <div id="yt-transcript-panel-title">
+        <svg viewBox="0 0 24 24" fill="currentColor">
+          <path d="M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zM4 12h4v2H4v-2zm10 6H4v-2h10v2zm6 0h-4v-2h4v2zm0-4H10v-2h10v2z"/>
+        </svg>
+        Transcript
+      </div>
+      <button id="yt-transcript-get-btn">
+        <svg viewBox="0 0 24 24" fill="currentColor">
+          <path d="M19 19H5V5h7V3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2v-7h-2v7zM14 3v2h3.59l-9.83 9.83 1.41 1.41L19 6.41V10h2V3h-7z"/>
+        </svg>
+        Get Transcript
+      </button>
+    </div>
+    <div id="yt-transcript-content"></div>
+  `;
+
+  return panel;
+}
+
+// Вставка панели в страницу
+async function injectPanel() {
   try {
-    // Ищем ytInitialPlayerResponse в скриптах страницы
-    const scripts = document.querySelectorAll('script');
-    for (let script of scripts) {
-      const content = script.textContent;
-      if (content.includes('ytInitialPlayerResponse')) {
-        const match = content.match(/ytInitialPlayerResponse\s*=\s*({.+?});/);
-        if (match) {
-          return JSON.parse(match[1]);
-        }
-      }
+    // Ищем secondary column (справа от видео)
+    const secondary = await waitForElement('#secondary-inner, #secondary');
+
+    // Проверяем, не добавлена ли уже панель
+    if (document.getElementById('yt-transcript-panel')) {
+      return;
     }
 
-    // Альтернативный способ - из window объекта
-    if (window.ytInitialPlayerResponse) {
-      return window.ytInitialPlayerResponse;
-    }
+    const panel = createTranscriptPanel();
 
-    return null;
+    // Вставляем в начало secondary column
+    secondary.insertBefore(panel, secondary.firstChild);
+
+    // Привязываем обработчик к кнопке
+    const btn = document.getElementById('yt-transcript-get-btn');
+    btn.addEventListener('click', handleGetTranscript);
+
+    console.log('✅ Панель транскрипта добавлена');
   } catch (error) {
-    console.error('Ошибка при извлечении ytInitialPlayerResponse:', error);
-    return null;
+    console.error('❌ Ошибка при вставке панели:', error);
   }
 }
 
-// Функция для получения URL субтитров
-function getSubtitlesUrl(playerResponse) {
+// Обработчик нажатия кнопки
+async function handleGetTranscript() {
+  const btn = document.getElementById('yt-transcript-get-btn');
+  const content = document.getElementById('yt-transcript-content');
+
+  // Блокируем кнопку
+  btn.disabled = true;
+  btn.textContent = 'Loading...';
+
+  // Показываем лоадер
+  content.innerHTML = `
+    <div class="yt-transcript-loader">
+      <div class="yt-transcript-loader-spinner"></div>
+      <span>Загрузка транскрипта...</span>
+    </div>
+  `;
+
   try {
-    const captions = playerResponse?.captions?.playerCaptionsTracklistRenderer;
-    if (!captions || !captions.captionTracks) {
-      console.log('Субтитры не найдены для этого видео');
-      return null;
+    const subtitles = await getTranscript();
+
+    if (!subtitles || subtitles.length === 0) {
+      content.innerHTML = `
+        <div class="yt-transcript-empty">
+          Субтитры не найдены для этого видео
+        </div>
+      `;
+      return;
     }
 
-    // Приоритет: русские субтитры, затем английские, затем первые доступные
-    const tracks = captions.captionTracks;
+    // Обрабатываем субтитры - переводим в верхний регистр
+    const processedSubtitles = subtitles.map(sub => ({
+      ...sub,
+      text: sub.text.toUpperCase() // ОБРАБОТКА: ВЕРХНИЙ РЕГИСТР
+    }));
 
-    let subtitleTrack = tracks.find(track => track.languageCode === 'ru');
-    if (!subtitleTrack) {
-      subtitleTrack = tracks.find(track => track.languageCode === 'en');
-    }
-    if (!subtitleTrack) {
-      subtitleTrack = tracks[0];
-    }
+    // Отображаем
+    displayTranscript(processedSubtitles);
 
-    console.log('Найден трек субтитров:', subtitleTrack.name.simpleText);
-    return subtitleTrack.baseUrl;
   } catch (error) {
-    console.error('Ошибка при получении URL субтитров:', error);
-    return null;
+    console.error('❌ Ошибка при получении транскрипта:', error);
+    content.innerHTML = `
+      <div class="yt-transcript-error">
+        Ошибка при загрузке транскрипта: ${error.message}
+      </div>
+    `;
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = `
+      <svg viewBox="0 0 24 24" fill="currentColor">
+        <path d="M19 19H5V5h7V3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2v-7h-2v7zM14 3v2h3.59l-9.83 9.83 1.41 1.41L19 6.41V10h2V3h-7z"/>
+      </svg>
+      Refresh
+    `;
   }
 }
 
-// Функция для парсинга XML/JSON субтитров
-function parseSubtitles(data) {
-  try {
-    // Проверяем, может это JSON
-    if (data.trim().startsWith('{') || data.trim().startsWith('[')) {
-      console.log('🔍 Обнаружен JSON формат');
-      try {
-        const jsonData = JSON.parse(data);
-        console.log('📊 JSON данные:', jsonData);
-        return [];
-      } catch (e) {
-        console.log('❌ Не удалось распарсить как JSON');
-      }
-    }
+// Получение транскрипта
+async function getTranscript() {
+  console.log('🎬 Получаем транскрипт...');
 
-    const parser = new DOMParser();
-    const xmlDoc = parser.parseFromString(data, 'text/xml');
+  // Ищем кнопку "Show transcript"
+  const transcriptButton = await findTranscriptButton();
 
-    // Отладка: проверяем структуру XML
-    console.log('🔍 Парсинг XML. Корневой элемент:', xmlDoc.documentElement?.tagName);
-
-    // Проверяем ошибки парсинга
-    const parserError = xmlDoc.querySelector('parsererror');
-    if (parserError) {
-      console.error('❌ Ошибка парсинга XML:', parserError.textContent);
-      return [];
-    }
-
-    const textElements = xmlDoc.querySelectorAll('text');
-    console.log('🔍 Найдено элементов <text>:', textElements.length);
-
-    // Если не нашли <text>, пробуем другие варианты
-    if (textElements.length === 0) {
-      console.log('🔍 Пробуем альтернативные селекторы...');
-      const alternatives = ['p', 'transcript > text', 'timedtext > body > p'];
-      for (const selector of alternatives) {
-        const elements = xmlDoc.querySelectorAll(selector);
-        console.log(`🔍 Найдено элементов "${selector}":`, elements.length);
-        if (elements.length > 0) {
-          console.log('✅ Используем селектор:', selector);
-          return parseElements(elements);
-        }
-      }
-    }
-
-    const subtitles = [];
-    textElements.forEach((element, index) => {
-      const start = parseFloat(element.getAttribute('start'));
-      const duration = parseFloat(element.getAttribute('dur') || element.getAttribute('d'));
-      const text = element.textContent
-        .replace(/&amp;/g, '&')
-        .replace(/&lt;/g, '<')
-        .replace(/&gt;/g, '>')
-        .replace(/&quot;/g, '"')
-        .replace(/&#39;/g, "'")
-        .replace(/\n/g, ' ')
-        .trim();
-
-      if (text) {
-        subtitles.push({
-          index: index + 1,
-          start: start,
-          end: start + duration,
-          text: text
-        });
-      }
-    });
-
-    return subtitles;
-  } catch (error) {
-    console.error('❌ Ошибка при парсинге субтитров:', error);
-    return [];
+  if (!transcriptButton) {
+    throw new Error('Кнопка транскрипта не найдена');
   }
-}
 
-// Вспомогательная функция для парсинга элементов
-function parseElements(elements) {
+  // Проверяем, не открыт ли уже транскрипт
+  const isOpen = transcriptButton.getAttribute('aria-pressed') === 'true';
+
+  if (!isOpen) {
+    transcriptButton.click();
+    console.log('🖱️ Открыли панель транскрипта');
+    await new Promise(resolve => setTimeout(resolve, 1500));
+  }
+
+  // Ищем элементы транскрипта
+  const transcriptItems = document.querySelectorAll('ytd-transcript-segment-renderer');
+
+  console.log('📝 Найдено элементов транскрипта:', transcriptItems.length);
+
+  if (transcriptItems.length === 0) {
+    throw new Error('Элементы транскрипта не найдены');
+  }
+
   const subtitles = [];
-  elements.forEach((element, index) => {
-    const start = parseFloat(element.getAttribute('start') || element.getAttribute('t') || 0);
-    const duration = parseFloat(element.getAttribute('dur') || element.getAttribute('d') || 0);
-    const text = element.textContent
-      .replace(/&amp;/g, '&')
-      .replace(/&lt;/g, '<')
-      .replace(/&gt;/g, '>')
-      .replace(/&quot;/g, '"')
-      .replace(/&#39;/g, "'")
-      .replace(/\n/g, ' ')
-      .trim();
+  transcriptItems.forEach((item, index) => {
+    const timeElement = item.querySelector('.segment-timestamp');
+    const textElement = item.querySelector('yt-formatted-string.segment-text');
 
-    if (text) {
+    if (textElement) {
+      const text = textElement.textContent.trim();
+      const timeText = timeElement?.textContent.trim() || '';
+
       subtitles.push({
         index: index + 1,
-        start: start / 1000, // На случай если время в миллисекундах
-        end: (start + duration) / 1000,
+        time: timeText,
         text: text
       });
     }
   });
+
+  // Закрываем панель транскрипта
+  if (!isOpen) {
+    transcriptButton.click();
+    console.log('🖱️ Закрыли панель транскрипта');
+  }
+
+  console.log(`✅ Получено ${subtitles.length} субтитров`);
   return subtitles;
 }
 
-// Функция для форматирования времени
-function formatTime(seconds) {
-  const hours = Math.floor(seconds / 3600);
-  const minutes = Math.floor((seconds % 3600) / 60);
-  const secs = Math.floor(seconds % 60);
-  const ms = Math.floor((seconds % 1) * 1000);
+// Поиск кнопки транскрипта
+async function findTranscriptButton() {
+  // Ждем загрузки кнопок
+  await waitForElement('#description ytd-video-description-transcript-section-renderer', 5000).catch(() => null);
 
-  return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}.${ms.toString().padStart(3, '0')}`;
+  const selectors = [
+    '#description ytd-video-description-transcript-section-renderer button[aria-label*="transcript" i]',
+    '#description ytd-video-description-transcript-section-renderer button[aria-label*="текст" i]',
+    'ytd-video-description-transcript-section-renderer button',
+  ];
+
+  for (const selector of selectors) {
+    const btn = document.querySelector(selector);
+    if (btn) {
+      console.log('✅ Найдена кнопка транскрипта');
+      return btn;
+    }
+  }
+
+  return null;
 }
 
-// Основная функция для получения субтитров
-async function fetchSubtitles() {
-  console.log('🎬 Начинаем получение субтитров...');
+// Отображение транскрипта
+function displayTranscript(subtitles) {
+  const content = document.getElementById('yt-transcript-content');
 
-  const playerResponse = getYTInitialPlayerResponse();
-  if (!playerResponse) {
-    console.error('❌ Не удалось получить данные плеера YouTube');
-    return;
-  }
+  content.innerHTML = subtitles.map(sub => `
+    <div class="yt-transcript-item" data-time="${sub.time}">
+      <div class="yt-transcript-item-time">${sub.time}</div>
+      <div class="yt-transcript-item-text">${sub.text}</div>
+    </div>
+  `).join('');
 
-  const subtitlesUrl = getSubtitlesUrl(playerResponse);
-  if (!subtitlesUrl) {
-    console.error('❌ URL субтитров не найден');
-    return;
-  }
-
-  console.log('🔗 URL субтитров:', subtitlesUrl);
-  console.log('📡 Загружаем субтитры...');
-
-  try {
-    const response = await fetch(subtitlesUrl);
-    console.log('📊 Статус ответа:', response.status, response.statusText);
-    console.log('📊 Content-Type:', response.headers.get('content-type'));
-
-    if (!response.ok) {
-      throw new Error(`HTTP ошибка: ${response.status}`);
-    }
-
-    const xmlText = await response.text();
-    console.log('📊 Длина ответа:', xmlText.length, 'символов');
-
-    // Отладочный вывод - показываем первые 1000 символов XML
-    console.log('📄 XML ответ (первые 1000 символов):');
-    console.log(xmlText.substring(0, 1000));
-
-    if (xmlText.length === 0) {
-      console.error('❌ Ответ пустой! Попробуем альтернативный метод...');
-      await tryAlternativeMethod();
-      return;
-    }
-
-    const subtitles = parseSubtitles(xmlText);
-
-    console.log(`✅ Получено ${subtitles.length} субтитров\n`);
-    console.log('═'.repeat(80));
-
-    // Выводим субтитры в консоль
-    subtitles.forEach(sub => {
-      console.log(`[${formatTime(sub.start)} --> ${formatTime(sub.end)}]`);
-      console.log(sub.text);
-      console.log('─'.repeat(80));
+  // Добавляем клик по элементу для перехода к времени
+  content.querySelectorAll('.yt-transcript-item').forEach(item => {
+    item.addEventListener('click', () => {
+      const time = item.dataset.time;
+      seekToTime(time);
     });
+  });
+}
 
-    console.log('═'.repeat(80));
-    console.log('✅ Все субтитры выведены в консоль');
+// Переход к определенному времени в видео
+function seekToTime(timeStr) {
+  // Парсим время вида "0:00", "1:23", "12:34:56"
+  const parts = timeStr.split(':').reverse();
+  const seconds = parseInt(parts[0] || 0) +
+                 parseInt(parts[1] || 0) * 60 +
+                 parseInt(parts[2] || 0) * 3600;
 
-    // Также возвращаем массив субтитров для возможного дальнейшего использования
-    return subtitles;
-  } catch (error) {
-    console.error('❌ Ошибка при загрузке субтитров:', error);
+  const video = document.querySelector('video');
+  if (video) {
+    video.currentTime = seconds;
+    video.play();
   }
 }
 
-// Создание и внедрение кнопки
-async function injectButton() {
-  try {
-    // Ждем загрузки контейнера с кнопками YouTube
-    const controlsContainer = await waitForElement('#movie_player .ytp-right-controls');
-
-    // Проверяем, не добавлена ли уже кнопка
-    if (document.getElementById('subtitle-extractor-btn')) {
-      return;
-    }
-
-    // Создаем кнопку
-    const button = document.createElement('button');
-    button.id = 'subtitle-extractor-btn';
-    button.className = 'ytp-button subtitle-extractor-button';
-    button.title = 'Получить субтитры (вывод в консоль)';
-    button.innerHTML = `
-      <svg height="100%" version="1.1" viewBox="0 0 36 36" width="100%">
-        <path fill="#fff" d="M11,11 C9.89,11 9,11.9 9,13 L9,23 C9,24.1 9.89,25 11,25 L25,25 C26.1,25 27,24.1 27,23 L27,13 C27,11.9 26.1,11 25,11 L11,11 Z M17,14 L19,14 L19,16 L17,16 L17,14 Z M14,14 L16,14 L16,16 L14,16 L14,14 Z M11,14 L13,14 L13,16 L11,16 L11,14 Z M23,17 L25,17 L25,19 L23,19 L23,17 Z M20,17 L22,17 L22,19 L20,19 L20,17 Z M17,17 L19,17 L19,19 L17,19 L17,17 Z M14,17 L16,17 L16,19 L14,19 L14,17 Z M11,17 L13,17 L13,19 L11,19 L11,17 Z M17,20 L19,20 L19,22 L17,22 L17,20 Z M14,20 L16,20 L16,22 L14,22 L14,20 Z M11,20 L13,20 L13,22 L11,22 L11,20 Z"></path>
-      </svg>
-    `;
-
-    // Добавляем обработчик клика
-    button.addEventListener('click', async (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      await fetchSubtitles();
-    });
-
-    // Вставляем кнопку в контейнер управления
-    controlsContainer.insertBefore(button, controlsContainer.firstChild);
-
-    console.log('✅ Кнопка для получения субтитров добавлена');
-  } catch (error) {
-    console.error('❌ Ошибка при внедрении кнопки:', error);
-  }
-}
-
-// Отслеживание изменений URL (для навигации по YouTube без перезагрузки страницы)
+// Отслеживание изменений URL
 let currentUrl = location.href;
 new MutationObserver(() => {
   if (location.href !== currentUrl) {
     currentUrl = location.href;
     if (currentUrl.includes('/watch')) {
-      setTimeout(injectButton, 1000);
+      // Удаляем старую панель
+      const oldPanel = document.getElementById('yt-transcript-panel');
+      if (oldPanel) {
+        oldPanel.remove();
+      }
+      // Вставляем новую через таймаут
+      setTimeout(injectPanel, 1500);
     }
   }
 }).observe(document.body, { childList: true, subtree: true });
 
-// Альтернативный метод - через клик по кнопке "Show transcript"
-async function tryAlternativeMethod() {
-  console.log('🔄 Пробуем альтернативный метод (через кнопку Show transcript)...');
-
-  try {
-    // Ищем кнопку "Show transcript" или "Показать текст видео"
-    const buttons = [
-      'button[aria-label*="transcript" i]',
-      'button[aria-label*="текст видео" i]',
-      'ytd-video-description-transcript-section-renderer button',
-      '#primary-button button',
-    ];
-
-    let transcriptButton = null;
-    for (const selector of buttons) {
-      const btn = document.querySelector(selector);
-      if (btn && (
-        btn.textContent.toLowerCase().includes('transcript') ||
-        btn.textContent.toLowerCase().includes('текст') ||
-        btn.getAttribute('aria-label')?.toLowerCase().includes('transcript')
-      )) {
-        transcriptButton = btn;
-        console.log('✅ Найдена кнопка транскрипта:', selector);
-        break;
-      }
-    }
-
-    if (!transcriptButton) {
-      console.error('❌ Кнопка "Show transcript" не найдена');
-      return;
-    }
-
-    // Открываем транскрипт
-    transcriptButton.click();
-    console.log('🖱️ Кликнули на кнопку транскрипта, ждем загрузки...');
-
-    // Ждем загрузки транскрипта
-    await new Promise(resolve => setTimeout(resolve, 2000));
-
-    // Ищем элементы транскрипта
-    const transcriptItems = document.querySelectorAll(
-      'ytd-transcript-segment-renderer, ' +
-      '[class*="transcript"] [class*="segment"], ' +
-      '[class*="cue"]'
-    );
-
-    console.log('📝 Найдено элементов транскрипта:', transcriptItems.length);
-
-    if (transcriptItems.length === 0) {
-      console.error('❌ Элементы транскрипта не найдены');
-      return;
-    }
-
-    const subtitles = [];
-    transcriptItems.forEach((item, index) => {
-      const timeElement = item.querySelector('[class*="time"], .segment-timestamp');
-      const textElement = item.querySelector('[class*="text"], .segment-text, yt-formatted-string');
-
-      if (textElement) {
-        const text = textElement.textContent.trim();
-        const timeText = timeElement?.textContent.trim() || '';
-
-        subtitles.push({
-          index: index + 1,
-          time: timeText,
-          text: text
-        });
-      }
-    });
-
-    console.log(`✅ Получено ${subtitles.length} субтитров через альтернативный метод\n`);
-    console.log('═'.repeat(80));
-
-    subtitles.forEach(sub => {
-      console.log(`[${sub.time}]`);
-      console.log(sub.text);
-      console.log('─'.repeat(80));
-    });
-
-    console.log('═'.repeat(80));
-    console.log('✅ Все субтитры выведены в консоль');
-
-    // Закрываем панель транскрипта (опционально)
-    transcriptButton.click();
-
-    return subtitles;
-  } catch (error) {
-    console.error('❌ Ошибка в альтернативном методе:', error);
-  }
-}
-
-// Запускаем внедрение кнопки при загрузке
+// Запускаем вставку панели при загрузке
 if (location.href.includes('/watch')) {
-  injectButton();
+  injectPanel();
 }
