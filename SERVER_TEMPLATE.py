@@ -1,6 +1,6 @@
 """
-YouTube Subtitle Translation Server
-Сервер для перевода субтитров YouTube с использованием GPT-4o-mini и кешированием в SQLite
+YouTube Subtitle Translation Server - Line-by-Line Architecture
+Сервер для построчного перевода субтитров YouTube с использованием GPT-4o-mini
 """
 
 from flask import Flask, request, jsonify
@@ -21,7 +21,7 @@ client = OpenAI(api_key=OPENAI_API_KEY)
 
 # Инициализация БД
 def init_db():
-    """Создает таблицу для хранения переводов"""
+    """Создает таблицу для хранения переводов построчно"""
     conn = sqlite3.connect(DATABASE)
     cursor = conn.cursor()
 
@@ -29,88 +29,82 @@ def init_db():
         CREATE TABLE IF NOT EXISTS translations (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             video_id TEXT NOT NULL,
-            subtitle_hash TEXT NOT NULL,
+            line_number INTEGER NOT NULL,
             original_text TEXT NOT NULL,
             translated_text TEXT NOT NULL,
-            timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
-            UNIQUE(video_id, subtitle_hash)
+            lang TEXT NOT NULL DEFAULT 'ru',
+            timestamp INTEGER DEFAULT (strftime('%s', 'now')),
+            UNIQUE(video_id, line_number, lang)
         )
     ''')
 
     cursor.execute('''
-        CREATE INDEX IF NOT EXISTS idx_video_id
-        ON translations(video_id)
+        CREATE INDEX IF NOT EXISTS idx_video_line
+        ON translations(video_id, line_number, lang)
     ''')
 
     conn.commit()
     conn.close()
-    print("База данных инициализирована")
+    print("База данных инициализирована (line-by-line schema)")
 
-# Генерация хеша для субтитров
-def generate_subtitle_hash(subtitles):
-    """Генерирует хеш из текстов субтитров для кеширования"""
-    import hashlib
-    text = ''.join([sub['text'] for sub in subtitles])
-    return hashlib.md5(text.encode()).hexdigest()
-
-# Проверка кеша
-def check_cache(video_id, subtitle_hash):
-    """Проверяет наличие перевода в кеше"""
+# Проверка кеша для одной строки
+def check_line_cache(video_id, line_number, lang='ru'):
+    """Проверяет наличие перевода строки в кеше"""
     conn = sqlite3.connect(DATABASE)
     cursor = conn.cursor()
 
     cursor.execute('''
         SELECT translated_text
         FROM translations
-        WHERE video_id = ? AND subtitle_hash = ?
-    ''', (video_id, subtitle_hash))
+        WHERE video_id = ? AND line_number = ? AND lang = ?
+    ''', (video_id, line_number, lang))
 
     result = cursor.fetchone()
     conn.close()
 
     if result:
-        return json.loads(result[0])
+        return result[0]
     return None
 
-# Сохранение в кеш
-def save_to_cache(video_id, subtitle_hash, original_text, translated_text):
-    """Сохраняет перевод в кеш"""
+# Сохранение одной строки в кеш
+def save_line_to_cache(video_id, line_number, original_text, translated_text, lang='ru'):
+    """Сохраняет перевод одной строки в кеш"""
     conn = sqlite3.connect(DATABASE)
     cursor = conn.cursor()
 
     cursor.execute('''
         INSERT OR REPLACE INTO translations
-        (video_id, subtitle_hash, original_text, translated_text)
-        VALUES (?, ?, ?, ?)
-    ''', (video_id, subtitle_hash, original_text, json.dumps(translated_text)))
+        (video_id, line_number, original_text, translated_text, lang)
+        VALUES (?, ?, ?, ?, ?)
+    ''', (video_id, line_number, original_text, translated_text, lang))
 
     conn.commit()
     conn.close()
 
-# Перевод через GPT-4o-mini
-def translate_with_gpt(subtitles):
-    """Переводит субтитры с использованием GPT-4o-mini"""
+# Перевод одной строки через GPT-4o-mini с контекстом
+def translate_line_with_gpt(text, prev_context=None, lang='ru'):
+    """Переводит одну строку субтитров с учетом предыдущего контекста"""
 
-    # Формируем текст для перевода
-    text_to_translate = '\n'.join([
-        f"[{i}] {sub['text']}"
-        for i, sub in enumerate(subtitles)
-    ])
+    # Формируем промпт с контекстом
+    if prev_context and len(prev_context) > 0:
+        context_text = '\n'.join([f"[prev] {line}" for line in prev_context[-2:]])  # Последние 1-2 строки
+        text_to_translate = f"{context_text}\n[current] {text}"
+    else:
+        text_to_translate = f"[current] {text}"
 
     system_prompt = """Ты профессиональный переводчик субтитров с английского на русский.
 
 ЗАДАЧА:
-1. Переведи каждую строку субтитров на русский язык
-2. Сохрани естественность речи и контекст
-3. Исправь любые ошибки распознавания речи
-4. Если встречаются неразборчивые фрагменты или артефакты - замени их на осмысленный перевод на основе контекста
-5. Сохрани формат: каждая строка должна начинаться с номера в квадратных скобках [N]
+1. Переведи строку [current] на русский язык
+2. Используй строки [prev] как контекст для точности перевода
+3. Сохрани естественность речи и контекст
+4. Исправь любые ошибки распознавания речи
+5. Если встречаются неразборчивые фрагменты - замени их на осмысленный перевод на основе контекста
 
 ВАЖНО:
-- НЕ добавляй никаких пояснений или комментариев
-- НЕ пропускай строки
-- Сохрани порядок и нумерацию строк
-- Переводи построчно, сохраняя разбивку предложений"""
+- Верни ТОЛЬКО переведённый текст строки [current]
+- НЕ добавляй никаких пояснений, комментариев или префиксов
+- НЕ переводи строки [prev] - они только для контекста"""
 
     try:
         response = client.chat.completions.create(
@@ -120,91 +114,61 @@ def translate_with_gpt(subtitles):
                 {"role": "user", "content": text_to_translate}
             ],
             temperature=0.3,
-            max_tokens=4000
+            max_tokens=200  # Для одной строки достаточно
         )
 
-        translated_text = response.choices[0].message.content
+        translated_text = response.choices[0].message.content.strip()
 
-        # Парсим ответ
-        translations = []
-        lines = translated_text.strip().split('\n')
+        # Убираем возможные артефакты вроде "[current]" если GPT их вернул
+        translated_text = translated_text.replace('[current]', '').strip()
 
-        for line in lines:
-            # Извлекаем номер и текст
-            if line.strip().startswith('['):
-                try:
-                    # Формат: [N] текст
-                    parts = line.split(']', 1)
-                    if len(parts) == 2:
-                        index = int(parts[0].strip('['))
-                        text = parts[1].strip()
-                        translations.append({
-                            'index': index,
-                            'text': text
-                        })
-                except:
-                    continue
-
-        return translations
+        return translated_text
 
     except Exception as e:
         print(f"Ошибка при переводе через GPT: {e}")
         return None
 
-@app.route('/translate', methods=['POST'])
-def translate():
-    """Endpoint для перевода субтитров"""
+@app.route('/translate-line', methods=['POST'])
+def translate_line():
+    """Endpoint для перевода одной строки субтитров"""
 
     data = request.json
     video_id = data.get('videoId')
-    subtitles = data.get('subtitles', [])
+    line_number = data.get('lineNumber')
+    text = data.get('text')
+    prev_context = data.get('prevContext', [])
+    lang = data.get('lang', 'ru')
 
-    if not video_id or not subtitles:
-        return jsonify({'error': 'Missing videoId or subtitles'}), 400
-
-    # Генерируем хеш для проверки кеша
-    subtitle_hash = generate_subtitle_hash(subtitles)
+    if video_id is None or line_number is None or not text:
+        return jsonify({'error': 'Missing videoId, lineNumber or text'}), 400
 
     # Проверяем кеш
-    cached_translation = check_cache(video_id, subtitle_hash)
+    cached_translation = check_line_cache(video_id, line_number, lang)
 
     if cached_translation:
-        print(f"Найден кеш для видео {video_id}")
+        print(f"[Cache HIT] Video {video_id}, line {line_number}")
         return jsonify({
             'videoId': video_id,
-            'cached': True,
-            'translations': cached_translation
+            'lineNumber': line_number,
+            'text': cached_translation,
+            'cached': True
         })
 
     # Переводим через GPT
-    print(f"Переводим субтитры для видео {video_id}")
-    translations = translate_with_gpt(subtitles)
+    print(f"[Translating] Video {video_id}, line {line_number}")
+    translated_text = translate_line_with_gpt(text, prev_context, lang)
 
-    if not translations:
+    if not translated_text:
         return jsonify({'error': 'Translation failed'}), 500
 
-    # Формируем результат с временными метками
-    result_translations = []
-    for i, sub in enumerate(subtitles):
-        translated_text = next(
-            (t['text'] for t in translations if t['index'] == i),
-            sub['text']  # Fallback на оригинал если перевод не найден
-        )
-        result_translations.append({
-            'time': sub['time'],
-            'text': translated_text
-        })
-
     # Сохраняем в кеш
-    original_text = json.dumps(subtitles)
-    save_to_cache(video_id, subtitle_hash, original_text, result_translations)
-
-    print(f"Перевод сохранен в кеш для видео {video_id}")
+    save_line_to_cache(video_id, line_number, text, translated_text, lang)
 
     return jsonify({
         'videoId': video_id,
-        'cached': False,
-        'translations': result_translations
+        'lineNumber': line_number,
+        'text': translated_text,
+        'cached': False
     })
 
 @app.route('/health', methods=['GET'])
@@ -227,8 +191,31 @@ def stats():
     conn.close()
 
     return jsonify({
-        'total_translations': total,
+        'total_lines': total,
         'unique_videos': unique_videos
+    })
+
+@app.route('/clear-cache', methods=['POST'])
+def clear_cache():
+    """Очистка кеша для конкретного видео"""
+    data = request.json
+    video_id = data.get('videoId')
+
+    if not video_id:
+        return jsonify({'error': 'Missing videoId'}), 400
+
+    conn = sqlite3.connect(DATABASE)
+    cursor = conn.cursor()
+
+    cursor.execute('DELETE FROM translations WHERE video_id = ?', (video_id,))
+    deleted = cursor.rowcount
+
+    conn.commit()
+    conn.close()
+
+    return jsonify({
+        'videoId': video_id,
+        'deletedLines': deleted
     })
 
 if __name__ == '__main__':
@@ -236,13 +223,14 @@ if __name__ == '__main__':
     init_db()
 
     print("=" * 60)
-    print("YouTube Subtitle Translation Server")
+    print("YouTube Subtitle Translation Server (Line-by-Line)")
     print("=" * 60)
     print("Сервер запущен на http://localhost:5000")
     print("Endpoints:")
-    print("  POST /translate - перевод субтитров")
-    print("  GET  /health    - проверка работоспособности")
-    print("  GET  /stats     - статистика кеша")
+    print("  POST /translate-line - перевод одной строки субтитров")
+    print("  GET  /health         - проверка работоспособности")
+    print("  GET  /stats          - статистика кеша")
+    print("  POST /clear-cache    - очистка кеша для видео")
     print("=" * 60)
 
     # Запускаем сервер
