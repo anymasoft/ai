@@ -1,46 +1,158 @@
-/* Стили для кнопки получения субтитров */
-.subtitle-extractor-button {
-  background: transparent;
+/* Контейнер для панели транскрипта */
+#yt-transcript-panel {
+  background: var(--yt-spec-base-background);
+  border-radius: 12px;
+  padding: 16px;
+  margin-top: 16px;
+  border: 1px solid var(--yt-spec-10-percent-layer);
+}
+
+/* Заголовок панели */
+#yt-transcript-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--yt-spec-10-percent-layer);
+}
+
+#yt-transcript-panel-title {
+  font-size: 16px;
+  font-weight: 500;
+  color: var(--yt-spec-text-primary);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+#yt-transcript-panel-title svg {
+  width: 20px;
+  height: 20px;
+}
+
+/* Кнопка получения транскрипта */
+#yt-transcript-get-btn {
+  background: var(--yt-spec-call-to-action);
+  color: var(--yt-spec-text-primary-inverse);
   border: none;
-  color: #fff;
+  border-radius: 18px;
+  padding: 8px 16px;
+  font-size: 14px;
+  font-weight: 500;
   cursor: pointer;
-  height: 100%;
-  opacity: 0.9;
-  padding: 0;
-  width: 36px;
-  display: inline-flex;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: background 0.2s ease;
+}
+
+#yt-transcript-get-btn:hover {
+  background: var(--yt-spec-call-to-action-hover);
+}
+
+#yt-transcript-get-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+#yt-transcript-get-btn svg {
+  width: 16px;
+  height: 16px;
+}
+
+/* Контейнер с транскриптом */
+#yt-transcript-content {
+  max-height: 600px;
+  overflow-y: auto;
+  padding-right: 8px;
+}
+
+#yt-transcript-content::-webkit-scrollbar {
+  width: 8px;
+}
+
+#yt-transcript-content::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+#yt-transcript-content::-webkit-scrollbar-thumb {
+  background: var(--yt-spec-10-percent-layer);
+  border-radius: 4px;
+}
+
+#yt-transcript-content::-webkit-scrollbar-thumb:hover {
+  background: var(--yt-spec-20-percent-layer);
+}
+
+/* Элемент транскрипта */
+.yt-transcript-item {
+  padding: 10px;
+  margin-bottom: 8px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.2s ease;
+  display: flex;
+  gap: 12px;
+}
+
+.yt-transcript-item:hover {
+  background: var(--yt-spec-badge-chip-background);
+}
+
+.yt-transcript-item-time {
+  color: var(--yt-spec-text-secondary);
+  font-size: 13px;
+  font-weight: 500;
+  min-width: 50px;
+  flex-shrink: 0;
+}
+
+.yt-transcript-item-text {
+  color: var(--yt-spec-text-primary);
+  font-size: 14px;
+  line-height: 1.4;
+  word-break: break-word;
+}
+
+/* Лоадер */
+.yt-transcript-loader {
+  display: flex;
   align-items: center;
   justify-content: center;
-  transition: opacity 0.1s ease;
+  padding: 40px;
+  color: var(--yt-spec-text-secondary);
 }
 
-.subtitle-extractor-button:hover {
-  opacity: 1;
+.yt-transcript-loader-spinner {
+  border: 3px solid var(--yt-spec-10-percent-layer);
+  border-top: 3px solid var(--yt-spec-text-secondary);
+  border-radius: 50%;
+  width: 30px;
+  height: 30px;
+  animation: spin 1s linear infinite;
+  margin-right: 12px;
 }
 
-.subtitle-extractor-button svg {
-  pointer-events: none;
-  display: block;
-  width: 100%;
-  height: 100%;
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
 }
 
-/* Анимация при клике */
-.subtitle-extractor-button:active {
-  opacity: 0.7;
-  transform: scale(0.95);
+/* Сообщение об ошибке */
+.yt-transcript-error {
+  padding: 16px;
+  background: rgba(255, 0, 0, 0.1);
+  border-radius: 8px;
+  color: #ff4444;
+  font-size: 14px;
+  line-height: 1.4;
 }
 
-/* Небольшая анимация загрузки (опционально) */
-@keyframes pulse {
-  0%, 100% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0.5;
-  }
-}
-
-.subtitle-extractor-button.loading {
-  animation: pulse 1s ease-in-out infinite;
+/* Пустое состояние */
+.yt-transcript-empty {
+  padding: 40px;
+  text-align: center;
+  color: var(--yt-spec-text-secondary);
+  font-size: 14px;
 }

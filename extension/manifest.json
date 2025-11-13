@@ -1,20 +1,18 @@
 {
   "manifest_version": 3,
-  "name": "YouTube Subtitles Extractor",
-  "version": "1.0.3",
-  "description": "Извлекает субтитры YouTube в фоновом режиме",
-  "permissions": [
-    "activeTab"
-  ],
+  "name": "YouTube Transcript Viewer",
+  "version": "2.0.0",
+  "description": "Показывает субтитры YouTube с предварительной обработкой",
+  "permissions": ["storage"],
   "host_permissions": [
     "https://www.youtube.com/*"
   ],
   "content_scripts": [
     {
-      "matches": ["https://www.youtube.com/watch*"],
+      "matches": ["https://www.youtube.com/*"],
       "js": ["content.js"],
       "css": ["styles.css"],
-      "run_at": "document_end"
+      "run_at": "document_idle"
     }
   ]
 }
