@@ -81,17 +81,55 @@ function getSubtitlesUrl(playerResponse) {
   }
 }
 
-// Функция для парсинга XML субтитров
-function parseSubtitles(xmlText) {
+// Функция для парсинга XML/JSON субтитров
+function parseSubtitles(data) {
   try {
+    // Проверяем, может это JSON
+    if (data.trim().startsWith('{') || data.trim().startsWith('[')) {
+      console.log('🔍 Обнаружен JSON формат');
+      try {
+        const jsonData = JSON.parse(data);
+        console.log('📊 JSON данные:', jsonData);
+        return [];
+      } catch (e) {
+        console.log('❌ Не удалось распарсить как JSON');
+      }
+    }
+
     const parser = new DOMParser();
-    const xmlDoc = parser.parseFromString(xmlText, 'text/xml');
+    const xmlDoc = parser.parseFromString(data, 'text/xml');
+
+    // Отладка: проверяем структуру XML
+    console.log('🔍 Парсинг XML. Корневой элемент:', xmlDoc.documentElement?.tagName);
+
+    // Проверяем ошибки парсинга
+    const parserError = xmlDoc.querySelector('parsererror');
+    if (parserError) {
+      console.error('❌ Ошибка парсинга XML:', parserError.textContent);
+      return [];
+    }
+
     const textElements = xmlDoc.querySelectorAll('text');
+    console.log('🔍 Найдено элементов <text>:', textElements.length);
+
+    // Если не нашли <text>, пробуем другие варианты
+    if (textElements.length === 0) {
+      console.log('🔍 Пробуем альтернативные селекторы...');
+      const alternatives = ['p', 'transcript > text', 'timedtext > body > p'];
+      for (const selector of alternatives) {
+        const elements = xmlDoc.querySelectorAll(selector);
+        console.log(`🔍 Найдено элементов "${selector}":`, elements.length);
+        if (elements.length > 0) {
+          console.log('✅ Используем селектор:', selector);
+          return parseElements(elements);
+        }
+      }
+    }
 
     const subtitles = [];
     textElements.forEach((element, index) => {
       const start = parseFloat(element.getAttribute('start'));
-      const duration = parseFloat(element.getAttribute('dur'));
+      const duration = parseFloat(element.getAttribute('dur') || element.getAttribute('d'));
       const text = element.textContent
         .replace(/&amp;/g, '&')
         .replace(/&lt;/g, '<')
@@ -101,19 +139,48 @@ function parseSubtitles(xmlText) {
         .replace(/\n/g, ' ')
         .trim();
 
-      subtitles.push({
-        index: index + 1,
-        start: start,
-        end: start + duration,
-        text: text
-      });
+      if (text) {
+        subtitles.push({
+          index: index + 1,
+          start: start,
+          end: start + duration,
+          text: text
+        });
+      }
     });
 
     return subtitles;
   } catch (error) {
-    console.error('Ошибка при парсинге субтитров:', error);
+    console.error('❌ Ошибка при парсинге субтитров:', error);
     return [];
   }
+}
+
+// Вспомогательная функция для парсинга элементов
+function parseElements(elements) {
+  const subtitles = [];
+  elements.forEach((element, index) => {
+    const start = parseFloat(element.getAttribute('start') || element.getAttribute('t') || 0);
+    const duration = parseFloat(element.getAttribute('dur') || element.getAttribute('d') || 0);
+    const text = element.textContent
+      .replace(/&amp;/g, '&')
+      .replace(/&lt;/g, '<')
+      .replace(/&gt;/g, '>')
+      .replace(/&quot;/g, '"')
+      .replace(/&#39;/g, "'")
+      .replace(/\n/g, ' ')
+      .trim();
+
+    if (text) {
+      subtitles.push({
+        index: index + 1,
+        start: start / 1000, // На случай если время в миллисекундах
+        end: (start + duration) / 1000,
+        text: text
+      });
+    }
+  });
+  return subtitles;
 }
 
 // Функция для форматирования времени
@@ -151,6 +218,11 @@ async function fetchSubtitles() {
     }
 
     const xmlText = await response.text();
+
+    // Отладочный вывод - показываем первые 500 символов XML
+    console.log('📄 XML ответ (первые 500 символов):');
+    console.log(xmlText.substring(0, 500));
+
     const subtitles = parseSubtitles(xmlText);
 
     console.log(`✅ Получено ${subtitles.length} субтитров\n`);
