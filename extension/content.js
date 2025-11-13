@@ -209,19 +209,30 @@ async function fetchSubtitles() {
     return;
   }
 
+  console.log('🔗 URL субтитров:', subtitlesUrl);
   console.log('📡 Загружаем субтитры...');
 
   try {
     const response = await fetch(subtitlesUrl);
+    console.log('📊 Статус ответа:', response.status, response.statusText);
+    console.log('📊 Content-Type:', response.headers.get('content-type'));
+
     if (!response.ok) {
       throw new Error(`HTTP ошибка: ${response.status}`);
     }
 
     const xmlText = await response.text();
+    console.log('📊 Длина ответа:', xmlText.length, 'символов');
 
-    // Отладочный вывод - показываем первые 500 символов XML
-    console.log('📄 XML ответ (первые 500 символов):');
-    console.log(xmlText.substring(0, 500));
+    // Отладочный вывод - показываем первые 1000 символов XML
+    console.log('📄 XML ответ (первые 1000 символов):');
+    console.log(xmlText.substring(0, 1000));
+
+    if (xmlText.length === 0) {
+      console.error('❌ Ответ пустой! Попробуем альтернативный метод...');
+      await tryAlternativeMethod();
+      return;
+    }
 
     const subtitles = parseSubtitles(xmlText);
 
@@ -293,6 +304,97 @@ new MutationObserver(() => {
     }
   }
 }).observe(document.body, { childList: true, subtree: true });
+
+// Альтернативный метод - через клик по кнопке "Show transcript"
+async function tryAlternativeMethod() {
+  console.log('🔄 Пробуем альтернативный метод (через кнопку Show transcript)...');
+
+  try {
+    // Ищем кнопку "Show transcript" или "Показать текст видео"
+    const buttons = [
+      'button[aria-label*="transcript" i]',
+      'button[aria-label*="текст видео" i]',
+      'ytd-video-description-transcript-section-renderer button',
+      '#primary-button button',
+    ];
+
+    let transcriptButton = null;
+    for (const selector of buttons) {
+      const btn = document.querySelector(selector);
+      if (btn && (
+        btn.textContent.toLowerCase().includes('transcript') ||
+        btn.textContent.toLowerCase().includes('текст') ||
+        btn.getAttribute('aria-label')?.toLowerCase().includes('transcript')
+      )) {
+        transcriptButton = btn;
+        console.log('✅ Найдена кнопка транскрипта:', selector);
+        break;
+      }
+    }
+
+    if (!transcriptButton) {
+      console.error('❌ Кнопка "Show transcript" не найдена');
+      return;
+    }
+
+    // Открываем транскрипт
+    transcriptButton.click();
+    console.log('🖱️ Кликнули на кнопку транскрипта, ждем загрузки...');
+
+    // Ждем загрузки транскрипта
+    await new Promise(resolve => setTimeout(resolve, 2000));
+
+    // Ищем элементы транскрипта
+    const transcriptItems = document.querySelectorAll(
+      'ytd-transcript-segment-renderer, ' +
+      '[class*="transcript"] [class*="segment"], ' +
+      '[class*="cue"]'
+    );
+
+    console.log('📝 Найдено элементов транскрипта:', transcriptItems.length);
+
+    if (transcriptItems.length === 0) {
+      console.error('❌ Элементы транскрипта не найдены');
+      return;
+    }
+
+    const subtitles = [];
+    transcriptItems.forEach((item, index) => {
+      const timeElement = item.querySelector('[class*="time"], .segment-timestamp');
+      const textElement = item.querySelector('[class*="text"], .segment-text, yt-formatted-string');
+
+      if (textElement) {
+        const text = textElement.textContent.trim();
+        const timeText = timeElement?.textContent.trim() || '';
+
+        subtitles.push({
+          index: index + 1,
+          time: timeText,
+          text: text
+        });
+      }
+    });
+
+    console.log(`✅ Получено ${subtitles.length} субтитров через альтернативный метод\n`);
+    console.log('═'.repeat(80));
+
+    subtitles.forEach(sub => {
+      console.log(`[${sub.time}]`);
+      console.log(sub.text);
+      console.log('─'.repeat(80));
+    });
+
+    console.log('═'.repeat(80));
+    console.log('✅ Все субтитры выведены в консоль');
+
+    // Закрываем панель транскрипта (опционально)
+    transcriptButton.click();
+
+    return subtitles;
+  } catch (error) {
+    console.error('❌ Ошибка в альтернативном методе:', error);
+  }
+}
 
 // Запускаем внедрение кнопки при загрузке
 if (location.href.includes('/watch')) {
