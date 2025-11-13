@@ -1,0 +1,46 @@
+/* Стили для кнопки получения субтитров */
+.subtitle-extractor-button {
+  background: transparent;
+  border: none;
+  color: #fff;
+  cursor: pointer;
+  height: 100%;
+  opacity: 0.9;
+  padding: 0;
+  width: 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: opacity 0.1s ease;
+}
+
+.subtitle-extractor-button:hover {
+  opacity: 1;
+}
+
+.subtitle-extractor-button svg {
+  pointer-events: none;
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+/* Анимация при клике */
+.subtitle-extractor-button:active {
+  opacity: 0.7;
+  transform: scale(0.95);
+}
+
+/* Небольшая анимация загрузки (опционально) */
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+.subtitle-extractor-button.loading {
+  animation: pulse 1s ease-in-out infinite;
+}
