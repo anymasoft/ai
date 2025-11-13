@@ -87,17 +87,29 @@ def save_to_cache(video_id, subtitle_hash, original_text, translated_text):
     conn.commit()
     conn.close()
 
-# Перевод через GPT-4o-mini
+# Перевод через GPT-4o-mini с разбивкой на батчи
 def translate_with_gpt(subtitles):
-    """Переводит субтитры с использованием GPT-4o-mini"""
+    """Переводит субтитры с использованием GPT-4o-mini, разбивая на батчи"""
 
-    # Формируем текст для перевода
-    text_to_translate = '\n'.join([
-        f"[{i}] {sub['text']}"
-        for i, sub in enumerate(subtitles)
-    ])
+    BATCH_SIZE = 100  # Переводим по 100 субтитров за раз
+    all_translations = []
 
-    system_prompt = """Ты профессиональный переводчик субтитров с английского на русский.
+    print(f"Всего субтитров для перевода: {len(subtitles)}")
+
+    # Разбиваем на батчи
+    for batch_start in range(0, len(subtitles), BATCH_SIZE):
+        batch_end = min(batch_start + BATCH_SIZE, len(subtitles))
+        batch = subtitles[batch_start:batch_end]
+
+        print(f"Переводим батч {batch_start}-{batch_end} ({len(batch)} субтитров)")
+
+        # Формируем текст для перевода
+        text_to_translate = '\n'.join([
+            f"[{batch_start + i}] {sub['text']}"
+            for i, sub in enumerate(batch)
+        ])
+
+        system_prompt = """Ты профессиональный переводчик субтитров с английского на русский.
 
 ЗАДАЧА:
 1. Переведи каждую строку субтитров на русский язык
@@ -110,46 +122,56 @@ def translate_with_gpt(subtitles):
 - НЕ добавляй никаких пояснений или комментариев
 - НЕ пропускай строки
 - Сохрани порядок и нумерацию строк
-- Переводи построчно, сохраняя разбивку предложений"""
+- Переводи построчно, сохраняя разбивку предложений
+- ОБЯЗАТЕЛЬНО переведи ВСЕ строки из входных данных"""
 
-    try:
-        response = client.chat.completions.create(
-            model="gpt-4o-mini",
-            messages=[
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": text_to_translate}
-            ],
-            temperature=0.3,
-            max_tokens=4000
-        )
+        try:
+            response = client.chat.completions.create(
+                model="gpt-4o-mini",
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": text_to_translate}
+                ],
+                temperature=0.3,
+                max_tokens=8000  # Увеличили лимит
+            )
 
-        translated_text = response.choices[0].message.content
+            translated_text = response.choices[0].message.content
 
-        # Парсим ответ
-        translations = []
-        lines = translated_text.strip().split('\n')
+            # Парсим ответ
+            batch_translations = []
+            lines = translated_text.strip().split('\n')
 
-        for line in lines:
-            # Извлекаем номер и текст
-            if line.strip().startswith('['):
-                try:
-                    # Формат: [N] текст
-                    parts = line.split(']', 1)
-                    if len(parts) == 2:
-                        index = int(parts[0].strip('['))
-                        text = parts[1].strip()
-                        translations.append({
-                            'index': index,
-                            'text': text
-                        })
-                except:
-                    continue
+            for line in lines:
+                # Извлекаем номер и текст
+                if line.strip().startswith('['):
+                    try:
+                        # Формат: [N] текст
+                        parts = line.split(']', 1)
+                        if len(parts) == 2:
+                            index = int(parts[0].strip('['))
+                            text = parts[1].strip()
+                            batch_translations.append({
+                                'index': index,
+                                'text': text
+                            })
+                    except:
+                        continue
 
-        return translations
+            print(f"Получено переводов для батча: {len(batch_translations)}")
+            all_translations.extend(batch_translations)
 
-    except Exception as e:
-        print(f"Ошибка при переводе через GPT: {e}")
-        return None
+        except Exception as e:
+            print(f"Ошибка при переводе батча {batch_start}-{batch_end}: {e}")
+            # В случае ошибки добавляем оригинальные тексты
+            for i, sub in enumerate(batch):
+                all_translations.append({
+                    'index': batch_start + i,
+                    'text': sub['text']  # Оставляем оригинал
+                })
+
+    print(f"Всего получено переводов: {len(all_translations)}")
+    return all_translations
 
 @app.route('/translate', methods=['POST'])
 def translate():
@@ -231,6 +253,36 @@ def stats():
         'unique_videos': unique_videos
     })
 
+@app.route('/clear-cache', methods=['POST'])
+def clear_cache():
+    """Очистка кеша (опционально по video_id)"""
+    data = request.json or {}
+    video_id = data.get('videoId')
+
+    conn = sqlite3.connect(DATABASE)
+    cursor = conn.cursor()
+
+    if video_id:
+        # Очищаем кеш для конкретного видео
+        cursor.execute('DELETE FROM translations WHERE video_id = ?', (video_id,))
+        deleted = cursor.rowcount
+        conn.commit()
+        conn.close()
+        return jsonify({
+            'message': f'Cache cleared for video {video_id}',
+            'deleted': deleted
+        })
+    else:
+        # Очищаем весь кеш
+        cursor.execute('DELETE FROM translations')
+        deleted = cursor.rowcount
+        conn.commit()
+        conn.close()
+        return jsonify({
+            'message': 'All cache cleared',
+            'deleted': deleted
+        })
+
 if __name__ == '__main__':
     # Инициализируем БД при запуске
     init_db()
@@ -240,9 +292,13 @@ if __name__ == '__main__':
     print("=" * 60)
     print("Сервер запущен на http://localhost:5000")
     print("Endpoints:")
-    print("  POST /translate - перевод субтитров")
-    print("  GET  /health    - проверка работоспособности")
-    print("  GET  /stats     - статистика кеша")
+    print("  POST /translate    - перевод субтитров")
+    print("  GET  /health       - проверка работоспособности")
+    print("  GET  /stats        - статистика кеша")
+    print("  POST /clear-cache  - очистка кеша (опционально videoId)")
+    print("=" * 60)
+    print("BATCH MODE: Переводит по 100 субтитров за раз")
+    print("MAX TOKENS: 8000 на батч")
     print("=" * 60)
 
     # Запускаем сервер
