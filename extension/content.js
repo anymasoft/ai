@@ -213,65 +213,86 @@ async function handleGetTranscript() {
   }
 }
 
-// Отправка субтитров на сервер и получение переводов
+// Отправка субтитров на сервер и получение переводов построчно
 async function translateSubtitles(videoId, subtitles) {
-  const SERVER_URL = 'http://localhost:5000/translate';
+  const SERVER_URL = 'http://localhost:5000/translate-line';
+  const prevContext = [];
 
   try {
-    // Отправляем на сервер
-    const response = await fetch(SERVER_URL, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        videoId: videoId,
-        subtitles: subtitles.map(sub => ({
-          time: sub.time,
-          text: sub.text
-        }))
-      })
-    });
+    // Переводим каждую строку по очереди
+    for (let i = 0; i < subtitles.length; i++) {
+      const subtitle = subtitles[i];
 
-    if (!response.ok) {
-      throw new Error(`Server error: ${response.status}`);
+      try {
+        // Отправляем запрос на перевод одной строки
+        const response = await fetch(SERVER_URL, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            videoId: videoId,
+            lineNumber: i,
+            text: subtitle.text,
+            prevContext: prevContext.slice(-2), // Последние 1-2 переведенные строки
+            lang: 'ru'
+          })
+        });
+
+        if (!response.ok) {
+          console.error(`Ошибка перевода строки ${i}: ${response.status}`);
+          prevContext.push(subtitle.text); // Используем оригинал
+          continue;
+        }
+
+        const data = await response.json();
+        const translatedText = data.text;
+
+        // Логируем статус
+        if (data.cached) {
+          console.log(`[${i}] Cache: ${translatedText}`);
+        } else {
+          console.log(`[${i}] Translated: ${translatedText}`);
+        }
+
+        // Немедленно обновляем UI для этой строки
+        updateSingleLine(i, translatedText);
+
+        // Добавляем переведенную строку в контекст
+        prevContext.push(translatedText);
+
+        // Небольшая задержка для плавности (не обязательно для кешированных)
+        if (!data.cached) {
+          await new Promise(resolve => setTimeout(resolve, 50));
+        }
+
+      } catch (error) {
+        console.error(`Ошибка при переводе строки ${i}:`, error);
+        prevContext.push(subtitle.text); // Используем оригинал в контексте
+      }
     }
 
-    const data = await response.json();
-
-    // Проверяем, есть ли кешированный результат
-    if (data.cached) {
-      console.log('Используем кешированный перевод');
-      updateTranscriptWithTranslations(data.translations);
-    } else {
-      console.log('Получаем новый перевод');
-      updateTranscriptWithTranslations(data.translations);
-    }
+    console.log(`Перевод завершен: ${subtitles.length} строк`);
 
   } catch (error) {
-    console.error('Ошибка при переводе:', error);
-    // Оставляем оригинальные субтитры в случае ошибки
+    console.error('Общая ошибка при переводе:', error);
   }
 }
 
-// Обновление транскрипта с переводами построчно
-function updateTranscriptWithTranslations(translations) {
-  translations.forEach((translation, index) => {
-    setTimeout(() => {
-      const item = document.querySelector(`[data-index="${index}"]`);
-      if (item) {
-        const textElement = item.querySelector('.yt-transcript-item-text');
-        if (textElement) {
-          // Плавное обновление
-          textElement.style.opacity = '0.5';
-          setTimeout(() => {
-            textElement.textContent = translation.text;
-            textElement.style.opacity = '1';
-          }, 100);
-        }
-      }
-    }, index * 50); // Задержка 50мс между обновлениями для плавности
-  });
+// Обновление одной строки транскрипта
+function updateSingleLine(index, translatedText) {
+  const item = document.querySelector(`[data-index="${index}"]`);
+  if (item) {
+    const textElement = item.querySelector('.yt-transcript-item-text');
+    if (textElement) {
+      // Плавное обновление
+      textElement.style.opacity = '0.5';
+      setTimeout(() => {
+        textElement.textContent = translatedText;
+        textElement.style.opacity = '1';
+      }, 100);
+    }
+  }
 }
 
 // Получение транскрипта
