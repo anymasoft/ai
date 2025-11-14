@@ -278,13 +278,13 @@ html[dark] :root {
 .yt-native-switch-btn.inactive {
   background-color: #f2f2f2;
   color: #0f0f0f;
-  font-weight: 400;
+  font-weight: 600;
 }
 
 .yt-native-switch-btn.active {
   background-color: #0f0f0f;
   color: #ffffff;
-  font-weight: 500;
+  font-weight: 600;
 }
 
 .yt-native-switch-btn:hover {
