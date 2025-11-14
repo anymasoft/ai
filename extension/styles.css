@@ -498,6 +498,7 @@ html[dark] :root {
    REALTIME АКТИВНАЯ ПОДСВЕТКА - Netflix style
    ═══════════════════════════════════════ */
 .yt-transcript-item.active-subtitle {
+  position: relative;
   background: linear-gradient(
     90deg,
     rgba(99, 102, 241, 0.18) 0%,
@@ -507,6 +508,62 @@ html[dark] :root {
   padding-left: 6px;
   transform: translateX(2px);
   box-shadow: 0 2px 8px rgba(99, 102, 241, 0.15);
+  overflow: hidden;
+}
+
+/* ═══════════════════════════════════════
+   KARAOKE PROGRESS BAR - Netflix WOW effect
+   ═══════════════════════════════════════ */
+.yt-transcript-item.active-subtitle::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  width: var(--karaoke-progress, 0%);
+  background: linear-gradient(
+    90deg,
+    rgba(99, 102, 241, 0.35) 0%,
+    rgba(168, 85, 247, 0.28) 50%,
+    rgba(99, 102, 241, 0.35) 100%
+  );
+  transition: width 80ms linear;
+  pointer-events: none;
+  z-index: 1;
+  box-shadow: 2px 0 8px rgba(99, 102, 241, 0.4);
+  will-change: width;
+}
+
+/* Мягкое свечение на краю прогресс-бара (moving edge) */
+.yt-transcript-item.active-subtitle::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: var(--karaoke-progress, 0%);
+  bottom: 0;
+  width: 3px;
+  background: linear-gradient(
+    180deg,
+    transparent 0%,
+    rgba(168, 85, 247, 0.8) 20%,
+    rgba(168, 85, 247, 1) 50%,
+    rgba(168, 85, 247, 0.8) 80%,
+    transparent 100%
+  );
+  box-shadow: 0 0 12px rgba(168, 85, 247, 0.7),
+              0 0 20px rgba(168, 85, 247, 0.4);
+  transition: left 80ms linear;
+  pointer-events: none;
+  z-index: 2;
+  opacity: 0.9;
+  will-change: left;
+}
+
+/* Текст и время должны быть поверх прогресс-бара */
+.yt-transcript-item.active-subtitle .yt-transcript-item-time,
+.yt-transcript-item.active-subtitle .yt-transcript-item-text {
+  position: relative;
+  z-index: 3;
 }
 
 /* Подсвеченная строка не реагирует на hover по-другому */
