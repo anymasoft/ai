@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "YouTube Transcript Viewer",
-  "version": "3.2.0",
+  "version": "3.3.0",
   "description": "Premium YouTube transcript translation with multi-language support",
   "permissions": ["storage"],
   "host_permissions": [
@@ -17,7 +17,7 @@
   ],
   "web_accessible_resources": [
     {
-      "resources": ["vr_logo_small.png"],
+      "resources": ["vr_logo_small.png", "assets/logo.png"],
       "matches": ["https://www.youtube.com/*"]
     }
   ]
