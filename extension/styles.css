@@ -256,107 +256,58 @@ html[dark] :root {
 }
 
 /* ═══════════════════════════════════════
-   YOUTUBE CHIP BUTTON "TRANSLATE VIDEO"
+   NATIVE YOUTUBE SWITCH BUTTON - Точная копия переключателя "Эпизоды/Расшифровка"
    ═══════════════════════════════════════ */
-.yt-reader-translate-btn {
+.yt-native-switch-btn {
   flex: 1;
-  background: transparent;
-  border: none;
-  cursor: pointer;
-  padding: 0;
-  display: flex;
-  overflow: hidden;
-}
-
-.yt-reader-translate-chip {
-  display: flex;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-  position: relative;
-  background-color: var(--yt-spec-badge-chip-background);
-  color: var(--yt-spec-text-primary);
-  border-radius: 8px;
-  padding: 0 12px;
   height: 32px;
-  width: 100%;
-  font-size: 14px;
-  font-weight: 500;
+  padding: 0 12px;
+  border-radius: 8px;
   font-family: "Roboto", "Arial", sans-serif;
-  line-height: 20px;
-  white-space: nowrap;
-  text-align: center;
-  transition: background-color 200ms cubic-bezier(0.05, 0, 0, 1);
+  font-size: 14px;
+  border: none;
   cursor: pointer;
-  overflow: hidden;
+  user-select: none;
+  white-space: nowrap;
+  transition: background-color 150ms ease, color 150ms ease, opacity 150ms ease;
 }
 
-.yt-reader-translate-btn:hover .yt-reader-translate-chip {
-  background-color: var(--yt-spec-text-primary-inverse);
-  color: #fff;
+.yt-native-switch-btn.inactive {
+  background-color: #f2f2f2;
+  color: #0f0f0f;
+  font-weight: 400;
 }
 
-.yt-reader-translate-btn:active .yt-reader-translate-chip {
-  opacity: 0.8;
+.yt-native-switch-btn.active {
+  background-color: #0f0f0f;
+  color: #ffffff;
+  font-weight: 500;
 }
 
-.yt-reader-translate-btn:disabled {
+.yt-native-switch-btn:hover {
+  opacity: 0.9;
+}
+
+.yt-native-switch-btn:active {
+  opacity: 0.75;
+}
+
+.yt-native-switch-btn:disabled {
   cursor: not-allowed;
-  opacity: 0.5;
   pointer-events: none;
 }
 
-/* Touch feedback для chip кнопки */
-.yt-reader-translate-chip .yt-spec-touch-feedback-shape {
-  display: inline-block;
-  border-radius: inherit;
-  position: absolute;
-  top: 0;
-  right: 0;
-  bottom: 0;
-  left: 0;
+/* Loading/translating state - мягкая анимация пульсации */
+.yt-native-switch-btn.loading,
+.yt-native-switch-btn.translating {
   pointer-events: none;
+  animation: yt-native-pulse 1.5s ease-in-out infinite;
 }
 
-.yt-reader-translate-chip .yt-spec-touch-feedback-shape__fill {
-  border-radius: inherit;
-  position: absolute;
-  top: 0;
-  right: 0;
-  bottom: 0;
-  left: 0;
-  background-color: rgba(255, 255, 255, 0.1);
-  opacity: 0;
-  transition: opacity 200ms;
-}
-
-.yt-reader-translate-btn:hover .yt-spec-touch-feedback-shape__fill {
-  opacity: 1;
-}
-
-.yt-reader-translate-chip .yt-spec-touch-feedback-shape__stroke {
-  border-radius: inherit;
-  position: absolute;
-  top: 0;
-  right: 0;
-  bottom: 0;
-  left: 0;
-  border: 2px solid rgba(255, 255, 255, 0.2);
-  opacity: 0;
-  transition: opacity 200ms;
-}
-
-/* Loading state */
-.yt-reader-translate-btn.loading,
-.yt-reader-translate-btn.translating {
-  pointer-events: none;
-}
-
-.yt-reader-translate-btn.loading .yt-reader-translate-chip,
-.yt-reader-translate-btn.translating .yt-reader-translate-chip {
-  animation: yt-chip-pulse 1.5s ease-in-out infinite;
-}
-
-@keyframes yt-chip-pulse {
+@keyframes yt-native-pulse {
   0%, 100% { opacity: 1; }
   50% { opacity: 0.7; }
 }
