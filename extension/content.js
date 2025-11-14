@@ -109,6 +109,11 @@ const realtimeHighlighter = {
       this.highlight(activeIndex);
       this.currentIndex = activeIndex;
     }
+
+    // Обновляем karaoke прогресс для текущей активной строки
+    if (activeIndex !== -1) {
+      this.updateKaraokeProgress(activeIndex, currentTime);
+    }
   },
 
   // Подсветка конкретного элемента
@@ -117,6 +122,8 @@ const realtimeHighlighter = {
     const prevActive = document.querySelector('.yt-transcript-item.active-subtitle');
     if (prevActive) {
       prevActive.classList.remove('active-subtitle');
+      // Сбрасываем karaoke прогресс
+      prevActive.style.setProperty('--karaoke-progress', '0%');
     }
 
     if (index === -1) return;
@@ -125,6 +132,8 @@ const realtimeHighlighter = {
     const activeElement = document.querySelector(`.yt-transcript-item[data-index="${index}"]`);
     if (activeElement) {
       activeElement.classList.add('active-subtitle');
+      // Инициализируем karaoke прогресс
+      activeElement.style.setProperty('--karaoke-progress', '0%');
 
       // Скроллим к активному элементу с throttling
       const now = performance.now();
@@ -132,6 +141,25 @@ const realtimeHighlighter = {
         this.scrollToActive(activeElement);
         this.lastScrollTime = now;
       }
+    }
+  },
+
+  // Обновление karaoke прогресса (плавная анимация заполнения)
+  updateKaraokeProgress(index, currentTime) {
+    const sub = this.subtitles[index];
+    if (!sub) return;
+
+    const duration = sub.end - sub.start;
+    if (duration <= 0) return;
+
+    // Вычисляем процент прогресса (0-100)
+    const elapsed = currentTime - sub.start;
+    const progress = Math.min(100, Math.max(0, (elapsed / duration) * 100));
+
+    // Обновляем CSS переменную для плавной анимации
+    const activeElement = document.querySelector(`.yt-transcript-item[data-index="${index}"]`);
+    if (activeElement) {
+      activeElement.style.setProperty('--karaoke-progress', `${progress}%`);
     }
   },
 
@@ -242,6 +270,7 @@ function createTranscriptPanel() {
 
   const panel = document.createElement('div');
   panel.id = 'yt-transcript-panel';
+  panel.className = 'collapsed'; // Изначально свернуто
   panel.innerHTML = `
     <div id="yt-transcript-panel-header">
       <div id="yt-transcript-panel-title">
@@ -253,11 +282,11 @@ function createTranscriptPanel() {
       </div>
       <button id="yt-transcript-toggle-btn" title="Свернуть/Развернуть">
         <svg viewBox="0 0 24 24" fill="currentColor">
-          <path d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41z"/>
+          <path d="M7.41 15.41L12 10.83l4.59 4.58L18 14l-6-6-6 6 1.41 1.41z"/>
         </svg>
       </button>
     </div>
-    <div id="yt-transcript-body">
+    <div id="yt-transcript-body" style="display: none;">
       <div class="yt-reader-controls">
         <button class="yt-reader-btn" id="yt-reader-translate-btn">
           <span class="yt-reader-btn-text">Translate Video</span>
