@@ -288,14 +288,8 @@ function createTranscriptPanel() {
     </div>
     <div id="yt-transcript-body" style="display: none;">
       <div class="yt-reader-controls">
-        <button id="yt-reader-translate-btn" class="yt-reader-translate-btn">
-          <div class="yt-reader-translate-chip">
-            Translate Video
-            <yt-touch-feedback-shape aria-hidden="true" class="yt-spec-touch-feedback-shape yt-spec-touch-feedback-shape--touch-response">
-              <div class="yt-spec-touch-feedback-shape__stroke" style="border-radius: 8px;"></div>
-              <div class="yt-spec-touch-feedback-shape__fill" style="border-radius: 8px;"></div>
-            </yt-touch-feedback-shape>
-          </div>
+        <button id="yt-reader-translate-btn" class="yt-native-switch-btn inactive">
+          Translate Video
         </button>
         <div class="yt-reader-export-container">
           <button id="yt-reader-export-btn" class="yt-reader-export-btn" title="Экспорт субтитров" disabled>
@@ -750,18 +744,11 @@ async function handleGetTranscript() {
   transcriptState.isProcessed = false;
   updateExportButtonState(); // Блокируем экспорт
 
-  // Блокируем кнопку и показываем spinner
+  // Блокируем кнопку и показываем loading
   btn.disabled = true;
-  btn.classList.add('loading');
-  btn.innerHTML = `
-    <div class="yt-reader-translate-chip">
-      Loading...
-      <yt-touch-feedback-shape aria-hidden="true" class="yt-spec-touch-feedback-shape yt-spec-touch-feedback-shape--touch-response">
-        <div class="yt-spec-touch-feedback-shape__stroke" style="border-radius: 8px;"></div>
-        <div class="yt-spec-touch-feedback-shape__fill" style="border-radius: 8px;"></div>
-      </yt-touch-feedback-shape>
-    </div>
-  `;
+  btn.classList.remove('inactive');
+  btn.classList.add('active', 'loading');
+  btn.textContent = 'Loading...';
 
   // Показываем лоадер
   content.innerHTML = `
@@ -794,15 +781,7 @@ async function handleGetTranscript() {
     // Отправляем на сервер для перевода
     btn.classList.add('translating');
     btn.classList.remove('loading');
-    btn.innerHTML = `
-      <div class="yt-reader-translate-chip">
-        AI is translating...
-        <yt-touch-feedback-shape aria-hidden="true" class="yt-spec-touch-feedback-shape yt-spec-touch-feedback-shape--touch-response">
-          <div class="yt-spec-touch-feedback-shape__stroke" style="border-radius: 8px;"></div>
-          <div class="yt-spec-touch-feedback-shape__fill" style="border-radius: 8px;"></div>
-        </yt-touch-feedback-shape>
-      </div>
-    `;
+    btn.textContent = 'AI is translating...';
     await translateSubtitles(videoId, subtitles);
 
     transcriptState.isProcessed = true;
@@ -818,16 +797,9 @@ async function handleGetTranscript() {
     transcriptState.isProcessing = false;
     updateExportButtonState(); // Разблокируем экспорт после завершения
     btn.disabled = false;
-    btn.classList.remove('loading', 'translating');
-    btn.innerHTML = `
-      <div class="yt-reader-translate-chip">
-        Translate Video
-        <yt-touch-feedback-shape aria-hidden="true" class="yt-spec-touch-feedback-shape yt-spec-touch-feedback-shape--touch-response">
-          <div class="yt-spec-touch-feedback-shape__stroke" style="border-radius: 8px;"></div>
-          <div class="yt-spec-touch-feedback-shape__fill" style="border-radius: 8px;"></div>
-        </yt-touch-feedback-shape>
-      </div>
-    `;
+    btn.classList.remove('loading', 'translating', 'active');
+    btn.classList.add('inactive');
+    btn.textContent = 'Translate Video';
   }
 }
 
