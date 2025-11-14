@@ -256,60 +256,56 @@ html[dark] :root {
 }
 
 /* ═══════════════════════════════════════
-   НАТИВНАЯ YOUTUBE КНОПКА "TRANSLATE VIDEO"
+   YOUTUBE CHIP BUTTON "TRANSLATE VIDEO"
    ═══════════════════════════════════════ */
-.yt-spec-button-shape-next {
+.yt-reader-translate-btn {
   flex: 1;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  position: relative;
-  font-family: "Roboto", "Arial", sans-serif;
-  font-size: 1.4rem;
-  font-weight: 500;
-  line-height: 3.6rem;
-  border-radius: 18px;
-  padding: 0 16px;
-  min-height: 36px;
-  cursor: pointer;
-  user-select: none;
+  background: transparent;
   border: none;
-  transition: background-color .2s, opacity .2s;
+  cursor: pointer;
+  padding: 0;
+  display: flex;
   overflow: hidden;
 }
 
-.yt-spec-button-shape-next--tonal {
-  background-color: #065fd4 !important;
-  color: #fff !important;
+.yt-reader-translate-chip {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  background-color: var(--yt-spec-badge-chip-background);
+  color: var(--yt-spec-text-primary);
+  border-radius: 8px;
+  padding: 0 12px;
+  height: 32px;
+  width: 100%;
+  font-size: 14px;
+  font-weight: 500;
+  font-family: "Roboto", "Arial", sans-serif;
+  line-height: 20px;
+  white-space: nowrap;
+  text-align: center;
+  transition: background-color 200ms cubic-bezier(0.05, 0, 0, 1);
+  cursor: pointer;
+  overflow: hidden;
 }
 
-.yt-spec-button-shape-next--size-m {
-  min-height: 36px;
-  padding: 0 16px;
-  border-radius: 18px;
+.yt-reader-translate-btn:hover .yt-reader-translate-chip {
+  background-color: var(--yt-spec-text-primary-inverse);
 }
 
-.yt-spec-button-shape-next--tonal:hover:not(:disabled) {
-  background-color: #0856c8 !important;
+.yt-reader-translate-btn:active .yt-reader-translate-chip {
+  opacity: 0.8;
 }
 
-.yt-spec-button-shape-next:active:not(:disabled) {
-  opacity: .8;
-}
-
-.yt-spec-button-shape-next:disabled {
+.yt-reader-translate-btn:disabled {
   cursor: not-allowed;
   opacity: 0.5;
+  pointer-events: none;
 }
 
-.yt-spec-button-shape-next__button-text-content {
-  position: relative;
-  z-index: 2;
-  white-space: nowrap;
-}
-
-/* Touch feedback (ripple) - точные стили YouTube */
-.yt-spec-touch-feedback-shape {
+/* Touch feedback для chip кнопки */
+.yt-reader-translate-chip .yt-spec-touch-feedback-shape {
   display: inline-block;
   border-radius: inherit;
   position: absolute;
@@ -320,7 +316,7 @@ html[dark] :root {
   pointer-events: none;
 }
 
-.yt-spec-touch-feedback-shape__fill {
+.yt-reader-translate-chip .yt-spec-touch-feedback-shape__fill {
   border-radius: inherit;
   position: absolute;
   top: 0;
@@ -329,37 +325,37 @@ html[dark] :root {
   left: 0;
   background-color: rgba(255, 255, 255, 0.1);
   opacity: 0;
-  transition: opacity .2s;
+  transition: opacity 200ms;
 }
 
-.yt-spec-button-shape-next:hover .yt-spec-touch-feedback-shape__fill {
+.yt-reader-translate-btn:hover .yt-spec-touch-feedback-shape__fill {
   opacity: 1;
 }
 
-.yt-spec-touch-feedback-shape__stroke {
+.yt-reader-translate-chip .yt-spec-touch-feedback-shape__stroke {
   border-radius: inherit;
   position: absolute;
   top: 0;
   right: 0;
   bottom: 0;
   left: 0;
-  border: 2px solid rgba(255, 255, 255, 0.3);
+  border: 2px solid rgba(255, 255, 255, 0.2);
   opacity: 0;
-  transition: opacity .2s;
+  transition: opacity 200ms;
 }
 
 /* Loading state */
-.yt-spec-button-shape-next.loading,
-.yt-spec-button-shape-next.translating {
+.yt-reader-translate-btn.loading,
+.yt-reader-translate-btn.translating {
   pointer-events: none;
 }
 
-.yt-spec-button-shape-next.loading .yt-spec-button-shape-next__button-text-content,
-.yt-spec-button-shape-next.translating .yt-spec-button-shape-next__button-text-content {
-  animation: yt-native-pulse 1.5s ease-in-out infinite;
+.yt-reader-translate-btn.loading .yt-reader-translate-chip,
+.yt-reader-translate-btn.translating .yt-reader-translate-chip {
+  animation: yt-chip-pulse 1.5s ease-in-out infinite;
 }
 
-@keyframes yt-native-pulse {
+@keyframes yt-chip-pulse {
   0%, 100% { opacity: 1; }
   50% { opacity: 0.7; }
 }
