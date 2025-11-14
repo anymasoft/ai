@@ -288,11 +288,13 @@ function createTranscriptPanel() {
     </div>
     <div id="yt-transcript-body" style="display: none;">
       <div class="yt-reader-controls">
-        <button id="yt-reader-translate-btn" class="yt-spec-button-shape-next yt-spec-button-shape-next--tonal yt-spec-button-shape-next--size-m">
-          <div class="yt-spec-button-shape-next__button-text-content">Translate Video</div>
-          <div class="yt-spec-touch-feedback-shape yt-spec-touch-feedback-shape--touch-response-inverse" style="border-radius: inherit;">
-            <div class="yt-spec-touch-feedback-shape__stroke"></div>
-            <div class="yt-spec-touch-feedback-shape__fill"></div>
+        <button id="yt-reader-translate-btn" class="yt-reader-translate-btn">
+          <div class="yt-reader-translate-chip">
+            Translate Video
+            <yt-touch-feedback-shape aria-hidden="true" class="yt-spec-touch-feedback-shape yt-spec-touch-feedback-shape--touch-response">
+              <div class="yt-spec-touch-feedback-shape__stroke" style="border-radius: 8px;"></div>
+              <div class="yt-spec-touch-feedback-shape__fill" style="border-radius: 8px;"></div>
+            </yt-touch-feedback-shape>
           </div>
         </button>
         <div class="yt-reader-export-container">
@@ -752,10 +754,12 @@ async function handleGetTranscript() {
   btn.disabled = true;
   btn.classList.add('loading');
   btn.innerHTML = `
-    <div class="yt-spec-button-shape-next__button-text-content">Loading...</div>
-    <div class="yt-spec-touch-feedback-shape yt-spec-touch-feedback-shape--touch-response-inverse" style="border-radius: inherit;">
-      <div class="yt-spec-touch-feedback-shape__stroke"></div>
-      <div class="yt-spec-touch-feedback-shape__fill"></div>
+    <div class="yt-reader-translate-chip">
+      Loading...
+      <yt-touch-feedback-shape aria-hidden="true" class="yt-spec-touch-feedback-shape yt-spec-touch-feedback-shape--touch-response">
+        <div class="yt-spec-touch-feedback-shape__stroke" style="border-radius: 8px;"></div>
+        <div class="yt-spec-touch-feedback-shape__fill" style="border-radius: 8px;"></div>
+      </yt-touch-feedback-shape>
     </div>
   `;
 
@@ -791,10 +795,12 @@ async function handleGetTranscript() {
     btn.classList.add('translating');
     btn.classList.remove('loading');
     btn.innerHTML = `
-      <div class="yt-spec-button-shape-next__button-text-content">AI is translating...</div>
-      <div class="yt-spec-touch-feedback-shape yt-spec-touch-feedback-shape--touch-response-inverse" style="border-radius: inherit;">
-        <div class="yt-spec-touch-feedback-shape__stroke"></div>
-        <div class="yt-spec-touch-feedback-shape__fill"></div>
+      <div class="yt-reader-translate-chip">
+        AI is translating...
+        <yt-touch-feedback-shape aria-hidden="true" class="yt-spec-touch-feedback-shape yt-spec-touch-feedback-shape--touch-response">
+          <div class="yt-spec-touch-feedback-shape__stroke" style="border-radius: 8px;"></div>
+          <div class="yt-spec-touch-feedback-shape__fill" style="border-radius: 8px;"></div>
+        </yt-touch-feedback-shape>
       </div>
     `;
     await translateSubtitles(videoId, subtitles);
@@ -814,10 +820,12 @@ async function handleGetTranscript() {
     btn.disabled = false;
     btn.classList.remove('loading', 'translating');
     btn.innerHTML = `
-      <div class="yt-spec-button-shape-next__button-text-content">Translate Video</div>
-      <div class="yt-spec-touch-feedback-shape yt-spec-touch-feedback-shape--touch-response-inverse" style="border-radius: inherit;">
-        <div class="yt-spec-touch-feedback-shape__stroke"></div>
-        <div class="yt-spec-touch-feedback-shape__fill"></div>
+      <div class="yt-reader-translate-chip">
+        Translate Video
+        <yt-touch-feedback-shape aria-hidden="true" class="yt-spec-touch-feedback-shape yt-spec-touch-feedback-shape--touch-response">
+          <div class="yt-spec-touch-feedback-shape__stroke" style="border-radius: 8px;"></div>
+          <div class="yt-spec-touch-feedback-shape__fill" style="border-radius: 8px;"></div>
+        </yt-touch-feedback-shape>
       </div>
     `;
   }
