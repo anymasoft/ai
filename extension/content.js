@@ -280,11 +280,46 @@ function createTranscriptPanel() {
         </div>
         <div class="yt-reader-header-subtitle">AI Translator for YouTube</div>
       </div>
-      <button id="yt-transcript-toggle-btn" title="Свернуть/Развернуть">
-        <svg viewBox="0 0 24 24" fill="currentColor">
-          <path d="M7.41 15.41L12 10.83l4.59 4.58L18 14l-6-6-6 6 1.41 1.41z"/>
-        </svg>
-      </button>
+      <div class="yt-reader-header-actions">
+        <div class="yt-reader-export-container">
+          <button id="yt-reader-export-btn" class="yt-reader-export-btn" title="Экспорт субтитров">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+              <polyline points="7 10 12 15 17 10"/>
+              <line x1="12" y1="15" x2="12" y2="3"/>
+            </svg>
+          </button>
+          <div class="yt-reader-export-dropdown" id="yt-reader-export-dropdown">
+            <div class="yt-reader-export-option" data-format="srt">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                <polyline points="14 2 14 8 20 8"/>
+              </svg>
+              <span>SRT</span>
+            </div>
+            <div class="yt-reader-export-option" data-format="vtt">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                <polyline points="14 2 14 8 20 8"/>
+              </svg>
+              <span>VTT</span>
+            </div>
+            <div class="yt-reader-export-option" data-format="txt">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="3" y1="6" x2="21" y2="6"/>
+                <line x1="3" y1="12" x2="21" y2="12"/>
+                <line x1="3" y1="18" x2="21" y2="18"/>
+              </svg>
+              <span>TXT</span>
+            </div>
+          </div>
+        </div>
+        <button id="yt-transcript-toggle-btn" title="Свернуть/Развернуть">
+          <svg viewBox="0 0 24 24" fill="currentColor">
+            <path d="M7.41 15.41L12 10.83l4.59 4.58L18 14l-6-6-6 6 1.41 1.41z"/>
+          </svg>
+        </button>
+      </div>
     </div>
     <div id="yt-transcript-body" style="display: none;">
       <div class="yt-reader-controls">
@@ -377,11 +412,27 @@ async function injectPanel() {
       });
     });
 
+    // Обработчики экспорта
+    const exportBtn = document.getElementById('yt-reader-export-btn');
+    const exportDropdown = document.getElementById('yt-reader-export-dropdown');
+    const exportOptions = document.querySelectorAll('.yt-reader-export-option');
+
+    exportBtn.addEventListener('click', handleExportToggle);
+    exportOptions.forEach(option => {
+      option.addEventListener('click', (e) => {
+        e.stopPropagation();
+        handleExportFormat(option.dataset.format);
+      });
+    });
+
     // Закрытие dropdown при клике вне его
     document.addEventListener('click', (e) => {
       if (!e.target.closest('.yt-reader-lang-selector')) {
         langDropdown.classList.remove('show');
         langBtn.classList.remove('active');
+      }
+      if (!e.target.closest('.yt-reader-export-container')) {
+        exportDropdown.classList.remove('show');
       }
     });
 
@@ -480,6 +531,156 @@ function handleLanguageSelect(langCode) {
   langBtn.classList.remove('active');
 
   console.log('Выбран язык:', selectedLang.name);
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// EXPORT SUBTITLE FUNCTIONS - Premium export system
+// ═══════════════════════════════════════════════════════════════════
+
+// Обработчик переключения export dropdown
+function handleExportToggle(e) {
+  e.stopPropagation();
+  const exportBtn = document.getElementById('yt-reader-export-btn');
+  const exportDropdown = document.getElementById('yt-reader-export-dropdown');
+
+  const isActive = exportDropdown.classList.contains('show');
+
+  if (!isActive) {
+    // Рассчитываем позицию dropdown
+    const btnRect = exportBtn.getBoundingClientRect();
+    exportDropdown.style.top = `${btnRect.bottom + 6}px`;
+    exportDropdown.style.right = `${window.innerWidth - btnRect.right}px`;
+    exportDropdown.classList.add('show');
+  } else {
+    exportDropdown.classList.remove('show');
+  }
+}
+
+// Обработчик выбора формата экспорта
+function handleExportFormat(format) {
+  // Проверяем, есть ли переведенные субтитры
+  if (!transcriptState.subtitles || transcriptState.subtitles.length === 0) {
+    alert('Сначала загрузите и переведите субтитры');
+    return;
+  }
+
+  // Проверяем, завершен ли перевод
+  if (transcriptState.isProcessing) {
+    alert('Перевод ещё выполняется. Подождите завершения.');
+    return;
+  }
+
+  const videoId = getVideoId();
+  const lang = transcriptState.selectedLang;
+  const subtitles = transcriptState.subtitles;
+
+  let content, filename, mimeType;
+
+  switch (format) {
+    case 'srt':
+      content = generateSRT(subtitles);
+      filename = `${videoId}_${lang}_translated.srt`;
+      mimeType = 'text/plain;charset=utf-8';
+      break;
+    case 'vtt':
+      content = generateVTT(subtitles);
+      filename = `${videoId}_${lang}_translated.vtt`;
+      mimeType = 'text/vtt;charset=utf-8';
+      break;
+    case 'txt':
+      content = generateTXT(subtitles);
+      filename = `${videoId}_${lang}_translated.txt`;
+      mimeType = 'text/plain;charset=utf-8';
+      break;
+    default:
+      console.error('Unknown format:', format);
+      return;
+  }
+
+  // Скачиваем файл
+  downloadFile(content, filename, mimeType);
+
+  // Закрываем dropdown
+  const exportDropdown = document.getElementById('yt-reader-export-dropdown');
+  exportDropdown.classList.remove('show');
+
+  console.log(`Экспортировано: ${filename}`);
+}
+
+// Генерация SRT формата
+function generateSRT(subtitles) {
+  let srt = '';
+
+  subtitles.forEach((sub, index) => {
+    // Номер субтитра (начинается с 1)
+    srt += `${index + 1}\n`;
+
+    // Таймкоды в формате SRT: 00:01:21,450 --> 00:01:24,120
+    const startTime = formatSRTTime(sub.start);
+    const endTime = formatSRTTime(sub.end);
+    srt += `${startTime} --> ${endTime}\n`;
+
+    // Текст субтитра
+    srt += `${sub.text}\n\n`;
+  });
+
+  return srt;
+}
+
+// Генерация VTT формата
+function generateVTT(subtitles) {
+  let vtt = 'WEBVTT\n\n';
+
+  subtitles.forEach((sub, index) => {
+    // Таймкоды в формате VTT: 00:01:24.120 --> 00:01:27.480
+    const startTime = formatVTTTime(sub.start);
+    const endTime = formatVTTTime(sub.end);
+    vtt += `${startTime} --> ${endTime}\n`;
+
+    // Текст субтитра
+    vtt += `${sub.text}\n\n`;
+  });
+
+  return vtt;
+}
+
+// Генерация TXT формата (только текст)
+function generateTXT(subtitles) {
+  return subtitles.map(sub => sub.text).join('\n');
+}
+
+// Форматирование времени для SRT (00:01:21,450)
+function formatSRTTime(seconds) {
+  const hours = Math.floor(seconds / 3600);
+  const minutes = Math.floor((seconds % 3600) / 60);
+  const secs = Math.floor(seconds % 60);
+  const millis = Math.floor((seconds % 1) * 1000);
+
+  return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(secs).padStart(2, '0')},${String(millis).padStart(3, '0')}`;
+}
+
+// Форматирование времени для VTT (00:01:24.120)
+function formatVTTTime(seconds) {
+  const hours = Math.floor(seconds / 3600);
+  const minutes = Math.floor((seconds % 3600) / 60);
+  const secs = Math.floor(seconds % 60);
+  const millis = Math.floor((seconds % 1) * 1000);
+
+  return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(secs).padStart(2, '0')}.${String(millis).padStart(3, '0')}`;
+}
+
+// Скачивание файла
+function downloadFile(content, filename, mimeType) {
+  const blob = new Blob([content], { type: mimeType });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = filename;
+  link.style.display = 'none';
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
 }
 
 // Обработчик нажатия кнопки получения транскрипта
