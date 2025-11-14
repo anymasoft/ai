@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Upgrade to Pro - Video Reader AI</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+    body {
+      font-family: 'Inter', sans-serif;
+    }
+
+    .gradient-bg {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    }
+
+    .btn-primary {
+      background: linear-gradient(to right, #4F46E5, #7C3AED);
+      transition: all 0.3s ease;
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 10px 20px rgba(79, 70, 229, 0.3);
+    }
+
+    .card {
+      backdrop-filter: blur(10px);
+      background: rgba(255, 255, 255, 0.95);
+    }
+
+    .feature-card {
+      transition: all 0.3s ease;
+    }
+
+    .feature-card:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 12px 24px rgba(0, 0, 0, 0.1);
+    }
+
+    .badge {
+      background: linear-gradient(to right, #10b981, #059669);
+    }
+  </style>
+</head>
+<body class="min-h-screen gradient-bg p-4 py-12">
+  <div class="w-full max-w-4xl mx-auto">
+    <!-- Back Button -->
+    <div class="mb-6">
+      <button
+        id="backBtn"
+        class="text-white hover:text-gray-200 flex items-center gap-2 font-medium transition-colors"
+      >
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
+        </svg>
+        Back
+      </button>
+    </div>
+
+    <!-- Main Card -->
+    <div class="card rounded-2xl shadow-2xl p-8 md:p-12 space-y-10">
+      <!-- Header -->
+      <div class="text-center space-y-4">
+        <div class="inline-flex items-center gap-2 badge text-white px-4 py-2 rounded-full text-sm font-semibold shadow-lg">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+          </svg>
+          LIMITED TIME OFFER
+        </div>
+        <h1 class="text-4xl md:text-5xl font-bold text-gray-900">Upgrade to Pro</h1>
+        <p class="text-xl text-gray-600 max-w-2xl mx-auto">
+          Unlock unlimited translations, advanced features, and premium AI capabilities
+        </p>
+      </div>
+
+      <!-- Pricing -->
+      <div class="bg-gradient-to-br from-indigo-50 to-purple-50 rounded-2xl p-8 text-center border-2 border-indigo-200">
+        <div class="space-y-2">
+          <div class="text-5xl font-bold text-gray-900">
+            $9<span class="text-2xl text-gray-600">/month</span>
+          </div>
+          <p class="text-gray-600">Cancel anytime. No commitment.</p>
+        </div>
+      </div>
+
+      <!-- Features Grid -->
+      <div class="grid md:grid-cols-2 gap-4">
+        <!-- Feature 1 -->
+        <div class="feature-card bg-white rounded-xl p-6 border border-gray-200 shadow-sm">
+          <div class="flex items-start gap-4">
+            <div class="flex-shrink-0 w-10 h-10 bg-indigo-100 rounded-lg flex items-center justify-center">
+              <svg class="w-6 h-6 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+              </svg>
+            </div>
+            <div>
+              <h3 class="font-semibold text-gray-900 mb-1">Full Video Translation</h3>
+              <p class="text-sm text-gray-600">Translate videos of any length without limitations</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Feature 2 -->
+        <div class="feature-card bg-white rounded-xl p-6 border border-gray-200 shadow-sm">
+          <div class="flex items-start gap-4">
+            <div class="flex-shrink-0 w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
+              <svg class="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+              </svg>
+            </div>
+            <div>
+              <h3 class="font-semibold text-gray-900 mb-1">Download Subtitles</h3>
+              <p class="text-sm text-gray-600">Save in SRT, VTT, and TXT formats</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Feature 3 -->
+        <div class="feature-card bg-white rounded-xl p-6 border border-gray-200 shadow-sm">
+          <div class="flex items-start gap-4">
+            <div class="flex-shrink-0 w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
+              <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3"></path>
+              </svg>
+            </div>
+            <div>
+              <h3 class="font-semibold text-gray-900 mb-1">Karaoke Highlighting</h3>
+              <p class="text-sm text-gray-600">Follow along with real-time synchronized text</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Feature 4 -->
+        <div class="feature-card bg-white rounded-xl p-6 border border-gray-200 shadow-sm">
+          <div class="flex items-start gap-4">
+            <div class="flex-shrink-0 w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
+              <svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+              </svg>
+            </div>
+            <div>
+              <h3 class="font-semibold text-gray-900 mb-1">Priority Processing</h3>
+              <p class="text-sm text-gray-600">Faster translation with dedicated resources</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Feature 5 -->
+        <div class="feature-card bg-white rounded-xl p-6 border border-gray-200 shadow-sm">
+          <div class="flex items-start gap-4">
+            <div class="flex-shrink-0 w-10 h-10 bg-pink-100 rounded-lg flex items-center justify-center">
+              <svg class="w-6 h-6 text-pink-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"></path>
+              </svg>
+            </div>
+            <div>
+              <h3 class="font-semibold text-gray-900 mb-1">Advanced AI Features</h3>
+              <p class="text-sm text-gray-600">GPT-powered summaries and structured text</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Feature 6 -->
+        <div class="feature-card bg-white rounded-xl p-6 border border-gray-200 shadow-sm">
+          <div class="flex items-start gap-4">
+            <div class="flex-shrink-0 w-10 h-10 bg-yellow-100 rounded-lg flex items-center justify-center">
+              <svg class="w-6 h-6 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"></path>
+              </svg>
+            </div>
+            <div>
+              <h3 class="font-semibold text-gray-900 mb-1">Telegram Integration</h3>
+              <p class="text-sm text-gray-600">Auto-generate posts for your Telegram channel</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Feature 7 -->
+        <div class="feature-card bg-white rounded-xl p-6 border border-gray-200 shadow-sm">
+          <div class="flex items-start gap-4">
+            <div class="flex-shrink-0 w-10 h-10 bg-red-100 rounded-lg flex items-center justify-center">
+              <svg class="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"></path>
+              </svg>
+            </div>
+            <div>
+              <h3 class="font-semibold text-gray-900 mb-1">Audio Translation</h3>
+              <p class="text-sm text-gray-600">Generate voice-over with ElevenLabs AI</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Feature 8 -->
+        <div class="feature-card bg-white rounded-xl p-6 border border-gray-200 shadow-sm">
+          <div class="flex items-start gap-4">
+            <div class="flex-shrink-0 w-10 h-10 bg-indigo-100 rounded-lg flex items-center justify-center">
+              <svg class="w-6 h-6 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+              </svg>
+            </div>
+            <div>
+              <h3 class="font-semibold text-gray-900 mb-1">All Languages</h3>
+              <p class="text-sm text-gray-600">Support for 100+ languages worldwide</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- CTA Button -->
+      <div class="space-y-4">
+        <a
+          href="https://videoreader.ai/pay"
+          target="_blank"
+          class="block w-full btn-primary text-white px-8 py-5 rounded-xl font-bold text-xl text-center shadow-2xl"
+        >
+          Subscribe to Pro - $9/month
+        </a>
+
+        <p class="text-center text-sm text-gray-500">
+          Secure payment powered by Stripe. Cancel anytime.
+        </p>
+      </div>
+
+      <!-- Money Back Guarantee -->
+      <div class="bg-green-50 border-2 border-green-200 rounded-xl p-6 text-center">
+        <div class="flex items-center justify-center gap-2 mb-2">
+          <svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path>
+          </svg>
+          <span class="font-semibold text-green-900">30-Day Money Back Guarantee</span>
+        </div>
+        <p class="text-sm text-green-700">
+          Not satisfied? Get a full refund within 30 days, no questions asked.
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <script src="upgrade.js"></script>
+</body>
+</html>

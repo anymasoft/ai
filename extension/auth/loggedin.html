@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Signed In - Video Reader AI</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+    body {
+      font-family: 'Inter', sans-serif;
+    }
+
+    .gradient-bg {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    }
+
+    .checkmark {
+      animation: checkmark 0.5s ease-in-out;
+    }
+
+    @keyframes checkmark {
+      0% {
+        transform: scale(0);
+        opacity: 0;
+      }
+      50% {
+        transform: scale(1.2);
+      }
+      100% {
+        transform: scale(1);
+        opacity: 1;
+      }
+    }
+
+    .btn-primary {
+      background: linear-gradient(to right, #4F46E5, #7C3AED);
+      transition: all 0.3s ease;
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 10px 20px rgba(79, 70, 229, 0.3);
+    }
+
+    .card {
+      backdrop-filter: blur(10px);
+      background: rgba(255, 255, 255, 0.95);
+    }
+
+    .fade-in {
+      animation: fadeIn 0.6s ease-in;
+    }
+
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+        transform: translateY(20px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+  </style>
+</head>
+<body class="min-h-screen flex items-center justify-center gradient-bg p-4">
+  <div class="w-full max-w-md">
+    <!-- Card -->
+    <div class="card rounded-2xl shadow-2xl p-8 space-y-8 fade-in">
+      <!-- Success Icon -->
+      <div class="flex justify-center">
+        <div class="w-24 h-24 bg-gradient-to-br from-green-400 to-green-600 rounded-full flex items-center justify-center shadow-2xl checkmark">
+          <svg class="w-14 h-14 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path>
+          </svg>
+        </div>
+      </div>
+
+      <!-- Title -->
+      <div class="text-center space-y-3">
+        <h1 class="text-3xl font-bold text-gray-900">You're signed in!</h1>
+        <p class="text-gray-600">
+          Welcome to Video Reader AI. You're all set to start translating YouTube subtitles.
+        </p>
+      </div>
+
+      <!-- User Info (if available) -->
+      <div id="userInfo" class="hidden bg-indigo-50 rounded-xl p-4 space-y-2">
+        <div class="flex items-center justify-between">
+          <span class="text-sm text-gray-600">Plan:</span>
+          <span id="userPlan" class="text-sm font-semibold text-indigo-600">Free</span>
+        </div>
+      </div>
+
+      <!-- Action Button -->
+      <div class="space-y-3">
+        <button
+          id="startBtn"
+          class="w-full btn-primary text-white px-6 py-4 rounded-xl font-semibold text-lg shadow-lg"
+        >
+          Start using Video Reader AI
+        </button>
+
+        <button
+          id="upgradeBtn"
+          class="w-full bg-gray-100 hover:bg-gray-200 text-gray-800 px-6 py-3 rounded-xl font-medium transition-colors"
+        >
+          Upgrade to Pro
+        </button>
+      </div>
+
+      <!-- Footer Info -->
+      <div class="text-center pt-4 border-t border-gray-200">
+        <p class="text-xs text-gray-500">
+          You can now use Video Reader AI on any YouTube video
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <script src="loggedin.js"></script>
+</body>
+</html>
