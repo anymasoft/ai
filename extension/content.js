@@ -72,16 +72,19 @@ function getVideoId() {
 function createTranscriptPanel() {
   const currentLang = SUPPORTED_LANGUAGES.find(l => l.code === transcriptState.selectedLang) || SUPPORTED_LANGUAGES[0];
 
-  // Получаем URL для логотипа
-  const logoUrl = chrome.runtime.getURL('vr_logo_small.png');
+  // Получаем URL для логотипа через chrome.runtime.getURL
+  const logoUrl = chrome.runtime.getURL('assets/logo.png');
 
   const panel = document.createElement('div');
   panel.id = 'yt-transcript-panel';
   panel.innerHTML = `
     <div id="yt-transcript-panel-header">
       <div id="yt-transcript-panel-title">
-        <img src="${logoUrl}" alt="VR" class="yt-reader-logo">
-        Video Reader AI
+        <div class="yt-reader-header-main">
+          <img src="${logoUrl}" alt="VideoReader" class="yt-reader-logo">
+          <span class="yt-reader-brand">VideoReader</span>
+        </div>
+        <div class="yt-reader-header-subtitle">AI Translator for YouTube</div>
       </div>
       <button id="yt-transcript-toggle-btn" title="Свернуть/Развернуть">
         <svg viewBox="0 0 24 24" fill="currentColor">
@@ -354,7 +357,7 @@ async function handleGetTranscript() {
     btn.classList.add('translating');
     btn.classList.remove('loading');
     btn.innerHTML = `
-      <span class="yt-reader-btn-text">Translating...</span>
+      <span class="yt-reader-btn-text">AI is translating...</span>
     `;
     await translateSubtitles(videoId, subtitles);
 
