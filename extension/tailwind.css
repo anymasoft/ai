@@ -906,23 +906,47 @@ svg {
 }
 
 /* Custom component styles */
-.gradient-bg {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+.light-bg {
+  background: #f9fafb;
 }
 
-.btn-primary {
-  background: linear-gradient(to right, #4F46E5, #7C3AED);
-  transition: all 0.3s ease;
+.btn-google {
+  background: #ffffff;
+  border: 1px solid #dadce0;
+  color: #3c4043;
+  transition: all 0.15s ease;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
 }
 
-.btn-primary:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 10px 20px rgba(79, 70, 229, 0.3);
+.btn-google:hover {
+  background: #f8f9fa;
+  border-color: #d2d3d4;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.btn-simple {
+  background: #1a73e8;
+  color: #ffffff;
+  transition: all 0.15s ease;
+}
+
+.btn-simple:hover {
+  background: #1765cc;
+}
+
+.btn-secondary {
+  background: #f1f3f4;
+  color: #5f6368;
+  transition: all 0.15s ease;
+}
+
+.btn-secondary:hover {
+  background: #e8eaed;
 }
 
 .card {
-  backdrop-filter: blur(10px);
-  background: rgba(255, 255, 255, 0.95);
+  background: #ffffff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
 .checkmark {
@@ -944,13 +968,13 @@ svg {
 }
 
 .fade-in {
-  animation: fadeIn 0.6s ease-in;
+  animation: fadeIn 0.4s ease-out;
 }
 
 @keyframes fadeIn {
   from {
     opacity: 0;
-    transform: translateY(20px);
+    transform: translateY(10px);
   }
   to {
     opacity: 1;
@@ -959,16 +983,16 @@ svg {
 }
 
 .feature-card {
-  transition: all 0.3s ease;
+  transition: box-shadow 0.2s ease;
 }
 
 .feature-card:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
 .badge {
-  background: linear-gradient(to right, #10b981, #059669);
+  background: #34a853;
+  color: #ffffff;
 }
 
 /* Responsive grid */
