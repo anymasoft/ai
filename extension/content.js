@@ -288,7 +288,7 @@ function createTranscriptPanel() {
     </div>
     <div id="yt-transcript-body" style="display: none;">
       <div class="yt-reader-controls">
-        <button id="yt-reader-translate-btn" class="yt-native-switch-btn inactive">
+        <button id="yt-reader-translate-btn" class="yt-native-switch-btn active">
           Translate Video
         </button>
         <div class="yt-reader-export-container">
@@ -746,8 +746,8 @@ async function handleGetTranscript() {
 
   // Блокируем кнопку и показываем loading
   btn.disabled = true;
-  btn.classList.remove('inactive');
-  btn.classList.add('active', 'loading');
+  btn.classList.remove('active');
+  btn.classList.add('inactive', 'loading');
   btn.textContent = 'Loading...';
 
   // Показываем лоадер
@@ -797,8 +797,8 @@ async function handleGetTranscript() {
     transcriptState.isProcessing = false;
     updateExportButtonState(); // Разблокируем экспорт после завершения
     btn.disabled = false;
-    btn.classList.remove('loading', 'translating', 'active');
-    btn.classList.add('inactive');
+    btn.classList.remove('loading', 'translating', 'inactive');
+    btn.classList.add('active');
     btn.textContent = 'Translate Video';
   }
 }
