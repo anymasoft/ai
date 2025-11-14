@@ -281,8 +281,8 @@ html[dark] :root {
 }
 
 .yt-spec-button-shape-next--tonal {
-  background-color: var(--yt-spec-brand-button-background);
-  color: var(--yt-spec-text-primary-inverse);
+  background-color: #065fd4;
+  color: #fff;
   border-color: transparent;
 }
 
@@ -292,8 +292,12 @@ html[dark] :root {
   border-radius: 18px;
 }
 
-.yt-spec-button-shape-next:hover:not(:disabled) {
-  background-color: rgba(var(--yt-spec-static-brand-white), 0.1);
+.yt-spec-button-shape-next--tonal:hover:not(:disabled) {
+  background-color: #0c50a8;
+}
+
+.yt-spec-button-shape-next:hover:not(:disabled):not(.yt-spec-button-shape-next--tonal) {
+  background-color: rgba(0, 0, 0, 0.1);
 }
 
 .yt-spec-button-shape-next:active:not(:disabled) {
