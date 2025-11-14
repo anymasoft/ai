@@ -6,32 +6,32 @@
   <title>Signed In - Video Reader AI</title>
   <link rel="stylesheet" href="../tailwind.css">
 </head>
-<body class="min-h-screen flex items-center justify-center gradient-bg p-4">
+<body class="min-h-screen flex items-center justify-center light-bg p-4">
   <div class="w-full max-w-md">
     <!-- Card -->
-    <div class="card rounded-2xl shadow-2xl p-8 space-y-8 fade-in">
+    <div class="card rounded-lg p-10 space-y-6 fade-in">
       <!-- Success Icon -->
       <div class="flex justify-center">
-        <div class="w-24 h-24 bg-gradient-to-br from-green-400 to-green-600 rounded-full flex items-center justify-center shadow-2xl checkmark">
-          <svg class="w-14 h-14 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <div class="w-16 h-16 bg-green-500 rounded-full flex items-center justify-center checkmark">
+          <svg class="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path>
           </svg>
         </div>
       </div>
 
       <!-- Title -->
-      <div class="text-center space-y-3">
-        <h1 class="text-3xl font-bold text-gray-900">You're signed in!</h1>
-        <p class="text-gray-600">
-          Welcome to Video Reader AI. You're all set to start translating YouTube subtitles.
+      <div class="text-center space-y-2">
+        <h1 class="text-2xl font-semibold text-gray-900">You're signed in</h1>
+        <p class="text-base text-gray-600">
+          Ready to translate YouTube subtitles
         </p>
       </div>
 
       <!-- User Info (if available) -->
-      <div id="userInfo" class="hidden bg-indigo-50 rounded-xl p-4 space-y-2">
+      <div id="userInfo" class="hidden bg-gray-50 rounded-lg p-3 space-y-2">
         <div class="flex items-center justify-between">
           <span class="text-sm text-gray-600">Plan:</span>
-          <span id="userPlan" class="text-sm font-semibold text-indigo-600">Free</span>
+          <span id="userPlan" class="text-sm font-medium text-gray-900">Free</span>
         </div>
       </div>
 
@@ -39,14 +39,14 @@
       <div class="space-y-3">
         <button
           id="startBtn"
-          class="w-full btn-primary text-white px-6 py-4 rounded-xl font-semibold text-lg shadow-lg"
+          class="w-full btn-simple px-4 py-3 rounded font-medium"
         >
-          Start using Video Reader AI
+          Start using extension
         </button>
 
         <button
           id="upgradeBtn"
-          class="w-full bg-gray-100 hover:bg-gray-200 text-gray-800 px-6 py-3 rounded-xl font-medium transition-colors"
+          class="w-full btn-secondary px-4 py-3 rounded font-medium"
         >
           Upgrade to Pro
         </button>
