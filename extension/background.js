@@ -4,7 +4,7 @@
 chrome.action.onClicked.addListener((tab) => {
   // Открываем страницу приветствия в новой вкладке
   chrome.tabs.create({
-    url: chrome.runtime.getURL('extension/auth/welcome.html')
+    url: chrome.runtime.getURL('auth/welcome.html')
   });
 });
 
@@ -15,7 +15,7 @@ chrome.runtime.onInstalled.addListener((details) => {
 
     // Открываем welcome страницу при первой установке
     chrome.tabs.create({
-      url: chrome.runtime.getURL('extension/auth/welcome.html')
+      url: chrome.runtime.getURL('auth/welcome.html')
     });
   } else if (details.reason === 'update') {
     const previousVersion = details.previousVersion;
@@ -48,7 +48,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   // Открытие страницы апгрейда
   if (request.action === 'openUpgrade') {
     chrome.tabs.create({
-      url: chrome.runtime.getURL('extension/auth/upgrade.html')
+      url: chrome.runtime.getURL('auth/upgrade.html')
     });
     sendResponse({ success: true });
     return true;
