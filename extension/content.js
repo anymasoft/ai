@@ -280,9 +280,19 @@ function createTranscriptPanel() {
         </div>
         <div class="yt-reader-header-subtitle">AI Translator for YouTube</div>
       </div>
-      <div class="yt-reader-header-actions">
+      <button id="yt-transcript-toggle-btn" title="Свернуть/Развернуть">
+        <svg viewBox="0 0 24 24" fill="currentColor">
+          <path d="M7.41 15.41L12 10.83l4.59 4.58L18 14l-6-6-6 6 1.41 1.41z"/>
+        </svg>
+      </button>
+    </div>
+    <div id="yt-transcript-body" style="display: none;">
+      <div class="yt-reader-controls">
+        <button class="yt-reader-btn" id="yt-reader-translate-btn">
+          <span class="yt-reader-btn-text">Translate Video</span>
+        </button>
         <div class="yt-reader-export-container">
-          <button id="yt-reader-export-btn" class="yt-reader-export-btn" title="Экспорт субтитров">
+          <button id="yt-reader-export-btn" class="yt-reader-export-btn" title="Экспорт субтитров" disabled>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
               <polyline points="7 10 12 15 17 10"/>
@@ -314,18 +324,6 @@ function createTranscriptPanel() {
             </div>
           </div>
         </div>
-        <button id="yt-transcript-toggle-btn" title="Свернуть/Развернуть">
-          <svg viewBox="0 0 24 24" fill="currentColor">
-            <path d="M7.41 15.41L12 10.83l4.59 4.58L18 14l-6-6-6 6 1.41 1.41z"/>
-          </svg>
-        </button>
-      </div>
-    </div>
-    <div id="yt-transcript-body" style="display: none;">
-      <div class="yt-reader-controls">
-        <button class="yt-reader-btn" id="yt-reader-translate-btn">
-          <span class="yt-reader-btn-text">Translate Video</span>
-        </button>
         <div class="yt-reader-lang-selector">
           <button class="yt-reader-lang-btn" id="yt-reader-lang-btn">
             <span class="yt-reader-lang-flag" data-flag="${currentLang.code}"></span>
@@ -556,17 +554,22 @@ function handleExportToggle(e) {
   }
 }
 
+// Обновление состояния кнопки экспорта
+function updateExportButtonState() {
+  const exportBtn = document.getElementById('yt-reader-export-btn');
+  if (!exportBtn) return;
+
+  const hasSubtitles = transcriptState.subtitles && transcriptState.subtitles.length > 0;
+  const isProcessing = transcriptState.isProcessing;
+
+  // Кнопка активна только если есть субтитры и перевод завершен
+  exportBtn.disabled = !hasSubtitles || isProcessing;
+}
+
 // Обработчик выбора формата экспорта
 function handleExportFormat(format) {
-  // Проверяем, есть ли переведенные субтитры
-  if (!transcriptState.subtitles || transcriptState.subtitles.length === 0) {
-    alert('Сначала загрузите и переведите субтитры');
-    return;
-  }
-
-  // Проверяем, завершен ли перевод
-  if (transcriptState.isProcessing) {
-    alert('Перевод ещё выполняется. Подождите завершения.');
+  // Дополнительная проверка (на случай если кнопка не заблокирована)
+  if (!transcriptState.subtitles || transcriptState.subtitles.length === 0 || transcriptState.isProcessing) {
     return;
   }
 
@@ -713,6 +716,7 @@ async function handleGetTranscript() {
   transcriptState.videoId = videoId;
   transcriptState.isProcessing = true;
   transcriptState.isProcessed = false;
+  updateExportButtonState(); // Блокируем экспорт
 
   // Блокируем кнопку и показываем spinner
   btn.disabled = true;
@@ -747,6 +751,7 @@ async function handleGetTranscript() {
 
     // Отображаем оригинальные субтитры сразу
     displayTranscript(subtitles);
+    updateExportButtonState(); // Пока перевод идёт - экспорт заблокирован
 
     // Отправляем на сервер для перевода
     btn.classList.add('translating');
@@ -767,6 +772,7 @@ async function handleGetTranscript() {
     `;
   } finally {
     transcriptState.isProcessing = false;
+    updateExportButtonState(); // Разблокируем экспорт после завершения
     btn.disabled = false;
     btn.classList.remove('loading', 'translating');
     btn.innerHTML = `
@@ -1055,6 +1061,9 @@ function resetState() {
   transcriptState.isProcessing = false;
   transcriptState.isProcessed = false;
   transcriptState.subtitles = null;
+
+  // Блокируем экспорт при сбросе
+  updateExportButtonState();
 }
 
 // Отслеживание изменений URL
