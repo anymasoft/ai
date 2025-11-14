@@ -7,6 +7,171 @@ const transcriptState = {
   selectedLang: 'ru' // По умолчанию русский
 };
 
+// ═══════════════════════════════════════════════════════════════════
+// REALTIME HIGHLIGHTING SYSTEM - Netflix-level subtitle sync
+// ═══════════════════════════════════════════════════════════════════
+const realtimeHighlighter = {
+  video: null,
+  subtitles: [],
+  currentIndex: -1,
+  lastUpdateTime: 0,
+  throttleDelay: 120, // мс между обновлениями
+  updateInterval: null,
+  isActive: false,
+  lastScrollTime: 0,
+  scrollThrottle: 800, // не скроллим чаще чем раз в 800мс
+
+  // Запуск системы подсветки
+  start(subtitles) {
+    this.stop(); // Останавливаем предыдущую сессию
+
+    this.video = document.querySelector('video');
+    if (!this.video) {
+      console.warn('Video element not found for realtime highlighting');
+      return;
+    }
+
+    this.subtitles = subtitles;
+    this.currentIndex = -1;
+    this.isActive = true;
+
+    console.log('🎬 Realtime highlighting started:', subtitles.length, 'segments');
+
+    // Используем requestAnimationFrame для плавной синхронизации
+    const updateLoop = () => {
+      if (!this.isActive) return;
+
+      const now = performance.now();
+      if (now - this.lastUpdateTime >= this.throttleDelay) {
+        this.update();
+        this.lastUpdateTime = now;
+      }
+
+      this.updateInterval = requestAnimationFrame(updateLoop);
+    };
+
+    updateLoop();
+  },
+
+  // Остановка системы подсветки
+  stop() {
+    if (this.updateInterval) {
+      cancelAnimationFrame(this.updateInterval);
+      this.updateInterval = null;
+    }
+
+    this.isActive = false;
+    this.currentIndex = -1;
+
+    // Убираем все подсветки
+    document.querySelectorAll('.yt-transcript-item.active-subtitle').forEach(el => {
+      el.classList.remove('active-subtitle');
+    });
+
+    console.log('⏹️ Realtime highlighting stopped');
+  },
+
+  // Обновление подсветки текущей строки
+  update() {
+    if (!this.video || !this.isActive) return;
+
+    const currentTime = this.video.currentTime;
+
+    // Быстрый поиск активной строки с оптимизацией
+    let activeIndex = -1;
+
+    // Оптимизация: начинаем поиск с текущего индекса
+    const searchStart = Math.max(0, this.currentIndex - 1);
+    const searchEnd = Math.min(this.subtitles.length, this.currentIndex + 10);
+
+    // Ищем в узком диапазоне сначала (оптимизация)
+    for (let i = searchStart; i < searchEnd; i++) {
+      const sub = this.subtitles[i];
+      if (sub && currentTime >= sub.start && currentTime < sub.end) {
+        activeIndex = i;
+        break;
+      }
+    }
+
+    // Если не нашли в узком диапазоне - ищем по всему массиву
+    if (activeIndex === -1) {
+      for (let i = 0; i < this.subtitles.length; i++) {
+        const sub = this.subtitles[i];
+        if (sub && currentTime >= sub.start && currentTime < sub.end) {
+          activeIndex = i;
+          break;
+        }
+      }
+    }
+
+    // Подсвечиваем только если индекс изменился
+    if (activeIndex !== this.currentIndex) {
+      this.highlight(activeIndex);
+      this.currentIndex = activeIndex;
+    }
+  },
+
+  // Подсветка конкретного элемента
+  highlight(index) {
+    // Убираем предыдущую подсветку
+    const prevActive = document.querySelector('.yt-transcript-item.active-subtitle');
+    if (prevActive) {
+      prevActive.classList.remove('active-subtitle');
+    }
+
+    if (index === -1) return;
+
+    // Добавляем новую подсветку
+    const activeElement = document.querySelector(`.yt-transcript-item[data-index="${index}"]`);
+    if (activeElement) {
+      activeElement.classList.add('active-subtitle');
+
+      // Скроллим к активному элементу с throttling
+      const now = performance.now();
+      if (now - this.lastScrollTime >= this.scrollThrottle) {
+        this.scrollToActive(activeElement);
+        this.lastScrollTime = now;
+      }
+    }
+  },
+
+  // Плавный скроллинг к активному элементу
+  scrollToActive(element) {
+    if (!element) return;
+
+    const container = document.getElementById('yt-transcript-content');
+    if (!container) return;
+
+    const elementRect = element.getBoundingClientRect();
+    const containerRect = container.getBoundingClientRect();
+
+    // Проверяем, виден ли элемент
+    const isVisible =
+      elementRect.top >= containerRect.top &&
+      elementRect.bottom <= containerRect.bottom;
+
+    // Скроллим только если элемент не виден
+    if (!isVisible) {
+      element.scrollIntoView({
+        behavior: 'smooth',
+        block: 'center',
+        inline: 'nearest'
+      });
+    }
+  }
+};
+
+// Функция запуска realtime highlighting (вызывается из displayTranscript)
+function startRealtimeHighlighting(subtitles) {
+  if (!subtitles || subtitles.length === 0) return;
+  realtimeHighlighter.start(subtitles);
+}
+
+// Функция остановки realtime highlighting (вызывается при смене видео)
+function stopRealtimeHighlighting() {
+  realtimeHighlighter.stop();
+}
+
 // Список поддерживаемых языков
 const SUPPORTED_LANGUAGES = [
   { code: 'ru', name: 'Russian' },
@@ -540,13 +705,33 @@ async function getTranscript() {
       const text = textElement.textContent.trim();
       const timeText = timeElement?.textContent.trim() || '';
 
+      // Извлекаем точное время start в секундах из атрибута
+      let startSeconds = 0;
+      const startAttr = item.getAttribute('start-offset');
+      if (startAttr) {
+        startSeconds = parseFloat(startAttr) / 1000; // YouTube хранит в миллисекундах
+      } else {
+        // Fallback: парсим из текстового времени
+        startSeconds = parseTimeToSeconds(timeText);
+      }
+
+      // Вычисляем end как start следующего элемента или добавляем ~5 секунд
+      let endSeconds = startSeconds + 5;
+
       subtitles.push({
         index: index,
         time: timeText,
-        text: text
+        text: text,
+        start: startSeconds,
+        end: endSeconds // Будет обновлено позже
       });
     }
   });
+
+  // Обновляем end для каждого элемента (равен start следующего)
+  for (let i = 0; i < subtitles.length - 1; i++) {
+    subtitles[i].end = subtitles[i + 1].start;
+  }
 
   // Закрываем панель транскрипта если мы её открывали
   if (isOpen) {
@@ -556,6 +741,15 @@ async function getTranscript() {
 
   console.log('Получено субтитров:', subtitles.length);
   return subtitles;
+}
+
+// Парсинг времени из строки "0:00", "1:23", "12:34:56" в секунды
+function parseTimeToSeconds(timeStr) {
+  const parts = timeStr.split(':').reverse();
+  const seconds = parseInt(parts[0] || 0) +
+                 parseInt(parts[1] || 0) * 60 +
+                 parseInt(parts[2] || 0) * 3600;
+  return seconds;
 }
 
 // Поиск кнопки транскрипта
@@ -585,7 +779,11 @@ function displayTranscript(subtitles) {
   const content = document.getElementById('yt-transcript-content');
 
   content.innerHTML = subtitles.map(sub => `
-    <div class="yt-transcript-item" data-time="${sub.time}" data-index="${sub.index}">
+    <div class="yt-transcript-item"
+         data-time="${sub.time}"
+         data-index="${sub.index}"
+         data-start="${sub.start}"
+         data-end="${sub.end}">
       <div class="yt-transcript-item-time">${sub.time}</div>
       <div class="yt-transcript-item-text">${sub.text}</div>
     </div>
@@ -598,6 +796,9 @@ function displayTranscript(subtitles) {
       seekToTime(time);
     });
   });
+
+  // Запускаем realtime highlighting
+  startRealtimeHighlighting(subtitles);
 }
 
 // Переход к определенному времени в видео
@@ -617,6 +818,9 @@ function seekToTime(timeStr) {
 
 // Сброс состояния при смене видео
 function resetState() {
+  // Останавливаем realtime highlighting
+  stopRealtimeHighlighting();
+
   transcriptState.videoId = null;
   transcriptState.isProcessing = false;
   transcriptState.isProcessed = false;
