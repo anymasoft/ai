@@ -1,12 +1,29 @@
 {
   "manifest_version": 3,
-  "name": "YouTube Transcript Viewer",
-  "version": "3.4.0",
-  "description": "Premium YouTube transcript translation with multi-language support",
-  "permissions": ["storage"],
-  "host_permissions": [
-    "https://www.youtube.com/*"
+  "name": "Video Reader AI",
+  "version": "3.5.0",
+  "description": "Instant YouTube subtitle translation with AI. Translate, download, and sync subtitles in any language.",
+  "permissions": [
+    "storage",
+    "identity",
+    "tabs",
+    "alarms"
   ],
+  "host_permissions": [
+    "https://www.youtube.com/*",
+    "http://localhost:5000/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_title": "Video Reader AI",
+    "default_icon": {
+      "16": "vr_logo_small.png",
+      "48": "vr_logo_small.png",
+      "128": "vr_logo_small.png"
+    }
+  },
   "content_scripts": [
     {
       "matches": ["https://www.youtube.com/*"],
@@ -17,8 +34,21 @@
   ],
   "web_accessible_resources": [
     {
-      "resources": ["vr_logo_small.png", "assets/logo.png"],
-      "matches": ["https://www.youtube.com/*"]
+      "resources": [
+        "vr_logo_small.png",
+        "assets/logo.png",
+        "extension/auth/welcome.html",
+        "extension/auth/loggedin.html",
+        "extension/auth/upgrade.html"
+      ],
+      "matches": ["https://www.youtube.com/*", "<all_urls>"]
     }
-  ]
+  ],
+  "oauth2": {
+    "client_id": "YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com",
+    "scopes": [
+      "https://www.googleapis.com/auth/userinfo.email",
+      "https://www.googleapis.com/auth/userinfo.profile"
+    ]
+  }
 }

@@ -852,6 +852,13 @@ async function translateSubtitles(videoId, subtitles) {
             prevContext: prevContext.slice(-2), // Последние 1-2 переведенные строки
             lang: selectedLang // Используем выбранный язык
           })
+        }).catch(error => {
+          // Обработка ошибки сети (сервер недоступен)
+          if (error.message.includes('Failed to fetch')) {
+            console.error(`Сервер перевода недоступен: ${SERVER_URL}`);
+            throw new Error('TRANSLATION_SERVER_UNAVAILABLE');
+          }
+          throw error;
         });
 
         if (!response.ok) {
@@ -882,6 +889,17 @@ async function translateSubtitles(videoId, subtitles) {
         }
 
       } catch (error) {
+        // Специальная обработка для недоступности сервера
+        if (error.message === 'TRANSLATION_SERVER_UNAVAILABLE') {
+          console.error('❌ Сервер перевода недоступен. Пожалуйста, убедитесь, что backend запущен на localhost:5000');
+
+          // Показываем уведомление пользователю
+          showTranslationError('Translation server is not available. Please make sure the backend is running.');
+
+          // Прерываем цикл перевода
+          break;
+        }
+
         console.error(`Ошибка при переводе строки ${i}:`, error);
         prevContext.push(subtitle.text); // Используем оригинал в контексте
       }
@@ -891,7 +909,53 @@ async function translateSubtitles(videoId, subtitles) {
 
   } catch (error) {
     console.error('Общая ошибка при переводе:', error);
+    showTranslationError('Translation failed. Please try again later.');
   }
+}
+
+// Показать ошибку перевода пользователю
+function showTranslationError(message) {
+  // Создаем уведомление об ошибке
+  const errorDiv = document.createElement('div');
+  errorDiv.className = 'vr-error-notification';
+  errorDiv.style.cssText = `
+    position: fixed;
+    top: 80px;
+    right: 20px;
+    background: linear-gradient(135deg, #ff6b6b 0%, #ee5a6f 100%);
+    color: white;
+    padding: 16px 20px;
+    border-radius: 12px;
+    box-shadow: 0 4px 20px rgba(255, 107, 107, 0.4);
+    z-index: 10000;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    font-size: 14px;
+    font-weight: 500;
+    max-width: 350px;
+    animation: slideIn 0.3s ease-out;
+  `;
+
+  errorDiv.innerHTML = `
+    <div style="display: flex; align-items: center; gap: 12px;">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <circle cx="12" cy="12" r="10"></circle>
+        <line x1="12" y1="8" x2="12" y2="12"></line>
+        <line x1="12" y1="16" x2="12.01" y2="16"></line>
+      </svg>
+      <div>
+        <div style="font-weight: 600; margin-bottom: 4px;">Translation Error</div>
+        <div style="font-size: 13px; opacity: 0.95;">${message}</div>
+      </div>
+    </div>
+  `;
+
+  document.body.appendChild(errorDiv);
+
+  // Автоматически удаляем через 5 секунд
+  setTimeout(() => {
+    errorDiv.style.animation = 'slideOut 0.3s ease-out';
+    setTimeout(() => errorDiv.remove(), 300);
+  }, 5000);
 }
 
 // Обновление одной строки транскрипта
