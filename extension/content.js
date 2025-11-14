@@ -72,15 +72,16 @@ function getVideoId() {
 function createTranscriptPanel() {
   const currentLang = SUPPORTED_LANGUAGES.find(l => l.code === transcriptState.selectedLang) || SUPPORTED_LANGUAGES[0];
 
+  // Получаем URL для логотипа
+  const logoUrl = chrome.runtime.getURL('vr_logo_small.png');
+
   const panel = document.createElement('div');
   panel.id = 'yt-transcript-panel';
   panel.innerHTML = `
     <div id="yt-transcript-panel-header">
       <div id="yt-transcript-panel-title">
-        <svg viewBox="0 0 24 24" fill="currentColor">
-          <path d="M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zM4 12h4v2H4v-2zm10 6H4v-2h10v2zm6 0h-4v-2h4v2zm0-4H10v-2h10v2z"/>
-        </svg>
-        Transcript
+        <img src="${logoUrl}" alt="VR" class="yt-reader-logo">
+        Video Reader AI
       </div>
       <button id="yt-transcript-toggle-btn" title="Свернуть/Развернуть">
         <svg viewBox="0 0 24 24" fill="currentColor">
@@ -91,11 +92,7 @@ function createTranscriptPanel() {
     <div id="yt-transcript-body">
       <div class="yt-reader-controls">
         <button class="yt-reader-btn" id="yt-reader-translate-btn">
-          <svg class="yt-reader-btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <circle cx="12" cy="12" r="10"/>
-            <path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
-          </svg>
-          <span class="yt-reader-btn-text">Translate Transcript</span>
+          <span class="yt-reader-btn-text">Translate Video</span>
         </button>
         <div class="yt-reader-lang-selector">
           <button class="yt-reader-lang-btn" id="yt-reader-lang-btn">
@@ -321,8 +318,8 @@ async function handleGetTranscript() {
 
   // Блокируем кнопку и показываем spinner
   btn.disabled = true;
+  btn.classList.add('loading');
   btn.innerHTML = `
-    <div class="yt-reader-spinner"></div>
     <span class="yt-reader-btn-text">Loading...</span>
   `;
 
@@ -354,8 +351,9 @@ async function handleGetTranscript() {
     displayTranscript(subtitles);
 
     // Отправляем на сервер для перевода
+    btn.classList.add('translating');
+    btn.classList.remove('loading');
     btn.innerHTML = `
-      <div class="yt-reader-spinner"></div>
       <span class="yt-reader-btn-text">Translating...</span>
     `;
     await translateSubtitles(videoId, subtitles);
@@ -372,12 +370,9 @@ async function handleGetTranscript() {
   } finally {
     transcriptState.isProcessing = false;
     btn.disabled = false;
+    btn.classList.remove('loading', 'translating');
     btn.innerHTML = `
-      <svg class="yt-reader-btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <circle cx="12" cy="12" r="10"/>
-        <path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
-      </svg>
-      <span class="yt-reader-btn-text">Translate Transcript</span>
+      <span class="yt-reader-btn-text">Translate Video</span>
     `;
   }
 }
