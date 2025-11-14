@@ -274,16 +274,13 @@ html[dark] :root {
   cursor: pointer;
   user-select: none;
   border: none;
-  background: transparent;
-  color: var(--yt-spec-text-primary);
-  transition: background-color .2s, border-color .2s, opacity .2s;
+  transition: background-color .2s, opacity .2s;
   overflow: hidden;
 }
 
 .yt-spec-button-shape-next--tonal {
-  background-color: #065fd4;
-  color: #fff;
-  border-color: transparent;
+  background-color: #065fd4 !important;
+  color: #fff !important;
 }
 
 .yt-spec-button-shape-next--size-m {
@@ -293,15 +290,11 @@ html[dark] :root {
 }
 
 .yt-spec-button-shape-next--tonal:hover:not(:disabled) {
-  background-color: #0c50a8;
-}
-
-.yt-spec-button-shape-next:hover:not(:disabled):not(.yt-spec-button-shape-next--tonal) {
-  background-color: rgba(0, 0, 0, 0.1);
+  background-color: #0856c8 !important;
 }
 
 .yt-spec-button-shape-next:active:not(:disabled) {
-  opacity: .7;
+  opacity: .8;
 }
 
 .yt-spec-button-shape-next:disabled {
@@ -315,29 +308,42 @@ html[dark] :root {
   white-space: nowrap;
 }
 
-/* Touch feedback (ripple) */
+/* Touch feedback (ripple) - точные стили YouTube */
 .yt-spec-touch-feedback-shape {
+  display: inline-block;
+  border-radius: inherit;
   position: absolute;
-  inset: 0;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
   pointer-events: none;
-  overflow: hidden;
 }
 
 .yt-spec-touch-feedback-shape__fill {
-  will-change: opacity;
-  opacity: 0;
   border-radius: inherit;
   position: absolute;
-  inset: 0;
-  background: var(--yt-spec-touch-response);
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  background-color: rgba(255, 255, 255, 0.1);
+  opacity: 0;
   transition: opacity .2s;
+}
+
+.yt-spec-button-shape-next:hover .yt-spec-touch-feedback-shape__fill {
+  opacity: 1;
 }
 
 .yt-spec-touch-feedback-shape__stroke {
   border-radius: inherit;
   position: absolute;
-  inset: 0;
-  border: 2px solid var(--yt-spec-touch-response);
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  border: 2px solid rgba(255, 255, 255, 0.3);
   opacity: 0;
   transition: opacity .2s;
 }
