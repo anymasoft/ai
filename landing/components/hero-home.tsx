@@ -122,26 +122,27 @@ export default function HeroHome() {
               </div>
               <div className="font-mono text-gray-500 [&_span]:opacity-0">
                 <span className="animate-[code-1_10s_infinite] text-gray-200">
-                  npm login
+                  1. Install extension
                 </span>{" "}
                 <span className="animate-[code-2_10s_infinite]">
-                  --registry=https://npm.pkg.github.com
+                  ✓ Installed successfully
                 </span>
                 <br />
-                <span className="animate-[code-3_10s_infinite]">
-                  --scope=@phanatic
+                <br />
+                <span className="animate-[code-3_10s_infinite] text-gray-200">
+                  2. Open YouTube video
                 </span>{" "}
                 <span className="animate-[code-4_10s_infinite]">
-                  Successfully logged-in.
+                  ✓ Subtitles detected
                 </span>
                 <br />
                 <br />
                 <span className="animate-[code-5_10s_infinite] text-gray-200">
-                  npm publish
+                  3. Click "Translate"
                 </span>
                 <br />
-                <span className="animate-[code-6_10s_infinite]">
-                  Package published.
+                <span className="animate-[code-6_10s_infinite] text-emerald-400">
+                  ✓ Translation complete!
                 </span>
               </div>
             </div>
