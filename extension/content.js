@@ -288,8 +288,12 @@ function createTranscriptPanel() {
     </div>
     <div id="yt-transcript-body" style="display: none;">
       <div class="yt-reader-controls">
-        <button class="yt-reader-btn" id="yt-reader-translate-btn">
-          <span class="yt-reader-btn-text">Translate Video</span>
+        <button id="yt-reader-translate-btn" class="yt-spec-button-shape-next yt-spec-button-shape-next--tonal yt-spec-button-shape-next--size-m">
+          <div class="yt-spec-button-shape-next__button-text-content">Translate Video</div>
+          <div class="yt-spec-touch-feedback-shape yt-spec-touch-feedback-shape--touch-response-inverse" style="border-radius: inherit;">
+            <div class="yt-spec-touch-feedback-shape__stroke"></div>
+            <div class="yt-spec-touch-feedback-shape__fill"></div>
+          </div>
         </button>
         <div class="yt-reader-export-container">
           <button id="yt-reader-export-btn" class="yt-reader-export-btn" title="Экспорт субтитров" disabled>
@@ -575,23 +579,30 @@ function handleExportFormat(format) {
 
   const videoId = getVideoId();
   const lang = transcriptState.selectedLang;
-  const subtitles = transcriptState.subtitles;
+
+  // Собираем переведённые субтитры из DOM (не из transcriptState!)
+  const translatedSubtitles = collectTranslatedSubtitles();
+
+  if (!translatedSubtitles || translatedSubtitles.length === 0) {
+    console.error('No translated subtitles found in DOM');
+    return;
+  }
 
   let content, filename, mimeType;
 
   switch (format) {
     case 'srt':
-      content = generateSRT(subtitles);
+      content = generateSRT(translatedSubtitles);
       filename = `${videoId}_${lang}_translated.srt`;
       mimeType = 'text/plain;charset=utf-8';
       break;
     case 'vtt':
-      content = generateVTT(subtitles);
+      content = generateVTT(translatedSubtitles);
       filename = `${videoId}_${lang}_translated.vtt`;
       mimeType = 'text/vtt;charset=utf-8';
       break;
     case 'txt':
-      content = generateTXT(subtitles);
+      content = generateTXT(translatedSubtitles);
       filename = `${videoId}_${lang}_translated.txt`;
       mimeType = 'text/plain;charset=utf-8';
       break;
@@ -608,6 +619,25 @@ function handleExportFormat(format) {
   exportDropdown.classList.remove('show');
 
   console.log(`Экспортировано: ${filename}`);
+}
+
+// Сбор переведённых субтитров из DOM
+function collectTranslatedSubtitles() {
+  const items = document.querySelectorAll('.yt-transcript-item');
+  const subtitles = [];
+
+  items.forEach(item => {
+    const start = parseFloat(item.dataset.start);
+    const end = parseFloat(item.dataset.end);
+    const textElement = item.querySelector('.yt-transcript-item-text');
+    const text = textElement ? textElement.textContent.trim() : '';
+
+    if (text) {
+      subtitles.push({ start, end, text });
+    }
+  });
+
+  return subtitles;
 }
 
 // Генерация SRT формата
@@ -722,7 +752,11 @@ async function handleGetTranscript() {
   btn.disabled = true;
   btn.classList.add('loading');
   btn.innerHTML = `
-    <span class="yt-reader-btn-text">Loading...</span>
+    <div class="yt-spec-button-shape-next__button-text-content">Loading...</div>
+    <div class="yt-spec-touch-feedback-shape yt-spec-touch-feedback-shape--touch-response-inverse" style="border-radius: inherit;">
+      <div class="yt-spec-touch-feedback-shape__stroke"></div>
+      <div class="yt-spec-touch-feedback-shape__fill"></div>
+    </div>
   `;
 
   // Показываем лоадер
@@ -757,7 +791,11 @@ async function handleGetTranscript() {
     btn.classList.add('translating');
     btn.classList.remove('loading');
     btn.innerHTML = `
-      <span class="yt-reader-btn-text">AI is translating...</span>
+      <div class="yt-spec-button-shape-next__button-text-content">AI is translating...</div>
+      <div class="yt-spec-touch-feedback-shape yt-spec-touch-feedback-shape--touch-response-inverse" style="border-radius: inherit;">
+        <div class="yt-spec-touch-feedback-shape__stroke"></div>
+        <div class="yt-spec-touch-feedback-shape__fill"></div>
+      </div>
     `;
     await translateSubtitles(videoId, subtitles);
 
@@ -776,7 +814,11 @@ async function handleGetTranscript() {
     btn.disabled = false;
     btn.classList.remove('loading', 'translating');
     btn.innerHTML = `
-      <span class="yt-reader-btn-text">Translate Video</span>
+      <div class="yt-spec-button-shape-next__button-text-content">Translate Video</div>
+      <div class="yt-spec-touch-feedback-shape yt-spec-touch-feedback-shape--touch-response-inverse" style="border-radius: inherit;">
+        <div class="yt-spec-touch-feedback-shape__stroke"></div>
+        <div class="yt-spec-touch-feedback-shape__fill"></div>
+      </div>
     `;
   }
 }

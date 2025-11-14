@@ -256,110 +256,102 @@ html[dark] :root {
 }
 
 /* ═══════════════════════════════════════
-   ПРЕМИУМ КНОПКА "TRANSLATE VIDEO" - ГРАДИЕНТ
+   НАТИВНАЯ YOUTUBE КНОПКА "TRANSLATE VIDEO"
    ═══════════════════════════════════════ */
-.yt-reader-btn {
+.yt-spec-button-shape-next {
   flex: 1;
-  background: linear-gradient(135deg, #6366f1 0%, #a855f7 100%);
-  color: #ffffff;
-  border: none;
-  border-radius: 1rem;
-  padding: 9px 20px;
-  min-height: 42px;
-  font-size: 16px;
-  font-weight: 600;
-  cursor: pointer;
-  display: flex;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-  transition: all 200ms cubic-bezier(0.4, 0, 0.2, 1);
-  letter-spacing: -0.01em;
-  box-shadow: 0 2px 8px rgba(99, 102, 241, 0.25), 0 0 0 0 rgba(99, 102, 241, 0);
   position: relative;
+  font-family: "Roboto", "Arial", sans-serif;
+  font-size: 1.4rem;
+  font-weight: 500;
+  line-height: 3.6rem;
+  border-radius: 18px;
+  padding: 0 16px;
+  min-height: 36px;
+  cursor: pointer;
+  user-select: none;
+  border: none;
+  background: transparent;
+  color: var(--yt-spec-text-primary);
+  transition: background-color .2s, border-color .2s, opacity .2s;
   overflow: hidden;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'SF Pro Display', 'Helvetica Neue', Arial, sans-serif;
 }
 
-.yt-reader-btn:hover {
-  background: linear-gradient(135deg, #4f46e5 0%, #9333ea 100%);
-  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.35), 0 0 0 3px rgba(99, 102, 241, 0.08);
-  transform: translateY(-1px) scale(1.01);
+.yt-spec-button-shape-next--tonal {
+  background-color: var(--yt-spec-brand-button-background);
+  color: var(--yt-spec-text-primary-inverse);
+  border-color: transparent;
 }
 
-.yt-reader-btn:active {
-  transform: translateY(0) scale(0.99);
-  box-shadow: 0 2px 6px rgba(99, 102, 241, 0.2);
+.yt-spec-button-shape-next--size-m {
+  min-height: 36px;
+  padding: 0 16px;
+  border-radius: 18px;
 }
 
-.yt-reader-btn:disabled {
+.yt-spec-button-shape-next:hover:not(:disabled) {
+  background-color: rgba(var(--yt-spec-static-brand-white), 0.1);
+}
+
+.yt-spec-button-shape-next:active:not(:disabled) {
+  opacity: .7;
+}
+
+.yt-spec-button-shape-next:disabled {
   cursor: not-allowed;
-  opacity: 0.65;
-  transform: none !important;
+  opacity: 0.5;
 }
 
-.yt-reader-btn-text {
-  line-height: 1.2;
+.yt-spec-button-shape-next__button-text-content {
   position: relative;
   z-index: 2;
+  white-space: nowrap;
 }
 
-/* Индикатор прогресса - бегущий градиент + glow */
-.yt-reader-btn.loading::before,
-.yt-reader-btn.translating::before {
-  content: '';
+/* Touch feedback (ripple) */
+.yt-spec-touch-feedback-shape {
   position: absolute;
-  top: 0;
-  left: -100%;
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(
-    90deg,
-    transparent,
-    rgba(255, 255, 255, 0.25),
-    transparent
-  );
-  animation: yt-reader-progress 1.2s ease-in-out infinite;
-  z-index: 1;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
 }
 
-@keyframes yt-reader-progress {
-  0% {
-    left: -100%;
-  }
-  100% {
-    left: 100%;
-  }
+.yt-spec-touch-feedback-shape__fill {
+  will-change: opacity;
+  opacity: 0;
+  border-radius: inherit;
+  position: absolute;
+  inset: 0;
+  background: var(--yt-spec-touch-response);
+  transition: opacity .2s;
 }
 
-/* Пульсация glow при загрузке */
-.yt-reader-btn.loading,
-.yt-reader-btn.translating {
-  animation: yt-reader-glow-pulse 2s ease-in-out infinite;
+.yt-spec-touch-feedback-shape__stroke {
+  border-radius: inherit;
+  position: absolute;
+  inset: 0;
+  border: 2px solid var(--yt-spec-touch-response);
+  opacity: 0;
+  transition: opacity .2s;
 }
 
-@keyframes yt-reader-glow-pulse {
-  0%, 100% {
-    box-shadow: 0 2px 8px rgba(99, 102, 241, 0.3), 0 0 0 0 rgba(99, 102, 241, 0.4);
-  }
-  50% {
-    box-shadow: 0 4px 14px rgba(99, 102, 241, 0.45), 0 0 12px rgba(99, 102, 241, 0.2);
-  }
+/* Loading state */
+.yt-spec-button-shape-next.loading,
+.yt-spec-button-shape-next.translating {
+  pointer-events: none;
 }
 
-/* Увеличенный текст во время загрузки */
-.yt-reader-btn.loading .yt-reader-btn-text,
-.yt-reader-btn.translating .yt-reader-btn-text {
-  font-size: 15px;
-  animation: yt-reader-text-pulse 1.5s ease-in-out infinite;
+.yt-spec-button-shape-next.loading .yt-spec-button-shape-next__button-text-content,
+.yt-spec-button-shape-next.translating .yt-spec-button-shape-next__button-text-content {
+  animation: yt-native-pulse 1.5s ease-in-out infinite;
 }
 
-@keyframes yt-reader-text-pulse {
-  0%, 100% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0.9;
-  }
+@keyframes yt-native-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
 }
 
 /* ═══════════════════════════════════════
