@@ -103,17 +103,6 @@ html[dark] :root {
   letter-spacing: 0.02em;
 }
 
-/* Контейнер для action-кнопок справа */
-.yt-reader-header-actions {
-  position: absolute;
-  right: 16px;
-  top: 50%;
-  transform: translateY(-50%);
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
-
 /* ═══════════════════════════════════════
    EXPORT BUTTON - Premium style
    ═══════════════════════════════════════ */
@@ -123,31 +112,39 @@ html[dark] :root {
 
 .yt-reader-export-btn {
   background: transparent;
-  border: none;
-  color: var(--yt-spec-icon-inactive);
+  border: 1px solid var(--yt-reader-border);
+  color: var(--yt-spec-text-primary);
   cursor: pointer;
-  width: 28px;
-  height: 28px;
-  border-radius: 6px;
+  min-height: 42px;
+  padding: 9px 16px;
+  border-radius: 1rem;
   display: flex;
   align-items: center;
   justify-content: center;
   transition: all 150ms cubic-bezier(0.4, 0, 0.2, 1);
-  padding: 0;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
 }
 
-.yt-reader-export-btn:hover {
+.yt-reader-export-btn:hover:not(:disabled) {
   background: var(--yt-reader-hover-bg);
-  color: var(--yt-spec-text-primary);
+  border-color: var(--yt-reader-border-hover);
+  transform: translateY(-1px);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
 }
 
-.yt-reader-export-btn:active {
-  transform: scale(0.96);
+.yt-reader-export-btn:active:not(:disabled) {
+  transform: scale(0.98);
+}
+
+.yt-reader-export-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  background: transparent;
 }
 
 .yt-reader-export-btn svg {
-  width: 16px;
-  height: 16px;
+  width: 18px;
+  height: 18px;
 }
 
 /* Export Dropdown */
@@ -219,6 +216,10 @@ html[dark] :root {
   justify-content: center;
   transition: all 150ms cubic-bezier(0.4, 0, 0.2, 1);
   padding: 0;
+  position: absolute;
+  right: 16px;
+  top: 50%;
+  transform: translateY(-50%);
 }
 
 #yt-transcript-toggle-btn:hover {
