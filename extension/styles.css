@@ -737,7 +737,7 @@ html[dark] :root {
 }
 
 .yt-no-subtitles-title {
-  font-size: 16px;
+  font-size: 18px;
   font-weight: 600;
   color: var(--yt-reader-text-primary);
   margin-bottom: 8px;
@@ -745,7 +745,7 @@ html[dark] :root {
 }
 
 .yt-no-subtitles-description {
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 400;
   color: var(--yt-reader-text-secondary);
   line-height: 1.6;
