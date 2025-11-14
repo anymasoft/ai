@@ -292,6 +292,7 @@ html[dark] :root {
 
 .yt-reader-translate-btn:hover .yt-reader-translate-chip {
   background-color: var(--yt-spec-text-primary-inverse);
+  color: #fff;
 }
 
 .yt-reader-translate-btn:active .yt-reader-translate-chip {
