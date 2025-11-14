@@ -270,6 +270,7 @@ function createTranscriptPanel() {
 
   const panel = document.createElement('div');
   panel.id = 'yt-transcript-panel';
+  panel.className = 'collapsed'; // Изначально свернуто
   panel.innerHTML = `
     <div id="yt-transcript-panel-header">
       <div id="yt-transcript-panel-title">
@@ -281,11 +282,11 @@ function createTranscriptPanel() {
       </div>
       <button id="yt-transcript-toggle-btn" title="Свернуть/Развернуть">
         <svg viewBox="0 0 24 24" fill="currentColor">
-          <path d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41z"/>
+          <path d="M7.41 15.41L12 10.83l4.59 4.58L18 14l-6-6-6 6 1.41 1.41z"/>
         </svg>
       </button>
     </div>
-    <div id="yt-transcript-body">
+    <div id="yt-transcript-body" style="display: none;">
       <div class="yt-reader-controls">
         <button class="yt-reader-btn" id="yt-reader-translate-btn">
           <span class="yt-reader-btn-text">Translate Video</span>
