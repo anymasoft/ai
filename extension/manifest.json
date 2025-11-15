@@ -3,7 +3,6 @@
   "name": "Video Reader AI",
   "version": "4.0.0",
   "description": "Instant YouTube subtitle translation with AI. Translate, download, and sync subtitles in any language.",
-  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAn9BiXsgCQySBH0xnNqbIWwvQqHXjUbERw7+mNp7NcERiwGNBWc2X6EprM97rEsXVDk3ekjxUp35lXtf1oKg2waooUAheEH0iWvFIj5HK803E5YtX7jBN/0ozF3rS6tg95uSwnTkgZtF5x/bcM5JpIeORvDK0GGzTCutqjzv60V8AZKvdUQJH0hdtfYOzMl93LezJhaHbnxAB2TVACbD+HbOwUql5C9qcrALr8DRKacnoXEKkZufZ9Bex4mMV0+svXLnvZAecsoJZmE9OjiOce6ww7ZAHRKliULu+/DTmI7ZYcGa5nbY5xuu0Hh0yTK2d2pICHPBGxxd9nsT28H28tfxwIDAQAB",
   "permissions": [
     "storage",
     "identity",
