@@ -1,14 +1,15 @@
 {
   "manifest_version": 3,
   "name": "Video Reader AI",
-  "version": "3.6.1",
+  "version": "4.0.0",
   "description": "Instant YouTube subtitle translation with AI. Translate, download, and sync subtitles in any language.",
-  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEArktSA/kZQ+qOdvHULb9PYAiAT7tkfGkfBj0e5gpi7ZiUAWr8UtgyrQTRzd8PlCvnBa8a/HDnECCJfImha7cJeobBaF7aa2Wd1Nr/tyYuPqbCZ5U5qFrMtqdcten/jIV7Mvq9ZeFSzhq14PYhiPVSsbtilP+RKkXP5ZA1GhVaeFRISHfVg4PSjj/ZgHzJosY6YNctj2uyDevEr5mYPhsDVVfroe3fyMf049nYdJofF+6CvlHscbYSUMZvE6w7QxwPRmDAjDB87I4SQ6B3dhzXO9OklhHX5GeOlaRcimMj20uYswMw+feMLk+Rv60NkQ8SujjQVnQzY5T7/QQzSy/80wIDAQAB",
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAn9BiXsgCQySBH0xnNqbIWwvQqHXjUbERw7+mNp7NcERiwGNBWc2X6EprM97rEsXVDk3ekjxUp35lXtf1oKg2waooUAheEH0iWvFIj5HK803E5YtX7jBN/0ozF3rS6tg95uSwnTkgZtF5x/bcM5JpIeORvDK0GGzTCutqjzv60V8AZKvdUQJH0hdtfYOzMl93LezJhaHbnxAB2TVACbD+HbOwUql5C9qcrALr8DRKacnoXEKkZufZ9Bex4mMV0+svXLnvZAecsoJZmE9OjiOce6ww7ZAHRKliULu+/DTmI7ZYcGa5nbY5xuu0Hh0yTK2d2pICHPBGxxd9nsT28H28tfxwIDAQAB",
   "permissions": [
     "storage",
     "identity",
     "tabs",
-    "alarms"
+    "alarms",
+    "system.display"
   ],
   "host_permissions": [
     "https://www.youtube.com/*",
@@ -42,13 +43,16 @@
         "index.html",
         "style.css",
         "script.js",
-        "images/google.svg"
+        "images/google.svg",
+        "auth_popup.html",
+        "auth_popup.js",
+        "popup.css"
       ],
       "matches": ["<all_urls>"]
     }
   ],
   "oauth2": {
-    "client_id": "YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com",
+    "client_id": "431567664470-tnur42uavtfv279g05e2vq58q9b45ecg.apps.googleusercontent.com",
     "scopes": [
       "openid",
       "email",
