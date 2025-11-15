@@ -1,0 +1,51 @@
+/* Video Reader AI - Auth Popup Styles */
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+.auth-container {
+  animation: fadeIn 0.3s ease-in;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+#googleSignInBtn {
+  cursor: pointer;
+  user-select: none;
+}
+
+#googleSignInBtn:active {
+  transform: scale(0.98);
+}
+
+#googleSignInBtn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Анимация при наведении на логотип */
+.auth-container img[src="vr_logo_small.png"] {
+  transition: transform 0.3s ease;
+}
+
+.auth-container img[src="vr_logo_small.png"]:hover {
+  transform: scale(1.05);
+}

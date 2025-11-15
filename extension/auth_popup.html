@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Video Reader AI - Авторизация</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body class="bg-gray-900 text-white flex items-center justify-center min-h-screen p-4">
+  <div class="auth-container max-w-md w-full">
+    <!-- Лого и заголовок -->
+    <div class="text-center mb-8">
+      <div class="mb-4">
+        <img src="vr_logo_small.png" alt="Video Reader AI" class="w-16 h-16 mx-auto">
+      </div>
+      <h1 class="text-2xl font-bold mb-2">Video Reader AI</h1>
+      <p class="text-gray-400 text-sm">Войдите для продолжения</p>
+    </div>
+
+    <!-- Описание -->
+    <div class="mb-8 text-center">
+      <h2 class="text-lg font-semibold mb-2">Переводите субтитры YouTube мгновенно</h2>
+      <p class="text-gray-400 text-sm">
+        Сохраняйте SRT/VTT/TXT файлы и получайте доступ к Pro функциям.<br>
+        Ваш аккаунт синхронизируется автоматически на всех устройствах.
+      </p>
+    </div>
+
+    <!-- Кнопка Google Sign In -->
+    <div class="mb-6">
+      <button
+        id="googleSignInBtn"
+        class="w-full bg-white text-gray-900 font-semibold py-3 px-4 rounded-lg flex items-center justify-center gap-3 hover:bg-gray-100 transition-colors duration-200 shadow-lg"
+      >
+        <img src="images/google.svg" alt="Google" class="w-5 h-5">
+        <span>Продолжить с Google</span>
+      </button>
+    </div>
+
+    <!-- Информация -->
+    <div class="text-center text-xs text-gray-500">
+      <p>Нажимая "Продолжить с Google", вы соглашаетесь с</p>
+      <p class="mt-1">
+        <a href="#" class="text-blue-400 hover:underline">Условиями использования</a> и
+        <a href="#" class="text-blue-400 hover:underline">Политикой конфиденциальности</a>
+      </p>
+    </div>
+  </div>
+
+  <script src="auth_popup.js"></script>
+</body>
+</html>
