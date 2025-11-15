@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Video Reader AI",
-  "version": "3.5.4",
+  "version": "3.5.5",
   "description": "Instant YouTube subtitle translation with AI. Translate, download, and sync subtitles in any language.",
   "permissions": [
     "storage",
@@ -37,7 +37,11 @@
       "resources": [
         "vr_logo_small.png",
         "assets/logo.png",
-        "tailwind.css"
+        "tailwind.css",
+        "index.html",
+        "style.css",
+        "script.js",
+        "images/google.png"
       ],
       "matches": ["<all_urls>"]
     }

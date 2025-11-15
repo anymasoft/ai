@@ -2,9 +2,9 @@
 
 // Обработка клика на иконку расширения
 chrome.action.onClicked.addListener((tab) => {
-  // Открываем страницу приветствия в новой вкладке
+  // Открываем страницу авторизации в новой вкладке
   chrome.tabs.create({
-    url: chrome.runtime.getURL('auth/welcome.html')
+    url: chrome.runtime.getURL('index.html')
   });
 });
 
@@ -13,9 +13,9 @@ chrome.runtime.onInstalled.addListener((details) => {
   if (details.reason === 'install') {
     console.log('Video Reader AI установлено! Версия:', chrome.runtime.getManifest().version);
 
-    // Открываем welcome страницу при первой установке
+    // Открываем страницу авторизации при первой установке
     chrome.tabs.create({
-      url: chrome.runtime.getURL('auth/welcome.html')
+      url: chrome.runtime.getURL('index.html')
     });
   } else if (details.reason === 'update') {
     const previousVersion = details.previousVersion;
@@ -48,7 +48,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   // Открытие страницы апгрейда
   if (request.action === 'openUpgrade') {
     chrome.tabs.create({
-      url: chrome.runtime.getURL('auth/upgrade.html')
+      url: chrome.runtime.getURL('index.html')
     });
     sendResponse({ success: true });
     return true;
