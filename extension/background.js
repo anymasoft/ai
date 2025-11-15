@@ -10,13 +10,14 @@ function loginWithGoogle() {
   console.log('Extension ID:', chrome.runtime.id);
   console.log('Redirect URI:', REDIRECT_URI);
 
-  // Формируем URL для Google OAuth
+  // Формируем URL для Google OAuth (Authorization Code Flow)
   const authUrl =
     "https://accounts.google.com/o/oauth2/auth" +
     `?client_id=${GOOGLE_CLIENT_ID}` +
-    `&response_type=id_token` +
+    `&response_type=code` +
     `&redirect_uri=${encodeURIComponent(REDIRECT_URI)}` +
     `&scope=${encodeURIComponent("openid email profile")}` +
+    `&access_type=offline` +
     "&prompt=consent";
 
   console.log('Auth URL:', authUrl);
@@ -35,49 +36,47 @@ function loginWithGoogle() {
         return;
       }
 
-      if (redirectedUrl && redirectedUrl.includes("id_token")) {
+      if (redirectedUrl && redirectedUrl.includes("code=")) {
         try {
-          // Извлекаем id_token из hash параметров
-          const hash = new URL(redirectedUrl).hash.substring(1); // Убираем #
-          const params = new URLSearchParams(hash);
-          const idToken = params.get('id_token');
+          // Извлекаем authorization code из query параметров
+          const url = new URL(redirectedUrl);
+          const code = url.searchParams.get('code');
 
-          if (idToken) {
-            console.log('✅ ID Token получен:', idToken.substring(0, 50) + '...');
+          if (code) {
+            console.log('✅ Authorization Code получен:', code.substring(0, 20) + '...');
 
-            // Декодируем JWT для получения данных пользователя
-            const payload = JSON.parse(atob(idToken.split('.')[1]));
-            console.log('👤 Данные пользователя:', payload);
-
-            // Сохраняем в chrome.storage
+            // ВРЕМЕННО: Сохраняем code в storage для проверки
+            // В production нужно отправить code на backend для обмена на токены
             chrome.storage.local.set({
-              idToken: idToken,
-              user: {
-                email: payload.email,
-                name: payload.name,
-                picture: payload.picture,
-                sub: payload.sub // Google User ID
-              },
-              authenticated: true
+              authCode: code,
+              authenticated: true,
+              timestamp: Date.now()
             }, () => {
-              console.log('✅ Данные сохранены в storage');
+              console.log('✅ Authorization Code сохранен в storage');
+              console.log('⚠️ ВАЖНО: Этот код нужно обменять на токены через backend!');
+              console.log('⚠️ Authorization Code действителен ~10 минут');
 
-              // Уведомляем все открытые вкладки об успешной авторизации
+              // Уведомляем UI об успешной авторизации
               chrome.runtime.sendMessage({
                 type: 'authSuccess',
-                user: payload
+                user: {
+                  // Пока нет данных пользователя - нужен обмен code на id_token
+                  email: 'pending',
+                  name: 'Авторизация успешна (требуется обмен кода)'
+                }
               }).catch(() => {
                 // Игнорируем ошибку если нет слушателей
               });
             });
           } else {
-            console.error('❌ ID Token не найден в URL');
+            console.error('❌ Authorization Code не найден в URL');
           }
         } catch (error) {
           console.error('❌ Ошибка обработки OAuth redirect:', error);
         }
       } else {
-        console.error('❌ Redirect URL не содержит id_token');
+        console.error('❌ Redirect URL не содержит code');
+        console.log('Redirect URL:', redirectedUrl);
       }
     }
   );
