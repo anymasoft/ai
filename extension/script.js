@@ -1,221 +1,47 @@
-// Google OAuth Configuration
-const GOOGLE_CLIENT_ID = 'YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com';
-const REDIRECT_URI = chrome.identity.getRedirectURL('oauth2');
+// Video Reader AI - Authentication Script
+// Вся логика OAuth находится в background.js
 
-// Google Sign In Handler
+console.log('🚀 Auth script загружен');
+console.log('Extension ID:', chrome.runtime.id);
+
+// Кнопка Google Sign In
 const googleSignInBtn = document.getElementById('googleSignInBtn');
 
-// Function to open OAuth popup centered on screen
-function openGoogleAuthPopup() {
-  // Google OAuth URL
-  const authUrl = new URL('https://accounts.google.com/o/oauth2/v2/auth');
-  authUrl.searchParams.set('client_id', GOOGLE_CLIENT_ID);
-  authUrl.searchParams.set('response_type', 'token');
-  authUrl.searchParams.set('redirect_uri', REDIRECT_URI);
-  authUrl.searchParams.set('scope', [
-    'https://www.googleapis.com/auth/userinfo.email',
-    'https://www.googleapis.com/auth/userinfo.profile'
-  ].join(' '));
-
-  // Popup dimensions - compact and centered
-  const popupWidth = 480;
-  const popupHeight = 640;
-
-  // Get screen dimensions
-  const screenWidth = screen.width;
-  const screenHeight = screen.height;
-
-  // Calculate center position
-  const left = Math.round((screenWidth - popupWidth) / 2);
-  const top = Math.round((screenHeight - popupHeight) / 2);
-
-  // Log all parameters for debugging
-  console.log('=== Google OAuth Popup Parameters ===');
-  console.log('Screen dimensions:', { width: screenWidth, height: screenHeight });
-  console.log('Popup dimensions:', { width: popupWidth, height: popupHeight });
-  console.log('Calculated position:', { left, top });
-  console.log('Center calculation:', {
-    leftCalc: `(${screenWidth} - ${popupWidth}) / 2 = ${left}`,
-    topCalc: `(${screenHeight} - ${popupHeight}) / 2 = ${top}`
-  });
-
-  // Popup features - compact, non-resizable window
-  const popupFeatures = [
-    "popup=yes",
-    `width=${popupWidth}`,
-    `height=${popupHeight}`,
-    `left=${left}`,
-    `top=${top}`,
-    "scrollbars=no",
-    "resizable=no",
-    "toolbar=no",
-    "menubar=no",
-    "status=no"
-  ].join(",");
-
-  console.log('Popup features string:', popupFeatures);
-  console.log('Opening popup with URL:', authUrl.toString());
-
-  // Open popup window
-  const popup = window.open(authUrl.toString(), 'VideoReaderAI Login', popupFeatures);
-
-  console.log('Popup window object:', popup);
-  if (popup) {
-    console.log('Popup opened successfully');
-    console.log('Popup window properties:', {
-      innerWidth: popup.innerWidth,
-      innerHeight: popup.innerHeight,
-      screenX: popup.screenX,
-      screenY: popup.screenY,
-      outerWidth: popup.outerWidth,
-      outerHeight: popup.outerHeight
-    });
-  } else {
-    console.error('Failed to open popup - popup is null');
-  }
-
-  // Check if popup was blocked
-  if (!popup || popup.closed || typeof popup.closed === 'undefined') {
-    alert('Popup was blocked. Please allow popups for this site and try again.');
-    return;
-  }
-
-  // Monitor popup for redirect
-  const pollTimer = setInterval(() => {
-    try {
-      if (popup.closed) {
-        clearInterval(pollTimer);
-        console.log('Popup closed by user');
-        return;
-      }
-
-      // Check if popup redirected to our redirect URI
-      if (popup.location.href.indexOf(REDIRECT_URI) === 0) {
-        clearInterval(pollTimer);
-
-        // Extract access token from URL
-        const url = new URL(popup.location.href);
-        const hashParams = new URLSearchParams(url.hash.substring(1));
-        const accessToken = hashParams.get('access_token');
-
-        if (accessToken) {
-          console.log('Access token received:', accessToken);
-
-          // Close popup
-          popup.close();
-
-          // Get user info from Google
-          getUserInfo(accessToken);
-        } else {
-          popup.close();
-          alert('Failed to get access token');
-        }
-      }
-    } catch (error) {
-      // Cross-origin error - popup is still on Google's domain
-      // This is expected, continue polling
-    }
-  }, 500);
-}
-
-// Alternative: Use Chrome Identity API (recommended for Chrome Extensions)
-function openGoogleAuthWithChromeAPI() {
-  const authUrl = new URL('https://accounts.google.com/o/oauth2/v2/auth');
-  authUrl.searchParams.set('client_id', GOOGLE_CLIENT_ID);
-  authUrl.searchParams.set('response_type', 'token');
-  authUrl.searchParams.set('redirect_uri', REDIRECT_URI);
-  authUrl.searchParams.set('scope', [
-    'https://www.googleapis.com/auth/userinfo.email',
-    'https://www.googleapis.com/auth/userinfo.profile'
-  ].join(' '));
-
-  chrome.identity.launchWebAuthFlow(
-    {
-      url: authUrl.toString(),
-      interactive: true
-    },
-    (redirectUrl) => {
-      if (chrome.runtime.lastError) {
-        console.error('OAuth error:', chrome.runtime.lastError);
-        alert('Sign-in failed. Please try again.');
-        return;
-      }
-
-      if (!redirectUrl) {
-        alert('Sign-in was cancelled.');
-        return;
-      }
-
-      // Extract access token from redirect URL
-      const url = new URL(redirectUrl);
-      const hashParams = new URLSearchParams(url.hash.substring(1));
-      const accessToken = hashParams.get('access_token');
-
-      if (accessToken) {
-        console.log('Access token received:', accessToken);
-        getUserInfo(accessToken);
-      } else {
-        alert('Failed to get access token');
-      }
-    }
-  );
-}
-
-// Get user info from Google
-async function getUserInfo(accessToken) {
-  try {
-    const response = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
-      headers: {
-        'Authorization': `Bearer ${accessToken}`
-      }
-    });
-
-    if (!response.ok) {
-      throw new Error('Failed to get user info');
-    }
-
-    const userInfo = await response.json();
-    console.log('User info:', userInfo);
-
-    // Save user data to Chrome storage
-    chrome.storage.sync.set({
-      user_id: userInfo.id,
-      email: userInfo.email,
-      name: userInfo.name,
-      picture: userInfo.picture,
-      authenticated: true,
-      access_token: accessToken,
-      auth_timestamp: Date.now()
-    }, () => {
-      console.log('User data saved');
-      alert(`Welcome, ${userInfo.name}! You are now signed in.`);
-
-      // Redirect to main page or close window
-      // window.location.href = 'main.html';
-    });
-
-  } catch (error) {
-    console.error('Error getting user info:', error);
-    alert('Failed to get user information');
-  }
-}
-
-// Event listener
+// Обработчик клика на кнопку "Continue with Google"
 if (googleSignInBtn) {
   googleSignInBtn.addEventListener('click', (e) => {
     e.preventDefault();
+    console.log('🔘 Клик на кнопку "Continue with Google"');
 
-    // Choose one of the methods:
-
-    // Method 1: Use custom popup window (with detailed logging and centered positioning)
-    // This opens a compact 480x640 popup window centered on screen
-    openGoogleAuthPopup();
-
-    // Method 2: Use Chrome Identity API (alternative method)
-    // This uses Chrome's built-in OAuth flow
-    // openGoogleAuthWithChromeAPI();
+    // Отправляем сообщение в background.js для запуска OAuth
+    chrome.runtime.sendMessage({ type: 'login' }, (response) => {
+      if (chrome.runtime.lastError) {
+        console.error('❌ Ошибка отправки сообщения:', chrome.runtime.lastError.message);
+        alert('Ошибка связи с background service. Попробуйте перезагрузить расширение.');
+      } else {
+        console.log('✅ Сообщение отправлено в background.js:', response);
+      }
+    });
   });
+
+  console.log('✅ Обработчик кнопки Google Sign In установлен');
+} else {
+  console.error('❌ Кнопка googleSignInBtn не найдена!');
 }
 
-console.log('OAuth script loaded');
-console.log('Redirect URI:', REDIRECT_URI);
+// Слушаем сообщения от background.js об успешной авторизации
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  if (message.type === 'authSuccess') {
+    console.log('✅ Авторизация успешна!', message.user);
+
+    // Показываем сообщение пользователю
+    alert(`Добро пожаловать, ${message.user.name || message.user.email}! Вы успешно авторизованы.`);
+
+    // Можно перенаправить на другую страницу или закрыть текущую
+    // window.location.href = 'main.html';
+    // или
+    // window.close();
+  }
+});
+
+console.log('✅ Auth script готов к работе');
