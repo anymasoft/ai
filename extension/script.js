@@ -21,9 +21,23 @@ function openGoogleAuthPopup() {
   const popupWidth = 480;
   const popupHeight = 640;
 
+  // Get screen dimensions
+  const screenWidth = screen.width;
+  const screenHeight = screen.height;
+
   // Calculate center position
-  const left = Math.round((screen.width - popupWidth) / 2);
-  const top = Math.round((screen.height - popupHeight) / 2);
+  const left = Math.round((screenWidth - popupWidth) / 2);
+  const top = Math.round((screenHeight - popupHeight) / 2);
+
+  // Log all parameters for debugging
+  console.log('=== Google OAuth Popup Parameters ===');
+  console.log('Screen dimensions:', { width: screenWidth, height: screenHeight });
+  console.log('Popup dimensions:', { width: popupWidth, height: popupHeight });
+  console.log('Calculated position:', { left, top });
+  console.log('Center calculation:', {
+    leftCalc: `(${screenWidth} - ${popupWidth}) / 2 = ${left}`,
+    topCalc: `(${screenHeight} - ${popupHeight}) / 2 = ${top}`
+  });
 
   // Popup features - compact, non-resizable window
   const popupFeatures = [
@@ -39,8 +53,26 @@ function openGoogleAuthPopup() {
     "status=no"
   ].join(",");
 
+  console.log('Popup features string:', popupFeatures);
+  console.log('Opening popup with URL:', authUrl.toString());
+
   // Open popup window
   const popup = window.open(authUrl.toString(), 'VideoReaderAI Login', popupFeatures);
+
+  console.log('Popup window object:', popup);
+  if (popup) {
+    console.log('Popup opened successfully');
+    console.log('Popup window properties:', {
+      innerWidth: popup.innerWidth,
+      innerHeight: popup.innerHeight,
+      screenX: popup.screenX,
+      screenY: popup.screenY,
+      outerWidth: popup.outerWidth,
+      outerHeight: popup.outerHeight
+    });
+  } else {
+    console.error('Failed to open popup - popup is null');
+  }
 
   // Check if popup was blocked
   if (!popup || popup.closed || typeof popup.closed === 'undefined') {
@@ -175,13 +207,13 @@ if (googleSignInBtn) {
 
     // Choose one of the methods:
 
-    // Method 1: Use Chrome Identity API (Recommended for Chrome Extensions)
-    // This uses Chrome's built-in OAuth flow
-    openGoogleAuthWithChromeAPI();
+    // Method 1: Use custom popup window (with detailed logging and centered positioning)
+    // This opens a compact 480x640 popup window centered on screen
+    openGoogleAuthPopup();
 
-    // Method 2: Use custom popup window (if you need more control)
-    // This opens a centered popup window
-    // openGoogleAuthPopup();
+    // Method 2: Use Chrome Identity API (alternative method)
+    // This uses Chrome's built-in OAuth flow
+    // openGoogleAuthWithChromeAPI();
   });
 }
 
