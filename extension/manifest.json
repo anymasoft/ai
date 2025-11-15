@@ -41,7 +41,7 @@
         "index.html",
         "style.css",
         "script.js",
-        "images/google.png"
+        "images/google.svg"
       ],
       "matches": ["<all_urls>"]
     }
