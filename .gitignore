@@ -6,9 +6,6 @@ node_modules/
 .env.local
 .env.*.local
 
-# Chrome Extension private key (NEVER commit this!)
-extension/extension-key.pem
-
 # Build directories
 dist/
 build/
