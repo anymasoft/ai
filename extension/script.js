@@ -17,19 +17,30 @@ function openGoogleAuthPopup() {
     'https://www.googleapis.com/auth/userinfo.profile'
   ].join(' '));
 
-  // Popup dimensions (same as in the example)
-  const popupWidth = 500;
-  const popupHeight = 600;
+  // Popup dimensions - compact and centered
+  const popupWidth = 480;
+  const popupHeight = 640;
 
   // Calculate center position
   const left = Math.round((screen.width - popupWidth) / 2);
   const top = Math.round((screen.height - popupHeight) / 2);
 
-  // Popup features
-  const popupFeatures = `width=${popupWidth},height=${popupHeight},left=${left},top=${top},toolbar=no,menubar=no,location=no,status=no`;
+  // Popup features - compact, non-resizable window
+  const popupFeatures = [
+    "popup=yes",
+    `width=${popupWidth}`,
+    `height=${popupHeight}`,
+    `left=${left}`,
+    `top=${top}`,
+    "scrollbars=no",
+    "resizable=no",
+    "toolbar=no",
+    "menubar=no",
+    "status=no"
+  ].join(",");
 
   // Open popup window
-  const popup = window.open(authUrl.toString(), 'Google Sign In', popupFeatures);
+  const popup = window.open(authUrl.toString(), 'VideoReaderAI Login', popupFeatures);
 
   // Check if popup was blocked
   if (!popup || popup.closed || typeof popup.closed === 'undefined') {
