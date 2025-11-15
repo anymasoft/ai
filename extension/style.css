@@ -1,143 +1,220 @@
-/* Google Fonts - Poppins */
-@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap');
+/* Минималистичные стили для auth.html */
 
 * {
   margin: 0;
   padding: 0;
   box-sizing: border-box;
-  font-family: 'Poppins', sans-serif;
 }
 
-.container {
-  height: 100vh;
-  width: 100%;
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  background: #1a1a1a;
+  color: #ffffff;
+  min-height: 100vh;
   display: flex;
   align-items: center;
   justify-content: center;
-  background-color: #4070f4;
   padding: 20px;
 }
 
-.auth-card {
-  max-width: 480px;
+.container {
+  max-width: 400px;
   width: 100%;
-  padding: 40px;
-  border-radius: 12px;
-  background: #FFF;
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
-}
-
-/* Header with Logo */
-.auth-header {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 12px;
-  margin-bottom: 30px;
-}
-
-.auth-header .logo {
-  width: 48px;
-  height: 48px;
-  object-fit: contain;
-}
-
-.auth-header h1 {
-  font-size: 28px;
-  font-weight: 600;
-  color: #232836;
-  margin: 0;
-}
-
-/* Description */
-.auth-description {
   text-align: center;
-  margin-bottom: 30px;
+  animation: fadeIn 0.5s ease-in;
 }
 
-.auth-description h2 {
-  font-size: 22px;
-  font-weight: 600;
-  color: #232836;
-  margin-bottom: 12px;
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
-.auth-description p {
+/* Логотип */
+.logo-container {
+  margin-bottom: 24px;
+}
+
+.logo {
+  width: 80px;
+  height: 80px;
+  border-radius: 16px;
+  transition: transform 0.3s ease;
+}
+
+.logo:hover {
+  transform: scale(1.05);
+}
+
+.user-avatar {
+  width: 96px;
+  height: 96px;
+  border-radius: 50%;
+  border: 4px solid #4285f4;
+}
+
+/* Заголовки */
+.title {
+  font-size: 28px;
+  font-weight: 700;
+  margin-bottom: 8px;
+  color: #ffffff;
+}
+
+.subtitle {
+  font-size: 16px;
+  color: #a0a0a0;
+  margin-bottom: 24px;
+}
+
+.email {
+  font-size: 14px;
+  color: #808080;
+  margin-bottom: 32px;
+}
+
+/* Описание */
+.description {
+  margin-bottom: 32px;
+  color: #c0c0c0;
   font-size: 14px;
   line-height: 1.6;
-  color: #5f6368;
-  margin: 0;
 }
 
-/* Google Sign In Button */
-.auth-button {
-  margin-bottom: 20px;
+.description p {
+  margin-bottom: 8px;
 }
 
-.google-btn {
+/* Кнопка Google */
+.google-button {
+  width: 100%;
+  padding: 14px 24px;
+  background: #ffffff;
+  color: #3c4043;
+  border: none;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 12px;
-  width: 100%;
-  height: 50px;
-  padding: 0 20px;
-  border: 1px solid #dadce0;
-  border-radius: 6px;
-  background: #fff;
-  font-size: 16px;
-  font-weight: 500;
-  color: #3c4043;
-  text-decoration: none;
   transition: all 0.2s ease;
-  cursor: pointer;
-  position: relative;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
 }
 
-.google-btn:hover {
-  background-color: #f8f9fa;
-  border-color: #d2d3d4;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+.google-button:hover {
+  background: #f8f9fa;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+  transform: translateY(-1px);
 }
 
-.google-btn:active {
-  background-color: #f1f3f4;
+.google-button:active {
+  transform: translateY(0);
+}
+
+.google-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
 }
 
 .google-icon {
   width: 20px;
   height: 20px;
-  object-fit: contain;
+  flex-shrink: 0;
 }
 
-/* Footer Note */
-.auth-footer {
+/* Кнопка выхода */
+.logout-button {
+  width: 100%;
+  padding: 12px 24px;
+  background: #dc2626;
+  color: #ffffff;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  margin-top: 24px;
+}
+
+.logout-button:hover {
+  background: #b91c1c;
+}
+
+/* Статус сообщения */
+.status {
+  margin-top: 16px;
+  padding: 12px 16px;
+  border-radius: 6px;
+  font-size: 14px;
   text-align: center;
-  padding-top: 10px;
 }
 
-.auth-footer p {
+.status.hidden {
+  display: none;
+}
+
+.status.info {
+  background: #3b82f6;
+  color: #ffffff;
+}
+
+.status.success {
+  background: #10b981;
+  color: #ffffff;
+}
+
+.status.error {
+  background: #ef4444;
+  color: #ffffff;
+}
+
+/* Сообщение об успехе */
+.success-message {
+  margin: 24px 0;
+  padding: 16px;
+  background: #10b98120;
+  border: 1px solid #10b981;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+}
+
+.success-message p {
+  color: #10b981;
+  font-weight: 600;
+}
+
+.checkmark {
+  width: 24px;
+  height: 24px;
+  color: #10b981;
+}
+
+/* Footer */
+.footer {
+  margin-top: 32px;
   font-size: 12px;
+  color: #808080;
   line-height: 1.5;
-  color: #5f6368;
-  margin: 0;
 }
 
-/* Responsive */
-@media screen and (max-width: 500px) {
-  .auth-card {
-    padding: 30px 20px;
-  }
+.footer a {
+  color: #4285f4;
+  text-decoration: none;
+}
 
-  .auth-header h1 {
-    font-size: 24px;
-  }
-
-  .auth-description h2 {
-    font-size: 20px;
-  }
-
-  .auth-description p {
-    font-size: 13px;
-  }
+.footer a:hover {
+  text-decoration: underline;
 }
