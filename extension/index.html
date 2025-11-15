@@ -1,92 +1,44 @@
 <!DOCTYPE html>
-<!-- Coding by CodingLab | www.codinglabweb.com-->
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title> Responsive Login and Signup Form </title>
+  <title>Sign in - Video Reader AI</title>
   <!-- CSS -->
   <link rel="stylesheet" href="style.css">
-  <!-- Boxicons CSS -->
-  <link href='https://unpkg.com/boxicons@2.1.2/css/boxicons.min.css' rel='stylesheet'>
 </head>
 <body>
-  <section class="container forms">
-    <div class="form login">
-      <div class="form-content">
-        <header>Login</header>
-        <form action="#">
-          <div class="field input-field">
-            <input type="email" placeholder="Email" class="input">
-          </div>
-          <div class="field input-field">
-            <input type="password" placeholder="Password" class="password">
-            <i class='bx bx-hide eye-icon'></i>
-          </div>
-          <div class="form-link">
-            <a href="#" class="forgot-pass">Forgot password?</a>
-          </div>
-          <div class="field button-field">
-            <button>Login</button>
-          </div>
-        </form>
-        <div class="form-link">
-          <span>Don't have an account? <a href="#" class="link signup-link">Signup</a></span>
-        </div>
+  <section class="container">
+    <div class="auth-card">
+      <!-- Header with Logo -->
+      <div class="auth-header">
+        <img src="vr_logo_small.png" alt="Video Reader AI" class="logo">
+        <h1>Video Reader AI</h1>
       </div>
-      <div class="line"></div>
-      <div class="media-options">
-        <a href="#" class="field facebook">
-          <i class='bx bxl-facebook facebook-icon'></i>
-          <span>Login with Facebook</span>
+
+      <!-- Description -->
+      <div class="auth-description">
+        <h2>Sign in to Video Reader AI</h2>
+        <p>Translate YouTube subtitles instantly, save SRT/VTT/TXT, and unlock Pro features.<br>
+        Your account syncs automatically across all your devices.</p>
+      </div>
+
+      <!-- Google Sign In Button -->
+      <div class="auth-button">
+        <a href="#" class="google-btn" id="googleSignInBtn">
+          <img src="images/google.svg" alt="Google" class="google-icon">
+          <span>Continue with Google</span>
         </a>
       </div>
-      <div class="media-options">
-        <a href="#" class="field google">
-          <img src="images/google.svg" alt="" class="google-img">
-          <span>Login with Google</span>
-        </a>
-      </div>
-    </div>
-    <!-- Signup Form -->
-    <div class="form signup">
-      <div class="form-content">
-        <header>Signup</header>
-        <form action="#">
-          <div class="field input-field">
-            <input type="email" placeholder="Email" class="input">
-          </div>
-          <div class="field input-field">
-            <input type="password" placeholder="Create password" class="password">
-          </div>
-          <div class="field input-field">
-            <input type="password" placeholder="Confirm password" class="password">
-            <i class='bx bx-hide eye-icon'></i>
-          </div>
-          <div class="field button-field">
-            <button>Signup</button>
-          </div>
-        </form>
-        <div class="form-link">
-          <span>Already have an account? <a href="#" class="link login-link">Login</a></span>
-        </div>
-      </div>
-      <div class="line"></div>
-      <div class="media-options">
-        <a href="#" class="field facebook">
-          <i class='bx bxl-facebook facebook-icon'></i>
-          <span>Login with Facebook</span>
-        </a>
-      </div>
-      <div class="media-options">
-        <a href="#" class="field google">
-          <img src="images/google.svg" alt="Google" class="google-img">
-          <span>Login with Google</span>
-        </a>
+
+      <!-- Footer Note -->
+      <div class="auth-footer">
+        <p>Your Google account is required because Video Reader AI works directly inside YouTube.</p>
       </div>
     </div>
   </section>
+
   <!-- JavaScript -->
   <script src="script.js"></script>
 </body>
