@@ -3,7 +3,7 @@
   "name": "Video Reader AI",
   "version": "6.0.0",
   "description": "Instant YouTube subtitle translation with AI. OAuth authentication with Google.",
-  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA5Fu8OYSfX6NgH8MSaa+TXWRwZpZaYNhKSccIGa6eKAevipGIiphWvZ1AhxZt3SRneRXgFGh0NVlvZCtXXNwEkpo9B54HuVjm7IXpyhSMO3+A4NuBo1UXzD1OPN2+BnM/NXyLuREE5WNFZgALlsbeC6ROZWDpqr0xqIgHmZICeA5ZJRq1py+ugwp4Fk2lHmfI3TtGwxqoNafjBV7SlJGFlD/gnWhN++gaa56qvBzeXHMdBx4+R6xlHQ9JMg1QmlCo0fQfVlQvOjvgVHIs3D54RCblCj/U2zcHIeI2O3aZi9/soXsTdCLVcxg5oU6S7N7STUNZ25fhBw3YuycDpLrrKfQIDAQAB",
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA5Fu8OYSfX6NgH8MSaa+TXWRwZpZaYNhKSccIGa6eKAevipGIiphWvZ1AhxZt3SRneRXgFGh0NVlvZCtXXNwEkpo9B54HuVjm7IXpyhSMO3+A4NuBo1UXzD1OPN2+BnM/NXyLuREE5WNFZgALlsbeC6ROZWDpqr0xqIgHmZICeA5ZJRq1py+ugwp4Fk2lHmfI3TtGwxqoNafjBV7SlJGFlD/gnWhN++gaa56qvBzeXHMdBx4+R6xlHQ9JMg1QmlCo0fQfVlQvOjvgVHIs3D54RCblCj/U2zcHIeI2O3aZi9/soXsTdCLVcxg5oU6S7N7SUNZ25fhBw3YuycDpLrrKfQIDAQAB",
   "permissions": [
     "storage",
     "identity",
