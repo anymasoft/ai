@@ -7,6 +7,50 @@
 
 ---
 
+## [5.0.1] - 2025-11-15
+
+### 🐛 Fixed (Исправлено)
+
+- **Исправлена CSP ошибка с Tailwind CSS CDN**
+  - Удален внешний CDN `https://cdn.tailwindcss.com` из `auth_popup.html`
+  - Chrome блокировал загрузку внешних скриптов из-за Content Security Policy
+  - Файл: `auth_popup.html:7`
+
+### ✨ Added (Добавлено)
+
+- **Локальная сборка Tailwind CSS**
+  - Создан `tailwind.config.js` для конфигурации сборки
+  - Создан `extension/tailwind.css` как исходник (@tailwind directives)
+  - Собран `extension/tailwind_output.css` (52KB, минифицированный)
+  - Используется standalone Tailwind CLI v4.1.17
+  - Файлы: `tailwind.config.js`, `extension/tailwind.css`, `extension/tailwind_output.css`
+
+- **package.json с build скриптом**
+  - Добавлен `npm run build:css` для пересборки Tailwind
+  - Файл: `package.json`
+
+### 🔄 Changed (Изменено)
+
+- **auth_popup.html теперь использует локальный CSS**
+  - Заменено: `<script src="https://cdn.tailwindcss.com"></script>`
+  - На: `<link rel="stylesheet" href="tailwind_output.css">`
+  - Файл: `auth_popup.html:7`
+
+- **manifest.json обновлен**
+  - Добавлен `tailwind_output.css` в `web_accessible_resources`
+  - Версия: 5.0.0 → 5.0.1
+  - Файл: `manifest.json:4, 41`
+
+### ✅ Результат
+
+- ✅ CSP ошибок больше нет
+- ✅ Страница `auth_popup.html` выглядит идентично (тёмная тема сохранена)
+- ✅ Никаких внешних CDN
+- ✅ Все стили работают локально
+- ✅ OAuth flow не изменен
+
+---
+
 ## [5.0.0] - 2025-11-15
 
 ### 🔥 MAJOR RELEASE - Полная переработка OAuth flow

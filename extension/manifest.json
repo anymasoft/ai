@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Video Reader AI",
-  "version": "5.0.0",
+  "version": "5.0.1",
   "description": "Instant YouTube subtitle translation with AI. Translate, download, and sync subtitles in any language.",
   "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA5Fu8OYSfX6NgH8MSaa+TXWRwZpZaYNhKSccIGa6eKAevipGIiphWvZ1AhxZt3SRneRXgFGh0NVlvZCtXXNwEkpo9B54HuVjm7IXpyhSMO3+A4NuBo1UXzD1OPN2+BnM/NXyLuREE5WNFZgALlsbeC6ROZWDpqr0xqIgHmZICeA5ZJRq1py+ugwp4Fk2lHmfI3TtGwxqoNafjBV7SlJGFlD/gnWhN++gaa56qvBzeXHMdBx4+R6xlHQ9JMg1QmlCo0fQfVlQvOjvgVHIs3D54RCblCj/U2zcHIeI2O3aZi9/soXsTdCLVcxg5oU6S7N7SUNZ25fhBw3YuycDpLrrKfQIDAQAB",
   "permissions": [
@@ -38,6 +38,7 @@
         "vr_logo_small.png",
         "assets/logo.png",
         "tailwind.css",
+        "tailwind_output.css",
         "index.html",
         "style.css",
         "script.js",
