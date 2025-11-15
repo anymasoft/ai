@@ -2,37 +2,57 @@
 <html lang="ru">
 <head>
   <meta charset="UTF-8">
-  <meta http-equiv="X-UA-Compatible" content="IE=edge">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Вход - Video Reader AI</title>
-  <!-- CSS -->
-  <link rel="stylesheet" href="login-style.css">
+  <link rel="stylesheet" href="../tailwind.css">
 </head>
 <body>
-  <section class="container forms">
-    <div class="form login">
-      <div class="form-content">
-        <header>Вход</header>
+  <main class="w-full h-screen flex flex-col items-center justify-center px-4">
+    <div class="max-w-sm w-full text-gray-600 space-y-8">
+      <!-- Header -->
+      <div class="text-center">
+        <div class="mt-5 space-y-2">
+          <h3 class="text-gray-800 text-2xl font-bold sm:text-3xl">
+            Вход в аккаунт
+          </h3>
+          <p class="">
+            Войдите для использования Video Reader AI
+          </p>
+        </div>
       </div>
 
-      <div class="media-options">
-        <a href="#" class="field google" id="googleSignInBtn">
-          <img src="images/google.png" alt="Google" class="google-img">
-          <span>Войти через Google</span>
-        </a>
+      <!-- Google Sign In Button -->
+      <div class="space-y-4 text-sm font-medium">
+        <button
+          id="googleSignInBtn"
+          class="w-full flex items-center justify-center gap-x-3 py-2.5 border rounded-lg hover:bg-gray-50 duration-150 active:bg-gray-100"
+        >
+          <img
+            src="images/google.png"
+            alt="Google"
+            class="w-5 h-5"
+          />
+          Войти через Google
+        </button>
+      </div>
+
+      <!-- Footer -->
+      <div class="text-center">
+        <p class="text-xs text-gray-500">
+          Войдя в систему, вы соглашаетесь с нашими Условиями использования
+        </p>
       </div>
     </div>
-  </section>
 
-  <!-- Loading Indicator -->
-  <div id="loadingIndicator" class="loading-overlay hidden">
-    <div class="loading-box">
-      <div class="spinner"></div>
-      <p>Выполняется вход...</p>
+    <!-- Loading Indicator -->
+    <div id="loadingIndicator" class="hidden mt-4">
+      <div class="bg-white rounded-lg p-4 text-center shadow-sm border border-gray-200">
+        <div class="inline-block animate-spin rounded-full h-6 w-6 border-2 border-gray-300 border-t-indigo-600"></div>
+        <p class="mt-2 text-sm text-gray-600">Выполняется вход...</p>
+      </div>
     </div>
-  </div>
+  </main>
 
-  <!-- JavaScript -->
   <script src="login.js"></script>
 </body>
 </html>

@@ -46,7 +46,6 @@
         "auth/upgrade.js",
         "auth/login.html",
         "auth/login.js",
-        "auth/login-style.css",
         "auth/images/google.png"
       ],
       "matches": ["<all_urls>"]
