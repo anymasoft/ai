@@ -1,6 +1,6 @@
 {
   "name": "video-reader-ai",
-  "version": "5.0.1",
+  "version": "6.0.0",
   "description": "Video Reader AI Chrome Extension",
   "scripts": {
     "build:css": "npx tailwindcss -i ./extension/tailwind.css -o ./extension/tailwind_output.css --minify"
