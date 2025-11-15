@@ -1,108 +1,288 @@
-<main
-  class="w-full h-screen flex flex-col items-center justify-center px-4">
-  <div class="max-w-sm w-full text-gray-600 space-y-8">
-    <div class="text-center">
-      <div class="mt-5 space-y-2">
-        <h3 class="text-gray-800 text-2xl font-bold sm:text-3xl">
-          Log in to your account
-        </h3>
-        <p class="">
-          Don't have an account?
-          <a
-            href="javascript:void(0)"
-            class="font-medium text-indigo-600 hover:text-indigo-500"
-            >Sign up</a
-          >
-        </p>
+<!DOCTYPE html>
+<!-- Coding by CodingLab | www.codinglabweb.com-->
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title> Responsive Login and Signup Form </title>
+  <!-- CSS -->
+  <link rel="stylesheet" href="style.css">
+  <!-- Boxicons CSS -->
+  <link href='https://unpkg.com/boxicons@2.1.2/css/boxicons.min.css' rel='stylesheet'>
+</head>
+<body>
+  <section class="container forms">
+    <div class="form login">
+      <div class="form-content">
+        <header>Login</header>
+        <form action="#">
+          <div class="field input-field">
+            <input type="email" placeholder="Email" class="input">
+          </div>
+          <div class="field input-field">
+            <input type="password" placeholder="Password" class="password">
+            <i class='bx bx-hide eye-icon'></i>
+          </div>
+          <div class="form-link">
+            <a href="#" class="forgot-pass">Forgot password?</a>
+          </div>
+          <div class="field button-field">
+            <button>Login</button>
+          </div>
+        </form>
+        <div class="form-link">
+          <span>Don't have an account? <a href="#" class="link signup-link">Signup</a></span>
+        </div>
+      </div>
+      <div class="line"></div>
+      <div class="media-options">
+        <a href="#" class="field facebook">
+          <i class='bx bxl-facebook facebook-icon'></i>
+          <span>Login with Facebook</span>
+        </a>
+      </div>
+      <div class="media-options">
+        <a href="#" class="field google">
+          <img src="images/google.png" alt="" class="google-img">
+          <span>Login with Google</span>
+        </a>
       </div>
     </div>
-    <form @submit.prevent>
-      <div>
-        <label class="font-medium"> Email </label>
-        <input
-          type="email"
-          required
-          class="w-full mt-2 px-3 py-2 text-gray-500 bg-transparent outline-none border focus:border-indigo-600 shadow-sm rounded-lg"
-        />
+    <!-- Signup Form -->
+    <div class="form signup">
+      <div class="form-content">
+        <header>Signup</header>
+        <form action="#">
+          <div class="field input-field">
+            <input type="email" placeholder="Email" class="input">
+          </div>
+          <div class="field input-field">
+            <input type="password" placeholder="Create password" class="password">
+          </div>
+          <div class="field input-field">
+            <input type="password" placeholder="Confirm password" class="password">
+            <i class='bx bx-hide eye-icon'></i>
+          </div>
+          <div class="field button-field">
+            <button>Signup</button>
+          </div>
+        </form>
+        <div class="form-link">
+          <span>Already have an account? <a href="#" class="link login-link">Login</a></span>
+        </div>
       </div>
-      <button
-        class="w-full mt-4 px-4 py-2 text-white font-medium bg-indigo-600 hover:bg-indigo-500 active:bg-indigo-600 rounded-lg duration-150"
-      >
-        Sign in
-      </button>
-    </form>
-    <div class="relative">
-      <span class="block w-full h-px bg-gray-300"></span>
-      <p
-        class="inline-block w-fit text-sm bg-white px-2 absolute -top-2 inset-x-0 mx-auto"
-      >
-        Or continue with
-      </p>
+      <div class="line"></div>
+      <div class="media-options">
+        <a href="#" class="field facebook">
+          <i class='bx bxl-facebook facebook-icon'></i>
+          <span>Login with Facebook</span>
+        </a>
+      </div>
+      <div class="media-options">
+        <a href="#" class="field google">
+          <img src="images/google.png" alt="Google" class="google-img">
+          <span>Login with Google</span>
+        </a>
+      </div>
     </div>
-    <div class="space-y-4 text-sm font-medium">
-      <!-- Google Button -->
-      <button
-        class="w-full flex items-center justify-center gap-x-3 py-2.5 border rounded-lg hover:bg-gray-50 duration-150 active:bg-gray-100"
-      >
-        <!-- SVG for Google -->
-        <img
-          src="https://raw.githubusercontent.com/sidiDev/remote-assets/7cd06bf1d8859c578c2efbfda2c68bd6bedc66d8/google-icon.svg"
-          alt="Google"
-          class="w-5 h-5"
-        />
-        <!-- Comment: Google Icon SVG here -->
-        Continue with Google
-      </button>
-      <!-- Twitter Button -->
-      <button
-        class="w-full flex items-center justify-center gap-x-3 py-2.5 border rounded-lg hover:bg-gray-50 duration-150 active:bg-gray-100"
-      >
-        <!-- SVG for Twitter -->
-        <img
-          src="https://raw.githubusercontent.com/sidiDev/remote-assets/f7119b9bdd8c58864383802fb92c7fc3a25c0646/twitter-icon.svg"
-          alt="Twitter"
-          class="w-5 h-5"
-        />
-        <!-- Comment: Twitter Icon SVG here -->
-        Continue with Twitter
-      </button>
-      <!-- Github Button -->
-      <button
-        class="w-full flex items-center justify-center gap-x-3 py-2.5 border rounded-lg hover:bg-gray-50 duration-150 active:bg-gray-100"
-      >
-        <!-- SVG for Github -->
-        <img
-          src="https://raw.githubusercontent.com/sidiDev/remote-assets/0d3b55a09c6bb8155ca19f43283dc6d88ff88bf5/github-icon.svg"
-          alt="Github"
-          class="w-5 h-5"
-        />
-        <!-- Comment: Github Icon SVG here -->
-        Continue with Github
-      </button>
-    </div>
-    <div class="text-center">
-      <a
-        href="javascript:void(0)"
-        class="text-indigo-600 hover:text-indigo-500"
-        >Forgot password?</a
-      >
-    </div>
-  </div>
-</main>
+  </section>
+  <!-- JavaScript -->
+  <script src="script.js"></script>
+</body>
+</html>
 
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
-
-@layer components {
-  /* .btn-primary {
-      @apply py-1.5 px-3 text-center bg-blue-700 rounded-md text-white;
-  } */
+/* Google Fonts - Poppins */
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap');
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  font-family: 'Poppins', sans-serif;
 }
-
-tailwind.config = {
-  darkMode: 'class',
-  theme: {
-    extend: {}
+.container {
+  height: 100vh;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #4070f4;
+  column-gap: 30px;
+}
+.form {
+  position: absolute;
+  max-width: 430px;
+  width: 100%;
+  padding: 30px;
+  border-radius: 6px;
+  background: #FFF;
+}
+.form.signup {
+  opacity: 0;
+  pointer-events: none;
+}
+.forms.show-signup .form.signup {
+  opacity: 1;
+  pointer-events: auto;
+}
+.forms.show-signup .form.login {
+  opacity: 0;
+  pointer-events: none;
+}
+header {
+  font-size: 28px;
+  font-weight: 600;
+  color: #232836;
+  text-align: center;
+}
+form {
+  margin-top: 30px;
+}
+.form .field {
+  position: relative;
+  height: 50px;
+  width: 100%;
+  margin-top: 20px;
+  border-radius: 6px;
+}
+.field input,
+.field button {
+  height: 100%;
+  width: 100%;
+  border: none;
+  font-size: 16px;
+  font-weight: 400;
+  border-radius: 6px;
+}
+.field input {
+  outline: none;
+  padding: 0 15px;
+  border: 1px solid#CACACA;
+}
+.field input:focus {
+  border-bottom-width: 2px;
+}
+.eye-icon {
+  position: absolute;
+  top: 50%;
+  right: 10px;
+  transform: translateY(-50%);
+  font-size: 18px;
+  color: #8b8b8b;
+  cursor: pointer;
+  padding: 5px;
+}
+.field button {
+  color: #fff;
+  background-color: #0171d3;
+  transition: all 0.3s ease;
+  cursor: pointer;
+}
+.field button:hover {
+  background-color: #016dcb;
+}
+.form-link {
+  text-align: center;
+  margin-top: 10px;
+}
+.form-link span,
+.form-link a {
+  font-size: 14px;
+  font-weight: 400;
+  color: #232836;
+}
+.form a {
+  color: #0171d3;
+  text-decoration: none;
+}
+.form-content a:hover {
+  text-decoration: underline;
+}
+.line {
+  position: relative;
+  height: 1px;
+  width: 100%;
+  margin: 36px 0;
+  background-color: #d4d4d4;
+}
+.line::before {
+  content: 'Or';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background-color: #FFF;
+  color: #8b8b8b;
+  padding: 0 15px;
+}
+.media-options a {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+a.facebook {
+  color: #fff;
+  background-color: #4267b2;
+}
+a.facebook .facebook-icon {
+  height: 28px;
+  width: 28px;
+  color: #0171d3;
+  font-size: 20px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #fff;
+}
+.facebook-icon,
+img.google-img {
+  position: absolute;
+  top: 50%;
+  left: 15px;
+  transform: translateY(-50%);
+}
+img.google-img {
+  height: 20px;
+  width: 20px;
+  object-fit: cover;
+}
+a.google {
+  border: 1px solid #CACACA;
+}
+a.google span {
+  font-weight: 500;
+  opacity: 0.6;
+  color: #232836;
+}
+@media screen and (max-width: 400px) {
+  .form {
+    padding: 20px 10px;
   }
 }
+
+const forms = document.querySelector(".forms"),
+  pwShowHide = document.querySelectorAll(".eye-icon"),
+  links = document.querySelectorAll(".link");
+// Add click event listener to each eye icon for toggling password visibility
+pwShowHide.forEach(eyeIcon => {
+  eyeIcon.addEventListener("click", () => {
+    let pwFields = eyeIcon.parentElement.parentElement.querySelectorAll(".password");
+    pwFields.forEach(password => {
+      if (password.type === "password") { // If password is hidden
+        password.type = "text"; // Show password
+        eyeIcon.classList.replace("bx-hide", "bx-show"); // Change icon to show state
+        return;
+      }
+      password.type = "password"; // Hide password
+      eyeIcon.classList.replace("bx-show", "bx-hide"); // Change icon to hide state
+    });
+  });
+});
+// Add click event listener to each link to toggle between forms
+links.forEach(link => {
+  link.addEventListener("click", e => {
+    e.preventDefault(); // Prevent default link behavior
+    forms.classList.toggle("show-signup");
+  });
+});
