@@ -1,44 +1,24 @@
 {
   "manifest_version": 3,
-  "name": "Video Reader AI",
-  "version": "6.0.0",
-  "description": "Instant YouTube subtitle translation with AI. OAuth authentication with Google.",
-  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA5Fu8OYSfX6NgH8MSaa+TXWRwZpZaYNhKSccIGa6eKAevipGIiphWvZ1AhxZt3SRneRXgFGh0NVlvZCtXXNwEkpo9B54HuVjm7IXpyhSMO3+A4NuBo1UXzD1OPN2+BnM/NXyLuREE5WNFZgALlsbeC6ROZWDpqr0xqIgHmZICeA5ZJRq1py+ugwp4Fk2lHmfI3TtGwxqoNafjBV7SlJGFlD/gnWhN++gaa56qvBzeXHMdBx4+R6xlHQ9JMg1QmlCo0fQfVlQvOjvgVHIs3D54RCblCj/U2zcHIeI2O3aZi9/soXsTdCLVcxg5oU6S7N7SUNZ25fhBw3YuycDpLrrKfQIDAQAB",
-  "permissions": [
-    "storage",
-    "identity",
-    "tabs"
-  ],
+  "name": "YouTube Transcript Viewer",
+  "version": "3.4.0",
+  "description": "Premium YouTube transcript translation with multi-language support",
+  "permissions": ["storage"],
   "host_permissions": [
     "https://www.youtube.com/*"
   ],
-  "background": {
-    "service_worker": "background.js"
-  },
-  "action": {
-    "default_title": "Video Reader AI - Login",
-    "default_icon": {
-      "16": "vr_logo_small.png",
-      "48": "vr_logo_small.png",
-      "128": "vr_logo_small.png"
-    }
-  },
-  "web_accessible_resources": [
+  "content_scripts": [
     {
-      "resources": [
-        "auth.html",
-        "style.css",
-        "vr_logo_small.png"
-      ],
-      "matches": ["<all_urls>"]
+      "matches": ["https://www.youtube.com/*"],
+      "js": ["flags.js", "content.js"],
+      "css": ["styles.css"],
+      "run_at": "document_idle"
     }
   ],
-  "oauth2": {
-    "client_id": "CLIENT_ID_HERE.apps.googleusercontent.com",
-    "scopes": [
-      "openid",
-      "email",
-      "profile"
-    ]
-  }
+  "web_accessible_resources": [
+    {
+      "resources": ["vr_logo_small.png", "assets/logo.png"],
+      "matches": ["https://www.youtube.com/*"]
+    }
+  ]
 }

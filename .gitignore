@@ -1,4 +1,28 @@
+# Node.js dependencies
 node_modules/
-tailwindcss-linux-x64
 .npm/
+
+# Tailwind CSS standalone CLI
+tailwindcss-linux-x64
+
+# Python virtual environments
+venv/
+env/
+__pycache__/
+*.pyc
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Build artifacts
+dist/
+build/
 *.log
