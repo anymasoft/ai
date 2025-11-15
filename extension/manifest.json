@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Video Reader AI",
-  "version": "3.5.6",
+  "version": "3.5.7",
   "description": "Instant YouTube subtitle translation with AI. Translate, download, and sync subtitles in any language.",
   "permissions": [
     "storage",
