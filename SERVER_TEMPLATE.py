@@ -41,15 +41,17 @@ def set_api_cookie(response):
             'email': session.get('email'),
             'plan': session.get('plan', 'Free')
         })
-        # SameSite=None для cross-site, но без Secure для localhost
-        # Chrome на localhost может разрешить это в dev режиме
+        # Важно: path=/ чтобы cookie отправлялся со всеми запросами
+        # SameSite=None НЕ работает с Secure=False в современных браузерах для cross-site
+        # Поэтому используем Lax, но это не поможет для cross-origin
         response.set_cookie(
             'api_session',
             value=api_data,
-            httponly=True,
+            httponly=False,  # Разрешаем чтение из JavaScript (для расширения)
             samesite='None',
-            secure=False,  # для localhost
-            path='/api'
+            secure=False,
+            path='/',  # Доступен для всех путей
+            domain='localhost'  # Явно указываем домен
         )
     return response
 
@@ -489,6 +491,11 @@ def api_subscription():
 @app.route('/api/plan')
 def api_plan():
     """API для получения информации о тарифном плане (для расширения)"""
+    # Логируем все входящие cookie для отладки
+    print(f"[DEBUG /api/plan] Origin: {request.headers.get('Origin')}")
+    print(f"[DEBUG /api/plan] All cookies: {request.cookies}")
+    print(f"[DEBUG /api/plan] Session: {dict(session)}")
+
     email = None
     plan = "Free"
 
@@ -497,6 +504,7 @@ def api_plan():
         email = session["email"]
         plan = session.get("plan", "Free")
         session["plan"] = plan
+        print(f"[DEBUG /api/plan] Получено из session: {email}, {plan}")
     else:
         # Пробуем получить из api_session cookie (для cross-site запросов)
         api_session_cookie = request.cookies.get('api_session')
@@ -505,13 +513,18 @@ def api_plan():
                 api_data = json.loads(api_session_cookie)
                 email = api_data.get('email')
                 plan = api_data.get('plan', 'Free')
-            except:
-                pass
+                print(f"[DEBUG /api/plan] Получено из api_session cookie: {email}, {plan}")
+            except Exception as e:
+                print(f"[DEBUG /api/plan] Ошибка парсинга api_session: {e}")
+        else:
+            print(f"[DEBUG /api/plan] api_session cookie отсутствует")
 
     # Если нет email — пользователь не авторизован
     if not email:
+        print(f"[DEBUG /api/plan] Возвращаем 401 - нет email")
         return jsonify({"status": "unauthorized"}), 401
 
+    print(f"[DEBUG /api/plan] Возвращаем: {email}, {plan}")
     return jsonify({
         "status": "ok",
         "email": email,
