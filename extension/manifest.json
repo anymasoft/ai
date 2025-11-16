@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "YouTube Transcript Viewer",
-  "version": "3.4.0",
+  "version": "3.4.1",
   "description": "Premium YouTube transcript translation with multi-language support",
   "icons": {
     "16": "logo.png",
