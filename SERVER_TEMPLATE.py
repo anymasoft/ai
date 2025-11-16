@@ -374,7 +374,7 @@ def pricing():
     email = session.get('email')
 
     if not email:
-        return "<p>Вы не авторизованы</p>"
+        return redirect("/auth")
 
     return send_from_directory('extension', 'pricing.html')
 
