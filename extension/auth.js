@@ -7,7 +7,7 @@ document.addEventListener('DOMContentLoaded', function() {
   if (googleSignInBtn) {
     googleSignInBtn.addEventListener('click', function() {
       // Temporary CLIENT_ID (заглушка)
-      const CLIENT_ID = 'TEMP_CLIENT_ID';
+      const CLIENT_ID = '431567664470-mq0oim46t6tstlfjllbesuar346pf2qu.apps.googleusercontent.com';
       const REDIRECT_URI = 'http://localhost:5000/auth/callback';
       const SCOPE = 'openid email profile';
 
