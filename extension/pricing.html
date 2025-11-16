@@ -251,7 +251,10 @@
 
 <script>
   // Загрузка информации о пользователе
-  fetch('/api/user')
+  fetch('/api/user', {
+    credentials: 'include',
+    cache: 'no-cache'
+  })
     .then(r => r.json())
     .then(data => {
       if (data.email) {
@@ -266,7 +269,10 @@
     });
 
   // Загрузка информации о подписке и обновление кнопок
-  fetch('/api/subscription')
+  fetch('/api/subscription', {
+    credentials: 'include',
+    cache: 'no-cache'
+  })
     .then(res => {
       if (res.status === 401) {
         window.location = '/auth';
