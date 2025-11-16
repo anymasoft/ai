@@ -3,118 +3,280 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Video Reader AI - Тарифы</title>
+  <title>Video Reader AI - Pricing</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {}
+      }
+    }
+  </script>
   <link rel="stylesheet" href="/pricing.css">
 </head>
 <body>
-  <div class="container">
-    <!-- Шапка с логотипом -->
-    <div class="header">
-      <div class="logo-container">
-        <img src="/logo.png" alt="Video Reader AI" class="logo">
+
+<div class="flex min-h-screen bg-gray-100">
+  <!-- Sidebar -->
+  <aside class="w-64 bg-white shadow-md">
+    <div class="p-6 font-bold text-purple-700 text-2xl">Video Reader AI</div>
+    <nav class="mt-8">
+      <a href="/pricing" class="block py-3 px-6 text-gray-700 bg-purple-100 font-semibold">Pricing</a>
+      <a href="#" class="block py-3 px-6 text-gray-700 hover:bg-purple-100">Dashboard</a>
+      <a href="#" class="block py-3 px-6 text-gray-700 hover:bg-purple-100">Settings</a>
+    </nav>
+  </aside>
+
+  <!-- Main Content -->
+  <div class="flex-1 flex flex-col">
+    <!-- Top Navbar -->
+    <header class="bg-white shadow-md p-4 flex justify-between items-center">
+      <h1 class="text-xl font-bold text-purple-700">Pricing Plans</h1>
+      <div class="flex items-center gap-4">
+        <div class="text-sm text-gray-600">
+          <span id="userEmail" class="font-semibold text-purple-700">Loading...</span>
+        </div>
+        <a href="/logout" class="text-red-500 hover:text-red-700 font-semibold">Выйти</a>
       </div>
-      <h1 class="title">Video Reader AI</h1>
-    </div>
+    </header>
 
-    <!-- Информация о пользователе -->
-    <div class="user-info">
-      <p class="user-greeting">Вы вошли как:</p>
-      <p class="user-email" id="userEmail">Загрузка...</p>
-      <a href="/logout" class="logout-link">Выйти</a>
-    </div>
+    <!-- Content -->
+    <main class="p-6 space-y-6">
 
-    <!-- Заголовок страницы -->
-    <div class="page-header">
-      <h2 class="page-title">Выберите тариф</h2>
-      <p class="page-subtitle">Начните переводить субтитры YouTube с помощью AI</p>
-    </div>
+      <!-- Pricing Section -->
+      <section class="py-6 leading-7 text-gray-900 bg-white sm:py-12 md:py-16 rounded-lg shadow-md">
+        <div class="box-border px-4 mx-auto border-solid sm:px-6 md:px-6 lg:px-0 max-w-7xl">
 
-    <!-- Тарифные планы -->
-    <div class="pricing-grid">
-      <!-- Free Plan -->
-      <div class="pricing-card">
-        <div class="plan-header">
-          <h3 class="plan-name">Free</h3>
-          <div class="plan-price">
-            <span class="price">$0</span>
-            <span class="period">/месяц</span>
+          <div class="flex flex-col items-center leading-7 text-center text-gray-900 border-0 border-gray-200">
+            <h2 id="pricing"
+                class="box-border m-0 text-3xl font-semibold leading-tight tracking-tight text-black border-solid sm:text-4xl md:text-5xl">
+              Simple, Transparent Pricing
+            </h2>
+            <p class="box-border mt-2 text-xl text-gray-900 border-solid sm:text-2xl">
+              Выберите план, который подходит именно вам
+            </p>
+          </div>
+
+
+          <div id="pricing"
+              class="grid grid-cols-1 gap-4 mt-4 leading-7 text-gray-900 border-0 border-gray-200 sm:mt-6 sm:gap-6 md:mt-8 md:gap-0 lg:grid-cols-3">
+            <!-- Price 1 -->
+            <div
+                class="relative z-10 flex flex-col items-center max-w-md p-4 mx-auto my-0 border border-solid rounded-lg lg:-mr-3 sm:my-0 sm:p-6 md:my-8 md:p-8">
+              <h3
+                  class="m-0 text-2xl font-semibold leading-tight tracking-tight text-black border-0 border-gray-200 sm:text-3xl md:text-4xl">
+                Starter
+              </h3>
+              <div class="flex items-end mt-6 leading-7 text-gray-900 border-0 border-gray-200">
+                <p class="box-border m-0 text-6xl font-semibold leading-none border-solid">
+                  $1
+                </p>
+                <p class="box-border m-0 border-solid" style="border-image: initial;">
+                  / month
+                </p>
+              </div>
+              <ul class="flex-1 p-0 mt-4 ml-5 leading-7 text-gray-900 border-0 border-gray-200">
+                <li class="inline-flex items-center block w-full mb-2 ml-5 font-semibold text-left border-solid">
+                  <svg class="w-5 h-5 mr-2 font-semibold leading-7 text-blue-600 sm:h-5 sm:w-5 md:h-6 md:w-6"
+                      fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7">
+                    </path>
+                  </svg>
+                  10 переводов в день
+                </li>
+
+                <li class="inline-flex items-center block w-full mb-2 ml-5 font-semibold text-left border-solid">
+                  <svg class="w-5 h-5 mr-2 font-semibold leading-7 text-blue-600 sm:h-5 sm:w-5 md:h-6 md:w-6"
+                      fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7">
+                    </path>
+                  </svg>
+                  Основные языки
+                </li>
+
+                <li class="inline-flex items-center block w-full mb-2 ml-5 font-semibold text-left border-solid">
+                  <svg class="w-5 h-5 mr-2 font-semibold leading-7 text-blue-600 sm:h-5 sm:w-5 md:h-6 md:w-6"
+                      fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7">
+                    </path>
+                  </svg>
+                  Экспорт в SRT, VTT
+                </li>
+
+              </ul>
+              <a href="#"
+                  class="inline-flex justify-center w-full px-4 py-3 mt-8 font-sans text-sm leading-none text-center text-blue-600 no-underline bg-transparent border border-blue-600 rounded-md cursor-pointer hover:bg-blue-700 hover:border-blue-700 hover:text-white focus-within:bg-blue-700 focus-within:border-blue-700 focus-within:text-white sm:text-base md:text-lg">
+                Start Now
+              </a>
+            </div>
+            <!-- Price 2 -->
+            <div
+                class="relative z-20 flex flex-col items-center max-w-md p-4 mx-auto my-0 bg-white border-4 border-blue-600 border-solid rounded-lg sm:p-6 md:px-8 md:py-16">
+              <h3
+                  class="m-0 text-2xl font-semibold leading-tight tracking-tight text-black border-0 border-gray-200 sm:text-3xl md:text-4xl">
+                Basic
+              </h3>
+              <div class="flex items-end mt-6 leading-7 text-gray-900 border-0 border-gray-200">
+                <p class="box-border m-0 text-6xl font-semibold leading-none border-solid">
+                  $29
+                </p>
+                <p class="box-border m-0 border-solid" style="border-image: initial;">
+                  / month
+                </p>
+              </div>
+              <ul class="flex-1 p-0 mt-4 ml-5 leading-7 text-gray-900 border-0 border-gray-200">
+                <li class="inline-flex items-center block w-full mb-2 ml-5 font-semibold text-left border-solid">
+                  <svg class="w-5 h-5 mr-2 font-semibold leading-7 text-blue-600 sm:h-5 sm:w-5 md:h-6 md:w-6"
+                      fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7">
+                    </path>
+                  </svg>
+                  Безлимитные переводы
+                </li>
+
+                <li class="inline-flex items-center block w-full mb-2 ml-5 font-semibold text-left border-solid">
+                  <svg class="w-5 h-5 mr-2 font-semibold leading-7 text-blue-600 sm:h-5 sm:w-5 md:h-6 md:w-6"
+                      fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7">
+                    </path>
+                  </svg>
+                  Все языки
+                </li>
+
+                <li class="inline-flex items-center block w-full mb-2 ml-5 font-semibold text-left border-solid">
+                  <svg class="w-5 h-5 mr-2 font-semibold leading-7 text-blue-600 sm:h-5 sm:w-5 md:h-6 md:w-6"
+                      fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7">
+                    </path>
+                  </svg>
+                  Экспорт в любые форматы
+                </li>
+
+                <li class="inline-flex items-center block w-full mb-2 ml-5 font-semibold text-left border-solid">
+                  <svg class="w-5 h-5 mr-2 font-semibold leading-7 text-blue-600 sm:h-5 sm:w-5 md:h-6 md:w-6"
+                      fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7">
+                    </path>
+                  </svg>
+                  Приоритетная поддержка
+                </li>
+              </ul>
+
+              <a href="#"
+                  class="inline-flex justify-center w-full px-4 py-3 mt-8 font-sans text-sm leading-none text-center text-white no-underline bg-blue-600 border rounded-md cursor-pointer hover:bg-blue-700 hover:border-blue-700 hover:text-white focus-within:bg-blue-700 focus-within:border-blue-700 focus-within:text-white sm:text-base md:text-lg">
+                Start Now
+              </a>
+            </div>
+            <!-- Price 3 -->
+            <div
+                class="relative z-10 flex flex-col items-center max-w-md p-4 mx-auto my-0 border border-solid rounded-lg lg:-ml-3 sm:my-0 sm:p-6 md:my-8 md:p-8">
+              <h3
+                  class="m-0 text-2xl font-semibold leading-tight tracking-tight text-black border-0 border-gray-200 sm:text-3xl md:text-4xl">
+                Plus
+              </h3>
+              <div class="flex items-end mt-6 leading-7 text-gray-900 border-0 border-gray-200">
+                <p class="box-border m-0 text-6xl font-semibold leading-none border-solid">
+                  $49
+                </p>
+                <p class="box-border m-0 border-solid" style="border-image: initial;">
+                  / month
+                </p>
+              </div>
+
+              <ul class="flex-1 p-0 mt-4 leading-7 text-gray-900 border-0 border-gray-200">
+                <li class="inline-flex items-center block w-full mb-2 ml-5 font-semibold text-left border-solid">
+                  <svg class="w-5 h-5 mr-2 font-semibold leading-7 text-blue-600 sm:h-5 sm:w-5 md:h-6 md:w-6"
+                      fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7">
+                    </path>
+                  </svg>
+                  Всё из Basic
+                </li>
+
+                <li class="inline-flex items-center block w-full mb-2 ml-5 font-semibold text-left border-solid">
+                  <svg class="w-5 h-5 mr-2 font-semibold leading-7 text-blue-600 sm:h-5 sm:w-5 md:h-6 md:w-6"
+                      fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7">
+                    </path>
+                  </svg>
+                  API доступ
+                </li>
+
+                <li class="inline-flex items-center block w-full mb-2 ml-5 font-semibold text-left border-solid">
+                  <svg class="w-5 h-5 mr-2 font-semibold leading-7 text-blue-600 sm:h-5 sm:w-5 md:h-6 md:w-6"
+                      fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7">
+                    </path>
+                  </svg>
+                  Командная работа
+                </li>
+
+
+                <li class="inline-flex items-center block w-full mb-2 ml-5 font-semibold text-left border-solid">
+                  <svg class="w-5 h-5 mr-2 font-semibold leading-7 text-blue-600 sm:h-5 sm:w-5 md:h-6 md:w-6"
+                      fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7">
+                    </path>
+                  </svg>
+                  Персональный менеджер
+                </li>
+
+
+                <li class="inline-flex items-center block w-full mb-2 ml-5 font-semibold text-left border-solid">
+                  <svg class="w-5 h-5 mr-2 font-semibold leading-7 text-blue-600 sm:h-5 sm:w-5 md:h-6 md:w-6"
+                      fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7">
+                    </path>
+                  </svg>
+                  Google Analytics
+                </li>
+
+                <li class="inline-flex items-center block w-full mb-2 ml-5 font-semibold text-left border-solid">
+                  <svg class="w-5 h-5 mr-2 font-semibold leading-7 text-blue-600 sm:h-5 sm:w-5 md:h-6 md:w-6"
+                      fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7">
+                    </path>
+                  </svg>
+                  Email Integration
+                </li>
+
+              </ul>
+              <a href="#"
+                  class="inline-flex justify-center w-full px-4 py-3 mt-8 font-sans text-sm leading-none text-center text-blue-600 no-underline bg-transparent border border-blue-600 rounded-md cursor-pointer hover:bg-blue-700 hover:border-blue-700 hover:text-white focus-within:bg-blue-700 focus-within:border-blue-700 focus-within:text-white sm:text-base md:text-lg">
+                Start Now
+              </a>
+
+            </div>
           </div>
         </div>
-        <div class="plan-features">
-          <ul>
-            <li>✓ 10 переводов в день</li>
-            <li>✓ Основные языки</li>
-            <li>✓ Экспорт в SRT, VTT</li>
-            <li>✗ Приоритетная поддержка</li>
-          </ul>
-        </div>
-        <button class="plan-button plan-button-free">Текущий план</button>
-      </div>
+      </section>
 
-      <!-- Pro Plan -->
-      <div class="pricing-card pricing-card-featured">
-        <div class="featured-badge">Популярный</div>
-        <div class="plan-header">
-          <h3 class="plan-name">Pro</h3>
-          <div class="plan-price">
-            <span class="price">$9</span>
-            <span class="period">/месяц</span>
-          </div>
-        </div>
-        <div class="plan-features">
-          <ul>
-            <li>✓ Безлимитные переводы</li>
-            <li>✓ Все языки</li>
-            <li>✓ Экспорт в любые форматы</li>
-            <li>✓ Приоритетная поддержка</li>
-          </ul>
-        </div>
-        <button class="plan-button plan-button-pro">Перейти на Pro</button>
-      </div>
+      <!-- Footer -->
+      <footer class="bg-white p-4 text-center text-sm text-gray-400 border-t rounded-lg shadow-md">
+        © 2025 Video Reader AI. All rights reserved.
+      </footer>
 
-      <!-- Enterprise Plan -->
-      <div class="pricing-card">
-        <div class="plan-header">
-          <h3 class="plan-name">Enterprise</h3>
-          <div class="plan-price">
-            <span class="price">$29</span>
-            <span class="period">/месяц</span>
-          </div>
-        </div>
-        <div class="plan-features">
-          <ul>
-            <li>✓ Всё из Pro</li>
-            <li>✓ API доступ</li>
-            <li>✓ Командная работа</li>
-            <li>✓ Персональный менеджер</li>
-          </ul>
-        </div>
-        <button class="plan-button plan-button-enterprise">Связаться с нами</button>
-      </div>
-    </div>
-
-    <!-- Footer -->
-    <div class="footer">
-      <p>Это тестовая страница тарифов.</p>
-      <p>Все функции находятся в разработке.</p>
-    </div>
+    </main>
   </div>
+</div>
 
-  <script>
-    // Загрузка информации о пользователе
-    fetch('/api/user')
-      .then(r => r.json())
-      .then(data => {
-        if (data.email) {
-          document.getElementById('userEmail').innerText = data.email;
-        } else {
-          window.location = '/auth';
-        }
-      })
-      .catch(err => {
-        console.error('Ошибка загрузки пользователя:', err);
+<script>
+  // Загрузка информации о пользователе
+  fetch('/api/user')
+    .then(r => r.json())
+    .then(data => {
+      if (data.email) {
+        document.getElementById('userEmail').innerText = data.email;
+      } else {
         window.location = '/auth';
-      });
-  </script>
+      }
+    })
+    .catch(err => {
+      console.error('Ошибка загрузки пользователя:', err);
+      window.location = '/auth';
+    });
+</script>
+
 </body>
 </html>
