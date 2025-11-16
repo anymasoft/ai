@@ -3,7 +3,7 @@ YouTube Subtitle Translation Server - Line-by-Line Architecture
 Сервер для построчного перевода субтитров YouTube с использованием GPT-4o-mini
 """
 
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 import sqlite3
 import json
@@ -257,6 +257,21 @@ def clear_cache():
         'videoId'     : video_id,
         'deletedLines': deleted
     })
+
+@app.route('/auth')
+def auth_page():
+    """Страница авторизации"""
+    return send_from_directory('extension', 'auth.html')
+
+@app.route('/auth.css')
+def auth_css():
+    """CSS для страницы авторизации"""
+    return send_from_directory('extension', 'auth.css')
+
+@app.route('/logo.png')
+def auth_logo():
+    """Логотип для страницы авторизации"""
+    return send_from_directory('extension/assets', 'logo.png')
 
 if __name__ == '__main__':
     # Инициализируем БД при запуске
