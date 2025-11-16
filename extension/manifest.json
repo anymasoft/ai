@@ -3,6 +3,11 @@
   "name": "YouTube Transcript Viewer",
   "version": "3.4.0",
   "description": "Premium YouTube transcript translation with multi-language support",
+  "icons": {
+    "16": "logo.png",
+    "48": "logo.png",
+    "128": "logo.png"
+  },
   "permissions": ["storage"],
   "host_permissions": [
     "https://www.youtube.com/*"
