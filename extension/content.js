@@ -284,22 +284,22 @@ async function fetchPlan() {
     // Обрабатываем ответ
     if (response.status === 401) {
       // 401 - неавторизован, считаем Free/Guest
-      console.log('Current plan: Free null');
+      console.log('[VideoReader] Current plan: Free null');
     } else if (response.ok) {
       const data = await response.json();
 
       if (data.status === 'unauthorized') {
         // Явный статус unauthorized в ответе
-        console.log('Current plan: Free null');
+        console.log('[VideoReader] Current plan: Free null');
       } else if (data.status === 'ok' && data.plan && data.email) {
         // Успешный ответ с данными пользователя
         plan = data.plan;
         email = data.email;
-        console.log(`Current plan: ${plan} ${email}`);
+        console.log(`[VideoReader] Current plan: ${plan} ${email}`);
       }
     } else {
       // Другие ошибки - считаем Free
-      console.warn(`Plan API returned status ${response.status}, defaulting to Free`);
+      console.warn(`[VideoReader] Plan API returned status ${response.status}, defaulting to Free`);
     }
 
     // Сохраняем в chrome.storage.local
@@ -307,11 +307,11 @@ async function fetchPlan() {
 
   } catch (error) {
     // Ошибка сети или сервер недоступен - считаем Free
-    console.warn('Failed to fetch plan from server, defaulting to Free:', error.message);
+    console.warn('[VideoReader] Failed to fetch plan from server, defaulting to Free:', error.message);
 
     // Сохраняем Free plan
     await chrome.storage.local.set({ plan: 'Free', email: null });
-    console.log('Current plan: Free null');
+    console.log('[VideoReader] Current plan: Free null');
   }
 }
 
