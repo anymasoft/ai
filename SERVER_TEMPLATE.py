@@ -17,7 +17,16 @@ from dotenv import load_dotenv
 load_dotenv()  # Загрузка переменных окружения из .env
 
 app = Flask(__name__)
-CORS(app, supports_credentials=True, origins=["http://localhost:5000"])
+# CORS: разрешаем все origins для расширения, credentials только для localhost
+CORS(app,
+     supports_credentials=True,
+     origins=["http://localhost:5000"],
+     resources={
+         r"/translate-line": {"origins": "*", "supports_credentials": False},
+         r"/health": {"origins": "*", "supports_credentials": False},
+         r"/stats": {"origins": "*", "supports_credentials": False},
+         r"/clear-cache": {"origins": "*", "supports_credentials": False}
+     })
 app.secret_key = os.getenv("APP_SECRET_KEY", "TEMP_SESSION_KEY")
 
 # Конфигурация
