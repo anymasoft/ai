@@ -25,7 +25,8 @@ CORS(app,
          r"/translate-line": {"origins": "*", "supports_credentials": False},
          r"/health": {"origins": "*", "supports_credentials": False},
          r"/stats": {"origins": "*", "supports_credentials": False},
-         r"/clear-cache": {"origins": "*", "supports_credentials": False}
+         r"/clear-cache": {"origins": "*", "supports_credentials": False},
+         r"/api/*": {"origins": ["https://www.youtube.com", "chrome-extension://*"], "supports_credentials": True}
      })
 app.secret_key = os.getenv("APP_SECRET_KEY", "TEMP_SESSION_KEY")
 
