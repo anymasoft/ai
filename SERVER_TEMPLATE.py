@@ -391,6 +391,19 @@ def api_user():
         return jsonify({"email": None})
     return jsonify({"email": email})
 
+@app.route('/api/subscription')
+def api_subscription():
+    """API для получения информации о подписке пользователя"""
+    email = session.get("email")
+    if not email:
+        return jsonify({"error": "unauthorized"}), 401
+
+    # Пока возвращаем фейковый тариф FREE
+    return jsonify({
+        "email": email,
+        "plan": "FREE"
+    })
+
 @app.route('/logout')
 def logout():
     """Выход из системы"""
