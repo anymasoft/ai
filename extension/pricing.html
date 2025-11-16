@@ -43,7 +43,7 @@
       Ваш текущий тариф
     </div>
 
-    <div class="text-3xl font-bold text-black mb-1">
+    <div id="currentPlan" class="text-3xl font-bold text-black mb-1">
       FREE
     </div>
 
@@ -281,6 +281,25 @@
     })
     .catch(err => {
       console.error('Ошибка загрузки пользователя:', err);
+      window.location = '/auth';
+    });
+
+  // Загрузка информации о подписке
+  fetch('/api/subscription')
+    .then(r => {
+      if (r.status === 401) {
+        window.location = '/auth';
+        return null;
+      }
+      return r.json();
+    })
+    .then(data => {
+      if (data && data.plan) {
+        document.getElementById('currentPlan').textContent = data.plan;
+      }
+    })
+    .catch(err => {
+      console.error('Ошибка загрузки подписки:', err);
       window.location = '/auth';
     });
 </script>
