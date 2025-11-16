@@ -8,6 +8,14 @@
     "48": "logo.png",
     "128": "logo.png"
   },
+  "action": {
+    "default_icon": {
+      "16": "logo.png",
+      "48": "logo.png",
+      "128": "logo.png"
+    },
+    "default_title": "YouTube Transcript Viewer"
+  },
   "permissions": ["storage"],
   "host_permissions": [
     "https://www.youtube.com/*"
