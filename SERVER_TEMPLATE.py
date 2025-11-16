@@ -3,7 +3,7 @@ YouTube Subtitle Translation Server - Line-by-Line Architecture
 Сервер для построчного перевода субтитров YouTube с использованием GPT-4o-mini
 """
 
-from flask import Flask, request, jsonify, send_from_directory, session
+from flask import Flask, request, jsonify, send_from_directory, session, redirect
 from flask_cors import CORS
 import sqlite3
 import json
@@ -378,9 +378,21 @@ def pricing():
         <h1>Pricing Page</h1>
         <p>Вы вошли как: {email}</p>
         <p>Это тестовая страница тарифов.</p>
+        <p><a href="/logout">Выйти</a></p>
         """
     else:
-        return "<p>Вы не авторизованы</p>"
+        return """
+        <h1>Pricing Page</h1>
+        <p>Вы не авторизованы.</p>
+        """
+
+@app.route('/logout')
+def logout():
+    """Выход из системы"""
+    # Очистить email и любые связанные данные из session
+    session.pop("email", None)
+    # После выхода перенаправляем пользователя на /auth
+    return redirect("/auth")
 
 if __name__ == '__main__':
     # Инициализируем БД при запуске
