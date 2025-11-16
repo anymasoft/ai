@@ -3,7 +3,7 @@ YouTube Subtitle Translation Server - Line-by-Line Architecture
 Сервер для построчного перевода субтитров YouTube с использованием GPT-4o-mini
 """
 
-from flask import Flask, request, jsonify, send_from_directory
+from flask import Flask, request, jsonify, send_from_directory, session
 from flask_cors import CORS
 import sqlite3
 import json
@@ -12,9 +12,13 @@ import base64
 import requests
 from openai import OpenAI
 from datetime import datetime
+from dotenv import load_dotenv
+
+load_dotenv()  # Загрузка переменных окружения из .env
 
 app = Flask(__name__)
 CORS(app)  # Разрешаем CORS для запросов из расширения
+app.secret_key = os.getenv("APP_SECRET_KEY", "TEMP_SESSION_KEY")
 
 # Конфигурация
 DATABASE = 'translations.db'
@@ -335,6 +339,9 @@ def oauth_callback():
         # Получаем email
         email = payload.get('email', 'Email не найден')
 
+        # Сохраняем email в session
+        session["email"] = email
+
         # Возвращаем простую HTML страницу
         return f"""
         <!DOCTYPE html>
@@ -386,6 +393,21 @@ def oauth_callback():
     except requests.exceptions.RequestException as e:
         print(f"Ошибка при обмене кода на токены: {e}")
         return f"<h1>Ошибка</h1><p>Не удалось обменять код на токены: {e}</p>", 500
+
+@app.route('/pricing')
+def pricing():
+    """Страница тарифов"""
+    # Проверяем, есть ли email в session
+    email = session.get('email')
+
+    if email:
+        return f"""
+        <h1>Pricing Page</h1>
+        <p>Вы вошли как: {email}</p>
+        <p>Это тестовая страница тарифов.</p>
+        """
+    else:
+        return "<p>Вы не авторизованы</p>"
 
 if __name__ == '__main__':
     # Инициализируем БД при запуске
