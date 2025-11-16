@@ -460,7 +460,7 @@ def oauth_callback():
         api_token = create_api_token(email, plan='Free')
 
         # Возвращаем HTML с автоматическим закрытием popup и редиректом
-        # Отправляем токен в расширение через chrome.runtime.sendMessage
+        # Отправляем токен в родительское окно через postMessage
         return f"""
         <!DOCTYPE html>
         <html>
@@ -468,32 +468,28 @@ def oauth_callback():
         <meta charset="UTF-8">
         <script>
             // После успешной авторизации:
-            // 1) отправляем токен расширению через chrome.runtime
-            // 2) перенаправляем родительское окно на страницу тарифов
-            // 3) закрываем popup
+            // 1) отправляем токен в родительское окно через postMessage
+            // 2) закрываем popup (родительское окно само себя перенаправит)
 
-            // Отправляем токен в background script расширения
-            if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.sendMessage) {{
-                chrome.runtime.sendMessage({{
+            if (window.opener) {{
+                // Отправляем токен в родительское окно
+                window.opener.postMessage({{
                     type: 'AUTH_SUCCESS',
                     token: '{api_token}'
-                }}, function(response) {{
-                    console.log('Токен отправлен в background script');
-                }});
-            }}
+                }}, '*');
 
-            // Для браузерной версии: перенаправляем на pricing
-            if (window.opener) {{
-                window.opener.location = "/pricing";
+                // Даём время на доставку postMessage, затем закрываем popup
+                setTimeout(function() {{
+                    window.close();
+                }}, 100);
+            }} else {{
+                // Если нет родительского окна - просто редиректим
+                window.location = "/pricing";
             }}
-
-            // Закрываем popup через небольшую задержку (чтобы sendMessage успел)
-            setTimeout(function() {{
-                window.close();
-            }}, 500);
         </script>
         </head>
         <body>
+        <p>Авторизация успешна! Окно закроется автоматически...</p>
         </body>
         </html>
         """
