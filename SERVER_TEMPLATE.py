@@ -17,6 +17,15 @@ from dotenv import load_dotenv
 load_dotenv()  # Загрузка переменных окружения из .env
 
 app = Flask(__name__)
+app.secret_key = os.getenv("APP_SECRET_KEY", "TEMP_SESSION_KEY")
+
+# Настройка session cookie для cross-site запросов из Chrome расширения
+app.config.update(
+    SESSION_COOKIE_SAMESITE="None",   # разрешить cross-site cookie
+    SESSION_COOKIE_SECURE=False,      # для localhost (в production должно быть True)
+    SESSION_COOKIE_HTTPONLY=True,
+    SESSION_COOKIE_NAME="session"
+)
 
 # CORS: разрешаем доступ к /api/* для YouTube и Chrome расширений с credentials
 CORS(
@@ -27,8 +36,6 @@ CORS(
     }},
     supports_credentials=True
 )
-
-app.secret_key = os.getenv("APP_SECRET_KEY", "TEMP_SESSION_KEY")
 
 # Конфигурация
 DATABASE = 'translations.db'
