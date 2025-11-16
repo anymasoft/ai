@@ -18,13 +18,6 @@ load_dotenv()  # Загрузка переменных окружения из .
 
 app = Flask(__name__)
 
-# Настройка session cookie для cross-site запросов из Chrome расширения
-app.config.update(
-    SESSION_COOKIE_SAMESITE="None",   # разрешить cross-site cookie
-    SESSION_COOKIE_SECURE=False,      # dev-режим (localhost без https)
-    SESSION_COOKIE_NAME="session"
-)
-
 # CORS: разрешаем доступ к /api/* для YouTube и Chrome расширений с credentials
 CORS(
     app,
