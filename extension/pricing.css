@@ -3,7 +3,35 @@
 @tailwind utilities;
 
 @layer components {
-  /* .btn-primary {
-      @apply py-1.5 px-3 text-center bg-blue-700 rounded-md text-white;
-  } */
+  .text-body {
+    color: #374151;
+  }
+
+  .text-heading {
+    color: #111827;
+  }
+
+  .bg-neutral-secondary-medium {
+    background-color: #f3f4f6;
+  }
+
+  .bg-neutral-tertiary-medium {
+    background-color: #e5e7eb;
+  }
+
+  .border-default-medium {
+    border-color: #d1d5db;
+  }
+
+  .focus\:ring-neutral-tertiary:focus {
+    --tw-ring-color: #d1d5db;
+  }
+
+  .shadow-xs {
+    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  }
+
+  .rounded-base {
+    border-radius: 0.375rem;
+  }
 }
