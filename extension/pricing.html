@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Video Reader AI - Тарифы</title>
+  <link rel="stylesheet" href="/pricing.css">
+</head>
+<body>
+  <div class="container">
+    <!-- Шапка с логотипом -->
+    <div class="header">
+      <div class="logo-container">
+        <img src="/logo.png" alt="Video Reader AI" class="logo">
+      </div>
+      <h1 class="title">Video Reader AI</h1>
+    </div>
+
+    <!-- Информация о пользователе -->
+    <div class="user-info">
+      <p class="user-greeting">Вы вошли как:</p>
+      <p class="user-email" id="userEmail">Загрузка...</p>
+      <a href="/logout" class="logout-link">Выйти</a>
+    </div>
+
+    <!-- Заголовок страницы -->
+    <div class="page-header">
+      <h2 class="page-title">Выберите тариф</h2>
+      <p class="page-subtitle">Начните переводить субтитры YouTube с помощью AI</p>
+    </div>
+
+    <!-- Тарифные планы -->
+    <div class="pricing-grid">
+      <!-- Free Plan -->
+      <div class="pricing-card">
+        <div class="plan-header">
+          <h3 class="plan-name">Free</h3>
+          <div class="plan-price">
+            <span class="price">$0</span>
+            <span class="period">/месяц</span>
+          </div>
+        </div>
+        <div class="plan-features">
+          <ul>
+            <li>✓ 10 переводов в день</li>
+            <li>✓ Основные языки</li>
+            <li>✓ Экспорт в SRT, VTT</li>
+            <li>✗ Приоритетная поддержка</li>
+          </ul>
+        </div>
+        <button class="plan-button plan-button-free">Текущий план</button>
+      </div>
+
+      <!-- Pro Plan -->
+      <div class="pricing-card pricing-card-featured">
+        <div class="featured-badge">Популярный</div>
+        <div class="plan-header">
+          <h3 class="plan-name">Pro</h3>
+          <div class="plan-price">
+            <span class="price">$9</span>
+            <span class="period">/месяц</span>
+          </div>
+        </div>
+        <div class="plan-features">
+          <ul>
+            <li>✓ Безлимитные переводы</li>
+            <li>✓ Все языки</li>
+            <li>✓ Экспорт в любые форматы</li>
+            <li>✓ Приоритетная поддержка</li>
+          </ul>
+        </div>
+        <button class="plan-button plan-button-pro">Перейти на Pro</button>
+      </div>
+
+      <!-- Enterprise Plan -->
+      <div class="pricing-card">
+        <div class="plan-header">
+          <h3 class="plan-name">Enterprise</h3>
+          <div class="plan-price">
+            <span class="price">$29</span>
+            <span class="period">/месяц</span>
+          </div>
+        </div>
+        <div class="plan-features">
+          <ul>
+            <li>✓ Всё из Pro</li>
+            <li>✓ API доступ</li>
+            <li>✓ Командная работа</li>
+            <li>✓ Персональный менеджер</li>
+          </ul>
+        </div>
+        <button class="plan-button plan-button-enterprise">Связаться с нами</button>
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <div class="footer">
+      <p>Это тестовая страница тарифов.</p>
+      <p>Все функции находятся в разработке.</p>
+    </div>
+  </div>
+
+  <script>
+    // Загрузка информации о пользователе
+    fetch('/api/user')
+      .then(r => r.json())
+      .then(data => {
+        if (data.email) {
+          document.getElementById('userEmail').innerText = data.email;
+        } else {
+          window.location = '/auth';
+        }
+      })
+      .catch(err => {
+        console.error('Ошибка загрузки пользователя:', err);
+        window.location = '/auth';
+      });
+  </script>
+</body>
+</html>

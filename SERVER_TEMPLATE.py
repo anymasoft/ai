@@ -373,18 +373,23 @@ def pricing():
     # Проверяем, есть ли email в session
     email = session.get('email')
 
-    if email:
-        return f"""
-        <h1>Pricing Page</h1>
-        <p>Вы вошли как: {email}</p>
-        <p>Это тестовая страница тарифов.</p>
-        <p><a href="/logout">Выйти</a></p>
-        """
-    else:
-        return """
-        <h1>Pricing Page</h1>
-        <p>Вы не авторизованы.</p>
-        """
+    if not email:
+        return "<p>Вы не авторизованы</p>"
+
+    return send_from_directory('extension', 'pricing.html')
+
+@app.route('/pricing.css')
+def pricing_css():
+    """CSS для страницы тарифов"""
+    return send_from_directory('extension', 'pricing.css')
+
+@app.route('/api/user')
+def api_user():
+    """API для получения информации о текущем пользователе"""
+    email = session.get("email")
+    if not email:
+        return jsonify({"email": None})
+    return jsonify({"email": email})
 
 @app.route('/logout')
 def logout():
