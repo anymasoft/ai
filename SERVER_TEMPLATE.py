@@ -17,7 +17,7 @@ from dotenv import load_dotenv
 load_dotenv()  # Загрузка переменных окружения из .env
 
 app = Flask(__name__)
-CORS(app)  # Разрешаем CORS для запросов из расширения
+CORS(app, supports_credentials=True, origins=["http://localhost:5000"])
 app.secret_key = os.getenv("APP_SECRET_KEY", "TEMP_SESSION_KEY")
 
 # Конфигурация
@@ -444,6 +444,7 @@ def logout():
     """Выход из системы"""
     # Очистить email и любые связанные данные из session
     session.pop("email", None)
+    session.pop("plan", None)
     # После выхода перенаправляем пользователя на /auth
     return redirect("/auth")
 
