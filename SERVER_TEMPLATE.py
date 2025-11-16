@@ -342,50 +342,23 @@ def oauth_callback():
         # Сохраняем email в session
         session["email"] = email
 
-        # Возвращаем простую HTML страницу
-        return f"""
+        # Возвращаем HTML с автоматическим закрытием popup и редиректом
+        return """
         <!DOCTYPE html>
         <html>
         <head>
-            <meta charset="UTF-8">
-            <title>Google OAuth - Успех</title>
-            <style>
-                body {{
-                    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-                    background: #1a1a1a;
-                    color: #ffffff;
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    min-height: 100vh;
-                    margin: 0;
-                }}
-                .container {{
-                    text-align: center;
-                    max-width: 500px;
-                    padding: 40px;
-                    background: #2a2a2a;
-                    border-radius: 12px;
-                }}
-                h1 {{
-                    color: #10b981;
-                    margin-bottom: 20px;
-                }}
-                p {{
-                    font-size: 18px;
-                    color: #c0c0c0;
-                }}
-                .email {{
-                    color: #4285f4;
-                    font-weight: bold;
-                }}
-            </style>
+        <meta charset="UTF-8">
+        <script>
+            // После успешной авторизации:
+            // 1) перенаправляем родительское окно на страницу тарифов
+            // 2) закрываем popup
+            if (window.opener) {
+                window.opener.location = "/pricing";
+            }
+            window.close();
+        </script>
         </head>
         <body>
-            <div class="container">
-                <h1>✅ Google OAuth работает!</h1>
-                <p>Email: <span class="email">{email}</span></p>
-            </div>
         </body>
         </html>
         """
