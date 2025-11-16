@@ -388,6 +388,28 @@ def checkout_pro():
     """Страница оформления тарифа Pro"""
     return send_from_directory('extension', 'checkout_pro.html')
 
+@app.route('/switch-plan/<plan>')
+def switch_plan(plan):
+    """Переключение тарифного плана"""
+    # Допустимые планы
+    valid_plans = ["free", "pro", "premium"]
+
+    # Приводим к нижнему регистру для проверки
+    plan_lower = plan.lower()
+
+    # Если план неверный → 400
+    if plan_lower not in valid_plans:
+        return "Unknown plan", 400
+
+    # Проверяем авторизацию
+    if not session.get("email"):
+        return redirect("/auth")
+
+    # Устанавливаем план с заглавной буквы
+    session["plan"] = plan_lower.capitalize()
+
+    return redirect("/pricing")
+
 @app.route('/api/user')
 def api_user():
     """API для получения информации о текущем пользователе"""
@@ -403,10 +425,13 @@ def api_subscription():
     if not email:
         return jsonify({"error": "unauthorized"}), 401
 
-    # Пока возвращаем фейковый тариф FREE
+    # Получаем план из session, по умолчанию "Free"
+    plan = session.get("plan", "Free")
+    session["plan"] = plan  # гарантируем, что он всегда есть
+
     return jsonify({
         "email": email,
-        "plan": "FREE"
+        "plan": plan
     })
 
 @app.route('/logout')
