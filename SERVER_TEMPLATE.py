@@ -79,7 +79,7 @@ def decode_jwt(jwt_token):
 
 # Инициализация БД
 def init_db():
-    """Создает таблицу для хранения переводов построчно"""
+    """Создает таблицу для хранения переводов построчно и API токенов"""
     conn = sqlite3.connect(DATABASE)
     cursor = conn.cursor()
 
@@ -101,9 +101,88 @@ def init_db():
         ON translations(video_id, line_number, lang)
     ''')
 
+    # Таблица для хранения API токенов
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS api_tokens (
+            token TEXT PRIMARY KEY,
+            email TEXT NOT NULL,
+            plan TEXT NOT NULL DEFAULT 'Free',
+            created_at INTEGER DEFAULT (strftime('%s', 'now'))
+        )
+    ''')
+
+    cursor.execute('''
+        CREATE INDEX IF NOT EXISTS idx_email
+        ON api_tokens(email)
+    ''')
+
     conn.commit()
     conn.close()
-    print("База данных инициализирована (line-by-line schema)")
+    print("База данных инициализирована (line-by-line schema + API tokens)")
+
+# ═══════════════════════════════════════════════════════════════════
+# API TOKENS - функции для работы с токенами расширения
+# ═══════════════════════════════════════════════════════════════════
+
+def create_api_token(email, plan='Free'):
+    """Создаёт новый API токен для пользователя"""
+    import uuid
+    token = uuid.uuid4().hex
+
+    conn = sqlite3.connect(DATABASE)
+    cursor = conn.cursor()
+
+    # Удаляем старые токены для этого email
+    cursor.execute('DELETE FROM api_tokens WHERE email = ?', (email,))
+
+    # Создаём новый токен
+    cursor.execute('''
+        INSERT INTO api_tokens (token, email, plan)
+        VALUES (?, ?, ?)
+    ''', (token, email, plan))
+
+    conn.commit()
+    conn.close()
+
+    print(f"[API TOKEN] Создан токен для {email}: {token[:8]}...")
+    return token
+
+def get_user_by_token(token):
+    """Получает данные пользователя по токену"""
+    conn = sqlite3.connect(DATABASE)
+    cursor = conn.cursor()
+
+    cursor.execute('''
+        SELECT email, plan
+        FROM api_tokens
+        WHERE token = ?
+    ''', (token,))
+
+    result = cursor.fetchone()
+    conn.close()
+
+    if result:
+        return {'email': result[0], 'plan': result[1]}
+    return None
+
+def update_user_plan(email, plan):
+    """Обновляет тариф пользователя"""
+    conn = sqlite3.connect(DATABASE)
+    cursor = conn.cursor()
+
+    cursor.execute('''
+        UPDATE api_tokens
+        SET plan = ?
+        WHERE email = ?
+    ''', (plan, email))
+
+    conn.commit()
+    affected = cursor.rowcount
+    conn.close()
+
+    if affected > 0:
+        print(f"[API TOKEN] Обновлён план для {email}: {plan}")
+    return affected > 0
 
 # Проверка кеша для одной строки
 def check_line_cache(video_id, line_number, lang='ru'):
@@ -374,23 +453,44 @@ def oauth_callback():
         # Получаем email
         email = payload.get('email', 'Email не найден')
 
-        # Сохраняем email в session
+        # Сохраняем email в session (для браузерной версии)
         session["email"] = email
 
+        # Создаём API токен для расширения
+        api_token = create_api_token(email, plan='Free')
+
         # Возвращаем HTML с автоматическим закрытием popup и редиректом
-        return """
+        # Отправляем токен в расширение через chrome.runtime.sendMessage
+        return f"""
         <!DOCTYPE html>
         <html>
         <head>
         <meta charset="UTF-8">
         <script>
             // После успешной авторизации:
-            // 1) перенаправляем родительское окно на страницу тарифов
-            // 2) закрываем popup
-            if (window.opener) {
+            // 1) отправляем токен расширению через chrome.runtime
+            // 2) перенаправляем родительское окно на страницу тарифов
+            // 3) закрываем popup
+
+            // Отправляем токен в background script расширения
+            if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.sendMessage) {{
+                chrome.runtime.sendMessage({{
+                    type: 'AUTH_SUCCESS',
+                    token: '{api_token}'
+                }}, function(response) {{
+                    console.log('Токен отправлен в background script');
+                }});
+            }}
+
+            // Для браузерной версии: перенаправляем на pricing
+            if (window.opener) {{
                 window.opener.location = "/pricing";
-            }
-            window.close();
+            }}
+
+            // Закрываем popup через небольшую задержку (чтобы sendMessage успел)
+            setTimeout(function() {{
+                window.close();
+            }}, 500);
         </script>
         </head>
         <body>
@@ -428,6 +528,9 @@ def checkout_pro():
     # Устанавливаем тариф Pro
     session["plan"] = "Pro"
 
+    # Обновляем план в БД токенов
+    update_user_plan(session["email"], "Pro")
+
     return send_from_directory('extension', 'checkout_pro.html')
 
 @app.route('/checkout/premium')
@@ -439,6 +542,9 @@ def checkout_premium():
 
     # Устанавливаем тариф Premium
     session["plan"] = "Premium"
+
+    # Обновляем план в БД токенов
+    update_user_plan(session["email"], "Premium")
 
     return send_from_directory('extension', 'checkout_premium.html')
 
@@ -460,7 +566,11 @@ def switch_plan(plan):
         return redirect("/auth")
 
     # Устанавливаем план с заглавной буквы
-    session["plan"] = plan_lower.capitalize()
+    plan_capitalized = plan_lower.capitalize()
+    session["plan"] = plan_capitalized
+
+    # Обновляем план в БД токенов
+    update_user_plan(session["email"], plan_capitalized)
 
     return redirect("/pricing")
 
@@ -491,45 +601,43 @@ def api_subscription():
 @app.route('/api/plan')
 def api_plan():
     """API для получения информации о тарифном плане (для расширения)"""
-    # Логируем все входящие cookie для отладки
-    print(f"[DEBUG /api/plan] Origin: {request.headers.get('Origin')}")
-    print(f"[DEBUG /api/plan] All cookies: {request.cookies}")
-    print(f"[DEBUG /api/plan] Session: {dict(session)}")
+    # Проверяем Authorization header (приоритет - для расширения)
+    auth_header = request.headers.get('Authorization')
 
-    email = None
-    plan = "Free"
+    if auth_header and auth_header.startswith('Bearer '):
+        # Извлекаем токен
+        token = auth_header.split(' ')[1]
+        print(f"[API /api/plan] Получен токен: {token[:8]}...")
 
-    # Сначала пробуем получить из обычной session
+        # Получаем пользователя по токену
+        user = get_user_by_token(token)
+
+        if user:
+            print(f"[API /api/plan] Токен валиден: {user['email']}, {user['plan']}")
+            return jsonify({
+                "status": "ok",
+                "email": user['email'],
+                "plan": user['plan']
+            })
+        else:
+            print(f"[API /api/plan] Токен невалиден или не найден")
+            return jsonify({"status": "unauthorized"}), 401
+
+    # Fallback: проверяем session (для браузерных запросов)
     if session.get("email"):
         email = session["email"]
         plan = session.get("plan", "Free")
         session["plan"] = plan
-        print(f"[DEBUG /api/plan] Получено из session: {email}, {plan}")
-    else:
-        # Пробуем получить из api_session cookie (для cross-site запросов)
-        api_session_cookie = request.cookies.get('api_session')
-        if api_session_cookie:
-            try:
-                api_data = json.loads(api_session_cookie)
-                email = api_data.get('email')
-                plan = api_data.get('plan', 'Free')
-                print(f"[DEBUG /api/plan] Получено из api_session cookie: {email}, {plan}")
-            except Exception as e:
-                print(f"[DEBUG /api/plan] Ошибка парсинга api_session: {e}")
-        else:
-            print(f"[DEBUG /api/plan] api_session cookie отсутствует")
+        print(f"[API /api/plan] Получено из session: {email}, {plan}")
+        return jsonify({
+            "status": "ok",
+            "email": email,
+            "plan": plan
+        })
 
-    # Если нет email — пользователь не авторизован
-    if not email:
-        print(f"[DEBUG /api/plan] Возвращаем 401 - нет email")
-        return jsonify({"status": "unauthorized"}), 401
-
-    print(f"[DEBUG /api/plan] Возвращаем: {email}, {plan}")
-    return jsonify({
-        "status": "ok",
-        "email": email,
-        "plan": plan
-    })
+    # Нет ни токена, ни session
+    print(f"[API /api/plan] Нет авторизации - возвращаем 401")
+    return jsonify({"status": "unauthorized"}), 401
 
 @app.route('/logout')
 def logout():

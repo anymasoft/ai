@@ -270,10 +270,22 @@ async function fetchPlan() {
   const API_URL = 'http://localhost:5000/api/plan';
 
   try {
+    // Получаем токен из chrome.storage
+    const storage = await chrome.storage.local.get(['token']);
+    const token = storage.token;
+
+    if (!token) {
+      console.log('[VideoReader] Токен отсутствует - пользователь не авторизован');
+      await chrome.storage.local.set({ plan: 'Free', email: null });
+      console.log('[VideoReader] Current plan: Free null');
+      return;
+    }
+
+    // Отправляем запрос с токеном в Authorization header
     const response = await fetch(API_URL, {
       method: 'GET',
-      credentials: 'include', // Включаем cookies для авторизации
       headers: {
+        'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json',
       }
     });
@@ -283,15 +295,13 @@ async function fetchPlan() {
 
     // Обрабатываем ответ
     if (response.status === 401) {
-      // 401 - неавторизован, считаем Free/Guest
+      // 401 - токен невалиден или истёк
+      console.log('[VideoReader] Токен невалиден - пользователь не авторизован');
       console.log('[VideoReader] Current plan: Free null');
     } else if (response.ok) {
       const data = await response.json();
 
-      if (data.status === 'unauthorized') {
-        // Явный статус unauthorized в ответе
-        console.log('[VideoReader] Current plan: Free null');
-      } else if (data.status === 'ok' && data.plan && data.email) {
+      if (data.status === 'ok' && data.plan && data.email) {
         // Успешный ответ с данными пользователя
         plan = data.plan;
         email = data.email;
