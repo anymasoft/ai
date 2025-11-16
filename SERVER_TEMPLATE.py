@@ -388,6 +388,11 @@ def checkout_pro():
     """Страница оформления тарифа Pro"""
     return send_from_directory('extension', 'checkout_pro.html')
 
+@app.route('/checkout/premium')
+def checkout_premium():
+    """Страница оформления тарифа Premium"""
+    return send_from_directory('extension', 'checkout_premium.html')
+
 @app.route('/switch-plan/<plan>')
 def switch_plan(plan):
     """Переключение тарифного плана"""
