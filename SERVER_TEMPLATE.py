@@ -8,6 +8,8 @@ from flask_cors import CORS
 import sqlite3
 import json
 import os
+import base64
+import requests
 from openai import OpenAI
 from datetime import datetime
 
@@ -18,6 +20,23 @@ CORS(app)  # Разрешаем CORS для запросов из расшире
 DATABASE = 'translations.db'
 OPENAI_API_KEY = os.getenv('OPENAI_API_KEY', 'your-api-key-here')
 client = OpenAI(api_key=OPENAI_API_KEY)
+
+# OAuth конфигурация (временные заглушки)
+GOOGLE_CLIENT_ID = os.getenv('GOOGLE_CLIENT_ID', 'TEMP_CLIENT_ID')
+GOOGLE_CLIENT_SECRET = os.getenv('GOOGLE_CLIENT_SECRET', 'TEMP_CLIENT_SECRET')
+GOOGLE_REDIRECT_URI = 'http://localhost:5000/auth/callback'
+
+# Утилиты для OAuth
+def decode_jwt(jwt_token):
+    """Декодирует JWT токен (без проверки подписи)"""
+    try:
+        header, payload, signature = jwt_token.split(".")
+        padded = payload + "=" * (-len(payload) % 4)
+        decoded = base64.urlsafe_b64decode(padded)
+        return json.loads(decoded)
+    except Exception as e:
+        print(f"Ошибка декодирования JWT: {e}")
+        return None
 
 # Инициализация БД
 def init_db():
@@ -279,9 +298,94 @@ def auth_js():
     return send_from_directory('extension', 'auth.js')
 
 @app.route('/auth/callback')
-def oauth_callback_stub():
-    """OAuth callback (заглушка)"""
-    return "OAuth callback received (stub)."
+def oauth_callback():
+    """OAuth callback - обработка кода от Google"""
+    # Получаем code из query параметров
+    code = request.args.get('code')
+
+    if not code:
+        return "<h1>Ошибка</h1><p>Код авторизации не получен.</p>", 400
+
+    # Обмениваем code на токены
+    token_url = 'https://oauth2.googleapis.com/token'
+    token_data = {
+        'code': code,
+        'client_id': GOOGLE_CLIENT_ID,
+        'client_secret': GOOGLE_CLIENT_SECRET,
+        'redirect_uri': GOOGLE_REDIRECT_URI,
+        'grant_type': 'authorization_code'
+    }
+
+    try:
+        # POST запрос к Google OAuth API
+        response = requests.post(token_url, data=token_data)
+        response.raise_for_status()
+        tokens = response.json()
+
+        # Получаем id_token
+        id_token = tokens.get('id_token')
+        if not id_token:
+            return "<h1>Ошибка</h1><p>id_token не получен.</p>", 500
+
+        # Декодируем JWT
+        payload = decode_jwt(id_token)
+        if not payload:
+            return "<h1>Ошибка</h1><p>Не удалось декодировать id_token.</p>", 500
+
+        # Получаем email
+        email = payload.get('email', 'Email не найден')
+
+        # Возвращаем простую HTML страницу
+        return f"""
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="UTF-8">
+            <title>Google OAuth - Успех</title>
+            <style>
+                body {{
+                    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+                    background: #1a1a1a;
+                    color: #ffffff;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    min-height: 100vh;
+                    margin: 0;
+                }}
+                .container {{
+                    text-align: center;
+                    max-width: 500px;
+                    padding: 40px;
+                    background: #2a2a2a;
+                    border-radius: 12px;
+                }}
+                h1 {{
+                    color: #10b981;
+                    margin-bottom: 20px;
+                }}
+                p {{
+                    font-size: 18px;
+                    color: #c0c0c0;
+                }}
+                .email {{
+                    color: #4285f4;
+                    font-weight: bold;
+                }}
+            </style>
+        </head>
+        <body>
+            <div class="container">
+                <h1>✅ Google OAuth работает!</h1>
+                <p>Email: <span class="email">{email}</span></p>
+            </div>
+        </body>
+        </html>
+        """
+
+    except requests.exceptions.RequestException as e:
+        print(f"Ошибка при обмене кода на токены: {e}")
+        return f"<h1>Ошибка</h1><p>Не удалось обменять код на токены: {e}</p>", 500
 
 if __name__ == '__main__':
     # Инициализируем БД при запуске
