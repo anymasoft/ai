@@ -374,7 +374,7 @@ def pricing():
     email = session.get('email')
 
     if not email:
-        return "<p>Вы не авторизованы</p>"
+        return redirect("/auth")
 
     return send_from_directory('extension', 'pricing.html')
 
@@ -382,6 +382,11 @@ def pricing():
 def pricing_css():
     """CSS для страницы тарифов"""
     return send_from_directory('extension', 'pricing.css')
+
+@app.route('/checkout/pro')
+def checkout_pro():
+    """Страница оформления тарифа Pro"""
+    return send_from_directory('extension', 'checkout_pro.html')
 
 @app.route('/api/user')
 def api_user():
