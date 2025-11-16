@@ -273,6 +273,16 @@ def auth_logo():
     """Логотип для страницы авторизации"""
     return send_from_directory('extension/assets', 'logo.png')
 
+@app.route('/auth.js')
+def auth_js():
+    """JavaScript для страницы авторизации"""
+    return send_from_directory('extension', 'auth.js')
+
+@app.route('/auth/callback')
+def oauth_callback_stub():
+    """OAuth callback (заглушка)"""
+    return "OAuth callback received (stub)."
+
 if __name__ == '__main__':
     # Инициализируем БД при запуске
     init_db()
