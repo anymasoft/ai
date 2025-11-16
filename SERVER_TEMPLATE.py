@@ -3,7 +3,7 @@ YouTube Subtitle Translation Server - Line-by-Line Architecture
 Сервер для построчного перевода субтитров YouTube с использованием GPT-4o-mini
 """
 
-from flask import Flask, request, jsonify, send_from_directory, session, redirect
+from flask import Flask, request, jsonify, send_from_directory, session, redirect, make_response
 from flask_cors import CORS
 import sqlite3
 import json
@@ -19,14 +19,6 @@ load_dotenv()  # Загрузка переменных окружения из .
 app = Flask(__name__)
 app.secret_key = os.getenv("APP_SECRET_KEY", "TEMP_SESSION_KEY")
 
-# Настройка session cookie для cross-site запросов из Chrome расширения
-app.config.update(
-    SESSION_COOKIE_SAMESITE="None",   # разрешить cross-site cookie
-    SESSION_COOKIE_SECURE=False,      # для localhost (в production должно быть True)
-    SESSION_COOKIE_HTTPONLY=True,
-    SESSION_COOKIE_NAME="session"
-)
-
 # CORS: разрешаем доступ к /api/* для YouTube и Chrome расширений с credentials
 CORS(
     app,
@@ -36,6 +28,30 @@ CORS(
     }},
     supports_credentials=True
 )
+
+# Hook для установки дополнительного cookie для cross-site запросов
+@app.after_request
+def set_api_cookie(response):
+    """Устанавливает дополнительный cookie для API endpoints для cross-site доступа"""
+    # Только для /api/* endpoints и если есть email в session
+    if request.path.startswith('/api/') and session.get('email'):
+        # Устанавливаем дополнительный cookie с email и plan для расширения
+        # Используем JSON для хранения данных
+        api_data = json.dumps({
+            'email': session.get('email'),
+            'plan': session.get('plan', 'Free')
+        })
+        # SameSite=None для cross-site, но без Secure для localhost
+        # Chrome на localhost может разрешить это в dev режиме
+        response.set_cookie(
+            'api_session',
+            value=api_data,
+            httponly=True,
+            samesite='None',
+            secure=False,  # для localhost
+            path='/api'
+        )
+    return response
 
 # Конфигурация
 DATABASE = 'translations.db'
@@ -473,17 +489,32 @@ def api_subscription():
 @app.route('/api/plan')
 def api_plan():
     """API для получения информации о тарифном плане (для расширения)"""
-    # Если нет email — пользователь не авторизован
-    if not session.get("email"):
-        return jsonify({"status": "unauthorized"}), 401
+    email = None
+    plan = "Free"
 
-    # Получаем или устанавливаем план
-    plan = session.get("plan", "Free")
-    session["plan"] = plan
+    # Сначала пробуем получить из обычной session
+    if session.get("email"):
+        email = session["email"]
+        plan = session.get("plan", "Free")
+        session["plan"] = plan
+    else:
+        # Пробуем получить из api_session cookie (для cross-site запросов)
+        api_session_cookie = request.cookies.get('api_session')
+        if api_session_cookie:
+            try:
+                api_data = json.loads(api_session_cookie)
+                email = api_data.get('email')
+                plan = api_data.get('plan', 'Free')
+            except:
+                pass
+
+    # Если нет email — пользователь не авторизован
+    if not email:
+        return jsonify({"status": "unauthorized"}), 401
 
     return jsonify({
         "status": "ok",
-        "email": session["email"],
+        "email": email,
         "plan": plan
     })
 
@@ -493,8 +524,11 @@ def logout():
     # Очистить email и любые связанные данные из session
     session.pop("email", None)
     session.pop("plan", None)
-    # После выхода перенаправляем пользователя на /auth
-    return redirect("/auth")
+    # Создаем response с редиректом
+    resp = make_response(redirect("/auth"))
+    # Удаляем api_session cookie
+    resp.set_cookie('api_session', '', expires=0, path='/api')
+    return resp
 
 if __name__ == '__main__':
     # Инициализируем БД при запуске
