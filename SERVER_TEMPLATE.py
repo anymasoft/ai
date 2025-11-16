@@ -462,6 +462,23 @@ def api_subscription():
         "plan": plan
     })
 
+@app.route('/api/plan')
+def api_plan():
+    """API для получения информации о тарифном плане (для расширения)"""
+    # Если нет email — пользователь не авторизован
+    if not session.get("email"):
+        return jsonify({"status": "unauthorized"}), 401
+
+    # Получаем или устанавливаем план
+    plan = session.get("plan", "Free")
+    session["plan"] = plan
+
+    return jsonify({
+        "status": "ok",
+        "email": session["email"],
+        "plan": plan
+    })
+
 @app.route('/logout')
 def logout():
     """Выход из системы"""
