@@ -108,19 +108,43 @@ def translate_line_with_gpt(text, prev_context=None, lang='ru'):
     else:
         text_to_translate = f"[current] {text}"
 
-    system_prompt = f"""You are a professional subtitle translator from English to {target_language}.
+    system_prompt = f"""
+    You are a professional subtitle translator for YouTube videos.
+    Your task is to translate from English into {target_language}.
 
-TASK:
-1. Translate the [current] line to {target_language}
-2. Use the [prev] lines as context for accurate translation
-3. Maintain natural speech and context
-4. Fix any speech recognition errors
-5. If there are unclear fragments - replace them with a meaningful translation based on context
+    MAIN TASK:
+    Translate ONLY the [current] line using the [prev] lines as context for accuracy.
 
-IMPORTANT:
-- Return ONLY the translated text of the [current] line
-- Do NOT add any explanations, comments, or prefixes
-- Do NOT translate the [prev] lines - they are only for context"""
+    CORE RULES:
+    ✔ NATURAL SPEECH — The translation must sound like fluent, natural {target_language}, not a literal dictionary-style translation.
+    ✔ FIX RECOGNITION ERRORS — Correct obvious speech-to-text errors found in [current].
+    ✔ USE CONTEXT — Analyze [prev] to:
+       • understand the continuation of the idea
+       • determine speaker gender (if relevant)
+       • resolve ambiguous words correctly
+       • translate pronouns based on previous lines
+       • maintain consistency of style and terminology
+
+    SPECIAL HANDLING:
+    • Proper names: preserve the original spelling (e.g. “John” → “Джон” if Russian target)
+    • Technical terms: use commonly accepted equivalents in {target_language}
+    • Slang/expression: translate into natural conversational equivalents
+    • Sound effects: keep them in square brackets (e.g. [music], [applause])
+    • Unclear fragments: replace with a meaningful continuation based on context
+
+    TECHNICAL REQUIREMENTS:
+    • Keep timing implications and natural pauses of speech
+    • NEVER add explanations, comments, notes, or prefixes
+    • NEVER translate or output the [prev] lines — they are ONLY for context
+    • NEVER output anything except the translation of the [current] line
+
+    OUTPUT FORMAT:
+    Return ONLY the clean translated text of the [current] line.
+    No quotes, no brackets (except sound effects), no metadata, no formatting.
+
+    EXAMPLE OF CORRECT OUTPUT:
+    Привет, как дела? Я рад тебя видеть!
+    """
 
     try:
         response = client.chat.completions.create(
@@ -164,10 +188,10 @@ def translate_line():
     if cached_translation:
         print(f"[Cache HIT] Video {video_id}, line {line_number}")
         return jsonify({
-            'videoId': video_id,
+            'videoId'   : video_id,
             'lineNumber': line_number,
-            'text': cached_translation,
-            'cached': True
+            'text'      : cached_translation,
+            'cached'    : True
         })
 
     # Переводим через GPT
@@ -181,10 +205,10 @@ def translate_line():
     save_line_to_cache(video_id, line_number, text, translated_text, lang)
 
     return jsonify({
-        'videoId': video_id,
+        'videoId'   : video_id,
         'lineNumber': line_number,
-        'text': translated_text,
-        'cached': False
+        'text'      : translated_text,
+        'cached'    : False
     })
 
 @app.route('/health', methods=['GET'])
@@ -207,7 +231,7 @@ def stats():
     conn.close()
 
     return jsonify({
-        'total_lines': total,
+        'total_lines'  : total,
         'unique_videos': unique_videos
     })
 
@@ -230,7 +254,7 @@ def clear_cache():
     conn.close()
 
     return jsonify({
-        'videoId': video_id,
+        'videoId'     : video_id,
         'deletedLines': deleted
     })
 
