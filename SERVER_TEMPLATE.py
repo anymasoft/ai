@@ -386,11 +386,25 @@ def pricing_css():
 @app.route('/checkout/pro')
 def checkout_pro():
     """Страница оформления тарифа Pro"""
+    # Проверяем авторизацию
+    if not session.get("email"):
+        return redirect("/auth")
+
+    # Устанавливаем тариф Pro
+    session["plan"] = "Pro"
+
     return send_from_directory('extension', 'checkout_pro.html')
 
 @app.route('/checkout/premium')
 def checkout_premium():
     """Страница оформления тарифа Premium"""
+    # Проверяем авторизацию
+    if not session.get("email"):
+        return redirect("/auth")
+
+    # Устанавливаем тариф Premium
+    session["plan"] = "Premium"
+
     return send_from_directory('extension', 'checkout_premium.html')
 
 @app.route('/switch-plan/<plan>')
