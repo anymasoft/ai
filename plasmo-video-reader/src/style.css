@@ -1,0 +1,21 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Кастомные стили для Video Reader */
+.video-reader-panel {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
+}
+
+.subtitle-line {
+  transition: background-color 0.2s ease;
+}
+
+.subtitle-line:hover {
+  background-color: rgba(59, 130, 246, 0.1);
+}
+
+.subtitle-line.active {
+  background-color: rgba(59, 130, 246, 0.2);
+  border-left: 3px solid rgb(59, 130, 246);
+}
