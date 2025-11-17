@@ -19,14 +19,33 @@ load_dotenv()  # Загрузка переменных окружения из .
 app = Flask(__name__)
 app.secret_key = os.getenv("APP_SECRET_KEY", "TEMP_SESSION_KEY")
 
-# CORS: разрешаем доступ к /api/* для YouTube и Chrome расширений с credentials
+# CORS: разрешаем доступ для YouTube и Chrome расширений
+# Покрываем /translate-line, /api/*, /health, /stats
 CORS(
     app,
-    resources={r"/api/*": {
-        "origins": ["https://www.youtube.com", "chrome-extension://*"],
-        "supports_credentials": True
-    }},
-    supports_credentials=True
+    resources={
+        r"/translate-line": {
+            "origins": ["https://www.youtube.com", "https://youtube.com"],
+            "methods": ["POST", "OPTIONS"],
+            "allow_headers": ["Content-Type"],
+            "max_age": 3600
+        },
+        r"/api/*": {
+            "origins": ["https://www.youtube.com", "https://youtube.com", "chrome-extension://*"],
+            "methods": ["GET", "POST", "OPTIONS"],
+            "allow_headers": ["Content-Type", "Authorization"],
+            "supports_credentials": True,
+            "max_age": 3600
+        },
+        r"/health": {
+            "origins": "*",
+            "methods": ["GET"]
+        },
+        r"/stats": {
+            "origins": "*",
+            "methods": ["GET"]
+        }
+    }
 )
 
 # Hook для установки дополнительного cookie для cross-site запросов
@@ -305,9 +324,13 @@ def translate_line_with_gpt(text, prev_context=None, lang='ru'):
         print(f"Ошибка при переводе через GPT: {e}")
         return None
 
-@app.route('/translate-line', methods=['POST'])
+@app.route('/translate-line', methods=['POST', 'OPTIONS'])
 def translate_line():
     """Endpoint для перевода одной строки субтитров"""
+
+    # Обработка CORS preflight запроса
+    if request.method == 'OPTIONS':
+        return '', 200
 
     data = request.json
     video_id = data.get('videoId')
