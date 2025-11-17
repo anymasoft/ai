@@ -35,20 +35,4 @@ document.addEventListener('DOMContentLoaded', function() {
       );
     });
   }
-
-  // Слушаем postMessage от OAuth callback popup
-  window.addEventListener('message', function(event) {
-    // Проверяем origin для безопасности
-    if (event.origin !== window.location.origin) {
-      return;
-    }
-
-    // Проверяем тип сообщения
-    if (event.data && event.data.type === 'AUTH_SUCCESS' && event.data.token) {
-      console.log('[VideoReader Auth] Получен токен от OAuth popup');
-
-      // Перенаправляем на страницу тарифов
-      window.location.href = '/pricing';
-    }
-  });
 });

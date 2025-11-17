@@ -459,37 +459,39 @@ def oauth_callback():
         # Создаём API токен для расширения
         api_token = create_api_token(email, plan='Free')
 
-        # Возвращаем HTML с автоматическим закрытием popup и редиректом
-        # Отправляем токен в родительское окно через postMessage
+        # Возвращаем HTML с редиректом на /pricing
+        # Также отправляем токен в расширение через postMessage (если слушает)
         return f"""
         <!DOCTYPE html>
         <html>
         <head>
         <meta charset="UTF-8">
         <script>
-            // После успешной авторизации:
-            // 1) отправляем токен в родительское окно через postMessage
-            // 2) закрываем popup (родительское окно само себя перенаправит)
-
+            // После успешной авторизации перенаправляем на страницу тарифов
             if (window.opener) {{
-                // Отправляем токен в родительское окно
-                window.opener.postMessage({{
-                    type: 'AUTH_SUCCESS',
-                    token: '{api_token}'
-                }}, '*');
+                // Если открыты из popup - отправляем токен для расширения
+                try {{
+                    window.opener.postMessage({{
+                        type: 'AUTH_SUCCESS',
+                        token: '{api_token}'
+                    }}, '*');
+                }} catch(e) {{
+                    console.log('postMessage failed:', e);
+                }}
 
-                // Даём время на доставку postMessage, затем закрываем popup
-                setTimeout(function() {{
-                    window.close();
-                }}, 100);
+                // Перенаправляем родительское окно на pricing
+                window.opener.location = "/pricing";
+
+                // Закрываем popup
+                window.close();
             }} else {{
-                // Если нет родительского окна - просто редиректим
+                // Обычный браузер - просто редиректим
                 window.location = "/pricing";
             }}
         </script>
         </head>
         <body>
-        <p>Авторизация успешна! Окно закроется автоматически...</p>
+        <p>Авторизация успешна! Перенаправляем...</p>
         </body>
         </html>
         """
