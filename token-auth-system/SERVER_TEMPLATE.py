@@ -392,56 +392,6 @@ def api_plan():
         "plan"  : user['plan']
     })
 
-@app.route('/api/user', methods=['GET', 'OPTIONS'])
-def api_user():
-    """API для получения информации о пользователе (для совместимости с pricing.html)"""
-
-    if request.method == 'OPTIONS':
-        return '', 200
-
-    # Пытаемся получить токен из cookie или localStorage (через query параметр)
-    token = request.cookies.get('auth_token') or request.args.get('token')
-
-    if not token:
-        print("[API /api/user] Токен не найден")
-        return jsonify({"error": "unauthorized"}), 401
-
-    user = get_user_by_token(token)
-
-    if not user:
-        print(f"[API /api/user] Токен не валиден")
-        return jsonify({"error": "unauthorized"}), 401
-
-    return jsonify({
-        "email": user['email'],
-        "plan": user['plan']
-    })
-
-@app.route('/api/subscription', methods=['GET', 'OPTIONS'])
-def api_subscription():
-    """API для получения информации о подписке (для совместимости с pricing.html)"""
-
-    if request.method == 'OPTIONS':
-        return '', 200
-
-    # Пытаемся получить токен из cookie или localStorage (через query параметр)
-    token = request.cookies.get('auth_token') or request.args.get('token')
-
-    if not token:
-        print("[API /api/subscription] Токен не найден")
-        return jsonify({"error": "unauthorized"}), 401
-
-    user = get_user_by_token(token)
-
-    if not user:
-        print(f"[API /api/subscription] Токен не валиден")
-        return jsonify({"error": "unauthorized"}), 401
-
-    return jsonify({
-        "plan": user['plan'],
-        "email": user['email']
-    })
-
 @app.route('/health', methods=['GET'])
 def health():
     """Health check endpoint"""
@@ -508,8 +458,7 @@ def oauth_callback():
         # Создаём токен для пользователя
         token = create_or_update_user(email, plan='Free')
 
-        # Если это popup (есть window.opener) - используем postMessage для расширения
-        # Если это обычное окно - устанавливаем cookie и редиректим на /pricing
+        # Возвращаем HTML с postMessage для расширения
         return f"""
         <!DOCTYPE html>
         <html>
@@ -517,7 +466,6 @@ def oauth_callback():
         <meta charset="UTF-8">
         <script>
             if (window.opener) {{
-                // Для Chrome расширения - используем postMessage
                 try {{
                     window.opener.postMessage({{
                         type: 'AUTH_SUCCESS',
@@ -532,19 +480,17 @@ def oauth_callback():
                     window.close();
                 }}, 1000);
             }} else {{
-                // Для обычного браузера - устанавливаем cookie и редиректим
-                document.cookie = 'auth_token={token}; path=/; max-age=2592000';
-                document.cookie = 'auth_email={email}; path=/; max-age=2592000';
-
-                setTimeout(function() {{
-                    window.location.href = '/pricing';
-                }}, 500);
+                document.body.innerHTML = `
+                    <h2>Авторизация успешна!</h2>
+                    <p>Токен: {token[:8]}...</p>
+                    <p>Email: {email}</p>
+                    <p>Вы можете закрыть окно.</p>
+                `;
             }}
         </script>
         </head>
         <body>
-        <p>Авторизация успешна! Перенаправление на /pricing...</p>
-        <p style="color: #666; font-size: 12px;">Email: {email}</p>
+        <p>Авторизация успешна! Окно закроется автоматически...</p>
         </body>
         </html>
         """
@@ -564,10 +510,50 @@ def pricing_css():
     """CSS для страницы pricing"""
     return send_from_directory(EXTENSION_DIR, 'pricing.css', mimetype='text/css')
 
+@app.route('/auth')
+def auth():
+    """Страница авторизации"""
+    return send_from_directory(EXTENSION_DIR, 'auth.html')
+
+@app.route('/auth.css')
+def auth_css():
+    """CSS для страницы авторизации"""
+    return send_from_directory(EXTENSION_DIR, 'auth.css', mimetype='text/css')
+
+@app.route('/auth.js')
+def auth_js():
+    """JS для страницы авторизации (открывает OAuth popup)"""
+    return send_from_directory(EXTENSION_DIR, 'auth.js', mimetype='application/javascript')
+
 @app.route('/styles.css')
 def styles_css():
-    """CSS для расширения"""
+    """Общие стили для расширения"""
     return send_from_directory(EXTENSION_DIR, 'styles.css', mimetype='text/css')
+
+@app.route('/background.js')
+def background_js():
+    """Service worker для Chrome расширения"""
+    return send_from_directory(EXTENSION_DIR, 'background.js', mimetype='application/javascript')
+
+@app.route('/content.js')
+def content_js():
+    """Content script для Chrome расширения"""
+    return send_from_directory(EXTENSION_DIR, 'content.js', mimetype='application/javascript')
+
+@app.route('/flags.js')
+def flags_js():
+    """Флаги для расширения"""
+    return send_from_directory(EXTENSION_DIR, 'flags.js', mimetype='application/javascript')
+
+@app.route('/manifest.json')
+def manifest():
+    """Манифест Chrome расширения"""
+    return send_from_directory(EXTENSION_DIR, 'manifest.json', mimetype='application/json')
+
+@app.route('/assets/<path:filename>')
+def serve_assets(filename):
+    """Обслуживание статических файлов (логотипы и т.д.)"""
+    return send_from_directory(os.path.join(EXTENSION_DIR, 'assets'), filename)
 
 @app.route('/api/update-plan', methods=['POST', 'OPTIONS'])
 def api_update_plan():
@@ -626,54 +612,6 @@ def checkout_premium():
     """Страница оформления подписки Premium"""
     return send_from_directory(EXTENSION_DIR, 'checkout_premium.html')
 
-@app.route('/auth')
-def auth_page():
-    """Страница авторизации"""
-    return send_from_directory(EXTENSION_DIR, 'auth.html')
-
-@app.route('/auth.css')
-def auth_css():
-    """CSS для страницы авторизации"""
-    return send_from_directory(EXTENSION_DIR, 'auth.css', mimetype='text/css')
-
-@app.route('/auth.js')
-def auth_js():
-    """JS для страницы авторизации (открывает OAuth popup)"""
-    return send_from_directory(EXTENSION_DIR, 'auth.js', mimetype='application/javascript')
-
-@app.route('/background.js')
-def background_js():
-    """Service worker для Chrome расширения"""
-    return send_from_directory(EXTENSION_DIR, 'background.js', mimetype='application/javascript')
-
-@app.route('/content.js')
-def content_js():
-    """Content script для Chrome расширения"""
-    return send_from_directory(EXTENSION_DIR, 'content.js', mimetype='application/javascript')
-
-@app.route('/flags.js')
-def flags_js():
-    """Флаги для расширения"""
-    return send_from_directory(EXTENSION_DIR, 'flags.js', mimetype='application/javascript')
-
-@app.route('/manifest.json')
-def manifest():
-    """Манифест Chrome расширения"""
-    return send_from_directory(EXTENSION_DIR, 'manifest.json', mimetype='application/json')
-
-@app.route('/assets/<path:filename>')
-def serve_assets(filename):
-    """Статические файлы из assets/"""
-    return send_from_directory(os.path.join(EXTENSION_DIR, 'assets'), filename)
-
-@app.route('/logout')
-def logout():
-    """Выход из системы - очистка cookies и редирект на /auth"""
-    response = redirect('/auth')
-    response.set_cookie('auth_token', '', expires=0)
-    response.set_cookie('auth_email', '', expires=0)
-    return response
-
 if __name__ == '__main__':
     # Инициализируем БД при запуске
     init_db()
@@ -682,28 +620,18 @@ if __name__ == '__main__':
     print("YouTube Subtitle Translation Server (Token Auth)")
     print("=" * 60)
     print("Сервер запущен на http://localhost:5000")
-    print(f"Статические файлы: {EXTENSION_DIR}")
-    print(f"База данных: {USERS_DB}")
-    print()
     print("Endpoints:")
     print("  POST /translate-line      - перевод одной строки субтитров")
     print("  GET  /api/plan            - получение плана по Bearer токену")
     print("  POST /api/update-plan     - обновление плана пользователя")
     print("  GET  /health              - проверка работоспособности")
     print("  GET  /stats               - статистика кеша")
-    print()
-    print("OAuth:")
-    print("  GET  /auth                - страница авторизации")
     print("  GET  /auth/callback       - OAuth callback (генерация токена)")
-    print()
-    print("Pricing:")
     print("  GET  /pricing             - страница тарифных планов")
+    print("  GET  /pricing.css         - CSS для страницы pricing")
+    print("  GET  /pricing.js          - JS для страницы pricing")
     print("  GET  /checkout/pro        - страница оформления Pro подписки")
     print("  GET  /checkout/premium    - страница оформления Premium подписки")
-    print()
-    print("Статика:")
-    print("  GET  /auth.css, /auth.js")
-    print("  GET  /pricing.css, /styles.css")
     print("=" * 60)
 
     # Запускаем сервер
