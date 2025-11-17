@@ -191,16 +191,24 @@ async function updateAuthUI() {
   const email = storage.email;
 
   const authSection = document.getElementById('yt-reader-auth-section');
-  if (authSection) {
-    if (hasToken && email) {
-      // Пользователь авторизован - скрываем Sign In
-      authSection.style.display = 'none';
-      console.log('[VideoReader] Пользователь авторизован:', email);
-    } else {
-      // Пользователь не авторизован - показываем Sign In
-      authSection.style.display = 'block';
-      console.log('[VideoReader] Пользователь не авторизован - показываем Sign In');
+  const authInfo = document.getElementById('yt-reader-auth-info');
+
+  if (hasToken && email) {
+    // Пользователь авторизован - показываем Auth Info, скрываем Sign In
+    if (authSection) authSection.style.display = 'none';
+    if (authInfo) {
+      authInfo.style.display = 'block';
+      const emailEl = authInfo.querySelector('.yt-reader-auth-email');
+      if (emailEl) {
+        emailEl.textContent = `Logged in as: ${email}`;
+      }
     }
+    console.log('[VideoReader] Пользователь авторизован:', email);
+  } else {
+    // Пользователь не авторизован - показываем Sign In, скрываем Auth Info
+    if (authSection) authSection.style.display = 'block';
+    if (authInfo) authInfo.style.display = 'none';
+    console.log('[VideoReader] Пользователь не авторизован - показываем Sign In');
   }
 }
 
@@ -516,6 +524,11 @@ function createTranscriptPanel() {
           <span>Sign in with Google</span>
         </button>
       </div>
+      <!-- Logged In Section -->
+      <div id="yt-reader-auth-info" class="yt-reader-auth-info" style="display: none;">
+        <div class="yt-reader-auth-email"></div>
+        <button id="yt-reader-logout-btn" class="yt-reader-logout-btn">Log out</button>
+      </div>
       <div class="yt-reader-controls">
         <button id="yt-reader-translate-btn" class="yt-native-switch-btn active">
           Translate Video
@@ -636,6 +649,22 @@ async function injectPanel() {
       signInBtn.addEventListener('click', () => {
         console.log('[VideoReader] Кнопка Sign In нажата');
         openAuthPage();
+      });
+    }
+
+    // Обработчик для кнопки Log out
+    const logoutBtn = document.getElementById('yt-reader-logout-btn');
+    if (logoutBtn) {
+      logoutBtn.addEventListener('click', async () => {
+        console.log('[VideoReader] Кнопка Log out нажата');
+
+        // Удаляем токен и email из chrome.storage
+        await chrome.storage.local.remove(['token', 'email', 'plan']);
+        console.log('[VideoReader] Токен и email удалены из storage');
+
+        // Обновляем UI
+        await updateAuthUI();
+        console.log('[VideoReader] Пользователь вышел из системы');
       });
     }
 
