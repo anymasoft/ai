@@ -5,6 +5,23 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Video Reader AI - Авторизация</title>
   <link rel="stylesheet" href="auth.css">
+  <script>
+    // Проверка авторизации - если пользователь уже авторизован, редиректим на /pricing
+    function getCookie(name) {
+      const value = `; ${document.cookie}`;
+      const parts = value.split(`; ${name}=`);
+      if (parts.length === 2) return parts.pop().split(';').shift();
+      return null;
+    }
+
+    const authToken = getCookie('auth_token');
+    if (authToken && authToken !== 'undefined' && authToken !== 'null') {
+      console.log('[auth.html] Пользователь уже авторизован, редирект на /pricing');
+      window.location.href = '/pricing';
+    } else {
+      console.log('[auth.html] Пользователь не авторизован, показываем страницу входа');
+    }
+  </script>
 </head>
 <body>
   <div class="container">
