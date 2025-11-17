@@ -45,6 +45,12 @@ window.addEventListener('message', function(event) {
         }
       });
 
+      // КРИТИЧЕСКИ ВАЖНО: Устанавливаем cookie ЛОКАЛЬНО перед редиректом
+      console.log('[auth.js] Устанавливаем cookie auth_token и auth_email...');
+      document.cookie = `auth_token=${token}; path=/; max-age=2592000; SameSite=Lax`;
+      document.cookie = `auth_email=${email}; path=/; max-age=2592000; SameSite=Lax`;
+      console.log('[auth.js] ✅ Cookie установлены');
+
       // Показываем успешное сообщение пользователю
       const statusEl = document.getElementById('status');
       if (statusEl) {
