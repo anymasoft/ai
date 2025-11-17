@@ -3,8 +3,25 @@
 
 console.log('[VideoReader Background] Service worker запущен');
 
-// Слушаем сообщения от popup окна авторизации
+// Слушаем сообщения от content script и popup окна авторизации
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  // Обработка запроса на открытие страницы авторизации
+  if (message.type === 'OPEN_AUTH_PAGE') {
+    console.log('[VideoReader Background] Запрос на открытие страницы авторизации');
+
+    // Открываем auth.html в новой вкладке
+    chrome.tabs.create({
+      url: chrome.runtime.getURL('auth.html'),
+      active: true
+    }, (tab) => {
+      console.log('[VideoReader Background] Страница авторизации открыта, tab ID:', tab.id);
+      sendResponse({ success: true, tabId: tab.id });
+    });
+
+    return true; // Асинхронный ответ
+  }
+
+  // Обработка успешной авторизации
   if (message.type === 'AUTH_SUCCESS' && message.token) {
     console.log('[VideoReader Background] Получен токен от OAuth popup');
 
