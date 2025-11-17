@@ -5,26 +5,6 @@
 console.log('[auth.js] Скрипт загружен');
 
 // ═══════════════════════════════════════════════════════════════════
-// Проверка авторизации - если пользователь уже авторизован, редиректим на /pricing
-// ═══════════════════════════════════════════════════════════════════
-(function checkAuth() {
-  function getCookie(name) {
-    const value = `; ${document.cookie}`;
-    const parts = value.split(`; ${name}=`);
-    if (parts.length === 2) return parts.pop().split(';').shift();
-    return null;
-  }
-
-  const authToken = getCookie('auth_token');
-  if (authToken && authToken !== 'undefined' && authToken !== 'null') {
-    console.log('[auth.js] Пользователь уже авторизован, редирект на /pricing');
-    window.location.href = 'http://localhost:5000/pricing';
-  } else {
-    console.log('[auth.js] Пользователь не авторизован, показываем страницу входа');
-  }
-})();
-
-// ═══════════════════════════════════════════════════════════════════
 // КРИТИЧЕСКИ ВАЖНО: Обработчик postMessage от OAuth callback popup
 // ═══════════════════════════════════════════════════════════════════
 
@@ -65,12 +45,6 @@ window.addEventListener('message', function(event) {
         }
       });
 
-      // КРИТИЧЕСКИ ВАЖНО: Устанавливаем cookie ЛОКАЛЬНО перед редиректом
-      console.log('[auth.js] Устанавливаем cookie auth_token и auth_email...');
-      document.cookie = `auth_token=${token}; path=/; max-age=2592000; SameSite=Lax`;
-      document.cookie = `auth_email=${email}; path=/; max-age=2592000; SameSite=Lax`;
-      console.log('[auth.js] ✅ Cookie установлены');
-
       // Показываем успешное сообщение пользователю
       const statusEl = document.getElementById('status');
       if (statusEl) {
@@ -79,10 +53,10 @@ window.addEventListener('message', function(event) {
         statusEl.classList.remove('hidden');
       }
 
-      // Делаем redirect на страницу pricing через 1 секунду
+      // Закрываем окно авторизации через 1 секунду
       setTimeout(function() {
-        console.log('[auth.js] Делаем redirect на /pricing...');
-        window.location.href = 'http://localhost:5000/pricing';
+        console.log('[auth.js] Закрываем окно авторизации...');
+        window.close();
       }, 1000);
     } else {
       console.error('[auth.js] ❌ Токен или email отсутствуют в сообщении');
