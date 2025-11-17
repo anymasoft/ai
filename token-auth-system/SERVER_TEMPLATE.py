@@ -515,6 +515,11 @@ def pricing_css():
     """CSS для страницы pricing"""
     return send_from_directory(EXTENSION_DIR, 'pricing.css', mimetype='text/css')
 
+@app.route('/pricing.js')
+def pricing_js():
+    """JS для страницы pricing"""
+    return send_from_directory(EXTENSION_DIR, 'pricing.js', mimetype='application/javascript')
+
 @app.route('/auth')
 def auth():
     """Страница авторизации"""
@@ -617,6 +622,49 @@ def api_subscription():
     print(f"[API /api/subscription] Подписка: {user['email']}, план: {user['plan']}")
     return jsonify({
         "plan": user['plan'],
+        "email": user['email']
+    })
+
+@app.route('/switch-plan/<plan>', methods=['POST', 'OPTIONS'])
+def switch_plan(plan):
+    """Переключение тарифного плана (для pricing.html)"""
+    if request.method == 'OPTIONS':
+        return '', 200
+
+    # Проверяем валидность плана
+    if plan not in ['Free', 'Pro', 'Premium']:
+        return jsonify({"error": "invalid_plan"}), 400
+
+    # Получаем токен из Authorization header
+    auth_header = request.headers.get('Authorization')
+
+    if not auth_header or not auth_header.startswith('Bearer '):
+        print("[API /switch-plan] Отсутствует или неверный Authorization header")
+        return jsonify({"error": "unauthorized"}), 401
+
+    # Извлекаем токен
+    token = auth_header.split(' ')[1]
+    print(f"[API /switch-plan] Получен токен: {token[:8]}... → переключение на {plan}")
+
+    # Проверяем токен и обновляем план
+    user = get_user_by_token(token)
+
+    if not user:
+        print(f"[API /switch-plan] Токен невалиден")
+        return jsonify({"error": "unauthorized"}), 401
+
+    # Обновляем план в БД
+    conn = sqlite3.connect(USERS_DB)
+    cursor = conn.cursor()
+    cursor.execute('UPDATE users SET plan = ? WHERE token = ?', (plan, token))
+    conn.commit()
+    conn.close()
+
+    print(f"[API /switch-plan] ✅ План обновлен для {user['email']}: {user['plan']} → {plan}")
+
+    return jsonify({
+        "status": "ok",
+        "plan": plan,
         "email": user['email']
     })
 
