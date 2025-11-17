@@ -54,7 +54,7 @@
     <div class="container">
         <div class="success-icon">✓</div>
         <h1>Authorization Successful!</h1>
-        <p>Closing this window...</p>
+        <p>Redirecting to pricing page...</p>
         <div class="spinner"></div>
     </div>
 
@@ -83,17 +83,23 @@
                         token: token
                     }, (response) => {
                         console.log('[OAuth Callback] Token sent to extension:', response);
-                        // Закрываем окно после успешной отправки
-                        setTimeout(() => window.close(), 500);
+                        // Редиректим на страницу тарифов после успешной отправки
+                        setTimeout(() => {
+                            window.location.href = '/pricing';
+                        }, 1000);
                     });
                 } catch (error) {
                     console.error('[OAuth Callback] Error sending message:', error);
-                    // Fallback: закрываем окно
-                    setTimeout(() => window.close(), 1000);
+                    // Fallback: редиректим на pricing
+                    setTimeout(() => {
+                        window.location.href = '/pricing';
+                    }, 1500);
                 }
             } else {
-                console.warn('[OAuth Callback] chrome.runtime not available, window will close');
-                setTimeout(() => window.close(), 1000);
+                console.warn('[OAuth Callback] chrome.runtime not available, redirecting to pricing');
+                setTimeout(() => {
+                    window.location.href = '/pricing';
+                }, 1000);
             }
         })();
     </script>
