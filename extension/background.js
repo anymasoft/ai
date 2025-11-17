@@ -3,6 +3,12 @@
 
 console.log('[VideoReader Background] Service worker запущен');
 
+// Открываем страницу авторизации при клике на иконку расширения
+chrome.action.onClicked.addListener(() => {
+  const authUrl = chrome.runtime.getURL('auth.html');
+  chrome.tabs.create({ url: authUrl });
+});
+
 // Слушаем сообщения от popup окна авторизации
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.type === 'AUTH_SUCCESS' && message.token) {
