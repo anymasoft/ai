@@ -1,3 +1,248 @@
+// ═══════════════════════════════════════════════════════════════════
+// TOKEN AUTH - Listen for messages from background.js and OAuth callback
+// ═══════════════════════════════════════════════════════════════════
+
+console.log('[VideoReader content.js] Скрипт загружен');
+
+// ГЛАВНЫЙ ОБРАБОТЧИК: Слушаем сообщения от background.js через chrome.runtime.onMessage
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  console.log('[VideoReader content.js] ✅ Получено сообщение через chrome.runtime.onMessage');
+  console.log('[VideoReader content.js] message:', message);
+  console.log('[VideoReader content.js] sender:', sender);
+
+  // Обрабатываем AUTH_SUCCESS от background.js
+  if (message.type === 'AUTH_SUCCESS') {
+    console.log('[VideoReader content.js] 🎉 AUTH_SUCCESS получен!');
+    console.log('[VideoReader content.js] Token:', message.token?.substring(0, 8) + '...');
+    console.log('[VideoReader content.js] Email:', message.email);
+
+    const token = message.token;
+    const email = message.email;
+
+    // Сохраняем токен и email в chrome.storage.local
+    if (token && email) {
+      console.log('[VideoReader content.js] Сохраняем токен и email в storage...');
+
+      chrome.storage.local.set({ token: token, email: email }, async () => {
+        console.log('[VideoReader content.js] ✅ Токен и email сохранены в chrome.storage');
+
+        // Сразу после получения токена запрашиваем план
+        console.log('[VideoReader content.js] Запрашиваем план пользователя...');
+        await fetchPlan();
+
+        // Обновляем UI авторизации
+        console.log('[VideoReader content.js] Обновляем UI авторизации...');
+        await updateAuthUI();
+        console.log('[VideoReader content.js] ✅ UI авторизации обновлён после получения токена');
+      });
+
+      sendResponse({ success: true });
+    } else {
+      console.error('[VideoReader content.js] ❌ Токен или email отсутствуют в сообщении!');
+      sendResponse({ success: false, error: 'Missing token or email' });
+    }
+
+    return true; // Асинхронный ответ
+  }
+
+  // Неизвестный тип сообщения
+  console.log('[VideoReader content.js] Неизвестный тип сообщения:', message.type);
+  sendResponse({ success: false, error: 'Unknown message type' });
+  return false;
+});
+
+console.log('[VideoReader content.js] ✅ Обработчик chrome.runtime.onMessage установлен');
+
+// ДОПОЛНИТЕЛЬНЫЙ ОБРАБОТЧИК: Слушаем postMessage от OAuth callback popup (на случай прямого сообщения)
+window.addEventListener('message', async (event) => {
+  console.log('[VideoReader content.js] Получено window.postMessage событие');
+  console.log('[VideoReader content.js] event.origin:', event.origin);
+  console.log('[VideoReader content.js] event.data:', event.data);
+
+  // Проверяем тип сообщения
+  if (event.data && event.data.type === 'AUTH_SUCCESS') {
+    console.log('[VideoReader content.js] AUTH_SUCCESS получен через window.postMessage');
+
+    const token = event.data.token;
+    const email = event.data.email;
+
+    console.log('[VideoReader content.js] Token:', token?.substring(0, 8) + '...');
+    console.log('[VideoReader content.js] Email:', email);
+
+    // Сохраняем токен и email в chrome.storage.local
+    if (token && email) {
+      console.log('[VideoReader content.js] Сохраняем токен и email в storage...');
+
+      await chrome.storage.local.set({ token: token, email: email });
+      console.log('[VideoReader content.js] ✅ Токен и email сохранены в chrome.storage');
+
+      // Сразу после получения токена запрашиваем план
+      console.log('[VideoReader content.js] Запрашиваем план пользователя...');
+      await fetchPlan();
+
+      // Обновляем UI авторизации
+      console.log('[VideoReader content.js] Обновляем UI авторизации...');
+      await updateAuthUI();
+      console.log('[VideoReader content.js] ✅ UI авторизации обновлён после получения токена');
+    } else {
+      console.error('[VideoReader content.js] ❌ Токен или email отсутствуют в postMessage!');
+    }
+  } else {
+    console.log('[VideoReader content.js] Получено postMessage другого типа:', event.data?.type);
+  }
+});
+
+console.log('[VideoReader content.js] ✅ Обработчик window.postMessage установлен');
+
+// ═══════════════════════════════════════════════════════════════════
+// PLAN DETECTION SYSTEM - Fetch user plan from backend with Bearer token
+// ═══════════════════════════════════════════════════════════════════
+
+// Функция получения тарифного плана пользователя
+async function fetchPlan() {
+  const API_URL = 'http://localhost:5000/api/plan';
+
+  try {
+    // Получаем токен из chrome.storage
+    const storage = await chrome.storage.local.get(['token']);
+    const token = storage.token;
+
+    if (!token) {
+      console.log('[VideoReader] Токен отсутствует - пользователь не авторизован');
+      await chrome.storage.local.set({ plan: 'Free', email: null });
+      console.log('[VideoReader] Current plan: Free');
+      return { plan: 'Free', email: null };
+    }
+
+    // Отправляем запрос с токеном в Authorization header
+    const response = await fetch(API_URL, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      }
+    });
+
+    // Обрабатываем ответ
+    if (response.status === 401) {
+      // 401 - токен невалиден или истёк
+      console.log('[VideoReader] Токен невалиден - пользователь не авторизован');
+      await chrome.storage.local.set({ plan: 'Free', email: null });
+      console.log('[VideoReader] Current plan: Free');
+      return { plan: 'Free', email: null };
+    }
+
+    if (!response.ok) {
+      // Другие ошибки - считаем Free
+      console.warn(`[VideoReader] Plan API returned status ${response.status}, defaulting to Free`);
+      await chrome.storage.local.set({ plan: 'Free', email: null });
+      console.log('[VideoReader] Current plan: Free');
+      return { plan: 'Free', email: null };
+    }
+
+    // Успешный ответ
+    const data = await response.json();
+
+    if (data.status === 'ok' && data.plan && data.email) {
+      console.log(`[VideoReader] Current plan: ${data.plan} (${data.email})`);
+
+      // Сохраняем в chrome.storage.local
+      await chrome.storage.local.set({ plan: data.plan, email: data.email });
+
+      return { plan: data.plan, email: data.email };
+    } else {
+      // Неожиданный формат ответа
+      console.warn('[VideoReader] Unexpected API response format, defaulting to Free');
+      await chrome.storage.local.set({ plan: 'Free', email: null });
+      console.log('[VideoReader] Current plan: Free');
+      return { plan: 'Free', email: null };
+    }
+
+  } catch (error) {
+    // Ошибка сети или сервер недоступен - считаем Free
+    console.warn('[VideoReader] Failed to fetch plan from server, defaulting to Free:', error.message);
+
+    // Сохраняем Free plan
+    await chrome.storage.local.set({ plan: 'Free', email: null });
+    console.log('[VideoReader] Current plan: Free');
+    return { plan: 'Free', email: null };
+  } finally {
+    // Всегда обновляем UI авторизации после проверки плана
+    await updateAuthUI();
+  }
+}
+
+// Открывает страницу авторизации через background.js
+function openAuthPage() {
+  console.log('[VideoReader] Запрос на открытие страницы авторизации');
+  chrome.runtime.sendMessage({ type: 'OPEN_AUTH_PAGE' }, (response) => {
+    if (chrome.runtime.lastError) {
+      console.error('[VideoReader] Ошибка отправки сообщения в background:', chrome.runtime.lastError);
+    } else {
+      console.log('[VideoReader] Страница авторизации запрошена');
+    }
+  });
+}
+
+// Обновляет UI авторизации на основе наличия токена
+async function updateAuthUI() {
+  const storage = await chrome.storage.local.get(['token', 'email', 'plan']);
+  const hasToken = !!storage.token;
+  const email = storage.email;
+  const plan = storage.plan || 'Free';
+
+  const authSection = document.getElementById('yt-reader-auth-section');
+  const authInfo = document.getElementById('yt-reader-auth-info');
+
+  if (hasToken && email) {
+    // Пользователь авторизован - показываем Auth Info, скрываем Sign In
+    if (authSection) authSection.style.display = 'none';
+    if (authInfo) {
+      authInfo.style.display = 'block';
+
+      // Обновляем email
+      const emailEl = authInfo.querySelector('.yt-reader-auth-email');
+      if (emailEl) {
+        emailEl.textContent = `Logged in as: ${email}`;
+      }
+
+      // Обновляем план
+      const planEl = authInfo.querySelector('.yt-reader-auth-plan');
+      if (planEl) {
+        planEl.textContent = `Plan: ${plan}`;
+      }
+
+      // Обновляем кнопку Upgrade в зависимости от плана
+      const upgradeBtn = document.getElementById('yt-reader-upgrade-btn');
+      if (upgradeBtn) {
+        if (plan === 'Free') {
+          upgradeBtn.style.display = 'block';
+          upgradeBtn.textContent = 'Upgrade';
+        } else if (plan === 'Pro') {
+          upgradeBtn.style.display = 'block';
+          upgradeBtn.textContent = 'Upgrade to Premium';
+        } else if (plan === 'Premium') {
+          upgradeBtn.style.display = 'none';
+        } else {
+          // На случай неизвестного плана - показываем кнопку Upgrade
+          upgradeBtn.style.display = 'block';
+          upgradeBtn.textContent = 'Upgrade';
+        }
+      }
+    }
+    console.log('[VideoReader] Пользователь авторизован:', email, ', План:', plan);
+  } else {
+    // Пользователь не авторизован - показываем Sign In, скрываем Auth Info
+    if (authSection) authSection.style.display = 'block';
+    if (authInfo) authInfo.style.display = 'none';
+    console.log('[VideoReader] Пользователь не авторизован - показываем Sign In');
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// EXISTING CODE - All existing functionality remains unchanged
+// ═══════════════════════════════════════════════════════════════════
+
 // Глобальное состояние для предотвращения повторных запросов
 const transcriptState = {
   videoId: null,
@@ -261,70 +506,6 @@ function getVideoId() {
   return urlParams.get('v');
 }
 
-// ═══════════════════════════════════════════════════════════════════
-// PLAN DETECTION SYSTEM - Fetch user plan from backend
-// ═══════════════════════════════════════════════════════════════════
-
-// Функция получения тарифного плана пользователя
-async function fetchPlan() {
-  const API_URL = 'http://localhost:5000/api/plan';
-
-  try {
-    // Получаем токен из chrome.storage
-    const storage = await chrome.storage.local.get(['token']);
-    const token = storage.token;
-
-    if (!token) {
-      console.log('[VideoReader] Токен отсутствует - пользователь не авторизован');
-      await chrome.storage.local.set({ plan: 'Free', email: null });
-      console.log('[VideoReader] Current plan: Free null');
-      return;
-    }
-
-    // Отправляем запрос с токеном в Authorization header
-    const response = await fetch(API_URL, {
-      method: 'GET',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json',
-      }
-    });
-
-    let plan = 'Free';
-    let email = null;
-
-    // Обрабатываем ответ
-    if (response.status === 401) {
-      // 401 - токен невалиден или истёк
-      console.log('[VideoReader] Токен невалиден - пользователь не авторизован');
-      console.log('[VideoReader] Current plan: Free null');
-    } else if (response.ok) {
-      const data = await response.json();
-
-      if (data.status === 'ok' && data.plan && data.email) {
-        // Успешный ответ с данными пользователя
-        plan = data.plan;
-        email = data.email;
-        console.log(`[VideoReader] Current plan: ${plan} ${email}`);
-      }
-    } else {
-      // Другие ошибки - считаем Free
-      console.warn(`[VideoReader] Plan API returned status ${response.status}, defaulting to Free`);
-    }
-
-    // Сохраняем в chrome.storage.local
-    await chrome.storage.local.set({ plan, email });
-
-  } catch (error) {
-    // Ошибка сети или сервер недоступен - считаем Free
-    console.warn('[VideoReader] Failed to fetch plan from server, defaulting to Free:', error.message);
-
-    // Сохраняем Free plan
-    await chrome.storage.local.set({ plan: 'Free', email: null });
-    console.log('[VideoReader] Current plan: Free null');
-  }
-}
-
 // Создание панели транскрипта с премиум UI
 function createTranscriptPanel() {
   const currentLang = SUPPORTED_LANGUAGES.find(l => l.code === transcriptState.selectedLang) || SUPPORTED_LANGUAGES[0];
@@ -351,6 +532,32 @@ function createTranscriptPanel() {
       </button>
     </div>
     <div id="yt-transcript-body" style="display: none;">
+      <!-- Sign In Section -->
+      <div class="yt-reader-auth-section" id="yt-reader-auth-section" style="display: none;">
+        <div class="yt-reader-auth-prompt">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+            <circle cx="12" cy="7" r="4"/>
+          </svg>
+          <span>Sign in to save your preferences</span>
+        </div>
+        <button id="yt-reader-signin-btn" class="yt-reader-signin-btn">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+            <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
+            <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+            <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
+            <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
+          </svg>
+          <span>Sign in with Google</span>
+        </button>
+      </div>
+      <!-- Logged In Section -->
+      <div id="yt-reader-auth-info" class="yt-reader-auth-info" style="display: none;">
+        <div class="yt-reader-auth-email"></div>
+        <div class="yt-reader-auth-plan"></div>
+        <button id="yt-reader-upgrade-btn" class="yt-reader-upgrade-btn" style="display: none;">Upgrade</button>
+        <button id="yt-reader-logout-btn" class="yt-reader-logout-btn">Log out</button>
+      </div>
       <div class="yt-reader-controls">
         <button id="yt-reader-translate-btn" class="yt-native-switch-btn active">
           Translate Video
@@ -460,10 +667,45 @@ async function injectPanel() {
     const toggleBtn = document.getElementById('yt-transcript-toggle-btn');
     const langBtn = document.getElementById('yt-reader-lang-btn');
     const langDropdown = document.getElementById('yt-reader-lang-dropdown');
+    const signInBtn = document.getElementById('yt-reader-signin-btn');
 
     translateBtn.addEventListener('click', handleGetTranscript);
     toggleBtn.addEventListener('click', handleTogglePanel);
     langBtn.addEventListener('click', handleLanguageToggle);
+
+    // Обработчик для кнопки Sign In
+    if (signInBtn) {
+      signInBtn.addEventListener('click', () => {
+        console.log('[VideoReader] Кнопка Sign In нажата');
+        openAuthPage();
+      });
+    }
+
+    // Обработчик для кнопки Upgrade
+    const upgradeBtn = document.getElementById('yt-reader-upgrade-btn');
+    if (upgradeBtn) {
+      upgradeBtn.addEventListener('click', () => {
+        console.log('[VideoReader] Кнопка Upgrade нажата');
+        // Открываем страницу pricing в новой вкладке
+        window.open('http://localhost:5000/pricing', '_blank');
+      });
+    }
+
+    // Обработчик для кнопки Log out
+    const logoutBtn = document.getElementById('yt-reader-logout-btn');
+    if (logoutBtn) {
+      logoutBtn.addEventListener('click', async () => {
+        console.log('[VideoReader] Кнопка Log out нажата');
+
+        // Удаляем токен и email из chrome.storage
+        await chrome.storage.local.remove(['token', 'email', 'plan']);
+        console.log('[VideoReader] Токен и email удалены из storage');
+
+        // Обновляем UI
+        await updateAuthUI();
+        console.log('[VideoReader] Пользователь вышел из системы');
+      });
+    }
 
     // Обработчики для опций языка
     const langOptions = document.querySelectorAll('.yt-reader-lang-option');
@@ -497,6 +739,9 @@ async function injectPanel() {
         exportDropdown.classList.remove('show');
       }
     });
+
+    // Обновляем UI авторизации на основе текущего состояния
+    await updateAuthUI();
 
     console.log('Панель транскрипта добавлена');
   } catch (error) {
