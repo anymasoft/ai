@@ -713,20 +713,9 @@ async function injectPanel() {
     // Обработчик для кнопки Upgrade
     const upgradeBtn = document.getElementById('yt-reader-upgrade-btn');
     if (upgradeBtn) {
-      upgradeBtn.addEventListener('click', async () => {
-        console.log('[VideoReader] Кнопка Upgrade нажата');
-
-        // Получаем токен из storage
-        const storage = await chrome.storage.local.get(['token']);
-        const token = storage.token;
-
-        if (token) {
-          console.log('[VideoReader] Открываем /pricing с токеном:', token.substring(0, 8) + '...');
-          window.open(`http://localhost:5000/pricing?token=${token}`, '_blank');
-        } else {
-          console.log('[VideoReader] Токен отсутствует - открываем /auth');
-          openAuthPage();
-        }
+      upgradeBtn.addEventListener('click', () => {
+        console.log('[VideoReader] Кнопка Upgrade нажата - открываем /pricing');
+        window.open('http://localhost:5000/pricing', '_blank');
       });
     }
 
