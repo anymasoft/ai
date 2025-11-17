@@ -421,6 +421,10 @@ def clear_cache():
 @app.route('/auth')
 def auth_page():
     """Страница авторизации"""
+    # Если пользователь уже авторизован - редирект на pricing
+    if session.get('email'):
+        return redirect('/pricing')
+
     return send_from_directory('extension', 'auth.html')
 
 @app.route('/auth.css')

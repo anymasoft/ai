@@ -36,22 +36,31 @@ async function loadUserData() {
     const storage = await chrome.storage.local.get(['auth_token']);
     const token = storage.auth_token;
 
+    console.log('[VideoReader Popup] Storage:', storage);
+    console.log('[VideoReader Popup] Token:', token);
+
     if (!token) {
       console.log('[VideoReader Popup] No token found');
       showState('login');
       return;
     }
 
+    console.log('[VideoReader Popup] Token found, requesting plan...');
+
     // Запрашиваем план через background
     const planData = await chrome.runtime.sendMessage({ type: 'get-plan' });
 
+    console.log('[VideoReader Popup] Plan data received:', planData);
+
     if (planData && planData.email) {
       // Пользователь авторизован
+      console.log('[VideoReader Popup] User authenticated:', planData.email, planData.plan);
       userEmail.textContent = planData.email;
       userPlan.textContent = planData.plan || 'Free';
       showState('user');
     } else {
       // Токен невалидный
+      console.log('[VideoReader Popup] Invalid token or no email in response');
       showState('login');
     }
   } catch (error) {
