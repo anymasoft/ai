@@ -565,6 +565,16 @@ def api_update_plan():
         print(f"[API /api/update-plan] ❌ Ошибка обновления плана")
         return jsonify({"error": "update_failed"}), 500
 
+@app.route('/checkout/pro')
+def checkout_pro():
+    """Страница оформления подписки Pro"""
+    return send_from_directory('.', 'checkout_pro.html')
+
+@app.route('/checkout/premium')
+def checkout_premium():
+    """Страница оформления подписки Premium"""
+    return send_from_directory('.', 'checkout_premium.html')
+
 if __name__ == '__main__':
     # Инициализируем БД при запуске
     init_db()
@@ -574,15 +584,17 @@ if __name__ == '__main__':
     print("=" * 60)
     print("Сервер запущен на http://localhost:5000")
     print("Endpoints:")
-    print("  POST /translate-line   - перевод одной строки субтитров")
-    print("  GET  /api/plan         - получение плана по Bearer токену")
-    print("  POST /api/update-plan  - обновление плана пользователя")
-    print("  GET  /health           - проверка работоспособности")
-    print("  GET  /stats            - статистика кеша")
-    print("  GET  /auth/callback    - OAuth callback (генерация токена)")
-    print("  GET  /pricing          - страница тарифных планов")
-    print("  GET  /pricing.css      - CSS для страницы pricing")
-    print("  GET  /pricing.js       - JS для страницы pricing")
+    print("  POST /translate-line      - перевод одной строки субтитров")
+    print("  GET  /api/plan            - получение плана по Bearer токену")
+    print("  POST /api/update-plan     - обновление плана пользователя")
+    print("  GET  /health              - проверка работоспособности")
+    print("  GET  /stats               - статистика кеша")
+    print("  GET  /auth/callback       - OAuth callback (генерация токена)")
+    print("  GET  /pricing             - страница тарифных планов")
+    print("  GET  /pricing.css         - CSS для страницы pricing")
+    print("  GET  /pricing.js          - JS для страницы pricing")
+    print("  GET  /checkout/pro        - страница оформления Pro подписки")
+    print("  GET  /checkout/premium    - страница оформления Premium подписки")
     print("=" * 60)
 
     # Запускаем сервер
