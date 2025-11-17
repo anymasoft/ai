@@ -45,6 +45,35 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return true; // Асинхронный ответ
   }
 
+  // ═══════════════════════════════════════════════════════════════════
+  // HOT-RELOAD: Обработка обновления тарифного плана от background.js
+  // ═══════════════════════════════════════════════════════════════════
+  if (message.type === 'PLAN_UPDATED') {
+    console.log('[VideoReader content.js] 🔄 PLAN_UPDATED получен!');
+    console.log('[VideoReader content.js] Новый план:', message.newPlan);
+    console.log('[VideoReader content.js] Email:', message.email);
+
+    const newPlan = message.newPlan;
+
+    // Обновляем план в chrome.storage.local
+    chrome.storage.local.set({ plan: newPlan }, async () => {
+      console.log('[VideoReader content.js] ✅ План обновлен в storage:', newPlan);
+
+      // Обновляем план с сервера (для синхронизации)
+      console.log('[VideoReader content.js] Синхронизируем план с сервером...');
+      await fetchPlan();
+
+      // Обновляем UI панели
+      console.log('[VideoReader content.js] Обновляем UI...');
+      await updateAuthUI();
+
+      console.log('[VideoReader content.js] ✅ UI обновлён БЕЗ перезагрузки страницы!');
+    });
+
+    sendResponse({ success: true });
+    return true; // Асинхронный ответ
+  }
+
   // Неизвестный тип сообщения
   console.log('[VideoReader content.js] Неизвестный тип сообщения:', message.type);
   sendResponse({ success: false, error: 'Unknown message type' });
@@ -172,16 +201,11 @@ async function fetchPlan() {
   }
 }
 
-// Открывает страницу авторизации через background.js
+// Открывает страницу авторизации через веб-сервер (не через расширение)
 function openAuthPage() {
-  console.log('[VideoReader] Запрос на открытие страницы авторизации');
-  chrome.runtime.sendMessage({ type: 'OPEN_AUTH_PAGE' }, (response) => {
-    if (chrome.runtime.lastError) {
-      console.error('[VideoReader] Ошибка отправки сообщения в background:', chrome.runtime.lastError);
-    } else {
-      console.log('[VideoReader] Страница авторизации запрошена');
-    }
-  });
+  console.log('[VideoReader] Открытие страницы авторизации через веб-сервер');
+  // Открываем http://localhost:5000/auth напрямую, чтобы работал externally_connectable
+  window.open('http://localhost:5000/auth', '_blank');
 }
 
 // Обновляет UI авторизации на основе наличия токена

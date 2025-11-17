@@ -135,22 +135,38 @@ def init_db():
 # ═══════════════════════════════════════════════════════════════════
 
 def create_or_update_user(email, plan='Free'):
-    """Создает или обновляет пользователя и генерирует новый токен"""
-    token = uuid.uuid4().hex
+    """Создает или обновляет пользователя.
+    Если пользователь существует - возвращает СУЩЕСТВУЮЩИЙ токен и сохраняет текущий план.
+    Если не существует - создает нового с новым токеном."""
 
     conn = sqlite3.connect(USERS_DB)
     cursor = conn.cursor()
 
-    cursor.execute('''
-        INSERT OR REPLACE INTO users (email, token, plan)
-        VALUES (?, ?, ?)
-    ''', (email, token, plan))
+    # Проверяем, существует ли пользователь с таким email
+    cursor.execute('SELECT token, plan FROM users WHERE email = ?', (email,))
+    existing_user = cursor.fetchone()
 
-    conn.commit()
-    conn.close()
+    if existing_user:
+        # Пользователь существует - возвращаем существующий токен и НЕ меняем план
+        existing_token = existing_user[0]
+        existing_plan = existing_user[1]
+        conn.close()
+        print(f"[TOKEN AUTH] Пользователь {email} уже существует, возвращаем существующий токен: {existing_token[:8]}..., план: {existing_plan}")
+        return existing_token
+    else:
+        # Пользователь новый - создаем новый токен
+        token = uuid.uuid4().hex
 
-    print(f"[TOKEN AUTH] Создан/обновлен пользователь {email}, токен: {token[:8]}...")
-    return token
+        cursor.execute('''
+            INSERT INTO users (email, token, plan)
+            VALUES (?, ?, ?)
+        ''', (email, token, plan))
+
+        conn.commit()
+        conn.close()
+
+        print(f"[TOKEN AUTH] Создан новый пользователь {email}, токен: {token[:8]}..., план: {plan}")
+        return token
 
 def get_user_by_token(token):
     """Получает данные пользователя по токену"""
@@ -458,14 +474,19 @@ def oauth_callback():
         # Создаём токен для пользователя
         token = create_or_update_user(email, plan='Free')
 
-        # Возвращаем HTML с postMessage для расширения
-        return f"""
+        # Возвращаем HTML с postMessage для расширения И устанавливаем cookie для браузера
+        html_response = f"""
         <!DOCTYPE html>
         <html>
         <head>
         <meta charset="UTF-8">
         <script>
+            // Устанавливаем cookie для браузера (на случай если это не popup от расширения)
+            document.cookie = 'auth_token={token}; path=/; max-age=2592000; SameSite=Lax';
+            document.cookie = 'auth_email={email}; path=/; max-age=2592000; SameSite=Lax';
+
             if (window.opener) {{
+                // Это popup от расширения или auth.html - отправляем postMessage
                 try {{
                     window.opener.postMessage({{
                         type: 'AUTH_SUCCESS',
@@ -480,20 +501,20 @@ def oauth_callback():
                     window.close();
                 }}, 1000);
             }} else {{
-                document.body.innerHTML = `
-                    <h2>Авторизация успешна!</h2>
-                    <p>Токен: {token[:8]}...</p>
-                    <p>Email: {email}</p>
-                    <p>Вы можете закрыть окно.</p>
-                `;
+                // Это обычный браузер без расширения - редиректим на /pricing
+                setTimeout(function() {{
+                    window.location.href = '/pricing';
+                }}, 500);
             }}
         </script>
         </head>
         <body>
-        <p>Авторизация успешна! Окно закроется автоматически...</p>
+        <p>Авторизация успешна! Перенаправление...</p>
         </body>
         </html>
         """
+
+        return html_response
 
 
     except requests.exceptions.RequestException as e:
@@ -544,6 +565,109 @@ def manifest():
 def serve_assets(filename):
     """Обслуживание статических файлов (логотипы и т.д.)"""
     return send_from_directory(os.path.join(EXTENSION_DIR, 'assets'), filename)
+
+@app.route('/logout')
+def logout():
+    """Выход из системы - удаление cookies и редирект на /auth"""
+    response = redirect('/auth')
+    response.set_cookie('auth_token', '', expires=0, path='/')
+    response.set_cookie('auth_email', '', expires=0, path='/')
+    return response
+
+@app.route('/api/user', methods=['GET', 'OPTIONS'])
+def api_user():
+    """API для получения информации о пользователе (для pricing.html)"""
+    if request.method == 'OPTIONS':
+        return '', 200
+
+    # Получаем токен из cookie
+    token = request.cookies.get('auth_token')
+
+    if not token:
+        print("[API /api/user] Токен не найден в cookies")
+        return jsonify({"error": "unauthorized"}), 401
+
+    # Проверяем токен в БД
+    user = get_user_by_token(token)
+
+    if not user:
+        print(f"[API /api/user] Токен невалиден")
+        return jsonify({"error": "unauthorized"}), 401
+
+    print(f"[API /api/user] Пользователь: {user['email']}, план: {user['plan']}")
+    return jsonify({
+        "email": user['email'],
+        "plan": user['plan']
+    })
+
+@app.route('/api/subscription', methods=['GET', 'OPTIONS'])
+def api_subscription():
+    """API для получения информации о подписке (для pricing.html)"""
+    if request.method == 'OPTIONS':
+        return '', 200
+
+    # Получаем токен из cookie
+    token = request.cookies.get('auth_token')
+
+    if not token:
+        print("[API /api/subscription] Токен не найден в cookies")
+        return jsonify({"error": "unauthorized"}), 401
+
+    # Проверяем токен в БД
+    user = get_user_by_token(token)
+
+    if not user:
+        print(f"[API /api/subscription] Токен невалиден")
+        return jsonify({"error": "unauthorized"}), 401
+
+    print(f"[API /api/subscription] Подписка: {user['email']}, план: {user['plan']}")
+    return jsonify({
+        "plan": user['plan'],
+        "email": user['email']
+    })
+
+@app.route('/switch-plan/<plan>', methods=['POST', 'OPTIONS'])
+def switch_plan(plan):
+    """Переключение тарифного плана (для pricing.html)"""
+    if request.method == 'OPTIONS':
+        return '', 200
+
+    # Проверяем валидность плана
+    if plan not in ['Free', 'Pro', 'Premium']:
+        return jsonify({"error": "invalid_plan"}), 400
+
+    # Получаем токен из Authorization header
+    auth_header = request.headers.get('Authorization')
+
+    if not auth_header or not auth_header.startswith('Bearer '):
+        print("[API /switch-plan] Отсутствует или неверный Authorization header")
+        return jsonify({"error": "unauthorized"}), 401
+
+    # Извлекаем токен
+    token = auth_header.split(' ')[1]
+    print(f"[API /switch-plan] Получен токен: {token[:8]}... → переключение на {plan}")
+
+    # Проверяем токен и обновляем план
+    user = get_user_by_token(token)
+
+    if not user:
+        print(f"[API /switch-plan] Токен невалиден")
+        return jsonify({"error": "unauthorized"}), 401
+
+    # Обновляем план в БД
+    conn = sqlite3.connect(USERS_DB)
+    cursor = conn.cursor()
+    cursor.execute('UPDATE users SET plan = ? WHERE token = ?', (plan, token))
+    conn.commit()
+    conn.close()
+
+    print(f"[API /switch-plan] ✅ План обновлен для {user['email']}: {user['plan']} → {plan}")
+
+    return jsonify({
+        "status": "ok",
+        "plan": plan,
+        "email": user['email']
+    })
 
 @app.route('/api/update-plan', methods=['POST', 'OPTIONS'])
 def api_update_plan():
