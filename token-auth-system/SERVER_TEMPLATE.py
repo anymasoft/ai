@@ -22,8 +22,8 @@ app = Flask(__name__)
 # Директория, где находится этот файл (token-auth-system/)
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
-# Директория с файлами расширения (extension/)
-EXTENSION_DIR = os.path.join(os.path.dirname(BASE_DIR), 'extension')
+# Директория с файлами расширения (extension/ внутри token-auth-system/)
+EXTENSION_DIR = os.path.join(BASE_DIR, 'extension')
 
 # CORS: разрешаем доступ для YouTube и Chrome расширений
 CORS(
