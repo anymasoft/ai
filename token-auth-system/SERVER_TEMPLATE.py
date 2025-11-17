@@ -481,10 +481,6 @@ def oauth_callback():
         <head>
         <meta charset="UTF-8">
         <script>
-            // Устанавливаем cookie для браузера (на случай если это не popup от расширения)
-            document.cookie = 'auth_token={token}; path=/; max-age=2592000; SameSite=Lax';
-            document.cookie = 'auth_email={email}; path=/; max-age=2592000; SameSite=Lax';
-
             if (window.opener) {{
                 // Это popup от расширения или auth.html - отправляем postMessage
                 try {{
@@ -493,6 +489,7 @@ def oauth_callback():
                         token: '{token}',
                         email: '{email}'
                     }}, '*');
+                    console.log('postMessage отправлен успешно');
                 }} catch (e) {{
                     console.error('postMessage failed:', e);
                 }}
@@ -501,15 +498,13 @@ def oauth_callback():
                     window.close();
                 }}, 1000);
             }} else {{
-                // Это обычный браузер без расширения - редиректим на /pricing
-                setTimeout(function() {{
-                    window.location.href = '/pricing';
-                }}, 500);
+                // Это обычный браузер без расширения - показываем сообщение
+                document.getElementById('message').textContent = 'Авторизация успешна! Вы можете закрыть это окно.';
             }}
         </script>
         </head>
         <body>
-        <p>Авторизация успешна! Перенаправление...</p>
+        <p id="message">Авторизация успешна! Перенаправление...</p>
         </body>
         </html>
         """
