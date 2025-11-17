@@ -638,35 +638,28 @@ def auth_css():
 
 @app.route('/auth.js')
 def auth_js():
-    """JS для страницы авторизации (упрощенная версия для браузера)"""
-    # Для браузера не нужен chrome.runtime.sendMessage - OAuth callback сам устанавливает cookie
-    return """
-// Google OAuth popup handler для браузера
-console.log('[auth.js] Browser version loaded');
+    """JS для страницы авторизации (открывает OAuth popup)"""
+    return send_from_directory(EXTENSION_DIR, 'auth.js', mimetype='application/javascript')
 
-document.addEventListener('DOMContentLoaded', function() {
-  const googleSignInBtn = document.getElementById('googleSignInBtn');
+@app.route('/background.js')
+def background_js():
+    """Service worker для Chrome расширения"""
+    return send_from_directory(EXTENSION_DIR, 'background.js', mimetype='application/javascript')
 
-  if (googleSignInBtn) {
-    googleSignInBtn.addEventListener('click', function() {
-      const CLIENT_ID = '431567664470-mq0oim46t6tstlfjllbesuar346pf2qu.apps.googleusercontent.com';
-      const REDIRECT_URI = 'http://localhost:5000/auth/callback';
-      const SCOPE = 'openid email profile';
+@app.route('/content.js')
+def content_js():
+    """Content script для Chrome расширения"""
+    return send_from_directory(EXTENSION_DIR, 'content.js', mimetype='application/javascript')
 
-      const oauthUrl = 'https://accounts.google.com/o/oauth2/v2/auth' +
-        '?client_id=' + encodeURIComponent(CLIENT_ID) +
-        '&response_type=code' +
-        '&redirect_uri=' + encodeURIComponent(REDIRECT_URI) +
-        '&scope=' + encodeURIComponent(SCOPE) +
-        '&prompt=select_account';
+@app.route('/flags.js')
+def flags_js():
+    """Флаги для расширения"""
+    return send_from_directory(EXTENSION_DIR, 'flags.js', mimetype='application/javascript')
 
-      console.log('[auth.js] Redirecting to Google OAuth...');
-      // Для браузера делаем обычный редирект (не popup)
-      window.location.href = oauthUrl;
-    });
-  }
-});
-""", 200, {'Content-Type': 'application/javascript'}
+@app.route('/manifest.json')
+def manifest():
+    """Манифест Chrome расширения"""
+    return send_from_directory(EXTENSION_DIR, 'manifest.json', mimetype='application/json')
 
 @app.route('/assets/<path:filename>')
 def serve_assets(filename):
