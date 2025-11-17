@@ -382,8 +382,8 @@ def api_plan():
     print(f"[API /api/plan] Токен валиден: {user['email']}, план: {user['plan']}")
     return jsonify({
         "status": "ok",
-        "email": user['email'],
-        "plan": user['plan']
+        "email" : user['email'],
+        "plan"  : user['plan']
     })
 
 @app.route('/health', methods=['GET'])
@@ -425,11 +425,11 @@ def oauth_callback():
     # Обмениваем code на токены
     token_url = 'https://oauth2.googleapis.com/token'
     token_data = {
-        'code': code,
-        'client_id': GOOGLE_CLIENT_ID,
+        'code'         : code,
+        'client_id'    : GOOGLE_CLIENT_ID,
         'client_secret': GOOGLE_CLIENT_SECRET,
-        'redirect_uri': GOOGLE_REDIRECT_URI,
-        'grant_type': 'authorization_code'
+        'redirect_uri' : GOOGLE_REDIRECT_URI,
+        'grant_type'   : 'authorization_code'
     }
 
     try:
@@ -453,51 +453,42 @@ def oauth_callback():
         token = create_or_update_user(email, plan='Free')
 
         # Возвращаем HTML с postMessage для расширения
-        # ВАЖНО: отправляем и token, и email в расширение
         return f"""
         <!DOCTYPE html>
         <html>
         <head>
         <meta charset="UTF-8">
         <script>
-            console.log('[OAuth Callback] Страница загружена');
-            console.log('[OAuth Callback] Token:', '{token[:8]}...');
-            console.log('[OAuth Callback] Email:', '{email}');
-
-            // Отправляем токен и email в расширение через postMessage
             if (window.opener) {{
                 try {{
-                    const message = {{
+                    window.opener.postMessage({{
                         type: 'AUTH_SUCCESS',
                         token: '{token}',
                         email: '{email}'
-                    }};
-
-                    console.log('[OAuth Callback] Отправляем postMessage в window.opener:', message);
-                    window.opener.postMessage(message, '*');
-                    console.log('[OAuth Callback] postMessage отправлен успешно');
-                }} catch(e) {{
-                    console.error('[OAuth Callback] Ошибка postMessage:', e);
+                    }}, '*');
+                }} catch (e) {{
+                    console.error('postMessage failed:', e);
                 }}
 
-                // Закрываем popup через 2 секунды (даем время на обработку)
                 setTimeout(function() {{
-                    console.log('[OAuth Callback] Закрываем окно...');
                     window.close();
-                }}, 2000);
+                }}, 1000);
             }} else {{
-                // Если не popup - показываем сообщение
-                console.log('[OAuth Callback] window.opener не найден - не popup окно');
-                document.body.innerHTML = '<h2>Авторизация успешна!</h2><p>Email: {email}</p><p>Токен: {token[:8]}...</p><p>Вы можете закрыть это окно.</p>';
+                document.body.innerHTML = `
+                    <h2>Авторизация успешна!</h2>
+                    <p>Токен: {token[:8]}...</p>
+                    <p>Email: {email}</p>
+                    <p>Вы можете закрыть окно.</p>
+                `;
             }}
         </script>
         </head>
         <body>
         <p>Авторизация успешна! Окно закроется автоматически...</p>
-        <p style="color: #666; font-size: 12px; margin-top: 20px;">Email: {email}</p>
         </body>
         </html>
         """
+
 
     except requests.exceptions.RequestException as e:
         print(f"Ошибка при обмене кода на токены: {e}")
