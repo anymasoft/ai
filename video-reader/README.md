@@ -1,94 +1,124 @@
 # VideoReader - YouTube AI Translator
 
-Clean YouTube video translation extension built with Plasmo Framework 0.90.3
+**Рабочее расширение на чистом JavaScript + Plasmo 0.90.3**
 
-## Features
+Полный перенос кода из `extension/` в Plasmo framework.
 
-- ✅ YouTube subtitle extraction
-- ✅ Line-by-line AI translation
-- ✅ Real-time subtitle highlighting with karaoke effect
-- ✅ Multi-language support (9 languages)
-- ✅ Export to SRT/VTT/TXT
-- ✅ Token-based authentication (stubs ready)
-- ✅ Modern UI with Tailwind CSS
-- ✅ Manifest V3 compatible
+## Что работает
 
-## Installation
+- ✅ Панель VideoReader на YouTube
+- ✅ Получение субтитров с YouTube
+- ✅ Построчный перевод через Flask backend
+- ✅ Realtime подсветка с караоке-эффектом
+- ✅ Выбор языка перевода (9 языков)
+- ✅ Экспорт в SRT/VTT/TXT
+- ✅ OAuth обработчик в background service worker
+- ✅ Премиум UI с флагами стран
 
-### Prerequisites
+## Установка
 
-- Node.js 18+ or 20+
-- npm or pnpm
-
-### Steps
-
-1. **Install dependencies**
+### 1. Установите зависимости
 
 ```bash
 cd video-reader
-npm install
+npm install --ignore-scripts
 ```
 
-2. **Run development build**
+**Важно:** Используйте флаг `--ignore-scripts` чтобы пропустить сборку @parcel/watcher.
 
-```bash
-npm run dev
-```
-
-This will start Plasmo in watch mode and output to `build/chrome-mv3-dev`
-
-3. **Load extension in Chrome**
-
-- Open `chrome://extensions/`
-- Enable **Developer mode**
-- Click **Load unpacked**
-- Select `video-reader/build/chrome-mv3-dev`
-
-4. **Test on YouTube**
-
-- Open any YouTube video with subtitles
-- The VideoReader panel will appear in the right sidebar
-- Click "Translate Video" to start
-
-## Production Build
+### 2. Соберите расширение
 
 ```bash
 npm run build
 ```
 
-Output: `build/chrome-mv3-prod`
+Результат: `build/chrome-mv3-prod/`
 
-To package as .zip:
+Для разработки с hot reload:
 
 ```bash
-npm run package
+npm run dev
 ```
 
-## Project Structure
+Результат: `build/chrome-mv3-dev/`
+
+### 3. Загрузите в Chrome
+
+1. Откройте `chrome://extensions/`
+2. Включите **Developer mode** (правый верхний угол)
+3. Нажмите **Load unpacked**
+4. Выберите папку:
+   - Production: `video-reader/build/chrome-mv3-prod`
+   - Development: `video-reader/build/chrome-mv3-dev`
+
+### 4. Проверьте на YouTube
+
+1. Откройте любое видео на YouTube с субтитрами
+2. Справа от видео появится панель **VideoReader**
+3. Нажмите "Translate Video"
+4. Выберите язык перевода
+5. Субтитры переведутся построчно
+
+## Структура проекта
 
 ```
 video-reader/
 ├── src/
+│   ├── background/
+│   │   └── index.js          # OAuth handler (из extension/background.js)
 │   ├── contents/
-│   │   └── youtube.tsx         # Main content script (UI + logic)
-│   ├── background.ts           # Background service worker (auth stubs)
-│   └── style.css               # Tailwind + custom styles
+│   │   └── index.ts          # Plasmo wrapper
+│   ├── content-script.js     # Весь код из content.js + flags.js
+│   └── styles.css            # Оригинальные стили из extension/
 ├── assets/
-│   └── logo.png                # Extension icon
+│   ├── icon.png
+│   └── logo.png
+├── build/
+│   └── chrome-mv3-prod/      # Собранное расширение
+│       ├── manifest.json
+│       ├── contents.js
+│       ├── contents.css
+│       └── static/background/
 ├── package.json
 ├── tsconfig.json
-├── tailwind.config.js
-├── postcss.config.js
 └── README.md
 ```
 
+## Как это работает
+
+### Content Script
+
+`src/content-script.js` - это весь код из `extension/content.js` + `extension/flags.js`, объединённые в один файл.
+
+Этот файл импортируется через `src/contents/index.ts`, который добавляет Plasmo конфигурацию:
+
+```typescript
+import type { PlasmoCSConfig } from "plasmo"
+import "../content-script.js"
+import "../styles.css"
+
+export const config: PlasmoCSConfig = {
+  matches: ["https://www.youtube.com/*"],
+  all_frames: false,
+  run_at: "document_idle"
+}
+```
+
+### Background Service Worker
+
+`src/background/index.js` - копия `extension/background.js` для обработки OAuth токенов.
+
+### Стили
+
+`src/styles.css` - точная копия `extension/styles.css` с премиум дизайном.
+
 ## Backend API
 
-The extension expects a Flask backend at `http://localhost:5000` with the following endpoints:
+Расширение ожидает Flask backend на `http://localhost:5000`:
 
 ### POST /translate-line
 
-Translate a single subtitle line
+Перевод одной строки субтитров
 
 **Request:**
 ```json
@@ -111,7 +141,7 @@ Translate a single subtitle line
 
 ### GET /api/plan
 
-Get user plan (requires Bearer token)
+Получение тарифного плана (требует токен)
 
 **Headers:**
 ```
@@ -127,70 +157,71 @@ Authorization: Bearer <token>
 }
 ```
 
-## Authentication (Stubs)
+## Manifest V3
 
-The background service worker (`src/background.ts`) contains stubs for:
+Расширение использует:
 
-- `getToken()` - Get auth token from chrome.storage
-- `saveToken(token)` - Save token to storage
-- `getPlan()` - Fetch user plan from backend
-- `login()` - Login stub (not implemented yet)
+- **permissions**: `storage` - для сохранения токенов и языка
+- **host_permissions**:
+  - `https://www.youtube.com/*` - для работы на YouTube
+  - `http://localhost:5000/*` - для запросов к backend
+- **content_scripts**: один скрипт для youtube.com
+- **background**: service worker для OAuth
+- **web_accessible_resources**: логотип расширения
 
-Token is stored in `chrome.storage.local` under key `auth_token`.
+## Технологии
 
-## Technologies
+- **Plasmo Framework** 0.90.3 - без Parcel, без @parcel/watcher
+- **Vanilla JavaScript** - чистый JS из extension/
+- **TypeScript** 5.5.2 - только для Plasmo wrapper
+- **Manifest V3** - современный стандарт
 
-- **Plasmo Framework** 0.90.3 - Extension framework (no Parcel)
-- **React** 18.3.1 - UI library
-- **TypeScript** 5.5.2 - Type safety
-- **Tailwind CSS** 3.4.4 - Styling
-- **Manifest V3** - Modern Chrome extension standard
+## Отличия от extension/
 
-## Key Differences from Old Project
-
-✅ **No @parcel/watcher** - Uses Plasmo's modern bundler
-✅ **No node-gyp errors** - Clean Windows/Mac/Linux compatibility
-✅ **Token-based auth** - Removed OAuth/cookies, added token stubs
-✅ **Clean structure** - Organized src/ directory
-✅ **Type-safe** - Full TypeScript support
+1. ✅ **Собирается через Plasmo** вместо ручной загрузки
+2. ✅ **Автоматическая генерация manifest.json**
+3. ✅ **Hot reload** в dev режиме
+4. ✅ **Минификация** в production
+5. ✅ **Автоматическое создание иконок** разных размеров
+6. ❌ **Убраны**: auth.html, pricing.html (пока не нужны)
 
 ## Troubleshooting
 
-### Build errors
+### Панель не появляется
 
-If you see any build errors, make sure:
+- Проверьте что вы на странице `/watch?v=...`
+- Откройте DevTools → Console → посмотрите ошибки
+- Убедитесь что расширение загружено в `chrome://extensions/`
 
-- You're using Node 18+ or 20+
-- Dependencies are installed: `npm install`
-- No conflicting Plasmo versions
+### Субтитры не загружаются
 
-### Extension not loading
+- Проверьте что у видео есть субтитры (кнопка "Show transcript")
+- Некоторые видео не имеют текста субтитров
 
-- Check that you loaded from `build/chrome-mv3-dev` (not src/)
-- Open DevTools → Console to see errors
-- Verify you're on a YouTube video page (`/watch?v=...`)
+### Перевод не работает
 
-### Subtitles not loading
+- Убедитесь что Flask backend запущен на `http://localhost:5000`
+- Проверьте Network tab в DevTools
+- Backend должен отвечать на `/translate-line`
 
-- Make sure the video has subtitles (check YouTube's "Show transcript" button)
-- Some videos may not have transcript data available
+### Ошибки сборки
 
-### Translation not working
+Если видите ошибки @parcel/watcher:
 
-- Ensure Flask backend is running on `http://localhost:5000`
-- Check Network tab in DevTools for failed requests
-- Backend should respond to `/translate-line` endpoint
+```bash
+rm -rf node_modules package-lock.json
+npm install --ignore-scripts
+```
 
-## Next Steps
+## Следующие шаги
 
-After verifying the core works:
+После проверки базовой работы:
 
-1. Implement actual `login()` function in background.ts
-2. Add OAuth flow or email/password authentication
-3. Integrate with `/api/plan` for plan enforcement
-4. Add popup UI for account management
-5. Implement Free/Premium tier limits
+1. Реализовать OAuth авторизацию
+2. Добавить popup для управления аккаунтом
+3. Вернуть pricing.html для выбора тарифа
+4. Интегрировать проверку лимитов
 
-## License
+## Лицензия
 
 Proprietary - VideoReader Team
