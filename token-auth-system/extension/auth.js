@@ -18,7 +18,7 @@ console.log('[auth.js] Скрипт загружен');
   const authToken = getCookie('auth_token');
   if (authToken && authToken !== 'undefined' && authToken !== 'null') {
     console.log('[auth.js] Пользователь уже авторизован, редирект на /pricing');
-    window.location.href = '/pricing';
+    window.location.href = 'http://localhost:5000/pricing';
   } else {
     console.log('[auth.js] Пользователь не авторизован, показываем страницу входа');
   }
