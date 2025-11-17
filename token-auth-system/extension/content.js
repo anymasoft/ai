@@ -4,6 +4,16 @@
 
 console.log('[VideoReader content.js] Скрипт загружен');
 
+// ОТЛАДКА: Проверяем что находится в storage при загрузке
+chrome.storage.local.get(['token', 'email', 'plan'], (result) => {
+  console.log('[VideoReader content.js] 🔍 Storage при загрузке:', result);
+  if (result.token) {
+    console.log('[VideoReader content.js] ✅ Токен найден:', result.token.substring(0, 8) + '...');
+  } else {
+    console.log('[VideoReader content.js] ❌ Токен НЕ найден в storage');
+  }
+});
+
 // ГЛАВНЫЙ ОБРАБОТЧИК: Слушаем сообщения от background.js через chrome.runtime.onMessage
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   console.log('[VideoReader content.js] ✅ Получено сообщение через chrome.runtime.onMessage');
