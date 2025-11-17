@@ -28,7 +28,7 @@
       </div>
       <div class="flex items-center gap-4">
         <span id="userEmail" class="text-base font-medium text-gray-800"></span>
-        <button type="button" onclick="window.location.href='/logout'" class="text-body bg-neutral-secondary-medium box-border border border-default-medium hover:bg-neutral-tertiary-medium hover:text-heading focus:ring-4 focus:ring-neutral-tertiary shadow-xs font-medium leading-5 rounded-base text-sm px-4 py-2.5 focus:outline-none">Выйти</button>
+        <button type="button" id="logoutBtn" class="text-body bg-neutral-secondary-medium box-border border border-default-medium hover:bg-neutral-tertiary-medium hover:text-heading focus:ring-4 focus:ring-neutral-tertiary shadow-xs font-medium leading-5 rounded-base text-sm px-4 py-2.5 focus:outline-none">Выйти</button>
       </div>
     </header>
 
@@ -250,31 +250,61 @@
 </div>
 
 <script>
-  // Загрузка информации о пользователе
-  fetch('/api/user', {
-    credentials: 'include',
-    cache: 'no-cache'
-  })
-    .then(r => r.json())
-    .then(data => {
-      if (data.email) {
-        document.getElementById('userEmail').innerText = data.email;
-      } else {
-        window.location = '/auth';
-      }
-    })
-    .catch(err => {
-      console.error('Ошибка загрузки пользователя:', err);
-      window.location = '/auth';
-    });
+  console.log('[PRICING] Страница загружена');
 
-  // Загрузка информации о подписке и обновление кнопок
-  fetch('/api/subscription', {
-    credentials: 'include',
-    cache: 'no-cache'
+  // Получение токена из URL параметров или localStorage
+  const urlParams = new URLSearchParams(window.location.search);
+  let token = urlParams.get('token');
+  let email = urlParams.get('email');
+
+  console.log('[PRICING] URL params - token:', token ? 'есть' : 'нет', 'email:', email);
+
+  if (token && email) {
+    // Сохраняем в localStorage
+    localStorage.setItem('auth_token', token);
+    localStorage.setItem('auth_email', email);
+    console.log('[PRICING] Токен и email сохранены в localStorage');
+
+    // Очищаем URL от параметров
+    window.history.replaceState({}, document.title, '/pricing');
+  } else {
+    // Пробуем загрузить из localStorage
+    token = localStorage.getItem('auth_token');
+    email = localStorage.getItem('auth_email');
+    console.log('[PRICING] Загружено из localStorage - token:', token ? 'есть' : 'нет', 'email:', email);
+  }
+
+  if (!token || !email) {
+    console.error('[PRICING] Нет токена или email, редирект на /auth');
+    window.location = '/auth';
+  }
+
+  // Отображение email
+  document.getElementById('userEmail').innerText = email;
+
+  // Кнопка выхода
+  document.getElementById('logoutBtn').onclick = function() {
+    console.log('[PRICING] Выход из системы');
+    localStorage.removeItem('auth_token');
+    localStorage.removeItem('auth_email');
+    window.location = '/auth';
+  };
+
+  let currentPlan = 'Free';
+
+  // Загрузка информации о плане
+  fetch('http://localhost:5000/api/plan', {
+    method: 'GET',
+    headers: {
+      'Authorization': 'Bearer ' + token
+    }
   })
     .then(res => {
+      console.log('[PRICING] /api/plan response status:', res.status);
       if (res.status === 401) {
+        console.error('[PRICING] 401 Unauthorized, редирект на /auth');
+        localStorage.removeItem('auth_token');
+        localStorage.removeItem('auth_email');
         window.location = '/auth';
         return;
       }
@@ -283,45 +313,75 @@
     .then(data => {
       if (!data) return;
 
-      const plan = data.plan;
+      console.log('[PRICING] Данные плана получены:', data);
+      currentPlan = data.plan || 'Free';
 
       const btnFree = document.getElementById("btn-free");
       const btnPro = document.getElementById("btn-pro");
       const btnPremium = document.getElementById("btn-premium");
 
       // Функция для настройки кнопки
-      function setBtn(btn, text, disabled, href=null) {
+      function setBtn(btn, text, disabled, onClick=null) {
         btn.textContent = text;
         btn.disabled = disabled;
         btn.classList.toggle("opacity-50", disabled);
         btn.classList.toggle("cursor-not-allowed", disabled);
-        if (href) {
-          btn.onclick = () => window.location = href;
+        if (onClick) {
+          btn.onclick = onClick;
         } else {
           btn.onclick = null;
         }
       }
 
-      if (plan === "Free") {
-        setBtn(btnFree, "Current", true);
-        setBtn(btnPro, "Upgrade", false, "/checkout/pro");
-        setBtn(btnPremium, "Upgrade", false, "/checkout/premium");
+      // Функция смены плана (фейковая)
+      async function changePlan(newPlan) {
+        console.log('[PRICING] Смена плана на:', newPlan);
+
+        try {
+          const response = await fetch('http://localhost:5000/api/update-plan', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': 'Bearer ' + token
+            },
+            body: JSON.stringify({ plan: newPlan })
+          });
+
+          const result = await response.json();
+          console.log('[PRICING] Результат смены плана:', result);
+
+          if (result.success) {
+            alert('Тариф успешно изменен на ' + newPlan + '!');
+            window.location.reload();
+          } else {
+            alert('Ошибка при смене тарифа: ' + (result.error || 'неизвестная ошибка'));
+          }
+        } catch (error) {
+          console.error('[PRICING] Ошибка при смене плана:', error);
+          alert('Ошибка при смене тарифа');
+        }
       }
 
-      if (plan === "Pro") {
+      if (currentPlan === "Free") {
+        setBtn(btnFree, "Current", true);
+        setBtn(btnPro, "Upgrade", false, () => changePlan('Pro'));
+        setBtn(btnPremium, "Upgrade", false, () => changePlan('Premium'));
+      }
+
+      if (currentPlan === "Pro") {
         setBtn(btnFree, "Недоступно", true);
         setBtn(btnPro, "Current", true);
-        setBtn(btnPremium, "Upgrade", false, "/checkout/premium");
+        setBtn(btnPremium, "Upgrade", false, () => changePlan('Premium'));
       }
 
-      if (plan === "Premium") {
+      if (currentPlan === "Premium") {
         setBtn(btnFree, "Недоступно", true);
         setBtn(btnPro, "Недоступно", true);
         setBtn(btnPremium, "Current", true);
       }
     })
     .catch(err => {
-      console.error('Ошибка загрузки подписки:', err);
+      console.error('[PRICING] Ошибка загрузки плана:', err);
     });
 </script>
 
