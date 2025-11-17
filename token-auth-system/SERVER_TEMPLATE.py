@@ -19,6 +19,9 @@ load_dotenv()  # Загрузка переменных окружения из .
 
 app = Flask(__name__)
 
+# Директория, где находится этот файл (token-auth-system/)
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
 # CORS: разрешаем доступ для YouTube и Chrome расширений
 CORS(
     app,
@@ -48,8 +51,8 @@ CORS(
 )
 
 # Конфигурация
-DATABASE = 'translations.db'
-USERS_DB = 'users.db'
+DATABASE = os.path.join(BASE_DIR, 'translations.db')
+USERS_DB = os.path.join(BASE_DIR, 'users.db')
 OPENAI_API_KEY = os.getenv('OPENAI_API_KEY', 'your-api-key-here')
 client = OpenAI(api_key=OPENAI_API_KEY)
 
@@ -497,17 +500,17 @@ def oauth_callback():
 @app.route('/pricing')
 def pricing():
     """Страница с тарифными планами"""
-    return send_from_directory('.', 'pricing.html')
+    return send_from_directory(BASE_DIR, 'pricing.html')
 
 @app.route('/pricing.css')
 def pricing_css():
     """CSS для страницы pricing"""
-    return send_from_directory('.', 'pricing.css', mimetype='text/css')
+    return send_from_directory(BASE_DIR, 'pricing.css', mimetype='text/css')
 
 @app.route('/pricing.js')
 def pricing_js():
     """JS для страницы pricing"""
-    return send_from_directory('.', 'pricing.js', mimetype='application/javascript')
+    return send_from_directory(BASE_DIR, 'pricing.js', mimetype='application/javascript')
 
 @app.route('/api/update-plan', methods=['POST', 'OPTIONS'])
 def api_update_plan():
@@ -559,12 +562,12 @@ def api_update_plan():
 @app.route('/checkout/pro')
 def checkout_pro():
     """Страница оформления подписки Pro"""
-    return send_from_directory('.', 'checkout_pro.html')
+    return send_from_directory(BASE_DIR, 'checkout_pro.html')
 
 @app.route('/checkout/premium')
 def checkout_premium():
     """Страница оформления подписки Premium"""
-    return send_from_directory('.', 'checkout_premium.html')
+    return send_from_directory(BASE_DIR, 'checkout_premium.html')
 
 if __name__ == '__main__':
     # Инициализируем БД при запуске
