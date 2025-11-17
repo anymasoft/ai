@@ -135,22 +135,38 @@ def init_db():
 # ═══════════════════════════════════════════════════════════════════
 
 def create_or_update_user(email, plan='Free'):
-    """Создает или обновляет пользователя и генерирует новый токен"""
-    token = uuid.uuid4().hex
+    """Создает или обновляет пользователя.
+    Если пользователь существует - возвращает СУЩЕСТВУЮЩИЙ токен и сохраняет текущий план.
+    Если не существует - создает нового с новым токеном."""
 
     conn = sqlite3.connect(USERS_DB)
     cursor = conn.cursor()
 
-    cursor.execute('''
-        INSERT OR REPLACE INTO users (email, token, plan)
-        VALUES (?, ?, ?)
-    ''', (email, token, plan))
+    # Проверяем, существует ли пользователь с таким email
+    cursor.execute('SELECT token, plan FROM users WHERE email = ?', (email,))
+    existing_user = cursor.fetchone()
 
-    conn.commit()
-    conn.close()
+    if existing_user:
+        # Пользователь существует - возвращаем существующий токен и НЕ меняем план
+        existing_token = existing_user[0]
+        existing_plan = existing_user[1]
+        conn.close()
+        print(f"[TOKEN AUTH] Пользователь {email} уже существует, возвращаем существующий токен: {existing_token[:8]}..., план: {existing_plan}")
+        return existing_token
+    else:
+        # Пользователь новый - создаем новый токен
+        token = uuid.uuid4().hex
 
-    print(f"[TOKEN AUTH] Создан/обновлен пользователь {email}, токен: {token[:8]}...")
-    return token
+        cursor.execute('''
+            INSERT INTO users (email, token, plan)
+            VALUES (?, ?, ?)
+        ''', (email, token, plan))
+
+        conn.commit()
+        conn.close()
+
+        print(f"[TOKEN AUTH] Создан новый пользователь {email}, токен: {token[:8]}..., план: {plan}")
+        return token
 
 def get_user_by_token(token):
     """Получает данные пользователя по токену"""
