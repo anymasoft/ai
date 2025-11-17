@@ -8,24 +8,6 @@ const transcriptState = {
 };
 
 // ═══════════════════════════════════════════════════════════════════
-// USER PLAN INTEGRATION - получение тарифа через background
-// ═══════════════════════════════════════════════════════════════════
-async function getUserPlan() {
-  try {
-    const response = await chrome.runtime.sendMessage({ type: 'get-plan' });
-    console.log('[VideoReader Content] Current plan:', response);
-    return response;
-  } catch (error) {
-    console.error('[VideoReader Content] Error getting plan:', error);
-    return { plan: 'Free' };
-  }
-}
-
-// Пример использования (пока не включено):
-// const planData = await getUserPlan();
-// console.log('User plan:', planData.plan);
-
-// ═══════════════════════════════════════════════════════════════════
 // REALTIME HIGHLIGHTING SYSTEM - Netflix-level subtitle sync
 // ═══════════════════════════════════════════════════════════════════
 const realtimeHighlighter = {
@@ -285,14 +267,50 @@ function getVideoId() {
 
 // Функция получения тарифного плана пользователя
 async function fetchPlan() {
+  const API_URL = 'http://localhost:5000/api/plan';
+
   try {
-    // Используем getUserPlan() который вызывает background script
-    const data = await getUserPlan();
+    // Получаем токен из chrome.storage
+    const storage = await chrome.storage.local.get(['token']);
+    const token = storage.token;
 
-    const plan = data.plan || 'Free';
-    const email = data.email || null;
+    if (!token) {
+      console.log('[VideoReader] Токен отсутствует - пользователь не авторизован');
+      await chrome.storage.local.set({ plan: 'Free', email: null });
+      console.log('[VideoReader] Current plan: Free null');
+      return;
+    }
 
-    console.log(`[VideoReader] Current plan: ${plan} ${email || ''}`);
+    // Отправляем запрос с токеном в Authorization header
+    const response = await fetch(API_URL, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      }
+    });
+
+    let plan = 'Free';
+    let email = null;
+
+    // Обрабатываем ответ
+    if (response.status === 401) {
+      // 401 - токен невалиден или истёк
+      console.log('[VideoReader] Токен невалиден - пользователь не авторизован');
+      console.log('[VideoReader] Current plan: Free null');
+    } else if (response.ok) {
+      const data = await response.json();
+
+      if (data.status === 'ok' && data.plan && data.email) {
+        // Успешный ответ с данными пользователя
+        plan = data.plan;
+        email = data.email;
+        console.log(`[VideoReader] Current plan: ${plan} ${email}`);
+      }
+    } else {
+      // Другие ошибки - считаем Free
+      console.warn(`[VideoReader] Plan API returned status ${response.status}, defaulting to Free`);
+    }
 
     // Сохраняем в chrome.storage.local
     await chrome.storage.local.set({ plan, email });
@@ -1187,12 +1205,4 @@ fetchPlan();
 // Запускаем вставку панели при загрузке
 if (location.href.includes('/watch')) {
   injectPanel();
-}
-
-// ═══════════════════════════════════════════════════════════════════
-// PLASMO CONTENT SCRIPT CONFIGURATION
-// ═══════════════════════════════════════════════════════════════════
-export const config = {
-  matches: ["https://*.youtube.com/*"],
-  run_at: "document_end"
 }
