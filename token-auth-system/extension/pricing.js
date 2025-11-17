@@ -157,13 +157,13 @@ async function switchPlan(newPlan) {
     if (response.ok) {
       const data = await response.json();
       console.log('[Pricing] ✅ План обновлен:', data);
-      
+
       // Обновляем текущий план и UI
       currentPlan = newPlan;
       const currentPlanEl = document.getElementById('currentPlan');
       if (currentPlanEl) {
         currentPlanEl.textContent = newPlan;
-        
+
         // Меняем цвет бейджа
         currentPlanEl.className = 'px-3 py-1 rounded-full text-sm font-semibold';
         if (newPlan === 'Free') {
@@ -174,9 +174,36 @@ async function switchPlan(newPlan) {
           currentPlanEl.className += ' bg-purple-100 text-purple-800';
         }
       }
-      
+
       updateButtons(newPlan);
-      
+
+      // ═══════════════════════════════════════════════════════════════════
+      // HOT-RELOAD: Отправляем сообщение в расширение для обновления плана
+      // на всех YouTube вкладках БЕЗ перезагрузки
+      // ═══════════════════════════════════════════════════════════════════
+      if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.sendMessage) {
+        console.log('[Pricing] Отправляем PLAN_UPGRADED в расширение...');
+
+        try {
+          // Отправляем сообщение в background.js расширения
+          chrome.runtime.sendMessage({
+            type: 'PLAN_UPGRADED',
+            newPlan: newPlan,
+            email: email || data.email
+          }, (response) => {
+            if (chrome.runtime.lastError) {
+              console.log('[Pricing] Chrome runtime error:', chrome.runtime.lastError.message);
+            } else {
+              console.log('[Pricing] ✅ Сообщение PLAN_UPGRADED отправлено в расширение:', response);
+            }
+          });
+        } catch (error) {
+          console.error('[Pricing] ❌ Ошибка отправки сообщения в расширение:', error);
+        }
+      } else {
+        console.log('[Pricing] Chrome runtime недоступен (это нормально для веб-страницы)');
+      }
+
       // Показываем уведомление
       alert(`✅ План успешно изменен на ${newPlan}!`);
     } else {

@@ -45,6 +45,35 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return true; // Асинхронный ответ
   }
 
+  // ═══════════════════════════════════════════════════════════════════
+  // HOT-RELOAD: Обработка обновления тарифного плана от background.js
+  // ═══════════════════════════════════════════════════════════════════
+  if (message.type === 'PLAN_UPDATED') {
+    console.log('[VideoReader content.js] 🔄 PLAN_UPDATED получен!');
+    console.log('[VideoReader content.js] Новый план:', message.newPlan);
+    console.log('[VideoReader content.js] Email:', message.email);
+
+    const newPlan = message.newPlan;
+
+    // Обновляем план в chrome.storage.local
+    chrome.storage.local.set({ plan: newPlan }, async () => {
+      console.log('[VideoReader content.js] ✅ План обновлен в storage:', newPlan);
+
+      // Обновляем план с сервера (для синхронизации)
+      console.log('[VideoReader content.js] Синхронизируем план с сервером...');
+      await fetchPlan();
+
+      // Обновляем UI панели
+      console.log('[VideoReader content.js] Обновляем UI...');
+      await updateAuthUI();
+
+      console.log('[VideoReader content.js] ✅ UI обновлён БЕЗ перезагрузки страницы!');
+    });
+
+    sendResponse({ success: true });
+    return true; // Асинхронный ответ
+  }
+
   // Неизвестный тип сообщения
   console.log('[VideoReader content.js] Неизвестный тип сообщения:', message.type);
   sendResponse({ success: false, error: 'Unknown message type' });
