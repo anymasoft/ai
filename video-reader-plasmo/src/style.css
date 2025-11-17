@@ -1,0 +1,121 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Custom styles for VideoReader panel */
+:root {
+  --karaoke-progress: 0%;
+}
+
+/* Scrollbar styling */
+.vr-scrollbar::-webkit-scrollbar {
+  width: 6px;
+}
+
+.vr-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.vr-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 3px;
+}
+
+.vr-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.3);
+}
+
+/* Active subtitle with karaoke effect */
+.vr-active-subtitle {
+  position: relative;
+  overflow: hidden;
+}
+
+.vr-active-subtitle::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  width: var(--karaoke-progress);
+  background: linear-gradient(
+    90deg,
+    rgba(99, 102, 241, 0.12) 0%,
+    rgba(168, 85, 247, 0.08) 50%,
+    rgba(99, 102, 241, 0.12) 100%
+  );
+  transition: width 80ms linear;
+  pointer-events: none;
+  z-index: 1;
+  will-change: width;
+}
+
+.vr-active-subtitle::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: var(--karaoke-progress);
+  bottom: 0;
+  width: 2px;
+  background: linear-gradient(
+    180deg,
+    transparent 0%,
+    rgba(168, 85, 247, 0.4) 20%,
+    rgba(168, 85, 247, 0.6) 50%,
+    rgba(168, 85, 247, 0.4) 80%,
+    transparent 100%
+  );
+  box-shadow: 0 0 8px rgba(168, 85, 247, 0.3);
+  transition: left 80ms linear;
+  pointer-events: none;
+  z-index: 2;
+  opacity: 0.7;
+  will-change: left;
+}
+
+/* Ensure text is above karaoke effect */
+.vr-active-subtitle > * {
+  position: relative;
+  z-index: 3;
+}
+
+/* Spinner animation */
+@keyframes vr-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.vr-spinner {
+  animation: vr-spin 0.8s linear infinite;
+}
+
+/* Pulse animation for loading state */
+@keyframes vr-pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.7;
+  }
+}
+
+.vr-pulse {
+  animation: vr-pulse 1.5s ease-in-out infinite;
+}
+
+/* Fade-in animation */
+@keyframes vr-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.vr-fade-in {
+  animation: vr-fade-in 200ms cubic-bezier(0.4, 0, 0.2, 1) backwards;
+}
