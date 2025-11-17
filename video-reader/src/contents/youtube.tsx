@@ -137,8 +137,6 @@ const VideoReaderPanel = () => {
 
   const videoRef = useRef<HTMLVideoElement | null>(null)
   const animationFrameRef = useRef<number | null>(null)
-  const lastUpdateTimeRef = useRef(0)
-  const lastScrollTimeRef = useRef(0)
   const contentRef = useRef<HTMLDivElement>(null)
 
   // Load saved language from localStorage
