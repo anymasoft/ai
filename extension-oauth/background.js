@@ -3,25 +3,22 @@
 
 console.log('[VideoReader Background] Service worker запущен');
 
-// Глобальная переменная для отслеживания OAuth popup
-let oauthPopupId = null;
+// Глобальная переменная для отслеживания OAuth вкладки
+let oauthTabId = null;
 
-// Функция для открытия OAuth popup
-function openOAuthPopup() {
+// Функция для открытия OAuth в новой вкладке
+function openOAuthTab() {
   const authUrl = 'http://localhost:5000/auth';
 
-  chrome.windows.create(
+  chrome.tabs.create(
     {
       url: authUrl,
-      type: 'popup',
-      width: 480,
-      height: 640,
-      focused: true
+      active: true
     },
-    (window) => {
-      if (window && window.id) {
-        oauthPopupId = window.id;
-        console.log('[VideoReader Background] OAuth popup opened:', window.id);
+    (tab) => {
+      if (tab && tab.id) {
+        oauthTabId = tab.id;
+        console.log('[VideoReader Background] OAuth tab opened:', tab.id);
       }
     }
   );
@@ -62,10 +59,10 @@ async function getPlan() {
 
 // Слушаем сообщения от popup и content scripts
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-  // Открытие OAuth popup
+  // Открытие OAuth вкладки
   if (message.type === 'login') {
     console.log('[VideoReader Background] Login request received');
-    openOAuthPopup();
+    openOAuthTab();
     sendResponse({ success: true });
     return false;
   }
@@ -86,11 +83,11 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       console.log('[VideoReader Background] Токен сохранён в storage');
       sendResponse({ success: true });
 
-      // Закрываем OAuth popup если он открыт
-      if (oauthPopupId) {
-        chrome.windows.remove(oauthPopupId, () => {
-          console.log('[VideoReader Background] OAuth popup closed');
-          oauthPopupId = null;
+      // Закрываем OAuth вкладку если она открыта
+      if (oauthTabId) {
+        chrome.tabs.remove(oauthTabId, () => {
+          console.log('[VideoReader Background] OAuth tab closed');
+          oauthTabId = null;
         });
       }
     });
@@ -101,11 +98,11 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   return false;
 });
 
-// Обработчик для закрытия OAuth popup
-chrome.windows.onRemoved.addListener((windowId) => {
-  if (windowId === oauthPopupId) {
-    console.log('[VideoReader Background] OAuth popup was closed');
-    oauthPopupId = null;
+// Обработчик для закрытия OAuth вкладки
+chrome.tabs.onRemoved.addListener((tabId) => {
+  if (tabId === oauthTabId) {
+    console.log('[VideoReader Background] OAuth tab was closed');
+    oauthTabId = null;
   }
 });
 
