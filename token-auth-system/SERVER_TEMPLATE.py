@@ -560,6 +560,14 @@ def serve_assets(filename):
     """Обслуживание статических файлов (логотипы и т.д.)"""
     return send_from_directory(os.path.join(EXTENSION_DIR, 'assets'), filename)
 
+@app.route('/logout')
+def logout():
+    """Выход из системы - удаление cookies и редирект на /auth"""
+    response = redirect('/auth')
+    response.set_cookie('auth_token', '', expires=0, path='/')
+    response.set_cookie('auth_email', '', expires=0, path='/')
+    return response
+
 @app.route('/api/update-plan', methods=['POST', 'OPTIONS'])
 def api_update_plan():
     """API для обновления тарифного плана пользователя"""
