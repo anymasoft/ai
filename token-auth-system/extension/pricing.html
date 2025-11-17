@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Video Reader AI - Pricing</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="/pricing.css">
+</head>
+<body>
+
+<div class="flex min-h-screen bg-gray-100">
+  <div class="flex-1 flex flex-col">
+    <!-- Top Navbar -->
+    <header class="bg-white shadow-md p-4 flex justify-between items-center">
+      <div class="flex items-center gap-3">
+        <img src="/assets/logo.png" alt="Video Reader AI" class="w-12 h-12 rounded-lg">
+        <h1 class="text-2xl font-bold text-black">Video Reader AI</h1>
+      </div>
+      <!-- Для авторизованных -->
+      <div id="user-info" class="flex items-center gap-4" style="display: none;">
+        <span id="userEmail" class="text-base font-medium text-gray-800"></span>
+        <span id="currentPlan" class="px-3 py-1 rounded-full text-sm font-semibold bg-blue-100 text-blue-800"></span>
+      </div>
+      <!-- Для неавторизованных -->
+      <div id="auth-prompt" class="flex items-center gap-4" style="display: none;">
+        <a href="/auth" class="px-5 py-2.5 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700">Sign in with Google</a>
+      </div>
+    </header>
+
+    <main class="p-6">
+      <section class="py-12 bg-white">
+        <div class="max-w-7xl mx-auto px-4">
+          <div class="text-center mb-12">
+            <h2 class="text-4xl font-bold text-black mb-4">
+              Экономьте часы времени на переводах YouTube-видео
+            </h2>
+            <p class="text-xl text-gray-600">
+              Выберите оптимальный тариф Video Reader AI
+            </p>
+          </div>
+
+          <div class="grid lg:grid-cols-3 gap-8 mt-8">
+            <!-- Free Plan -->
+            <div class="border rounded-lg p-8 flex flex-col">
+              <h3 class="text-3xl font-bold text-black mb-6">Free</h3>
+              <div class="mb-6">
+                <span class="text-6xl font-bold">$0</span>
+                <span class="text-gray-600">/month</span>
+              </div>
+              <ul class="flex-1 space-y-3 mb-8">
+                <li class="flex items-center">
+                  <svg class="w-5 h-5 mr-2 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                  </svg>
+                  10 videos per month
+                </li>
+                <li class="flex items-center">
+                  <svg class="w-5 h-5 mr-2 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                  </svg>
+                  Basic translations
+                </li>
+              </ul>
+              <button id="btn-free" class="w-full py-3 px-4 border border-blue-600 text-blue-600 rounded-md hover:bg-blue-50">
+                Current Plan
+              </button>
+            </div>
+
+            <!-- Pro Plan -->
+            <div class="border-4 border-blue-600 rounded-lg p-8 flex flex-col relative">
+              <div class="absolute top-0 right-0 bg-blue-600 text-white px-3 py-1 text-sm rounded-bl-lg rounded-tr-lg">
+                Popular
+              </div>
+              <h3 class="text-3xl font-bold text-black mb-6">Pro</h3>
+              <div class="mb-6">
+                <span class="text-6xl font-bold">$9</span>
+                <span class="text-gray-600">/month</span>
+              </div>
+              <ul class="flex-1 space-y-3 mb-8">
+                <li class="flex items-center">
+                  <svg class="w-5 h-5 mr-2 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                  </svg>
+                  100 videos per month
+                </li>
+                <li class="flex items-center">
+                  <svg class="w-5 h-5 mr-2 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                  </svg>
+                  Advanced AI translations
+                </li>
+                <li class="flex items-center">
+                  <svg class="w-5 h-5 mr-2 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                  </svg>
+                  Priority support
+                </li>
+              </ul>
+              <button id="btn-pro" class="w-full py-3 px-4 bg-blue-600 text-white rounded-md hover:bg-blue-700">
+                Upgrade to Pro
+              </button>
+            </div>
+
+            <!-- Premium Plan -->
+            <div class="border rounded-lg p-8 flex flex-col">
+              <h3 class="text-3xl font-bold text-black mb-6">Premium</h3>
+              <div class="mb-6">
+                <span class="text-6xl font-bold">$19</span>
+                <span class="text-gray-600">/month</span>
+              </div>
+              <ul class="flex-1 space-y-3 mb-8">
+                <li class="flex items-center">
+                  <svg class="w-5 h-5 mr-2 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                  </svg>
+                  Unlimited videos
+                </li>
+                <li class="flex items-center">
+                  <svg class="w-5 h-5 mr-2 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                  </svg>
+                  Premium AI translations
+                </li>
+                <li class="flex items-center">
+                  <svg class="w-5 h-5 mr-2 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                  </svg>
+                  24/7 VIP support
+                </li>
+              </ul>
+              <button id="btn-premium" class="w-full py-3 px-4 border border-blue-600 text-blue-600 rounded-md hover:bg-blue-50">
+                Upgrade to Premium
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+</div>
+
+<script src="/pricing.js"></script>
+</body>
+</html>

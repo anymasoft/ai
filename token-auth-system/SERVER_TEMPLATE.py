@@ -521,6 +521,21 @@ def auth():
     """Страница авторизации"""
     return send_from_directory(EXTENSION_DIR, 'auth.html')
 
+@app.route('/pricing')
+def pricing():
+    """Страница с тарифными планами (работает ТОЛЬКО по токену из URL ?token=...)"""
+    return send_from_directory(EXTENSION_DIR, 'pricing.html')
+
+@app.route('/pricing.css')
+def pricing_css():
+    """CSS для страницы pricing"""
+    return send_from_directory(EXTENSION_DIR, 'pricing.css', mimetype='text/css')
+
+@app.route('/pricing.js')
+def pricing_js():
+    """JS для страницы pricing"""
+    return send_from_directory(EXTENSION_DIR, 'pricing.js', mimetype='application/javascript')
+
 @app.route('/auth.css')
 def auth_css():
     """CSS для страницы авторизации"""
