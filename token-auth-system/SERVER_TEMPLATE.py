@@ -568,6 +568,58 @@ def logout():
     response.set_cookie('auth_email', '', expires=0, path='/')
     return response
 
+@app.route('/api/user', methods=['GET', 'OPTIONS'])
+def api_user():
+    """API для получения информации о пользователе (для pricing.html)"""
+    if request.method == 'OPTIONS':
+        return '', 200
+
+    # Получаем токен из cookie
+    token = request.cookies.get('auth_token')
+
+    if not token:
+        print("[API /api/user] Токен не найден в cookies")
+        return jsonify({"error": "unauthorized"}), 401
+
+    # Проверяем токен в БД
+    user = get_user_by_token(token)
+
+    if not user:
+        print(f"[API /api/user] Токен невалиден")
+        return jsonify({"error": "unauthorized"}), 401
+
+    print(f"[API /api/user] Пользователь: {user['email']}, план: {user['plan']}")
+    return jsonify({
+        "email": user['email'],
+        "plan": user['plan']
+    })
+
+@app.route('/api/subscription', methods=['GET', 'OPTIONS'])
+def api_subscription():
+    """API для получения информации о подписке (для pricing.html)"""
+    if request.method == 'OPTIONS':
+        return '', 200
+
+    # Получаем токен из cookie
+    token = request.cookies.get('auth_token')
+
+    if not token:
+        print("[API /api/subscription] Токен не найден в cookies")
+        return jsonify({"error": "unauthorized"}), 401
+
+    # Проверяем токен в БД
+    user = get_user_by_token(token)
+
+    if not user:
+        print(f"[API /api/subscription] Токен невалиден")
+        return jsonify({"error": "unauthorized"}), 401
+
+    print(f"[API /api/subscription] Подписка: {user['email']}, план: {user['plan']}")
+    return jsonify({
+        "plan": user['plan'],
+        "email": user['email']
+    })
+
 @app.route('/api/update-plan', methods=['POST', 'OPTIONS'])
 def api_update_plan():
     """API для обновления тарифного плана пользователя"""
