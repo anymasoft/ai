@@ -1,29 +1,98 @@
 // ═══════════════════════════════════════════════════════════════════
-// TOKEN AUTH - Listen for postMessage from OAuth callback
+// TOKEN AUTH - Listen for messages from background.js and OAuth callback
 // ═══════════════════════════════════════════════════════════════════
 
-// Слушаем postMessage от OAuth callback popup
+console.log('[VideoReader content.js] Скрипт загружен');
+
+// ГЛАВНЫЙ ОБРАБОТЧИК: Слушаем сообщения от background.js через chrome.runtime.onMessage
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  console.log('[VideoReader content.js] ✅ Получено сообщение через chrome.runtime.onMessage');
+  console.log('[VideoReader content.js] message:', message);
+  console.log('[VideoReader content.js] sender:', sender);
+
+  // Обрабатываем AUTH_SUCCESS от background.js
+  if (message.type === 'AUTH_SUCCESS') {
+    console.log('[VideoReader content.js] 🎉 AUTH_SUCCESS получен!');
+    console.log('[VideoReader content.js] Token:', message.token?.substring(0, 8) + '...');
+    console.log('[VideoReader content.js] Email:', message.email);
+
+    const token = message.token;
+    const email = message.email;
+
+    // Сохраняем токен и email в chrome.storage.local
+    if (token && email) {
+      console.log('[VideoReader content.js] Сохраняем токен и email в storage...');
+
+      chrome.storage.local.set({ token: token, email: email }, async () => {
+        console.log('[VideoReader content.js] ✅ Токен и email сохранены в chrome.storage');
+
+        // Сразу после получения токена запрашиваем план
+        console.log('[VideoReader content.js] Запрашиваем план пользователя...');
+        await fetchPlan();
+
+        // Обновляем UI авторизации
+        console.log('[VideoReader content.js] Обновляем UI авторизации...');
+        await updateAuthUI();
+        console.log('[VideoReader content.js] ✅ UI авторизации обновлён после получения токена');
+      });
+
+      sendResponse({ success: true });
+    } else {
+      console.error('[VideoReader content.js] ❌ Токен или email отсутствуют в сообщении!');
+      sendResponse({ success: false, error: 'Missing token or email' });
+    }
+
+    return true; // Асинхронный ответ
+  }
+
+  // Неизвестный тип сообщения
+  console.log('[VideoReader content.js] Неизвестный тип сообщения:', message.type);
+  sendResponse({ success: false, error: 'Unknown message type' });
+  return false;
+});
+
+console.log('[VideoReader content.js] ✅ Обработчик chrome.runtime.onMessage установлен');
+
+// ДОПОЛНИТЕЛЬНЫЙ ОБРАБОТЧИК: Слушаем postMessage от OAuth callback popup (на случай прямого сообщения)
 window.addEventListener('message', async (event) => {
+  console.log('[VideoReader content.js] Получено window.postMessage событие');
+  console.log('[VideoReader content.js] event.origin:', event.origin);
+  console.log('[VideoReader content.js] event.data:', event.data);
+
   // Проверяем тип сообщения
   if (event.data && event.data.type === 'AUTH_SUCCESS') {
+    console.log('[VideoReader content.js] AUTH_SUCCESS получен через window.postMessage');
+
     const token = event.data.token;
+    const email = event.data.email;
 
-    console.log('[VideoReader] Получен токен от OAuth callback:', token?.substring(0, 8) + '...');
+    console.log('[VideoReader content.js] Token:', token?.substring(0, 8) + '...');
+    console.log('[VideoReader content.js] Email:', email);
 
-    // Сохраняем токен в chrome.storage.local
-    if (token) {
-      await chrome.storage.local.set({ token });
-      console.log('[VideoReader] Токен сохранён в chrome.storage');
+    // Сохраняем токен и email в chrome.storage.local
+    if (token && email) {
+      console.log('[VideoReader content.js] Сохраняем токен и email в storage...');
+
+      await chrome.storage.local.set({ token: token, email: email });
+      console.log('[VideoReader content.js] ✅ Токен и email сохранены в chrome.storage');
 
       // Сразу после получения токена запрашиваем план
+      console.log('[VideoReader content.js] Запрашиваем план пользователя...');
       await fetchPlan();
 
       // Обновляем UI авторизации
+      console.log('[VideoReader content.js] Обновляем UI авторизации...');
       await updateAuthUI();
-      console.log('[VideoReader] UI авторизации обновлён после получения токена');
+      console.log('[VideoReader content.js] ✅ UI авторизации обновлён после получения токена');
+    } else {
+      console.error('[VideoReader content.js] ❌ Токен или email отсутствуют в postMessage!');
     }
+  } else {
+    console.log('[VideoReader content.js] Получено postMessage другого типа:', event.data?.type);
   }
 });
+
+console.log('[VideoReader content.js] ✅ Обработчик window.postMessage установлен');
 
 // ═══════════════════════════════════════════════════════════════════
 // PLAN DETECTION SYSTEM - Fetch user plan from backend with Bearer token
