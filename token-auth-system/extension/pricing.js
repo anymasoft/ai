@@ -1,45 +1,25 @@
-// Pricing page logic - работа с тарифными планами через Bearer токен из URL параметра
+// Pricing page logic - работа через cookies (credentials: include)
 console.log('[Pricing] Скрипт загружен');
-
-// Получаем токен из URL параметра ?token=...
-function getTokenFromURL() {
-  const urlParams = new URLSearchParams(window.location.search);
-  return urlParams.get('token');
-}
-
-const token = getTokenFromURL();
-console.log('[Pricing] Token из URL:', token ? token.substring(0, 8) + '...' : 'отсутствует');
 
 // Текущий план пользователя
 let currentPlan = 'Free';
 let currentEmail = '';
 
-// Загрузка информации о пользователе и плане
+// Загрузка информации о пользователе через cookies
 async function loadUserInfo() {
-  console.log('[Pricing] Загрузка информации о пользователе...');
+  console.log('[Pricing] Загрузка информации о пользователе через cookies...');
 
   const userInfoEl = document.getElementById('user-info');
   const authPromptEl = document.getElementById('auth-prompt');
   const userEmailEl = document.getElementById('userEmail');
   const currentPlanEl = document.getElementById('currentPlan');
 
-  // Если токена нет - показываем кнопку Sign In
-  if (!token) {
-    console.log('[Pricing] Токен отсутствует - показываем Sign In');
-    if (authPromptEl) authPromptEl.style.display = 'flex';
-    if (userInfoEl) userInfoEl.style.display = 'none';
-
-    // Устанавливаем кнопки для неавторизованного пользователя
-    updateButtons('Free');
-    return;
-  }
-
-  // Получаем план с сервера через Bearer токен
   try {
+    // Запрос к /api/plan с credentials: include (cookies автоматически отправятся)
     const response = await fetch('http://localhost:5000/api/plan', {
       method: 'GET',
+      credentials: 'include', // ВАЖНО: отправляет cookies
       headers: {
-        'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json'
       }
     });
@@ -60,7 +40,7 @@ async function loadUserInfo() {
         currentPlanEl.textContent = currentPlan;
 
         // Меняем цвет бейджа в зависимости от плана
-        currentPlanEl.className = 'px-3 py-1 rounded-full text-sm font-semibold';
+        currentPlanEl.className = 'px-3 py-1 rounded-full text-xs font-semibold';
         if (currentPlan === 'Free') {
           currentPlanEl.className += ' bg-gray-100 text-gray-800';
         } else if (currentPlan === 'Pro') {
@@ -74,7 +54,7 @@ async function loadUserInfo() {
       updateButtons(currentPlan);
     } else {
       console.log('[Pricing] ❌ Ошибка получения плана, статус:', response.status);
-      // Если токен невалиден - показываем кнопку Sign In
+      // Если cookie нет или невалидна - показываем кнопку Sign In
       if (authPromptEl) authPromptEl.style.display = 'flex';
       if (userInfoEl) userInfoEl.style.display = 'none';
       updateButtons('Free');
@@ -103,11 +83,18 @@ function updateButtons(plan) {
     btn.textContent = text;
     btn.disabled = disabled;
 
+    // Обновляем стили
     if (disabled) {
-      btn.className = btn.className.replace('hover:bg-blue-700', '').replace('hover:bg-blue-50', '');
-      btn.className += ' opacity-50 cursor-not-allowed';
+      btn.classList.add('opacity-50', 'cursor-not-allowed');
+      btn.classList.remove('hover:bg-gray-50', 'hover:bg-blue-700');
     } else {
-      btn.className = btn.className.replace('opacity-50', '').replace('cursor-not-allowed', '');
+      btn.classList.remove('opacity-50', 'cursor-not-allowed');
+      // Восстанавливаем hover эффекты в зависимости от стиля кнопки
+      if (btn.classList.contains('bg-blue-600')) {
+        btn.classList.add('hover:bg-blue-700');
+      } else {
+        btn.classList.add('hover:bg-gray-50');
+      }
     }
 
     if (onClick) {
@@ -122,31 +109,25 @@ function updateButtons(plan) {
     setButton(btnPro, 'Upgrade to Pro', false, () => switchPlan('Pro'));
     setButton(btnPremium, 'Upgrade to Premium', false, () => switchPlan('Premium'));
   } else if (plan === 'Pro') {
-    setButton(btnFree, 'Downgrade', false, () => switchPlan('Free'));
+    setButton(btnFree, 'Downgrade to Free', false, () => switchPlan('Free'));
     setButton(btnPro, 'Current Plan', true);
     setButton(btnPremium, 'Upgrade to Premium', false, () => switchPlan('Premium'));
   } else if (plan === 'Premium') {
-    setButton(btnFree, 'Downgrade', false, () => switchPlan('Free'));
-    setButton(btnPro, 'Downgrade', false, () => switchPlan('Pro'));
+    setButton(btnFree, 'Downgrade to Free', false, () => switchPlan('Free'));
+    setButton(btnPro, 'Downgrade to Pro', false, () => switchPlan('Pro'));
     setButton(btnPremium, 'Current Plan', true);
   }
 }
 
-// Переключение плана
+// Переключение плана через cookie
 async function switchPlan(newPlan) {
   console.log('[Pricing] Переключение на план:', newPlan);
-
-  if (!token) {
-    console.log('[Pricing] Токен отсутствует - перенаправление на /auth');
-    window.location.href = '/auth';
-    return;
-  }
 
   try {
     const response = await fetch(`http://localhost:5000/switch-plan/${newPlan}`, {
       method: 'POST',
+      credentials: 'include', // ВАЖНО: отправляет cookies
       headers: {
-        'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json'
       }
     });
@@ -162,7 +143,7 @@ async function switchPlan(newPlan) {
         currentPlanEl.textContent = newPlan;
 
         // Меняем цвет бейджа
-        currentPlanEl.className = 'px-3 py-1 rounded-full text-sm font-semibold';
+        currentPlanEl.className = 'px-3 py-1 rounded-full text-xs font-semibold';
         if (newPlan === 'Free') {
           currentPlanEl.className += ' bg-gray-100 text-gray-800';
         } else if (newPlan === 'Pro') {
@@ -173,15 +154,76 @@ async function switchPlan(newPlan) {
       }
 
       updateButtons(newPlan);
-      alert(`✅ План успешно изменен на ${newPlan}!`);
+
+      // Показываем уведомление
+      showNotification(`✅ План успешно изменен на ${newPlan}!`, 'success');
+
+      // HOT RELOAD: Отправляем сообщение расширению об обновлении плана
+      // Это позволит расширению обновить UI без перезагрузки страницы YouTube
+      try {
+        if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.sendMessage) {
+          chrome.runtime.sendMessage({
+            type: 'PLAN_UPDATED',
+            newPlan: newPlan,
+            email: currentEmail
+          }, (response) => {
+            if (chrome.runtime.lastError) {
+              console.log('[Pricing] Chrome runtime недоступен (это нормально для обычного браузера)');
+            } else {
+              console.log('[Pricing] ✅ Сообщение PLAN_UPDATED отправлено в расширение');
+            }
+          });
+        }
+      } catch (e) {
+        console.log('[Pricing] Расширение недоступно (это нормально для обычного браузера)');
+      }
     } else {
       console.error('[Pricing] ❌ Ошибка обновления плана, статус:', response.status);
-      alert('❌ Ошибка обновления плана');
+
+      if (response.status === 401) {
+        showNotification('❌ Требуется авторизация. Войдите в систему.', 'error');
+        // Показываем кнопку Sign In
+        document.getElementById('auth-prompt').style.display = 'flex';
+        document.getElementById('user-info').style.display = 'none';
+      } else {
+        showNotification('❌ Ошибка обновления плана. Попробуйте позже.', 'error');
+      }
     }
   } catch (error) {
     console.error('[Pricing] ❌ Ошибка запроса обновления плана:', error);
-    alert('❌ Ошибка обновления плана');
+    showNotification('❌ Ошибка соединения с сервером.', 'error');
   }
+}
+
+// Показ уведомления
+function showNotification(message, type = 'info') {
+  // Создаем элемент уведомления
+  const notification = document.createElement('div');
+  notification.className = `fixed top-4 right-4 px-6 py-4 rounded-lg shadow-lg text-white font-medium z-50 transition-all transform translate-x-0`;
+
+  if (type === 'success') {
+    notification.className += ' bg-green-600';
+  } else if (type === 'error') {
+    notification.className += ' bg-red-600';
+  } else {
+    notification.className += ' bg-blue-600';
+  }
+
+  notification.textContent = message;
+  document.body.appendChild(notification);
+
+  // Анимация появления
+  setTimeout(() => {
+    notification.style.transform = 'translateX(0)';
+  }, 10);
+
+  // Удаляем через 3 секунды
+  setTimeout(() => {
+    notification.style.transform = 'translateX(400px)';
+    setTimeout(() => {
+      notification.remove();
+    }, 300);
+  }, 3000);
 }
 
 // Инициализация при загрузке страницы

@@ -3,7 +3,7 @@ YouTube Subtitle Translation Server - Token Authentication Model
 Сервер для построчного перевода субтитров YouTube с использованием токен-авторизации
 """
 
-from flask import Flask, request, jsonify, send_from_directory, redirect
+from flask import Flask, request, jsonify, send_from_directory, redirect, make_response
 from flask_cors import CORS
 import sqlite3
 import json
@@ -378,21 +378,33 @@ def translate_line():
 
 @app.route('/api/plan', methods=['GET', 'OPTIONS'])
 def api_plan():
-    """API для получения тарифного плана по токену"""
+    """API для получения тарифного плана
+    Проверяет ЛИБО Authorization header (для расширения), ЛИБО cookie (для сайта)"""
 
     if request.method == 'OPTIONS':
         return '', 200
 
-    # Читаем Authorization header
+    token = None
+    source = None
+
+    # Сначала проверяем Authorization header (расширение)
     auth_header = request.headers.get('Authorization')
+    if auth_header and auth_header.startswith('Bearer '):
+        token = auth_header.split(' ')[1]
+        source = 'extension'
+        print(f"[API /api/plan] Токен из Authorization header: {token[:8]}...")
+    # Если нет header, проверяем cookie (сайт)
+    else:
+        cookie_token = request.cookies.get('auth_token')
+        if cookie_token:
+            token = cookie_token
+            source = 'website'
+            print(f"[API /api/plan] Токен из cookie: {token[:8]}...")
 
-    if not auth_header or not auth_header.startswith('Bearer '):
-        print("[API /api/plan] Отсутствует или неверный Authorization header")
+    # Если токен не найден ни в header, ни в cookie
+    if not token:
+        print("[API /api/plan] Токен не найден ни в Authorization header, ни в cookie")
         return jsonify({"error": "unauthorized"}), 401
-
-    # Извлекаем токен
-    token = auth_header.split(' ')[1]
-    print(f"[API /api/plan] Получен токен: {token[:8]}...")
 
     # Проверяем токен в БД
     user = get_user_by_token(token)
@@ -401,7 +413,7 @@ def api_plan():
         print(f"[API /api/plan] Токен не найден в БД")
         return jsonify({"error": "unauthorized"}), 401
 
-    print(f"[API /api/plan] Токен валиден: {user['email']}, план: {user['plan']}")
+    print(f"[API /api/plan] Токен валиден ({source}): {user['email']}, план: {user['plan']}")
     return jsonify({
         "status": "ok",
         "email" : user['email'],
@@ -518,12 +530,78 @@ def oauth_callback():
 
 @app.route('/auth')
 def auth():
-    """Страница авторизации"""
+    """Страница авторизации для расширения"""
     return send_from_directory(EXTENSION_DIR, 'auth.html')
+
+@app.route('/auth-site')
+def auth_site():
+    """OAuth авторизация для сайта (pricing) - редирект на Google OAuth"""
+    oauth_url = (
+        'https://accounts.google.com/o/oauth2/v2/auth'
+        f'?client_id={GOOGLE_CLIENT_ID}'
+        '&response_type=code'
+        '&redirect_uri=http://localhost:5000/auth-site/callback'
+        '&scope=openid email profile'
+        '&prompt=select_account'
+    )
+    return redirect(oauth_url)
+
+@app.route('/auth-site/callback')
+def auth_site_callback():
+    """OAuth callback для сайта - устанавливает cookie и редирект на /pricing"""
+    code = request.args.get('code')
+
+    if not code:
+        return "<h1>Ошибка</h1><p>Код авторизации не получен.</p>", 400
+
+    # Обмениваем code на токены
+    token_url = 'https://oauth2.googleapis.com/token'
+    token_data = {
+        'code'         : code,
+        'client_id'    : GOOGLE_CLIENT_ID,
+        'client_secret': GOOGLE_CLIENT_SECRET,
+        'redirect_uri' : 'http://localhost:5000/auth-site/callback',
+        'grant_type'   : 'authorization_code'
+    }
+
+    try:
+        response = requests.post(token_url, data=token_data)
+        response.raise_for_status()
+        tokens = response.json()
+
+        id_token = tokens.get('id_token')
+        if not id_token:
+            return "<h1>Ошибка</h1><p>id_token не получен.</p>", 500
+
+        # Декодируем JWT
+        payload = decode_jwt(id_token)
+        if not payload:
+            return "<h1>Ошибка</h1><p>Не удалось декодировать id_token.</p>", 500
+
+        # Получаем email
+        email = payload.get('email', 'Email не найден')
+
+        # Создаём или получаем токен для пользователя
+        token = create_or_update_user(email, plan='Free')
+
+        print(f"[AUTH-SITE] ✅ Авторизация успешна: {email}, токен: {token[:8]}...")
+
+        # Создаём response с редиректом на /pricing
+        resp = make_response(redirect('/pricing'))
+
+        # Устанавливаем cookie с токеном (на 30 дней)
+        resp.set_cookie('auth_token', token, max_age=30*24*60*60, path='/', httponly=True)
+        resp.set_cookie('auth_email', email, max_age=30*24*60*60, path='/', httponly=False)
+
+        return resp
+
+    except requests.exceptions.RequestException as e:
+        print(f"Ошибка при обмене кода на токены: {e}")
+        return f"<h1>Ошибка</h1><p>Не удалось обменять код на токены: {e}</p>", 500
 
 @app.route('/pricing')
 def pricing():
-    """Страница с тарифными планами (работает ТОЛЬКО по токену из URL ?token=...)"""
+    """Страница с тарифными планами (работает через cookies для сайта)"""
     return send_from_directory(EXTENSION_DIR, 'pricing.html')
 
 @app.route('/pricing.css')
@@ -576,69 +654,9 @@ def serve_assets(filename):
     """Обслуживание статических файлов (логотипы и т.д.)"""
     return send_from_directory(os.path.join(EXTENSION_DIR, 'assets'), filename)
 
-@app.route('/logout')
-def logout():
-    """Выход из системы - удаление cookies и редирект на /auth"""
-    response = redirect('/auth')
-    response.set_cookie('auth_token', '', expires=0, path='/')
-    response.set_cookie('auth_email', '', expires=0, path='/')
-    return response
-
-@app.route('/api/user', methods=['GET', 'OPTIONS'])
-def api_user():
-    """API для получения информации о пользователе (для pricing.html)"""
-    if request.method == 'OPTIONS':
-        return '', 200
-
-    # Получаем токен из cookie
-    token = request.cookies.get('auth_token')
-
-    if not token:
-        print("[API /api/user] Токен не найден в cookies")
-        return jsonify({"error": "unauthorized"}), 401
-
-    # Проверяем токен в БД
-    user = get_user_by_token(token)
-
-    if not user:
-        print(f"[API /api/user] Токен невалиден")
-        return jsonify({"error": "unauthorized"}), 401
-
-    print(f"[API /api/user] Пользователь: {user['email']}, план: {user['plan']}")
-    return jsonify({
-        "email": user['email'],
-        "plan": user['plan']
-    })
-
-@app.route('/api/subscription', methods=['GET', 'OPTIONS'])
-def api_subscription():
-    """API для получения информации о подписке (для pricing.html)"""
-    if request.method == 'OPTIONS':
-        return '', 200
-
-    # Получаем токен из cookie
-    token = request.cookies.get('auth_token')
-
-    if not token:
-        print("[API /api/subscription] Токен не найден в cookies")
-        return jsonify({"error": "unauthorized"}), 401
-
-    # Проверяем токен в БД
-    user = get_user_by_token(token)
-
-    if not user:
-        print(f"[API /api/subscription] Токен невалиден")
-        return jsonify({"error": "unauthorized"}), 401
-
-    print(f"[API /api/subscription] Подписка: {user['email']}, план: {user['plan']}")
-    return jsonify({
-        "plan": user['plan'],
-        "email": user['email']
-    })
-
 @app.route('/switch-plan/<plan>', methods=['POST', 'OPTIONS'])
 def switch_plan(plan):
-    """Переключение тарифного плана (для pricing.html)"""
+    """Переключение тарифного плана (работает ТОЛЬКО через cookie для сайта)"""
     if request.method == 'OPTIONS':
         return '', 200
 
@@ -646,16 +664,14 @@ def switch_plan(plan):
     if plan not in ['Free', 'Pro', 'Premium']:
         return jsonify({"error": "invalid_plan"}), 400
 
-    # Получаем токен из Authorization header
-    auth_header = request.headers.get('Authorization')
+    # Получаем токен из cookie
+    token = request.cookies.get('auth_token')
 
-    if not auth_header or not auth_header.startswith('Bearer '):
-        print("[API /switch-plan] Отсутствует или неверный Authorization header")
+    if not token:
+        print("[API /switch-plan] Токен не найден в cookies")
         return jsonify({"error": "unauthorized"}), 401
 
-    # Извлекаем токен
-    token = auth_header.split(' ')[1]
-    print(f"[API /switch-plan] Получен токен: {token[:8]}... → переключение на {plan}")
+    print(f"[API /switch-plan] Получен токен из cookie: {token[:8]}... → переключение на {plan}")
 
     # Проверяем токен и обновляем план
     user = get_user_by_token(token)
