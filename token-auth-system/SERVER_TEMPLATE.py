@@ -523,18 +523,18 @@ def oauth_callback():
 
 @app.route('/pricing')
 def pricing():
-    """Страница с тарифными планами (веб-страница, не часть расширения)"""
-    return send_from_directory(BASE_DIR, 'pricing.html')
+    """Страница с тарифными планами"""
+    return send_from_directory(EXTENSION_DIR, 'pricing.html')
 
 @app.route('/pricing.css')
 def pricing_css():
     """CSS для страницы pricing"""
-    return send_from_directory(BASE_DIR, 'pricing.css', mimetype='text/css')
+    return send_from_directory(EXTENSION_DIR, 'pricing.css', mimetype='text/css')
 
 @app.route('/pricing.js')
 def pricing_js():
     """JS для страницы pricing"""
-    return send_from_directory(BASE_DIR, 'pricing.js', mimetype='application/javascript')
+    return send_from_directory(EXTENSION_DIR, 'pricing.js', mimetype='application/javascript')
 
 @app.route('/auth')
 def auth():
