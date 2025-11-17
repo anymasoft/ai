@@ -201,16 +201,11 @@ async function fetchPlan() {
   }
 }
 
-// Открывает страницу авторизации через background.js
+// Открывает страницу авторизации через веб-сервер (не через расширение)
 function openAuthPage() {
-  console.log('[VideoReader] Запрос на открытие страницы авторизации');
-  chrome.runtime.sendMessage({ type: 'OPEN_AUTH_PAGE' }, (response) => {
-    if (chrome.runtime.lastError) {
-      console.error('[VideoReader] Ошибка отправки сообщения в background:', chrome.runtime.lastError);
-    } else {
-      console.log('[VideoReader] Страница авторизации запрошена');
-    }
-  });
+  console.log('[VideoReader] Открытие страницы авторизации через веб-сервер');
+  // Открываем http://localhost:5000/auth напрямую, чтобы работал externally_connectable
+  window.open('http://localhost:5000/auth', '_blank');
 }
 
 // Обновляет UI авторизации на основе наличия токена
