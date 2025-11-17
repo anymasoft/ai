@@ -30,7 +30,7 @@ CORS(
             "max_age": 3600
         },
         r"/api/*": {
-            "origins": ["https://www.youtube.com", "https://youtube.com", "chrome-extension://*"],
+            "origins": "*",  # Разрешаем все origins для API (включая localhost)
             "methods": ["GET", "POST", "OPTIONS"],
             "allow_headers": ["Content-Type", "Authorization"],
             "supports_credentials": False,  # Не используем credentials
@@ -506,166 +506,64 @@ def oauth_callback():
 @app.route('/pricing')
 def pricing():
     """Страница с тарифными планами"""
-    return """
-    <!DOCTYPE html>
-    <html>
-    <head>
-    <meta charset="UTF-8">
-    <title>Video Reader AI - Pricing</title>
-    <style>
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 40px 20px;
-            background: #f5f5f5;
-        }
-        h1 {
-            text-align: center;
-            color: #1f1f1f;
-            margin-bottom: 10px;
-        }
-        .subtitle {
-            text-align: center;
-            color: #6b6b6b;
-            margin-bottom: 40px;
-        }
-        .plans-container {
-            display: flex;
-            gap: 20px;
-            justify-content: center;
-            flex-wrap: wrap;
-        }
-        .plan-card {
-            background: white;
-            border-radius: 12px;
-            padding: 30px;
-            width: 300px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-            transition: transform 0.2s ease;
-        }
-        .plan-card:hover {
-            transform: translateY(-4px);
-            box-shadow: 0 4px 16px rgba(0,0,0,0.15);
-        }
-        .plan-card.featured {
-            border: 2px solid #3b82f6;
-            transform: scale(1.05);
-        }
-        .plan-name {
-            font-size: 24px;
-            font-weight: 600;
-            margin-bottom: 10px;
-            color: #1f1f1f;
-        }
-        .plan-price {
-            font-size: 36px;
-            font-weight: 700;
-            color: #3b82f6;
-            margin-bottom: 20px;
-        }
-        .plan-price span {
-            font-size: 16px;
-            color: #6b6b6b;
-            font-weight: 400;
-        }
-        .plan-features {
-            list-style: none;
-            padding: 0;
-            margin: 20px 0;
-        }
-        .plan-features li {
-            padding: 8px 0;
-            color: #1f1f1f;
-        }
-        .plan-features li:before {
-            content: "✓ ";
-            color: #3b82f6;
-            font-weight: bold;
-            margin-right: 8px;
-        }
-        .plan-button {
-            width: 100%;
-            padding: 12px;
-            border: none;
-            border-radius: 8px;
-            font-size: 16px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: background 0.2s ease;
-        }
-        .plan-button.primary {
-            background: #3b82f6;
-            color: white;
-        }
-        .plan-button.primary:hover {
-            background: #2563eb;
-        }
-        .plan-button.secondary {
-            background: #e5e7eb;
-            color: #1f1f1f;
-        }
-        .plan-button.secondary:hover {
-            background: #d1d5db;
-        }
-        .back-link {
-            text-align: center;
-            margin-top: 40px;
-        }
-        .back-link a {
-            color: #3b82f6;
-            text-decoration: none;
-        }
-    </style>
-    </head>
-    <body>
-        <h1>🎬 Video Reader AI - Pricing</h1>
-        <p class="subtitle">Choose the plan that's right for you</p>
+    return send_from_directory('.', 'pricing.html')
 
-        <div class="plans-container">
-            <div class="plan-card">
-                <div class="plan-name">Free</div>
-                <div class="plan-price">$0<span>/month</span></div>
-                <ul class="plan-features">
-                    <li>10 videos per month</li>
-                    <li>Basic translations</li>
-                    <li>SRT export</li>
-                </ul>
-                <button class="plan-button secondary">Current Plan</button>
-            </div>
+@app.route('/pricing.css')
+def pricing_css():
+    """CSS для страницы pricing"""
+    return send_from_directory('.', 'pricing.css', mimetype='text/css')
 
-            <div class="plan-card featured">
-                <div class="plan-name">Pro</div>
-                <div class="plan-price">$9<span>/month</span></div>
-                <ul class="plan-features">
-                    <li>100 videos per month</li>
-                    <li>Advanced translations</li>
-                    <li>All export formats</li>
-                    <li>Priority support</li>
-                </ul>
-                <button class="plan-button primary">Upgrade to Pro</button>
-            </div>
+@app.route('/pricing.js')
+def pricing_js():
+    """JS для страницы pricing"""
+    return send_from_directory('.', 'pricing.js', mimetype='application/javascript')
 
-            <div class="plan-card">
-                <div class="plan-name">Premium</div>
-                <div class="plan-price">$29<span>/month</span></div>
-                <ul class="plan-features">
-                    <li>Unlimited videos</li>
-                    <li>AI-powered translations</li>
-                    <li>All export formats</li>
-                    <li>Priority support</li>
-                    <li>API access</li>
-                </ul>
-                <button class="plan-button primary">Upgrade to Premium</button>
-            </div>
-        </div>
+@app.route('/api/update-plan', methods=['POST', 'OPTIONS'])
+def api_update_plan():
+    """API для обновления тарифного плана пользователя"""
 
-        <div class="back-link">
-            <a href="javascript:window.close()">← Close this window</a>
-        </div>
-    </body>
-    </html>
-    """
+    if request.method == 'OPTIONS':
+        return '', 200
+
+    # Читаем Authorization header
+    auth_header = request.headers.get('Authorization')
+
+    if not auth_header or not auth_header.startswith('Bearer '):
+        print("[API /api/update-plan] Отсутствует или неверный Authorization header")
+        return jsonify({"error": "unauthorized"}), 401
+
+    # Извлекаем токен
+    token = auth_header.split(' ')[1]
+    print(f"[API /api/update-plan] Получен токен: {token[:8]}...")
+
+    # Проверяем токен в БД
+    user = get_user_by_token(token)
+
+    if not user:
+        print(f"[API /api/update-plan] Токен не найден в БД")
+        return jsonify({"error": "unauthorized"}), 401
+
+    # Читаем новый план из body
+    data = request.json
+    new_plan = data.get('plan')
+
+    if not new_plan or new_plan not in ['Free', 'Pro', 'Premium']:
+        print(f"[API /api/update-plan] Неверный план: {new_plan}")
+        return jsonify({"error": "invalid_plan"}), 400
+
+    # Обновляем план в БД
+    success = update_user_plan(user['email'], new_plan)
+
+    if success:
+        print(f"[API /api/update-plan] ✅ План обновлен: {user['email']} -> {new_plan}")
+        return jsonify({
+            "status": "ok",
+            "email": user['email'],
+            "plan": new_plan
+        })
+    else:
+        print(f"[API /api/update-plan] ❌ Ошибка обновления плана")
+        return jsonify({"error": "update_failed"}), 500
 
 if __name__ == '__main__':
     # Инициализируем БД при запуске
@@ -678,10 +576,13 @@ if __name__ == '__main__':
     print("Endpoints:")
     print("  POST /translate-line   - перевод одной строки субтитров")
     print("  GET  /api/plan         - получение плана по Bearer токену")
+    print("  POST /api/update-plan  - обновление плана пользователя")
     print("  GET  /health           - проверка работоспособности")
     print("  GET  /stats            - статистика кеша")
     print("  GET  /auth/callback    - OAuth callback (генерация токена)")
     print("  GET  /pricing          - страница тарифных планов")
+    print("  GET  /pricing.css      - CSS для страницы pricing")
+    print("  GET  /pricing.js       - JS для страницы pricing")
     print("=" * 60)
 
     # Запускаем сервер
