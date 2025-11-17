@@ -2,7 +2,7 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Custom styles for VideoReader panel */
+/* Custom CSS Variables */
 :root {
   --karaoke-progress: 0%;
 }
