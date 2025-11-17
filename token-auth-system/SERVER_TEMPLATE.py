@@ -453,36 +453,48 @@ def oauth_callback():
         token = create_or_update_user(email, plan='Free')
 
         # Возвращаем HTML с postMessage для расширения
+        # ВАЖНО: отправляем и token, и email в расширение
         return f"""
         <!DOCTYPE html>
         <html>
         <head>
         <meta charset="UTF-8">
         <script>
-            // Отправляем токен в расширение через postMessage
+            console.log('[OAuth Callback] Страница загружена');
+            console.log('[OAuth Callback] Token:', '{token[:8]}...');
+            console.log('[OAuth Callback] Email:', '{email}');
+
+            // Отправляем токен и email в расширение через postMessage
             if (window.opener) {{
                 try {{
-                    window.opener.postMessage({{
+                    const message = {{
                         type: 'AUTH_SUCCESS',
-                        token: '{token}'
-                    }}, '*');
-                    console.log('Token sent to extension');
+                        token: '{token}',
+                        email: '{email}'
+                    }};
+
+                    console.log('[OAuth Callback] Отправляем postMessage в window.opener:', message);
+                    window.opener.postMessage(message, '*');
+                    console.log('[OAuth Callback] postMessage отправлен успешно');
                 }} catch(e) {{
-                    console.error('postMessage failed:', e);
+                    console.error('[OAuth Callback] Ошибка postMessage:', e);
                 }}
 
-                // Закрываем popup через 1 секунду
+                // Закрываем popup через 2 секунды (даем время на обработку)
                 setTimeout(function() {{
+                    console.log('[OAuth Callback] Закрываем окно...');
                     window.close();
-                }}, 1000);
+                }}, 2000);
             }} else {{
                 // Если не popup - показываем сообщение
-                document.body.innerHTML = '<h2>Авторизация успешна!</h2><p>Токен: {token[:8]}...</p><p>Вы можете закрыть это окно.</p>';
+                console.log('[OAuth Callback] window.opener не найден - не popup окно');
+                document.body.innerHTML = '<h2>Авторизация успешна!</h2><p>Email: {email}</p><p>Токен: {token[:8]}...</p><p>Вы можете закрыть это окно.</p>';
             }}
         </script>
         </head>
         <body>
         <p>Авторизация успешна! Окно закроется автоматически...</p>
+        <p style="color: #666; font-size: 12px; margin-top: 20px;">Email: {email}</p>
         </body>
         </html>
         """
