@@ -271,8 +271,8 @@ async function fetchPlan() {
 
   try {
     // Получаем токен из chrome.storage
-    const storage = await chrome.storage.local.get(['token']);
-    const token = storage.token;
+    const storage = await chrome.storage.local.get(['auth_token']);
+    const token = storage.auth_token;
 
     if (!token) {
       console.log('[VideoReader] Токен отсутствует - пользователь не авторизован');
