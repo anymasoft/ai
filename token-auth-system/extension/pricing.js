@@ -220,4 +220,13 @@ async function switchPlan(newPlan) {
 document.addEventListener('DOMContentLoaded', function() {
   console.log('[Pricing] DOM загружен - инициализация...');
   loadUserInfo();
+
+  // Обработчик кнопки Выйти
+  const logoutBtn = document.getElementById('logout-btn');
+  if (logoutBtn) {
+    logoutBtn.addEventListener('click', function() {
+      console.log('[Pricing] Выход из системы');
+      window.location.href = '/logout';
+    });
+  }
 });
