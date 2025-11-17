@@ -557,6 +557,9 @@ def oauth_callback():
 @app.route('/pricing')
 def pricing():
     """Страница с тарифными планами"""
+    print(f"[PRICING] Запрос на /pricing")
+    print(f"[PRICING] EXTENSION_DIR = {EXTENSION_DIR}")
+    print(f"[PRICING] Проверка файла: {os.path.exists(os.path.join(EXTENSION_DIR, 'pricing.html'))}")
     return send_from_directory(EXTENSION_DIR, 'pricing.html')
 
 @app.route('/pricing.css')
