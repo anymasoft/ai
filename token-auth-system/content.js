@@ -186,9 +186,10 @@ function openAuthPage() {
 
 // Обновляет UI авторизации на основе наличия токена
 async function updateAuthUI() {
-  const storage = await chrome.storage.local.get(['token', 'email']);
+  const storage = await chrome.storage.local.get(['token', 'email', 'plan']);
   const hasToken = !!storage.token;
   const email = storage.email;
+  const plan = storage.plan || 'Free';
 
   const authSection = document.getElementById('yt-reader-auth-section');
   const authInfo = document.getElementById('yt-reader-auth-info');
@@ -198,12 +199,38 @@ async function updateAuthUI() {
     if (authSection) authSection.style.display = 'none';
     if (authInfo) {
       authInfo.style.display = 'block';
+
+      // Обновляем email
       const emailEl = authInfo.querySelector('.yt-reader-auth-email');
       if (emailEl) {
         emailEl.textContent = `Logged in as: ${email}`;
       }
+
+      // Обновляем план
+      const planEl = authInfo.querySelector('.yt-reader-auth-plan');
+      if (planEl) {
+        planEl.textContent = `Plan: ${plan}`;
+      }
+
+      // Обновляем кнопку Upgrade в зависимости от плана
+      const upgradeBtn = document.getElementById('yt-reader-upgrade-btn');
+      if (upgradeBtn) {
+        if (plan === 'Free') {
+          upgradeBtn.style.display = 'block';
+          upgradeBtn.textContent = 'Upgrade';
+        } else if (plan === 'Pro') {
+          upgradeBtn.style.display = 'block';
+          upgradeBtn.textContent = 'Upgrade to Premium';
+        } else if (plan === 'Premium') {
+          upgradeBtn.style.display = 'none';
+        } else {
+          // На случай неизвестного плана - показываем кнопку Upgrade
+          upgradeBtn.style.display = 'block';
+          upgradeBtn.textContent = 'Upgrade';
+        }
+      }
     }
-    console.log('[VideoReader] Пользователь авторизован:', email);
+    console.log('[VideoReader] Пользователь авторизован:', email, ', План:', plan);
   } else {
     // Пользователь не авторизован - показываем Sign In, скрываем Auth Info
     if (authSection) authSection.style.display = 'block';
@@ -527,6 +554,8 @@ function createTranscriptPanel() {
       <!-- Logged In Section -->
       <div id="yt-reader-auth-info" class="yt-reader-auth-info" style="display: none;">
         <div class="yt-reader-auth-email"></div>
+        <div class="yt-reader-auth-plan"></div>
+        <button id="yt-reader-upgrade-btn" class="yt-reader-upgrade-btn" style="display: none;">Upgrade</button>
         <button id="yt-reader-logout-btn" class="yt-reader-logout-btn">Log out</button>
       </div>
       <div class="yt-reader-controls">
@@ -649,6 +678,16 @@ async function injectPanel() {
       signInBtn.addEventListener('click', () => {
         console.log('[VideoReader] Кнопка Sign In нажата');
         openAuthPage();
+      });
+    }
+
+    // Обработчик для кнопки Upgrade
+    const upgradeBtn = document.getElementById('yt-reader-upgrade-btn');
+    if (upgradeBtn) {
+      upgradeBtn.addEventListener('click', () => {
+        console.log('[VideoReader] Кнопка Upgrade нажата');
+        // Открываем страницу pricing в новой вкладке
+        window.open('http://localhost:5000/pricing', '_blank');
       });
     }
 

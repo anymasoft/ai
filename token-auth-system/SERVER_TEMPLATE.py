@@ -494,6 +494,170 @@ def oauth_callback():
         print(f"Ошибка при обмене кода на токены: {e}")
         return f"<h1>Ошибка</h1><p>Не удалось обменять код на токены: {e}</p>", 500
 
+@app.route('/pricing')
+def pricing():
+    """Страница с тарифными планами"""
+    return """
+    <!DOCTYPE html>
+    <html>
+    <head>
+    <meta charset="UTF-8">
+    <title>Video Reader AI - Pricing</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 40px 20px;
+            background: #f5f5f5;
+        }
+        h1 {
+            text-align: center;
+            color: #1f1f1f;
+            margin-bottom: 10px;
+        }
+        .subtitle {
+            text-align: center;
+            color: #6b6b6b;
+            margin-bottom: 40px;
+        }
+        .plans-container {
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+        .plan-card {
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            width: 300px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            transition: transform 0.2s ease;
+        }
+        .plan-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+        }
+        .plan-card.featured {
+            border: 2px solid #3b82f6;
+            transform: scale(1.05);
+        }
+        .plan-name {
+            font-size: 24px;
+            font-weight: 600;
+            margin-bottom: 10px;
+            color: #1f1f1f;
+        }
+        .plan-price {
+            font-size: 36px;
+            font-weight: 700;
+            color: #3b82f6;
+            margin-bottom: 20px;
+        }
+        .plan-price span {
+            font-size: 16px;
+            color: #6b6b6b;
+            font-weight: 400;
+        }
+        .plan-features {
+            list-style: none;
+            padding: 0;
+            margin: 20px 0;
+        }
+        .plan-features li {
+            padding: 8px 0;
+            color: #1f1f1f;
+        }
+        .plan-features li:before {
+            content: "✓ ";
+            color: #3b82f6;
+            font-weight: bold;
+            margin-right: 8px;
+        }
+        .plan-button {
+            width: 100%;
+            padding: 12px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s ease;
+        }
+        .plan-button.primary {
+            background: #3b82f6;
+            color: white;
+        }
+        .plan-button.primary:hover {
+            background: #2563eb;
+        }
+        .plan-button.secondary {
+            background: #e5e7eb;
+            color: #1f1f1f;
+        }
+        .plan-button.secondary:hover {
+            background: #d1d5db;
+        }
+        .back-link {
+            text-align: center;
+            margin-top: 40px;
+        }
+        .back-link a {
+            color: #3b82f6;
+            text-decoration: none;
+        }
+    </style>
+    </head>
+    <body>
+        <h1>🎬 Video Reader AI - Pricing</h1>
+        <p class="subtitle">Choose the plan that's right for you</p>
+
+        <div class="plans-container">
+            <div class="plan-card">
+                <div class="plan-name">Free</div>
+                <div class="plan-price">$0<span>/month</span></div>
+                <ul class="plan-features">
+                    <li>10 videos per month</li>
+                    <li>Basic translations</li>
+                    <li>SRT export</li>
+                </ul>
+                <button class="plan-button secondary">Current Plan</button>
+            </div>
+
+            <div class="plan-card featured">
+                <div class="plan-name">Pro</div>
+                <div class="plan-price">$9<span>/month</span></div>
+                <ul class="plan-features">
+                    <li>100 videos per month</li>
+                    <li>Advanced translations</li>
+                    <li>All export formats</li>
+                    <li>Priority support</li>
+                </ul>
+                <button class="plan-button primary">Upgrade to Pro</button>
+            </div>
+
+            <div class="plan-card">
+                <div class="plan-name">Premium</div>
+                <div class="plan-price">$29<span>/month</span></div>
+                <ul class="plan-features">
+                    <li>Unlimited videos</li>
+                    <li>AI-powered translations</li>
+                    <li>All export formats</li>
+                    <li>Priority support</li>
+                    <li>API access</li>
+                </ul>
+                <button class="plan-button primary">Upgrade to Premium</button>
+            </div>
+        </div>
+
+        <div class="back-link">
+            <a href="javascript:window.close()">← Close this window</a>
+        </div>
+    </body>
+    </html>
+    """
+
 if __name__ == '__main__':
     # Инициализируем БД при запуске
     init_db()
@@ -508,6 +672,7 @@ if __name__ == '__main__':
     print("  GET  /health           - проверка работоспособности")
     print("  GET  /stats            - статистика кеша")
     print("  GET  /auth/callback    - OAuth callback (генерация токена)")
+    print("  GET  /pricing          - страница тарифных планов")
     print("=" * 60)
 
     # Запускаем сервер

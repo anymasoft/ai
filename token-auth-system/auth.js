@@ -53,11 +53,11 @@ window.addEventListener('message', function(event) {
         statusEl.classList.remove('hidden');
       }
 
-      // Закрываем auth.html через 2 секунды
+      // Делаем redirect на страницу pricing через 1 секунду
       setTimeout(function() {
-        console.log('[auth.js] Закрываем вкладку авторизации...');
-        window.close();
-      }, 2000);
+        console.log('[auth.js] Делаем redirect на /pricing...');
+        window.location.href = 'http://localhost:5000/pricing';
+      }, 1000);
     } else {
       console.error('[auth.js] ❌ Токен или email отсутствуют в сообщении');
     }
