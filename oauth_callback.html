@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Authorization Success</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        .container {
+            text-align: center;
+            padding: 40px;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 16px;
+            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+        }
+        .success-icon {
+            font-size: 64px;
+            margin-bottom: 20px;
+        }
+        h1 {
+            margin: 0 0 10px 0;
+            font-size: 28px;
+        }
+        p {
+            opacity: 0.9;
+            font-size: 16px;
+        }
+        .spinner {
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top: 3px solid white;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 20px auto 0;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="success-icon">✓</div>
+        <h1>Authorization Successful!</h1>
+        <p>Closing this window...</p>
+        <div class="spinner"></div>
+    </div>
+
+    <script>
+        // Этот скрипт должен быть вызван Flask после успешной авторизации
+        // Flask должен подставить TOKEN в шаблон
+
+        (function() {
+            // Получаем токен из URL параметра или из window.__TOKEN__ (установленного Flask)
+            const urlParams = new URLSearchParams(window.location.search);
+            const token = urlParams.get('token') || window.__TOKEN__;
+
+            if (!token) {
+                console.error('[OAuth Callback] No token found');
+                alert('Error: No authentication token received');
+                return;
+            }
+
+            console.log('[OAuth Callback] Token received, sending to extension...');
+
+            // Отправляем сообщение в расширение через chrome.runtime
+            if (chrome && chrome.runtime) {
+                try {
+                    chrome.runtime.sendMessage({
+                        type: 'AUTH_SUCCESS',
+                        token: token
+                    }, (response) => {
+                        console.log('[OAuth Callback] Token sent to extension:', response);
+                        // Закрываем окно после успешной отправки
+                        setTimeout(() => window.close(), 500);
+                    });
+                } catch (error) {
+                    console.error('[OAuth Callback] Error sending message:', error);
+                    // Fallback: закрываем окно
+                    setTimeout(() => window.close(), 1000);
+                }
+            } else {
+                console.warn('[OAuth Callback] chrome.runtime not available, window will close');
+                setTimeout(() => window.close(), 1000);
+            }
+        })();
+    </script>
+</body>
+</html>
