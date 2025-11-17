@@ -38,5 +38,8 @@
       "resources": ["assets/logo.png"],
       "matches": ["https://www.youtube.com/*"]
     }
-  ]
+  ],
+  "externally_connectable": {
+    "matches": ["http://localhost:5000/*"]
+  }
 }
