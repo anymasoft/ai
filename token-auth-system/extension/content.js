@@ -681,16 +681,6 @@ async function injectPanel() {
       });
     }
 
-    // Обработчик для кнопки Upgrade
-    const upgradeBtn = document.getElementById('yt-reader-upgrade-btn');
-    if (upgradeBtn) {
-      upgradeBtn.addEventListener('click', () => {
-        console.log('[VideoReader] Кнопка Upgrade нажата');
-        // Открываем страницу pricing в новой вкладке
-        window.open('http://localhost:5000/pricing', '_blank');
-      });
-    }
-
     // Обработчик для кнопки Log out
     const logoutBtn = document.getElementById('yt-reader-logout-btn');
     if (logoutBtn) {

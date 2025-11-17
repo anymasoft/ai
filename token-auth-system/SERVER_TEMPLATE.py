@@ -500,16 +500,6 @@ def oauth_callback():
         print(f"Ошибка при обмене кода на токены: {e}")
         return f"<h1>Ошибка</h1><p>Не удалось обменять код на токены: {e}</p>", 500
 
-@app.route('/pricing')
-def pricing():
-    """Страница с тарифными планами"""
-    return send_from_directory(EXTENSION_DIR, 'pricing.html')
-
-@app.route('/pricing.css')
-def pricing_css():
-    """CSS для страницы pricing"""
-    return send_from_directory(EXTENSION_DIR, 'pricing.css', mimetype='text/css')
-
 @app.route('/auth')
 def auth():
     """Страница авторизации"""
