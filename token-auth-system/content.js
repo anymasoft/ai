@@ -542,10 +542,696 @@ async function injectPanel() {
   }
 }
 
-// NOTE: All other existing functions remain exactly the same...
-// (handleTogglePanel, handleLanguageToggle, handleLanguageSelect, handleExportToggle, etc.)
-// For brevity, I'm including only the key modified sections above.
-// The rest of the content.js file should remain unchanged from the original.
+// Обработчик сворачивания/разворачивания
+function handleTogglePanel() {
+  const panel = document.getElementById('yt-transcript-panel');
+  const body = document.getElementById('yt-transcript-body');
+  const toggleBtn = document.getElementById('yt-transcript-toggle-btn');
+
+  const isCollapsed = panel.classList.toggle('collapsed');
+
+  if (isCollapsed) {
+    body.style.display = 'none';
+    toggleBtn.innerHTML = `
+      <svg viewBox="0 0 24 24" fill="currentColor">
+        <path d="M7.41 15.41L12 10.83l4.59 4.58L18 14l-6-6-6 6 1.41 1.41z"/>
+      </svg>
+    `;
+  } else {
+    body.style.display = 'block';
+    toggleBtn.innerHTML = `
+      <svg viewBox="0 0 24 24" fill="currentColor">
+        <path d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41z"/>
+      </svg>
+    `;
+  }
+}
+
+// Обработчик переключения выпадающего списка языков
+function handleLanguageToggle(e) {
+  e.stopPropagation();
+  const langBtn = document.getElementById('yt-reader-lang-btn');
+  const langDropdown = document.getElementById('yt-reader-lang-dropdown');
+
+  const isActive = langBtn.classList.toggle('active');
+
+  if (isActive) {
+    // Рассчитываем позицию dropdown
+    const btnRect = langBtn.getBoundingClientRect();
+    const dropdownHeight = 320; // примерная высота dropdown
+    const viewportHeight = window.innerHeight;
+
+    // Определяем, достаточно ли места снизу
+    const spaceBelow = viewportHeight - btnRect.bottom;
+    const shouldShowAbove = spaceBelow < dropdownHeight && btnRect.top > dropdownHeight;
+
+    if (shouldShowAbove) {
+      // Показываем сверху
+      langDropdown.style.top = 'auto';
+      langDropdown.style.bottom = `${viewportHeight - btnRect.top + 6}px`;
+    } else {
+      // Показываем снизу
+      langDropdown.style.top = `${btnRect.bottom + 6}px`;
+      langDropdown.style.bottom = 'auto';
+    }
+
+    // Выравниваем по правому краю кнопки
+    langDropdown.style.right = `${window.innerWidth - btnRect.right}px`;
+    langDropdown.style.left = 'auto';
+
+    langDropdown.classList.add('show');
+  } else {
+    langDropdown.classList.remove('show');
+  }
+}
+
+// Обработчик выбора языка
+function handleLanguageSelect(langCode) {
+  const selectedLang = SUPPORTED_LANGUAGES.find(l => l.code === langCode);
+  if (!selectedLang) return;
+
+  // Сохраняем выбранный язык
+  saveLanguage(langCode);
+
+  // Обновляем UI кнопки
+  const langBtn = document.getElementById('yt-reader-lang-btn');
+  const flagEl = langBtn.querySelector('.yt-reader-lang-flag');
+  flagEl.innerHTML = getFlagSVG(langCode);
+  flagEl.setAttribute('data-flag', langCode);
+  langBtn.querySelector('.yt-reader-lang-code').textContent = langCode.toUpperCase();
+
+  // Обновляем selected опции
+  document.querySelectorAll('.yt-reader-lang-option').forEach(opt => {
+    opt.classList.toggle('selected', opt.dataset.lang === langCode);
+  });
+
+  // Закрываем dropdown
+  const langDropdown = document.getElementById('yt-reader-lang-dropdown');
+  langDropdown.classList.remove('show');
+  langBtn.classList.remove('active');
+
+  console.log('Выбран язык:', selectedLang.name);
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// EXPORT SUBTITLE FUNCTIONS - Premium export system
+// ═══════════════════════════════════════════════════════════════════
+
+// Обработчик переключения export dropdown
+function handleExportToggle(e) {
+  e.stopPropagation();
+  const exportBtn = document.getElementById('yt-reader-export-btn');
+  const exportDropdown = document.getElementById('yt-reader-export-dropdown');
+
+  const isActive = exportDropdown.classList.contains('show');
+
+  if (!isActive) {
+    // Рассчитываем позицию dropdown
+    const btnRect = exportBtn.getBoundingClientRect();
+    exportDropdown.style.top = `${btnRect.bottom + 6}px`;
+    exportDropdown.style.right = `${window.innerWidth - btnRect.right}px`;
+    exportDropdown.classList.add('show');
+  } else {
+    exportDropdown.classList.remove('show');
+  }
+}
+
+// Обновление состояния кнопки экспорта
+function updateExportButtonState() {
+  const exportBtn = document.getElementById('yt-reader-export-btn');
+  if (!exportBtn) return;
+
+  const hasSubtitles = transcriptState.subtitles && transcriptState.subtitles.length > 0;
+  const isProcessing = transcriptState.isProcessing;
+
+  // Кнопка активна только если есть субтитры и перевод завершен
+  exportBtn.disabled = !hasSubtitles || isProcessing;
+}
+
+// Обработчик выбора формата экспорта
+function handleExportFormat(format) {
+  // Дополнительная проверка (на случай если кнопка не заблокирована)
+  if (!transcriptState.subtitles || transcriptState.subtitles.length === 0 || transcriptState.isProcessing) {
+    return;
+  }
+
+  const videoId = getVideoId();
+  const lang = transcriptState.selectedLang;
+
+  // Собираем переведённые субтитры из DOM (не из transcriptState!)
+  const translatedSubtitles = collectTranslatedSubtitles();
+
+  if (!translatedSubtitles || translatedSubtitles.length === 0) {
+    console.error('No translated subtitles found in DOM');
+    return;
+  }
+
+  let content, filename, mimeType;
+
+  switch (format) {
+    case 'srt':
+      content = generateSRT(translatedSubtitles);
+      filename = `${videoId}_${lang}_translated.srt`;
+      mimeType = 'text/plain;charset=utf-8';
+      break;
+    case 'vtt':
+      content = generateVTT(translatedSubtitles);
+      filename = `${videoId}_${lang}_translated.vtt`;
+      mimeType = 'text/vtt;charset=utf-8';
+      break;
+    case 'txt':
+      content = generateTXT(translatedSubtitles);
+      filename = `${videoId}_${lang}_translated.txt`;
+      mimeType = 'text/plain;charset=utf-8';
+      break;
+    default:
+      console.error('Unknown format:', format);
+      return;
+  }
+
+  // Скачиваем файл
+  downloadFile(content, filename, mimeType);
+
+  // Закрываем dropdown
+  const exportDropdown = document.getElementById('yt-reader-export-dropdown');
+  exportDropdown.classList.remove('show');
+
+  console.log(`Экспортировано: ${filename}`);
+}
+
+// Сбор переведённых субтитров из DOM
+function collectTranslatedSubtitles() {
+  const items = document.querySelectorAll('.yt-transcript-item');
+  const subtitles = [];
+
+  items.forEach(item => {
+    const start = parseFloat(item.dataset.start);
+    const end = parseFloat(item.dataset.end);
+    const textElement = item.querySelector('.yt-transcript-item-text');
+    const text = textElement ? textElement.textContent.trim() : '';
+
+    if (text) {
+      subtitles.push({ start, end, text });
+    }
+  });
+
+  return subtitles;
+}
+
+// Генерация SRT формата
+function generateSRT(subtitles) {
+  let srt = '';
+
+  subtitles.forEach((sub, index) => {
+    // Номер субтитра (начинается с 1)
+    srt += `${index + 1}\n`;
+
+    // Таймкоды в формате SRT: 00:01:21,450 --> 00:01:24,120
+    const startTime = formatSRTTime(sub.start);
+    const endTime = formatSRTTime(sub.end);
+    srt += `${startTime} --> ${endTime}\n`;
+
+    // Текст субтитра
+    srt += `${sub.text}\n\n`;
+  });
+
+  return srt;
+}
+
+// Генерация VTT формата
+function generateVTT(subtitles) {
+  let vtt = 'WEBVTT\n\n';
+
+  subtitles.forEach((sub, index) => {
+    // Таймкоды в формате VTT: 00:01:24.120 --> 00:01:27.480
+    const startTime = formatVTTTime(sub.start);
+    const endTime = formatVTTTime(sub.end);
+    vtt += `${startTime} --> ${endTime}\n`;
+
+    // Текст субтитра
+    vtt += `${sub.text}\n\n`;
+  });
+
+  return vtt;
+}
+
+// Генерация TXT формата (только текст)
+function generateTXT(subtitles) {
+  return subtitles.map(sub => sub.text).join('\n');
+}
+
+// Форматирование времени для SRT (00:01:21,450)
+function formatSRTTime(seconds) {
+  const hours = Math.floor(seconds / 3600);
+  const minutes = Math.floor((seconds % 3600) / 60);
+  const secs = Math.floor(seconds % 60);
+  const millis = Math.floor((seconds % 1) * 1000);
+
+  return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(secs).padStart(2, '0')},${String(millis).padStart(3, '0')}`;
+}
+
+// Форматирование времени для VTT (00:01:24.120)
+function formatVTTTime(seconds) {
+  const hours = Math.floor(seconds / 3600);
+  const minutes = Math.floor((seconds % 3600) / 60);
+  const secs = Math.floor(seconds % 60);
+  const millis = Math.floor((seconds % 1) * 1000);
+
+  return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(secs).padStart(2, '0')}.${String(millis).padStart(3, '0')}`;
+}
+
+// Скачивание файла
+function downloadFile(content, filename, mimeType) {
+  const blob = new Blob([content], { type: mimeType });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = filename;
+  link.style.display = 'none';
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+}
+
+// Обработчик нажатия кнопки получения транскрипта
+async function handleGetTranscript() {
+  const btn = document.getElementById('yt-reader-translate-btn');
+  const content = document.getElementById('yt-transcript-content');
+  const videoId = getVideoId();
+
+  if (!videoId) {
+    content.innerHTML = `
+      <div class="yt-transcript-error">
+        Не удалось получить ID видео
+      </div>
+    `;
+    return;
+  }
+
+  // Проверяем состояние
+  if (transcriptState.isProcessing) {
+    console.log('Обработка уже идет');
+    return;
+  }
+
+  if (transcriptState.isProcessed && transcriptState.videoId === videoId) {
+    console.log('Транскрипт уже обработан для этого видео');
+    return;
+  }
+
+  // Обновляем состояние
+  transcriptState.videoId = videoId;
+  transcriptState.isProcessing = true;
+  transcriptState.isProcessed = false;
+  updateExportButtonState(); // Блокируем экспорт
+
+  // Блокируем кнопку и показываем loading
+  btn.disabled = true;
+  btn.classList.remove('active');
+  btn.classList.add('inactive', 'loading');
+  btn.textContent = 'Loading...';
+
+  // Показываем лоадер
+  content.innerHTML = `
+    <div class="yt-transcript-loader">
+      <div class="yt-transcript-loader-spinner"></div>
+      <span class="yt-transcript-loader-text">Загрузка транскрипта...</span>
+    </div>
+  `;
+
+  try {
+    const subtitles = await getTranscript();
+
+    // Если getTranscript вернул null - субтитры недоступны для этого видео
+    if (subtitles === null) {
+      content.innerHTML = `
+        <div class="yt-transcript-no-subtitles">
+          <div class="yt-no-subtitles-icon">
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M21 15C21 15.5304 20.7893 16.0391 20.4142 16.4142C20.0391 16.7893 19.5304 17 19 17H7L3 21V5C3 4.46957 3.21071 3.96086 3.58579 3.58579C3.96086 3.21071 4.46957 3 5 3H19C19.5304 3 20.0391 3.21071 20.4142 3.58579C20.7893 3.96086 21 4.46957 21 5V15Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+              <line x1="7" y1="10" x2="7.01" y2="10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+              <line x1="12" y1="10" x2="12.01" y2="10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+              <line x1="17" y1="10" x2="17.01" y2="10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            </svg>
+          </div>
+          <div class="yt-no-subtitles-title">Субтитры недоступны</div>
+          <div class="yt-no-subtitles-description">
+            Для этого видео YouTube не предоставляет текст. Возможно, автор не добавил субтитры или не включил автоматическую транскрипцию.
+          </div>
+        </div>
+      `;
+      transcriptState.isProcessing = false;
+      return;
+    }
+
+    if (!subtitles || subtitles.length === 0) {
+      content.innerHTML = `
+        <div class="yt-transcript-empty">
+          Субтитры не найдены для этого видео
+        </div>
+      `;
+      transcriptState.isProcessing = false;
+      return;
+    }
+
+    // Сохраняем оригинальные субтитры
+    transcriptState.subtitles = subtitles;
+
+    // Отображаем оригинальные субтитры сразу
+    displayTranscript(subtitles);
+    updateExportButtonState(); // Пока перевод идёт - экспорт заблокирован
+
+    // Отправляем на сервер для перевода
+    btn.classList.add('translating');
+    btn.classList.remove('loading');
+    btn.textContent = 'AI is translating...';
+    await translateSubtitles(videoId, subtitles);
+
+    transcriptState.isProcessed = true;
+
+  } catch (error) {
+    console.error('Ошибка при получении транскрипта:', error);
+    content.innerHTML = `
+      <div class="yt-transcript-error">
+        Ошибка при загрузке транскрипта: ${error.message}
+      </div>
+    `;
+  } finally {
+    transcriptState.isProcessing = false;
+    updateExportButtonState(); // Разблокируем экспорт после завершения
+    btn.disabled = false;
+    btn.classList.remove('loading', 'translating', 'inactive');
+    btn.classList.add('active');
+    btn.textContent = 'Translate Video';
+  }
+}
+
+// Отправка субтитров на сервер и получение переводов построчно
+async function translateSubtitles(videoId, subtitles) {
+  const SERVER_URL = 'http://localhost:5000/translate-line';
+  const prevContext = [];
+  const selectedLang = transcriptState.selectedLang; // Используем выбранный язык
+
+  console.log(`Начинаем перевод на ${selectedLang}...`);
+
+  try {
+    // Переводим каждую строку по очереди
+    for (let i = 0; i < subtitles.length; i++) {
+      const subtitle = subtitles[i];
+
+      try {
+        // Отправляем запрос на перевод одной строки
+        const response = await fetch(SERVER_URL, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            videoId: videoId,
+            lineNumber: i,
+            text: subtitle.text,
+            prevContext: prevContext.slice(-2), // Последние 1-2 переведенные строки
+            lang: selectedLang // Используем выбранный язык
+          })
+        });
+
+        if (!response.ok) {
+          console.error(`Ошибка перевода строки ${i}: ${response.status}`);
+          prevContext.push(subtitle.text); // Используем оригинал
+          continue;
+        }
+
+        const data = await response.json();
+        const translatedText = data.text;
+
+        // Логируем статус
+        if (data.cached) {
+          console.log(`[${i}] Cache: ${translatedText}`);
+        } else {
+          console.log(`[${i}] Translated: ${translatedText}`);
+        }
+
+        // Немедленно обновляем UI для этой строки
+        updateSingleLine(i, translatedText);
+
+        // Добавляем переведенную строку в контекст
+        prevContext.push(translatedText);
+
+        // Небольшая задержка для плавности (не обязательно для кешированных)
+        if (!data.cached) {
+          await new Promise(resolve => setTimeout(resolve, 50));
+        }
+
+      } catch (error) {
+        console.error(`Ошибка при переводе строки ${i}:`, error);
+        prevContext.push(subtitle.text); // Используем оригинал в контексте
+      }
+    }
+
+    console.log(`Перевод завершен: ${subtitles.length} строк на ${selectedLang}`);
+
+  } catch (error) {
+    console.error('Общая ошибка при переводе:', error);
+  }
+}
+
+// Обновление одной строки транскрипта
+function updateSingleLine(index, translatedText) {
+  const item = document.querySelector(`[data-index="${index}"]`);
+  if (item) {
+    const textElement = item.querySelector('.yt-transcript-item-text');
+    if (textElement) {
+      // Плавное обновление
+      textElement.style.opacity = '0.5';
+      setTimeout(() => {
+        textElement.textContent = translatedText;
+        textElement.style.opacity = '1';
+      }, 100);
+    }
+  }
+}
+
+// Получение транскрипта
+async function getTranscript() {
+  console.log('Получаем транскрипт...');
+
+  // Ищем кнопку "Show transcript"
+  const transcriptButton = await findTranscriptButton();
+
+  if (!transcriptButton) {
+    // Кнопка транскрипта не найдена - субтитры недоступны для этого видео
+    return null;
+  }
+
+  // Проверяем, не открыт ли уже транскрипт
+  let isOpen = transcriptButton.getAttribute('aria-pressed') === 'true';
+
+  // Функция для получения элементов с retry
+  async function getTranscriptItems(retryCount = 0) {
+    const maxRetries = 3;
+
+    // Если панель не открыта или это retry, открываем/переоткрываем
+    if (!isOpen || retryCount > 0) {
+      // Если это retry и панель была открыта, сначала закрываем
+      if (retryCount > 0 && isOpen) {
+        transcriptButton.click();
+        await new Promise(resolve => setTimeout(resolve, 500));
+        isOpen = false;
+      }
+
+      // Открываем панель
+      transcriptButton.click();
+      console.log('Открыли панель транскрипта');
+      isOpen = true;
+
+      // Ждем появления элементов
+      try {
+        await waitForElement('ytd-transcript-segment-renderer', 5000);
+      } catch (e) {
+        console.log('Ожидание элементов транскрипта истекло');
+      }
+
+      // Дополнительная задержка для полной загрузки
+      await new Promise(resolve => setTimeout(resolve, 1000));
+    } else {
+      // Панель уже открыта, просто ждем загрузки элементов
+      await new Promise(resolve => setTimeout(resolve, 500));
+    }
+
+    // Ищем элементы транскрипта
+    const transcriptItems = document.querySelectorAll('ytd-transcript-segment-renderer');
+    console.log('Найдено элементов транскрипта:', transcriptItems.length);
+
+    // Если элементы не найдены и есть попытки retry
+    if (transcriptItems.length === 0 && retryCount < maxRetries) {
+      console.log(`Retry ${retryCount + 1}/${maxRetries}: элементы не найдены, пробуем снова`);
+      return getTranscriptItems(retryCount + 1);
+    }
+
+    return transcriptItems;
+  }
+
+  // Получаем элементы с retry
+  const transcriptItems = await getTranscriptItems();
+
+  if (transcriptItems.length === 0) {
+    throw new Error('Элементы транскрипта не найдены после нескольких попыток');
+  }
+
+  const subtitles = [];
+  transcriptItems.forEach((item, index) => {
+    const timeElement = item.querySelector('.segment-timestamp');
+    const textElement = item.querySelector('yt-formatted-string.segment-text');
+
+    if (textElement) {
+      const text = textElement.textContent.trim();
+      const timeText = timeElement?.textContent.trim() || '';
+
+      // Извлекаем точное время start в секундах из атрибута
+      let startSeconds = 0;
+      const startAttr = item.getAttribute('start-offset');
+      if (startAttr) {
+        startSeconds = parseFloat(startAttr) / 1000; // YouTube хранит в миллисекундах
+      } else {
+        // Fallback: парсим из текстового времени
+        startSeconds = parseTimeToSeconds(timeText);
+      }
+
+      // Вычисляем end как start следующего элемента или добавляем ~5 секунд
+      let endSeconds = startSeconds + 5;
+
+      subtitles.push({
+        index: index,
+        time: timeText,
+        text: text,
+        start: startSeconds,
+        end: endSeconds // Будет обновлено позже
+      });
+    }
+  });
+
+  // Обновляем end для каждого элемента (равен start следующего)
+  for (let i = 0; i < subtitles.length - 1; i++) {
+    subtitles[i].end = subtitles[i + 1].start;
+  }
+
+  // Закрываем панель транскрипта если мы её открывали
+  if (isOpen) {
+    transcriptButton.click();
+    console.log('Закрыли панель транскрипта');
+  }
+
+  console.log('Получено субтитров:', subtitles.length);
+  return subtitles;
+}
+
+// Парсинг времени из строки "0:00", "1:23", "12:34:56" в секунды
+function parseTimeToSeconds(timeStr) {
+  const parts = timeStr.split(':').reverse();
+  const seconds = parseInt(parts[0] || 0) +
+                 parseInt(parts[1] || 0) * 60 +
+                 parseInt(parts[2] || 0) * 3600;
+  return seconds;
+}
+
+// Поиск кнопки транскрипта
+async function findTranscriptButton() {
+  // Ждем загрузки кнопок
+  await waitForElement('#description ytd-video-description-transcript-section-renderer', 5000).catch(() => null);
+
+  const selectors = [
+    '#description ytd-video-description-transcript-section-renderer button[aria-label*="transcript" i]',
+    '#description ytd-video-description-transcript-section-renderer button[aria-label*="текст" i]',
+    'ytd-video-description-transcript-section-renderer button',
+  ];
+
+  for (const selector of selectors) {
+    const btn = document.querySelector(selector);
+    if (btn) {
+      console.log('Найдена кнопка транскрипта');
+      return btn;
+    }
+  }
+
+  return null;
+}
+
+// Отображение транскрипта
+function displayTranscript(subtitles) {
+  const content = document.getElementById('yt-transcript-content');
+
+  content.innerHTML = subtitles.map(sub => `
+    <div class="yt-transcript-item"
+         data-time="${sub.time}"
+         data-index="${sub.index}"
+         data-start="${sub.start}"
+         data-end="${sub.end}">
+      <div class="yt-transcript-item-time">${sub.time}</div>
+      <div class="yt-transcript-item-text">${sub.text}</div>
+    </div>
+  `).join('');
+
+  // Добавляем клик по элементу для перехода к времени
+  content.querySelectorAll('.yt-transcript-item').forEach(item => {
+    item.addEventListener('click', () => {
+      const time = item.dataset.time;
+      seekToTime(time);
+    });
+  });
+
+  // Запускаем realtime highlighting
+  startRealtimeHighlighting(subtitles);
+}
+
+// Переход к определенному времени в видео
+function seekToTime(timeStr) {
+  // Парсим время вида "0:00", "1:23", "12:34:56"
+  const parts = timeStr.split(':').reverse();
+  const seconds = parseInt(parts[0] || 0) +
+                 parseInt(parts[1] || 0) * 60 +
+                 parseInt(parts[2] || 0) * 3600;
+
+  const video = document.querySelector('video');
+  if (video) {
+    video.currentTime = seconds;
+    video.play();
+  }
+}
+
+// Сброс состояния при смене видео
+function resetState() {
+  // Останавливаем realtime highlighting
+  stopRealtimeHighlighting();
+
+  transcriptState.videoId = null;
+  transcriptState.isProcessing = false;
+  transcriptState.isProcessed = false;
+  transcriptState.subtitles = null;
+
+  // Блокируем экспорт при сбросе
+  updateExportButtonState();
+}
+
+// Отслеживание изменений URL
+let currentUrl = location.href;
+new MutationObserver(() => {
+  if (location.href !== currentUrl) {
+    currentUrl = location.href;
+    if (currentUrl.includes('/watch')) {
+      // Сбрасываем состояние
+      resetState();
+
+      // Удаляем старую панель
+      const oldPanel = document.getElementById('yt-transcript-panel');
+      if (oldPanel) {
+        oldPanel.remove();
+      }
+      // Вставляем новую через таймаут
+      setTimeout(injectPanel, 1500);
+    }
+  }
+}).observe(document.body, { childList: true, subtree: true });
 
 // ═══════════════════════════════════════════════════════════════════
 // INITIALIZATION - Plan detection and panel injection
