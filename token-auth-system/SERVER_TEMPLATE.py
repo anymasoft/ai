@@ -458,14 +458,19 @@ def oauth_callback():
         # Создаём токен для пользователя
         token = create_or_update_user(email, plan='Free')
 
-        # Возвращаем HTML с postMessage для расширения
-        return f"""
+        # Возвращаем HTML с postMessage для расширения И устанавливаем cookie для браузера
+        html_response = f"""
         <!DOCTYPE html>
         <html>
         <head>
         <meta charset="UTF-8">
         <script>
+            // Устанавливаем cookie для браузера (на случай если это не popup от расширения)
+            document.cookie = 'auth_token={token}; path=/; max-age=2592000; SameSite=Lax';
+            document.cookie = 'auth_email={email}; path=/; max-age=2592000; SameSite=Lax';
+
             if (window.opener) {{
+                // Это popup от расширения или auth.html - отправляем postMessage
                 try {{
                     window.opener.postMessage({{
                         type: 'AUTH_SUCCESS',
@@ -480,20 +485,20 @@ def oauth_callback():
                     window.close();
                 }}, 1000);
             }} else {{
-                document.body.innerHTML = `
-                    <h2>Авторизация успешна!</h2>
-                    <p>Токен: {token[:8]}...</p>
-                    <p>Email: {email}</p>
-                    <p>Вы можете закрыть окно.</p>
-                `;
+                // Это обычный браузер без расширения - редиректим на /pricing
+                setTimeout(function() {{
+                    window.location.href = '/pricing';
+                }}, 500);
             }}
         </script>
         </head>
         <body>
-        <p>Авторизация успешна! Окно закроется автоматически...</p>
+        <p>Авторизация успешна! Перенаправление...</p>
         </body>
         </html>
         """
+
+        return html_response
 
 
     except requests.exceptions.RequestException as e:
