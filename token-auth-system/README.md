@@ -23,9 +23,19 @@
 
 ```
 token-auth-system/
-├── SERVER_TEMPLATE.py    # Обновленный Flask сервер с токен-авторизацией
-├── content.js            # Обновленный content script для расширения
-└── README.md            # Эта инструкция
+├── Backend
+│   └── SERVER_TEMPLATE.py      # Flask сервер с токен-авторизацией
+│
+├── Extension (Chrome)
+│   ├── manifest.json           # Манифест расширения
+│   ├── background.js           # Service worker (обработка OAuth)
+│   ├── content.js              # Content script (главная логика)
+│   ├── styles.css              # Премиум стили панели
+│   ├── flags.js                # SVG флаги языков
+│   └── assets/
+│       └── logo.png            # Логотип расширения
+│
+└── README.md                   # Эта инструкция
 ```
 
 ## Установка и запуск
@@ -43,7 +53,22 @@ python SERVER_TEMPLATE.py
 
 ### 2. Extension (Chrome)
 
-Замените содержимое `extension/content.js` на новую версию из `token-auth-system/content.js`.
+#### Вариант A: Замена файлов в существующем расширении
+
+Замените следующие файлы в папке `extension/`:
+- `content.js` → новая версия с токен-авторизацией
+- `background.js` → обработка postMessage (уже готов)
+- `manifest.json`, `styles.css`, `flags.js` → без изменений
+
+#### Вариант B: Установка как отдельное расширение
+
+1. Откройте Chrome → `chrome://extensions/`
+2. Включите "Режим разработчика" (Developer mode)
+3. Нажмите "Загрузить распакованное расширение"
+4. Выберите папку `token-auth-system/`
+5. Расширение установлено!
+
+**Примечание**: Для варианта B все файлы уже в папке `token-auth-system/`, можно устанавливать сразу.
 
 ## Инструкции по тестированию
 
