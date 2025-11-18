@@ -359,16 +359,46 @@ def translate_line():
     if video_id is None or line_number is None or not text:
         return jsonify({'error': 'Missing videoId, lineNumber or text'}), 400
 
+    # Определяем план пользователя по Bearer токену
+    plan = 'Free'  # По умолчанию
+    auth_header = request.headers.get('Authorization')
+    if auth_header and auth_header.startswith('Bearer '):
+        token = auth_header.split(' ')[1]
+        user = get_user_by_token(token)
+        if user:
+            plan = user['plan']
+            print(f"[TRANSLATE] План пользователя: {plan}")
+
     # Проверяем кеш
     cached_translation = check_line_cache(video_id, line_number, lang)
 
     if cached_translation:
         print(f"[Cache HIT] Video {video_id}, line {line_number}")
+        # Применяем лимиты для кэшированного текста
+        result_text = cached_translation
+        limited = False
+        export_allowed = False
+
+        if plan == 'Free':
+            # Free план: только 30% текста
+            result_text = cached_translation[:int(len(cached_translation) * 0.3)]
+            limited = True
+        elif plan == 'Pro':
+            # Pro план: полный текст
+            limited = False
+        elif plan == 'Premium':
+            # Premium план: полный текст + экспорт
+            limited = False
+            export_allowed = True
+
         return jsonify({
             'videoId'   : video_id,
             'lineNumber': line_number,
-            'text'      : cached_translation,
-            'cached'    : True
+            'text'      : result_text,
+            'cached'    : True,
+            'limited'   : limited,
+            'export_allowed': export_allowed,
+            'plan'      : plan
         })
 
     # Переводим через GPT
@@ -381,11 +411,31 @@ def translate_line():
     # Сохраняем в кеш
     save_line_to_cache(video_id, line_number, text, translated_text, lang)
 
+    # Применяем лимиты для нового перевода
+    result_text = translated_text
+    limited = False
+    export_allowed = False
+
+    if plan == 'Free':
+        # Free план: только 30% текста
+        result_text = translated_text[:int(len(translated_text) * 0.3)]
+        limited = True
+    elif plan == 'Pro':
+        # Pro план: полный текст
+        limited = False
+    elif plan == 'Premium':
+        # Premium план: полный текст + экспорт
+        limited = False
+        export_allowed = True
+
     return jsonify({
         'videoId'   : video_id,
         'lineNumber': line_number,
-        'text'      : translated_text,
-        'cached'    : False
+        'text'      : result_text,
+        'cached'    : False,
+        'limited'   : limited,
+        'export_allowed': export_allowed,
+        'plan'      : plan
     })
 
 @app.route('/api/plan', methods=['GET', 'OPTIONS'])
