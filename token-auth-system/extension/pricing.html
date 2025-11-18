@@ -28,7 +28,7 @@
         </div>
         <!-- Auth Prompt (для неавторизованных) -->
         <div id="auth-prompt" class="flex items-center gap-4" style="display: none;">
-          <a href="#" onclick="window.open('http://localhost:5000/auth-site', 'google_oauth', 'width=500,height=600'); return false;" class="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors">
+          <a href="#" onclick="const w=480,h=620,left=(screen.width-w)/2,top=(screen.height-h)/2; window.open('http://localhost:5000/auth-site','google_oauth',`width=${w},height=${h},left=${left},top=${top}`); return false;" class="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors">
             Sign in with Google
           </a>
         </div>

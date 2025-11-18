@@ -586,12 +586,26 @@ def auth_site_callback():
 
         print(f"[AUTH-SITE] ✅ Авторизация успешна: {email}, токен: {token[:8]}...")
 
-        # Создаём response с редиректом на /pricing
-        resp = make_response(redirect('/pricing'))
+        # HTML с postMessage для закрытия popup и обновления родительского окна
+        html = """
+        <!DOCTYPE html>
+        <html>
+        <head><title>Authorization Success</title></head>
+        <body>
+          <script>
+            window.opener.postMessage({ type: 'SITE_AUTH_SUCCESS' }, '*');
+            window.close();
+          </script>
+        </body>
+        </html>
+        """
 
-        # Устанавливаем cookie с токеном (на 30 дней)
-        resp.set_cookie('auth_token', token, max_age=30*24*60*60, path='/', httponly=True)
-        resp.set_cookie('auth_email', email, max_age=30*24*60*60, path='/', httponly=False)
+        # Создаём response с HTML
+        resp = make_response(html)
+
+        # Устанавливаем cookie с токеном (на 1 год)
+        resp.set_cookie('auth_token', token, max_age=60*60*24*365, httponly=False, samesite='Lax')
+        resp.set_cookie('auth_email', email, max_age=60*60*24*365, httponly=False, samesite='Lax')
 
         return resp
 
