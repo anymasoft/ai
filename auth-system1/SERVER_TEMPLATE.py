@@ -649,6 +649,11 @@ def pricing_css():
     """CSS для страницы pricing"""
     return send_from_directory(EXTENSION_DIR, 'pricing.css', mimetype='text/css')
 
+@app.route('/tailwind.css')
+def tailwind_css():
+    """Локальный Tailwind CSS"""
+    return send_from_directory(EXTENSION_DIR, 'tailwind.css', mimetype='text/css')
+
 @app.route('/pricing.js')
 def pricing_js():
     """JS для страницы pricing"""
