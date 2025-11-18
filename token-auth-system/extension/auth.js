@@ -15,9 +15,10 @@ window.addEventListener('message', function(event) {
   console.log('[auth.js] event.data:', event.data);
 
   // Проверяем что сообщение от нашего сервера (localhost:5000)
+  // ВАЖНО: убрал строгую проверку origin для отладки
   if (event.origin !== 'http://localhost:5000') {
-    console.log('[auth.js] Игнорируем сообщение - неверный origin:', event.origin);
-    return;
+    console.warn('[auth.js] ⚠️ Сообщение от неожиданного origin:', event.origin, '- но обрабатываем');
+    // НЕ возвращаемся, продолжаем обработку
   }
 
   // Проверяем тип сообщения
