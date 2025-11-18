@@ -146,6 +146,49 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return true; // Асинхронный ответ
   }
 
+  // ═══════════════════════════════════════════════════════════════════
+  // FETCH_PLAN: Запрос плана через background (для обхода CORS)
+  // ═══════════════════════════════════════════════════════════════════
+  if (message.type === 'FETCH_PLAN') {
+    console.log('[VideoReader Background] Получен FETCH_PLAN, токен:', message.token?.substring(0, 8) + '...');
+
+    const token = message.token;
+
+    if (!token) {
+      sendResponse({ error: 'unauthorized' });
+      return true;
+    }
+
+    // Выполняем fetch от имени background.js
+    fetch('http://localhost:5000/api/plan', {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      }
+    })
+      .then(response => {
+        console.log('[VideoReader Background] /api/plan ответил со статусом:', response.status);
+        if (response.status === 401) {
+          return { error: 'unauthorized' };
+        }
+        if (!response.ok) {
+          return { error: 'server_error' };
+        }
+        return response.json();
+      })
+      .then(data => {
+        console.log('[VideoReader Background] /api/plan данные:', data);
+        sendResponse(data);
+      })
+      .catch(err => {
+        console.error('[VideoReader Background] ❌ fetch /api/plan failed:', err);
+        sendResponse({ error: 'network_error' });
+      });
+
+    return true; // Асинхронный ответ
+  }
+
   // Неизвестный тип сообщения
   console.log('[VideoReader Background] Неизвестный тип сообщения:', message.type);
   sendResponse({ success: false, error: 'Unknown message type' });
