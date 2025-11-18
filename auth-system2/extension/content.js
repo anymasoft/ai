@@ -8,15 +8,15 @@ console.log('[VideoReader content.js] Скрипт загружен');
 chrome.storage.local.get(['token', 'email', 'plan'], (result) => {
   console.log('[VideoReader content.js] 🔍 Storage при загрузке:', result);
   if (result.token) {
-    console.log('[VideoReader content.js] ✅ Токен найден:', result.token.substring(0, 8) + '...');
+    console.log('[VideoReader content.js] Токен найден:', result.token.substring(0, 8) + '...');
   } else {
-    console.log('[VideoReader content.js] ❌ Токен НЕ найден в storage');
+    console.log('[VideoReader content.js] Токен НЕ найден в storage');
   }
 });
 
 // ГЛАВНЫЙ ОБРАБОТЧИК: Слушаем сообщения от background.js через chrome.runtime.onMessage
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-  console.log('[VideoReader content.js] ✅ Получено сообщение через chrome.runtime.onMessage');
+  console.log('[VideoReader content.js] Получено сообщение через chrome.runtime.onMessage');
   console.log('[VideoReader content.js] message:', message);
   console.log('[VideoReader content.js] sender:', sender);
 
@@ -34,7 +34,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       console.log('[VideoReader content.js] Сохраняем токен и email в storage...');
 
       chrome.storage.local.set({ token: token, email: email }, async () => {
-        console.log('[VideoReader content.js] ✅ Токен и email сохранены в chrome.storage');
+        console.log('[VideoReader content.js] Токен и email сохранены в chrome.storage');
 
         // Сразу после получения токена запрашиваем план
         console.log('[VideoReader content.js] Запрашиваем план пользователя...');
@@ -43,12 +43,12 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         // Обновляем UI авторизации
         console.log('[VideoReader content.js] Обновляем UI авторизации...');
         await updateAuthUI();
-        console.log('[VideoReader content.js] ✅ UI авторизации обновлён после получения токена');
+        console.log('[VideoReader content.js] UI авторизации обновлён после получения токена');
       });
 
       sendResponse({ success: true });
     } else {
-      console.error('[VideoReader content.js] ❌ Токен или email отсутствуют в сообщении!');
+      console.error('[VideoReader content.js] Токен или email отсутствуют в сообщении!');
       sendResponse({ success: false, error: 'Missing token or email' });
     }
 
@@ -59,7 +59,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   // HOT-RELOAD: Обработка обновления тарифного плана от background.js
   // ═══════════════════════════════════════════════════════════════════
   if (message.type === 'PLAN_UPDATED') {
-    console.log('[VideoReader content.js] 🔄 PLAN_UPDATED получен!');
+    console.log('[VideoReader content.js] PLAN_UPDATED получен!');
     console.log('[VideoReader content.js] Новый план:', message.newPlan);
     console.log('[VideoReader content.js] Email:', message.email);
 
@@ -67,7 +67,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
     // Обновляем план в chrome.storage.local
     chrome.storage.local.set({ plan: newPlan }, async () => {
-      console.log('[VideoReader content.js] ✅ План обновлен в storage:', newPlan);
+      console.log('[VideoReader content.js] План обновлен в storage:', newPlan);
 
       // Обновляем план с сервера (для синхронизации)
       console.log('[VideoReader content.js] Синхронизируем план с сервером...');
@@ -77,7 +77,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       console.log('[VideoReader content.js] Обновляем UI...');
       await updateAuthUI();
 
-      console.log('[VideoReader content.js] ✅ UI обновлён БЕЗ перезагрузки страницы!');
+      console.log('[VideoReader content.js] UI обновлён БЕЗ перезагрузки страницы!');
     });
 
     sendResponse({ success: true });
@@ -90,7 +90,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   return false;
 });
 
-console.log('[VideoReader content.js] ✅ Обработчик chrome.runtime.onMessage установлен');
+console.log('[VideoReader content.js] Обработчик chrome.runtime.onMessage установлен');
 
 // ДОПОЛНИТЕЛЬНЫЙ ОБРАБОТЧИК: Слушаем postMessage от OAuth callback popup (на случай прямого сообщения)
 window.addEventListener('message', async (event) => {
@@ -113,7 +113,7 @@ window.addEventListener('message', async (event) => {
       console.log('[VideoReader content.js] Сохраняем токен и email в storage...');
 
       await chrome.storage.local.set({ token: token, email: email });
-      console.log('[VideoReader content.js] ✅ Токен и email сохранены в chrome.storage');
+      console.log('[VideoReader content.js] Токен и email сохранены в chrome.storage');
 
       // Сразу после получения токена запрашиваем план
       console.log('[VideoReader content.js] Запрашиваем план пользователя...');
@@ -122,16 +122,16 @@ window.addEventListener('message', async (event) => {
       // Обновляем UI авторизации
       console.log('[VideoReader content.js] Обновляем UI авторизации...');
       await updateAuthUI();
-      console.log('[VideoReader content.js] ✅ UI авторизации обновлён после получения токена');
+      console.log('[VideoReader content.js] UI авторизации обновлён после получения токена');
     } else {
-      console.error('[VideoReader content.js] ❌ Токен или email отсутствуют в postMessage!');
+      console.error('[VideoReader content.js] Токен или email отсутствуют в postMessage!');
     }
   } else {
     console.log('[VideoReader content.js] Получено postMessage другого типа:', event.data?.type);
   }
 });
 
-console.log('[VideoReader content.js] ✅ Обработчик window.postMessage установлен');
+console.log('[VideoReader content.js] Обработчик window.postMessage установлен');
 
 // ═══════════════════════════════════════════════════════════════════
 // PLAN DETECTION SYSTEM - Fetch user plan from backend with Bearer token
@@ -189,7 +189,7 @@ async function fetchPlan() {
 
   } catch (error) {
     // Ошибка сети или сервер недоступен - считаем Free
-    console.error('[VideoReader] ❌ fetch /api/plan failed:', error);
+    console.error('[VideoReader] fetch /api/plan failed:', error);
     console.warn('[VideoReader] Failed to fetch plan from server, defaulting to Free:', error.message);
 
     // Сохраняем Free plan
@@ -712,11 +712,11 @@ async function injectPanel() {
     });
 
     if (!translateBtn) {
-      console.error('❌ КНОПКА TRANSLATE НЕ НАЙДЕНА!');
+      console.error('КНОПКА TRANSLATE НЕ НАЙДЕНА!');
     } else {
-      console.log('✅ Кнопка Translate найдена, привязываю обработчик...');
+      console.log('Кнопка Translate найдена, привязываю обработчик...');
       translateBtn.addEventListener('click', handleGetTranscript);
-      console.log('✅ Обработчик привязан к кнопке Translate');
+      console.log('Обработчик привязан к кнопке Translate');
     }
 
     toggleBtn.addEventListener('click', handleTogglePanel);
@@ -1229,7 +1229,7 @@ async function translateSubtitles(videoId, subtitles) {
         console.log(`→ RESPONSE i=${i}, data:`, data);
 
         if (data.error) {
-          console.error(`❌ Ошибка перевода строки ${i}: ${data.error}`);
+          console.error(`Ошибка перевода строки ${i}: ${data.error}`);
           prevContext.push(subtitle.text); // Используем оригинал
           continue;
         }
@@ -1256,7 +1256,7 @@ async function translateSubtitles(videoId, subtitles) {
         }
 
       } catch (error) {
-        console.error(`❌❌❌ EXCEPTION на строке i=${i}:`, error);
+        console.error(`EXCEPTION на строке i=${i}:`, error);
         console.error(`Subtitle на момент ошибки:`, subtitle);
         console.error(`prevContext:`, prevContext);
         prevContext.push(subtitle.text); // Используем оригинал в контексте
