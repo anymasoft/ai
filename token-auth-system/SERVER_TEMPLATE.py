@@ -603,9 +603,9 @@ def auth_site_callback():
         # Создаём response с HTML
         resp = make_response(html)
 
-        # Устанавливаем cookie с токеном (на 30 дней)
-        resp.set_cookie('auth_token', token, max_age=60*60*24*30, httponly=False, samesite='Lax')
-        resp.set_cookie('auth_email', email, max_age=60*60*24*30, httponly=False, samesite='Lax')
+        # Устанавливаем cookie с токеном (на 1 год)
+        resp.set_cookie('auth_token', token, max_age=60*60*24*365, httponly=False, samesite='Lax')
+        resp.set_cookie('auth_email', email, max_age=60*60*24*365, httponly=False, samesite='Lax')
 
         return resp
 
