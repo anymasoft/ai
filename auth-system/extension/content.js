@@ -674,7 +674,20 @@ async function injectPanel() {
     const langBtn = document.getElementById('yt-reader-lang-btn');
     const langDropdown = document.getElementById('yt-reader-lang-dropdown');
 
-    translateBtn.addEventListener('click', handleGetTranscript);
+    console.log('🔍 ПРОВЕРКА КНОПОК:', {
+      translateBtn: !!translateBtn,
+      toggleBtn: !!toggleBtn,
+      langBtn: !!langBtn
+    });
+
+    if (!translateBtn) {
+      console.error('❌ КНОПКА TRANSLATE НЕ НАЙДЕНА!');
+    } else {
+      console.log('✅ Кнопка Translate найдена, привязываю обработчик...');
+      translateBtn.addEventListener('click', handleGetTranscript);
+      console.log('✅ Обработчик привязан к кнопке Translate');
+    }
+
     toggleBtn.addEventListener('click', handleTogglePanel);
     langBtn.addEventListener('click', handleLanguageToggle);
 
