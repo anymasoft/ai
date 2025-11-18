@@ -205,7 +205,7 @@ async function fetchPlan() {
 // Открывает страницу авторизации через background.js
 function openAuthPage() {
   console.log('[VideoReader] Запрос на открытие страницы авторизации');
-  chrome.runtime.sendMessage({ type: 'OPEN_AUTH_PAGE' }, (response) => {
+  chrome.runtime.sendMessage({ type: 'START_AUTH' }, (response) => {
     if (chrome.runtime.lastError) {
       console.error('[VideoReader] Ошибка отправки сообщения в background:', chrome.runtime.lastError);
     } else {

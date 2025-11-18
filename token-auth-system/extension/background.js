@@ -3,6 +3,9 @@
 
 console.log('[VideoReader Background] Service worker запущен');
 
+// Переменная для запоминания вкладки, с которой началась авторизация
+let lastAuthTabId = null;
+
 // Слушаем сообщения от content script, auth.html и popup окна авторизации
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   console.log('[VideoReader Background] Получено сообщение:', message);
@@ -11,12 +14,16 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   // ═══════════════════════════════════════════════════════════════════
   // Обработка запроса на открытие страницы авторизации
   // ═══════════════════════════════════════════════════════════════════
-  if (message.type === 'OPEN_AUTH_PAGE') {
+  if (message.type === 'START_AUTH') {
     console.log('[VideoReader Background] Запрос на открытие страницы авторизации');
 
-    // Открываем auth.html в новой вкладке
+    // Запоминаем вкладку, с которой началась авторизация
+    lastAuthTabId = sender.tab?.id || null;
+    console.log('[VideoReader Background] Сохранен lastAuthTabId:', lastAuthTabId);
+
+    // Открываем /auth в новой вкладке
     chrome.tabs.create({
-      url: chrome.runtime.getURL('auth.html'),
+      url: 'http://localhost:5000/auth',
       active: true
     }, (tab) => {
       console.log('[VideoReader Background] Страница авторизации открыта, tab ID:', tab.id);
@@ -47,7 +54,18 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     chrome.storage.local.set({ token: token, email: email }, () => {
       console.log('[VideoReader Background] ✅ Токен и email сохранены в storage');
 
-      // 2. Ретранслируем AUTH_SUCCESS во ВСЕ вкладки с content scripts
+      // 2. Закрываем вкладку auth и возвращаем фокус на YouTube вкладку
+      if (sender.tab?.id) {
+        console.log('[VideoReader Background] Закрываем вкладку auth:', sender.tab.id);
+        chrome.tabs.remove(sender.tab.id);
+      }
+
+      if (lastAuthTabId) {
+        console.log('[VideoReader Background] Возвращаем фокус на вкладку:', lastAuthTabId);
+        chrome.tabs.update(lastAuthTabId, { active: true });
+      }
+
+      // 3. Ретранслируем AUTH_SUCCESS во ВСЕ вкладки с content scripts
       console.log('[VideoReader Background] Ретранслируем AUTH_SUCCESS во все вкладки...');
 
       chrome.tabs.query({}, (tabs) => {
