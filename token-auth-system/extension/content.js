@@ -143,7 +143,7 @@ console.log('[VideoReader content.js] ✅ Обработчик window.postMessag
 
 // Функция получения тарифного плана пользователя
 async function fetchPlan() {
-  const API_URL = `${API_BASE}/api/plan`;
+  const API_URL = "http://localhost:5000/api/plan";
 
   try {
     // Получаем токен из chrome.storage
@@ -1179,7 +1179,7 @@ async function handleGetTranscript() {
 
 // Отправка субтитров на сервер и получение переводов построчно
 async function translateSubtitles(videoId, subtitles) {
-  const SERVER_URL = `${API_BASE}/translate-line`;
+  const SERVER_URL = "http://localhost:5000/translate-line";
   const prevContext = [];
   const selectedLang = transcriptState.selectedLang; // Используем выбранный язык
 
