@@ -1275,9 +1275,26 @@ async function translateSubtitles(videoId, subtitles) {
 
     console.log(`Перевод завершен: ${subtitles.length} строк на ${selectedLang}`);
 
-    // Если достигнут лимит Free плана, показываем баннер
+    // Если достигнут лимит Free плана, показываем CTA
     if (stopTranslation) {
-      showLimitReachedBanner();
+      const content = document.getElementById('yt-transcript-content');
+      if (content) {
+        // Удаляем старый CTA, если есть
+        const existingCTA = document.getElementById('yt-reader-upgrade-cta');
+        if (existingCTA) {
+          existingCTA.remove();
+        }
+
+        // Вставляем новый CTA в конец списка субтитров
+        const cta = document.createElement('div');
+        cta.id = 'yt-reader-upgrade-cta';
+        cta.className = 'yt-reader-upgrade-cta';
+        cta.innerHTML = `
+          Translation limit reached — upgrade to unlock full text.
+          <button id="yt-reader-upgrade-cta-btn">Upgrade</button>
+        `;
+        content.appendChild(cta);
+      }
     }
 
   } catch (error) {
@@ -1298,70 +1315,6 @@ function updateSingleLine(index, translatedText) {
         textElement.style.opacity = '1';
       }, 100);
     }
-  }
-}
-
-// Показ баннера при достижении лимита Free плана
-function showLimitReachedBanner() {
-  const body = document.getElementById('yt-transcript-body');
-  if (!body) return;
-
-  // Удаляем старый баннер, если есть
-  const existingBanner = body.querySelector('.limit-reached-banner');
-  if (existingBanner) {
-    existingBanner.remove();
-  }
-
-  const banner = document.createElement('div');
-  banner.className = 'limit-reached-banner';
-  banner.style.cssText = `
-    margin: 16px 0;
-    padding: 16px;
-    background: rgba(255, 200, 0, 0.1);
-    border: 1px solid rgba(255, 200, 0, 0.3);
-    border-radius: 8px;
-    text-align: center;
-  `;
-
-  banner.innerHTML = `
-    <div style="color: #333; font-size: 14px; margin-bottom: 12px;">
-      Full translation available in Pro / Premium
-    </div>
-    <button id="upgrade-now-btn" style="
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      color: white;
-      border: none;
-      padding: 10px 24px;
-      border-radius: 6px;
-      font-size: 14px;
-      font-weight: 600;
-      cursor: pointer;
-      transition: transform 0.2s;
-    ">
-      Upgrade Now
-    </button>
-  `;
-
-  // Добавляем баннер в начало body (после блоков авторизации и контролов)
-  const controls = body.querySelector('.yt-reader-controls');
-  if (controls && controls.nextSibling) {
-    controls.parentNode.insertBefore(banner, controls.nextSibling);
-  } else {
-    body.appendChild(banner);
-  }
-
-  // Обработчик клика на кнопку
-  const upgradeBtn = banner.querySelector('#upgrade-now-btn');
-  if (upgradeBtn) {
-    upgradeBtn.addEventListener('click', () => {
-      window.open('http://localhost:5000/pricing', '_blank');
-    });
-    upgradeBtn.addEventListener('mouseenter', (e) => {
-      e.target.style.transform = 'scale(1.05)';
-    });
-    upgradeBtn.addEventListener('mouseleave', (e) => {
-      e.target.style.transform = 'scale(1)';
-    });
   }
 }
 
@@ -1602,3 +1555,13 @@ fetchPlan();
 if (location.href.includes('/watch')) {
   injectPanel();
 }
+
+// ═══════════════════════════════════════════════════════════════════
+// EVENT HANDLER - Upgrade CTA button click
+// ═══════════════════════════════════════════════════════════════════
+
+document.addEventListener('click', (e) => {
+  if (e.target && e.target.id === 'yt-reader-upgrade-cta-btn') {
+    window.open('http://localhost:5000/pricing', '_blank');
+  }
+});
