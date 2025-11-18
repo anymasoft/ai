@@ -257,6 +257,7 @@ html[dark] :root {
   display: flex;
   align-items: center;
   gap: 10px;
+  width: 100%;
   color: var(--yt-spec-text-secondary);
   font-size: 13px;
   font-weight: 500;
@@ -277,6 +278,7 @@ html[dark] :root {
   align-items: center;
   justify-content: center;
   gap: 10px;
+  width: 100%;
   padding: 12px 24px;
   margin-top: 12px;
   background: #ffffff;
