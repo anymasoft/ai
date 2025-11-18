@@ -1356,7 +1356,8 @@ function updateSingleLine(index, translatedText) {
       // Плавное обновление
       textElement.style.opacity = '0.5';
       setTimeout(() => {
-        textElement.textContent = translatedText;
+        // ДОБАВЛЯЕМ МАРКЕР "+++" ДЛЯ ДИАГНОСТИКИ ОБРЕЗКИ ТЕКСТА
+        textElement.textContent = '+++ ' + translatedText;
         textElement.style.opacity = '1';
       }, 100);
     }
@@ -1524,7 +1525,7 @@ function displayTranscript(subtitles) {
          data-start="${sub.start}"
          data-end="${sub.end}">
       <div class="yt-transcript-item-time">${sub.time}</div>
-      <div class="yt-transcript-item-text">${sub.text}</div>
+      <div class="yt-transcript-item-text">+++ ${sub.text}</div>
     </div>
   `).join('');
 
