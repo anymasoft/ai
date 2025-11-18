@@ -604,8 +604,8 @@ def auth_site_callback():
         resp = make_response(html)
 
         # Устанавливаем cookie с токеном (на 30 дней)
-        resp.set_cookie('auth_token', token, max_age=30*24*60*60, path='/', httponly=True)
-        resp.set_cookie('auth_email', email, max_age=30*24*60*60, path='/', httponly=False)
+        resp.set_cookie('auth_token', token, max_age=60*60*24*30, httponly=False, samesite='Lax')
+        resp.set_cookie('auth_email', email, max_age=60*60*24*30, httponly=False, samesite='Lax')
 
         return resp
 
