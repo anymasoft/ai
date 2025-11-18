@@ -193,7 +193,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   // TRANSLATE_LINE: Запрос перевода через background (для обхода AdBlock)
   // ═══════════════════════════════════════════════════════════════════
   if (message.type === 'TRANSLATE_LINE') {
-    const { videoId, lineNumber, text, prevContext, lang } = message;
+    const { videoId, lineNumber, text, prevContext, lang, totalLines } = message;
 
     // Выполняем fetch от имени background.js
     fetch('http://localhost:5000/translate-line', {
@@ -206,7 +206,8 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         lineNumber,
         text,
         prevContext,
-        lang
+        lang,
+        totalLines
       })
     })
       .then(response => {

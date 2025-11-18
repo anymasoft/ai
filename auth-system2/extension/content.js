@@ -1223,7 +1223,8 @@ async function translateSubtitles(videoId, subtitles) {
           lineNumber: requestBody.lineNumber,
           text: requestBody.text,
           prevContext: requestBody.prevContext,
-          lang: requestBody.lang
+          lang: requestBody.lang,
+          totalLines: subtitles.length
         });
 
         console.log(`→ RESPONSE i=${i}, data:`, data);
