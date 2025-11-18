@@ -1171,7 +1171,6 @@ async function handleGetTranscript() {
 
 // Отправка субтитров на сервер и получение переводов построчно
 async function translateSubtitles(videoId, subtitles) {
-  const SERVER_URL = "http://localhost:5000/translate-line";
   const prevContext = [];
   const selectedLang = transcriptState.selectedLang; // Используем выбранный язык
 
@@ -1184,7 +1183,7 @@ async function translateSubtitles(videoId, subtitles) {
 
       try {
         // Отправляем запрос на перевод одной строки
-        const response = await fetch(SERVER_URL, {
+        const response = await fetch('http://localhost:5000/translate-line', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
