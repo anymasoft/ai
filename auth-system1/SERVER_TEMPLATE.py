@@ -368,28 +368,24 @@ def translate_line():
     else:
         print(f"[TRANSLATE] No Bearer token - defaulting to Free plan")
 
-    # ═══════════════════════════════════════════════════════════════════
-    # ВРЕМЕННО ОТКЛЮЧЕНЫ ЛИМИТЫ - ВСЕ ПОЛЬЗОВАТЕЛИ ПОЛУЧАЮТ 100% СТРОК
-    # ═══════════════════════════════════════════════════════════════════
+    # Вычисляем лимит для Free плана (30% строк)
+    max_free_line = -1
+    if total_lines > 0:
+        max_free_line = int(total_lines * 0.3) - 1  # 30% строк (индексация с 0)
 
-    # # Вычисляем лимит для Free плана (30% строк)
-    # max_free_line = -1
-    # if total_lines > 0:
-    #     max_free_line = int(total_lines * 0.3) - 1  # 30% строк (индексация с 0)
-
-    # # Проверяем лимит для Free плана
-    # if user_plan == 'Free' and total_lines > 0 and line_number > max_free_line:
-    #     print(f"[TRANSLATE] Free limit reached: line {line_number} > {max_free_line} (30% of {total_lines})")
-    #     return jsonify({
-    #         'videoId': video_id,
-    #         'lineNumber': line_number,
-    #         'text': '',
-    #         'cached': False,
-    #         'limited': True,
-    #         'export_allowed': False,
-    #         'plan': user_plan,
-    #         'stop': True  # Сигнал клиенту остановить перевод
-    #     })
+    # Проверяем лимит для Free плана
+    if user_plan == 'Free' and total_lines > 0 and line_number > max_free_line:
+        print(f"[TRANSLATE] Free limit reached: line {line_number} > {max_free_line} (30% of {total_lines})")
+        return jsonify({
+            'videoId': video_id,
+            'lineNumber': line_number,
+            'text': '',
+            'cached': False,
+            'limited': True,
+            'export_allowed': False,
+            'plan': user_plan,
+            'stop': True  # Сигнал клиенту остановить перевод
+        })
 
     # ═══════════════════════════════════════════════════════════════════
     # TRANSLATION - переводим строку (ПОЛНОСТЬЮ, без обрезки)
