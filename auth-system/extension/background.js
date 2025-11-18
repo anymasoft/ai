@@ -89,8 +89,8 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   // ═══════════════════════════════════════════════════════════════════
   // HOT-RELOAD: Обработка изменения тарифного плана от pricing.html
   // ═══════════════════════════════════════════════════════════════════
-  if (message.type === 'PLAN_UPGRADED') {
-    console.log('[VideoReader Background] ✅ Получен PLAN_UPGRADED от pricing.html');
+  if (message.type === 'PLAN_UPDATED') {
+    console.log('[VideoReader Background] ✅ Получен PLAN_UPDATED от pricing.html');
     console.log('[VideoReader Background] Новый план:', message.newPlan);
     console.log('[VideoReader Background] Email:', message.email);
 
