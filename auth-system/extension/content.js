@@ -1058,9 +1058,15 @@ function downloadFile(content, filename, mimeType) {
 
 // Обработчик нажатия кнопки получения транскрипта
 async function handleGetTranscript() {
+  console.log('🔥🔥🔥 handleGetTranscript ВЫЗВАН!');
+
   const btn = document.getElementById('yt-reader-translate-btn');
   const content = document.getElementById('yt-transcript-content');
   const videoId = getVideoId();
+
+  console.log('🔥 btn:', btn);
+  console.log('🔥 content:', content);
+  console.log('🔥 videoId:', videoId);
 
   if (!videoId) {
     content.innerHTML = `
@@ -1144,11 +1150,16 @@ async function handleGetTranscript() {
     displayTranscript(subtitles);
     updateExportButtonState(); // Пока перевод идёт - экспорт заблокирован
 
+    console.log('🔥🔥🔥 ПЕРЕД translateSubtitles, subtitles.length:', subtitles.length);
+
     // Отправляем на сервер для перевода
     btn.classList.add('translating');
     btn.classList.remove('loading');
     btn.textContent = 'AI is translating...';
+
+    console.log('🔥🔥🔥 ВЫЗЫВАЕМ translateSubtitles...');
     await translateSubtitles(videoId, subtitles);
+    console.log('🔥🔥🔥 translateSubtitles ЗАВЕРШЁН!');
 
     transcriptState.isProcessed = true;
 
