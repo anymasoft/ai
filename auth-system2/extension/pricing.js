@@ -265,7 +265,7 @@ async function sendFeedback(message, email) {
   console.log('[Pricing] Отправка feedback:', { message, email });
 
   try {
-    const response = await fetch('http://localhost:5000/feedback', {
+    const response = await fetch('/feedback', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
