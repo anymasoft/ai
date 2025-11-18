@@ -132,7 +132,7 @@ def init_db():
             email TEXT,
             message TEXT NOT NULL,
             plan TEXT,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            created_at INTEGER DEFAULT (strftime('%s', 'now'))
         )
     ''')
 

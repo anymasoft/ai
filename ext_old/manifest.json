@@ -1,0 +1,40 @@
+{
+  "manifest_version": 3,
+  "name": "YouTube Transcript Viewer",
+  "version": "3.4.1",
+  "description": "Premium YouTube transcript translation with multi-language support",
+  "icons": {
+    "16": "assets/logo.png",
+    "48": "assets/logo.png",
+    "128": "assets/logo.png"
+  },
+  "action": {
+    "default_icon": {
+      "16": "assets/logo.png",
+      "48": "assets/logo.png",
+      "128": "assets/logo.png"
+    },
+    "default_title": "YouTube Transcript Viewer"
+  },
+  "background": {
+    "service_worker": "background.js"
+  },
+  "permissions": ["storage"],
+  "host_permissions": [
+    "https://www.youtube.com/*"
+  ],
+  "content_scripts": [
+    {
+      "matches": ["https://www.youtube.com/*"],
+      "js": ["flags.js", "content.js"],
+      "css": ["styles.css"],
+      "run_at": "document_idle"
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": ["assets/logo.png"],
+      "matches": ["https://www.youtube.com/*"]
+    }
+  ]
+}
