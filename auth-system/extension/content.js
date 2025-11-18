@@ -1286,6 +1286,11 @@ async function getTranscript() {
       const text = textElement.textContent.trim();
       const timeText = timeElement?.textContent.trim() || '';
 
+      // ОТЛАДКА: логируем первые 5 строк
+      if (index < 5) {
+        console.log(`[DEBUG] subtitle[${index}]:`, {time: timeText, text: text.substring(0, 100)});
+      }
+
       // Извлекаем точное время start в секундах из атрибута
       let startSeconds = 0;
       const startAttr = item.getAttribute('start-offset');
