@@ -1182,28 +1182,39 @@ async function translateSubtitles(videoId, subtitles) {
       const subtitle = subtitles[i];
 
       try {
+        console.log(`→ TRANSLATE i=${i}, subtitle:`, subtitle, `text type: ${typeof subtitle.text}`, `videoId: ${videoId}`, `lang: ${selectedLang}`);
+
+        const requestBody = {
+          videoId: videoId,
+          lineNumber: i,
+          text: subtitle.text,
+          prevContext: prevContext.slice(-2), // Последние 1-2 переведенные строки
+          lang: selectedLang // Используем выбранный язык
+        };
+
+        console.log(`→ JSON.stringify i=${i}...`);
+        const bodyString = JSON.stringify(requestBody);
+        console.log(`→ JSON OK i=${i}, length: ${bodyString.length}`);
+
         // Отправляем запрос на перевод одной строки
         const response = await fetch('http://localhost:5000/translate-line', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify({
-            videoId: videoId,
-            lineNumber: i,
-            text: subtitle.text,
-            prevContext: prevContext.slice(-2), // Последние 1-2 переведенные строки
-            lang: selectedLang // Используем выбранный язык
-          })
+          body: bodyString
         });
 
+        console.log(`→ FETCH OK i=${i}, status: ${response.status}`);
+
         if (!response.ok) {
-          console.error(`Ошибка перевода строки ${i}: ${response.status}`);
+          console.error(`❌ Ошибка перевода строки ${i}: ${response.status}`);
           prevContext.push(subtitle.text); // Используем оригинал
           continue;
         }
 
         const data = await response.json();
+        console.log(`→ RESPONSE i=${i}, cached: ${data.cached}`);
         const translatedText = data.text;
 
         // Логируем статус
@@ -1225,7 +1236,9 @@ async function translateSubtitles(videoId, subtitles) {
         }
 
       } catch (error) {
-        console.error(`Ошибка при переводе строки ${i}:`, error);
+        console.error(`❌❌❌ EXCEPTION на строке i=${i}:`, error);
+        console.error(`Subtitle на момент ошибки:`, subtitle);
+        console.error(`prevContext:`, prevContext);
         prevContext.push(subtitle.text); // Используем оригинал в контексте
       }
     }
