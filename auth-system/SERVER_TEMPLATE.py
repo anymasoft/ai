@@ -355,6 +355,7 @@ def translate_line():
     text = data.get('text')
     prev_context = data.get('prevContext', [])
     lang = data.get('lang', 'ru')
+    total_lines = data.get('totalLines')
 
     if video_id is None or line_number is None or not text:
         return jsonify({'error': 'Missing videoId, lineNumber or text'}), 400
@@ -369,32 +370,39 @@ def translate_line():
             plan = user['plan']
             print(f"[TRANSLATE] План пользователя: {plan}")
 
+    # Проверяем лимит для Free плана: только первые 30% строк
+    if plan == 'Free' and total_lines:
+        max_free_line = int(total_lines * 0.3)
+        if line_number > max_free_line:
+            print(f"[LIMIT] Free plan: line {line_number} > {max_free_line}, returning empty")
+            return jsonify({
+                'videoId'   : video_id,
+                'lineNumber': line_number,
+                'text'      : '',
+                'cached'    : False,
+                'limited'   : True,
+                'export_allowed': False,
+                'plan'      : plan
+            })
+
     # Проверяем кеш
     cached_translation = check_line_cache(video_id, line_number, lang)
 
     if cached_translation:
         print(f"[Cache HIT] Video {video_id}, line {line_number}")
-        # Применяем лимиты для кэшированного текста
-        result_text = cached_translation
+        # Определяем флаги для плана
         limited = False
         export_allowed = False
 
         if plan == 'Free':
-            # Free план: только 30% текста
-            result_text = cached_translation[:int(len(cached_translation) * 0.3)]
             limited = True
-        elif plan == 'Pro':
-            # Pro план: полный текст
-            limited = False
         elif plan == 'Premium':
-            # Premium план: полный текст + экспорт
-            limited = False
             export_allowed = True
 
         return jsonify({
             'videoId'   : video_id,
             'lineNumber': line_number,
-            'text'      : result_text,
+            'text'      : cached_translation,
             'cached'    : True,
             'limited'   : limited,
             'export_allowed': export_allowed,
@@ -411,27 +419,19 @@ def translate_line():
     # Сохраняем в кеш
     save_line_to_cache(video_id, line_number, text, translated_text, lang)
 
-    # Применяем лимиты для нового перевода
-    result_text = translated_text
+    # Определяем флаги для плана
     limited = False
     export_allowed = False
 
     if plan == 'Free':
-        # Free план: только 30% текста
-        result_text = translated_text[:int(len(translated_text) * 0.3)]
         limited = True
-    elif plan == 'Pro':
-        # Pro план: полный текст
-        limited = False
     elif plan == 'Premium':
-        # Premium план: полный текст + экспорт
-        limited = False
         export_allowed = True
 
     return jsonify({
         'videoId'   : video_id,
         'lineNumber': line_number,
-        'text'      : result_text,
+        'text'      : translated_text,
         'cached'    : False,
         'limited'   : limited,
         'export_allowed': export_allowed,
