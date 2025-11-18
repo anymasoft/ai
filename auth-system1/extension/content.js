@@ -1256,11 +1256,14 @@ async function translateSubtitles(videoId, subtitles) {
         // ═══════════════════════════════════════════════════════════════════
         // ОБРАБОТКА STOP - остановка перевода при достижении лимита Free
         // ═══════════════════════════════════════════════════════════════════
+        console.log(`[DEBUG STOP CHECK] i=${i}, data.stop=${data.stop}, type=${typeof data.stop}`);
+
         if (data.stop === true) {
           console.log(`🛑 FREE LIMIT REACHED на строке ${i}. Останавливаем перевод.`);
 
           // Показываем CTA для Upgrade
           const content = document.getElementById('yt-transcript-content');
+          console.log(`[DEBUG] yt-transcript-content found:`, content);
           if (content) {
             const upgradeMessage = document.createElement('div');
             upgradeMessage.className = 'yt-transcript-upgrade-cta';
@@ -1305,9 +1308,12 @@ async function translateSubtitles(videoId, subtitles) {
                 window.open('http://localhost:5000/pricing', '_blank');
               });
             }
+          } else {
+            console.error('[DEBUG] ❌ yt-transcript-content НЕ НАЙДЕН! Кнопка Upgrade не может быть добавлена.');
           }
 
           // ОСТАНАВЛИВАЕМ цикл перевода
+          console.log('[DEBUG] Выполняем break для остановки цикла');
           break;
         }
 
