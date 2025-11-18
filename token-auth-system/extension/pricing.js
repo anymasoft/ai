@@ -272,3 +272,13 @@ document.addEventListener('DOMContentLoaded', function() {
     console.log('[Pricing] Обработчик Logout привязан');
   }
 });
+
+// Обработчик сообщений от popup OAuth
+window.addEventListener('message', function(event) {
+  console.log('[Pricing] Получено сообщение:', event.data);
+
+  if (event.data && event.data.type === 'SITE_AUTH_SUCCESS') {
+    console.log('[Pricing] ✅ SITE_AUTH_SUCCESS - обновление информации о пользователе');
+    loadUserInfo();
+  }
+});
