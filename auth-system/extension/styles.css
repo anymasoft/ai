@@ -117,9 +117,10 @@ html[dark] :root {
   border-radius: 12px;
   background: linear-gradient(135deg, rgba(59, 130, 246, 0.02) 0%, rgba(99, 102, 241, 0.03) 100%);
   border: 1px solid var(--yt-reader-border);
-  display: flex;
+  display: inline-flex;
   flex-direction: column;
   gap: 18px;
+  width: max-content;
   align-items: center;
   justify-content: center;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
@@ -256,8 +257,10 @@ html[dark] :root {
 .yt-reader-auth-prompt {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 10px;
   width: 100%;
+  box-sizing: border-box;
   color: var(--yt-spec-text-secondary);
   font-size: 13px;
   font-weight: 500;
@@ -279,6 +282,7 @@ html[dark] :root {
   justify-content: center;
   gap: 10px;
   width: 100%;
+  box-sizing: border-box;
   padding: 12px 24px;
   margin-top: 12px;
   background: #ffffff;
