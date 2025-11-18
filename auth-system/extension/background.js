@@ -189,6 +189,43 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return true; // Асинхронный ответ
   }
 
+  // ═══════════════════════════════════════════════════════════════════
+  // TRANSLATE_LINE: Запрос перевода через background (для обхода AdBlock)
+  // ═══════════════════════════════════════════════════════════════════
+  if (message.type === 'TRANSLATE_LINE') {
+    const { videoId, lineNumber, text, prevContext, lang } = message;
+
+    // Выполняем fetch от имени background.js
+    fetch('http://localhost:5000/translate-line', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        videoId,
+        lineNumber,
+        text,
+        prevContext,
+        lang
+      })
+    })
+      .then(response => {
+        if (!response.ok) {
+          return { error: 'translation_failed', status: response.status };
+        }
+        return response.json();
+      })
+      .then(data => {
+        sendResponse(data);
+      })
+      .catch(err => {
+        console.error('[VideoReader Background] ❌ fetch /translate-line failed:', err);
+        sendResponse({ error: 'network_error' });
+      });
+
+    return true; // Асинхронный ответ
+  }
+
   // Неизвестный тип сообщения
   console.log('[VideoReader Background] Неизвестный тип сообщения:', message.type);
   sendResponse({ success: false, error: 'Unknown message type' });
