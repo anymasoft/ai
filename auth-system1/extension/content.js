@@ -1321,9 +1321,6 @@ async function translateSubtitles(videoId, subtitles) {
           console.log(`[${i}] Translated: ${translatedText}`);
         }
 
-        // DEBUG: Логируем ЧТО ИМЕННО передаём в updateSingleLine
-        console.log(`[CONTENT DEBUG] Line ${i}, BEFORE updateSingleLine, translatedText length: ${translatedText ? translatedText.length : 0}, text: "${translatedText}"`);
-
         // Немедленно обновляем UI для этой строки ПОЛНЫМ текстом (без обрезки)
         updateSingleLine(i, translatedText);
 
@@ -1359,8 +1356,7 @@ function updateSingleLine(index, translatedText) {
       // Плавное обновление
       textElement.style.opacity = '0.5';
       setTimeout(() => {
-        // ДОБАВЛЯЕМ МАРКЕР "+++" ДЛЯ ДИАГНОСТИКИ ОБРЕЗКИ ТЕКСТА
-        textElement.textContent = '+++ ' + translatedText;
+        textElement.textContent = translatedText;
         textElement.style.opacity = '1';
       }, 100);
     }
@@ -1528,7 +1524,7 @@ function displayTranscript(subtitles) {
          data-start="${sub.start}"
          data-end="${sub.end}">
       <div class="yt-transcript-item-time">${sub.time}</div>
-      <div class="yt-transcript-item-text">+++ ${sub.text}</div>
+      <div class="yt-transcript-item-text">${sub.text}</div>
     </div>
   `).join('');
 

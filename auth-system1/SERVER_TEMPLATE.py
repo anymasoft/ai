@@ -400,12 +400,10 @@ def translate_line():
 
     if cached_translation:
         print(f"[Cache HIT] Video {video_id}, line {line_number}")
-        # DEBUG: Логируем ЧТО ИМЕННО возвращает кеш
-        print(f"[SERVER DEBUG CACHE] Line {line_number}, cached text length: {len(cached_translation)}, first 100 chars: {cached_translation[:100]}")
         return jsonify({
             'videoId'   : video_id,
             'lineNumber': line_number,
-            'text'      : cached_translation,  # ПОЛНЫЙ текст без обрезки
+            'text'      : cached_translation,
             'cached'    : True,
             'limited'   : user_plan == 'Free',
             'export_allowed': user_plan in ['Pro', 'Premium'],
@@ -420,19 +418,13 @@ def translate_line():
     if not translated_text:
         return jsonify({'error': 'Translation failed'}), 500
 
-    # DEBUG: Логируем ЧТО ИМЕННО вернул GPT
-    print(f"[SERVER DEBUG GPT] Line {line_number}, GPT text length: {len(translated_text)}, first 100 chars: {translated_text[:100]}")
-
     # Сохраняем в кеш ПОЛНЫЙ перевод (без обрезки)
     save_line_to_cache(video_id, line_number, text, translated_text, lang)
-
-    # DEBUG: Логируем ЧТО ИМЕННО отправляем клиенту
-    print(f"[SERVER DEBUG SENDING] Line {line_number}, sending text length: {len(translated_text)}, full text: {translated_text}")
 
     return jsonify({
         'videoId'   : video_id,
         'lineNumber': line_number,
-        'text'      : translated_text,  # ПОЛНЫЙ текст без обрезки
+        'text'      : translated_text,
         'cached'    : False,
         'limited'   : user_plan == 'Free',
         'export_allowed': user_plan in ['Pro', 'Premium'],

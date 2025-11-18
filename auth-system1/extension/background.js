@@ -225,8 +225,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         return response.json();
       })
       .then(data => {
-        // DEBUG: Логируем ЧТО ИМЕННО получили от сервера
-        console.log(`[BACKGROUND DEBUG] Line ${data.lineNumber}, received text length: ${data.text ? data.text.length : 0}, text: "${data.text}"`);
         sendResponse(data);
       })
       .catch(err => {
