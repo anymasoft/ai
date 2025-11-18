@@ -373,9 +373,15 @@ def translate_line():
     if total_lines > 0:
         max_free_line = int(total_lines * 0.3) - 1  # 30% строк (индексация с 0)
 
+    # ПОДРОБНОЕ ЛОГИРОВАНИЕ ЛИМИТОВ
+    current_progress = line_number + 1  # +1 т.к. индексация с 0
+    percent_done = (current_progress / total_lines * 100) if total_lines > 0 else 0
+    print(f"[LIMIT CHECK] Plan: {user_plan}, Line: {current_progress}/{total_lines} ({percent_done:.1f}%), Max Free Line: {max_free_line + 1}")
+
     # Проверяем лимит для Free плана
     if user_plan == 'Free' and total_lines > 0 and line_number > max_free_line:
-        print(f"[TRANSLATE] Free limit reached: line {line_number} > {max_free_line} (30% of {total_lines})")
+        print(f"[TRANSLATE] ⛔ FREE LIMIT REACHED: line {current_progress}/{total_lines} > {max_free_line + 1} (30% of {total_lines})")
+        print(f"[TRANSLATE] 🛑 STOPPING translation, returning stop=True")
         return jsonify({
             'videoId': video_id,
             'lineNumber': line_number,
