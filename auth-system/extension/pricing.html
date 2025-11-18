@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Video Reader AI - Pricing</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="/pricing.css">
+</head>
+<body class="bg-gray-50">
+
+<div class="min-h-screen flex flex-col">
+  <!-- Top Navbar -->
+  <header class="bg-white shadow-sm border-b">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+      <div class="flex justify-between items-center">
+        <div class="flex items-center gap-3">
+          <img src="/assets/logo.png" alt="Video Reader AI" class="w-10 h-10 rounded-lg">
+          <h1 class="text-xl font-bold text-gray-900">Video Reader AI</h1>
+        </div>
+        <!-- User Info (для авторизованных) -->
+        <div id="user-info" class="flex items-center gap-4" style="display: none;">
+          <span id="userEmail" class="text-sm font-medium text-gray-700"></span>
+          <span id="currentPlan" class="px-3 py-1 rounded-full text-xs font-semibold bg-blue-100 text-blue-800"></span>
+          <button id="logout-btn" class="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors">
+            Logout
+          </button>
+        </div>
+        <!-- Auth Prompt (для неавторизованных) -->
+        <div id="auth-prompt" class="flex items-center gap-4" style="display: none;">
+          <a href="#" onclick="const w=480,h=620,left=(screen.width-w)/2,top=(screen.height-h)/2; window.open('http://localhost:5000/auth-site','google_oauth',`width=${w},height=${h},left=${left},top=${top}`); return false;" class="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors">
+            Sign in with Google
+          </a>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Content -->
+  <main class="flex-1 py-12">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <!-- Header Section -->
+      <div class="text-center mb-12">
+        <h2 class="text-4xl font-bold text-gray-900 mb-4">
+          Экономьте часы времени на переводах YouTube-видео
+        </h2>
+        <p class="text-xl text-gray-600">
+          Выберите оптимальный тариф Video Reader AI
+        </p>
+      </div>
+
+      <!-- Pricing Cards -->
+      <div class="grid lg:grid-cols-3 gap-8 mt-12">
+        <!-- Free Plan -->
+        <div class="bg-white rounded-2xl shadow-sm border-2 border-gray-200 p-8 flex flex-col transition-all hover:shadow-md">
+          <div class="mb-6">
+            <h3 class="text-2xl font-bold text-gray-900 mb-2">Free</h3>
+            <div class="flex items-baseline">
+              <span class="text-5xl font-bold text-gray-900">$0</span>
+              <span class="text-gray-500 ml-2">/month</span>
+            </div>
+          </div>
+          <ul class="flex-1 space-y-4 mb-8">
+            <li class="flex items-start">
+              <svg class="w-5 h-5 mr-3 text-blue-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+              </svg>
+              <span class="text-gray-700">10 videos per month</span>
+            </li>
+            <li class="flex items-start">
+              <svg class="w-5 h-5 mr-3 text-blue-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+              </svg>
+              <span class="text-gray-700">Basic AI translations</span>
+            </li>
+            <li class="flex items-start">
+              <svg class="w-5 h-5 mr-3 text-blue-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+              </svg>
+              <span class="text-gray-700">Export to SRT, VTT, TXT</span>
+            </li>
+          </ul>
+          <button id="btn-free" class="w-full py-3 px-6 border-2 border-gray-300 text-gray-700 font-medium rounded-lg hover:bg-gray-50 transition-colors">
+            Current Plan
+          </button>
+        </div>
+
+        <!-- Pro Plan -->
+        <div class="bg-white rounded-2xl shadow-lg border-2 border-blue-600 p-8 flex flex-col relative transform scale-105 transition-all hover:shadow-xl">
+          <div class="absolute -top-4 left-1/2 transform -translate-x-1/2">
+            <span class="bg-blue-600 text-white px-4 py-1 rounded-full text-sm font-semibold shadow-md">
+              Most Popular
+            </span>
+          </div>
+          <div class="mb-6">
+            <h3 class="text-2xl font-bold text-gray-900 mb-2">Pro</h3>
+            <div class="flex items-baseline">
+              <span class="text-5xl font-bold text-gray-900">$9</span>
+              <span class="text-gray-500 ml-2">/month</span>
+            </div>
+          </div>
+          <ul class="flex-1 space-y-4 mb-8">
+            <li class="flex items-start">
+              <svg class="w-5 h-5 mr-3 text-blue-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+              </svg>
+              <span class="text-gray-700">100 videos per month</span>
+            </li>
+            <li class="flex items-start">
+              <svg class="w-5 h-5 mr-3 text-blue-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+              </svg>
+              <span class="text-gray-700">Advanced AI translations</span>
+            </li>
+            <li class="flex items-start">
+              <svg class="w-5 h-5 mr-3 text-blue-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+              </svg>
+              <span class="text-gray-700">Priority support</span>
+            </li>
+            <li class="flex items-start">
+              <svg class="w-5 h-5 mr-3 text-blue-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+              </svg>
+              <span class="text-gray-700">All export formats</span>
+            </li>
+          </ul>
+          <button id="btn-pro" class="w-full py-3 px-6 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors shadow-md">
+            Upgrade to Pro
+          </button>
+        </div>
+
+        <!-- Premium Plan -->
+        <div class="bg-white rounded-2xl shadow-sm border-2 border-gray-200 p-8 flex flex-col transition-all hover:shadow-md">
+          <div class="mb-6">
+            <h3 class="text-2xl font-bold text-gray-900 mb-2">Premium</h3>
+            <div class="flex items-baseline">
+              <span class="text-5xl font-bold text-gray-900">$19</span>
+              <span class="text-gray-500 ml-2">/month</span>
+            </div>
+          </div>
+          <ul class="flex-1 space-y-4 mb-8">
+            <li class="flex items-start">
+              <svg class="w-5 h-5 mr-3 text-blue-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+              </svg>
+              <span class="text-gray-700">Unlimited videos</span>
+            </li>
+            <li class="flex items-start">
+              <svg class="w-5 h-5 mr-3 text-blue-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+              </svg>
+              <span class="text-gray-700">Premium AI translations</span>
+            </li>
+            <li class="flex items-start">
+              <svg class="w-5 h-5 mr-3 text-blue-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+              </svg>
+              <span class="text-gray-700">24/7 VIP support</span>
+            </li>
+            <li class="flex items-start">
+              <svg class="w-5 h-5 mr-3 text-blue-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+              </svg>
+              <span class="text-gray-700">All features unlocked</span>
+            </li>
+            <li class="flex items-start">
+              <svg class="w-5 h-5 mr-3 text-blue-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+              </svg>
+              <span class="text-gray-700">Early access to new features</span>
+            </li>
+          </ul>
+          <button id="btn-premium" class="w-full py-3 px-6 border-2 border-gray-300 text-gray-700 font-medium rounded-lg hover:bg-gray-50 transition-colors">
+            Upgrade to Premium
+          </button>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- Footer -->
+  <footer class="bg-white border-t mt-12">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+      <p class="text-center text-sm text-gray-500">
+        © 2025 Video Reader AI. All rights reserved.
+      </p>
+    </div>
+  </footer>
+</div>
+
+<script src="/pricing.js"></script>
+</body>
+</html>
