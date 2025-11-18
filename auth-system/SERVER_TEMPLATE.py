@@ -337,6 +337,7 @@ def translate_line():
     if request.method == 'OPTIONS':
         return '', 200
 
+    print(f"[TRANSLATE] /translate-line called, method={request.method}, data={request.json}")
     data = request.json
     video_id = data.get('videoId')
     line_number = data.get('lineNumber')
