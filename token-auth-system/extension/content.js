@@ -2,11 +2,7 @@
 // TOKEN AUTH - Listen for messages from background.js and OAuth callback
 // ═══════════════════════════════════════════════════════════════════
 
-// API Base URL - замените на ваш ngrok URL
-const API_BASE = "https://1234-11-22-33-44.ngrok-free.app"; // TODO: заменить на реальный URL
-
 console.log('[VideoReader content.js] Скрипт загружен');
-console.log('[VideoReader content.js] API_BASE:', API_BASE);
 
 // ОТЛАДКА: Проверяем что находится в storage при загрузке
 chrome.storage.local.get(['token', 'email', 'plan'], (result) => {
