@@ -1299,14 +1299,20 @@ async function translateSubtitles(videoId, subtitles) {
               </div>
             `;
             content.appendChild(upgradeMessage);
+            console.log('[DEBUG] ✅ Кнопка Upgrade ДОБАВЛЕНА в DOM!', upgradeMessage);
+            console.log('[DEBUG] Содержимое content после добавления:', content.innerHTML);
 
             // Обработчик для кнопки Upgrade в CTA
             const upgradeCtaBtn = document.getElementById('yt-reader-upgrade-cta-btn');
+            console.log('[DEBUG] upgradeCtaBtn найден:', upgradeCtaBtn);
             if (upgradeCtaBtn) {
               upgradeCtaBtn.addEventListener('click', () => {
                 console.log('[VideoReader] CTA Upgrade нажата - открываем /pricing');
                 window.open('http://localhost:5000/pricing', '_blank');
               });
+              console.log('[DEBUG] ✅ Event listener добавлен на кнопку Upgrade');
+            } else {
+              console.error('[DEBUG] ❌ upgradeCtaBtn НЕ НАЙДЕН после appendChild!');
             }
           } else {
             console.error('[DEBUG] ❌ yt-transcript-content НЕ НАЙДЕН! Кнопка Upgrade не может быть добавлена.');
