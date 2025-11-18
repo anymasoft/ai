@@ -1321,6 +1321,9 @@ async function translateSubtitles(videoId, subtitles) {
           console.log(`[${i}] Translated: ${translatedText}`);
         }
 
+        // DEBUG: Логируем ЧТО ИМЕННО передаём в updateSingleLine
+        console.log(`[CONTENT DEBUG] Line ${i}, BEFORE updateSingleLine, translatedText length: ${translatedText ? translatedText.length : 0}, text: "${translatedText}"`);
+
         // Немедленно обновляем UI для этой строки ПОЛНЫМ текстом (без обрезки)
         updateSingleLine(i, translatedText);
 
