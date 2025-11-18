@@ -1197,8 +1197,13 @@ async function handleGetTranscript() {
 async function translateSubtitles(videoId, subtitles) {
   const prevContext = [];
   const selectedLang = transcriptState.selectedLang; // Используем выбранный язык
+  const totalLines = subtitles.length;
 
-  console.log(`Начинаем перевод на ${selectedLang}...`);
+  console.log(`Начинаем перевод на ${selectedLang}... Всего строк: ${totalLines}`);
+
+  // Получаем токен для отправки на сервер
+  const storage = await chrome.storage.local.get(['token']);
+  const token = storage.token || null;
 
   try {
     // Переводим каждую строку по очереди
@@ -1213,7 +1218,9 @@ async function translateSubtitles(videoId, subtitles) {
           lineNumber: i,
           text: subtitle.text,
           prevContext: prevContext.slice(-2), // Последние 1-2 переведенные строки
-          lang: selectedLang // Используем выбранный язык
+          lang: selectedLang, // Используем выбранный язык
+          totalLines: totalLines, // Передаём общее количество строк для расчёта лимита
+          token: token // Передаём токен для определения плана
         };
 
         // Отправляем запрос на перевод через background.js (обход AdBlock)
@@ -1223,7 +1230,19 @@ async function translateSubtitles(videoId, subtitles) {
           lineNumber: requestBody.lineNumber,
           text: requestBody.text,
           prevContext: requestBody.prevContext,
-          lang: requestBody.lang
+          lang: requestBody.lang,
+          totalLines: requestBody.totalLines,
+          token: requestBody.token
+        });
+
+        // DEBUG-ЛОГИРОВАНИЕ (как просил пользователь)
+        console.log('[DEBUG TRANSLATE]', {
+          lineNumber: data.lineNumber,
+          len: data.text ? data.text.length : 0,
+          text: data.text,
+          limited: data.limited,
+          stop: data.stop,
+          plan: data.plan
         });
 
         console.log(`→ RESPONSE i=${i}, data:`, data);
@@ -1232,6 +1251,64 @@ async function translateSubtitles(videoId, subtitles) {
           console.error(`❌ Ошибка перевода строки ${i}: ${data.error}`);
           prevContext.push(subtitle.text); // Используем оригинал
           continue;
+        }
+
+        // ═══════════════════════════════════════════════════════════════════
+        // ОБРАБОТКА STOP - остановка перевода при достижении лимита Free
+        // ═══════════════════════════════════════════════════════════════════
+        if (data.stop === true) {
+          console.log(`🛑 FREE LIMIT REACHED на строке ${i}. Останавливаем перевод.`);
+
+          // Показываем CTA для Upgrade
+          const content = document.getElementById('yt-transcript-content');
+          if (content) {
+            const upgradeMessage = document.createElement('div');
+            upgradeMessage.className = 'yt-transcript-upgrade-cta';
+            upgradeMessage.innerHTML = `
+              <div style="
+                padding: 24px;
+                margin: 16px 0;
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                border-radius: 12px;
+                color: white;
+                text-align: center;
+                box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+              ">
+                <div style="font-size: 18px; font-weight: 600; margin-bottom: 8px;">
+                  ⭐ Free Plan Limit Reached
+                </div>
+                <div style="font-size: 14px; opacity: 0.95; margin-bottom: 16px;">
+                  Upgrade to translate 100% of subtitles
+                </div>
+                <button id="yt-reader-upgrade-cta-btn" style="
+                  background: white;
+                  color: #667eea;
+                  border: none;
+                  padding: 10px 24px;
+                  border-radius: 8px;
+                  font-weight: 600;
+                  cursor: pointer;
+                  font-size: 14px;
+                  transition: transform 0.2s;
+                " onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'">
+                  Upgrade Now
+                </button>
+              </div>
+            `;
+            content.appendChild(upgradeMessage);
+
+            // Обработчик для кнопки Upgrade в CTA
+            const upgradeCtaBtn = document.getElementById('yt-reader-upgrade-cta-btn');
+            if (upgradeCtaBtn) {
+              upgradeCtaBtn.addEventListener('click', () => {
+                console.log('[VideoReader] CTA Upgrade нажата - открываем /pricing');
+                window.open('http://localhost:5000/pricing', '_blank');
+              });
+            }
+          }
+
+          // ОСТАНАВЛИВАЕМ цикл перевода
+          break;
         }
 
         console.log(`→ RESPONSE i=${i}, cached: ${data.cached}`);
@@ -1244,7 +1321,7 @@ async function translateSubtitles(videoId, subtitles) {
           console.log(`[${i}] Translated: ${translatedText}`);
         }
 
-        // Немедленно обновляем UI для этой строки
+        // Немедленно обновляем UI для этой строки ПОЛНЫМ текстом (без обрезки)
         updateSingleLine(i, translatedText);
 
         // Добавляем переведенную строку в контекст
