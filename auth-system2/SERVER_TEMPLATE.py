@@ -374,13 +374,14 @@ def translate_line():
     if plan == 'Free' and total_lines:
         max_free_line = int(total_lines * 0.3)
         if line_number > max_free_line:
-            print(f"[LIMIT] Free plan: line {line_number} > {max_free_line}, returning empty")
+            print(f"[LIMIT] Free plan: line {line_number} > {max_free_line}, stopping translation")
             return jsonify({
                 'videoId'   : video_id,
                 'lineNumber': line_number,
                 'text'      : '',
                 'cached'    : False,
                 'limited'   : True,
+                'stop'      : True,
                 'export_allowed': False,
                 'plan'      : plan
             })

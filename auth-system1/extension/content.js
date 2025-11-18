@@ -1200,6 +1200,8 @@ async function translateSubtitles(videoId, subtitles) {
 
   console.log(`Начинаем перевод на ${selectedLang}...`);
 
+  let stopTranslation = false;
+
   try {
     // Переводим каждую строку по очереди
     for (let i = 0; i < subtitles.length; i++) {
@@ -1235,6 +1237,13 @@ async function translateSubtitles(videoId, subtitles) {
           continue;
         }
 
+        // Проверяем флаг остановки (лимит Free плана)
+        if (data.stop === true) {
+          console.log(`[LIMIT] Free plan limit reached at line ${i}`);
+          stopTranslation = true;
+          break;
+        }
+
         console.log(`→ RESPONSE i=${i}, cached: ${data.cached}`);
         const translatedText = data.text;
 
@@ -1266,6 +1275,11 @@ async function translateSubtitles(videoId, subtitles) {
 
     console.log(`Перевод завершен: ${subtitles.length} строк на ${selectedLang}`);
 
+    // Если достигнут лимит Free плана, показываем баннер
+    if (stopTranslation) {
+      showLimitReachedBanner();
+    }
+
   } catch (error) {
     console.error('Общая ошибка при переводе:', error);
   }
@@ -1284,6 +1298,70 @@ function updateSingleLine(index, translatedText) {
         textElement.style.opacity = '1';
       }, 100);
     }
+  }
+}
+
+// Показ баннера при достижении лимита Free плана
+function showLimitReachedBanner() {
+  const panel = document.getElementById('video-reader-panel');
+  if (!panel) return;
+
+  // Удаляем старый баннер, если есть
+  const existingBanner = panel.querySelector('.limit-reached-banner');
+  if (existingBanner) {
+    existingBanner.remove();
+  }
+
+  const banner = document.createElement('div');
+  banner.className = 'limit-reached-banner';
+  banner.style.cssText = `
+    margin: 16px 0;
+    padding: 16px;
+    background: rgba(255, 200, 0, 0.1);
+    border: 1px solid rgba(255, 200, 0, 0.3);
+    border-radius: 8px;
+    text-align: center;
+  `;
+
+  banner.innerHTML = `
+    <div style="color: #333; font-size: 14px; margin-bottom: 12px;">
+      Full translation available in Pro / Premium
+    </div>
+    <button id="upgrade-now-btn" style="
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border: none;
+      padding: 10px 24px;
+      border-radius: 6px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: transform 0.2s;
+    ">
+      Upgrade Now
+    </button>
+  `;
+
+  // Добавляем баннер после заголовка панели
+  const header = panel.querySelector('.panel-header');
+  if (header && header.nextSibling) {
+    header.parentNode.insertBefore(banner, header.nextSibling);
+  } else {
+    panel.appendChild(banner);
+  }
+
+  // Обработчик клика на кнопку
+  const upgradeBtn = banner.querySelector('#upgrade-now-btn');
+  if (upgradeBtn) {
+    upgradeBtn.addEventListener('click', () => {
+      window.open('http://localhost:5000/pricing', '_blank');
+    });
+    upgradeBtn.addEventListener('mouseenter', (e) => {
+      e.target.style.transform = 'scale(1.05)';
+    });
+    upgradeBtn.addEventListener('mouseleave', (e) => {
+      e.target.style.transform = 'scale(1)';
+    });
   }
 }
 
