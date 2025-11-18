@@ -320,6 +320,38 @@
         </div>
       </div>
     </div>
+
+    <!-- Feedback Section -->
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-20 mb-12">
+      <hr class="border-gray-200 mb-12">
+      <div class="feedback-container">
+        <h2 class="feedback-title">Feedback</h2>
+        <p class="feedback-subtitle">Help us improve Video Reader AI</p>
+
+        <form id="feedback-form" class="feedback-form">
+          <textarea
+            id="feedback-message"
+            name="message"
+            placeholder="Share your thoughts, suggestions, or report issues..."
+            rows="4"
+            required
+          ></textarea>
+
+          <input
+            id="feedback-email"
+            type="email"
+            name="email"
+            placeholder="Your email (optional)"
+          >
+
+          <button type="submit" class="feedback-submit-btn">
+            Send Feedback
+          </button>
+        </form>
+
+        <div id="feedback-status" class="feedback-status" style="display: none;"></div>
+      </div>
+    </div>
   </main>
 
   <!-- Footer -->

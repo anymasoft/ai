@@ -125,10 +125,20 @@ def init_db():
         ON users(token)
     ''')
 
+    # Таблица feedback
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS feedback (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            message TEXT NOT NULL,
+            email TEXT,
+            created_at INTEGER DEFAULT (strftime('%s', 'now'))
+        )
+    ''')
+
     conn.commit()
     conn.close()
 
-    print("База данных инициализирована (translations.db + users.db)")
+    print("База данных инициализирована (translations.db + users.db + feedback)")
 
 # ═══════════════════════════════════════════════════════════════════
 # TOKEN AUTHENTICATION FUNCTIONS
@@ -723,6 +733,37 @@ def switch_plan(plan):
         "plan": plan,
         "email": user['email']
     })
+
+@app.route('/feedback', methods=['POST', 'OPTIONS'])
+def feedback():
+    """Прием обратной связи от пользователей"""
+    if request.method == 'OPTIONS':
+        return '', 200
+
+    try:
+        data = request.json
+        message = data.get('message', '').strip()
+        email = data.get('email', '').strip()
+
+        if not message:
+            return jsonify({"error": "message_required"}), 400
+
+        # Сохраняем feedback в БД
+        conn = sqlite3.connect(USERS_DB)
+        cursor = conn.cursor()
+        cursor.execute(
+            'INSERT INTO feedback (message, email) VALUES (?, ?)',
+            (message, email if email else None)
+        )
+        conn.commit()
+        conn.close()
+
+        print(f"[API /feedback] ✅ Feedback сохранен от {email if email else 'anonymous'}")
+
+        return jsonify({"status": "ok"})
+    except Exception as e:
+        print(f"[API /feedback] ❌ Ошибка: {e}")
+        return jsonify({"error": "internal_error"}), 500
 
 @app.route('/api/update-plan', methods=['POST', 'OPTIONS'])
 def api_update_plan():
