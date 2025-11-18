@@ -344,9 +344,52 @@ def translate_line():
     text = data.get('text')
     prev_context = data.get('prevContext', [])
     lang = data.get('lang', 'ru')
+    total_lines = data.get('totalLines', 0)  # Общее количество строк
 
     if video_id is None or line_number is None or not text:
         return jsonify({'error': 'Missing videoId, lineNumber or text'}), 400
+
+    # ═══════════════════════════════════════════════════════════════════
+    # PLAN DETECTION & LIMITS - определяем план и лимиты
+    # ═══════════════════════════════════════════════════════════════════
+
+    # Пытаемся получить токен из Authorization header
+    user_plan = 'Free'
+    user_email = None
+
+    auth_header = request.headers.get('Authorization')
+    if auth_header and auth_header.startswith('Bearer '):
+        token = auth_header.split(' ')[1]
+        user = get_user_by_token(token)
+        if user:
+            user_plan = user['plan']
+            user_email = user['email']
+            print(f"[TRANSLATE] User: {user_email}, Plan: {user_plan}")
+    else:
+        print(f"[TRANSLATE] No Bearer token - defaulting to Free plan")
+
+    # Вычисляем лимит для Free плана (30% строк)
+    max_free_line = -1
+    if total_lines > 0:
+        max_free_line = int(total_lines * 0.3) - 1  # 30% строк (индексация с 0)
+
+    # Проверяем лимит для Free плана
+    if user_plan == 'Free' and total_lines > 0 and line_number > max_free_line:
+        print(f"[TRANSLATE] Free limit reached: line {line_number} > {max_free_line} (30% of {total_lines})")
+        return jsonify({
+            'videoId': video_id,
+            'lineNumber': line_number,
+            'text': '',
+            'cached': False,
+            'limited': True,
+            'export_allowed': False,
+            'plan': user_plan,
+            'stop': True  # Сигнал клиенту остановить перевод
+        })
+
+    # ═══════════════════════════════════════════════════════════════════
+    # TRANSLATION - переводим строку (ПОЛНОСТЬЮ, без обрезки)
+    # ═══════════════════════════════════════════════════════════════════
 
     # Проверяем кеш
     cached_translation = check_line_cache(video_id, line_number, lang)
@@ -356,8 +399,12 @@ def translate_line():
         return jsonify({
             'videoId'   : video_id,
             'lineNumber': line_number,
-            'text'      : cached_translation,
-            'cached'    : True
+            'text'      : cached_translation,  # ПОЛНЫЙ текст без обрезки
+            'cached'    : True,
+            'limited'   : user_plan == 'Free',
+            'export_allowed': user_plan in ['Pro', 'Premium'],
+            'plan'      : user_plan,
+            'stop'      : False
         })
 
     # Переводим через GPT
@@ -367,14 +414,18 @@ def translate_line():
     if not translated_text:
         return jsonify({'error': 'Translation failed'}), 500
 
-    # Сохраняем в кеш
+    # Сохраняем в кеш ПОЛНЫЙ перевод (без обрезки)
     save_line_to_cache(video_id, line_number, text, translated_text, lang)
 
     return jsonify({
         'videoId'   : video_id,
         'lineNumber': line_number,
-        'text'      : translated_text,
-        'cached'    : False
+        'text'      : translated_text,  # ПОЛНЫЙ текст без обрезки
+        'cached'    : False,
+        'limited'   : user_plan == 'Free',
+        'export_allowed': user_plan in ['Pro', 'Premium'],
+        'plan'      : user_plan,
+        'stop'      : False
     })
 
 @app.route('/api/plan', methods=['GET', 'OPTIONS'])

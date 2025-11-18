@@ -193,20 +193,29 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   // TRANSLATE_LINE: Запрос перевода через background (для обхода AdBlock)
   // ═══════════════════════════════════════════════════════════════════
   if (message.type === 'TRANSLATE_LINE') {
-    const { videoId, lineNumber, text, prevContext, lang } = message;
+    const { videoId, lineNumber, text, prevContext, lang, totalLines, token } = message;
+
+    // Формируем headers
+    const headers = {
+      'Content-Type': 'application/json'
+    };
+
+    // Добавляем Authorization header если есть токен
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
 
     // Выполняем fetch от имени background.js
     fetch('http://localhost:5000/translate-line', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
+      headers: headers,
       body: JSON.stringify({
         videoId,
         lineNumber,
         text,
         prevContext,
-        lang
+        lang,
+        totalLines  // Передаём общее количество строк для расчёта лимита
       })
     })
       .then(response => {
