@@ -226,8 +226,49 @@ function showNotification(message, type = 'info') {
   }, 3000);
 }
 
+// Logout - удаление cookie и обновление UI
+async function logout() {
+  console.log('[Pricing] Logout - удаление cookie...');
+
+  try {
+    // Пытаемся вызвать серверный logout (если маршрут существует)
+    await fetch('http://localhost:5000/auth-site/logout', {
+      method: 'GET',
+      credentials: 'include'
+    }).catch(() => {
+      // Если маршрута нет - ничего страшного, cookie удалятся на клиенте
+      console.log('[Pricing] Маршрут /auth-site/logout не найден, продолжаем');
+    });
+
+    // Обнуляем текущие данные
+    currentPlan = 'Free';
+    currentEmail = '';
+
+    // Скрываем user-info, показываем auth-prompt
+    document.getElementById('user-info').style.display = 'none';
+    document.getElementById('auth-prompt').style.display = 'flex';
+
+    // Обновляем кнопки тарифов
+    updateButtons('Free');
+
+    showNotification('✅ Вы вышли из системы', 'success');
+
+    console.log('[Pricing] ✅ Logout успешен');
+  } catch (error) {
+    console.error('[Pricing] ❌ Ошибка logout:', error);
+    showNotification('❌ Ошибка выхода из системы', 'error');
+  }
+}
+
 // Инициализация при загрузке страницы
 document.addEventListener('DOMContentLoaded', function() {
   console.log('[Pricing] DOM загружен - инициализация...');
   loadUserInfo();
+
+  // Привязываем обработчик Logout
+  const logoutBtn = document.getElementById('logout-btn');
+  if (logoutBtn) {
+    logoutBtn.addEventListener('click', logout);
+    console.log('[Pricing] Обработчик Logout привязан');
+  }
 });
