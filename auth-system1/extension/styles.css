@@ -119,7 +119,7 @@ html[dark] :root {
   border: 1px solid var(--yt-reader-border);
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 18px;
   align-items: center;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
 }
@@ -149,7 +149,7 @@ html[dark] :root {
 }
 
 .yt-reader-auth-email {
-  font-size: 13px;
+  font-size: 15px;
   color: var(--yt-spec-text-primary);
   font-weight: 500;
   text-align: center;
@@ -230,7 +230,7 @@ html[dark] :root {
 /* Logout button - subtle secondary style (NOT aggressive red) */
 .yt-reader-logout-btn {
   padding: 8px 14px;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 500;
   background: transparent;
   color: var(--yt-spec-text-secondary);
@@ -276,6 +276,7 @@ html[dark] :root {
   justify-content: center;
   gap: 10px;
   padding: 12px 24px;
+  width: auto;
   background: #ffffff;
   border: 1px solid #dadce0;
   border-radius: 10px;

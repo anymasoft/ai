@@ -233,7 +233,7 @@ async function updateAuthUI() {
       // Обновляем email
       const emailEl = authInfo.querySelector('.yt-reader-auth-email');
       if (emailEl) {
-        emailEl.textContent = `Logged in as: ${email}`;
+        emailEl.textContent = email;
       }
 
       // Обновляем план с data-атрибутом для стилизации
