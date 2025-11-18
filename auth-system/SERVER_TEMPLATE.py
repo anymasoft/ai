@@ -596,7 +596,7 @@ def auth_site_callback():
         # Создаём или получаем токен для пользователя
         token = create_or_update_user(email, plan='Free')
 
-        print(f"[AUTH-SITE] ✅ Авторизация успешна: {email}, токен: {token[:8]}...")
+        print(f"[AUTH-SITE]  Авторизация успешна: {email}, токен: {token[:8]}...")
 
         # HTML с postMessage для закрытия popup и обновления родительского окна
         html = """
@@ -727,7 +727,7 @@ def switch_plan(plan):
     conn.commit()
     conn.close()
 
-    print(f"[API /switch-plan] ✅ План обновлен для {user['email']}: {user['plan']} → {plan}")
+    print(f"[API /switch-plan]  План обновлен для {user['email']}: {user['plan']} → {plan}")
 
     return jsonify({
         "status": "ok",
@@ -784,7 +784,7 @@ def feedback():
     feedback_id = cursor.lastrowid
     conn.close()
 
-    print(f"[API /feedback] ✅ Feedback сохранен, ID: {feedback_id}")
+    print(f"[API /feedback]  Feedback сохранен, ID: {feedback_id}")
 
     return jsonify({"status": "ok", "id": feedback_id})
 
@@ -825,14 +825,14 @@ def api_update_plan():
     success = update_user_plan(user['email'], new_plan)
 
     if success:
-        print(f"[API /api/update-plan] ✅ План обновлен: {user['email']} -> {new_plan}")
+        print(f"[API /api/update-plan]  План обновлен: {user['email']} -> {new_plan}")
         return jsonify({
             "status": "ok",
             "email": user['email'],
             "plan": new_plan
         })
     else:
-        print(f"[API /api/update-plan] ❌ Ошибка обновления плана")
+        print(f"[API /api/update-plan]  Ошибка обновления плана")
         return jsonify({"error": "update_failed"}), 500
 
 @app.route('/checkout/pro')

@@ -23,7 +23,7 @@ window.addEventListener('message', function(event) {
 
   // Проверяем тип сообщения
   if (event.data && event.data.type === 'AUTH_SUCCESS') {
-    console.log('[auth.js] ✅ Получен AUTH_SUCCESS от OAuth callback');
+    console.log('[auth.js] Получен AUTH_SUCCESS от OAuth callback');
     console.log('[auth.js] Token:', event.data.token?.substring(0, 8) + '...');
     console.log('[auth.js] Email:', event.data.email);
 
@@ -40,16 +40,16 @@ window.addEventListener('message', function(event) {
         email: email
       }, function(response) {
         if (chrome.runtime.lastError) {
-          console.error('[auth.js] ❌ Ошибка отправки в background:', chrome.runtime.lastError);
+          console.error('[auth.js] Ошибка отправки в background:', chrome.runtime.lastError);
         } else {
-          console.log('[auth.js] ✅ Сообщение отправлено в background.js:', response);
+          console.log('[auth.js] Сообщение отправлено в background.js:', response);
         }
       });
 
       // Показываем успешное сообщение пользователю
       const statusEl = document.getElementById('status');
       if (statusEl) {
-        statusEl.textContent = `✅ Авторизация успешна! Email: ${email}`;
+        statusEl.textContent = `Авторизация успешна! Email: ${email}`;
         statusEl.className = 'status success';
         statusEl.classList.remove('hidden');
       }
@@ -60,7 +60,7 @@ window.addEventListener('message', function(event) {
         window.close();
       }, 1000);
     } else {
-      console.error('[auth.js] ❌ Токен или email отсутствуют в сообщении');
+      console.error('[auth.js] Токен или email отсутствуют в сообщении');
     }
   } else {
     console.log('[auth.js] Неизвестный тип сообщения:', event.data?.type);
@@ -117,12 +117,12 @@ document.addEventListener('DOMContentLoaded', function() {
       );
 
       if (popup) {
-        console.log('[auth.js] ✅ OAuth popup открыт успешно');
+        console.log('[auth.js] OAuth popup открыт успешно');
       } else {
-        console.error('[auth.js] ❌ Не удалось открыть OAuth popup - возможно заблокирован браузером');
+        console.error('[auth.js] Не удалось открыть OAuth popup - возможно заблокирован браузером');
       }
     });
   } else {
-    console.error('[auth.js] ❌ Кнопка Sign In не найдена!');
+    console.error('[auth.js] Кнопка Sign In не найдена!');
   }
 });
