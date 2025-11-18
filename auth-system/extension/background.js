@@ -189,45 +189,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return true; // Асинхронный ответ
   }
 
-  // ═══════════════════════════════════════════════════════════════════
-  // TRANSLATE_LINE: Перевод одной строки субтитров через background (для обхода CORS)
-  // ═══════════════════════════════════════════════════════════════════
-  if (message.type === 'TRANSLATE_LINE') {
-    console.log('[VideoReader Background] Получен TRANSLATE_LINE, videoId:', message.videoId, 'line:', message.lineNumber);
-
-    // Выполняем fetch от имени background.js
-    fetch('http://localhost:5000/translate-line', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        videoId: message.videoId,
-        lineNumber: message.lineNumber,
-        text: message.text,
-        prevContext: message.prevContext || [],
-        lang: message.lang || 'ru'
-      })
-    })
-      .then(response => {
-        console.log('[VideoReader Background] /translate-line ответил со статусом:', response.status);
-        if (!response.ok) {
-          return { error: 'translation_failed', status: response.status };
-        }
-        return response.json();
-      })
-      .then(data => {
-        console.log('[VideoReader Background] /translate-line данные:', data);
-        sendResponse(data);
-      })
-      .catch(err => {
-        console.error('[VideoReader Background] ❌ fetch /translate-line failed:', err);
-        sendResponse({ error: 'network_error' });
-      });
-
-    return true; // Асинхронный ответ
-  }
-
   // Неизвестный тип сообщения
   console.log('[VideoReader Background] Неизвестный тип сообщения:', message.type);
   sendResponse({ success: false, error: 'Unknown message type' });

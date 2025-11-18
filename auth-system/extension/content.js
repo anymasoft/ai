@@ -1182,22 +1182,28 @@ async function translateSubtitles(videoId, subtitles) {
       const subtitle = subtitles[i];
 
       try {
-        // Отправляем запрос на перевод через background.js (для обхода CORS)
-        const data = await chrome.runtime.sendMessage({
-          type: 'TRANSLATE_LINE',
-          videoId: videoId,
-          lineNumber: i,
-          text: subtitle.text,
-          prevContext: prevContext.slice(-2), // Последние 1-2 переведенные строки
-          lang: selectedLang // Используем выбранный язык
+        // Отправляем запрос на перевод одной строки
+        const response = await fetch('http://localhost:5000/translate-line', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            videoId: videoId,
+            lineNumber: i,
+            text: subtitle.text,
+            prevContext: prevContext.slice(-2), // Последние 1-2 переведенные строки
+            lang: selectedLang // Используем выбранный язык
+          })
         });
 
-        if (data.error) {
-          console.error(`Ошибка перевода строки ${i}:`, data.error);
+        if (!response.ok) {
+          console.error(`Ошибка перевода строки ${i}: ${response.status}`);
           prevContext.push(subtitle.text); // Используем оригинал
           continue;
         }
 
+        const data = await response.json();
         const translatedText = data.text;
 
         // Логируем статус
