@@ -1303,11 +1303,11 @@ function updateSingleLine(index, translatedText) {
 
 // Показ баннера при достижении лимита Free плана
 function showLimitReachedBanner() {
-  const panel = document.getElementById('video-reader-panel');
-  if (!panel) return;
+  const body = document.getElementById('yt-transcript-body');
+  if (!body) return;
 
   // Удаляем старый баннер, если есть
-  const existingBanner = panel.querySelector('.limit-reached-banner');
+  const existingBanner = body.querySelector('.limit-reached-banner');
   if (existingBanner) {
     existingBanner.remove();
   }
@@ -1342,12 +1342,12 @@ function showLimitReachedBanner() {
     </button>
   `;
 
-  // Добавляем баннер после заголовка панели
-  const header = panel.querySelector('.panel-header');
-  if (header && header.nextSibling) {
-    header.parentNode.insertBefore(banner, header.nextSibling);
+  // Добавляем баннер в начало body (после блоков авторизации и контролов)
+  const controls = body.querySelector('.yt-reader-controls');
+  if (controls && controls.nextSibling) {
+    controls.parentNode.insertBefore(banner, controls.nextSibling);
   } else {
-    panel.appendChild(banner);
+    body.appendChild(banner);
   }
 
   // Обработчик клика на кнопку
