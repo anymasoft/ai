@@ -271,6 +271,58 @@ document.addEventListener('DOMContentLoaded', function() {
     logoutBtn.addEventListener('click', logout);
     console.log('[Pricing] Обработчик Logout привязан');
   }
+
+  // Привязываем обработчик Feedback формы
+  const feedbackForm = document.getElementById('feedback-form');
+  if (feedbackForm) {
+    feedbackForm.addEventListener('submit', async function(e) {
+      e.preventDefault();
+      console.log('[Pricing] Отправка feedback...');
+
+      const message = document.getElementById('feedback-message').value;
+      const email = document.getElementById('feedback-email').value;
+      const statusDiv = document.getElementById('feedback-status');
+      const submitBtn = feedbackForm.querySelector('button[type="submit"]');
+
+      // Показываем loading состояние
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Sending...';
+
+      try {
+        const response = await fetch('http://localhost:5000/feedback', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ message, email }),
+          credentials: 'include'
+        });
+
+        if (response.ok) {
+          console.log('[Pricing] ✅ Feedback отправлен успешно');
+          statusDiv.textContent = 'Thank you for your feedback!';
+          statusDiv.className = 'feedback-status success';
+          statusDiv.style.display = 'block';
+          feedbackForm.reset();
+        } else {
+          throw new Error('Failed to send feedback');
+        }
+      } catch (error) {
+        console.error('[Pricing] ❌ Ошибка отправки feedback:', error);
+        statusDiv.textContent = 'Failed to send feedback. Please try again later.';
+        statusDiv.className = 'feedback-status error';
+        statusDiv.style.display = 'block';
+      } finally {
+        // Восстанавливаем кнопку
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Send Feedback';
+
+        // Скрываем статус через 5 секунд
+        setTimeout(() => {
+          statusDiv.style.display = 'none';
+        }, 5000);
+      }
+    });
+    console.log('[Pricing] Обработчик Feedback привязан');
+  }
 });
 
 // Обработчик сообщений от popup OAuth
