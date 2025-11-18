@@ -2,7 +2,11 @@
 // TOKEN AUTH - Listen for messages from background.js and OAuth callback
 // ═══════════════════════════════════════════════════════════════════
 
+// API Base URL - замените на ваш ngrok URL
+const API_BASE = "https://1234-11-22-33-44.ngrok-free.app"; // TODO: заменить на реальный URL
+
 console.log('[VideoReader content.js] Скрипт загружен');
+console.log('[VideoReader content.js] API_BASE:', API_BASE);
 
 // ОТЛАДКА: Проверяем что находится в storage при загрузке
 chrome.storage.local.get(['token', 'email', 'plan'], (result) => {
@@ -139,7 +143,7 @@ console.log('[VideoReader content.js] ✅ Обработчик window.postMessag
 
 // Функция получения тарифного плана пользователя
 async function fetchPlan() {
-  const API_URL = 'http://localhost:5000/api/plan';
+  const API_URL = "http://localhost:5000/api/plan";
 
   try {
     // Получаем токен из chrome.storage
@@ -199,6 +203,7 @@ async function fetchPlan() {
 
   } catch (error) {
     // Ошибка сети или сервер недоступен - считаем Free
+    console.error('[VideoReader] ❌ fetch /api/plan failed:', error);
     console.warn('[VideoReader] Failed to fetch plan from server, defaulting to Free:', error.message);
 
     // Сохраняем Free plan
@@ -1174,7 +1179,7 @@ async function handleGetTranscript() {
 
 // Отправка субтитров на сервер и получение переводов построчно
 async function translateSubtitles(videoId, subtitles) {
-  const SERVER_URL = 'http://localhost:5000/translate-line';
+  const SERVER_URL = "http://localhost:5000/translate-line";
   const prevContext = [];
   const selectedLang = transcriptState.selectedLang; // Используем выбранный язык
 
