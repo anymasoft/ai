@@ -236,10 +236,12 @@ async function updateAuthUI() {
         emailEl.textContent = `Logged in as: ${email}`;
       }
 
-      // Обновляем план
+      // Обновляем план с data-атрибутом для стилизации
+      const planBadge = authInfo.querySelector('.yt-reader-auth-plan-badge');
       const planEl = authInfo.querySelector('.yt-reader-auth-plan');
-      if (planEl) {
-        planEl.textContent = `Plan: ${plan}`;
+      if (planBadge && planEl) {
+        planBadge.setAttribute('data-plan', plan.toLowerCase());
+        planEl.textContent = plan;
       }
 
       // Обновляем кнопку Upgrade в зависимости от плана
@@ -583,8 +585,12 @@ function createTranscriptPanel() {
       </div>
       <!-- Logged In Section -->
       <div id="yt-reader-auth-info" class="yt-reader-auth-info" style="display: none;">
-        <div class="yt-reader-auth-email"></div>
-        <div class="yt-reader-auth-plan"></div>
+        <div class="yt-reader-user-info">
+          <div class="yt-reader-auth-email"></div>
+          <div class="yt-reader-auth-plan-badge">
+            <span class="yt-reader-auth-plan"></span>
+          </div>
+        </div>
         <button id="yt-reader-upgrade-btn" class="yt-reader-upgrade-btn" style="display: none;">Upgrade</button>
         <button id="yt-reader-logout-btn" class="yt-reader-logout-btn">Log out</button>
       </div>
