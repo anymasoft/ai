@@ -59,14 +59,10 @@ USERS_DB = os.path.join(BASE_DIR, 'users.db')
 OPENAI_API_KEY = os.getenv('OPENAI_API_KEY', 'your-api-key-here')
 client = OpenAI(api_key=OPENAI_API_KEY)
 
-# OAuth конфигурация для расширения
+# OAuth конфигурация
 GOOGLE_CLIENT_ID = os.getenv('GOOGLE_CLIENT_ID', 'TEMP_CLIENT_ID')
 GOOGLE_CLIENT_SECRET = os.getenv('GOOGLE_CLIENT_SECRET', 'TEMP_CLIENT_SECRET')
 GOOGLE_REDIRECT_URI = 'http://localhost:5000/auth/callback'
-
-# OAuth конфигурация для сайта (Web Application)
-GOOGLE_SITE_CLIENT_ID = os.getenv('GOOGLE_SITE_CLIENT_ID', 'TEMP_SITE_CLIENT_ID')
-GOOGLE_SITE_CLIENT_SECRET = os.getenv('GOOGLE_SITE_CLIENT_SECRET', 'TEMP_SITE_SECRET')
 
 # Утилиты для OAuth
 def decode_jwt(jwt_token):
@@ -542,7 +538,7 @@ def auth_site():
     """OAuth авторизация для сайта (pricing) - редирект на Google OAuth"""
     oauth_url = (
         'https://accounts.google.com/o/oauth2/v2/auth'
-        f'?client_id={GOOGLE_SITE_CLIENT_ID}'
+        f'?client_id={GOOGLE_CLIENT_ID}'
         '&response_type=code'
         '&redirect_uri=http://localhost:5000/auth-site/callback'
         '&scope=openid email profile'
@@ -562,8 +558,8 @@ def auth_site_callback():
     token_url = 'https://oauth2.googleapis.com/token'
     token_data = {
         'code'         : code,
-        'client_id'    : GOOGLE_SITE_CLIENT_ID,
-        'client_secret': GOOGLE_SITE_CLIENT_SECRET,
+        'client_id'    : GOOGLE_CLIENT_ID,
+        'client_secret': GOOGLE_CLIENT_SECRET,
         'redirect_uri' : 'http://localhost:5000/auth-site/callback',
         'grant_type'   : 'authorization_code'
     }
@@ -602,6 +598,20 @@ def auth_site_callback():
     except requests.exceptions.RequestException as e:
         print(f"Ошибка при обмене кода на токены: {e}")
         return f"<h1>Ошибка</h1><p>Не удалось обменять код на токены: {e}</p>", 500
+
+@app.route('/auth-site/logout')
+def auth_site_logout():
+    """Logout для сайта - удаляет cookies и редирект на /pricing"""
+    print("[AUTH-SITE] 🚪 Logout - удаление cookies")
+
+    # Создаём response с редиректом на /pricing
+    resp = make_response(redirect('/pricing'))
+
+    # Удаляем cookies
+    resp.set_cookie('auth_token', '', expires=0, path='/')
+    resp.set_cookie('auth_email', '', expires=0, path='/')
+
+    return resp
 
 @app.route('/pricing')
 def pricing():
