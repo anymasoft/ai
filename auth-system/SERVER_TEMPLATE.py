@@ -125,10 +125,21 @@ def init_db():
         ON users(token)
     ''')
 
+    # Таблица feedback
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS feedback (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            email TEXT,
+            message TEXT NOT NULL,
+            plan TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+
     conn.commit()
     conn.close()
 
-    print("База данных инициализирована (translations.db + users.db)")
+    print("База данных инициализирована (translations.db + users.db + feedback)")
 
 # ═══════════════════════════════════════════════════════════════════
 # TOKEN AUTHENTICATION FUNCTIONS
@@ -723,6 +734,58 @@ def switch_plan(plan):
         "plan": plan,
         "email": user['email']
     })
+
+@app.route('/feedback', methods=['POST', 'OPTIONS'])
+def feedback():
+    """Прием feedback от пользователей (работает через cookie для определения плана)"""
+    if request.method == 'OPTIONS':
+        return '', 200
+
+    data = request.json
+
+    if not data:
+        return jsonify({"error": "invalid_request"}), 400
+
+    message = data.get('message', '').strip()
+    email = data.get('email', '').strip() or None
+
+    # Валидация: message обязательно
+    if not message:
+        return jsonify({"error": "message_required"}), 400
+
+    # Определяем план пользователя (если авторизован через cookie)
+    plan = None
+    token = request.cookies.get('auth_token')
+
+    if token:
+        user = get_user_by_token(token)
+        if user:
+            plan = user['plan']
+            # Если email не указан в форме, берем из профиля
+            if not email:
+                email = user['email']
+            print(f"[API /feedback] Feedback от авторизованного пользователя: {user['email']}, план: {plan}")
+        else:
+            print(f"[API /feedback] Токен невалиден, пользователь считается анонимным")
+    else:
+        print(f"[API /feedback] Feedback от анонимного пользователя")
+
+    # Сохраняем в БД
+    conn = sqlite3.connect(USERS_DB)
+    cursor = conn.cursor()
+
+    cursor.execute('''
+        INSERT INTO feedback (email, message, plan)
+        VALUES (?, ?, ?)
+    ''', (email, message, plan))
+
+    conn.commit()
+    feedback_id = cursor.lastrowid
+    conn.close()
+
+    print(f"[API /feedback] ✅ Feedback сохранен, ID: {feedback_id}")
+
+    return jsonify({"status": "ok", "id": feedback_id})
 
 @app.route('/api/update-plan', methods=['POST', 'OPTIONS'])
 def api_update_plan():

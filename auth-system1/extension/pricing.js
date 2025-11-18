@@ -260,6 +260,37 @@ async function logout() {
   }
 }
 
+// Отправка feedback
+async function sendFeedback(message, email) {
+  console.log('[Pricing] Отправка feedback:', { message, email });
+
+  try {
+    const response = await fetch('http://localhost:5000/feedback', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      credentials: 'include', // Для отправки cookies
+      body: JSON.stringify({
+        message: message,
+        email: email || null
+      })
+    });
+
+    if (response.ok) {
+      const data = await response.json();
+      console.log('[Pricing] ✅ Feedback отправлен:', data);
+      return { success: true };
+    } else {
+      console.error('[Pricing] ❌ Ошибка отправки feedback, статус:', response.status);
+      return { success: false, error: 'server_error' };
+    }
+  } catch (error) {
+    console.error('[Pricing] ❌ Ошибка запроса feedback:', error);
+    return { success: false, error: 'network_error' };
+  }
+}
+
 // Инициализация при загрузке страницы
 document.addEventListener('DOMContentLoaded', function() {
   console.log('[Pricing] DOM загружен - инициализация...');
@@ -270,6 +301,50 @@ document.addEventListener('DOMContentLoaded', function() {
   if (logoutBtn) {
     logoutBtn.addEventListener('click', logout);
     console.log('[Pricing] Обработчик Logout привязан');
+  }
+
+  // Привязываем обработчик формы Feedback
+  const feedbackForm = document.getElementById('feedback-form');
+  if (feedbackForm) {
+    feedbackForm.addEventListener('submit', async function(e) {
+      e.preventDefault();
+      console.log('[Pricing] Отправка формы feedback');
+
+      const messageInput = document.getElementById('feedback-message');
+      const emailInput = document.getElementById('feedback-email');
+      const submitButton = feedbackForm.querySelector('button[type="submit"]');
+
+      const message = messageInput.value.trim();
+      const email = emailInput.value.trim();
+
+      // Валидация
+      if (!message) {
+        showNotification('❌ Please enter your message', 'error');
+        return;
+      }
+
+      // Дизейблим кнопку
+      submitButton.disabled = true;
+      submitButton.textContent = 'Sending...';
+
+      // Отправляем
+      const result = await sendFeedback(message, email);
+
+      if (result.success) {
+        showNotification('✅ Thank you for your feedback!', 'success');
+        // Очищаем форму
+        messageInput.value = '';
+        emailInput.value = '';
+      } else {
+        showNotification('❌ Failed to send feedback. Try again later.', 'error');
+      }
+
+      // Включаем кнопку обратно
+      submitButton.disabled = false;
+      submitButton.textContent = 'Send Feedback';
+    });
+
+    console.log('[Pricing] Обработчик Feedback формы привязан');
   }
 });
 
