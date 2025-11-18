@@ -402,7 +402,7 @@ def api_plan():
     # Сначала проверяем Authorization header (расширение)
     auth_header = request.headers.get('Authorization')
     if auth_header and auth_header.startswith('Bearer '):
-        token = auth_header.split('')[1]
+        token = auth_header.split(' ')[1]
         source = 'extension'
         print(f"[API /api/plan] Токен из Authorization header: {token[:8]}...")
     # Если нет header, проверяем cookie (сайт)
@@ -596,7 +596,7 @@ def auth_site_callback():
         # Создаём или получаем токен для пользователя
         token = create_or_update_user(email, plan='Free')
 
-        print(f"[AUTH-SITE] Авторизация успешна: {email}, токен: {token[:8]}...")
+        print(f"[AUTH-SITE] ✅ Авторизация успешна: {email}, токен: {token[:8]}...")
 
         # HTML с postMessage для закрытия popup и обновления родительского окна
         html = """
@@ -732,7 +732,7 @@ def switch_plan(plan):
     conn.commit()
     conn.close()
 
-    print(f"[API /switch-plan] План обновлен для {user['email']}: {user['plan']} → {plan}")
+    print(f"[API /switch-plan] ✅ План обновлен для {user['email']}: {user['plan']} → {plan}")
 
     return jsonify({
         "status": "ok",
@@ -789,7 +789,7 @@ def feedback():
     feedback_id = cursor.lastrowid
     conn.close()
 
-    print(f"[API /feedback] Feedback сохранен, ID: {feedback_id}")
+    print(f"[API /feedback] ✅ Feedback сохранен, ID: {feedback_id}")
 
     return jsonify({"status": "ok", "id": feedback_id})
 
@@ -808,7 +808,7 @@ def api_update_plan():
         return jsonify({"error": "unauthorized"}), 401
 
     # Извлекаем токен
-    token = auth_header.split('')[1]
+    token = auth_header.split(' ')[1]
     print(f"[API /api/update-plan] Получен токен: {token[:8]}...")
 
     # Проверяем токен в БД
@@ -830,14 +830,14 @@ def api_update_plan():
     success = update_user_plan(user['email'], new_plan)
 
     if success:
-        print(f"[API /api/update-plan] План обновлен: {user['email']} -> {new_plan}")
+        print(f"[API /api/update-plan] ✅ План обновлен: {user['email']} -> {new_plan}")
         return jsonify({
             "status": "ok",
             "email": user['email'],
             "plan": new_plan
         })
     else:
-        print(f"[API /api/update-plan] Ошибка обновления плана")
+        print(f"[API /api/update-plan] ❌ Ошибка обновления плана")
         return jsonify({"error": "update_failed"}), 500
 
 @app.route('/checkout/pro')
@@ -859,17 +859,17 @@ if __name__ == '__main__':
     print("=" * 60)
     print("Сервер запущен на http://localhost:5000")
     print("Endpoints:")
-    print(" POST /translate-line      - перевод одной строки субтитров")
-    print(" GET  /api/plan            - получение плана по Bearer токену")
-    print(" POST /api/update-plan     - обновление плана пользователя")
-    print(" GET  /health              - проверка работоспособности")
-    print(" GET  /stats               - статистика кеша")
-    print(" GET  /auth/callback       - OAuth callback (генерация токена)")
-    print(" GET  /pricing             - страница тарифных планов")
-    print(" GET  /pricing.css         - CSS для страницы pricing")
-    print(" GET  /pricing.js          - JS для страницы pricing")
-    print(" GET  /checkout/pro        - страница оформления Pro подписки")
-    print(" GET  /checkout/premium    - страница оформления Premium подписки")
+    print("  POST /translate-line      - перевод одной строки субтитров")
+    print("  GET  /api/plan            - получение плана по Bearer токену")
+    print("  POST /api/update-plan     - обновление плана пользователя")
+    print("  GET  /health              - проверка работоспособности")
+    print("  GET  /stats               - статистика кеша")
+    print("  GET  /auth/callback       - OAuth callback (генерация токена)")
+    print("  GET  /pricing             - страница тарифных планов")
+    print("  GET  /pricing.css         - CSS для страницы pricing")
+    print("  GET  /pricing.js          - JS для страницы pricing")
+    print("  GET  /checkout/pro        - страница оформления Pro подписки")
+    print("  GET  /checkout/premium    - страница оформления Premium подписки")
     print("=" * 60)
 
     # Запускаем сервер
