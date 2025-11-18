@@ -746,8 +746,9 @@ def feedback():
     if not data:
         return jsonify({"error": "invalid_request"}), 400
 
-    message = data.get('message', '').strip()
-    email = data.get('email', '').strip() or None
+    # Безопасная обработка полей (защита от None)
+    message = (data.get('message') or '').strip()
+    email = (data.get('email') or '').strip() or None
 
     # Валидация: message обязательно
     if not message:
