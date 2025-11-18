@@ -14,27 +14,64 @@
   box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
 }
 
-/* Smooth notification animations */
-@keyframes slideInRight {
+/* ========================================
+   PREMIUM TOAST NOTIFICATIONS
+   ======================================== */
+
+/* Smooth fade in animation with subtle upward motion */
+@keyframes fadeInUp {
   from {
-    transform: translateX(400px);
     opacity: 0;
+    transform: translateY(4px);
   }
   to {
-    transform: translateX(0);
     opacity: 1;
+    transform: translateY(0);
   }
 }
 
-@keyframes slideOutRight {
+/* Smooth fade out animation with subtle upward motion */
+@keyframes fadeOutUp {
   from {
-    transform: translateX(0);
     opacity: 1;
+    transform: translateY(0);
   }
   to {
-    transform: translateX(400px);
     opacity: 0;
+    transform: translateY(-4px);
   }
+}
+
+/* Base toast notification styles - Premium minimalist design */
+.fixed.top-4.right-4 {
+  padding: 14px 18px !important;
+  border-radius: 12px !important;
+  border: 1px solid rgba(0, 0, 0, 0.08) !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08) !important;
+  font-weight: 500 !important;
+  font-size: 0.9375rem !important;
+  letter-spacing: -0.01em !important;
+  animation: fadeInUp 0.3s cubic-bezier(0.4, 0, 0.2, 1) forwards !important;
+  backdrop-filter: blur(8px) !important;
+  -webkit-backdrop-filter: blur(8px) !important;
+}
+
+/* Success toast - Pale green, minimal, premium */
+.fixed.top-4.right-4.bg-green-600 {
+  background-color: rgba(0, 200, 0, 0.12) !important;
+  color: rgba(0, 0, 0, 0.85) !important;
+}
+
+/* Error toast - Pale red, minimal, premium */
+.fixed.top-4.right-4.bg-red-600 {
+  background-color: rgba(255, 80, 80, 0.12) !important;
+  color: rgba(0, 0, 0, 0.85) !important;
+}
+
+/* Info toast - Pale blue, minimal, premium */
+.fixed.top-4.right-4.bg-blue-600 {
+  background-color: rgba(59, 130, 246, 0.12) !important;
+  color: rgba(0, 0, 0, 0.85) !important;
 }
 
 /* Button disabled state */
