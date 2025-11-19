@@ -1261,6 +1261,31 @@ async function translateSubtitles(videoId, subtitles) {
         if (data.stop === true) {
           console.log(`🛑 FREE LIMIT REACHED на строке ${i}. Останавливаем перевод.`);
 
+          // Добавляем визуальный маркер сразу после последней переведенной строки
+          const lastTranslatedIndex = i - 1; // Предыдущая строка была последней переведенной
+          const lastItem = document.querySelector(`[data-index="${lastTranslatedIndex}"]`);
+          console.log(`[DEBUG] Последняя переведенная строка: ${lastTranslatedIndex}`, lastItem);
+
+          if (lastItem) {
+            // Добавляем яркий маркер сразу после последней переведенной строки
+            const marker = document.createElement('div');
+            marker.className = 'yt-reader-limit-marker';
+            marker.style.cssText = `
+              background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+              color: white;
+              padding: 12px 16px;
+              margin: 8px 0;
+              border-radius: 8px;
+              font-weight: 600;
+              text-align: center;
+              font-size: 14px;
+              box-shadow: 0 2px 8px rgba(102, 126, 234, 0.4);
+            `;
+            marker.textContent = '⭐ Free Plan Limit (30%) - Upgrade for 100%';
+            lastItem.insertAdjacentElement('afterend', marker);
+            console.log('[DEBUG] ✅ Визуальный маркер добавлен после строки', lastTranslatedIndex);
+          }
+
           // Показываем CTA для Upgrade
           const content = document.getElementById('yt-transcript-content');
           console.log(`[DEBUG] yt-transcript-content found:`, content);
