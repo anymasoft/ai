@@ -1069,6 +1069,71 @@ function downloadFile(content, filename, mimeType) {
   URL.revokeObjectURL(url);
 }
 
+// Получить план пользователя через API
+async function getUserPlan() {
+  try {
+    const storage = await chrome.storage.local.get(['token']);
+    const token = storage.token;
+
+    if (!token) {
+      return 'Free'; // Нет токена = Free план
+    }
+
+    const response = await fetch('http://localhost:5000/api/plan', {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    });
+
+    if (response.ok) {
+      const data = await response.json();
+      return data.plan || 'Free';
+    }
+
+    return 'Free';
+  } catch (error) {
+    console.error('[getUserPlan] Ошибка:', error);
+    return 'Free';
+  }
+}
+
+// Удалить кнопки Upgrade из DOM
+function removeUpgradeButtons() {
+  // Удаляем фиолетовую полоску-маркер
+  const marker = document.querySelector('.yt-reader-limit-marker');
+  if (marker) {
+    marker.remove();
+    console.log('[removeUpgradeButtons] Удален маркер лимита');
+  }
+
+  // Удаляем большую кнопку внизу
+  const upgradeBtn = document.querySelector('.yt-transcript-upgrade-cta');
+  if (upgradeBtn) {
+    upgradeBtn.remove();
+    console.log('[removeUpgradeButtons] Удалена кнопка Upgrade');
+  }
+}
+
+// Найти индекс последней переведенной строки
+function findLastTranslatedIndex() {
+  const allItems = document.querySelectorAll('.yt-transcript-item');
+  let lastIndex = -1;
+
+  allItems.forEach((item, idx) => {
+    const textElement = item.querySelector('.yt-transcript-item-text');
+    if (textElement && textElement.textContent.trim() !== '') {
+      const index = parseInt(item.getAttribute('data-index'));
+      if (!isNaN(index) && index > lastIndex) {
+        lastIndex = index;
+      }
+    }
+  });
+
+  console.log('[findLastTranslatedIndex] Последняя переведенная строка:', lastIndex);
+  return lastIndex;
+}
+
 // Обработчик нажатия кнопки получения транскрипта
 async function handleGetTranscript() {
   console.log('🔥🔥🔥 handleGetTranscript ВЫЗВАН!');
@@ -1096,7 +1161,40 @@ async function handleGetTranscript() {
     return;
   }
 
+  // Проверяем план пользователя
+  const userPlan = await getUserPlan();
+  console.log(`[handleGetTranscript] План пользователя: ${userPlan}`);
+
+  // Если видео уже обработано
   if (transcriptState.isProcessed && transcriptState.videoId === videoId) {
+    // Для Premium/Pro - проверяем, есть ли непереведенные строки
+    if (userPlan === 'Premium' || userPlan === 'Pro') {
+      const lastTranslatedIndex = findLastTranslatedIndex();
+      console.log(`[handleGetTranscript] Видео частично переведено до строки ${lastTranslatedIndex}`);
+
+      // Если есть непереведенные строки - продолжаем перевод
+      if (lastTranslatedIndex >= 0) {
+        console.log(`[handleGetTranscript] Premium/Pro: Продолжаем перевод с строки ${lastTranslatedIndex + 1}`);
+
+        // Удаляем кнопки Upgrade
+        removeUpgradeButtons();
+
+        // НЕ сбрасываем transcriptState.isProcessed - будет сброшен в конце
+        transcriptState.isProcessing = true;
+
+        // Получаем субтитры и продолжаем перевод
+        const subtitles = await getTranscript();
+        if (subtitles && subtitles.length > lastTranslatedIndex + 1) {
+          await translateSubtitles(videoId, subtitles, lastTranslatedIndex + 1);
+        }
+
+        transcriptState.isProcessing = false;
+        transcriptState.isProcessed = true;
+        return;
+      }
+    }
+
+    // Для Free или если все уже переведено - выходим
     console.log('Транскрипт уже обработан для этого видео');
     return;
   }
@@ -1194,20 +1292,24 @@ async function handleGetTranscript() {
 }
 
 // Отправка субтитров на сервер и получение переводов построчно
-async function translateSubtitles(videoId, subtitles) {
+async function translateSubtitles(videoId, subtitles, startIndex = 0) {
   const prevContext = [];
   const selectedLang = transcriptState.selectedLang; // Используем выбранный язык
   const totalLines = subtitles.length;
 
-  console.log(`Начинаем перевод на ${selectedLang}... Всего строк: ${totalLines}`);
+  if (startIndex > 0) {
+    console.log(`Продолжаем перевод на ${selectedLang} с строки ${startIndex}... Всего строк: ${totalLines}`);
+  } else {
+    console.log(`Начинаем перевод на ${selectedLang}... Всего строк: ${totalLines}`);
+  }
 
   // Получаем токен для отправки на сервер
   const storage = await chrome.storage.local.get(['token']);
   const token = storage.token || null;
 
   try {
-    // Переводим каждую строку по очереди
-    for (let i = 0; i < subtitles.length; i++) {
+    // Переводим каждую строку по очереди (начиная с startIndex)
+    for (let i = startIndex; i < subtitles.length; i++) {
       const subtitle = subtitles[i];
 
       try {
