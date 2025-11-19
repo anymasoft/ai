@@ -607,25 +607,48 @@ function createTranscriptPanel() {
             </svg>
           </button>
           <div class="yt-reader-export-dropdown" id="yt-reader-export-dropdown">
-            <div class="yt-reader-export-option" data-format="srt">
+            <div class="yt-reader-export-section-title">Original Subtitles</div>
+            <div class="yt-reader-export-option" data-format="srt" data-type="original">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
                 <polyline points="14 2 14 8 20 8"/>
               </svg>
               <span>SRT</span>
             </div>
-            <div class="yt-reader-export-option" data-format="vtt">
+            <div class="yt-reader-export-option" data-format="vtt" data-type="original">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
                 <polyline points="14 2 14 8 20 8"/>
               </svg>
               <span>VTT</span>
             </div>
-            <div class="yt-reader-export-option" data-format="txt">
+            <div class="yt-reader-export-option" data-format="txt" data-type="original">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <line x1="3" y1="6" x2="21" y2="6"/>
                 <line x1="3" y1="12" x2="21" y2="12"/>
                 <line x1="3" y1="18" x2="21" y2="18"/>
+              </svg>
+              <span>TXT</span>
+            </div>
+
+            <div class="yt-reader-export-divider"></div>
+
+            <div class="yt-reader-export-section-title">Translated Subtitles (Premium)</div>
+            <div class="yt-reader-export-option" data-format="srt" data-type="translated">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M5 8h14M5 8a2 2 0 0 1 0-4h14a2 2 0 0 1 0 4M5 8v10a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8m-9 4h2m-1 0v6"/>
+              </svg>
+              <span>SRT</span>
+            </div>
+            <div class="yt-reader-export-option" data-format="vtt" data-type="translated">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M5 8h14M5 8a2 2 0 0 1 0-4h14a2 2 0 0 1 0 4M5 8v10a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8m-9 4h2m-1 0v6"/>
+              </svg>
+              <span>VTT</span>
+            </div>
+            <div class="yt-reader-export-option" data-format="txt" data-type="translated">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M5 8h14M5 8a2 2 0 0 1 0-4h14a2 2 0 0 1 0 4M5 8v10a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8m-9 4h2m-1 0v6"/>
               </svg>
               <span>TXT</span>
             </div>
@@ -773,7 +796,15 @@ async function injectPanel() {
     exportOptions.forEach(option => {
       option.addEventListener('click', (e) => {
         e.stopPropagation();
-        handleExportFormat(option.dataset.format);
+
+        // Блокируем клик на locked опциях
+        if (option.classList.contains('locked')) {
+          return;
+        }
+
+        const format = option.dataset.format;
+        const type = option.dataset.type;
+        handleExportFormat(format, type);
       });
     });
 
@@ -893,7 +924,7 @@ function handleLanguageSelect(langCode) {
 // ═══════════════════════════════════════════════════════════════════
 
 // Обработчик переключения export dropdown
-function handleExportToggle(e) {
+async function handleExportToggle(e) {
   e.stopPropagation();
   const exportBtn = document.getElementById('yt-reader-export-btn');
   const exportDropdown = document.getElementById('yt-reader-export-dropdown');
@@ -901,6 +932,9 @@ function handleExportToggle(e) {
   const isActive = exportDropdown.classList.contains('show');
 
   if (!isActive) {
+    // Обновляем состояние опций перед открытием
+    await updateExportDropdownState();
+
     // Рассчитываем позицию dropdown
     const btnRect = exportBtn.getBoundingClientRect();
     exportDropdown.style.top = `${btnRect.bottom + 6}px`;
@@ -911,6 +945,22 @@ function handleExportToggle(e) {
   }
 }
 
+// Обновление состояния опций экспорта в dropdown
+async function updateExportDropdownState() {
+  const userPlan = await getUserPlan();
+  const translatedOptions = document.querySelectorAll('.yt-reader-export-option[data-type="translated"]');
+
+  translatedOptions.forEach(option => {
+    if (userPlan !== 'Premium') {
+      option.classList.add('locked');
+      option.setAttribute('data-tooltip', 'Upgrade to Premium');
+    } else {
+      option.classList.remove('locked');
+      option.removeAttribute('data-tooltip');
+    }
+  });
+}
+
 // Обновление состояния кнопки экспорта
 async function updateExportButtonState() {
   const exportBtn = document.getElementById('yt-reader-export-btn');
@@ -919,24 +969,54 @@ async function updateExportButtonState() {
   const hasSubtitles = transcriptState.subtitles && transcriptState.subtitles.length > 0;
   const isProcessing = transcriptState.isProcessing;
 
-  // Получаем план пользователя
-  const userPlan = await getUserPlan();
-
-  // Кнопка активна только для Premium и если есть субтитры и перевод завершен
-  exportBtn.disabled = !hasSubtitles || isProcessing || userPlan !== 'Premium';
+  // Кнопка активна если есть субтитры и перевод завершен (доступна всем планам)
+  // Ограничение переведённого экспорта только для Premium обрабатывается в dropdown
+  exportBtn.disabled = !hasSubtitles || isProcessing;
 }
 
-// Обработчик выбора формата экспорта
-function handleExportFormat(format) {
-  // Дополнительная проверка (на случай если кнопка не заблокирована)
-  if (!transcriptState.subtitles || transcriptState.subtitles.length === 0 || transcriptState.isProcessing) {
+// Экспорт оригинальных (непереведённых) субтитров
+function exportOriginalSubtitles(format) {
+  const videoId = getVideoId();
+  const originalSubtitles = transcriptState.subtitles;
+
+  if (!originalSubtitles || originalSubtitles.length === 0) {
+    console.error('No original subtitles available');
     return;
   }
 
+  let content, filename, mimeType;
+
+  switch (format) {
+    case 'srt':
+      content = generateSRT(originalSubtitles);
+      filename = `${videoId}_original.srt`;
+      mimeType = 'text/plain;charset=utf-8';
+      break;
+    case 'vtt':
+      content = generateVTT(originalSubtitles);
+      filename = `${videoId}_original.vtt`;
+      mimeType = 'text/vtt;charset=utf-8';
+      break;
+    case 'txt':
+      content = generateTXT(originalSubtitles);
+      filename = `${videoId}_original.txt`;
+      mimeType = 'text/plain;charset=utf-8';
+      break;
+    default:
+      console.error('Unknown format:', format);
+      return;
+  }
+
+  downloadFile(content, filename, mimeType);
+  console.log(`Экспортировано оригинальных субтитров: ${filename}`);
+}
+
+// Экспорт переведённых субтитров (Premium-only)
+function exportTranslatedSubtitles(format) {
   const videoId = getVideoId();
   const lang = transcriptState.selectedLang;
 
-  // Собираем переведённые субтитры из DOM (не из transcriptState!)
+  // Собираем переведённые субтитры из DOM
   const translatedSubtitles = collectTranslatedSubtitles();
 
   if (!translatedSubtitles || translatedSubtitles.length === 0) {
@@ -967,14 +1047,29 @@ function handleExportFormat(format) {
       return;
   }
 
-  // Скачиваем файл
   downloadFile(content, filename, mimeType);
+  console.log(`Экспортировано переведённых субтитров: ${filename}`);
+}
 
-  // Закрываем dropdown
+// Обработчик выбора формата экспорта
+function handleExportFormat(format, type) {
+  // Проверяем наличие субтитров
+  if (!transcriptState.subtitles || transcriptState.subtitles.length === 0 || transcriptState.isProcessing) {
+    return;
+  }
+
+  // Закрываем dropdown после выбора
   const exportDropdown = document.getElementById('yt-reader-export-dropdown');
   exportDropdown.classList.remove('show');
 
-  console.log(`Экспортировано: ${filename}`);
+  // Роутинг по типу экспорта
+  if (type === 'original') {
+    exportOriginalSubtitles(format);
+  } else if (type === 'translated') {
+    exportTranslatedSubtitles(format);
+  } else {
+    console.error('Unknown export type:', type);
+  }
 }
 
 // Сбор переведённых субтитров из DOM
