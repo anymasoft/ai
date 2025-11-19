@@ -912,15 +912,18 @@ function handleExportToggle(e) {
 }
 
 // Обновление состояния кнопки экспорта
-function updateExportButtonState() {
+async function updateExportButtonState() {
   const exportBtn = document.getElementById('yt-reader-export-btn');
   if (!exportBtn) return;
 
   const hasSubtitles = transcriptState.subtitles && transcriptState.subtitles.length > 0;
   const isProcessing = transcriptState.isProcessing;
 
-  // Кнопка активна только если есть субтитры и перевод завершен
-  exportBtn.disabled = !hasSubtitles || isProcessing;
+  // Получаем план пользователя
+  const userPlan = await getUserPlan();
+
+  // Кнопка активна только для Premium и если есть субтитры и перевод завершен
+  exportBtn.disabled = !hasSubtitles || isProcessing || userPlan !== 'Premium';
 }
 
 // Обработчик выбора формата экспорта
@@ -1203,7 +1206,7 @@ async function handleGetTranscript() {
   transcriptState.videoId = videoId;
   transcriptState.isProcessing = true;
   transcriptState.isProcessed = false;
-  updateExportButtonState(); // Блокируем экспорт
+  await updateExportButtonState(); // Блокируем экспорт
 
   // Блокируем кнопку и показываем loading
   btn.disabled = true;
@@ -1259,7 +1262,7 @@ async function handleGetTranscript() {
 
     // Отображаем оригинальные субтитры сразу
     displayTranscript(subtitles);
-    updateExportButtonState(); // Пока перевод идёт - экспорт заблокирован
+    await updateExportButtonState(); // Пока перевод идёт - экспорт заблокирован
 
     console.log('🔥🔥🔥 ПЕРЕД translateSubtitles, subtitles.length:', subtitles.length);
 
@@ -1283,7 +1286,7 @@ async function handleGetTranscript() {
     `;
   } finally {
     transcriptState.isProcessing = false;
-    updateExportButtonState(); // Разблокируем экспорт после завершения
+    await updateExportButtonState(); // Разблокируем экспорт после завершения
     btn.disabled = false;
     btn.classList.remove('loading', 'translating', 'inactive');
     btn.classList.add('active');
@@ -1750,7 +1753,7 @@ function seekToTime(timeStr) {
 }
 
 // Сброс состояния при смене видео
-function resetState() {
+async function resetState() {
   // Останавливаем realtime highlighting
   stopRealtimeHighlighting();
 
@@ -1760,17 +1763,17 @@ function resetState() {
   transcriptState.subtitles = null;
 
   // Блокируем экспорт при сбросе
-  updateExportButtonState();
+  await updateExportButtonState();
 }
 
 // Отслеживание изменений URL
 let currentUrl = location.href;
-new MutationObserver(() => {
+new MutationObserver(async () => {
   if (location.href !== currentUrl) {
     currentUrl = location.href;
     if (currentUrl.includes('/watch')) {
       // Сбрасываем состояние
-      resetState();
+      await resetState();
 
       // Удаляем старую панель
       const oldPanel = document.getElementById('yt-transcript-panel');
