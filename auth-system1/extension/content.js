@@ -1280,10 +1280,29 @@ async function translateSubtitles(videoId, subtitles) {
               text-align: center;
               font-size: 14px;
               box-shadow: 0 2px 8px rgba(102, 126, 234, 0.4);
+              cursor: pointer;
+              transition: transform 0.2s, box-shadow 0.2s;
             `;
             marker.textContent = '⭐ Free Plan Limit (30%) - Upgrade for 100%';
+
+            // Добавляем hover эффект
+            marker.addEventListener('mouseenter', () => {
+              marker.style.transform = 'scale(1.02)';
+              marker.style.boxShadow = '0 4px 16px rgba(102, 126, 234, 0.6)';
+            });
+            marker.addEventListener('mouseleave', () => {
+              marker.style.transform = 'scale(1)';
+              marker.style.boxShadow = '0 2px 8px rgba(102, 126, 234, 0.4)';
+            });
+
+            // Добавляем клик - открываем /pricing
+            marker.addEventListener('click', () => {
+              console.log('[VideoReader] Маркер Upgrade нажат - открываем /pricing');
+              window.open('http://localhost:5000/pricing', '_blank');
+            });
+
             lastItem.insertAdjacentElement('afterend', marker);
-            console.log('[DEBUG] ✅ Визуальный маркер добавлен после строки', lastTranslatedIndex);
+            console.log('[DEBUG] ✅ Визуальный маркер (кликабельный) добавлен после строки', lastTranslatedIndex);
           }
 
           // Показываем CTA для Upgrade
