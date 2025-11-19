@@ -599,7 +599,7 @@ function createTranscriptPanel() {
           Translate Video
         </button>
         <div class="yt-reader-export-container">
-          <button id="yt-reader-export-btn" class="yt-reader-export-btn" title="Экспорт субтитров" disabled>
+          <button id="yt-reader-export-btn" class="yt-reader-export-btn" disabled>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
               <polyline points="7 10 12 15 17 10"/>
@@ -968,10 +968,22 @@ async function updateExportButtonState() {
 
   const hasSubtitles = transcriptState.subtitles && transcriptState.subtitles.length > 0;
   const isProcessing = transcriptState.isProcessing;
+  const userPlan = await getUserPlan();
 
-  // Кнопка активна если есть субтитры и перевод завершен (доступна всем планам)
-  // Ограничение переведённого экспорта только для Premium обрабатывается в dropdown
-  exportBtn.disabled = !hasSubtitles || isProcessing;
+  // Кнопка активна только для Premium и если есть субтитры и перевод завершен
+  const isPremium = userPlan === 'Premium';
+  exportBtn.disabled = !hasSubtitles || isProcessing || !isPremium;
+
+  // Устанавливаем tooltip в зависимости от состояния
+  if (!isPremium) {
+    exportBtn.title = 'Available for Premium only';
+  } else if (isProcessing) {
+    exportBtn.title = 'Processing...';
+  } else if (!hasSubtitles) {
+    exportBtn.title = 'No subtitles available';
+  } else {
+    exportBtn.title = 'Export subtitles';
+  }
 }
 
 // Экспорт оригинальных (непереведённых) субтитров
