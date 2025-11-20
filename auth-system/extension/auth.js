@@ -2,7 +2,6 @@
 // Открывает Google OAuth окно 480×640 при нажатии на кнопку
 // И слушает postMessage от OAuth callback для получения токена
 
-console.log('[auth.js] Скрипт загружен');
 
 // ═══════════════════════════════════════════════════════════════════
 // КРИТИЧЕСКИ ВАЖНО: Обработчик postMessage от OAuth callback popup
@@ -10,29 +9,21 @@ console.log('[auth.js] Скрипт загружен');
 
 // Слушаем postMessage от OAuth callback popup (window.opener.postMessage)
 window.addEventListener('message', function(event) {
-  console.log('[auth.js] Получено postMessage событие');
-  console.log('[auth.js] event.origin:', event.origin);
-  console.log('[auth.js] event.data:', event.data);
 
   // Проверяем что сообщение от нашего сервера (localhost:5000)
   // ВАЖНО: убрал строгую проверку origin для отладки
   if (event.origin !== 'http://localhost:5000') {
-    console.warn('[auth.js] ⚠️ Сообщение от неожиданного origin:', event.origin, '- но обрабатываем');
     // НЕ возвращаемся, продолжаем обработку
   }
 
   // Проверяем тип сообщения
   if (event.data && event.data.type === 'AUTH_SUCCESS') {
-    console.log('[auth.js] ✅ Получен AUTH_SUCCESS от OAuth callback');
-    console.log('[auth.js] Token:', event.data.token?.substring(0, 8) + '...');
-    console.log('[auth.js] Email:', event.data.email);
 
     const token = event.data.token;
     const email = event.data.email;
 
     // Пересылаем токен и email в background.js через chrome.runtime.sendMessage
     if (token && email) {
-      console.log('[auth.js] Отправляем сообщение в background.js...');
 
       chrome.runtime.sendMessage({
         type: 'AUTH_SUCCESS',
@@ -42,7 +33,6 @@ window.addEventListener('message', function(event) {
         if (chrome.runtime.lastError) {
           console.error('[auth.js] ❌ Ошибка отправки в background:', chrome.runtime.lastError);
         } else {
-          console.log('[auth.js] ✅ Сообщение отправлено в background.js:', response);
         }
       });
 
@@ -56,33 +46,25 @@ window.addEventListener('message', function(event) {
 
       // Закрываем окно авторизации через 1 секунду
       setTimeout(function() {
-        console.log('[auth.js] Закрываем окно авторизации...');
         window.close();
       }, 1000);
-    } else {
-      console.error('[auth.js] ❌ Токен или email отсутствуют в сообщении');
     }
   } else {
-    console.log('[auth.js] Неизвестный тип сообщения:', event.data?.type);
   }
 });
 
-console.log('[auth.js] Обработчик postMessage установлен');
 
 // ═══════════════════════════════════════════════════════════════════
 // Обработчик кнопки "Sign in with Google"
 // ═══════════════════════════════════════════════════════════════════
 
 document.addEventListener('DOMContentLoaded', function() {
-  console.log('[auth.js] DOMContentLoaded - инициализация кнопки');
 
   const googleSignInBtn = document.getElementById('googleSignInBtn');
 
   if (googleSignInBtn) {
-    console.log('[auth.js] Кнопка Sign In найдена');
 
     googleSignInBtn.addEventListener('click', function() {
-      console.log('[auth.js] Кнопка Sign In нажата');
 
       // Temporary CLIENT_ID (заглушка)
       const CLIENT_ID = '431567664470-mq0oim46t6tstlfjllbesuar346pf2qu.apps.googleusercontent.com';
@@ -97,7 +79,6 @@ document.addEventListener('DOMContentLoaded', function() {
         '&scope=' + encodeURIComponent(SCOPE) +
         '&prompt=select_account';
 
-      console.log('[auth.js] OAuth URL сформирован:', oauthUrl);
 
       // Размеры окна
       const width = 480;
@@ -107,7 +88,6 @@ document.addEventListener('DOMContentLoaded', function() {
       const left = (screen.width - width) / 2;
       const top = (screen.height - height) / 2;
 
-      console.log('[auth.js] Открываем OAuth popup...');
 
       // Открываем popup
       const popup = window.open(
@@ -117,12 +97,9 @@ document.addEventListener('DOMContentLoaded', function() {
       );
 
       if (popup) {
-        console.log('[auth.js] ✅ OAuth popup открыт успешно');
       } else {
         console.error('[auth.js] ❌ Не удалось открыть OAuth popup - возможно заблокирован браузером');
       }
     });
-  } else {
-    console.error('[auth.js] ❌ Кнопка Sign In не найдена!');
   }
 });
