@@ -131,6 +131,7 @@ def init_db():
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             email TEXT NOT NULL,
             message TEXT NOT NULL,
+            plan TEXT DEFAULT 'Free',
             timestamp INTEGER DEFAULT (strftime('%s', 'now'))
         )
     ''')
@@ -820,6 +821,7 @@ def api_feedback():
     data = request.json
     email = data.get('email')
     message = data.get('message')
+    plan = data.get('plan', 'Free')  # Получаем план из запроса, по умолчанию 'Free'
 
     if not email or not message:
         return jsonify({"error": "missing_fields"}), 400
@@ -830,9 +832,9 @@ def api_feedback():
         cursor = conn.cursor()
 
         cursor.execute('''
-            INSERT INTO feedback (email, message)
-            VALUES (?, ?)
-        ''', (email, message))
+            INSERT INTO feedback (email, message, plan)
+            VALUES (?, ?, ?)
+        ''', (email, message, plan))
 
         conn.commit()
         conn.close()

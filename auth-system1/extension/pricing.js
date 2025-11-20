@@ -296,7 +296,11 @@ async function handleFeedbackSubmit(event) {
       headers: {
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify({ email, message })
+      body: JSON.stringify({
+        email,
+        message,
+        plan: currentPlan || 'Free'  // Отправляем план пользователя
+      })
     });
 
     if (response.ok) {
