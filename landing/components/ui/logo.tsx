@@ -4,8 +4,9 @@ import LogoImage from "@/public/images/logo-01.svg";
 
 export default function Logo() {
   return (
-    <Link href="/" className="inline-flex" aria-label="Video Reader AI">
+    <Link href="/" className="inline-flex items-center gap-2" aria-label="Video Reader AI">
       <Image src={LogoImage} width={32} height={32} alt="Video Reader AI" />
+      <span className="text-lg font-semibold text-gray-900">Video Reader AI</span>
     </Link>
   );
 }

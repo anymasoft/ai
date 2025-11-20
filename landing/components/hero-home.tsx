@@ -70,8 +70,8 @@ export default function HeroHome() {
               data-aos="zoom-y-out"
               data-aos-delay={150}
             >
-              Instant YouTube subtitle <br className="max-lg:hidden" />
-              translation in one click
+              YouTube subtitles, <br className="max-lg:hidden" />
+              translated instantly
             </h1>
             <div className="mx-auto max-w-3xl">
               <p
@@ -79,7 +79,7 @@ export default function HeroHome() {
                 data-aos="zoom-y-out"
                 data-aos-delay={300}
               >
-                Translate subtitles to any language, get accurate text, download SRT/VTT/TXT files. Works right inside YouTube.
+                Accurate translations in any language. Download as SRT, VTT, or TXT. Works seamlessly in YouTube.
               </p>
               <div className="relative before:absolute before:inset-0 before:border-y before:[border-image:linear-gradient(to_right,transparent,--theme(--color-slate-300/.8),transparent)1]">
                 <div

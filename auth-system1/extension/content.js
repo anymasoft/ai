@@ -1097,35 +1097,6 @@ function downloadFile(content, filename, mimeType) {
   URL.revokeObjectURL(url);
 }
 
-// Получить план пользователя через API
-async function getUserPlan() {
-  try {
-    const storage = await chrome.storage.local.get(['token']);
-    const token = storage.token;
-
-    if (!token) {
-      return 'Free'; // Нет токена = Free план
-    }
-
-    const response = await fetch('http://localhost:5000/api/plan', {
-      method: 'GET',
-      headers: {
-        'Authorization': `Bearer ${token}`
-      }
-    });
-
-    if (response.ok) {
-      const data = await response.json();
-      return data.plan || 'Free';
-    }
-
-    return 'Free';
-  } catch (error) {
-    console.error('[getUserPlan] Ошибка:', error);
-    return 'Free';
-  }
-}
-
 // Удалить кнопки Upgrade из DOM
 function removeUpgradeButtons() {
   // Удаляем фиолетовую полоску-маркер
@@ -1304,35 +1275,6 @@ async function handleGetTranscript() {
   }
 }
 
-// Получить план пользователя через API
-async function getUserPlan() {
-  try {
-    const storage = await chrome.storage.local.get(['token']);
-    const token = storage.token;
-
-    if (!token) {
-      return 'Free'; // Нет токена = Free план
-    }
-
-    const response = await fetch('http://localhost:5000/api/plan', {
-      method: 'GET',
-      headers: {
-        'Authorization': `Bearer ${token}`
-      }
-    });
-
-    if (response.ok) {
-      const data = await response.json();
-      return data.plan || 'Free';
-    }
-
-    return 'Free';
-  } catch (error) {
-    console.error('[getUserPlan] Ошибка:', error);
-    return 'Free';
-  }
-}
-
 // Отправка субтитров на сервер и получение переводов построчно
 async function translateSubtitles(videoId, subtitles, startIndex = 0) {
   const prevContext = [];
@@ -1347,12 +1289,6 @@ async function translateSubtitles(videoId, subtitles, startIndex = 0) {
   const storage = await chrome.storage.local.get(['token']);
   const token = storage.token || null;
 
-  // Получаем план пользователя для определения размера контекста
-  const userPlan = await getUserPlan();
-
-  // Определяем размер контекста по плану
-  const contextSize = userPlan === 'Premium' ? 10 : (userPlan === 'Pro' ? 5 : 2);
-
   try {
     // Переводим каждую строку по очереди (начиная с startIndex)
     for (let i = startIndex; i < subtitles.length; i++) {
@@ -1364,7 +1300,7 @@ async function translateSubtitles(videoId, subtitles, startIndex = 0) {
           videoId: videoId,
           lineNumber: i,
           text: subtitle.text,
-          prevContext: prevContext.slice(-contextSize), // Динамический размер контекста по плану
+          prevContext: prevContext.slice(-2), // Последние 2 переведенные строки
           lang: selectedLang, // Используем выбранный язык
           totalLines: totalLines, // Передаём общее количество строк для расчёта лимита
           token: token // Передаём токен для определения плана

@@ -14,7 +14,7 @@ export default function FeaturesPlanet() {
           {/* Section header */}
           <div className="mx-auto max-w-3xl pb-16 text-center md:pb-20">
             <h2 className="text-3xl font-bold text-gray-200 md:text-4xl">
-              Video Reader AI makes YouTube subtitles work for you
+              Everything you need for subtitle translation
             </h2>
           </div>
           {/* Planet */}
@@ -85,9 +85,7 @@ export default function FeaturesPlanet() {
                 <span>Better Translation</span>
               </h3>
               <p className="text-[15px] text-gray-400">
-                Get more accurate translations than YouTube's built-in system,
-                powered by advanced AI models that understand context and
-                nuance better.
+                More accurate than YouTube's built-in translations. Powered by advanced AI that understands context.
               </p>
             </article>
             <article>
@@ -103,9 +101,7 @@ export default function FeaturesPlanet() {
                 <span>Karaoke Highlighting</span>
               </h3>
               <p className="text-[15px] text-gray-400">
-                Follow along with real-time karaoke-style highlighting that
-                syncs perfectly with the video, making it easier to track what's
-                being said.
+                Real-time highlighting synced perfectly with the video. Follow along effortlessly.
               </p>
             </article>
             <article>
@@ -125,9 +121,7 @@ export default function FeaturesPlanet() {
                 <span>All Languages Support</span>
               </h3>
               <p className="text-[15px] text-gray-400">
-                Translate subtitles to and from any language you need. Works
-                with all major languages and supports multiple subtitle formats
-                like SRT, VTT, and TXT.
+                Translate to and from any language. Supports SRT, VTT, and TXT formats.
               </p>
             </article>
             <article>
@@ -143,9 +137,7 @@ export default function FeaturesPlanet() {
                 <span>GPT-Powered Speed</span>
               </h3>
               <p className="text-[15px] text-gray-400">
-                Lightning-fast translations powered by advanced AI models. Get
-                your subtitles translated in seconds, not minutes, while
-                maintaining quality.
+                Lightning-fast translations in seconds. Advanced AI maintains quality at speed.
               </p>
             </article>
             <article>
@@ -161,9 +153,7 @@ export default function FeaturesPlanet() {
                 <span>File Download</span>
               </h3>
               <p className="text-[15px] text-gray-400">
-                Save subtitles in multiple formats including SRT, VTT, and TXT.
-                Download translated or original subtitles for offline use or
-                editing.
+                Download in SRT, VTT, or TXT. Save translated or original subtitles for offline use.
               </p>
             </article>
             <article>
@@ -179,9 +169,7 @@ export default function FeaturesPlanet() {
                 <span>Works Inside YouTube</span>
               </h3>
               <p className="text-[15px] text-gray-400">
-                No need to leave YouTube or switch between tabs. Video Reader AI
-                integrates seamlessly into your YouTube viewing experience as a
-                browser extension.
+                Seamless browser extension. Works directly inside YouTube without leaving the page.
               </p>
             </article>
           </div>
