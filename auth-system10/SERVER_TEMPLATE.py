@@ -125,6 +125,21 @@ def init_db():
         ON users(token)
     ''')
 
+    # Таблица обратной связи (feedback)
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS feedback (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            email TEXT NOT NULL,
+            message TEXT NOT NULL,
+            timestamp INTEGER DEFAULT (strftime('%s', 'now'))
+        )
+    ''')
+
+    cursor.execute('''
+        CREATE INDEX IF NOT EXISTS idx_feedback_email
+        ON feedback(email)
+    ''')
+
     conn.commit()
     conn.close()
 
@@ -809,15 +824,18 @@ def api_feedback():
     if not email or not message:
         return jsonify({"error": "missing_fields"}), 400
 
-    # Сохраняем feedback в файл (можно позже добавить БД)
+    # Сохраняем feedback в базу данных
     try:
-        with open(os.path.join(BASE_DIR, 'feedback.txt'), 'a', encoding='utf-8') as f:
-            timestamp = datetime.now().isoformat()
-            f.write(f"\n{'='*80}\n")
-            f.write(f"Timestamp: {timestamp}\n")
-            f.write(f"Email: {email}\n")
-            f.write(f"Message:\n{message}\n")
-            f.write(f"{'='*80}\n")
+        conn = sqlite3.connect(USERS_DB)
+        cursor = conn.cursor()
+
+        cursor.execute('''
+            INSERT INTO feedback (email, message)
+            VALUES (?, ?)
+        ''', (email, message))
+
+        conn.commit()
+        conn.close()
 
         return jsonify({"status": "ok", "message": "Feedback received"})
     except Exception as e:
