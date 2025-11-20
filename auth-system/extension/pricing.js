@@ -156,7 +156,7 @@ async function switchPlan(newPlan) {
       updateButtons(newPlan);
 
       // Показываем уведомление
-      showNotification(`✅ План успешно изменен на ${newPlan}!`, 'success');
+      showNotification(`Plan successfully changed to ${newPlan}`, 'success');
 
       // HOT RELOAD: Отправляем сообщение расширению об обновлении плана
       // Это позволит расширению обновить UI без перезагрузки страницы YouTube
@@ -181,49 +181,54 @@ async function switchPlan(newPlan) {
       console.error('[Pricing] ❌ Ошибка обновления плана, статус:', response.status);
 
       if (response.status === 401) {
-        showNotification('❌ Требуется авторизация. Войдите в систему.', 'error');
+        showNotification('Authorization required. Please sign in.', 'error');
         // Показываем кнопку Sign In
         document.getElementById('auth-prompt').style.display = 'flex';
         document.getElementById('user-info').style.display = 'none';
       } else {
-        showNotification('❌ Ошибка обновления плана. Попробуйте позже.', 'error');
+        showNotification('Failed to update plan. Please try again later.', 'error');
       }
     }
   } catch (error) {
     console.error('[Pricing] ❌ Ошибка запроса обновления плана:', error);
-    showNotification('❌ Ошибка соединения с сервером.', 'error');
+    showNotification('Server connection error', 'error');
   }
 }
 
-// Показ уведомления
+// Показ уведомления (премиальные бледные toasts)
 function showNotification(message, type = 'info') {
   // Создаем элемент уведомления
   const notification = document.createElement('div');
-  notification.className = `fixed top-4 right-4 px-6 py-4 rounded-lg shadow-lg text-white font-medium z-50 transition-all transform translate-x-0`;
+  notification.className = `fixed top-4 right-4 px-6 py-4 rounded-lg shadow-lg font-medium z-50 transition-all duration-300 ease-in-out opacity-0 translate-x-full`;
 
   if (type === 'success') {
-    notification.className += ' bg-green-600';
+    // Премиальный бледно-зеленый
+    notification.className += ' bg-green-50 text-green-800 border border-green-200';
   } else if (type === 'error') {
-    notification.className += ' bg-red-600';
+    // Премиальный бледно-розовый
+    notification.className += ' bg-rose-50 text-rose-800 border border-rose-200';
   } else {
-    notification.className += ' bg-blue-600';
+    notification.className += ' bg-blue-50 text-blue-800 border border-blue-200';
   }
 
   notification.textContent = message;
   document.body.appendChild(notification);
 
-  // Анимация появления
-  setTimeout(() => {
-    notification.style.transform = 'translateX(0)';
-  }, 10);
+  // Анимация появления (плавно)
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      notification.classList.remove('opacity-0', 'translate-x-full');
+      notification.classList.add('opacity-100', 'translate-x-0');
+    });
+  });
 
-  // Удаляем через 3 секунды
+  // Удаляем через 4 секунды (плавное исчезание)
   setTimeout(() => {
-    notification.style.transform = 'translateX(400px)';
+    notification.classList.add('opacity-0', 'translate-x-full');
     setTimeout(() => {
       notification.remove();
     }, 300);
-  }, 3000);
+  }, 4000);
 }
 
 // Logout - удаление cookie и обновление UI
@@ -251,12 +256,12 @@ async function logout() {
     // Обновляем кнопки тарифов
     updateButtons('Free');
 
-    showNotification('✅ Вы вышли из системы', 'success');
+    showNotification('You have been logged out', 'success');
 
     console.log('[Pricing] ✅ Logout успешен');
   } catch (error) {
     console.error('[Pricing] ❌ Ошибка logout:', error);
-    showNotification('❌ Ошибка выхода из системы', 'error');
+    showNotification('Logout error', 'error');
   }
 }
 
@@ -275,13 +280,18 @@ document.addEventListener('DOMContentLoaded', function() {
   // Привязываем обработчик Feedback формы
   const feedbackForm = document.getElementById('feedback-form');
   if (feedbackForm) {
+    // Автозаполнение email из currentEmail (если пользователь авторизован)
+    const feedbackEmailInput = document.getElementById('feedback-email');
+    if (feedbackEmailInput && currentEmail) {
+      feedbackEmailInput.value = currentEmail;
+    }
+
     feedbackForm.addEventListener('submit', async function(e) {
       e.preventDefault();
       console.log('[Pricing] Отправка feedback...');
 
       const message = document.getElementById('feedback-message').value;
       const email = document.getElementById('feedback-email').value;
-      const statusDiv = document.getElementById('feedback-status');
       const submitBtn = feedbackForm.querySelector('button[type="submit"]');
 
       // Показываем loading состояние
@@ -298,27 +308,22 @@ document.addEventListener('DOMContentLoaded', function() {
 
         if (response.ok) {
           console.log('[Pricing] ✅ Feedback отправлен успешно');
-          statusDiv.textContent = 'Thank you for your feedback!';
-          statusDiv.className = 'feedback-status success';
-          statusDiv.style.display = 'block';
+          showNotification('Thank you for your feedback!', 'success');
           feedbackForm.reset();
+          // Восстанавливаем email после reset
+          if (feedbackEmailInput && currentEmail) {
+            feedbackEmailInput.value = currentEmail;
+          }
         } else {
           throw new Error('Failed to send feedback');
         }
       } catch (error) {
         console.error('[Pricing] ❌ Ошибка отправки feedback:', error);
-        statusDiv.textContent = 'Failed to send feedback. Please try again later.';
-        statusDiv.className = 'feedback-status error';
-        statusDiv.style.display = 'block';
+        showNotification('Failed to send feedback. Please try again later.', 'error');
       } finally {
         // Восстанавливаем кнопку
         submitBtn.disabled = false;
         submitBtn.textContent = 'Send Feedback';
-
-        // Скрываем статус через 5 секунд
-        setTimeout(() => {
-          statusDiv.style.display = 'none';
-        }, 5000);
       }
     });
     console.log('[Pricing] Обработчик Feedback привязан');
