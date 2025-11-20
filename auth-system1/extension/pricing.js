@@ -49,6 +49,9 @@ async function loadUserInfo() {
 
       // Обновляем кнопки тарифов
       updateButtons(currentPlan);
+
+      // Автоматически подставляем email в форму feedback
+      updateFeedbackForm();
     } else {
       // Если cookie нет или невалидна - показываем кнопку Sign In
       if (authPromptEl) authPromptEl.style.display = 'flex';
@@ -239,11 +242,33 @@ async function logout() {
     // Обновляем кнопки тарифов
     updateButtons('Free');
 
+    // Очищаем форму feedback
+    updateFeedbackForm();
+
     showNotification('✅ Вы вышли из системы', 'success');
 
   } catch (error) {
     console.error('[Pricing] ❌ Ошибка logout:', error);
     showNotification('❌ Ошибка выхода из системы', 'error');
+  }
+}
+
+// Обновление формы feedback (автозаполнение email если пользователь авторизован)
+function updateFeedbackForm() {
+  const emailInput = document.getElementById('feedback-email');
+
+  if (!emailInput) return;
+
+  if (currentEmail && currentEmail !== '') {
+    // Пользователь авторизован - подставляем email и делаем поле readonly
+    emailInput.value = currentEmail;
+    emailInput.readOnly = true;
+    emailInput.classList.add('bg-gray-50', 'cursor-not-allowed');
+  } else {
+    // Пользователь не авторизован - поле редактируемое
+    emailInput.value = '';
+    emailInput.readOnly = false;
+    emailInput.classList.remove('bg-gray-50', 'cursor-not-allowed');
   }
 }
 
