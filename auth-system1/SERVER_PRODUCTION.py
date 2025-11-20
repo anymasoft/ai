@@ -100,7 +100,6 @@ def init_db():
     ''')
     conn.commit()
     conn.close()
-    print("База данных инициализирована")
 
 def create_or_update_user(email, plan='Free'):
     conn = sqlite3.connect(USERS_DB)
@@ -112,14 +111,12 @@ def create_or_update_user(email, plan='Free'):
         existing_token = existing_user[0]
         existing_plan = existing_user[1]
         conn.close()
-        print(f"[TOKEN AUTH] Пользователь {email} существует, токен: {existing_token[:8]}..., план: {existing_plan}")
         return existing_token
     else:
         token = uuid.uuid4().hex
         cursor.execute('INSERT INTO users (email, token, plan) VALUES (?, ?, ?)', (email, token, plan))
         conn.commit()
         conn.close()
-        print(f"[TOKEN AUTH] Создан {email}, токен: {token[:8]}..., план: {plan}")
         return token
 
 def get_user_by_token(token):
@@ -139,8 +136,6 @@ def update_user_plan(email, plan):
     conn.commit()
     affected = cursor.rowcount
     conn.close()
-    if affected > 0:
-        print(f"[TOKEN AUTH] Обновлён план для {email}: {plan}")
     return affected > 0
 
 def check_line_cache(video_id, line_number, lang='ru'):
@@ -219,7 +214,6 @@ def translate_line():
     if request.method == 'OPTIONS':
         return '', 200
 
-    print(f"[TRANSLATE] /translate-line called, method={request.method}, data={request.json}")
     data = request.json
     video_id = data.get('videoId')
     line_number = data.get('lineNumber')
@@ -242,24 +236,14 @@ def translate_line():
         if user:
             user_plan = user['plan']
             user_email = user['email']
-            print(f"[TRANSLATE] User: {user_email}, Plan: {user_plan}")
-    else:
-        print(f"[TRANSLATE] No Bearer token - defaulting to Free plan")
 
     # ВЫЧИСЛЯЕМ ЛИМИТ ДЛЯ FREE (30% СТРОК)
     max_free_line = -1
     if total_lines > 0:
         max_free_line = int(total_lines * 0.3) - 1
 
-    # ЛОГИРОВАНИЕ ПРОГРЕССА
-    current_progress = line_number + 1
-    percent_done = (current_progress / total_lines * 100) if total_lines > 0 else 0
-    print(f"[LIMIT CHECK] Plan: {user_plan}, Line: {current_progress}/{total_lines} ({percent_done:.1f}%), Max Free Line: {max_free_line + 1}")
-
     # ПРОВЕРЯЕМ ЛИМИТ ДЛЯ FREE
     if user_plan == 'Free' and total_lines > 0 and line_number > max_free_line:
-        print(f"[TRANSLATE] ⛔ FREE LIMIT REACHED: line {current_progress}/{total_lines} > {max_free_line + 1} (30% of {total_lines})")
-        print(f"[TRANSLATE] 🛑 STOPPING translation, returning stop=True")
         return jsonify({
             'videoId': video_id,
             'lineNumber': line_number,
@@ -275,7 +259,6 @@ def translate_line():
     cached_translation = check_line_cache(video_id, line_number, lang)
 
     if cached_translation:
-        print(f"[Cache HIT] Video {video_id}, line {line_number}")
         return jsonify({
             'videoId': video_id,
             'lineNumber': line_number,
@@ -287,7 +270,6 @@ def translate_line():
             'stop': False
         })
 
-    print(f"[Translating] Video {video_id}, line {line_number}")
     translated_text = translate_line_with_gpt(text, prev_context, lang)
 
     if not translated_text:
@@ -331,7 +313,6 @@ def api_plan():
     if not user:
         return jsonify({"error": "unauthorized"}), 401
 
-    print(f"[API /api/plan] Токен валиден ({source}): {user['email']}, план: {user['plan']}")
     return jsonify({"status": "ok", "email": user['email'], "plan": user['plan']})
 
 @app.route('/health', methods=['GET'])
@@ -551,7 +532,6 @@ def switch_plan(plan):
     conn.commit()
     conn.close()
 
-    print(f"[API /switch-plan] ✅ План обновлен для {user['email']}: {user['plan']} → {plan}")
     return jsonify({"status": "ok", "plan": plan, "email": user['email']})
 
 @app.route('/api/update-plan', methods=['POST', 'OPTIONS'])
@@ -575,7 +555,6 @@ def api_update_plan():
 
     success = update_user_plan(user['email'], new_plan)
     if success:
-        print(f"[API /api/update-plan] ✅ План обновлен: {user['email']} -> {new_plan}")
         return jsonify({"status": "ok", "email": user['email'], "plan": new_plan})
     else:
         return jsonify({"error": "update_failed"}), 500
@@ -590,23 +569,4 @@ def checkout_premium():
 
 if __name__ == '__main__':
     init_db()
-
-    print("=" * 80)
-    print("✅ PRODUCTION SERVER - YouTube Subtitle Translation (Token Auth)")
-    print("=" * 80)
-    print("🚀 Сервер запущен на http://localhost:5000")
-    print("")
-    print("📋 Endpoints:")
-    print("  POST /translate-line      - перевод одной строки субтитров (с лимитами)")
-    print("  GET  /api/plan            - получение плана по Bearer токену")
-    print("  POST /api/update-plan     - обновление плана пользователя")
-    print("  GET  /health              - проверка работоспособности")
-    print("  GET  /stats               - статистика кеша")
-    print("")
-    print("⚙️  Лимиты:")
-    print("  Free    - перевод первых 30% строк, ПОЛНЫЙ текст каждой строки")
-    print("  Pro     - перевод 100% строк")
-    print("  Premium - перевод 100% строк")
-    print("=" * 80)
-
     app.run(debug=True, host='0.0.0.0', port=5000)

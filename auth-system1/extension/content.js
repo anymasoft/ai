@@ -2,53 +2,37 @@
 // TOKEN AUTH - Listen for messages from background.js and OAuth callback
 // ═══════════════════════════════════════════════════════════════════
 
-console.log('[VideoReader content.js] Скрипт загружен');
 
 // ОТЛАДКА: Проверяем что находится в storage при загрузке
 chrome.storage.local.get(['token', 'email', 'plan'], (result) => {
-  console.log('[VideoReader content.js] 🔍 Storage при загрузке:', result);
   if (result.token) {
-    console.log('[VideoReader content.js] ✅ Токен найден:', result.token.substring(0, 8) + '...');
   } else {
-    console.log('[VideoReader content.js] ❌ Токен НЕ найден в storage');
   }
 });
 
 // ГЛАВНЫЙ ОБРАБОТЧИК: Слушаем сообщения от background.js через chrome.runtime.onMessage
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-  console.log('[VideoReader content.js] ✅ Получено сообщение через chrome.runtime.onMessage');
-  console.log('[VideoReader content.js] message:', message);
-  console.log('[VideoReader content.js] sender:', sender);
 
   // Обрабатываем AUTH_SUCCESS от background.js
   if (message.type === 'AUTH_SUCCESS') {
-    console.log('[VideoReader content.js] 🎉 AUTH_SUCCESS получен!');
-    console.log('[VideoReader content.js] Token:', message.token?.substring(0, 8) + '...');
-    console.log('[VideoReader content.js] Email:', message.email);
 
     const token = message.token;
     const email = message.email;
 
     // Сохраняем токен и email в chrome.storage.local
     if (token && email) {
-      console.log('[VideoReader content.js] Сохраняем токен и email в storage...');
 
       chrome.storage.local.set({ token: token, email: email }, async () => {
-        console.log('[VideoReader content.js] ✅ Токен и email сохранены в chrome.storage');
 
         // Сразу после получения токена запрашиваем план
-        console.log('[VideoReader content.js] Запрашиваем план пользователя...');
         await fetchPlan();
 
         // Обновляем UI авторизации
-        console.log('[VideoReader content.js] Обновляем UI авторизации...');
         await updateAuthUI();
-        console.log('[VideoReader content.js] ✅ UI авторизации обновлён после получения токена');
       });
 
       sendResponse({ success: true });
     } else {
-      console.error('[VideoReader content.js] ❌ Токен или email отсутствуют в сообщении!');
       sendResponse({ success: false, error: 'Missing token or email' });
     }
 
@@ -59,25 +43,18 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   // HOT-RELOAD: Обработка обновления тарифного плана от background.js
   // ═══════════════════════════════════════════════════════════════════
   if (message.type === 'PLAN_UPDATED') {
-    console.log('[VideoReader content.js] 🔄 PLAN_UPDATED получен!');
-    console.log('[VideoReader content.js] Новый план:', message.newPlan);
-    console.log('[VideoReader content.js] Email:', message.email);
 
     const newPlan = message.newPlan;
 
     // Обновляем план в chrome.storage.local
     chrome.storage.local.set({ plan: newPlan }, async () => {
-      console.log('[VideoReader content.js] ✅ План обновлен в storage:', newPlan);
 
       // Обновляем план с сервера (для синхронизации)
-      console.log('[VideoReader content.js] Синхронизируем план с сервером...');
       await fetchPlan();
 
       // Обновляем UI панели
-      console.log('[VideoReader content.js] Обновляем UI...');
       await updateAuthUI();
 
-      console.log('[VideoReader content.js] ✅ UI обновлён БЕЗ перезагрузки страницы!');
     });
 
     sendResponse({ success: true });
@@ -85,53 +62,36 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   }
 
   // Неизвестный тип сообщения
-  console.log('[VideoReader content.js] Неизвестный тип сообщения:', message.type);
   sendResponse({ success: false, error: 'Unknown message type' });
   return false;
 });
 
-console.log('[VideoReader content.js] ✅ Обработчик chrome.runtime.onMessage установлен');
 
 // ДОПОЛНИТЕЛЬНЫЙ ОБРАБОТЧИК: Слушаем postMessage от OAuth callback popup (на случай прямого сообщения)
 window.addEventListener('message', async (event) => {
-  console.log('[VideoReader content.js] Получено window.postMessage событие');
-  console.log('[VideoReader content.js] event.origin:', event.origin);
-  console.log('[VideoReader content.js] event.data:', event.data);
 
   // Проверяем тип сообщения
   if (event.data && event.data.type === 'AUTH_SUCCESS') {
-    console.log('[VideoReader content.js] AUTH_SUCCESS получен через window.postMessage');
 
     const token = event.data.token;
     const email = event.data.email;
 
-    console.log('[VideoReader content.js] Token:', token?.substring(0, 8) + '...');
-    console.log('[VideoReader content.js] Email:', email);
 
     // Сохраняем токен и email в chrome.storage.local
     if (token && email) {
-      console.log('[VideoReader content.js] Сохраняем токен и email в storage...');
 
       await chrome.storage.local.set({ token: token, email: email });
-      console.log('[VideoReader content.js] ✅ Токен и email сохранены в chrome.storage');
 
       // Сразу после получения токена запрашиваем план
-      console.log('[VideoReader content.js] Запрашиваем план пользователя...');
       await fetchPlan();
 
       // Обновляем UI авторизации
-      console.log('[VideoReader content.js] Обновляем UI авторизации...');
       await updateAuthUI();
-      console.log('[VideoReader content.js] ✅ UI авторизации обновлён после получения токена');
-    } else {
-      console.error('[VideoReader content.js] ❌ Токен или email отсутствуют в postMessage!');
     }
   } else {
-    console.log('[VideoReader content.js] Получено postMessage другого типа:', event.data?.type);
   }
 });
 
-console.log('[VideoReader content.js] ✅ Обработчик window.postMessage установлен');
 
 // ═══════════════════════════════════════════════════════════════════
 // PLAN DETECTION SYSTEM - Fetch user plan from backend with Bearer token
@@ -145,9 +105,7 @@ async function fetchPlan() {
     const token = storage.token;
 
     if (!token) {
-      console.log('[VideoReader] Токен отсутствует - пользователь не авторизован');
       await chrome.storage.local.set({ plan: 'Free', email: null });
-      console.log('[VideoReader] Current plan: Free');
       return { plan: 'Free', email: null };
     }
 
@@ -159,21 +117,16 @@ async function fetchPlan() {
 
     // Обрабатываем ошибки
     if (data.error === 'unauthorized') {
-      console.log('[VideoReader] Токен невалиден - пользователь не авторизован');
       await chrome.storage.local.set({ plan: 'Free', email: null });
-      console.log('[VideoReader] Current plan: Free');
       return { plan: 'Free', email: null };
     }
 
     if (data.error) {
-      console.warn('[VideoReader] Plan API error:', data.error, ', defaulting to Free');
       await chrome.storage.local.set({ plan: 'Free', email: null });
-      console.log('[VideoReader] Current plan: Free');
       return { plan: 'Free', email: null };
     }
 
     if (data.status === 'ok' && data.plan && data.email) {
-      console.log(`[VideoReader] Current plan: ${data.plan} (${data.email})`);
 
       // Сохраняем в chrome.storage.local
       await chrome.storage.local.set({ plan: data.plan, email: data.email });
@@ -181,20 +134,16 @@ async function fetchPlan() {
       return { plan: data.plan, email: data.email };
     } else {
       // Неожиданный формат ответа
-      console.warn('[VideoReader] Unexpected API response format, defaulting to Free');
       await chrome.storage.local.set({ plan: 'Free', email: null });
-      console.log('[VideoReader] Current plan: Free');
       return { plan: 'Free', email: null };
     }
 
   } catch (error) {
     // Ошибка сети или сервер недоступен - считаем Free
     console.error('[VideoReader] ❌ fetch /api/plan failed:', error);
-    console.warn('[VideoReader] Failed to fetch plan from server, defaulting to Free:', error.message);
 
     // Сохраняем Free plan
     await chrome.storage.local.set({ plan: 'Free', email: null });
-    console.log('[VideoReader] Current plan: Free');
     return { plan: 'Free', email: null };
   } finally {
     // Всегда обновляем UI авторизации после проверки плана
@@ -204,12 +153,10 @@ async function fetchPlan() {
 
 // Открывает страницу авторизации через background.js
 function openAuthPage() {
-  console.log('[VideoReader] Запрос на открытие страницы авторизации');
   chrome.runtime.sendMessage({ type: 'OPEN_AUTH_PAGE' }, (response) => {
     if (chrome.runtime.lastError) {
       console.error('[VideoReader] Ошибка отправки сообщения в background:', chrome.runtime.lastError);
     } else {
-      console.log('[VideoReader] Страница авторизации запрошена');
     }
   });
 }
@@ -262,12 +209,10 @@ async function updateAuthUI() {
         }
       }
     }
-    console.log('[VideoReader] Пользователь авторизован:', email, ', План:', plan);
   } else {
     // Пользователь не авторизован - показываем Sign In, скрываем Auth Info
     if (authSection) authSection.style.display = 'block';
     if (authInfo) authInfo.style.display = 'none';
-    console.log('[VideoReader] Пользователь не авторизован - показываем Sign In');
   }
 }
 
@@ -304,7 +249,6 @@ const realtimeHighlighter = {
 
     this.video = document.querySelector('video');
     if (!this.video) {
-      console.warn('Video element not found for realtime highlighting');
       return;
     }
 
@@ -312,7 +256,6 @@ const realtimeHighlighter = {
     this.currentIndex = -1;
     this.isActive = true;
 
-    console.log('🎬 Realtime highlighting started:', subtitles.length, 'segments');
 
     // Используем requestAnimationFrame для плавной синхронизации
     const updateLoop = () => {
@@ -345,7 +288,6 @@ const realtimeHighlighter = {
       el.classList.remove('active-subtitle');
     });
 
-    console.log('⏹️ Realtime highlighting stopped');
   },
 
   // Обновление подсветки текущей строки
@@ -728,18 +670,14 @@ async function injectPanel() {
     const langDropdown = document.getElementById('yt-reader-lang-dropdown');
     const signInBtn = document.getElementById('yt-reader-signin-btn');
 
-    console.log('🔍 ПРОВЕРКА КНОПОК:', {
       translateBtn: !!translateBtn,
       toggleBtn: !!toggleBtn,
       langBtn: !!langBtn
     });
 
     if (!translateBtn) {
-      console.error('❌ КНОПКА TRANSLATE НЕ НАЙДЕНА!');
     } else {
-      console.log('✅ Кнопка Translate найдена, привязываю обработчик...');
       translateBtn.addEventListener('click', handleGetTranscript);
-      console.log('✅ Обработчик привязан к кнопке Translate');
     }
 
     toggleBtn.addEventListener('click', handleTogglePanel);
@@ -748,7 +686,6 @@ async function injectPanel() {
     // Обработчик для кнопки Sign In
     if (signInBtn) {
       signInBtn.addEventListener('click', () => {
-        console.log('[VideoReader] Кнопка Sign In нажата');
         openAuthPage();
       });
     }
@@ -757,7 +694,6 @@ async function injectPanel() {
     const upgradeBtn = document.getElementById('yt-reader-upgrade-btn');
     if (upgradeBtn) {
       upgradeBtn.addEventListener('click', () => {
-        console.log('[VideoReader] Кнопка Upgrade нажата - открываем /pricing');
         window.open('http://localhost:5000/pricing', '_blank');
       });
     }
@@ -766,15 +702,12 @@ async function injectPanel() {
     const logoutBtn = document.getElementById('yt-reader-logout-btn');
     if (logoutBtn) {
       logoutBtn.addEventListener('click', async () => {
-        console.log('[VideoReader] Кнопка Log out нажата');
 
         // Удаляем токен и email из chrome.storage
         await chrome.storage.local.remove(['token', 'email', 'plan']);
-        console.log('[VideoReader] Токен и email удалены из storage');
 
         // Обновляем UI
         await updateAuthUI();
-        console.log('[VideoReader] Пользователь вышел из системы');
       });
     }
 
@@ -822,7 +755,6 @@ async function injectPanel() {
     // Обновляем UI авторизации на основе текущего состояния
     await updateAuthUI();
 
-    console.log('Панель транскрипта добавлена');
   } catch (error) {
     console.error('Ошибка при вставке панели:', error);
   }
@@ -916,7 +848,6 @@ function handleLanguageSelect(langCode) {
   langDropdown.classList.remove('show');
   langBtn.classList.remove('active');
 
-  console.log('Выбран язык:', selectedLang.name);
 }
 
 // ═══════════════════════════════════════════════════════════════════
@@ -992,7 +923,6 @@ function exportOriginalSubtitles(format) {
   const originalSubtitles = transcriptState.subtitles;
 
   if (!originalSubtitles || originalSubtitles.length === 0) {
-    console.error('No original subtitles available');
     return;
   }
 
@@ -1015,12 +945,10 @@ function exportOriginalSubtitles(format) {
       mimeType = 'text/plain;charset=utf-8';
       break;
     default:
-      console.error('Unknown format:', format);
       return;
   }
 
   downloadFile(content, filename, mimeType);
-  console.log(`Экспортировано оригинальных субтитров: ${filename}`);
 }
 
 // Экспорт переведённых субтитров (Premium-only)
@@ -1032,7 +960,6 @@ function exportTranslatedSubtitles(format) {
   const translatedSubtitles = collectTranslatedSubtitles();
 
   if (!translatedSubtitles || translatedSubtitles.length === 0) {
-    console.error('No translated subtitles found in DOM');
     return;
   }
 
@@ -1055,12 +982,10 @@ function exportTranslatedSubtitles(format) {
       mimeType = 'text/plain;charset=utf-8';
       break;
     default:
-      console.error('Unknown format:', format);
       return;
   }
 
   downloadFile(content, filename, mimeType);
-  console.log(`Экспортировано переведённых субтитров: ${filename}`);
 }
 
 // Обработчик выбора формата экспорта
@@ -1079,8 +1004,6 @@ function handleExportFormat(format, type) {
     exportOriginalSubtitles(format);
   } else if (type === 'translated') {
     exportTranslatedSubtitles(format);
-  } else {
-    console.error('Unknown export type:', type);
   }
 }
 
@@ -1214,14 +1137,12 @@ function removeUpgradeButtons() {
   const marker = document.querySelector('.yt-reader-limit-marker');
   if (marker) {
     marker.remove();
-    console.log('[removeUpgradeButtons] Удален маркер лимита');
   }
 
   // Удаляем большую кнопку внизу
   const upgradeBtn = document.querySelector('.yt-transcript-upgrade-cta');
   if (upgradeBtn) {
     upgradeBtn.remove();
-    console.log('[removeUpgradeButtons] Удалена кнопка Upgrade');
   }
 }
 
@@ -1240,21 +1161,16 @@ function findLastTranslatedIndex() {
     }
   });
 
-  console.log('[findLastTranslatedIndex] Последняя переведенная строка:', lastIndex);
   return lastIndex;
 }
 
 // Обработчик нажатия кнопки получения транскрипта
 async function handleGetTranscript() {
-  console.log('🔥🔥🔥 handleGetTranscript ВЫЗВАН!');
 
   const btn = document.getElementById('yt-reader-translate-btn');
   const content = document.getElementById('yt-transcript-content');
   const videoId = getVideoId();
 
-  console.log('🔥 btn:', btn);
-  console.log('🔥 content:', content);
-  console.log('🔥 videoId:', videoId);
 
   if (!videoId) {
     content.innerHTML = `
@@ -1267,24 +1183,20 @@ async function handleGetTranscript() {
 
   // Проверяем состояние
   if (transcriptState.isProcessing) {
-    console.log('Обработка уже идет');
     return;
   }
 
   // Проверяем план пользователя
   const userPlan = await getUserPlan();
-  console.log(`[handleGetTranscript] План пользователя: ${userPlan}`);
 
   // Если видео уже обработано
   if (transcriptState.isProcessed && transcriptState.videoId === videoId) {
     // Для Premium/Pro - проверяем, есть ли непереведенные строки
     if (userPlan === 'Premium' || userPlan === 'Pro') {
       const lastTranslatedIndex = findLastTranslatedIndex();
-      console.log(`[handleGetTranscript] Видео частично переведено до строки ${lastTranslatedIndex}`);
 
       // Если есть непереведенные строки - продолжаем перевод
       if (lastTranslatedIndex >= 0) {
-        console.log(`[handleGetTranscript] Premium/Pro: Продолжаем перевод с строки ${lastTranslatedIndex + 1}`);
 
         // Удаляем кнопки Upgrade
         removeUpgradeButtons();
@@ -1305,7 +1217,6 @@ async function handleGetTranscript() {
     }
 
     // Для Free или если все уже переведено - выходим
-    console.log('Транскрипт уже обработан для этого видео');
     return;
   }
 
@@ -1371,16 +1282,13 @@ async function handleGetTranscript() {
     displayTranscript(subtitles);
     await updateExportButtonState(); // Пока перевод идёт - экспорт заблокирован
 
-    console.log('🔥🔥🔥 ПЕРЕД translateSubtitles, subtitles.length:', subtitles.length);
 
     // Отправляем на сервер для перевода
     btn.classList.add('translating');
     btn.classList.remove('loading');
     btn.textContent = 'AI is translating...';
 
-    console.log('🔥🔥🔥 ВЫЗЫВАЕМ translateSubtitles...');
     await translateSubtitles(videoId, subtitles);
-    console.log('🔥🔥🔥 translateSubtitles ЗАВЕРШЁН!');
 
     transcriptState.isProcessed = true;
 
@@ -1437,9 +1345,7 @@ async function translateSubtitles(videoId, subtitles, startIndex = 0) {
   const totalLines = subtitles.length;
 
   if (startIndex > 0) {
-    console.log(`Продолжаем перевод на ${selectedLang} с строки ${startIndex}... Всего строк: ${totalLines}`);
   } else {
-    console.log(`Начинаем перевод на ${selectedLang}... Всего строк: ${totalLines}`);
   }
 
   // Получаем токен для отправки на сервер
@@ -1451,7 +1357,6 @@ async function translateSubtitles(videoId, subtitles, startIndex = 0) {
 
   // Определяем размер контекста по плану
   const contextSize = userPlan === 'Premium' ? 10 : (userPlan === 'Pro' ? 5 : 2);
-  console.log(`План: ${userPlan}, размер контекста: ${contextSize} строк`);
 
   try {
     // Переводим каждую строку по очереди (начиная с startIndex)
@@ -1459,7 +1364,6 @@ async function translateSubtitles(videoId, subtitles, startIndex = 0) {
       const subtitle = subtitles[i];
 
       try {
-        console.log(`→ TRANSLATE i=${i}, subtitle:`, subtitle, `text type: ${typeof subtitle.text}`, `videoId: ${videoId}`, `lang: ${selectedLang}`);
 
         const requestBody = {
           videoId: videoId,
@@ -1484,7 +1388,6 @@ async function translateSubtitles(videoId, subtitles, startIndex = 0) {
         });
 
         // DEBUG-ЛОГИРОВАНИЕ (как просил пользователь)
-        console.log('[DEBUG TRANSLATE]', {
           lineNumber: data.lineNumber,
           len: data.text ? data.text.length : 0,
           text: data.text,
@@ -1493,7 +1396,6 @@ async function translateSubtitles(videoId, subtitles, startIndex = 0) {
           plan: data.plan
         });
 
-        console.log(`→ RESPONSE i=${i}, data:`, data);
 
         if (data.error) {
           console.error(`❌ Ошибка перевода строки ${i}: ${data.error}`);
@@ -1504,15 +1406,12 @@ async function translateSubtitles(videoId, subtitles, startIndex = 0) {
         // ═══════════════════════════════════════════════════════════════════
         // ОБРАБОТКА STOP - остановка перевода при достижении лимита Free
         // ═══════════════════════════════════════════════════════════════════
-        console.log(`[DEBUG STOP CHECK] i=${i}, data.stop=${data.stop}, type=${typeof data.stop}`);
 
         if (data.stop === true) {
-          console.log(`🛑 FREE LIMIT REACHED на строке ${i}. Останавливаем перевод.`);
 
           // Добавляем визуальный маркер сразу после последней переведенной строки
           const lastTranslatedIndex = i - 1; // Предыдущая строка была последней переведенной
           const lastItem = document.querySelector(`[data-index="${lastTranslatedIndex}"]`);
-          console.log(`[DEBUG] Последняя переведенная строка: ${lastTranslatedIndex}`, lastItem);
 
           if (lastItem) {
             // Добавляем яркий маркер сразу после последней переведенной строки
@@ -1545,17 +1444,14 @@ async function translateSubtitles(videoId, subtitles, startIndex = 0) {
 
             // Добавляем клик - открываем /pricing
             marker.addEventListener('click', () => {
-              console.log('[VideoReader] Маркер Upgrade нажат - открываем /pricing');
               window.open('http://localhost:5000/pricing', '_blank');
             });
 
             lastItem.insertAdjacentElement('afterend', marker);
-            console.log('[DEBUG] ✅ Визуальный маркер (кликабельный) добавлен после строки', lastTranslatedIndex);
           }
 
           // Показываем CTA для Upgrade
           const content = document.getElementById('yt-transcript-content');
-          console.log(`[DEBUG] yt-transcript-content found:`, content);
           if (content) {
             const upgradeMessage = document.createElement('div');
             upgradeMessage.className = 'yt-transcript-upgrade-cta';
@@ -1591,38 +1487,25 @@ async function translateSubtitles(videoId, subtitles, startIndex = 0) {
               </div>
             `;
             content.appendChild(upgradeMessage);
-            console.log('[DEBUG] ✅ Кнопка Upgrade ДОБАВЛЕНА в DOM!', upgradeMessage);
-            console.log('[DEBUG] Содержимое content после добавления:', content.innerHTML);
 
             // Обработчик для кнопки Upgrade в CTA
             const upgradeCtaBtn = document.getElementById('yt-reader-upgrade-cta-btn');
-            console.log('[DEBUG] upgradeCtaBtn найден:', upgradeCtaBtn);
             if (upgradeCtaBtn) {
               upgradeCtaBtn.addEventListener('click', () => {
-                console.log('[VideoReader] CTA Upgrade нажата - открываем /pricing');
                 window.open('http://localhost:5000/pricing', '_blank');
               });
-              console.log('[DEBUG] ✅ Event listener добавлен на кнопку Upgrade');
-            } else {
-              console.error('[DEBUG] ❌ upgradeCtaBtn НЕ НАЙДЕН после appendChild!');
             }
-          } else {
-            console.error('[DEBUG] ❌ yt-transcript-content НЕ НАЙДЕН! Кнопка Upgrade не может быть добавлена.');
           }
 
           // ОСТАНАВЛИВАЕМ цикл перевода
-          console.log('[DEBUG] Выполняем break для остановки цикла');
           break;
         }
 
-        console.log(`→ RESPONSE i=${i}, cached: ${data.cached}`);
         const translatedText = data.text;
 
         // Логируем статус
         if (data.cached) {
-          console.log(`[${i}] Cache: ${translatedText}`);
         } else {
-          console.log(`[${i}] Translated: ${translatedText}`);
         }
 
         // Немедленно обновляем UI для этой строки ПОЛНЫМ текстом (без обрезки)
@@ -1644,7 +1527,6 @@ async function translateSubtitles(videoId, subtitles, startIndex = 0) {
       }
     }
 
-    console.log(`Перевод завершен: ${subtitles.length} строк на ${selectedLang}`);
 
   } catch (error) {
     console.error('Общая ошибка при переводе:', error);
@@ -1669,7 +1551,6 @@ function updateSingleLine(index, translatedText) {
 
 // Получение транскрипта
 async function getTranscript() {
-  console.log('Получаем транскрипт...');
 
   // Ищем кнопку "Show transcript"
   const transcriptButton = await findTranscriptButton();
@@ -1697,14 +1578,12 @@ async function getTranscript() {
 
       // Открываем панель
       transcriptButton.click();
-      console.log('Открыли панель транскрипта');
       isOpen = true;
 
       // Ждем появления элементов
       try {
         await waitForElement('ytd-transcript-segment-renderer', 5000);
       } catch (e) {
-        console.log('Ожидание элементов транскрипта истекло');
       }
 
       // Дополнительная задержка для полной загрузки
@@ -1716,11 +1595,9 @@ async function getTranscript() {
 
     // Ищем элементы транскрипта
     const transcriptItems = document.querySelectorAll('ytd-transcript-segment-renderer');
-    console.log('Найдено элементов транскрипта:', transcriptItems.length);
 
     // Если элементы не найдены и есть попытки retry
     if (transcriptItems.length === 0 && retryCount < maxRetries) {
-      console.log(`Retry ${retryCount + 1}/${maxRetries}: элементы не найдены, пробуем снова`);
       return getTranscriptItems(retryCount + 1);
     }
 
@@ -1745,7 +1622,6 @@ async function getTranscript() {
 
       // ОТЛАДКА: логируем первые 5 строк
       if (index < 5) {
-        console.log(`[DEBUG] subtitle[${index}]:`, {time: timeText, text: text.substring(0, 100)});
       }
 
       // Извлекаем точное время start в секундах из атрибута
@@ -1779,10 +1655,8 @@ async function getTranscript() {
   // Закрываем панель транскрипта если мы её открывали
   if (isOpen) {
     transcriptButton.click();
-    console.log('Закрыли панель транскрипта');
   }
 
-  console.log('Получено субтитров:', subtitles.length);
   return subtitles;
 }
 
@@ -1809,7 +1683,6 @@ async function findTranscriptButton() {
   for (const selector of selectors) {
     const btn = document.querySelector(selector);
     if (btn) {
-      console.log('Найдена кнопка транскрипта');
       return btn;
     }
   }

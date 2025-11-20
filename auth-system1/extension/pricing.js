@@ -1,5 +1,4 @@
 // Pricing page logic - работа через cookies (credentials: include)
-console.log('[Pricing] Скрипт загружен');
 
 // Текущий план пользователя
 let currentPlan = 'Free';
@@ -7,7 +6,6 @@ let currentEmail = '';
 
 // Загрузка информации о пользователе через cookies
 async function loadUserInfo() {
-  console.log('[Pricing] Загрузка информации о пользователе через cookies...');
 
   const userInfoEl = document.getElementById('user-info');
   const authPromptEl = document.getElementById('auth-prompt');
@@ -28,7 +26,6 @@ async function loadUserInfo() {
       const data = await response.json();
       currentPlan = data.plan || 'Free';
       currentEmail = data.email || '';
-      console.log('[Pricing] ✅ Текущий план:', currentPlan, 'Email:', currentEmail);
 
       // Показываем user info
       if (userInfoEl) userInfoEl.style.display = 'flex';
@@ -53,7 +50,6 @@ async function loadUserInfo() {
       // Обновляем кнопки тарифов
       updateButtons(currentPlan);
     } else {
-      console.log('[Pricing] ❌ Ошибка получения плана, статус:', response.status);
       // Если cookie нет или невалидна - показываем кнопку Sign In
       if (authPromptEl) authPromptEl.style.display = 'flex';
       if (userInfoEl) userInfoEl.style.display = 'none';
@@ -70,7 +66,6 @@ async function loadUserInfo() {
 
 // Обновление кнопок тарифов в зависимости от текущего плана
 function updateButtons(plan) {
-  console.log('[Pricing] Обновление кнопок для плана:', plan);
 
   const btnFree = document.getElementById('btn-free');
   const btnPro = document.getElementById('btn-pro');
@@ -121,7 +116,6 @@ function updateButtons(plan) {
 
 // Переключение плана через cookie
 async function switchPlan(newPlan) {
-  console.log('[Pricing] Переключение на план:', newPlan);
 
   try {
     const response = await fetch(`http://localhost:5000/switch-plan/${newPlan}`, {
@@ -134,7 +128,6 @@ async function switchPlan(newPlan) {
 
     if (response.ok) {
       const data = await response.json();
-      console.log('[Pricing] ✅ План обновлен:', data);
 
       // Обновляем текущий план и UI
       currentPlan = newPlan;
@@ -168,14 +161,11 @@ async function switchPlan(newPlan) {
             email: currentEmail
           }, (response) => {
             if (chrome.runtime.lastError) {
-              console.log('[Pricing] Chrome runtime недоступен (это нормально для обычного браузера)');
             } else {
-              console.log('[Pricing] ✅ Сообщение PLAN_UPDATED отправлено в расширение');
             }
           });
         }
       } catch (e) {
-        console.log('[Pricing] Расширение недоступно (это нормально для обычного браузера)');
       }
     } else {
       console.error('[Pricing] ❌ Ошибка обновления плана, статус:', response.status);
@@ -228,7 +218,6 @@ function showNotification(message, type = 'info') {
 
 // Logout - удаление cookie и обновление UI
 async function logout() {
-  console.log('[Pricing] Logout - удаление cookie...');
 
   try {
     // Пытаемся вызвать серверный logout (если маршрут существует)
@@ -237,7 +226,6 @@ async function logout() {
       credentials: 'include'
     }).catch(() => {
       // Если маршрута нет - ничего страшного, cookie удалятся на клиенте
-      console.log('[Pricing] Маршрут /auth-site/logout не найден, продолжаем');
     });
 
     // Обнуляем текущие данные
@@ -253,7 +241,6 @@ async function logout() {
 
     showNotification('✅ Вы вышли из системы', 'success');
 
-    console.log('[Pricing] ✅ Logout успешен');
   } catch (error) {
     console.error('[Pricing] ❌ Ошибка logout:', error);
     showNotification('❌ Ошибка выхода из системы', 'error');
@@ -262,23 +249,19 @@ async function logout() {
 
 // Инициализация при загрузке страницы
 document.addEventListener('DOMContentLoaded', function() {
-  console.log('[Pricing] DOM загружен - инициализация...');
   loadUserInfo();
 
   // Привязываем обработчик Logout
   const logoutBtn = document.getElementById('logout-btn');
   if (logoutBtn) {
     logoutBtn.addEventListener('click', logout);
-    console.log('[Pricing] Обработчик Logout привязан');
   }
 });
 
 // Обработчик сообщений от popup OAuth
 window.addEventListener('message', function(event) {
-  console.log('[Pricing] Получено сообщение:', event.data);
 
   if (event.data && event.data.type === 'SITE_AUTH_SUCCESS') {
-    console.log('[Pricing] ✅ SITE_AUTH_SUCCESS - обновление информации о пользователе');
     loadUserInfo();
   }
 });
