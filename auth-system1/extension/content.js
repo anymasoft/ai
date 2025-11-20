@@ -670,11 +670,6 @@ async function injectPanel() {
     const langDropdown = document.getElementById('yt-reader-lang-dropdown');
     const signInBtn = document.getElementById('yt-reader-signin-btn');
 
-      translateBtn: !!translateBtn,
-      toggleBtn: !!toggleBtn,
-      langBtn: !!langBtn
-    });
-
     if (!translateBtn) {
     } else {
       translateBtn.addEventListener('click', handleGetTranscript);
@@ -1385,15 +1380,6 @@ async function translateSubtitles(videoId, subtitles, startIndex = 0) {
           lang: requestBody.lang,
           totalLines: requestBody.totalLines,
           token: requestBody.token
-        });
-
-        // DEBUG-ЛОГИРОВАНИЕ (как просил пользователь)
-          lineNumber: data.lineNumber,
-          len: data.text ? data.text.length : 0,
-          text: data.text,
-          limited: data.limited,
-          stop: data.stop,
-          plan: data.plan
         });
 
 
