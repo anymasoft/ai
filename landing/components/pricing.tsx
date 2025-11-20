@@ -6,10 +6,10 @@ export default function Pricing() {
           {/* Section header */}
           <div className="mx-auto max-w-3xl pb-12 text-center md:pb-20">
             <h2 className="mb-4 text-3xl font-bold md:text-4xl">
-              Choose the plan that works for you
+              Simple, transparent pricing
             </h2>
             <p className="text-lg text-gray-700">
-              Start for free and upgrade as you grow. All plans include core features.
+              Start free. Upgrade anytime. Cancel anytime.
             </p>
           </div>
 
@@ -23,7 +23,7 @@ export default function Pricing() {
                   <span className="text-3xl font-bold">$0</span>
                 </div>
                 <div className="mb-5 text-sm text-gray-700">
-                  Perfect for trying out Video Reader AI
+                  Try it out, no strings attached
                 </div>
                 <a
                   className="btn group mb-4 w-full bg-white text-gray-800 shadow-sm hover:bg-gray-50"
@@ -101,7 +101,7 @@ export default function Pricing() {
                   <span className="text-gray-500">/month</span>
                 </div>
                 <div className="mb-5 text-sm text-gray-500">
-                  For regular users who watch foreign content
+                  For serious learners and content consumers
                 </div>
                 <a
                   className="btn group mb-4 w-full bg-linear-to-t from-blue-600 to-blue-500 bg-[length:100%_100%] bg-[bottom] text-white shadow-sm hover:bg-[length:100%_150%]"
@@ -174,7 +174,7 @@ export default function Pricing() {
                   <span className="text-gray-700">/month</span>
                 </div>
                 <div className="mb-5 text-sm text-gray-700">
-                  For professionals and content creators
+                  For creators and power users
                 </div>
                 <a
                   className="btn group mb-4 w-full bg-white text-gray-800 shadow-sm hover:bg-gray-50"
