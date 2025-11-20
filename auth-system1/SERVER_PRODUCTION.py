@@ -559,6 +559,34 @@ def api_update_plan():
     else:
         return jsonify({"error": "update_failed"}), 500
 
+@app.route('/api/feedback', methods=['POST', 'OPTIONS'])
+def api_feedback():
+    """API для приема обратной связи от пользователей"""
+    if request.method == 'OPTIONS':
+        return '', 200
+
+    data = request.json
+    email = data.get('email')
+    message = data.get('message')
+
+    if not email or not message:
+        return jsonify({"error": "missing_fields"}), 400
+
+    # Сохраняем feedback в файл (можно позже добавить БД)
+    try:
+        with open(os.path.join(BASE_DIR, 'feedback.txt'), 'a', encoding='utf-8') as f:
+            timestamp = datetime.now().isoformat()
+            f.write(f"\n{'='*80}\n")
+            f.write(f"Timestamp: {timestamp}\n")
+            f.write(f"Email: {email}\n")
+            f.write(f"Message:\n{message}\n")
+            f.write(f"{'='*80}\n")
+
+        return jsonify({"status": "ok", "message": "Feedback received"})
+    except Exception as e:
+        print(f"Ошибка сохранения feedback: {e}")
+        return jsonify({"error": "server_error"}), 500
+
 @app.route('/checkout/pro')
 def checkout_pro():
     return send_from_directory(EXTENSION_DIR, 'checkout_pro.html')

@@ -247,6 +247,58 @@ async function logout() {
   }
 }
 
+// Обработчик формы обратной связи
+async function handleFeedbackSubmit(event) {
+  event.preventDefault();
+
+  const form = event.target;
+  const email = form.querySelector('#feedback-email').value;
+  const message = form.querySelector('#feedback-message').value;
+  const submitBtn = form.querySelector('#feedback-submit-btn');
+  const statusDiv = form.querySelector('#feedback-status');
+
+  // Блокируем кнопку
+  submitBtn.disabled = true;
+  submitBtn.textContent = 'Sending...';
+  statusDiv.classList.add('hidden');
+
+  try {
+    const response = await fetch('http://localhost:5000/api/feedback', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ email, message })
+    });
+
+    const data = await response.json();
+
+    if (response.ok) {
+      // Успех
+      statusDiv.textContent = '✅ Thank you! Your feedback has been received.';
+      statusDiv.className = 'text-center text-sm font-medium text-green-600';
+      statusDiv.classList.remove('hidden');
+
+      // Очищаем форму
+      form.reset();
+    } else {
+      // Ошибка от сервера
+      statusDiv.textContent = `❌ Error: ${data.error || 'Failed to send feedback'}`;
+      statusDiv.className = 'text-center text-sm font-medium text-red-600';
+      statusDiv.classList.remove('hidden');
+    }
+  } catch (error) {
+    console.error('[Pricing] ❌ Ошибка отправки feedback:', error);
+    statusDiv.textContent = '❌ Network error. Please try again.';
+    statusDiv.className = 'text-center text-sm font-medium text-red-600';
+    statusDiv.classList.remove('hidden');
+  } finally {
+    // Разблокируем кнопку
+    submitBtn.disabled = false;
+    submitBtn.textContent = 'Send Feedback';
+  }
+}
+
 // Инициализация при загрузке страницы
 document.addEventListener('DOMContentLoaded', function() {
   loadUserInfo();
@@ -255,6 +307,12 @@ document.addEventListener('DOMContentLoaded', function() {
   const logoutBtn = document.getElementById('logout-btn');
   if (logoutBtn) {
     logoutBtn.addEventListener('click', logout);
+  }
+
+  // Привязываем обработчик формы обратной связи
+  const feedbackForm = document.getElementById('feedback-form');
+  if (feedbackForm) {
+    feedbackForm.addEventListener('submit', handleFeedbackSubmit);
   }
 });
 
