@@ -429,6 +429,60 @@ html[dark] .yt-reader-signin-btn:hover {
   letter-spacing: 0.01em;
 }
 
+/* Export Section Title */
+.yt-reader-export-section-title {
+  padding: 6px 12px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  color: var(--yt-spec-text-secondary);
+  letter-spacing: 0.04em;
+  opacity: 0.7;
+}
+
+/* Export Section Divider */
+.yt-reader-export-divider {
+  height: 1px;
+  background: var(--yt-reader-border);
+  margin: 4px 0;
+}
+
+/* Locked (Premium-only) export option */
+.yt-reader-export-option.locked {
+  opacity: 0.4;
+  cursor: not-allowed;
+  position: relative;
+}
+
+.yt-reader-export-option.locked:hover {
+  background: transparent;
+}
+
+/* Tooltip for locked options */
+.yt-reader-export-option.locked::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  top: 50%;
+  left: calc(100% + 8px);
+  transform: translateY(-50%);
+  background: var(--yt-spec-text-primary);
+  color: var(--yt-spec-base-background);
+  padding: 6px 10px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 500;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 150ms;
+  z-index: 100000;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+.yt-reader-export-option.locked:hover::after {
+  opacity: 1;
+}
+
 #yt-transcript-toggle-btn {
   background: transparent;
   border: none;
