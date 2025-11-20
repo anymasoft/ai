@@ -152,7 +152,7 @@ async function switchPlan(newPlan) {
       updateButtons(newPlan);
 
       // Показываем уведомление
-      showNotification(`✅ План успешно изменен на ${newPlan}!`, 'success');
+      showNotification(`Plan successfully changed to ${newPlan}`, 'success');
 
       // HOT RELOAD: Отправляем сообщение расширению об обновлении плана
       // Это позволит расширению обновить UI без перезагрузки страницы YouTube
@@ -174,49 +174,54 @@ async function switchPlan(newPlan) {
       console.error('[Pricing] ❌ Ошибка обновления плана, статус:', response.status);
 
       if (response.status === 401) {
-        showNotification('❌ Требуется авторизация. Войдите в систему.', 'error');
+        showNotification('Authorization required. Please sign in.', 'error');
         // Показываем кнопку Sign In
         document.getElementById('auth-prompt').style.display = 'flex';
         document.getElementById('user-info').style.display = 'none';
       } else {
-        showNotification('❌ Ошибка обновления плана. Попробуйте позже.', 'error');
+        showNotification('Failed to update plan. Please try again later.', 'error');
       }
     }
   } catch (error) {
     console.error('[Pricing] ❌ Ошибка запроса обновления плана:', error);
-    showNotification('❌ Ошибка соединения с сервером.', 'error');
+    showNotification('Server connection error', 'error');
   }
 }
 
-// Показ уведомления
+// Показ уведомления (премиальные бледные toasts)
 function showNotification(message, type = 'info') {
   // Создаем элемент уведомления
   const notification = document.createElement('div');
-  notification.className = `fixed top-4 right-4 px-6 py-4 rounded-lg shadow-lg text-white font-medium z-50 transition-all transform translate-x-0`;
+  notification.className = `fixed top-4 right-4 px-6 py-4 rounded-lg shadow-lg font-medium z-50 transition-all duration-300 ease-in-out opacity-0 translate-x-full`;
 
   if (type === 'success') {
-    notification.className += ' bg-green-600';
+    // Премиальный бледно-зеленый
+    notification.className += ' bg-green-50 text-green-800 border border-green-200';
   } else if (type === 'error') {
-    notification.className += ' bg-red-600';
+    // Премиальный бледно-розовый
+    notification.className += ' bg-rose-50 text-rose-800 border border-rose-200';
   } else {
-    notification.className += ' bg-blue-600';
+    notification.className += ' bg-blue-50 text-blue-800 border border-blue-200';
   }
 
   notification.textContent = message;
   document.body.appendChild(notification);
 
-  // Анимация появления
-  setTimeout(() => {
-    notification.style.transform = 'translateX(0)';
-  }, 10);
+  // Анимация появления (плавно)
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      notification.classList.remove('opacity-0', 'translate-x-full');
+      notification.classList.add('opacity-100', 'translate-x-0');
+    });
+  });
 
-  // Удаляем через 3 секунды
+  // Удаляем через 4 секунды (плавное исчезание)
   setTimeout(() => {
-    notification.style.transform = 'translateX(400px)';
+    notification.classList.add('opacity-0', 'translate-x-full');
     setTimeout(() => {
       notification.remove();
     }, 300);
-  }, 3000);
+  }, 4000);
 }
 
 // Logout - удаление cookie и обновление UI
@@ -245,11 +250,11 @@ async function logout() {
     // Очищаем форму feedback
     updateFeedbackForm();
 
-    showNotification('✅ Вы вышли из системы', 'success');
+    showNotification('You have been logged out', 'success');
 
   } catch (error) {
     console.error('[Pricing] ❌ Ошибка logout:', error);
-    showNotification('❌ Ошибка выхода из системы', 'error');
+    showNotification('Logout error', 'error');
   }
 }
 
@@ -280,12 +285,10 @@ async function handleFeedbackSubmit(event) {
   const email = form.querySelector('#feedback-email').value;
   const message = form.querySelector('#feedback-message').value;
   const submitBtn = form.querySelector('#feedback-submit-btn');
-  const statusDiv = form.querySelector('#feedback-status');
 
   // Блокируем кнопку
   submitBtn.disabled = true;
   submitBtn.textContent = 'Sending...';
-  statusDiv.classList.add('hidden');
 
   try {
     const response = await fetch('http://localhost:5000/api/feedback', {
@@ -296,27 +299,21 @@ async function handleFeedbackSubmit(event) {
       body: JSON.stringify({ email, message })
     });
 
-    const data = await response.json();
-
     if (response.ok) {
-      // Успех
-      statusDiv.textContent = '✅ Thank you! Your feedback has been received.';
-      statusDiv.className = 'text-center text-sm font-medium text-green-600';
-      statusDiv.classList.remove('hidden');
+      // Успех - показываем премиальный toast
+      showNotification('Thank you for your feedback!', 'success');
 
-      // Очищаем форму
+      // Очищаем форму и восстанавливаем email если пользователь авторизован
       form.reset();
+      updateFeedbackForm();
     } else {
       // Ошибка от сервера
-      statusDiv.textContent = `❌ Error: ${data.error || 'Failed to send feedback'}`;
-      statusDiv.className = 'text-center text-sm font-medium text-red-600';
-      statusDiv.classList.remove('hidden');
+      const data = await response.json();
+      showNotification(`Error: ${data.error || 'Failed to send feedback'}`, 'error');
     }
   } catch (error) {
     console.error('[Pricing] ❌ Ошибка отправки feedback:', error);
-    statusDiv.textContent = '❌ Network error. Please try again.';
-    statusDiv.className = 'text-center text-sm font-medium text-red-600';
-    statusDiv.classList.remove('hidden');
+    showNotification('Network error. Please try again.', 'error');
   } finally {
     // Разблокируем кнопку
     submitBtn.disabled = false;
