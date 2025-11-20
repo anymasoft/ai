@@ -125,20 +125,24 @@ def init_db():
         ON users(token)
     ''')
 
-    # Таблица feedback
+    # Таблица обратной связи (feedback)
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS feedback (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
+            email TEXT NOT NULL,
             message TEXT NOT NULL,
-            email TEXT,
-            created_at INTEGER DEFAULT (strftime('%s', 'now'))
+            plan TEXT DEFAULT 'Free',
+            timestamp INTEGER DEFAULT (strftime('%s', 'now'))
         )
+    ''')
+
+    cursor.execute('''
+        CREATE INDEX IF NOT EXISTS idx_feedback_email
+        ON feedback(email)
     ''')
 
     conn.commit()
     conn.close()
-
-    print("База данных инициализирована (translations.db + users.db + feedback)")
 
 # ═══════════════════════════════════════════════════════════════════
 # TOKEN AUTHENTICATION FUNCTIONS
@@ -161,7 +165,6 @@ def create_or_update_user(email, plan='Free'):
         existing_token = existing_user[0]
         existing_plan = existing_user[1]
         conn.close()
-        print(f"[TOKEN AUTH] Пользователь {email} уже существует, возвращаем существующий токен: {existing_token[:8]}..., план: {existing_plan}")
         return existing_token
     else:
         # Пользователь новый - создаем новый токен
@@ -175,7 +178,6 @@ def create_or_update_user(email, plan='Free'):
         conn.commit()
         conn.close()
 
-        print(f"[TOKEN AUTH] Создан новый пользователь {email}, токен: {token[:8]}..., план: {plan}")
         return token
 
 def get_user_by_token(token):
@@ -211,8 +213,6 @@ def update_user_plan(email, plan):
     affected = cursor.rowcount
     conn.close()
 
-    if affected > 0:
-        print(f"[TOKEN AUTH] Обновлён план для {email}: {plan}")
     return affected > 0
 
 # ═══════════════════════════════════════════════════════════════════
@@ -347,44 +347,92 @@ def translate_line():
     if request.method == 'OPTIONS':
         return '', 200
 
-    print(f"[TRANSLATE] /translate-line called, method={request.method}, data={request.json}")
     data = request.json
     video_id = data.get('videoId')
     line_number = data.get('lineNumber')
     text = data.get('text')
     prev_context = data.get('prevContext', [])
     lang = data.get('lang', 'ru')
+    total_lines = data.get('totalLines', 0)  # Общее количество строк
 
     if video_id is None or line_number is None or not text:
         return jsonify({'error': 'Missing videoId, lineNumber or text'}), 400
+
+    # ═══════════════════════════════════════════════════════════════════
+    # PLAN DETECTION & LIMITS - определяем план и лимиты
+    # ═══════════════════════════════════════════════════════════════════
+
+    # Пытаемся получить токен из Authorization header
+    user_plan = 'Free'
+    user_email = None
+
+    auth_header = request.headers.get('Authorization')
+    if auth_header and auth_header.startswith('Bearer '):
+        token = auth_header.split(' ')[1]
+        user = get_user_by_token(token)
+        if user:
+            user_plan = user['plan']
+            user_email = user['email']
+
+    # Вычисляем лимит для Free плана (30% строк)
+    max_free_line = -1
+    if total_lines > 0:
+        max_free_line = int(total_lines * 0.3) - 1  # 30% строк (индексация с 0)
+
+    # ПОДРОБНОЕ ЛОГИРОВАНИЕ ЛИМИТОВ
+    current_progress = line_number + 1  # +1 т.к. индексация с 0
+    percent_done = (current_progress / total_lines * 100) if total_lines > 0 else 0
+
+    # Проверяем лимит для Free плана
+    if user_plan == 'Free' and total_lines > 0 and line_number > max_free_line:
+        return jsonify({
+            'videoId': video_id,
+            'lineNumber': line_number,
+            'text': '',
+            'cached': False,
+            'limited': True,
+            'export_allowed': False,
+            'plan': user_plan,
+            'stop': True  # Сигнал клиенту остановить перевод
+        })
+
+    # ═══════════════════════════════════════════════════════════════════
+    # TRANSLATION - переводим строку (ПОЛНОСТЬЮ, без обрезки)
+    # ═══════════════════════════════════════════════════════════════════
 
     # Проверяем кеш
     cached_translation = check_line_cache(video_id, line_number, lang)
 
     if cached_translation:
-        print(f"[Cache HIT] Video {video_id}, line {line_number}")
         return jsonify({
             'videoId'   : video_id,
             'lineNumber': line_number,
             'text'      : cached_translation,
-            'cached'    : True
+            'cached'    : True,
+            'limited'   : user_plan == 'Free',
+            'export_allowed': user_plan in ['Pro', 'Premium'],
+            'plan'      : user_plan,
+            'stop'      : False
         })
 
     # Переводим через GPT
-    print(f"[Translating] Video {video_id}, line {line_number}")
     translated_text = translate_line_with_gpt(text, prev_context, lang)
 
     if not translated_text:
         return jsonify({'error': 'Translation failed'}), 500
 
-    # Сохраняем в кеш
+    # Сохраняем в кеш ПОЛНЫЙ перевод (без обрезки)
     save_line_to_cache(video_id, line_number, text, translated_text, lang)
 
     return jsonify({
         'videoId'   : video_id,
         'lineNumber': line_number,
         'text'      : translated_text,
-        'cached'    : False
+        'cached'    : False,
+        'limited'   : user_plan == 'Free',
+        'export_allowed': user_plan in ['Pro', 'Premium'],
+        'plan'      : user_plan,
+        'stop'      : False
     })
 
 @app.route('/api/plan', methods=['GET', 'OPTIONS'])
@@ -403,28 +451,23 @@ def api_plan():
     if auth_header and auth_header.startswith('Bearer '):
         token = auth_header.split(' ')[1]
         source = 'extension'
-        print(f"[API /api/plan] Токен из Authorization header: {token[:8]}...")
     # Если нет header, проверяем cookie (сайт)
     else:
         cookie_token = request.cookies.get('auth_token')
         if cookie_token:
             token = cookie_token
             source = 'website'
-            print(f"[API /api/plan] Токен из cookie: {token[:8]}...")
 
     # Если токен не найден ни в header, ни в cookie
     if not token:
-        print("[API /api/plan] Токен не найден ни в Authorization header, ни в cookie")
         return jsonify({"error": "unauthorized"}), 401
 
     # Проверяем токен в БД
     user = get_user_by_token(token)
 
     if not user:
-        print(f"[API /api/plan] Токен не найден в БД")
         return jsonify({"error": "unauthorized"}), 401
 
-    print(f"[API /api/plan] Токен валиден ({source}): {user['email']}, план: {user['plan']}")
     return jsonify({
         "status": "ok",
         "email" : user['email'],
@@ -595,7 +638,6 @@ def auth_site_callback():
         # Создаём или получаем токен для пользователя
         token = create_or_update_user(email, plan='Free')
 
-        print(f"[AUTH-SITE] ✅ Авторизация успешна: {email}, токен: {token[:8]}...")
 
         # HTML с postMessage для закрытия popup и обновления родительского окна
         html = """
@@ -627,7 +669,6 @@ def auth_site_callback():
 @app.route('/auth-site/logout')
 def auth_site_logout():
     """Logout для сайта - удаляет cookies и редирект на /pricing"""
-    print("[AUTH-SITE] 🚪 Logout - удаление cookies")
 
     # Создаём response с редиректом на /pricing
     resp = make_response(redirect('/pricing'))
@@ -707,16 +748,13 @@ def switch_plan(plan):
     token = request.cookies.get('auth_token')
 
     if not token:
-        print("[API /switch-plan] Токен не найден в cookies")
         return jsonify({"error": "unauthorized"}), 401
 
-    print(f"[API /switch-plan] Получен токен из cookie: {token[:8]}... → переключение на {plan}")
 
     # Проверяем токен и обновляем план
     user = get_user_by_token(token)
 
     if not user:
-        print(f"[API /switch-plan] Токен невалиден")
         return jsonify({"error": "unauthorized"}), 401
 
     # Обновляем план в БД
@@ -726,44 +764,12 @@ def switch_plan(plan):
     conn.commit()
     conn.close()
 
-    print(f"[API /switch-plan] ✅ План обновлен для {user['email']}: {user['plan']} → {plan}")
 
     return jsonify({
         "status": "ok",
         "plan": plan,
         "email": user['email']
     })
-
-@app.route('/feedback', methods=['POST', 'OPTIONS'])
-def feedback():
-    """Прием обратной связи от пользователей"""
-    if request.method == 'OPTIONS':
-        return '', 200
-
-    try:
-        data = request.json
-        message = data.get('message', '').strip()
-        email = data.get('email', '').strip()
-
-        if not message:
-            return jsonify({"error": "message_required"}), 400
-
-        # Сохраняем feedback в БД
-        conn = sqlite3.connect(USERS_DB)
-        cursor = conn.cursor()
-        cursor.execute(
-            'INSERT INTO feedback (message, email) VALUES (?, ?)',
-            (message, email if email else None)
-        )
-        conn.commit()
-        conn.close()
-
-        print(f"[API /feedback] ✅ Feedback сохранен от {email if email else 'anonymous'}")
-
-        return jsonify({"status": "ok"})
-    except Exception as e:
-        print(f"[API /feedback] ❌ Ошибка: {e}")
-        return jsonify({"error": "internal_error"}), 500
 
 @app.route('/api/update-plan', methods=['POST', 'OPTIONS'])
 def api_update_plan():
@@ -776,18 +782,15 @@ def api_update_plan():
     auth_header = request.headers.get('Authorization')
 
     if not auth_header or not auth_header.startswith('Bearer '):
-        print("[API /api/update-plan] Отсутствует или неверный Authorization header")
         return jsonify({"error": "unauthorized"}), 401
 
     # Извлекаем токен
     token = auth_header.split(' ')[1]
-    print(f"[API /api/update-plan] Получен токен: {token[:8]}...")
 
     # Проверяем токен в БД
     user = get_user_by_token(token)
 
     if not user:
-        print(f"[API /api/update-plan] Токен не найден в БД")
         return jsonify({"error": "unauthorized"}), 401
 
     # Читаем новый план из body
@@ -795,22 +798,51 @@ def api_update_plan():
     new_plan = data.get('plan')
 
     if not new_plan or new_plan not in ['Free', 'Pro', 'Premium']:
-        print(f"[API /api/update-plan] Неверный план: {new_plan}")
         return jsonify({"error": "invalid_plan"}), 400
 
     # Обновляем план в БД
     success = update_user_plan(user['email'], new_plan)
 
     if success:
-        print(f"[API /api/update-plan] ✅ План обновлен: {user['email']} -> {new_plan}")
         return jsonify({
             "status": "ok",
             "email": user['email'],
             "plan": new_plan
         })
     else:
-        print(f"[API /api/update-plan] ❌ Ошибка обновления плана")
         return jsonify({"error": "update_failed"}), 500
+
+@app.route('/api/feedback', methods=['POST', 'OPTIONS'])
+def api_feedback():
+    """API для приема обратной связи от пользователей"""
+    if request.method == 'OPTIONS':
+        return '', 200
+
+    data = request.json
+    email = data.get('email')
+    message = data.get('message')
+    plan = data.get('plan', 'Free')  # Получаем план из запроса, по умолчанию 'Free'
+
+    if not email or not message:
+        return jsonify({"error": "missing_fields"}), 400
+
+    # Сохраняем feedback в базу данных
+    try:
+        conn = sqlite3.connect(USERS_DB)
+        cursor = conn.cursor()
+
+        cursor.execute('''
+            INSERT INTO feedback (email, message, plan)
+            VALUES (?, ?, ?)
+        ''', (email, message, plan))
+
+        conn.commit()
+        conn.close()
+
+        return jsonify({"status": "ok", "message": "Feedback received"})
+    except Exception as e:
+        print(f"Ошибка сохранения feedback: {e}")
+        return jsonify({"error": "server_error"}), 500
 
 @app.route('/checkout/pro')
 def checkout_pro():
@@ -823,26 +855,5 @@ def checkout_premium():
     return send_from_directory(EXTENSION_DIR, 'checkout_premium.html')
 
 if __name__ == '__main__':
-    # Инициализируем БД при запуске
     init_db()
-
-    print("=" * 60)
-    print("YouTube Subtitle Translation Server (Token Auth)")
-    print("=" * 60)
-    print("Сервер запущен на http://localhost:5000")
-    print("Endpoints:")
-    print("  POST /translate-line      - перевод одной строки субтитров")
-    print("  GET  /api/plan            - получение плана по Bearer токену")
-    print("  POST /api/update-plan     - обновление плана пользователя")
-    print("  GET  /health              - проверка работоспособности")
-    print("  GET  /stats               - статистика кеша")
-    print("  GET  /auth/callback       - OAuth callback (генерация токена)")
-    print("  GET  /pricing             - страница тарифных планов")
-    print("  GET  /pricing.css         - CSS для страницы pricing")
-    print("  GET  /pricing.js          - JS для страницы pricing")
-    print("  GET  /checkout/pro        - страница оформления Pro подписки")
-    print("  GET  /checkout/premium    - страница оформления Premium подписки")
-    print("=" * 60)
-
-    # Запускаем сервер
     app.run(debug=True, host='0.0.0.0', port=5000)
