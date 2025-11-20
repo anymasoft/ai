@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Video Reader AI - Pricing</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="/pricing.css">
+  <style>
+    /* Premium SaaS Typography - Scoped to Pricing Page Only */
+    body {
+      font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      letter-spacing: -0.01em;
+    }
+
+    /* Main Heading */
+    .pricing-main-title {
+      font-size: 3.5rem;
+      font-weight: 700;
+      line-height: 1.1;
+      letter-spacing: -0.03em;
+    }
+
+    .pricing-subtitle {
+      font-size: 1.375rem;
+      line-height: 1.6;
+      letter-spacing: -0.01em;
+      font-weight: 400;
+    }
+
+    /* Plan Cards */
+    .plan-name {
+      font-size: 1.75rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+    }
+
+    .plan-price {
+      font-size: 3.75rem;
+      font-weight: 700;
+      line-height: 1;
+      letter-spacing: -0.04em;
+    }
+
+    .plan-period {
+      font-size: 1.125rem;
+      font-weight: 500;
+      letter-spacing: -0.01em;
+    }
+
+    .plan-feature {
+      font-size: 1rem;
+      line-height: 1.6;
+      letter-spacing: -0.01em;
+    }
+
+    .plan-description {
+      font-size: 0.9375rem;
+      line-height: 1.65;
+      letter-spacing: -0.01em;
+      color: #6b7280;
+    }
+
+    /* Buttons */
+    .plan-button {
+      font-size: 1rem;
+      font-weight: 600;
+      letter-spacing: -0.01em;
+      padding: 0.875rem 1.75rem;
+    }
+
+    /* FAQ */
+    .faq-title {
+      font-size: 2.5rem;
+      font-weight: 700;
+      letter-spacing: -0.03em;
+      line-height: 1.2;
+    }
+
+    .faq-question {
+      font-size: 1.125rem;
+      font-weight: 600;
+      letter-spacing: -0.01em;
+      line-height: 1.5;
+    }
+
+    .faq-answer {
+      font-size: 1rem;
+      line-height: 1.65;
+      letter-spacing: -0.01em;
+    }
+
+    /* Badge */
+    .popular-badge {
+      font-size: 0.8125rem;
+      font-weight: 600;
+      letter-spacing: 0.01em;
+    }
+
+    @media (max-width: 768px) {
+      .pricing-main-title {
+        font-size: 2.5rem;
+      }
+      .pricing-subtitle {
+        font-size: 1.125rem;
+      }
+      .plan-price {
+        font-size: 3rem;
+      }
+    }
+  </style>
+</head>
+<body class="bg-gray-50">
+
+<div class="min-h-screen flex flex-col">
+  <!-- Top Navbar -->
+  <header class="bg-white shadow-sm border-b">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+      <div class="flex justify-between items-center">
+        <div class="flex items-center gap-3">
+          <img src="/assets/logo.png" alt="Video Reader AI" class="w-10 h-10 rounded-lg">
+          <h1 class="text-xl font-bold text-gray-900">Video Reader AI</h1>
+        </div>
+        <!-- User Info (для авторизованных) -->
+        <div id="user-info" class="flex items-center gap-4" style="display: none;">
+          <span id="userEmail" class="text-sm font-medium text-gray-700"></span>
+          <span id="currentPlan" class="px-3 py-1 rounded-full text-xs font-semibold bg-blue-100 text-blue-800"></span>
+          <button id="logout-btn" class="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors">
+            Logout
+          </button>
+        </div>
+        <!-- Auth Prompt (для неавторизованных) -->
+        <div id="auth-prompt" class="flex items-center gap-4" style="display: none;">
+          <a href="#" onclick="const w=480,h=620,left=(screen.width-w)/2,top=(screen.height-h)/2; window.open('http://localhost:5000/auth-site','google_oauth',`width=${w},height=${h},left=${left},top=${top}`); return false;" class="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors">
+            Sign in with Google
+          </a>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Content -->
+  <main class="flex-1 py-16">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <!-- Header Section -->
+      <div class="text-center mb-16">
+        <h2 class="pricing-main-title text-gray-900 mb-5">
+          Save Hours on Translating YouTube Videos
+        </h2>
+        <p class="pricing-subtitle text-gray-600">
+          Choose the plan that fits your workflow.
+        </p>
+      </div>
+
+      <!-- Pricing Cards -->
+      <div class="grid lg:grid-cols-3 gap-8 mt-12">
+        <!-- Free Plan -->
+        <div class="bg-white rounded-2xl shadow-sm border-2 border-gray-200 p-8 flex flex-col transition-all hover:shadow-md">
+          <div class="mb-8">
+            <h3 class="plan-name text-gray-900 mb-3">Free</h3>
+            <div class="flex items-baseline">
+              <span class="plan-price text-gray-900">$0</span>
+              <span class="plan-period text-gray-500 ml-2">/month</span>
+            </div>
+          </div>
+          <ul class="flex-1 space-y-4 mb-8">
+            <li class="flex items-start">
+              <svg class="w-5 h-5 mr-3 text-blue-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+              </svg>
+              <span class="plan-feature text-gray-700">Translation: up to <strong>30%</strong> of subtitle text</span>
+            </li>
+            <li class="flex items-start">
+              <svg class="w-5 h-5 mr-3 text-blue-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+              </svg>
+              <span class="plan-feature text-gray-700">Export: <strong>not available</strong></span>
+            </li>
+            <li class="flex items-start">
+              <svg class="w-5 h-5 mr-3 text-blue-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+              </svg>
+              <span class="plan-feature text-gray-700">Translation quality: <strong>basic</strong></span>
+            </li>
+          </ul>
+          <div class="mb-8">
+            <p class="plan-description">
+              Get started for free. Translate short fragments and experience the speed and convenience of Video Reader AI.
+            </p>
+          </div>
+          <button id="btn-free" class="plan-button w-full border-2 border-gray-300 text-gray-700 font-medium rounded-lg hover:bg-gray-50 transition-colors">
+            Your current plan
+          </button>
+        </div>
+
+        <!-- Pro Plan -->
+        <div class="bg-white rounded-2xl shadow-lg border-2 border-blue-600 p-8 flex flex-col relative transform scale-105 transition-all hover:shadow-xl">
+          <div class="absolute -top-4 left-1/2 transform -translate-x-1/2">
+            <span class="popular-badge bg-blue-600 text-white px-4 py-1 rounded-full shadow-md">
+              Most Popular
+            </span>
+          </div>
+          <div class="mb-8">
+            <h3 class="plan-name text-gray-900 mb-3">Pro</h3>
+            <div class="flex items-baseline">
+              <span class="plan-price text-gray-900">$9</span>
+              <span class="plan-period text-gray-500 ml-2">/month</span>
+            </div>
+          </div>
+          <ul class="flex-1 space-y-4 mb-8">
+            <li class="flex items-start">
+              <svg class="w-5 h-5 mr-3 text-blue-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+              </svg>
+              <span class="plan-feature text-gray-700">Translation: <strong>100%</strong> of any video</span>
+            </li>
+            <li class="flex items-start">
+              <svg class="w-5 h-5 mr-3 text-blue-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+              </svg>
+              <span class="plan-feature text-gray-700">Export: <strong>not available</strong></span>
+            </li>
+            <li class="flex items-start">
+              <svg class="w-5 h-5 mr-3 text-blue-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+              </svg>
+              <span class="plan-feature text-gray-700">Translation quality: <strong>standard</strong></span>
+            </li>
+          </ul>
+          <div class="mb-8">
+            <p class="plan-description">
+              Full translation of any video. Perfect for studying, lectures, tutorials, and professional workflows.
+            </p>
+          </div>
+          <button id="btn-pro" class="plan-button w-full bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors shadow-md">
+            Upgrade to Pro
+          </button>
+        </div>
+
+        <!-- Premium Plan -->
+        <div class="bg-white rounded-2xl shadow-sm border-2 border-gray-200 p-8 flex flex-col transition-all hover:shadow-md">
+          <div class="mb-8">
+            <h3 class="plan-name text-gray-900 mb-3">Premium</h3>
+            <div class="flex items-baseline">
+              <span class="plan-price text-gray-900">$19</span>
+              <span class="plan-period text-gray-500 ml-2">/month</span>
+            </div>
+          </div>
+          <ul class="flex-1 space-y-4 mb-8">
+            <li class="flex items-start">
+              <svg class="w-5 h-5 mr-3 text-blue-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+              </svg>
+              <span class="plan-feature text-gray-700">Translation: <strong>100%</strong></span>
+            </li>
+            <li class="flex items-start">
+              <svg class="w-5 h-5 mr-3 text-blue-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+              </svg>
+              <span class="plan-feature text-gray-700">Export: <strong>SRT / VTT / TXT</strong></span>
+            </li>
+            <li class="flex items-start">
+              <svg class="w-5 h-5 mr-3 text-blue-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+              </svg>
+              <span class="plan-feature text-gray-700">Translation quality: <strong>high</strong></span>
+            </li>
+          </ul>
+          <div class="mb-8">
+            <p class="plan-description">
+              Maximum power: full-length translation plus export to all major subtitle formats. Ideal for professionals who need high-quality output and convenience.
+            </p>
+          </div>
+          <button id="btn-premium" class="plan-button w-full border-2 border-gray-300 text-gray-700 font-medium rounded-lg hover:bg-gray-50 transition-colors">
+            Upgrade to Premium
+          </button>
+        </div>
+      </div>
+
+      <!-- FAQ Section -->
+      <div class="mt-24 max-w-4xl mx-auto">
+        <h3 class="faq-title text-gray-900 text-center mb-14">
+          Frequently Asked Questions
+        </h3>
+        <div class="space-y-6">
+          <div class="bg-white rounded-xl p-7 shadow-sm border border-gray-200 hover:shadow-md transition-shadow">
+            <h4 class="faq-question text-gray-900 mb-3">
+              Will it work with any YouTube video?
+            </h4>
+            <p class="faq-answer text-gray-700">
+              Yes — as long as subtitles exist (auto-generated or manual).
+            </p>
+          </div>
+          <div class="bg-white rounded-xl p-7 shadow-sm border border-gray-200 hover:shadow-md transition-shadow">
+            <h4 class="faq-question text-gray-900 mb-3">
+              Can I cancel anytime?
+            </h4>
+            <p class="faq-answer text-gray-700">
+              Yes. Subscriptions can be cancelled instantly.
+            </p>
+          </div>
+          <div class="bg-white rounded-xl p-7 shadow-sm border border-gray-200 hover:shadow-md transition-shadow">
+            <h4 class="faq-question text-gray-900 mb-3">
+              What payment methods are supported?
+            </h4>
+            <p class="faq-answer text-gray-700">
+              Currently Yookassa. More providers will be added soon.
+            </p>
+          </div>
+          <div class="bg-white rounded-xl p-7 shadow-sm border border-gray-200 hover:shadow-md transition-shadow">
+            <h4 class="faq-question text-gray-900 mb-3">
+              Why upgrade?
+            </h4>
+            <p class="faq-answer text-gray-700">
+              Full translations and subtitle export unlock professional use cases.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Feedback Form Section -->
+      <div class="mt-24 max-w-2xl mx-auto">
+        <div class="bg-white rounded-2xl shadow-lg border border-gray-200 p-10">
+          <h3 class="faq-title text-gray-900 text-center mb-4">
+            Send us your feedback
+          </h3>
+          <p class="text-center text-gray-600 mb-8 text-base">
+            We'd love to hear your thoughts, suggestions, or issues you're experiencing.
+          </p>
+
+          <form id="feedback-form" class="space-y-6">
+            <div>
+              <label for="feedback-email" class="block text-sm font-semibold text-gray-700 mb-2">
+                Your Email
+              </label>
+              <input
+                type="email"
+                id="feedback-email"
+                name="email"
+                required
+                placeholder="your@email.com"
+                class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-base"
+              >
+            </div>
+
+            <div>
+              <label for="feedback-message" class="block text-sm font-semibold text-gray-700 mb-2">
+                Your Message
+              </label>
+              <textarea
+                id="feedback-message"
+                name="message"
+                required
+                rows="6"
+                placeholder="Tell us what you think..."
+                class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all resize-none text-base"
+              ></textarea>
+            </div>
+
+            <button
+              type="submit"
+              id="feedback-submit-btn"
+              class="w-full bg-blue-600 text-white font-semibold py-3.5 px-6 rounded-lg hover:bg-blue-700 transition-colors shadow-md text-base"
+            >
+              Send Feedback
+            </button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- Footer -->
+  <footer class="bg-white border-t mt-20">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+      <div class="flex flex-col items-center gap-5">
+        <div class="flex gap-8 text-sm font-medium">
+          <a href="/terms" class="text-gray-600 hover:text-gray-900 transition-colors">Terms of Use</a>
+          <a href="/privacy" class="text-gray-600 hover:text-gray-900 transition-colors">Privacy Policy</a>
+          <a href="/refund" class="text-gray-600 hover:text-gray-900 transition-colors">Refund Policy</a>
+        </div>
+        <p class="text-sm text-gray-500">
+          © 2025 Video Reader AI. All rights reserved.
+        </p>
+      </div>
+    </div>
+  </footer>
+</div>
+
+<script src="/pricing.js"></script>
+</body>
+</html>
