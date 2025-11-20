@@ -42,7 +42,7 @@ export default function Pricing() {
                   >
                     <path d="M10.28 2.28L3.989 8.575 1.695 6.28A1 1 0 00.28 7.695l3 3a1 1 0 001.414 0l7-7A1 1 0 0010.28 2.28z" />
                   </svg>
-                  <span>Translate first 3-5 minutes of video</span>
+                  <span>Translate up to 30% of video text</span>
                 </li>
                 <li className="flex items-center">
                   <svg
@@ -52,7 +52,7 @@ export default function Pricing() {
                   >
                     <path d="M10.28 2.28L3.989 8.575 1.695 6.28A1 1 0 00.28 7.695l3 3a1 1 0 001.414 0l7-7A1 1 0 0010.28 2.28z" />
                   </svg>
-                  <span>Basic translation quality</span>
+                  <span>Basic quality</span>
                 </li>
                 <li className="flex items-center">
                   <svg
@@ -62,27 +62,17 @@ export default function Pricing() {
                   >
                     <path d="M10.28 2.28L3.989 8.575 1.695 6.28A1 1 0 00.28 7.695l3 3a1 1 0 001.414 0l7-7A1 1 0 0010.28 2.28z" />
                   </svg>
-                  <span>No registration required</span>
+                  <span>No export</span>
                 </li>
                 <li className="flex items-center">
                   <svg
-                    className="mr-3 h-3 w-3 shrink-0 fill-gray-400"
+                    className="mr-3 h-3 w-3 shrink-0 fill-emerald-500"
                     viewBox="0 0 12 12"
                     xmlns="http://www.w3.org/2000/svg"
                   >
-                    <path d="M11.854.146a.5.5 0 0 0-.707 0L6 5.293 .853.146a.5.5 0 1 0-.707.708L5.293 6 .146 11.146a.5.5 0 0 0 .708.708L6 6.707l5.146 5.147a.5.5 0 0 0 .708-.708L6.707 6l5.147-5.146a.5.5 0 0 0 0-.708Z" />
+                    <path d="M10.28 2.28L3.989 8.575 1.695 6.28A1 1 0 00.28 7.695l3 3a1 1 0 001.414 0l7-7A1 1 0 0010.28 2.28z" />
                   </svg>
-                  <span className="text-gray-400">Full video translation</span>
-                </li>
-                <li className="flex items-center">
-                  <svg
-                    className="mr-3 h-3 w-3 shrink-0 fill-gray-400"
-                    viewBox="0 0 12 12"
-                    xmlns="http://www.w3.org/2000/svg"
-                  >
-                    <path d="M11.854.146a.5.5 0 0 0-.707 0L6 5.293 .853.146a.5.5 0 1 0-.707.708L5.293 6 .146 11.146a.5.5 0 0 0 .708.708L6 6.707l5.146 5.147a.5.5 0 0 0 .708-.708L6.707 6l5.147-5.146a.5.5 0 0 0 0-.708Z" />
-                  </svg>
-                  <span className="text-gray-400">Download subtitles</span>
+                  <span>Great way to try the tool</span>
                 </li>
               </ul>
             </div>
@@ -120,7 +110,7 @@ export default function Pricing() {
                   >
                     <path d="M10.28 2.28L3.989 8.575 1.695 6.28A1 1 0 00.28 7.695l3 3a1 1 0 001.414 0l7-7A1 1 0 0010.28 2.28z" />
                   </svg>
-                  <span className="text-gray-300">Unlimited video length</span>
+                  <span className="text-gray-300">Translate 100% of subtitles</span>
                 </li>
                 <li className="flex items-center">
                   <svg
@@ -130,7 +120,7 @@ export default function Pricing() {
                   >
                     <path d="M10.28 2.28L3.989 8.575 1.695 6.28A1 1 0 00.28 7.695l3 3a1 1 0 001.414 0l7-7A1 1 0 0010.28 2.28z" />
                   </svg>
-                  <span className="text-gray-300">Download SRT/VTT/TXT files</span>
+                  <span className="text-gray-300">Priority processing</span>
                 </li>
                 <li className="flex items-center">
                   <svg
@@ -140,27 +130,7 @@ export default function Pricing() {
                   >
                     <path d="M10.28 2.28L3.989 8.575 1.695 6.28A1 1 0 00.28 7.695l3 3a1 1 0 001.414 0l7-7A1 1 0 0010.28 2.28z" />
                   </svg>
-                  <span className="text-gray-300">Karaoke-style highlighting</span>
-                </li>
-                <li className="flex items-center">
-                  <svg
-                    className="mr-3 h-3 w-3 shrink-0 fill-emerald-500"
-                    viewBox="0 0 12 12"
-                    xmlns="http://www.w3.org/2000/svg"
-                  >
-                    <path d="M10.28 2.28L3.989 8.575 1.695 6.28A1 1 0 00.28 7.695l3 3a1 1 0 001.414 0l7-7A1 1 0 0010.28 2.28z" />
-                  </svg>
-                  <span className="text-gray-300">Priority translation speed</span>
-                </li>
-                <li className="flex items-center">
-                  <svg
-                    className="mr-3 h-3 w-3 shrink-0 fill-emerald-500"
-                    viewBox="0 0 12 12"
-                    xmlns="http://www.w3.org/2000/svg"
-                  >
-                    <path d="M10.28 2.28L3.989 8.575 1.695 6.28A1 1 0 00.28 7.695l3 3a1 1 0 001.414 0l7-7A1 1 0 0010.28 2.28z" />
-                  </svg>
-                  <span className="text-gray-300">All languages supported</span>
+                  <span className="text-gray-300">No export</span>
                 </li>
               </ul>
             </div>
@@ -193,7 +163,7 @@ export default function Pricing() {
                   >
                     <path d="M10.28 2.28L3.989 8.575 1.695 6.28A1 1 0 00.28 7.695l3 3a1 1 0 001.414 0l7-7A1 1 0 0010.28 2.28z" />
                   </svg>
-                  <span>Everything in Pro, plus:</span>
+                  <span>Translate 100%</span>
                 </li>
                 <li className="flex items-center">
                   <svg
@@ -203,7 +173,7 @@ export default function Pricing() {
                   >
                     <path d="M10.28 2.28L3.989 8.575 1.695 6.28A1 1 0 00.28 7.695l3 3a1 1 0 001.414 0l7-7A1 1 0 0010.28 2.28z" />
                   </svg>
-                  <span>Advanced GPT text processing</span>
+                  <span>Export in SRT / VTT / TXT</span>
                 </li>
                 <li className="flex items-center">
                   <svg
@@ -213,27 +183,7 @@ export default function Pricing() {
                   >
                     <path d="M10.28 2.28L3.989 8.575 1.695 6.28A1 1 0 00.28 7.695l3 3a1 1 0 001.414 0l7-7A1 1 0 0010.28 2.28z" />
                   </svg>
-                  <span>Structured summaries and themes</span>
-                </li>
-                <li className="flex items-center">
-                  <svg
-                    className="mr-3 h-3 w-3 shrink-0 fill-emerald-500"
-                    viewBox="0 0 12 12"
-                    xmlns="http://www.w3.org/2000/svg"
-                  >
-                    <path d="M10.28 2.28L3.989 8.575 1.695 6.28A1 1 0 00.28 7.695l3 3a1 1 0 001.414 0l7-7A1 1 0 0010.28 2.28z" />
-                  </svg>
-                  <span>Auto Telegram post generation</span>
-                </li>
-                <li className="flex items-center">
-                  <svg
-                    className="mr-3 h-3 w-3 shrink-0 fill-emerald-500"
-                    viewBox="0 0 12 12"
-                    xmlns="http://www.w3.org/2000/svg"
-                  >
-                    <path d="M10.28 2.28L3.989 8.575 1.695 6.28A1 1 0 00.28 7.695l3 3a1 1 0 001.414 0l7-7A1 1 0 0010.28 2.28z" />
-                  </svg>
-                  <span>AI voice-over generation</span>
+                  <span>Priority resources</span>
                 </li>
               </ul>
             </div>
