@@ -226,7 +226,9 @@ const transcriptState = {
   isProcessing: false,
   isProcessed: false,
   subtitles: null,
-  selectedLang: 'ru' // По умолчанию русский
+  selectedLang: 'ru', // По умолчанию русский
+  userPlan: 'Free', // План пользователя (обновляется из ответа сервера)
+  exportAllowed: false // Разрешен ли экспорт (обновляется из ответа сервера)
 };
 
 // ═══════════════════════════════════════════════════════════════════
@@ -872,12 +874,11 @@ async function handleExportToggle(e) {
 }
 
 // Обновление состояния опций экспорта в dropdown
-async function updateExportDropdownState() {
-  const userPlan = await getUserPlan();
+function updateExportDropdownState() {
   const translatedOptions = document.querySelectorAll('.yt-reader-export-option[data-type="translated"]');
 
   translatedOptions.forEach(option => {
-    if (userPlan !== 'Premium') {
+    if (!transcriptState.exportAllowed) {
       option.classList.add('locked');
       option.setAttribute('data-tooltip', 'Upgrade to Premium');
     } else {
@@ -888,20 +889,18 @@ async function updateExportDropdownState() {
 }
 
 // Обновление состояния кнопки экспорта
-async function updateExportButtonState() {
+function updateExportButtonState() {
   const exportBtn = document.getElementById('yt-reader-export-btn');
   if (!exportBtn) return;
 
   const hasSubtitles = transcriptState.subtitles && transcriptState.subtitles.length > 0;
   const isProcessing = transcriptState.isProcessing;
-  const userPlan = await getUserPlan();
 
   // Кнопка активна только для Premium и если есть субтитры и перевод завершен
-  const isPremium = userPlan === 'Premium';
-  exportBtn.disabled = !hasSubtitles || isProcessing || !isPremium;
+  exportBtn.disabled = !hasSubtitles || isProcessing || !transcriptState.exportAllowed;
 
   // Устанавливаем tooltip в зависимости от состояния
-  if (!isPremium) {
+  if (!transcriptState.exportAllowed) {
     exportBtn.title = 'Available for Premium only';
   } else if (isProcessing) {
     exportBtn.title = 'Processing...';
@@ -1152,13 +1151,10 @@ async function handleGetTranscript() {
     return;
   }
 
-  // Проверяем план пользователя
-  const userPlan = await getUserPlan();
-
   // Если видео уже обработано
   if (transcriptState.isProcessed && transcriptState.videoId === videoId) {
     // Для Premium/Pro - проверяем, есть ли непереведенные строки
-    if (userPlan === 'Premium' || userPlan === 'Pro') {
+    if (transcriptState.userPlan === 'Premium' || transcriptState.userPlan === 'Pro') {
       const lastTranslatedIndex = findLastTranslatedIndex();
 
       // Если есть непереведенные строки - продолжаем перевод
@@ -1318,6 +1314,14 @@ async function translateSubtitles(videoId, subtitles, startIndex = 0) {
           token: requestBody.token
         });
 
+
+        // Обновляем информацию о плане и экспорте из ответа сервера
+        if (data.plan) {
+          transcriptState.userPlan = data.plan;
+        }
+        if (data.export_allowed !== undefined) {
+          transcriptState.exportAllowed = data.export_allowed;
+        }
 
         if (data.error) {
           console.error(`❌ Ошибка перевода строки ${i}: ${data.error}`);
