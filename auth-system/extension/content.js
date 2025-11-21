@@ -691,7 +691,7 @@ async function injectPanel() {
     const upgradeBtn = document.getElementById('yt-reader-upgrade-btn');
     if (upgradeBtn) {
       upgradeBtn.addEventListener('click', () => {
-        window.open('http://localhost:5000/pricing', '_blank');
+        window.open('https://api.beem.ink/pricing', '_blank');
       });
     }
 
@@ -1370,7 +1370,7 @@ async function translateSubtitles(videoId, subtitles, startIndex = 0) {
 
             // Добавляем клик - открываем /pricing
             marker.addEventListener('click', () => {
-              window.open('http://localhost:5000/pricing', '_blank');
+              window.open('https://api.beem.ink/pricing', '_blank');
             });
 
             lastItem.insertAdjacentElement('afterend', marker);
@@ -1418,7 +1418,7 @@ async function translateSubtitles(videoId, subtitles, startIndex = 0) {
             const upgradeCtaBtn = document.getElementById('yt-reader-upgrade-cta-btn');
             if (upgradeCtaBtn) {
               upgradeCtaBtn.addEventListener('click', () => {
-                window.open('http://localhost:5000/pricing', '_blank');
+                window.open('https://api.beem.ink/pricing', '_blank');
               });
             }
           }

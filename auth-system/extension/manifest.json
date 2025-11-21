@@ -22,7 +22,7 @@
   "permissions": ["storage"],
   "host_permissions": [
     "https://www.youtube.com/*",
-    "http://localhost:5000/*"
+    "https://api.beem.ink/*"
   ],
   "content_scripts": [
     {

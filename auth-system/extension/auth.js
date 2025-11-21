@@ -12,7 +12,7 @@ window.addEventListener('message', function(event) {
 
   // Проверяем что сообщение от нашего сервера (localhost:5000)
   // ВАЖНО: убрал строгую проверку origin для отладки
-  if (event.origin !== 'http://localhost:5000') {
+  if (event.origin !== 'https://api.beem.ink') {
     // НЕ возвращаемся, продолжаем обработку
   }
 
@@ -68,7 +68,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
       // Temporary CLIENT_ID (заглушка)
       const CLIENT_ID = '431567664470-mq0oim46t6tstlfjllbesuar346pf2qu.apps.googleusercontent.com';
-      const REDIRECT_URI = 'http://localhost:5000/auth/callback';
+      const REDIRECT_URI = 'https://api.beem.ink/auth/callback';
       const SCOPE = 'openid email profile';
 
       // Формируем Google OAuth URL

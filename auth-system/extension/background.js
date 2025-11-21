@@ -132,7 +132,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     }
 
     // Выполняем fetch от имени background.js
-    fetch('http://localhost:5000/api/plan', {
+    fetch('https://api.beem.ink/api/plan', {
       method: 'GET',
       headers: {
         'Authorization': `Bearer ${token}`,
@@ -176,7 +176,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     }
 
     // Выполняем fetch от имени background.js
-    fetch('http://localhost:5000/translate-line', {
+    fetch('https://api.beem.ink/translate-line', {
       method: 'POST',
       headers: headers,
       body: JSON.stringify({
