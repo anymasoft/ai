@@ -10,7 +10,7 @@
 // Слушаем postMessage от OAuth callback popup (window.opener.postMessage)
 window.addEventListener('message', function(event) {
 
-  // Проверяем что сообщение от нашего сервера (localhost:5000)
+  // Проверяем что сообщение от нашего сервера (api.beem.ink)
   // ВАЖНО: убрал строгую проверку origin для отладки
   if (event.origin !== 'https://api.beem.ink') {
     // НЕ возвращаемся, продолжаем обработку
