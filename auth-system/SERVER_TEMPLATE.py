@@ -14,6 +14,7 @@ import uuid
 from openai import OpenAI
 from datetime import datetime
 from dotenv import load_dotenv
+from yookassa import Configuration, Payment
 
 load_dotenv()  # Загрузка переменных окружения из .env
 
@@ -63,6 +64,22 @@ client = OpenAI(api_key=OPENAI_API_KEY)
 GOOGLE_CLIENT_ID = os.getenv('GOOGLE_CLIENT_ID', 'TEMP_CLIENT_ID')
 GOOGLE_CLIENT_SECRET = os.getenv('GOOGLE_CLIENT_SECRET', 'TEMP_CLIENT_SECRET')
 GOOGLE_REDIRECT_URI = 'http://localhost:5000/auth/callback'
+
+# Yookassa конфигурация
+YOOKASSA_SHOP_ID = os.getenv('YOOKASSA_SHOP_ID')
+YOOKASSA_API_KEY = os.getenv('YOOKASSA_API_KEY')
+YOOKASSA_RETURN_URL_BASE = os.getenv('YOOKASSA_RETURN_URL_BASE', 'http://localhost:5000')
+
+# Инициализация Yookassa
+if YOOKASSA_SHOP_ID and YOOKASSA_API_KEY:
+    Configuration.account_id = YOOKASSA_SHOP_ID
+    Configuration.secret_key = YOOKASSA_API_KEY
+
+# Цены планов (в рублях)
+PLAN_PRICES = {
+    'Pro': 900,      # 9$  ≈ 900₽
+    'Premium': 1900  # 19$ ≈ 1900₽
+}
 
 # Утилиты для OAuth
 def decode_jwt(jwt_token):
@@ -853,6 +870,166 @@ def checkout_pro():
 def checkout_premium():
     """Страница оформления подписки Premium"""
     return send_from_directory(EXTENSION_DIR, 'checkout_premium.html')
+
+# ═══════════════════════════════════════════════════════════════════
+# YOOKASSA PAYMENT ENDPOINTS
+# ═══════════════════════════════════════════════════════════════════
+
+@app.route('/create-payment/<plan>', methods=['POST', 'OPTIONS'])
+def create_payment(plan):
+    """Создание платежа через Yookassa"""
+    if request.method == 'OPTIONS':
+        return '', 200
+
+    # Проверяем валидность плана
+    if plan not in ['Pro', 'Premium']:
+        return jsonify({"error": "invalid_plan"}), 400
+
+    # Получаем токен из cookie
+    token = request.cookies.get('auth_token')
+    if not token:
+        return jsonify({"error": "unauthorized"}), 401
+
+    # Проверяем пользователя
+    user = get_user_by_token(token)
+    if not user:
+        return jsonify({"error": "unauthorized"}), 401
+
+    # Проверяем конфигурацию Yookassa
+    if not YOOKASSA_SHOP_ID or not YOOKASSA_API_KEY:
+        return jsonify({"error": "payment_not_configured"}), 500
+
+    try:
+        # Получаем цену плана
+        amount = PLAN_PRICES.get(plan)
+        if not amount:
+            return jsonify({"error": "invalid_plan"}), 400
+
+        # Создаем платеж в Yookassa
+        payment = Payment.create({
+            "amount": {
+                "value": str(amount),
+                "currency": "RUB"
+            },
+            "confirmation": {
+                "type": "redirect",
+                "return_url": f"{YOOKASSA_RETURN_URL_BASE}/payment-success"
+            },
+            "capture": True,
+            "description": f"Подписка Video Reader AI - {plan}",
+            "metadata": {
+                "email": user['email'],
+                "plan": plan,
+                "token": token
+            }
+        }, uuid.uuid4())
+
+        # Возвращаем URL для редиректа
+        return jsonify({
+            "status": "ok",
+            "payment_id": payment.id,
+            "confirmation_url": payment.confirmation.confirmation_url
+        })
+
+    except Exception as e:
+        print(f"Ошибка создания платежа: {e}")
+        return jsonify({"error": "payment_creation_failed", "message": str(e)}), 500
+
+@app.route('/payment-webhook', methods=['POST'])
+def payment_webhook():
+    """Webhook для обработки уведомлений от Yookassa"""
+    try:
+        # Получаем данные уведомления
+        event_json = request.json
+
+        # Проверяем тип события
+        if event_json.get('event') == 'payment.succeeded':
+            payment_info = event_json.get('object')
+
+            # Получаем метаданные платежа
+            metadata = payment_info.get('metadata', {})
+            email = metadata.get('email')
+            plan = metadata.get('plan')
+
+            if email and plan and plan in ['Pro', 'Premium']:
+                # Обновляем план пользователя в БД
+                conn = sqlite3.connect(USERS_DB)
+                cursor = conn.cursor()
+                cursor.execute('UPDATE users SET plan = ? WHERE email = ?', (plan, email))
+                conn.commit()
+                conn.close()
+
+                print(f"✅ Платеж успешно обработан: {email} -> {plan}")
+
+        return '', 200
+
+    except Exception as e:
+        print(f"Ошибка обработки webhook: {e}")
+        return '', 200  # Возвращаем 200, чтобы Yookassa не повторял запрос
+
+@app.route('/payment-success')
+def payment_success():
+    """Страница успешной оплаты"""
+    html = """
+    <!DOCTYPE html>
+    <html lang="ru">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Оплата успешна</title>
+        <script src="https://cdn.tailwindcss.com"></script>
+    </head>
+    <body class="bg-gray-100 min-h-screen flex items-center justify-center p-6">
+        <div class="bg-white border border-gray-200 rounded-2xl shadow-xl p-10 max-w-md w-full text-center">
+            <div class="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                <svg class="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                </svg>
+            </div>
+            <h1 class="text-3xl font-bold text-gray-900 mb-4">Оплата успешна!</h1>
+            <p class="text-gray-600 mb-8">Ваша подписка активирована. Спасибо за покупку!</p>
+            <button
+                onclick="window.location='/pricing'"
+                class="w-full py-3 rounded-xl bg-blue-600 hover:bg-blue-700 transition font-semibold text-white">
+                Вернуться к тарифам
+            </button>
+        </div>
+    </body>
+    </html>
+    """
+    return html
+
+@app.route('/payment-cancel')
+def payment_cancel():
+    """Страница отмены оплаты"""
+    html = """
+    <!DOCTYPE html>
+    <html lang="ru">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Оплата отменена</title>
+        <script src="https://cdn.tailwindcss.com"></script>
+    </head>
+    <body class="bg-gray-100 min-h-screen flex items-center justify-center p-6">
+        <div class="bg-white border border-gray-200 rounded-2xl shadow-xl p-10 max-w-md w-full text-center">
+            <div class="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                <svg class="w-8 h-8 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                </svg>
+            </div>
+            <h1 class="text-3xl font-bold text-gray-900 mb-4">Оплата отменена</h1>
+            <p class="text-gray-600 mb-8">Вы можете вернуться к выбору тарифа</p>
+            <button
+                onclick="window.location='/pricing'"
+                class="w-full py-3 rounded-xl bg-gray-600 hover:bg-gray-700 transition font-semibold text-white">
+                Вернуться к тарифам
+            </button>
+        </div>
+    </body>
+    </html>
+    """
+    return html
 
 if __name__ == '__main__':
     init_db()

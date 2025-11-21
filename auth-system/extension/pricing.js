@@ -104,12 +104,12 @@ function updateButtons(plan) {
 
   if (plan === 'Free') {
     setButton(btnFree, 'Current Plan', true);
-    setButton(btnPro, 'Upgrade to Pro', false, () => switchPlan('Pro'));
-    setButton(btnPremium, 'Upgrade to Premium', false, () => switchPlan('Premium'));
+    setButton(btnPro, 'Upgrade to Pro', false, () => createPayment('Pro'));
+    setButton(btnPremium, 'Upgrade to Premium', false, () => createPayment('Premium'));
   } else if (plan === 'Pro') {
     setButton(btnFree, 'Downgrade to Free', false, () => switchPlan('Free'));
     setButton(btnPro, 'Current Plan', true);
-    setButton(btnPremium, 'Upgrade to Premium', false, () => switchPlan('Premium'));
+    setButton(btnPremium, 'Upgrade to Premium', false, () => createPayment('Premium'));
   } else if (plan === 'Premium') {
     setButton(btnFree, 'Downgrade to Free', false, () => switchPlan('Free'));
     setButton(btnPro, 'Downgrade to Pro', false, () => switchPlan('Pro'));
@@ -117,7 +117,45 @@ function updateButtons(plan) {
   }
 }
 
-// Переключение плана через cookie
+// Создание платежа для платных планов
+async function createPayment(plan) {
+  try {
+    showNotification('Redirecting to payment...', 'success');
+
+    const response = await fetch(`http://localhost:5000/create-payment/${plan}`, {
+      method: 'POST',
+      credentials: 'include',
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    });
+
+    if (response.ok) {
+      const data = await response.json();
+
+      // Редиректим на страницу оплаты Yookassa
+      if (data.confirmation_url) {
+        window.location.href = data.confirmation_url;
+      } else {
+        showNotification('Payment URL not received', 'error');
+      }
+    } else {
+      const error = await response.json();
+      if (error.error === 'unauthorized') {
+        showNotification('Please log in to upgrade', 'error');
+      } else if (error.error === 'payment_not_configured') {
+        showNotification('Payment system not configured', 'error');
+      } else {
+        showNotification(`Payment error: ${error.message || 'Unknown error'}`, 'error');
+      }
+    }
+  } catch (error) {
+    console.error('[Pricing] Payment error:', error);
+    showNotification('Payment creation failed', 'error');
+  }
+}
+
+// Переключение плана через cookie (для downgrades)
 async function switchPlan(newPlan) {
 
   try {
