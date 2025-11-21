@@ -26,6 +26,9 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 # Директория с файлами расширения (extension/ внутри token-auth-system/)
 EXTENSION_DIR = os.path.join(BASE_DIR, 'extension')
 
+# Директория с файлами веб-интерфейса (web/ - для сайта, отдельно от расширения)
+WEB_DIR = os.path.join(BASE_DIR, 'web')
+
 # CORS: разрешаем доступ для YouTube и Chrome расширений
 CORS(
     app,
@@ -699,17 +702,17 @@ def auth_site_logout():
 @app.route('/pricing')
 def pricing():
     """Страница с тарифными планами (работает через cookies для сайта)"""
-    return send_from_directory(EXTENSION_DIR, 'pricing.html')
+    return send_from_directory(WEB_DIR, 'pricing.html')
 
 @app.route('/pricing.css')
 def pricing_css():
     """CSS для страницы pricing"""
-    return send_from_directory(EXTENSION_DIR, 'pricing.css', mimetype='text/css')
+    return send_from_directory(WEB_DIR, 'pricing.css', mimetype='text/css')
 
 @app.route('/pricing.js')
 def pricing_js():
     """JS для страницы pricing"""
-    return send_from_directory(EXTENSION_DIR, 'pricing.js', mimetype='application/javascript')
+    return send_from_directory(WEB_DIR, 'pricing.js', mimetype='application/javascript')
 
 @app.route('/auth.css')
 def auth_css():
@@ -864,12 +867,12 @@ def api_feedback():
 @app.route('/checkout/pro')
 def checkout_pro():
     """Страница оформления подписки Pro"""
-    return send_from_directory(EXTENSION_DIR, 'checkout_pro.html')
+    return send_from_directory(WEB_DIR, 'checkout_pro.html')
 
 @app.route('/checkout/premium')
 def checkout_premium():
     """Страница оформления подписки Premium"""
-    return send_from_directory(EXTENSION_DIR, 'checkout_premium.html')
+    return send_from_directory(WEB_DIR, 'checkout_premium.html')
 
 # ═══════════════════════════════════════════════════════════════════
 # YOOKASSA PAYMENT ENDPOINTS
