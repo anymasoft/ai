@@ -14,7 +14,7 @@ async function loadUserInfo() {
 
   try {
     // Запрос к /api/plan с credentials: include (cookies автоматически отправятся)
-    const response = await fetch('http://localhost:5000/api/plan', {
+    const response = await fetch('https://api.beem.ink/api/plan', {
       method: 'GET',
       credentials: 'include', // ВАЖНО: отправляет cookies
       headers: {
@@ -122,7 +122,7 @@ async function createPayment(plan) {
   try {
     showNotification('Redirecting to payment...', 'success');
 
-    const response = await fetch(`http://localhost:5000/create-payment/${plan}`, {
+    const response = await fetch(`https://api.beem.ink/create-payment/${plan}`, {
       method: 'POST',
       credentials: 'include',
       headers: {
@@ -159,7 +159,7 @@ async function createPayment(plan) {
 async function switchPlan(newPlan) {
 
   try {
-    const response = await fetch(`http://localhost:5000/switch-plan/${newPlan}`, {
+    const response = await fetch(`https://api.beem.ink/switch-plan/${newPlan}`, {
       method: 'POST',
       credentials: 'include', // ВАЖНО: отправляет cookies
       headers: {
@@ -267,7 +267,7 @@ async function logout() {
 
   try {
     // Пытаемся вызвать серверный logout (если маршрут существует)
-    await fetch('http://localhost:5000/auth-site/logout', {
+    await fetch('https://api.beem.ink/auth-site/logout', {
       method: 'GET',
       credentials: 'include'
     }).catch(() => {
@@ -329,7 +329,7 @@ async function handleFeedbackSubmit(event) {
   submitBtn.textContent = 'Sending...';
 
   try {
-    const response = await fetch('http://localhost:5000/api/feedback', {
+    const response = await fetch('https://api.beem.ink/api/feedback', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
