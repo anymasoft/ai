@@ -1013,7 +1013,7 @@ def payment_success():
             <h1 class="text-3xl font-bold text-gray-900 mb-4">Оплата успешна!</h1>
             <p class="text-gray-600 mb-8">Ваша подписка активирована. Спасибо за покупку!</p>
             <button
-                onclick="window.location='/pricing'"
+                onclick="window.location='https://api.beem.ink/pricing'"
                 class="w-full py-3 rounded-xl bg-blue-600 hover:bg-blue-700 transition font-semibold text-white">
                 Вернуться к тарифам
             </button>
@@ -1045,7 +1045,7 @@ def payment_cancel():
             <h1 class="text-3xl font-bold text-gray-900 mb-4">Оплата отменена</h1>
             <p class="text-gray-600 mb-8">Вы можете вернуться к выбору тарифа</p>
             <button
-                onclick="window.location='/pricing'"
+                onclick="window.location='https://api.beem.ink/pricing'"
                 class="w-full py-3 rounded-xl bg-gray-600 hover:bg-gray-700 transition font-semibold text-white">
                 Вернуться к тарифам
             </button>
