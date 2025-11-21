@@ -40,10 +40,31 @@ CORS(
             "max_age": 3600
         },
         r"/api/*": {
-            "origins": "*",  # Разрешаем все origins для API (включая localhost)
+            "origins": ["https://api.beem.ink", "chrome-extension://*"],
             "methods": ["GET", "POST", "OPTIONS"],
             "allow_headers": ["Content-Type", "Authorization"],
-            "supports_credentials": False,  # Не используем credentials
+            "supports_credentials": True,  # Для cookies на сайте
+            "max_age": 3600
+        },
+        r"/auth*": {
+            "origins": ["https://api.beem.ink", "chrome-extension://*"],
+            "methods": ["GET", "POST", "OPTIONS"],
+            "allow_headers": ["Content-Type", "Authorization"],
+            "supports_credentials": True,
+            "max_age": 3600
+        },
+        r"/create-payment/*": {
+            "origins": ["https://api.beem.ink", "chrome-extension://*"],
+            "methods": ["POST", "OPTIONS"],
+            "allow_headers": ["Content-Type", "Authorization"],
+            "supports_credentials": True,
+            "max_age": 3600
+        },
+        r"/switch-plan/*": {
+            "origins": ["https://api.beem.ink", "chrome-extension://*"],
+            "methods": ["POST", "OPTIONS"],
+            "allow_headers": ["Content-Type", "Authorization"],
+            "supports_credentials": True,
             "max_age": 3600
         },
         r"/health": {
@@ -66,12 +87,12 @@ client = OpenAI(api_key=OPENAI_API_KEY)
 # OAuth конфигурация
 GOOGLE_CLIENT_ID = os.getenv('GOOGLE_CLIENT_ID', 'TEMP_CLIENT_ID')
 GOOGLE_CLIENT_SECRET = os.getenv('GOOGLE_CLIENT_SECRET', 'TEMP_CLIENT_SECRET')
-GOOGLE_REDIRECT_URI = 'http://localhost:5000/auth/callback'
+GOOGLE_REDIRECT_URI = 'https://api.beem.ink/auth/callback'
 
 # Yookassa конфигурация
 YOOKASSA_SHOP_ID = os.getenv('YOOKASSA_SHOP_ID')
 YOOKASSA_API_KEY = os.getenv('YOOKASSA_API_KEY')
-YOOKASSA_RETURN_URL_BASE = os.getenv('YOOKASSA_RETURN_URL_BASE', 'http://localhost:5000')
+YOOKASSA_RETURN_URL_BASE = os.getenv('YOOKASSA_RETURN_URL_BASE', 'https://api.beem.ink')
 
 # Инициализация Yookassa
 if YOOKASSA_SHOP_ID and YOOKASSA_API_KEY:
@@ -614,7 +635,7 @@ def auth_site():
         'https://accounts.google.com/o/oauth2/v2/auth'
         f'?client_id={GOOGLE_CLIENT_ID}'
         '&response_type=code'
-        '&redirect_uri=http://localhost:5000/auth-site/callback'
+        '&redirect_uri=https://api.beem.ink/auth-site/callback'
         '&scope=openid email profile'
         '&prompt=select_account'
     )
@@ -634,7 +655,7 @@ def auth_site_callback():
         'code'         : code,
         'client_id'    : GOOGLE_CLIENT_ID,
         'client_secret': GOOGLE_CLIENT_SECRET,
-        'redirect_uri' : 'http://localhost:5000/auth-site/callback',
+        'redirect_uri' : 'https://api.beem.ink/auth-site/callback',
         'grant_type'   : 'authorization_code'
     }
 
