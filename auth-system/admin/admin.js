@@ -133,13 +133,13 @@ function renderUsersTable(users) {
     users.forEach(user => {
         const tr = document.createElement('tr');
         tr.innerHTML = `
-            <td class="font-medium">${user.email}</td>
-            <td><span class="plan-badge ${user.plan.toLowerCase()}">${user.plan}</span></td>
-            <td>${formatDate(user.created_at)}</td>
-            <td>
+            <td class="px-6 py-4 text-sm font-medium text-gray-900">${user.email}</td>
+            <td class="px-6 py-4 text-sm"><span class="plan-badge ${user.plan.toLowerCase()}">${user.plan}</span></td>
+            <td class="px-6 py-4 text-sm text-gray-600">${formatDate(user.created_at)}</td>
+            <td class="px-6 py-4 text-sm">
                 <select
                     onchange="updateUserPlan('${user.email}', this.value)"
-                    class="text-sm border border-gray-300 rounded px-2 py-1"
+                    class="text-sm border border-gray-300 rounded-md px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
                     <option value="">Change plan...</option>
                     <option value="Free" ${user.plan === 'Free' ? 'disabled' : ''}>Free</option>
@@ -207,12 +207,12 @@ function renderPaymentsTable(payments) {
     payments.forEach(payment => {
         const tr = document.createElement('tr');
         tr.innerHTML = `
-            <td class="text-gray-600">${payment.id}</td>
-            <td class="font-medium">${payment.email}</td>
-            <td><span class="plan-badge ${payment.plan.toLowerCase()}">${payment.plan}</span></td>
-            <td class="text-gray-600 text-xs">${payment.payment_id || '-'}</td>
-            <td><span class="px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">${payment.status}</span></td>
-            <td class="text-gray-600">${formatDate(payment.timestamp)}</td>
+            <td class="px-6 py-4 text-sm text-gray-600">#${payment.id}</td>
+            <td class="px-6 py-4 text-sm font-medium text-gray-900">${payment.email}</td>
+            <td class="px-6 py-4 text-sm"><span class="plan-badge ${payment.plan.toLowerCase()}">${payment.plan}</span></td>
+            <td class="px-6 py-4 text-xs text-gray-500 font-mono">${payment.payment_id || '-'}</td>
+            <td class="px-6 py-4 text-sm"><span class="inline-flex px-2.5 py-1 text-xs font-semibold rounded-full bg-green-50 text-green-700">${payment.status}</span></td>
+            <td class="px-6 py-4 text-sm text-gray-600">${formatDate(payment.timestamp)}</td>
         `;
         tbody.appendChild(tr);
     });
@@ -248,13 +248,13 @@ function renderFeedbackList(feedback) {
         card.className = 'feedback-card';
         card.innerHTML = `
             <div class="feedback-header">
-                <div>
+                <div class="flex-1">
                     <div class="feedback-email">${item.email}</div>
                     <span class="plan-badge ${item.plan.toLowerCase()}">${item.plan}</span>
                 </div>
+                <div class="feedback-date">${formatDate(item.timestamp)}</div>
             </div>
             <div class="feedback-message">${escapeHtml(item.message)}</div>
-            <div class="feedback-date">${formatDate(item.timestamp)}</div>
         `;
         list.appendChild(card);
     });
@@ -290,11 +290,11 @@ function renderCacheTable(translations) {
     translations.forEach(item => {
         const tr = document.createElement('tr');
         tr.innerHTML = `
-            <td class="text-xs font-mono">${item.video_id}</td>
-            <td class="text-gray-600">${item.line_number}</td>
-            <td class="text-sm max-w-xs truncate">${escapeHtml(item.original_text)}</td>
-            <td class="text-sm max-w-xs truncate">${escapeHtml(item.translated_text)}</td>
-            <td><span class="px-2 py-1 text-xs font-mono bg-gray-100 rounded">${item.lang}</span></td>
+            <td class="px-6 py-4 text-xs font-mono text-gray-600">${item.video_id}</td>
+            <td class="px-6 py-4 text-sm text-gray-600">${item.line_number}</td>
+            <td class="px-6 py-4 text-sm text-gray-900 max-w-xs truncate">${escapeHtml(item.original_text)}</td>
+            <td class="px-6 py-4 text-sm text-gray-900 max-w-xs truncate">${escapeHtml(item.translated_text)}</td>
+            <td class="px-6 py-4 text-sm"><span class="inline-flex px-2.5 py-1 text-xs font-mono bg-gray-100 text-gray-700 rounded">${item.lang}</span></td>
         `;
         tbody.appendChild(tr);
     });
@@ -309,6 +309,7 @@ function searchCache() {
 function renderPagination(section, currentPage, totalPages) {
     const container = document.getElementById(`${section}-pagination`);
     container.innerHTML = '';
+    container.className = 'pagination';
 
     if (totalPages <= 1) return;
 
@@ -327,27 +328,11 @@ function renderPagination(section, currentPage, totalPages) {
     };
     container.appendChild(prevBtn);
 
-    // Page numbers (show max 5 pages)
-    const startPage = Math.max(1, currentPage - 2);
-    const endPage = Math.min(totalPages, startPage + 4);
-
-    for (let i = startPage; i <= endPage; i++) {
-        const pageBtn = document.createElement('button');
-        pageBtn.textContent = i;
-        if (i === currentPage) {
-            pageBtn.classList.add('active');
-        }
-        pageBtn.onclick = () => {
-            if (section === 'users') loadUsers(i);
-            if (section === 'payments') loadPayments(i);
-            if (section === 'feedback') loadFeedback(i);
-            if (section === 'cache') {
-                const videoId = document.getElementById('cache-video-id').value.trim();
-                loadCache(i, videoId);
-            }
-        };
-        container.appendChild(pageBtn);
-    }
+    // Page info
+    const pageInfo = document.createElement('span');
+    pageInfo.className = 'page-info';
+    pageInfo.textContent = `Page ${currentPage} of ${totalPages}`;
+    container.appendChild(pageInfo);
 
     // Next button
     const nextBtn = document.createElement('button');
