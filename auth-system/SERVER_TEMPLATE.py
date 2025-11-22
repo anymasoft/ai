@@ -929,6 +929,9 @@ def create_payment(plan):
         if not amount:
             return jsonify({"error": "invalid_plan"}), 400
 
+        # Создаем уникальный idempotence key
+        idempotence_key = str(uuid.uuid4())
+
         # Создаем платеж в Yookassa
         payment = Payment.create({
             "amount": {
@@ -937,7 +940,7 @@ def create_payment(plan):
             },
             "confirmation": {
                 "type": "redirect",
-                "return_url": f"{YOOKASSA_RETURN_URL_BASE}/payment-success"
+                "return_url": f"{YOOKASSA_RETURN_URL_BASE}/payment-success?payment_id={{payment_id}}&email={user['email']}&plan={plan}"
             },
             "capture": True,
             "description": f"Подписка Video Reader AI - {plan}",
@@ -946,7 +949,9 @@ def create_payment(plan):
                 "plan": plan,
                 "token": token
             }
-        }, uuid.uuid4())
+        }, idempotence_key)
+
+        print(f"[PAYMENT] Создан платёж: ID={payment.id}, email={user['email']}, plan={plan}")
 
         # Возвращаем URL для редиректа
         return jsonify({
@@ -966,34 +971,122 @@ def payment_webhook():
         # Получаем данные уведомления
         event_json = request.json
 
+        # ДЕТАЛЬНОЕ ЛОГИРОВАНИЕ для отладки
+        print(f"\n{'='*60}")
+        print(f"[WEBHOOK] Получено уведомление от Yookassa")
+        print(f"[WEBHOOK] Полные данные: {json.dumps(event_json, indent=2, ensure_ascii=False)}")
+        print(f"{'='*60}\n")
+
         # Проверяем тип события
-        if event_json.get('event') == 'payment.succeeded':
+        event_type = event_json.get('event')
+        print(f"[WEBHOOK] Тип события: {event_type}")
+
+        if event_type == 'payment.succeeded':
             payment_info = event_json.get('object')
+
+            if not payment_info:
+                print(f"[WEBHOOK] ❌ Отсутствует объект payment_info")
+                return '', 200
 
             # Получаем метаданные платежа
             metadata = payment_info.get('metadata', {})
             email = metadata.get('email')
             plan = metadata.get('plan')
 
+            print(f"[WEBHOOK] Email из metadata: {email}")
+            print(f"[WEBHOOK] Plan из metadata: {plan}")
+
             if email and plan and plan in ['Pro', 'Premium']:
                 # Обновляем план пользователя в БД
                 conn = sqlite3.connect(USERS_DB)
                 cursor = conn.cursor()
+
+                # Проверяем, существует ли пользователь
+                cursor.execute('SELECT email, plan FROM users WHERE email = ?', (email,))
+                user_before = cursor.fetchone()
+                print(f"[WEBHOOK] Пользователь ДО обновления: {user_before}")
+
                 cursor.execute('UPDATE users SET plan = ? WHERE email = ?', (plan, email))
+                updated_rows = cursor.rowcount
                 conn.commit()
+
+                # Проверяем после обновления
+                cursor.execute('SELECT email, plan FROM users WHERE email = ?', (email,))
+                user_after = cursor.fetchone()
+                print(f"[WEBHOOK] Пользователь ПОСЛЕ обновления: {user_after}")
+                print(f"[WEBHOOK] Обновлено строк: {updated_rows}")
+
                 conn.close()
 
-                print(f"✅ Платеж успешно обработан: {email} -> {plan}")
+                if updated_rows > 0:
+                    print(f"[WEBHOOK] ✅ Платеж успешно обработан: {email} -> {plan}")
+                else:
+                    print(f"[WEBHOOK] ⚠️ Пользователь не найден в БД: {email}")
+            else:
+                print(f"[WEBHOOK] ⚠️ Недостаточно данных для обновления:")
+                print(f"  - email: {email}")
+                print(f"  - plan: {plan}")
+                print(f"  - plan valid: {plan in ['Pro', 'Premium'] if plan else False}")
 
         return '', 200
 
     except Exception as e:
-        print(f"Ошибка обработки webhook: {e}")
+        print(f"[WEBHOOK] ❌ Ошибка обработки webhook: {e}")
+        import traceback
+        traceback.print_exc()
         return '', 200  # Возвращаем 200, чтобы Yookassa не повторял запрос
 
 @app.route('/payment-success')
 def payment_success():
-    """Страница успешной оплаты"""
+    """Страница успешной оплаты - проверяем статус и обновляем план"""
+    try:
+        # Получаем параметры из URL
+        payment_id = request.args.get('payment_id')
+        email = request.args.get('email')
+        plan = request.args.get('plan')
+
+        print(f"\n[PAYMENT-SUCCESS] Пользователь вернулся с оплаты:")
+        print(f"  payment_id: {payment_id}")
+        print(f"  email: {email}")
+        print(f"  plan: {plan}")
+
+        # Если есть все параметры - проверяем статус платежа и обновляем план
+        if payment_id and email and plan and YOOKASSA_SHOP_ID and YOOKASSA_API_KEY:
+            try:
+                # Получаем информацию о платеже от Yookassa
+                payment_info = Payment.find_one(payment_id)
+                payment_status = payment_info.status
+
+                print(f"[PAYMENT-SUCCESS] Статус платежа: {payment_status}")
+
+                if payment_status == 'succeeded':
+                    # Платёж успешен - обновляем план в БД
+                    conn = sqlite3.connect(USERS_DB)
+                    cursor = conn.cursor()
+
+                    cursor.execute('SELECT email, plan FROM users WHERE email = ?', (email,))
+                    user_before = cursor.fetchone()
+                    print(f"[PAYMENT-SUCCESS] Пользователь ДО: {user_before}")
+
+                    cursor.execute('UPDATE users SET plan = ? WHERE email = ?', (plan, email))
+                    updated_rows = cursor.rowcount
+                    conn.commit()
+
+                    cursor.execute('SELECT email, plan FROM users WHERE email = ?', (email,))
+                    user_after = cursor.fetchone()
+                    print(f"[PAYMENT-SUCCESS] Пользователь ПОСЛЕ: {user_after}")
+                    print(f"[PAYMENT-SUCCESS] ✅ План обновлён: {email} -> {plan}")
+
+                    conn.close()
+
+            except Exception as e:
+                print(f"[PAYMENT-SUCCESS] ⚠️ Ошибка проверки статуса: {e}")
+                # Продолжаем показывать success страницу даже при ошибке
+
+    except Exception as e:
+        print(f"[PAYMENT-SUCCESS] ❌ Ошибка обработки: {e}")
+
+    # Показываем страницу успеха
     html = """
     <!DOCTYPE html>
     <html lang="ru">
