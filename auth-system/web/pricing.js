@@ -33,6 +33,17 @@ async function loadUserInfo() {
 
       // Обновляем UI
       if (userEmailEl) userEmailEl.textContent = currentEmail;
+
+      // Показываем ссылку на Admin только для nazarov.soft@gmail.com
+      const adminLinkEl = document.getElementById('admin-link');
+      if (adminLinkEl) {
+        if (currentEmail === 'nazarov.soft@gmail.com') {
+          adminLinkEl.style.display = 'inline';
+        } else {
+          adminLinkEl.style.display = 'none';
+        }
+      }
+
       if (currentPlanEl) {
         currentPlanEl.textContent = currentPlan;
 
@@ -281,6 +292,12 @@ async function logout() {
     // Скрываем user-info, показываем auth-prompt
     document.getElementById('user-info').style.display = 'none';
     document.getElementById('auth-prompt').style.display = 'flex';
+
+    // Скрываем ссылку на Admin
+    const adminLinkEl = document.getElementById('admin-link');
+    if (adminLinkEl) {
+      adminLinkEl.style.display = 'none';
+    }
 
     // Обновляем кнопки тарифов
     updateButtons('Free');
