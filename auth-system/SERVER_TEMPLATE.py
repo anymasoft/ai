@@ -29,6 +29,12 @@ EXTENSION_DIR = os.path.join(BASE_DIR, 'extension')
 # Директория с файлами веб-интерфейса (web/ - для сайта, отдельно от расширения)
 WEB_DIR = os.path.join(BASE_DIR, 'web')
 
+# Директория с файлами админ-панели
+ADMIN_DIR = os.path.join(BASE_DIR, 'admin')
+
+# Email администратора
+ADMIN_EMAIL = 'nazarov.soft@gmail.com'
+
 # CORS: разрешаем доступ для YouTube и Chrome расширений
 CORS(
     app,
@@ -63,6 +69,13 @@ CORS(
         r"/switch-plan/*": {
             "origins": ["https://api.beem.ink", "chrome-extension://*"],
             "methods": ["POST", "OPTIONS"],
+            "allow_headers": ["Content-Type", "Authorization"],
+            "supports_credentials": True,
+            "max_age": 3600
+        },
+        r"/admin*": {
+            "origins": ["https://api.beem.ink"],
+            "methods": ["GET", "POST", "OPTIONS"],
             "allow_headers": ["Content-Type", "Authorization"],
             "supports_credentials": True,
             "max_age": 3600
@@ -180,6 +193,29 @@ def init_db():
     cursor.execute('''
         CREATE INDEX IF NOT EXISTS idx_feedback_email
         ON feedback(email)
+    ''')
+
+    # Таблица для хранения истории платежей
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS payments (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            email TEXT NOT NULL,
+            plan TEXT NOT NULL,
+            payment_id TEXT,
+            status TEXT NOT NULL,
+            timestamp INTEGER DEFAULT (strftime('%s', 'now')),
+            raw TEXT
+        )
+    ''')
+
+    cursor.execute('''
+        CREATE INDEX IF NOT EXISTS idx_payments_email
+        ON payments(email)
+    ''')
+
+    cursor.execute('''
+        CREATE INDEX IF NOT EXISTS idx_payments_timestamp
+        ON payments(timestamp)
     ''')
 
     conn.commit()
@@ -980,6 +1016,17 @@ def payment_webhook():
                 conn = sqlite3.connect(USERS_DB)
                 cursor = conn.cursor()
                 cursor.execute('UPDATE users SET plan = ? WHERE email = ?', (plan, email))
+
+                # Записываем платёж в историю payments
+                payment_id = payment_info.get('id', '')
+                status = payment_info.get('status', 'succeeded')
+                raw_data = json.dumps(payment_info)
+
+                cursor.execute('''
+                    INSERT INTO payments (email, plan, payment_id, status, raw)
+                    VALUES (?, ?, ?, ?, ?)
+                ''', (email, plan, payment_id, status, raw_data))
+
                 conn.commit()
                 conn.close()
 
@@ -1054,6 +1101,287 @@ def payment_cancel():
     </html>
     """
     return html
+
+# ═══════════════════════════════════════════════════════════════════
+# ADMIN PANEL ROUTES - только для nazarov.soft@gmail.com
+# ═══════════════════════════════════════════════════════════════════
+
+def check_admin_access():
+    """Проверяет, имеет ли пользователь права администратора"""
+    auth_token = request.cookies.get('auth_token')
+    if not auth_token:
+        return False, None
+
+    user = get_user_by_token(auth_token)
+    if not user or user.get('email') != ADMIN_EMAIL:
+        return False, user
+
+    return True, user
+
+@app.route('/admin')
+def admin_panel():
+    """Главная страница админ-панели"""
+    is_admin, user = check_admin_access()
+
+    if not is_admin:
+        return jsonify({"error": "access_denied"}), 403
+
+    return send_from_directory(ADMIN_DIR, 'admin.html')
+
+@app.route('/admin/auth-check')
+def admin_auth_check():
+    """Проверка прав доступа к админке"""
+    is_admin, user = check_admin_access()
+
+    if not is_admin:
+        return jsonify({"error": "access_denied", "isAdmin": False}), 403
+
+    return jsonify({
+        "isAdmin": True,
+        "email": user.get('email'),
+        "plan": user.get('plan')
+    })
+
+@app.route('/admin/users')
+def admin_users():
+    """Получение списка пользователей с пагинацией"""
+    is_admin, _ = check_admin_access()
+
+    if not is_admin:
+        return jsonify({"error": "access_denied"}), 403
+
+    # Параметры пагинации
+    page = request.args.get('page', 1, type=int)
+    per_page = request.args.get('per_page', 50, type=int)
+    offset = (page - 1) * per_page
+
+    conn = sqlite3.connect(USERS_DB)
+    cursor = conn.cursor()
+
+    # Получаем общее количество пользователей
+    cursor.execute('SELECT COUNT(*) FROM users')
+    total = cursor.fetchone()[0]
+
+    # Получаем пользователей с пагинацией
+    cursor.execute('''
+        SELECT email, plan, created_at
+        FROM users
+        ORDER BY created_at DESC
+        LIMIT ? OFFSET ?
+    ''', (per_page, offset))
+
+    users = []
+    for row in cursor.fetchall():
+        users.append({
+            'email': row[0],
+            'plan': row[1],
+            'created_at': row[2]
+        })
+
+    conn.close()
+
+    return jsonify({
+        'users': users,
+        'total': total,
+        'page': page,
+        'per_page': per_page,
+        'total_pages': (total + per_page - 1) // per_page
+    })
+
+@app.route('/admin/payments')
+def admin_payments():
+    """Получение списка платежей с пагинацией"""
+    is_admin, _ = check_admin_access()
+
+    if not is_admin:
+        return jsonify({"error": "access_denied"}), 403
+
+    # Параметры пагинации
+    page = request.args.get('page', 1, type=int)
+    per_page = request.args.get('per_page', 50, type=int)
+    offset = (page - 1) * per_page
+
+    conn = sqlite3.connect(USERS_DB)
+    cursor = conn.cursor()
+
+    # Получаем общее количество платежей
+    cursor.execute('SELECT COUNT(*) FROM payments')
+    total = cursor.fetchone()[0]
+
+    # Получаем платежи с пагинацией
+    cursor.execute('''
+        SELECT id, email, plan, payment_id, status, timestamp
+        FROM payments
+        ORDER BY timestamp DESC
+        LIMIT ? OFFSET ?
+    ''', (per_page, offset))
+
+    payments = []
+    for row in cursor.fetchall():
+        payments.append({
+            'id': row[0],
+            'email': row[1],
+            'plan': row[2],
+            'payment_id': row[3],
+            'status': row[4],
+            'timestamp': row[5]
+        })
+
+    conn.close()
+
+    return jsonify({
+        'payments': payments,
+        'total': total,
+        'page': page,
+        'per_page': per_page,
+        'total_pages': (total + per_page - 1) // per_page
+    })
+
+@app.route('/admin/feedback')
+def admin_feedback():
+    """Получение списка обратной связи с пагинацией"""
+    is_admin, _ = check_admin_access()
+
+    if not is_admin:
+        return jsonify({"error": "access_denied"}), 403
+
+    # Параметры пагинации
+    page = request.args.get('page', 1, type=int)
+    per_page = request.args.get('per_page', 50, type=int)
+    offset = (page - 1) * per_page
+
+    conn = sqlite3.connect(USERS_DB)
+    cursor = conn.cursor()
+
+    # Получаем общее количество сообщений
+    cursor.execute('SELECT COUNT(*) FROM feedback')
+    total = cursor.fetchone()[0]
+
+    # Получаем сообщения с пагинацией
+    cursor.execute('''
+        SELECT id, email, message, plan, timestamp
+        FROM feedback
+        ORDER BY timestamp DESC
+        LIMIT ? OFFSET ?
+    ''', (per_page, offset))
+
+    feedback = []
+    for row in cursor.fetchall():
+        feedback.append({
+            'id': row[0],
+            'email': row[1],
+            'message': row[2],
+            'plan': row[3],
+            'timestamp': row[4]
+        })
+
+    conn.close()
+
+    return jsonify({
+        'feedback': feedback,
+        'total': total,
+        'page': page,
+        'per_page': per_page,
+        'total_pages': (total + per_page - 1) // per_page
+    })
+
+@app.route('/admin/translations')
+def admin_translations():
+    """Получение кеша переводов по video_id"""
+    is_admin, _ = check_admin_access()
+
+    if not is_admin:
+        return jsonify({"error": "access_denied"}), 403
+
+    video_id = request.args.get('video_id', '')
+    page = request.args.get('page', 1, type=int)
+    per_page = request.args.get('per_page', 50, type=int)
+    offset = (page - 1) * per_page
+
+    conn = sqlite3.connect(DATABASE)
+    cursor = conn.cursor()
+
+    if video_id:
+        # Фильтр по video_id
+        cursor.execute('SELECT COUNT(*) FROM translations WHERE video_id = ?', (video_id,))
+        total = cursor.fetchone()[0]
+
+        cursor.execute('''
+            SELECT id, video_id, line_number, original_text, translated_text, lang, timestamp
+            FROM translations
+            WHERE video_id = ?
+            ORDER BY line_number
+            LIMIT ? OFFSET ?
+        ''', (video_id, per_page, offset))
+    else:
+        # Все переводы
+        cursor.execute('SELECT COUNT(*) FROM translations')
+        total = cursor.fetchone()[0]
+
+        cursor.execute('''
+            SELECT id, video_id, line_number, original_text, translated_text, lang, timestamp
+            FROM translations
+            ORDER BY timestamp DESC
+            LIMIT ? OFFSET ?
+        ''', (per_page, offset))
+
+    translations = []
+    for row in cursor.fetchall():
+        translations.append({
+            'id': row[0],
+            'video_id': row[1],
+            'line_number': row[2],
+            'original_text': row[3],
+            'translated_text': row[4],
+            'lang': row[5],
+            'timestamp': row[6]
+        })
+
+    conn.close()
+
+    return jsonify({
+        'translations': translations,
+        'total': total,
+        'page': page,
+        'per_page': per_page,
+        'total_pages': (total + per_page - 1) // per_page
+    })
+
+@app.route('/admin/update-plan', methods=['POST'])
+def admin_update_plan():
+    """Обновление плана пользователя (только для админа)"""
+    is_admin, _ = check_admin_access()
+
+    if not is_admin:
+        return jsonify({"error": "access_denied"}), 403
+
+    data = request.json
+    email = data.get('email')
+    new_plan = data.get('plan')
+
+    if not email or not new_plan:
+        return jsonify({"error": "missing_fields"}), 400
+
+    if new_plan not in ['Free', 'Pro', 'Premium']:
+        return jsonify({"error": "invalid_plan"}), 400
+
+    # Обновляем план
+    success = update_user_plan(email, new_plan)
+
+    if success:
+        return jsonify({"success": True, "email": email, "plan": new_plan})
+    else:
+        return jsonify({"error": "update_failed"}), 500
+
+@app.route('/admin/<path:filename>')
+def admin_static(filename):
+    """Отдача статических файлов админки (JS, CSS)"""
+    is_admin, _ = check_admin_access()
+
+    if not is_admin:
+        return jsonify({"error": "access_denied"}), 403
+
+    return send_from_directory(ADMIN_DIR, filename)
 
 if __name__ == '__main__':
     init_db()
