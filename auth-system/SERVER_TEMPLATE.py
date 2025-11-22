@@ -179,6 +179,12 @@ def init_db():
         ON users(token)
     ''')
 
+    # Add plan_expires_at column if it doesn't exist
+    cursor.execute("PRAGMA table_info(users)")
+    columns = [col[1] for col in cursor.fetchall()]
+    if 'plan_expires_at' not in columns:
+        cursor.execute('ALTER TABLE users ADD COLUMN plan_expires_at INTEGER')
+
     # Таблица обратной связи (feedback)
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS feedback (
@@ -259,20 +265,33 @@ def create_or_update_user(email, plan='Free'):
 
 def get_user_by_token(token):
     """Получает данные пользователя по токену"""
+    import time
     conn = sqlite3.connect(USERS_DB)
     cursor = conn.cursor()
 
     cursor.execute('''
-        SELECT email, plan
+        SELECT email, plan, plan_expires_at
         FROM users
         WHERE token = ?
     ''', (token,))
 
     result = cursor.fetchone()
-    conn.close()
 
     if result:
-        return {'email': result[0], 'plan': result[1]}
+        email, plan, plan_expires_at = result[0], result[1], result[2]
+
+        # Auto-reset expired plans
+        if plan != 'Free' and plan_expires_at is not None:
+            current_time = int(time.time())
+            if current_time > plan_expires_at:
+                cursor.execute('UPDATE users SET plan = ?, plan_expires_at = NULL WHERE email = ?', ('Free', email))
+                conn.commit()
+                plan = 'Free'
+
+        conn.close()
+        return {'email': email, 'plan': plan}
+
+    conn.close()
     return None
 
 def update_user_plan(email, plan):
@@ -1034,6 +1053,7 @@ def payment_webhook():
 
             if email and plan and plan in ['Pro', 'Premium']:
                 # Обновляем план пользователя в БД
+                import time
                 conn = sqlite3.connect(USERS_DB)
                 cursor = conn.cursor()
 
@@ -1042,7 +1062,9 @@ def payment_webhook():
                 user_before = cursor.fetchone()
                 print(f"[WEBHOOK] Пользователь ДО обновления: {user_before}")
 
-                cursor.execute('UPDATE users SET plan = ? WHERE email = ?', (plan, email))
+                # Set plan expiration: current time + 30 days
+                plan_expires_at = int(time.time()) + (30 * 24 * 60 * 60)
+                cursor.execute('UPDATE users SET plan = ?, plan_expires_at = ? WHERE email = ?', (plan, plan_expires_at, email))
                 updated_rows = cursor.rowcount  # Сохраняем количество обновлённых строк
 
                 # Записываем платёж в историю payments
@@ -1050,10 +1072,17 @@ def payment_webhook():
                 status = payment_info.get('status', 'succeeded')
                 raw_data = json.dumps(payment_info)
 
-                cursor.execute('''
-                    INSERT INTO payments (email, plan, payment_id, status, raw)
-                    VALUES (?, ?, ?, ?, ?)
-                ''', (email, plan, payment_id, status, raw_data))
+                # Protection from duplicate webhooks
+                cursor.execute('SELECT COUNT(*) FROM payments WHERE payment_id = ?', (payment_id,))
+                exists = cursor.fetchone()[0] > 0
+
+                if not exists:
+                    cursor.execute('''
+                        INSERT INTO payments (email, plan, payment_id, status, raw)
+                        VALUES (?, ?, ?, ?, ?)
+                    ''', (email, plan, payment_id, status, raw_data))
+                else:
+                    print(f"[WEBHOOK] ⚠️ Duplicate payment_id: {payment_id}, skipping INSERT")
 
                 conn.commit()
 
@@ -1108,6 +1137,7 @@ def payment_success():
 
                 if payment_status == 'succeeded':
                     # Платёж успешен - обновляем план в БД
+                    import time
                     conn = sqlite3.connect(USERS_DB)
                     cursor = conn.cursor()
 
@@ -1115,7 +1145,9 @@ def payment_success():
                     user_before = cursor.fetchone()
                     print(f"[PAYMENT-SUCCESS] Пользователь ДО: {user_before}")
 
-                    cursor.execute('UPDATE users SET plan = ? WHERE email = ?', (plan, email))
+                    # Set plan expiration: current time + 30 days
+                    plan_expires_at = int(time.time()) + (30 * 24 * 60 * 60)
+                    cursor.execute('UPDATE users SET plan = ?, plan_expires_at = ? WHERE email = ?', (plan, plan_expires_at, email))
                     updated_rows = cursor.rowcount
                     conn.commit()
 
@@ -1257,18 +1289,24 @@ def admin_users():
 
     # Получаем пользователей с пагинацией
     cursor.execute('''
-        SELECT email, plan, created_at
+        SELECT email, plan, created_at, plan_expires_at
         FROM users
         ORDER BY created_at DESC
         LIMIT ? OFFSET ?
     ''', (per_page, offset))
 
+    import time
+    current_time = int(time.time())
     users = []
     for row in cursor.fetchall():
+        email, plan, created_at, plan_expires_at = row[0], row[1], row[2], row[3]
+        is_expired = (plan != 'Free' and plan_expires_at is not None and current_time > plan_expires_at)
         users.append({
-            'email': row[0],
-            'plan': row[1],
-            'created_at': row[2]
+            'email': email,
+            'plan': plan,
+            'created_at': created_at,
+            'plan_expires_at': plan_expires_at,
+            'isExpired': is_expired
         })
 
     conn.close()

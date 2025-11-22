@@ -134,7 +134,7 @@ function renderUsersTable(users) {
         const tr = document.createElement('tr');
         tr.innerHTML = `
             <td class="px-6 py-4 text-sm font-medium text-gray-900">${user.email}</td>
-            <td class="px-6 py-4 text-sm"><span class="plan-badge ${user.plan.toLowerCase()}">${user.plan}</span></td>
+            <td class="px-6 py-4 text-sm"><span class="plan-badge ${user.plan.toLowerCase()}">${user.plan}${user.isExpired ? ' (expired)' : ''}</span></td>
             <td class="px-6 py-4 text-sm text-gray-600">${formatDate(user.created_at)}</td>
             <td class="px-6 py-4 text-sm">
                 <select
