@@ -107,12 +107,12 @@ function updateButtons(plan) {
     setButton(btnPro, 'Upgrade to Pro', false, () => createPayment('Pro'));
     setButton(btnPremium, 'Upgrade to Premium', false, () => createPayment('Premium'));
   } else if (plan === 'Pro') {
-    setButton(btnFree, 'Downgrade to Free', false, () => switchPlan('Free'));
+    setButton(btnFree, 'Downgrade unavailable', true);
     setButton(btnPro, 'Current Plan', true);
     setButton(btnPremium, 'Upgrade to Premium', false, () => createPayment('Premium'));
   } else if (plan === 'Premium') {
-    setButton(btnFree, 'Downgrade to Free', false, () => switchPlan('Free'));
-    setButton(btnPro, 'Downgrade to Pro', false, () => switchPlan('Pro'));
+    setButton(btnFree, 'Downgrade unavailable', true);
+    setButton(btnPro, 'Downgrade unavailable', true);
     setButton(btnPremium, 'Current Plan', true);
   }
 }
