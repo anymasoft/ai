@@ -91,15 +91,19 @@ export function extractTranscriptParams(html) {
   try {
     const parts = html.split('"getTranscriptEndpoint":');
     if (parts.length < 2) {
+      log("extractTranscriptParams", "getTranscriptEndpoint not found in HTML");
       return null;
     }
 
     const paramsMatch = parts[1].split('"params":"')[1];
     if (!paramsMatch) {
+      log("extractTranscriptParams", "params field not found");
       return null;
     }
 
-    return paramsMatch.split('"')[0];
+    const params = paramsMatch.split('"')[0];
+    log("extractTranscriptParams", `Extracted params: ${params.substring(0, 50)}...`);
+    return params;
 
   } catch (error) {
     logError("extractTranscriptParams", "Failed to extract params:", error);

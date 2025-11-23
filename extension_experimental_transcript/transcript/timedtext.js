@@ -19,15 +19,20 @@ export async function getTranscriptViaTimedtext(baseUrl) {
       return null;
     }
 
-    log(MODULE, `Fetching transcript from: ${baseUrl.substring(0, 80)}...`);
+    log(MODULE, `Fetching transcript from: ${baseUrl.substring(0, 120)}...`);
 
     const response = await fetch(baseUrl);
 
     if (!response.ok) {
+      const errorText = await response.text();
+      logError(MODULE, `HTTP error response:`, errorText.substring(0, 300));
       throw new Error(`HTTP ${response.status}: ${response.statusText}`);
     }
 
     const xmlText = await response.text();
+    log(MODULE, `Received XML length: ${xmlText.length} chars`);
+    log(MODULE, `XML preview: ${xmlText.substring(0, 200)}`);
+
     if (!xmlText || xmlText.trim().length === 0) {
       throw new Error("Empty caption XML response");
     }
@@ -104,8 +109,14 @@ function parseTimedtextXML(xmlText) {
 export function extractBaseUrl(captionTracks, preferredLanguage = "en") {
   try {
     if (!captionTracks || captionTracks.length === 0) {
+      log("extractBaseUrl", "No caption tracks provided");
       return null;
     }
+
+    log("extractBaseUrl", `Available tracks: ${captionTracks.length}`);
+    captionTracks.forEach((t, i) => {
+      log("extractBaseUrl", `Track ${i}: ${t.language} (${t.languageCode}/${t.vssId})`);
+    });
 
     // Пробуем найти предпочитаемый язык
     let track = captionTracks.find(t =>
@@ -116,10 +127,18 @@ export function extractBaseUrl(captionTracks, preferredLanguage = "en") {
 
     // Если не нашли, берём первый доступный
     if (!track) {
+      log("extractBaseUrl", `Preferred language ${preferredLanguage} not found, using first track`);
       track = captionTracks[0];
+    } else {
+      log("extractBaseUrl", `Found preferred language: ${track.language}`);
     }
 
-    return track.baseUrl || null;
+    const baseUrl = track.baseUrl || null;
+    if (baseUrl) {
+      log("extractBaseUrl", `BaseUrl length: ${baseUrl.length} chars`);
+    }
+
+    return baseUrl;
 
   } catch (error) {
     logError("extractBaseUrl", "Failed to extract baseUrl:", error);
