@@ -29,15 +29,21 @@ export async function getTranscriptViaInternalAPI(videoId, params) {
       params: params
     };
 
+    log(MODULE, `Request body:`, JSON.stringify(body).substring(0, 200));
+
     const response = await fetch(url, {
       method: "POST",
       headers: {
-        "Content-Type": "application/json"
+        "Content-Type": "application/json",
+        "X-YouTube-Client-Name": "1",
+        "X-YouTube-Client-Version": "2.0"
       },
       body: JSON.stringify(body)
     });
 
     if (!response.ok) {
+      const errorText = await response.text();
+      logError(MODULE, `Response error body:`, errorText.substring(0, 500));
       throw new Error(`HTTP ${response.status}: ${response.statusText}`);
     }
 
