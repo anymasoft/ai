@@ -1089,61 +1089,95 @@ async function translateSubtitles(videoId, subtitles) {
   const SERVER_URL = 'http://localhost:5000/translate-line';
   const prevContext = [];
   const selectedLang = transcriptState.selectedLang; // Используем выбранный язык
+  const MAX_RETRIES = 3;
+  const INITIAL_DELAY = 100; // мс между запросами
+  const REQUEST_TIMEOUT = 10000; // 10 секунд timeout для одного запроса
 
   console.log(`Начинаем перевод на ${selectedLang}...`);
+
+  // Функция для fetch с timeout
+  async function fetchWithTimeout(url, options, timeout) {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeout);
+    try {
+      const response = await fetch(url, { ...options, signal: controller.signal });
+      clearTimeout(timeoutId);
+      return response;
+    } catch (error) {
+      clearTimeout(timeoutId);
+      throw error;
+    }
+  }
+
+  // Функция для одного запроса с retry логикой
+  async function translateLineWithRetry(i, subtitle, retryCount = 0) {
+    try {
+      // Отправляем запрос на перевод одной строки с timeout
+      const response = await fetchWithTimeout(SERVER_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          videoId: videoId,
+          lineNumber: i,
+          text: subtitle.text,
+          prevContext: prevContext.slice(-2), // Последние 1-2 переведенные строки
+          lang: selectedLang // Используем выбранный язык
+        })
+      }, REQUEST_TIMEOUT);
+
+      if (!response.ok) {
+        console.error(`Ошибка перевода строки ${i}: ${response.status}`);
+        prevContext.push(subtitle.text); // Используем оригинал
+        return null;
+      }
+
+      const data = await response.json();
+      const translatedText = data.text;
+
+      // Логируем статус
+      if (data.cached) {
+        console.log(`[${i}] Cache: ${translatedText}`);
+      } else {
+        console.log(`[${i}] Translated: ${translatedText}`);
+      }
+
+      // Немедленно обновляем UI для этой строки
+      updateSingleLine(i, translatedText);
+
+      // Добавляем переведенную строку в контекст
+      prevContext.push(translatedText);
+
+      // Задержка для плавности (больше для некешированных)
+      if (!data.cached) {
+        await new Promise(resolve => setTimeout(resolve, INITIAL_DELAY));
+      } else {
+        await new Promise(resolve => setTimeout(resolve, 30));
+      }
+
+      return translatedText;
+
+    } catch (error) {
+      // Retry логика
+      if (retryCount < MAX_RETRIES) {
+        const delay = Math.pow(2, retryCount) * 500; // Экспоненциальная задержка: 500ms, 1s, 2s
+        console.warn(`Повторная попытка перевода строки ${i} (${retryCount + 1}/${MAX_RETRIES}) через ${delay}ms...`);
+        await new Promise(resolve => setTimeout(resolve, delay));
+        return translateLineWithRetry(i, subtitle, retryCount + 1);
+      } else {
+        console.error(`Ошибка при переводе строки ${i} (после ${MAX_RETRIES} попыток):`, error.message);
+        prevContext.push(subtitle.text); // Используем оригинал в контексте
+        return null;
+      }
+    }
+  }
 
   try {
     // Переводим каждую строку по очереди
     for (let i = 0; i < subtitles.length; i++) {
       const subtitle = subtitles[i];
-
-      try {
-        // Отправляем запрос на перевод одной строки
-        const response = await fetch(SERVER_URL, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            videoId: videoId,
-            lineNumber: i,
-            text: subtitle.text,
-            prevContext: prevContext.slice(-2), // Последние 1-2 переведенные строки
-            lang: selectedLang // Используем выбранный язык
-          })
-        });
-
-        if (!response.ok) {
-          console.error(`Ошибка перевода строки ${i}: ${response.status}`);
-          prevContext.push(subtitle.text); // Используем оригинал
-          continue;
-        }
-
-        const data = await response.json();
-        const translatedText = data.text;
-
-        // Логируем статус
-        if (data.cached) {
-          console.log(`[${i}] Cache: ${translatedText}`);
-        } else {
-          console.log(`[${i}] Translated: ${translatedText}`);
-        }
-
-        // Немедленно обновляем UI для этой строки
-        updateSingleLine(i, translatedText);
-
-        // Добавляем переведенную строку в контекст
-        prevContext.push(translatedText);
-
-        // Небольшая задержка для плавности (не обязательно для кешированных)
-        if (!data.cached) {
-          await new Promise(resolve => setTimeout(resolve, 50));
-        }
-
-      } catch (error) {
-        console.error(`Ошибка при переводе строки ${i}:`, error);
-        prevContext.push(subtitle.text); // Используем оригинал в контексте
-      }
+      await translateLineWithRetry(i, subtitle);
     }
 
     console.log(`Перевод завершен: ${subtitles.length} строк на ${selectedLang}`);
