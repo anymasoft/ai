@@ -410,8 +410,6 @@ async function updateAuthUI() {
 
 // Функция получения тарифного плана пользователя
 async function fetchPlan() {
-  const API_URL = 'http://localhost:5000/api/plan';
-
   try {
     // Получаем токен из chrome.storage
     const storage = await chrome.storage.local.get(['token']);
@@ -420,43 +418,42 @@ async function fetchPlan() {
     if (!token) {
       console.log('[VideoReader] Токен отсутствует - пользователь не авторизован');
       await chrome.storage.local.set({ plan: 'Free', email: null });
-      console.log('[VideoReader] Current plan: Free null');
-      return;
+      return { plan: 'Free', email: null };
     }
 
-    // Отправляем запрос с токеном в Authorization header
-    const response = await fetch(API_URL, {
-      method: 'GET',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json',
-      }
+    // Отправляем запрос через background.js (чтобы избежать CORS)
+    const data = await chrome.runtime.sendMessage({
+      type: 'FETCH_PLAN',
+      token: token
     });
 
-    let plan = 'Free';
-    let email = null;
-
-    // Обрабатываем ответ
-    if (response.status === 401) {
-      // 401 - токен невалиден или истёк
+    // Обрабатываем ошибки
+    if (data.error === 'unauthorized') {
       console.log('[VideoReader] Токен невалиден - пользователь не авторизован');
-      console.log('[VideoReader] Current plan: Free null');
-    } else if (response.ok) {
-      const data = await response.json();
-
-      if (data.status === 'ok' && data.plan && data.email) {
-        // Успешный ответ с данными пользователя
-        plan = data.plan;
-        email = data.email;
-        console.log(`[VideoReader] Current plan: ${plan} ${email}`);
-      }
-    } else {
-      // Другие ошибки - считаем Free
-      console.warn(`[VideoReader] Plan API returned status ${response.status}, defaulting to Free`);
+      await chrome.storage.local.set({ plan: 'Free', email: null });
+      return { plan: 'Free', email: null };
     }
 
-    // Сохраняем в chrome.storage.local
-    await chrome.storage.local.set({ plan, email });
+    if (data.error) {
+      console.warn('[VideoReader] Ошибка при получении плана:', data.error);
+      await chrome.storage.local.set({ plan: 'Free', email: null });
+      return { plan: 'Free', email: null };
+    }
+
+    if (data.status === 'ok' && data.plan && data.email) {
+      // Успешный ответ с данными пользователя
+      console.log(`[VideoReader] Current plan: ${data.plan} ${data.email}`);
+
+      // Сохраняем в chrome.storage.local
+      await chrome.storage.local.set({ plan: data.plan, email: data.email });
+
+      return { plan: data.plan, email: data.email };
+    } else {
+      // Неожиданный формат ответа
+      console.warn('[VideoReader] Неожиданный формат ответа от сервера');
+      await chrome.storage.local.set({ plan: 'Free', email: null });
+      return { plan: 'Free', email: null };
+    }
 
   } catch (error) {
     // Ошибка сети или сервер недоступен - считаем Free
@@ -464,7 +461,11 @@ async function fetchPlan() {
 
     // Сохраняем Free plan
     await chrome.storage.local.set({ plan: 'Free', email: null });
-    console.log('[VideoReader] Current plan: Free null');
+    return { plan: 'Free', email: null };
+
+  } finally {
+    // Всегда обновляем UI авторизации после проверки плана
+    await updateAuthUI();
   }
 }
 
