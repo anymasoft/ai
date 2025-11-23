@@ -19,11 +19,12 @@
   "background": {
     "service_worker": "background.js"
   },
-  "permissions": ["storage"],
+  "permissions": ["storage", "tabs"],
   "host_permissions": [
     "https://www.youtube.com/*",
     "https://www.youtube.com/youtubei/*",
-    "https://www.youtube.com/api/*"
+    "https://www.youtube.com/api/*",
+    "https://api.beem.ink/*"
   ],
   "content_scripts": [
     {
@@ -37,9 +38,12 @@
     {
       "resources": [
         "assets/logo.png",
+        "auth.html",
+        "auth.js",
+        "auth.css",
         "transcript/*.js"
       ],
-      "matches": ["https://www.youtube.com/*"]
+      "matches": ["https://www.youtube.com/*", "<all_urls>"]
     }
   ]
 }
