@@ -351,56 +351,71 @@ function openAuthPage() {
 
 // Обновляет UI авторизации на основе наличия токена
 async function updateAuthUI() {
-  const storage = await chrome.storage.local.get(['token', 'email', 'plan']);
-  const hasToken = !!storage.token;
-  const email = storage.email;
-  const plan = storage.plan || 'Free';
+  try {
+    const storage = await chrome.storage.local.get(['token', 'email', 'plan']);
+    const hasToken = !!storage.token;
+    const email = storage.email;
+    const plan = storage.plan || 'Free';
 
-  const authSection = document.getElementById('yt-reader-auth-section');
-  const authInfo = document.getElementById('yt-reader-auth-info');
+    console.log('[updateAuthUI] Проверка статуса: hasToken=' + hasToken + ', email=' + email + ', plan=' + plan);
 
-  if (hasToken && email) {
-    // Пользователь авторизован - показываем Auth Info, скрываем Sign In
-    if (authSection) authSection.style.display = 'none';
-    if (authInfo) {
-      authInfo.style.display = 'block';
+    const authSection = document.getElementById('yt-reader-auth-section');
+    const authInfo = document.getElementById('yt-reader-auth-info');
 
-      // Обновляем email
-      const emailEl = authInfo.querySelector('.yt-reader-auth-email');
-      if (emailEl) {
-        emailEl.textContent = email;
-      }
+    if (!authSection && !authInfo) {
+      console.warn('[updateAuthUI] Элементы авторизации не найдены в DOM!');
+      return;
+    }
 
-      // Обновляем план с data-атрибутом для стилизации
-      const planBadge = authInfo.querySelector('.yt-reader-auth-plan-badge');
-      const planEl = authInfo.querySelector('.yt-reader-auth-plan');
-      if (planBadge && planEl) {
-        planBadge.setAttribute('data-plan', plan.toLowerCase());
-        planEl.textContent = plan;
-      }
+    if (hasToken && email) {
+      // Пользователь авторизован - показываем Auth Info, скрываем Sign In
+      console.log('[updateAuthUI] Пользователь авторизован, показываем Auth Info');
+      if (authSection) authSection.style.display = 'none';
+      if (authInfo) {
+        authInfo.style.display = 'block';
 
-      // Обновляем кнопку Upgrade в зависимости от плана
-      const upgradeBtn = document.getElementById('yt-reader-upgrade-btn');
-      if (upgradeBtn) {
-        if (plan === 'Free') {
-          upgradeBtn.style.display = 'block';
-          upgradeBtn.textContent = 'Upgrade';
-        } else if (plan === 'Pro') {
-          upgradeBtn.style.display = 'block';
-          upgradeBtn.textContent = 'Upgrade to Premium';
-        } else if (plan === 'Premium') {
-          upgradeBtn.style.display = 'none';
-        } else {
-          // На случай неизвестного плана - показываем кнопку Upgrade
-          upgradeBtn.style.display = 'block';
-          upgradeBtn.textContent = 'Upgrade';
+        // Обновляем email
+        const emailEl = authInfo.querySelector('.yt-reader-auth-email');
+        if (emailEl) {
+          emailEl.textContent = email;
+          console.log('[updateAuthUI] Email обновлен:', email);
+        }
+
+        // Обновляем план с data-атрибутом для стилизации
+        const planBadge = authInfo.querySelector('.yt-reader-auth-plan-badge');
+        const planEl = authInfo.querySelector('.yt-reader-auth-plan');
+        if (planBadge && planEl) {
+          planBadge.setAttribute('data-plan', plan.toLowerCase());
+          planEl.textContent = plan;
+          console.log('[updateAuthUI] План обновлен:', plan);
+        }
+
+        // Обновляем кнопку Upgrade в зависимости от плана
+        const upgradeBtn = document.getElementById('yt-reader-upgrade-btn');
+        if (upgradeBtn) {
+          if (plan === 'Free') {
+            upgradeBtn.style.display = 'block';
+            upgradeBtn.textContent = 'Upgrade';
+          } else if (plan === 'Pro') {
+            upgradeBtn.style.display = 'block';
+            upgradeBtn.textContent = 'Upgrade to Premium';
+          } else if (plan === 'Premium') {
+            upgradeBtn.style.display = 'none';
+          } else {
+            // На случай неизвестного плана - показываем кнопку Upgrade
+            upgradeBtn.style.display = 'block';
+            upgradeBtn.textContent = 'Upgrade';
+          }
         }
       }
+    } else {
+      // Пользователь не авторизован - показываем Sign In, скрываем Auth Info
+      console.log('[updateAuthUI] Пользователь не авторизован, показываем Sign In');
+      if (authSection) authSection.style.display = 'block';
+      if (authInfo) authInfo.style.display = 'none';
     }
-  } else {
-    // Пользователь не авторизован - показываем Sign In, скрываем Auth Info
-    if (authSection) authSection.style.display = 'block';
-    if (authInfo) authInfo.style.display = 'none';
+  } catch (error) {
+    console.error('[updateAuthUI] Ошибка при обновлении UI:', error);
   }
 }
 
@@ -410,8 +425,6 @@ async function updateAuthUI() {
 
 // Функция получения тарифного плана пользователя
 async function fetchPlan() {
-  const API_URL = 'http://localhost:5000/api/plan';
-
   try {
     // Получаем токен из chrome.storage
     const storage = await chrome.storage.local.get(['token']);
@@ -420,43 +433,42 @@ async function fetchPlan() {
     if (!token) {
       console.log('[VideoReader] Токен отсутствует - пользователь не авторизован');
       await chrome.storage.local.set({ plan: 'Free', email: null });
-      console.log('[VideoReader] Current plan: Free null');
-      return;
+      return { plan: 'Free', email: null };
     }
 
-    // Отправляем запрос с токеном в Authorization header
-    const response = await fetch(API_URL, {
-      method: 'GET',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json',
-      }
+    // Отправляем запрос через background.js (чтобы избежать CORS)
+    const data = await chrome.runtime.sendMessage({
+      type: 'FETCH_PLAN',
+      token: token
     });
 
-    let plan = 'Free';
-    let email = null;
-
-    // Обрабатываем ответ
-    if (response.status === 401) {
-      // 401 - токен невалиден или истёк
+    // Обрабатываем ошибки
+    if (data.error === 'unauthorized') {
       console.log('[VideoReader] Токен невалиден - пользователь не авторизован');
-      console.log('[VideoReader] Current plan: Free null');
-    } else if (response.ok) {
-      const data = await response.json();
-
-      if (data.status === 'ok' && data.plan && data.email) {
-        // Успешный ответ с данными пользователя
-        plan = data.plan;
-        email = data.email;
-        console.log(`[VideoReader] Current plan: ${plan} ${email}`);
-      }
-    } else {
-      // Другие ошибки - считаем Free
-      console.warn(`[VideoReader] Plan API returned status ${response.status}, defaulting to Free`);
+      await chrome.storage.local.set({ plan: 'Free', email: null });
+      return { plan: 'Free', email: null };
     }
 
-    // Сохраняем в chrome.storage.local
-    await chrome.storage.local.set({ plan, email });
+    if (data.error) {
+      console.warn('[VideoReader] Ошибка при получении плана:', data.error);
+      await chrome.storage.local.set({ plan: 'Free', email: null });
+      return { plan: 'Free', email: null };
+    }
+
+    if (data.status === 'ok' && data.plan && data.email) {
+      // Успешный ответ с данными пользователя
+      console.log(`[VideoReader] Current plan: ${data.plan} ${data.email}`);
+
+      // Сохраняем в chrome.storage.local
+      await chrome.storage.local.set({ plan: data.plan, email: data.email });
+
+      return { plan: data.plan, email: data.email };
+    } else {
+      // Неожиданный формат ответа
+      console.warn('[VideoReader] Неожиданный формат ответа от сервера');
+      await chrome.storage.local.set({ plan: 'Free', email: null });
+      return { plan: 'Free', email: null };
+    }
 
   } catch (error) {
     // Ошибка сети или сервер недоступен - считаем Free
@@ -464,7 +476,11 @@ async function fetchPlan() {
 
     // Сохраняем Free plan
     await chrome.storage.local.set({ plan: 'Free', email: null });
-    console.log('[VideoReader] Current plan: Free null');
+    return { plan: 'Free', email: null };
+
+  } finally {
+    // Всегда обновляем UI авторизации после проверки плана
+    await updateAuthUI();
   }
 }
 
@@ -691,6 +707,8 @@ async function injectPanel() {
     }
 
     // Обновляем UI авторизации при загрузке панели
+    // Небольшая задержка чтобы гарантировать что DOM полностью готов
+    await new Promise(resolve => setTimeout(resolve, 100));
     await updateAuthUI();
 
     console.log('Панель транскрипта добавлена');
@@ -1086,7 +1104,7 @@ async function handleGetTranscript() {
 
 // Отправка субтитров на сервер и получение переводов построчно
 async function translateSubtitles(videoId, subtitles) {
-  const SERVER_URL = 'http://localhost:5000/translate-line';
+  const SERVER_URL = 'https://api.beem.ink/translate-line';
   const prevContext = [];
   const selectedLang = transcriptState.selectedLang; // Используем выбранный язык
   const MAX_RETRIES = 3;
