@@ -352,18 +352,29 @@ function openAuthPage() {
 // Обновляет UI авторизации на основе наличия токена
 async function updateAuthUI() {
   try {
-    const storage = await chrome.storage.local.get(['token', 'email', 'plan']);
+    // Защита от ошибок при получении данных из storage
+    let storage = {};
+    try {
+      storage = await chrome.storage.local.get(['token', 'email', 'plan']);
+    } catch (e) {
+      console.log('[updateAuthUI] ⚠️ Не удалось получить данные из storage:', e.message);
+      return; // Ошибка storage - пропускаем обновление
+    }
+
     const hasToken = !!storage.token;
     const email = storage.email;
     const plan = storage.plan || 'Free';
 
     console.log('[updateAuthUI] Проверка статуса: hasToken=' + hasToken + ', email=' + email + ', plan=' + plan);
 
+    // Безопасно получаем элементы
     const authSection = document.getElementById('yt-reader-auth-section');
     const authInfo = document.getElementById('yt-reader-auth-info');
 
     if (!authSection && !authInfo) {
-      console.warn('[updateAuthUI] Элементы авторизации не найдены в DOM!');
+      // Элементы авторизации не найдены - это нормально, если panel еще не создана
+      // Просто логируем и возвращаемся без ошибки (не критично)
+      console.log('[updateAuthUI] ℹ️ Элементы авторизации еще не загружены в DOM (panel не создана)');
       return;
     }
 
