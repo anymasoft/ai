@@ -1,7 +1,7 @@
 // ═══════════════════════════════════════════════════════════════════
-// IMPORT NEW TRANSCRIPT MODULE (Experimental)
+// EXPERIMENTAL TRANSCRIPT MODULE (Динамический импорт)
 // ═══════════════════════════════════════════════════════════════════
-import { getTranscript as getTranscriptNew } from './transcript/index.js';
+// Модуль будет загружен динамически при первом использовании
 
 // Глобальное состояние для предотвращения повторных запросов
 const transcriptState = {
@@ -993,6 +993,10 @@ async function getTranscript() {
   }
 
   try {
+    // Динамически импортируем модуль (обходим ограничение Chrome Extensions)
+    const transcriptModule = await import(chrome.runtime.getURL('transcript/index.js'));
+    const { getTranscript: getTranscriptNew } = transcriptModule;
+
     // Используем новый модуль без кликов в UI
     const result = await getTranscriptNew(videoId, {
       preferredLanguage: transcriptState.selectedLang || 'en',
