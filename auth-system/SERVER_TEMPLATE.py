@@ -11,6 +11,7 @@ import os
 import base64
 import requests
 import uuid
+import time
 from openai import OpenAI
 from datetime import datetime
 from dotenv import load_dotenv
@@ -118,6 +119,7 @@ PLAN_PRICES = {
     'Premium': 1900  # 19$ ≈ 1900₽
 }
 
+
 # Утилиты для OAuth
 def decode_jwt(jwt_token):
     """Декодирует JWT токен (без проверки подписи)"""
@@ -129,6 +131,7 @@ def decode_jwt(jwt_token):
     except Exception as e:
         print(f"Ошибка декодирования JWT: {e}")
         return None
+
 
 # ═══════════════════════════════════════════════════════════════════
 # DATABASE INITIALIZATION - Users table with token authentication
@@ -170,20 +173,21 @@ def init_db():
             email TEXT PRIMARY KEY,
             token TEXT NOT NULL,
             plan TEXT NOT NULL DEFAULT 'Free',
-            created_at INTEGER DEFAULT (strftime('%s', 'now'))
+            created_at INTEGER DEFAULT (strftime('%s', 'now')),
+            plan_expires_at INTEGER
         )
     ''')
+
+    # Добавляем колонку plan_expires_at если её нет (для старых БД)
+    cursor.execute("PRAGMA table_info(users)")
+    columns = [column[1] for column in cursor.fetchall()]
+    if 'plan_expires_at' not in columns:
+        cursor.execute('ALTER TABLE users ADD COLUMN plan_expires_at INTEGER')
 
     cursor.execute('''
         CREATE INDEX IF NOT EXISTS idx_token
         ON users(token)
     ''')
-
-    # Add plan_expires_at column if it doesn't exist
-    cursor.execute("PRAGMA table_info(users)")
-    columns = [col[1] for col in cursor.fetchall()]
-    if 'plan_expires_at' not in columns:
-        cursor.execute('ALTER TABLE users ADD COLUMN plan_expires_at INTEGER')
 
     # Таблица обратной связи (feedback)
     cursor.execute('''
@@ -227,6 +231,7 @@ def init_db():
     conn.commit()
     conn.close()
 
+
 # ═══════════════════════════════════════════════════════════════════
 # TOKEN AUTHENTICATION FUNCTIONS
 # ═══════════════════════════════════════════════════════════════════
@@ -246,7 +251,6 @@ def create_or_update_user(email, plan='Free'):
     if existing_user:
         # Пользователь существует - возвращаем существующий токен и НЕ меняем план
         existing_token = existing_user[0]
-        existing_plan = existing_user[1]
         conn.close()
         return existing_token
     else:
@@ -263,9 +267,10 @@ def create_or_update_user(email, plan='Free'):
 
         return token
 
+
 def get_user_by_token(token):
-    """Получает данные пользователя по токену"""
-    import time
+    """Получает данные пользователя по токену.
+    Здесь же выполняется автосброс просроченного плана на Free."""
     conn = sqlite3.connect(USERS_DB)
     cursor = conn.cursor()
 
@@ -276,23 +281,25 @@ def get_user_by_token(token):
     ''', (token,))
 
     result = cursor.fetchone()
-
-    if result:
-        email, plan, plan_expires_at = result[0], result[1], result[2]
-
-        # Auto-reset expired plans
-        if plan != 'Free' and plan_expires_at is not None:
-            current_time = int(time.time())
-            if current_time > plan_expires_at:
-                cursor.execute('UPDATE users SET plan = ?, plan_expires_at = NULL WHERE email = ?', ('Free', email))
-                conn.commit()
-                plan = 'Free'
-
+    if not result:
         conn.close()
-        return {'email': email, 'plan': plan}
+        return None
+
+    email, plan, plan_expires_at = result
+    current_time = int(time.time())
+
+    # Автосброс просроченного платного плана на Free
+    if plan != 'Free' and plan_expires_at and current_time > plan_expires_at:
+        cursor.execute(
+            'UPDATE users SET plan = "Free", plan_expires_at = NULL WHERE email = ?',
+            (email,)
+        )
+        conn.commit()
+        plan = 'Free'
 
     conn.close()
-    return None
+    return {'email': email, 'plan': plan}
+
 
 def update_user_plan(email, plan):
     """Обновляет тариф пользователя"""
@@ -310,6 +317,7 @@ def update_user_plan(email, plan):
     conn.close()
 
     return affected > 0
+
 
 # ═══════════════════════════════════════════════════════════════════
 # TRANSLATION CACHE FUNCTIONS
@@ -333,6 +341,7 @@ def check_line_cache(video_id, line_number, lang='ru'):
         return result[0]
     return None
 
+
 def save_line_to_cache(video_id, line_number, original_text, translated_text, lang='ru'):
     """Сохраняет перевод одной строки в кеш"""
     conn = sqlite3.connect(DATABASE)
@@ -347,6 +356,7 @@ def save_line_to_cache(video_id, line_number, original_text, translated_text, la
     conn.commit()
     conn.close()
 
+
 # Маппинг языковых кодов на полные названия
 LANGUAGE_NAMES = {
     'ru': 'Russian',
@@ -359,6 +369,7 @@ LANGUAGE_NAMES = {
     'it': 'Italian',
     'pt': 'Portuguese'
 }
+
 
 # Перевод одной строки через GPT-4o-mini с контекстом
 def translate_line_with_gpt(text, prev_context=None, lang='ru'):
@@ -431,6 +442,7 @@ def translate_line_with_gpt(text, prev_context=None, lang='ru'):
     except Exception as e:
         print(f"Ошибка при переводе через GPT: {e}")
         return None
+
 
 # ═══════════════════════════════════════════════════════════════════
 # API ENDPOINTS
@@ -531,6 +543,7 @@ def translate_line():
         'stop'      : False
     })
 
+
 @app.route('/api/plan', methods=['GET', 'OPTIONS'])
 def api_plan():
     """API для получения тарифного плана
@@ -540,25 +553,22 @@ def api_plan():
         return '', 200
 
     token = None
-    source = None
 
     # Сначала проверяем Authorization header (расширение)
     auth_header = request.headers.get('Authorization')
     if auth_header and auth_header.startswith('Bearer '):
         token = auth_header.split(' ')[1]
-        source = 'extension'
-    # Если нет header, проверяем cookie (сайт)
     else:
+        # Если нет header, проверяем cookie (сайт)
         cookie_token = request.cookies.get('auth_token')
         if cookie_token:
             token = cookie_token
-            source = 'website'
 
     # Если токен не найден ни в header, ни в cookie
     if not token:
         return jsonify({"error": "unauthorized"}), 401
 
-    # Проверяем токен в БД
+    # Проверяем токен в БД (здесь же сработает автосброс по сроку)
     user = get_user_by_token(token)
 
     if not user:
@@ -566,14 +576,16 @@ def api_plan():
 
     return jsonify({
         "status": "ok",
-        "email" : user['email'],
-        "plan"  : user['plan']
+        "email": user['email'],
+        "plan": user['plan']
     })
+
 
 @app.route('/health', methods=['GET'])
 def health():
     """Health check endpoint"""
     return jsonify({'status': 'ok', 'timestamp': datetime.now().isoformat()})
+
 
 @app.route('/stats', methods=['GET'])
 def stats():
@@ -590,9 +602,10 @@ def stats():
     conn.close()
 
     return jsonify({
-        'total_lines'  : total,
+        'total_lines': total,
         'unique_videos': unique_videos
     })
+
 
 # ═══════════════════════════════════════════════════════════════════
 # OAUTH ENDPOINTS
@@ -609,11 +622,11 @@ def oauth_callback():
     # Обмениваем code на токены
     token_url = 'https://oauth2.googleapis.com/token'
     token_data = {
-        'code'         : code,
-        'client_id'    : GOOGLE_CLIENT_ID,
+        'code': code,
+        'client_id': GOOGLE_CLIENT_ID,
         'client_secret': GOOGLE_CLIENT_SECRET,
-        'redirect_uri' : GOOGLE_REDIRECT_URI,
-        'grant_type'   : 'authorization_code'
+        'redirect_uri': GOOGLE_REDIRECT_URI,
+        'grant_type': 'authorization_code'
     }
 
     try:
@@ -673,15 +686,16 @@ def oauth_callback():
 
         return html_response
 
-
     except requests.exceptions.RequestException as e:
         print(f"Ошибка при обмене кода на токены: {e}")
         return f"<h1>Ошибка</h1><p>Не удалось обменять код на токены: {e}</p>", 500
+
 
 @app.route('/auth')
 def auth():
     """Страница авторизации для расширения"""
     return send_from_directory(EXTENSION_DIR, 'auth.html')
+
 
 @app.route('/auth-site')
 def auth_site():
@@ -696,6 +710,7 @@ def auth_site():
     )
     return redirect(oauth_url)
 
+
 @app.route('/auth-site/callback')
 def auth_site_callback():
     """OAuth callback для сайта - устанавливает cookie и редирект на /pricing"""
@@ -707,11 +722,11 @@ def auth_site_callback():
     # Обмениваем code на токены
     token_url = 'https://oauth2.googleapis.com/token'
     token_data = {
-        'code'         : code,
-        'client_id'    : GOOGLE_CLIENT_ID,
+        'code': code,
+        'client_id': GOOGLE_CLIENT_ID,
         'client_secret': GOOGLE_CLIENT_SECRET,
-        'redirect_uri' : 'https://api.beem.ink/auth-site/callback',
-        'grant_type'   : 'authorization_code'
+        'redirect_uri': 'https://api.beem.ink/auth-site/callback',
+        'grant_type': 'authorization_code'
     }
 
     try:
@@ -733,7 +748,6 @@ def auth_site_callback():
 
         # Создаём или получаем токен для пользователя
         token = create_or_update_user(email, plan='Free')
-
 
         # HTML с postMessage для закрытия popup и обновления родительского окна
         html = """
@@ -762,6 +776,7 @@ def auth_site_callback():
         print(f"Ошибка при обмене кода на токены: {e}")
         return f"<h1>Ошибка</h1><p>Не удалось обменять код на токены: {e}</p>", 500
 
+
 @app.route('/auth-site/logout')
 def auth_site_logout():
     """Logout для сайта - удаляет cookies и редирект на /pricing"""
@@ -775,60 +790,72 @@ def auth_site_logout():
 
     return resp
 
+
 @app.route('/pricing')
 def pricing():
     """Страница с тарифными планами (работает через cookies для сайта)"""
     return send_from_directory(WEB_DIR, 'pricing.html')
+
 
 @app.route('/pricing.css')
 def pricing_css():
     """CSS для страницы pricing"""
     return send_from_directory(WEB_DIR, 'pricing.css', mimetype='text/css')
 
+
 @app.route('/pricing.js')
 def pricing_js():
     """JS для страницы pricing"""
     return send_from_directory(WEB_DIR, 'pricing.js', mimetype='application/javascript')
+
 
 @app.route('/auth.css')
 def auth_css():
     """CSS для страницы авторизации"""
     return send_from_directory(EXTENSION_DIR, 'auth.css', mimetype='text/css')
 
+
 @app.route('/auth.js')
 def auth_js():
     """JS для страницы авторизации (открывает OAuth popup)"""
     return send_from_directory(EXTENSION_DIR, 'auth.js', mimetype='application/javascript')
+
 
 @app.route('/styles.css')
 def styles_css():
     """Общие стили для расширения"""
     return send_from_directory(EXTENSION_DIR, 'styles.css', mimetype='text/css')
 
+
 @app.route('/background.js')
 def background_js():
     """Service worker для Chrome расширения"""
     return send_from_directory(EXTENSION_DIR, 'background.js', mimetype='application/javascript')
+
 
 @app.route('/content.js')
 def content_js():
     """Content script для Chrome расширения"""
     return send_from_directory(EXTENSION_DIR, 'content.js', mimetype='application/javascript')
 
+
 @app.route('/flags.js')
 def flags_js():
     """Флаги для расширения"""
     return send_from_directory(EXTENSION_DIR, 'flags.js', mimetype='application/javascript')
+
 
 @app.route('/manifest.json')
 def manifest():
     """Манифест Chrome расширения"""
     return send_from_directory(EXTENSION_DIR, 'manifest.json', mimetype='application/json')
 
+
 @app.route('/assets/<path:filename>')
 def serve_assets(filename):
     """Обслуживание статических файлов (логотипы и т.д.)"""
     return send_from_directory(os.path.join(EXTENSION_DIR, 'assets'), filename)
+
 
 @app.route('/switch-plan/<plan>', methods=['POST', 'OPTIONS'])
 def switch_plan(plan):
@@ -846,7 +873,6 @@ def switch_plan(plan):
     if not token:
         return jsonify({"error": "unauthorized"}), 401
 
-
     # Проверяем токен и обновляем план
     user = get_user_by_token(token)
 
@@ -860,12 +886,12 @@ def switch_plan(plan):
     conn.commit()
     conn.close()
 
-
     return jsonify({
         "status": "ok",
         "plan": plan,
         "email": user['email']
     })
+
 
 @app.route('/api/update-plan', methods=['POST', 'OPTIONS'])
 def api_update_plan():
@@ -908,6 +934,7 @@ def api_update_plan():
     else:
         return jsonify({"error": "update_failed"}), 500
 
+
 @app.route('/api/feedback', methods=['POST', 'OPTIONS'])
 def api_feedback():
     """API для приема обратной связи от пользователей"""
@@ -940,15 +967,18 @@ def api_feedback():
         print(f"Ошибка сохранения feedback: {e}")
         return jsonify({"error": "server_error"}), 500
 
+
 @app.route('/checkout/pro')
 def checkout_pro():
     """Страница оформления подписки Pro"""
     return send_from_directory(WEB_DIR, 'checkout_pro.html')
 
+
 @app.route('/checkout/premium')
 def checkout_premium():
     """Страница оформления подписки Premium"""
     return send_from_directory(WEB_DIR, 'checkout_premium.html')
+
 
 # ═══════════════════════════════════════════════════════════════════
 # YOOKASSA PAYMENT ENDPOINTS
@@ -1019,6 +1049,7 @@ def create_payment(plan):
         print(f"Ошибка создания платежа: {e}")
         return jsonify({"error": "payment_creation_failed", "message": str(e)}), 500
 
+
 @app.route('/payment-webhook', methods=['POST'])
 def payment_webhook():
     """Webhook для обработки уведомлений от Yookassa"""
@@ -1052,42 +1083,49 @@ def payment_webhook():
             print(f"[WEBHOOK] Plan из metadata: {plan}")
 
             if email and plan and plan in ['Pro', 'Premium']:
-                # Обновляем план пользователя в БД
-                import time
                 conn = sqlite3.connect(USERS_DB)
                 cursor = conn.cursor()
+
+                # Проверяем дублирующий payment_id
+                payment_id = payment_info.get('id', '')
+                cursor.execute(
+                    'SELECT COUNT(*) FROM payments WHERE payment_id = ? LIMIT 1',
+                    (payment_id,)
+                )
+                payment_exists = cursor.fetchone()[0] > 0
+
+                if payment_exists:
+                    print(f"[WEBHOOK] ⚠️ Duplicate payment_id {payment_id}, skipping")
+                    conn.close()
+                    return '', 200
+
+                # Устанавливаем срок действия плана: +30 дней
+                plan_expires_at = int(time.time()) + (30 * 24 * 60 * 60)
 
                 # Проверяем, существует ли пользователь
                 cursor.execute('SELECT email, plan FROM users WHERE email = ?', (email,))
                 user_before = cursor.fetchone()
                 print(f"[WEBHOOK] Пользователь ДО обновления: {user_before}")
 
-                # Set plan expiration: current time + 30 days
-                plan_expires_at = int(time.time()) + (30 * 24 * 60 * 60)
-                cursor.execute('UPDATE users SET plan = ?, plan_expires_at = ? WHERE email = ?', (plan, plan_expires_at, email))
+                cursor.execute(
+                    'UPDATE users SET plan = ?, plan_expires_at = ? WHERE email = ?',
+                    (plan, plan_expires_at, email)
+                )
                 updated_rows = cursor.rowcount  # Сохраняем количество обновлённых строк
 
                 # Записываем платёж в историю payments
-                payment_id = payment_info.get('id', '')
                 status = payment_info.get('status', 'succeeded')
                 raw_data = json.dumps(payment_info)
 
-                # Protection from duplicate webhooks
-                cursor.execute('SELECT COUNT(*) FROM payments WHERE payment_id = ?', (payment_id,))
-                exists = cursor.fetchone()[0] > 0
-
-                if not exists:
-                    cursor.execute('''
-                        INSERT INTO payments (email, plan, payment_id, status, raw)
-                        VALUES (?, ?, ?, ?, ?)
-                    ''', (email, plan, payment_id, status, raw_data))
-                else:
-                    print(f"[WEBHOOK] ⚠️ Duplicate payment_id: {payment_id}, skipping INSERT")
+                cursor.execute('''
+                    INSERT INTO payments (email, plan, payment_id, status, raw)
+                    VALUES (?, ?, ?, ?, ?)
+                ''', (email, plan, payment_id, status, raw_data))
 
                 conn.commit()
 
                 # Проверяем после обновления
-                cursor.execute('SELECT email, plan FROM users WHERE email = ?', (email,))
+                cursor.execute('SELECT email, plan, plan_expires_at FROM users WHERE email = ?', (email,))
                 user_after = cursor.fetchone()
                 print(f"[WEBHOOK] Пользователь ПОСЛЕ обновления: {user_after}")
                 print(f"[WEBHOOK] Обновлено строк: {updated_rows}")
@@ -1111,6 +1149,7 @@ def payment_webhook():
         import traceback
         traceback.print_exc()
         return '', 200  # Возвращаем 200, чтобы Yookassa не повторял запрос
+
 
 @app.route('/payment-success')
 def payment_success():
@@ -1137,7 +1176,6 @@ def payment_success():
 
                 if payment_status == 'succeeded':
                     # Платёж успешен - обновляем план в БД
-                    import time
                     conn = sqlite3.connect(USERS_DB)
                     cursor = conn.cursor()
 
@@ -1145,13 +1183,15 @@ def payment_success():
                     user_before = cursor.fetchone()
                     print(f"[PAYMENT-SUCCESS] Пользователь ДО: {user_before}")
 
-                    # Set plan expiration: current time + 30 days
                     plan_expires_at = int(time.time()) + (30 * 24 * 60 * 60)
-                    cursor.execute('UPDATE users SET plan = ?, plan_expires_at = ? WHERE email = ?', (plan, plan_expires_at, email))
+                    cursor.execute(
+                        'UPDATE users SET plan = ?, plan_expires_at = ? WHERE email = ?',
+                        (plan, plan_expires_at, email)
+                    )
                     updated_rows = cursor.rowcount
                     conn.commit()
 
-                    cursor.execute('SELECT email, plan FROM users WHERE email = ?', (email,))
+                    cursor.execute('SELECT email, plan, plan_expires_at FROM users WHERE email = ?', (email,))
                     user_after = cursor.fetchone()
                     print(f"[PAYMENT-SUCCESS] Пользователь ПОСЛЕ: {user_after}")
                     print(f"[PAYMENT-SUCCESS] ✅ План обновлён: {email} -> {plan}")
@@ -1195,6 +1235,7 @@ def payment_success():
     """
     return html
 
+
 @app.route('/payment-cancel')
 def payment_cancel():
     """Страница отмены оплаты"""
@@ -1227,6 +1268,7 @@ def payment_cancel():
     """
     return html
 
+
 # ═══════════════════════════════════════════════════════════════════
 # ADMIN PANEL ROUTES - только для nazarov.soft@gmail.com
 # ═══════════════════════════════════════════════════════════════════
@@ -1243,6 +1285,7 @@ def check_admin_access():
 
     return True, user
 
+
 @app.route('/admin')
 def admin_panel():
     """Главная страница админ-панели"""
@@ -1252,6 +1295,7 @@ def admin_panel():
         return jsonify({"error": "access_denied"}), 403
 
     return send_from_directory(ADMIN_DIR, 'admin.html')
+
 
 @app.route('/admin/auth-check')
 def admin_auth_check():
@@ -1266,6 +1310,7 @@ def admin_auth_check():
         "email": user.get('email'),
         "plan": user.get('plan')
     })
+
 
 @app.route('/admin/users')
 def admin_users():
@@ -1295,12 +1340,11 @@ def admin_users():
         LIMIT ? OFFSET ?
     ''', (per_page, offset))
 
-    import time
-    current_time = int(time.time())
     users = []
+    current_time = int(time.time())
     for row in cursor.fetchall():
-        email, plan, created_at, plan_expires_at = row[0], row[1], row[2], row[3]
-        is_expired = (plan != 'Free' and plan_expires_at is not None and current_time > plan_expires_at)
+        email, plan, created_at, plan_expires_at = row
+        is_expired = (plan != 'Free' and plan_expires_at and current_time > plan_expires_at)
         users.append({
             'email': email,
             'plan': plan,
@@ -1318,6 +1362,7 @@ def admin_users():
         'per_page': per_page,
         'total_pages': (total + per_page - 1) // per_page
     })
+
 
 @app.route('/admin/payments')
 def admin_payments():
@@ -1368,6 +1413,7 @@ def admin_payments():
         'total_pages': (total + per_page - 1) // per_page
     })
 
+
 @app.route('/admin/feedback')
 def admin_feedback():
     """Получение списка обратной связи с пагинацией"""
@@ -1415,6 +1461,7 @@ def admin_feedback():
         'per_page': per_page,
         'total_pages': (total + per_page - 1) // per_page
     })
+
 
 @app.route('/admin/translations')
 def admin_translations():
@@ -1478,6 +1525,7 @@ def admin_translations():
         'total_pages': (total + per_page - 1) // per_page
     })
 
+
 @app.route('/admin/update-plan', methods=['POST'])
 def admin_update_plan():
     """Обновление плана пользователя (только для админа)"""
@@ -1504,6 +1552,7 @@ def admin_update_plan():
     else:
         return jsonify({"error": "update_failed"}), 500
 
+
 @app.route('/admin/<path:filename>')
 def admin_static(filename):
     """Отдача статических файлов админки (JS, CSS)"""
@@ -1513,6 +1562,7 @@ def admin_static(filename):
         return jsonify({"error": "access_denied"}), 403
 
     return send_from_directory(ADMIN_DIR, filename)
+
 
 if __name__ == '__main__':
     init_db()
