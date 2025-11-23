@@ -30,8 +30,7 @@
       "matches": ["https://www.youtube.com/*"],
       "js": ["flags.js", "content.js"],
       "css": ["styles.css"],
-      "run_at": "document_idle",
-      "type": "module"
+      "run_at": "document_idle"
     }
   ],
   "web_accessible_resources": [
