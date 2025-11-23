@@ -351,56 +351,71 @@ function openAuthPage() {
 
 // Обновляет UI авторизации на основе наличия токена
 async function updateAuthUI() {
-  const storage = await chrome.storage.local.get(['token', 'email', 'plan']);
-  const hasToken = !!storage.token;
-  const email = storage.email;
-  const plan = storage.plan || 'Free';
+  try {
+    const storage = await chrome.storage.local.get(['token', 'email', 'plan']);
+    const hasToken = !!storage.token;
+    const email = storage.email;
+    const plan = storage.plan || 'Free';
 
-  const authSection = document.getElementById('yt-reader-auth-section');
-  const authInfo = document.getElementById('yt-reader-auth-info');
+    console.log('[updateAuthUI] Проверка статуса: hasToken=' + hasToken + ', email=' + email + ', plan=' + plan);
 
-  if (hasToken && email) {
-    // Пользователь авторизован - показываем Auth Info, скрываем Sign In
-    if (authSection) authSection.style.display = 'none';
-    if (authInfo) {
-      authInfo.style.display = 'block';
+    const authSection = document.getElementById('yt-reader-auth-section');
+    const authInfo = document.getElementById('yt-reader-auth-info');
 
-      // Обновляем email
-      const emailEl = authInfo.querySelector('.yt-reader-auth-email');
-      if (emailEl) {
-        emailEl.textContent = email;
-      }
+    if (!authSection && !authInfo) {
+      console.warn('[updateAuthUI] Элементы авторизации не найдены в DOM!');
+      return;
+    }
 
-      // Обновляем план с data-атрибутом для стилизации
-      const planBadge = authInfo.querySelector('.yt-reader-auth-plan-badge');
-      const planEl = authInfo.querySelector('.yt-reader-auth-plan');
-      if (planBadge && planEl) {
-        planBadge.setAttribute('data-plan', plan.toLowerCase());
-        planEl.textContent = plan;
-      }
+    if (hasToken && email) {
+      // Пользователь авторизован - показываем Auth Info, скрываем Sign In
+      console.log('[updateAuthUI] Пользователь авторизован, показываем Auth Info');
+      if (authSection) authSection.style.display = 'none';
+      if (authInfo) {
+        authInfo.style.display = 'block';
 
-      // Обновляем кнопку Upgrade в зависимости от плана
-      const upgradeBtn = document.getElementById('yt-reader-upgrade-btn');
-      if (upgradeBtn) {
-        if (plan === 'Free') {
-          upgradeBtn.style.display = 'block';
-          upgradeBtn.textContent = 'Upgrade';
-        } else if (plan === 'Pro') {
-          upgradeBtn.style.display = 'block';
-          upgradeBtn.textContent = 'Upgrade to Premium';
-        } else if (plan === 'Premium') {
-          upgradeBtn.style.display = 'none';
-        } else {
-          // На случай неизвестного плана - показываем кнопку Upgrade
-          upgradeBtn.style.display = 'block';
-          upgradeBtn.textContent = 'Upgrade';
+        // Обновляем email
+        const emailEl = authInfo.querySelector('.yt-reader-auth-email');
+        if (emailEl) {
+          emailEl.textContent = email;
+          console.log('[updateAuthUI] Email обновлен:', email);
+        }
+
+        // Обновляем план с data-атрибутом для стилизации
+        const planBadge = authInfo.querySelector('.yt-reader-auth-plan-badge');
+        const planEl = authInfo.querySelector('.yt-reader-auth-plan');
+        if (planBadge && planEl) {
+          planBadge.setAttribute('data-plan', plan.toLowerCase());
+          planEl.textContent = plan;
+          console.log('[updateAuthUI] План обновлен:', plan);
+        }
+
+        // Обновляем кнопку Upgrade в зависимости от плана
+        const upgradeBtn = document.getElementById('yt-reader-upgrade-btn');
+        if (upgradeBtn) {
+          if (plan === 'Free') {
+            upgradeBtn.style.display = 'block';
+            upgradeBtn.textContent = 'Upgrade';
+          } else if (plan === 'Pro') {
+            upgradeBtn.style.display = 'block';
+            upgradeBtn.textContent = 'Upgrade to Premium';
+          } else if (plan === 'Premium') {
+            upgradeBtn.style.display = 'none';
+          } else {
+            // На случай неизвестного плана - показываем кнопку Upgrade
+            upgradeBtn.style.display = 'block';
+            upgradeBtn.textContent = 'Upgrade';
+          }
         }
       }
+    } else {
+      // Пользователь не авторизован - показываем Sign In, скрываем Auth Info
+      console.log('[updateAuthUI] Пользователь не авторизован, показываем Sign In');
+      if (authSection) authSection.style.display = 'block';
+      if (authInfo) authInfo.style.display = 'none';
     }
-  } else {
-    // Пользователь не авторизован - показываем Sign In, скрываем Auth Info
-    if (authSection) authSection.style.display = 'block';
-    if (authInfo) authInfo.style.display = 'none';
+  } catch (error) {
+    console.error('[updateAuthUI] Ошибка при обновлении UI:', error);
   }
 }
 
@@ -692,6 +707,8 @@ async function injectPanel() {
     }
 
     // Обновляем UI авторизации при загрузке панели
+    // Небольшая задержка чтобы гарантировать что DOM полностью готов
+    await new Promise(resolve => setTimeout(resolve, 100));
     await updateAuthUI();
 
     console.log('Панель транскрипта добавлена');
