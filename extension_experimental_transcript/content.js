@@ -1104,7 +1104,7 @@ async function handleGetTranscript() {
 
 // Отправка субтитров на сервер и получение переводов построчно
 async function translateSubtitles(videoId, subtitles) {
-  const SERVER_URL = 'http://localhost:5000/translate-line';
+  const SERVER_URL = 'https://api.beem.ink/translate-line';
   const prevContext = [];
   const selectedLang = transcriptState.selectedLang; // Используем выбранный язык
   const MAX_RETRIES = 3;
