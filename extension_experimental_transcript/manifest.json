@@ -1,0 +1,46 @@
+{
+  "manifest_version": 3,
+  "name": "YouTube Transcript Viewer (Experimental)",
+  "version": "4.0.0",
+  "description": "Experimental: Advanced YouTube transcript extraction without UI clicks",
+  "icons": {
+    "16": "assets/logo.png",
+    "48": "assets/logo.png",
+    "128": "assets/logo.png"
+  },
+  "action": {
+    "default_icon": {
+      "16": "assets/logo.png",
+      "48": "assets/logo.png",
+      "128": "assets/logo.png"
+    },
+    "default_title": "YouTube Transcript Viewer (Experimental)"
+  },
+  "background": {
+    "service_worker": "background.js"
+  },
+  "permissions": ["storage"],
+  "host_permissions": [
+    "https://www.youtube.com/*",
+    "https://www.youtube.com/youtubei/*",
+    "https://www.youtube.com/api/*"
+  ],
+  "content_scripts": [
+    {
+      "matches": ["https://www.youtube.com/*"],
+      "js": ["flags.js", "content.js"],
+      "css": ["styles.css"],
+      "run_at": "document_idle",
+      "type": "module"
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "assets/logo.png",
+        "transcript/*.js"
+      ],
+      "matches": ["https://www.youtube.com/*"]
+    }
+  ]
+}
