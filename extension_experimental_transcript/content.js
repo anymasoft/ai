@@ -1167,11 +1167,9 @@ async function translateSubtitles(videoId, subtitles) {
       // Добавляем переведенную строку в контекст
       prevContext.push(translatedText);
 
-      // Задержка для плавности (больше для некешированных)
+      // Задержка только для новых переводов (для cached - нет задержки)
       if (!data.cached) {
         await new Promise(resolve => setTimeout(resolve, INITIAL_DELAY));
-      } else {
-        await new Promise(resolve => setTimeout(resolve, 30));
       }
 
       return translatedText;
@@ -1192,10 +1190,25 @@ async function translateSubtitles(videoId, subtitles) {
   }
 
   try {
-    // Переводим каждую строку по очереди
-    for (let i = 0; i < subtitles.length; i++) {
-      const subtitle = subtitles[i];
-      await translateLineWithRetry(i, subtitle);
+    // Переводим батчи строк параллельно (4 одновременно)
+    const BATCH_SIZE = 4;
+    for (let i = 0; i < subtitles.length; i += BATCH_SIZE) {
+      const batch = [];
+
+      // Создаем батч с маленькой задержкой между стартами (гарантирует порядок prevContext)
+      for (let j = i; j < Math.min(i + BATCH_SIZE, subtitles.length); j++) {
+        const subtitle = subtitles[j];
+        batch.push(translateLineWithRetry(j, subtitle));
+
+        // 10ms задержка между стартами запросов в батче
+        // Это гарантирует, что prevContext будет пополнен в правильном порядке
+        if (j < Math.min(i + BATCH_SIZE, subtitles.length) - 1) {
+          await new Promise(resolve => setTimeout(resolve, 10));
+        }
+      }
+
+      // Ждем завершения всего батча перед следующим
+      await Promise.all(batch);
     }
 
     console.log(`Перевод завершен: ${subtitles.length} строк на ${selectedLang}`);
