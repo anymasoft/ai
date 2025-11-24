@@ -3,7 +3,7 @@
 // ═══════════════════════════════════════════════════════════════════
 
 import { updateSingleLine } from "./ui.js";
-import { updateLimitedClass, insertUpgradeButtons, updateExportButtonState } from "./ui.js";
+import { updateLimitedClass, insertUpgradeButtons, updateExportButtonState, updateProgressBar } from "./ui.js";
 import { transcriptState, calculateMaxFreeLine } from "./state.js";
 
 // Utility: timeout wrapper
@@ -77,6 +77,11 @@ async function translateSubtitles(videoId, subtitles, targetLang) {
 
   let lastTranslatedIndex = -1;
 
+  // Вычисляем общее количество батчей для прогресс-бара
+  const effectiveLines = userPlan === "Free" ? transcriptState.maxFreeLine + 1 : totalLines;
+  const totalBatches = Math.ceil(effectiveLines / BATCH_SIZE);
+  let doneBatches = 0;
+
   for (let start = 0; start < totalLines; start += BATCH_SIZE) {
     const batchItems = [];
 
@@ -124,6 +129,10 @@ async function translateSubtitles(videoId, subtitles, targetLang) {
         lastTranslatedIndex = Math.max(lastTranslatedIndex, item.lineNumber);
       });
     }
+
+    // Обновляем прогресс-бар после успешного batch
+    doneBatches++;
+    updateProgressBar(doneBatches, totalBatches);
 
     if (result.stop === true) break;
 

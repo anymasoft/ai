@@ -5,6 +5,9 @@
 import { transcriptState } from "./state.js";
 import { startRealtimeHighlight } from "./highlight.js";
 
+// Константа для virtual scrolling (количество видимых строк)
+const VISIBLE_WINDOW = 80;
+
 // Список поддерживаемых языков
 const SUPPORTED_LANGUAGES = [
   { code: 'ru', name: 'Russian' },
@@ -131,6 +134,15 @@ function createTranscriptPanel() {
         <button id="yt-reader-translate-btn" class="yt-native-switch-btn active">
           Translate Video
         </button>
+        <div id="yt-reader-progress-container" style="display: none; padding: 8px 12px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+            <span style="font-size: 12px; color: #666;">Translating...</span>
+            <span id="yt-reader-progress-percent" style="font-size: 12px; font-weight: 600; color: #667eea;">0%</span>
+          </div>
+          <div style="width: 100%; height: 4px; background: #e0e0e0; border-radius: 2px; overflow: hidden;">
+            <div id="yt-reader-progress-bar" style="width: 0%; height: 100%; background: linear-gradient(90deg, #667eea 0%, #764ba2 100%); transition: width 0.3s;"></div>
+          </div>
+        </div>
         <div class="yt-reader-export-container">
           <button id="yt-reader-export-btn" class="yt-reader-export-btn" title="Экспорт субтитров" disabled>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -240,21 +252,87 @@ function createTranscriptPanel() {
 
   return panel;
 }
-// Отображение транскрипта
+
+// Virtual scrolling: рендеринг только видимого окна
+function renderWindow(centerIndex) {
+  const subtitles = transcriptState.originalSubtitles;
+  if (!subtitles || subtitles.length === 0) return;
+
+  const content = document.getElementById('yt-transcript-content');
+  if (!content) return;
+
+  const half = Math.floor(VISIBLE_WINDOW / 2);
+  const start = Math.max(0, centerIndex - half);
+  const end = Math.min(subtitles.length, centerIndex + half);
+
+  // Используем requestIdleCallback для оптимизации
+  const render = () => {
+    content.innerHTML = subtitles.slice(start, end).map((sub, relIndex) => {
+      const index = start + relIndex;
+      // Проверяем, есть ли перевод для этой строки
+      const text = transcriptState.translatedSubtitles[index]?.text || sub.text;
+
+      return `
+        <div class="yt-transcript-item"
+             data-time="${sub.time}"
+             data-index="${index}"
+             data-start="${sub.start}"
+             data-end="${sub.end}">
+          <div class="yt-transcript-item-time">${sub.time}</div>
+          <div class="yt-transcript-item-text">${text}</div>
+        </div>
+      `;
+    }).join('');
+
+    // Добавляем клик по элементу для перехода к времени
+    content.querySelectorAll('.yt-transcript-item').forEach(item => {
+      item.addEventListener('click', () => {
+        const time = item.dataset.time;
+        seekToTime(time);
+      });
+    });
+  };
+
+  // Используем requestIdleCallback если доступен, иначе setTimeout
+  if (window.requestIdleCallback) {
+    window.requestIdleCallback(render);
+  } else {
+    setTimeout(render, 0);
+  }
+}
+
+// Отображение транскрипта (с virtual scrolling для больших транскриптов)
 function displayTranscript(subtitles) {
   transcriptState.originalSubtitles = subtitles;
   const content = document.getElementById('yt-transcript-content');
 
-  content.innerHTML = subtitles.map((sub, index) => `
-    <div class="yt-transcript-item"
-         data-time="${sub.time}"
-         data-index="${index}"
-         data-start="${sub.start}"
-         data-end="${sub.end}">
-      <div class="yt-transcript-item-time">${sub.time}</div>
-      <div class="yt-transcript-item-text">${sub.text}</div>
-    </div>
-  `).join('');
+  // Для больших транскриптов используем virtual scrolling
+  if (subtitles.length > 100) {
+    // Рендерим только первые VISIBLE_WINDOW строк
+    const initialEnd = Math.min(VISIBLE_WINDOW, subtitles.length);
+    content.innerHTML = subtitles.slice(0, initialEnd).map((sub, index) => `
+      <div class="yt-transcript-item"
+           data-time="${sub.time}"
+           data-index="${index}"
+           data-start="${sub.start}"
+           data-end="${sub.end}">
+        <div class="yt-transcript-item-time">${sub.time}</div>
+        <div class="yt-transcript-item-text">${sub.text}</div>
+      </div>
+    `).join('');
+  } else {
+    // Для маленьких транскриптов рендерим все строки
+    content.innerHTML = subtitles.map((sub, index) => `
+      <div class="yt-transcript-item"
+           data-time="${sub.time}"
+           data-index="${index}"
+           data-start="${sub.start}"
+           data-end="${sub.end}">
+        <div class="yt-transcript-item-time">${sub.time}</div>
+        <div class="yt-transcript-item-text">${sub.text}</div>
+      </div>
+    `).join('');
+  }
 
   // Добавляем клик по элементу для перехода к времени
   content.querySelectorAll('.yt-transcript-item').forEach(item => {
@@ -263,6 +341,16 @@ function displayTranscript(subtitles) {
       seekToTime(time);
     });
   });
+
+  // Строим timeIndexMap для O(1) поиска (оптимизация RAF)
+  transcriptState.timeIndexMap = [];
+  for (let i = 0; i < subtitles.length; i++) {
+    const start = subtitles[i].start || 0;
+    const end = subtitles[i].end || start + 2;
+    for (let t = start; t < end; t += 0.1) {
+      transcriptState.timeIndexMap[Math.floor(t * 10)] = i;
+    }
+  }
 
   // Запускаем realtime highlighting после отрисовки
   startRealtimeHighlight(subtitles);
@@ -438,16 +526,46 @@ function updateSingleLine(index, translatedText) {
   }
 }
 
+// Обновление прогресс-бара
+function updateProgressBar(doneBatches, totalBatches) {
+  const progressContainer = document.getElementById('yt-reader-progress-container');
+  const progressBar = document.getElementById('yt-reader-progress-bar');
+  const progressPercent = document.getElementById('yt-reader-progress-percent');
+
+  if (!progressContainer || !progressBar || !progressPercent) return;
+
+  // Показываем прогресс
+  progressContainer.style.display = 'block';
+
+  // Вычисляем процент
+  const percent = Math.round((doneBatches / totalBatches) * 100);
+
+  // Обновляем UI
+  progressBar.style.width = `${percent}%`;
+  progressPercent.textContent = `${percent}%`;
+
+  // Скрываем прогресс после завершения
+  if (doneBatches >= totalBatches) {
+    setTimeout(() => {
+      progressContainer.style.display = 'none';
+      progressBar.style.width = '0%';
+      progressPercent.textContent = '0%';
+    }, 1000);
+  }
+}
+
 // Глобальная привязка для api.js
 window.updateSingleLine = updateSingleLine;
 
 export {
   createTranscriptPanel,
   displayTranscript,
+  renderWindow,
   updateSingleLine,
   updateLimitedClass,
   updateExportButtonState,
   insertUpgradeButtons,
+  updateProgressBar,
   SUPPORTED_LANGUAGES,
   getFlagSVG
 };

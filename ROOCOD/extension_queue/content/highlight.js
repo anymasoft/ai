@@ -3,6 +3,7 @@
 // ═══════════════════════════════════════════════════════════════════
 
 import { transcriptState } from "./state.js";
+import { renderWindow } from "./ui.js";
 
 // Флаг активного цикла подсветки
 let isActive = false;
@@ -22,13 +23,18 @@ function startRealtimeHighlight(subtitles) {
   function tick() {
     if (!isActive) return; // Остановка цикла
 
-    const t = video.currentTime;
-    const idx = subtitles.findIndex(s => {
-      const start = s.start || 0;
-      const end = s.end || start + 2;
-      return t >= start && t < end && end > start;
-    });
-    if (idx !== -1) highlightLine(idx);
+    // O(1) поиск индекса через timeIndexMap вместо O(n) findIndex
+    const key = Math.floor(video.currentTime * 10);
+    const idx = transcriptState.timeIndexMap[key] ?? -1;
+
+    if (idx !== -1) {
+      highlightLine(idx);
+
+      // Virtual scrolling: перерендериваем окно для больших транскриптов
+      if (subtitles.length > 100) {
+        renderWindow(idx);
+      }
+    }
     requestAnimationFrame(tick);
   }
 

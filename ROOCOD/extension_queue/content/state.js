@@ -16,7 +16,13 @@ const transcriptState = {
 
   scrollLocked: false,
   scrollUnlockTimer: null,
-  scrollListenersAttached: false,
+  scrollListenersAttachedTo: null,
+
+  timeIndexMap: [],  // O(1) поиск индекса субтитра по времени видео
+
+  listeners: [],  // Массив document-level listeners для cleanup
+  originalPushState: null,  // Оригинальные history методы
+  originalReplaceState: null,
 };
 
 // расчёт лимита Free-плана (30%)
