@@ -50,26 +50,43 @@ async function getFromNextAPI(videoId) {
   return [];
 }
 
-// TimedText API
+// TimedText API - пробуем несколько языков
 async function getFromTimedText(videoId) {
-  try {
-    const resp = await fetch(
-      `https://www.youtube.com/api/timedtext?lang=en&v=${videoId}`
-    );
-    const text = await resp.text();
-    const parser = new DOMParser();
-    const xml = parser.parseFromString(text, "text/xml");
+  // Пробуем разные языки по порядку
+  const langs = ['en', 'ru', 'es', 'de', 'fr', 'ja', 'zh', 'it', 'pt'];
 
-    const entries = [...xml.getElementsByTagName("text")];
-    return entries.map(x => ({
-      text: x.textContent,
-      start: parseFloat(x.getAttribute("start")),
-      end: parseFloat(x.getAttribute("dur")) + parseFloat(x.getAttribute("start")),
-    }));
-  } catch (e) {
-    console.warn("[Transcript] TimedText failed:", e);
-    return [];
+  for (const lang of langs) {
+    try {
+      const resp = await fetch(
+        `https://www.youtube.com/api/timedtext?lang=${lang}&v=${videoId}`
+      );
+
+      if (!resp.ok) continue;
+
+      const text = await resp.text();
+
+      // Проверяем что XML не пустой
+      if (!text || text.trim().length === 0) continue;
+
+      const parser = new DOMParser();
+      const xml = parser.parseFromString(text, "text/xml");
+
+      const entries = [...xml.getElementsByTagName("text")];
+
+      if (entries.length > 0) {
+        console.log(`[Transcript] Found ${entries.length} subtitles in ${lang}`);
+        return entries.map(x => ({
+          text: x.textContent,
+          start: parseFloat(x.getAttribute("start")),
+          end: parseFloat(x.getAttribute("dur")) + parseFloat(x.getAttribute("start")),
+        }));
+      }
+    } catch (e) {
+      console.warn(`[Transcript] TimedText failed for ${lang}:`, e);
+    }
   }
+
+  return [];
 }
 
 // HTML fallback — если YouTube показывает native transcript
