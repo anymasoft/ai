@@ -314,6 +314,11 @@ def init_db():
             ON payments(timestamp)
         ''')
 
+        cursor.execute('''
+            CREATE UNIQUE INDEX IF NOT EXISTS idx_payments_payment_id
+            ON payments(payment_id)
+        ''')
+
         conn.commit()
         conn.close()
 
@@ -789,7 +794,14 @@ def translate_batch():
     for i, item in enumerate(items):
         line_number = item.get('lineNumber', i)
         text = item.get('text', '')
-        
+
+        # Валидация lineNumber
+        if not isinstance(line_number, int) or line_number < 0:
+            continue  # Пропускаем некорректные номера строк
+
+        if total_lines > 0 and line_number >= total_lines:
+            continue  # Пропускаем строки за пределами диапазона
+
         # Проверяем кеш
         cached_translation = check_line_cache(video_id, line_number, lang)
         if cached_translation:
@@ -1437,12 +1449,17 @@ def payment_webhook():
                     status = payment_info.get('status', 'succeeded')
                     raw_data = json.dumps(payment_info)
 
-                    cursor.execute('''
-                        INSERT INTO payments (email, plan, payment_id, status, raw)
-                        VALUES (?, ?, ?, ?, ?)
-                    ''', (email, plan, payment_id, status, raw_data))
+                    try:
+                        cursor.execute('''
+                            INSERT INTO payments (email, plan, payment_id, status, raw)
+                            VALUES (?, ?, ?, ?, ?)
+                        ''', (email, plan, payment_id, status, raw_data))
 
-                    conn.commit()
+                        conn.commit()
+                    except sqlite3.IntegrityError:
+                        # Дубликат payment_id - пропускаем запись
+                        print(f"[WEBHOOK] ⚠️ IntegrityError: Duplicate payment_id {payment_id}, skipping INSERT")
+                        conn.rollback()
 
                     # Проверяем после обновления
                     cursor.execute('SELECT email, plan, plan_expires_at FROM users WHERE email = ?', (email,))

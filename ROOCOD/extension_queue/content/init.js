@@ -6,7 +6,7 @@ import { getTranscript } from "./transcript.js";
 import { translateSubtitles } from "./api.js";
 import { createTranscriptPanel, displayTranscript, updateExportButtonState, SUPPORTED_LANGUAGES, getFlagSVG } from "./ui.js";
 import { transcriptState, getTranslatedSubtitlesArray } from "./state.js";
-import { startRealtimeHighlight } from "./highlight.js";
+import { startRealtimeHighlight, stopRealtimeHighlight } from "./highlight.js";
 import { getVideoId, loadSavedLanguage, waitForElement, getSelectedLanguage, saveLanguage, openAuthPage, updateAuthUI } from "./util.js";
 import { exportSubtitles } from "./export.js";
 
@@ -292,7 +292,7 @@ async function handleGetTranscript() {
 
     // --- AUTO SCROLL LOCK ---
     const container = document.getElementById('yt-transcript-content');
-    if (container) {
+    if (container && !transcriptState.scrollListenersAttached) {
       container.addEventListener("wheel", () => {
         transcriptState.scrollLocked = true;
 
@@ -319,6 +319,8 @@ async function handleGetTranscript() {
           transcriptState.scrollUnlockTimer = null;
         }, 1200);
       }, { passive: true });
+
+      transcriptState.scrollListenersAttached = true;
     }
 
     // Обновляем кнопку на "Перевод..."
@@ -407,12 +409,21 @@ function observeYoutubeNavigation() {
   function handleUrlChange() {
     if (window.location.href !== currentUrl) {
       currentUrl = window.location.href;
-      
+
       // Если перешли на страницу видео
       if (window.location.href.includes('/watch?v=')) {
         // Удаляем старую панель если есть
         const oldPanel = document.getElementById('yt-transcript-panel');
         if (oldPanel) {
+          // Cleanup: останавливаем цикл подсветки и сбрасываем флаги
+          stopRealtimeHighlight();
+          transcriptState.scrollListenersAttached = false;
+          transcriptState.scrollLocked = false;
+          if (transcriptState.scrollUnlockTimer) {
+            clearTimeout(transcriptState.scrollUnlockTimer);
+            transcriptState.scrollUnlockTimer = null;
+          }
+
           oldPanel.remove();
         }
 

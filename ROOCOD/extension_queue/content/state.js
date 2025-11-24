@@ -16,6 +16,7 @@ const transcriptState = {
 
   scrollLocked: false,
   scrollUnlockTimer: null,
+  scrollListenersAttached: false,
 };
 
 // расчёт лимита Free-плана (30%)
