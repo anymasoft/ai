@@ -47,7 +47,7 @@ function buildTXT(subs) {
 // format: "srt" | "vtt" | "txt"
 function exportSubtitles(subtitles, format) {
   if (!subtitles || subtitles.length === 0) {
-    console.warn("No subtitles to export");
+    console.warn("[VideoReader Export] No subtitles to export");
     return;
   }
 

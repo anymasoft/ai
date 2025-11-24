@@ -13,7 +13,7 @@ let lastActiveIndex = -1;
 function startRealtimeHighlight(subtitles) {
   // Предотвращение дублирования циклов
   if (isActive) {
-    console.log("[Highlight] Loop already running, skipping duplicate start");
+    console.log("[VideoReader Highlight] Loop already running, skipping duplicate start");
     return;
   }
 

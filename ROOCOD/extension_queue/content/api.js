@@ -28,7 +28,7 @@ async function sendBatchWithRetry(payload, headers, attempt = 0) {
 
   // КРИТИЧЕСКОЕ: логирование payload для диагностики 500 ошибок
   if (attempt === 0) {
-    console.log(`📤 Sending batch:`, {
+    console.log(`[VideoReader API] 📤 Sending batch:`, {
       videoId: payload.videoId,
       lang: payload.lang,
       itemsCount: payload.items?.length || 0,
@@ -63,7 +63,7 @@ async function sendBatchWithRetry(payload, headers, attempt = 0) {
       // КРИТИЧЕСКОЕ: обработка различных HTTP статусов
       if (status === 429) {
         // Rate limiting - увеличиваем задержку
-        console.warn(`⚠️ Rate limit hit (429), attempt ${attempt + 1}/${MAX_RETRIES}`);
+        console.warn(`[VideoReader API] ⚠️ Rate limit hit (429), attempt ${attempt + 1}/${MAX_RETRIES}`);
         if (attempt < MAX_RETRIES) {
           const delay = 2000 * Math.pow(2, attempt); // Увеличенная задержка для 429
           await new Promise(r => setTimeout(r, delay));
@@ -71,7 +71,7 @@ async function sendBatchWithRetry(payload, headers, attempt = 0) {
         }
       } else if (status >= 500 && status < 600) {
         // Server error - retry
-        console.error(`❌ Server error (${status}), attempt ${attempt + 1}/${MAX_RETRIES}`, {
+        console.error(`[VideoReader API] ❌ Server error (${status}), attempt ${attempt + 1}/${MAX_RETRIES}`, {
           errorBody: errorBody ? errorBody.substring(0, 500) : null,
           videoId: payload.videoId,
           itemsCount: payload.items?.length
@@ -84,7 +84,7 @@ async function sendBatchWithRetry(payload, headers, attempt = 0) {
       }
 
       // Логирование финальной ошибки если все retry исчерпаны
-      console.error(`❌ Request failed with status ${status}:`, {
+      console.error(`[VideoReader API] ❌ Request failed with status ${status}:`, {
         errorBody: errorBody ? errorBody.substring(0, 500) : null,
         videoId: payload.videoId,
         itemsCount: payload.items?.length,
@@ -102,7 +102,7 @@ async function sendBatchWithRetry(payload, headers, attempt = 0) {
 
     // Логирование успешных запросов (только для диагностики)
     if (attempt > 0) {
-      console.log(`✅ Batch succeeded after ${attempt + 1} attempts`);
+      console.log(`[VideoReader API] ✅ Batch succeeded after ${attempt + 1} attempts`);
     }
 
     return result;
@@ -110,7 +110,7 @@ async function sendBatchWithRetry(payload, headers, attempt = 0) {
     const isTimeout = err.name === 'AbortError';
     const errorType = isTimeout ? 'timeout' : 'network';
 
-    console.warn(`⚠️ Batch ${errorType} error:`, err.message, `attempt ${attempt + 1}/${MAX_RETRIES}`);
+    console.warn(`[VideoReader API] ⚠️ Batch ${errorType} error:`, err.message, `attempt ${attempt + 1}/${MAX_RETRIES}`);
 
     if (attempt < MAX_RETRIES) {
       const delay = 500 * Math.pow(2, attempt);
@@ -132,7 +132,7 @@ async function translateSubtitles(videoId, subtitles, targetLang) {
   const BATCH_SIZE = 10;
   const startTime = performance.now();
 
-  console.log(`🚀 Starting translation:`, {
+  console.log(`[VideoReader API] 🚀 Starting translation:`, {
     videoId,
     totalLines: subtitles.length,
     targetLang,
@@ -184,7 +184,7 @@ async function translateSubtitles(videoId, subtitles, targetLang) {
 
     if (!result || result.error) {
       // КРИТИЧЕСКОЕ: детальное логирование ошибок для диагностики
-      console.error("❌ Batch translation failed:", {
+      console.error("[VideoReader API] ❌ Batch translation failed:", {
         batchStart: start,
         batchSize: batchItems.length,
         error: result?.error,
@@ -249,7 +249,7 @@ async function translateSubtitles(videoId, subtitles, targetLang) {
   // Финальная статистика для мониторинга производительности
   const duration = performance.now() - startTime;
   const translatedCount = lastTranslatedIndex + 1;
-  console.log(`✅ Translation completed:`, {
+  console.log(`[VideoReader API] ✅ Translation completed:`, {
     duration: `${(duration / 1000).toFixed(2)}s`,
     translatedLines: translatedCount,
     totalLines: subtitles.length,

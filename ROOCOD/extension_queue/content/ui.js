@@ -311,7 +311,7 @@ function displayTranscript(subtitles) {
   if (subtitles.length > 1000) {
     // Для очень больших транскриптов рендерим только первые VISIBLE_WINDOW строк
     const initialEnd = Math.min(VISIBLE_WINDOW, subtitles.length);
-    console.log(`📊 Virtual scrolling enabled: showing ${initialEnd}/${subtitles.length} lines`);
+    console.log(`[VideoReader UI] 📊 Virtual scrolling enabled: showing ${initialEnd}/${subtitles.length} lines`);
     content.innerHTML = subtitles.slice(0, initialEnd).map((sub, index) => `
       <div class="yt-transcript-item"
            data-time="${sub.time}"
@@ -324,7 +324,7 @@ function displayTranscript(subtitles) {
     `).join('');
   } else {
     // Для транскриптов до 1000 строк рендерим все сразу
-    console.log(`📊 Full render: showing all ${subtitles.length} lines`);
+    console.log(`[VideoReader UI] 📊 Full render: showing all ${subtitles.length} lines`);
     content.innerHTML = subtitles.map((sub, index) => `
       <div class="yt-transcript-item"
            data-time="${sub.time}"
