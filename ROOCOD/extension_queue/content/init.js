@@ -290,6 +290,37 @@ async function handleGetTranscript() {
     // Отображаем оригинальные субтитры (displayTranscript уже запускает highlight)
     displayTranscript(subtitles);
 
+    // --- AUTO SCROLL LOCK ---
+    const container = document.getElementById('yt-transcript-content');
+    if (container) {
+      container.addEventListener("wheel", () => {
+        transcriptState.scrollLocked = true;
+
+        if (transcriptState.scrollUnlockTimer) {
+          clearTimeout(transcriptState.scrollUnlockTimer);
+        }
+
+        // через 1200 мс возвращаем автоскролл
+        transcriptState.scrollUnlockTimer = setTimeout(() => {
+          transcriptState.scrollLocked = false;
+          transcriptState.scrollUnlockTimer = null;
+        }, 1200);
+      }, { passive: true });
+
+      container.addEventListener("scroll", () => {
+        transcriptState.scrollLocked = true;
+
+        if (transcriptState.scrollUnlockTimer) {
+          clearTimeout(transcriptState.scrollUnlockTimer);
+        }
+
+        transcriptState.scrollUnlockTimer = setTimeout(() => {
+          transcriptState.scrollLocked = false;
+          transcriptState.scrollUnlockTimer = null;
+        }, 1200);
+      }, { passive: true });
+    }
+
     // Обновляем кнопку на "Перевод..."
     translateBtn.innerHTML = `
       <div class="yt-reader-loading-spinner"></div>
