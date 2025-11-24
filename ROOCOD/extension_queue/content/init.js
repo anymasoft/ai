@@ -27,14 +27,25 @@ function throttle(fn, delay) {
 
 // Уничтожение панели и очистка всех ресурсов
 function destroyPanel() {
-  // Останавливаем realtime highlight
+  // Останавливаем realtime highlight (прерывает RAF цикл)
   stopRealtimeHighlight();
 
-  // Удаляем scroll listeners (будут удалены вместе с контейнером)
-  transcriptState.scrollListenersAttachedTo = null;
+  // P1 FIX: Явная очистка scroll/wheel handlers
+  if (transcriptState.scrollListenersAttachedTo) {
+    const oldContainer = transcriptState.scrollListenersAttachedTo;
+    if (transcriptState.wheelHandler) {
+      oldContainer.removeEventListener("wheel", transcriptState.wheelHandler);
+      transcriptState.wheelHandler = null;
+    }
+    if (transcriptState.scrollHandler) {
+      oldContainer.removeEventListener("scroll", transcriptState.scrollHandler);
+      transcriptState.scrollHandler = null;
+    }
+    transcriptState.scrollListenersAttachedTo = null;
+  }
   transcriptState.scrollLocked = false;
 
-  // Очищаем таймеры
+  // Очищаем все таймеры
   if (transcriptState.scrollUnlockTimer) {
     clearTimeout(transcriptState.scrollUnlockTimer);
     transcriptState.scrollUnlockTimer = null;
@@ -46,11 +57,9 @@ function destroyPanel() {
   }
   transcriptState.listeners = [];
 
-  // Восстанавливаем оригинальные history методы
-  if (transcriptState.originalPushState) {
-    history.pushState = transcriptState.originalPushState;
-    history.replaceState = transcriptState.originalReplaceState;
-  }
+  // КРИТИЧЕСКОЕ ИЗМЕНЕНИЕ: НЕ восстанавливаем history методы
+  // Hijack должен оставаться активным для корректной работы навигации между видео
+  // History API hijack будет работать всё время пока content script загружен
 
   // Удаляем панель из DOM
   const panel = document.getElementById('yt-transcript-panel');
@@ -59,10 +68,23 @@ function destroyPanel() {
   }
 }
 
-// Cross-tab синхронизация плана
+// Cross-tab синхронизация плана, токена и email
 chrome.storage.onChanged.addListener((changes) => {
+  // КРИТИЧЕСКОЕ ИЗМЕНЕНИЕ: обрабатываем все auth-related изменения
+  let needsUpdate = false;
+
   if (changes.plan) {
     transcriptState.userPlan = changes.plan.newValue;
+    needsUpdate = true;
+  }
+
+  // Обрабатываем изменения token и email
+  if (changes.token || changes.email) {
+    needsUpdate = true;
+  }
+
+  // Обновляем UI только если что-то изменилось
+  if (needsUpdate) {
     updateAuthUI();
     updateExportButtonState();
   }
