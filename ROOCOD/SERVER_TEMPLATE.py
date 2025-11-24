@@ -640,6 +640,7 @@ def translate_batch_with_gpt(texts, lang='ru'):
 # API ENDPOINTS
 # ═══════════════════════════════════════════════════════════════════
 
+@limiter.limit("10 per minute")
 @app.route('/translate-line', methods=['POST', 'OPTIONS'])
 def translate_line():
     """Endpoint для перевода одной строки субтитров"""
