@@ -44,30 +44,10 @@ async function getTranscript(videoId) {
   return [];
 }
 
-// YouTube NEXT API
+// YouTube NEXT API - DISABLED (incomplete API key)
 async function getFromNextAPI(videoId) {
-  try {
-    const url = `https://www.youtube.com/youtubei/v1/get_transcript?key=AIzaSyA...`; 
-    const body = {
-      context: { client: { clientName: "WEB", clientVersion: "2.20230101" } },
-      params: btoa(`\n\x0b${videoId}`),
-    };
-
-    const resp = await fetch(url, {
-      method: "POST",
-      body: JSON.stringify(body),
-      headers: { "Content-Type": "application/json" },
-    });
-
-    const json = await resp.json();
-    if (!json?.actions) return [];
-
-    const runs = extractTranscriptRuns(json);
-    return runs || [];
-  } catch (e) {
-    console.warn("[Transcript] NEXT API failed:", e);
-    return [];
-  }
+  // Метод отключен из-за неполного API-ключа
+  return [];
 }
 
 // TimedText API

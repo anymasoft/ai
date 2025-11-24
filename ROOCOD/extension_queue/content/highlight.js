@@ -4,11 +4,24 @@
 
 import { transcriptState } from "./state.js";
 
+// Флаг активного цикла подсветки
+let isActive = false;
+
 function startRealtimeHighlight(subtitles) {
+  // Предотвращение дублирования циклов
+  if (isActive) {
+    console.log("[Highlight] Loop already running, skipping duplicate start");
+    return;
+  }
+
   const video = document.querySelector("video");
   if (!video) return;
 
+  isActive = true;
+
   function tick() {
+    if (!isActive) return; // Остановка цикла
+
     const t = video.currentTime;
     const idx = subtitles.findIndex(s => {
       const start = s.start || 0;
@@ -20,6 +33,10 @@ function startRealtimeHighlight(subtitles) {
   }
 
   requestAnimationFrame(tick);
+}
+
+function stopRealtimeHighlight() {
+  isActive = false;
 }
 
 function highlightLine(idx) {
@@ -37,4 +54,4 @@ function highlightLine(idx) {
   });
 }
 
-export { startRealtimeHighlight };
+export { startRealtimeHighlight, stopRealtimeHighlight };
