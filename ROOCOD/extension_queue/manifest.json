@@ -40,7 +40,15 @@
         "assets/logo.png",
         "auth.html",
         "auth.js",
-        "auth.css"
+        "auth.css",
+        "content/init.js",
+        "content/ui.js",
+        "content/state.js",
+        "content/api.js",
+        "content/transcript.js",
+        "content/highlight.js",
+        "content/export.js",
+        "content/util.js"
       ],
       "matches": ["<all_urls>"]
     }
