@@ -6,7 +6,7 @@
 const transcriptState = {
   subtitles: [],
   originalSubtitles: [],
-  translatedSubtitles: [],
+  translatedSubtitles: {},
   selectedLang: "ru",
 
   userPlan: "Free",
@@ -26,4 +26,17 @@ function updateUserPlan(newPlan) {
   transcriptState.userPlan = newPlan;
 }
 
-export { transcriptState, calculateMaxFreeLine, updateUserPlan };
+// преобразование translatedSubtitles (объект) в массив для экспорта
+function getTranslatedSubtitlesArray() {
+  const translated = [];
+  for (let i = 0; i < transcriptState.originalSubtitles.length; i++) {
+    if (transcriptState.translatedSubtitles[i]) {
+      translated.push(transcriptState.translatedSubtitles[i]);
+    } else {
+      translated.push(transcriptState.originalSubtitles[i]);
+    }
+  }
+  return translated;
+}
+
+export { transcriptState, calculateMaxFreeLine, updateUserPlan, getTranslatedSubtitlesArray };

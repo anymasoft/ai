@@ -4,19 +4,17 @@
 
 // Импорт всех модулей
 import { initContentScript } from './content/init.js';
-import { createTranscriptPanel, showNotification, waitForElement } from './content/ui.js';
+import { createTranscriptPanel, SUPPORTED_LANGUAGES, getFlagSVG } from './content/ui.js';
 import { transcriptState } from './content/state.js';
 import { translateSubtitles } from './content/api.js';
 import { getTranscript } from './content/transcript.js';
-import { startHighlighting, stopHighlighting } from './content/highlight.js';
+import { startRealtimeHighlight } from './content/highlight.js';
 import { exportSubtitles } from './content/export.js';
-import { 
-  SUPPORTED_LANGUAGES, 
-  getSelectedLanguage, 
-  saveLanguage, 
-  loadSavedLanguage, 
-  getFlagSVG,
-  formatTime,
+import {
+  getSelectedLanguage,
+  saveLanguage,
+  loadSavedLanguage,
+  waitForElement,
   openAuthPage,
   updateAuthUI
 } from './content/util.js';

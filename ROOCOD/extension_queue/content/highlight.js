@@ -8,7 +8,11 @@ function startRealtimeHighlight(subtitles) {
 
   function tick() {
     const t = video.currentTime;
-    const idx = subtitles.findIndex(s => t >= s.start && t < s.end);
+    const idx = subtitles.findIndex(s => {
+      const start = s.start || 0;
+      const end = s.end || start + 2;
+      return t >= start && t < end && end > start;
+    });
     if (idx !== -1) highlightLine(idx);
     requestAnimationFrame(tick);
   }

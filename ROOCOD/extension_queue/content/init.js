@@ -4,17 +4,18 @@
 
 import { getTranscript } from "./transcript.js";
 import { translateSubtitles } from "./api.js";
-import { createTranscriptPanel, displayTranscript, updateExportButtonState } from "./ui.js";
-import { transcriptState } from "./state.js";
+import { createTranscriptPanel, displayTranscript, updateExportButtonState, SUPPORTED_LANGUAGES, getFlagSVG } from "./ui.js";
+import { transcriptState, getTranslatedSubtitlesArray } from "./state.js";
 import { startRealtimeHighlight } from "./highlight.js";
-import { getVideoId, loadSavedLanguage, waitForElement, getSelectedLanguage } from "./util.js";
+import { getVideoId, loadSavedLanguage, waitForElement, getSelectedLanguage, saveLanguage, openAuthPage, updateAuthUI } from "./util.js";
 import { exportSubtitles } from "./export.js";
 
 // Вставка панели в страницу
 async function injectPanel() {
   try {
-    // Загружаем сохраненный язык
-    loadSavedLanguage();
+    // Загружаем сохраненный язык и синхронизируем с state
+    const savedLang = loadSavedLanguage();
+    transcriptState.selectedLang = savedLang;
 
     // Ищем secondary column (справа от видео)
     const secondary = await waitForElement('#secondary-inner, #secondary');
@@ -186,8 +187,9 @@ function handleLanguageSelect(langCode) {
   const selectedLang = SUPPORTED_LANGUAGES.find(l => l.code === langCode);
   if (!selectedLang) return;
 
-  // Сохраняем выбранный язык
+  // Сохраняем выбранный язык и синхронизируем с state
   saveLanguage(langCode);
+  transcriptState.selectedLang = langCode;
 
   // Обновляем UI кнопки
   const langBtn = document.getElementById('yt-reader-lang-btn');
@@ -243,14 +245,13 @@ function handleExportToggle(e) {
 
 // Обработчик выбора формата экспорта
 function handleExportFormat(format, type) {
-  if (!transcriptState.translatedSubtitles || transcriptState.translatedSubtitles.length === 0) {
-    showNotification('Сначала получите транскрипт', 'error');
+  if (!transcriptState.originalSubtitles || transcriptState.originalSubtitles.length === 0) {
     return;
   }
 
   const subtitles = type === 'original' ?
     transcriptState.originalSubtitles :
-    transcriptState.translatedSubtitles;
+    getTranslatedSubtitlesArray();
 
   exportSubtitles(subtitles, format);
 }
@@ -259,7 +260,6 @@ function handleExportFormat(format, type) {
 // Обработчик получения транскрипта
 async function handleGetTranscript() {
   const translateBtn = document.getElementById('yt-reader-translate-btn');
-  const statusEl = document.getElementById('yt-transcript-status');
   const contentEl = document.getElementById('yt-transcript-content');
 
   try {
@@ -269,13 +269,11 @@ async function handleGetTranscript() {
       <div class="yt-reader-loading-spinner"></div>
       Получение...
     `;
-    statusEl.textContent = 'Получение транскрипта...';
-    statusEl.className = 'yt-transcript-status loading';
 
     // Очищаем предыдущий контент
     contentEl.innerHTML = '';
     transcriptState.originalSubtitles = [];
-    transcriptState.translatedSubtitles = [];
+    transcriptState.translatedSubtitles = {};
 
     // Получаем videoId
     const videoId = getVideoId();
@@ -289,25 +287,20 @@ async function handleGetTranscript() {
     // Сохраняем оригинальные субтитры
     transcriptState.originalSubtitles = subtitles;
 
+    // Отображаем оригинальные субтитры (displayTranscript уже запускает highlight)
     displayTranscript(subtitles);
-    startRealtimeHighlight(subtitles);
 
-    // Показываем статус перевода
-    statusEl.textContent = 'Перевод...';
-    statusEl.className = 'yt-transcript-status loading';
+    // Обновляем кнопку на "Перевод..."
+    translateBtn.innerHTML = `
+      <div class="yt-reader-loading-spinner"></div>
+      Перевод...
+    `;
 
     // Получаем выбранный язык
     const targetLang = transcriptState.selectedLang || 'ru';
 
     // Переводим субтитры
     await translateSubtitles(videoId, subtitles, targetLang);
-
-    // Отображаем результат
-    displayTranscript(subtitles);
-
-    // Показываем статус успеха
-    statusEl.textContent = `Переведено на ${SUPPORTED_LANGUAGES.find(l => l.code === targetLang)?.name || targetLang}`;
-    statusEl.className = 'yt-transcript-status success';
 
     // Включаем кнопку
     translateBtn.disabled = false;
@@ -322,10 +315,6 @@ async function handleGetTranscript() {
 
   } catch (error) {
     console.error('Ошибка получения транскрипта:', error);
-
-    // Показываем ошибку
-    statusEl.textContent = error.message || 'Ошибка получения транскрипта';
-    statusEl.className = 'yt-transcript-status error';
 
     // Включаем кнопку
     translateBtn.disabled = false;

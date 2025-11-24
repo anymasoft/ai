@@ -447,5 +447,7 @@ export {
   updateSingleLine,
   updateLimitedClass,
   updateExportButtonState,
-  insertUpgradeButtons
+  insertUpgradeButtons,
+  SUPPORTED_LANGUAGES,
+  getFlagSVG
 };
