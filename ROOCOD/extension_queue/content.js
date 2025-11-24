@@ -23,6 +23,15 @@ import {
 window.transcriptState = transcriptState;
 window.SUPPORTED_LANGUAGES = SUPPORTED_LANGUAGES;
 
+// Global error boundary для перехвата всех ошибок
+window.addEventListener("error", (e) => {
+  console.error("[VideoReader ERROR]", e.error);
+});
+
+window.addEventListener("unhandledrejection", (e) => {
+  console.error("[VideoReader Promise ERROR]", e.reason);
+});
+
 // Главная функция инициализации
 initContentScript();
 

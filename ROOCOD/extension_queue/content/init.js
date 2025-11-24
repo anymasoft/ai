@@ -10,8 +10,70 @@ import { startRealtimeHighlight, stopRealtimeHighlight } from "./highlight.js";
 import { getVideoId, loadSavedLanguage, waitForElement, getSelectedLanguage, saveLanguage, openAuthPage, updateAuthUI } from "./util.js";
 import { exportSubtitles } from "./export.js";
 
+// Флаг для предотвращения двойной вставки панели
+let injecting = false;
+
+// Утилита throttle для ограничения частоты вызовов
+function throttle(fn, delay) {
+  let last = 0;
+  return (...args) => {
+    const now = Date.now();
+    if (now - last > delay) {
+      last = now;
+      return fn(...args);
+    }
+  };
+}
+
+// Уничтожение панели и очистка всех ресурсов
+function destroyPanel() {
+  // Останавливаем realtime highlight
+  stopRealtimeHighlight();
+
+  // Удаляем scroll listeners (будут удалены вместе с контейнером)
+  transcriptState.scrollListenersAttachedTo = null;
+  transcriptState.scrollLocked = false;
+
+  // Очищаем таймеры
+  if (transcriptState.scrollUnlockTimer) {
+    clearTimeout(transcriptState.scrollUnlockTimer);
+    transcriptState.scrollUnlockTimer = null;
+  }
+
+  // Удаляем все document-level listeners
+  for (const {target, type, handler} of transcriptState.listeners) {
+    target.removeEventListener(type, handler);
+  }
+  transcriptState.listeners = [];
+
+  // Восстанавливаем оригинальные history методы
+  if (transcriptState.originalPushState) {
+    history.pushState = transcriptState.originalPushState;
+    history.replaceState = transcriptState.originalReplaceState;
+  }
+
+  // Удаляем панель из DOM
+  const panel = document.getElementById('yt-transcript-panel');
+  if (panel) {
+    panel.remove();
+  }
+}
+
+// Cross-tab синхронизация плана
+chrome.storage.onChanged.addListener((changes) => {
+  if (changes.plan) {
+    transcriptState.userPlan = changes.plan.newValue;
+    updateAuthUI();
+    updateExportButtonState();
+  }
+});
+
 // Вставка панели в страницу
 async function injectPanel() {
+  // Предотвращаем повторную вставку панели
+  if (injecting) return;
+  injecting = true;
+
   try {
     // Загружаем сохраненный язык и синхронизируем с state
     const savedLang = loadSavedLanguage();
@@ -71,7 +133,7 @@ async function injectPanel() {
     });
 
     // Закрытие dropdown при клике вне его
-    document.addEventListener('click', (e) => {
+    const closeDropdownHandler = (e) => {
       if (!e.target.closest('.yt-reader-lang-selector')) {
         langDropdown.classList.remove('show');
         langBtn.classList.remove('active');
@@ -79,6 +141,14 @@ async function injectPanel() {
       if (!e.target.closest('.yt-reader-export-container')) {
         exportDropdown.classList.remove('show');
       }
+    };
+    document.addEventListener('click', closeDropdownHandler);
+
+    // Сохраняем listener для cleanup
+    transcriptState.listeners.push({
+      target: document,
+      type: 'click',
+      handler: closeDropdownHandler
     });
 
     // Обработчики авторизации
@@ -114,8 +184,10 @@ async function injectPanel() {
     await updateAuthUI();
 
     console.log('Панель транскрипта добавлена');
+    injecting = false;
   } catch (error) {
     console.error('Ошибка при вставке панели:', error);
+    injecting = false;
   }
 }
 
@@ -292,8 +364,20 @@ async function handleGetTranscript() {
 
     // --- AUTO SCROLL LOCK ---
     const container = document.getElementById('yt-transcript-content');
-    if (container && !transcriptState.scrollListenersAttached) {
-      container.addEventListener("wheel", () => {
+    if (container && transcriptState.scrollListenersAttachedTo !== container) {
+      // Удаляем listeners со старого контейнера, если он существует
+      if (transcriptState.scrollListenersAttachedTo) {
+        const oldContainer = transcriptState.scrollListenersAttachedTo;
+        if (transcriptState.wheelHandler) {
+          oldContainer.removeEventListener("wheel", transcriptState.wheelHandler);
+        }
+        if (transcriptState.scrollHandler) {
+          oldContainer.removeEventListener("scroll", transcriptState.scrollHandler);
+        }
+      }
+
+      // Создаем новые обработчики
+      transcriptState.wheelHandler = () => {
         transcriptState.scrollLocked = true;
 
         if (transcriptState.scrollUnlockTimer) {
@@ -305,9 +389,9 @@ async function handleGetTranscript() {
           transcriptState.scrollLocked = false;
           transcriptState.scrollUnlockTimer = null;
         }, 1200);
-      }, { passive: true });
+      };
 
-      container.addEventListener("scroll", () => {
+      transcriptState.scrollHandler = () => {
         transcriptState.scrollLocked = true;
 
         if (transcriptState.scrollUnlockTimer) {
@@ -318,9 +402,13 @@ async function handleGetTranscript() {
           transcriptState.scrollLocked = false;
           transcriptState.scrollUnlockTimer = null;
         }, 1200);
-      }, { passive: true });
+      };
 
-      transcriptState.scrollListenersAttached = true;
+      // Добавляем listeners к новому контейнеру
+      container.addEventListener("wheel", transcriptState.wheelHandler, { passive: true });
+      container.addEventListener("scroll", transcriptState.scrollHandler, { passive: true });
+
+      transcriptState.scrollListenersAttachedTo = container;
     }
 
     // Обновляем кнопку на "Перевод..."
@@ -363,7 +451,8 @@ async function handleGetTranscript() {
 
 // Наблюдение за навигацией YouTube
 function observeYoutubeNavigation() {
-  const observer = new MutationObserver((mutations) => {
+  // Callback для MutationObserver
+  const observerCallback = (mutations) => {
     for (const mutation of mutations) {
       for (const node of mutation.addedNodes) {
         if (node.nodeType === Node.ELEMENT_NODE) {
@@ -381,7 +470,12 @@ function observeYoutubeNavigation() {
         }
       }
     }
-  });
+  };
+
+  // Применяем throttle для снижения нагрузки (защита от MutationObserver flood)
+  const throttledCallback = throttle(observerCallback, 500);
+
+  const observer = new MutationObserver(throttledCallback);
 
   // Начинаем наблюдение за body
   observer.observe(document.body, {
@@ -391,20 +485,31 @@ function observeYoutubeNavigation() {
 
   // Также отслеживаем изменения URL через history API
   let currentUrl = window.location.href;
-  const originalPushState = history.pushState;
-  const originalReplaceState = history.replaceState;
+
+  // Сохраняем оригинальные методы для восстановления при cleanup
+  if (!transcriptState.originalPushState) {
+    transcriptState.originalPushState = history.pushState;
+    transcriptState.originalReplaceState = history.replaceState;
+  }
 
   history.pushState = function(...args) {
-    originalPushState.apply(this, args);
+    transcriptState.originalPushState.apply(this, args);
     handleUrlChange();
   };
 
   history.replaceState = function(...args) {
-    originalReplaceState.apply(this, args);
+    transcriptState.originalReplaceState.apply(this, args);
     handleUrlChange();
   };
 
   window.addEventListener('popstate', handleUrlChange);
+
+  // Сохраняем popstate listener для cleanup
+  transcriptState.listeners.push({
+    target: window,
+    type: 'popstate',
+    handler: handleUrlChange
+  });
 
   function handleUrlChange() {
     if (window.location.href !== currentUrl) {
@@ -412,20 +517,8 @@ function observeYoutubeNavigation() {
 
       // Если перешли на страницу видео
       if (window.location.href.includes('/watch?v=')) {
-        // Удаляем старую панель если есть
-        const oldPanel = document.getElementById('yt-transcript-panel');
-        if (oldPanel) {
-          // Cleanup: останавливаем цикл подсветки и сбрасываем флаги
-          stopRealtimeHighlight();
-          transcriptState.scrollListenersAttached = false;
-          transcriptState.scrollLocked = false;
-          if (transcriptState.scrollUnlockTimer) {
-            clearTimeout(transcriptState.scrollUnlockTimer);
-            transcriptState.scrollUnlockTimer = null;
-          }
-
-          oldPanel.remove();
-        }
+        // Уничтожаем старую панель если есть
+        destroyPanel();
 
         // Небольшая задержка чтобы убедиться что DOM полностью загружен
         setTimeout(() => {
