@@ -48,7 +48,13 @@
         "content/transcript.js",
         "content/highlight.js",
         "content/export.js",
-        "content/util.js"
+        "content/util.js",
+        "transcript/index.js",
+        "transcript/internal-api.js",
+        "transcript/next-api.js",
+        "transcript/timedtext.js",
+        "transcript/utils.js",
+        "transcript/ytinitial.js"
       ],
       "matches": ["<all_urls>"]
     }
