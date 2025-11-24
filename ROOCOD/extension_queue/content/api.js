@@ -38,23 +38,81 @@ async function sendBatchWithRetry(payload, headers, attempt = 0) {
     );
 
     if (!response.ok) {
-      return { error: "bad_status", status: response.status };
+      const status = response.status;
+      let errorBody = null;
+
+      try {
+        errorBody = await response.text();
+      } catch (e) {
+        // Игнорируем ошибки чтения body
+      }
+
+      // КРИТИЧЕСКОЕ: обработка различных HTTP статусов
+      if (status === 429) {
+        // Rate limiting - увеличиваем задержку
+        console.warn(`⚠️ Rate limit hit (429), attempt ${attempt + 1}/${MAX_RETRIES}`);
+        if (attempt < MAX_RETRIES) {
+          const delay = 2000 * Math.pow(2, attempt); // Увеличенная задержка для 429
+          await new Promise(r => setTimeout(r, delay));
+          return sendBatchWithRetry(payload, headers, attempt + 1);
+        }
+      } else if (status >= 500 && status < 600) {
+        // Server error - retry
+        console.warn(`⚠️ Server error (${status}), attempt ${attempt + 1}/${MAX_RETRIES}`);
+        if (attempt < MAX_RETRIES) {
+          const delay = 1000 * Math.pow(2, attempt);
+          await new Promise(r => setTimeout(r, delay));
+          return sendBatchWithRetry(payload, headers, attempt + 1);
+        }
+      }
+
+      return {
+        error: "bad_status",
+        status: status,
+        errorBody: errorBody ? errorBody.substring(0, 200) : null
+      };
     }
 
-    return await response.json();
+    const result = await response.json();
+
+    // Логирование успешных запросов (только для диагностики)
+    if (attempt > 0) {
+      console.log(`✅ Batch succeeded after ${attempt + 1} attempts`);
+    }
+
+    return result;
   } catch (err) {
+    const isTimeout = err.name === 'AbortError';
+    const errorType = isTimeout ? 'timeout' : 'network';
+
+    console.warn(`⚠️ Batch ${errorType} error:`, err.message, `attempt ${attempt + 1}/${MAX_RETRIES}`);
+
     if (attempt < MAX_RETRIES) {
       const delay = 500 * Math.pow(2, attempt);
       await new Promise(r => setTimeout(r, delay));
       return sendBatchWithRetry(payload, headers, attempt + 1);
     }
-    return { error: "max_retries", message: err.message };
+
+    return {
+      error: "max_retries",
+      errorType: errorType,
+      message: err.message,
+      attemptsUsed: attempt + 1
+    };
   }
 }
 
 // main batch translate function
 async function translateSubtitles(videoId, subtitles, targetLang) {
   const BATCH_SIZE = 10;
+  const startTime = performance.now();
+
+  console.log(`🚀 Starting translation:`, {
+    videoId,
+    totalLines: subtitles.length,
+    targetLang,
+    batchSize: BATCH_SIZE
+  });
 
   const storage = await chrome.storage.local.get(["token", "plan"]);
   const token = storage.token || null;
@@ -100,7 +158,19 @@ async function translateSubtitles(videoId, subtitles, targetLang) {
     const result = await sendBatchWithRetry(payload, headers);
 
     if (!result || result.error) {
-      console.warn("Batch skipped due to error:", result);
+      // КРИТИЧЕСКОЕ: детальное логирование ошибок для диагностики
+      console.error("❌ Batch translation failed:", {
+        batchStart: start,
+        batchSize: batchItems.length,
+        error: result?.error,
+        status: result?.status,
+        message: result?.message,
+        videoId: videoId
+      });
+
+      // При ошибке продолжаем со следующим batch (отказоустойчивость)
+      doneBatches++;
+      updateProgressBar(doneBatches, totalBatches);
       continue;
     }
 
@@ -150,6 +220,17 @@ async function translateSubtitles(videoId, subtitles, targetLang) {
   }
 
   updateLimitedClass();
+
+  // Финальная статистика для мониторинга производительности
+  const duration = performance.now() - startTime;
+  const translatedCount = lastTranslatedIndex + 1;
+  console.log(`✅ Translation completed:`, {
+    duration: `${(duration / 1000).toFixed(2)}s`,
+    translatedLines: translatedCount,
+    totalLines: subtitles.length,
+    successRate: `${((translatedCount / subtitles.length) * 100).toFixed(1)}%`,
+    userPlan: userPlan
+  });
 }
 
 export { translateSubtitles };
