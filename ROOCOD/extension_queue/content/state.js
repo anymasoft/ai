@@ -13,6 +13,9 @@ const transcriptState = {
   maxFreeLine: 0,
 
   exportAllowed: false,
+
+  scrollLocked: false,
+  scrollUnlockTimer: null,
 };
 
 // расчёт лимита Free-плана (30%)
