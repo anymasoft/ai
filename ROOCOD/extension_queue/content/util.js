@@ -63,8 +63,9 @@ function wait(ms) {
 
 // открыть страницу авторизации
 function openAuthPage() {
-  const authUrl = 'https://api.beem.ink/auth';
-  window.open(authUrl, '_blank');
+  // КРИТИЧЕСКОЕ: открываем auth.html расширения через background.js
+  // auth.html откроет OAuth popup и обработает postMessage от callback
+  chrome.runtime.sendMessage({ type: 'OPEN_AUTH_PAGE' });
 }
 
 // обновить UI авторизации
