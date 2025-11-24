@@ -63,33 +63,42 @@ async function sendBatchWithRetry(payload, headers, attempt = 0) {
       // КРИТИЧЕСКОЕ: обработка различных HTTP статусов
       if (status === 429) {
         // Rate limiting - увеличиваем задержку
-        console.warn(`[VideoReader API] ⚠️ Rate limit hit (429), attempt ${attempt + 1}/${MAX_RETRIES}`);
         if (attempt < MAX_RETRIES) {
+          console.warn(`[VideoReader API] ⚠️ Rate limit (429), попытка ${attempt + 1}/${MAX_RETRIES + 1}, retry через ${2000 * Math.pow(2, attempt)}ms...`);
           const delay = 2000 * Math.pow(2, attempt); // Увеличенная задержка для 429
           await new Promise(r => setTimeout(r, delay));
           return sendBatchWithRetry(payload, headers, attempt + 1);
+        } else {
+          console.error(`[VideoReader API] ❌ Rate limit (429), исчерпаны все ${MAX_RETRIES + 1} попытки`);
         }
       } else if (status >= 500 && status < 600) {
         // Server error - retry
-        console.error(`[VideoReader API] ❌ Server error (${status}), attempt ${attempt + 1}/${MAX_RETRIES}`, {
+        if (attempt < MAX_RETRIES) {
+          console.warn(`[VideoReader API] ⚠️ Server error (${status}), попытка ${attempt + 1}/${MAX_RETRIES + 1}, retry через ${1000 * Math.pow(2, attempt)}ms...`, {
+            errorBody: errorBody ? errorBody.substring(0, 200) : null,
+            videoId: payload.videoId,
+            itemsCount: payload.items?.length
+          });
+          const delay = 1000 * Math.pow(2, attempt);
+          await new Promise(r => setTimeout(r, delay));
+          return sendBatchWithRetry(payload, headers, attempt + 1);
+        } else {
+          console.error(`[VideoReader API] ❌ Server error (${status}), исчерпаны все ${MAX_RETRIES + 1} попытки`, {
+            errorBody: errorBody ? errorBody.substring(0, 500) : null,
+            videoId: payload.videoId,
+            itemsCount: payload.items?.length
+          });
+        }
+      }
+
+      // Логирование финальной ошибки для других статусов
+      if (status !== 429 && !(status >= 500 && status < 600)) {
+        console.error(`[VideoReader API] ❌ Request failed with status ${status}:`, {
           errorBody: errorBody ? errorBody.substring(0, 500) : null,
           videoId: payload.videoId,
           itemsCount: payload.items?.length
         });
-        if (attempt < MAX_RETRIES) {
-          const delay = 1000 * Math.pow(2, attempt);
-          await new Promise(r => setTimeout(r, delay));
-          return sendBatchWithRetry(payload, headers, attempt + 1);
-        }
       }
-
-      // Логирование финальной ошибки если все retry исчерпаны
-      console.error(`[VideoReader API] ❌ Request failed with status ${status}:`, {
-        errorBody: errorBody ? errorBody.substring(0, 500) : null,
-        videoId: payload.videoId,
-        itemsCount: payload.items?.length,
-        attemptsUsed: attempt + 1
-      });
 
       return {
         error: "bad_status",
@@ -110,12 +119,13 @@ async function sendBatchWithRetry(payload, headers, attempt = 0) {
     const isTimeout = err.name === 'AbortError';
     const errorType = isTimeout ? 'timeout' : 'network';
 
-    console.warn(`[VideoReader API] ⚠️ Batch ${errorType} error:`, err.message, `attempt ${attempt + 1}/${MAX_RETRIES}`);
-
     if (attempt < MAX_RETRIES) {
+      console.warn(`[VideoReader API] ⚠️ Batch ${errorType} error:`, err.message, `попытка ${attempt + 1}/${MAX_RETRIES + 1}, retry...`);
       const delay = 500 * Math.pow(2, attempt);
       await new Promise(r => setTimeout(r, delay));
       return sendBatchWithRetry(payload, headers, attempt + 1);
+    } else {
+      console.error(`[VideoReader API] ❌ Batch ${errorType} error:`, err.message, `исчерпаны все ${MAX_RETRIES + 1} попытки`);
     }
 
     return {
@@ -141,16 +151,28 @@ async function translateSubtitles(videoId, subtitles, targetLang) {
 
   const storage = await chrome.storage.local.get(["token", "plan"]);
   const token = storage.token || null;
-  let userPlan = storage.plan || "Free";
+  const initialPlan = storage.plan || "Free";  // КРИТИЧЕСКОЕ: сохраняем начальный план для лимита
+  let userPlan = initialPlan;
 
-  transcriptState.userPlan = userPlan;
+  console.log(`[VideoReader API] 📊 План пользователя:`, {
+    fromStorage: storage.plan || 'не установлен',
+    initialPlan: initialPlan
+  });
+
+  transcriptState.userPlan = initialPlan;
 
   const headers = { "Content-Type": "application/json" };
   if (token) headers["Authorization"] = `Bearer ${token}`;
 
   const totalLines = subtitles.length;
   transcriptState.maxFreeLine =
-    userPlan === "Free" ? calculateMaxFreeLine(totalLines) : totalLines - 1;
+    initialPlan === "Free" ? calculateMaxFreeLine(totalLines) : totalLines - 1;
+
+  console.log(`[VideoReader API] 📊 Лимит перевода:`, {
+    totalLines,
+    maxFreeLine: transcriptState.maxFreeLine,
+    willTranslate: initialPlan === "Free" ? transcriptState.maxFreeLine + 1 : totalLines
+  });
 
   const payloadBase = {
     videoId,
@@ -169,7 +191,9 @@ async function translateSubtitles(videoId, subtitles, targetLang) {
     const batchItems = [];
 
     for (let i = start; i < Math.min(start + BATCH_SIZE, totalLines); i++) {
-      if (userPlan === "Free" && i > transcriptState.maxFreeLine) break;
+      // КРИТИЧЕСКОЕ: используем initialPlan для проверки лимита, а не userPlan
+      // userPlan может обновиться от сервера в середине цикла
+      if (initialPlan === "Free" && i > transcriptState.maxFreeLine) break;
 
       batchItems.push({
         lineNumber: i,
@@ -201,8 +225,17 @@ async function translateSubtitles(videoId, subtitles, targetLang) {
 
     // update plan/export if server returned
     if (result.plan) {
+      console.log(`[VideoReader API] 📊 План обновлен от сервера:`, {
+        oldPlan: userPlan,
+        newPlan: result.plan
+      });
+
       userPlan = result.plan;
       transcriptState.userPlan = result.plan;
+
+      // КРИТИЧЕСКОЕ: сохраняем план в chrome.storage для следующих видео
+      chrome.storage.local.set({ plan: result.plan });
+
       updateExportButtonState();
     }
 
@@ -239,8 +272,11 @@ async function translateSubtitles(videoId, subtitles, targetLang) {
     await new Promise(r => setTimeout(r, 300));
   }
 
-  if (userPlan === "Free" && lastTranslatedIndex >= 0) {
+  // КРИТИЧЕСКОЕ: используем initialPlan для вставки upgrade buttons
+  // т.к. userPlan мог обновиться от сервера
+  if (initialPlan === "Free" && lastTranslatedIndex >= 0) {
     const idx = Math.min(lastTranslatedIndex, transcriptState.maxFreeLine);
+    console.log(`[VideoReader API] 📊 Вставляем upgrade buttons на индексе:`, idx);
     insertUpgradeButtons(idx);
   }
 
@@ -254,7 +290,8 @@ async function translateSubtitles(videoId, subtitles, targetLang) {
     translatedLines: translatedCount,
     totalLines: subtitles.length,
     successRate: `${((translatedCount / subtitles.length) * 100).toFixed(1)}%`,
-    userPlan: userPlan
+    initialPlan: initialPlan,
+    finalPlan: userPlan
   });
 }
 
