@@ -69,10 +69,18 @@ function openAuthPage() {
 
 // обновить UI авторизации
 async function updateAuthUI() {
+  console.log('[util.js] 🔄 updateAuthUI() вызвана');
   const storage = await chrome.storage.local.get(['token', 'email', 'plan']);
   const token = storage.token || null;
   const email = storage.email || null;
   const plan = storage.plan || 'Free';
+
+  console.log('[util.js] 📊 Данные из storage:', {
+    hasToken: !!token,
+    email,
+    plan,
+    tokenLength: token?.length
+  });
 
   const authSection = document.getElementById('yt-reader-auth-section');
   const authInfo = document.getElementById('yt-reader-auth-info');
@@ -80,10 +88,22 @@ async function updateAuthUI() {
   const authPlan = document.querySelector('.yt-reader-auth-plan');
   const upgradeBtn = document.getElementById('yt-reader-upgrade-btn');
 
-  if (!authSection || !authInfo) return;
+  console.log('[util.js] 🔍 Найденные элементы:', {
+    hasAuthSection: !!authSection,
+    hasAuthInfo: !!authInfo,
+    hasAuthEmail: !!authEmail,
+    hasAuthPlan: !!authPlan,
+    hasUpgradeBtn: !!upgradeBtn
+  });
+
+  if (!authSection || !authInfo) {
+    console.warn('[util.js] ⚠️ Отсутствуют элементы authSection или authInfo');
+    return;
+  }
 
   if (token && email) {
     // Пользователь авторизован
+    console.log('[util.js] ✅ Пользователь авторизован, обновляем UI');
     authSection.style.display = 'none';
     authInfo.style.display = 'flex';
 
@@ -95,6 +115,7 @@ async function updateAuthUI() {
     }
   } else {
     // Пользователь не авторизован
+    console.log('[util.js] ❌ Пользователь НЕ авторизован');
     authSection.style.display = 'flex';
     authInfo.style.display = 'none';
   }

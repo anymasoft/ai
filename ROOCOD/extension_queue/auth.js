@@ -9,11 +9,17 @@
 
 // Слушаем postMessage от OAuth callback popup (window.opener.postMessage)
 window.addEventListener('message', function(event) {
+  console.log('[auth.js] 📬 Получено postMessage:', {
+    origin: event.origin,
+    type: event.data?.type,
+    hasToken: !!event.data?.token,
+    hasEmail: !!event.data?.email
+  });
 
   // Проверяем что сообщение от нашего сервера (api.beem.ink)
   // ВАЖНО: убрал строгую проверку origin для отладки
   if (event.origin !== 'https://api.beem.ink') {
-    // НЕ возвращаемся, продолжаем обработку
+    console.warn('[auth.js] ⚠️ Сообщение НЕ от api.beem.ink, но продолжаем обработку');
   }
 
   // Проверяем тип сообщения
@@ -22,9 +28,12 @@ window.addEventListener('message', function(event) {
     const token = event.data.token;
     const email = event.data.email;
 
+    console.log('[auth.js] ✅ AUTH_SUCCESS получен:', { email, tokenLength: token?.length });
+
     // Пересылаем токен и email в background.js через chrome.runtime.sendMessage
     if (token && email) {
 
+      console.log('[auth.js] 📤 Отправляем в background.js...');
       chrome.runtime.sendMessage({
         type: 'AUTH_SUCCESS',
         token: token,
@@ -33,6 +42,7 @@ window.addEventListener('message', function(event) {
         if (chrome.runtime.lastError) {
           console.error('[auth.js] ❌ Ошибка отправки в background:', chrome.runtime.lastError);
         } else {
+          console.log('[auth.js] ✅ Сообщение отправлено в background, ответ:', response);
         }
       });
 

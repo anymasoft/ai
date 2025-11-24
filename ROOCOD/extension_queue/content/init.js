@@ -70,6 +70,14 @@ function destroyPanel() {
 
 // Cross-tab синхронизация плана, токена и email
 chrome.storage.onChanged.addListener((changes) => {
+  console.log('[Content] 📬 chrome.storage.onChanged:', {
+    hasToken: !!changes.token,
+    hasEmail: !!changes.email,
+    hasPlan: !!changes.plan,
+    tokenValue: changes.token?.newValue ? `${changes.token.newValue.substring(0, 20)}...` : null,
+    emailValue: changes.email?.newValue
+  });
+
   // КРИТИЧЕСКОЕ ИЗМЕНЕНИЕ: обрабатываем все auth-related изменения
   let needsUpdate = false;
 
@@ -85,6 +93,7 @@ chrome.storage.onChanged.addListener((changes) => {
 
   // Обновляем UI только если что-то изменилось
   if (needsUpdate) {
+    console.log('[Content] 🔄 Обновляем UI авторизации...');
     updateAuthUI();
     updateExportButtonState();
   }
