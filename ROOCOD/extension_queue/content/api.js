@@ -134,7 +134,12 @@ async function translateSubtitles(videoId, subtitles, targetLang) {
     doneBatches++;
     updateProgressBar(doneBatches, totalBatches);
 
-    if (result.stop === true) break;
+    // КРИТИЧЕСКОЕ ИЗМЕНЕНИЕ: завершаем прогресс-бар перед выходом
+    if (result.stop === true) {
+      // Завершаем прогресс до 100% для корректного скрытия
+      updateProgressBar(totalBatches, totalBatches);
+      break;
+    }
 
     await new Promise(r => setTimeout(r, 300));
   }
