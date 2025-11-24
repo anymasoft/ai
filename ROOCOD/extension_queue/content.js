@@ -39,7 +39,7 @@
     initContentScript();
 
     // Экспорт для отладки
-    console.log('Content script загружен и инициализирован');
+    console.log('[VideoReader] Content script загружен и инициализирован');
   } catch (error) {
     console.error('[VideoReader] Failed to load modules:', error);
   }

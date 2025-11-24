@@ -70,6 +70,14 @@ function destroyPanel() {
 
 // Cross-tab синхронизация плана, токена и email
 chrome.storage.onChanged.addListener((changes) => {
+  console.log('[VideoReader Content] 📬 chrome.storage.onChanged:', {
+    hasToken: !!changes.token,
+    hasEmail: !!changes.email,
+    hasPlan: !!changes.plan,
+    tokenValue: changes.token?.newValue ? `${changes.token.newValue.substring(0, 20)}...` : null,
+    emailValue: changes.email?.newValue
+  });
+
   // КРИТИЧЕСКОЕ ИЗМЕНЕНИЕ: обрабатываем все auth-related изменения
   let needsUpdate = false;
 
@@ -85,6 +93,7 @@ chrome.storage.onChanged.addListener((changes) => {
 
   // Обновляем UI только если что-то изменилось
   if (needsUpdate) {
+    console.log('[VideoReader Content] 🔄 Обновляем UI авторизации...');
     updateAuthUI();
     updateExportButtonState();
   }
@@ -205,10 +214,10 @@ async function injectPanel() {
     await new Promise(resolve => setTimeout(resolve, 100));
     await updateAuthUI();
 
-    console.log('Панель транскрипта добавлена');
+    console.log('[VideoReader Content] Панель транскрипта добавлена');
     injecting = false;
   } catch (error) {
-    console.error('Ошибка при вставке панели:', error);
+    console.error('[VideoReader Content] Ошибка при вставке панели:', error);
     injecting = false;
   }
 }
@@ -302,7 +311,7 @@ function handleLanguageSelect(langCode) {
   langDropdown.classList.remove('show');
   langBtn.classList.remove('active');
 
-  console.log('Выбран язык:', selectedLang.name);
+  console.log('[VideoReader Content] Выбран язык:', selectedLang.name);
 }
 // Обработчик переключения выпадающего списка экспорта
 function handleExportToggle(e) {
@@ -464,10 +473,10 @@ async function handleGetTranscript() {
     translateBtn.disabled = false;
     translateBtn.textContent = 'Translate Video';
 
-    console.log('Транскрипт успешно получен и переведен');
+    console.log('[VideoReader Content] Транскрипт успешно получен и переведен');
 
   } catch (error) {
-    console.error('Ошибка получения транскрипта:', error);
+    console.error('[VideoReader Content] Ошибка получения транскрипта:', error);
 
     // Включаем кнопку и возвращаем оригинальный вид
     translateBtn.disabled = false;
@@ -558,7 +567,7 @@ function observeYoutubeNavigation() {
 
 // Главная функция инициализации
 async function initContentScript() {
-  console.log('Инициализация content script...');
+  console.log('[VideoReader Content] Инициализация content script...');
 
   // Ждем загрузки DOM
   if (document.readyState === 'loading') {
@@ -577,7 +586,7 @@ async function initContentScript() {
         await waitForElement('#secondary-inner, #secondary', 10000);
         await injectPanel();
       } catch (error) {
-        console.log('Secondary column не найден, возможно страница еще не полностью загружена');
+        console.log('[VideoReader Content] Secondary column не найден, возможно страница еще не полностью загружена');
       }
     }
 

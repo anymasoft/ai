@@ -26,17 +26,21 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   // КРИТИЧЕСКИ ВАЖНО: Обработка успешной авторизации от auth.js
   // ═══════════════════════════════════════════════════════════════════
   if (message.type === 'AUTH_SUCCESS') {
+    console.log('[VideoReader Background] 📬 Получен AUTH_SUCCESS:', { email: message.email, tokenLength: message.token?.length });
 
     const token = message.token;
     const email = message.email;
 
     if (!token || !email) {
+      console.error('[VideoReader Background] ❌ Отсутствует token или email');
       sendResponse({ success: false, error: 'Missing token or email' });
       return true;
     }
 
     // 1. Сохраняем токен и email в chrome.storage.local
+    console.log('[VideoReader Background] 💾 Сохраняем в chrome.storage.local...');
     chrome.storage.local.set({ token: token, email: email }, () => {
+      console.log('[VideoReader Background] ✅ Сохранено в storage');
 
       // 2. Ретранслируем AUTH_SUCCESS во ВСЕ вкладки с content scripts
 
@@ -44,10 +48,12 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
         let successCount = 0;
         let errorCount = 0;
+        let youtubeTabsCount = 0;
 
         tabs.forEach((tab) => {
           // Фильтруем только YouTube вкладки
           if (tab.url && (tab.url.includes('youtube.com/watch') || tab.url.includes('youtu.be'))) {
+            youtubeTabsCount++;
 
             chrome.tabs.sendMessage(tab.id, {
               type: 'AUTH_SUCCESS',
@@ -61,6 +67,12 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
               }
             });
           }
+        });
+
+        console.log('[VideoReader Background] 📤 Отправлено в YouTube вкладки:', {
+          youtubeTabsCount,
+          successCount,
+          errorCount
         });
 
       });

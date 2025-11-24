@@ -85,11 +85,11 @@ async function fetchYouTubePageHtml(videoId) {
 }
 
 function log(module, ...args) {
-  console.log(`[YT-Transcript:${module}]`, ...args);
+  console.log(`[VideoReader Transcript:${module}]`, ...args);
 }
 
 function logError(module, ...args) {
-  console.error(`[YT-Transcript:${module}]`, ...args);
+  console.error(`[VideoReader Transcript:${module}]`, ...args);
 }
 
 // ───────────────────────────────────────────────────────────────────
@@ -651,10 +651,10 @@ async function getTranscriptAPI(videoId, options = {}) {
 // ───────────────────────────────────────────────────────────────────
 
 async function getTranscript(videoId) {
-  console.log('🚀 Получаем транскрипт через API (без кликов)...');
+  console.log('[VideoReader Transcript] 🚀 Получаем транскрипт через API (без кликов)...');
 
   if (!videoId) {
-    console.error('❌ Video ID not found');
+    console.error('[VideoReader Transcript] ❌ Video ID not found');
     return null;
   }
 
@@ -665,13 +665,13 @@ async function getTranscript(videoId) {
     });
 
     if (!result || !result.segments || result.segments.length === 0) {
-      console.warn('⚠️ No transcript data received');
+      console.warn('[VideoReader Transcript] ⚠️ No transcript data received');
       return null;
     }
 
-    console.log(`✅ Получено ${result.segments.length} сегментов субтитров`);
-    console.log(`📊 Метод: ${result.method}`);
-    console.log(`🌍 Доступные языки: ${result.availableLanguages.length}`);
+    console.log(`[VideoReader Transcript] ✅ Получено ${result.segments.length} сегментов субтитров`);
+    console.log(`[VideoReader Transcript] 📊 Метод: ${result.method}`);
+    console.log(`[VideoReader Transcript] 🌍 Доступные языки: ${result.availableLanguages.length}`);
 
     // Преобразуем в формат, совместимый с текущим кодом
     const subtitles = result.segments.map(segment => ({
@@ -684,8 +684,8 @@ async function getTranscript(videoId) {
 
     return subtitles;
   } catch (error) {
-    console.error('❌ Ошибка получения транскрипта:', error);
-    console.error('Стек ошибки:', error.stack);
+    console.error('[VideoReader Transcript] ❌ Ошибка получения транскрипта:', error);
+    console.error('[VideoReader Transcript] Стек ошибки:', error.stack);
     return null;
   }
 }

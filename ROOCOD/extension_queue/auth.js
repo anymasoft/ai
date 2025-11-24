@@ -9,11 +9,17 @@
 
 // Слушаем postMessage от OAuth callback popup (window.opener.postMessage)
 window.addEventListener('message', function(event) {
+  console.log('[VideoReader Auth] 📬 Получено postMessage:', {
+    origin: event.origin,
+    type: event.data?.type,
+    hasToken: !!event.data?.token,
+    hasEmail: !!event.data?.email
+  });
 
   // Проверяем что сообщение от нашего сервера (api.beem.ink)
   // ВАЖНО: убрал строгую проверку origin для отладки
   if (event.origin !== 'https://api.beem.ink') {
-    // НЕ возвращаемся, продолжаем обработку
+    console.warn('[VideoReader Auth] ⚠️ Сообщение НЕ от api.beem.ink, но продолжаем обработку');
   }
 
   // Проверяем тип сообщения
@@ -22,17 +28,21 @@ window.addEventListener('message', function(event) {
     const token = event.data.token;
     const email = event.data.email;
 
+    console.log('[VideoReader Auth] ✅ AUTH_SUCCESS получен:', { email, tokenLength: token?.length });
+
     // Пересылаем токен и email в background.js через chrome.runtime.sendMessage
     if (token && email) {
 
+      console.log('[VideoReader Auth] 📤 Отправляем в background.js...');
       chrome.runtime.sendMessage({
         type: 'AUTH_SUCCESS',
         token: token,
         email: email
       }, function(response) {
         if (chrome.runtime.lastError) {
-          console.error('[auth.js] ❌ Ошибка отправки в background:', chrome.runtime.lastError);
+          console.error('[VideoReader Auth] ❌ Ошибка отправки в background:', chrome.runtime.lastError);
         } else {
+          console.log('[VideoReader Auth] ✅ Сообщение отправлено в background, ответ:', response);
         }
       });
 
@@ -98,7 +108,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
       if (popup) {
       } else {
-        console.error('[auth.js] ❌ Не удалось открыть OAuth popup - возможно заблокирован браузером');
+        console.error('[VideoReader Auth] ❌ Не удалось открыть OAuth popup - возможно заблокирован браузером');
       }
     });
   }
