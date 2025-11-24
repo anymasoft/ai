@@ -2,38 +2,45 @@
 // MAIN CONTENT SCRIPT - Главный файл расширения
 // ═══════════════════════════════════════════════════════════════════
 
-// Импорт всех модулей
-import { initContentScript } from './content/init.js';
-import { createTranscriptPanel, SUPPORTED_LANGUAGES, getFlagSVG } from './content/ui.js';
-import { transcriptState } from './content/state.js';
-import { translateSubtitles } from './content/api.js';
-import { getTranscript } from './content/transcript.js';
-import { startRealtimeHighlight } from './content/highlight.js';
-import { exportSubtitles } from './content/export.js';
-import {
-  getSelectedLanguage,
-  saveLanguage,
-  loadSavedLanguage,
-  waitForElement,
-  openAuthPage,
-  updateAuthUI
-} from './content/util.js';
+// Динамический импорт модулей (работает без "type": "module")
+(async () => {
+  try {
+    // Импорт всех модулей
+    const { initContentScript } = await import('./content/init.js');
+    const { createTranscriptPanel, SUPPORTED_LANGUAGES, getFlagSVG } = await import('./content/ui.js');
+    const { transcriptState } = await import('./content/state.js');
+    const { translateSubtitles } = await import('./content/api.js');
+    const { getTranscript } = await import('./content/transcript.js');
+    const { startRealtimeHighlight } = await import('./content/highlight.js');
+    const { exportSubtitles } = await import('./content/export.js');
+    const {
+      getSelectedLanguage,
+      saveLanguage,
+      loadSavedLanguage,
+      waitForElement,
+      openAuthPage,
+      updateAuthUI
+    } = await import('./content/util.js');
 
-// Глобальные переменные для совместимости
-window.transcriptState = transcriptState;
-window.SUPPORTED_LANGUAGES = SUPPORTED_LANGUAGES;
+    // Глобальные переменные для совместимости
+    window.transcriptState = transcriptState;
+    window.SUPPORTED_LANGUAGES = SUPPORTED_LANGUAGES;
 
-// Global error boundary для перехвата всех ошибок
-window.addEventListener("error", (e) => {
-  console.error("[VideoReader ERROR]", e.error);
-});
+    // Global error boundary для перехвата всех ошибок
+    window.addEventListener("error", (e) => {
+      console.error("[VideoReader ERROR]", e.error);
+    });
 
-window.addEventListener("unhandledrejection", (e) => {
-  console.error("[VideoReader Promise ERROR]", e.reason);
-});
+    window.addEventListener("unhandledrejection", (e) => {
+      console.error("[VideoReader Promise ERROR]", e.reason);
+    });
 
-// Главная функция инициализации
-initContentScript();
+    // Главная функция инициализации
+    initContentScript();
 
-// Экспорт для отладки
-console.log('Content script загружен и инициализирован');
+    // Экспорт для отладки
+    console.log('Content script загружен и инициализирован');
+  } catch (error) {
+    console.error('[VideoReader] Failed to load modules:', error);
+  }
+})();

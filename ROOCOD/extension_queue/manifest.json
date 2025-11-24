@@ -29,7 +29,7 @@
   "content_scripts": [
     {
       "matches": ["https://www.youtube.com/*"],
-      "js": ["flags.js", "content.js"],
+      "js": ["content.js"],
       "css": ["styles.css"],
       "run_at": "document_idle"
     }
@@ -40,10 +40,9 @@
         "assets/logo.png",
         "auth.html",
         "auth.js",
-        "auth.css",
-        "transcript/*.js"
+        "auth.css"
       ],
-      "matches": ["https://www.youtube.com/*", "<all_urls>"]
+      "matches": ["<all_urls>"]
     }
   ]
 }
