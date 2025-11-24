@@ -61,6 +61,45 @@ function wait(ms) {
   return new Promise(r => setTimeout(r, ms));
 }
 
+// открыть страницу авторизации
+function openAuthPage() {
+  const authUrl = 'https://api.beem.ink/auth';
+  window.open(authUrl, '_blank');
+}
+
+// обновить UI авторизации
+async function updateAuthUI() {
+  const storage = await chrome.storage.local.get(['token', 'email', 'plan']);
+  const token = storage.token || null;
+  const email = storage.email || null;
+  const plan = storage.plan || 'Free';
+
+  const authSection = document.getElementById('yt-reader-auth-section');
+  const authInfo = document.getElementById('yt-reader-auth-info');
+  const authEmail = document.querySelector('.yt-reader-auth-email');
+  const authPlan = document.querySelector('.yt-reader-auth-plan');
+  const upgradeBtn = document.getElementById('yt-reader-upgrade-btn');
+
+  if (!authSection || !authInfo) return;
+
+  if (token && email) {
+    // Пользователь авторизован
+    authSection.style.display = 'none';
+    authInfo.style.display = 'flex';
+
+    if (authEmail) authEmail.textContent = email;
+    if (authPlan) authPlan.textContent = plan;
+
+    if (upgradeBtn) {
+      upgradeBtn.style.display = (plan === 'Free' || plan === 'Pro') ? 'block' : 'none';
+    }
+  } else {
+    // Пользователь не авторизован
+    authSection.style.display = 'flex';
+    authInfo.style.display = 'none';
+  }
+}
+
 export {
   waitForElement,
   getVideoId,
@@ -69,4 +108,6 @@ export {
   getSelectedLanguage,
   normalizeText,
   wait,
+  openAuthPage,
+  updateAuthUI,
 };
