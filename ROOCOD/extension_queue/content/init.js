@@ -1,0 +1,450 @@
+// ═══════════════════════════════════════════════════════════════════
+// INIT MODULE - Главный init-процесс и обработчики
+// ═══════════════════════════════════════════════════════════════════
+
+import { getTranscript } from "./transcript.js";
+import { translateSubtitles } from "./api.js";
+import { createTranscriptPanel, displayTranscript, updateExportButtonState } from "./ui.js";
+import { transcriptState } from "./state.js";
+import { startRealtimeHighlight } from "./highlight.js";
+import { getVideoId, loadSavedLanguage, waitForElement, getSelectedLanguage } from "./util.js";
+import { exportSubtitles } from "./export.js";
+
+// Вставка панели в страницу
+async function injectPanel() {
+  try {
+    // Загружаем сохраненный язык
+    loadSavedLanguage();
+
+    // Ищем secondary column (справа от видео)
+    const secondary = await waitForElement('#secondary-inner, #secondary');
+
+    // Проверяем, не добавлена ли уже панель
+    if (document.getElementById('yt-transcript-panel')) {
+      return;
+    }
+
+    const panel = createTranscriptPanel();
+
+    // Вставляем в начало secondary column
+    secondary.insertBefore(panel, secondary.firstChild);
+
+    // Привязываем обработчики
+    const translateBtn = document.getElementById('yt-reader-translate-btn');
+    const toggleBtn = document.getElementById('yt-transcript-toggle-btn');
+    const langBtn = document.getElementById('yt-reader-lang-btn');
+    const langDropdown = document.getElementById('yt-reader-lang-dropdown');
+
+    translateBtn.addEventListener('click', handleGetTranscript);
+    toggleBtn.addEventListener('click', handleTogglePanel);
+    langBtn.addEventListener('click', handleLanguageToggle);
+
+    // Обработчики для опций языка
+    const langOptions = document.querySelectorAll('.yt-reader-lang-option');
+    langOptions.forEach(option => {
+      option.addEventListener('click', (e) => {
+        e.stopPropagation();
+        handleLanguageSelect(option.dataset.lang);
+      });
+    });
+
+    // Обработчики экспорта
+    const exportBtn = document.getElementById('yt-reader-export-btn');
+    const exportDropdown = document.getElementById('yt-reader-export-dropdown');
+    const exportOptions = document.querySelectorAll('.yt-reader-export-option');
+
+    exportBtn.addEventListener('click', handleExportToggle);
+    exportOptions.forEach(option => {
+      option.addEventListener('click', (e) => {
+        e.stopPropagation();
+
+        // Блокируем клик на locked опциях
+        if (option.classList.contains('locked')) {
+          return;
+        }
+
+        const format = option.dataset.format;
+        const type = option.dataset.type;
+        handleExportFormat(format, type);
+      });
+    });
+
+    // Закрытие dropdown при клике вне его
+    document.addEventListener('click', (e) => {
+      if (!e.target.closest('.yt-reader-lang-selector')) {
+        langDropdown.classList.remove('show');
+        langBtn.classList.remove('active');
+      }
+      if (!e.target.closest('.yt-reader-export-container')) {
+        exportDropdown.classList.remove('show');
+      }
+    });
+
+    // Обработчики авторизации
+    const signInBtn = document.getElementById('yt-reader-signin-btn');
+    if (signInBtn) {
+      signInBtn.addEventListener('click', () => {
+        openAuthPage();
+      });
+    }
+
+    const logoutBtn = document.getElementById('yt-reader-logout-btn');
+    if (logoutBtn) {
+      logoutBtn.addEventListener('click', async () => {
+        // Удаляем токен и email из chrome.storage
+        await chrome.storage.local.remove(['token', 'email', 'plan']);
+
+        // Обновляем UI
+        await updateAuthUI();
+      });
+    }
+
+    // Обработчик для кнопки Upgrade
+    const upgradeBtn = document.getElementById('yt-reader-upgrade-btn');
+    if (upgradeBtn) {
+      upgradeBtn.addEventListener('click', () => {
+        window.open('https://api.beem.ink/pricing', '_blank');
+      });
+    }
+
+    // Обновляем UI авторизации при загрузке панели
+    // Небольшая задержка чтобы гарантировать что DOM полностью готов
+    await new Promise(resolve => setTimeout(resolve, 100));
+    await updateAuthUI();
+
+    console.log('Панель транскрипта добавлена');
+  } catch (error) {
+    console.error('Ошибка при вставке панели:', error);
+  }
+}
+
+// Обработчик сворачивания/разворачивания
+function handleTogglePanel() {
+  const panel = document.getElementById('yt-transcript-panel');
+  const body = document.getElementById('yt-transcript-body');
+  const toggleBtn = document.getElementById('yt-transcript-toggle-btn');
+
+  const isCollapsed = panel.classList.toggle('collapsed');
+
+  if (isCollapsed) {
+    body.style.display = 'none';
+    toggleBtn.innerHTML = `
+      <svg viewBox="0 0 24 24" fill="currentColor">
+        <path d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41z"/>
+      </svg>
+    `;
+  } else {
+    body.style.display = 'block';
+    toggleBtn.innerHTML = `
+      <svg viewBox="0 0 24 24" fill="currentColor">
+        <path d="M7.41 15.41L12 10.83l4.59 4.58L18 14l-6-6-6 6 1.41 1.41z"/>
+      </svg>
+    `;
+  }
+}
+
+// Обработчик переключения выпадающего списка языков
+function handleLanguageToggle(e) {
+  e.stopPropagation();
+  const langBtn = document.getElementById('yt-reader-lang-btn');
+  const langDropdown = document.getElementById('yt-reader-lang-dropdown');
+
+  const isActive = langBtn.classList.toggle('active');
+
+  if (isActive) {
+    // Рассчитываем позицию dropdown
+    const btnRect = langBtn.getBoundingClientRect();
+    const dropdownHeight = 320; // примерная высота dropdown
+    const viewportHeight = window.innerHeight;
+
+    // Определяем, достаточно ли места снизу
+    const spaceBelow = viewportHeight - btnRect.bottom;
+    const shouldShowAbove = spaceBelow < dropdownHeight && btnRect.top > dropdownHeight;
+
+    if (shouldShowAbove) {
+      // Показываем сверху
+      langDropdown.style.top = 'auto';
+      langDropdown.style.bottom = `${viewportHeight - btnRect.top + 6}px`;
+    } else {
+      // Показываем снизу
+      langDropdown.style.top = `${btnRect.bottom + 6}px`;
+      langDropdown.style.bottom = 'auto';
+    }
+
+    // Выравниваем по правому краю кнопки
+    langDropdown.style.right = `${window.innerWidth - btnRect.right}px`;
+    langDropdown.style.left = 'auto';
+
+    langDropdown.classList.add('show');
+  } else {
+    langDropdown.classList.remove('show');
+  }
+}
+
+// Обработчик выбора языка
+function handleLanguageSelect(langCode) {
+  const selectedLang = SUPPORTED_LANGUAGES.find(l => l.code === langCode);
+  if (!selectedLang) return;
+
+  // Сохраняем выбранный язык
+  saveLanguage(langCode);
+
+  // Обновляем UI кнопки
+  const langBtn = document.getElementById('yt-reader-lang-btn');
+  const flagEl = langBtn.querySelector('.yt-reader-lang-flag');
+  flagEl.innerHTML = getFlagSVG(langCode);
+  flagEl.setAttribute('data-flag', langCode);
+  langBtn.querySelector('.yt-reader-lang-code').textContent = langCode.toUpperCase();
+
+  // Обновляем selected опции
+  document.querySelectorAll('.yt-reader-lang-option').forEach(opt => {
+    opt.classList.toggle('selected', opt.dataset.lang === langCode);
+  });
+
+  // Закрываем dropdown
+  const langDropdown = document.getElementById('yt-reader-lang-dropdown');
+  langDropdown.classList.remove('show');
+  langBtn.classList.remove('active');
+
+  console.log('Выбран язык:', selectedLang.name);
+}
+// Обработчик переключения выпадающего списка экспорта
+function handleExportToggle(e) {
+  e.stopPropagation();
+  const exportDropdown = document.getElementById('yt-reader-export-dropdown');
+
+  const isActive = exportDropdown.classList.toggle('show');
+
+  if (isActive) {
+    // Рассчитываем позицию dropdown
+    const btnRect = e.currentTarget.getBoundingClientRect();
+    const dropdownHeight = 200; // примерная высота dropdown
+    const viewportHeight = window.innerHeight;
+
+    // Определяем, достаточно ли места снизу
+    const spaceBelow = viewportHeight - btnRect.bottom;
+    const shouldShowAbove = spaceBelow < dropdownHeight && btnRect.top > dropdownHeight;
+
+    if (shouldShowAbove) {
+      // Показываем сверху
+      exportDropdown.style.top = 'auto';
+      exportDropdown.style.bottom = `${viewportHeight - btnRect.top + 6}px`;
+    } else {
+      // Показываем снизу
+      exportDropdown.style.top = `${btnRect.bottom + 6}px`;
+      exportDropdown.style.bottom = 'auto';
+    }
+
+    // Выравниваем по правому краю кнопки
+    exportDropdown.style.right = `${window.innerWidth - btnRect.right}px`;
+    exportDropdown.style.left = 'auto';
+  }
+}
+
+// Обработчик выбора формата экспорта
+function handleExportFormat(format, type) {
+  if (!transcriptState.translatedSubtitles || transcriptState.translatedSubtitles.length === 0) {
+    showNotification('Сначала получите транскрипт', 'error');
+    return;
+  }
+
+  const subtitles = type === 'original' ?
+    transcriptState.originalSubtitles :
+    transcriptState.translatedSubtitles;
+
+  exportSubtitles(subtitles, format);
+}
+
+
+// Обработчик получения транскрипта
+async function handleGetTranscript() {
+  const translateBtn = document.getElementById('yt-reader-translate-btn');
+  const statusEl = document.getElementById('yt-transcript-status');
+  const contentEl = document.getElementById('yt-transcript-content');
+
+  try {
+    // Показываем статус загрузки
+    translateBtn.disabled = true;
+    translateBtn.innerHTML = `
+      <div class="yt-reader-loading-spinner"></div>
+      Получение...
+    `;
+    statusEl.textContent = 'Получение транскрипта...';
+    statusEl.className = 'yt-transcript-status loading';
+
+    // Очищаем предыдущий контент
+    contentEl.innerHTML = '';
+    transcriptState.originalSubtitles = [];
+    transcriptState.translatedSubtitles = [];
+
+    // Получаем videoId
+    const videoId = getVideoId();
+
+    // Получаем субтитры
+    const subtitles = await getTranscript(videoId);
+    if (!subtitles || subtitles.length === 0) {
+      throw new Error('Транскрипт не найден для этого видео');
+    }
+
+    // Сохраняем оригинальные субтитры
+    transcriptState.originalSubtitles = subtitles;
+
+    displayTranscript(subtitles);
+    startRealtimeHighlight(subtitles);
+
+    // Показываем статус перевода
+    statusEl.textContent = 'Перевод...';
+    statusEl.className = 'yt-transcript-status loading';
+
+    // Получаем выбранный язык
+    const targetLang = transcriptState.selectedLang || 'ru';
+
+    // Переводим субтитры
+    await translateSubtitles(videoId, subtitles, targetLang);
+
+    // Отображаем результат
+    displayTranscript(subtitles);
+
+    // Показываем статус успеха
+    statusEl.textContent = `Переведено на ${SUPPORTED_LANGUAGES.find(l => l.code === targetLang)?.name || targetLang}`;
+    statusEl.className = 'yt-transcript-status success';
+
+    // Включаем кнопку
+    translateBtn.disabled = false;
+    translateBtn.innerHTML = `
+      <svg viewBox="0 0 24 24" fill="currentColor">
+        <path d="M12.87 15.07l-2.54-2.51.03-.03c1.74-1.94 2.98-4.17 3.71-6.53H17V4h-7V2H8v2H1v1.99h11.17C11.5 7.92 10.44 9.75 9 11.35 8.07 10.32 7.3 9.19 6.69 8h-2c.73 1.63 1.73 3.17 2.98 4.56l-5.09 5.02L4 19l5-5 3.11 3.11.76-2.04zM18.5 10h-2L12 22h2l1.12-3h4.75L21 22h2l-4.5-12zm-2.62 7l1.62-4.33L19.12 17h-3.24z"/>
+      </svg>
+      Получить транскрипт
+    `;
+
+    console.log('Транскрипт успешно получен и переведен');
+
+  } catch (error) {
+    console.error('Ошибка получения транскрипта:', error);
+
+    // Показываем ошибку
+    statusEl.textContent = error.message || 'Ошибка получения транскрипта';
+    statusEl.className = 'yt-transcript-status error';
+
+    // Включаем кнопку
+    translateBtn.disabled = false;
+    translateBtn.innerHTML = `
+      <svg viewBox="0 0 24 24" fill="currentColor">
+        <path d="M12.87 15.07l-2.54-2.51.03-.03c1.74-1.94 2.98-4.17 3.71-6.53H17V4h-7V2H8v2H1v1.99h11.17C11.5 7.92 10.44 9.75 9 11.35 8.07 10.32 7.3 9.19 6.69 8h-2c.73 1.63 1.73 3.17 2.98 4.56l-5.09 5.02L4 19l5-5 3.11 3.11.76-2.04zM18.5 10h-2L12 22h2l1.12-3h4.75L21 22h2l-4.5-12zm-2.62 7l1.62-4.33L19.12 17h-3.24z"/>
+      </svg>
+      Получить транскрипт
+    `;
+  }
+}
+
+
+// Наблюдение за навигацией YouTube
+function observeYoutubeNavigation() {
+  const observer = new MutationObserver((mutations) => {
+    for (const mutation of mutations) {
+      for (const node of mutation.addedNodes) {
+        if (node.nodeType === Node.ELEMENT_NODE) {
+          // Проверяем, изменился ли URL (новая страница видео)
+          if (window.location.href.includes('/watch?v=')) {
+            // Проверяем наличие secondary column
+            const secondary = document.querySelector('#secondary-inner, #secondary');
+            if (secondary && !document.getElementById('yt-transcript-panel')) {
+              // Небольшая задержка чтобы убедиться что DOM полностью загружен
+              setTimeout(() => {
+                injectPanel();
+              }, 500);
+            }
+          }
+        }
+      }
+    }
+  });
+
+  // Начинаем наблюдение за body
+  observer.observe(document.body, {
+    childList: true,
+    subtree: true
+  });
+
+  // Также отслеживаем изменения URL через history API
+  let currentUrl = window.location.href;
+  const originalPushState = history.pushState;
+  const originalReplaceState = history.replaceState;
+
+  history.pushState = function(...args) {
+    originalPushState.apply(this, args);
+    handleUrlChange();
+  };
+
+  history.replaceState = function(...args) {
+    originalReplaceState.apply(this, args);
+    handleUrlChange();
+  };
+
+  window.addEventListener('popstate', handleUrlChange);
+
+  function handleUrlChange() {
+    if (window.location.href !== currentUrl) {
+      currentUrl = window.location.href;
+      
+      // Если перешли на страницу видео
+      if (window.location.href.includes('/watch?v=')) {
+        // Удаляем старую панель если есть
+        const oldPanel = document.getElementById('yt-transcript-panel');
+        if (oldPanel) {
+          oldPanel.remove();
+        }
+
+        // Небольшая задержка чтобы убедиться что DOM полностью загружен
+        setTimeout(() => {
+          injectPanel();
+        }, 500);
+      }
+    }
+  }
+}
+
+// Главная функция инициализации
+async function initContentScript() {
+  console.log('Инициализация content script...');
+
+  // Ждем загрузки DOM
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => {
+      initializeAfterDOMReady();
+    });
+  } else {
+    initializeAfterDOMReady();
+  }
+
+  async function initializeAfterDOMReady() {
+    // Проверяем, находимся ли мы на странице видео
+    if (window.location.href.includes('/watch?v=')) {
+      // Ждем появления secondary column
+      try {
+        await waitForElement('#secondary-inner, #secondary', 10000);
+        await injectPanel();
+      } catch (error) {
+        console.log('Secondary column не найден, возможно страница еще не полностью загружена');
+      }
+    }
+
+    // Запускаем наблюдение за навигацией
+    observeYoutubeNavigation();
+  }
+}
+
+// Экспорт функций
+export { 
+  initContentScript,
+  injectPanel,
+  handleTogglePanel,
+  handleLanguageToggle,
+  handleLanguageSelect,
+  handleExportToggle,
+  handleExportFormat,
+  handleGetTranscript,
+  displayTranscript,
+  observeYoutubeNavigation
+};
