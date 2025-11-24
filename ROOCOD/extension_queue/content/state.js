@@ -17,6 +17,8 @@ const transcriptState = {
   scrollLocked: false,
   scrollUnlockTimer: null,
   scrollListenersAttachedTo: null,
+  wheelHandler: null,  // P1: сохраняем для cleanup
+  scrollHandler: null,  // P1: сохраняем для cleanup
 
   timeIndexMap: [],  // O(1) поиск индекса субтитра по времени видео
 
