@@ -301,15 +301,17 @@ function renderWindow(centerIndex) {
   }
 }
 
-// Отображение транскрипта (с virtual scrolling для больших транскриптов)
+// Отображение транскрипта (с virtual scrolling для ОЧЕНЬ больших транскриптов)
 function displayTranscript(subtitles) {
   transcriptState.originalSubtitles = subtitles;
   const content = document.getElementById('yt-transcript-content');
 
-  // Для больших транскриптов используем virtual scrolling
-  if (subtitles.length > 100) {
-    // Рендерим только первые VISIBLE_WINDOW строк
+  // КРИТИЧЕСКОЕ ИЗМЕНЕНИЕ: виртуальный скроллинг только для ОЧЕНЬ больших транскриптов (>1000)
+  // Для транскриптов до 1000 строк рендерим все сразу для корректного отображения
+  if (subtitles.length > 1000) {
+    // Для очень больших транскриптов рендерим только первые VISIBLE_WINDOW строк
     const initialEnd = Math.min(VISIBLE_WINDOW, subtitles.length);
+    console.log(`📊 Virtual scrolling enabled: showing ${initialEnd}/${subtitles.length} lines`);
     content.innerHTML = subtitles.slice(0, initialEnd).map((sub, index) => `
       <div class="yt-transcript-item"
            data-time="${sub.time}"
@@ -321,7 +323,8 @@ function displayTranscript(subtitles) {
       </div>
     `).join('');
   } else {
-    // Для маленьких транскриптов рендерим все строки
+    // Для транскриптов до 1000 строк рендерим все сразу
+    console.log(`📊 Full render: showing all ${subtitles.length} lines`);
     content.innerHTML = subtitles.map((sub, index) => `
       <div class="yt-transcript-item"
            data-time="${sub.time}"

@@ -34,8 +34,8 @@ function startRealtimeHighlight(subtitles) {
       // КРИТИЧЕСКОЕ ИЗМЕНЕНИЕ: обновляем только если индекс изменился
       highlightLine(idx);
 
-      // Virtual scrolling: перерендериваем окно для больших транскриптов
-      if (subtitles.length > 100) {
+      // Virtual scrolling: перерендериваем окно для ОЧЕНЬ больших транскриптов (>1000)
+      if (subtitles.length > 1000) {
         renderWindow(idx);
       }
 

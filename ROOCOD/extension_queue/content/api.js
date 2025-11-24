@@ -26,6 +26,19 @@ async function sendBatchWithRetry(payload, headers, attempt = 0) {
   const MAX_RETRIES = 3;
   const SERVER_URL = "https://api.beem.ink/translate-batch";
 
+  // КРИТИЧЕСКОЕ: логирование payload для диагностики 500 ошибок
+  if (attempt === 0) {
+    console.log(`📤 Sending batch:`, {
+      videoId: payload.videoId,
+      lang: payload.lang,
+      itemsCount: payload.items?.length || 0,
+      totalLines: payload.totalLines,
+      hasAuth: !!headers.Authorization,
+      firstItem: payload.items?.[0],
+      payloadSize: JSON.stringify(payload).length
+    });
+  }
+
   try {
     const response = await fetchWithTimeout(
       SERVER_URL,
@@ -58,13 +71,25 @@ async function sendBatchWithRetry(payload, headers, attempt = 0) {
         }
       } else if (status >= 500 && status < 600) {
         // Server error - retry
-        console.warn(`⚠️ Server error (${status}), attempt ${attempt + 1}/${MAX_RETRIES}`);
+        console.error(`❌ Server error (${status}), attempt ${attempt + 1}/${MAX_RETRIES}`, {
+          errorBody: errorBody ? errorBody.substring(0, 500) : null,
+          videoId: payload.videoId,
+          itemsCount: payload.items?.length
+        });
         if (attempt < MAX_RETRIES) {
           const delay = 1000 * Math.pow(2, attempt);
           await new Promise(r => setTimeout(r, delay));
           return sendBatchWithRetry(payload, headers, attempt + 1);
         }
       }
+
+      // Логирование финальной ошибки если все retry исчерпаны
+      console.error(`❌ Request failed with status ${status}:`, {
+        errorBody: errorBody ? errorBody.substring(0, 500) : null,
+        videoId: payload.videoId,
+        itemsCount: payload.items?.length,
+        attemptsUsed: attempt + 1
+      });
 
       return {
         error: "bad_status",
