@@ -29,7 +29,7 @@
   "content_scripts": [
     {
       "matches": ["https://www.youtube.com/*"],
-      "js": ["flags.js", "content.js"],
+      "js": ["content.js"],
       "css": ["styles.css"],
       "run_at": "document_idle"
     }
@@ -41,9 +41,16 @@
         "auth.html",
         "auth.js",
         "auth.css",
-        "transcript/*.js"
+        "content/init.js",
+        "content/ui.js",
+        "content/state.js",
+        "content/api.js",
+        "content/transcript.js",
+        "content/highlight.js",
+        "content/export.js",
+        "content/util.js"
       ],
-      "matches": ["https://www.youtube.com/*", "<all_urls>"]
+      "matches": ["<all_urls>"]
     }
   ]
 }
