@@ -17,6 +17,11 @@ export default function Footer({ border = false }: { border?: boolean }) {
             <div className="text-sm text-gray-600">
               &copy; Video Reader AI - All rights reserved.
             </div>
+            <div className="text-sm">
+              <a href="mailto:support@beem.ink" className="text-blue-500 transition hover:text-blue-600">
+                Contact Us
+              </a>
+            </div>
           </div>
 
           {/* 2nd block */}
