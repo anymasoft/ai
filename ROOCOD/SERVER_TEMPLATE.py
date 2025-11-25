@@ -1069,7 +1069,7 @@ def oauth_callback():
     code = request.args.get('code')
 
     if not code:
-        return "<h1>Ошибка</h1><p>Код авторизации не получен.</p>", 400
+        return "<h1>Error</h1><p>Authorization code not received.</p>", 400
 
     # Обмениваем code на токены
     token_url = 'https://oauth2.googleapis.com/token'
@@ -1088,15 +1088,15 @@ def oauth_callback():
 
         id_token = tokens.get('id_token')
         if not id_token:
-            return "<h1>Ошибка</h1><p>id_token не получен.</p>", 500
+            return "<h1>Error</h1><p>id_token not received.</p>", 500
 
         # Декодируем JWT
         payload = decode_jwt(id_token)
         if not payload:
-            return "<h1>Ошибка</h1><p>Не удалось декодировать id_token.</p>", 500
+            return "<h1>Error</h1><p>Failed to decode id_token.</p>", 500
 
         # Получаем email
-        email = payload.get('email', 'Email не найден')
+        email = payload.get('email', 'Email not found')
 
         # Создаём токен для пользователя
         token = create_or_update_user(email, plan='Free')
@@ -1126,12 +1126,12 @@ def oauth_callback():
                 }}, 1000);
             }} else {{
                 // Это обычный браузер без расширения - показываем сообщение
-                document.getElementById('message').textContent = 'Авторизация успешна! Вы можете закрыть это окно.';
+                document.getElementById('message').textContent = 'Authorization successful! You can close this window.';
             }}
         </script>
         </head>
         <body>
-        <p id="message">Авторизация успешна! Перенаправление...</p>
+        <p id="message">Authorization successful! Redirecting...</p>
         </body>
         </html>
         """
@@ -1140,7 +1140,7 @@ def oauth_callback():
 
     except requests.exceptions.RequestException as e:
         print(f"Ошибка при обмене кода на токены: {e}")
-        return f"<h1>Ошибка</h1><p>Не удалось обменять код на токены: {e}</p>", 500
+        return f"<h1>Error</h1><p>Failed to exchange code for tokens: {e}</p>", 500
 
 
 @app.route('/auth')
@@ -1169,7 +1169,7 @@ def auth_site_callback():
     code = request.args.get('code')
 
     if not code:
-        return "<h1>Ошибка</h1><p>Код авторизации не получен.</p>", 400
+        return "<h1>Error</h1><p>Authorization code not received.</p>", 400
 
     # Обмениваем code на токены
     token_url = 'https://oauth2.googleapis.com/token'
@@ -1188,15 +1188,15 @@ def auth_site_callback():
 
         id_token = tokens.get('id_token')
         if not id_token:
-            return "<h1>Ошибка</h1><p>id_token не получен.</p>", 500
+            return "<h1>Error</h1><p>id_token not received.</p>", 500
 
         # Декодируем JWT
         payload = decode_jwt(id_token)
         if not payload:
-            return "<h1>Ошибка</h1><p>Не удалось декодировать id_token.</p>", 500
+            return "<h1>Error</h1><p>Failed to decode id_token.</p>", 500
 
         # Получаем email
-        email = payload.get('email', 'Email не найден')
+        email = payload.get('email', 'Email not found')
 
         # Создаём или получаем токен для пользователя
         token = create_or_update_user(email, plan='Free')
@@ -1226,7 +1226,7 @@ def auth_site_callback():
 
     except requests.exceptions.RequestException as e:
         print(f"Ошибка при обмене кода на токены: {e}")
-        return f"<h1>Ошибка</h1><p>Не удалось обменять код на токены: {e}</p>", 500
+        return f"<h1>Error</h1><p>Failed to exchange code for tokens: {e}</p>", 500
 
 
 @app.route('/auth-site/logout')
@@ -1486,7 +1486,7 @@ def create_payment(plan):
                 "return_url": f"{YOOKASSA_RETURN_URL_BASE}/payment-success?payment_id={{payment_id}}&email={user['email']}&plan={plan}"
             },
             "capture": True,
-            "description": f"Подписка Video Reader AI - {plan}",
+            "description": f"Video Reader AI Subscription - {plan}",
             "metadata": {
                 "email": user['email'],
                 "plan": plan,
@@ -1677,11 +1677,11 @@ def payment_success():
     # Показываем страницу успеха
     html = """
     <!DOCTYPE html>
-    <html lang="ru">
+    <html lang="en">
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Оплата успешна</title>
+        <title>Payment Successful</title>
         <script src="https://cdn.tailwindcss.com"></script>
     </head>
     <body class="bg-gray-100 min-h-screen flex items-center justify-center p-6">
@@ -1691,12 +1691,12 @@ def payment_success():
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
                 </svg>
             </div>
-            <h1 class="text-3xl font-bold text-gray-900 mb-4">Оплата успешна!</h1>
-            <p class="text-gray-600 mb-8">Ваша подписка активирована. Спасибо за покупку!</p>
+            <h1 class="text-3xl font-bold text-gray-900 mb-4">Payment Successful!</h1>
+            <p class="text-gray-600 mb-8">Your subscription has been activated. Thank you for your purchase!</p>
             <button
                 onclick="window.location='https://api.beem.ink/pricing'"
                 class="w-full py-3 rounded-xl bg-blue-600 hover:bg-blue-700 transition font-semibold text-white">
-                Вернуться к тарифам
+                Return to Plans
             </button>
         </div>
     </body>
@@ -1710,11 +1710,11 @@ def payment_cancel():
     """Страница отмены оплаты"""
     html = """
     <!DOCTYPE html>
-    <html lang="ru">
+    <html lang="en">
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Оплата отменена</title>
+        <title>Payment Cancelled</title>
         <script src="https://cdn.tailwindcss.com"></script>
     </head>
     <body class="bg-gray-100 min-h-screen flex items-center justify-center p-6">
@@ -1724,12 +1724,12 @@ def payment_cancel():
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
                 </svg>
             </div>
-            <h1 class="text-3xl font-bold text-gray-900 mb-4">Оплата отменена</h1>
-            <p class="text-gray-600 mb-8">Вы можете вернуться к выбору тарифа</p>
+            <h1 class="text-3xl font-bold text-gray-900 mb-4">Payment Cancelled</h1>
+            <p class="text-gray-600 mb-8">You can return to plan selection</p>
             <button
                 onclick="window.location='https://api.beem.ink/pricing'"
                 class="w-full py-3 rounded-xl bg-gray-600 hover:bg-gray-700 transition font-semibold text-white">
-                Вернуться к тарифам
+                Return to Plans
             </button>
         </div>
     </body>
