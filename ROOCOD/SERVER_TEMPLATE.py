@@ -561,12 +561,15 @@ def translate_line_with_gpt(text, prev_context=None, lang='ru'):
 
 
 # Батч-перевод через GPT-4o-mini
-def translate_batch_with_gpt(texts, lang='ru'):
-    """Переводит батч строк субтитров через GPT"""
-    
+def translate_batch_with_gpt(texts, lang='ru', retry_attempt=0):
+    """Переводит батч строк субтитров через GPT с retry при неполном ответе"""
+
+    MAX_INCOMPLETE_RETRIES = 2  # Максимум retry для неполных ответов
+
     # Получаем полное название языка
     target_language = LANGUAGE_NAMES.get(lang, 'Russian')
-    
+
+    # УСИЛЕННЫЙ промпт с акцентом на ТОЧНОЕ количество переводов
     system_prompt = f"""
     You are a professional subtitle translator for YouTube videos.
     Your task is to translate each element of the array from English into {target_language}.
@@ -584,6 +587,14 @@ def translate_batch_with_gpt(texts, lang='ru'):
     • Sound effects: keep them in square brackets (e.g. [music], [applause])
     • Unclear fragments: replace with meaningful continuations based on context
 
+    CRITICAL REQUIREMENT:
+    ⚠️ YOU MUST RETURN EXACTLY THE SAME NUMBER OF TRANSLATIONS AS INPUT LINES ⚠️
+    • If you receive N lines, you MUST return EXACTLY N translations
+    • Do NOT skip any lines
+    • Do NOT combine multiple lines into one translation
+    • Each input line = exactly one output translation
+    • This is MANDATORY and non-negotiable
+
     TECHNICAL REQUIREMENTS:
     • Keep timing implications and natural pauses of speech
     • NEVER add explanations, comments, notes, or prefixes
@@ -593,10 +604,13 @@ def translate_batch_with_gpt(texts, lang='ru'):
     OUTPUT FORMAT:
     Return ONLY a JSON object with key "translations" containing an array of translations in the same order as input.
     Example: {{"translations": ["Привет, как дела?", "Я рад тебя видеть!"]}}
+
+    If input has N elements, output MUST have EXACTLY N elements in "translations" array.
     """
 
     try:
         user_content = json.dumps(texts, ensure_ascii=False)
+        expected_count = len(texts)
 
         # DEADLOCK FIX: Семафор захватывается ТОЛЬКО для GPT-запроса + парсинга
         # БЕЗ каких-либо DB операций под семафором
@@ -618,18 +632,36 @@ def translate_batch_with_gpt(texts, lang='ru'):
                 result = json.loads(translated_text)
                 if isinstance(result, dict) and 'translations' in result:
                     translations = result['translations']
-                    if isinstance(translations, list) and len(translations) == len(texts):
+                    received_count = len(translations) if isinstance(translations, list) else 0
+
+                    if isinstance(translations, list) and received_count == expected_count:
                         # Семафор освобождается здесь, ПЕРЕД любыми DB операциями
                         return translations
                     else:
-                        print(f"Ошибка: GPT вернул неверный формат. Ожидалось {len(texts)} переводов, получено {len(translations)}")
-                        return None
+                        # НЕПОЛНЫЙ ОТВЕТ - пытаемся retry
+                        error_msg = f"GPT вернул неверное количество переводов. Ожидалось {expected_count}, получено {received_count}"
+
+                        if retry_attempt < MAX_INCOMPLETE_RETRIES:
+                            print(f"⚠️ {error_msg}, попытка retry {retry_attempt + 1}/{MAX_INCOMPLETE_RETRIES}")
+                            # Рекурсивный вызов с увеличенным счетчиком retry
+                            # Семафор освобождается перед рекурсией
+                            pass  # Семафор освободится при выходе из with
+                        else:
+                            print(f"❌ {error_msg}, исчерпаны все retry попытки")
+                            return None
                 else:
-                    print(f"Ошибка: GPT не вернул JSON с ключом 'translations': {translated_text}")
+                    print(f"Ошибка: GPT не вернул JSON с ключом 'translations': {translated_text[:200]}")
                     return None
             except json.JSONDecodeError:
-                print(f"Ошибка парсинга JSON от GPT: {translated_text}")
+                print(f"Ошибка парсинга JSON от GPT: {translated_text[:200]}")
                 return None
+
+        # Retry вне семафора если количество не совпало
+        if retry_attempt < MAX_INCOMPLETE_RETRIES:
+            time.sleep(0.5)  # Небольшая задержка перед retry
+            return translate_batch_with_gpt(texts, lang, retry_attempt + 1)
+
+        return None
 
     except Exception as e:
         print(f"Ошибка при батч-переводе через GPT: {e}")
