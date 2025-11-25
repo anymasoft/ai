@@ -143,7 +143,7 @@ async function updateAuthUI() {
   const storage = await chrome.storage.local.get(['token', 'email', 'plan']);
   const token = storage.token || null;
   const email = storage.email || null;
-  const plan = storage.plan || 'Free';
+  let plan = storage.plan || 'Free';
 
   console.log('[VideoReader] 📊 Данные из storage:', {
     hasToken: !!token,
@@ -151,6 +151,28 @@ async function updateAuthUI() {
     plan,
     tokenLength: token?.length
   });
+
+  // Если есть токен, но план не подтянут - запросить с сервера
+  if (token && email && (!storage.plan || storage.plan === 'Free')) {
+    console.log('[VideoReader] 📡 Запрашиваем план с сервера...');
+    chrome.runtime.sendMessage(
+      { type: 'FETCH_PLAN', token },
+      (response) => {
+        if (response && response.plan) {
+          console.log('[VideoReader] ✅ Получен план с сервера:', response.plan);
+          chrome.storage.local.set({ plan: response.plan });
+
+          // Обновляем UI с новым планом
+          const authPlanEl = document.querySelector('.yt-reader-auth-plan');
+          const upgradeBtnEl = document.getElementById('yt-reader-upgrade-btn');
+          if (authPlanEl) authPlanEl.textContent = response.plan;
+          if (upgradeBtnEl) {
+            upgradeBtnEl.style.display = (response.plan === 'Free' || response.plan === 'Pro') ? 'block' : 'none';
+          }
+        }
+      }
+    );
+  }
 
   const authSection = document.getElementById('yt-reader-auth-section');
   const authInfo = document.getElementById('yt-reader-auth-info');
@@ -268,9 +290,22 @@ function exportSubtitles(subtitles, format) {
   const blob = new Blob([content], { type: mime });
   const url = URL.createObjectURL(blob);
 
+  // Генерируем премиальное информативное имя файла
+  const videoId = getVideoId() || 'video';
+  const date = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+
+  // Определяем, оригинальные это субтитры или переведенные
+  const hasTranslations = Object.keys(transcriptState.translatedSubtitles || {}).length > 0;
+  const isTranslated = hasTranslations && subtitles !== transcriptState.originalSubtitles;
+
+  let originalLang = 'auto';
+  let targetLang = isTranslated ? transcriptState.selectedLang : 'original';
+
+  const filename = `VideoReaderAI_${videoId}_${originalLang}_to_${targetLang}_${date}.${extension}`;
+
   const a = document.createElement("a");
   a.href = url;
-  a.download = `subtitles.${extension}`;
+  a.download = filename;
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
