@@ -658,10 +658,10 @@ def translate_batch_with_gpt(texts, lang='ru'):
             print(f"[GPT BATCH] translations не является списком: {type(translations)}")
             return None
 
+        # Теперь возвращаем даже частичные результаты (для дозаполнения в основной логике)
         if len(translations) != expected_len:
-            print(f"[GPT BATCH] Неверное количество переводов. Ожидалось {expected_len}, получено {len(translations)}")
-            print(f"[GPT BATCH] Проблемный ответ: {translations}")
-            return None
+            print(f"[GPT BATCH] Format error: expected {expected_len}, got {len(translations)}")
+            print(f"[GPT BATCH] Частичный результат будет дозаполнен через fallback")
 
         return translations
 
@@ -691,16 +691,49 @@ def translate_batch_with_gpt(texts, lang='ru'):
             print(f"[GPT BATCH] Ошибка при запросе к GPT (попытка {attempt}/{max_format_attempts}): {e}")
             if attempt == max_format_attempts:
                 break
-            # пробуем ещё раз
+
+            # Экспоненциальная задержка: 1s → 2s → 4s
+            delay = 2 ** (attempt - 1)  # 1, 2, 4
+            print(f"[GPT BATCH] Повторная попытка через {delay}s...")
+            time.sleep(delay)
             continue
 
         translations = _parse_translations(translated_text, len(texts))
         if translations is not None:
-            # Успех: формат корректный и длина совпадает
-            return translations
+            # Проверяем длину результата
+            if len(translations) == len(texts):
+                # Успех: формат корректный и длина совпадает
+                print(f"[GPT BATCH] Final batch result length = {len(translations)}")
+                return translations
+            elif len(translations) < len(texts):
+                # Частичный успех: дозаполняем недостающие строки
+                print(f"[GPT BATCH] Частичный результат: {len(translations)}/{len(texts)}")
+                missing_indices = list(range(len(translations), len(texts)))
+                print(f"[GPT BATCH] Fallback to single-line for indexes: {missing_indices}")
+
+                # Дозаполняем недостающие строки через построчный перевод
+                for idx in missing_indices:
+                    try:
+                        t = translate_line_with_gpt(texts[idx], prev_context=None, lang=lang)
+                        if t:
+                            translations.append(t)
+                        else:
+                            translations.append(texts[idx])  # Возвращаем оригинал если перевод не удался
+                    except Exception as e:
+                        print(f"[GPT BATCH] Ошибка построчного fallback-перевода для строки {idx}: {e}")
+                        translations.append(texts[idx])
+
+                print(f"[GPT BATCH] Final batch result length = {len(translations)}")
+                return translations
+            else:
+                # Получено больше строк чем ожидалось - обрезаем до нужной длины
+                print(f"[GPT BATCH] Получено больше переводов чем ожидалось: {len(translations)} > {len(texts)}, обрезаем")
+                translations = translations[:len(texts)]
+                print(f"[GPT BATCH] Final batch result length = {len(translations)}")
+                return translations
 
         print(f"[GPT BATCH] Некорректный формат ответа GPT (попытка {attempt}/{max_format_attempts}). Повторный запрос...")
-        print(f"[GPT BATCH] Сырой ответ: {translated_text}")
+        print(f"[GPT BATCH] Raw GPT response: {translated_text[:500]}")
         print(f"[GPT BATCH] Исходный батч текстов: {texts}")
 
     # Если мы здесь — ни одна попытка батч-перевода не дала корректный формат.
@@ -708,17 +741,21 @@ def translate_batch_with_gpt(texts, lang='ru'):
     if last_error:
         print(f"[GPT BATCH] Последняя ошибка батч-перевода: {last_error}")
 
+    fallback_indices = list(range(len(texts)))
+    print(f"[GPT BATCH] Fallback to single-line for indexes: {fallback_indices}")
+
     fallback_results = []
     for idx, line in enumerate(texts):
         try:
             t = translate_line_with_gpt(line, prev_context=None, lang=lang)
             if not t:
-                t = line
+                t = line  # Возвращаем оригинал если перевод не удался
         except Exception as e:
             print(f"[GPT BATCH] Ошибка построчного fallback-перевода для строки {idx}: {e}")
-            t = line
+            t = line  # Возвращаем оригинал при ошибке
         fallback_results.append(t)
 
+    print(f"[GPT BATCH] Final batch result length = {len(fallback_results)}")
     return fallback_results
 
 
