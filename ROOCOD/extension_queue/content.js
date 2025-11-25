@@ -18,6 +18,7 @@ const transcriptState = {
   originalSubtitles: [],
   translatedSubtitles: {},
   selectedLang: "ru",
+  currentVideoId: null,  // текущий videoId для определения повторного запуска
 
   userPlan: "Free",
   maxFreeLine: 0,
@@ -60,6 +61,38 @@ function getTranslatedSubtitlesArray() {
   }
   return translated;
 }
+
+// Получить список непереведённых строк
+function getUntranslatedLines() {
+  const pending = [];
+  const map = [];
+
+  for (let i = 0; i < transcriptState.originalSubtitles.length; i++) {
+    const original = transcriptState.originalSubtitles[i];
+    const translated = transcriptState.translatedSubtitles[i];
+
+    // Строка считается непереведённой, если:
+    // 1. Перевод отсутствует
+    // 2. Перевод пустой
+    // 3. Перевод совпадает с оригиналом (fallback от сервера)
+    if (!translated ||
+        !translated.text ||
+        translated.text.trim() === '' ||
+        translated.text === original.text) {
+      pending.push(original.text);
+      map.push(i);
+    }
+  }
+
+  console.log('[VideoReader] 📊 Untranslated lines:', {
+    total: transcriptState.originalSubtitles.length,
+    untranslated: pending.length,
+    translated: transcriptState.originalSubtitles.length - pending.length
+  });
+
+  return { pending, map };
+}
+
 
 
 
@@ -112,6 +145,45 @@ function loadSavedLanguage() {
 // сохранить выбранный язык
 function saveLanguage(lang) {
   localStorage.setItem("yt-reader-lang", lang);
+}
+
+// Показать незаметное уведомление (toast)
+function showToast(message) {
+  const toast = document.createElement('div');
+  toast.textContent = message;
+  toast.style.cssText = `
+    position: fixed;
+    bottom: 80px;
+    right: 20px;
+    background: rgba(0, 0, 0, 0.85);
+    color: white;
+    padding: 12px 20px;
+    border-radius: 8px;
+    font-size: 14px;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    z-index: 999999;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    pointer-events: none;
+  `;
+
+  document.body.appendChild(toast);
+
+  // Плавное появление
+  requestAnimationFrame(() => {
+    toast.style.opacity = '1';
+  });
+
+  // Автоматическое исчезновение через 3 секунды
+  setTimeout(() => {
+    toast.style.opacity = '0';
+    setTimeout(() => {
+      if (toast.parentNode) {
+        toast.parentNode.removeChild(toast);
+      }
+    }, 300);
+  }, 3000);
 }
 
 // получить выбранный язык
@@ -1256,6 +1328,112 @@ async function translateSubtitles(videoId, subtitles, targetLang) {
   });
 }
 
+// Перевод только непереведённых строк (повторный запуск)
+async function translatePendingSubtitles(videoId, pending, map, targetLang) {
+  const BATCH_SIZE = 10;
+  const startTime = performance.now();
+
+  console.log(`[VideoReader API] 🔄 Retranslating pending lines:`, {
+    videoId,
+    pendingLines: pending.length,
+    totalLines: transcriptState.originalSubtitles.length,
+    targetLang,
+    batchSize: BATCH_SIZE
+  });
+
+  const storage = await chrome.storage.local.get(["token", "plan"]);
+  const token = storage.token || null;
+  const userPlan = storage.plan || "Free";
+
+  const headers = { "Content-Type": "application/json" };
+  if (token) headers["Authorization"] = `Bearer ${token}`;
+
+  const payloadBase = {
+    videoId,
+    lang: targetLang,
+    totalLines: transcriptState.originalSubtitles.length,
+  };
+
+  // Вычисляем прогресс: уже переведённые + будем переводить
+  const alreadyTranslated = transcriptState.originalSubtitles.length - pending.length;
+  const totalBatches = Math.ceil(pending.length / BATCH_SIZE);
+  let doneBatches = 0;
+
+  // Начальный прогресс = процент уже переведённых строк
+  const initialProgress = (alreadyTranslated / transcriptState.originalSubtitles.length) * 100;
+  updateProgressBar(alreadyTranslated, transcriptState.originalSubtitles.length);
+
+  for (let start = 0; start < pending.length; start += BATCH_SIZE) {
+    const batchItems = [];
+
+    for (let j = start; j < Math.min(start + BATCH_SIZE, pending.length); j++) {
+      const originalIndex = map[j];
+      batchItems.push({
+        lineNumber: originalIndex,
+        text: pending[j],
+      });
+    }
+
+    if (batchItems.length === 0) break;
+
+    const payload = { ...payloadBase, items: batchItems };
+    const result = await sendBatchWithRetry(payload, headers);
+
+    if (!result || result.error) {
+      console.error("[VideoReader API] ❌ Pending batch failed:", result?.error);
+      doneBatches++;
+      // Обновляем прогресс даже при ошибке
+      const currentTranslated = alreadyTranslated + (doneBatches * BATCH_SIZE);
+      updateProgressBar(currentTranslated, transcriptState.originalSubtitles.length);
+      continue;
+    }
+
+    if (result.plan) {
+      transcriptState.userPlan = result.plan;
+      chrome.storage.local.set({ plan: result.plan });
+      updateExportButtonState();
+    }
+
+    if (typeof result.export_allowed === "boolean") {
+      transcriptState.exportAllowed = result.export_allowed;
+      updateExportButtonState();
+    }
+
+    if (Array.isArray(result.items)) {
+      result.items.forEach(item => {
+        updateSingleLine(item.lineNumber, item.text);
+
+        transcriptState.translatedSubtitles[item.lineNumber] = {
+          ...transcriptState.originalSubtitles[item.lineNumber],
+          text: item.text,
+        };
+      });
+    }
+
+    doneBatches++;
+    // Прогресс = (уже переведённые + только что переведённые) / всего
+    const currentTranslated = alreadyTranslated + (doneBatches * BATCH_SIZE);
+    updateProgressBar(Math.min(currentTranslated, transcriptState.originalSubtitles.length), transcriptState.originalSubtitles.length);
+
+    if (result.stop === true) {
+      updateProgressBar(transcriptState.originalSubtitles.length, transcriptState.originalSubtitles.length);
+      break;
+    }
+
+    await new Promise(r => setTimeout(r, 300));
+  }
+
+  updateLimitedClass();
+
+  const duration = performance.now() - startTime;
+  console.log(`[VideoReader API] ✅ Pending translation completed:`, {
+    duration: `${(duration / 1000).toFixed(2)}s`,
+    retriedLines: pending.length,
+    totalLines: transcriptState.originalSubtitles.length
+  });
+}
+
+
 
 
 // ═══════════════════════════════════════════════════════════════════
@@ -2327,6 +2505,50 @@ async function handleGetTranscript() {
   const contentEl = document.getElementById('yt-transcript-content');
 
   try {
+    // Получаем videoId
+    const videoId = getVideoId();
+    const targetLang = transcriptState.selectedLang || 'ru';
+
+    // Проверяем, это повторный запуск (retranslate) или первый (translate)
+    const isRetranslate = transcriptState.originalSubtitles &&
+                          transcriptState.originalSubtitles.length > 0 &&
+                          transcriptState.currentVideoId === videoId;
+
+    if (isRetranslate) {
+      // === ПОВТОРНЫЙ ЗАПУСК: перевод только непереведённых строк ===
+      console.log('[VideoReader Content] 🔄 Retranslate mode: checking for untranslated lines...');
+
+      // Проверяем наличие непереведённых строк
+      const { pending, map } = getUntranslatedLines();
+
+      if (pending.length === 0) {
+        // Все строки уже переведены
+        showToast('All lines already translated');
+        console.log('[VideoReader Content] ✅ All lines are already translated');
+        return;
+      }
+
+      // Есть непереведённые строки - переводим только их
+      console.log(`[VideoReader Content] 🔄 Retranslating ${pending.length} untranslated lines...`);
+
+      translateBtn.disabled = true;
+      translateBtn.innerHTML = `
+        <div class="yt-reader-loading-spinner"></div>
+        Retranslating...
+      `;
+
+      await translatePendingSubtitles(videoId, pending, map, targetLang);
+
+      translateBtn.disabled = false;
+      translateBtn.textContent = 'Translate Video';
+
+      console.log('[VideoReader Content] ✅ Retranslation completed');
+      return;
+    }
+
+    // === ПЕРВЫЙ ЗАПУСК: полный перевод ===
+    console.log('[VideoReader Content] 🚀 First translation: fetching subtitles...');
+
     // Показываем статус загрузки
     translateBtn.disabled = true;
     translateBtn.innerHTML = `
@@ -2338,9 +2560,7 @@ async function handleGetTranscript() {
     contentEl.innerHTML = '';
     transcriptState.originalSubtitles = [];
     transcriptState.translatedSubtitles = {};
-
-    // Получаем videoId
-    const videoId = getVideoId();
+    transcriptState.currentVideoId = videoId;
 
     // Получаем субтитры
     const subtitles = await getTranscript(videoId);
