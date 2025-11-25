@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "YouTube Transcript Viewer (Experimental)",
-  "version": "4.0.0",
-  "description": "Experimental: Advanced YouTube transcript extraction without UI clicks",
+  "name": "VideoReader AI - YouTube Subtitle Translator",
+  "version": "3.0.0",
+  "description": "AI-powered YouTube subtitle translator with realtime highlighting",
   "icons": {
     "16": "assets/logo.png",
     "48": "assets/logo.png",
@@ -14,7 +14,7 @@
       "48": "assets/logo.png",
       "128": "assets/logo.png"
     },
-    "default_title": "YouTube Transcript Viewer (Experimental)"
+    "default_title": "VideoReader AI"
   },
   "background": {
     "service_worker": "background.js"
@@ -41,14 +41,12 @@
         "auth.html",
         "auth.js",
         "auth.css",
-        "content/init.js",
-        "content/ui.js",
-        "content/state.js",
-        "content/api.js",
-        "content/transcript.js",
-        "content/highlight.js",
-        "content/export.js",
-        "content/util.js"
+        "transcript/index.js",
+        "transcript/internal-api.js",
+        "transcript/next-api.js",
+        "transcript/timedtext.js",
+        "transcript/utils.js",
+        "transcript/ytinitial.js"
       ],
       "matches": ["<all_urls>"]
     }
