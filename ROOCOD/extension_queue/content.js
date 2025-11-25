@@ -322,13 +322,15 @@ function stopRealtimeHighlight() {
 function highlightLine(idx) {
   const all = document.querySelectorAll(".yt-transcript-item");
   const container = document.getElementById('yt-transcript-content');
+  const video = document.querySelector("video");
 
   [...all].forEach((el, i) => {
     if (i === idx) {
       el.classList.add("active-subtitle");
 
       // Скроллим только контейнер субтитров, а не всю страницу
-      if (!transcriptState.scrollLocked && container) {
+      // И ТОЛЬКО если видео воспроизводится (не на паузе)
+      if (!transcriptState.scrollLocked && container && video && !video.paused) {
         const containerRect = container.getBoundingClientRect();
         const elementRect = el.getBoundingClientRect();
         const offset = elementRect.top - containerRect.top - containerRect.height / 2 + el.offsetHeight / 2;
