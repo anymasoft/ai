@@ -307,7 +307,6 @@ function startRealtimeHighlight(subtitles) {
       return t >= start && t < end && end > start;
     });
     if (idx !== -1) {
-      console.log('[VideoReader Highlight] Active subtitle index:', idx, 'at time:', t.toFixed(2));
       highlightLine(idx);
     }
     requestAnimationFrame(tick);
@@ -326,7 +325,7 @@ function highlightLine(idx) {
 
   [...all].forEach((el, i) => {
     if (i === idx) {
-      el.classList.add("active");
+      el.classList.add("active-subtitle");
 
       // Скроллим только контейнер субтитров, а не всю страницу
       if (!transcriptState.scrollLocked && container) {
@@ -336,7 +335,7 @@ function highlightLine(idx) {
         container.scrollBy({ top: offset, behavior: 'smooth' });
       }
     } else {
-      el.classList.remove("active");
+      el.classList.remove("active-subtitle");
     }
   });
 }
