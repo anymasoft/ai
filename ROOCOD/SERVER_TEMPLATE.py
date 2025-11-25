@@ -5,8 +5,6 @@ YouTube Subtitle Translation Server - Token Authentication Model
 
 from flask import Flask, request, jsonify, send_from_directory, redirect, make_response
 from flask_cors import CORS
-from flask_limiter import Limiter
-from flask_limiter.util import get_remote_address
 import sqlite3
 import json
 import os
@@ -15,6 +13,7 @@ import requests
 import uuid
 import time
 import threading
+import queue
 from openai import OpenAI
 from datetime import datetime
 from dotenv import load_dotenv
@@ -66,13 +65,6 @@ def gpt_request_with_retry(func, max_attempts=5, base_delay=0.5):
 load_dotenv()  # Загрузка переменных окружения из .env
 
 app = Flask(__name__)
-
-# Rate limiter для защиты от перегрузки
-limiter = Limiter(
-    app=app,
-    key_func=get_remote_address,
-    default_limits=["60 per minute"]
-)
 
 # Безопасный глобальный DB-lock
 _db_lock = threading.Lock()
@@ -156,12 +148,14 @@ CORS(
 DATABASE = os.path.join(BASE_DIR, 'translations.db')
 USERS_DB = os.path.join(BASE_DIR, 'users.db')
 OPENAI_API_KEY = os.getenv('OPENAI_API_KEY', 'your-api-key-here')
-# OpenAI client с timeout для защиты от зависаний
-client = OpenAI(api_key=OPENAI_API_KEY, timeout=15.0)
+client = OpenAI(api_key=OPENAI_API_KEY)
 
 # Ограничение параллельных запросов к GPT
 GPT_MAX_CONCURRENT_REQUESTS = int(os.getenv('GPT_MAX_CONCURRENT_REQUESTS', '3'))
 _gpt_semaphore = threading.BoundedSemaphore(GPT_MAX_CONCURRENT_REQUESTS)
+
+# Очередь для асинхронных задач
+translation_queue = queue.Queue()
 
 # OAuth конфигурация
 GOOGLE_CLIENT_ID = os.getenv('GOOGLE_CLIENT_ID', 'TEMP_CLIENT_ID')
@@ -183,6 +177,22 @@ PLAN_PRICES = {
     'Pro': 900,      # 9$  ≈ 900₽
     'Premium': 1900  # 19$ ≈ 1900₽
 }
+
+# Фоновый воркер для обработки задач из очереди
+def translation_worker():
+    while True:
+        task = translation_queue.get()
+        if task is None:
+            break
+        fn, args, kwargs = task
+        try:
+            fn(*args, **kwargs)
+        except Exception as e:
+            print("Queue task failed:", e)
+        translation_queue.task_done()
+
+worker_thread = threading.Thread(target=translation_worker, daemon=True)
+worker_thread.start()
 
 
 # Утилиты для OAuth
@@ -213,7 +223,6 @@ def init_db():
         cursor.execute("PRAGMA synchronous=NORMAL;")
         cursor.execute("PRAGMA temp_store=MEMORY;")
         cursor.execute("PRAGMA cache_size=-32000;")  # 32MB
-        cursor.execute("PRAGMA wal_autocheckpoint=500;")  # Автоматический checkpoint каждые 500 страниц
 
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS translations (
@@ -244,7 +253,6 @@ def init_db():
         cursor.execute("PRAGMA synchronous=NORMAL;")
         cursor.execute("PRAGMA temp_store=MEMORY;")
         cursor.execute("PRAGMA cache_size=-32000;")  # 32MB
-        cursor.execute("PRAGMA wal_autocheckpoint=500;")  # Автоматический checkpoint каждые 500 страниц
 
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS users (
@@ -309,16 +317,6 @@ def init_db():
         cursor.execute('''
             CREATE UNIQUE INDEX IF NOT EXISTS idx_payments_payment_id
             ON payments(payment_id)
-        ''')
-
-        # Таблица для логирования битых webhook payloads
-        cursor.execute('''
-            CREATE TABLE IF NOT EXISTS webhook_errors (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                raw TEXT NOT NULL,
-                error_message TEXT,
-                created_at INTEGER DEFAULT (strftime('%s', 'now'))
-            )
         ''')
 
         conn.commit()
@@ -561,15 +559,12 @@ def translate_line_with_gpt(text, prev_context=None, lang='ru'):
 
 
 # Батч-перевод через GPT-4o-mini
-def translate_batch_with_gpt(texts, lang='ru', retry_attempt=0):
-    """Переводит батч строк субтитров через GPT с retry при неполном ответе"""
-
-    MAX_INCOMPLETE_RETRIES = 2  # Максимум retry для неполных ответов
-
+def translate_batch_with_gpt(texts, lang='ru'):
+    """Переводит батч строк субтитров через GPT"""
+    
     # Получаем полное название языка
     target_language = LANGUAGE_NAMES.get(lang, 'Russian')
-
-    # УСИЛЕННЫЙ промпт с акцентом на ТОЧНОЕ количество переводов
+    
     system_prompt = f"""
     You are a professional subtitle translator for YouTube videos.
     Your task is to translate each element of the array from English into {target_language}.
@@ -587,14 +582,6 @@ def translate_batch_with_gpt(texts, lang='ru', retry_attempt=0):
     • Sound effects: keep them in square brackets (e.g. [music], [applause])
     • Unclear fragments: replace with meaningful continuations based on context
 
-    CRITICAL REQUIREMENT:
-    ⚠️ YOU MUST RETURN EXACTLY THE SAME NUMBER OF TRANSLATIONS AS INPUT LINES ⚠️
-    • If you receive N lines, you MUST return EXACTLY N translations
-    • Do NOT skip any lines
-    • Do NOT combine multiple lines into one translation
-    • Each input line = exactly one output translation
-    • This is MANDATORY and non-negotiable
-
     TECHNICAL REQUIREMENTS:
     • Keep timing implications and natural pauses of speech
     • NEVER add explanations, comments, notes, or prefixes
@@ -604,16 +591,12 @@ def translate_batch_with_gpt(texts, lang='ru', retry_attempt=0):
     OUTPUT FORMAT:
     Return ONLY a JSON object with key "translations" containing an array of translations in the same order as input.
     Example: {{"translations": ["Привет, как дела?", "Я рад тебя видеть!"]}}
-
-    If input has N elements, output MUST have EXACTLY N elements in "translations" array.
     """
 
     try:
         user_content = json.dumps(texts, ensure_ascii=False)
-        expected_count = len(texts)
-
-        # DEADLOCK FIX: Семафор захватывается ТОЛЬКО для GPT-запроса + парсинга
-        # БЕЗ каких-либо DB операций под семафором
+        
+        # Ограничиваем количество одновременных запросов к GPT семафором
         with _gpt_semaphore:
             response = gpt_request_with_retry(lambda: client.chat.completions.create(
                 model="gpt-4o-mini",
@@ -622,46 +605,27 @@ def translate_batch_with_gpt(texts, lang='ru', retry_attempt=0):
                     {"role": "user", "content": user_content}
                 ],
                 temperature=0.3,
-                max_tokens=2000  # Увеличено с 1000 для поддержки больших батчей
+                max_tokens=1000
             ))
 
             translated_text = response.choices[0].message.content.strip()
-
-            # Парсим JSON ответ (всё ещё под семафором, но БЕЗ DB операций)
+            
+            # Парсим JSON ответ
             try:
                 result = json.loads(translated_text)
                 if isinstance(result, dict) and 'translations' in result:
                     translations = result['translations']
-                    received_count = len(translations) if isinstance(translations, list) else 0
-
-                    if isinstance(translations, list) and received_count == expected_count:
-                        # Семафор освобождается здесь, ПЕРЕД любыми DB операциями
+                    if isinstance(translations, list) and len(translations) == len(texts):
                         return translations
                     else:
-                        # НЕПОЛНЫЙ ОТВЕТ - пытаемся retry
-                        error_msg = f"GPT вернул неверное количество переводов. Ожидалось {expected_count}, получено {received_count}"
-
-                        if retry_attempt < MAX_INCOMPLETE_RETRIES:
-                            print(f"⚠️ {error_msg}, попытка retry {retry_attempt + 1}/{MAX_INCOMPLETE_RETRIES}")
-                            # Рекурсивный вызов с увеличенным счетчиком retry
-                            # Семафор освобождается перед рекурсией
-                            pass  # Семафор освободится при выходе из with
-                        else:
-                            print(f"❌ {error_msg}, исчерпаны все retry попытки")
-                            return None
+                        print(f"Ошибка: GPT вернул неверный формат. Ожидалось {len(texts)} переводов, получено {len(translations)}")
+                        return None
                 else:
-                    print(f"Ошибка: GPT не вернул JSON с ключом 'translations': {translated_text[:200]}")
+                    print(f"Ошибка: GPT не вернул JSON с ключом 'translations': {translated_text}")
                     return None
             except json.JSONDecodeError:
-                print(f"Ошибка парсинга JSON от GPT: {translated_text[:200]}")
+                print(f"Ошибка парсинга JSON от GPT: {translated_text}")
                 return None
-
-        # Retry вне семафора если количество не совпало
-        if retry_attempt < MAX_INCOMPLETE_RETRIES:
-            time.sleep(0.5)  # Небольшая задержка перед retry
-            return translate_batch_with_gpt(texts, lang, retry_attempt + 1)
-
-        return None
 
     except Exception as e:
         print(f"Ошибка при батч-переводе через GPT: {e}")
@@ -672,7 +636,6 @@ def translate_batch_with_gpt(texts, lang='ru', retry_attempt=0):
 # API ENDPOINTS
 # ═══════════════════════════════════════════════════════════════════
 
-@limiter.limit("10 per minute")
 @app.route('/translate-line', methods=['POST', 'OPTIONS'])
 def translate_line():
     """Endpoint для перевода одной строки субтитров"""
@@ -769,7 +732,6 @@ def translate_line():
     })
 
 
-@limiter.limit("10 per minute")
 @app.route('/translate-batch', methods=['POST', 'OPTIONS'])
 def translate_batch():
     """Endpoint для батч-перевода субтитров"""
@@ -785,10 +747,6 @@ def translate_batch():
 
     if not video_id or not items:
         return jsonify({'error': 'Missing videoId or items'}), 400
-
-    # BATCH SIZE LIMIT: Защита от слишком больших батчей
-    if len(items) > 50:
-        return jsonify({'error': 'Batch too large', 'max_allowed': 50}), 413
 
     # ═══════════════════════════════════════════════════════════════════
     # PLAN DETECTION & LIMITS - определяем план и лимиты
@@ -837,19 +795,12 @@ def translate_batch():
         line_number = item.get('lineNumber', i)
         text = item.get('text', '')
 
-        # СТРОГАЯ ВАЛИДАЦИЯ: lineNumber должен быть валидным int в диапазоне
+        # Валидация lineNumber
         if not isinstance(line_number, int) or line_number < 0:
             continue  # Пропускаем некорректные номера строк
 
         if total_lines > 0 and line_number >= total_lines:
             continue  # Пропускаем строки за пределами диапазона
-
-        # СТРОГАЯ ВАЛИДАЦИЯ: text должен быть строкой и не слишком длинным
-        if not isinstance(text, str) or len(text) == 0:
-            continue  # Пропускаем пустые или не-строковые тексты
-
-        if len(text) > 5000:
-            continue  # Пропускаем слишком длинные тексты (защита от DoS)
 
         # Проверяем кеш
         cached_translation = check_line_cache(video_id, line_number, lang)
@@ -1434,28 +1385,8 @@ def create_payment(plan):
 def payment_webhook():
     """Webhook для обработки уведомлений от Yookassa"""
     try:
-        # Получаем данные уведомления с защитой от битого JSON
-        try:
-            event_json = request.get_json(force=True)
-            if not event_json:
-                return jsonify({"error": "Empty JSON"}), 400
-        except Exception as e:
-            print(f"[WEBHOOK] ❌ Invalid JSON: {e}")
-
-            # Логируем битый JSON в БД
-            def _log_json_error():
-                conn = sqlite3.connect(USERS_DB)
-                cursor = conn.cursor()
-                raw_data = request.get_data(as_text=True) if request.get_data() else "NO DATA"
-                cursor.execute(
-                    'INSERT INTO webhook_errors (raw, error_message) VALUES (?, ?)',
-                    (raw_data, f"JSON parse error: {str(e)}")
-                )
-                conn.commit()
-                conn.close()
-
-            safe_db_execute(_log_json_error)
-            return jsonify({"error": "Invalid JSON"}), 400
+        # Получаем данные уведомления
+        event_json = request.json
 
         # ДЕТАЛЬНОЕ ЛОГИРОВАНИЕ для отладки
         print(f"\n{'='*60}")
@@ -1545,24 +1476,10 @@ def payment_webhook():
 
                 safe_db_execute(_local)
             else:
-                # Логируем битый payload в БД для отладки
                 print(f"[WEBHOOK] ⚠️ Недостаточно данных для обновления:")
                 print(f"  - email: {email}")
                 print(f"  - plan: {plan}")
                 print(f"  - plan valid: {plan in ['Pro', 'Premium'] if plan else False}")
-
-                def _log_error():
-                    conn = sqlite3.connect(USERS_DB)
-                    cursor = conn.cursor()
-                    error_msg = f"Missing or invalid data: email={email}, plan={plan}"
-                    cursor.execute(
-                        'INSERT INTO webhook_errors (raw, error_message) VALUES (?, ?)',
-                        (json.dumps(event_json), error_msg)
-                    )
-                    conn.commit()
-                    conn.close()
-
-                safe_db_execute(_log_error)
 
         return '', 200
 
