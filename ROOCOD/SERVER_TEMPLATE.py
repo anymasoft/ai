@@ -1898,17 +1898,6 @@ def admin_update_plan():
     else:
         return jsonify({"error": "update_failed"}), 500
 
-
-@app.route('/admin/<path:filename>')
-def admin_static(filename):
-    """Отдача статических файлов админки (JS, CSS)"""
-    is_admin, _ = check_admin_access()
-
-    if not is_admin:
-        return jsonify({"error": "access_denied"}), 403
-
-    return send_from_directory(ADMIN_DIR, filename)
-
 @app.route('/admin/translations/delete', methods=['POST'])
 def admin_delete_translation():
     is_admin, _ = check_admin_access()
@@ -1954,6 +1943,16 @@ def admin_clear_translations():
 
     safe_db_execute(_local)
     return jsonify({"status": "ok"})
+
+@app.route('/admin/<path:filename>')
+def admin_static(filename):
+    """Отдача статических файлов админки (JS, CSS)"""
+    is_admin, _ = check_admin_access()
+
+    if not is_admin:
+        return jsonify({"error": "access_denied"}), 403
+
+    return send_from_directory(ADMIN_DIR, filename)
 
 if __name__ == '__main__':
     init_db()
