@@ -268,9 +268,22 @@ function exportSubtitles(subtitles, format) {
   const blob = new Blob([content], { type: mime });
   const url = URL.createObjectURL(blob);
 
+  // Генерируем премиальное информативное имя файла
+  const videoId = getVideoId() || 'video';
+  const date = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+
+  // Определяем, оригинальные это субтитры или переведенные
+  const hasTranslations = Object.keys(transcriptState.translatedSubtitles || {}).length > 0;
+  const isTranslated = hasTranslations && subtitles !== transcriptState.originalSubtitles;
+
+  let originalLang = 'auto';
+  let targetLang = isTranslated ? transcriptState.selectedLang : 'original';
+
+  const filename = `VideoReaderAI_${videoId}_${originalLang}_to_${targetLang}_${date}.${extension}`;
+
   const a = document.createElement("a");
   a.href = url;
-  a.download = `subtitles.${extension}`;
+  a.download = filename;
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
