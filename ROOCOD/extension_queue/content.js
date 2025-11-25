@@ -292,7 +292,12 @@ function exportSubtitles(subtitles, format) {
 // Простая рабочая версия highlight (без оптимизаций)
 function startRealtimeHighlight(subtitles) {
   const video = document.querySelector("video");
-  if (!video) return;
+  if (!video) {
+    console.log('[VideoReader Highlight] Video element not found');
+    return;
+  }
+
+  console.log('[VideoReader Highlight] Starting realtime highlight with', subtitles.length, 'subtitles');
 
   function tick() {
     const t = video.currentTime;
@@ -301,7 +306,10 @@ function startRealtimeHighlight(subtitles) {
       const end = s.end || start + 2;
       return t >= start && t < end && end > start;
     });
-    if (idx !== -1) highlightLine(idx);
+    if (idx !== -1) {
+      console.log('[VideoReader Highlight] Active subtitle index:', idx, 'at time:', t.toFixed(2));
+      highlightLine(idx);
+    }
     requestAnimationFrame(tick);
   }
 
@@ -314,13 +322,19 @@ function stopRealtimeHighlight() {
 
 function highlightLine(idx) {
   const all = document.querySelectorAll(".yt-transcript-item");
+  const container = document.getElementById('yt-transcript-content');
+
   [...all].forEach((el, i) => {
     if (i === idx) {
       el.classList.add("active");
-      if (transcriptState.scrollLocked) {
-        return; // пользователь сам скроллит - подсветка НЕ захватывает экран
+
+      // Скроллим только контейнер субтитров, а не всю страницу
+      if (!transcriptState.scrollLocked && container) {
+        const containerRect = container.getBoundingClientRect();
+        const elementRect = el.getBoundingClientRect();
+        const offset = elementRect.top - containerRect.top - containerRect.height / 2 + el.offsetHeight / 2;
+        container.scrollBy({ top: offset, behavior: 'smooth' });
       }
-      el.scrollIntoView({ behavior: "smooth", block: "center" });
     } else {
       el.classList.remove("active");
     }
