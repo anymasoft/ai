@@ -1909,6 +1909,51 @@ def admin_static(filename):
 
     return send_from_directory(ADMIN_DIR, filename)
 
+@app.route('/admin/translations/delete', methods=['POST'])
+def admin_delete_translation():
+    is_admin, _ = check_admin_access()
+    if not is_admin:
+        return jsonify({"error": "access_denied"}), 403
+
+    data = request.json
+    row_id = data.get("id")
+
+    if not row_id:
+        return jsonify({"error": "missing_id"}), 400
+
+    def _local():
+        conn = sqlite3.connect(DATABASE)
+        cursor = conn.cursor()
+        cursor.execute("DELETE FROM translations WHERE id = ?", (row_id,))
+        conn.commit()
+        conn.close()
+
+    safe_db_execute(_local)
+    return jsonify({"status": "ok"})
+
+@app.route('/admin/translations/clear', methods=['POST'])
+def admin_clear_translations():
+    is_admin, _ = check_admin_access()
+    if not is_admin:
+        return jsonify({"error": "access_denied"}), 403
+
+    data = request.json or {}
+    video_id = data.get("video_id")
+
+    def _local():
+        conn = sqlite3.connect(DATABASE)
+        cursor = conn.cursor()
+
+        if video_id:
+            cursor.execute("DELETE FROM translations WHERE video_id = ?", (video_id,))
+        else:
+            cursor.execute("DELETE FROM translations")
+
+        conn.commit()
+        conn.close()
+
+    safe_db_execute(_local)
+    return jsonify({"status": "ok"})
 
 if __name__ == '__main__':
     init_db()
