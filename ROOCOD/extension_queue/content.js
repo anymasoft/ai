@@ -2382,6 +2382,31 @@ async function handleGetTranscript() {
   } catch (error) {
     console.error('[VideoReader Content] Ошибка получения транскрипта:', error);
 
+    // Специальная обработка для "Extension context invalidated"
+    if (error.message && error.message.includes('Extension context invalidated')) {
+      contentEl.innerHTML = `
+        <div style="text-align: center; padding: 40px 20px; color: #ff6b6b;">
+          <div style="font-size: 48px; margin-bottom: 16px;">🔄</div>
+          <div style="font-size: 16px; font-weight: 600; margin-bottom: 8px;">Расширение было перезагружено</div>
+          <div style="font-size: 14px; margin-bottom: 20px; color: #888;">
+            Пожалуйста, перезагрузите страницу, чтобы продолжить работу
+          </div>
+          <button onclick="location.reload()" style="
+            padding: 10px 20px;
+            background: #6366f1;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+          ">Перезагрузить страницу</button>
+        </div>
+      `;
+      translateBtn.disabled = true;
+      return;
+    }
+
     // Включаем кнопку и возвращаем оригинальный вид
     translateBtn.disabled = false;
     translateBtn.textContent = 'Translate Video';
