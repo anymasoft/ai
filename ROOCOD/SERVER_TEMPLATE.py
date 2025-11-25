@@ -38,10 +38,27 @@ def gpt_request_with_retry(func, max_attempts=5, base_delay=0.5):
             msg = str(e).lower()
             should_retry = False
 
+            # 1) проверка по числовым кодам
             for code in RETRYABLE_ERRORS:
                 if str(code) in msg:
                     should_retry = True
                     break
+
+            # 2) доп. проверка по тексту — rate limit / quota / overload
+            RETRYABLE_KEYWORDS = (
+                "rate limit",
+                "too many requests",
+                "quota",
+                "overloaded",
+                "please try again",
+                "slow down",
+                "server is busy"
+            )
+            if not should_retry:
+                for kw in RETRYABLE_KEYWORDS:
+                    if kw in msg:
+                        should_retry = True
+                        break
 
             if not should_retry:
                 # Неретрайбл ошибка → выбрасываем сразу
@@ -560,11 +577,19 @@ def translate_line_with_gpt(text, prev_context=None, lang='ru'):
 
 # Батч-перевод через GPT-4o-mini
 def translate_batch_with_gpt(texts, lang='ru'):
-    """Переводит батч строк субтитров через GPT"""
-    
+    """
+    Переводит батч строк субтитров через GPT.
+    Возвращает список той же длины, что и входной texts.
+    В случае систематических ошибок формата — переходит в построчный fallback.
+    """
+
+    if not texts:
+        return []
+
     # Получаем полное название языка
     target_language = LANGUAGE_NAMES.get(lang, 'Russian')
-    
+
+    # Оставляем существующий system_prompt — он уже хорошо настроен
     system_prompt = f"""
     You are a professional subtitle translator for YouTube videos.
     Your task is to translate each element of the array from English into {target_language}.
@@ -593,43 +618,108 @@ def translate_batch_with_gpt(texts, lang='ru'):
     Example: {{"translations": ["Привет, как дела?", "Я рад тебя видеть!"]}}
     """
 
-    try:
-        user_content = json.dumps(texts, ensure_ascii=False)
-        
-        # Ограничиваем количество одновременных запросов к GPT семафором
-        with _gpt_semaphore:
-            response = gpt_request_with_retry(lambda: client.chat.completions.create(
-                model="gpt-4o-mini",
-                messages=[
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": user_content}
-                ],
-                temperature=0.3,
-                max_tokens=1000
-            ))
+    def _parse_translations(raw_text, expected_len):
+        """
+        Пытается достать корректный список переводов из ответа модели.
+        Поддерживает форматы:
+        - {{ "translations": [...] }}
+        - [...]  (голый массив)
+        Пытается вырезать JSON-объект из мусорного текста.
+        """
+        raw = (raw_text or "").strip()
+        if not raw:
+            print("[GPT BATCH] Пустой ответ от модели")
+            return None
+
+        candidate = raw
+
+        # Пытаемся вырезать JSON-объект по первым/последним фигурным скобкам
+        first = raw.find('{')
+        last = raw.rfind('}')
+        if first != -1 and last != -1 and last > first:
+            candidate = raw[first:last + 1]
+
+        try:
+            data = json.loads(candidate)
+        except json.JSONDecodeError:
+            print(f"[GPT BATCH] Ошибка парсинга JSON: {raw}")
+            return None
+
+        # Поддержка двух форматов: dict с ключом translations или голый массив
+        if isinstance(data, dict) and 'translations' in data:
+            translations = data['translations']
+        elif isinstance(data, list):
+            translations = data
+        else:
+            print(f"[GPT BATCH] Некорректная структура ответа GPT: {data}")
+            return None
+
+        if not isinstance(translations, list):
+            print(f"[GPT BATCH] translations не является списком: {type(translations)}")
+            return None
+
+        if len(translations) != expected_len:
+            print(f"[GPT BATCH] Неверное количество переводов. Ожидалось {expected_len}, получено {len(translations)}")
+            print(f"[GPT BATCH] Проблемный ответ: {translations}")
+            return None
+
+        return translations
+
+    max_format_attempts = 3
+    last_error = None
+
+    for attempt in range(1, max_format_attempts + 1):
+        try:
+            user_content = json.dumps(texts, ensure_ascii=False)
+
+            # Ограничиваем количество одновременных запросов к GPT семафором
+            with _gpt_semaphore:
+                response = gpt_request_with_retry(lambda: client.chat.completions.create(
+                    model="gpt-4o-mini",
+                    messages=[
+                        {"role": "system", "content": system_prompt},
+                        {"role": "user", "content": user_content}
+                    ],
+                    temperature=0.3,
+                    max_tokens=1000
+                ))
 
             translated_text = response.choices[0].message.content.strip()
-            
-            # Парсим JSON ответ
-            try:
-                result = json.loads(translated_text)
-                if isinstance(result, dict) and 'translations' in result:
-                    translations = result['translations']
-                    if isinstance(translations, list) and len(translations) == len(texts):
-                        return translations
-                    else:
-                        print(f"Ошибка: GPT вернул неверный формат. Ожидалось {len(texts)} переводов, получено {len(translations)}")
-                        return None
-                else:
-                    print(f"Ошибка: GPT не вернул JSON с ключом 'translations': {translated_text}")
-                    return None
-            except json.JSONDecodeError:
-                print(f"Ошибка парсинга JSON от GPT: {translated_text}")
-                return None
 
-    except Exception as e:
-        print(f"Ошибка при батч-переводе через GPT: {e}")
-        return None
+        except Exception as e:
+            last_error = e
+            print(f"[GPT BATCH] Ошибка при запросе к GPT (попытка {attempt}/{max_format_attempts}): {e}")
+            if attempt == max_format_attempts:
+                break
+            # пробуем ещё раз
+            continue
+
+        translations = _parse_translations(translated_text, len(texts))
+        if translations is not None:
+            # Успех: формат корректный и длина совпадает
+            return translations
+
+        print(f"[GPT BATCH] Некорректный формат ответа GPT (попытка {attempt}/{max_format_attempts}). Повторный запрос...")
+        print(f"[GPT BATCH] Сырой ответ: {translated_text}")
+        print(f"[GPT BATCH] Исходный батч текстов: {texts}")
+
+    # Если мы здесь — ни одна попытка батч-перевода не дала корректный формат.
+    print(f"[GPT BATCH] Переходим в построчный fallback для батча из {len(texts)} строк")
+    if last_error:
+        print(f"[GPT BATCH] Последняя ошибка батч-перевода: {last_error}")
+
+    fallback_results = []
+    for idx, line in enumerate(texts):
+        try:
+            t = translate_line_with_gpt(line, prev_context=None, lang=lang)
+            if not t:
+                t = line
+        except Exception as e:
+            print(f"[GPT BATCH] Ошибка построчного fallback-перевода для строки {idx}: {e}")
+            t = line
+        fallback_results.append(t)
+
+    return fallback_results
 
 
 # ═══════════════════════════════════════════════════════════════════
