@@ -49,6 +49,39 @@ function updateUserPlan(newPlan) {
   transcriptState.userPlan = newPlan;
 }
 
+// Флаг для предотвращения повторного запроса плана
+let planSynced = false;
+
+// Обновление плана с сервера при загрузке расширения
+async function updateUserPlanFromServer() {
+  if (planSynced) return; // Уже синхронизировали в этой сессии
+
+  const { token } = await chrome.storage.local.get(['token']);
+  if (!token) return; // Нет токена - нет смысла запрашивать план
+
+  planSynced = true; // Помечаем что синхронизация запущена
+
+  chrome.runtime.sendMessage(
+    { type: 'FETCH_PLAN', token },
+    async (response) => {
+      if (response && response.plan) {
+        const storage = await chrome.storage.local.get(['plan']);
+
+        // Обновляем только если план изменился
+        if (storage.plan !== response.plan) {
+          console.log('[VideoReader] 🔄 Plan updated from server:', {
+            oldPlan: storage.plan,
+            newPlan: response.plan
+          });
+
+          chrome.storage.local.set({ plan: response.plan });
+          updateAuthUI(); // Повторно обновить UI с новым планом
+        }
+      }
+    }
+  );
+}
+
 // преобразование translatedSubtitles (объект) в массив для экспорта
 function getTranslatedSubtitlesArray() {
   const translated = [];
@@ -2795,6 +2828,9 @@ async function initContentScript() {
 
     // Запускаем наблюдение за навигацией
     observeYoutubeNavigation();
+
+    // Синхронизируем план с сервером при загрузке
+    updateUserPlanFromServer();
   }
 }
 
