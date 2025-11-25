@@ -606,7 +606,7 @@ function createTranscriptPanel() {
         </div>
         <div class="yt-reader-header-subtitle">AI Translator for YouTube</div>
       </div>
-      <button id="yt-transcript-toggle-btn" title="Свернуть/Развернуть">
+      <button id="yt-transcript-toggle-btn" title="Collapse/Expand">
         <svg viewBox="0 0 24 24" fill="currentColor">
           <path d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41z"/>
         </svg>
@@ -657,7 +657,7 @@ function createTranscriptPanel() {
           </div>
         </div>
         <div class="yt-reader-export-container">
-          <button id="yt-reader-export-btn" class="yt-reader-export-btn" title="Экспорт субтитров" disabled>
+          <button id="yt-reader-export-btn" class="yt-reader-export-btn" title="Export Subtitles" disabled>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
               <polyline points="7 10 12 15 17 10"/>
@@ -2599,7 +2599,7 @@ async function handleGetTranscript() {
     translateBtn.disabled = true;
     translateBtn.innerHTML = `
       <div class="yt-reader-loading-spinner"></div>
-      Получение...
+      Loading...
     `;
 
     // Очищаем предыдущий контент
@@ -2627,8 +2627,8 @@ async function handleGetTranscript() {
       contentEl.innerHTML = `
         <div style="text-align: center; padding: 40px 20px; color: #666;">
           <div style="font-size: 48px; margin-bottom: 16px;">📄</div>
-          <div style="font-size: 16px; font-weight: 600; margin-bottom: 8px;">Субтитры недоступны</div>
-          <div style="font-size: 14px;">Для этого видео субтитры не найдены</div>
+          <div style="font-size: 16px; font-weight: 600; margin-bottom: 8px;">Subtitles Unavailable</div>
+          <div style="font-size: 14px;">No subtitles found for this video</div>
         </div>
       `;
       translateBtn.disabled = false;
@@ -2637,7 +2637,7 @@ async function handleGetTranscript() {
     }
 
     if (!subtitles || subtitles.length === 0) {
-      throw new Error('Транскрипт не найден для этого видео');
+      throw new Error('Transcript not found for this video');
     }
 
     // Сохраняем оригинальные субтитры
@@ -2695,10 +2695,10 @@ async function handleGetTranscript() {
       transcriptState.scrollListenersAttachedTo = container;
     }
 
-    // Обновляем кнопку на "Перевод..."
+    // Обновляем кнопку на "Translating..."
     translateBtn.innerHTML = `
       <div class="yt-reader-loading-spinner"></div>
-      Перевод...
+      Translating...
     `;
 
     // Переводим субтитры
@@ -2718,9 +2718,9 @@ async function handleGetTranscript() {
       contentEl.innerHTML = `
         <div style="text-align: center; padding: 40px 20px; color: #ff6b6b;">
           <div style="font-size: 48px; margin-bottom: 16px;">🔄</div>
-          <div style="font-size: 16px; font-weight: 600; margin-bottom: 8px;">Расширение было перезагружено</div>
+          <div style="font-size: 16px; font-weight: 600; margin-bottom: 8px;">Extension was reloaded</div>
           <div style="font-size: 14px; margin-bottom: 20px; color: #888;">
-            Пожалуйста, перезагрузите страницу, чтобы продолжить работу
+            Please reload the page to continue
           </div>
           <button onclick="location.reload()" style="
             padding: 10px 20px;
@@ -2731,7 +2731,7 @@ async function handleGetTranscript() {
             cursor: pointer;
             font-size: 14px;
             font-weight: 600;
-          ">Перезагрузить страницу</button>
+          ">Reload Page</button>
         </div>
       `;
       translateBtn.disabled = true;
