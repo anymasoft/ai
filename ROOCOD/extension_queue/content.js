@@ -1178,7 +1178,7 @@ async function sendBatchWithRetry(payload, headers, attempt = 0) {
 
 // main batch translate function
 async function translateSubtitles(videoId, subtitles, targetLang) {
-  const BATCH_SIZE = 10;
+  const BATCH_SIZE = 5;
   const startTime = performance.now();
 
   console.log(`[VideoReader API] 🚀 Starting translation:`, {
@@ -1302,7 +1302,7 @@ async function translateSubtitles(videoId, subtitles, targetLang) {
       break;
     }
 
-    await new Promise(r => setTimeout(r, 300));
+    await new Promise(r => setTimeout(r, 250));
   }
 
   // КРИТИЧЕСКОЕ: используем initialPlan для вставки upgrade buttons
@@ -1330,7 +1330,7 @@ async function translateSubtitles(videoId, subtitles, targetLang) {
 
 // Перевод только непереведённых строк (повторный запуск)
 async function translatePendingSubtitles(videoId, pending, map, targetLang) {
-  const BATCH_SIZE = 10;
+  const BATCH_SIZE = 5;
   const startTime = performance.now();
 
   console.log(`[VideoReader API] 🔄 Retranslating pending lines:`, {
@@ -1420,7 +1420,7 @@ async function translatePendingSubtitles(videoId, pending, map, targetLang) {
       break;
     }
 
-    await new Promise(r => setTimeout(r, 300));
+    await new Promise(r => setTimeout(r, 250));
   }
 
   updateLimitedClass();
