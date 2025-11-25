@@ -52,6 +52,9 @@ function updateUserPlan(newPlan) {
 // Флаг для предотвращения повторного запроса плана
 let planSynced = false;
 
+// Флаг для предотвращения параллельных переводов
+let isTranslating = false;
+
 // Обновление плана с сервера при загрузке расширения
 async function updateUserPlanFromServer() {
   if (planSynced) return; // Уже синхронизировали в этой сессии
@@ -106,13 +109,12 @@ function getUntranslatedLines() {
 
     // Строка считается непереведённой, если:
     // 1. Перевод отсутствует
-    // 2. Перевод пустой
-    // 3. Перевод совпадает с оригиналом (fallback от сервера)
-    if (!translated ||
-        !translated.text ||
-        translated.text.trim() === '' ||
-        translated.text === original.text) {
-      pending.push(original.text);
+    // 2. НЕТ флага isTranslated (надёжнее, чем сравнение текста)
+    if (!translated || !translated.isTranslated) {
+      pending.push({
+        index: i,
+        text: original.text
+      });
       map.push(i);
     }
   }
@@ -1314,10 +1316,11 @@ async function translateSubtitles(videoId, subtitles, targetLang) {
       result.items.forEach(item => {
         updateSingleLine(item.lineNumber, item.text);
 
-        // сохраняем в state для экспорта
+        // сохраняем в state для экспорта с флагом isTranslated
         transcriptState.translatedSubtitles[item.lineNumber] = {
           ...transcriptState.originalSubtitles[item.lineNumber],
           text: item.text,
+          isTranslated: true  // Флаг успешного перевода
         };
 
         lastTranslatedIndex = Math.max(lastTranslatedIndex, item.lineNumber);
@@ -1403,7 +1406,7 @@ async function translatePendingSubtitles(videoId, pending, map, targetLang) {
       const originalIndex = map[j];
       batchItems.push({
         lineNumber: originalIndex,
-        text: pending[j],
+        text: pending[j].text,  // pending теперь массив объектов {index, text}
       });
     }
 
@@ -1436,9 +1439,11 @@ async function translatePendingSubtitles(videoId, pending, map, targetLang) {
       result.items.forEach(item => {
         updateSingleLine(item.lineNumber, item.text);
 
+        // Добавляем флаг isTranslated при успешном переводе
         transcriptState.translatedSubtitles[item.lineNumber] = {
           ...transcriptState.originalSubtitles[item.lineNumber],
           text: item.text,
+          isTranslated: true  // Флаг успешного перевода
         };
       });
     }
@@ -2534,10 +2539,18 @@ function handleExportFormat(format, type) {
 
 // Обработчик получения транскрипта
 async function handleGetTranscript() {
+  // Защита от параллельных вызовов
+  if (isTranslating) {
+    console.log('[VideoReader Content] ⚠️ Translation already in progress, skipping...');
+    return;
+  }
+
   const translateBtn = document.getElementById('yt-reader-translate-btn');
   const contentEl = document.getElementById('yt-transcript-content');
 
   try {
+    isTranslating = true;  // Устанавливаем флаг
+
     // Получаем videoId
     const videoId = getVideoId();
     const targetLang = transcriptState.selectedLang || 'ru';
@@ -2591,8 +2604,19 @@ async function handleGetTranscript() {
 
     // Очищаем предыдущий контент
     contentEl.innerHTML = '';
-    transcriptState.originalSubtitles = [];
-    transcriptState.translatedSubtitles = {};
+
+    // КРИТИЧЕСКОЕ: очищаем state только если это ДРУГОЕ видео
+    // Иммутабельность: originalSubtitles НЕ перезаписываются для одного и того же видео
+    const isDifferentVideo = transcriptState.currentVideoId !== videoId;
+    if (isDifferentVideo || transcriptState.originalSubtitles.length === 0) {
+      console.log('[VideoReader Content] 🔄 Clearing state for new video:', {
+        oldVideoId: transcriptState.currentVideoId,
+        newVideoId: videoId
+      });
+      transcriptState.originalSubtitles = [];
+      transcriptState.translatedSubtitles = {};
+    }
+
     transcriptState.currentVideoId = videoId;
 
     // Получаем субтитры
@@ -2717,6 +2741,9 @@ async function handleGetTranscript() {
     // Включаем кнопку и возвращаем оригинальный вид
     translateBtn.disabled = false;
     translateBtn.textContent = 'Translate Video';
+  } finally {
+    // КРИТИЧЕСКОЕ: всегда сбрасываем флаг isTranslating, даже при ошибках или early return
+    isTranslating = false;
   }
 }
 
