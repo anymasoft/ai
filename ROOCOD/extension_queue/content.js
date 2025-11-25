@@ -2644,9 +2644,6 @@ async function handleGetTranscript() {
       Перевод...
     `;
 
-    // Получаем выбранный язык
-    const targetLang = transcriptState.selectedLang || 'ru';
-
     // Переводим субтитры
     await translateSubtitles(videoId, subtitles, targetLang);
 
