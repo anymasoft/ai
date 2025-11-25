@@ -307,7 +307,7 @@ function startRealtimeHighlight(subtitles) {
       return t >= start && t < end && end > start;
     });
     if (idx !== -1) {
-      highlightLine(idx);
+      highlightLine(idx, subtitles, t);
     }
     requestAnimationFrame(tick);
   }
@@ -319,7 +319,7 @@ function stopRealtimeHighlight() {
   // Заглушка для совместимости
 }
 
-function highlightLine(idx) {
+function highlightLine(idx, subtitles, currentTime) {
   const all = document.querySelectorAll(".yt-transcript-item");
   const container = document.getElementById('yt-transcript-content');
   const video = document.querySelector("video");
@@ -327,6 +327,28 @@ function highlightLine(idx) {
   [...all].forEach((el, i) => {
     if (i === idx) {
       el.classList.add("active-subtitle");
+
+      // Караоке-эффект: заполнение текста по мере речи
+      if (subtitles && currentTime !== undefined) {
+        const subtitle = subtitles[idx];
+        const start = subtitle.start || 0;
+        const end = subtitle.end || start + 2;
+        const duration = end - start;
+
+        if (duration > 0) {
+          const progress = Math.min(Math.max((currentTime - start) / duration, 0), 1);
+          const textEl = el.querySelector('.yt-transcript-item-text');
+
+          if (textEl) {
+            const text = textEl.textContent || textEl.innerText;
+            const splitPoint = Math.floor(text.length * progress);
+            const filled = text.substring(0, splitPoint);
+            const unfilled = text.substring(splitPoint);
+
+            textEl.innerHTML = `<span class="karaoke-filled">${filled}</span>${unfilled}`;
+          }
+        }
+      }
 
       // Скроллим только контейнер субтитров, а не всю страницу
       // И ТОЛЬКО если видео воспроизводится (не на паузе)
