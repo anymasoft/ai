@@ -858,6 +858,14 @@ html[dark] .yt-reader-signin-btn:hover {
   color: var(--yt-spec-text-primary);
 }
 
+/* Караоке-эффект: заполненная часть текста */
+.karaoke-filled {
+  color: #6366f1;
+  font-weight: 600;
+  text-shadow: 0 0 8px rgba(99, 102, 241, 0.3);
+  transition: all 80ms linear;
+}
+
 /* Временная метка - нативный YouTube стиль */
 .yt-transcript-item-time {
   color: var(--yt-spec-call-to-action);
