@@ -20,10 +20,25 @@ export default function BillingSettings() {
 
   // Get user plan from session, fallback to currentPlanData
   const userPlan = session?.user?.plan || "free";
+
+  const planNames: Record<string, string> = {
+    free: "Free Trial",
+    basic: "Basic Plan",
+    professional: "Professional Plan",
+    enterprise: "Enterprise Plan",
+  };
+
+  const planPrices: Record<string, string> = {
+    free: "$0/mo",
+    basic: "$19/mo",
+    professional: "$79/mo",
+    enterprise: "$199/mo",
+  };
+
   const planData = {
     ...currentPlanData,
-    planName: userPlan === "pro" ? "Professional Plan" : "Free Plan",
-    price: userPlan === "pro" ? "$29/mo" : "$0/mo",
+    planName: planNames[userPlan] || "Free Trial",
+    price: planPrices[userPlan] || "$0/mo",
   };
 
   return (

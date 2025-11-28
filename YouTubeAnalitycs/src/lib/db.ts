@@ -71,6 +71,28 @@ export const verificationTokens = sqliteTable(
   })
 );
 
+// Competitors table
+export const competitors = sqliteTable("competitors", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  userId: text("userId")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  platform: text("platform").notNull().default("youtube"),
+  channelId: text("channelId").notNull(),
+  handle: text("handle").notNull(),
+  title: text("title").notNull(),
+  avatarUrl: text("avatarUrl"),
+  subscriberCount: integer("subscriberCount").notNull().default(0),
+  videoCount: integer("videoCount").notNull().default(0),
+  viewCount: integer("viewCount").notNull().default(0),
+  lastSyncedAt: integer("lastSyncedAt", { mode: "timestamp_ms" })
+    .notNull()
+    .$defaultFn(() => Date.now()),
+  createdAt: integer("createdAt", { mode: "timestamp_ms" })
+    .notNull()
+    .$defaultFn(() => Date.now()),
+});
+
 // Initialize SQLite database only on server side
 let sqlite: Database.Database;
 let _db: ReturnType<typeof drizzle>;
@@ -135,6 +157,25 @@ function getDatabase() {
             token TEXT NOT NULL,
             expires INTEGER NOT NULL,
             PRIMARY KEY (identifier, token)
+          );
+        `);
+
+        // Create competitors table
+        sqlite.exec(`
+          CREATE TABLE IF NOT EXISTS competitors (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            userId TEXT NOT NULL,
+            platform TEXT NOT NULL DEFAULT 'youtube',
+            channelId TEXT NOT NULL,
+            handle TEXT NOT NULL,
+            title TEXT NOT NULL,
+            avatarUrl TEXT,
+            subscriberCount INTEGER NOT NULL DEFAULT 0,
+            videoCount INTEGER NOT NULL DEFAULT 0,
+            viewCount INTEGER NOT NULL DEFAULT 0,
+            lastSyncedAt INTEGER NOT NULL,
+            createdAt INTEGER NOT NULL,
+            FOREIGN KEY (userId) REFERENCES users(id) ON DELETE CASCADE
           );
         `);
 
