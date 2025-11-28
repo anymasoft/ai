@@ -26,14 +26,6 @@ interface PricingPlansProps {
 
 const defaultPlans: PricingPlan[] = [
   {
-    id: 'free',
-    name: 'Free Trial',
-    description: 'Try YouTube Analytics for free',
-    price: '$0',
-    frequency: '/month',
-    features: ['Track up to 3 competitors', 'Basic analytics', 'Email support', 'Limited features'],
-  },
-  {
     id: 'basic',
     name: 'Basic',
     description: 'Perfect for small creators',
