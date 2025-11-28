@@ -1,60 +1,82 @@
 "use client"
 
-import { 
-  TrendingUp, 
-  TrendingDown, 
-  DollarSign, 
-  Users, 
-  ShoppingCart, 
-  BarChart3 
+import {
+  TrendingUp,
+  TrendingDown,
+  Users,
+  Video,
+  Eye,
+  BarChart3
 } from "lucide-react"
 import { Card, CardAction, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 
-const metrics = [
-  {
-    title: "Total Revenue",
-    value: "$54,230",
-    description: "Monthly revenue",
-    change: "+12%",
-    trend: "up",
-    icon: DollarSign,
-    footer: "Trending up this month",
-    subfooter: "Revenue for the last 6 months"
-  },
-  {
-    title: "Active Customers",
-    value: "2,350",
-    description: "Total active users",
-    change: "+5.2%", 
-    trend: "up",
-    icon: Users,
-    footer: "Strong user retention",
-    subfooter: "Engagement exceeds targets"
-  },
-  {
-    title: "Total Orders",
-    value: "1,247",
-    description: "Orders this month",
-    change: "-2.1%",
-    trend: "down", 
-    icon: ShoppingCart,
-    footer: "Down 2% this period",
-    subfooter: "Order volume needs attention"
-  },
-  {
-    title: "Conversion Rate",
-    value: "3.24%",
-    description: "Average conversion",
-    change: "+8.3%",
-    trend: "up",
-    icon: BarChart3,
-    footer: "Steady performance increase",
-    subfooter: "Meets conversion projections"
-  },
-]
+interface CompetitorStats {
+  totalCompetitors: number
+  totalSubscribers: number
+  totalViews: number
+  totalVideos: number
+}
 
-export function MetricsOverview() {
+interface MetricsOverviewProps {
+  stats: CompetitorStats
+}
+
+function formatNumber(num: number): string {
+  if (num >= 1000000000) {
+    return (num / 1000000000).toFixed(1) + "B"
+  } else if (num >= 1000000) {
+    return (num / 1000000).toFixed(1) + "M"
+  } else if (num >= 1000) {
+    return (num / 1000).toFixed(1) + "K"
+  }
+  return num.toString()
+}
+
+export function MetricsOverview({ stats }: MetricsOverviewProps) {
+  const metrics = [
+    {
+      title: "Tracked Competitors",
+      value: stats.totalCompetitors.toString(),
+      description: "YouTube channels",
+      change: stats.totalCompetitors > 0 ? "Active" : "None",
+      trend: stats.totalCompetitors > 0 ? "up" : "down",
+      icon: Users,
+      footer: stats.totalCompetitors > 0 ? "Monitoring competitors" : "Add competitors to track",
+      subfooter: "Track up to your plan limit"
+    },
+    {
+      title: "Total Subscribers",
+      value: formatNumber(stats.totalSubscribers),
+      description: "Combined audience",
+      change: stats.totalSubscribers > 0 ? formatNumber(stats.totalSubscribers) : "0",
+      trend: "up",
+      icon: Users,
+      footer: "Aggregated from competitors",
+      subfooter: "Total subscriber base"
+    },
+    {
+      title: "Total Videos",
+      value: formatNumber(stats.totalVideos),
+      description: "Content published",
+      change: stats.totalVideos > 0 ? formatNumber(stats.totalVideos) : "0",
+      trend: "up",
+      icon: Video,
+      footer: "Video content tracked",
+      subfooter: "Competitor video count"
+    },
+    {
+      title: "Total Views",
+      value: formatNumber(stats.totalViews),
+      description: "Cumulative views",
+      change: stats.totalViews > 0 ? formatNumber(stats.totalViews) : "0",
+      trend: "up",
+      icon: Eye,
+      footer: "Combined view count",
+      subfooter: "Aggregate performance"
+    },
+  ]
+
   return (
     <div className="*:data-[slot=card]:from-primary/5 *:data-[slot=card]:to-card dark:*:data-[slot=card]:bg-card *:data-[slot=card]:bg-gradient-to-t *:data-[slot=card]:shadow-xs grid gap-4 sm:grid-cols-2 @5xl:grid-cols-4">
       {metrics.map((metric) => {

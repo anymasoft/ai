@@ -1,28 +1,264 @@
+"use client"
+
+import { useState, useEffect } from "react"
+import { useSession } from "next-auth/react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Input } from "@/components/ui/input"
+import { Button } from "@/components/ui/button"
+import { Alert, AlertDescription } from "@/components/ui/alert"
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table"
+import { Trash2, Loader2, AlertCircle } from "lucide-react"
+
+interface Competitor {
+  id: number
+  userId: string
+  platform: string
+  channelId: string
+  handle: string
+  title: string
+  avatarUrl: string | null
+  subscriberCount: number
+  videoCount: number
+  viewCount: number
+  lastSyncedAt: number
+  createdAt: number
+}
 
 export default function CompetitorsPage() {
+  const { data: session } = useSession()
+  const [competitors, setCompetitors] = useState<Competitor[]>([])
+  const [handle, setHandle] = useState("")
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState("")
+  const [success, setSuccess] = useState("")
+  const [fetching, setFetching] = useState(true)
+
+  const userPlan = session?.user?.plan || "free"
+  const limits: Record<string, number> = {
+    free: 3,
+    basic: 3,
+    pro: 20,
+    professional: 20,
+    enterprice: 200,
+    enterprise: 200,
+  }
+  const limit = limits[userPlan.toLowerCase()] || 3
+
+  useEffect(() => {
+    fetchCompetitors()
+  }, [])
+
+  async function fetchCompetitors() {
+    try {
+      setFetching(true)
+      const res = await fetch("/api/competitors")
+      if (res.ok) {
+        const data = await res.json()
+        setCompetitors(data)
+      }
+    } catch (err) {
+      console.error("Failed to fetch competitors:", err)
+    } finally {
+      setFetching(false)
+    }
+  }
+
+  async function handleAddCompetitor(e: React.FormEvent) {
+    e.preventDefault()
+    setError("")
+    setSuccess("")
+
+    if (!handle.trim()) {
+      setError("Please enter a channel handle or URL")
+      return
+    }
+
+    setLoading(true)
+
+    try {
+      const res = await fetch("/api/competitors", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ handle: handle.trim() }),
+      })
+
+      const data = await res.json()
+
+      if (!res.ok) {
+        setError(data.error || "Failed to add competitor")
+        return
+      }
+
+      setSuccess("Competitor added successfully!")
+      setHandle("")
+      fetchCompetitors()
+    } catch (err) {
+      setError("An error occurred while adding the competitor")
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  async function handleDeleteCompetitor(id: number) {
+    if (!confirm("Are you sure you want to remove this competitor?")) {
+      return
+    }
+
+    try {
+      const res = await fetch(`/api/competitors/${id}`, { method: "DELETE" })
+      if (res.ok) {
+        setSuccess("Competitor removed successfully")
+        fetchCompetitors()
+      } else {
+        const data = await res.json()
+        setError(data.error || "Failed to delete competitor")
+      }
+    } catch (err) {
+      setError("An error occurred while deleting the competitor")
+    }
+  }
+
+  function formatNumber(num: number): string {
+    if (num >= 1000000) {
+      return (num / 1000000).toFixed(1) + "M"
+    } else if (num >= 1000) {
+      return (num / 1000).toFixed(1) + "K"
+    }
+    return num.toString()
+  }
+
+  function formatDate(timestamp: number): string {
+    return new Date(timestamp).toLocaleDateString()
+  }
+
+  const isAtLimit = competitors.length >= limit
+
   return (
-    <div className="container mx-auto px-4 md:px-6">
+    <div className="container mx-auto px-4 md:px-6 space-y-6">
       <div className="mb-6">
         <h1 className="text-3xl font-bold">Competitors Analysis</h1>
         <p className="text-muted-foreground">Track and analyze your competition</p>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        <Card>
-          <CardHeader>
-            <CardTitle>Coming Soon</CardTitle>
-            <CardDescription>
-              Competitor tracking features will be available soon
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <p className="text-sm text-muted-foreground">
-              Stay tuned for updates
+      {error && (
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      )}
+
+      {success && (
+        <Alert>
+          <AlertDescription>{success}</AlertDescription>
+        </Alert>
+      )}
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Add Competitor</CardTitle>
+          <CardDescription>
+            Add a YouTube channel to track ({competitors.length}/{limit} used)
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={handleAddCompetitor} className="flex gap-2">
+            <Input
+              type="text"
+              placeholder="Enter channel handle or URL (e.g., @channelname)"
+              value={handle}
+              onChange={(e) => setHandle(e.target.value)}
+              disabled={loading || isAtLimit}
+              className="flex-1"
+            />
+            <Button type="submit" disabled={loading || isAtLimit} className="cursor-pointer">
+              {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Add
+            </Button>
+          </form>
+          {isAtLimit && (
+            <p className="text-sm text-muted-foreground mt-2">
+              You have reached your limit for this plan. Upgrade to add more competitors.
             </p>
-          </CardContent>
-        </Card>
-      </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Your Competitors</CardTitle>
+          <CardDescription>
+            Manage and view your tracked competitors
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {fetching ? (
+            <div className="flex justify-center py-8">
+              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+            </div>
+          ) : competitors.length === 0 ? (
+            <p className="text-center text-muted-foreground py-8">
+              No competitors added yet. Add your first competitor above.
+            </p>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Channel</TableHead>
+                  <TableHead>Subscribers</TableHead>
+                  <TableHead>Videos</TableHead>
+                  <TableHead>Total Views</TableHead>
+                  <TableHead>Last Synced</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {competitors.map((competitor) => (
+                  <TableRow key={competitor.id}>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        {competitor.avatarUrl && (
+                          <img
+                            src={competitor.avatarUrl}
+                            alt={competitor.title}
+                            className="h-8 w-8 rounded-full"
+                          />
+                        )}
+                        <div>
+                          <div className="font-medium">{competitor.title}</div>
+                          <div className="text-xs text-muted-foreground">
+                            {competitor.handle}
+                          </div>
+                        </div>
+                      </div>
+                    </TableCell>
+                    <TableCell>{formatNumber(competitor.subscriberCount)}</TableCell>
+                    <TableCell>{formatNumber(competitor.videoCount)}</TableCell>
+                    <TableCell>{formatNumber(competitor.viewCount)}</TableCell>
+                    <TableCell>{formatDate(competitor.lastSyncedAt)}</TableCell>
+                    <TableCell className="text-right">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleDeleteCompetitor(competitor.id)}
+                        className="cursor-pointer"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
     </div>
   )
 }
