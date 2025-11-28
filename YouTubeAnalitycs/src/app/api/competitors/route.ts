@@ -67,9 +67,7 @@ export async function POST(req: NextRequest) {
     const limits: Record<string, number> = {
       free: 3,
       basic: 3,
-      pro: 20,
       professional: 20,
-      enterprice: 200,
       enterprise: 200,
     };
 
