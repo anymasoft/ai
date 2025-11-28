@@ -25,14 +25,14 @@ export default function BillingSettings() {
     free: "Free Trial",
     basic: "Basic Plan",
     professional: "Professional Plan",
-    enterprice: "Enterprise Plan",
+    enterprise: "Enterprise Plan",
   };
 
   const planPrices: Record<string, string> = {
     free: "$0/mo",
     basic: "$19/mo",
     professional: "$79/mo",
-    enterprice: "$199/mo",
+    enterprise: "$199/mo",
   };
 
   const planData = {

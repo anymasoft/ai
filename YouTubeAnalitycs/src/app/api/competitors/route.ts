@@ -68,7 +68,7 @@ export async function POST(req: NextRequest) {
       free: 3,
       basic: 3,
       professional: 20,
-      enterprice: 200,
+      enterprise: 200,
     };
 
     const limit = limits[plan.toLowerCase()] || 3;

@@ -58,7 +58,7 @@ const defaultPlans: PricingPlan[] = [
     popular: true,
   },
   {
-    id: 'enterprice',
+    id: 'enterprise',
     name: 'Enterprise',
     description: 'For professional networks',
     price: '$199',

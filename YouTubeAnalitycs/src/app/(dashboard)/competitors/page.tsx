@@ -45,7 +45,7 @@ export default function CompetitorsPage() {
     free: 3,
     basic: 3,
     professional: 20,
-    enterprice: 200,
+    enterprise: 200,
   }
   const limit = limits[userPlan.toLowerCase()] || 3
 
