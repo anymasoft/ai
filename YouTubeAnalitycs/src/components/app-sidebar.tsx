@@ -9,6 +9,7 @@ import {
   Target,
 } from "lucide-react"
 import Link from "next/link"
+import { useSession } from "next-auth/react"
 import { Logo } from "@/components/logo"
 import { SidebarNotification } from "@/components/sidebar-notification"
 
@@ -24,62 +25,63 @@ import {
   SidebarMenuItem,
 } from "@/components/ui/sidebar"
 
-const data = {
-  user: {
-    name: "YouTube Analytics",
-    email: "store@example.com",
-    avatar: "",
+const navGroups = [
+  {
+    label: "Analytics",
+    items: [
+      {
+        title: "Overview",
+        url: "/dashboard-2",
+        icon: LayoutDashboard,
+      },
+      {
+        title: "Competitors",
+        url: "/competitors",
+        icon: Target,
+      },
+      {
+        title: "Trending",
+        url: "/trending",
+        icon: TrendingUp,
+      },
+      {
+        title: "Reports",
+        url: "/reports",
+        icon: FileBarChart,
+      },
+    ],
   },
-  navGroups: [
-    {
-      label: "Analytics",
-      items: [
-        {
-          title: "Overview",
-          url: "/dashboard-2",
-          icon: LayoutDashboard,
-        },
-        {
-          title: "Competitors",
-          url: "/competitors",
-          icon: Target,
-        },
-        {
-          title: "Trending",
-          url: "/trending",
-          icon: TrendingUp,
-        },
-        {
-          title: "Reports",
-          url: "/reports",
-          icon: FileBarChart,
-        },
-      ],
-    },
-    {
-      label: "Settings",
-      items: [
-        {
-          title: "Settings",
-          url: "#",
-          icon: Settings,
-          items: [
-            {
-              title: "Account",
-              url: "/settings/account",
-            },
-            {
-              title: "Billing",
-              url: "/settings/billing",
-            },
-          ],
-        },
-      ],
-    },
-  ],
-}
+  {
+    label: "Settings",
+    items: [
+      {
+        title: "Settings",
+        url: "#",
+        icon: Settings,
+        items: [
+          {
+            title: "Account",
+            url: "/settings/account",
+          },
+          {
+            title: "Billing",
+            url: "/settings/billing",
+          },
+        ],
+      },
+    ],
+  },
+]
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
+  const { data: session } = useSession();
+
+  const user = {
+    name: session?.user?.name || "User",
+    email: session?.user?.email || "user@example.com",
+    avatar: session?.user?.image || "",
+  };
+
   return (
     <Sidebar {...props}>
       <SidebarHeader>
@@ -100,13 +102,13 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         </SidebarMenu>
       </SidebarHeader>
       <SidebarContent>
-        {data.navGroups.map((group) => (
+        {navGroups.map((group) => (
           <NavMain key={group.label} label={group.label} items={group.items} />
         ))}
       </SidebarContent>
       <SidebarFooter>
         <SidebarNotification />
-        <NavUser user={data.user} />
+        <NavUser user={user} />
       </SidebarFooter>
     </Sidebar>
   )

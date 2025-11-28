@@ -3,6 +3,8 @@
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
 import { z } from "zod"
+import { useSession } from "next-auth/react"
+import { useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import {
@@ -29,6 +31,8 @@ const accountFormSchema = z.object({
 type AccountFormValues = z.infer<typeof accountFormSchema>
 
 export default function AccountSettings() {
+  const { data: session } = useSession();
+
   const form = useForm<AccountFormValues>({
     resolver: zodResolver(accountFormSchema),
     defaultValues: {
@@ -41,6 +45,26 @@ export default function AccountSettings() {
       confirmPassword: "",
     },
   })
+
+  // Populate form with session data
+  useEffect(() => {
+    if (session?.user) {
+      const fullName = session.user.name || "";
+      const nameParts = fullName.split(" ");
+      const firstName = nameParts[0] || "";
+      const lastName = nameParts.slice(1).join(" ") || "";
+
+      form.reset({
+        firstName,
+        lastName,
+        email: session.user.email || "",
+        username: session.user.email?.split("@")[0] || "",
+        currentPassword: "",
+        newPassword: "",
+        confirmPassword: "",
+      });
+    }
+  }, [session, form]);
 
   function onSubmit(data: AccountFormValues) {
     console.log("Form submitted:", data)
