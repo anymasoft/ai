@@ -2,22 +2,27 @@
 
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
 
 export default function HomePage() {
   const router = useRouter();
-
-  // TODO: replace with real auth later
-  const isAuthenticated = false;
+  const { data: session, status } = useSession();
 
   useEffect(() => {
-    if (isAuthenticated) {
+    if (status === "loading") {
+      return; // Wait for session to load
+    }
+
+    if (session) {
+      // User is authenticated
       router.replace("/dashboard-2");
     } else {
+      // User is not authenticated
       router.replace("/landing");
     }
-  }, [router, isAuthenticated]);
+  }, [router, session, status]);
 
-  // Show a loading state while redirecting
+  // Show a loading state while checking auth and redirecting
   return (
     <div className="flex min-h-screen items-center justify-center">
       <div className="text-center">

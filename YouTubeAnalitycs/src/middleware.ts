@@ -1,25 +1,85 @@
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
+import { getToken } from 'next-auth/jwt'
 
-// This function can be marked `async` if using `await` inside
-export function middleware(request: NextRequest) {
-  // Add custom middleware logic here
-  // For example: authentication, redirects, etc.
-  
-  // Example: Redirect /login to /auth/sign-in
-  if (request.nextUrl.pathname === '/login') {
-    return NextResponse.redirect(new URL('/auth/sign-in', request.url))
+export async function middleware(request: NextRequest) {
+  const { pathname } = request.nextUrl;
+
+  // Public routes that don't require authentication
+  const publicRoutes = [
+    '/',
+    '/landing',
+    '/sign-in',
+    '/sign-up',
+    '/forgot-password',
+    '/forgot-password-2',
+    '/forgot-password-3',
+  ];
+
+  // Error pages are public
+  if (pathname.startsWith('/errors/')) {
+    return NextResponse.next();
   }
-  
-  // Example: Redirect /register to /auth/sign-up
-  if (request.nextUrl.pathname === '/register') {
-    return NextResponse.redirect(new URL('/auth/sign-up', request.url))
+
+  // Auth routes are public
+  if (pathname.startsWith('/sign-') || pathname.startsWith('/forgot-')) {
+    return NextResponse.next();
   }
-  
-  return NextResponse.next()
+
+  // Allow public routes
+  if (publicRoutes.includes(pathname)) {
+    return NextResponse.next();
+  }
+
+  // Protected routes that require authentication
+  const protectedRoutes = [
+    '/dashboard',
+    '/dashboard-2',
+    '/competitors',
+    '/trending',
+    '/reports',
+    '/settings',
+    '/users',
+    '/mail',
+    '/tasks',
+    '/chat',
+    '/calendar',
+    '/faqs',
+    '/pricing',
+  ];
+
+  // Check if current path starts with any protected route
+  const isProtectedRoute = protectedRoutes.some(route =>
+    pathname.startsWith(route)
+  );
+
+  if (isProtectedRoute) {
+    // Get the token to check authentication
+    const token = await getToken({
+      req: request,
+      secret: process.env.NEXTAUTH_SECRET
+    });
+
+    // If no token, redirect to sign-in
+    if (!token) {
+      const signInUrl = new URL('/sign-in', request.url);
+      signInUrl.searchParams.set('callbackUrl', pathname);
+      return NextResponse.redirect(signInUrl);
+    }
+  }
+
+  // Redirect aliases
+  if (pathname === '/login') {
+    return NextResponse.redirect(new URL('/sign-in', request.url));
+  }
+
+  if (pathname === '/register') {
+    return NextResponse.redirect(new URL('/sign-up', request.url));
+  }
+
+  return NextResponse.next();
 }
 
-// See "Matching Paths" below to learn more
 export const config = {
   matcher: [
     // Match all request paths except for the ones starting with:
@@ -27,6 +87,7 @@ export const config = {
     // - _next/static (static files)
     // - _next/image (image optimization files)
     // - favicon.ico (favicon file)
-    '/((?!api|_next/static|_next/image|favicon.ico).*)',
+    // - public files (png, jpg, svg, etc.)
+    '/((?!api|_next/static|_next/image|favicon.ico|.*\\.png|.*\\.jpg|.*\\.svg).*)',
   ],
 }
