@@ -15,7 +15,7 @@ export default function HomePage() {
 
     if (session) {
       // User is authenticated
-      router.replace("/dashboard-2");
+      router.replace("/dashboard");
     } else {
       // User is not authenticated
       router.replace("/landing");

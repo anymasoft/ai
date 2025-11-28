@@ -125,7 +125,7 @@ export default function AccountSettings() {
                     <FormItem>
                       <FormLabel>Email Address</FormLabel>
                       <FormControl>
-                        <Input type="email" placeholder="Enter your email" {...field} />
+                        <Input type="email" placeholder="Enter your email" {...field} disabled />
                       </FormControl>
                       <FormMessage />
                     </FormItem>

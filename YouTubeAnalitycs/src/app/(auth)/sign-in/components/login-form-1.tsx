@@ -49,7 +49,7 @@ export function LoginForm1({
       if (event.origin !== window.location.origin) return;
       if (event.data.type === "auth-success") {
         // Redirect to dashboard after successful auth
-        window.location.href = "/dashboard-2";
+        window.location.href = "/dashboard";
       }
     };
 
@@ -74,7 +74,7 @@ export function LoginForm1({
     // Fallback if popup is blocked
     if (!popup) {
       console.warn("Popup blocked, using redirect method");
-      signIn("google", { callbackUrl: "/dashboard-2" });
+      signIn("google", { callbackUrl: "/dashboard" });
     }
   };
 
