@@ -4,6 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
 import { z } from "zod"
 import { signIn } from "next-auth/react"
+import { useEffect } from "react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import {
@@ -42,8 +43,39 @@ export function LoginForm1({
     },
   })
 
+  // Listen for auth success message from popup
+  useEffect(() => {
+    const handleMessage = (event: MessageEvent) => {
+      if (event.origin !== window.location.origin) return;
+      if (event.data.type === "auth-success") {
+        // Redirect to dashboard after successful auth
+        window.location.href = "/dashboard-2";
+      }
+    };
+
+    window.addEventListener("message", handleMessage);
+    return () => window.removeEventListener("message", handleMessage);
+  }, []);
+
   const handleGoogleSignIn = () => {
-    signIn("google", { callbackUrl: "/dashboard-2" });
+    // Calculate popup position (centered)
+    const width = 500;
+    const height = 600;
+    const left = window.screen.width / 2 - width / 2;
+    const top = window.screen.height / 2 - height / 2;
+
+    // Open OAuth in popup window with auth-callback as the final destination
+    const popup = window.open(
+      `/api/auth/signin/google?callbackUrl=${encodeURIComponent("/auth-callback")}`,
+      "google-signin",
+      `width=${width},height=${height},left=${left},top=${top},toolbar=no,menubar=no,scrollbars=yes,resizable=yes`
+    );
+
+    // Fallback if popup is blocked
+    if (!popup) {
+      console.warn("Popup blocked, using redirect method");
+      signIn("google", { callbackUrl: "/dashboard-2" });
+    }
   };
 
   return (
