@@ -9,7 +9,7 @@ export const authOptions: NextAuthOptions = {
     accountsTable: accounts,
     sessionsTable: sessions,
     verificationTokensTable: verificationTokens,
-  }),
+  }) as any,
   providers: [
     GoogleProvider({
       clientId: process.env.GOOGLE_CLIENT_ID || "",
@@ -19,6 +19,7 @@ export const authOptions: NextAuthOptions = {
   session: {
     strategy: "database",
   },
+  secret: process.env.NEXTAUTH_SECRET,
   callbacks: {
     async session({ session, user }) {
       if (session.user) {
@@ -40,4 +41,5 @@ export const authOptions: NextAuthOptions = {
     signIn: "/sign-in",
     error: "/sign-in",
   },
+  debug: process.env.NODE_ENV === "development",
 };
