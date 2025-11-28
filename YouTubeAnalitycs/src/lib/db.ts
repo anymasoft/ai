@@ -71,70 +71,80 @@ export const verificationTokens = sqliteTable(
   })
 );
 
-// Initialize SQLite database
-const sqlite = new Database(process.env.DATABASE_URL || "sqlite.db");
-export const db = drizzle(sqlite);
+// Initialize SQLite database only on server side
+let sqlite: Database.Database;
+let _db: ReturnType<typeof drizzle>;
 
-// Auto-create tables on first run (for development)
-// In production, use migrations instead
-if (process.env.NODE_ENV !== "production") {
-  try {
-    // Create users table
-    sqlite.exec(`
-      CREATE TABLE IF NOT EXISTS users (
-        id TEXT PRIMARY KEY NOT NULL,
-        name TEXT,
-        email TEXT NOT NULL UNIQUE,
-        emailVerified INTEGER,
-        image TEXT,
-        role TEXT NOT NULL DEFAULT 'user',
-        plan TEXT NOT NULL DEFAULT 'free',
-        createdAt INTEGER NOT NULL,
-        updatedAt INTEGER NOT NULL
-      );
-    `);
+function getDatabase() {
+  if (!_db) {
+    const dbPath = process.env.DATABASE_URL || "sqlite.db";
+    sqlite = new Database(dbPath);
+    _db = drizzle(sqlite);
 
-    // Create accounts table
-    sqlite.exec(`
-      CREATE TABLE IF NOT EXISTS accounts (
-        userId TEXT NOT NULL,
-        type TEXT NOT NULL,
-        provider TEXT NOT NULL,
-        providerAccountId TEXT NOT NULL,
-        refresh_token TEXT,
-        access_token TEXT,
-        expires_at INTEGER,
-        token_type TEXT,
-        scope TEXT,
-        id_token TEXT,
-        session_state TEXT,
-        PRIMARY KEY (provider, providerAccountId),
-        FOREIGN KEY (userId) REFERENCES users(id) ON DELETE CASCADE
-      );
-    `);
+    // Auto-create tables on first run (for development)
+    if (process.env.NODE_ENV !== "production") {
+      try {
+        // Create users table
+        sqlite.exec(`
+          CREATE TABLE IF NOT EXISTS users (
+            id TEXT PRIMARY KEY NOT NULL,
+            name TEXT,
+            email TEXT NOT NULL UNIQUE,
+            emailVerified INTEGER,
+            image TEXT,
+            role TEXT NOT NULL DEFAULT 'user',
+            plan TEXT NOT NULL DEFAULT 'free',
+            createdAt INTEGER NOT NULL,
+            updatedAt INTEGER NOT NULL
+          );
+        `);
 
-    // Create sessions table
-    sqlite.exec(`
-      CREATE TABLE IF NOT EXISTS sessions (
-        sessionToken TEXT PRIMARY KEY NOT NULL,
-        userId TEXT NOT NULL,
-        expires INTEGER NOT NULL,
-        FOREIGN KEY (userId) REFERENCES users(id) ON DELETE CASCADE
-      );
-    `);
+        // Create accounts table
+        sqlite.exec(`
+          CREATE TABLE IF NOT EXISTS accounts (
+            userId TEXT NOT NULL,
+            type TEXT NOT NULL,
+            provider TEXT NOT NULL,
+            providerAccountId TEXT NOT NULL,
+            refresh_token TEXT,
+            access_token TEXT,
+            expires_at INTEGER,
+            token_type TEXT,
+            scope TEXT,
+            id_token TEXT,
+            session_state TEXT,
+            PRIMARY KEY (provider, providerAccountId),
+            FOREIGN KEY (userId) REFERENCES users(id) ON DELETE CASCADE
+          );
+        `);
 
-    // Create verification tokens table
-    sqlite.exec(`
-      CREATE TABLE IF NOT EXISTS verificationTokens (
-        identifier TEXT NOT NULL,
-        token TEXT NOT NULL,
-        expires INTEGER NOT NULL,
-        PRIMARY KEY (identifier, token)
-      );
-    `);
+        // Create sessions table
+        sqlite.exec(`
+          CREATE TABLE IF NOT EXISTS sessions (
+            sessionToken TEXT PRIMARY KEY NOT NULL,
+            userId TEXT NOT NULL,
+            expires INTEGER NOT NULL,
+            FOREIGN KEY (userId) REFERENCES users(id) ON DELETE CASCADE
+          );
+        `);
 
-    console.log("✅ Database tables initialized");
-  } catch (error) {
-    console.error("❌ Database initialization error:", error);
+        // Create verification tokens table
+        sqlite.exec(`
+          CREATE TABLE IF NOT EXISTS verificationTokens (
+            identifier TEXT NOT NULL,
+            token TEXT NOT NULL,
+            expires INTEGER NOT NULL,
+            PRIMARY KEY (identifier, token)
+          );
+        `);
+
+        console.log("✅ Database tables initialized");
+      } catch (error) {
+        console.error("❌ Database initialization error:", error);
+      }
+    }
   }
+  return _db;
 }
+
+export const db = getDatabase();
