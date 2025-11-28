@@ -40,9 +40,8 @@ export default function CompetitorsPage() {
   const [success, setSuccess] = useState("")
   const [fetching, setFetching] = useState(true)
 
-  const userPlan = session?.user?.plan || "free"
+  const userPlan = session?.user?.plan || "basic"
   const limits: Record<string, number> = {
-    free: 3,
     basic: 3,
     professional: 20,
     enterprise: 200,
