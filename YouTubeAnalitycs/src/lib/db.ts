@@ -1,5 +1,5 @@
-import Database from "better-sqlite3";
-import { drizzle } from "drizzle-orm/better-sqlite3";
+import { createClient } from "@libsql/client";
+import { drizzle } from "drizzle-orm/libsql";
 import { sqliteTable, text, integer, primaryKey } from "drizzle-orm/sqlite-core";
 import type { AdapterAccount } from "next-auth/adapters";
 
@@ -93,21 +93,26 @@ export const competitors = sqliteTable("competitors", {
     .$defaultFn(() => Date.now()),
 });
 
-// Initialize SQLite database only on server side
-let sqlite: Database.Database;
+// Инициализация SQLite базы данных только на серверной стороне
+let _client: ReturnType<typeof createClient>;
 let _db: ReturnType<typeof drizzle>;
 
 function getDatabase() {
   if (!_db) {
-    const dbPath = process.env.DATABASE_URL || "sqlite.db";
-    sqlite = new Database(dbPath);
-    _db = drizzle(sqlite);
+    const dbPath = process.env.DATABASE_URL || "file:sqlite.db";
 
-    // Auto-create tables on first run (for development)
+    // Создаём клиент для локальной файловой базы данных
+    _client = createClient({
+      url: dbPath.startsWith("file:") ? dbPath : `file:${dbPath}`,
+    });
+
+    _db = drizzle(_client);
+
+    // Автоматическое создание таблиц при первом запуске (для разработки)
     if (process.env.NODE_ENV !== "production") {
       try {
-        // Create users table
-        sqlite.exec(`
+        // Создание таблицы users
+        _client.execute(`
           CREATE TABLE IF NOT EXISTS users (
             id TEXT PRIMARY KEY NOT NULL,
             name TEXT,
@@ -121,8 +126,8 @@ function getDatabase() {
           );
         `);
 
-        // Create accounts table
-        sqlite.exec(`
+        // Создание таблицы accounts
+        _client.execute(`
           CREATE TABLE IF NOT EXISTS accounts (
             userId TEXT NOT NULL,
             type TEXT NOT NULL,
@@ -140,8 +145,8 @@ function getDatabase() {
           );
         `);
 
-        // Create sessions table
-        sqlite.exec(`
+        // Создание таблицы sessions
+        _client.execute(`
           CREATE TABLE IF NOT EXISTS sessions (
             sessionToken TEXT PRIMARY KEY NOT NULL,
             userId TEXT NOT NULL,
@@ -150,8 +155,8 @@ function getDatabase() {
           );
         `);
 
-        // Create verification tokens table
-        sqlite.exec(`
+        // Создание таблицы verificationTokens
+        _client.execute(`
           CREATE TABLE IF NOT EXISTS verificationTokens (
             identifier TEXT NOT NULL,
             token TEXT NOT NULL,
@@ -160,8 +165,8 @@ function getDatabase() {
           );
         `);
 
-        // Create competitors table
-        sqlite.exec(`
+        // Создание таблицы competitors
+        _client.execute(`
           CREATE TABLE IF NOT EXISTS competitors (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             userId TEXT NOT NULL,
@@ -179,9 +184,9 @@ function getDatabase() {
           );
         `);
 
-        console.log("✅ Database tables initialized");
+        console.log("✅ Таблицы базы данных инициализированы");
       } catch (error) {
-        console.error("❌ Database initialization error:", error);
+        console.error("❌ Ошибка инициализации базы данных:", error);
       }
     }
   }
