@@ -1,25 +1,25 @@
 import Database from "better-sqlite3";
 import { drizzle } from "drizzle-orm/better-sqlite3";
 import { sqliteTable, text, integer, primaryKey } from "drizzle-orm/sqlite-core";
-import type { AdapterAccount } from "@auth/core/adapters";
+import type { AdapterAccount } from "next-auth/adapters";
 
 // Users table with role and plan
 export const users = sqliteTable("users", {
   id: text("id").notNull().primaryKey(),
   name: text("name"),
   email: text("email").notNull().unique(),
-  emailVerified: integer("emailVerified", { mode: "timestamp_ms" }),
+  emailVerified: integer("emailVerified"),
   image: text("image"),
   role: text("role", { enum: ["user", "admin"] })
     .notNull()
     .default("user"),
-  plan: text("plan", { enum: ["free", "pro"] })
+  plan: text("plan", { enum: ["free", "basic", "professional", "enterprise"] })
     .notNull()
     .default("free"),
-  createdAt: integer("createdAt", { mode: "timestamp_ms" })
+  createdAt: integer("createdAt")
     .notNull()
     .$defaultFn(() => Date.now()),
-  updatedAt: integer("updatedAt", { mode: "timestamp_ms" })
+  updatedAt: integer("updatedAt")
     .notNull()
     .$defaultFn(() => Date.now()),
 });
@@ -55,7 +55,7 @@ export const sessions = sqliteTable("sessions", {
   userId: text("userId")
     .notNull()
     .references(() => users.id, { onDelete: "cascade" }),
-  expires: integer("expires", { mode: "timestamp_ms" }).notNull(),
+  expires: integer("expires").notNull(),
 });
 
 // Verification tokens table
@@ -64,7 +64,7 @@ export const verificationTokens = sqliteTable(
   {
     identifier: text("identifier").notNull(),
     token: text("token").notNull(),
-    expires: integer("expires", { mode: "timestamp_ms" }).notNull(),
+    expires: integer("expires").notNull(),
   },
   (vt) => ({
     compoundKey: primaryKey({ columns: [vt.identifier, vt.token] }),
@@ -85,10 +85,10 @@ export const competitors = sqliteTable("competitors", {
   subscriberCount: integer("subscriberCount").notNull().default(0),
   videoCount: integer("videoCount").notNull().default(0),
   viewCount: integer("viewCount").notNull().default(0),
-  lastSyncedAt: integer("lastSyncedAt", { mode: "timestamp_ms" })
+  lastSyncedAt: integer("lastSyncedAt")
     .notNull()
     .$defaultFn(() => Date.now()),
-  createdAt: integer("createdAt", { mode: "timestamp_ms" })
+  createdAt: integer("createdAt")
     .notNull()
     .$defaultFn(() => Date.now()),
 });
