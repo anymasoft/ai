@@ -13,7 +13,7 @@ export function UpgradeToProButton() {
 
 
   return (
-    <div className="fixed z-50 bottom-8 right-4 md:right-6 lg:right-8 flex flex-col items-end gap-2">
+    <div className="fixed z-50 bottom-8 right-4 md:right-6 lg:right-8 flex flex-col items-end gap-2" hidden>
       <HoverCard openDelay={100} closeDelay={100}>
         <HoverCardTrigger asChild>
           <Button
