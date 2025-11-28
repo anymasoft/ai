@@ -31,7 +31,7 @@ const navGroups = [
     items: [
       {
         title: "Overview",
-        url: "/dashboard-2",
+        url: "/dashboard",
         icon: LayoutDashboard,
       },
       {
@@ -88,7 +88,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton size="lg" asChild>
-              <Link href="/dashboard-2">
+              <Link href="/dashboard">
                 <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
                   <Logo size={24} className="text-current" />
                 </div>

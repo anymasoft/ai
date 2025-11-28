@@ -11,7 +11,7 @@ export default function AuthCallback() {
       window.close();
     } else {
       // If not in popup, redirect to dashboard
-      window.location.href = "/dashboard-2";
+      window.location.href = "/dashboard";
     }
   }, []);
 
