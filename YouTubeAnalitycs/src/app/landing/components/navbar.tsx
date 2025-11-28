@@ -132,16 +132,16 @@ export function LandingNavbar() {
             </a>
           </Button>
           <Button variant="outline" asChild className="cursor-pointer">
-            <Link href="/dashboard" target="_blank" rel="noopener noreferrer">
+            <Link href="/dashboard-2">
               <LayoutDashboard className="h-4 w-4 mr-2" />
               Dashboard
             </Link>
           </Button>
           <Button variant="ghost" asChild className="cursor-pointer">
-            <Link href="/auth/sign-in">Sign In</Link>
+            <Link href="/sign-in">Sign In</Link>
           </Button>
           <Button asChild className="cursor-pointer">
-            <Link href="/auth/sign-up">Get Started</Link>
+            <Link href="/sign-up">Get Started</Link>
           </Button>
         </div>
 
@@ -249,7 +249,7 @@ export function LandingNavbar() {
                 {/* Primary Actions */}
                 <div className="space-y-3">
                   <Button variant="outline" size="lg" asChild className="w-full cursor-pointer">
-                    <Link href="/dashboard">
+                    <Link href="/dashboard-2">
                       <LayoutDashboard className="size-4" />
                       Dashboard
                     </Link>
@@ -257,10 +257,10 @@ export function LandingNavbar() {
 
                   <div className="grid grid-cols-2 gap-3">
                     <Button variant="outline" size="lg" asChild className="cursor-pointer">
-                      <Link href="/auth/sign-in">Sign In</Link>
+                      <Link href="/sign-in">Sign In</Link>
                     </Button>
                     <Button asChild size="lg" className="cursor-pointer" >
-                      <Link href="/auth/sign-up">Get Started</Link>
+                      <Link href="/sign-up">Get Started</Link>
                     </Button>
                   </div>
                 </div>
