@@ -61,13 +61,14 @@ export async function POST(req: NextRequest) {
       .where(eq(users.id, session.user.id))
       .get();
 
-    const plan = user?.plan || session.user.plan || "basic";
+    const plan = user?.plan || session.user.plan || "free";
 
     // Define limits based on plan
     const limits: Record<string, number> = {
+      free: 3,
       basic: 3,
       professional: 20,
-      enterprise: 200,
+      enterprice: 200,
     };
 
     const limit = limits[plan.toLowerCase()] || 3;
