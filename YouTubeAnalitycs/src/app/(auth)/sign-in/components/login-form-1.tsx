@@ -64,9 +64,9 @@ export function LoginForm1({
     const left = window.screen.width / 2 - width / 2;
     const top = window.screen.height / 2 - height / 2;
 
-    // Open OAuth in popup window with auth-callback as the final destination
+    // Open intermediate page that will trigger Google OAuth
     const popup = window.open(
-      `/api/auth/signin/google?callbackUrl=${encodeURIComponent("/auth-callback")}`,
+      "/auth/google-signin",
       "google-signin",
       `width=${width},height=${height},left=${left},top=${top},toolbar=no,menubar=no,scrollbars=yes,resizable=yes`
     );

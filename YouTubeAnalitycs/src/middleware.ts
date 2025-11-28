@@ -23,7 +23,7 @@ export async function middleware(request: NextRequest) {
   }
 
   // Auth routes are public
-  if (pathname.startsWith('/sign-') || pathname.startsWith('/forgot-')) {
+  if (pathname.startsWith('/sign-') || pathname.startsWith('/forgot-') || pathname.startsWith('/auth/')) {
     return NextResponse.next();
   }
 
