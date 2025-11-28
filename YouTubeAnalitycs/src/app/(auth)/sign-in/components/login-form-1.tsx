@@ -117,7 +117,7 @@ export function LoginForm1({
                         <div className="flex items-center">
                           <FormLabel>Password</FormLabel>
                           <a
-                            href="/auth/forgot-password"
+                            href="/forgot-password"
                             className="ml-auto text-sm underline-offset-4 hover:underline"
                           >
                             Forgot your password?
@@ -151,7 +151,7 @@ export function LoginForm1({
                 </div>
                 <div className="text-center text-sm hidden">
                   Don&apos;t have an account?{" "}
-                  <a href="/auth/sign-up" className="underline underline-offset-4">
+                  <a href="/sign-up" className="underline underline-offset-4">
                     Sign up
                   </a>
                 </div>
