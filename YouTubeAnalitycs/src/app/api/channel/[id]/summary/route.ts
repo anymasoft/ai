@@ -3,11 +3,11 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { db, competitors, aiInsights } from "@/lib/db";
 import { eq, and, desc } from "drizzle-orm";
-import { analyzeChannel } from "@/lib/ai/analyzeChannel";
+// import { analyzeChannel } from "@/lib/ai/analyzeChannel"; // Временно отключено - генерация будет позже
 
 /**
- * POST /api/channel/[id]/summary
- * Генерирует или возвращает AI-анализ канала
+ * GET /api/channel/[id]/summary
+ * Возвращает существующий AI-анализ канала (без генерации новых)
  */
 export async function POST(
   req: NextRequest,
@@ -65,7 +65,7 @@ export async function POST(
       .limit(1)
       .get();
 
-    // Если анализ уже существует, возвращаем его
+    // Если анализ существует - возвращаем его
     if (existingInsight) {
       console.log(`[API] Найден существующий AI-анализ (ID: ${existingInsight.id})`);
 
@@ -81,6 +81,14 @@ export async function POST(
         createdAt: existingInsight.createdAt,
       });
     }
+
+    // Если анализа нет - возвращаем null (генерация отключена на этом этапе)
+    console.log("[API] AI-анализ не найден, возвращаем null");
+    return NextResponse.json({ insight: null });
+
+    /*
+    // ========== КОД ГЕНЕРАЦИИ AI-АНАЛИЗА (ОТКЛЮЧЁН) ==========
+    // Будет активирован позже, когда появится полноценная аналитика
 
     console.log("[API] AI-анализ не найден, генерируем новый...");
 
@@ -128,30 +136,16 @@ export async function POST(
       },
       { status: 201 }
     );
+    */
   } catch (error) {
-    console.error("[API] Ошибка при генерации AI-анализа:", error);
+    console.error("[API] Ошибка при получении AI-анализа:", error);
 
     if (error instanceof Error) {
-      // Специфичные ошибки от OpenAI
-      if (error.message.includes("OPENAI_API_KEY")) {
-        return NextResponse.json(
-          { error: "OpenAI API key is not configured" },
-          { status: 500 }
-        );
-      }
-
-      if (error.message.includes("AI analysis failed")) {
-        return NextResponse.json(
-          { error: "Failed to generate AI analysis. Please try again later." },
-          { status: 500 }
-        );
-      }
-
       return NextResponse.json({ error: error.message }, { status: 400 });
     }
 
     return NextResponse.json(
-      { error: "Failed to generate channel summary" },
+      { error: "Failed to fetch channel summary" },
       { status: 500 }
     );
   }
