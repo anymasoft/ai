@@ -102,12 +102,16 @@ export async function POST(req: NextRequest) {
     const result = await db
       .insert(competitors)
       .values({
-        userId: session.user.id,
+        userId: String(session.user.id),
         platform: "youtube",
-        channelId: channelData.channelId,
-        handle: handle.trim(),
-        title: channelData.title,
-        avatarUrl: channelData.avatarUrl || null,
+        channelId: String(channelData.channelId || ""),
+        handle: String(handle.trim()),
+        title: String(channelData.title || "Unknown Channel"),
+        avatarUrl:
+          typeof channelData.avatarUrl === "string" &&
+          channelData.avatarUrl.trim()
+            ? channelData.avatarUrl.trim()
+            : null,
         subscriberCount: Number.isFinite(channelData.subscriberCount)
           ? channelData.subscriberCount
           : 0,
