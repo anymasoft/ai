@@ -26,3 +26,10 @@ Thumbs.db
 dist/
 build/
 *.log
+
+# ignore all environment files
+.env
+.env.*
+*.env
+*.env.*
+
