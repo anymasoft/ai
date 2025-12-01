@@ -94,6 +94,23 @@ export const competitors = sqliteTable("competitors", {
     .$defaultFn(() => Date.now()),
 });
 
+// AI Insights table - хранит результаты AI-анализа каналов
+export const aiInsights = sqliteTable("ai_insights", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  competitorId: integer("competitorId")
+    .notNull()
+    .references(() => competitors.id, { onDelete: "cascade" }),
+  summary: text("summary").notNull(), // Краткая сводка по каналу
+  strengths: text("strengths").notNull(), // Сильные стороны (JSON array)
+  weaknesses: text("weaknesses").notNull(), // Слабые стороны (JSON array)
+  opportunities: text("opportunities").notNull(), // Возможности (JSON array)
+  threats: text("threats").notNull(), // Угрозы (JSON array)
+  recommendations: text("recommendations").notNull(), // Рекомендации (JSON array)
+  createdAt: integer("createdAt")
+    .notNull()
+    .$defaultFn(() => Date.now()),
+});
+
 // Инициализация SQLite базы данных только на серверной стороне
 let _client: ReturnType<typeof createClient>;
 let _db: ReturnType<typeof drizzle>;
@@ -182,6 +199,22 @@ function getDatabase() {
             lastSyncedAt INTEGER NOT NULL,
             createdAt INTEGER NOT NULL,
             FOREIGN KEY (userId) REFERENCES users(id) ON DELETE CASCADE
+          );
+        `);
+
+        // Создание таблицы ai_insights
+        _client.execute(`
+          CREATE TABLE IF NOT EXISTS ai_insights (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            competitorId INTEGER NOT NULL,
+            summary TEXT NOT NULL,
+            strengths TEXT NOT NULL,
+            weaknesses TEXT NOT NULL,
+            opportunities TEXT NOT NULL,
+            threats TEXT NOT NULL,
+            recommendations TEXT NOT NULL,
+            createdAt INTEGER NOT NULL,
+            FOREIGN KEY (competitorId) REFERENCES competitors(id) ON DELETE CASCADE
           );
         `);
 
