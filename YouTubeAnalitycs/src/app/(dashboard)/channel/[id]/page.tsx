@@ -1,14 +1,13 @@
 import { redirect } from "next/navigation";
+import Link from "next/link";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { db, competitors, aiInsights } from "@/lib/db";
 import { eq, and, desc } from "drizzle-orm";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
-import { TrendingUp, Users, Video, Eye, BarChart3, Calendar, AlertCircle } from "lucide-react";
+import { TrendingUp, Users, Video, Eye, BarChart3, Calendar, AlertCircle, ArrowLeft, ExternalLink } from "lucide-react";
 
 interface PageProps {
   params: Promise<{ id: string }>;
@@ -125,44 +124,64 @@ export default async function ChannelPage({ params }: PageProps) {
 
   return (
     <div className="container mx-auto px-4 md:px-6 space-y-6 pb-12">
+      {/* Back button */}
+      <div className="pt-6">
+        <Link
+          href="/competitors"
+          className="inline-flex items-center text-sm text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
+        >
+          <ArrowLeft className="w-4 h-4 mr-1" />
+          Back to Competitors
+        </Link>
+      </div>
+
       {/* Хедер канала */}
-      <div className="flex items-start gap-6 pt-6">
-        <Avatar className="h-24 w-24">
-          <AvatarImage src={competitor.avatarUrl || undefined} alt={competitor.title} />
-          <AvatarFallback className="text-2xl">
-            {competitor.title.slice(0, 2).toUpperCase()}
-          </AvatarFallback>
-        </Avatar>
+      <div className="flex items-center gap-4">
+        <img
+          src={competitor.avatarUrl || "/placeholder.png"}
+          alt={competitor.title}
+          className="w-20 h-20 rounded-full object-cover border-2 border-border"
+        />
 
         <div className="flex-1">
-          <div className="flex items-center gap-3 mb-2">
-            <h1 className="text-3xl font-bold">{competitor.title}</h1>
-            <Badge variant="secondary">{competitor.platform}</Badge>
-          </div>
-          <p className="text-lg text-muted-foreground mb-3">{competitor.handle}</p>
+          <h1 className="text-2xl font-semibold mb-1">{competitor.title}</h1>
 
-          <div className="flex items-center gap-6 text-sm">
-            <div className="flex items-center gap-2">
-              <Users className="h-4 w-4 text-muted-foreground" />
-              <span className="font-semibold">{formatNumber(competitor.subscriberCount)}</span>
-              <span className="text-muted-foreground">подписчиков</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <Video className="h-4 w-4 text-muted-foreground" />
-              <span className="font-semibold">{formatNumber(competitor.videoCount)}</span>
-              <span className="text-muted-foreground">видео</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <Eye className="h-4 w-4 text-muted-foreground" />
-              <span className="font-semibold">{formatNumber(competitor.viewCount)}</span>
-              <span className="text-muted-foreground">просмотров</span>
-            </div>
+          <div className="text-sm text-muted-foreground mb-1">
+            {competitor.handle}
           </div>
 
-          <div className="flex items-center gap-2 mt-3 text-xs text-muted-foreground">
-            <Calendar className="h-3 w-3" />
-            <span>Последнее обновление: {formatDate(competitor.lastSyncedAt)}</span>
-          </div>
+          <a
+            href={`https://www.youtube.com/${competitor.handle}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1 text-blue-600 text-sm hover:underline dark:text-blue-400"
+          >
+            youtube.com/{competitor.handle}
+            <ExternalLink className="w-3 h-3" />
+          </a>
+        </div>
+      </div>
+
+      {/* Метрики в строку */}
+      <div className="flex items-center gap-6 text-sm flex-wrap">
+        <div className="flex items-center gap-2">
+          <Users className="h-4 w-4 text-muted-foreground" />
+          <span className="font-semibold">{formatNumber(competitor.subscriberCount)}</span>
+          <span className="text-muted-foreground">подписчиков</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <Video className="h-4 w-4 text-muted-foreground" />
+          <span className="font-semibold">{formatNumber(competitor.videoCount)}</span>
+          <span className="text-muted-foreground">видео</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <Eye className="h-4 w-4 text-muted-foreground" />
+          <span className="font-semibold">{formatNumber(competitor.viewCount)}</span>
+          <span className="text-muted-foreground">просмотров</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <Calendar className="h-4 w-4 text-muted-foreground" />
+          <span className="text-muted-foreground">Обновлено: {formatDate(competitor.lastSyncedAt)}</span>
         </div>
       </div>
 
@@ -172,32 +191,20 @@ export default async function ChannelPage({ params }: PageProps) {
       <div>
         <h2 className="text-2xl font-bold mb-4">Overview</h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <Card>
-            <CardHeader className="pb-3">
-              <CardDescription>Подписчики</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold">{formatNumber(competitor.subscriberCount)}</div>
-            </CardContent>
-          </Card>
+          <div className="border rounded-lg p-4 bg-muted/40">
+            <div className="text-sm text-muted-foreground mb-2">Подписчики</div>
+            <div className="text-3xl font-bold">{formatNumber(competitor.subscriberCount)}</div>
+          </div>
 
-          <Card>
-            <CardHeader className="pb-3">
-              <CardDescription>Всего просмотров</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold">{formatNumber(competitor.viewCount)}</div>
-            </CardContent>
-          </Card>
+          <div className="border rounded-lg p-4 bg-muted/40">
+            <div className="text-sm text-muted-foreground mb-2">Всего просмотров</div>
+            <div className="text-3xl font-bold">{formatNumber(competitor.viewCount)}</div>
+          </div>
 
-          <Card>
-            <CardHeader className="pb-3">
-              <CardDescription>Средние просмотры на видео</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold">{formatNumber(avgViews)}</div>
-            </CardContent>
-          </Card>
+          <div className="border rounded-lg p-4 bg-muted/40">
+            <div className="text-sm text-muted-foreground mb-2">Средние просмотры на видео</div>
+            <div className="text-3xl font-bold">{formatNumber(avgViews)}</div>
+          </div>
         </div>
       </div>
 
