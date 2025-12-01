@@ -56,14 +56,14 @@ export async function POST(
 
     console.log(`[VideoSync] Канал найден: ${competitor.title} (${competitor.handle})`);
 
-    // Получаем видео из ScrapeCreators
+    // Получаем видео из ScrapeCreators с fallback на handle
     let videos;
     try {
-      videos = await getYoutubeChannelVideos(competitor.channelId);
+      videos = await getYoutubeChannelVideos(competitor.channelId, competitor.handle);
     } catch (error) {
       console.error("[VideoSync] Ошибка получения видео из ScrapeCreators:", error);
       return NextResponse.json(
-        { error: "Failed to fetch videos from ScrapeCreators" },
+        { error: error instanceof Error ? error.message : "Failed to fetch videos from ScrapeCreators" },
         { status: 500 }
       );
     }
@@ -131,10 +131,9 @@ export async function POST(
     return NextResponse.json(
       {
         status: "ok",
-        message: `Videos synced successfully: ${inserted} new, ${updated} updated`,
+        added: inserted,
+        updated: updated,
         totalVideos: totalVideos.length,
-        inserted,
-        updated,
       },
       { status: 200 }
     );
