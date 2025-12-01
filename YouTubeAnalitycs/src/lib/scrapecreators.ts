@@ -8,7 +8,16 @@ export interface ChannelData {
   viewCount: number;
 }
 
+export interface VideoData {
+  videoId: string;
+  title: string;
+  thumbnailUrl: string | null;
+  viewCount: number;
+  publishedAt: string;
+}
+
 const API_BASE = "https://api.scrapecreators.com/v1/youtube/channel";
+const API_VIDEOS_BASE = "https://api.scrapecreators.com/v1/youtube/channel/videos";
 
 /**
  * Проверяет, является ли ответ HTML вместо JSON
@@ -176,5 +185,136 @@ export async function getYoutubeChannelByHandle(
       throw error;
     }
     throw new Error("Failed to fetch channel data from ScrapeCreators");
+  }
+}
+
+/**
+ * Извлекает URL миниатюры из разных форматов ответа API
+ */
+function extractThumbnailUrl(thumbnail: any): string | null {
+  if (!thumbnail) return null;
+
+  // Случай 1: thumbnail уже строка
+  if (typeof thumbnail === "string" && thumbnail.trim()) {
+    return thumbnail.trim();
+  }
+
+  // Случай 2: thumbnail.url напрямую
+  if (thumbnail?.url && typeof thumbnail.url === "string") {
+    return thumbnail.url.trim();
+  }
+
+  // Случай 3: массив thumbnails
+  if (Array.isArray(thumbnail) && thumbnail.length > 0) {
+    const best = thumbnail[thumbnail.length - 1];
+    if (typeof best === "string") return best.trim();
+    if (best?.url && typeof best.url === "string") return best.url.trim();
+  }
+
+  return null;
+}
+
+/**
+ * Получает список видео канала через ScrapeCreators API
+ */
+export async function getYoutubeChannelVideos(
+  channelId: string
+): Promise<VideoData[]> {
+  const apiKey = process.env.SCRAPECREATORS_API_KEY;
+
+  if (!apiKey) {
+    throw new Error("SCRAPECREATORS_API_KEY is not configured");
+  }
+
+  const url = `${API_VIDEOS_BASE}?channelId=${encodeURIComponent(channelId)}`;
+
+  console.log("[ScrapeCreators] Videos Request:", {
+    url,
+    channelId,
+  });
+
+  try {
+    const response = await fetch(url, {
+      method: "GET",
+      headers: {
+        "x-api-key": apiKey,
+        "Content-Type": "application/json",
+      },
+    });
+
+    const rawText = await response.text();
+
+    console.log("[ScrapeCreators] Videos Response:", {
+      status: response.status,
+      statusText: response.statusText,
+      contentLength: rawText.length,
+      isHtml: isHtmlResponse(rawText),
+    });
+
+    // Проверка на HTML ответ
+    if (isHtmlResponse(rawText)) {
+      console.error("[ScrapeCreators] Received HTML instead of JSON");
+      throw new Error(
+        `ScrapeCreators returned HTML response (status ${response.status}). API may be down or rate limited.`
+      );
+    }
+
+    // Безопасный парсинг JSON
+    let data: any;
+    try {
+      data = JSON.parse(rawText);
+    } catch (parseError) {
+      console.error("[ScrapeCreators] JSON parse error:", rawText.slice(0, 200));
+      throw new Error(
+        `ScrapeCreators returned invalid JSON: ${rawText.slice(0, 100)}...`
+      );
+    }
+
+    // Обработка ошибок API
+    if (!response.ok) {
+      console.error("[ScrapeCreators] API error:", { status: response.status, data });
+
+      if (response.status === 404) {
+        throw new Error("Channel videos not found. Check if the channelId is correct.");
+      } else if (response.status === 401) {
+        throw new Error("Invalid API key. Check SCRAPECREATORS_API_KEY.");
+      } else if (response.status === 429) {
+        throw new Error("ScrapeCreators rate limit exceeded. Please try again later.");
+      } else if (response.status >= 500) {
+        throw new Error(
+          `ScrapeCreators server error (${response.status}). The service may be temporarily unavailable.`
+        );
+      } else {
+        throw new Error(
+          `ScrapeCreators API error: ${response.status} - ${JSON.stringify(data).slice(0, 200)}`
+        );
+      }
+    }
+
+    // Нормализация данных видео
+    const videos = Array.isArray(data.videos) ? data.videos : Array.isArray(data) ? data : [];
+
+    const normalizedVideos: VideoData[] = videos.map((video: any) => ({
+      videoId: String(video.videoId || video.id || ""),
+      title: String(video.title || video.name || "Untitled Video"),
+      thumbnailUrl: extractThumbnailUrl(video.thumbnail || video.thumbnailUrl),
+      viewCount: safeNumber(
+        video.viewCount ?? video.viewCountInt ?? video.views,
+        0
+      ),
+      publishedAt: String(video.publishedAt || video.publishedDate || new Date().toISOString()),
+    }));
+
+    console.log("[ScrapeCreators] Normalized videos:", {
+      count: normalizedVideos.length,
+      sample: normalizedVideos[0],
+    });
+
+    return normalizedVideos;
+  } catch (error) {
+    if (error instanceof Error) {
+      throw error;
+    }
+    throw new Error("Failed to fetch channel videos from ScrapeCreators");
   }
 }

@@ -127,6 +127,20 @@ export const channelMetrics = sqliteTable("channel_metrics", {
     .$defaultFn(() => Date.now()),
 });
 
+// Channel Videos table - хранит топ видео каналов для анализа контента
+export const channelVideos = sqliteTable("channel_videos", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  channelId: text("channelId").notNull(), // ID канала из ScrapeCreators
+  videoId: text("videoId").notNull(), // YouTube video ID
+  title: text("title").notNull(), // Название видео
+  thumbnailUrl: text("thumbnailUrl"), // URL миниатюры
+  viewCount: integer("viewCount").notNull().default(0), // Количество просмотров
+  publishedAt: text("publishedAt").notNull(), // Дата публикации (ISO8601)
+  fetchedAt: integer("fetchedAt")
+    .notNull()
+    .$defaultFn(() => Date.now()), // Время получения данных
+});
+
 // Инициализация SQLite базы данных только на серверной стороне
 let _client: ReturnType<typeof createClient>;
 let _db: ReturnType<typeof drizzle>;
@@ -253,6 +267,26 @@ function getDatabase() {
         _client.execute(`
           CREATE INDEX IF NOT EXISTS idx_channel_metrics_lookup
           ON channel_metrics(channelId, date);
+        `);
+
+        // Создание таблицы channel_videos
+        _client.execute(`
+          CREATE TABLE IF NOT EXISTS channel_videos (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            channelId TEXT NOT NULL,
+            videoId TEXT NOT NULL,
+            title TEXT NOT NULL,
+            thumbnailUrl TEXT,
+            viewCount INTEGER NOT NULL DEFAULT 0,
+            publishedAt TEXT NOT NULL,
+            fetchedAt INTEGER NOT NULL
+          );
+        `);
+
+        // Создание индекса для быстрого поиска видео по каналу
+        _client.execute(`
+          CREATE INDEX IF NOT EXISTS idx_channel_videos_lookup
+          ON channel_videos(channelId, videoId);
         `);
 
         console.log("✅ Таблицы базы данных инициализированы");

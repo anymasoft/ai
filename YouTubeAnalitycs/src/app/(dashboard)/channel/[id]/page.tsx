@@ -2,14 +2,16 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
-import { db, competitors, aiInsights, channelMetrics } from "@/lib/db";
+import { db, competitors, aiInsights, channelMetrics, channelVideos } from "@/lib/db";
 import { eq, and, desc } from "drizzle-orm";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Separator } from "@/components/ui/separator";
 import { TrendingUp, Users, Video, Eye, BarChart3, Calendar, AlertCircle, ArrowLeft, ExternalLink } from "lucide-react";
 import { SyncMetricsButton } from "@/components/channel/SyncMetricsButton";
+import { SyncVideosButton } from "@/components/channel/SyncVideosButton";
 import { ChannelGrowthChart } from "@/components/charts/ChannelGrowthChart";
+import { TopVideosTable } from "@/components/channel/TopVideosTable";
 
 interface PageProps {
   params: Promise<{ id: string }>;
@@ -132,9 +134,18 @@ export default async function ChannelPage({ params }: PageProps) {
     .orderBy(channelMetrics.fetchedAt)
     .all();
 
+  // Получаем топ видео канала
+  const videos = await db
+    .select()
+    .from(channelVideos)
+    .where(eq(channelVideos.channelId, competitor.channelId))
+    .orderBy(desc(channelVideos.viewCount))
+    .all();
+
   // Debug: проверка channelId и количества метрик
   console.log("channelId:", competitor.channelId);
   console.log("metrics rows:", metrics.length);
+  console.log("videos rows:", videos.length);
 
   return (
     <div className="container mx-auto px-4 md:px-6 space-y-6 pb-12">
@@ -175,9 +186,10 @@ export default async function ChannelPage({ params }: PageProps) {
           </a>
         </div>
 
-        {/* Кнопка синхронизации метрик */}
-        <div className="self-start">
+        {/* Кнопки синхронизации метрик и видео */}
+        <div className="self-start flex gap-2">
           <SyncMetricsButton channelId={competitorId} />
+          <SyncVideosButton channelId={competitorId} />
         </div>
       </div>
 
@@ -356,8 +368,10 @@ export default async function ChannelPage({ params }: PageProps) {
           description="Historical metrics showing channel growth trends"
         />
 
+        {/* Топ видео канала */}
+        <TopVideosTable videos={videos} />
+
         {/* Будущие блоки */}
-        <PlaceholderSection title="Top Videos" icon={Video} />
         <PlaceholderSection title="Content Patterns" icon={BarChart3} />
         <PlaceholderSection title="Audience & Engagement" icon={Users} />
       </div>
