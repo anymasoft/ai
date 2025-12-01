@@ -19,8 +19,10 @@ export const authOptions: NextAuthOptions = {
     async jwt({ token, user, account }) {
       if (user) {
         token.id = user.id;
-        token.role = "user";
-        token.plan = "free";
+        // @ts-ignore - берём role и plan из созданного пользователя в БД
+        token.role = user.role || "user";
+        // @ts-ignore - берём role и plan из созданного пользователя в БД
+        token.plan = user.plan || "free";
       }
       return token;
     },
