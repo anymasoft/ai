@@ -216,9 +216,11 @@ function extractThumbnailUrl(thumbnail: any): string | null {
 
 /**
  * Получает список видео канала через ScrapeCreators API с поддержкой пагинации
+ * Пробует сначала channelId, потом fallback на handle
  */
 export async function getYoutubeChannelVideos(
-  channelId: string
+  channelId: string,
+  handle?: string
 ): Promise<VideoData[]> {
   const apiKey = process.env.SCRAPECREATORS_API_KEY;
 
@@ -226,12 +228,42 @@ export async function getYoutubeChannelVideos(
     throw new Error("SCRAPECREATORS_API_KEY is not configured");
   }
 
+  console.log("[ScrapeCreators] Начало загрузки видео для channelId:", channelId, "handle:", handle);
+
+  // Сначала пробуем с channelId
+  try {
+    return await fetchVideosFromAPI(apiKey, "channelId", channelId);
+  } catch (error) {
+    console.warn("[ScrapeCreators] Не удалось загрузить по channelId:", error instanceof Error ? error.message : error);
+
+    // Если есть handle - пробуем fallback
+    if (handle) {
+      console.log("[VideoSync] Using fallback from channelId → handle");
+      try {
+        return await fetchVideosFromAPI(apiKey, "handle", handle);
+      } catch (fallbackError) {
+        console.error("[ScrapeCreators] Fallback на handle тоже не сработал:", fallbackError);
+        throw new Error("ScrapeCreators: videos unavailable for this channel");
+      }
+    }
+
+    // Если handle нет - пробрасываем оригинальную ошибку
+    throw error;
+  }
+}
+
+/**
+ * Внутренняя функция для загрузки видео с указанными параметрами
+ */
+async function fetchVideosFromAPI(
+  apiKey: string,
+  paramType: "channelId" | "handle",
+  paramValue: string
+): Promise<VideoData[]> {
   const allVideos: VideoData[] = [];
   let continuationToken: string | null = null;
   let pageCount = 0;
   const maxPages = 5; // Ограничение на количество страниц для избежания бесконечных циклов
-
-  console.log("[ScrapeCreators] Начало загрузки видео для channelId:", channelId);
 
   try {
     do {
@@ -239,7 +271,7 @@ export async function getYoutubeChannelVideos(
 
       // Формируем URL с параметрами
       const params = new URLSearchParams({
-        channelId: channelId,
+        [paramType]: paramValue,
         sort: "latest",
         includeExtras: "true",
       });
@@ -250,9 +282,9 @@ export async function getYoutubeChannelVideos(
 
       const url = `${API_VIDEOS_BASE}?${params.toString()}`;
 
-      console.log(`[ScrapeCreators] Videos Request (page ${pageCount}):`, {
+      console.log(`[ScrapeCreators] Videos Request (page ${pageCount}, ${paramType}):`, {
         url,
-        channelId,
+        [paramType]: paramValue,
         continuationToken: continuationToken ? "present" : "none",
       });
 
@@ -297,7 +329,7 @@ export async function getYoutubeChannelVideos(
         console.error("[ScrapeCreators] API error:", { status: response.status, data });
 
         if (response.status === 404) {
-          throw new Error("Channel videos not found. Check if the channelId is correct.");
+          throw new Error("Channel videos not found. Check if the channelId/handle is correct.");
         } else if (response.status === 401) {
           throw new Error("Invalid API key. Check SCRAPECREATORS_API_KEY.");
         } else if (response.status === 429) {
