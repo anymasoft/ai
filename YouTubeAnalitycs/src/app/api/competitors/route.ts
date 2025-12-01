@@ -108,9 +108,15 @@ export async function POST(req: NextRequest) {
         handle: handle.trim(),
         title: channelData.title,
         avatarUrl: channelData.avatarUrl || null,
-        subscriberCount: channelData.subscriberCount,
-        videoCount: channelData.videoCount,
-        viewCount: channelData.viewCount,
+        subscriberCount: Number.isFinite(channelData.subscriberCount)
+          ? channelData.subscriberCount
+          : 0,
+        videoCount: Number.isFinite(channelData.videoCount)
+          ? channelData.videoCount
+          : 0,
+        viewCount: Number.isFinite(channelData.viewCount)
+          ? channelData.viewCount
+          : 0,
         lastSyncedAt: Date.now(),
         createdAt: Date.now(),
       })
