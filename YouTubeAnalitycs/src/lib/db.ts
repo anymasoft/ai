@@ -8,7 +8,7 @@ export const users = sqliteTable("users", {
   id: text("id").notNull().primaryKey(),
   name: text("name"),
   email: text("email").notNull().unique(),
-  emailVerified: integer("emailVerified"),
+  emailVerified: integer("emailVerified", { mode: "timestamp" }),
   image: text("image"),
   role: text("role", { enum: ["user", "admin"] })
     .notNull()
@@ -21,7 +21,8 @@ export const users = sqliteTable("users", {
     .$defaultFn(() => Date.now()),
   updatedAt: integer("updatedAt")
     .notNull()
-    .$defaultFn(() => Date.now()),
+    .$defaultFn(() => Date.now())
+    .$onUpdate(() => Date.now()),
 });
 
 // Accounts table for OAuth
