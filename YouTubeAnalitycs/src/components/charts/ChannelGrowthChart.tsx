@@ -34,10 +34,10 @@ function formatYAxis(value: number): string {
 }
 
 /**
- * Форматирует дату для оси X (2025-01-15 => 15 Jan)
+ * Форматирует timestamp для оси X (1234567890 => 15 Jan)
  */
-function formatDate(dateStr: string): string {
-  const date = new Date(dateStr);
+function formatDate(timestamp: number): string {
+  const date = new Date(timestamp);
   const day = date.getDate();
   const month = date.toLocaleString("en-US", { month: "short" });
   return `${day} ${month}`;
@@ -78,9 +78,8 @@ export function ChannelGrowthChart({
   title = "Growth Over Time",
   description = "Historical metrics for this channel",
 }: ChannelGrowthChartProps) {
-  // Если данных нет или меньше 2 точек
-  if (!metrics || metrics.length < 2) {
-    const dataPoints = metrics?.length || 0;
+  // Если данных совсем нет
+  if (!metrics || metrics.length === 0) {
     return (
       <Card>
         <CardHeader>
@@ -91,10 +90,10 @@ export function ChannelGrowthChart({
           <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
             <div className="text-center max-w-md">
               <p className="text-lg font-semibold mb-3">
-                Insufficient data for chart ({dataPoints}/2 data points)
+                Insufficient data for chart (0/2 data points)
               </p>
               <p className="text-sm mb-4">
-                Click "Sync Metrics" button {dataPoints === 0 ? "twice" : "one more time"} to collect enough data for growth trends.
+                Click "Sync Metrics" button twice to collect enough data for growth trends.
               </p>
               <p className="text-xs text-muted-foreground">
                 Note: Only one sync per day is allowed. Come back tomorrow for the second data point, or sync multiple times today for testing.
@@ -106,10 +105,13 @@ export function ChannelGrowthChart({
     );
   }
 
-  // Сортируем метрики по дате
+  // Сортируем метрики по fetchedAt (timestamp)
   const sortedMetrics = [...metrics].sort(
-    (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
+    (a, b) => a.fetchedAt - b.fetchedAt
   );
+
+  // Показываем предупреждение если только 1 точка (временно для тестов)
+  const showWarning = sortedMetrics.length === 1;
 
   return (
     <Card>
@@ -118,6 +120,13 @@ export function ChannelGrowthChart({
         <CardDescription>{description}</CardDescription>
       </CardHeader>
       <CardContent>
+        {showWarning && (
+          <div className="mb-4 p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-md">
+            <p className="text-sm text-yellow-800 dark:text-yellow-200">
+              Для корректного графика добавьте минимум 2 точки (нажмите Sync позже).
+            </p>
+          </div>
+        )}
         <div className="h-[400px] w-full">
           <ResponsiveContainer width="100%" height="100%">
             <LineChart
@@ -126,7 +135,7 @@ export function ChannelGrowthChart({
             >
               <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
               <XAxis
-                dataKey="date"
+                dataKey="fetchedAt"
                 tickFormatter={formatDate}
                 className="text-xs"
               />

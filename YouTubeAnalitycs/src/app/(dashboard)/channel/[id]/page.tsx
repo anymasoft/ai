@@ -129,8 +129,12 @@ export default async function ChannelPage({ params }: PageProps) {
     .select()
     .from(channelMetrics)
     .where(eq(channelMetrics.channelId, competitor.channelId))
-    .orderBy(channelMetrics.date)
+    .orderBy(channelMetrics.fetchedAt)
     .all();
+
+  // Debug: проверка channelId и количества метрик
+  console.log("channelId:", competitor.channelId);
+  console.log("metrics rows:", metrics.length);
 
   return (
     <div className="container mx-auto px-4 md:px-6 space-y-6 pb-12">
