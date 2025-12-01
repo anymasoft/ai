@@ -12,10 +12,10 @@ export const users = sqliteTable("users", {
   image: text("image"),
   role: text("role", { enum: ["user", "admin"] })
     .notNull()
-    .default("user"),
+    .$default(() => "user"),
   plan: text("plan", { enum: ["free", "basic", "professional", "enterprise"] })
     .notNull()
-    .default("free"),
+    .$default(() => "free"),
   createdAt: integer("createdAt")
     .notNull()
     .$defaultFn(() => Date.now()),
