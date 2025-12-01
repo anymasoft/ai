@@ -29,12 +29,12 @@ export function SyncVideosButton({ channelId }: SyncVideosButtonProps) {
         return;
       }
 
-      const inserted = data.inserted || 0;
+      const added = data.added || 0;
       const updated = data.updated || 0;
       const total = data.totalVideos || 0;
 
       toast.success(
-        `Videos synced! ${inserted} new, ${updated} updated (total: ${total})`
+        `Videos synced! ${added} new, ${updated} updated (total: ${total})`
       );
 
       // Обновляем данные страницы
