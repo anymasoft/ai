@@ -4,7 +4,7 @@ declare module "next-auth" {
   interface User {
     id: string;
     role: "user" | "admin";
-    plan: "free" | "pro";
+    plan: "free" | "basic" | "professional" | "enterprise";
   }
 
   interface Session {
@@ -14,7 +14,7 @@ declare module "next-auth" {
       email?: string | null;
       image?: string | null;
       role: "user" | "admin";
-      plan: "free" | "pro";
+      plan: "free" | "basic" | "professional" | "enterprise";
     };
   }
 }
