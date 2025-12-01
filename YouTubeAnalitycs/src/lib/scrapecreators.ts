@@ -17,7 +17,7 @@ export interface VideoData {
 }
 
 const API_BASE = "https://api.scrapecreators.com/v1/youtube/channel";
-const API_VIDEOS_BASE = "https://api.scrapecreators.com/v1/youtube/channel/videos";
+const API_VIDEOS_BASE = "https://api.scrapecreators.com/v1/youtube/channel-videos";
 
 /**
  * Проверяет, является ли ответ HTML вместо JSON
@@ -215,7 +215,7 @@ function extractThumbnailUrl(thumbnail: any): string | null {
 }
 
 /**
- * Получает список видео канала через ScrapeCreators API
+ * Получает список видео канала через ScrapeCreators API с поддержкой пагинации
  */
 export async function getYoutubeChannelVideos(
   channelId: string
@@ -226,91 +226,130 @@ export async function getYoutubeChannelVideos(
     throw new Error("SCRAPECREATORS_API_KEY is not configured");
   }
 
-  const url = `${API_VIDEOS_BASE}?channelId=${encodeURIComponent(channelId)}`;
+  const allVideos: VideoData[] = [];
+  let continuationToken: string | null = null;
+  let pageCount = 0;
+  const maxPages = 5; // Ограничение на количество страниц для избежания бесконечных циклов
 
-  console.log("[ScrapeCreators] Videos Request:", {
-    url,
-    channelId,
-  });
+  console.log("[ScrapeCreators] Начало загрузки видео для channelId:", channelId);
 
   try {
-    const response = await fetch(url, {
-      method: "GET",
-      headers: {
-        "x-api-key": apiKey,
-        "Content-Type": "application/json",
-      },
-    });
+    do {
+      pageCount++;
 
-    const rawText = await response.text();
+      // Формируем URL с параметрами
+      const params = new URLSearchParams({
+        channelId: channelId,
+        sort: "latest",
+        includeExtras: "true",
+      });
 
-    console.log("[ScrapeCreators] Videos Response:", {
-      status: response.status,
-      statusText: response.statusText,
-      contentLength: rawText.length,
-      isHtml: isHtmlResponse(rawText),
-    });
+      if (continuationToken) {
+        params.append("continuationToken", continuationToken);
+      }
 
-    // Проверка на HTML ответ
-    if (isHtmlResponse(rawText)) {
-      console.error("[ScrapeCreators] Received HTML instead of JSON");
-      throw new Error(
-        `ScrapeCreators returned HTML response (status ${response.status}). API may be down or rate limited.`
-      );
-    }
+      const url = `${API_VIDEOS_BASE}?${params.toString()}`;
 
-    // Безопасный парсинг JSON
-    let data: any;
-    try {
-      data = JSON.parse(rawText);
-    } catch (parseError) {
-      console.error("[ScrapeCreators] JSON parse error:", rawText.slice(0, 200));
-      throw new Error(
-        `ScrapeCreators returned invalid JSON: ${rawText.slice(0, 100)}...`
-      );
-    }
+      console.log(`[ScrapeCreators] Videos Request (page ${pageCount}):`, {
+        url,
+        channelId,
+        continuationToken: continuationToken ? "present" : "none",
+      });
 
-    // Обработка ошибок API
-    if (!response.ok) {
-      console.error("[ScrapeCreators] API error:", { status: response.status, data });
+      const response = await fetch(url, {
+        method: "GET",
+        headers: {
+          "x-api-key": apiKey,
+          "Content-Type": "application/json",
+        },
+      });
 
-      if (response.status === 404) {
-        throw new Error("Channel videos not found. Check if the channelId is correct.");
-      } else if (response.status === 401) {
-        throw new Error("Invalid API key. Check SCRAPECREATORS_API_KEY.");
-      } else if (response.status === 429) {
-        throw new Error("ScrapeCreators rate limit exceeded. Please try again later.");
-      } else if (response.status >= 500) {
+      const rawText = await response.text();
+
+      console.log(`[ScrapeCreators] Videos Response (page ${pageCount}):`, {
+        status: response.status,
+        statusText: response.statusText,
+        contentLength: rawText.length,
+        isHtml: isHtmlResponse(rawText),
+      });
+
+      // Проверка на HTML ответ
+      if (isHtmlResponse(rawText)) {
+        console.error("[ScrapeCreators] Received HTML instead of JSON");
         throw new Error(
-          `ScrapeCreators server error (${response.status}). The service may be temporarily unavailable.`
-        );
-      } else {
-        throw new Error(
-          `ScrapeCreators API error: ${response.status} - ${JSON.stringify(data).slice(0, 200)}`
+          `ScrapeCreators returned HTML response (status ${response.status}). API may be down or rate limited.`
         );
       }
-    }
 
-    // Нормализация данных видео
-    const videos = Array.isArray(data.videos) ? data.videos : Array.isArray(data) ? data : [];
+      // Безопасный парсинг JSON
+      let data: any;
+      try {
+        data = JSON.parse(rawText);
+      } catch (parseError) {
+        console.error("[ScrapeCreators] JSON parse error:", rawText.slice(0, 200));
+        throw new Error(
+          `ScrapeCreators returned invalid JSON: ${rawText.slice(0, 100)}...`
+        );
+      }
 
-    const normalizedVideos: VideoData[] = videos.map((video: any) => ({
-      videoId: String(video.videoId || video.id || ""),
-      title: String(video.title || video.name || "Untitled Video"),
-      thumbnailUrl: extractThumbnailUrl(video.thumbnail || video.thumbnailUrl),
-      viewCount: safeNumber(
-        video.viewCount ?? video.viewCountInt ?? video.views,
-        0
-      ),
-      publishedAt: String(video.publishedAt || video.publishedDate || new Date().toISOString()),
-    }));
+      // Обработка ошибок API
+      if (!response.ok) {
+        console.error("[ScrapeCreators] API error:", { status: response.status, data });
 
-    console.log("[ScrapeCreators] Normalized videos:", {
-      count: normalizedVideos.length,
-      sample: normalizedVideos[0],
+        if (response.status === 404) {
+          throw new Error("Channel videos not found. Check if the channelId is correct.");
+        } else if (response.status === 401) {
+          throw new Error("Invalid API key. Check SCRAPECREATORS_API_KEY.");
+        } else if (response.status === 429) {
+          throw new Error("ScrapeCreators rate limit exceeded. Please try again later.");
+        } else if (response.status >= 500) {
+          throw new Error(
+            `ScrapeCreators server error (${response.status}). The service may be temporarily unavailable.`
+          );
+        } else {
+          throw new Error(
+            `ScrapeCreators API error: ${response.status} - ${JSON.stringify(data).slice(0, 200)}`
+          );
+        }
+      }
+
+      // Извлекаем видео из ответа
+      const videos = Array.isArray(data.videos) ? data.videos : Array.isArray(data) ? data : [];
+
+      // Нормализуем и добавляем видео
+      const normalizedVideos: VideoData[] = videos.map((video: any) => ({
+        videoId: String(video.videoId || video.id || ""),
+        title: String(video.title || video.name || "Untitled Video"),
+        thumbnailUrl: extractThumbnailUrl(video.thumbnail || video.thumbnailUrl),
+        viewCount: safeNumber(
+          video.viewCount ?? video.viewCountInt ?? video.views,
+          0
+        ),
+        publishedAt: String(video.publishedAt || video.publishedDate || new Date().toISOString()),
+      }));
+
+      allVideos.push(...normalizedVideos);
+
+      console.log(`[ScrapeCreators] Page ${pageCount}: получено ${normalizedVideos.length} видео`);
+
+      // Проверяем наличие continuationToken для следующей страницы
+      continuationToken = data.continuationToken || null;
+
+      // Ограничиваем количество страниц
+      if (pageCount >= maxPages) {
+        console.log(`[ScrapeCreators] Достигнут лимит страниц (${maxPages}), останавливаем загрузку`);
+        break;
+      }
+
+    } while (continuationToken);
+
+    console.log("[ScrapeCreators] Всего загружено видео:", {
+      totalCount: allVideos.length,
+      pages: pageCount,
+      sample: allVideos[0],
     });
 
-    return normalizedVideos;
+    return allVideos;
   } catch (error) {
     if (error instanceof Error) {
       throw error;
