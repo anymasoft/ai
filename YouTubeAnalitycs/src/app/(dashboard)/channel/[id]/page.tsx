@@ -2,12 +2,14 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
-import { db, competitors, aiInsights } from "@/lib/db";
+import { db, competitors, aiInsights, channelMetrics } from "@/lib/db";
 import { eq, and, desc } from "drizzle-orm";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Separator } from "@/components/ui/separator";
 import { TrendingUp, Users, Video, Eye, BarChart3, Calendar, AlertCircle, ArrowLeft, ExternalLink } from "lucide-react";
+import { SyncMetricsButton } from "@/components/channel/SyncMetricsButton";
+import { ChannelGrowthChart } from "@/components/charts/ChannelGrowthChart";
 
 interface PageProps {
   params: Promise<{ id: string }>;
@@ -122,6 +124,14 @@ export default async function ChannelPage({ params }: PageProps) {
 
   const avgViews = calculateAvgViews(competitor.viewCount, competitor.videoCount);
 
+  // Получаем исторические метрики для графиков
+  const metrics = await db
+    .select()
+    .from(channelMetrics)
+    .where(eq(channelMetrics.channelId, competitor.channelId))
+    .orderBy(channelMetrics.date)
+    .all();
+
   return (
     <div className="container mx-auto px-4 md:px-6 space-y-6 pb-12">
       {/* Back button */}
@@ -159,6 +169,11 @@ export default async function ChannelPage({ params }: PageProps) {
             View on YouTube
             <ExternalLink className="w-3 h-3" />
           </a>
+        </div>
+
+        {/* Кнопка синхронизации метрик */}
+        <div className="self-start">
+          <SyncMetricsButton channelId={competitorId} />
         </div>
       </div>
 
@@ -328,9 +343,16 @@ export default async function ChannelPage({ params }: PageProps) {
         )}
       </div>
 
-      {/* Будущие блоки аналитики */}
+      {/* Графики аналитики */}
       <div className="space-y-6">
-        <PlaceholderSection title="Growth Over Time" icon={TrendingUp} />
+        {/* Реальный график роста с timeseries данными */}
+        <ChannelGrowthChart
+          metrics={metrics}
+          title="Growth Over Time"
+          description="Historical metrics showing channel growth trends"
+        />
+
+        {/* Будущие блоки */}
         <PlaceholderSection title="Top Videos" icon={Video} />
         <PlaceholderSection title="Content Patterns" icon={BarChart3} />
         <PlaceholderSection title="Audience & Engagement" icon={Users} />

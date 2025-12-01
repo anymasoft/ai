@@ -111,6 +111,22 @@ export const aiInsights = sqliteTable("ai_insights", {
     .$defaultFn(() => Date.now()),
 });
 
+// Channel Metrics table - хранит исторические метрики каналов для timeseries
+export const channelMetrics = sqliteTable("channel_metrics", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  userId: text("userId")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  channelId: text("channelId").notNull(), // ID канала из ScrapeCreators
+  subscriberCount: integer("subscriberCount").notNull().default(0),
+  videoCount: integer("videoCount").notNull().default(0),
+  viewCount: integer("viewCount").notNull().default(0),
+  date: text("date").notNull(), // YYYY-MM-DD формат
+  fetchedAt: integer("fetchedAt")
+    .notNull()
+    .$defaultFn(() => Date.now()),
+});
+
 // Инициализация SQLite базы данных только на серверной стороне
 let _client: ReturnType<typeof createClient>;
 let _db: ReturnType<typeof drizzle>;
@@ -216,6 +232,27 @@ function getDatabase() {
             createdAt INTEGER NOT NULL,
             FOREIGN KEY (competitorId) REFERENCES competitors(id) ON DELETE CASCADE
           );
+        `);
+
+        // Создание таблицы channel_metrics
+        _client.execute(`
+          CREATE TABLE IF NOT EXISTS channel_metrics (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            userId TEXT NOT NULL,
+            channelId TEXT NOT NULL,
+            subscriberCount INTEGER NOT NULL DEFAULT 0,
+            videoCount INTEGER NOT NULL DEFAULT 0,
+            viewCount INTEGER NOT NULL DEFAULT 0,
+            date TEXT NOT NULL,
+            fetchedAt INTEGER NOT NULL,
+            FOREIGN KEY (userId) REFERENCES users(id) ON DELETE CASCADE
+          );
+        `);
+
+        // Создание индекса для быстрого поиска метрик по каналу и дате
+        _client.execute(`
+          CREATE INDEX IF NOT EXISTS idx_channel_metrics_lookup
+          ON channel_metrics(channelId, date);
         `);
 
         console.log("✅ Таблицы базы данных инициализированы");
