@@ -74,7 +74,7 @@ export async function POST(
     console.log(`[Sync] Проверка наличия записи за ${today}`);
 
     // Проверяем, есть ли уже запись за сегодня
-    const existingMetric = await db
+    const existingMetrics = await db
       .select()
       .from(channelMetrics)
       .where(
@@ -83,18 +83,30 @@ export async function POST(
           eq(channelMetrics.date, today)
         )
       )
-      .get();
+      .all();
 
-    if (existingMetric) {
-      console.log("[Sync] Запись за сегодня уже существует, пропускаем");
+    // TEMPORARY: Allow multiple syncs per day for testing (max 10)
+    // In production, uncomment the check below to allow only 1 sync per day
+    if (existingMetrics.length >= 10) {
+      console.log("[Sync] Maximum syncs per day reached (10)");
       return NextResponse.json({
         status: "exists",
-        message: "Metrics for today already exist",
+        message: "Maximum syncs per day reached (10). Try again tomorrow.",
         date: today,
       });
     }
 
-    console.log("[Sync] Записи за сегодня нет, создаём новую");
+    // Production check (currently disabled for testing):
+    // if (existingMetrics.length > 0) {
+    //   console.log("[Sync] Запись за сегодня уже существует");
+    //   return NextResponse.json({
+    //     status: "exists",
+    //     message: "Metrics for today already exist. Try again tomorrow.",
+    //     date: today,
+    //   });
+    // }
+
+    console.log(`[Sync] Создаём запись (${existingMetrics.length + 1}/10 за сегодня)`);
 
     // Вставляем новую запись в channel_metrics
     const newMetric = await db
@@ -125,10 +137,17 @@ export async function POST(
 
     console.log(`[Sync] Метрики успешно синхронизированы (ID: ${newMetric.id})`);
 
+    // Count total metrics for this channel
+    const totalMetrics = await db
+      .select()
+      .from(channelMetrics)
+      .where(eq(channelMetrics.channelId, competitor.channelId))
+      .all();
+
     return NextResponse.json(
       {
         status: "ok",
-        message: "Metrics synced successfully",
+        message: `Metrics synced successfully (${totalMetrics.length} data points)`,
         metrics: {
           id: newMetric.id,
           subscriberCount: newMetric.subscriberCount,
@@ -137,6 +156,7 @@ export async function POST(
           date: newMetric.date,
           fetchedAt: newMetric.fetchedAt,
         },
+        totalDataPoints: totalMetrics.length,
       },
       { status: 201 }
     );

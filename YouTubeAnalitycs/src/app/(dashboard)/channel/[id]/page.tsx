@@ -16,7 +16,7 @@ interface PageProps {
 }
 
 /**
- * Форматирует числа для читаемости (1000000 → 1M)
+ * Форматирует числа для читаемости (1000000 => 1M)
  */
 function formatNumber(num: number): string {
   if (num >= 1000000) {
@@ -129,8 +129,12 @@ export default async function ChannelPage({ params }: PageProps) {
     .select()
     .from(channelMetrics)
     .where(eq(channelMetrics.channelId, competitor.channelId))
-    .orderBy(channelMetrics.date)
+    .orderBy(channelMetrics.fetchedAt)
     .all();
+
+  // Debug: проверка channelId и количества метрик
+  console.log("channelId:", competitor.channelId);
+  console.log("metrics rows:", metrics.length);
 
   return (
     <div className="container mx-auto px-4 md:px-6 space-y-6 pb-12">
@@ -231,7 +235,7 @@ export default async function ChannelPage({ params }: PageProps) {
             {/* Summary */}
             <Card>
               <CardHeader>
-                <CardTitle className="text-lg">📊 Краткая сводка</CardTitle>
+                <CardTitle className="text-lg">Краткая сводка</CardTitle>
               </CardHeader>
               <CardContent>
                 <p className="text-muted-foreground">{insight.summary}</p>
@@ -246,7 +250,7 @@ export default async function ChannelPage({ params }: PageProps) {
               <Card>
                 <CardHeader>
                   <CardTitle className="text-lg text-green-600 dark:text-green-500">
-                    💪 Сильные стороны
+                    Сильные стороны
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
@@ -264,7 +268,7 @@ export default async function ChannelPage({ params }: PageProps) {
               <Card>
                 <CardHeader>
                   <CardTitle className="text-lg text-red-600 dark:text-red-500">
-                    ⚠️ Слабые стороны
+                    Слабые стороны
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
@@ -282,7 +286,7 @@ export default async function ChannelPage({ params }: PageProps) {
               <Card>
                 <CardHeader>
                   <CardTitle className="text-lg text-blue-600 dark:text-blue-500">
-                    🚀 Возможности
+                    Возможности
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
@@ -300,7 +304,7 @@ export default async function ChannelPage({ params }: PageProps) {
               <Card>
                 <CardHeader>
                   <CardTitle className="text-lg text-orange-600 dark:text-orange-500">
-                    ⚡ Угрозы
+                    Угрозы
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
@@ -319,7 +323,7 @@ export default async function ChannelPage({ params }: PageProps) {
             <Card>
               <CardHeader>
                 <CardTitle className="text-lg text-purple-600 dark:text-purple-500">
-                  💡 Рекомендации
+                  Рекомендации
                 </CardTitle>
               </CardHeader>
               <CardContent>
