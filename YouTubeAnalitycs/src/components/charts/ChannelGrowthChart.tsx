@@ -21,7 +21,7 @@ interface ChannelGrowthChartProps {
 }
 
 /**
- * Форматирует числа для оси Y (1000000 → 1M)
+ * Форматирует числа для оси Y (1000000 => 1M)
  */
 function formatYAxis(value: number): string {
   if (value >= 1000000) {
@@ -34,7 +34,7 @@ function formatYAxis(value: number): string {
 }
 
 /**
- * Форматирует дату для оси X (2025-01-15 → 15 Jan)
+ * Форматирует дату для оси X (2025-01-15 => 15 Jan)
  */
 function formatDate(dateStr: string): string {
   const date = new Date(dateStr);
@@ -80,6 +80,7 @@ export function ChannelGrowthChart({
 }: ChannelGrowthChartProps) {
   // Если данных нет или меньше 2 точек
   if (!metrics || metrics.length < 2) {
+    const dataPoints = metrics?.length || 0;
     return (
       <Card>
         <CardHeader>
@@ -87,11 +88,16 @@ export function ChannelGrowthChart({
           <CardDescription>{description}</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="flex items-center justify-center py-12 text-muted-foreground">
-            <div className="text-center">
-              <p className="mb-2">Недостаточно данных для построения графика</p>
-              <p className="text-sm">
-                Синхронизируйте метрики несколько раз, чтобы увидеть динамику
+          <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
+            <div className="text-center max-w-md">
+              <p className="text-lg font-semibold mb-3">
+                Insufficient data for chart ({dataPoints}/2 data points)
+              </p>
+              <p className="text-sm mb-4">
+                Click "Sync Metrics" button {dataPoints === 0 ? "twice" : "one more time"} to collect enough data for growth trends.
+              </p>
+              <p className="text-xs text-muted-foreground">
+                Note: Only one sync per day is allowed. Come back tomorrow for the second data point, or sync multiple times today for testing.
               </p>
             </div>
           </div>

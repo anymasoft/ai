@@ -30,9 +30,13 @@ export function SyncMetricsButton({ channelId }: SyncMetricsButtonProps) {
       }
 
       if (data.status === "exists") {
-        toast.info("Metrics for today already exist");
+        toast.info(data.message || "Metrics for today already exist");
       } else {
-        toast.success("Metrics synced successfully!");
+        const dataPoints = data.totalDataPoints || 0;
+        toast.success(
+          data.message ||
+          `Metrics synced successfully! (${dataPoints} data point${dataPoints !== 1 ? "s" : ""})`
+        );
         // Refresh server component data
         router.refresh();
       }
