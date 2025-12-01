@@ -4,6 +4,7 @@ import { authOptions } from "@/lib/auth";
 import { db, competitors, users } from "@/lib/db";
 import { getYoutubeChannelByHandle } from "@/lib/scrapecreators";
 import { eq, and } from "drizzle-orm";
+import { PLAN_LIMITS } from "@/lib/plan-limits";
 
 export async function GET(req: NextRequest) {
   try {
@@ -63,15 +64,8 @@ export async function POST(req: NextRequest) {
 
     const plan = user?.plan || session.user.plan || "free";
 
-    // Define limits based on plan
-    const limits: Record<string, number> = {
-      free: 3,
-      basic: 3,
-      professional: 20,
-      enterprise: 200,
-    };
-
-    const limit = limits[plan.toLowerCase()] || 3;
+    // Get limit based on plan
+    const limit = PLAN_LIMITS[plan as keyof typeof PLAN_LIMITS] ?? 3;
 
     if (currentCompetitors.length >= limit) {
       return NextResponse.json(
