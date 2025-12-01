@@ -55,12 +55,37 @@ export async function POST(req: NextRequest) {
       .where(eq(competitors.userId, session.user.id))
       .all();
 
-    // Get user plan
-    const user = await db
+    // Ensure user exists in database (for FOREIGN KEY constraint)
+    let user = await db
       .select()
       .from(users)
       .where(eq(users.id, session.user.id))
       .get();
+
+    // If user doesn't exist in DB, create them
+    if (!user) {
+      await db
+        .insert(users)
+        .values({
+          id: String(session.user.id),
+          email: String(session.user.email || ""),
+          name: session.user.name || null,
+          image: session.user.image || null,
+          emailVerified: null,
+          role: "user",
+          plan: session.user.plan || "free",
+          createdAt: Date.now(),
+          updatedAt: Date.now(),
+        })
+        .run();
+
+      // Fetch the newly created user
+      user = await db
+        .select()
+        .from(users)
+        .where(eq(users.id, session.user.id))
+        .get();
+    }
 
     const plan = user?.plan || session.user.plan || "free";
 
