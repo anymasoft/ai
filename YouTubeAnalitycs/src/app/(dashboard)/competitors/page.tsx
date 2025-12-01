@@ -15,6 +15,7 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { Trash2, Loader2, AlertCircle } from "lucide-react"
+import { PLAN_LIMITS } from "@/lib/plan-limits"
 
 interface Competitor {
   id: number
@@ -41,13 +42,7 @@ export default function CompetitorsPage() {
   const [fetching, setFetching] = useState(true)
 
   const userPlan = session?.user?.plan || "free"
-  const limits: Record<string, number> = {
-    free: 3,
-    basic: 3,
-    professional: 20,
-    enterprise: 200,
-  }
-  const limit = limits[userPlan.toLowerCase()] || 3
+  const limit = PLAN_LIMITS[userPlan as keyof typeof PLAN_LIMITS] ?? 3
 
   useEffect(() => {
     fetchCompetitors()
