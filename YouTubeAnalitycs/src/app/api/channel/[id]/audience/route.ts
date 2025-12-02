@@ -176,27 +176,6 @@ export async function POST(
       // Вычисляем momentum_score (упрощенная версия без БД)
       const momentumScore = 0; // TODO: можно интегрировать с momentum_insights если нужно
 
-      // Новый комбинированный engagement_score
-      let engagementScore: number;
-
-      if (usingFallback) {
-        // Fallback режим: используем прокси метрики
-        engagementScore = (
-          viewsPerDay * 0.5 +
-          titleScore * 0.3 +
-          momentumScore * 0.2
-        );
-      } else {
-        // Стандартный режим: комбинируем все метрики
-        engagementScore = (
-          likeRate * 0.5 +
-          commentRate * 0.5 +
-          viewsPerDay * 0.4 +
-          titleScore * 0.3 +
-          momentumScore * 0.2
-        );
-      }
-
       return {
         id: v.id,
         title: v.title,
@@ -204,7 +183,7 @@ export async function POST(
         likeCount: v.likeCount,
         commentCount: v.commentCount,
         publishedAt: v.publishedAt,
-        engagementScore,
+        engagementScore: 0, // Будет вычислен после подсчёта медианы
         likeRate,
         commentRate,
         viewsPerDay,
@@ -212,6 +191,42 @@ export async function POST(
         titleScore,
         category: "Normal" as const,
       };
+    });
+
+    // Вычисляем медиану viewsPerDay для нормализации
+    const viewsPerDayValues = videosWithMetrics.map(v => v.viewsPerDay);
+    const medianViewsPerDay = calculateMedian(viewsPerDayValues);
+
+    // Теперь вычисляем engagement_score с нормализованным viewsPerDay
+    videosWithMetrics.forEach(v => {
+      // Нормализуем viewsPerDay относительно медианы (получаем коэффициент)
+      const normalizedViewsPerDay = medianViewsPerDay > 0
+        ? (v.viewsPerDay / medianViewsPerDay) - 1  // от -1 до +много
+        : 0;
+
+      let engagementScore: number;
+
+      if (usingFallback) {
+        // Fallback режим: используем прокси метрики
+        engagementScore = (
+          normalizedViewsPerDay * 0.5 +
+          v.titleScore * 0.3 +
+          v.momentumScore * 0.2
+        );
+      } else {
+        // Стандартный режим: комбинируем все метрики
+        // likeRate и commentRate уже нормализованы (0-1)
+        // normalizedViewsPerDay теперь тоже коэффициент (-1 до +много)
+        engagementScore = (
+          v.likeRate * 0.5 +
+          v.commentRate * 0.5 +
+          normalizedViewsPerDay * 0.3 +  // Уменьшили вес с 0.4 до 0.3
+          v.titleScore * 0.2 +            // Уменьшили вес с 0.3 до 0.2
+          v.momentumScore * 0.1           // Уменьшили вес с 0.2 до 0.1
+        );
+      }
+
+      v.engagementScore = engagementScore;
     });
 
     // Вычисляем медиану engagement_score
