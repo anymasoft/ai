@@ -399,3 +399,254 @@ async function fetchVideosFromAPI(
     throw new Error("Failed to fetch channel videos from ScrapeCreators");
   }
 }
+
+/**
+ * Получает детальную информацию о видео через ScrapeCreators API
+ * @param url - полный URL видео (https://www.youtube.com/watch?v=...)
+ */
+export async function getYoutubeVideoDetails(url: string) {
+  const apiKey = process.env.SCRAPECREATORS_API_KEY;
+
+  if (!apiKey) {
+    throw new Error("SCRAPECREATORS_API_KEY is not configured");
+  }
+
+  const apiUrl = `https://api.scrapecreators.com/v1/youtube/video?url=${encodeURIComponent(url)}`;
+
+  console.log("[ScrapeCreators] Video details request:", { url, apiUrl });
+
+  try {
+    const response = await fetch(apiUrl, {
+      method: "GET",
+      headers: {
+        "x-api-key": apiKey,
+        "Content-Type": "application/json",
+      },
+    });
+
+    const rawText = await response.text();
+
+    console.log("[ScrapeCreators] Video details response:", {
+      status: response.status,
+      contentLength: rawText.length,
+      isHtml: isHtmlResponse(rawText),
+    });
+
+    // Проверка на HTML ответ
+    if (isHtmlResponse(rawText)) {
+      console.error("[ScrapeCreators] Received HTML instead of JSON");
+      throw new Error(
+        `ScrapeCreators returned HTML response (status ${response.status}). API may be down or rate limited.`
+      );
+    }
+
+    // Безопасный парсинг JSON
+    let data: any;
+    try {
+      data = JSON.parse(rawText);
+    } catch (parseError) {
+      console.error("[ScrapeCreators] JSON parse error:", rawText.slice(0, 200));
+      throw new Error(
+        `ScrapeCreators returned invalid JSON: ${rawText.slice(0, 100)}...`
+      );
+    }
+
+    // Обработка ошибок API
+    if (!response.ok) {
+      console.error("[ScrapeCreators] API error:", { status: response.status, data });
+
+      if (response.status === 404) {
+        throw new Error("Video not found.");
+      } else if (response.status === 401) {
+        throw new Error("Invalid API key. Check SCRAPECREATORS_API_KEY.");
+      } else if (response.status === 429) {
+        throw new Error("ScrapeCreators rate limit exceeded. Please try again later.");
+      } else if (response.status >= 500) {
+        throw new Error(
+          `ScrapeCreators server error (${response.status}). The service may be temporarily unavailable.`
+        );
+      } else {
+        throw new Error(
+          `ScrapeCreators API error: ${response.status} - ${JSON.stringify(data).slice(0, 200)}`
+        );
+      }
+    }
+
+    // Нормализация данных
+    const videoDetails = {
+      videoId: String(data.videoId || data.id || ""),
+      title: String(data.title || data.name || "Untitled Video"),
+      likeCount: safeNumber(
+        data.likeCount ?? data.likeCountInt ?? data.likes,
+        0
+      ),
+      commentCount: safeNumber(
+        data.commentCount ?? data.commentCountInt ?? data.comments,
+        0
+      ),
+      viewCount: safeNumber(
+        data.viewCount ?? data.viewCountInt ?? data.views,
+        0
+      ),
+      publishDate: String(data.publishDate || data.publishedAt || new Date().toISOString()),
+      durationMs: safeNumber(data.durationMs ?? data.duration, undefined),
+      keywords: Array.isArray(data.keywords) ? data.keywords : undefined,
+      transcriptText: data.transcript_only_text || null,
+    };
+
+    console.log("[ScrapeCreators] Video details fetched:", {
+      videoId: videoDetails.videoId,
+      title: videoDetails.title,
+      likeCount: videoDetails.likeCount,
+      commentCount: videoDetails.commentCount,
+    });
+
+    return videoDetails;
+  } catch (error) {
+    if (error instanceof Error) {
+      throw error;
+    }
+    throw new Error("Failed to fetch video details from ScrapeCreators");
+  }
+}
+
+/**
+ * Получает комментарии к видео через ScrapeCreators API
+ * @param params.url - полный URL видео
+ * @param params.order - порядок сортировки (top | newest)
+ * @param params.continuationToken - токен для пагинации
+ * @param params.maxComments - максимальное количество комментариев для загрузки
+ */
+export async function getYoutubeVideoComments(params: {
+  url: string;
+  order?: "top" | "newest";
+  continuationToken?: string;
+  maxComments?: number;
+}) {
+  const apiKey = process.env.SCRAPECREATORS_API_KEY;
+
+  if (!apiKey) {
+    throw new Error("SCRAPECREATORS_API_KEY is not configured");
+  }
+
+  const { url, order = "top", continuationToken, maxComments = 300 } = params;
+
+  // Формируем URL с параметрами
+  const urlParams = new URLSearchParams({
+    url: url,
+    order: order,
+  });
+
+  if (continuationToken) {
+    urlParams.append("continuationToken", continuationToken);
+  }
+
+  const apiUrl = `https://api.scrapecreators.com/v1/youtube/video/comments?${urlParams.toString()}`;
+
+  console.log("[ScrapeCreators] Comments request:", { url, order, maxComments });
+
+  try {
+    const allComments: any[] = [];
+    let currentToken: string | null = continuationToken || null;
+    let fetchedCount = 0;
+
+    // Загружаем комментарии с учетом лимита
+    while (fetchedCount < maxComments) {
+      const requestUrl = currentToken
+        ? `https://api.scrapecreators.com/v1/youtube/video/comments?${new URLSearchParams({ url, order, continuationToken: currentToken }).toString()}`
+        : `https://api.scrapecreators.com/v1/youtube/video/comments?${new URLSearchParams({ url, order }).toString()}`;
+
+      const response = await fetch(requestUrl, {
+        method: "GET",
+        headers: {
+          "x-api-key": apiKey,
+          "Content-Type": "application/json",
+        },
+      });
+
+      const rawText = await response.text();
+
+      // Проверка на HTML ответ
+      if (isHtmlResponse(rawText)) {
+        console.error("[ScrapeCreators] Received HTML instead of JSON");
+        throw new Error(
+          `ScrapeCreators returned HTML response (status ${response.status}). API may be down or rate limited.`
+        );
+      }
+
+      // Безопасный парсинг JSON
+      let data: any;
+      try {
+        data = JSON.parse(rawText);
+      } catch (parseError) {
+        console.error("[ScrapeCreators] JSON parse error:", rawText.slice(0, 200));
+        throw new Error(
+          `ScrapeCreators returned invalid JSON: ${rawText.slice(0, 100)}...`
+        );
+      }
+
+      // Обработка ошибок API
+      if (!response.ok) {
+        console.error("[ScrapeCreators] API error:", { status: response.status, data });
+
+        if (response.status === 404) {
+          throw new Error("Video comments not found.");
+        } else if (response.status === 401) {
+          throw new Error("Invalid API key. Check SCRAPECREATORS_API_KEY.");
+        } else if (response.status === 429) {
+          throw new Error("ScrapeCreators rate limit exceeded. Please try again later.");
+        } else if (response.status >= 500) {
+          throw new Error(
+            `ScrapeCreators server error (${response.status}). The service may be temporarily unavailable.`
+          );
+        } else {
+          throw new Error(
+            `ScrapeCreators API error: ${response.status} - ${JSON.stringify(data).slice(0, 200)}`
+          );
+        }
+      }
+
+      // Извлекаем комментарии
+      const comments = Array.isArray(data.comments) ? data.comments : Array.isArray(data) ? data : [];
+
+      // Нормализуем комментарии
+      const normalizedComments = comments.map((comment: any) => ({
+        id: String(comment.id || comment.commentId || ""),
+        content: String(comment.content || comment.text || ""),
+        publishedTime: String(comment.publishedTime || comment.publishedAt || new Date().toISOString()),
+        replyLevel: safeNumber(comment.replyLevel ?? comment.level, 0),
+        likes: safeNumber(comment.likes ?? comment.likeCount, 0),
+        replies: safeNumber(comment.replies ?? comment.replyCount, 0),
+        authorName: String(comment.authorName || comment.author || "Unknown"),
+        authorChannelId: String(comment.authorChannelId || comment.channelId || ""),
+        isVerified: Boolean(comment.isVerified || comment.verified),
+        isCreator: Boolean(comment.isCreator || comment.creator),
+      }));
+
+      allComments.push(...normalizedComments);
+      fetchedCount += normalizedComments.length;
+
+      console.log(`[ScrapeCreators] Comments fetched: ${normalizedComments.length}, total: ${fetchedCount}`);
+
+      // Проверяем токен продолжения
+      currentToken = data.continuationToken || null;
+
+      // Если токена нет или достигли лимита - прерываем
+      if (!currentToken || fetchedCount >= maxComments) {
+        break;
+      }
+    }
+
+    console.log("[ScrapeCreators] Total comments loaded:", allComments.length);
+
+    return {
+      comments: allComments.slice(0, maxComments),
+      continuationToken: currentToken,
+    };
+  } catch (error) {
+    if (error instanceof Error) {
+      throw error;
+    }
+    throw new Error("Failed to fetch video comments from ScrapeCreators");
+  }
+}
