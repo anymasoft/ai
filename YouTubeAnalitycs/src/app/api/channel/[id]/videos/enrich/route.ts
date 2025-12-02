@@ -163,8 +163,9 @@ export async function POST(
       `[Enrich] Завершено. Обогащено: ${enriched}, пропущено: ${skipped}, ошибок: ${errors}`
     );
 
-    // Инвалидируем кэш audience insights если обогатили хотя бы 1 видео
-    if (enriched > 0) {
+    // Инвалидируем кэш audience insights если есть обогащённые данные
+    // (либо только что обогатили, либо данные уже были)
+    if (enriched > 0 || skipped > 0) {
       try {
         await db
           .delete(audienceInsights)
