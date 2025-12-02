@@ -324,18 +324,27 @@ function getDatabase() {
         `);
 
         // Миграция: добавление колонок likeCount и commentCount если их нет
-        // Проверяем наличие колонок через PRAGMA table_info
-        const tableInfo = _client.execute(`PRAGMA table_info(channel_videos);`);
-        const columns = tableInfo.rows.map((row: any) => row.name);
-
-        if (!columns.includes("likeCount")) {
-          _client.execute(`ALTER TABLE channel_videos ADD COLUMN likeCount INTEGER NOT NULL DEFAULT 0;`);
-          console.log("✅ Добавлена колонка likeCount в channel_videos");
+        // Используем безопасную проверку через SELECT
+        try {
+          // Пробуем выбрать колонку likeCount - если её нет, будет ошибка
+          _client.execute(`SELECT likeCount FROM channel_videos LIMIT 0;`);
+        } catch (e: any) {
+          // Колонка не существует - добавляем её
+          if (e.code === 'SQLITE_ERROR' && e.message?.includes('no such column')) {
+            _client.execute(`ALTER TABLE channel_videos ADD COLUMN likeCount INTEGER NOT NULL DEFAULT 0;`);
+            console.log("✅ Добавлена колонка likeCount в channel_videos");
+          }
         }
 
-        if (!columns.includes("commentCount")) {
-          _client.execute(`ALTER TABLE channel_videos ADD COLUMN commentCount INTEGER NOT NULL DEFAULT 0;`);
-          console.log("✅ Добавлена колонка commentCount в channel_videos");
+        try {
+          // Пробуем выбрать колонку commentCount - если её нет, будет ошибка
+          _client.execute(`SELECT commentCount FROM channel_videos LIMIT 0;`);
+        } catch (e: any) {
+          // Колонка не существует - добавляем её
+          if (e.code === 'SQLITE_ERROR' && e.message?.includes('no such column')) {
+            _client.execute(`ALTER TABLE channel_videos ADD COLUMN commentCount INTEGER NOT NULL DEFAULT 0;`);
+            console.log("✅ Добавлена колонка commentCount в channel_videos");
+          }
         }
 
         // Создание таблицы content_intelligence
