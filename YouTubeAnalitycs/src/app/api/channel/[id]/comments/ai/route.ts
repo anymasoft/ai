@@ -147,9 +147,10 @@ export async function POST(
     console.log(`[DeepCommentAI] Создана запись анализа со статусом 'pending'`);
 
     // Вызов функции глубокого анализа с передачей channelId
+    // EN is always the source of truth
     const analysisResult = await analyzeChannelComments(
       commentsForAnalysis,
-      userLanguage,
+      "en",
       competitor.channelId
     );
 
