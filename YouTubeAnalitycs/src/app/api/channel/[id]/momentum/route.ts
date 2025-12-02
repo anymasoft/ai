@@ -178,8 +178,29 @@ export async function POST(
     // Если анализ существует и свежий - возвращаем его
     if (existingAnalysis && existingAnalysis.generatedAt > threeDaysAgo) {
       console.log(`[Momentum] Найден свежий анализ`);
+
+      const parsedData = JSON.parse(existingAnalysis.data);
+
+      // Если в старых данных нет videoId, добавляем его из БД
+      if (parsedData.highMomentumVideos && parsedData.highMomentumVideos.length > 0) {
+        const needsVideoId = parsedData.highMomentumVideos.some((v: any) => !v.videoId);
+
+        if (needsVideoId) {
+          console.log('[Momentum] Обогащаем кэшированные данные videoId из БД');
+
+          // Создаём map title -> videoId для быстрого поиска
+          const titleToVideoId = new Map(videos.map(v => [v.title, v.videoId]));
+
+          // Добавляем videoId к каждому видео
+          parsedData.highMomentumVideos = parsedData.highMomentumVideos.map((v: any) => ({
+            ...v,
+            videoId: titleToVideoId.get(v.title) || ''
+          }));
+        }
+      }
+
       return NextResponse.json({
-        ...JSON.parse(existingAnalysis.data),
+        ...parsedData,
         generatedAt: existingAnalysis.generatedAt,
       });
     }
@@ -352,8 +373,35 @@ export async function GET(
       return NextResponse.json({ analysis: null });
     }
 
+    const parsedData = JSON.parse(analysis.data);
+
+    // Если в старых данных нет videoId, добавляем его из БД
+    if (parsedData.highMomentumVideos && parsedData.highMomentumVideos.length > 0) {
+      const needsVideoId = parsedData.highMomentumVideos.some((v: any) => !v.videoId);
+
+      if (needsVideoId) {
+        console.log('[Momentum] Обогащаем старые данные videoId из БД');
+
+        // Получаем видео из БД по названиям
+        const allVideos = await db
+          .select()
+          .from(channelVideos)
+          .where(eq(channelVideos.channelId, competitor.channelId))
+          .all();
+
+        // Создаём map title -> videoId для быстрого поиска
+        const titleToVideoId = new Map(allVideos.map(v => [v.title, v.videoId]));
+
+        // Добавляем videoId к каждому видео
+        parsedData.highMomentumVideos = parsedData.highMomentumVideos.map((v: any) => ({
+          ...v,
+          videoId: titleToVideoId.get(v.title) || ''
+        }));
+      }
+    }
+
     return NextResponse.json({
-      ...JSON.parse(analysis.data),
+      ...parsedData,
       generatedAt: analysis.generatedAt,
     });
 
