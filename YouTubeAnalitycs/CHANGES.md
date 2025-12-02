@@ -1,5 +1,76 @@
 # История изменений
 
+## [2025-12-02] - ЭТАП 4.6: Comment Intelligence Integration
+
+### Добавлено
+
+#### UI Компоненты
+- ✨ Создан `/src/components/channel/SyncCommentsButton.tsx`:
+  - Кнопка синхронизации комментариев для топ видео канала
+  - Loading состояние с анимацией при синхронизации
+  - Toast уведомления с результатами синхронизации
+  - Автоматическое обновление страницы после завершения
+
+#### Утилиты для предобработки
+- ✨ Создан `/src/lib/commentPreprocessing.ts`:
+  - `prepareCommentForAI()` - основная функция очистки текста комментария
+  - `prepareCommentsForAI()` - обработка массива комментариев
+  - `extractCleanedTexts()` - извлечение очищенных текстов с фильтрацией по длине
+  - Удаление URL, emoji, timestamp меток, специальных символов
+  - Нормализация пробелов и повторяющихся символов
+
+#### Интеграция в UI
+- ✨ Обновлён `/src/app/(dashboard)/channel/[id]/page.tsx`:
+  - Добавлен импорт `commentInsights` из `@/lib/db`
+  - Добавлен импорт `SyncCommentsButton` и `CommentInsights` компонентов
+  - Добавлена загрузка данных `commentInsights` из БД
+  - Добавлена кнопка "Sync Comments" в header канала
+  - Интегрирован компонент `CommentInsights` в секцию аналитики
+
+### Технические детали
+
+#### Что уже было реализовано ранее
+- ✅ Таблица `video_comments` в `/src/lib/db.ts` (создана ранее)
+- ✅ Таблица `comment_insights` в `/src/lib/db.ts` (создана ранее)
+- ✅ API endpoint `/src/app/api/channel/[id]/comments/sync/route.ts` (создан ранее)
+- ✅ API endpoint `/src/app/api/channel/[id]/comments/insights/route.ts` (создан ранее)
+- ✅ Функция `getYoutubeVideoComments()` в `/src/lib/scrapecreators.ts` (создана ранее)
+- ✅ Компонент `/src/components/channel/CommentInsights.tsx` (создан ранее)
+
+#### Что было добавлено в этом этапе
+**Созданные файлы (2):**
+1. `/src/components/channel/SyncCommentsButton.tsx` - кнопка синхронизации комментариев
+2. `/src/lib/commentPreprocessing.ts` - утилиты предобработки текста
+
+**Изменённые файлы (1):**
+3. `/src/app/(dashboard)/channel/[id]/page.tsx` - интеграция CommentInsights и кнопки синхронизации
+
+#### Как работает синхронизация комментариев
+1. Пользователь нажимает кнопку "Sync Comments"
+2. API `/api/channel/[id]/comments/sync` получает топ 15 видео канала
+3. Для каждого видео загружается до 300 комментариев через ScrapeCreators API
+4. Комментарии сохраняются в таблицу `video_comments` (upsert логика)
+5. После синхронизации пользователь может сгенерировать AI-анализ через кнопку в CommentInsights
+6. API `/api/channel/[id]/comments/insights` анализирует топ 200 комментариев через OpenAI GPT-4o-mini
+7. Результат сохраняется в `comment_insights` и отображается в UI
+
+#### НЕ изменялись
+- ✅ Существующие API endpoints
+- ✅ База данных schemas
+- ✅ ScrapeCreators интеграция
+- ✅ Другие компоненты аналитики (Content Intelligence, Momentum, Audience)
+- ✅ UI компоненты shadcn/ui
+- ✅ Стили и Tailwind классы
+
+### Следующие этапы
+
+**ЭТАП 5** (планируется):
+- Интеграция платёжных систем (Stripe/YooKassa)
+- Обновление тарифов пользователей
+- Биллинг и подписки
+
+---
+
 ## [2025-12-01] - ЭТАП 4.0.4: Top Videos Analytics
 
 ### Добавлено

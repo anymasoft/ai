@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
-import { db, competitors, aiInsights, channelMetrics, channelVideos, contentIntelligence, momentumInsights, audienceInsights } from "@/lib/db";
+import { db, competitors, aiInsights, channelMetrics, channelVideos, contentIntelligence, momentumInsights, audienceInsights, commentInsights } from "@/lib/db";
 import { eq, and, desc } from "drizzle-orm";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -10,11 +10,13 @@ import { Separator } from "@/components/ui/separator";
 import { TrendingUp, Users, Video, Eye, BarChart3, Calendar, AlertCircle, ArrowLeft, ExternalLink } from "lucide-react";
 import { SyncMetricsButton } from "@/components/channel/SyncMetricsButton";
 import { SyncVideosButton } from "@/components/channel/SyncVideosButton";
+import { SyncCommentsButton } from "@/components/channel/SyncCommentsButton";
 import { ChannelGrowthChart } from "@/components/charts/ChannelGrowthChart";
 import { TopVideosGrid } from "@/components/channel/TopVideosGrid";
 import { ContentIntelligenceBlock } from "@/components/channel/ContentIntelligenceBlock";
 import { MomentumInsights } from "@/components/channel/MomentumInsights";
 import { AudienceInsights } from "@/components/channel/AudienceInsights";
+import { CommentInsights } from "@/components/channel/CommentInsights";
 
 interface PageProps {
   params: Promise<{ id: string }>;
@@ -160,6 +162,18 @@ export default async function ChannelPage({ params }: PageProps) {
   // Парсим JSON данные из audience_insights
   const audienceData = audience ? JSON.parse(audience.data) : null;
 
+  // Получаем Comment Insights анализ
+  const comments = await db
+    .select()
+    .from(commentInsights)
+    .where(eq(commentInsights.channelId, competitor.channelId))
+    .orderBy(desc(commentInsights.generatedAt))
+    .limit(1)
+    .get();
+
+  // Парсим JSON данные из comment_insights
+  const commentsData = comments ? JSON.parse(comments.data) : null;
+
   // Debug: проверка channelId и количества метрик
   console.log("channelId:", competitor.channelId);
   console.log("metrics rows:", metrics.length);
@@ -167,6 +181,7 @@ export default async function ChannelPage({ params }: PageProps) {
   console.log("content intelligence:", contentData ? "exists" : "not found");
   console.log("momentum insights:", momentumData ? "exists" : "not found");
   console.log("audience insights:", audienceData ? "exists" : "not found");
+  console.log("comment insights:", commentsData ? "exists" : "not found");
 
   return (
     <div className="container mx-auto px-4 md:px-6 space-y-6 pb-12">
@@ -207,10 +222,11 @@ export default async function ChannelPage({ params }: PageProps) {
           </a>
         </div>
 
-        {/* Кнопки синхронизации метрик и видео */}
+        {/* Кнопки синхронизации метрик, видео и комментариев */}
         <div className="self-start flex gap-2">
           <SyncMetricsButton channelId={competitorId} />
           <SyncVideosButton channelId={competitorId} />
+          <SyncCommentsButton channelId={competitorId} />
         </div>
       </div>
 
@@ -408,6 +424,12 @@ export default async function ChannelPage({ params }: PageProps) {
         <AudienceInsights
           channelId={competitorId}
           initialData={audienceData ? { ...audienceData, generatedAt: audience?.generatedAt } : null}
+        />
+
+        {/* Comment Intelligence */}
+        <CommentInsights
+          channelId={competitorId}
+          initialData={commentsData ? { ...commentsData, generatedAt: comments?.generatedAt } : null}
         />
       </div>
     </div>
