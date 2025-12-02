@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import {
   Table,
   TableBody,
@@ -9,6 +10,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { ExternalLink } from "lucide-react";
 
 interface VideoData {
@@ -56,8 +58,11 @@ function formatDate(dateString: string): string {
 }
 
 export function TopVideosTable({ videos }: TopVideosTableProps) {
+  const [limit, setLimit] = useState(50);
+
   // Сортируем видео по количеству просмотров (DESC)
   const sortedVideos = [...videos].sort((a, b) => b.viewCount - a.viewCount);
+  const visibleVideos = sortedVideos.slice(0, limit);
 
   return (
     <Card>
@@ -87,7 +92,7 @@ export function TopVideosTable({ videos }: TopVideosTableProps) {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {sortedVideos.map((video) => (
+                {visibleVideos.map((video) => (
                   <TableRow key={video.id}>
                     <TableCell>
                       {video.thumbnailUrl ? (
@@ -130,6 +135,17 @@ export function TopVideosTable({ videos }: TopVideosTableProps) {
                 ))}
               </TableBody>
             </Table>
+          </div>
+        )}
+
+        {sortedVideos.length > limit && (
+          <div className="flex justify-center mt-4">
+            <Button
+              onClick={() => setLimit((prev) => prev + 50)}
+              variant="outline"
+            >
+              Показать ещё 50
+            </Button>
           </div>
         )}
       </CardContent>
