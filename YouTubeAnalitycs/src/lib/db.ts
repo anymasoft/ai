@@ -173,6 +173,52 @@ export const audienceInsights = sqliteTable("audience_insights", {
     .$defaultFn(() => Date.now()), // Время генерации анализа
 });
 
+// Video Details table - хранит детальные данные видео из /v1/youtube/video
+export const videoDetails = sqliteTable("video_details", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  videoId: text("videoId").notNull().unique(), // YouTube video ID
+  url: text("url").notNull(), // Полный URL видео
+  likeCount: integer("likeCount").notNull().default(0), // Лайки
+  commentCount: integer("commentCount").notNull().default(0), // Комментарии
+  viewCount: integer("viewCount").notNull().default(0), // Просмотры
+  durationMs: integer("durationMs"), // Длительность в миллисекундах
+  keywordsJson: text("keywordsJson"), // JSON массив ключевых слов
+  transcriptShort: text("transcriptShort"), // Первые 2-4k символов транскрипта
+  updatedAt: integer("updatedAt")
+    .notNull()
+    .$defaultFn(() => Date.now()), // Время последнего обновления
+});
+
+// Video Comments table - хранит комментарии к видео
+export const videoComments = sqliteTable("video_comments", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  videoId: text("videoId").notNull(), // YouTube video ID
+  commentId: text("commentId").notNull().unique(), // ID комментария из API
+  content: text("content").notNull(), // Текст комментария
+  publishedTime: text("publishedTime").notNull(), // Время публикации (ISO8601)
+  replyLevel: integer("replyLevel").notNull().default(0), // Уровень вложенности
+  likes: integer("likes").notNull().default(0), // Лайки комментария
+  replies: integer("replies").notNull().default(0), // Количество ответов
+  authorName: text("authorName").notNull(), // Имя автора
+  authorChannelId: text("authorChannelId").notNull(), // ID канала автора
+  isVerified: integer("isVerified", { mode: "boolean" }).notNull().default(false), // Верифицирован ли автор
+  isCreator: integer("isCreator", { mode: "boolean" }).notNull().default(false), // Автор = создатель видео
+  fetchedAt: integer("fetchedAt")
+    .notNull()
+    .$defaultFn(() => Date.now()), // Время получения данных
+});
+
+// Comment Insights table - хранит AI-анализ комментариев
+export const commentInsights = sqliteTable("comment_insights", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  videoId: text("videoId").notNull(), // YouTube video ID
+  channelId: text("channelId").notNull(), // ID канала для группировки
+  data: text("data").notNull(), // JSON с результатами AI-анализа комментариев
+  generatedAt: integer("generatedAt")
+    .notNull()
+    .$defaultFn(() => Date.now()), // Время генерации анализа
+});
+
 // Инициализация SQLite базы данных только на серверной стороне
 let _client: ReturnType<typeof createClient>;
 let _db: ReturnType<typeof drizzle>;
@@ -393,6 +439,80 @@ function getDatabase() {
         _client.execute(`
           CREATE INDEX IF NOT EXISTS idx_audience_insights_lookup
           ON audience_insights(channelId, generatedAt DESC);
+        `);
+
+        // Создание таблицы video_details
+        _client.execute(`
+          CREATE TABLE IF NOT EXISTS video_details (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            videoId TEXT NOT NULL UNIQUE,
+            url TEXT NOT NULL,
+            likeCount INTEGER NOT NULL DEFAULT 0,
+            commentCount INTEGER NOT NULL DEFAULT 0,
+            viewCount INTEGER NOT NULL DEFAULT 0,
+            durationMs INTEGER,
+            keywordsJson TEXT,
+            transcriptShort TEXT,
+            updatedAt INTEGER NOT NULL
+          );
+        `);
+
+        // Создание индекса для быстрого поиска деталей видео
+        _client.execute(`
+          CREATE INDEX IF NOT EXISTS idx_video_details_lookup
+          ON video_details(videoId);
+        `);
+
+        // Создание таблицы video_comments
+        _client.execute(`
+          CREATE TABLE IF NOT EXISTS video_comments (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            videoId TEXT NOT NULL,
+            commentId TEXT NOT NULL UNIQUE,
+            content TEXT NOT NULL,
+            publishedTime TEXT NOT NULL,
+            replyLevel INTEGER NOT NULL DEFAULT 0,
+            likes INTEGER NOT NULL DEFAULT 0,
+            replies INTEGER NOT NULL DEFAULT 0,
+            authorName TEXT NOT NULL,
+            authorChannelId TEXT NOT NULL,
+            isVerified INTEGER NOT NULL DEFAULT 0,
+            isCreator INTEGER NOT NULL DEFAULT 0,
+            fetchedAt INTEGER NOT NULL
+          );
+        `);
+
+        // Создание индексов для быстрого поиска комментариев
+        _client.execute(`
+          CREATE INDEX IF NOT EXISTS idx_video_comments_video
+          ON video_comments(videoId, publishedTime DESC);
+        `);
+
+        _client.execute(`
+          CREATE INDEX IF NOT EXISTS idx_video_comments_author
+          ON video_comments(authorChannelId);
+        `);
+
+        // Создание таблицы comment_insights
+        _client.execute(`
+          CREATE TABLE IF NOT EXISTS comment_insights (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            videoId TEXT NOT NULL,
+            channelId TEXT NOT NULL,
+            data TEXT NOT NULL,
+            generatedAt INTEGER NOT NULL
+          );
+        `);
+
+        // Создание индекса для быстрого поиска insights комментариев
+        _client.execute(`
+          CREATE INDEX IF NOT EXISTS idx_comment_insights_lookup
+          ON comment_insights(videoId, generatedAt DESC);
+        `);
+
+        _client.execute(`
+          CREATE INDEX IF NOT EXISTS idx_comment_insights_channel
+          ON comment_insights(channelId, generatedAt DESC);
         `);
 
         console.log("✅ Таблицы базы данных инициализированы");
