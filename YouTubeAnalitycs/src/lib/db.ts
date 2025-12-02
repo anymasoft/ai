@@ -528,16 +528,6 @@ function getDatabase() {
           ON comment_insights(channelId, generatedAt DESC);
         `);
 
-        // Добавление колонки language в таблицу users (ЭТАП 4.7)
-        try {
-          _client.execute(`ALTER TABLE users ADD COLUMN language TEXT DEFAULT 'en'`);
-        } catch (error: any) {
-          // Колонка уже существует, игнорируем ошибку
-          if (!error.message || !error.message.includes("duplicate column")) {
-            console.warn("Предупреждение при добавлении language:", error.message);
-          }
-        }
-
         // Создание таблицы channel_ai_comment_insights (ЭТАП 4.7: Deep Analysis)
         _client.execute(`
           CREATE TABLE IF NOT EXISTS channel_ai_comment_insights (
