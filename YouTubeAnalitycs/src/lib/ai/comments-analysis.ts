@@ -1,4 +1,35 @@
 import OpenAI from "openai";
+import { createClient } from "@libsql/client";
+
+/**
+ * Helper для обновления прогресса анализа в БД
+ */
+async function updateProgress(
+  channelId: string,
+  current: number,
+  total: number,
+  status: 'pending' | 'processing' | 'done' | 'error'
+) {
+  try {
+    const dbPath = process.env.DATABASE_URL || "file:sqlite.db";
+    const client = createClient({
+      url: dbPath.startsWith("file:") ? dbPath : `file:${dbPath}`,
+    });
+
+    await client.execute({
+      sql: `UPDATE channel_ai_comment_insights
+            SET progress_current = ?, progress_total = ?, status = ?
+            WHERE channelId = ?
+            ORDER BY createdAt DESC
+            LIMIT 1`,
+      args: [current, total, status, channelId],
+    });
+
+    client.close();
+  } catch (error) {
+    console.error('[updateProgress] Error:', error);
+  }
+}
 
 /**
  * Типы для результатов глубокого анализа комментариев
@@ -365,53 +396,77 @@ export function combineChunkResults(
  */
 export async function analyzeChannelComments(
   comments: CommentForAnalysis[],
-  language: string = "en"
+  language: string = "en",
+  channelId?: string
 ): Promise<CombinedDeepAnalysis> {
   console.log(`[analyzeChannelComments] Starting analysis of ${comments.length} comments, language: ${language}`);
 
-  // 1. Нормализация
-  const normalizedComments = normalizeComments(comments);
-  console.log(`[analyzeChannelComments] Normalized to ${normalizedComments.length} comments`);
+  try {
+    // 1. Нормализация
+    const normalizedComments = normalizeComments(comments);
+    console.log(`[analyzeChannelComments] Normalized to ${normalizedComments.length} comments`);
 
-  if (normalizedComments.length === 0) {
-    throw new Error("No valid comments to analyze after normalization");
-  }
-
-  // 2. Разбивка на чанки
-  const chunks = chunkComments(normalizedComments);
-  console.log(`[analyzeChannelComments] Split into ${chunks.length} chunks`);
-
-  // 3. Анализ каждого чанка
-  const chunkResults: DeepAnalysisResult[] = [];
-
-  for (let i = 0; i < chunks.length; i++) {
-    console.log(`[analyzeChannelComments] Analyzing chunk ${i + 1}/${chunks.length}`);
-    try {
-      const result = await generateDeepAnalysis(chunks[i], language);
-      chunkResults.push(result);
-
-      // Небольшая задержка между запросами (rate limiting)
-      if (i < chunks.length - 1) {
-        await new Promise((resolve) => setTimeout(resolve, 500));
-      }
-    } catch (error) {
-      console.error(`[analyzeChannelComments] Error analyzing chunk ${i + 1}:`, error);
-      // Продолжаем с остальными чанками
+    if (normalizedComments.length === 0) {
+      throw new Error("No valid comments to analyze after normalization");
     }
+
+    // 2. Разбивка на чанки
+    const chunks = chunkComments(normalizedComments);
+    console.log(`[analyzeChannelComments] Split into ${chunks.length} chunks`);
+
+    // Обновляем прогресс: начинаем обработку
+    if (channelId) {
+      await updateProgress(channelId, 0, chunks.length, 'processing');
+    }
+
+    // 3. Анализ каждого чанка
+    const chunkResults: DeepAnalysisResult[] = [];
+
+    for (let i = 0; i < chunks.length; i++) {
+      console.log(`[analyzeChannelComments] Analyzing chunk ${i + 1}/${chunks.length}`);
+      try {
+        const result = await generateDeepAnalysis(chunks[i], language);
+        chunkResults.push(result);
+
+        // Обновляем прогресс после каждого чанка
+        if (channelId) {
+          await updateProgress(channelId, i + 1, chunks.length, 'processing');
+        }
+
+        // Небольшая задержка между запросами (rate limiting)
+        if (i < chunks.length - 1) {
+          await new Promise((resolve) => setTimeout(resolve, 500));
+        }
+      } catch (error) {
+        console.error(`[analyzeChannelComments] Error analyzing chunk ${i + 1}:`, error);
+        // Продолжаем с остальными чанками
+      }
+    }
+
+    if (chunkResults.length === 0) {
+      throw new Error("All chunk analyses failed");
+    }
+
+    // 4. Объединение результатов
+    const combined = combineChunkResults(chunkResults);
+
+    console.log("[analyzeChannelComments] Analysis completed successfully");
+
+    // Обновляем прогресс: завершено
+    if (channelId) {
+      await updateProgress(channelId, chunks.length, chunks.length, 'done');
+    }
+
+    return {
+      ...combined,
+      totalAnalyzed: normalizedComments.length,
+      language,
+    };
+  } catch (error) {
+    // Обновляем прогресс: ошибка
+    if (channelId) {
+      await updateProgress(channelId, 0, 0, 'error');
+    }
+    throw error;
   }
-
-  if (chunkResults.length === 0) {
-    throw new Error("All chunk analyses failed");
-  }
-
-  // 4. Объединение результатов
-  const combined = combineChunkResults(chunkResults);
-
-  console.log("[analyzeChannelComments] Analysis completed successfully");
-
-  return {
-    ...combined,
-    totalAnalyzed: normalizedComments.length,
-    language,
-  };
 }
