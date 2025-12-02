@@ -52,8 +52,16 @@ function formatNumber(num: number): string {
   return num.toString();
 }
 
-function formatEngagement(score: number): string {
-  return `${(score * 100).toFixed(3)}%`;
+function formatEngagement(score: number, isFallback: boolean): string {
+  // В fallback режиме score - это большое число (viewsPerDay based)
+  // В стандартном режиме score - это дробь (0.0 - 1.0)
+  if (isFallback) {
+    // Показываем как число без процента
+    return score.toFixed(2);
+  } else {
+    // Умножаем на 100 для процентов
+    return `${(score * 100).toFixed(3)}%`;
+  }
 }
 
 export function AudienceInsights({ channelId, initialData }: AudienceInsightsProps) {
@@ -61,6 +69,7 @@ export function AudienceInsights({ channelId, initialData }: AudienceInsightsPro
   const [loading, setLoading] = useState(false);
   const [data, setData] = useState<AudienceData | null>(initialData || null);
   const [error, setError] = useState<string | null>(null);
+  const [enriching, setEnriching] = useState(false);
 
   async function handleGenerate() {
     setLoading(true);
@@ -86,6 +95,33 @@ export function AudienceInsights({ channelId, initialData }: AudienceInsightsPro
       setError(err instanceof Error ? err.message : "Unknown error");
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function handleEnrich() {
+    setEnriching(true);
+    setError(null);
+
+    try {
+      const res = await fetch(`/api/channel/${channelId}/videos/enrich`, {
+        method: "POST",
+      });
+
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.error || "Failed to enrich videos");
+      }
+
+      const result = await res.json();
+      console.log('Enrichment result:', result);
+
+      // После обогащения перегенерируем анализ
+      await handleGenerate();
+    } catch (err) {
+      console.error("Error enriching videos:", err);
+      setError(err instanceof Error ? err.message : "Unknown error");
+    } finally {
+      setEnriching(false);
     }
   }
 
@@ -190,9 +226,33 @@ export function AudienceInsights({ channelId, initialData }: AudienceInsightsPro
                 <p className="text-sm font-medium text-amber-900 dark:text-amber-100">
                   Данные лайков/комментариев недоступны
                 </p>
-                <p className="text-sm text-amber-700 dark:text-amber-300 mt-1">
+                <p className="text-sm text-amber-700 dark:text-amber-300 mt-1 mb-3">
                   Используем поведенческий engagement-профиль на основе просмотров, скорости роста, формата и темы видео.
                 </p>
+                <Button
+                  onClick={handleEnrich}
+                  disabled={enriching}
+                  size="sm"
+                  variant="outline"
+                  className="gap-2 border-amber-400 text-amber-900 hover:bg-amber-100 dark:text-amber-100 dark:hover:bg-amber-900/20"
+                >
+                  {enriching ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Обогащение данных...
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="h-4 w-4" />
+                      Получить реальные лайки/комменты
+                    </>
+                  )}
+                </Button>
+                {enriching && (
+                  <p className="text-xs text-amber-600 dark:text-amber-400 mt-2">
+                    Это займёт ~15-30 секунд. Получаем детальные данные для топ 30 видео...
+                  </p>
+                )}
               </div>
             </div>
           </CardContent>
@@ -344,9 +404,11 @@ export function AudienceInsights({ channelId, initialData }: AudienceInsightsPro
                 <div className="flex items-center gap-2 ml-4">
                   <div className="text-right">
                     <div className="text-sm font-bold text-purple-600 dark:text-purple-400">
-                      {formatEngagement(video.engagementScore)}
+                      {formatEngagement(video.engagementScore, data.usingFallback || false)}
                     </div>
-                    <div className="text-xs text-muted-foreground">engagement</div>
+                    <div className="text-xs text-muted-foreground">
+                      {data.usingFallback ? 'score' : 'engagement'}
+                    </div>
                   </div>
                 </div>
               </div>
