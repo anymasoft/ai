@@ -1,24 +1,92 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Progress } from "@/components/ui/progress";
 import { Loader2, Brain, Heart, AlertCircle, MessageSquare, Users, Lightbulb, TrendingUp, Quote } from "lucide-react";
 import { useRouter } from "next/navigation";
 import type { CombinedDeepAnalysis } from "@/lib/ai/comments-analysis";
 
 interface DeepCommentAnalysisProps {
   channelId: number;
-  initialData?: (CombinedDeepAnalysis & { cached?: boolean; createdAt?: number }) | null;
+  initialData?: (CombinedDeepAnalysis & {
+    cached?: boolean;
+    createdAt?: number;
+    analysisLanguage?: string;
+    hasRussianVersion?: boolean;
+  }) | null;
+}
+
+interface ProgressData {
+  status: string;
+  progress_current: number;
+  progress_total: number;
+  percent: number;
 }
 
 export function DeepCommentAnalysis({ channelId, initialData }: DeepCommentAnalysisProps) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
-  const [data, setData] = useState<(CombinedDeepAnalysis & { cached?: boolean; createdAt?: number }) | null>(
-    initialData || null
-  );
+  const [translating, setTranslating] = useState(false);
+  const [data, setData] = useState<(CombinedDeepAnalysis & {
+    cached?: boolean;
+    createdAt?: number;
+    analysisLanguage?: string;
+    hasRussianVersion?: boolean;
+  }) | null>(initialData || null);
   const [error, setError] = useState<string | null>(null);
+  const [progress, setProgress] = useState<ProgressData | null>(null);
+  const intervalRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Polling для получения прогресса
+  useEffect(() => {
+    if (!loading || !channelId) return;
+
+    const fetchProgress = async () => {
+      try {
+        const res = await fetch(`/api/channel/${channelId}/comments/ai/progress`);
+        if (res.ok) {
+          const progressData = await res.json();
+          setProgress(progressData);
+
+          // Если анализ завершен, останавливаем polling
+          if (progressData.status === 'done' || progressData.status === 'error') {
+            if (intervalRef.current) {
+              clearInterval(intervalRef.current);
+              intervalRef.current = null;
+            }
+
+            if (progressData.status === 'done') {
+              // Даем время на сохранение результата
+              setTimeout(() => {
+                setLoading(false);
+                router.refresh();
+              }, 1000);
+            } else if (progressData.status === 'error') {
+              setError('Analysis failed. Please try again.');
+              setLoading(false);
+            }
+          }
+        }
+      } catch (err) {
+        console.error('Error fetching progress:', err);
+      }
+    };
+
+    // Начальный fetch
+    fetchProgress();
+
+    // Устанавливаем интервал polling каждые 1.5 секунды
+    intervalRef.current = setInterval(fetchProgress, 1500);
+
+    // Cleanup при unmount
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      }
+    };
+  }, [loading, channelId, router]);
 
   async function handleGenerate() {
     setLoading(true);
@@ -47,7 +115,41 @@ export function DeepCommentAnalysis({ channelId, initialData }: DeepCommentAnaly
     }
   }
 
+  async function handleTranslate() {
+    setTranslating(true);
+    setError(null);
+
+    try {
+      const res = await fetch(`/api/channel/${channelId}/comments/ai/translate`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ language: "ru" }),
+      });
+
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.error || "Failed to translate analysis");
+      }
+
+      // Обновляем страницу чтобы показать переведённую версию
+      router.refresh();
+    } catch (err) {
+      console.error("Error translating analysis:", err);
+      setError(err instanceof Error ? err.message : "Unknown error");
+    } finally {
+      setTranslating(false);
+    }
+  }
+
   if (loading) {
+    const estimatedTimePerChunk = 3; // секунды на чанк
+    const remaining = progress
+      ? (progress.progress_total - progress.progress_current) * estimatedTimePerChunk
+      : 0;
+    const eta = remaining > 0 ? `~${Math.ceil(remaining)}s` : '';
+
     return (
       <Card>
         <CardHeader>
@@ -60,10 +162,35 @@ export function DeepCommentAnalysis({ channelId, initialData }: DeepCommentAnaly
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="flex flex-col items-center justify-center py-12">
-            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground mb-4" />
-            <p className="text-muted-foreground">Генерация глубокого анализа...</p>
-            <p className="text-sm text-muted-foreground mt-2">Это может занять 30-60 секунд</p>
+          <div className="flex flex-col items-center justify-center py-12 space-y-6">
+            <Loader2 className="h-8 w-8 animate-spin text-indigo-600 dark:text-indigo-400" />
+
+            {progress && progress.status === 'processing' && (
+              <>
+                <div className="text-center space-y-2">
+                  <p className="text-sm font-medium">
+                    🔄 Processing {progress.progress_current} / {progress.progress_total} chunks
+                    {' '}({progress.percent}%)
+                  </p>
+                  {eta && (
+                    <p className="text-xs text-muted-foreground">
+                      ETA: {eta}
+                    </p>
+                  )}
+                </div>
+
+                <div className="w-full max-w-md">
+                  <Progress value={progress.percent} className="h-2" />
+                </div>
+              </>
+            )}
+
+            {(!progress || progress.status === 'pending') && (
+              <div className="text-center space-y-2">
+                <p className="text-muted-foreground">Инициализация анализа...</p>
+                <p className="text-sm text-muted-foreground">Это может занять 30-60 секунд</p>
+              </div>
+            )}
           </div>
         </CardContent>
       </Card>
@@ -110,12 +237,39 @@ export function DeepCommentAnalysis({ channelId, initialData }: DeepCommentAnaly
           </h2>
           <p className="text-sm text-muted-foreground mt-1">
             Глубокий AI-анализ {data.totalAnalyzed} комментариев
+            {data.analysisLanguage && (
+              <span className="ml-2 text-xs">
+                (язык: {data.analysisLanguage === "ru" ? "🇷🇺 Русский" : "🇬🇧 English"})
+              </span>
+            )}
           </p>
         </div>
-        <Button onClick={handleGenerate} variant="outline" size="sm" className="gap-2">
-          <Brain className="h-4 w-4" />
-          Обновить анализ
-        </Button>
+        <div className="flex gap-2">
+          {data.analysisLanguage === "en" && !data.hasRussianVersion && (
+            <Button
+              onClick={handleTranslate}
+              disabled={translating}
+              variant="outline"
+              size="sm"
+              className="gap-2"
+            >
+              {translating ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Перевод...
+                </>
+              ) : (
+                <>
+                  🇷🇺 Generate Russian Version
+                </>
+              )}
+            </Button>
+          )}
+          <Button onClick={handleGenerate} variant="outline" size="sm" className="gap-2">
+            <Brain className="h-4 w-4" />
+            Обновить анализ
+          </Button>
+        </div>
       </div>
 
       {/* Sentiment Summary */}

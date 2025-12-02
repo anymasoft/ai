@@ -511,7 +511,12 @@ function getDatabase() {
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             channelId TEXT NOT NULL,
             resultJson TEXT NOT NULL,
-            createdAt INTEGER NOT NULL
+            createdAt INTEGER NOT NULL,
+            progress_current INTEGER DEFAULT 0,
+            progress_total INTEGER DEFAULT 0,
+            status TEXT DEFAULT 'pending',
+            analysis_en TEXT,
+            analysis_ru TEXT
           );
         `);
 

@@ -134,22 +134,39 @@ export async function POST(
       authorName: c.authorName,
     }));
 
-    // Вызов функции глубокого анализа
-    const analysisResult = await analyzeChannelComments(commentsForAnalysis, userLanguage);
-
-    console.log(`[DeepCommentAI] Анализ завершён успешно`);
-
-    // Сохраняем результат в базу данных
+    // Создаём запись анализа со статусом 'pending'
     await db
       .insert(channelAICommentInsights)
       .values({
         channelId: competitor.channelId,
-        resultJson: JSON.stringify(analysisResult),
+        resultJson: JSON.stringify({}),
         createdAt: Date.now(),
       })
       .run();
 
-    console.log(`[DeepCommentAI] Результат сохранён в БД`);
+    console.log(`[DeepCommentAI] Создана запись анализа со статусом 'pending'`);
+
+    // Вызов функции глубокого анализа с передачей channelId
+    const analysisResult = await analyzeChannelComments(
+      commentsForAnalysis,
+      userLanguage,
+      competitor.channelId
+    );
+
+    console.log(`[DeepCommentAI] Анализ завершён успешно`);
+
+    // Обновляем результат в базе данных
+    // analysis_en - источник истины (всегда английский)
+    await db
+      .update(channelAICommentInsights)
+      .set({
+        resultJson: JSON.stringify(analysisResult),
+        analysis_en: JSON.stringify(analysisResult), // Сохраняем английскую версию как источник
+      })
+      .where(eq(channelAICommentInsights.channelId, competitor.channelId))
+      .run();
+
+    console.log(`[DeepCommentAI] Результат сохранён в БД (analysis_en + resultJson)`);
 
     // Возвращаем результат клиенту
     return NextResponse.json(
@@ -199,6 +216,15 @@ export async function GET(
       );
     }
 
+    // Получаем язык пользователя
+    const user = await db
+      .select()
+      .from(users)
+      .where(eq(users.id, session.user.id))
+      .get();
+
+    const userLanguage = user?.language || "en";
+
     // Получаем данные канала
     const competitor = await db
       .select()
@@ -231,12 +257,32 @@ export async function GET(
       return NextResponse.json({ analysis: null });
     }
 
-    const analysisData = JSON.parse(analysis.resultJson);
+    // Выбираем нужную версию анализа в зависимости от языка пользователя
+    let analysisData;
+    let analysisLanguage = "en";
+    let hasRussianVersion = false;
+
+    if (userLanguage === "ru" && analysis.analysis_ru) {
+      // Если пользователь хочет русский и он есть - возвращаем русский
+      analysisData = JSON.parse(analysis.analysis_ru);
+      analysisLanguage = "ru";
+      hasRussianVersion = true;
+    } else if (analysis.analysis_en) {
+      // Иначе возвращаем английский (если он есть)
+      analysisData = JSON.parse(analysis.analysis_en);
+      hasRussianVersion = !!analysis.analysis_ru;
+    } else {
+      // Fallback на resultJson для старых записей
+      analysisData = JSON.parse(analysis.resultJson);
+      hasRussianVersion = !!analysis.analysis_ru;
+    }
 
     return NextResponse.json({
       ...analysisData,
       cached: true,
       createdAt: analysis.createdAt,
+      analysisLanguage,
+      hasRussianVersion,
     });
   } catch (error) {
     console.error("[DeepCommentAI] Ошибка GET:", error);
