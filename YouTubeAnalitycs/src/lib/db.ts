@@ -528,6 +528,37 @@ function getDatabase() {
           ON comment_insights(channelId, generatedAt DESC);
         `);
 
+        // Добавление колонки language в таблицу users (ЭТАП 4.7)
+        try {
+          _client.execute(`ALTER TABLE users ADD COLUMN language TEXT DEFAULT 'en'`);
+        } catch (error: any) {
+          // Колонка уже существует, игнорируем ошибку
+          if (!error.message || !error.message.includes("duplicate column")) {
+            console.warn("Предупреждение при добавлении language:", error.message);
+          }
+        }
+
+        // Создание таблицы channel_ai_comment_insights (ЭТАП 4.7: Deep Analysis)
+        _client.execute(`
+          CREATE TABLE IF NOT EXISTS channel_ai_comment_insights (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            channelId TEXT NOT NULL,
+            resultJson TEXT NOT NULL,
+            createdAt INTEGER NOT NULL
+          );
+        `);
+
+        // Создание индексов для channel_ai_comment_insights
+        _client.execute(`
+          CREATE INDEX IF NOT EXISTS idx_channel_ai_insights_channelId
+          ON channel_ai_comment_insights(channelId);
+        `);
+
+        _client.execute(`
+          CREATE INDEX IF NOT EXISTS idx_channel_ai_insights_createdAt
+          ON channel_ai_comment_insights(createdAt DESC);
+        `);
+
         console.log("✅ Таблицы базы данных инициализированы");
       } catch (error) {
         console.error("❌ Ошибка инициализации базы данных:", error);
