@@ -8,6 +8,16 @@ import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
+import {
   Table,
   TableBody,
   TableCell,
@@ -42,6 +52,8 @@ export default function CompetitorsPage() {
   const [error, setError] = useState("")
   const [success, setSuccess] = useState("")
   const [fetching, setFetching] = useState(true)
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+  const [competitorToDelete, setCompetitorToDelete] = useState<number | null>(null)
 
   const userPlan = session?.user?.plan || "free"
   const limit = PLAN_LIMITS[userPlan as keyof typeof PLAN_LIMITS] ?? 3
@@ -101,15 +113,17 @@ export default function CompetitorsPage() {
     }
   }
 
-  async function handleDeleteCompetitor(id: number, e: React.MouseEvent) {
+  function openDeleteDialog(id: number, e: React.MouseEvent) {
     e.stopPropagation() // Prevent row click
+    setCompetitorToDelete(id)
+    setDeleteDialogOpen(true)
+  }
 
-    if (!confirm("Are you sure you want to remove this competitor?")) {
-      return
-    }
+  async function confirmDelete() {
+    if (!competitorToDelete) return
 
     try {
-      const res = await fetch(`/api/competitors/${id}`, { method: "DELETE" })
+      const res = await fetch(`/api/competitors/${competitorToDelete}`, { method: "DELETE" })
       if (res.ok) {
         setSuccess("Competitor removed successfully")
         fetchCompetitors()
@@ -119,6 +133,9 @@ export default function CompetitorsPage() {
       }
     } catch (err) {
       setError("An error occurred while deleting the competitor")
+    } finally {
+      setDeleteDialogOpen(false)
+      setCompetitorToDelete(null)
     }
   }
 
@@ -251,7 +268,7 @@ export default function CompetitorsPage() {
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={(e) => handleDeleteCompetitor(competitor.id, e)}
+                        onClick={(e) => openDeleteDialog(competitor.id, e)}
                         className="cursor-pointer"
                         title="Удалить конкурента"
                       >
@@ -265,6 +282,26 @@ export default function CompetitorsPage() {
           )}
         </CardContent>
       </Card>
+
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Удалить канал?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Вы уверены, что хотите удалить этот канал? Действие необратимо.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmDelete}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }
