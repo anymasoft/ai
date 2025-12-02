@@ -7,6 +7,7 @@ import { Loader2, Flame, TrendingUp, Zap, Lightbulb } from "lucide-react";
 import { useRouter } from "next/navigation";
 
 interface MomentumVideo {
+  videoId: string;
   title: string;
   viewCount: number;
   viewsPerDay: number;
@@ -260,7 +261,14 @@ export function MomentumInsights({ channelId, initialData }: MomentumInsightsPro
                 className="flex items-center justify-between p-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors"
               >
                 <div className="flex-1 min-w-0">
-                  <div className="font-medium text-sm line-clamp-1">{video.title}</div>
+                  <a
+                    href={`https://www.youtube.com/watch?v=${video.videoId}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="font-medium text-sm line-clamp-1 hover:underline"
+                  >
+                    {video.title}
+                  </a>
                   <div className="text-xs text-muted-foreground mt-1">
                     {formatNumber(video.viewCount)} просмотров • {formatNumber(video.viewsPerDay)} views/day
                   </div>

@@ -7,6 +7,7 @@ import OpenAI from "openai";
 
 interface VideoWithMomentum {
   id: number;
+  videoId: string;
   title: string;
   viewCount: number;
   publishedAt: string;
@@ -118,6 +119,7 @@ export async function POST(
 
       return {
         id: v.id,
+        videoId: v.videoId,
         title: v.title,
         viewCount: v.viewCount,
         publishedAt: v.publishedAt,
@@ -245,6 +247,7 @@ ${JSON.stringify(videosForAnalysis, null, 2)}
     // Формируем итоговые данные
     const momentumData = {
       highMomentumVideos: highMomentumVideos.slice(0, 10).map(v => ({
+        videoId: v.videoId,
         title: v.title,
         viewCount: v.viewCount,
         viewsPerDay: Math.round(v.viewsPerDay),
