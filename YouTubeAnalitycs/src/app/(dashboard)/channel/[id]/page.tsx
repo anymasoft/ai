@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
-import { db, competitors, aiInsights, channelMetrics, channelVideos } from "@/lib/db";
+import { db, competitors, aiInsights, channelMetrics, channelVideos, contentIntelligence } from "@/lib/db";
 import { eq, and, desc } from "drizzle-orm";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -12,6 +12,7 @@ import { SyncMetricsButton } from "@/components/channel/SyncMetricsButton";
 import { SyncVideosButton } from "@/components/channel/SyncVideosButton";
 import { ChannelGrowthChart } from "@/components/charts/ChannelGrowthChart";
 import { TopVideosGrid } from "@/components/channel/TopVideosGrid";
+import { ContentIntelligenceBlock } from "@/components/channel/ContentIntelligenceBlock";
 
 interface PageProps {
   params: Promise<{ id: string }>;
@@ -142,10 +143,23 @@ export default async function ChannelPage({ params }: PageProps) {
     .orderBy(desc(channelVideos.viewCount))
     .all();
 
+  // Получаем Content Intelligence анализ
+  const intelligence = await db
+    .select()
+    .from(contentIntelligence)
+    .where(eq(contentIntelligence.channelId, competitor.channelId))
+    .orderBy(desc(contentIntelligence.generatedAt))
+    .limit(1)
+    .get();
+
+  // Парсим JSON данные из content_intelligence
+  const contentData = intelligence ? JSON.parse(intelligence.data) : null;
+
   // Debug: проверка channelId и количества метрик
   console.log("channelId:", competitor.channelId);
   console.log("metrics rows:", metrics.length);
   console.log("videos rows:", videos.length);
+  console.log("content intelligence:", contentData ? "exists" : "not found");
 
   return (
     <div className="container mx-auto px-4 md:px-6 space-y-6 pb-12">
@@ -371,8 +385,13 @@ export default async function ChannelPage({ params }: PageProps) {
         {/* Топ видео канала */}
         <TopVideosGrid videos={videos} />
 
+        {/* AI Content Intelligence */}
+        <ContentIntelligenceBlock
+          channelId={competitorId}
+          initialData={contentData ? { ...contentData, generatedAt: intelligence?.generatedAt } : null}
+        />
+
         {/* Будущие блоки */}
-        <PlaceholderSection title="Content Patterns" icon={BarChart3} />
         <PlaceholderSection title="Audience & Engagement" icon={Users} />
       </div>
     </div>

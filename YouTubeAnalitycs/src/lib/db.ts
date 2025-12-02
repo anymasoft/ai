@@ -141,6 +141,16 @@ export const channelVideos = sqliteTable("channel_videos", {
     .$defaultFn(() => Date.now()), // Время получения данных
 });
 
+// Content Intelligence table - хранит AI-анализ контента видео
+export const contentIntelligence = sqliteTable("content_intelligence", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  channelId: text("channelId").notNull(), // ID канала из ScrapeCreators
+  data: text("data").notNull(), // JSON с результатами анализа
+  generatedAt: integer("generatedAt")
+    .notNull()
+    .$defaultFn(() => Date.now()), // Время генерации анализа
+});
+
 // Инициализация SQLite базы данных только на серверной стороне
 let _client: ReturnType<typeof createClient>;
 let _db: ReturnType<typeof drizzle>;
@@ -287,6 +297,22 @@ function getDatabase() {
         _client.execute(`
           CREATE INDEX IF NOT EXISTS idx_channel_videos_lookup
           ON channel_videos(channelId, videoId);
+        `);
+
+        // Создание таблицы content_intelligence
+        _client.execute(`
+          CREATE TABLE IF NOT EXISTS content_intelligence (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            channelId TEXT NOT NULL,
+            data TEXT NOT NULL,
+            generatedAt INTEGER NOT NULL
+          );
+        `);
+
+        // Создание индекса для быстрого поиска анализа по каналу
+        _client.execute(`
+          CREATE INDEX IF NOT EXISTS idx_content_intelligence_lookup
+          ON content_intelligence(channelId, generatedAt DESC);
         `);
 
         console.log("✅ Таблицы базы данных инициализированы");
