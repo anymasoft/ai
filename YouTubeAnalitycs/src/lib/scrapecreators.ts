@@ -589,7 +589,12 @@ export async function getYoutubeVideoComments(params: {
       if (!response.ok) {
         console.error("[ScrapeCreators] API error:", { status: response.status, data });
 
-        if (response.status === 404) {
+        if (response.status === 402) {
+          const error: any = new Error("Закончились кредиты ScrapeCreators API. Необходимо пополнить баланс.");
+          error.code = "INSUFFICIENT_CREDITS";
+          error.status = 402;
+          throw error;
+        } else if (response.status === 404) {
           throw new Error("Video comments not found.");
         } else if (response.status === 401) {
           throw new Error("Invalid API key. Check SCRAPECREATORS_API_KEY.");
