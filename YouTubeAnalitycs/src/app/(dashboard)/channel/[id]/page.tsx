@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
-import { db, competitors, aiInsights, channelMetrics, channelVideos, contentIntelligence } from "@/lib/db";
+import { db, competitors, aiInsights, channelMetrics, channelVideos, contentIntelligence, momentumInsights } from "@/lib/db";
 import { eq, and, desc } from "drizzle-orm";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -13,6 +13,7 @@ import { SyncVideosButton } from "@/components/channel/SyncVideosButton";
 import { ChannelGrowthChart } from "@/components/charts/ChannelGrowthChart";
 import { TopVideosGrid } from "@/components/channel/TopVideosGrid";
 import { ContentIntelligenceBlock } from "@/components/channel/ContentIntelligenceBlock";
+import { MomentumInsights } from "@/components/channel/MomentumInsights";
 
 interface PageProps {
   params: Promise<{ id: string }>;
@@ -155,11 +156,24 @@ export default async function ChannelPage({ params }: PageProps) {
   // Парсим JSON данные из content_intelligence
   const contentData = intelligence ? JSON.parse(intelligence.data) : null;
 
+  // Получаем Momentum Insights анализ
+  const momentum = await db
+    .select()
+    .from(momentumInsights)
+    .where(eq(momentumInsights.channelId, competitor.channelId))
+    .orderBy(desc(momentumInsights.generatedAt))
+    .limit(1)
+    .get();
+
+  // Парсим JSON данные из momentum_insights
+  const momentumData = momentum ? JSON.parse(momentum.data) : null;
+
   // Debug: проверка channelId и количества метрик
   console.log("channelId:", competitor.channelId);
   console.log("metrics rows:", metrics.length);
   console.log("videos rows:", videos.length);
   console.log("content intelligence:", contentData ? "exists" : "not found");
+  console.log("momentum insights:", momentumData ? "exists" : "not found");
 
   return (
     <div className="container mx-auto px-4 md:px-6 space-y-6 pb-12">
@@ -389,6 +403,12 @@ export default async function ChannelPage({ params }: PageProps) {
         <ContentIntelligenceBlock
           channelId={competitorId}
           initialData={contentData ? { ...contentData, generatedAt: intelligence?.generatedAt } : null}
+        />
+
+        {/* Momentum Insights */}
+        <MomentumInsights
+          channelId={competitorId}
+          initialData={momentumData ? { ...momentumData, generatedAt: momentum?.generatedAt } : null}
         />
 
         {/* Будущие блоки */}

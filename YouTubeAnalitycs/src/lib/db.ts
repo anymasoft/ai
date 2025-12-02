@@ -151,6 +151,16 @@ export const contentIntelligence = sqliteTable("content_intelligence", {
     .$defaultFn(() => Date.now()), // Время генерации анализа
 });
 
+// Momentum Insights table - хранит анализ растущих тем
+export const momentumInsights = sqliteTable("momentum_insights", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  channelId: text("channelId").notNull(), // ID канала из ScrapeCreators
+  data: text("data").notNull(), // JSON с результатами momentum анализа
+  generatedAt: integer("generatedAt")
+    .notNull()
+    .$defaultFn(() => Date.now()), // Время генерации анализа
+});
+
 // Инициализация SQLite базы данных только на серверной стороне
 let _client: ReturnType<typeof createClient>;
 let _db: ReturnType<typeof drizzle>;
@@ -313,6 +323,22 @@ function getDatabase() {
         _client.execute(`
           CREATE INDEX IF NOT EXISTS idx_content_intelligence_lookup
           ON content_intelligence(channelId, generatedAt DESC);
+        `);
+
+        // Создание таблицы momentum_insights
+        _client.execute(`
+          CREATE TABLE IF NOT EXISTS momentum_insights (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            channelId TEXT NOT NULL,
+            data TEXT NOT NULL,
+            generatedAt INTEGER NOT NULL
+          );
+        `);
+
+        // Создание индекса для быстрого поиска momentum по каналу
+        _client.execute(`
+          CREATE INDEX IF NOT EXISTS idx_momentum_insights_lookup
+          ON momentum_insights(channelId, generatedAt DESC);
         `);
 
         console.log("✅ Таблицы базы данных инициализированы");
