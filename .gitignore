@@ -33,3 +33,4 @@ build/
 *.env
 *.env.*
 
+YouTubeAnalitycs/sqlite.db
