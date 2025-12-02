@@ -34,3 +34,4 @@ build/
 *.env.*
 
 YouTubeAnalitycs/sqlite.db
+YouTubeAnalitycs/sqlite.db
