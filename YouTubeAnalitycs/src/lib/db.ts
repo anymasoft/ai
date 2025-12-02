@@ -323,6 +323,21 @@ function getDatabase() {
           ON channel_videos(channelId, videoId);
         `);
 
+        // Миграция: добавление колонок likeCount и commentCount если их нет
+        try {
+          _client.execute(`ALTER TABLE channel_videos ADD COLUMN likeCount INTEGER NOT NULL DEFAULT 0;`);
+          console.log("✅ Добавлена колонка likeCount в channel_videos");
+        } catch (e) {
+          // Колонка уже существует - игнорируем ошибку
+        }
+
+        try {
+          _client.execute(`ALTER TABLE channel_videos ADD COLUMN commentCount INTEGER NOT NULL DEFAULT 0;`);
+          console.log("✅ Добавлена колонка commentCount в channel_videos");
+        } catch (e) {
+          // Колонка уже существует - игнорируем ошибку
+        }
+
         // Создание таблицы content_intelligence
         _client.execute(`
           CREATE TABLE IF NOT EXISTS content_intelligence (

@@ -95,6 +95,8 @@ export async function POST(
             title: video.title,
             thumbnailUrl: video.thumbnailUrl,
             viewCount: video.viewCount,
+            likeCount: video.likeCount,
+            commentCount: video.commentCount,
             publishedAt: video.publishedAt,
             fetchedAt: Date.now(),
           })
@@ -111,6 +113,8 @@ export async function POST(
             title: video.title,
             thumbnailUrl: video.thumbnailUrl,
             viewCount: video.viewCount,
+            likeCount: video.likeCount,
+            commentCount: video.commentCount,
             publishedAt: video.publishedAt,
             fetchedAt: Date.now(),
           })

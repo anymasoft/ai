@@ -13,6 +13,8 @@ export interface VideoData {
   title: string;
   thumbnailUrl: string | null;
   viewCount: number;
+  likeCount: number;
+  commentCount: number;
   publishedAt: string;
 }
 
@@ -355,6 +357,14 @@ async function fetchVideosFromAPI(
         thumbnailUrl: extractThumbnailUrl(video.thumbnail || video.thumbnailUrl),
         viewCount: safeNumber(
           video.viewCount ?? video.viewCountInt ?? video.views,
+          0
+        ),
+        likeCount: safeNumber(
+          video.likeCount ?? video.likeCountInt ?? video.likes,
+          0
+        ),
+        commentCount: safeNumber(
+          video.commentCount ?? video.commentCountInt ?? video.comments,
           0
         ),
         publishedAt: String(video.publishedAt || video.publishedDate || new Date().toISOString()),
