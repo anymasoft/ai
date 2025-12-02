@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
-import { db, competitors, channelVideos, videoDetails } from "@/lib/db";
+import { db, competitors, channelVideos, videoDetails, audienceInsights } from "@/lib/db";
 import { eq, and, desc } from "drizzle-orm";
 import { getYoutubeVideoDetails } from "@/lib/scrapecreators";
 
@@ -162,6 +162,20 @@ export async function POST(
     console.log(
       `[Enrich] Завершено. Обогащено: ${enriched}, пропущено: ${skipped}, ошибок: ${errors}`
     );
+
+    // Инвалидируем кэш audience insights если обогатили хотя бы 1 видео
+    if (enriched > 0) {
+      try {
+        await db
+          .delete(audienceInsights)
+          .where(eq(audienceInsights.channelId, competitor.channelId))
+          .run();
+        console.log(`[Enrich] Инвалидирован кэш audience insights для канала ${competitor.channelId}`);
+      } catch (cacheError) {
+        console.error(`[Enrich] Ошибка инвалидации кэша:`, cacheError);
+        // Не критично, продолжаем
+      }
+    }
 
     return NextResponse.json(
       {
