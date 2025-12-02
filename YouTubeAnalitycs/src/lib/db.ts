@@ -324,18 +324,18 @@ function getDatabase() {
         `);
 
         // Миграция: добавление колонок likeCount и commentCount если их нет
-        try {
+        // Проверяем наличие колонок через PRAGMA table_info
+        const tableInfo = _client.execute(`PRAGMA table_info(channel_videos);`);
+        const columns = tableInfo.rows.map((row: any) => row.name);
+
+        if (!columns.includes("likeCount")) {
           _client.execute(`ALTER TABLE channel_videos ADD COLUMN likeCount INTEGER NOT NULL DEFAULT 0;`);
           console.log("✅ Добавлена колонка likeCount в channel_videos");
-        } catch (e) {
-          // Колонка уже существует - игнорируем ошибку
         }
 
-        try {
+        if (!columns.includes("commentCount")) {
           _client.execute(`ALTER TABLE channel_videos ADD COLUMN commentCount INTEGER NOT NULL DEFAULT 0;`);
           console.log("✅ Добавлена колонка commentCount в channel_videos");
-        } catch (e) {
-          // Колонка уже существует - игнорируем ошибку
         }
 
         // Создание таблицы content_intelligence
