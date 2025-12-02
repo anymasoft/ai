@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
-import { db, competitors, aiInsights, channelMetrics, channelVideos, contentIntelligence, momentumInsights, audienceInsights, commentInsights } from "@/lib/db";
+import { db, competitors, aiInsights, channelMetrics, channelVideos, contentIntelligence, momentumInsights, audienceInsights, commentInsights, channelAICommentInsights } from "@/lib/db";
 import { eq, and, desc } from "drizzle-orm";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -17,6 +17,7 @@ import { ContentIntelligenceBlock } from "@/components/channel/ContentIntelligen
 import { MomentumInsights } from "@/components/channel/MomentumInsights";
 import { AudienceInsights } from "@/components/channel/AudienceInsights";
 import { CommentInsights } from "@/components/channel/CommentInsights";
+import { DeepCommentAnalysis } from "@/components/channel/DeepCommentAnalysis";
 
 interface PageProps {
   params: Promise<{ id: string }>;
@@ -174,6 +175,18 @@ export default async function ChannelPage({ params }: PageProps) {
   // Парсим JSON данные из comment_insights
   const commentsData = comments ? JSON.parse(comments.data) : null;
 
+  // Получаем Deep Comment Analysis (AI v2.0)
+  const deepAnalysis = await db
+    .select()
+    .from(channelAICommentInsights)
+    .where(eq(channelAICommentInsights.channelId, competitor.channelId))
+    .orderBy(desc(channelAICommentInsights.createdAt))
+    .limit(1)
+    .get();
+
+  // Парсим JSON данные из channel_ai_comment_insights
+  const deepAnalysisData = deepAnalysis ? JSON.parse(deepAnalysis.resultJson) : null;
+
   // Debug: проверка channelId и количества метрик
   console.log("channelId:", competitor.channelId);
   console.log("metrics rows:", metrics.length);
@@ -182,6 +195,7 @@ export default async function ChannelPage({ params }: PageProps) {
   console.log("momentum insights:", momentumData ? "exists" : "not found");
   console.log("audience insights:", audienceData ? "exists" : "not found");
   console.log("comment insights:", commentsData ? "exists" : "not found");
+  console.log("deep analysis:", deepAnalysisData ? "exists" : "not found");
 
   return (
     <div className="container mx-auto px-4 md:px-6 space-y-6 pb-12">
@@ -430,6 +444,12 @@ export default async function ChannelPage({ params }: PageProps) {
         <CommentInsights
           channelId={competitorId}
           initialData={commentsData ? { ...commentsData, generatedAt: comments?.generatedAt } : null}
+        />
+
+        {/* Deep Comment Analysis (AI v2.0) */}
+        <DeepCommentAnalysis
+          channelId={competitorId}
+          initialData={deepAnalysisData ? { ...deepAnalysisData, createdAt: deepAnalysis?.createdAt } : null}
         />
       </div>
     </div>

@@ -3,7 +3,7 @@ import { drizzle } from "drizzle-orm/libsql";
 import { sqliteTable, text, integer, primaryKey } from "drizzle-orm/sqlite-core";
 import type { AdapterAccount } from "next-auth/adapters";
 
-// Users table with role and plan
+// Users table with role, plan and language
 export const users = sqliteTable("users", {
   id: text("id").notNull().primaryKey(),
   name: text("name"),
@@ -16,6 +16,9 @@ export const users = sqliteTable("users", {
   plan: text("plan", { enum: ["free", "basic", "professional", "enterprise"] })
     .notNull()
     .$default(() => "free"),
+  language: text("language", { enum: ["en", "ru"] })
+    .notNull()
+    .$default(() => "en"),
   createdAt: integer("createdAt")
     .notNull()
     .$defaultFn(() => Date.now()),
@@ -217,6 +220,16 @@ export const commentInsights = sqliteTable("comment_insights", {
   generatedAt: integer("generatedAt")
     .notNull()
     .$defaultFn(() => Date.now()), // Время генерации анализа
+});
+
+// Channel AI Comment Insights table - хранит глубокий AI-анализ комментариев канала (v2.0)
+export const channelAICommentInsights = sqliteTable("channel_ai_comment_insights", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  channelId: text("channelId").notNull(), // ID канала
+  resultJson: text("resultJson").notNull(), // JSON с результатами глубокого AI-анализа
+  createdAt: integer("createdAt")
+    .notNull()
+    .$defaultFn(() => Date.now()), // Время создания анализа
 });
 
 // Инициализация SQLite базы данных только на серверной стороне
