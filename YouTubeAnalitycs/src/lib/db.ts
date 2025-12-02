@@ -260,6 +260,7 @@ function getDatabase() {
             image TEXT,
             role TEXT NOT NULL DEFAULT 'user',
             plan TEXT NOT NULL DEFAULT 'free',
+            language TEXT NOT NULL DEFAULT 'en',
             createdAt INTEGER NOT NULL,
             updatedAt INTEGER NOT NULL
           );
@@ -360,12 +361,12 @@ function getDatabase() {
           ON channel_metrics(channelId, date);
         `);
 
-        // Создание таблицы channel_videos
+        // Создание таблицы channel_videos (стабильная схема со всеми колонками)
         _client.execute(`
           CREATE TABLE IF NOT EXISTS channel_videos (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             channelId TEXT NOT NULL,
-            videoId TEXT NOT NULL,
+            videoId TEXT NOT NULL UNIQUE,
             title TEXT NOT NULL,
             thumbnailUrl TEXT,
             viewCount INTEGER NOT NULL DEFAULT 0,
@@ -381,30 +382,6 @@ function getDatabase() {
           CREATE INDEX IF NOT EXISTS idx_channel_videos_lookup
           ON channel_videos(channelId, videoId);
         `);
-
-        // Миграция: добавление колонок likeCount и commentCount если их нет
-        // Используем безопасную проверку через SELECT
-        try {
-          // Пробуем выбрать колонку likeCount - если её нет, будет ошибка
-          _client.execute(`SELECT likeCount FROM channel_videos LIMIT 0;`);
-        } catch (e: any) {
-          // Колонка не существует - добавляем её
-          if (e.code === 'SQLITE_ERROR' && e.message?.includes('no such column')) {
-            _client.execute(`ALTER TABLE channel_videos ADD COLUMN likeCount INTEGER NOT NULL DEFAULT 0;`);
-            console.log("✅ Добавлена колонка likeCount в channel_videos");
-          }
-        }
-
-        try {
-          // Пробуем выбрать колонку commentCount - если её нет, будет ошибка
-          _client.execute(`SELECT commentCount FROM channel_videos LIMIT 0;`);
-        } catch (e: any) {
-          // Колонка не существует - добавляем её
-          if (e.code === 'SQLITE_ERROR' && e.message?.includes('no such column')) {
-            _client.execute(`ALTER TABLE channel_videos ADD COLUMN commentCount INTEGER NOT NULL DEFAULT 0;`);
-            console.log("✅ Добавлена колонка commentCount в channel_videos");
-          }
-        }
 
         // Создание таблицы content_intelligence
         _client.execute(`
