@@ -15,6 +15,9 @@ interface VideoWithEngagement {
   engagementScore: number;
   likeRate: number;
   commentRate: number;
+  viewsPerDay: number;
+  momentumScore: number;
+  titleScore: number;
   category: "High Engagement" | "Rising" | "Normal" | "Weak";
 }
 
@@ -32,6 +35,37 @@ function calculateMedian(numbers: number[]): number {
   }
 
   return sorted[middle];
+}
+
+/**
+ * Вычисляет количество дней с момента публикации
+ */
+function daysSincePublish(publishedAt: string): number {
+  const publishDate = new Date(publishedAt);
+  const diffMs = new Date().getTime() - publishDate.getTime();
+  return Math.max(diffMs / (1000 * 60 * 60 * 24), 1);
+}
+
+/**
+ * Вычисляет title_score на основе ключевых слов
+ */
+function calculateTitleScore(title: string): number {
+  const keywords = [
+    'tutorial', 'guide', 'how to', 'review', 'vs', 'comparison',
+    'story', 'experience', 'rant', 'opinion', 'thoughts', 'reaction',
+    'explained', 'tips', 'tricks', 'secrets', 'best', 'worst'
+  ];
+
+  const lowerTitle = title.toLowerCase();
+  let score = 0;
+
+  for (const keyword of keywords) {
+    if (lowerTitle.includes(keyword)) {
+      score += 0.15;
+    }
+  }
+
+  return Math.min(score, 1.0); // Максимум 1.0
 }
 
 /**
@@ -103,13 +137,43 @@ export async function POST(
 
     console.log(`[Audience] Найдено ${videos.length} видео для анализа`);
 
+    // Проверяем наличие данных о лайках и комментариях
+    const hasEngagementData = videos.some(v => v.likeCount > 0 || v.commentCount > 0);
+    const usingFallback = !hasEngagementData;
+
+    console.log(`[Audience] Режим анализа: ${usingFallback ? 'FALLBACK (proxy metrics)' : 'STANDARD (likes+comments)'}`);
+
     // Вычисляем engagement метрики для каждого видео
     const videosWithMetrics: VideoWithEngagement[] = videos.map(v => {
-      const engagementScore = v.viewCount > 0
-        ? (v.likeCount + v.commentCount) / v.viewCount
-        : 0;
+      const days = daysSincePublish(v.publishedAt);
+      const viewsPerDay = v.viewCount / days;
       const likeRate = v.viewCount > 0 ? v.likeCount / v.viewCount : 0;
       const commentRate = v.viewCount > 0 ? v.commentCount / v.viewCount : 0;
+      const titleScore = calculateTitleScore(v.title);
+
+      // Вычисляем momentum_score (упрощенная версия без БД)
+      const momentumScore = 0; // TODO: можно интегрировать с momentum_insights если нужно
+
+      // Новый комбинированный engagement_score
+      let engagementScore: number;
+
+      if (usingFallback) {
+        // Fallback режим: используем прокси метрики
+        engagementScore = (
+          viewsPerDay * 0.5 +
+          titleScore * 0.3 +
+          momentumScore * 0.2
+        );
+      } else {
+        // Стандартный режим: комбинируем все метрики
+        engagementScore = (
+          likeRate * 0.5 +
+          commentRate * 0.5 +
+          viewsPerDay * 0.4 +
+          titleScore * 0.3 +
+          momentumScore * 0.2
+        );
+      }
 
       return {
         id: v.id,
@@ -121,6 +185,9 @@ export async function POST(
         engagementScore,
         likeRate,
         commentRate,
+        viewsPerDay,
+        momentumScore,
+        titleScore,
         category: "Normal" as const,
       };
     });
@@ -149,18 +216,19 @@ export async function POST(
     });
 
     // Фильтруем High Engagement видео
-    const highEngagementVideos = videosWithMetrics
+    let highEngagementVideos = videosWithMetrics
       .filter(v => v.category === "High Engagement")
       .sort((a, b) => b.engagementScore - a.engagementScore)
       .slice(0, 30); // Топ 30
 
     console.log(`[Audience] High Engagement видео: ${highEngagementVideos.length}`);
 
+    // Fallback: если нет High Engagement видео, берём топ 30 по engagement_score
     if (highEngagementVideos.length === 0) {
-      return NextResponse.json(
-        { error: "No high engagement videos found" },
-        { status: 400 }
-      );
+      console.log(`[Audience] Fallback: берём топ 30 по engagement_score`);
+      highEngagementVideos = videosWithMetrics
+        .sort((a, b) => b.engagementScore - a.engagementScore)
+        .slice(0, 30);
     }
 
     // Проверяем, есть ли уже свежий анализ (не старше 3 дней)
@@ -190,6 +258,7 @@ export async function POST(
       viewCount: v.viewCount,
       likeCount: v.likeCount,
       commentCount: v.commentCount,
+      viewsPerDay: Math.round(v.viewsPerDay),
       engagementScore: v.engagementScore.toFixed(6),
       likeRate: `${(v.likeRate * 100).toFixed(2)}%`,
       commentRate: `${(v.commentRate * 100).toFixed(2)}%`,
@@ -200,17 +269,37 @@ export async function POST(
       apiKey: process.env.OPENAI_API_KEY,
     });
 
-    // Вызов OpenAI API
-    const completion = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
-      messages: [
-        {
-          role: "system",
-          content: "Ты — эксперт по анализу вовлеченности аудитории YouTube. Твоя задача — выявить паттерны высокого engagement."
-        },
-        {
-          role: "user",
-          content: `Проанализируй список видео с высоким engagement (лайки + комментарии выше медианы на 50%+) канала "${competitor.title}".
+    // Формируем промпт с учётом режима анализа
+    const systemPrompt = usingFallback
+      ? "Ты — эксперт по анализу вовлеченности аудитории YouTube. Твоя задача — выявить паттерны высокого engagement на основе поведенческих метрик (просмотры, скорость роста, формат, тема), так как данные лайков/комментариев недоступны."
+      : "Ты — эксперт по анализу вовлеченности аудитории YouTube. Твоя задача — выявить паттерны высокого engagement.";
+
+    const userPrompt = usingFallback
+      ? `Проанализируй список видео с высоким поведенческим engagement (просмотры/день, формат, тема) канала "${competitor.title}".
+
+ВАЖНО: Данные лайков/комментариев недоступны. Ориентируйся на формат, тему, стиль, скорость роста и схожие engagement-сигналы.
+
+Выяви:
+1) highEngagementThemes - темы, которые привлекают максимум просмотров
+2) engagingFormats - форматы видео, которые лучше всего работают
+3) audiencePatterns - что общего у популярных видео
+4) weakPoints - какие темы/форматы работают хуже
+5) recommendations - конкретные рекомендации как улучшить контент
+6) explanation - краткое объяснение почему эти темы успешны
+
+Видео с высоким engagement:
+${JSON.stringify(videosForAnalysis, null, 2)}
+
+Ответь ТОЛЬКО в формате JSON без дополнительного текста:
+{
+  "highEngagementThemes": ["тема 1", "тема 2", ...],
+  "engagingFormats": ["формат 1", "формат 2", ...],
+  "audiencePatterns": ["паттерн 1", "паттерн 2", ...],
+  "weakPoints": ["слабость 1", "слабость 2", ...],
+  "recommendations": ["рекомендация 1", "рекомендация 2", ...],
+  "explanation": "краткое объяснение..."
+}`
+      : `Проанализируй список видео с высоким engagement (лайки + комментарии выше медианы на 50%+) канала "${competitor.title}".
 
 Выяви:
 1) highEngagementThemes - темы, которые вызывают максимум реакций (лайки + комментарии)
@@ -231,7 +320,19 @@ ${JSON.stringify(videosForAnalysis, null, 2)}
   "weakPoints": ["слабость 1", "слабость 2", ...],
   "recommendations": ["рекомендация 1", "рекомендация 2", ...],
   "explanation": "краткое объяснение..."
-}`
+}`;
+
+    // Вызов OpenAI API
+    const completion = await openai.chat.completions.create({
+      model: "gpt-4o-mini",
+      messages: [
+        {
+          role: "system",
+          content: systemPrompt
+        },
+        {
+          role: "user",
+          content: userPrompt
         }
       ],
       temperature: 0.7,
@@ -259,6 +360,7 @@ ${JSON.stringify(videosForAnalysis, null, 2)}
         engagementScore: v.engagementScore,
         likeRate: v.likeRate,
         commentRate: v.commentRate,
+        viewsPerDay: v.viewsPerDay,
         publishedAt: v.publishedAt,
       })),
       stats: {
@@ -268,6 +370,7 @@ ${JSON.stringify(videosForAnalysis, null, 2)}
         weak: videosWithMetrics.filter(v => v.category === "Weak").length,
         medianEngagement: medianEngagement,
       },
+      usingFallback, // Флаг для UI
       ...aiAnalysis,
     };
 

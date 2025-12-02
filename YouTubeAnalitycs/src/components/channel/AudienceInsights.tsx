@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Loader2, Users, Heart, MessageCircle, TrendingDown, Lightbulb, Sparkles } from "lucide-react";
+import { Loader2, Users, Heart, MessageCircle, TrendingDown, Lightbulb, Sparkles, AlertTriangle } from "lucide-react";
 import { useRouter } from "next/navigation";
 
 interface EngagementVideo {
@@ -14,6 +14,7 @@ interface EngagementVideo {
   engagementScore: number;
   likeRate: number;
   commentRate: number;
+  viewsPerDay: number;
   publishedAt: string;
 }
 
@@ -32,6 +33,7 @@ interface AudienceData {
   weakPoints: string[];
   recommendations: string[];
   explanation: string;
+  usingFallback?: boolean;
   generatedAt?: number;
 }
 
@@ -177,6 +179,25 @@ export function AudienceInsights({ channelId, initialData }: AudienceInsightsPro
           <div className="text-xs text-muted-foreground">Weak</div>
         </div>
       </div>
+
+      {/* Fallback Warning */}
+      {data.usingFallback && (
+        <Card className="border-amber-200 dark:border-amber-900 bg-amber-50/50 dark:bg-amber-950/20">
+          <CardContent className="pt-6">
+            <div className="flex items-start gap-3">
+              <AlertTriangle className="h-5 w-5 text-amber-600 dark:text-amber-400 mt-0.5 flex-shrink-0" />
+              <div className="flex-1">
+                <p className="text-sm font-medium text-amber-900 dark:text-amber-100">
+                  Данные лайков/комментариев недоступны
+                </p>
+                <p className="text-sm text-amber-700 dark:text-amber-300 mt-1">
+                  Используем поведенческий engagement-профиль на основе просмотров, скорости роста, формата и темы видео.
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* AI Explanation */}
       <Card className="border-purple-200 dark:border-purple-900 bg-purple-50/50 dark:bg-purple-950/20">
