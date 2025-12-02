@@ -11,7 +11,7 @@ import { TrendingUp, Users, Video, Eye, BarChart3, Calendar, AlertCircle, ArrowL
 import { SyncMetricsButton } from "@/components/channel/SyncMetricsButton";
 import { SyncVideosButton } from "@/components/channel/SyncVideosButton";
 import { ChannelGrowthChart } from "@/components/charts/ChannelGrowthChart";
-import { TopVideosTable } from "@/components/channel/TopVideosTable";
+import { TopVideosGrid } from "@/components/channel/TopVideosGrid";
 
 interface PageProps {
   params: Promise<{ id: string }>;
@@ -369,7 +369,7 @@ export default async function ChannelPage({ params }: PageProps) {
         />
 
         {/* Топ видео канала */}
-        <TopVideosTable videos={videos} />
+        <TopVideosGrid videos={videos} />
 
         {/* Будущие блоки */}
         <PlaceholderSection title="Content Patterns" icon={BarChart3} />
