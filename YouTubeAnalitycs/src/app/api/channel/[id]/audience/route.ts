@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
-import { db, competitors, channelVideos, audienceInsights } from "@/lib/db";
+import { db, competitors, channelVideos, videoDetails, audienceInsights } from "@/lib/db";
 import { eq, and, desc } from "drizzle-orm";
 import OpenAI from "openai";
 
@@ -136,6 +136,28 @@ export async function POST(
     }
 
     console.log(`[Audience] Найдено ${videos.length} видео для анализа`);
+
+    // Обогащаем видео данными из videoDetails если доступны
+    const sevenDaysAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
+    let enrichedCount = 0;
+
+    for (const video of videos) {
+      // Проверяем, есть ли детальные данные для этого видео
+      const details = await db
+        .select()
+        .from(videoDetails)
+        .where(eq(videoDetails.videoId, video.videoId))
+        .get();
+
+      // Если детальные данные существуют и не устарели, используем их
+      if (details && details.updatedAt > sevenDaysAgo) {
+        video.likeCount = details.likeCount;
+        video.commentCount = details.commentCount;
+        enrichedCount++;
+      }
+    }
+
+    console.log(`[Audience] Обогащено ${enrichedCount} видео из videoDetails`);
 
     // Проверяем наличие данных о лайках и комментариях
     const hasEngagementData = videos.some(v => v.likeCount > 0 || v.commentCount > 0);
