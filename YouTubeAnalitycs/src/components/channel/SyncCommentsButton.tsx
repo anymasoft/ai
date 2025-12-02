@@ -25,6 +25,27 @@ export function SyncCommentsButton({ channelId }: SyncCommentsButtonProps) {
       const data = await response.json();
 
       if (!response.ok) {
+        // Специальная обработка для ошибки отсутствия кредитов
+        if (response.status === 402 || data.insufficientCredits) {
+          const synced = data.synced || 0;
+          const totalComments = data.totalComments || 0;
+
+          if (synced > 0) {
+            toast.warning(
+              `Частично синхронизировано: ${synced} видео (${totalComments} комментариев). ${data.error}`,
+              { duration: 8000 }
+            );
+          } else {
+            toast.error(data.error || "Закончились кредиты ScrapeCreators API", {
+              duration: 8000,
+            });
+          }
+
+          // Обновляем страницу даже при частичной синхронизации
+          router.refresh();
+          return;
+        }
+
         toast.error(data.error || "Failed to sync comments");
         return;
       }

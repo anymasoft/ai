@@ -184,10 +184,30 @@ export async function POST(
 
         // Небольшая задержка между запросами (rate limiting)
         await new Promise((resolve) => setTimeout(resolve, 1000));
-      } catch (error) {
+      } catch (error: any) {
         console.error(`[CommentsSync] Ошибка синхронизации видео ${video.videoId}:`, error);
+
+        // Если закончились кредиты - прекращаем синхронизацию
+        if (error.code === "INSUFFICIENT_CREDITS" || error.status === 402) {
+          console.log(`[CommentsSync] Прекращение синхронизации: закончились кредиты ScrapeCreators API`);
+
+          return NextResponse.json(
+            {
+              success: false,
+              error: "Закончились кредиты ScrapeCreators API. Необходимо пополнить баланс для продолжения синхронизации.",
+              synced,
+              skipped,
+              errors: errors + 1,
+              totalComments,
+              totalVideos: videos.length,
+              insufficientCredits: true,
+            },
+            { status: 402 }
+          );
+        }
+
         errors++;
-        // Продолжаем обработку остальных видео
+        // Продолжаем обработку остальных видео для других типов ошибок
       }
     }
 
