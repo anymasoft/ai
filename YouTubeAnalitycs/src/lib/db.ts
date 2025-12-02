@@ -135,6 +135,8 @@ export const channelVideos = sqliteTable("channel_videos", {
   title: text("title").notNull(), // Название видео
   thumbnailUrl: text("thumbnailUrl"), // URL миниатюры
   viewCount: integer("viewCount").notNull().default(0), // Количество просмотров
+  likeCount: integer("likeCount").notNull().default(0), // Количество лайков
+  commentCount: integer("commentCount").notNull().default(0), // Количество комментариев
   publishedAt: text("publishedAt").notNull(), // Дата публикации (ISO8601)
   fetchedAt: integer("fetchedAt")
     .notNull()
@@ -156,6 +158,16 @@ export const momentumInsights = sqliteTable("momentum_insights", {
   id: integer("id").primaryKey({ autoIncrement: true }),
   channelId: text("channelId").notNull(), // ID канала из ScrapeCreators
   data: text("data").notNull(), // JSON с результатами momentum анализа
+  generatedAt: integer("generatedAt")
+    .notNull()
+    .$defaultFn(() => Date.now()), // Время генерации анализа
+});
+
+// Audience Insights table - хранит анализ вовлеченности аудитории
+export const audienceInsights = sqliteTable("audience_insights", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  channelId: text("channelId").notNull(), // ID канала из ScrapeCreators
+  data: text("data").notNull(), // JSON с результатами audience анализа
   generatedAt: integer("generatedAt")
     .notNull()
     .$defaultFn(() => Date.now()), // Время генерации анализа
@@ -298,6 +310,8 @@ function getDatabase() {
             title TEXT NOT NULL,
             thumbnailUrl TEXT,
             viewCount INTEGER NOT NULL DEFAULT 0,
+            likeCount INTEGER NOT NULL DEFAULT 0,
+            commentCount INTEGER NOT NULL DEFAULT 0,
             publishedAt TEXT NOT NULL,
             fetchedAt INTEGER NOT NULL
           );
@@ -339,6 +353,22 @@ function getDatabase() {
         _client.execute(`
           CREATE INDEX IF NOT EXISTS idx_momentum_insights_lookup
           ON momentum_insights(channelId, generatedAt DESC);
+        `);
+
+        // Создание таблицы audience_insights
+        _client.execute(`
+          CREATE TABLE IF NOT EXISTS audience_insights (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            channelId TEXT NOT NULL,
+            data TEXT NOT NULL,
+            generatedAt INTEGER NOT NULL
+          );
+        `);
+
+        // Создание индекса для быстрого поиска audience анализа по каналу
+        _client.execute(`
+          CREATE INDEX IF NOT EXISTS idx_audience_insights_lookup
+          ON audience_insights(channelId, generatedAt DESC);
         `);
 
         console.log("✅ Таблицы базы данных инициализированы");

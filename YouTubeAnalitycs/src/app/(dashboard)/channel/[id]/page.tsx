@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
-import { db, competitors, aiInsights, channelMetrics, channelVideos, contentIntelligence, momentumInsights } from "@/lib/db";
+import { db, competitors, aiInsights, channelMetrics, channelVideos, contentIntelligence, momentumInsights, audienceInsights } from "@/lib/db";
 import { eq, and, desc } from "drizzle-orm";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -14,6 +14,7 @@ import { ChannelGrowthChart } from "@/components/charts/ChannelGrowthChart";
 import { TopVideosGrid } from "@/components/channel/TopVideosGrid";
 import { ContentIntelligenceBlock } from "@/components/channel/ContentIntelligenceBlock";
 import { MomentumInsights } from "@/components/channel/MomentumInsights";
+import { AudienceInsights } from "@/components/channel/AudienceInsights";
 
 interface PageProps {
   params: Promise<{ id: string }>;
@@ -49,27 +50,6 @@ function formatDate(timestamp: number): string {
 function calculateAvgViews(viewCount: number, videoCount: number): number {
   if (videoCount === 0) return 0;
   return Math.round(viewCount / videoCount);
-}
-
-/**
- * Компонент-плейсхолдер для будущих блоков аналитики
- */
-function PlaceholderSection({ title, icon: Icon }: { title: string; icon: any }) {
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Icon className="h-5 w-5 text-muted-foreground" />
-          {title}
-        </CardTitle>
-      </CardHeader>
-      <CardContent>
-        <div className="flex items-center justify-center py-12 text-muted-foreground">
-          <p>Coming soon: data-driven analysis</p>
-        </div>
-      </CardContent>
-    </Card>
-  );
 }
 
 export default async function ChannelPage({ params }: PageProps) {
@@ -168,12 +148,25 @@ export default async function ChannelPage({ params }: PageProps) {
   // Парсим JSON данные из momentum_insights
   const momentumData = momentum ? JSON.parse(momentum.data) : null;
 
+  // Получаем Audience Insights анализ
+  const audience = await db
+    .select()
+    .from(audienceInsights)
+    .where(eq(audienceInsights.channelId, competitor.channelId))
+    .orderBy(desc(audienceInsights.generatedAt))
+    .limit(1)
+    .get();
+
+  // Парсим JSON данные из audience_insights
+  const audienceData = audience ? JSON.parse(audience.data) : null;
+
   // Debug: проверка channelId и количества метрик
   console.log("channelId:", competitor.channelId);
   console.log("metrics rows:", metrics.length);
   console.log("videos rows:", videos.length);
   console.log("content intelligence:", contentData ? "exists" : "not found");
   console.log("momentum insights:", momentumData ? "exists" : "not found");
+  console.log("audience insights:", audienceData ? "exists" : "not found");
 
   return (
     <div className="container mx-auto px-4 md:px-6 space-y-6 pb-12">
@@ -411,8 +404,11 @@ export default async function ChannelPage({ params }: PageProps) {
           initialData={momentumData ? { ...momentumData, generatedAt: momentum?.generatedAt } : null}
         />
 
-        {/* Будущие блоки */}
-        <PlaceholderSection title="Audience & Engagement" icon={Users} />
+        {/* Audience & Engagement */}
+        <AudienceInsights
+          channelId={competitorId}
+          initialData={audienceData ? { ...audienceData, generatedAt: audience?.generatedAt } : null}
+        />
       </div>
     </div>
   );
