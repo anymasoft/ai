@@ -84,7 +84,6 @@ export function ChannelAnalytics({
         channelId={channelId}
         initialData={contentData}
         hasRequiredData={hasVideos}
-        analysisLanguage={analysisLanguage}
       />
 
       {/* Momentum Insights */}
@@ -92,7 +91,6 @@ export function ChannelAnalytics({
         channelId={channelId}
         initialData={momentumData}
         hasRequiredData={hasVideos}
-        analysisLanguage={analysisLanguage}
       />
 
       {/* Audience & Engagement */}
@@ -100,7 +98,6 @@ export function ChannelAnalytics({
         channelId={channelId}
         initialData={audienceData}
         hasRequiredData={hasVideos}
-        analysisLanguage={analysisLanguage}
       />
 
       {/* Comment Intelligence */}
@@ -108,7 +105,6 @@ export function ChannelAnalytics({
         channelId={channelId}
         initialData={commentsData}
         hasRequiredData={hasVideos && hasComments}
-        analysisLanguage={analysisLanguage}
       />
 
       {/* Deep Comment Analysis (AI v2.0) */}

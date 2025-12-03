@@ -41,7 +41,6 @@ interface AudienceInsightsProps {
   channelId: number;
   initialData?: AudienceData | null;
   hasRequiredData?: boolean;
-  analysisLanguage?: "en" | "ru";
 }
 
 function formatNumber(num: number): string {
@@ -69,88 +68,13 @@ function formatEngagement(score: number, isFallback: boolean): string {
 export function AudienceInsights({
   channelId,
   initialData,
-  hasRequiredData = true,
-  analysisLanguage = "en"
+  hasRequiredData = true
 }: AudienceInsightsProps) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [data, setData] = useState<AudienceData | null>(initialData || null);
   const [error, setError] = useState<string | null>(null);
   const [enriching, setEnriching] = useState(false);
-
-  // Local dictionary for titles/descriptions only
-  const texts = {
-    en: {
-      title: "Audience & Engagement",
-      description: "Audience engagement and content reactions analysis",
-      generating: "Analyzing engagement...",
-      waitTime: "This may take 15-25 seconds",
-      syncFirst: "Sync videos first",
-      syncDesc: "Click 'Sync Top Videos' above to load data.",
-      generateButton: "Generate Audience Analysis",
-      generateDesc: "Audience analysis will show which topics get maximum audience reactions.",
-      refreshButton: "Refresh Analysis",
-      statsAnalyzed: "Analyzed",
-      statsHighEngagement: "High Engagement",
-      statsRising: "Rising",
-      statsWeak: "Weak",
-      fallbackWarning: "Likes/comments data unavailable",
-      fallbackDesc: "Using behavioral engagement profile based on views, growth rate, format and topic.",
-      enrichButton: "Get real likes/comments",
-      enriching: "Enriching data...",
-      enrichWait: "This will take ~15-30 seconds. Fetching detailed data for top 30 videos...",
-      whyHighEngagement: "Why these topics get high engagement",
-      highEngagementThemes: "High Engagement Themes",
-      engagingFormats: "Engaging Formats",
-      audiencePatterns: "Audience Patterns",
-      weakPoints: "Weak Points",
-      weakPointsDesc: "Topics and formats that get few reactions",
-      recommendations: "How to increase engagement",
-      highEngagementVideos: "High Engagement Videos",
-      videosAboveMedian: "Videos with engagement 50%+ above median",
-      views: "views",
-      likes: "likes",
-      comments: "comments",
-      engagement: "engagement",
-      score: "score"
-    },
-    ru: {
-      title: "Audience & Engagement",
-      description: "Анализ вовлеченности аудитории и реакций на контент",
-      generating: "Анализ engagement...",
-      waitTime: "Это может занять 15-25 секунд",
-      syncFirst: "Сначала синхронизируйте видео",
-      syncDesc: "Нажмите кнопку 'Sync Top Videos' выше, чтобы загрузить данные.",
-      generateButton: "Сгенерировать Audience анализ",
-      generateDesc: "Audience анализ покажет какие темы получают максимум реакций от аудитории.",
-      refreshButton: "Обновить анализ",
-      statsAnalyzed: "Проанализировано",
-      statsHighEngagement: "High Engagement",
-      statsRising: "Rising",
-      statsWeak: "Weak",
-      fallbackWarning: "Данные лайков/комментариев недоступны",
-      fallbackDesc: "Используем поведенческий engagement-профиль на основе просмотров, скорости роста, формата и темы видео.",
-      enrichButton: "Получить реальные лайки/комменты",
-      enriching: "Обогащение данных...",
-      enrichWait: "Это займёт ~15-30 секунд. Получаем детальные данные для топ 30 видео...",
-      whyHighEngagement: "Почему эти темы получают высокий engagement",
-      highEngagementThemes: "Темы с высоким engagement",
-      engagingFormats: "Форматы, вызывающие реакцию",
-      audiencePatterns: "Паттерны аудитории",
-      weakPoints: "Слабые точки",
-      weakPointsDesc: "Темы и форматы, которые получают мало реакций",
-      recommendations: "Рекомендации как повысить engagement",
-      highEngagementVideos: "Видео с высоким Engagement",
-      videosAboveMedian: "Видео с engagement выше медианы на 50%+",
-      views: "просмотров",
-      likes: "лайков",
-      comments: "комментариев",
-      engagement: "engagement",
-      score: "score"
-    }
-  };
-
-  const t = texts[analysisLanguage];
 
   async function handleGenerate() {
     setLoading(true);
@@ -212,17 +136,17 @@ export function AudienceInsights({
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Users className="h-5 w-5 text-purple-600 dark:text-purple-400" />
-            {t.title}
+            Audience & Engagement
           </CardTitle>
           <CardDescription>
-            {t.description}
+            Audience engagement and content reactions analysis
           </CardDescription>
         </CardHeader>
         <CardContent>
           <div className="flex flex-col items-center justify-center py-12">
             <Loader2 className="h-8 w-8 animate-spin text-muted-foreground mb-4" />
-            <p className="text-muted-foreground">{t.generating}</p>
-            <p className="text-sm text-muted-foreground mt-2">{t.waitTime}</p>
+            <p className="text-muted-foreground">Analyzing engagement...</p>
+            <p className="text-sm text-muted-foreground mt-2">This may take 15-25 seconds</p>
           </div>
         </CardContent>
       </Card>
@@ -235,10 +159,10 @@ export function AudienceInsights({
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Users className="h-5 w-5 text-purple-600 dark:text-purple-400" />
-            {t.title}
+            Audience & Engagement
           </CardTitle>
           <CardDescription>
-            {t.description}
+            Audience engagement and content reactions analysis
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -246,24 +170,24 @@ export function AudienceInsights({
             {!hasRequiredData ? (
               <>
                 <p className="text-muted-foreground mb-2 text-center">
-                  {t.syncFirst}
+                  Sync videos first
                 </p>
                 <p className="text-sm text-muted-foreground mb-4 text-center">
-                  {t.syncDesc}
+                  Click 'Sync Top Videos' above to load data.
                 </p>
-                <Button onClick={handleGenerate} className="gap-2 cursor-pointer" disabled title={t.syncFirst}>
+                <Button onClick={handleGenerate} className="gap-2 cursor-pointer" disabled title="Sync videos first">
                   <Users className="h-4 w-4" />
-                  {t.generateButton}
+                  Generate Audience Analysis
                 </Button>
               </>
             ) : (
               <>
                 <p className="text-muted-foreground mb-4">
-                  {t.generateDesc}
+                  Audience analysis will show which topics get maximum audience reactions.
                 </p>
                 <Button onClick={handleGenerate} className="gap-2 cursor-pointer">
                   <Users className="h-4 w-4" />
-                  {t.generateButton}
+                  Generate Audience Analysis
                 </Button>
               </>
             )}
@@ -282,15 +206,15 @@ export function AudienceInsights({
         <div>
           <h2 className="text-2xl font-bold flex items-center gap-2">
             <Users className="h-6 w-6 text-purple-600 dark:text-purple-400" />
-            {t.title}
+            Audience & Engagement
           </h2>
           <p className="text-sm text-muted-foreground mt-1">
-            {t.description}
+            Audience engagement and content reactions analysis
           </p>
         </div>
         <Button onClick={handleGenerate} variant="outline" size="sm" className="gap-2 cursor-pointer">
           <Users className="h-4 w-4" />
-          {t.refreshButton}
+          Refresh Analysis
         </Button>
       </div>
 
@@ -298,19 +222,19 @@ export function AudienceInsights({
       <div className="grid grid-cols-4 gap-4">
         <div className="bg-muted/50 rounded-lg p-4">
           <div className="text-2xl font-bold">{data.stats.totalAnalyzed}</div>
-          <div className="text-xs text-muted-foreground">{t.statsAnalyzed}</div>
+          <div className="text-xs text-muted-foreground">Analyzed</div>
         </div>
         <div className="bg-purple-500/10 rounded-lg p-4">
           <div className="text-2xl font-bold text-purple-600 dark:text-purple-400">{data.stats.highEngagement}</div>
-          <div className="text-xs text-muted-foreground">{t.statsHighEngagement}</div>
+          <div className="text-xs text-muted-foreground">High Engagement</div>
         </div>
         <div className="bg-blue-500/10 rounded-lg p-4">
           <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">{data.stats.rising}</div>
-          <div className="text-xs text-muted-foreground">{t.statsRising}</div>
+          <div className="text-xs text-muted-foreground">Rising</div>
         </div>
         <div className="bg-red-500/10 rounded-lg p-4">
           <div className="text-2xl font-bold text-red-600 dark:text-red-400">{data.stats.weak}</div>
-          <div className="text-xs text-muted-foreground">{t.statsWeak}</div>
+          <div className="text-xs text-muted-foreground">Weak</div>
         </div>
       </div>
 
@@ -322,10 +246,10 @@ export function AudienceInsights({
               <AlertTriangle className="h-5 w-5 text-amber-600 dark:text-amber-400 mt-0.5 flex-shrink-0" />
               <div className="flex-1">
                 <p className="text-sm font-medium text-amber-900 dark:text-amber-100">
-                  {t.fallbackWarning}
+                  Likes/comments data unavailable
                 </p>
                 <p className="text-sm text-amber-700 dark:text-amber-300 mt-1 mb-3">
-                  {t.fallbackDesc}
+                  Using behavioral engagement profile based on views, growth rate, format and topic.
                 </p>
                 <Button
                   onClick={handleEnrich}
@@ -337,18 +261,18 @@ export function AudienceInsights({
                   {enriching ? (
                     <>
                       <Loader2 className="h-4 w-4 animate-spin" />
-                      {t.enriching}
+                      Enriching data...
                     </>
                   ) : (
                     <>
                       <Sparkles className="h-4 w-4" />
-                      {t.enrichButton}
+                      Get real likes/comments
                     </>
                   )}
                 </Button>
                 {enriching && (
                   <p className="text-xs text-amber-600 dark:text-amber-400 mt-2">
-                    {t.enrichWait}
+                    This will take ~15-30 seconds. Fetching detailed data for top 30 videos...
                   </p>
                 )}
               </div>
@@ -362,7 +286,7 @@ export function AudienceInsights({
         <CardHeader>
           <CardTitle className="text-lg flex items-center gap-2">
             <Sparkles className="h-5 w-5 text-purple-600 dark:text-purple-400" />
-            {t.whyHighEngagement}
+            Why these topics get high engagement
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -377,7 +301,7 @@ export function AudienceInsights({
           <CardHeader>
             <CardTitle className="text-lg flex items-center gap-2">
               <Heart className="h-5 w-5 text-pink-600 dark:text-pink-400" />
-              {t.highEngagementThemes}
+              High Engagement Themes
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -397,7 +321,7 @@ export function AudienceInsights({
           <CardHeader>
             <CardTitle className="text-lg flex items-center gap-2">
               <MessageCircle className="h-5 w-5 text-green-600 dark:text-green-400" />
-              {t.engagingFormats}
+              Engaging Formats
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -417,7 +341,7 @@ export function AudienceInsights({
           <CardHeader>
             <CardTitle className="text-lg flex items-center gap-2">
               <Users className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-              {t.audiencePatterns}
+              Audience Patterns
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -438,10 +362,10 @@ export function AudienceInsights({
         <CardHeader>
           <CardTitle className="text-lg flex items-center gap-2">
             <TrendingDown className="h-5 w-5 text-red-600 dark:text-red-400" />
-            {t.weakPoints}
+            Weak Points
           </CardTitle>
           <CardDescription>
-            {t.weakPointsDesc}
+            Topics and formats that get few reactions
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -461,7 +385,7 @@ export function AudienceInsights({
         <CardHeader>
           <CardTitle className="text-lg flex items-center gap-2">
             <Lightbulb className="h-5 w-5 text-yellow-600 dark:text-yellow-400" />
-            {t.recommendations}
+            How to increase engagement
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -479,9 +403,9 @@ export function AudienceInsights({
       {/* High Engagement Videos */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg">{t.highEngagementVideos}</CardTitle>
+          <CardTitle className="text-lg">High Engagement Videos</CardTitle>
           <CardDescription>
-            {t.videosAboveMedian}
+            Videos with engagement 50%+ above median
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -494,9 +418,9 @@ export function AudienceInsights({
                 <div className="flex-1 min-w-0">
                   <div className="font-medium text-sm line-clamp-1">{video.title}</div>
                   <div className="text-xs text-muted-foreground mt-1 flex gap-3">
-                    <span>{formatNumber(video.viewCount)} {t.views}</span>
-                    <span>{formatNumber(video.likeCount)} {t.likes}</span>
-                    <span>{formatNumber(video.commentCount)} {t.comments}</span>
+                    <span>{formatNumber(video.viewCount)} views</span>
+                    <span>{formatNumber(video.likeCount)} likes</span>
+                    <span>{formatNumber(video.commentCount)} comments</span>
                   </div>
                 </div>
                 <div className="flex items-center gap-2 ml-4">
@@ -505,7 +429,7 @@ export function AudienceInsights({
                       {formatEngagement(video.engagementScore, data.usingFallback || false)}
                     </div>
                     <div className="text-xs text-muted-foreground">
-                      {data.usingFallback ? t.score : t.engagement}
+                      {data.usingFallback ? "score" : "engagement"}
                     </div>
                   </div>
                 </div>
