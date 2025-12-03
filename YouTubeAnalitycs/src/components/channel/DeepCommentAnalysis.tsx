@@ -47,6 +47,13 @@ export function DeepCommentAnalysis({
   const [progress, setProgress] = useState<ProgressData | null>(null);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
 
+  // Синхронизация локального state с initialData при обновлении
+  useEffect(() => {
+    if (initialData) {
+      setData(initialData);
+    }
+  }, [initialData]);
+
   // Polling для получения прогресса
   useEffect(() => {
     if (!loading || !channelId) return;
