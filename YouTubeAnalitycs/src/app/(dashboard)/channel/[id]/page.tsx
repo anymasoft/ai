@@ -11,6 +11,7 @@ import { TrendingUp, Users, Video, Eye, BarChart3, Calendar, AlertCircle, ArrowL
 import { SyncMetricsButton } from "@/components/channel/SyncMetricsButton";
 import { SyncVideosButton } from "@/components/channel/SyncVideosButton";
 import { SyncCommentsButton } from "@/components/channel/SyncCommentsButton";
+import { SyncAllDataButton } from "@/components/channel/SyncAllDataButton";
 import { ChannelGrowthChart } from "@/components/charts/ChannelGrowthChart";
 import { TopVideosGrid } from "@/components/channel/TopVideosGrid";
 import { ContentIntelligenceBlock } from "@/components/channel/ContentIntelligenceBlock";
@@ -238,6 +239,7 @@ export default async function ChannelPage({ params }: PageProps) {
 
         {/* Кнопки синхронизации метрик, видео и комментариев */}
         <div className="self-start flex gap-2">
+          <SyncAllDataButton channelId={competitorId} />
           <SyncMetricsButton channelId={competitorId} />
           <SyncVideosButton channelId={competitorId} />
           <SyncCommentsButton channelId={competitorId} />
