@@ -118,8 +118,10 @@ export default function AccountSettings() {
 
       toast.success("Your language preference has been updated successfully.");
 
-      // Refresh the page to apply language changes
-      router.refresh();
+      // Refresh the page to apply language changes after toast is visible
+      setTimeout(() => {
+        router.refresh();
+      }, 1000);
     } catch (error) {
       console.error("Error saving settings:", error);
       toast.error("Failed to save settings. Please try again.");
