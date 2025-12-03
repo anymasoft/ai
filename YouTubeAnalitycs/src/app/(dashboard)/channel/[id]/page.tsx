@@ -2,6 +2,8 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
+import { getUserLanguageServer } from "@/lib/get-user-language-server";
+import { getDict } from "@/lib/i18n";
 import { db, competitors, aiInsights, channelMetrics, channelVideos, videoComments, contentIntelligence, momentumInsights, audienceInsights, commentInsights, channelAICommentInsights } from "@/lib/db";
 import { eq, and, desc, inArray } from "drizzle-orm";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -63,6 +65,10 @@ export default async function ChannelPage({ params }: PageProps) {
   if (!session?.user?.id) {
     redirect("/api/auth/signin");
   }
+
+  // Получаем язык пользователя и словарь для локализации
+  const language = await getUserLanguageServer();
+  const dict = getDict(language);
 
   const { id } = await params;
   const competitorId = parseInt(id, 10);
@@ -223,7 +229,7 @@ export default async function ChannelPage({ params }: PageProps) {
           className="inline-flex items-center text-sm text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
         >
           <ArrowLeft className="w-4 h-4 mr-1" />
-          Back to Competitors
+          {dict.backToCompetitors}
         </Link>
       </div>
 
@@ -248,7 +254,7 @@ export default async function ChannelPage({ params }: PageProps) {
             rel="noopener noreferrer"
             className="inline-flex items-center gap-1 text-blue-600 text-sm hover:underline dark:text-blue-400"
           >
-            View on YouTube
+            {dict.viewOnYoutube}
             <ExternalLink className="w-3 h-3" />
           </a>
         </div>
@@ -267,21 +273,21 @@ export default async function ChannelPage({ params }: PageProps) {
         <div className="flex items-center gap-2">
           <Users className="h-4 w-4 text-muted-foreground" />
           <span className="font-semibold">{formatNumber(competitor.subscriberCount)}</span>
-          <span className="text-muted-foreground">подписчиков</span>
+          <span className="text-muted-foreground">{dict.subscribers}</span>
         </div>
         <div className="flex items-center gap-2">
           <Video className="h-4 w-4 text-muted-foreground" />
           <span className="font-semibold">{formatNumber(competitor.videoCount)}</span>
-          <span className="text-muted-foreground">видео</span>
+          <span className="text-muted-foreground">{dict.videos}</span>
         </div>
         <div className="flex items-center gap-2">
           <Eye className="h-4 w-4 text-muted-foreground" />
           <span className="font-semibold">{formatNumber(competitor.viewCount)}</span>
-          <span className="text-muted-foreground">просмотров</span>
+          <span className="text-muted-foreground">{dict.views}</span>
         </div>
         <div className="flex items-center gap-2">
           <Calendar className="h-4 w-4 text-muted-foreground" />
-          <span className="text-muted-foreground">Обновлено: {formatDate(competitor.lastSyncedAt)}</span>
+          <span className="text-muted-foreground">{dict.updatedAt}: {formatDate(competitor.lastSyncedAt)}</span>
         </div>
       </div>
 
@@ -289,20 +295,20 @@ export default async function ChannelPage({ params }: PageProps) {
 
       {/* Overview - Ключевые метрики */}
       <div>
-        <h2 className="text-2xl font-bold mb-4">Overview</h2>
+        <h2 className="text-2xl font-bold mb-4">{dict.overview}</h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div className="border rounded-lg p-4 bg-muted/40">
-            <div className="text-sm text-muted-foreground mb-2">Подписчики</div>
+            <div className="text-sm text-muted-foreground mb-2">{dict.overviewSubscribers}</div>
             <div className="text-3xl font-bold">{formatNumber(competitor.subscriberCount)}</div>
           </div>
 
           <div className="border rounded-lg p-4 bg-muted/40">
-            <div className="text-sm text-muted-foreground mb-2">Всего просмотров</div>
+            <div className="text-sm text-muted-foreground mb-2">{dict.overviewTotalViews}</div>
             <div className="text-3xl font-bold">{formatNumber(competitor.viewCount)}</div>
           </div>
 
           <div className="border rounded-lg p-4 bg-muted/40">
-            <div className="text-sm text-muted-foreground mb-2">Средние просмотры на видео</div>
+            <div className="text-sm text-muted-foreground mb-2">{dict.avgViewsPerVideo}</div>
             <div className="text-3xl font-bold">{formatNumber(avgViews)}</div>
           </div>
         </div>
@@ -310,18 +316,18 @@ export default async function ChannelPage({ params }: PageProps) {
 
       {/* AI Insights */}
       <div>
-        <h2 className="text-2xl font-bold mb-4">AI Insights</h2>
+        <h2 className="text-2xl font-bold mb-4">{dict.aiInsights}</h2>
         {insight ? (
           <div className="space-y-4">
             {/* Summary */}
             <Card>
               <CardHeader>
-                <CardTitle className="text-lg">Краткая сводка</CardTitle>
+                <CardTitle className="text-lg">{dict.briefSummary}</CardTitle>
               </CardHeader>
               <CardContent>
                 <p className="text-muted-foreground">{insight.summary}</p>
                 <p className="text-xs text-muted-foreground mt-4">
-                  Анализ сгенерирован: {formatDate(insight.createdAt)}
+                  {dict.analysisGenerated}: {formatDate(insight.createdAt)}
                 </p>
               </CardContent>
             </Card>
@@ -331,7 +337,7 @@ export default async function ChannelPage({ params }: PageProps) {
               <Card>
                 <CardHeader>
                   <CardTitle className="text-lg text-green-600 dark:text-green-500">
-                    Сильные стороны
+                    {dict.strengths}
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
@@ -349,7 +355,7 @@ export default async function ChannelPage({ params }: PageProps) {
               <Card>
                 <CardHeader>
                   <CardTitle className="text-lg text-red-600 dark:text-red-500">
-                    Слабые стороны
+                    {dict.weaknesses}
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
@@ -367,7 +373,7 @@ export default async function ChannelPage({ params }: PageProps) {
               <Card>
                 <CardHeader>
                   <CardTitle className="text-lg text-blue-600 dark:text-blue-500">
-                    Возможности
+                    {dict.opportunities}
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
@@ -385,7 +391,7 @@ export default async function ChannelPage({ params }: PageProps) {
               <Card>
                 <CardHeader>
                   <CardTitle className="text-lg text-orange-600 dark:text-orange-500">
-                    Угрозы
+                    {dict.threats}
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
@@ -404,7 +410,7 @@ export default async function ChannelPage({ params }: PageProps) {
             <Card>
               <CardHeader>
                 <CardTitle className="text-lg text-purple-600 dark:text-purple-500">
-                  Рекомендации
+                  {dict.recommendations}
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -422,7 +428,7 @@ export default async function ChannelPage({ params }: PageProps) {
           <Alert>
             <AlertCircle className="h-4 w-4" />
             <AlertDescription>
-              Нет доступного AI-анализа. Анализ будет генерироваться автоматически при наличии достаточных данных.
+              {dict.noAIAnalysis}
             </AlertDescription>
           </Alert>
         )}
@@ -433,8 +439,8 @@ export default async function ChannelPage({ params }: PageProps) {
         {/* Реальный график роста с timeseries данными */}
         <ChannelGrowthChart
           metrics={metrics}
-          title="Growth Over Time"
-          description="Historical metrics showing channel growth trends"
+          title={dict.growthOverTime}
+          description={dict.historicalMetrics}
         />
 
         {/* Топ видео канала */}

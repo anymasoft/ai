@@ -2,6 +2,7 @@
 
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { useI18n } from "@/providers/I18nProvider";
 
 interface ChannelMetric {
   id: number;
@@ -78,6 +79,8 @@ export function ChannelGrowthChart({
   title = "Growth Over Time",
   description = "Historical metrics for this channel",
 }: ChannelGrowthChartProps) {
+  const { dict } = useI18n();
+
   // Если данных совсем нет
   if (!metrics || metrics.length === 0) {
     return (
@@ -90,13 +93,13 @@ export function ChannelGrowthChart({
           <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
             <div className="text-center max-w-md">
               <p className="text-lg font-semibold mb-3">
-                Insufficient data for chart (0/2 data points)
+                {dict.chartInsufficientData}
               </p>
               <p className="text-sm mb-4">
-                Click "Sync Metrics" button twice to collect enough data for growth trends.
+                {dict.chartClickSync}
               </p>
               <p className="text-xs text-muted-foreground">
-                Note: Only one sync per day is allowed. Come back tomorrow for the second data point, or sync multiple times today for testing.
+                {dict.chartOneSyncPerDay}
               </p>
             </div>
           </div>
@@ -123,7 +126,7 @@ export function ChannelGrowthChart({
         {showWarning && (
           <div className="mb-4 p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-md">
             <p className="text-sm text-yellow-800 dark:text-yellow-200">
-              Для корректного графика добавьте минимум 2 точки (нажмите Sync позже).
+              {dict.chartNeedTwoPoints}
             </p>
           </div>
         )}
@@ -149,7 +152,7 @@ export function ChannelGrowthChart({
                 strokeWidth={2}
                 dot={{ fill: "#3b82f6", r: 4 }}
                 activeDot={{ r: 6 }}
-                name="Subscribers"
+                name={dict.chartSubscribers}
               />
               <Line
                 type="monotone"
@@ -158,7 +161,7 @@ export function ChannelGrowthChart({
                 strokeWidth={2}
                 dot={{ fill: "#10b981", r: 4 }}
                 activeDot={{ r: 6 }}
-                name="Total Views"
+                name={dict.chartTotalViews}
               />
               <Line
                 type="monotone"
@@ -167,7 +170,7 @@ export function ChannelGrowthChart({
                 strokeWidth={2}
                 dot={{ fill: "#f59e0b", r: 4 }}
                 activeDot={{ r: 6 }}
-                name="Videos"
+                name={dict.chartVideos}
               />
             </LineChart>
           </ResponsiveContainer>
