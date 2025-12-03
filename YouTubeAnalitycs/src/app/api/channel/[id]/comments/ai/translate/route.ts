@@ -115,10 +115,11 @@ export async function POST(
     }
 
     // Проверяем наличие английского анализа (после fallback)
-    if (!analysisEn) {
+    if (!analysisEn || analysisEn.trim().length === 0) {
+      console.error('[TranslateAPI] English analysis is empty even after migration');
       client.close();
       return NextResponse.json(
-        { error: "English analysis is empty. Please regenerate analysis." },
+        { error: "No English analysis available. Please run Deep Analysis first." },
         { status: 400 }
       );
     }
@@ -165,15 +166,35 @@ Return ONLY the translated JSON without any additional text or markdown formatti
 
     console.log(`[TranslateAPI] Перевод завершён, сохраняем в БД...`);
 
-    // Сохраняем перевод в БД
-    await client.execute({
-      sql: `UPDATE channel_ai_comment_insights
-            SET analysis_ru = ?
+    // Шаг 1: Находим id последней записи
+    const selectResult = await client.execute({
+      sql: `SELECT id FROM channel_ai_comment_insights
             WHERE channelId = ?
             ORDER BY createdAt DESC
             LIMIT 1`,
-      args: [translatedJson, channelId],
+      args: [channelId],
     });
+
+    if (selectResult.rows.length === 0) {
+      console.error('[TranslateAPI] No record found for channelId:', channelId);
+      client.close();
+      return NextResponse.json(
+        { error: 'No analysis record found for this channel. Please run Deep Analysis first.' },
+        { status: 400 }
+      );
+    }
+
+    const recordId = selectResult.rows[0].id;
+
+    // Шаг 2: Обновляем запись по id (без ORDER BY/LIMIT)
+    await client.execute({
+      sql: `UPDATE channel_ai_comment_insights
+            SET analysis_ru = ?
+            WHERE id = ?`,
+      args: [translatedJson, recordId],
+    });
+
+    console.log('[TranslateAPI] Saved Russian translation for record', recordId);
 
     client.close();
 

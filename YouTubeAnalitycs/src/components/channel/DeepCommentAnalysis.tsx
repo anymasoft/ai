@@ -125,6 +125,12 @@ export function DeepCommentAnalysis({
   }
 
   async function handleTranslate() {
+    // Защита от перевода без анализа
+    if (!data || !data.themes || data.totalAnalyzed === 0) {
+      toast.error('No English analysis found. Please run Deep Analysis first.');
+      return;
+    }
+
     setTranslating(true);
     setError(null);
 
@@ -267,7 +273,7 @@ export function DeepCommentAnalysis({
           </p>
         </div>
         <div className="flex gap-2">
-          {!data.hasRussianVersion && (
+          {data && data.themes && data.totalAnalyzed > 0 && !data.hasRussianVersion && (
             <Button
               onClick={handleTranslate}
               disabled={translating}
