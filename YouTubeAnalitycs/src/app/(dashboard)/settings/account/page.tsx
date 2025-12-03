@@ -14,27 +14,16 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
-  FormDescription,
 } from "@/components/ui/form"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
 import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
-import { useRouter } from "next/navigation"
 import { toast } from "sonner"
-import { useI18n } from "@/providers/I18nProvider"
 
 const accountFormSchema = z.object({
   firstName: z.string().min(1, "First name is required"),
   lastName: z.string().min(1, "Last name is required"),
   email: z.string().email("Invalid email address"),
   username: z.string().min(3, "Username must be at least 3 characters"),
-  language: z.enum(["en", "ru"]).default("en"),
   currentPassword: z.string().optional(),
   newPassword: z.string().optional(),
   confirmPassword: z.string().optional(),
@@ -44,9 +33,7 @@ type AccountFormValues = z.infer<typeof accountFormSchema>
 
 export default function AccountSettings() {
   const { data: session } = useSession();
-  const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
-  const { dict } = useI18n();
 
   const form = useForm<AccountFormValues>({
     resolver: zodResolver(accountFormSchema),
@@ -55,7 +42,6 @@ export default function AccountSettings() {
       lastName: "",
       email: "",
       username: "",
-      language: "en",
       currentPassword: "",
       newPassword: "",
       confirmPassword: "",
@@ -70,34 +56,15 @@ export default function AccountSettings() {
       const firstName = nameParts[0] || "";
       const lastName = nameParts.slice(1).join(" ") || "";
 
-      // Fetch user language from API
-      fetch("/api/user/language")
-        .then((res) => res.json())
-        .then((data) => {
-          form.reset({
-            firstName,
-            lastName,
-            email: session.user.email || "",
-            username: session.user.email?.split("@")[0] || "",
-            language: data.language || "en",
-            currentPassword: "",
-            newPassword: "",
-            confirmPassword: "",
-          });
-        })
-        .catch((error) => {
-          console.error("Failed to fetch user language:", error);
-          form.reset({
-            firstName,
-            lastName,
-            email: session.user.email || "",
-            username: session.user.email?.split("@")[0] || "",
-            language: "en",
-            currentPassword: "",
-            newPassword: "",
-            confirmPassword: "",
-          });
-        });
+      form.reset({
+        firstName,
+        lastName,
+        email: session.user.email || "",
+        username: session.user.email?.split("@")[0] || "",
+        currentPassword: "",
+        newPassword: "",
+        confirmPassword: "",
+      });
     }
   }, [session, form]);
 
@@ -105,34 +72,20 @@ export default function AccountSettings() {
     setIsLoading(true);
 
     try {
-      // Save language preference
-      const res = await fetch("/api/user/language", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ language: data.language }),
-      });
+      // TODO: Implement actual profile update API
+      // For now, just show success message
+      await new Promise(resolve => setTimeout(resolve, 500));
 
-      if (!res.ok) {
-        throw new Error("Failed to update language preference");
-      }
-
-      toast(dict.settingsSaved, {
-        description: dict.settingsSavedDescription,
+      toast("Settings saved", {
+        description: "Your account settings have been updated.",
         duration: 3000,
         className: "bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 shadow-lg text-neutral-900 dark:text-neutral-100",
         icon: null
       });
-
-      // Refresh the page to apply language changes after toast is visible
-      setTimeout(() => {
-        router.refresh();
-      }, 1000);
     } catch (error) {
       console.error("Error saving settings:", error);
-      toast(dict.saveFailed, {
-        description: dict.saveFailedDescription,
+      toast("Save failed", {
+        description: "Failed to update settings. Please try again.",
         duration: 3000,
         className: "bg-white dark:bg-neutral-900 border border-neutral-300 dark:border-neutral-700 shadow-lg text-neutral-900 dark:text-neutral-100",
         icon: null
@@ -145,9 +98,9 @@ export default function AccountSettings() {
   return (
     <div className="space-y-6 px-4 lg:px-6">
         <div>
-          <h1 className="text-3xl font-bold">{dict.accountSettings}</h1>
+          <h1 className="text-3xl font-bold">Account Settings</h1>
           <p className="text-muted-foreground">
-            {dict.manageAccount}
+            Manage your account settings and preferences.
           </p>
         </div>
 
@@ -155,9 +108,9 @@ export default function AccountSettings() {
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
             <Card>
               <CardHeader>
-                <CardTitle>{dict.personalInformation}</CardTitle>
+                <CardTitle>Personal Information</CardTitle>
                 <CardDescription>
-                  {dict.personalInformationDescription}
+                  Update your personal information that will be displayed on your profile.
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
@@ -167,7 +120,7 @@ export default function AccountSettings() {
                     name="firstName"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>{dict.firstName}</FormLabel>
+                        <FormLabel>First Name</FormLabel>
                         <FormControl>
                           <Input placeholder="Enter your first name" {...field} />
                         </FormControl>
@@ -180,7 +133,7 @@ export default function AccountSettings() {
                     name="lastName"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>{dict.lastName}</FormLabel>
+                        <FormLabel>Last Name</FormLabel>
                         <FormControl>
                           <Input placeholder="Enter your last name" {...field} />
                         </FormControl>
@@ -194,7 +147,7 @@ export default function AccountSettings() {
                   name="email"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>{dict.email}</FormLabel>
+                      <FormLabel>Email Address</FormLabel>
                       <FormControl>
                         <Input type="email" placeholder="Enter your email" {...field} disabled />
                       </FormControl>
@@ -207,7 +160,7 @@ export default function AccountSettings() {
                   name="username"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>{dict.username}</FormLabel>
+                      <FormLabel>Username</FormLabel>
                       <FormControl>
                         <Input placeholder="Enter your username" {...field} />
                       </FormControl>
@@ -220,44 +173,9 @@ export default function AccountSettings() {
 
             <Card>
               <CardHeader>
-                <CardTitle>{dict.preferences}</CardTitle>
+                <CardTitle>Change Password</CardTitle>
                 <CardDescription>
-                  {dict.preferencesDescription}
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <FormField
-                  control={form.control}
-                  name="language"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>{dict.analysisLanguage}</FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value}>
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select language" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          <SelectItem value="en">🇬🇧 English</SelectItem>
-                          <SelectItem value="ru">🇷🇺 Русский</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <FormDescription>
-                        {dict.analysisLanguageDescription}
-                      </FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>{dict.changePassword}</CardTitle>
-                <CardDescription>
-                  {dict.changePasswordDescription}
+                  Update your password to keep your account secure.
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
@@ -266,7 +184,7 @@ export default function AccountSettings() {
                   name="currentPassword"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>{dict.currentPassword}</FormLabel>
+                      <FormLabel>Current Password</FormLabel>
                       <FormControl>
                         <Input type="password" placeholder="Enter current password" {...field} />
                       </FormControl>
@@ -279,7 +197,7 @@ export default function AccountSettings() {
                   name="newPassword"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>{dict.newPassword}</FormLabel>
+                      <FormLabel>New Password</FormLabel>
                       <FormControl>
                         <Input type="password" placeholder="Enter new password" {...field} />
                       </FormControl>
@@ -292,7 +210,7 @@ export default function AccountSettings() {
                   name="confirmPassword"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>{dict.confirmPassword}</FormLabel>
+                      <FormLabel>Confirm New Password</FormLabel>
                       <FormControl>
                         <Input type="password" placeholder="Confirm new password" {...field} />
                       </FormControl>
@@ -305,22 +223,22 @@ export default function AccountSettings() {
 
             <Card>
               <CardHeader>
-                <CardTitle>{dict.dangerZone}</CardTitle>
+                <CardTitle>Danger Zone</CardTitle>
                 <CardDescription>
-                  {dict.dangerZoneDescription}
+                  Irreversible and destructive actions.
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <Separator />
                 <div className="flex flex-wrap gap-2 items-center justify-between">
                   <div>
-                    <h4 className="font-semibold">{dict.deleteAccount}</h4>
+                    <h4 className="font-semibold">Delete Account</h4>
                     <p className="text-sm text-muted-foreground">
-                      {dict.deleteAccountDescription}
+                      Permanently delete your account and all associated data.
                     </p>
                   </div>
                   <Button variant="destructive" type="button" className="cursor-pointer">
-                    {dict.deleteAccount}
+                    Delete Account
                   </Button>
                 </div>
               </CardContent>
@@ -328,9 +246,9 @@ export default function AccountSettings() {
 
             <div className="flex space-x-2">
               <Button type="submit" disabled={isLoading} className={`cursor-pointer min-w-[140px] ${isLoading ? 'opacity-60' : ''}`}>
-                {isLoading ? dict.saving : dict.saveChanges}
+                {isLoading ? 'Saving...' : 'Save Changes'}
               </Button>
-              <Button variant="outline" type="reset" disabled={isLoading} className="cursor-pointer">{dict.cancel}</Button>
+              <Button variant="outline" type="reset" disabled={isLoading} className="cursor-pointer">Cancel</Button>
             </div>
           </form>
         </Form>
