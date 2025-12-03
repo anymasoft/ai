@@ -27,6 +27,7 @@ import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
+import { useI18n } from "@/providers/I18nProvider"
 
 const accountFormSchema = z.object({
   firstName: z.string().min(1, "First name is required"),
@@ -45,6 +46,7 @@ export default function AccountSettings() {
   const { data: session } = useSession();
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
+  const { dict } = useI18n();
 
   const form = useForm<AccountFormValues>({
     resolver: zodResolver(accountFormSchema),
@@ -116,8 +118,8 @@ export default function AccountSettings() {
         throw new Error("Failed to update language preference");
       }
 
-      toast("Settings saved", {
-        description: "Your preferences have been updated.",
+      toast(dict.settingsSaved, {
+        description: dict.settingsSavedDescription,
         duration: 3000,
         className: "bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 shadow-lg text-neutral-900 dark:text-neutral-100",
         icon: null
@@ -129,8 +131,8 @@ export default function AccountSettings() {
       }, 1000);
     } catch (error) {
       console.error("Error saving settings:", error);
-      toast("Save failed", {
-        description: "Please try again.",
+      toast(dict.saveFailed, {
+        description: dict.saveFailedDescription,
         duration: 3000,
         className: "bg-white dark:bg-neutral-900 border border-neutral-300 dark:border-neutral-700 shadow-lg text-neutral-900 dark:text-neutral-100",
         icon: null
@@ -143,9 +145,9 @@ export default function AccountSettings() {
   return (
     <div className="space-y-6 px-4 lg:px-6">
         <div>
-          <h1 className="text-3xl font-bold">Account Settings</h1>
+          <h1 className="text-3xl font-bold">{dict.accountSettings}</h1>
           <p className="text-muted-foreground">
-            Manage your account settings and preferences.
+            {dict.manageAccount}
           </p>
         </div>
 
@@ -153,9 +155,9 @@ export default function AccountSettings() {
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
             <Card>
               <CardHeader>
-                <CardTitle>Personal Information</CardTitle>
+                <CardTitle>{dict.personalInformation}</CardTitle>
                 <CardDescription>
-                  Update your personal information that will be displayed on your profile.
+                  {dict.personalInformationDescription}
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
@@ -165,7 +167,7 @@ export default function AccountSettings() {
                     name="firstName"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>First Name</FormLabel>
+                        <FormLabel>{dict.firstName}</FormLabel>
                         <FormControl>
                           <Input placeholder="Enter your first name" {...field} />
                         </FormControl>
@@ -178,7 +180,7 @@ export default function AccountSettings() {
                     name="lastName"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Last Name</FormLabel>
+                        <FormLabel>{dict.lastName}</FormLabel>
                         <FormControl>
                           <Input placeholder="Enter your last name" {...field} />
                         </FormControl>
@@ -192,7 +194,7 @@ export default function AccountSettings() {
                   name="email"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Email Address</FormLabel>
+                      <FormLabel>{dict.email}</FormLabel>
                       <FormControl>
                         <Input type="email" placeholder="Enter your email" {...field} disabled />
                       </FormControl>
@@ -205,7 +207,7 @@ export default function AccountSettings() {
                   name="username"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Username</FormLabel>
+                      <FormLabel>{dict.username}</FormLabel>
                       <FormControl>
                         <Input placeholder="Enter your username" {...field} />
                       </FormControl>
@@ -218,9 +220,9 @@ export default function AccountSettings() {
 
             <Card>
               <CardHeader>
-                <CardTitle>Preferences</CardTitle>
+                <CardTitle>{dict.preferences}</CardTitle>
                 <CardDescription>
-                  Manage your language and other preferences.
+                  {dict.preferencesDescription}
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
@@ -229,7 +231,7 @@ export default function AccountSettings() {
                   name="language"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Analysis Language</FormLabel>
+                      <FormLabel>{dict.analysisLanguage}</FormLabel>
                       <Select onValueChange={field.onChange} value={field.value}>
                         <FormControl>
                           <SelectTrigger>
@@ -242,7 +244,7 @@ export default function AccountSettings() {
                         </SelectContent>
                       </Select>
                       <FormDescription>
-                        Choose the language for AI analysis results. English analysis is always generated first and can be translated to Russian.
+                        {dict.analysisLanguageDescription}
                       </FormDescription>
                       <FormMessage />
                     </FormItem>
@@ -253,9 +255,9 @@ export default function AccountSettings() {
 
             <Card>
               <CardHeader>
-                <CardTitle>Change Password</CardTitle>
+                <CardTitle>{dict.changePassword}</CardTitle>
                 <CardDescription>
-                  Update your password to keep your account secure.
+                  {dict.changePasswordDescription}
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
@@ -264,7 +266,7 @@ export default function AccountSettings() {
                   name="currentPassword"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Current Password</FormLabel>
+                      <FormLabel>{dict.currentPassword}</FormLabel>
                       <FormControl>
                         <Input type="password" placeholder="Enter current password" {...field} />
                       </FormControl>
@@ -277,7 +279,7 @@ export default function AccountSettings() {
                   name="newPassword"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>New Password</FormLabel>
+                      <FormLabel>{dict.newPassword}</FormLabel>
                       <FormControl>
                         <Input type="password" placeholder="Enter new password" {...field} />
                       </FormControl>
@@ -290,7 +292,7 @@ export default function AccountSettings() {
                   name="confirmPassword"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Confirm New Password</FormLabel>
+                      <FormLabel>{dict.confirmPassword}</FormLabel>
                       <FormControl>
                         <Input type="password" placeholder="Confirm new password" {...field} />
                       </FormControl>
@@ -303,22 +305,22 @@ export default function AccountSettings() {
 
             <Card>
               <CardHeader>
-                <CardTitle>Danger Zone</CardTitle>
+                <CardTitle>{dict.dangerZone}</CardTitle>
                 <CardDescription>
-                  Irreversible and destructive actions.
+                  {dict.dangerZoneDescription}
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <Separator />
                 <div className="flex flex-wrap gap-2 items-center justify-between">
                   <div>
-                    <h4 className="font-semibold">Delete Account</h4>
+                    <h4 className="font-semibold">{dict.deleteAccount}</h4>
                     <p className="text-sm text-muted-foreground">
-                      Permanently delete your account and all associated data.
+                      {dict.deleteAccountDescription}
                     </p>
                   </div>
                   <Button variant="destructive" type="button" className="cursor-pointer">
-                    Delete Account
+                    {dict.deleteAccount}
                   </Button>
                 </div>
               </CardContent>
@@ -326,9 +328,9 @@ export default function AccountSettings() {
 
             <div className="flex space-x-2">
               <Button type="submit" disabled={isLoading} className={`cursor-pointer min-w-[140px] ${isLoading ? 'opacity-60' : ''}`}>
-                {isLoading ? "Saving..." : "Save Changes"}
+                {isLoading ? dict.saving : dict.saveChanges}
               </Button>
-              <Button variant="outline" type="reset" disabled={isLoading} className="cursor-pointer">Cancel</Button>
+              <Button variant="outline" type="reset" disabled={isLoading} className="cursor-pointer">{dict.cancel}</Button>
             </div>
           </form>
         </Form>

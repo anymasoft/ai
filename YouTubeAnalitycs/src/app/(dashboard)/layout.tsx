@@ -8,6 +8,8 @@ import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 import { ThemeCustomizer, ThemeCustomizerTrigger } from "@/components/theme-customizer";
 import { UpgradeToProButton } from "@/components/upgrade-to-pro-button";
 import { useSidebarConfig } from "@/hooks/use-sidebar-config";
+import { I18nProvider } from "@/providers/I18nProvider";
+import { useUserLanguage } from "@/hooks/use-user-language";
 
 export default function DashboardLayout({
   children,
@@ -16,8 +18,10 @@ export default function DashboardLayout({
 }) {
   const [themeCustomizerOpen, setThemeCustomizerOpen] = React.useState(false);
   const { config } = useSidebarConfig();
+  const language = useUserLanguage();
 
   return (
+    <I18nProvider lang={language}>
     <SidebarProvider
       style={{
         "--sidebar-width": "16rem",
@@ -74,5 +78,6 @@ export default function DashboardLayout({
       />
       <UpgradeToProButton />
     </SidebarProvider>
+    </I18nProvider>
   );
 }
