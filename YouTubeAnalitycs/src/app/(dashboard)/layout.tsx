@@ -16,7 +16,7 @@ export default async function DashboardLayout({
   const language = await getUserLanguageServer();
 
   return (
-    <I18nProvider lang={language}>
+    <I18nProvider key={language} lang={language}>
       <DashboardClientWrapper>
         {children}
       </DashboardClientWrapper>

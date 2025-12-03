@@ -31,6 +31,8 @@ export default {
   generateAnalysis: "Сгенерировать анализ",
   generateRuVersion: "Сгенерировать русскую версию",
   generating: "Генерация...",
+  analyzing: "Анализируем...",
+  loading: "Загрузка...",
 
   // Toast уведомления
   settingsSaved: "Настройки сохранены",
@@ -59,4 +61,44 @@ export default {
   deleteAccount: "Удалить аккаунт",
   deleteAccountDescription: "Безвозвратно удалить ваш аккаунт и все связанные данные.",
   cancel: "Отмена",
+
+  // Метрики Overview
+  overviewSubscribers: "Подписчики",
+  overviewTotalViews: "Всего просмотров",
+  overviewVideos: "Видео",
+  overviewAvgViews: "Среднее просмотров",
+
+  // Графики
+  chartViews: "Просмотры",
+  chartSubscribers: "Подписчики",
+  chartVideos: "Видео",
+  chartTotalViews: "Всего просмотров",
+  chartInsufficientData: "Недостаточно данных для графика (0/2 точки)",
+  chartClickSync: "Нажмите кнопку \"Синхронизировать метрики\" дважды, чтобы собрать достаточно данных для графика трендов.",
+  chartOneSyncPerDay: "Примечание: Разрешена только одна синхронизация в день. Вернитесь завтра за второй точкой данных, или синхронизируйте несколько раз сегодня для тестирования.",
+  chartNeedTwoPoints: "Для корректного графика добавьте минимум 2 точки (нажмите Синхронизировать позже).",
+
+  // Глубокий анализ
+  deepAnalysisInProgress: "Анализ в процессе...",
+
+  // Страница канала
+  backToCompetitors: "Назад к конкурентам",
+  viewOnYoutube: "Открыть на YouTube",
+  subscribers: "подписчиков",
+  videos: "видео",
+  views: "просмотров",
+  updatedAt: "Обновлено",
+  overview: "Обзор",
+  avgViewsPerVideo: "Средние просмотры на видео",
+  aiInsights: "AI Инсайты",
+  briefSummary: "Краткая сводка",
+  analysisGenerated: "Анализ сгенерирован",
+  strengths: "Сильные стороны",
+  weaknesses: "Слабые стороны",
+  opportunities: "Возможности",
+  threats: "Угрозы",
+  recommendations: "Рекомендации",
+  noAIAnalysis: "Нет доступного AI-анализа. Анализ будет генерироваться автоматически при наличии достаточных данных.",
+  growthOverTime: "Рост со временем",
+  historicalMetrics: "Исторические метрики, показывающие тренды роста канала",
 }
