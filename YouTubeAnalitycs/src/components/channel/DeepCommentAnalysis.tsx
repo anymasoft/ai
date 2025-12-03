@@ -308,7 +308,7 @@ export function DeepCommentAnalysis({
       </div>
 
       {/* Show translation prompt when Russian is selected but not available */}
-      {analysisLanguage === "ru" && !data.hasRussianVersion ? (
+      {analysisLanguage === "ru" && data && data.themes && data.totalAnalyzed > 0 && !data.hasRussianVersion ? (
         <Card className="border-blue-200 dark:border-blue-900 bg-blue-50/50 dark:bg-blue-950/20">
           <CardContent className="pt-6">
             <div className="flex flex-col items-center justify-center py-6 text-center space-y-4">
