@@ -3,7 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { db, competitors, channelVideos, videoComments, channelAICommentInsights, users } from "@/lib/db";
 import { eq, and, desc, inArray } from "drizzle-orm";
-import { analyzeChannelComments, type CommentForAnalysis } from "@/lib/ai/comments-analysis";
+import { analyzeChannelComments, type CommentForAnalysis, normalizeComments, chunkComments } from "@/lib/ai/comments-analysis";
 
 /**
  * POST /api/channel/[id]/comments/ai
@@ -134,17 +134,27 @@ export async function POST(
       authorName: c.authorName,
     }));
 
-    // Создаём запись анализа со статусом 'pending'
+    // Предварительный расчёт количества чанков для прогресса
+    const normalizedComments = normalizeComments(commentsForAnalysis);
+    const chunks = chunkComments(normalizedComments);
+    const totalChunks = chunks.length;
+
+    console.log(`[DeepCommentAI] Будет обработано ${totalChunks} чанков комментариев`);
+
+    // Создаём запись анализа со статусом 'pending' и известным progress_total
     await db
       .insert(channelAICommentInsights)
       .values({
         channelId: competitor.channelId,
         resultJson: JSON.stringify({}),
         createdAt: Date.now(),
+        progress_current: 0,
+        progress_total: totalChunks,
+        status: 'pending',
       })
       .run();
 
-    console.log(`[DeepCommentAI] Создана запись анализа со статусом 'pending'`);
+    console.log(`[DeepCommentAI] Создана запись анализа: status='pending', progress=0/${totalChunks}`);
 
     // Вызов функции глубокого анализа с передачей channelId
     // EN is always the source of truth

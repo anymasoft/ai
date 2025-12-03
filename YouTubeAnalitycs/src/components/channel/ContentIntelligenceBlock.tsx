@@ -18,9 +18,10 @@ interface ContentIntelligenceData {
 interface ContentIntelligenceBlockProps {
   channelId: number;
   initialData?: ContentIntelligenceData | null;
+  hasRequiredData?: boolean;
 }
 
-export function ContentIntelligenceBlock({ channelId, initialData }: ContentIntelligenceBlockProps) {
+export function ContentIntelligenceBlock({ channelId, initialData, hasRequiredData = true }: ContentIntelligenceBlockProps) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [data, setData] = useState<ContentIntelligenceData | null>(initialData || null);
@@ -90,13 +91,30 @@ export function ContentIntelligenceBlock({ channelId, initialData }: ContentInte
         </CardHeader>
         <CardContent>
           <div className="flex flex-col items-center justify-center py-12">
-            <p className="text-muted-foreground mb-4">
-              AI-анализ контента поможет выявить темы, форматы и паттерны успешных видео.
-            </p>
-            <Button onClick={handleGenerate} className="gap-2">
-              <Sparkles className="h-4 w-4" />
-              Сгенерировать AI-аналитику контента
-            </Button>
+            {!hasRequiredData ? (
+              <>
+                <p className="text-muted-foreground mb-2 text-center">
+                  Для генерации AI-анализа контента необходимо синхронизировать видео.
+                </p>
+                <p className="text-sm text-muted-foreground mb-4 text-center">
+                  Нажмите кнопку "Sync Top Videos" выше, чтобы загрузить данные.
+                </p>
+                <Button onClick={handleGenerate} className="gap-2" disabled title="Сначала синхронизируйте видео">
+                  <Sparkles className="h-4 w-4" />
+                  Сгенерировать AI-аналитику контента
+                </Button>
+              </>
+            ) : (
+              <>
+                <p className="text-muted-foreground mb-4">
+                  AI-анализ контента поможет выявить темы, форматы и паттерны успешных видео.
+                </p>
+                <Button onClick={handleGenerate} className="gap-2">
+                  <Sparkles className="h-4 w-4" />
+                  Сгенерировать AI-аналитику контента
+                </Button>
+              </>
+            )}
             {error && (
               <p className="text-sm text-destructive mt-4">{error}</p>
             )}

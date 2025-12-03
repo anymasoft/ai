@@ -40,6 +40,7 @@ interface AudienceData {
 interface AudienceInsightsProps {
   channelId: number;
   initialData?: AudienceData | null;
+  hasRequiredData?: boolean;
 }
 
 function formatNumber(num: number): string {
@@ -64,7 +65,7 @@ function formatEngagement(score: number, isFallback: boolean): string {
   }
 }
 
-export function AudienceInsights({ channelId, initialData }: AudienceInsightsProps) {
+export function AudienceInsights({ channelId, initialData, hasRequiredData = true }: AudienceInsightsProps) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [data, setData] = useState<AudienceData | null>(initialData || null);
@@ -162,13 +163,30 @@ export function AudienceInsights({ channelId, initialData }: AudienceInsightsPro
         </CardHeader>
         <CardContent>
           <div className="flex flex-col items-center justify-center py-12">
-            <p className="text-muted-foreground mb-4">
-              Audience анализ покажет какие темы получают максимум реакций от аудитории.
-            </p>
-            <Button onClick={handleGenerate} className="gap-2">
-              <Users className="h-4 w-4" />
-              Сгенерировать Audience анализ
-            </Button>
+            {!hasRequiredData ? (
+              <>
+                <p className="text-muted-foreground mb-2 text-center">
+                  Для генерации Audience анализа необходимо синхронизировать видео.
+                </p>
+                <p className="text-sm text-muted-foreground mb-4 text-center">
+                  Нажмите кнопку "Sync Top Videos" выше, чтобы загрузить данные.
+                </p>
+                <Button onClick={handleGenerate} className="gap-2" disabled title="Сначала синхронизируйте видео">
+                  <Users className="h-4 w-4" />
+                  Сгенерировать Audience анализ
+                </Button>
+              </>
+            ) : (
+              <>
+                <p className="text-muted-foreground mb-4">
+                  Audience анализ покажет какие темы получают максимум реакций от аудитории.
+                </p>
+                <Button onClick={handleGenerate} className="gap-2">
+                  <Users className="h-4 w-4" />
+                  Сгенерировать Audience анализ
+                </Button>
+              </>
+            )}
             {error && (
               <p className="text-sm text-destructive mt-4">{error}</p>
             )}
