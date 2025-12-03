@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { RefreshCw } from "lucide-react";
 import { toast } from "sonner";
-import { useI18n } from "@/providers/I18nProvider";
 
 interface SyncAllDataButtonProps {
   channelId: number;
@@ -17,7 +16,6 @@ export function SyncAllDataButton({ channelId }: SyncAllDataButtonProps) {
   const [syncing, setSyncing] = useState(false);
   const [currentStep, setCurrentStep] = useState<SyncStep>("idle");
   const router = useRouter();
-  const { dict } = useI18n();
 
   async function handleSyncAll() {
     setSyncing(true);
@@ -116,17 +114,17 @@ export function SyncAllDataButton({ channelId }: SyncAllDataButtonProps) {
 
   // Generate button text based on current step
   const getButtonText = () => {
-    if (!syncing) return dict.syncAll;
+    if (!syncing) return "Sync All Data";
 
     switch (currentStep) {
       case "metrics":
-        return `${dict.syncing} 1/3: ${dict.syncMetrics}...`;
+        return "Syncing 1/3: Channel metrics...";
       case "videos":
-        return `${dict.syncing} 2/3: ${dict.syncVideos}...`;
+        return "Syncing 2/3: Top videos...";
       case "comments":
-        return `${dict.syncing} 3/3: ${dict.syncComments}...`;
+        return "Syncing 3/3: Comments...";
       default:
-        return `${dict.syncing}...`;
+        return "Syncing...";
     }
   };
 
