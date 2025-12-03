@@ -27,7 +27,7 @@ export default function RootLayout({
             </SidebarConfigProvider>
           </ThemeProvider>
         </AuthProvider>
-        <Toaster richColors closeButton position="top-right" />
+        <Toaster closeButton position="top-right" />
       </body>
     </html>
   );
