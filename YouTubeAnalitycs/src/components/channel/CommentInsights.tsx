@@ -20,6 +20,7 @@ interface CommentInsightsData {
   nextVideoIdeasFromAudience: string[];
   explanation: string;
   generatedAt?: number;
+  hasRussianVersion?: boolean;
 }
 
 interface CommentInsightsProps {
@@ -35,6 +36,7 @@ export function CommentInsights({
 }: CommentInsightsProps) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
+  const [translating, setTranslating] = useState(false);
   const [data, setData] = useState<CommentInsightsData | null>(initialData || null);
   const [error, setError] = useState<string | null>(null);
 
@@ -62,6 +64,33 @@ export function CommentInsights({
       setError(err instanceof Error ? err.message : "Unknown error");
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function handleTranslate() {
+    setTranslating(true);
+    setError(null);
+
+    try {
+      const res = await fetch(`/api/channel/${channelId}/comments/insights/translate`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ targetLanguage: "ru" }),
+      });
+
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.error || "Failed to translate analysis");
+      }
+
+      router.refresh();
+    } catch (err) {
+      console.error("Error translating comment insights:", err);
+      setError(err instanceof Error ? err.message : "Unknown error");
+    } finally {
+      setTranslating(false);
     }
   }
 
@@ -147,10 +176,32 @@ export function CommentInsights({
             Interests, pain points and requests from audience comments
           </p>
         </div>
-        <Button onClick={handleGenerate} variant="outline" size="sm" className="gap-2 cursor-pointer">
-          <MessageSquare className="h-4 w-4" />
-          Refresh Analysis
-        </Button>
+        <div className="flex gap-2">
+          {!data.hasRussianVersion && (
+            <Button
+              onClick={handleTranslate}
+              disabled={translating}
+              variant="outline"
+              size="sm"
+              className="gap-2 cursor-pointer"
+            >
+              {translating ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Translating...
+                </>
+              ) : (
+                <>
+                  🇷🇺 Translate to Russian
+                </>
+              )}
+            </Button>
+          )}
+          <Button onClick={handleGenerate} variant="outline" size="sm" className="gap-2 cursor-pointer">
+            <MessageSquare className="h-4 w-4" />
+            Refresh Analysis
+          </Button>
+        </div>
       </div>
 
       {/* Stats Bar */}

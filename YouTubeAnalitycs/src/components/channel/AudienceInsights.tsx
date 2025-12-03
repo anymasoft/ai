@@ -35,6 +35,7 @@ interface AudienceData {
   explanation: string;
   usingFallback?: boolean;
   generatedAt?: number;
+  hasRussianVersion?: boolean;
 }
 
 interface AudienceInsightsProps {
@@ -75,6 +76,7 @@ export function AudienceInsights({
   const [data, setData] = useState<AudienceData | null>(initialData || null);
   const [error, setError] = useState<string | null>(null);
   const [enriching, setEnriching] = useState(false);
+  const [translating, setTranslating] = useState(false);
 
   async function handleGenerate() {
     setLoading(true);
@@ -127,6 +129,33 @@ export function AudienceInsights({
       setError(err instanceof Error ? err.message : "Unknown error");
     } finally {
       setEnriching(false);
+    }
+  }
+
+  async function handleTranslate() {
+    setTranslating(true);
+    setError(null);
+
+    try {
+      const res = await fetch(`/api/channel/${channelId}/audience/translate`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ targetLanguage: "ru" }),
+      });
+
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.error || "Failed to translate analysis");
+      }
+
+      router.refresh();
+    } catch (err) {
+      console.error("Error translating audience analysis:", err);
+      setError(err instanceof Error ? err.message : "Unknown error");
+    } finally {
+      setTranslating(false);
     }
   }
 
@@ -212,10 +241,32 @@ export function AudienceInsights({
             Audience engagement and content reactions analysis
           </p>
         </div>
-        <Button onClick={handleGenerate} variant="outline" size="sm" className="gap-2 cursor-pointer">
-          <Users className="h-4 w-4" />
-          Refresh Analysis
-        </Button>
+        <div className="flex gap-2">
+          {!data.hasRussianVersion && (
+            <Button
+              onClick={handleTranslate}
+              disabled={translating}
+              variant="outline"
+              size="sm"
+              className="gap-2 cursor-pointer"
+            >
+              {translating ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Translating...
+                </>
+              ) : (
+                <>
+                  🇷🇺 Translate to Russian
+                </>
+              )}
+            </Button>
+          )}
+          <Button onClick={handleGenerate} variant="outline" size="sm" className="gap-2 cursor-pointer">
+            <Users className="h-4 w-4" />
+            Refresh Analysis
+          </Button>
+        </div>
       </div>
 
       {/* Stats Bar */}
