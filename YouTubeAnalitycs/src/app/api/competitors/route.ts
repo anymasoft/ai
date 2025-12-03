@@ -5,6 +5,7 @@ import { db, competitors, users } from "@/lib/db";
 import { getYoutubeChannelByHandle } from "@/lib/scrapecreators";
 import { eq, and } from "drizzle-orm";
 import { PLAN_LIMITS } from "@/lib/plan-limits";
+import { normalizeYoutubeInput } from "@/lib/youtube/normalize";
 
 export async function GET(req: NextRequest) {
   try {
@@ -47,6 +48,19 @@ export async function POST(req: NextRequest) {
         { status: 400 }
       );
     }
+
+    // Normalize YouTube input (поддержка URLs, @handles, Unicode)
+    const normalized = normalizeYoutubeInput(handle);
+
+    if (!normalized.normalizedHandle && !normalized.channelId) {
+      return NextResponse.json(
+        { error: "Invalid YouTube handle or URL" },
+        { status: 400 }
+      );
+    }
+
+    // Используем normalizedHandle для API запроса
+    const handleToFetch = normalized.normalizedHandle || normalized.channelId || handle.trim();
 
     // Check current competitor count
     const currentCompetitors = await db
@@ -101,8 +115,8 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Fetch channel data from ScrapeCreators
-    const channelData = await getYoutubeChannelByHandle(handle);
+    // Fetch channel data from ScrapeCreators (используем нормализованный handle)
+    const channelData = await getYoutubeChannelByHandle(handleToFetch);
 
     // Check if this channel already exists for this user
     const existing = await db
@@ -130,7 +144,7 @@ export async function POST(req: NextRequest) {
         userId: String(session.user.id),
         platform: "youtube",
         channelId: String(channelData.channelId || ""),
-        handle: String(handle.trim()),
+        handle: String(handleToFetch), // Сохраняем нормализованный handle
         title: String(channelData.title || "Unknown Channel"),
         avatarUrl:
           typeof channelData.avatarUrl === "string" &&
