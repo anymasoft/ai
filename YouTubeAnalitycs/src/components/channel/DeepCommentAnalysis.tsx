@@ -110,6 +110,7 @@ export function DeepCommentAnalysis({
     try {
       const res = await fetch(`/api/channel/${channelId}/comments/ai`, {
         method: "POST",
+        credentials: "include", // Важно: отправляем cookies с session
       });
 
       if (!res.ok) {
@@ -123,7 +124,15 @@ export function DeepCommentAnalysis({
       // Обновляем страницу чтобы показать новые данные
       router.refresh();
     } catch (err) {
-      const errorMsg = err instanceof Error ? err.message : "Unknown error";
+      let errorMsg = "Unknown error";
+
+      if (err instanceof TypeError && err.message === "Failed to fetch") {
+        errorMsg = "Network error. Please check your connection and try again.";
+      } else if (err instanceof Error) {
+        errorMsg = err.message;
+      }
+
+      console.error('[DeepCommentAnalysis] Generation error:', err);
       toast.error(errorMsg);
       setError(errorMsg);
     } finally {
@@ -147,6 +156,7 @@ export function DeepCommentAnalysis({
         headers: {
           "Content-Type": "application/json",
         },
+        credentials: "include", // Важно: отправляем cookies с session
         body: JSON.stringify({ language: "ru" }),
       });
 
@@ -158,7 +168,15 @@ export function DeepCommentAnalysis({
       // Обновляем страницу чтобы показать переведённую версию
       router.refresh();
     } catch (err) {
-      const errorMsg = err instanceof Error ? err.message : "Unknown error";
+      let errorMsg = "Unknown error";
+
+      if (err instanceof TypeError && err.message === "Failed to fetch") {
+        errorMsg = "Network error. Please check your connection and try again.";
+      } else if (err instanceof Error) {
+        errorMsg = err.message;
+      }
+
+      console.error('[DeepCommentAnalysis] Translation error:', err);
       toast.error(errorMsg);
       setError(errorMsg);
     } finally {
