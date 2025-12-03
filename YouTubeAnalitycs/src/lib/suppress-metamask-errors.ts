@@ -21,6 +21,8 @@ export function suppressMetaMaskErrors() {
     /web3/i,
     /crypto wallet/i,
     /injected provider/i,
+    /inpage\.js/i,
+    /chrome-extension:\/\/[a-z]+\/scripts\/inpage/i,
   ];
 
   // Переопределяем console.error с фильтрацией
@@ -73,4 +75,57 @@ export function suppressMetaMaskErrors() {
       originalConsoleWarn.apply(console, args);
     }
   };
+
+  // Перехват глобальных синхронных ошибок (window.onerror)
+  // Это ловит ошибки, которые Next.js dev overlay показывает красным экраном
+  window.addEventListener("error", (event: ErrorEvent) => {
+    // Проверяем источники ошибки
+    const errorMessage = event.message || "";
+    const errorFilename = event.filename || "";
+    const errorStack = event.error?.stack || "";
+
+    // Собираем все данные для проверки
+    const fullErrorInfo = [errorMessage, errorFilename, errorStack].join(" ");
+
+    // Если это MetaMask ошибка - подавляем её
+    const isMetaMaskError = metamaskErrorPatterns.some((pattern) =>
+      pattern.test(fullErrorInfo)
+    );
+
+    if (isMetaMaskError) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      return;
+    }
+  }, true); // true = capturing phase, чтобы перехватить ДО других обработчиков
+
+  // Перехват unhandled promise rejections
+  // Это ловит промисы без catch, которые часто генерирует MetaMask
+  window.addEventListener("unhandledrejection", (event: PromiseRejectionEvent) => {
+    const reason = event.reason;
+
+    // Формируем строку для проверки
+    let reasonString = "";
+    if (typeof reason === "string") {
+      reasonString = reason;
+    } else if (reason instanceof Error) {
+      reasonString = reason.message + " " + (reason.stack || "");
+    } else {
+      try {
+        reasonString = JSON.stringify(reason);
+      } catch {
+        reasonString = String(reason);
+      }
+    }
+
+    // Если это MetaMask rejection - подавляем
+    const isMetaMaskRejection = metamaskErrorPatterns.some((pattern) =>
+      pattern.test(reasonString)
+    );
+
+    if (isMetaMaskRejection) {
+      event.preventDefault();
+      return;
+    }
+  });
 }
