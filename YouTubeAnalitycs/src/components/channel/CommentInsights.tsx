@@ -26,13 +26,79 @@ interface CommentInsightsProps {
   channelId: number;
   initialData?: CommentInsightsData | null;
   hasRequiredData?: boolean;
+  analysisLanguage?: "en" | "ru";
 }
 
-export function CommentInsights({ channelId, initialData, hasRequiredData = true }: CommentInsightsProps) {
+export function CommentInsights({
+  channelId,
+  initialData,
+  hasRequiredData = true,
+  analysisLanguage = "en"
+}: CommentInsightsProps) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [data, setData] = useState<CommentInsightsData | null>(initialData || null);
   const [error, setError] = useState<string | null>(null);
+
+  // Local dictionary for titles/descriptions only
+  const texts = {
+    en: {
+      title: "Comment Intelligence",
+      description: "Audience comments analysis",
+      generating: "Analyzing comments...",
+      waitTime: "This may take 15-25 seconds",
+      syncFirst: "To generate Comment Intelligence, sync videos and comments first.",
+      syncDesc: "Click 'Sync Top Videos' and 'Sync Comments' buttons above to load data.",
+      syncTooltip: "Sync videos and comments first",
+      generateButton: "Generate Comment Analysis",
+      generateDesc: "Comment Intelligence will show interests, pain points, and requests from audience comments.",
+      refreshButton: "Refresh Analysis",
+      descriptionFull: "Interests, pain points and requests from audience comments",
+      statsTotalComments: "Total comments",
+      statsAnalyzed: "Analyzed",
+      statsVideos: "Videos",
+      audienceMood: "Overall Audience Mood",
+      audienceInterests: "Audience Interests",
+      audiencePainPoints: "Audience Pain Points",
+      requestedTopics: "Topic Requests",
+      complaints: "Complaints & Frustrations",
+      complaintsDesc: "What audience doesn't like",
+      praises: "Praises & What Works",
+      praisesDesc: "What they praise and what works",
+      nextVideoIdeas: "Next Video Ideas",
+      nextVideoIdeasDesc: "Based on audience requests from comments",
+      analysisGenerated: "Analysis generated:"
+    },
+    ru: {
+      title: "Comment Intelligence",
+      description: "Анализ комментариев аудитории",
+      generating: "Анализ комментариев...",
+      waitTime: "Это может занять 15-25 секунд",
+      syncFirst: "Для генерации Comment Intelligence необходимо синхронизировать видео и комментарии.",
+      syncDesc: "Нажмите кнопки \"Sync Top Videos\" и \"Sync Comments\" выше, чтобы загрузить данные.",
+      syncTooltip: "Сначала синхронизируйте видео и комментарии",
+      generateButton: "Сгенерировать анализ комментариев",
+      generateDesc: "Comment Intelligence покажет интересы, боли и запросы аудитории на основе комментариев.",
+      refreshButton: "Обновить анализ",
+      descriptionFull: "Интересы, боли и запросы аудитории из комментариев",
+      statsTotalComments: "Всего комментариев",
+      statsAnalyzed: "Проанализировано",
+      statsVideos: "Видео",
+      audienceMood: "Общий настрой аудитории",
+      audienceInterests: "Интересы аудитории",
+      audiencePainPoints: "Боли аудитории",
+      requestedTopics: "Запросы на темы",
+      complaints: "Жалобы и недовольства",
+      complaintsDesc: "Что не нравится аудитории",
+      praises: "Похвалы и что нравится",
+      praisesDesc: "Что хвалят и что работает",
+      nextVideoIdeas: "Идеи для следующих видео",
+      nextVideoIdeasDesc: "На основе запросов аудитории из комментариев",
+      analysisGenerated: "Анализ сгенерирован:"
+    }
+  };
+
+  const t = texts[analysisLanguage];
 
   async function handleGenerate() {
     setLoading(true);
@@ -67,17 +133,17 @@ export function CommentInsights({ channelId, initialData, hasRequiredData = true
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <MessageSquare className="h-5 w-5 text-teal-600 dark:text-teal-400" />
-            Comment Intelligence
+            {t.title}
           </CardTitle>
           <CardDescription>
-            Анализ комментариев аудитории
+            {t.description}
           </CardDescription>
         </CardHeader>
         <CardContent>
           <div className="flex flex-col items-center justify-center py-12">
             <Loader2 className="h-8 w-8 animate-spin text-muted-foreground mb-4" />
-            <p className="text-muted-foreground">Анализ комментариев...</p>
-            <p className="text-sm text-muted-foreground mt-2">Это может занять 15-25 секунд</p>
+            <p className="text-muted-foreground">{t.generating}</p>
+            <p className="text-sm text-muted-foreground mt-2">{t.waitTime}</p>
           </div>
         </CardContent>
       </Card>
@@ -90,10 +156,10 @@ export function CommentInsights({ channelId, initialData, hasRequiredData = true
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <MessageSquare className="h-5 w-5 text-teal-600 dark:text-teal-400" />
-            Comment Intelligence
+            {t.title}
           </CardTitle>
           <CardDescription>
-            Анализ комментариев аудитории
+            {t.description}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -101,24 +167,24 @@ export function CommentInsights({ channelId, initialData, hasRequiredData = true
             {!hasRequiredData ? (
               <>
                 <p className="text-muted-foreground mb-2 text-center">
-                  Для генерации Comment Intelligence необходимо синхронизировать видео и комментарии.
+                  {t.syncFirst}
                 </p>
                 <p className="text-sm text-muted-foreground mb-4 text-center">
-                  Нажмите кнопки "Sync Top Videos" и "Sync Comments" выше, чтобы загрузить данные.
+                  {t.syncDesc}
                 </p>
-                <Button onClick={handleGenerate} className="gap-2" disabled title="Сначала синхронизируйте видео и комментарии">
+                <Button onClick={handleGenerate} className="gap-2 cursor-pointer" disabled title={t.syncTooltip}>
                   <MessageSquare className="h-4 w-4" />
-                  Сгенерировать анализ комментариев
+                  {t.generateButton}
                 </Button>
               </>
             ) : (
               <>
                 <p className="text-muted-foreground mb-4">
-                  Comment Intelligence покажет интересы, боли и запросы аудитории на основе комментариев.
+                  {t.generateDesc}
                 </p>
-                <Button onClick={handleGenerate} className="gap-2">
+                <Button onClick={handleGenerate} className="gap-2 cursor-pointer">
                   <MessageSquare className="h-4 w-4" />
-                  Сгенерировать анализ комментариев
+                  {t.generateButton}
                 </Button>
               </>
             )}
@@ -137,15 +203,15 @@ export function CommentInsights({ channelId, initialData, hasRequiredData = true
         <div>
           <h2 className="text-2xl font-bold flex items-center gap-2">
             <MessageSquare className="h-6 w-6 text-teal-600 dark:text-teal-400" />
-            Comment Intelligence
+            {t.title}
           </h2>
           <p className="text-sm text-muted-foreground mt-1">
-            Интересы, боли и запросы аудитории из комментариев
+            {t.descriptionFull}
           </p>
         </div>
-        <Button onClick={handleGenerate} variant="outline" size="sm" className="gap-2">
+        <Button onClick={handleGenerate} variant="outline" size="sm" className="gap-2 cursor-pointer">
           <MessageSquare className="h-4 w-4" />
-          Обновить анализ
+          {t.refreshButton}
         </Button>
       </div>
 
@@ -153,15 +219,15 @@ export function CommentInsights({ channelId, initialData, hasRequiredData = true
       <div className="grid grid-cols-3 gap-4">
         <div className="bg-muted/50 rounded-lg p-4">
           <div className="text-2xl font-bold">{data.stats.totalComments}</div>
-          <div className="text-xs text-muted-foreground">Всего комментариев</div>
+          <div className="text-xs text-muted-foreground">{t.statsTotalComments}</div>
         </div>
         <div className="bg-teal-500/10 rounded-lg p-4">
           <div className="text-2xl font-bold text-teal-600 dark:text-teal-400">{data.stats.analyzedComments}</div>
-          <div className="text-xs text-muted-foreground">Проанализировано</div>
+          <div className="text-xs text-muted-foreground">{t.statsAnalyzed}</div>
         </div>
         <div className="bg-muted/50 rounded-lg p-4">
           <div className="text-2xl font-bold">{data.stats.totalVideos}</div>
-          <div className="text-xs text-muted-foreground">Видео</div>
+          <div className="text-xs text-muted-foreground">{t.statsVideos}</div>
         </div>
       </div>
 
@@ -170,7 +236,7 @@ export function CommentInsights({ channelId, initialData, hasRequiredData = true
         <CardHeader>
           <CardTitle className="text-lg flex items-center gap-2">
             <Sparkles className="h-5 w-5 text-teal-600 dark:text-teal-400" />
-            Общий настрой аудитории
+            {t.audienceMood}
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -185,7 +251,7 @@ export function CommentInsights({ channelId, initialData, hasRequiredData = true
           <CardHeader>
             <CardTitle className="text-lg flex items-center gap-2">
               <Heart className="h-5 w-5 text-pink-600 dark:text-pink-400" />
-              Интересы аудитории
+              {t.audienceInterests}
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -205,7 +271,7 @@ export function CommentInsights({ channelId, initialData, hasRequiredData = true
           <CardHeader>
             <CardTitle className="text-lg flex items-center gap-2">
               <AlertCircle className="h-5 w-5 text-orange-600 dark:text-orange-400" />
-              Боли аудитории
+              {t.audiencePainPoints}
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -225,7 +291,7 @@ export function CommentInsights({ channelId, initialData, hasRequiredData = true
           <CardHeader>
             <CardTitle className="text-lg flex items-center gap-2">
               <MessageSquare className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-              Запросы на темы
+              {t.requestedTopics}
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -246,10 +312,10 @@ export function CommentInsights({ channelId, initialData, hasRequiredData = true
         <CardHeader>
           <CardTitle className="text-lg flex items-center gap-2">
             <AlertCircle className="h-5 w-5 text-red-600 dark:text-red-400" />
-            Жалобы и недовольства
+            {t.complaints}
           </CardTitle>
           <CardDescription>
-            Что не нравится аудитории
+            {t.complaintsDesc}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -269,10 +335,10 @@ export function CommentInsights({ channelId, initialData, hasRequiredData = true
         <CardHeader>
           <CardTitle className="text-lg flex items-center gap-2">
             <ThumbsUp className="h-5 w-5 text-green-600 dark:text-green-400" />
-            Похвалы и что нравится
+            {t.praises}
           </CardTitle>
           <CardDescription>
-            Что хвалят и что работает
+            {t.praisesDesc}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -292,10 +358,10 @@ export function CommentInsights({ channelId, initialData, hasRequiredData = true
         <CardHeader>
           <CardTitle className="text-lg flex items-center gap-2">
             <Lightbulb className="h-5 w-5 text-yellow-600 dark:text-yellow-400" />
-            Идеи для следующих видео
+            {t.nextVideoIdeas}
           </CardTitle>
           <CardDescription>
-            На основе запросов аудитории из комментариев
+            {t.nextVideoIdeasDesc}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -312,7 +378,7 @@ export function CommentInsights({ channelId, initialData, hasRequiredData = true
 
       {data.generatedAt && (
         <p className="text-xs text-muted-foreground text-center">
-          Анализ сгенерирован: {new Date(data.generatedAt).toLocaleString("ru-RU")}
+          {t.analysisGenerated} {new Date(data.generatedAt).toLocaleString("en-US")}
         </p>
       )}
     </div>
