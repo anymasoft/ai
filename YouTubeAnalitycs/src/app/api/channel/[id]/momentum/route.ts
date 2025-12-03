@@ -404,6 +404,7 @@ export async function GET(
     return NextResponse.json({
       ...parsedData,
       generatedAt: analysis.generatedAt,
+      hasRussianVersion: !!analysis.data_ru,
     });
 
   } catch (error) {

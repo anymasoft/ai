@@ -250,6 +250,7 @@ export async function GET(
     return NextResponse.json({
       ...JSON.parse(analysis.data),
       generatedAt: analysis.generatedAt,
+      hasRussianVersion: !!analysis.data_ru,
     });
 
   } catch (error) {
