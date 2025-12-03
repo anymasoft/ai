@@ -103,28 +103,8 @@ export async function POST(
 
     console.log(`[DeepCommentAI] Найдено ${comments.length} комментариев для глубокого анализа`);
 
-    // Проверяем, есть ли уже свежий анализ (не старше 7 дней)
-    const sevenDaysAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
-    const existingAnalysis = await db
-      .select()
-      .from(channelAICommentInsights)
-      .where(eq(channelAICommentInsights.channelId, competitor.channelId))
-      .orderBy(desc(channelAICommentInsights.createdAt))
-      .limit(1)
-      .get();
-
-    // Если анализ существует и свежий - возвращаем его
-    if (existingAnalysis && existingAnalysis.createdAt > sevenDaysAgo) {
-      console.log(`[DeepCommentAI] Найден свежий анализ`);
-      const analysisData = JSON.parse(existingAnalysis.resultJson);
-
-      return NextResponse.json({
-        ...analysisData,
-        cached: true,
-        createdAt: existingAnalysis.createdAt,
-      });
-    }
-
+    // POST всегда генерирует новый анализ (даже если есть старый)
+    // Пользователь нажал "Refresh Analysis" - значит хочет новый результат
     console.log(`[DeepCommentAI] Генерируем новый глубокий анализ через OpenAI...`);
 
     // Подготовка данных для анализа
@@ -166,7 +146,24 @@ export async function POST(
 
     console.log(`[DeepCommentAI] Анализ завершён успешно`);
 
-    // Обновляем результат в базе данных
+    // Шаг 1: Находим id последней созданной записи
+    const latestRecord = await db
+      .select()
+      .from(channelAICommentInsights)
+      .where(eq(channelAICommentInsights.channelId, competitor.channelId))
+      .orderBy(desc(channelAICommentInsights.createdAt))
+      .limit(1)
+      .get();
+
+    if (!latestRecord) {
+      console.error('[DeepCommentAI] No record found after creation');
+      return NextResponse.json(
+        { error: 'Failed to find created analysis record' },
+        { status: 500 }
+      );
+    }
+
+    // Шаг 2: Обновляем только эту конкретную запись по id
     // analysis_en - источник истины (всегда английский)
     await db
       .update(channelAICommentInsights)
@@ -174,11 +171,12 @@ export async function POST(
         resultJson: JSON.stringify(analysisResult),
         analysis_en: JSON.stringify(analysisResult), // Сохраняем английскую версию как источник
         analysis_ru: null, // Сброс русского перевода при пересчёте
+        status: 'done',
       })
-      .where(eq(channelAICommentInsights.channelId, competitor.channelId))
+      .where(eq(channelAICommentInsights.id, latestRecord.id))
       .run();
 
-    console.log(`[DeepCommentAI] Результат сохранён в БД (analysis_en + resultJson)`);
+    console.log(`[DeepCommentAI] Результат сохранён в БД для record id=${latestRecord.id} (analysis_en + resultJson)`);
 
     // Возвращаем результат клиенту
     return NextResponse.json(
