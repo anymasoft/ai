@@ -26,7 +26,7 @@ import {
 import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
 import { useRouter } from "next/navigation"
-import { useToast } from "@/hooks/use-toast"
+import { toast } from "sonner"
 
 const accountFormSchema = z.object({
   firstName: z.string().min(1, "First name is required"),
@@ -44,7 +44,6 @@ type AccountFormValues = z.infer<typeof accountFormSchema>
 export default function AccountSettings() {
   const { data: session } = useSession();
   const router = useRouter();
-  const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
 
   const form = useForm<AccountFormValues>({
@@ -117,20 +116,13 @@ export default function AccountSettings() {
         throw new Error("Failed to update language preference");
       }
 
-      toast({
-        title: "Settings saved",
-        description: "Your language preference has been updated successfully.",
-      });
+      toast.success("Your language preference has been updated successfully.");
 
       // Refresh the page to apply language changes
       router.refresh();
     } catch (error) {
       console.error("Error saving settings:", error);
-      toast({
-        title: "Error",
-        description: "Failed to save settings. Please try again.",
-        variant: "destructive",
-      });
+      toast.error("Failed to save settings. Please try again.");
     } finally {
       setIsLoading(false);
     }
