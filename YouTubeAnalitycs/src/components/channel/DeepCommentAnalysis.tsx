@@ -165,7 +165,7 @@ export function DeepCommentAnalysis({
             Deep Audience Intelligence (AI v2.0)
           </CardTitle>
           <CardDescription>
-            Глубокий анализ комментариев аудитории
+            Deep audience comment analysis
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -194,8 +194,8 @@ export function DeepCommentAnalysis({
 
             {(!progress || progress.status === 'pending') && (
               <div className="text-center space-y-2">
-                <p className="text-muted-foreground">Инициализация анализа...</p>
-                <p className="text-sm text-muted-foreground">Это может занять 30-60 секунд</p>
+                <p className="text-muted-foreground">Initializing analysis...</p>
+                <p className="text-sm text-muted-foreground">This may take 30-60 seconds</p>
               </div>
             )}
           </div>
@@ -213,7 +213,7 @@ export function DeepCommentAnalysis({
             Deep Audience Intelligence (AI v2.0)
           </CardTitle>
           <CardDescription>
-            Глубокий AI-анализ комментариев: темы, боли, сегменты, скрытые паттерны
+            Deep AI comment analysis: themes, pain points, segments, hidden patterns
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -221,24 +221,24 @@ export function DeepCommentAnalysis({
             {!hasRequiredData ? (
               <>
                 <p className="text-muted-foreground mb-2 text-center">
-                  Для генерации Deep Analysis необходимо синхронизировать видео и комментарии.
+                  To generate Deep Analysis, sync videos and comments first.
                 </p>
                 <p className="text-sm text-muted-foreground mb-4 text-center">
-                  Нажмите кнопки "Sync Top Videos" и "Sync Comments" выше, чтобы загрузить данные.
+                  Click 'Sync Top Videos' and 'Sync Comments' buttons above to load data.
                 </p>
-                <Button onClick={handleGenerate} className="gap-2" disabled title="Сначала синхронизируйте видео и комментарии">
+                <Button onClick={handleGenerate} className="gap-2" disabled title="Sync videos and comments first">
                   <Brain className="h-4 w-4" />
-                  Сгенерировать Deep Analysis
+                  Generate Deep Analysis
                 </Button>
               </>
             ) : (
               <>
                 <p className="text-muted-foreground mb-4 text-center">
-                  Глубокий анализ выявит скрытые паттерны, сегменты аудитории и действенные инсайты из комментариев.
+                  Deep analysis will reveal hidden patterns, audience segments, and actionable insights from comments.
                 </p>
                 <Button onClick={handleGenerate} className="gap-2">
                   <Brain className="h-4 w-4" />
-                  Сгенерировать Deep Analysis
+                  Generate Deep Analysis
                 </Button>
               </>
             )}
@@ -307,7 +307,7 @@ export function DeepCommentAnalysis({
           {/* Sentiment Summary */}
       <Card className="border-indigo-200 dark:border-indigo-900 bg-indigo-50/50 dark:bg-indigo-950/20">
         <CardHeader>
-          <CardTitle className="text-lg">Эмоциональный профиль аудитории</CardTitle>
+          <CardTitle className="text-lg">Audience Emotional Profile</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-3 gap-4">
@@ -315,19 +315,19 @@ export function DeepCommentAnalysis({
               <div className="text-3xl font-bold text-green-600 dark:text-green-400">
                 {data.sentimentSummary.positive}%
               </div>
-              <div className="text-xs text-muted-foreground mt-1">Позитивные</div>
+              <div className="text-xs text-muted-foreground mt-1">Positive</div>
             </div>
             <div className="text-center">
               <div className="text-3xl font-bold text-gray-600 dark:text-gray-400">
                 {data.sentimentSummary.neutral}%
               </div>
-              <div className="text-xs text-muted-foreground mt-1">Нейтральные</div>
+              <div className="text-xs text-muted-foreground mt-1">Neutral</div>
             </div>
             <div className="text-center">
               <div className="text-3xl font-bold text-red-600 dark:text-red-400">
                 {data.sentimentSummary.negative}%
               </div>
-              <div className="text-xs text-muted-foreground mt-1">Негативные</div>
+              <div className="text-xs text-muted-foreground mt-1">Negative</div>
             </div>
           </div>
         </CardContent>
@@ -340,7 +340,7 @@ export function DeepCommentAnalysis({
           <CardHeader>
             <CardTitle className="text-lg flex items-center gap-2">
               <TrendingUp className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-              Топ темы
+              Top Themes
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -354,7 +354,7 @@ export function DeepCommentAnalysis({
                 ))}
               </ul>
             ) : (
-              <p className="text-sm text-muted-foreground">Недостаточно данных</p>
+              <p className="text-sm text-muted-foreground">Insufficient data</p>
             )}
           </CardContent>
         </Card>
@@ -364,7 +364,7 @@ export function DeepCommentAnalysis({
           <CardHeader>
             <CardTitle className="text-lg flex items-center gap-2">
               <AlertCircle className="h-5 w-5 text-orange-600 dark:text-orange-400" />
-              Боли аудитории
+              Audience Pain Points
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -378,7 +378,7 @@ export function DeepCommentAnalysis({
                 ))}
               </ul>
             ) : (
-              <p className="text-sm text-muted-foreground">Недостаточно данных</p>
+              <p className="text-sm text-muted-foreground">Insufficient data</p>
             )}
           </CardContent>
         </Card>
@@ -388,7 +388,7 @@ export function DeepCommentAnalysis({
           <CardHeader>
             <CardTitle className="text-lg flex items-center gap-2">
               <MessageSquare className="h-5 w-5 text-purple-600 dark:text-purple-400" />
-              Запросы аудитории
+              Audience Requests
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -402,7 +402,7 @@ export function DeepCommentAnalysis({
                 ))}
               </ul>
             ) : (
-              <p className="text-sm text-muted-foreground">Недостаточно данных</p>
+              <p className="text-sm text-muted-foreground">Insufficient data</p>
             )}
           </CardContent>
         </Card>
@@ -412,7 +412,7 @@ export function DeepCommentAnalysis({
           <CardHeader>
             <CardTitle className="text-lg flex items-center gap-2">
               <Heart className="h-5 w-5 text-pink-600 dark:text-pink-400" />
-              Что нравится
+              What They Like
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -426,7 +426,7 @@ export function DeepCommentAnalysis({
                 ))}
               </ul>
             ) : (
-              <p className="text-sm text-muted-foreground">Недостаточно данных</p>
+              <p className="text-sm text-muted-foreground">Insufficient data</p>
             )}
           </CardContent>
         </Card>
@@ -437,10 +437,10 @@ export function DeepCommentAnalysis({
         <CardHeader>
           <CardTitle className="text-lg flex items-center gap-2">
             <Users className="h-5 w-5 text-cyan-600 dark:text-cyan-400" />
-            Сегменты аудитории
+            Audience Segments
           </CardTitle>
           <CardDescription>
-            Различные группы пользователей в вашей аудитории
+            Different user groups in your audience
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -456,7 +456,7 @@ export function DeepCommentAnalysis({
               ))}
             </div>
           ) : (
-            <p className="text-sm text-muted-foreground">Недостаточно данных</p>
+            <p className="text-sm text-muted-foreground">Insufficient data</p>
           )}
         </CardContent>
       </Card>
@@ -466,10 +466,10 @@ export function DeepCommentAnalysis({
         <CardHeader>
           <CardTitle className="text-lg flex items-center gap-2">
             <Brain className="h-5 w-5 text-violet-600 dark:text-violet-400" />
-            Скрытые паттерны
+            Hidden Patterns
           </CardTitle>
           <CardDescription>
-            Неочевидные инсайты, выявленные AI
+            Non-obvious insights discovered by AI
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -483,7 +483,7 @@ export function DeepCommentAnalysis({
               ))}
             </ul>
           ) : (
-            <p className="text-sm text-muted-foreground">Недостаточно данных</p>
+            <p className="text-sm text-muted-foreground">Insufficient data</p>
           )}
         </CardContent>
       </Card>
@@ -493,10 +493,10 @@ export function DeepCommentAnalysis({
         <CardHeader>
           <CardTitle className="text-lg flex items-center gap-2">
             <Lightbulb className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
-            Действенные рекомендации
+            Actionable Recommendations
           </CardTitle>
           <CardDescription>
-            Конкретные шаги для улучшения контента и взаимодействия
+            Specific steps to improve content and engagement
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -510,7 +510,7 @@ export function DeepCommentAnalysis({
               ))}
             </ul>
           ) : (
-            <p className="text-sm text-muted-foreground">Недостаточно данных</p>
+            <p className="text-sm text-muted-foreground">Insufficient data</p>
           )}
         </CardContent>
       </Card>
@@ -521,7 +521,7 @@ export function DeepCommentAnalysis({
           <CardHeader>
             <CardTitle className="text-lg flex items-center gap-2">
               <Quote className="h-5 w-5 text-gray-600 dark:text-gray-400" />
-              Топ цитаты из комментариев
+              Top Quotes from Comments
             </CardTitle>
           </CardHeader>
           <CardContent>

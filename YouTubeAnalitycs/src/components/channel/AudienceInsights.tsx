@@ -65,7 +65,11 @@ function formatEngagement(score: number, isFallback: boolean): string {
   }
 }
 
-export function AudienceInsights({ channelId, initialData, hasRequiredData = true }: AudienceInsightsProps) {
+export function AudienceInsights({
+  channelId,
+  initialData,
+  hasRequiredData = true
+}: AudienceInsightsProps) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [data, setData] = useState<AudienceData | null>(initialData || null);
@@ -135,14 +139,14 @@ export function AudienceInsights({ channelId, initialData, hasRequiredData = tru
             Audience & Engagement
           </CardTitle>
           <CardDescription>
-            Анализ вовлеченности аудитории
+            Audience engagement and content reactions analysis
           </CardDescription>
         </CardHeader>
         <CardContent>
           <div className="flex flex-col items-center justify-center py-12">
             <Loader2 className="h-8 w-8 animate-spin text-muted-foreground mb-4" />
-            <p className="text-muted-foreground">Анализ engagement...</p>
-            <p className="text-sm text-muted-foreground mt-2">Это может занять 15-25 секунд</p>
+            <p className="text-muted-foreground">Analyzing engagement...</p>
+            <p className="text-sm text-muted-foreground mt-2">This may take 15-25 seconds</p>
           </div>
         </CardContent>
       </Card>
@@ -158,7 +162,7 @@ export function AudienceInsights({ channelId, initialData, hasRequiredData = tru
             Audience & Engagement
           </CardTitle>
           <CardDescription>
-            Анализ вовлеченности аудитории
+            Audience engagement and content reactions analysis
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -166,24 +170,24 @@ export function AudienceInsights({ channelId, initialData, hasRequiredData = tru
             {!hasRequiredData ? (
               <>
                 <p className="text-muted-foreground mb-2 text-center">
-                  Для генерации Audience анализа необходимо синхронизировать видео.
+                  Sync videos first
                 </p>
                 <p className="text-sm text-muted-foreground mb-4 text-center">
-                  Нажмите кнопку "Sync Top Videos" выше, чтобы загрузить данные.
+                  Click 'Sync Top Videos' above to load data.
                 </p>
-                <Button onClick={handleGenerate} className="gap-2" disabled title="Сначала синхронизируйте видео">
+                <Button onClick={handleGenerate} className="gap-2 cursor-pointer" disabled title="Sync videos first">
                   <Users className="h-4 w-4" />
-                  Сгенерировать Audience анализ
+                  Generate Audience Analysis
                 </Button>
               </>
             ) : (
               <>
                 <p className="text-muted-foreground mb-4">
-                  Audience анализ покажет какие темы получают максимум реакций от аудитории.
+                  Audience analysis will show which topics get maximum audience reactions.
                 </p>
-                <Button onClick={handleGenerate} className="gap-2">
+                <Button onClick={handleGenerate} className="gap-2 cursor-pointer">
                   <Users className="h-4 w-4" />
-                  Сгенерировать Audience анализ
+                  Generate Audience Analysis
                 </Button>
               </>
             )}
@@ -205,12 +209,12 @@ export function AudienceInsights({ channelId, initialData, hasRequiredData = tru
             Audience & Engagement
           </h2>
           <p className="text-sm text-muted-foreground mt-1">
-            Анализ вовлеченности аудитории и реакций на контент
+            Audience engagement and content reactions analysis
           </p>
         </div>
-        <Button onClick={handleGenerate} variant="outline" size="sm" className="gap-2">
+        <Button onClick={handleGenerate} variant="outline" size="sm" className="gap-2 cursor-pointer">
           <Users className="h-4 w-4" />
-          Обновить анализ
+          Refresh Analysis
         </Button>
       </div>
 
@@ -218,7 +222,7 @@ export function AudienceInsights({ channelId, initialData, hasRequiredData = tru
       <div className="grid grid-cols-4 gap-4">
         <div className="bg-muted/50 rounded-lg p-4">
           <div className="text-2xl font-bold">{data.stats.totalAnalyzed}</div>
-          <div className="text-xs text-muted-foreground">Проанализировано</div>
+          <div className="text-xs text-muted-foreground">Analyzed</div>
         </div>
         <div className="bg-purple-500/10 rounded-lg p-4">
           <div className="text-2xl font-bold text-purple-600 dark:text-purple-400">{data.stats.highEngagement}</div>
@@ -242,33 +246,33 @@ export function AudienceInsights({ channelId, initialData, hasRequiredData = tru
               <AlertTriangle className="h-5 w-5 text-amber-600 dark:text-amber-400 mt-0.5 flex-shrink-0" />
               <div className="flex-1">
                 <p className="text-sm font-medium text-amber-900 dark:text-amber-100">
-                  Данные лайков/комментариев недоступны
+                  Likes/comments data unavailable
                 </p>
                 <p className="text-sm text-amber-700 dark:text-amber-300 mt-1 mb-3">
-                  Используем поведенческий engagement-профиль на основе просмотров, скорости роста, формата и темы видео.
+                  Using behavioral engagement profile based on views, growth rate, format and topic.
                 </p>
                 <Button
                   onClick={handleEnrich}
                   disabled={enriching}
                   size="sm"
                   variant="outline"
-                  className="gap-2 border-amber-400 text-amber-900 hover:bg-amber-100 dark:text-amber-100 dark:hover:bg-amber-900/20"
+                  className="gap-2 border-amber-400 text-amber-900 hover:bg-amber-100 dark:text-amber-100 dark:hover:bg-amber-900/20 cursor-pointer"
                 >
                   {enriching ? (
                     <>
                       <Loader2 className="h-4 w-4 animate-spin" />
-                      Обогащение данных...
+                      Enriching data...
                     </>
                   ) : (
                     <>
                       <Sparkles className="h-4 w-4" />
-                      Получить реальные лайки/комменты
+                      Get real likes/comments
                     </>
                   )}
                 </Button>
                 {enriching && (
                   <p className="text-xs text-amber-600 dark:text-amber-400 mt-2">
-                    Это займёт ~15-30 секунд. Получаем детальные данные для топ 30 видео...
+                    This will take ~15-30 seconds. Fetching detailed data for top 30 videos...
                   </p>
                 )}
               </div>
@@ -282,7 +286,7 @@ export function AudienceInsights({ channelId, initialData, hasRequiredData = tru
         <CardHeader>
           <CardTitle className="text-lg flex items-center gap-2">
             <Sparkles className="h-5 w-5 text-purple-600 dark:text-purple-400" />
-            Почему эти темы получают высокий engagement
+            Why these topics get high engagement
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -297,7 +301,7 @@ export function AudienceInsights({ channelId, initialData, hasRequiredData = tru
           <CardHeader>
             <CardTitle className="text-lg flex items-center gap-2">
               <Heart className="h-5 w-5 text-pink-600 dark:text-pink-400" />
-              Темы с высоким engagement
+              High Engagement Themes
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -317,7 +321,7 @@ export function AudienceInsights({ channelId, initialData, hasRequiredData = tru
           <CardHeader>
             <CardTitle className="text-lg flex items-center gap-2">
               <MessageCircle className="h-5 w-5 text-green-600 dark:text-green-400" />
-              Форматы, вызывающие реакцию
+              Engaging Formats
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -337,7 +341,7 @@ export function AudienceInsights({ channelId, initialData, hasRequiredData = tru
           <CardHeader>
             <CardTitle className="text-lg flex items-center gap-2">
               <Users className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-              Паттерны аудитории
+              Audience Patterns
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -358,10 +362,10 @@ export function AudienceInsights({ channelId, initialData, hasRequiredData = tru
         <CardHeader>
           <CardTitle className="text-lg flex items-center gap-2">
             <TrendingDown className="h-5 w-5 text-red-600 dark:text-red-400" />
-            Слабые точки
+            Weak Points
           </CardTitle>
           <CardDescription>
-            Темы и форматы, которые получают мало реакций
+            Topics and formats that get few reactions
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -381,7 +385,7 @@ export function AudienceInsights({ channelId, initialData, hasRequiredData = tru
         <CardHeader>
           <CardTitle className="text-lg flex items-center gap-2">
             <Lightbulb className="h-5 w-5 text-yellow-600 dark:text-yellow-400" />
-            Рекомендации как повысить engagement
+            How to increase engagement
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -399,9 +403,9 @@ export function AudienceInsights({ channelId, initialData, hasRequiredData = tru
       {/* High Engagement Videos */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg">Видео с высоким Engagement</CardTitle>
+          <CardTitle className="text-lg">High Engagement Videos</CardTitle>
           <CardDescription>
-            Видео с engagement выше медианы на 50%+
+            Videos with engagement 50%+ above median
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -414,9 +418,9 @@ export function AudienceInsights({ channelId, initialData, hasRequiredData = tru
                 <div className="flex-1 min-w-0">
                   <div className="font-medium text-sm line-clamp-1">{video.title}</div>
                   <div className="text-xs text-muted-foreground mt-1 flex gap-3">
-                    <span>{formatNumber(video.viewCount)} просмотров</span>
-                    <span>{formatNumber(video.likeCount)} лайков</span>
-                    <span>{formatNumber(video.commentCount)} комментариев</span>
+                    <span>{formatNumber(video.viewCount)} views</span>
+                    <span>{formatNumber(video.likeCount)} likes</span>
+                    <span>{formatNumber(video.commentCount)} comments</span>
                   </div>
                 </div>
                 <div className="flex items-center gap-2 ml-4">
@@ -425,7 +429,7 @@ export function AudienceInsights({ channelId, initialData, hasRequiredData = tru
                       {formatEngagement(video.engagementScore, data.usingFallback || false)}
                     </div>
                     <div className="text-xs text-muted-foreground">
-                      {data.usingFallback ? 'score' : 'engagement'}
+                      {data.usingFallback ? "score" : "engagement"}
                     </div>
                   </div>
                 </div>
@@ -437,7 +441,7 @@ export function AudienceInsights({ channelId, initialData, hasRequiredData = tru
 
       {data.generatedAt && (
         <p className="text-xs text-muted-foreground text-center">
-          Анализ сгенерирован: {new Date(data.generatedAt).toLocaleString("ru-RU")}
+          Analysis generated: {new Date(data.generatedAt).toLocaleString("en-US")}
         </p>
       )}
     </div>

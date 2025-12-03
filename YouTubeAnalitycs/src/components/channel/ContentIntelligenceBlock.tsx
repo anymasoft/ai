@@ -19,59 +19,17 @@ interface ContentIntelligenceBlockProps {
   channelId: number;
   initialData?: ContentIntelligenceData | null;
   hasRequiredData?: boolean;
-  analysisLanguage?: "en" | "ru";
 }
 
 export function ContentIntelligenceBlock({
   channelId,
   initialData,
-  hasRequiredData = true,
-  analysisLanguage = "en"
+  hasRequiredData = true
 }: ContentIntelligenceBlockProps) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [data, setData] = useState<ContentIntelligenceData | null>(initialData || null);
   const [error, setError] = useState<string | null>(null);
-
-  // Local dictionary for titles/descriptions only
-  const texts = {
-    en: {
-      title: "AI Content Patterns",
-      description: "Content analysis and successful patterns identification",
-      generating: "Generating AI analysis...",
-      waitTime: "This may take 10-20 seconds",
-      noData: "Content Intelligence analysis not yet generated",
-      generateDesc: "AI will analyze video metadata to identify successful content patterns.",
-      generateButton: "Generate Analysis",
-      refreshButton: "Refresh Analysis",
-      syncFirst: "Sync videos first",
-      syncDesc: "Click 'Sync Top Videos' above to load data.",
-      themes: "Content Themes",
-      formats: "Popular Formats",
-      patterns: "Success Patterns",
-      opportunities: "Content Opportunities",
-      recommendations: "Recommendations"
-    },
-    ru: {
-      title: "AI Паттерны контента",
-      description: "Анализ контента и выявление успешных паттернов",
-      generating: "Генерация AI-аналитики...",
-      waitTime: "Это может занять 10-20 секунд",
-      noData: "Анализ Content Intelligence ещё не сгенерирован",
-      generateDesc: "AI проанализирует метаданные видео и определит успешные паттерны контента.",
-      generateButton: "Сгенерировать анализ",
-      refreshButton: "Обновить анализ",
-      syncFirst: "Сначала синхронизируйте видео",
-      syncDesc: "Нажмите 'Sync Top Videos' выше для загрузки данных.",
-      themes: "Темы контента",
-      formats: "Популярные форматы",
-      patterns: "Паттерны успеха",
-      opportunities: "Возможности для контента",
-      recommendations: "Рекомендации"
-    }
-  };
-
-  const t = texts[analysisLanguage];
 
   async function handleGenerate() {
     setLoading(true);
@@ -106,17 +64,17 @@ export function ContentIntelligenceBlock({
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Sparkles className="h-5 w-5 text-purple-600 dark:text-purple-400" />
-            {t.title}
+            AI Content Patterns
           </CardTitle>
           <CardDescription>
-            {t.description}
+            Content analysis and successful patterns identification
           </CardDescription>
         </CardHeader>
         <CardContent>
           <div className="flex flex-col items-center justify-center py-12">
             <Loader2 className="h-8 w-8 animate-spin text-muted-foreground mb-4" />
-            <p className="text-muted-foreground">{t.generating}</p>
-            <p className="text-sm text-muted-foreground mt-2">{t.waitTime}</p>
+            <p className="text-muted-foreground">Generating AI analysis...</p>
+            <p className="text-sm text-muted-foreground mt-2">This may take 10-20 seconds</p>
           </div>
         </CardContent>
       </Card>
@@ -129,10 +87,10 @@ export function ContentIntelligenceBlock({
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Sparkles className="h-5 w-5 text-purple-600 dark:text-purple-400" />
-            {t.title}
+            AI Content Patterns
           </CardTitle>
           <CardDescription>
-            {t.description}
+            Content analysis and successful patterns identification
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -140,24 +98,24 @@ export function ContentIntelligenceBlock({
             {!hasRequiredData ? (
               <>
                 <p className="text-muted-foreground mb-2 text-center">
-                  {t.syncFirst}
+                  Sync videos first
                 </p>
                 <p className="text-sm text-muted-foreground mb-4 text-center">
-                  {t.syncDesc}
+                  Click 'Sync Top Videos' above to load data.
                 </p>
-                <Button onClick={handleGenerate} className="gap-2 cursor-pointer" disabled title={t.syncFirst}>
+                <Button onClick={handleGenerate} className="gap-2 cursor-pointer" disabled title="Sync videos first">
                   <Sparkles className="h-4 w-4" />
-                  {t.generateButton}
+                  Generate Analysis
                 </Button>
               </>
             ) : (
               <>
                 <p className="text-muted-foreground mb-4">
-                  {t.generateDesc}
+                  AI will analyze video metadata to identify successful content patterns.
                 </p>
                 <Button onClick={handleGenerate} className="gap-2 cursor-pointer">
                   <Sparkles className="h-4 w-4" />
-                  {t.generateButton}
+                  Generate Analysis
                 </Button>
               </>
             )}
@@ -176,15 +134,15 @@ export function ContentIntelligenceBlock({
         <div>
           <h2 className="text-2xl font-bold flex items-center gap-2">
             <Sparkles className="h-6 w-6 text-purple-600 dark:text-purple-400" />
-            {t.title}
+            AI Content Patterns
           </h2>
           <p className="text-sm text-muted-foreground mt-1">
-            {t.description}
+            Content analysis and successful patterns identification
           </p>
         </div>
         <Button onClick={handleGenerate} variant="outline" size="sm" className="gap-2 cursor-pointer">
           <Sparkles className="h-4 w-4" />
-          {t.refreshButton}
+          Refresh Analysis
         </Button>
       </div>
 
@@ -194,7 +152,7 @@ export function ContentIntelligenceBlock({
           <CardHeader>
             <CardTitle className="text-lg flex items-center gap-2">
               <TrendingUp className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-              {t.themes}
+              Content Themes
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -214,7 +172,7 @@ export function ContentIntelligenceBlock({
           <CardHeader>
             <CardTitle className="text-lg flex items-center gap-2">
               <BarChart3 className="h-5 w-5 text-green-600 dark:text-green-400" />
-              {t.formats}
+              Popular Formats
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -234,7 +192,7 @@ export function ContentIntelligenceBlock({
           <CardHeader>
             <CardTitle className="text-lg flex items-center gap-2">
               <Target className="h-5 w-5 text-orange-600 dark:text-orange-400" />
-              {t.patterns}
+              Success Patterns
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -254,7 +212,7 @@ export function ContentIntelligenceBlock({
           <CardHeader>
             <CardTitle className="text-lg flex items-center gap-2">
               <Sparkles className="h-5 w-5 text-purple-600 dark:text-purple-400" />
-              {t.opportunities}
+              Content Opportunities
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -275,7 +233,7 @@ export function ContentIntelligenceBlock({
         <CardHeader>
           <CardTitle className="text-lg flex items-center gap-2">
             <Lightbulb className="h-5 w-5 text-yellow-600 dark:text-yellow-400" />
-            {t.recommendations}
+            Recommendations
           </CardTitle>
         </CardHeader>
         <CardContent>
