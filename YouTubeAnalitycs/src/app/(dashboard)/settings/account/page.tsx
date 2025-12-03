@@ -116,7 +116,12 @@ export default function AccountSettings() {
         throw new Error("Failed to update language preference");
       }
 
-      toast.success("Your language preference has been updated successfully.");
+      toast("Settings saved", {
+        description: "Your preferences have been updated.",
+        duration: 3000,
+        className: "bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 shadow-lg text-neutral-900 dark:text-neutral-100",
+        icon: null
+      });
 
       // Refresh the page to apply language changes after toast is visible
       setTimeout(() => {
@@ -124,7 +129,12 @@ export default function AccountSettings() {
       }, 1000);
     } catch (error) {
       console.error("Error saving settings:", error);
-      toast.error("Failed to save settings. Please try again.");
+      toast("Save failed", {
+        description: "Please try again.",
+        duration: 3000,
+        className: "bg-white dark:bg-neutral-900 border border-neutral-300 dark:border-neutral-700 shadow-lg text-neutral-900 dark:text-neutral-100",
+        icon: null
+      });
     } finally {
       setIsLoading(false);
     }
@@ -315,7 +325,7 @@ export default function AccountSettings() {
             </Card>
 
             <div className="flex space-x-2">
-              <Button type="submit" disabled={isLoading} className="cursor-pointer">
+              <Button type="submit" disabled={isLoading} className={`cursor-pointer min-w-[140px] ${isLoading ? 'opacity-60' : ''}`}>
                 {isLoading ? "Saving..." : "Save Changes"}
               </Button>
               <Button variant="outline" type="reset" disabled={isLoading} className="cursor-pointer">Cancel</Button>
