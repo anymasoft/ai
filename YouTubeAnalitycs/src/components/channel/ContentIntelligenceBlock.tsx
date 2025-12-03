@@ -13,6 +13,7 @@ interface ContentIntelligenceData {
   opportunities: string[];
   recommendations: string[];
   generatedAt?: number;
+  hasRussianVersion?: boolean;
 }
 
 interface ContentIntelligenceBlockProps {
@@ -28,6 +29,7 @@ export function ContentIntelligenceBlock({
 }: ContentIntelligenceBlockProps) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
+  const [translating, setTranslating] = useState(false);
   const [data, setData] = useState<ContentIntelligenceData | null>(initialData || null);
   const [error, setError] = useState<string | null>(null);
 
@@ -55,6 +57,34 @@ export function ContentIntelligenceBlock({
       setError(err instanceof Error ? err.message : "Unknown error");
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function handleTranslate() {
+    setTranslating(true);
+    setError(null);
+
+    try {
+      const res = await fetch(`/api/channel/${channelId}/content-intelligence/translate`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ targetLanguage: "ru" }),
+      });
+
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.error || "Failed to translate analysis");
+      }
+
+      // Обновляем страницу чтобы показать переведённую версию
+      router.refresh();
+    } catch (err) {
+      console.error("Error translating content intelligence:", err);
+      setError(err instanceof Error ? err.message : "Unknown error");
+    } finally {
+      setTranslating(false);
     }
   }
 
@@ -140,10 +170,32 @@ export function ContentIntelligenceBlock({
             Content analysis and successful patterns identification
           </p>
         </div>
-        <Button onClick={handleGenerate} variant="outline" size="sm" className="gap-2 cursor-pointer">
-          <Sparkles className="h-4 w-4" />
-          Refresh Analysis
-        </Button>
+        <div className="flex gap-2">
+          {!data.hasRussianVersion && (
+            <Button
+              onClick={handleTranslate}
+              disabled={translating}
+              variant="outline"
+              size="sm"
+              className="gap-2 cursor-pointer"
+            >
+              {translating ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Translating...
+                </>
+              ) : (
+                <>
+                  🇷🇺 Translate to Russian
+                </>
+              )}
+            </Button>
+          )}
+          <Button onClick={handleGenerate} variant="outline" size="sm" className="gap-2 cursor-pointer">
+            <Sparkles className="h-4 w-4" />
+            Refresh Analysis
+          </Button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

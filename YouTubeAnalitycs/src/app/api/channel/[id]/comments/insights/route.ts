@@ -198,6 +198,7 @@ ${JSON.stringify(topComments, null, 2)}
         videoId: videos[0].videoId, // Reference video
         channelId: competitor.channelId,
         data: JSON.stringify(insightsData),
+        data_ru: null, // Сброс русского перевода при пересчёте
         generatedAt: Date.now(),
       })
       .run();

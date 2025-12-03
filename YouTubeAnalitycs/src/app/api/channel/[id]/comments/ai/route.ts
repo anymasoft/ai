@@ -173,6 +173,7 @@ export async function POST(
       .set({
         resultJson: JSON.stringify(analysisResult),
         analysis_en: JSON.stringify(analysisResult), // Сохраняем английскую версию как источник
+        analysis_ru: null, // Сброс русского перевода при пересчёте
       })
       .where(eq(channelAICommentInsights.channelId, competitor.channelId))
       .run();
