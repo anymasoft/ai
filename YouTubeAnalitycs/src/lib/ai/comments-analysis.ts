@@ -3,6 +3,7 @@ import { createClient } from "@libsql/client";
 
 /**
  * Helper для обновления прогресса анализа в БД
+ * Использует двухшаговый подход, т.к. SQLite не поддерживает ORDER BY в UPDATE
  */
 async function updateProgress(
   channelId: string,
@@ -16,14 +17,32 @@ async function updateProgress(
       url: dbPath.startsWith("file:") ? dbPath : `file:${dbPath}`,
     });
 
-    await client.execute({
-      sql: `UPDATE channel_ai_comment_insights
-            SET progress_current = ?, progress_total = ?, status = ?
+    // Шаг 1: Найти id последней записи для этого канала
+    const result = await client.execute({
+      sql: `SELECT id FROM channel_ai_comment_insights
             WHERE channelId = ?
             ORDER BY createdAt DESC
             LIMIT 1`,
-      args: [current, total, status, channelId],
+      args: [channelId],
     });
+
+    if (result.rows.length === 0) {
+      console.error('[updateProgress] No record found for channelId:', channelId);
+      client.close();
+      return;
+    }
+
+    const recordId = result.rows[0].id;
+
+    // Шаг 2: Обновить запись по id
+    await client.execute({
+      sql: `UPDATE channel_ai_comment_insights
+            SET progress_current = ?, progress_total = ?, status = ?
+            WHERE id = ?`,
+      args: [current, total, status, recordId],
+    });
+
+    console.log(`[updateProgress] Updated record ${recordId}: ${current}/${total} (${status})`);
 
     client.close();
   } catch (error) {
