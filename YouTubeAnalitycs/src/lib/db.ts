@@ -151,6 +151,7 @@ export const contentIntelligence = sqliteTable("content_intelligence", {
   id: integer("id").primaryKey({ autoIncrement: true }),
   channelId: text("channelId").notNull(), // ID канала из ScrapeCreators
   data: text("data").notNull(), // JSON с результатами анализа
+  data_ru: text("data_ru"), // JSON с русским переводом
   generatedAt: integer("generatedAt")
     .notNull()
     .$defaultFn(() => Date.now()), // Время генерации анализа
@@ -161,6 +162,7 @@ export const momentumInsights = sqliteTable("momentum_insights", {
   id: integer("id").primaryKey({ autoIncrement: true }),
   channelId: text("channelId").notNull(), // ID канала из ScrapeCreators
   data: text("data").notNull(), // JSON с результатами momentum анализа
+  data_ru: text("data_ru"), // JSON с русским переводом
   generatedAt: integer("generatedAt")
     .notNull()
     .$defaultFn(() => Date.now()), // Время генерации анализа
@@ -171,6 +173,7 @@ export const audienceInsights = sqliteTable("audience_insights", {
   id: integer("id").primaryKey({ autoIncrement: true }),
   channelId: text("channelId").notNull(), // ID канала из ScrapeCreators
   data: text("data").notNull(), // JSON с результатами audience анализа
+  data_ru: text("data_ru"), // JSON с русским переводом
   generatedAt: integer("generatedAt")
     .notNull()
     .$defaultFn(() => Date.now()), // Время генерации анализа
@@ -217,6 +220,7 @@ export const commentInsights = sqliteTable("comment_insights", {
   videoId: text("videoId").notNull(), // YouTube video ID
   channelId: text("channelId").notNull(), // ID канала для группировки
   data: text("data").notNull(), // JSON с результатами AI-анализа комментариев
+  data_ru: text("data_ru"), // JSON с русским переводом
   generatedAt: integer("generatedAt")
     .notNull()
     .$defaultFn(() => Date.now()), // Время генерации анализа
@@ -530,6 +534,31 @@ function getDatabase() {
           CREATE INDEX IF NOT EXISTS idx_channel_ai_insights_createdAt
           ON channel_ai_comment_insights(createdAt DESC);
         `);
+
+        // Добавление RU-полей для перевода AI-аналитики
+        try {
+          _client.execute(`ALTER TABLE content_intelligence ADD COLUMN data_ru TEXT;`);
+        } catch (e) {
+          // Колонка уже существует
+        }
+
+        try {
+          _client.execute(`ALTER TABLE momentum_insights ADD COLUMN data_ru TEXT;`);
+        } catch (e) {
+          // Колонка уже существует
+        }
+
+        try {
+          _client.execute(`ALTER TABLE audience_insights ADD COLUMN data_ru TEXT;`);
+        } catch (e) {
+          // Колонка уже существует
+        }
+
+        try {
+          _client.execute(`ALTER TABLE comment_insights ADD COLUMN data_ru TEXT;`);
+        } catch (e) {
+          // Колонка уже существует
+        }
 
         console.log("✅ Таблицы базы данных инициализированы");
       } catch (error) {

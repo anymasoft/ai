@@ -163,6 +163,7 @@ ${JSON.stringify(videosData, null, 2)}
       .values({
         channelId: competitor.channelId,
         data: JSON.stringify(analysisData),
+        data_ru: null, // Сброс русского перевода при пересчёте
         generatedAt: Date.now(),
       })
       .run();
@@ -249,6 +250,7 @@ export async function GET(
     return NextResponse.json({
       ...JSON.parse(analysis.data),
       generatedAt: analysis.generatedAt,
+      hasRussianVersion: !!analysis.data_ru,
     });
 
   } catch (error) {

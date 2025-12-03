@@ -290,6 +290,7 @@ ${JSON.stringify(videosForAnalysis, null, 2)}
       .values({
         channelId: competitor.channelId,
         data: JSON.stringify(momentumData),
+        data_ru: null, // Сброс русского перевода при пересчёте
         generatedAt: Date.now(),
       })
       .run();
@@ -403,6 +404,7 @@ export async function GET(
     return NextResponse.json({
       ...parsedData,
       generatedAt: analysis.generatedAt,
+      hasRussianVersion: !!analysis.data_ru,
     });
 
   } catch (error) {
