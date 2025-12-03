@@ -2,8 +2,6 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
-import { getUserLanguageServer } from "@/lib/get-user-language-server";
-import { getDict } from "@/lib/i18n";
 import { db, competitors, aiInsights, channelMetrics, channelVideos, videoComments, contentIntelligence, momentumInsights, audienceInsights, commentInsights, channelAICommentInsights } from "@/lib/db";
 import { eq, and, desc, inArray } from "drizzle-orm";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -14,13 +12,7 @@ import { SyncMetricsButton } from "@/components/channel/SyncMetricsButton";
 import { SyncVideosButton } from "@/components/channel/SyncVideosButton";
 import { SyncCommentsButton } from "@/components/channel/SyncCommentsButton";
 import { SyncAllDataButton } from "@/components/channel/SyncAllDataButton";
-import { ChannelGrowthChart } from "@/components/charts/ChannelGrowthChart";
-import { TopVideosGrid } from "@/components/channel/TopVideosGrid";
-import { ContentIntelligenceBlock } from "@/components/channel/ContentIntelligenceBlock";
-import { MomentumInsights } from "@/components/channel/MomentumInsights";
-import { AudienceInsights } from "@/components/channel/AudienceInsights";
-import { CommentInsights } from "@/components/channel/CommentInsights";
-import { DeepCommentAnalysis } from "@/components/channel/DeepCommentAnalysis";
+import { ChannelAnalytics } from "@/components/channel/ChannelAnalytics";
 
 interface PageProps {
   params: Promise<{ id: string }>;
@@ -43,7 +35,7 @@ function formatNumber(num: number): string {
  * Форматирует дату
  */
 function formatDate(timestamp: number): string {
-  return new Date(timestamp).toLocaleDateString("ru-RU", {
+  return new Date(timestamp).toLocaleDateString("en-US", {
     year: "numeric",
     month: "long",
     day: "numeric",
@@ -65,10 +57,6 @@ export default async function ChannelPage({ params }: PageProps) {
   if (!session?.user?.id) {
     redirect("/api/auth/signin");
   }
-
-  // Получаем язык пользователя и словарь для локализации
-  const language = await getUserLanguageServer();
-  const dict = getDict(language);
 
   const { id } = await params;
   const competitorId = parseInt(id, 10);
@@ -229,7 +217,7 @@ export default async function ChannelPage({ params }: PageProps) {
           className="inline-flex items-center text-sm text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
         >
           <ArrowLeft className="w-4 h-4 mr-1" />
-          {dict.backToCompetitors}
+          Back to Competitors
         </Link>
       </div>
 
@@ -254,7 +242,7 @@ export default async function ChannelPage({ params }: PageProps) {
             rel="noopener noreferrer"
             className="inline-flex items-center gap-1 text-blue-600 text-sm hover:underline dark:text-blue-400"
           >
-            {dict.viewOnYoutube}
+            View on YouTube
             <ExternalLink className="w-3 h-3" />
           </a>
         </div>
@@ -273,21 +261,21 @@ export default async function ChannelPage({ params }: PageProps) {
         <div className="flex items-center gap-2">
           <Users className="h-4 w-4 text-muted-foreground" />
           <span className="font-semibold">{formatNumber(competitor.subscriberCount)}</span>
-          <span className="text-muted-foreground">{dict.subscribers}</span>
+          <span className="text-muted-foreground">subscribers</span>
         </div>
         <div className="flex items-center gap-2">
           <Video className="h-4 w-4 text-muted-foreground" />
           <span className="font-semibold">{formatNumber(competitor.videoCount)}</span>
-          <span className="text-muted-foreground">{dict.videos}</span>
+          <span className="text-muted-foreground">videos</span>
         </div>
         <div className="flex items-center gap-2">
           <Eye className="h-4 w-4 text-muted-foreground" />
           <span className="font-semibold">{formatNumber(competitor.viewCount)}</span>
-          <span className="text-muted-foreground">{dict.views}</span>
+          <span className="text-muted-foreground">views</span>
         </div>
         <div className="flex items-center gap-2">
           <Calendar className="h-4 w-4 text-muted-foreground" />
-          <span className="text-muted-foreground">{dict.updatedAt}: {formatDate(competitor.lastSyncedAt)}</span>
+          <span className="text-muted-foreground">Updated: {formatDate(competitor.lastSyncedAt)}</span>
         </div>
       </div>
 
@@ -295,20 +283,20 @@ export default async function ChannelPage({ params }: PageProps) {
 
       {/* Overview - Ключевые метрики */}
       <div>
-        <h2 className="text-2xl font-bold mb-4">{dict.overview}</h2>
+        <h2 className="text-2xl font-bold mb-4">Overview</h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div className="border rounded-lg p-4 bg-muted/40">
-            <div className="text-sm text-muted-foreground mb-2">{dict.overviewSubscribers}</div>
+            <div className="text-sm text-muted-foreground mb-2">Subscribers</div>
             <div className="text-3xl font-bold">{formatNumber(competitor.subscriberCount)}</div>
           </div>
 
           <div className="border rounded-lg p-4 bg-muted/40">
-            <div className="text-sm text-muted-foreground mb-2">{dict.overviewTotalViews}</div>
+            <div className="text-sm text-muted-foreground mb-2">Total Views</div>
             <div className="text-3xl font-bold">{formatNumber(competitor.viewCount)}</div>
           </div>
 
           <div className="border rounded-lg p-4 bg-muted/40">
-            <div className="text-sm text-muted-foreground mb-2">{dict.avgViewsPerVideo}</div>
+            <div className="text-sm text-muted-foreground mb-2">Avg. Views per Video</div>
             <div className="text-3xl font-bold">{formatNumber(avgViews)}</div>
           </div>
         </div>
@@ -316,18 +304,18 @@ export default async function ChannelPage({ params }: PageProps) {
 
       {/* AI Insights */}
       <div>
-        <h2 className="text-2xl font-bold mb-4">{dict.aiInsights}</h2>
+        <h2 className="text-2xl font-bold mb-4">AI Insights</h2>
         {insight ? (
           <div className="space-y-4">
             {/* Summary */}
             <Card>
               <CardHeader>
-                <CardTitle className="text-lg">{dict.briefSummary}</CardTitle>
+                <CardTitle className="text-lg">Brief Summary</CardTitle>
               </CardHeader>
               <CardContent>
                 <p className="text-muted-foreground">{insight.summary}</p>
                 <p className="text-xs text-muted-foreground mt-4">
-                  {dict.analysisGenerated}: {formatDate(insight.createdAt)}
+                  Analysis Generated: {formatDate(insight.createdAt)}
                 </p>
               </CardContent>
             </Card>
@@ -337,7 +325,7 @@ export default async function ChannelPage({ params }: PageProps) {
               <Card>
                 <CardHeader>
                   <CardTitle className="text-lg text-green-600 dark:text-green-500">
-                    {dict.strengths}
+                    Strengths
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
@@ -355,7 +343,7 @@ export default async function ChannelPage({ params }: PageProps) {
               <Card>
                 <CardHeader>
                   <CardTitle className="text-lg text-red-600 dark:text-red-500">
-                    {dict.weaknesses}
+                    Weaknesses
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
@@ -373,7 +361,7 @@ export default async function ChannelPage({ params }: PageProps) {
               <Card>
                 <CardHeader>
                   <CardTitle className="text-lg text-blue-600 dark:text-blue-500">
-                    {dict.opportunities}
+                    Opportunities
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
@@ -391,7 +379,7 @@ export default async function ChannelPage({ params }: PageProps) {
               <Card>
                 <CardHeader>
                   <CardTitle className="text-lg text-orange-600 dark:text-orange-500">
-                    {dict.threats}
+                    Threats
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
@@ -410,7 +398,7 @@ export default async function ChannelPage({ params }: PageProps) {
             <Card>
               <CardHeader>
                 <CardTitle className="text-lg text-purple-600 dark:text-purple-500">
-                  {dict.recommendations}
+                  Recommendations
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -428,59 +416,25 @@ export default async function ChannelPage({ params }: PageProps) {
           <Alert>
             <AlertCircle className="h-4 w-4" />
             <AlertDescription>
-              {dict.noAIAnalysis}
+              No AI analysis available yet.
             </AlertDescription>
           </Alert>
         )}
       </div>
 
-      {/* Графики аналитики */}
-      <div className="space-y-6">
-        {/* Реальный график роста с timeseries данными */}
-        <ChannelGrowthChart
-          metrics={metrics}
-          title={dict.growthOverTime}
-          description={dict.historicalMetrics}
-        />
-
-        {/* Топ видео канала */}
-        <TopVideosGrid videos={videos} />
-
-        {/* AI Content Intelligence */}
-        <ContentIntelligenceBlock
-          channelId={competitorId}
-          initialData={contentData ? { ...contentData, generatedAt: intelligence?.generatedAt } : null}
-          hasRequiredData={hasVideos}
-        />
-
-        {/* Momentum Insights */}
-        <MomentumInsights
-          channelId={competitorId}
-          initialData={momentumData ? { ...momentumData, generatedAt: momentum?.generatedAt } : null}
-          hasRequiredData={hasVideos}
-        />
-
-        {/* Audience & Engagement */}
-        <AudienceInsights
-          channelId={competitorId}
-          initialData={audienceData ? { ...audienceData, generatedAt: audience?.generatedAt } : null}
-          hasRequiredData={hasVideos}
-        />
-
-        {/* Comment Intelligence */}
-        <CommentInsights
-          channelId={competitorId}
-          initialData={commentsData ? { ...commentsData, generatedAt: comments?.generatedAt } : null}
-          hasRequiredData={hasVideos && hasComments}
-        />
-
-        {/* Deep Comment Analysis (AI v2.0) */}
-        <DeepCommentAnalysis
-          channelId={competitorId}
-          initialData={deepAnalysisData ? { ...deepAnalysisData, createdAt: deepAnalysis?.createdAt } : null}
-          hasRequiredData={hasVideos && hasComments}
-        />
-      </div>
+      {/* Analytics Section with Language Selector */}
+      <ChannelAnalytics
+        channelId={competitorId}
+        metrics={metrics}
+        videos={videos}
+        contentData={contentData ? { ...contentData, generatedAt: intelligence?.generatedAt } : null}
+        momentumData={momentumData ? { ...momentumData, generatedAt: momentum?.generatedAt } : null}
+        audienceData={audienceData ? { ...audienceData, generatedAt: audience?.generatedAt } : null}
+        commentsData={commentsData ? { ...commentsData, generatedAt: comments?.generatedAt } : null}
+        deepAnalysisData={deepAnalysisData ? { ...deepAnalysisData, createdAt: deepAnalysis?.createdAt } : null}
+        hasVideos={hasVideos}
+        hasComments={hasComments}
+      />
     </div>
   );
 }

@@ -17,6 +17,7 @@ interface DeepCommentAnalysisProps {
     hasRussianVersion?: boolean;
   }) | null;
   hasRequiredData?: boolean;
+  analysisLanguage?: "en" | "ru";
 }
 
 interface ProgressData {
@@ -26,7 +27,12 @@ interface ProgressData {
   percent: number;
 }
 
-export function DeepCommentAnalysis({ channelId, initialData, hasRequiredData = true }: DeepCommentAnalysisProps) {
+export function DeepCommentAnalysis({
+  channelId,
+  initialData,
+  hasRequiredData = true,
+  analysisLanguage = "en"
+}: DeepCommentAnalysisProps) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [translating, setTranslating] = useState(false);
@@ -254,43 +260,51 @@ export function DeepCommentAnalysis({ channelId, initialData, hasRequiredData = 
             Deep Audience Intelligence (AI v2.0)
           </h2>
           <p className="text-sm text-muted-foreground mt-1">
-            Глубокий AI-анализ {data.totalAnalyzed} комментариев
-            {data.analysisLanguage && (
-              <span className="ml-2 text-xs">
-                (язык: {data.analysisLanguage === "ru" ? "🇷🇺 Русский" : "🇬🇧 English"})
-              </span>
-            )}
+            Deep AI analysis of {data.totalAnalyzed} comments
           </p>
         </div>
         <div className="flex gap-2">
-          {data.analysisLanguage === "en" && !data.hasRussianVersion && (
-            <Button
-              onClick={handleTranslate}
-              disabled={translating}
-              variant="outline"
-              size="sm"
-              className="gap-2"
-            >
-              {translating ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  Перевод...
-                </>
-              ) : (
-                <>
-                  🇷🇺 Generate Russian Version
-                </>
-              )}
-            </Button>
-          )}
           <Button onClick={handleGenerate} variant="outline" size="sm" className="gap-2">
             <Brain className="h-4 w-4" />
-            Обновить анализ
+            Refresh Analysis
           </Button>
         </div>
       </div>
 
-      {/* Sentiment Summary */}
+      {/* Show translation prompt when Russian is selected but not available */}
+      {analysisLanguage === "ru" && !data.hasRussianVersion ? (
+        <Card className="border-blue-200 dark:border-blue-900 bg-blue-50/50 dark:bg-blue-950/20">
+          <CardContent className="pt-6">
+            <div className="flex flex-col items-center justify-center py-6 text-center space-y-4">
+              <AlertCircle className="h-12 w-12 text-blue-600 dark:text-blue-400" />
+              <div className="space-y-2">
+                <p className="font-semibold">Russian version not yet generated</p>
+                <p className="text-sm text-muted-foreground max-w-md">
+                  The analysis is currently available in English only. Click the button below to generate a Russian translation.
+                </p>
+              </div>
+              <Button
+                onClick={handleTranslate}
+                disabled={translating}
+                className="gap-2 cursor-pointer"
+              >
+                {translating ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Translating...
+                  </>
+                ) : (
+                  <>
+                    🇷🇺 Translate to Russian
+                  </>
+                )}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      ) : (
+        <>
+          {/* Sentiment Summary */}
       <Card className="border-indigo-200 dark:border-indigo-900 bg-indigo-50/50 dark:bg-indigo-950/20">
         <CardHeader>
           <CardTitle className="text-lg">Эмоциональный профиль аудитории</CardTitle>
@@ -527,9 +541,11 @@ export function DeepCommentAnalysis({ channelId, initialData, hasRequiredData = 
 
       {data.createdAt && (
         <p className="text-xs text-muted-foreground text-center">
-          Анализ сгенерирован: {new Date(data.createdAt).toLocaleString(data.language === "ru" ? "ru-RU" : "en-US")}
-          {data.cached && " (из кэша)"}
+          Analysis generated: {new Date(data.createdAt).toLocaleString("en-US")}
+          {data.cached && " (cached)"}
         </p>
+      )}
+        </>
       )}
     </div>
   );
