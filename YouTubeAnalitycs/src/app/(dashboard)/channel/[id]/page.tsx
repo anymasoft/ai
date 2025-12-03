@@ -12,13 +12,7 @@ import { SyncMetricsButton } from "@/components/channel/SyncMetricsButton";
 import { SyncVideosButton } from "@/components/channel/SyncVideosButton";
 import { SyncCommentsButton } from "@/components/channel/SyncCommentsButton";
 import { SyncAllDataButton } from "@/components/channel/SyncAllDataButton";
-import { ChannelGrowthChart } from "@/components/charts/ChannelGrowthChart";
-import { TopVideosGrid } from "@/components/channel/TopVideosGrid";
-import { ContentIntelligenceBlock } from "@/components/channel/ContentIntelligenceBlock";
-import { MomentumInsights } from "@/components/channel/MomentumInsights";
-import { AudienceInsights } from "@/components/channel/AudienceInsights";
-import { CommentInsights } from "@/components/channel/CommentInsights";
-import { DeepCommentAnalysis } from "@/components/channel/DeepCommentAnalysis";
+import { ChannelAnalytics } from "@/components/channel/ChannelAnalytics";
 
 interface PageProps {
   params: Promise<{ id: string }>;
@@ -428,53 +422,19 @@ export default async function ChannelPage({ params }: PageProps) {
         )}
       </div>
 
-      {/* Графики аналитики */}
-      <div className="space-y-6">
-        {/* Реальный график роста с timeseries данными */}
-        <ChannelGrowthChart
-          metrics={metrics}
-          title="Growth Over Time"
-          description="Historical metrics"
-        />
-
-        {/* Топ видео канала */}
-        <TopVideosGrid videos={videos} />
-
-        {/* AI Content Intelligence */}
-        <ContentIntelligenceBlock
-          channelId={competitorId}
-          initialData={contentData ? { ...contentData, generatedAt: intelligence?.generatedAt } : null}
-          hasRequiredData={hasVideos}
-        />
-
-        {/* Momentum Insights */}
-        <MomentumInsights
-          channelId={competitorId}
-          initialData={momentumData ? { ...momentumData, generatedAt: momentum?.generatedAt } : null}
-          hasRequiredData={hasVideos}
-        />
-
-        {/* Audience & Engagement */}
-        <AudienceInsights
-          channelId={competitorId}
-          initialData={audienceData ? { ...audienceData, generatedAt: audience?.generatedAt } : null}
-          hasRequiredData={hasVideos}
-        />
-
-        {/* Comment Intelligence */}
-        <CommentInsights
-          channelId={competitorId}
-          initialData={commentsData ? { ...commentsData, generatedAt: comments?.generatedAt } : null}
-          hasRequiredData={hasVideos && hasComments}
-        />
-
-        {/* Deep Comment Analysis (AI v2.0) */}
-        <DeepCommentAnalysis
-          channelId={competitorId}
-          initialData={deepAnalysisData ? { ...deepAnalysisData, createdAt: deepAnalysis?.createdAt } : null}
-          hasRequiredData={hasVideos && hasComments}
-        />
-      </div>
+      {/* Analytics Section with Language Selector */}
+      <ChannelAnalytics
+        channelId={competitorId}
+        metrics={metrics}
+        videos={videos}
+        contentData={contentData ? { ...contentData, generatedAt: intelligence?.generatedAt } : null}
+        momentumData={momentumData ? { ...momentumData, generatedAt: momentum?.generatedAt } : null}
+        audienceData={audienceData ? { ...audienceData, generatedAt: audience?.generatedAt } : null}
+        commentsData={commentsData ? { ...commentsData, generatedAt: comments?.generatedAt } : null}
+        deepAnalysisData={deepAnalysisData ? { ...deepAnalysisData, createdAt: deepAnalysis?.createdAt } : null}
+        hasVideos={hasVideos}
+        hasComments={hasComments}
+      />
     </div>
   );
 }
