@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Loader2, Brain, Heart, AlertCircle, MessageSquare, Users, Lightbulb, TrendingUp, Quote } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 import type { CombinedDeepAnalysis } from "@/lib/ai/comments-analysis";
 
 interface DeepCommentAnalysisProps {
@@ -115,8 +116,9 @@ export function DeepCommentAnalysis({
       // Обновляем страницу чтобы показать новые данные
       router.refresh();
     } catch (err) {
-      console.error("Error generating deep analysis:", err);
-      setError(err instanceof Error ? err.message : "Unknown error");
+      const errorMsg = err instanceof Error ? err.message : "Unknown error";
+      toast.error(errorMsg);
+      setError(errorMsg);
     } finally {
       setLoading(false);
     }
@@ -143,8 +145,9 @@ export function DeepCommentAnalysis({
       // Обновляем страницу чтобы показать переведённую версию
       router.refresh();
     } catch (err) {
-      console.error("Error translating analysis:", err);
-      setError(err instanceof Error ? err.message : "Unknown error");
+      const errorMsg = err instanceof Error ? err.message : "Unknown error";
+      toast.error(errorMsg);
+      setError(errorMsg);
     } finally {
       setTranslating(false);
     }
@@ -264,6 +267,26 @@ export function DeepCommentAnalysis({
           </p>
         </div>
         <div className="flex gap-2">
+          {!data.hasRussianVersion && (
+            <Button
+              onClick={handleTranslate}
+              disabled={translating}
+              variant="outline"
+              size="sm"
+              className="gap-2 cursor-pointer"
+            >
+              {translating ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Translating...
+                </>
+              ) : (
+                <>
+                  🇷🇺 Translate to Russian
+                </>
+              )}
+            </Button>
+          )}
           <Button onClick={handleGenerate} variant="outline" size="sm" className="gap-2">
             <Brain className="h-4 w-4" />
             Refresh Analysis

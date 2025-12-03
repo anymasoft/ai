@@ -68,9 +68,9 @@ export async function POST(
 
     const channelId = competitorResult.rows[0].channelId as string;
 
-    // Получаем последний анализ с analysis_en
+    // Получаем последний анализ с analysis_en, analysis_ru и resultJson (для fallback)
     const analysisResult = await client.execute({
-      sql: `SELECT analysis_en, analysis_ru
+      sql: `SELECT analysis_en, analysis_ru, resultJson
             FROM channel_ai_comment_insights
             WHERE channelId = ?
             ORDER BY createdAt DESC
@@ -87,10 +87,34 @@ export async function POST(
     }
 
     const row = analysisResult.rows[0];
-    const analysisEn = row.analysis_en as string | null;
+    let analysisEn = row.analysis_en as string | null;
     const existingRu = row.analysis_ru as string | null;
+    const resultJson = row.resultJson as string | null;
 
-    // Проверяем наличие английского анализа
+    // Fallback для старых записей: если analysis_en пустой, но есть resultJson
+    if (!analysisEn && resultJson) {
+      console.log(`[TranslateAPI] Найдена старая запись без analysis_en, мигрируем из resultJson`);
+
+      // Мигрируем данные: сохраняем resultJson как analysis_en
+      await client.execute({
+        sql: `UPDATE channel_ai_comment_insights
+              SET analysis_en = ?
+              WHERE channelId = ?
+              AND id = (
+                SELECT id FROM channel_ai_comment_insights
+                WHERE channelId = ?
+                ORDER BY createdAt DESC
+                LIMIT 1
+              )`,
+        args: [resultJson, channelId, channelId],
+      });
+
+      // Используем resultJson как источник для перевода
+      analysisEn = resultJson;
+      console.log(`[TranslateAPI] Миграция завершена, используем resultJson для перевода`);
+    }
+
+    // Проверяем наличие английского анализа (после fallback)
     if (!analysisEn) {
       client.close();
       return NextResponse.json(
