@@ -25,9 +25,10 @@ interface CommentInsightsData {
 interface CommentInsightsProps {
   channelId: number;
   initialData?: CommentInsightsData | null;
+  hasRequiredData?: boolean;
 }
 
-export function CommentInsights({ channelId, initialData }: CommentInsightsProps) {
+export function CommentInsights({ channelId, initialData, hasRequiredData = true }: CommentInsightsProps) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [data, setData] = useState<CommentInsightsData | null>(initialData || null);
@@ -97,13 +98,30 @@ export function CommentInsights({ channelId, initialData }: CommentInsightsProps
         </CardHeader>
         <CardContent>
           <div className="flex flex-col items-center justify-center py-12">
-            <p className="text-muted-foreground mb-4">
-              Comment Intelligence покажет интересы, боли и запросы аудитории на основе комментариев.
-            </p>
-            <Button onClick={handleGenerate} className="gap-2">
-              <MessageSquare className="h-4 w-4" />
-              Сгенерировать анализ комментариев
-            </Button>
+            {!hasRequiredData ? (
+              <>
+                <p className="text-muted-foreground mb-2 text-center">
+                  Для генерации Comment Intelligence необходимо синхронизировать видео и комментарии.
+                </p>
+                <p className="text-sm text-muted-foreground mb-4 text-center">
+                  Нажмите кнопки "Sync Top Videos" и "Sync Comments" выше, чтобы загрузить данные.
+                </p>
+                <Button onClick={handleGenerate} className="gap-2" disabled title="Сначала синхронизируйте видео и комментарии">
+                  <MessageSquare className="h-4 w-4" />
+                  Сгенерировать анализ комментариев
+                </Button>
+              </>
+            ) : (
+              <>
+                <p className="text-muted-foreground mb-4">
+                  Comment Intelligence покажет интересы, боли и запросы аудитории на основе комментариев.
+                </p>
+                <Button onClick={handleGenerate} className="gap-2">
+                  <MessageSquare className="h-4 w-4" />
+                  Сгенерировать анализ комментариев
+                </Button>
+              </>
+            )}
             {error && (
               <p className="text-sm text-destructive mt-4">{error}</p>
             )}

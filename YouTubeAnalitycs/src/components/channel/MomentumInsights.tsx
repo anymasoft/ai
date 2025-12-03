@@ -33,6 +33,7 @@ interface MomentumData {
 interface MomentumInsightsProps {
   channelId: number;
   initialData?: MomentumData | null;
+  hasRequiredData?: boolean;
 }
 
 function formatNumber(num: number): string {
@@ -45,7 +46,7 @@ function formatNumber(num: number): string {
   return num.toString();
 }
 
-export function MomentumInsights({ channelId, initialData }: MomentumInsightsProps) {
+export function MomentumInsights({ channelId, initialData, hasRequiredData = true }: MomentumInsightsProps) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [data, setData] = useState<MomentumData | null>(initialData || null);
@@ -115,13 +116,30 @@ export function MomentumInsights({ channelId, initialData }: MomentumInsightsPro
         </CardHeader>
         <CardContent>
           <div className="flex flex-col items-center justify-center py-12">
-            <p className="text-muted-foreground mb-4">
-              Momentum анализ покажет какие темы и форматы набирают популярность прямо сейчас.
-            </p>
-            <Button onClick={handleGenerate} className="gap-2">
-              <Flame className="h-4 w-4" />
-              Сгенерировать Momentum анализ
-            </Button>
+            {!hasRequiredData ? (
+              <>
+                <p className="text-muted-foreground mb-2 text-center">
+                  Для генерации Momentum анализа необходимо синхронизировать видео.
+                </p>
+                <p className="text-sm text-muted-foreground mb-4 text-center">
+                  Нажмите кнопку "Sync Top Videos" выше, чтобы загрузить данные.
+                </p>
+                <Button onClick={handleGenerate} className="gap-2" disabled title="Сначала синхронизируйте видео">
+                  <Flame className="h-4 w-4" />
+                  Сгенерировать Momentum анализ
+                </Button>
+              </>
+            ) : (
+              <>
+                <p className="text-muted-foreground mb-4">
+                  Momentum анализ покажет какие темы и форматы набирают популярность прямо сейчас.
+                </p>
+                <Button onClick={handleGenerate} className="gap-2">
+                  <Flame className="h-4 w-4" />
+                  Сгенерировать Momentum анализ
+                </Button>
+              </>
+            )}
             {error && (
               <p className="text-sm text-destructive mt-4">{error}</p>
             )}

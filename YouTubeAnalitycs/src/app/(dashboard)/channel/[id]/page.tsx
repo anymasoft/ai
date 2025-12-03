@@ -2,8 +2,8 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
-import { db, competitors, aiInsights, channelMetrics, channelVideos, contentIntelligence, momentumInsights, audienceInsights, commentInsights, channelAICommentInsights } from "@/lib/db";
-import { eq, and, desc } from "drizzle-orm";
+import { db, competitors, aiInsights, channelMetrics, channelVideos, videoComments, contentIntelligence, momentumInsights, audienceInsights, commentInsights, channelAICommentInsights } from "@/lib/db";
+import { eq, and, desc, inArray } from "drizzle-orm";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Separator } from "@/components/ui/separator";
@@ -127,6 +127,22 @@ export default async function ChannelPage({ params }: PageProps) {
     .where(eq(channelVideos.channelId, competitor.channelId))
     .orderBy(desc(channelVideos.viewCount))
     .all();
+
+  // Проверяем наличие данных для AI-модулей
+  const hasVideos = videos.length > 0;
+
+  // Проверяем наличие комментариев (если есть видео)
+  let hasComments = false;
+  if (hasVideos) {
+    const videoIds = videos.map(v => v.videoId);
+    const commentSample = await db
+      .select()
+      .from(videoComments)
+      .where(inArray(videoComments.videoId, videoIds))
+      .limit(1)
+      .all();
+    hasComments = commentSample.length > 0;
+  }
 
   // Получаем Content Intelligence анализ
   const intelligence = await db
@@ -428,30 +444,35 @@ export default async function ChannelPage({ params }: PageProps) {
         <ContentIntelligenceBlock
           channelId={competitorId}
           initialData={contentData ? { ...contentData, generatedAt: intelligence?.generatedAt } : null}
+          hasRequiredData={hasVideos}
         />
 
         {/* Momentum Insights */}
         <MomentumInsights
           channelId={competitorId}
           initialData={momentumData ? { ...momentumData, generatedAt: momentum?.generatedAt } : null}
+          hasRequiredData={hasVideos}
         />
 
         {/* Audience & Engagement */}
         <AudienceInsights
           channelId={competitorId}
           initialData={audienceData ? { ...audienceData, generatedAt: audience?.generatedAt } : null}
+          hasRequiredData={hasVideos}
         />
 
         {/* Comment Intelligence */}
         <CommentInsights
           channelId={competitorId}
           initialData={commentsData ? { ...commentsData, generatedAt: comments?.generatedAt } : null}
+          hasRequiredData={hasVideos && hasComments}
         />
 
         {/* Deep Comment Analysis (AI v2.0) */}
         <DeepCommentAnalysis
           channelId={competitorId}
           initialData={deepAnalysisData ? { ...deepAnalysisData, createdAt: deepAnalysis?.createdAt } : null}
+          hasRequiredData={hasVideos && hasComments}
         />
       </div>
     </div>
