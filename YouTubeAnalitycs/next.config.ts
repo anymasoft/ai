@@ -1,5 +1,14 @@
 import type { NextConfig } from "next";
 
+const cspHeader = `
+  default-src 'self';
+  script-src 'self';
+  connect-src 'self';
+  img-src 'self' data:;
+  style-src 'self' 'unsafe-inline';
+  frame-ancestors 'none';
+`;
+
 const nextConfig: NextConfig = {
   experimental: {
     optimizePackageImports: ["lucide-react", "@radix-ui/react-icons"],
@@ -31,6 +40,10 @@ const nextConfig: NextConfig = {
       {
         source: '/(.*)',
         headers: [
+          {
+            key: 'Content-Security-Policy',
+            value: cspHeader.replace(/\n/g, ''),
+          },
           {
             key: 'X-Frame-Options',
             value: 'DENY',
