@@ -19,6 +19,23 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" className={`${inter.variable} antialiased`}>
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              if (!window.ethereum) {
+                window.ethereum = {
+                  isFake: true,
+                  isMetaMask: false,
+                  request: () => Promise.reject(new Error("MetaMask is disabled for this site")),
+                  on() {},
+                  removeListener() {}
+                };
+              }
+            `,
+          }}
+        />
+      </head>
       <body className={inter.className}>
         <AuthProvider>
           <ThemeProvider defaultTheme="system" storageKey="nextjs-ui-theme">
