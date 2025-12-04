@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
-import { db, competitors, channelMetrics } from "@/lib/db";
-import { eq, and } from "drizzle-orm";
+import { createClient } from "@libsql/client";
 import { getYoutubeChannelByHandle } from "@/lib/scrapecreators";
 
 /**
@@ -14,11 +13,17 @@ export async function POST(
   req: NextRequest,
   context: { params: Promise<{ id: string }> }
 ) {
+  const dbPath = process.env.DATABASE_URL || "file:sqlite.db";
+  const client = createClient({
+    url: dbPath.startsWith("file:") ? dbPath : `file:${dbPath}`,
+  });
+
   try {
     const session = await getServerSession(authOptions);
 
     // Проверка аутентификации
     if (!session?.user?.id) {
+      client.close();
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -26,6 +31,7 @@ export async function POST(
     const competitorId = parseInt(id, 10);
 
     if (!Number.isFinite(competitorId) || competitorId <= 0) {
+      client.close();
       return NextResponse.json(
         { error: "Invalid competitor ID" },
         { status: 400 }
@@ -35,33 +41,31 @@ export async function POST(
     console.log(`[Sync] Запрос синхронизации для competitor ID: ${competitorId}`);
 
     // Получаем данные канала из БД
-    const competitor = await db
-      .select()
-      .from(competitors)
-      .where(
-        and(
-          eq(competitors.id, competitorId),
-          eq(competitors.userId, session.user.id)
-        )
-      )
-      .get();
+    const competitorResult = await client.execute({
+      sql: "SELECT * FROM competitors WHERE id = ? AND user_id = ?",
+      args: [competitorId, session.user.id],
+    });
 
     // Проверяем что канал существует и принадлежит пользователю
-    if (!competitor) {
+    if (competitorResult.rows.length === 0) {
+      client.close();
       return NextResponse.json(
         { error: "Competitor not found or access denied" },
         { status: 404 }
       );
     }
 
+    const competitor = competitorResult.rows[0];
+
     console.log(`[Sync] Канал найден: ${competitor.title} (${competitor.handle})`);
 
     // Получаем актуальные данные из ScrapeCreators
     let channelData;
     try {
-      channelData = await getYoutubeChannelByHandle(competitor.handle);
+      channelData = await getYoutubeChannelByHandle(competitor.handle as string);
     } catch (error) {
       console.error("[Sync] Ошибка получения данных из ScrapeCreators:", error);
+      client.close();
       return NextResponse.json(
         { error: "Failed to fetch channel data from ScrapeCreators" },
         { status: 500 }
@@ -74,21 +78,16 @@ export async function POST(
     console.log(`[Sync] Проверка наличия записи за ${today}`);
 
     // Проверяем, есть ли уже запись за сегодня
-    const existingMetrics = await db
-      .select()
-      .from(channelMetrics)
-      .where(
-        and(
-          eq(channelMetrics.channelId, competitor.channelId),
-          eq(channelMetrics.date, today)
-        )
-      )
-      .all();
+    const existingMetricsResult = await client.execute({
+      sql: "SELECT * FROM channel_metrics WHERE channel_id = ? AND date = ?",
+      args: [competitor.channel_id, today],
+    });
 
     // TEMPORARY: Allow multiple syncs per day for testing (max 10)
     // In production, uncomment the check below to allow only 1 sync per day
-    if (existingMetrics.length >= 10) {
+    if (existingMetricsResult.rows.length >= 10) {
       console.log("[Sync] Maximum syncs per day reached (10)");
+      client.close();
       return NextResponse.json({
         status: "exists",
         message: "Maximum syncs per day reached (10). Try again tomorrow.",
@@ -97,8 +96,9 @@ export async function POST(
     }
 
     // Production check (currently disabled for testing):
-    // if (existingMetrics.length > 0) {
+    // if (existingMetricsResult.rows.length > 0) {
     //   console.log("[Sync] Запись за сегодня уже существует");
+    //   client.close();
     //   return NextResponse.json({
     //     status: "exists",
     //     message: "Metrics for today already exist. Try again tomorrow.",
@@ -106,61 +106,69 @@ export async function POST(
     //   });
     // }
 
-    console.log(`[Sync] Создаём запись (${existingMetrics.length + 1}/10 за сегодня)`);
+    console.log(`[Sync] Создаём запись (${existingMetricsResult.rows.length + 1}/10 за сегодня)`);
 
     // Вставляем новую запись в channel_metrics
-    const newMetric = await db
-      .insert(channelMetrics)
-      .values({
-        userId: session.user.id,
-        channelId: competitor.channelId,
-        subscriberCount: channelData.subscriberCount,
-        videoCount: channelData.videoCount,
-        viewCount: channelData.viewCount,
-        date: today,
-        fetchedAt: Date.now(),
-      })
-      .returning()
-      .get();
+    const newMetricResult = await client.execute({
+      sql: `INSERT INTO channel_metrics (
+        user_id, channel_id, subscriber_count, video_count, view_count, date, fetched_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      args: [
+        session.user.id,
+        competitor.channel_id,
+        channelData.subscriberCount,
+        channelData.videoCount,
+        channelData.viewCount,
+        today,
+        Date.now(),
+      ],
+    });
 
     // Обновляем данные в таблице competitors
-    await db
-      .update(competitors)
-      .set({
-        subscriberCount: channelData.subscriberCount,
-        videoCount: channelData.videoCount,
-        viewCount: channelData.viewCount,
-        lastSyncedAt: Date.now(),
-      })
-      .where(eq(competitors.id, competitorId))
-      .run();
+    await client.execute({
+      sql: `UPDATE competitors SET
+        subscriber_count = ?,
+        video_count = ?,
+        view_count = ?,
+        last_synced_at = ?
+        WHERE id = ?`,
+      args: [
+        channelData.subscriberCount,
+        channelData.videoCount,
+        channelData.viewCount,
+        Date.now(),
+        competitorId,
+      ],
+    });
 
-    console.log(`[Sync] Метрики успешно синхронизированы (ID: ${newMetric.id})`);
+    console.log(`[Sync] Метрики успешно синхронизированы (ID: ${newMetricResult.lastInsertRowid})`);
 
     // Count total metrics for this channel
-    const totalMetrics = await db
-      .select()
-      .from(channelMetrics)
-      .where(eq(channelMetrics.channelId, competitor.channelId))
-      .all();
+    const totalMetricsResult = await client.execute({
+      sql: "SELECT * FROM channel_metrics WHERE channel_id = ?",
+      args: [competitor.channel_id],
+    });
+
+    client.close();
 
     return NextResponse.json(
       {
         status: "ok",
-        message: `Metrics synced successfully (${totalMetrics.length} data points)`,
+        message: `Metrics synced successfully (${totalMetricsResult.rows.length} data points)`,
         metrics: {
-          id: newMetric.id,
-          subscriberCount: newMetric.subscriberCount,
-          videoCount: newMetric.videoCount,
-          viewCount: newMetric.viewCount,
-          date: newMetric.date,
-          fetchedAt: newMetric.fetchedAt,
+          id: newMetricResult.lastInsertRowid,
+          subscriberCount: channelData.subscriberCount,
+          videoCount: channelData.videoCount,
+          viewCount: channelData.viewCount,
+          date: today,
+          fetchedAt: Date.now(),
         },
-        totalDataPoints: totalMetrics.length,
+        totalDataPoints: totalMetricsResult.rows.length,
       },
       { status: 201 }
     );
   } catch (error) {
+    client.close();
     console.error("[Sync] Ошибка при синхронизации метрик:", error);
 
     if (error instanceof Error) {

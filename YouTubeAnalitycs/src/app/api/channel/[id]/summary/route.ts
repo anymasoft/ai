@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
-import { db, competitors, aiInsights } from "@/lib/db";
-import { eq, and, desc } from "drizzle-orm";
+import { createClient } from "@libsql/client";
 // import { analyzeChannel } from "@/lib/ai/analyzeChannel"; // Временно отключено - генерация будет позже
 
 /**
@@ -13,11 +12,17 @@ export async function POST(
   req: NextRequest,
   context: { params: Promise<{ id: string }> }
 ) {
+  const dbPath = process.env.DATABASE_URL || "file:sqlite.db";
+  const client = createClient({
+    url: dbPath.startsWith("file:") ? dbPath : `file:${dbPath}`,
+  });
+
   try {
     const session = await getServerSession(authOptions);
 
     // Проверка аутентификации
     if (!session?.user?.id) {
+      client.close();
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -26,6 +31,7 @@ export async function POST(
     const competitorId = parseInt(id, 10);
 
     if (!Number.isFinite(competitorId) || competitorId <= 0) {
+      client.close();
       return NextResponse.json(
         { error: "Invalid competitor ID" },
         { status: 400 }
@@ -35,55 +41,53 @@ export async function POST(
     console.log(`[API] Запрос AI-анализа для competitor ID: ${competitorId}`);
 
     // Получаем данные канала из БД
-    const competitor = await db
-      .select()
-      .from(competitors)
-      .where(
-        and(
-          eq(competitors.id, competitorId),
-          eq(competitors.userId, session.user.id)
-        )
-      )
-      .get();
+    const competitorResult = await client.execute({
+      sql: "SELECT * FROM competitors WHERE id = ? AND user_id = ?",
+      args: [competitorId, session.user.id],
+    });
 
     // Проверяем что канал существует и принадлежит пользователю
-    if (!competitor) {
+    if (competitorResult.rows.length === 0) {
+      client.close();
       return NextResponse.json(
         { error: "Competitor not found or access denied" },
         { status: 404 }
       );
     }
 
+    const competitor = competitorResult.rows[0];
+
     console.log(`[API] Канал найден: ${competitor.title} (@${competitor.handle})`);
 
     // Проверяем, есть ли уже сохранённый AI-анализ
-    const existingInsight = await db
-      .select()
-      .from(aiInsights)
-      .where(eq(aiInsights.competitorId, competitorId))
-      .orderBy(desc(aiInsights.createdAt))
-      .limit(1)
-      .get();
+    const existingInsightResult = await client.execute({
+      sql: "SELECT * FROM ai_insights WHERE competitor_id = ? ORDER BY created_at DESC LIMIT 1",
+      args: [competitorId],
+    });
 
     // Если анализ существует - возвращаем его
-    if (existingInsight) {
+    if (existingInsightResult.rows.length > 0) {
+      const existingInsight = existingInsightResult.rows[0];
       console.log(`[API] Найден существующий AI-анализ (ID: ${existingInsight.id})`);
+
+      client.close();
 
       return NextResponse.json({
         id: existingInsight.id,
-        competitorId: existingInsight.competitorId,
+        competitorId: existingInsight.competitor_id,
         summary: existingInsight.summary,
-        strengths: JSON.parse(existingInsight.strengths),
-        weaknesses: JSON.parse(existingInsight.weaknesses),
-        opportunities: JSON.parse(existingInsight.opportunities),
-        threats: JSON.parse(existingInsight.threats),
-        recommendations: JSON.parse(existingInsight.recommendations),
-        createdAt: existingInsight.createdAt,
+        strengths: JSON.parse(existingInsight.strengths as string),
+        weaknesses: JSON.parse(existingInsight.weaknesses as string),
+        opportunities: JSON.parse(existingInsight.opportunities as string),
+        threats: JSON.parse(existingInsight.threats as string),
+        recommendations: JSON.parse(existingInsight.recommendations as string),
+        createdAt: existingInsight.created_at,
       });
     }
 
     // Если анализа нет - возвращаем null (генерация отключена на этом этапе)
     console.log("[API] AI-анализ не найден, возвращаем null");
+    client.close();
     return NextResponse.json({ insight: null });
 
     /*
@@ -104,40 +108,44 @@ export async function POST(
     console.log("[API] AI-анализ получен, сохраняем в БД...");
 
     // Сохраняем результат в базу данных
-    const savedInsight = await db
-      .insert(aiInsights)
-      .values({
-        competitorId: competitorId,
-        summary: String(analysis.summary),
-        strengths: JSON.stringify(analysis.strengths),
-        weaknesses: JSON.stringify(analysis.weaknesses),
-        opportunities: JSON.stringify(analysis.opportunities),
-        threats: JSON.stringify(analysis.threats),
-        recommendations: JSON.stringify(analysis.recommendations),
-        createdAt: Date.now(),
-      })
-      .returning()
-      .get();
+    const savedInsightResult = await client.execute({
+      sql: `INSERT INTO ai_insights (
+        competitor_id, summary, strengths, weaknesses, opportunities, threats, recommendations, created_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      args: [
+        competitorId,
+        String(analysis.summary),
+        JSON.stringify(analysis.strengths),
+        JSON.stringify(analysis.weaknesses),
+        JSON.stringify(analysis.opportunities),
+        JSON.stringify(analysis.threats),
+        JSON.stringify(analysis.recommendations),
+        Date.now(),
+      ],
+    });
 
-    console.log(`[API] AI-анализ сохранён (ID: ${savedInsight.id})`);
+    console.log(`[API] AI-анализ сохранён (ID: ${savedInsightResult.lastInsertRowid})`);
+
+    client.close();
 
     // Возвращаем результат клиенту
     return NextResponse.json(
       {
-        id: savedInsight.id,
-        competitorId: savedInsight.competitorId,
-        summary: savedInsight.summary,
-        strengths: JSON.parse(savedInsight.strengths),
-        weaknesses: JSON.parse(savedInsight.weaknesses),
-        opportunities: JSON.parse(savedInsight.opportunities),
-        threats: JSON.parse(savedInsight.threats),
-        recommendations: JSON.parse(savedInsight.recommendations),
-        createdAt: savedInsight.createdAt,
+        id: savedInsightResult.lastInsertRowid,
+        competitorId: competitorId,
+        summary: String(analysis.summary),
+        strengths: analysis.strengths,
+        weaknesses: analysis.weaknesses,
+        opportunities: analysis.opportunities,
+        threats: analysis.threats,
+        recommendations: analysis.recommendations,
+        createdAt: Date.now(),
       },
       { status: 201 }
     );
     */
   } catch (error) {
+    client.close();
     console.error("[API] Ошибка при получении AI-анализа:", error);
 
     if (error instanceof Error) {

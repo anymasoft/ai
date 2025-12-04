@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
-import { db, competitors, channelVideos, momentumInsights } from "@/lib/db";
-import { eq, and, desc } from "drizzle-orm";
+import { createClient } from "@libsql/client";
 import OpenAI from "openai";
 
 interface VideoWithMomentum {
@@ -51,11 +50,17 @@ export async function POST(
   req: NextRequest,
   context: { params: Promise<{ id: string }> }
 ) {
+  const dbPath = process.env.DATABASE_URL || "file:sqlite.db";
+  const client = createClient({
+    url: dbPath.startsWith("file:") ? dbPath : `file:${dbPath}`,
+  });
+
   try {
     const session = await getServerSession(authOptions);
 
     // Проверка аутентификации
     if (!session?.user?.id) {
+      client.close();
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -64,6 +69,7 @@ export async function POST(
     const competitorId = parseInt(id, 10);
 
     if (!Number.isFinite(competitorId) || competitorId <= 0) {
+      client.close();
       return NextResponse.json(
         { error: "Invalid competitor ID" },
         { status: 400 }
@@ -73,56 +79,53 @@ export async function POST(
     console.log(`[Momentum] Запрос анализа для competitor ID: ${competitorId}`);
 
     // Получаем данные канала из БД
-    const competitor = await db
-      .select()
-      .from(competitors)
-      .where(
-        and(
-          eq(competitors.id, competitorId),
-          eq(competitors.userId, session.user.id)
-        )
-      )
-      .get();
+    const competitorResult = await client.execute({
+      sql: "SELECT * FROM competitors WHERE id = ? AND user_id = ?",
+      args: [competitorId, session.user.id],
+    });
 
     // Проверяем что канал существует и принадлежит пользователю
-    if (!competitor) {
+    if (competitorResult.rows.length === 0) {
+      client.close();
       return NextResponse.json(
         { error: "Competitor not found or access denied" },
         { status: 404 }
       );
     }
 
+    const competitor = competitorResult.rows[0];
+
     console.log(`[Momentum] Канал найден: ${competitor.title}`);
 
     // Получаем последние 150 видео канала
-    const videos = await db
-      .select()
-      .from(channelVideos)
-      .where(eq(channelVideos.channelId, competitor.channelId))
-      .orderBy(desc(channelVideos.publishedAt))
-      .limit(150)
-      .all();
+    const videosResult = await client.execute({
+      sql: "SELECT * FROM channel_videos WHERE channel_id = ? ORDER BY published_at DESC LIMIT 150",
+      args: [competitor.channel_id],
+    });
 
-    if (videos.length === 0) {
+    if (videosResult.rows.length === 0) {
+      client.close();
       return NextResponse.json(
         { error: "No videos found. Please sync videos first." },
         { status: 400 }
       );
     }
 
+    const videos = videosResult.rows;
+
     console.log(`[Momentum] Найдено ${videos.length} видео для анализа`);
 
     // Вычисляем views_per_day для каждого видео
     const videosWithMetrics: VideoWithMomentum[] = videos.map(v => {
-      const days = daysSincePublish(v.publishedAt);
-      const viewsPerDay = v.viewCount / days;
+      const days = daysSincePublish(v.published_at as string);
+      const viewsPerDay = (v.view_count as number) / days;
 
       return {
-        id: v.id,
-        videoId: v.videoId,
-        title: v.title,
-        viewCount: v.viewCount,
-        publishedAt: v.publishedAt,
+        id: v.id as number,
+        videoId: v.video_id as string,
+        title: v.title as string,
+        viewCount: v.view_count as number,
+        publishedAt: v.published_at as string,
         viewsPerDay,
         momentumScore: 0, // Будет вычислен позже
         category: "Normal" as const,
@@ -159,6 +162,7 @@ export async function POST(
     console.log(`[Momentum] High Momentum видео: ${highMomentumVideos.length}`);
 
     if (highMomentumVideos.length === 0) {
+      client.close();
       return NextResponse.json(
         { error: "No high momentum videos found" },
         { status: 400 }
@@ -167,42 +171,43 @@ export async function POST(
 
     // Проверяем, есть ли уже свежий анализ (не старше 3 дней)
     const threeDaysAgo = Date.now() - 3 * 24 * 60 * 60 * 1000;
-    const existingAnalysis = await db
-      .select()
-      .from(momentumInsights)
-      .where(eq(momentumInsights.channelId, competitor.channelId))
-      .orderBy(desc(momentumInsights.generatedAt))
-      .limit(1)
-      .get();
+    const existingAnalysisResult = await client.execute({
+      sql: "SELECT * FROM momentum_insights WHERE channel_id = ? ORDER BY generated_at DESC LIMIT 1",
+      args: [competitor.channel_id],
+    });
 
     // Если анализ существует и свежий - возвращаем его
-    if (existingAnalysis && existingAnalysis.generatedAt > threeDaysAgo) {
-      console.log(`[Momentum] Найден свежий анализ`);
+    if (existingAnalysisResult.rows.length > 0) {
+      const existingAnalysis = existingAnalysisResult.rows[0];
+      if (existingAnalysis.generated_at > threeDaysAgo) {
+        console.log(`[Momentum] Найден свежий анализ`);
 
-      const parsedData = JSON.parse(existingAnalysis.data);
+        const parsedData = JSON.parse(existingAnalysis.data as string);
 
-      // Если в старых данных нет videoId, добавляем его из БД
-      if (parsedData.highMomentumVideos && parsedData.highMomentumVideos.length > 0) {
-        const needsVideoId = parsedData.highMomentumVideos.some((v: any) => !v.videoId);
+        // Если в старых данных нет videoId, добавляем его из БД
+        if (parsedData.highMomentumVideos && parsedData.highMomentumVideos.length > 0) {
+          const needsVideoId = parsedData.highMomentumVideos.some((v: any) => !v.videoId);
 
-        if (needsVideoId) {
-          console.log('[Momentum] Обогащаем кэшированные данные videoId из БД');
+          if (needsVideoId) {
+            console.log('[Momentum] Обогащаем кэшированные данные videoId из БД');
 
-          // Создаём map title -> videoId для быстрого поиска
-          const titleToVideoId = new Map(videos.map(v => [v.title, v.videoId]));
+            // Создаём map title -> videoId для быстрого поиска
+            const titleToVideoId = new Map(videos.map(v => [v.title, v.video_id]));
 
-          // Добавляем videoId к каждому видео
-          parsedData.highMomentumVideos = parsedData.highMomentumVideos.map((v: any) => ({
-            ...v,
-            videoId: titleToVideoId.get(v.title) || ''
-          }));
+            // Добавляем videoId к каждому видео
+            parsedData.highMomentumVideos = parsedData.highMomentumVideos.map((v: any) => ({
+              ...v,
+              videoId: titleToVideoId.get(v.title) || ''
+            }));
+          }
         }
-      }
 
-      return NextResponse.json({
-        ...parsedData,
-        generatedAt: existingAnalysis.generatedAt,
-      });
+        client.close();
+        return NextResponse.json({
+          ...parsedData,
+          generatedAt: existingAnalysis.generated_at,
+        });
+      }
     }
 
     console.log(`[Momentum] Генерируем новый анализ через OpenAI...`);
@@ -285,17 +290,14 @@ ${JSON.stringify(videosForAnalysis, null, 2)}
     };
 
     // Сохраняем результат в базу данных
-    await db
-      .insert(momentumInsights)
-      .values({
-        channelId: competitor.channelId,
-        data: JSON.stringify(momentumData),
-        data_ru: null, // Сброс русского перевода при пересчёте
-        generatedAt: Date.now(),
-      })
-      .run();
+    await client.execute({
+      sql: "INSERT INTO momentum_insights (channel_id, data, data_ru, generated_at) VALUES (?, ?, ?, ?)",
+      args: [competitor.channel_id, JSON.stringify(momentumData), null, Date.now()],
+    });
 
     console.log(`[Momentum] Анализ сохранён в БД`);
+
+    client.close();
 
     // Возвращаем результат клиенту
     return NextResponse.json({
@@ -304,6 +306,7 @@ ${JSON.stringify(videosForAnalysis, null, 2)}
     }, { status: 201 });
 
   } catch (error) {
+    client.close();
     console.error("[Momentum] Ошибка:", error);
 
     if (error instanceof Error) {
@@ -325,10 +328,16 @@ export async function GET(
   req: NextRequest,
   context: { params: Promise<{ id: string }> }
 ) {
+  const dbPath = process.env.DATABASE_URL || "file:sqlite.db";
+  const client = createClient({
+    url: dbPath.startsWith("file:") ? dbPath : `file:${dbPath}`,
+  });
+
   try {
     const session = await getServerSession(authOptions);
 
     if (!session?.user?.id) {
+      client.close();
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -336,6 +345,7 @@ export async function GET(
     const competitorId = parseInt(id, 10);
 
     if (!Number.isFinite(competitorId) || competitorId <= 0) {
+      client.close();
       return NextResponse.json(
         { error: "Invalid competitor ID" },
         { status: 400 }
@@ -343,38 +353,34 @@ export async function GET(
     }
 
     // Получаем данные канала
-    const competitor = await db
-      .select()
-      .from(competitors)
-      .where(
-        and(
-          eq(competitors.id, competitorId),
-          eq(competitors.userId, session.user.id)
-        )
-      )
-      .get();
+    const competitorResult = await client.execute({
+      sql: "SELECT * FROM competitors WHERE id = ? AND user_id = ?",
+      args: [competitorId, session.user.id],
+    });
 
-    if (!competitor) {
+    if (competitorResult.rows.length === 0) {
+      client.close();
       return NextResponse.json(
         { error: "Competitor not found or access denied" },
         { status: 404 }
       );
     }
 
-    // Получаем последний анализ
-    const analysis = await db
-      .select()
-      .from(momentumInsights)
-      .where(eq(momentumInsights.channelId, competitor.channelId))
-      .orderBy(desc(momentumInsights.generatedAt))
-      .limit(1)
-      .get();
+    const competitor = competitorResult.rows[0];
 
-    if (!analysis) {
+    // Получаем последний анализ
+    const analysisResult = await client.execute({
+      sql: "SELECT * FROM momentum_insights WHERE channel_id = ? ORDER BY generated_at DESC LIMIT 1",
+      args: [competitor.channel_id],
+    });
+
+    if (analysisResult.rows.length === 0) {
+      client.close();
       return NextResponse.json({ analysis: null });
     }
 
-    const parsedData = JSON.parse(analysis.data);
+    const analysis = analysisResult.rows[0];
+    const parsedData = JSON.parse(analysis.data as string);
 
     // Если в старых данных нет videoId, добавляем его из БД
     if (parsedData.highMomentumVideos && parsedData.highMomentumVideos.length > 0) {
@@ -384,14 +390,13 @@ export async function GET(
         console.log('[Momentum] Обогащаем старые данные videoId из БД');
 
         // Получаем видео из БД по названиям
-        const allVideos = await db
-          .select()
-          .from(channelVideos)
-          .where(eq(channelVideos.channelId, competitor.channelId))
-          .all();
+        const allVideosResult = await client.execute({
+          sql: "SELECT * FROM channel_videos WHERE channel_id = ?",
+          args: [competitor.channel_id],
+        });
 
         // Создаём map title -> videoId для быстрого поиска
-        const titleToVideoId = new Map(allVideos.map(v => [v.title, v.videoId]));
+        const titleToVideoId = new Map(allVideosResult.rows.map(v => [v.title, v.video_id]));
 
         // Добавляем videoId к каждому видео
         parsedData.highMomentumVideos = parsedData.highMomentumVideos.map((v: any) => ({
@@ -401,13 +406,16 @@ export async function GET(
       }
     }
 
+    client.close();
+
     return NextResponse.json({
       ...parsedData,
-      generatedAt: analysis.generatedAt,
+      generatedAt: analysis.generated_at,
       hasRussianVersion: !!analysis.data_ru,
     });
 
   } catch (error) {
+    client.close();
     console.error("[Momentum] Ошибка GET:", error);
     return NextResponse.json(
       { error: "Failed to fetch momentum analysis" },

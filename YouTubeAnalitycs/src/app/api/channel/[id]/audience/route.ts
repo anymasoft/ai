@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
-import { db, competitors, channelVideos, videoDetails, audienceInsights } from "@/lib/db";
-import { eq, and, desc } from "drizzle-orm";
+import { createClient } from "@libsql/client";
 import OpenAI from "openai";
 
 interface VideoWithEngagement {
@@ -76,11 +75,17 @@ export async function POST(
   req: NextRequest,
   context: { params: Promise<{ id: string }> }
 ) {
+  const dbPath = process.env.DATABASE_URL || "file:sqlite.db";
+  const client = createClient({
+    url: dbPath.startsWith("file:") ? dbPath : `file:${dbPath}`,
+  });
+
   try {
     const session = await getServerSession(authOptions);
 
     // Проверка аутентификации
     if (!session?.user?.id) {
+      client.close();
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -89,6 +94,7 @@ export async function POST(
     const competitorId = parseInt(id, 10);
 
     if (!Number.isFinite(competitorId) || competitorId <= 0) {
+      client.close();
       return NextResponse.json(
         { error: "Invalid competitor ID" },
         { status: 400 }
@@ -98,42 +104,47 @@ export async function POST(
     console.log(`[Audience] Запрос анализа для competitor ID: ${competitorId}`);
 
     // Получаем данные канала из БД
-    const competitor = await db
-      .select()
-      .from(competitors)
-      .where(
-        and(
-          eq(competitors.id, competitorId),
-          eq(competitors.userId, session.user.id)
-        )
-      )
-      .get();
+    const competitorResult = await client.execute({
+      sql: "SELECT * FROM competitors WHERE id = ? AND user_id = ?",
+      args: [competitorId, session.user.id],
+    });
 
     // Проверяем что канал существует и принадлежит пользователю
-    if (!competitor) {
+    if (competitorResult.rows.length === 0) {
+      client.close();
       return NextResponse.json(
         { error: "Competitor not found or access denied" },
         { status: 404 }
       );
     }
 
+    const competitor = competitorResult.rows[0];
+
     console.log(`[Audience] Канал найден: ${competitor.title}`);
 
     // Получаем последние 150 видео канала
-    const videos = await db
-      .select()
-      .from(channelVideos)
-      .where(eq(channelVideos.channelId, competitor.channelId))
-      .orderBy(desc(channelVideos.publishedAt))
-      .limit(150)
-      .all();
+    const videosResult = await client.execute({
+      sql: "SELECT * FROM channel_videos WHERE channel_id = ? ORDER BY published_at DESC LIMIT 150",
+      args: [competitor.channel_id],
+    });
 
-    if (videos.length === 0) {
+    if (videosResult.rows.length === 0) {
+      client.close();
       return NextResponse.json(
         { error: "No videos found. Please sync videos first." },
         { status: 400 }
       );
     }
+
+    const videos = videosResult.rows.map(row => ({
+      id: row.id as number,
+      videoId: row.video_id as string,
+      title: row.title as string,
+      viewCount: row.view_count as number,
+      likeCount: row.like_count as number,
+      commentCount: row.comment_count as number,
+      publishedAt: row.published_at as string,
+    }));
 
     console.log(`[Audience] Найдено ${videos.length} видео для анализа`);
 
@@ -143,17 +154,19 @@ export async function POST(
 
     for (const video of videos) {
       // Проверяем, есть ли детальные данные для этого видео
-      const details = await db
-        .select()
-        .from(videoDetails)
-        .where(eq(videoDetails.videoId, video.videoId))
-        .get();
+      const detailsResult = await client.execute({
+        sql: "SELECT * FROM video_details WHERE video_id = ?",
+        args: [video.videoId],
+      });
 
       // Если детальные данные существуют и не устарели, используем их
-      if (details && details.updatedAt > sevenDaysAgo) {
-        video.likeCount = details.likeCount;
-        video.commentCount = details.commentCount;
-        enrichedCount++;
+      if (detailsResult.rows.length > 0) {
+        const details = detailsResult.rows[0];
+        if (details.updated_at > sevenDaysAgo) {
+          video.likeCount = details.like_count as number;
+          video.commentCount = details.comment_count as number;
+          enrichedCount++;
+        }
       }
     }
 
@@ -270,21 +283,22 @@ export async function POST(
 
     // Проверяем, есть ли уже свежий анализ (не старше 3 дней)
     const threeDaysAgo = Date.now() - 3 * 24 * 60 * 60 * 1000;
-    const existingAnalysis = await db
-      .select()
-      .from(audienceInsights)
-      .where(eq(audienceInsights.channelId, competitor.channelId))
-      .orderBy(desc(audienceInsights.generatedAt))
-      .limit(1)
-      .get();
+    const existingAnalysisResult = await client.execute({
+      sql: "SELECT * FROM audience_insights WHERE channel_id = ? ORDER BY generated_at DESC LIMIT 1",
+      args: [competitor.channel_id],
+    });
 
     // Если анализ существует и свежий - возвращаем его
-    if (existingAnalysis && existingAnalysis.generatedAt > threeDaysAgo) {
-      console.log(`[Audience] Найден свежий анализ`);
-      return NextResponse.json({
-        ...JSON.parse(existingAnalysis.data),
-        generatedAt: existingAnalysis.generatedAt,
-      });
+    if (existingAnalysisResult.rows.length > 0) {
+      const existingAnalysis = existingAnalysisResult.rows[0];
+      if (existingAnalysis.generated_at > threeDaysAgo) {
+        console.log(`[Audience] Найден свежий анализ`);
+        client.close();
+        return NextResponse.json({
+          ...JSON.parse(existingAnalysis.data as string),
+          generatedAt: existingAnalysis.generated_at,
+        });
+      }
     }
 
     console.log(`[Audience] Генерируем новый анализ через OpenAI...`);
@@ -412,17 +426,14 @@ ${JSON.stringify(videosForAnalysis, null, 2)}
     };
 
     // Сохраняем результат в базу данных
-    await db
-      .insert(audienceInsights)
-      .values({
-        channelId: competitor.channelId,
-        data: JSON.stringify(audienceData),
-        data_ru: null, // Сброс русского перевода при пересчёте
-        generatedAt: Date.now(),
-      })
-      .run();
+    await client.execute({
+      sql: "INSERT INTO audience_insights (channel_id, data, data_ru, generated_at) VALUES (?, ?, ?, ?)",
+      args: [competitor.channel_id, JSON.stringify(audienceData), null, Date.now()],
+    });
 
     console.log(`[Audience] Анализ сохранён в БД`);
+
+    client.close();
 
     // Возвращаем результат клиенту
     return NextResponse.json({
@@ -431,6 +442,7 @@ ${JSON.stringify(videosForAnalysis, null, 2)}
     }, { status: 201 });
 
   } catch (error) {
+    client.close();
     console.error("[Audience] Ошибка:", error);
 
     if (error instanceof Error) {
@@ -452,10 +464,16 @@ export async function GET(
   req: NextRequest,
   context: { params: Promise<{ id: string }> }
 ) {
+  const dbPath = process.env.DATABASE_URL || "file:sqlite.db";
+  const client = createClient({
+    url: dbPath.startsWith("file:") ? dbPath : `file:${dbPath}`,
+  });
+
   try {
     const session = await getServerSession(authOptions);
 
     if (!session?.user?.id) {
+      client.close();
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -463,6 +481,7 @@ export async function GET(
     const competitorId = parseInt(id, 10);
 
     if (!Number.isFinite(competitorId) || competitorId <= 0) {
+      client.close();
       return NextResponse.json(
         { error: "Invalid competitor ID" },
         { status: 400 }
@@ -470,42 +489,39 @@ export async function GET(
     }
 
     // Получаем данные канала
-    const competitor = await db
-      .select()
-      .from(competitors)
-      .where(
-        and(
-          eq(competitors.id, competitorId),
-          eq(competitors.userId, session.user.id)
-        )
-      )
-      .get();
+    const competitorResult = await client.execute({
+      sql: "SELECT * FROM competitors WHERE id = ? AND user_id = ?",
+      args: [competitorId, session.user.id],
+    });
 
-    if (!competitor) {
+    if (competitorResult.rows.length === 0) {
+      client.close();
       return NextResponse.json(
         { error: "Competitor not found or access denied" },
         { status: 404 }
       );
     }
 
-    // Получаем последний анализ
-    const analysis = await db
-      .select()
-      .from(audienceInsights)
-      .where(eq(audienceInsights.channelId, competitor.channelId))
-      .orderBy(desc(audienceInsights.generatedAt))
-      .limit(1)
-      .get();
+    const competitor = competitorResult.rows[0];
 
-    if (!analysis) {
+    // Получаем последний анализ
+    const analysisResult = await client.execute({
+      sql: "SELECT * FROM audience_insights WHERE channel_id = ? ORDER BY generated_at DESC LIMIT 1",
+      args: [competitor.channel_id],
+    });
+
+    if (analysisResult.rows.length === 0) {
+      client.close();
       return NextResponse.json({ analysis: null });
     }
 
-    console.log(`[Audience GET] Найден анализ для channelId: ${competitor.channelId}, hasDataRu: ${!!analysis.data_ru}`);
+    const analysis = analysisResult.rows[0];
+
+    console.log(`[Audience GET] Найден анализ для channelId: ${competitor.channel_id}, hasDataRu: ${!!analysis.data_ru}`);
 
     // Возвращаем обе версии (EN и RU) в сыром виде, UI сам выберет нужную
     const response: any = {
-      generatedAt: analysis.generatedAt,
+      generatedAt: analysis.generated_at,
       hasRussianVersion: !!analysis.data_ru,
       data: analysis.data, // Английский JSON как строка
     };
@@ -513,16 +529,19 @@ export async function GET(
     // Возвращаем data_ru если есть
     if (analysis.data_ru) {
       response.data_ru = analysis.data_ru; // Русский JSON как строка
-      console.log(`[Audience GET] data_ru найден, длина: ${analysis.data_ru.length} символов`);
+      console.log(`[Audience GET] data_ru найден, длина: ${(analysis.data_ru as string).length} символов`);
     }
 
     // Для обратной совместимости добавляем распарсенные поля основного анализа
-    const parsed = JSON.parse(analysis.data);
+    const parsed = JSON.parse(analysis.data as string);
     Object.assign(response, parsed);
+
+    client.close();
 
     return NextResponse.json(response);
 
   } catch (error) {
+    client.close();
     console.error("[Audience] Ошибка GET:", error);
     return NextResponse.json(
       { error: "Failed to fetch audience analysis" },

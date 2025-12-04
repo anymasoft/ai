@@ -2,8 +2,7 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
-import { db, competitors, aiInsights, channelMetrics, channelVideos, videoComments, contentIntelligence, momentumInsights, audienceInsights, commentInsights, channelAICommentInsights } from "@/lib/db";
-import { eq, and, desc, inArray } from "drizzle-orm";
+import { createClient } from "@libsql/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Separator } from "@/components/ui/separator";
@@ -65,242 +64,237 @@ export default async function ChannelPage({ params }: PageProps) {
     redirect("/competitors");
   }
 
-  // Получаем данные канала из БД
-  const competitor = await db
-    .select()
-    .from(competitors)
-    .where(
-      and(
-        eq(competitors.id, competitorId),
-        eq(competitors.userId, session.user.id)
-      )
-    )
-    .get();
+  const dbPath = process.env.DATABASE_URL || "file:sqlite.db";
+  const client = createClient({
+    url: dbPath.startsWith("file:") ? dbPath : `file:${dbPath}`,
+  });
 
-  // Если канал не найден или не принадлежит пользователю
-  if (!competitor) {
-    redirect("/competitors");
-  }
+  try {
+    // Получаем данные канала из БД
+    const competitorResult = await client.execute({
+      sql: "SELECT * FROM competitors WHERE id = ? AND user_id = ?",
+      args: [competitorId, session.user.id],
+    });
 
-  // Получаем AI-анализ (если есть)
-  const aiInsight = await db
-    .select()
-    .from(aiInsights)
-    .where(eq(aiInsights.competitorId, competitorId))
-    .orderBy(desc(aiInsights.createdAt))
-    .limit(1)
-    .get();
+    // Если канал не найден или не принадлежит пользователю
+    if (competitorResult.rows.length === 0) {
+      redirect("/competitors");
+    }
 
-  // Парсим JSON данные из ai_insights
-  const insight = aiInsight
-    ? {
-        summary: aiInsight.summary,
-        strengths: JSON.parse(aiInsight.strengths) as string[],
-        weaknesses: JSON.parse(aiInsight.weaknesses) as string[],
-        opportunities: JSON.parse(aiInsight.opportunities) as string[],
-        threats: JSON.parse(aiInsight.threats) as string[],
-        recommendations: JSON.parse(aiInsight.recommendations) as string[],
-        createdAt: aiInsight.createdAt,
-      }
-    : null;
+    const competitor = competitorResult.rows[0] as any;
 
-  const avgViews = calculateAvgViews(competitor.viewCount, competitor.videoCount);
+    // Получаем AI-анализ (если есть)
+    const aiInsightResult = await client.execute({
+      sql: "SELECT * FROM ai_insights WHERE competitor_id = ? ORDER BY created_at DESC LIMIT 1",
+      args: [competitorId],
+    });
 
-  // Получаем исторические метрики для графиков
-  const metrics = await db
-    .select()
-    .from(channelMetrics)
-    .where(eq(channelMetrics.channelId, competitor.channelId))
-    .orderBy(channelMetrics.fetchedAt)
-    .all();
+    const aiInsight = aiInsightResult.rows.length > 0 ? aiInsightResult.rows[0] as any : null;
 
-  // Получаем топ видео канала
-  const videos = await db
-    .select()
-    .from(channelVideos)
-    .where(eq(channelVideos.channelId, competitor.channelId))
-    .orderBy(desc(channelVideos.viewCount))
-    .all();
+    // Парсим JSON данные из ai_insights
+    const insight = aiInsight
+      ? {
+          summary: aiInsight.summary,
+          strengths: JSON.parse(aiInsight.strengths as string) as string[],
+          weaknesses: JSON.parse(aiInsight.weaknesses as string) as string[],
+          opportunities: JSON.parse(aiInsight.opportunities as string) as string[],
+          threats: JSON.parse(aiInsight.threats as string) as string[],
+          recommendations: JSON.parse(aiInsight.recommendations as string) as string[],
+          createdAt: aiInsight.created_at,
+        }
+      : null;
 
-  // Проверяем наличие данных для AI-модулей
-  const hasVideos = videos.length > 0;
+    const avgViews = calculateAvgViews(competitor.view_count as number, competitor.video_count as number);
 
-  // Проверяем наличие комментариев (если есть видео)
-  let hasComments = false;
-  if (hasVideos) {
-    const videoIds = videos.map(v => v.videoId);
-    const commentSample = await db
-      .select()
-      .from(videoComments)
-      .where(inArray(videoComments.videoId, videoIds))
-      .limit(1)
-      .all();
-    hasComments = commentSample.length > 0;
-  }
+    // Получаем исторические метрики для графиков
+    const metricsResult = await client.execute({
+      sql: "SELECT * FROM channel_metrics WHERE channel_id = ? ORDER BY fetched_at",
+      args: [competitor.channel_id],
+    });
 
-  // Получаем Content Intelligence анализ
-  const intelligence = await db
-    .select()
-    .from(contentIntelligence)
-    .where(eq(contentIntelligence.channelId, competitor.channelId))
-    .orderBy(desc(contentIntelligence.generatedAt))
-    .limit(1)
-    .get();
+    const metrics = metricsResult.rows as any[];
 
-  // Парсим JSON данные из content_intelligence
-  const contentData = intelligence ? JSON.parse(intelligence.data) : null;
+    // Получаем топ видео канала
+    const videosResult = await client.execute({
+      sql: "SELECT * FROM channel_videos WHERE channel_id = ? ORDER BY view_count DESC",
+      args: [competitor.channel_id],
+    });
 
-  // Получаем Momentum Insights анализ
-  const momentum = await db
-    .select()
-    .from(momentumInsights)
-    .where(eq(momentumInsights.channelId, competitor.channelId))
-    .orderBy(desc(momentumInsights.generatedAt))
-    .limit(1)
-    .get();
+    const videos = videosResult.rows as any[];
 
-  // Парсим JSON данные из momentum_insights
-  const momentumData = momentum ? JSON.parse(momentum.data) : null;
+    // Проверяем наличие данных для AI-модулей
+    const hasVideos = videos.length > 0;
 
-  // Получаем Audience Insights анализ
-  const audience = await db
-    .select()
-    .from(audienceInsights)
-    .where(eq(audienceInsights.channelId, competitor.channelId))
-    .orderBy(desc(audienceInsights.generatedAt))
-    .limit(1)
-    .get();
+    // Проверяем наличие комментариев (если есть видео)
+    let hasComments = false;
+    if (hasVideos) {
+      const videoIds = videos.map(v => v.video_id);
+      const placeholders = videoIds.map(() => '?').join(',');
+      const commentSampleResult = await client.execute({
+        sql: `SELECT * FROM video_comments WHERE video_id IN (${placeholders}) LIMIT 1`,
+        args: videoIds,
+      });
+      hasComments = commentSampleResult.rows.length > 0;
+    }
 
-  // Парсим JSON данные из audience_insights
-  const audienceData = audience ? JSON.parse(audience.data) : null;
+    // Получаем Content Intelligence анализ
+    const intelligenceResult = await client.execute({
+      sql: "SELECT * FROM content_intelligence WHERE channel_id = ? ORDER BY generated_at DESC LIMIT 1",
+      args: [competitor.channel_id],
+    });
 
-  // Получаем Comment Insights анализ
-  const comments = await db
-    .select()
-    .from(commentInsights)
-    .where(eq(commentInsights.channelId, competitor.channelId))
-    .orderBy(desc(commentInsights.generatedAt))
-    .limit(1)
-    .get();
+    const intelligence = intelligenceResult.rows.length > 0 ? intelligenceResult.rows[0] as any : null;
 
-  // Парсим JSON данные из comment_insights
-  const commentsData = comments ? JSON.parse(comments.data) : null;
+    // Парсим JSON данные из content_intelligence
+    const contentData = intelligence ? JSON.parse(intelligence.data as string) : null;
 
-  // Получаем Deep Comment Analysis (AI v2.0)
-  const deepAnalysis = await db
-    .select()
-    .from(channelAICommentInsights)
-    .where(eq(channelAICommentInsights.channelId, competitor.channelId))
-    .orderBy(desc(channelAICommentInsights.createdAt))
-    .limit(1)
-    .get();
+    // Получаем Momentum Insights анализ
+    const momentumResult = await client.execute({
+      sql: "SELECT * FROM momentum_insights WHERE channel_id = ? ORDER BY generated_at DESC LIMIT 1",
+      args: [competitor.channel_id],
+    });
 
-  // Парсим JSON данные из channel_ai_comment_insights
-  const deepAnalysisData = deepAnalysis ? JSON.parse(deepAnalysis.resultJson) : null;
+    const momentum = momentumResult.rows.length > 0 ? momentumResult.rows[0] as any : null;
 
-  // Debug: проверка channelId и количества метрик
-  console.log("channelId:", competitor.channelId);
-  console.log("metrics rows:", metrics.length);
-  console.log("videos rows:", videos.length);
-  console.log("content intelligence:", contentData ? "exists" : "not found");
-  console.log("momentum insights:", momentumData ? "exists" : "not found");
-  console.log("audience insights:", audienceData ? "exists" : "not found");
-  console.log("comment insights:", commentsData ? "exists" : "not found");
-  console.log("deep analysis:", deepAnalysisData ? "exists" : "not found");
+    // Парсим JSON данные из momentum_insights
+    const momentumData = momentum ? JSON.parse(momentum.data as string) : null;
 
-  return (
-    <div className="container mx-auto px-4 md:px-6 space-y-6 pb-12">
-      {/* Back button */}
-      <div className="pt-6">
-        <Link
-          href="/competitors"
-          className="inline-flex items-center text-sm text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
-        >
-          <ArrowLeft className="w-4 h-4 mr-1" />
-          Back to Competitors
-        </Link>
-      </div>
+    // Получаем Audience Insights анализ
+    const audienceResult = await client.execute({
+      sql: "SELECT * FROM audience_insights WHERE channel_id = ? ORDER BY generated_at DESC LIMIT 1",
+      args: [competitor.channel_id],
+    });
 
-      {/* Хедер канала */}
-      <div className="flex items-center gap-4">
-        <img
-          src={competitor.avatarUrl || "/placeholder.png"}
-          alt={competitor.title}
-          className="w-20 h-20 rounded-full object-cover border-2 border-border"
-        />
+    const audience = audienceResult.rows.length > 0 ? audienceResult.rows[0] as any : null;
 
-        <div className="flex-1">
-          <h1 className="text-2xl font-semibold mb-1">{competitor.title}</h1>
+    // Парсим JSON данные из audience_insights
+    const audienceData = audience ? JSON.parse(audience.data as string) : null;
 
-          <div className="text-sm text-muted-foreground mb-1">
-            {competitor.handle}
-          </div>
+    // Получаем Comment Insights анализ
+    const commentsResult = await client.execute({
+      sql: "SELECT * FROM comment_insights WHERE channel_id = ? ORDER BY generated_at DESC LIMIT 1",
+      args: [competitor.channel_id],
+    });
 
-          <a
-            href={competitor.handle.startsWith('http') ? competitor.handle : `https://www.youtube.com/${competitor.handle}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-1 text-blue-600 text-sm hover:underline dark:text-blue-400"
+    const comments = commentsResult.rows.length > 0 ? commentsResult.rows[0] as any : null;
+
+    // Парсим JSON данные из comment_insights
+    const commentsData = comments ? JSON.parse(comments.data as string) : null;
+
+    // Получаем Deep Comment Analysis (AI v2.0)
+    const deepAnalysisResult = await client.execute({
+      sql: "SELECT * FROM channel_ai_comment_insights WHERE channel_id = ? ORDER BY created_at DESC LIMIT 1",
+      args: [competitor.channel_id],
+    });
+
+    const deepAnalysis = deepAnalysisResult.rows.length > 0 ? deepAnalysisResult.rows[0] as any : null;
+
+    // Парсим JSON данные из channel_ai_comment_insights
+    const deepAnalysisData = deepAnalysis ? JSON.parse(deepAnalysis.result_json as string) : null;
+
+    // Debug: проверка channelId и количества метрик
+    console.log("channelId:", competitor.channel_id);
+    console.log("metrics rows:", metrics.length);
+    console.log("videos rows:", videos.length);
+    console.log("content intelligence:", contentData ? "exists" : "not found");
+    console.log("momentum insights:", momentumData ? "exists" : "not found");
+    console.log("audience insights:", audienceData ? "exists" : "not found");
+    console.log("comment insights:", commentsData ? "exists" : "not found");
+    console.log("deep analysis:", deepAnalysisData ? "exists" : "not found");
+
+    return (
+      <div className="container mx-auto px-4 md:px-6 space-y-6 pb-12">
+        {/* Back button */}
+        <div className="pt-6">
+          <Link
+            href="/competitors"
+            className="inline-flex items-center text-sm text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
           >
-            View on YouTube
-            <ExternalLink className="w-3 h-3" />
-          </a>
+            <ArrowLeft className="w-4 h-4 mr-1" />
+            Back to Competitors
+          </Link>
         </div>
 
-        {/* Кнопки синхронизации метрик, видео и комментариев */}
-        <div className="self-start flex gap-2">
-          <SyncAllDataButton channelId={competitorId} />
-          <SyncMetricsButton channelId={competitorId} />
-          <SyncVideosButton channelId={competitorId} />
-          <SyncCommentsButton channelId={competitorId} />
-        </div>
-      </div>
+        {/* Хедер канала */}
+        <div className="flex items-center gap-4">
+          <img
+            src={(competitor.avatar_url as string) || "/placeholder.png"}
+            alt={competitor.title as string}
+            className="w-20 h-20 rounded-full object-cover border-2 border-border"
+          />
 
-      {/* Метрики в строку */}
-      <div className="flex items-center gap-6 text-sm flex-wrap">
-        <div className="flex items-center gap-2">
-          <Users className="h-4 w-4 text-muted-foreground" />
-          <span className="font-semibold">{formatNumber(competitor.subscriberCount)}</span>
-          <span className="text-muted-foreground">subscribers</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <Video className="h-4 w-4 text-muted-foreground" />
-          <span className="font-semibold">{formatNumber(competitor.videoCount)}</span>
-          <span className="text-muted-foreground">videos</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <Eye className="h-4 w-4 text-muted-foreground" />
-          <span className="font-semibold">{formatNumber(competitor.viewCount)}</span>
-          <span className="text-muted-foreground">views</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <Calendar className="h-4 w-4 text-muted-foreground" />
-          <span className="text-muted-foreground">Updated: {formatDate(competitor.lastSyncedAt)}</span>
-        </div>
-      </div>
+          <div className="flex-1">
+            <h1 className="text-2xl font-semibold mb-1">{competitor.title as string}</h1>
 
-      <Separator />
+            <div className="text-sm text-muted-foreground mb-1">
+              {competitor.handle as string}
+            </div>
 
-      {/* Overview - Ключевые метрики */}
-      <div>
-        <h2 className="text-2xl font-bold mb-4">Overview</h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="border rounded-lg p-4 bg-muted/40">
-            <div className="text-sm text-muted-foreground mb-2">Subscribers</div>
-            <div className="text-3xl font-bold">{formatNumber(competitor.subscriberCount)}</div>
+            <a
+              href={(competitor.handle as string).startsWith('http') ? (competitor.handle as string) : `https://www.youtube.com/${competitor.handle}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1 text-blue-600 text-sm hover:underline dark:text-blue-400"
+            >
+              View on YouTube
+              <ExternalLink className="w-3 h-3" />
+            </a>
           </div>
 
-          <div className="border rounded-lg p-4 bg-muted/40">
-            <div className="text-sm text-muted-foreground mb-2">Total Views</div>
-            <div className="text-3xl font-bold">{formatNumber(competitor.viewCount)}</div>
-          </div>
-
-          <div className="border rounded-lg p-4 bg-muted/40">
-            <div className="text-sm text-muted-foreground mb-2">Avg. Views per Video</div>
-            <div className="text-3xl font-bold">{formatNumber(avgViews)}</div>
+          {/* Кнопки синхронизации метрик, видео и комментариев */}
+          <div className="self-start flex gap-2">
+            <SyncAllDataButton channelId={competitorId} />
+            <SyncMetricsButton channelId={competitorId} />
+            <SyncVideosButton channelId={competitorId} />
+            <SyncCommentsButton channelId={competitorId} />
           </div>
         </div>
-      </div>
+
+        {/* Метрики в строку */}
+        <div className="flex items-center gap-6 text-sm flex-wrap">
+          <div className="flex items-center gap-2">
+            <Users className="h-4 w-4 text-muted-foreground" />
+            <span className="font-semibold">{formatNumber(competitor.subscriber_count as number)}</span>
+            <span className="text-muted-foreground">subscribers</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <Video className="h-4 w-4 text-muted-foreground" />
+            <span className="font-semibold">{formatNumber(competitor.video_count as number)}</span>
+            <span className="text-muted-foreground">videos</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <Eye className="h-4 w-4 text-muted-foreground" />
+            <span className="font-semibold">{formatNumber(competitor.view_count as number)}</span>
+            <span className="text-muted-foreground">views</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <Calendar className="h-4 w-4 text-muted-foreground" />
+            <span className="text-muted-foreground">Updated: {formatDate(competitor.last_synced_at as number)}</span>
+          </div>
+        </div>
+
+        <Separator />
+
+        {/* Overview - Ключевые метрики */}
+        <div>
+          <h2 className="text-2xl font-bold mb-4">Overview</h2>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="border rounded-lg p-4 bg-muted/40">
+              <div className="text-sm text-muted-foreground mb-2">Subscribers</div>
+              <div className="text-3xl font-bold">{formatNumber(competitor.subscriber_count as number)}</div>
+            </div>
+
+            <div className="border rounded-lg p-4 bg-muted/40">
+              <div className="text-sm text-muted-foreground mb-2">Total Views</div>
+              <div className="text-3xl font-bold">{formatNumber(competitor.view_count as number)}</div>
+            </div>
+
+            <div className="border rounded-lg p-4 bg-muted/40">
+              <div className="text-sm text-muted-foreground mb-2">Avg. Views per Video</div>
+              <div className="text-3xl font-bold">{formatNumber(avgViews)}</div>
+            </div>
+          </div>
+        </div>
 
       {/* AI Insights */}
       <div>
@@ -422,19 +416,22 @@ export default async function ChannelPage({ params }: PageProps) {
         )}
       </div>
 
-      {/* Analytics Section with Language Selector */}
-      <ChannelAnalytics
-        channelId={competitorId}
-        metrics={metrics}
-        videos={videos}
-        contentData={contentData ? { ...contentData, generatedAt: intelligence?.generatedAt } : null}
-        momentumData={momentumData ? { ...momentumData, generatedAt: momentum?.generatedAt } : null}
-        audienceData={audienceData ? { ...audienceData, generatedAt: audience?.generatedAt } : null}
-        commentsData={commentsData ? { ...commentsData, generatedAt: comments?.generatedAt } : null}
-        deepAnalysisData={deepAnalysisData ? { ...deepAnalysisData, createdAt: deepAnalysis?.createdAt } : null}
-        hasVideos={hasVideos}
-        hasComments={hasComments}
-      />
-    </div>
-  );
+        {/* Analytics Section with Language Selector */}
+        <ChannelAnalytics
+          channelId={competitorId}
+          metrics={metrics}
+          videos={videos}
+          contentData={contentData ? { ...contentData, generatedAt: intelligence?.generated_at } : null}
+          momentumData={momentumData ? { ...momentumData, generatedAt: momentum?.generated_at } : null}
+          audienceData={audienceData ? { ...audienceData, generatedAt: audience?.generated_at } : null}
+          commentsData={commentsData ? { ...commentsData, generatedAt: comments?.generated_at } : null}
+          deepAnalysisData={deepAnalysisData ? { ...deepAnalysisData, createdAt: deepAnalysis?.created_at } : null}
+          hasVideos={hasVideos}
+          hasComments={hasComments}
+        />
+      </div>
+    );
+  } finally {
+    client.close();
+  }
 }
