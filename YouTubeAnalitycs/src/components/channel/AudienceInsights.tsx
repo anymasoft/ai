@@ -42,7 +42,6 @@ interface AudienceInsightsProps {
   channelId: number;
   initialData?: AudienceData | null;
   hasRequiredData?: boolean;
-  analysisLanguage?: "en" | "ru";
 }
 
 function formatNumber(num: number): string {
@@ -70,8 +69,7 @@ function formatEngagement(score: number, isFallback: boolean): string {
 export function AudienceInsights({
   channelId,
   initialData,
-  hasRequiredData = true,
-  analysisLanguage = "en"
+  hasRequiredData = true
 }: AudienceInsightsProps) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
@@ -242,8 +240,8 @@ export function AudienceInsights({
       // Парсим русскую версию если есть
       const ruData = (data as any).data_ru ? JSON.parse((data as any).data_ru) : null;
 
-      // Выбираем какую версию показывать
-      displayData = (analysisLanguage === "ru" && ruData) ? ruData : enData;
+      // Если есть русская версия - показываем её, иначе английскую
+      displayData = ruData ?? enData;
     } catch (err) {
       console.error('[AudienceInsights] Failed to parse analysis data:', err);
       // Используем data как fallback
@@ -264,7 +262,7 @@ export function AudienceInsights({
           </p>
         </div>
         <div className="flex gap-2">
-          {analysisLanguage === "ru" && !data.hasRussianVersion && (
+          {!(data as any).data_ru && (
             <Button
               onClick={handleTranslate}
               disabled={translating}
