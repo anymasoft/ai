@@ -501,6 +501,8 @@ export async function GET(
       return NextResponse.json({ analysis: null });
     }
 
+    console.log(`[Audience GET] Найден анализ для channelId: ${competitor.channelId}, hasDataRu: ${!!analysis.data_ru}`);
+
     // Возвращаем обе версии (EN и RU) в сыром виде, UI сам выберет нужную
     const response: any = {
       generatedAt: analysis.generatedAt,
@@ -513,6 +515,7 @@ export async function GET(
     // Возвращаем data_ru если есть
     if (analysis.data_ru) {
       response.data_ru = analysis.data_ru; // Сырая строка JSON
+      console.log(`[Audience GET] data_ru найден, длина: ${analysis.data_ru.length} символов`);
     }
 
     // Для обратной совместимости добавляем распарсенные поля основного анализа

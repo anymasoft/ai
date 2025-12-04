@@ -36,6 +36,8 @@ export async function POST(
     const body = await req.json();
     const targetLanguage = body.targetLanguage as string;
 
+    console.log(`[AudienceTranslate] Запрос перевода для competitor ID: ${competitorId}, язык: ${targetLanguage}`);
+
     if (!targetLanguage || targetLanguage !== "ru") {
       return NextResponse.json(
         { error: "Invalid language. Only 'ru' is supported." },
@@ -54,6 +56,8 @@ export async function POST(
       args: [competitorId, session.user.id],
     });
 
+    console.log(`[AudienceTranslate] Конкурент найден, rows: ${competitorResult.rows.length}`);
+
     if (competitorResult.rows.length === 0) {
       client.close();
       return NextResponse.json(
@@ -64,6 +68,8 @@ export async function POST(
 
     const channelId = competitorResult.rows[0].channelId as string;
 
+    console.log(`[AudienceTranslate] channelId: ${channelId}`);
+
     // Получаем последний анализ с data и data_ru
     const analysisResult = await client.execute({
       sql: `SELECT id, data, data_ru
@@ -73,6 +79,8 @@ export async function POST(
             LIMIT 1`,
       args: [channelId],
     });
+
+    console.log(`[AudienceTranslate] Анализ найден, rows: ${analysisResult.rows.length}`);
 
     if (analysisResult.rows.length === 0) {
       client.close();
@@ -87,6 +95,8 @@ export async function POST(
     const dataEn = row.data as string | null;
     const existingRu = row.data_ru as string | null;
 
+    console.log(`[AudienceTranslate] recordId: ${recordId}, hasDataEn: ${!!dataEn}, hasExistingRu: ${!!existingRu}`);
+
     if (!dataEn) {
       client.close();
       return NextResponse.json(
@@ -98,11 +108,14 @@ export async function POST(
     // Если уже есть русский перевод, возвращаем его
     if (existingRu) {
       client.close();
+      console.log(`[AudienceTranslate] Русский перевод уже существует, возвращаем из кэша`);
       return NextResponse.json({
         data: JSON.parse(existingRu),
         cached: true,
       });
     }
+
+    console.log(`[AudienceTranslate] Начинаем перевод через GPT...`);
 
     // Переводим через GPT
     const completion = await openai.chat.completions.create({
@@ -133,6 +146,8 @@ Return ONLY the translated JSON without any additional text or markdown formatti
       );
     }
 
+    console.log(`[AudienceTranslate] Перевод получен от GPT, длина: ${translatedJson.length} символов`);
+
     // Сохраняем перевод в БД по id (двухшаговый подход)
     await client.execute({
       sql: `UPDATE audience_insights
@@ -140,6 +155,8 @@ Return ONLY the translated JSON without any additional text or markdown formatti
             WHERE id = ?`,
       args: [translatedJson, recordId],
     });
+
+    console.log(`[AudienceTranslate] Русский перевод сохранен в БД для recordId: ${recordId}`);
 
     client.close();
 
