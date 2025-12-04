@@ -1,14 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
-import { db, competitors, deepAudience } from "@/lib/db";
-import { eq, and, desc } from "drizzle-orm";
+import { db } from "@/lib/db";
 import OpenAI from "openai";
+import { createClient } from "@libsql/client";
 
-/**
- * POST /api/channel/[id]/deep
- * Генерирует Deep Audience Intelligence анализ
- */
 export async function POST(
   req: NextRequest,
   context: { params: Promise<{ id: string }> }
@@ -32,53 +28,58 @@ export async function POST(
 
     console.log(`[DeepAudience] Запрос анализа для competitor ID: ${competitorId}`);
 
-    // Получаем данные канала из БД
-    const competitor = await db
-      .select()
-      .from(competitors)
-      .where(
-        and(
-          eq(competitors.id, competitorId),
-          eq(competitors.userId, session.user.id)
-        )
-      )
-      .get();
+    const dbPath = process.env.DATABASE_URL || "file:sqlite.db";
+    const client = createClient({
+      url: dbPath.startsWith("file:") ? dbPath : `file:${dbPath}`,
+    });
 
-    if (!competitor) {
+    // Получаем данные канала
+    const competitorResult = await client.execute({
+      sql: "SELECT * FROM competitors WHERE id = ? AND userId = ?",
+      args: [competitorId, session.user.id],
+    });
+
+    if (competitorResult.rows.length === 0) {
+      client.close();
       return NextResponse.json(
         { error: "Competitor not found or access denied" },
         { status: 404 }
       );
     }
 
-    console.log(`[DeepAudience] Канал найден: ${competitor.title}`);
+    const competitor = competitorResult.rows[0];
+    const channelId = competitor.channelId as string;
+    const title = competitor.title as string;
 
-    // Проверяем, есть ли уже свежий анализ (не старше 7 дней)
+    console.log(`[DeepAudience] Канал найден: ${title}`);
+
+    // Проверяем свежий анализ (не старше 7 дней)
     const sevenDaysAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
-    const existingAnalysis = await db
-      .select()
-      .from(deepAudience)
-      .where(eq(deepAudience.channelId, competitor.channelId))
-      .orderBy(desc(deepAudience.createdAt))
-      .limit(1)
-      .get();
+    const existingResult = await client.execute({
+      sql: "SELECT * FROM deep_audience WHERE channelId = ? ORDER BY createdAt DESC LIMIT 1",
+      args: [channelId],
+    });
 
-    if (existingAnalysis && existingAnalysis.createdAt > sevenDaysAgo) {
-      console.log(`[DeepAudience] Найден свежий анализ`);
-      return NextResponse.json({
-        ...JSON.parse(existingAnalysis.data),
-        createdAt: existingAnalysis.createdAt,
-      });
+    if (existingResult.rows.length > 0) {
+      const existing = existingResult.rows[0];
+      const createdAt = existing.createdAt as number;
+
+      if (createdAt > sevenDaysAgo) {
+        console.log(`[DeepAudience] Найден свежий анализ`);
+        client.close();
+        return NextResponse.json({
+          ...JSON.parse(existing.data as string),
+          createdAt: createdAt,
+        });
+      }
     }
 
     console.log(`[DeepAudience] Генерируем новый анализ через OpenAI...`);
 
-    // Инициализация OpenAI клиента
     const openai = new OpenAI({
       apiKey: process.env.OPENAI_API_KEY,
     });
 
-    // Простой промпт для демонстрации
     const completion = await openai.chat.completions.create({
       model: "gpt-4o-mini",
       messages: [
@@ -88,7 +89,7 @@ export async function POST(
         },
         {
           role: "user",
-          content: `Analyze the audience of YouTube channel "${competitor.title}". Provide insights in JSON format with these fields:
+          content: `Analyze the audience of YouTube channel "${title}". Provide insights in JSON format with these fields:
 - audienceProfile: array of audience characteristics
 - contentPreferences: array of what audience likes
 - engagementPatterns: array of how audience interacts
@@ -104,35 +105,30 @@ Return ONLY JSON without any additional text.`
     const responseText = completion.choices[0]?.message?.content;
 
     if (!responseText) {
+      client.close();
       throw new Error("No response from OpenAI");
     }
 
     console.log(`[DeepAudience] Получен ответ от OpenAI`);
 
-    // Парсим JSON ответ
     const aiAnalysis = JSON.parse(responseText);
 
-    // Формируем итоговые данные
     const deepAudienceData = {
       ...aiAnalysis,
       totalAnalyzed: 1,
-      channelTitle: competitor.title,
+      channelTitle: title,
     };
 
-    // Сохраняем результат в базу данных
-    await db
-      .insert(deepAudience)
-      .values({
-        channelId: competitor.channelId,
-        data: JSON.stringify(deepAudienceData),
-        data_ru: null, // Сброс русского перевода при пересчёте
-        createdAt: Date.now(),
-      })
-      .run();
+    // Сохраняем результат
+    await client.execute({
+      sql: "INSERT INTO deep_audience (channelId, data, data_ru, createdAt) VALUES (?, ?, NULL, ?)",
+      args: [channelId, JSON.stringify(deepAudienceData), Date.now()],
+    });
 
     console.log(`[DeepAudience] Анализ сохранён в БД`);
 
-    // Возвращаем результат клиенту
+    client.close();
+
     return NextResponse.json({
       ...deepAudienceData,
       createdAt: Date.now(),
@@ -152,10 +148,6 @@ Return ONLY JSON without any additional text.`
   }
 }
 
-/**
- * GET /api/channel/[id]/deep
- * Возвращает существующий Deep Audience Intelligence анализ
- */
 export async function GET(
   req: NextRequest,
   context: { params: Promise<{ id: string }> }
@@ -177,56 +169,57 @@ export async function GET(
       );
     }
 
-    // Получаем данные канала
-    const competitor = await db
-      .select()
-      .from(competitors)
-      .where(
-        and(
-          eq(competitors.id, competitorId),
-          eq(competitors.userId, session.user.id)
-        )
-      )
-      .get();
+    const dbPath = process.env.DATABASE_URL || "file:sqlite.db";
+    const client = createClient({
+      url: dbPath.startsWith("file:") ? dbPath : `file:${dbPath}`,
+    });
 
-    if (!competitor) {
+    // Получаем данные канала
+    const competitorResult = await client.execute({
+      sql: "SELECT * FROM competitors WHERE id = ? AND userId = ?",
+      args: [competitorId, session.user.id],
+    });
+
+    if (competitorResult.rows.length === 0) {
+      client.close();
       return NextResponse.json(
         { error: "Competitor not found or access denied" },
         { status: 404 }
       );
     }
 
-    // Получаем последний анализ
-    const analysis = await db
-      .select()
-      .from(deepAudience)
-      .where(eq(deepAudience.channelId, competitor.channelId))
-      .orderBy(desc(deepAudience.createdAt))
-      .limit(1)
-      .get();
+    const channelId = competitorResult.rows[0].channelId as string;
 
-    if (!analysis) {
+    // Получаем последний анализ
+    const analysisResult = await client.execute({
+      sql: "SELECT * FROM deep_audience WHERE channelId = ? ORDER BY createdAt DESC LIMIT 1",
+      args: [channelId],
+    });
+
+    if (analysisResult.rows.length === 0) {
+      client.close();
       return NextResponse.json({ analysis: null });
     }
 
-    console.log(`[DeepAudience GET] Найден анализ для channelId: ${competitor.channelId}, hasDataRu: ${!!analysis.data_ru}`);
+    const analysis = analysisResult.rows[0];
 
-    // Возвращаем обе версии (EN и RU) в сыром виде, UI сам выберет нужную
+    console.log(`[DeepAudience GET] Найден анализ для channelId: ${channelId}, hasDataRu: ${!!analysis.data_ru}`);
+
     const response: any = {
       createdAt: analysis.createdAt,
       hasRussianVersion: !!analysis.data_ru,
-      data: analysis.data, // Английский JSON как строка
+      data: analysis.data,
     };
 
-    // Возвращаем data_ru если есть
     if (analysis.data_ru) {
-      response.data_ru = analysis.data_ru; // Русский JSON как строка
-      console.log(`[DeepAudience GET] data_ru найден, длина: ${analysis.data_ru.length} символов`);
+      response.data_ru = analysis.data_ru;
+      console.log(`[DeepAudience GET] data_ru найден, длина: ${(analysis.data_ru as string).length} символов`);
     }
 
-    // Для обратной совместимости добавляем распарсенные поля основного анализа
-    const parsed = JSON.parse(analysis.data);
+    const parsed = JSON.parse(analysis.data as string);
     Object.assign(response, parsed);
+
+    client.close();
 
     return NextResponse.json(response);
 
