@@ -236,6 +236,36 @@ export const channelAICommentInsights = sqliteTable("channel_ai_comment_insights
 // Инициализация SQLite базы данных только на серверной стороне
 let _client: ReturnType<typeof createClient>;
 let _db: ReturnType<typeof drizzle>;
+let _migrationsRun = false;
+
+/**
+ * runMigrations - выполняет миграции БД один раз при старте сервера
+ * Содержит все ALTER TABLE команды для изменения структуры таблиц
+ */
+function runMigrations() {
+  if (_migrationsRun) {
+    return; // Миграции уже выполнены
+  }
+
+  console.log("[DB] Running migrations on startup...");
+
+  const dbPath = process.env.DATABASE_URL || "file:sqlite.db";
+  const client = createClient({
+    url: dbPath.startsWith("file:") ? dbPath : `file:${dbPath}`,
+  });
+
+  // Миграция 1: добавляем колонку data_ru для Audience Insights
+  try {
+    client.execute(`ALTER TABLE audience_insights ADD COLUMN data_ru TEXT;`);
+    console.log("[DB] Migration applied: audience_insights.data_ru added");
+  } catch (e) {
+    console.log("[DB] Migration skipped (column exists): audience_insights.data_ru");
+  }
+
+  client.close();
+  _migrationsRun = true;
+  console.log("[DB] Migrations completed");
+}
 
 function getDatabase() {
   if (!_db) {
@@ -532,14 +562,6 @@ function getDatabase() {
           ON channel_ai_comment_insights(createdAt DESC);
         `);
 
-        // Миграция: добавляем колонку data_ru для Audience Insights (если не существует)
-        try {
-          _client.execute(`ALTER TABLE audience_insights ADD COLUMN data_ru TEXT;`);
-          console.log("✅ Добавлена колонка data_ru в audience_insights");
-        } catch (e) {
-          // Колонка уже существует, игнорируем ошибку
-        }
-
         console.log("✅ Таблицы базы данных инициализированы");
       } catch (error) {
         console.error("❌ Ошибка инициализации базы данных:", error);
@@ -550,3 +572,6 @@ function getDatabase() {
 }
 
 export const db = getDatabase();
+
+// Выполняем миграции один раз при загрузке модуля
+runMigrations();
