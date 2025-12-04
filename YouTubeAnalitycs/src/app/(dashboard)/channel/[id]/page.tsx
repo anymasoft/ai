@@ -84,7 +84,7 @@ export default async function ChannelPage({ params }: PageProps) {
       redirect("/competitors");
     }
 
-    const competitor = competitorResult.rows[0] as any;
+    const competitor = { ...competitorResult.rows[0] } as any;
 
     // Получаем AI-анализ (если есть)
     const aiInsightResult = await client.execute({
@@ -115,7 +115,7 @@ export default async function ChannelPage({ params }: PageProps) {
       args: [competitor.channelId],
     });
 
-    const metrics = metricsResult.rows as any[];
+    const metrics = metricsResult.rows.map(row => ({ ...row }));
 
     // Получаем топ видео канала
     const videosResult = await client.execute({
@@ -123,7 +123,7 @@ export default async function ChannelPage({ params }: PageProps) {
       args: [competitor.channelId],
     });
 
-    const videos = videosResult.rows as any[];
+    const videos = videosResult.rows.map(row => ({ ...row }));
 
     // Проверяем наличие данных для AI-модулей
     const hasVideos = videos.length > 0;
