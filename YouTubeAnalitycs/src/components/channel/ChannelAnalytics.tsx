@@ -98,6 +98,7 @@ export function ChannelAnalytics({
         channelId={channelId}
         initialData={audienceData}
         hasRequiredData={hasVideos}
+        analysisLanguage={analysisLanguage}
       />
 
       {/* Comment Intelligence */}

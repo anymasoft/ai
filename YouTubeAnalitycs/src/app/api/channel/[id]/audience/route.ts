@@ -501,11 +501,25 @@ export async function GET(
       return NextResponse.json({ analysis: null });
     }
 
-    return NextResponse.json({
-      ...JSON.parse(analysis.data),
+    // Возвращаем обе версии (EN и RU) в сыром виде, UI сам выберет нужную
+    const response: any = {
       generatedAt: analysis.generatedAt,
       hasRussianVersion: !!analysis.data_ru,
-    });
+    };
+
+    // Всегда возвращаем data_en (это источник истины)
+    response.data_en = analysis.data; // Сырая строка JSON
+
+    // Возвращаем data_ru если есть
+    if (analysis.data_ru) {
+      response.data_ru = analysis.data_ru; // Сырая строка JSON
+    }
+
+    // Для обратной совместимости добавляем распарсенные поля основного анализа
+    const parsed = JSON.parse(analysis.data);
+    Object.assign(response, parsed);
+
+    return NextResponse.json(response);
 
   } catch (error) {
     console.error("[Audience] Ошибка GET:", error);
