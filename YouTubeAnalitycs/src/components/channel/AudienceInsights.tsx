@@ -155,7 +155,22 @@ export function AudienceInsights({
 
       const result = await res.json();
       console.log('[AudienceInsights] Translation successful, cached:', result.cached);
-      router.refresh();
+
+      // После успешного перевода получаем обновленные данные
+      const getRes = await fetch(`/api/channel/${channelId}/audience`, {
+        method: "GET",
+        credentials: "include",
+      });
+
+      if (!getRes.ok) {
+        throw new Error("Failed to fetch updated analysis");
+      }
+
+      const updatedData = await getRes.json();
+      console.log('[AudienceInsights] Updated data fetched, hasRussianVersion:', updatedData.hasRussianVersion);
+
+      // Обновляем локальный state
+      setData(updatedData);
     } catch (err) {
       console.error("Error translating audience analysis:", err);
       setError(err instanceof Error ? err.message : "Unknown error");
@@ -237,20 +252,20 @@ export function AudienceInsights({
   // Выбираем data_ru или data для отображения
   let displayData = data;
 
-  if (initialData) {
+  if (data) {
     try {
       // Парсим английскую версию
-      const enData = initialData.data ? JSON.parse(initialData.data as any) : null;
+      const enData = (data as any).data ? JSON.parse((data as any).data) : null;
 
       // Парсим русскую версию если есть
-      const ruData = (initialData as any).data_ru ? JSON.parse((initialData as any).data_ru) : null;
+      const ruData = (data as any).data_ru ? JSON.parse((data as any).data_ru) : null;
 
       // Если есть русская версия - показываем её, иначе английскую
       displayData = ruData ?? enData;
     } catch (err) {
       console.error('[AudienceInsights] Failed to parse analysis data:', err);
-      // Используем initialData как fallback
-      displayData = initialData;
+      // Используем data как fallback
+      displayData = data;
     }
   }
 
@@ -267,7 +282,7 @@ export function AudienceInsights({
           </p>
         </div>
         <div className="flex gap-2">
-          {!(initialData as any)?.data_ru && (
+          {!(data as any)?.data_ru && (
             <Button
               onClick={handleTranslate}
               disabled={translating}
