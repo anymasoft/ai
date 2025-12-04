@@ -7,7 +7,7 @@ let _migrationsRun = false;
 /**
  * runMigrations - выполняет миграции БД один раз при старте сервера
  */
-function runMigrations() {
+async function runMigrations() {
   if (_migrationsRun) {
     return;
   }
@@ -19,8 +19,66 @@ function runMigrations() {
     url: dbPath.startsWith("file:") ? dbPath : `file:${dbPath}`,
   });
 
-  // Migration disabled
-  console.log("[DB] Migration audience_insights.data_ru disabled");
+  try {
+    // Check if competitors table has old snake_case columns
+    const tableInfo = await client.execute({
+      sql: "PRAGMA table_info(competitors)",
+      args: [],
+    });
+
+    const hasOldSchema = tableInfo.rows.some(
+      (row: any) => row.name === "avatar_url" || row.name === "subscriber_count"
+    );
+
+    if (hasOldSchema) {
+      console.log("[DB] Migrating competitors table to camelCase columns...");
+
+      // Create new table with correct schema
+      await client.execute({
+        sql: `CREATE TABLE IF NOT EXISTS competitors_new (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          userId TEXT NOT NULL,
+          platform TEXT NOT NULL DEFAULT 'youtube',
+          channelId TEXT NOT NULL,
+          handle TEXT NOT NULL,
+          title TEXT NOT NULL,
+          avatarUrl TEXT,
+          subscriberCount INTEGER NOT NULL DEFAULT 0,
+          videoCount INTEGER NOT NULL DEFAULT 0,
+          viewCount INTEGER NOT NULL DEFAULT 0,
+          lastSyncedAt INTEGER NOT NULL,
+          createdAt INTEGER NOT NULL
+        )`,
+        args: [],
+      });
+
+      // Copy data from old table
+      await client.execute({
+        sql: `INSERT INTO competitors_new
+              SELECT id, userId, platform, channelId, handle, title,
+              avatar_url, subscriber_count, video_count, view_count,
+              last_synced_at, created_at
+              FROM competitors`,
+        args: [],
+      });
+
+      // Drop old table
+      await client.execute({
+        sql: "DROP TABLE competitors",
+        args: [],
+      });
+
+      // Rename new table
+      await client.execute({
+        sql: "ALTER TABLE competitors_new RENAME TO competitors",
+        args: [],
+      });
+
+      console.log("[DB] Competitors table migrated successfully");
+    }
+  } catch (error) {
+    console.log("[DB] Migration check skipped (table may not exist yet):", error);
+  }
 
   client.close();
   _migrationsRun = true;
@@ -266,4 +324,6 @@ function getClient() {
 
 export const db = getClient();
 
-runMigrations();
+runMigrations().catch((err) => {
+  console.error("[DB] Migration failed:", err);
+});
