@@ -233,6 +233,17 @@ export const channelAICommentInsights = sqliteTable("channel_ai_comment_insights
     .$defaultFn(() => Date.now()), // Время создания анализа
 });
 
+// Deep Audience Intelligence table - хранит глубокий AI-анализ аудитории канала
+export const deepAudience = sqliteTable("deep_audience", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  channelId: text("channelId").notNull(), // ID канала
+  data: text("data").notNull(), // JSON с результатами анализа (EN)
+  data_ru: text("data_ru"), // JSON с русским переводом
+  createdAt: integer("createdAt")
+    .notNull()
+    .$defaultFn(() => Date.now()), // Время создания анализа
+});
+
 // Инициализация SQLite базы данных только на серверной стороне
 let _client: ReturnType<typeof createClient>;
 let _db: ReturnType<typeof drizzle>;
@@ -555,6 +566,28 @@ function getDatabase() {
         _client.execute(`
           CREATE INDEX IF NOT EXISTS idx_channel_ai_insights_createdAt
           ON channel_ai_comment_insights(createdAt DESC);
+        `);
+
+        // Создание таблицы deep_audience (Deep Audience Intelligence)
+        _client.execute(`
+          CREATE TABLE IF NOT EXISTS deep_audience (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            channelId TEXT NOT NULL,
+            data TEXT NOT NULL,
+            data_ru TEXT,
+            createdAt INTEGER NOT NULL
+          );
+        `);
+
+        // Создание индексов для deep_audience
+        _client.execute(`
+          CREATE INDEX IF NOT EXISTS idx_deep_audience_channelId
+          ON deep_audience(channelId);
+        `);
+
+        _client.execute(`
+          CREATE INDEX IF NOT EXISTS idx_deep_audience_createdAt
+          ON deep_audience(createdAt DESC);
         `);
 
         console.log("✅ Таблицы базы данных инициализированы");
