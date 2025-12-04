@@ -93,7 +93,7 @@ export async function POST(
 
         if (existingDetailsResult.rows.length > 0) {
           const existingDetails = existingDetailsResult.rows[0];
-          if (existingDetails.updated_at > sevenDaysAgo) {
+          if ((existingDetails.updated_at as number) > sevenDaysAgo) {
             console.log(`[Enrich] Видео ${video.video_id} уже обогащено (skip)`);
             skipped++;
             continue;

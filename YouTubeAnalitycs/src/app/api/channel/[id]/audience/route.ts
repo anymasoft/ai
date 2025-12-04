@@ -162,7 +162,7 @@ export async function POST(
       // Если детальные данные существуют и не устарели, используем их
       if (detailsResult.rows.length > 0) {
         const details = detailsResult.rows[0];
-        if (details.updated_at > sevenDaysAgo) {
+        if ((details.updated_at as number) > sevenDaysAgo) {
           video.likeCount = details.like_count as number;
           video.commentCount = details.comment_count as number;
           enrichedCount++;
@@ -291,7 +291,7 @@ export async function POST(
     // Если анализ существует и свежий - возвращаем его
     if (existingAnalysisResult.rows.length > 0) {
       const existingAnalysis = existingAnalysisResult.rows[0];
-      if (existingAnalysis.generated_at > threeDaysAgo) {
+      if ((existingAnalysis.generated_at as number) > threeDaysAgo) {
         console.log(`[Audience] Найден свежий анализ`);
         client.close();
         return NextResponse.json({

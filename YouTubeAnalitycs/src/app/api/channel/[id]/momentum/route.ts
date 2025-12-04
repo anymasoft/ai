@@ -179,7 +179,7 @@ export async function POST(
     // Если анализ существует и свежий - возвращаем его
     if (existingAnalysisResult.rows.length > 0) {
       const existingAnalysis = existingAnalysisResult.rows[0];
-      if (existingAnalysis.generated_at > threeDaysAgo) {
+      if ((existingAnalysis.generated_at as number) > threeDaysAgo) {
         console.log(`[Momentum] Найден свежий анализ`);
 
         const parsedData = JSON.parse(existingAnalysis.data as string);

@@ -95,7 +95,7 @@ export async function POST(
         if (existingCommentsResult.rows.length > 0) {
           // Проверяем, что хотя бы один комментарий свежий
           const hasRecentComments = existingCommentsResult.rows.some(
-            (comment) => comment.fetched_at > sevenDaysAgo
+            (comment) => (comment.fetched_at as number) > sevenDaysAgo
           );
 
           if (hasRecentComments) {
