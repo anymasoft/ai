@@ -123,10 +123,19 @@ export async function POST(
       messages: [
         {
           role: "system",
-          content: `You are a professional translator. Translate the following JSON object from English to Russian.
-Translate ALL text fields while preserving the JSON structure and field names.
-Do not shorten, summarize or add anything.
-Return ONLY the translated JSON without any additional text or markdown formatting.`,
+          content: `You are a JSON translator.
+You receive a JSON object with English texts.
+
+Your task:
+- translate ONLY string values into Russian
+- keep ALL keys unchanged
+- keep ALL arrays unchanged
+- keep ALL structure unchanged
+- DO NOT add or remove fields
+- DO NOT rewrite numbers or percentages
+- DO NOT summarize
+- DO NOT change meaning
+- Return VALID JSON ONLY.`,
         },
         {
           role: "user",
