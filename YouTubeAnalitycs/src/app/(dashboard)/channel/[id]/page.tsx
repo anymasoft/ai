@@ -231,7 +231,7 @@ export default async function ChannelPage({ params }: PageProps) {
             </div>
 
             <a
-              href={(competitor.handle as string).startsWith('http') ? (competitor.handle as string) : `https://www.youtube.com/${competitor.handle}`}
+              href={(competitor.handle as string).startsWith('http') ? (competitor.handle as string) : `https://www.youtube.com/@${competitor.handle}`}
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center gap-1 text-blue-600 text-sm hover:underline dark:text-blue-400"
