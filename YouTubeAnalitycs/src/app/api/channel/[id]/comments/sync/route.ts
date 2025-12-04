@@ -137,14 +137,14 @@ export async function POST(
               await client.execute({
                 sql: `UPDATE video_comments SET
                   content = ?,
-                  published_time = ?,
-                  reply_level = ?,
+                  publishedTime = ?,
+                  replyLevel = ?,
                   likes = ?,
                   replies = ?,
-                  author_name = ?,
-                  author_channelId = ?,
-                  is_verified = ?,
-                  is_creator = ?,
+                  authorName = ?,
+                  authorChannelId = ?,
+                  isVerified = ?,
+                  isCreator = ?,
                   fetchedAt = ?
                   WHERE commentId = ?`,
                 args: [
@@ -165,9 +165,9 @@ export async function POST(
               // Создаём новый комментарий
               await client.execute({
                 sql: `INSERT INTO video_comments (
-                  videoId, commentId, content, published_time, reply_level,
-                  likes, replies, author_name, author_channelId, is_verified,
-                  is_creator, fetchedAt
+                  videoId, commentId, content, publishedTime, replyLevel,
+                  likes, replies, authorName, authorChannelId, isVerified,
+                  isCreator, fetchedAt
                 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
                 args: [
                   video.videoId,
