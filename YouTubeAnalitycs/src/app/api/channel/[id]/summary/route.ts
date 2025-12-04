@@ -131,7 +131,7 @@ export async function POST(
     // Возвращаем результат клиенту
     return NextResponse.json(
       {
-        id: savedInsightResult.lastInsertRowid,
+        id: Number(savedInsightResult.lastInsertRowid),
         competitorId: competitorId,
         summary: String(analysis.summary),
         strengths: analysis.strengths,
