@@ -137,19 +137,24 @@ export function AudienceInsights({
     setError(null);
 
     try {
+      console.log('[AudienceInsights] Starting translation for channel:', channelId);
       const res = await fetch(`/api/channel/${channelId}/audience/translate`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
+        credentials: "include", // ✅ Важно: отправляем cookies с session
         body: JSON.stringify({ targetLanguage: "ru" }),
       });
 
       if (!res.ok) {
         const errorData = await res.json();
+        console.error('[AudienceInsights] Translation failed:', errorData);
         throw new Error(errorData.error || "Failed to translate analysis");
       }
 
+      const result = await res.json();
+      console.log('[AudienceInsights] Translation successful, cached:', result.cached);
       router.refresh();
     } catch (err) {
       console.error("Error translating audience analysis:", err);

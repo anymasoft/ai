@@ -170,7 +170,8 @@ export const momentumInsights = sqliteTable("momentum_insights", {
 export const audienceInsights = sqliteTable("audience_insights", {
   id: integer("id").primaryKey({ autoIncrement: true }),
   channelId: text("channelId").notNull(), // ID канала из ScrapeCreators
-  data: text("data").notNull(), // JSON с результатами audience анализа
+  data: text("data").notNull(), // JSON с результатами audience анализа (EN)
+  data_ru: text("data_ru"), // JSON с русским переводом
   generatedAt: integer("generatedAt")
     .notNull()
     .$defaultFn(() => Date.now()), // Время генерации анализа
@@ -530,6 +531,14 @@ function getDatabase() {
           CREATE INDEX IF NOT EXISTS idx_channel_ai_insights_createdAt
           ON channel_ai_comment_insights(createdAt DESC);
         `);
+
+        // Миграция: добавляем колонку data_ru для Audience Insights (если не существует)
+        try {
+          _client.execute(`ALTER TABLE audience_insights ADD COLUMN data_ru TEXT;`);
+          console.log("✅ Добавлена колонка data_ru в audience_insights");
+        } catch (e) {
+          // Колонка уже существует, игнорируем ошибку
+        }
 
         console.log("✅ Таблицы базы данных инициализированы");
       } catch (error) {
