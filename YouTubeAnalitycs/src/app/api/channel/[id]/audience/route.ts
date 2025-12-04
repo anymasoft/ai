@@ -507,14 +507,12 @@ export async function GET(
     const response: any = {
       generatedAt: analysis.generatedAt,
       hasRussianVersion: !!analysis.data_ru,
+      data: analysis.data, // Английский JSON как строка
     };
-
-    // Всегда возвращаем data_en (это источник истины)
-    response.data_en = analysis.data; // Сырая строка JSON
 
     // Возвращаем data_ru если есть
     if (analysis.data_ru) {
-      response.data_ru = analysis.data_ru; // Сырая строка JSON
+      response.data_ru = analysis.data_ru; // Русский JSON как строка
       console.log(`[Audience GET] data_ru найден, длина: ${analysis.data_ru.length} символов`);
     }
 

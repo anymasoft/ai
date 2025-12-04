@@ -110,7 +110,7 @@ export async function POST(
       client.close();
       console.log(`[AudienceTranslate] Русский перевод уже существует, возвращаем из кэша`);
       return NextResponse.json({
-        data: JSON.parse(existingRu),
+        ok: true,
         cached: true,
       });
     }
@@ -162,8 +162,7 @@ Return ONLY the translated JSON without any additional text or markdown formatti
 
     return NextResponse.json(
       {
-        data: JSON.parse(translatedJson),
-        cached: false,
+        ok: true,
       },
       { status: 201 }
     );

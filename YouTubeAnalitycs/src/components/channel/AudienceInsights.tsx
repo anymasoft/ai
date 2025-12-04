@@ -234,23 +234,23 @@ export function AudienceInsights({
     );
   }
 
-  // Парсим data_en и data_ru для выбора нужной версии
+  // Выбираем data_ru или data для отображения
   let displayData = data;
 
-  if (data) {
+  if (initialData) {
     try {
       // Парсим английскую версию
-      const enData = (data as any).data_en ? JSON.parse((data as any).data_en) : data;
+      const enData = initialData.data ? JSON.parse(initialData.data as any) : null;
 
       // Парсим русскую версию если есть
-      const ruData = (data as any).data_ru ? JSON.parse((data as any).data_ru) : null;
+      const ruData = (initialData as any).data_ru ? JSON.parse((initialData as any).data_ru) : null;
 
       // Если есть русская версия - показываем её, иначе английскую
       displayData = ruData ?? enData;
     } catch (err) {
       console.error('[AudienceInsights] Failed to parse analysis data:', err);
-      // Используем data как fallback
-      displayData = data;
+      // Используем initialData как fallback
+      displayData = initialData;
     }
   }
 
@@ -267,7 +267,7 @@ export function AudienceInsights({
           </p>
         </div>
         <div className="flex gap-2">
-          {!(data as any).data_ru && (
+          {!(initialData as any)?.data_ru && (
             <Button
               onClick={handleTranslate}
               disabled={translating}
