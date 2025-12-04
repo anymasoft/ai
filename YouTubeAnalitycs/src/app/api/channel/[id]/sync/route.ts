@@ -156,7 +156,7 @@ export async function POST(
         status: "ok",
         message: `Metrics synced successfully (${totalMetricsResult.rows.length} data points)`,
         metrics: {
-          id: newMetricResult.lastInsertRowid,
+          id: Number(newMetricResult.lastInsertRowid),
           subscriberCount: channelData.subscriberCount,
           videoCount: channelData.videoCount,
           viewCount: channelData.viewCount,
