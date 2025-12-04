@@ -105,7 +105,7 @@ export async function POST(
 
     // Получаем данные канала из БД
     const competitorResult = await client.execute({
-      sql: "SELECT * FROM competitors WHERE id = ? AND user_id = ?",
+      sql: "SELECT * FROM competitors WHERE id = ? AND userId = ?",
       args: [competitorId, session.user.id],
     });
 
@@ -124,8 +124,8 @@ export async function POST(
 
     // Получаем последние 150 видео канала
     const videosResult = await client.execute({
-      sql: "SELECT * FROM channel_videos WHERE channel_id = ? ORDER BY published_at DESC LIMIT 150",
-      args: [competitor.channel_id],
+      sql: "SELECT * FROM channel_videos WHERE channelId = ? ORDER BY publishedAt DESC LIMIT 150",
+      args: [competitor.channelId],
     });
 
     if (videosResult.rows.length === 0) {
@@ -138,12 +138,12 @@ export async function POST(
 
     const videos = videosResult.rows.map(row => ({
       id: row.id as number,
-      videoId: row.video_id as string,
+      videoId: row.videoId as string,
       title: row.title as string,
-      viewCount: row.view_count as number,
-      likeCount: row.like_count as number,
-      commentCount: row.comment_count as number,
-      publishedAt: row.published_at as string,
+      viewCount: row.viewCount as number,
+      likeCount: row.likeCount as number,
+      commentCount: row.commentCount as number,
+      publishedAt: row.publishedAt as string,
     }));
 
     console.log(`[Audience] Найдено ${videos.length} видео для анализа`);
@@ -155,16 +155,16 @@ export async function POST(
     for (const video of videos) {
       // Проверяем, есть ли детальные данные для этого видео
       const detailsResult = await client.execute({
-        sql: "SELECT * FROM video_details WHERE video_id = ?",
+        sql: "SELECT * FROM video_details WHERE videoId = ?",
         args: [video.videoId],
       });
 
       // Если детальные данные существуют и не устарели, используем их
       if (detailsResult.rows.length > 0) {
         const details = detailsResult.rows[0];
-        if ((details.updated_at as number) > sevenDaysAgo) {
-          video.likeCount = details.like_count as number;
-          video.commentCount = details.comment_count as number;
+        if ((details.updatedAt as number) > sevenDaysAgo) {
+          video.likeCount = details.likeCount as number;
+          video.commentCount = details.commentCount as number;
           enrichedCount++;
         }
       }
@@ -284,19 +284,19 @@ export async function POST(
     // Проверяем, есть ли уже свежий анализ (не старше 3 дней)
     const threeDaysAgo = Date.now() - 3 * 24 * 60 * 60 * 1000;
     const existingAnalysisResult = await client.execute({
-      sql: "SELECT * FROM audience_insights WHERE channel_id = ? ORDER BY generated_at DESC LIMIT 1",
-      args: [competitor.channel_id],
+      sql: "SELECT * FROM audience_insights WHERE channelId = ? ORDER BY generatedAt DESC LIMIT 1",
+      args: [competitor.channelId],
     });
 
     // Если анализ существует и свежий - возвращаем его
     if (existingAnalysisResult.rows.length > 0) {
       const existingAnalysis = existingAnalysisResult.rows[0];
-      if ((existingAnalysis.generated_at as number) > threeDaysAgo) {
+      if ((existingAnalysis.generatedAt as number) > threeDaysAgo) {
         console.log(`[Audience] Найден свежий анализ`);
         client.close();
         return NextResponse.json({
           ...JSON.parse(existingAnalysis.data as string),
-          generatedAt: existingAnalysis.generated_at,
+          generatedAt: existingAnalysis.generatedAt,
         });
       }
     }
@@ -427,8 +427,8 @@ ${JSON.stringify(videosForAnalysis, null, 2)}
 
     // Сохраняем результат в базу данных
     await client.execute({
-      sql: "INSERT INTO audience_insights (channel_id, data, data_ru, generated_at) VALUES (?, ?, ?, ?)",
-      args: [competitor.channel_id, JSON.stringify(audienceData), null, Date.now()],
+      sql: "INSERT INTO audience_insights (channelId, data, data_ru, generatedAt) VALUES (?, ?, ?, ?)",
+      args: [competitor.channelId, JSON.stringify(audienceData), null, Date.now()],
     });
 
     console.log(`[Audience] Анализ сохранён в БД`);
@@ -490,7 +490,7 @@ export async function GET(
 
     // Получаем данные канала
     const competitorResult = await client.execute({
-      sql: "SELECT * FROM competitors WHERE id = ? AND user_id = ?",
+      sql: "SELECT * FROM competitors WHERE id = ? AND userId = ?",
       args: [competitorId, session.user.id],
     });
 
@@ -506,8 +506,8 @@ export async function GET(
 
     // Получаем последний анализ
     const analysisResult = await client.execute({
-      sql: "SELECT * FROM audience_insights WHERE channel_id = ? ORDER BY generated_at DESC LIMIT 1",
-      args: [competitor.channel_id],
+      sql: "SELECT * FROM audience_insights WHERE channelId = ? ORDER BY generatedAt DESC LIMIT 1",
+      args: [competitor.channelId],
     });
 
     if (analysisResult.rows.length === 0) {
@@ -517,11 +517,11 @@ export async function GET(
 
     const analysis = analysisResult.rows[0];
 
-    console.log(`[Audience GET] Найден анализ для channelId: ${competitor.channel_id}, hasDataRu: ${!!analysis.data_ru}`);
+    console.log(`[Audience GET] Найден анализ для channelId: ${competitor.channelId}, hasDataRu: ${!!analysis.data_ru}`);
 
     // Возвращаем обе версии (EN и RU) в сыром виде, UI сам выберет нужную
     const response: any = {
-      generatedAt: analysis.generated_at,
+      generatedAt: analysis.generatedAt,
       hasRussianVersion: !!analysis.data_ru,
       data: analysis.data, // Английский JSON как строка
     };

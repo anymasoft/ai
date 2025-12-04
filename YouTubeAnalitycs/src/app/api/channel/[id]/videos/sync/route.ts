@@ -42,7 +42,7 @@ export async function POST(
 
     // Получаем данные канала из БД
     const competitorResult = await client.execute({
-      sql: "SELECT * FROM competitors WHERE id = ? AND user_id = ?",
+      sql: "SELECT * FROM competitors WHERE id = ? AND userId = ?",
       args: [competitorId, session.user.id],
     });
 
@@ -63,7 +63,7 @@ export async function POST(
     let videos;
     try {
       videos = await getYoutubeChannelVideos(
-        competitor.channel_id as string,
+        competitor.channelId as string,
         competitor.handle as string
       );
     } catch (error) {
@@ -84,8 +84,8 @@ export async function POST(
     for (const video of videos) {
       // Проверяем, существует ли уже такое видео
       const existingResult = await client.execute({
-        sql: "SELECT * FROM channel_videos WHERE channel_id = ? AND video_id = ?",
-        args: [competitor.channel_id, video.videoId],
+        sql: "SELECT * FROM channel_videos WHERE channelId = ? AND videoId = ?",
+        args: [competitor.channelId, video.videoId],
       });
 
       if (existingResult.rows.length > 0) {
@@ -94,12 +94,12 @@ export async function POST(
         await client.execute({
           sql: `UPDATE channel_videos SET
             title = ?,
-            thumbnail_url = ?,
-            view_count = ?,
-            like_count = ?,
-            comment_count = ?,
-            published_at = ?,
-            fetched_at = ?
+            thumbnailUrl = ?,
+            viewCount = ?,
+            likeCount = ?,
+            commentCount = ?,
+            publishedAt = ?,
+            fetchedAt = ?
             WHERE id = ?`,
           args: [
             video.title,
@@ -117,11 +117,11 @@ export async function POST(
         // Вставляем новое видео
         await client.execute({
           sql: `INSERT INTO channel_videos (
-            channel_id, video_id, title, thumbnail_url, view_count,
-            like_count, comment_count, published_at, fetched_at
+            channelId, videoId, title, thumbnailUrl, viewCount,
+            likeCount, commentCount, publishedAt, fetchedAt
           ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
           args: [
-            competitor.channel_id,
+            competitor.channelId,
             video.videoId,
             video.title,
             video.thumbnailUrl,
@@ -140,8 +140,8 @@ export async function POST(
 
     // Подсчитываем общее количество видео для этого канала
     const totalVideosResult = await client.execute({
-      sql: "SELECT * FROM channel_videos WHERE channel_id = ?",
-      args: [competitor.channel_id],
+      sql: "SELECT * FROM channel_videos WHERE channelId = ?",
+      args: [competitor.channelId],
     });
 
     client.close();

@@ -42,7 +42,7 @@ export async function POST(
 
     // Получаем данные канала из БД
     const competitorResult = await client.execute({
-      sql: "SELECT * FROM competitors WHERE id = ? AND user_id = ?",
+      sql: "SELECT * FROM competitors WHERE id = ? AND userId = ?",
       args: [competitorId, session.user.id],
     });
 
@@ -79,8 +79,8 @@ export async function POST(
 
     // Проверяем, есть ли уже запись за сегодня
     const existingMetricsResult = await client.execute({
-      sql: "SELECT * FROM channel_metrics WHERE channel_id = ? AND date = ?",
-      args: [competitor.channel_id, today],
+      sql: "SELECT * FROM channel_metrics WHERE channelId = ? AND date = ?",
+      args: [competitor.channelId, today],
     });
 
     // TEMPORARY: Allow multiple syncs per day for testing (max 10)
@@ -111,11 +111,11 @@ export async function POST(
     // Вставляем новую запись в channel_metrics
     const newMetricResult = await client.execute({
       sql: `INSERT INTO channel_metrics (
-        user_id, channel_id, subscriber_count, video_count, view_count, date, fetched_at
+        userId, channelId, subscriberCount, videoCount, viewCount, date, fetchedAt
       ) VALUES (?, ?, ?, ?, ?, ?, ?)`,
       args: [
         session.user.id,
-        competitor.channel_id,
+        competitor.channelId,
         channelData.subscriberCount,
         channelData.videoCount,
         channelData.viewCount,
@@ -127,10 +127,10 @@ export async function POST(
     // Обновляем данные в таблице competitors
     await client.execute({
       sql: `UPDATE competitors SET
-        subscriber_count = ?,
-        video_count = ?,
-        view_count = ?,
-        last_synced_at = ?
+        subscriberCount = ?,
+        videoCount = ?,
+        viewCount = ?,
+        lastSyncedAt = ?
         WHERE id = ?`,
       args: [
         channelData.subscriberCount,
@@ -145,8 +145,8 @@ export async function POST(
 
     // Count total metrics for this channel
     const totalMetricsResult = await client.execute({
-      sql: "SELECT * FROM channel_metrics WHERE channel_id = ?",
-      args: [competitor.channel_id],
+      sql: "SELECT * FROM channel_metrics WHERE channelId = ?",
+      args: [competitor.channelId],
     });
 
     client.close();
