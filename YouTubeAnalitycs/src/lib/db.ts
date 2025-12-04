@@ -254,13 +254,8 @@ function runMigrations() {
     url: dbPath.startsWith("file:") ? dbPath : `file:${dbPath}`,
   });
 
-  // Миграция 1: добавляем колонку data_ru для Audience Insights
-  try {
-    client.execute(`ALTER TABLE audience_insights ADD COLUMN data_ru TEXT;`);
-    console.log("[DB] Migration applied: audience_insights.data_ru added");
-  } catch (e) {
-    console.log("[DB] Migration skipped (column exists): audience_insights.data_ru");
-  }
+  // Migration disabled — column data_ru already exists and must not be altered again.
+  console.log("[DB] Migration audience_insights.data_ru disabled");
 
   client.close();
   _migrationsRun = true;
