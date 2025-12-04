@@ -22,8 +22,6 @@ export async function GET(req: NextRequest) {
       args: [session.user.id],
     });
 
-    console.log("[GET /api/competitors] Returning:", JSON.stringify(result.rows, null, 2));
-
     return NextResponse.json(result.rows);
   } catch (error) {
     console.error("Error fetching competitors:", error);
@@ -128,12 +126,6 @@ export async function POST(req: NextRequest) {
     }
 
     // Insert new competitor
-    const avatarUrl = typeof channelData.avatarUrl === "string" && channelData.avatarUrl.trim()
-      ? channelData.avatarUrl.trim()
-      : null;
-
-    console.log("[POST /api/competitors] Inserting with avatarUrl:", avatarUrl);
-
     const insertResult = await db.execute({
       sql: `INSERT INTO competitors
             (userId, platform, channelId, handle, title, avatarUrl, subscriberCount, videoCount, viewCount, lastSyncedAt, createdAt)
@@ -143,7 +135,9 @@ export async function POST(req: NextRequest) {
         String(channelData.channelId || ""),
         String(handleToFetch),
         String(channelData.title || "Unknown Channel"),
-        avatarUrl,
+        typeof channelData.avatarUrl === "string" && channelData.avatarUrl.trim()
+          ? channelData.avatarUrl.trim()
+          : null,
         Number.isFinite(channelData.subscriberCount) ? channelData.subscriberCount : 0,
         Number.isFinite(channelData.videoCount) ? channelData.videoCount : 0,
         Number.isFinite(channelData.viewCount) ? channelData.viewCount : 0,
@@ -157,8 +151,6 @@ export async function POST(req: NextRequest) {
       sql: "SELECT * FROM competitors WHERE id = last_insert_rowid()",
       args: [],
     });
-
-    console.log("[POST /api/competitors] Inserted record:", JSON.stringify(newResult.rows[0], null, 2));
 
     return NextResponse.json(newResult.rows[0], { status: 201 });
   } catch (error) {
