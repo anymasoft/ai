@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
-import { db, competitors, channelVideos, videoComments } from "@/lib/db";
-import { eq, and, desc } from "drizzle-orm";
+import { createClient } from "@libsql/client";
 import { getYoutubeVideoComments } from "@/lib/scrapecreators";
 
 /**
@@ -13,11 +12,17 @@ export async function POST(
   req: NextRequest,
   context: { params: Promise<{ id: string }> }
 ) {
+  const dbPath = process.env.DATABASE_URL || "file:sqlite.db";
+  const client = createClient({
+    url: dbPath.startsWith("file:") ? dbPath : `file:${dbPath}`,
+  });
+
   try {
     const session = await getServerSession(authOptions);
 
     // Проверка аутентификации
     if (!session?.user?.id) {
+      client.close();
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -26,6 +31,7 @@ export async function POST(
     const competitorId = parseInt(id, 10);
 
     if (!Number.isFinite(competitorId) || competitorId <= 0) {
+      client.close();
       return NextResponse.json(
         { error: "Invalid competitor ID" },
         { status: 400 }
@@ -35,42 +41,39 @@ export async function POST(
     console.log(`[CommentsSync] Запрос синхронизации для competitor ID: ${competitorId}`);
 
     // Получаем данные канала из БД
-    const competitor = await db
-      .select()
-      .from(competitors)
-      .where(
-        and(
-          eq(competitors.id, competitorId),
-          eq(competitors.userId, session.user.id)
-        )
-      )
-      .get();
+    const competitorResult = await client.execute({
+      sql: "SELECT * FROM competitors WHERE id = ? AND user_id = ?",
+      args: [competitorId, session.user.id],
+    });
 
     // Проверяем что канал существует и принадлежит пользователю
-    if (!competitor) {
+    if (competitorResult.rows.length === 0) {
+      client.close();
       return NextResponse.json(
         { error: "Competitor not found or access denied" },
         { status: 404 }
       );
     }
 
+    const competitor = competitorResult.rows[0];
+
     console.log(`[CommentsSync] Канал найден: ${competitor.title}`);
 
     // Получаем топ 15 видео канала по просмотрам
-    const videos = await db
-      .select()
-      .from(channelVideos)
-      .where(eq(channelVideos.channelId, competitor.channelId))
-      .orderBy(desc(channelVideos.viewCount))
-      .limit(15)
-      .all();
+    const videosResult = await client.execute({
+      sql: "SELECT * FROM channel_videos WHERE channel_id = ? ORDER BY view_count DESC LIMIT 15",
+      args: [competitor.channel_id],
+    });
 
-    if (videos.length === 0) {
+    if (videosResult.rows.length === 0) {
+      client.close();
       return NextResponse.json(
         { error: "No videos found. Please sync videos first." },
         { status: 400 }
       );
     }
+
+    const videos = videosResult.rows;
 
     console.log(`[CommentsSync] Найдено ${videos.length} видео для синхронизации комментариев`);
 
@@ -84,21 +87,20 @@ export async function POST(
     for (const video of videos) {
       try {
         // Проверяем, есть ли уже комментарии и не устарели ли они
-        const existingComments = await db
-          .select()
-          .from(videoComments)
-          .where(eq(videoComments.videoId, video.videoId))
-          .all();
+        const existingCommentsResult = await client.execute({
+          sql: "SELECT * FROM video_comments WHERE video_id = ?",
+          args: [video.video_id],
+        });
 
-        if (existingComments.length > 0) {
+        if (existingCommentsResult.rows.length > 0) {
           // Проверяем, что хотя бы один комментарий свежий
-          const hasRecentComments = existingComments.some(
-            (comment) => comment.fetchedAt > sevenDaysAgo
+          const hasRecentComments = existingCommentsResult.rows.some(
+            (comment) => (comment.fetched_at as number) > sevenDaysAgo
           );
 
           if (hasRecentComments) {
             console.log(
-              `[CommentsSync] Видео ${video.videoId} уже имеет свежие комментарии (skip)`
+              `[CommentsSync] Видео ${video.video_id} уже имеет свежие комментарии (skip)`
             );
             skipped++;
             continue;
@@ -106,9 +108,9 @@ export async function POST(
         }
 
         // Формируем URL видео
-        const videoUrl = `https://www.youtube.com/watch?v=${video.videoId}`;
+        const videoUrl = `https://www.youtube.com/watch?v=${video.video_id}`;
 
-        console.log(`[CommentsSync] Синхронизация комментариев для: ${video.videoId}`);
+        console.log(`[CommentsSync] Синхронизация комментариев для: ${video.video_id}`);
 
         // Получаем комментарии через ScrapeCreators (топ 300)
         const result = await getYoutubeVideoComments({
@@ -118,56 +120,70 @@ export async function POST(
         });
 
         console.log(
-          `[CommentsSync] Получено ${result.comments.length} комментариев для видео ${video.videoId}`
+          `[CommentsSync] Получено ${result.comments.length} комментариев для видео ${video.video_id}`
         );
 
         // Сохраняем комментарии в БД
         for (const comment of result.comments) {
           try {
             // Проверяем, существует ли уже такой комментарий
-            const existing = await db
-              .select()
-              .from(videoComments)
-              .where(eq(videoComments.commentId, comment.id))
-              .get();
+            const existingResult = await client.execute({
+              sql: "SELECT * FROM video_comments WHERE comment_id = ?",
+              args: [comment.id],
+            });
 
-            if (existing) {
+            if (existingResult.rows.length > 0) {
               // Обновляем существующий комментарий
-              await db
-                .update(videoComments)
-                .set({
-                  content: comment.content,
-                  publishedTime: comment.publishedTime,
-                  replyLevel: comment.replyLevel,
-                  likes: comment.likes,
-                  replies: comment.replies,
-                  authorName: comment.authorName,
-                  authorChannelId: comment.authorChannelId,
-                  isVerified: comment.isVerified,
-                  isCreator: comment.isCreator,
-                  fetchedAt: Date.now(),
-                })
-                .where(eq(videoComments.commentId, comment.id))
-                .run();
+              await client.execute({
+                sql: `UPDATE video_comments SET
+                  content = ?,
+                  published_time = ?,
+                  reply_level = ?,
+                  likes = ?,
+                  replies = ?,
+                  author_name = ?,
+                  author_channel_id = ?,
+                  is_verified = ?,
+                  is_creator = ?,
+                  fetched_at = ?
+                  WHERE comment_id = ?`,
+                args: [
+                  comment.content,
+                  comment.publishedTime,
+                  comment.replyLevel,
+                  comment.likes,
+                  comment.replies,
+                  comment.authorName,
+                  comment.authorChannelId,
+                  comment.isVerified ? 1 : 0,
+                  comment.isCreator ? 1 : 0,
+                  Date.now(),
+                  comment.id,
+                ],
+              });
             } else {
               // Создаём новый комментарий
-              await db
-                .insert(videoComments)
-                .values({
-                  videoId: video.videoId,
-                  commentId: comment.id,
-                  content: comment.content,
-                  publishedTime: comment.publishedTime,
-                  replyLevel: comment.replyLevel,
-                  likes: comment.likes,
-                  replies: comment.replies,
-                  authorName: comment.authorName,
-                  authorChannelId: comment.authorChannelId,
-                  isVerified: comment.isVerified,
-                  isCreator: comment.isCreator,
-                  fetchedAt: Date.now(),
-                })
-                .run();
+              await client.execute({
+                sql: `INSERT INTO video_comments (
+                  video_id, comment_id, content, published_time, reply_level,
+                  likes, replies, author_name, author_channel_id, is_verified,
+                  is_creator, fetched_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                args: [
+                  video.video_id,
+                  comment.id,
+                  comment.content,
+                  comment.publishedTime,
+                  comment.replyLevel,
+                  comment.likes,
+                  comment.replies,
+                  comment.authorName,
+                  comment.authorChannelId,
+                  comment.isVerified ? 1 : 0,
+                  comment.isCreator ? 1 : 0,
+                  Date.now(),
+                ],
+              });
             }
           } catch (commentError) {
             console.error(
@@ -180,17 +196,18 @@ export async function POST(
 
         totalComments += result.comments.length;
         synced++;
-        console.log(`[CommentsSync] Видео ${video.videoId} синхронизировано успешно`);
+        console.log(`[CommentsSync] Видео ${video.video_id} синхронизировано успешно`);
 
         // Небольшая задержка между запросами (rate limiting)
         await new Promise((resolve) => setTimeout(resolve, 1000));
       } catch (error: any) {
-        console.error(`[CommentsSync] Ошибка синхронизации видео ${video.videoId}:`, error);
+        console.error(`[CommentsSync] Ошибка синхронизации видео ${video.video_id}:`, error);
 
         // Если закончились кредиты - прекращаем синхронизацию
         if (error.code === "INSUFFICIENT_CREDITS" || error.status === 402) {
           console.log(`[CommentsSync] Прекращение синхронизации: закончились кредиты ScrapeCreators API`);
 
+          client.close();
           return NextResponse.json(
             {
               success: false,
@@ -215,6 +232,8 @@ export async function POST(
       `[CommentsSync] Завершено. Синхронизировано видео: ${synced}, пропущено: ${skipped}, ошибок: ${errors}, всего комментариев: ${totalComments}`
     );
 
+    client.close();
+
     return NextResponse.json(
       {
         success: true,
@@ -227,6 +246,7 @@ export async function POST(
       { status: 200 }
     );
   } catch (error) {
+    client.close();
     console.error("[CommentsSync] Ошибка:", error);
 
     if (error instanceof Error) {

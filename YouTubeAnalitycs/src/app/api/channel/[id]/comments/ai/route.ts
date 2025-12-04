@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
-import { db, competitors, channelVideos, videoComments, channelAICommentInsights, users } from "@/lib/db";
-import { eq, and, desc, inArray } from "drizzle-orm";
+import { createClient } from "@libsql/client";
 import { analyzeChannelComments, type CommentForAnalysis, normalizeComments, chunkComments } from "@/lib/ai/comments-analysis";
 
 /**
@@ -16,12 +15,10 @@ export async function POST(
   try {
     const session = await getServerSession(authOptions);
 
-    // Проверка аутентификации
     if (!session?.user?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // Получаем ID канала из параметров URL
     const { id } = await context.params;
     const competitorId = parseInt(id, 10);
 
@@ -34,151 +31,135 @@ export async function POST(
 
     console.log(`[DeepCommentAI] Запрос анализа для competitor ID: ${competitorId}`);
 
-    // Получаем язык пользователя
-    const user = await db
-      .select()
-      .from(users)
-      .where(eq(users.id, session.user.id))
-      .get();
+    const dbPath = process.env.DATABASE_URL || "file:sqlite.db";
+    const client = createClient({
+      url: dbPath.startsWith("file:") ? dbPath : `file:${dbPath}`,
+    });
 
-    const userLanguage = user?.language || "en";
+    // Получаем данные канала
+    const competitorResult = await client.execute({
+      sql: `SELECT channelId, title FROM competitors WHERE id = ? AND userId = ?`,
+      args: [competitorId, session.user.id],
+    });
 
-    // Получаем данные канала из БД
-    const competitor = await db
-      .select()
-      .from(competitors)
-      .where(
-        and(
-          eq(competitors.id, competitorId),
-          eq(competitors.userId, session.user.id)
-        )
-      )
-      .get();
-
-    // Проверяем что канал существует и принадлежит пользователю
-    if (!competitor) {
+    if (competitorResult.rows.length === 0) {
+      client.close();
       return NextResponse.json(
         { error: "Competitor not found or access denied" },
         { status: 404 }
       );
     }
 
-    console.log(`[DeepCommentAI] Канал найден: ${competitor.title}, язык: ${userLanguage}`);
+    const channelId = competitorResult.rows[0].channelId as string;
+    const channelTitle = competitorResult.rows[0].title as string;
 
-    // Получаем топ 30 видео канала
-    const videos = await db
-      .select()
-      .from(channelVideos)
-      .where(eq(channelVideos.channelId, competitor.channelId))
-      .orderBy(desc(channelVideos.viewCount))
-      .limit(30)
-      .all();
+    console.log(`[DeepCommentAI] Канал найден: ${channelTitle}`);
 
-    if (videos.length === 0) {
+    // Получаем топ 30 видео
+    const videosResult = await client.execute({
+      sql: `SELECT videoId FROM channel_videos
+            WHERE channelId = ?
+            ORDER BY viewCount DESC
+            LIMIT 30`,
+      args: [channelId],
+    });
+
+    if (videosResult.rows.length === 0) {
+      client.close();
       return NextResponse.json(
         { error: "No videos found. Please sync videos first." },
         { status: 400 }
       );
     }
 
-    const videoIds = videos.map((v) => v.videoId);
+    const videoIds = videosResult.rows.map((v) => v.videoId as string);
 
-    console.log(`[DeepCommentAI] Найдено ${videos.length} видео`);
+    console.log(`[DeepCommentAI] Найдено ${videosResult.rows.length} видео`);
 
-    // Получаем все комментарии для этих видео
-    const comments = await db
-      .select()
-      .from(videoComments)
-      .where(inArray(videoComments.videoId, videoIds))
-      .orderBy(desc(videoComments.likes))
-      .limit(1000) // Максимум 1000 комментариев
-      .all();
+    // Получаем комментарии
+    const placeholders = videoIds.map(() => "?").join(",");
+    const commentsResult = await client.execute({
+      sql: `SELECT content, likes, authorName FROM video_comments
+            WHERE videoId IN (${placeholders})
+            ORDER BY likes DESC
+            LIMIT 1000`,
+      args: videoIds,
+    });
 
-    if (comments.length === 0) {
+    if (commentsResult.rows.length === 0) {
+      client.close();
       return NextResponse.json(
         { error: "No comments found. Please sync comments first." },
         { status: 400 }
       );
     }
 
-    console.log(`[DeepCommentAI] Найдено ${comments.length} комментариев для глубокого анализа`);
-
-    // POST всегда генерирует новый анализ (даже если есть старый)
-    // Пользователь нажал "Refresh Analysis" - значит хочет новый результат
-    console.log(`[DeepCommentAI] Генерируем новый глубокий анализ через OpenAI...`);
+    console.log(`[DeepCommentAI] Найдено ${commentsResult.rows.length} комментариев`);
 
     // Подготовка данных для анализа
-    const commentsForAnalysis: CommentForAnalysis[] = comments.map((c) => ({
-      content: c.content,
-      likes: c.likes,
-      authorName: c.authorName,
+    const commentsForAnalysis: CommentForAnalysis[] = commentsResult.rows.map((c) => ({
+      content: c.content as string,
+      likes: c.likes as number,
+      authorName: c.authorName as string,
     }));
 
-    // Предварительный расчёт количества чанков для прогресса
     const normalizedComments = normalizeComments(commentsForAnalysis);
     const chunks = chunkComments(normalizedComments);
     const totalChunks = chunks.length;
 
     console.log(`[DeepCommentAI] Будет обработано ${totalChunks} чанков комментариев`);
 
-    // Создаём запись анализа со статусом 'pending' и известным progress_total
-    await db
-      .insert(channelAICommentInsights)
-      .values({
-        channelId: competitor.channelId,
-        resultJson: JSON.stringify({}),
-        createdAt: Date.now(),
-        progress_current: 0,
-        progress_total: totalChunks,
-        status: 'pending',
-      })
-      .run();
+    // Создаём запись анализа
+    await client.execute({
+      sql: `INSERT INTO channel_ai_comment_insights
+            (channelId, resultJson, createdAt, progress_current, progress_total, status)
+            VALUES (?, ?, ?, ?, ?, ?)`,
+      args: [channelId, JSON.stringify({}), Date.now(), 0, totalChunks, 'pending'],
+    });
 
-    console.log(`[DeepCommentAI] Создана запись анализа: status='pending', progress=0/${totalChunks}`);
+    console.log(`[DeepCommentAI] Создана запись анализа: status='pending'`);
 
-    // Вызов функции глубокого анализа с передачей channelId
-    // EN is always the source of truth
+    // Генерация анализа (всегда EN)
     const analysisResult = await analyzeChannelComments(
       commentsForAnalysis,
       "en",
-      competitor.channelId
+      channelId
     );
 
     console.log(`[DeepCommentAI] Анализ завершён успешно`);
 
-    // Шаг 1: Находим id последней созданной записи
-    const latestRecord = await db
-      .select()
-      .from(channelAICommentInsights)
-      .where(eq(channelAICommentInsights.channelId, competitor.channelId))
-      .orderBy(desc(channelAICommentInsights.createdAt))
-      .limit(1)
-      .get();
+    // Находим id последней записи
+    const latestResult = await client.execute({
+      sql: `SELECT id FROM channel_ai_comment_insights
+            WHERE channelId = ?
+            ORDER BY createdAt DESC
+            LIMIT 1`,
+      args: [channelId],
+    });
 
-    if (!latestRecord) {
+    if (latestResult.rows.length === 0) {
       console.error('[DeepCommentAI] No record found after creation');
+      client.close();
       return NextResponse.json(
         { error: 'Failed to find created analysis record' },
         { status: 500 }
       );
     }
 
-    // Шаг 2: Обновляем только эту конкретную запись по id
-    // analysis_en - источник истины (всегда английский)
-    await db
-      .update(channelAICommentInsights)
-      .set({
-        resultJson: JSON.stringify(analysisResult),
-        analysis_en: JSON.stringify(analysisResult), // Сохраняем английскую версию как источник
-        analysis_ru: null, // Сброс русского перевода при пересчёте
-        status: 'done',
-      })
-      .where(eq(channelAICommentInsights.id, latestRecord.id))
-      .run();
+    const recordId = latestResult.rows[0].id;
 
-    console.log(`[DeepCommentAI] Результат сохранён в БД для record id=${latestRecord.id} (analysis_en + resultJson)`);
+    // Обновляем запись: сохраняем EN, удаляем RU
+    await client.execute({
+      sql: `UPDATE channel_ai_comment_insights
+            SET resultJson = ?, analysis_en = ?, analysis_ru = NULL, status = 'done'
+            WHERE id = ?`,
+      args: [JSON.stringify(analysisResult), JSON.stringify(analysisResult), recordId],
+    });
 
-    // Возвращаем результат клиенту
+    console.log(`[DeepCommentAI] Результат сохранён (analysis_en), analysis_ru сброшен`);
+
+    client.close();
+
     return NextResponse.json(
       {
         ...analysisResult,
@@ -226,71 +207,66 @@ export async function GET(
       );
     }
 
-    // Получаем язык пользователя
-    const user = await db
-      .select()
-      .from(users)
-      .where(eq(users.id, session.user.id))
-      .get();
-
-    const userLanguage = user?.language || "en";
+    const dbPath = process.env.DATABASE_URL || "file:sqlite.db";
+    const client = createClient({
+      url: dbPath.startsWith("file:") ? dbPath : `file:${dbPath}`,
+    });
 
     // Получаем данные канала
-    const competitor = await db
-      .select()
-      .from(competitors)
-      .where(
-        and(
-          eq(competitors.id, competitorId),
-          eq(competitors.userId, session.user.id)
-        )
-      )
-      .get();
+    const competitorResult = await client.execute({
+      sql: `SELECT channelId FROM competitors WHERE id = ? AND userId = ?`,
+      args: [competitorId, session.user.id],
+    });
 
-    if (!competitor) {
+    if (competitorResult.rows.length === 0) {
+      client.close();
       return NextResponse.json(
         { error: "Competitor not found or access denied" },
         { status: 404 }
       );
     }
 
-    // Получаем последний анализ
-    const analysis = await db
-      .select()
-      .from(channelAICommentInsights)
-      .where(eq(channelAICommentInsights.channelId, competitor.channelId))
-      .orderBy(desc(channelAICommentInsights.createdAt))
-      .limit(1)
-      .get();
+    const channelId = competitorResult.rows[0].channelId as string;
 
-    if (!analysis) {
+    // Получаем последний анализ
+    const analysisResult = await client.execute({
+      sql: `SELECT analysis_en, analysis_ru, resultJson, createdAt
+            FROM channel_ai_comment_insights
+            WHERE channelId = ?
+            ORDER BY createdAt DESC
+            LIMIT 1`,
+      args: [channelId],
+    });
+
+    if (analysisResult.rows.length === 0) {
+      client.close();
       return NextResponse.json({ analysis: null });
     }
 
-    // Возвращаем обе версии (EN и RU) в сыром виде, UI сам выберет нужную
+    const row = analysisResult.rows[0];
+    const analysisEn = row.analysis_en as string | null;
+    const analysisRu = row.analysis_ru as string | null;
+    const resultJson = row.resultJson as string | null;
+    const createdAt = row.createdAt as number;
+
+    client.close();
+
     const response: any = {
       cached: true,
-      createdAt: analysis.createdAt,
-      hasRussianVersion: !!analysis.analysis_ru,
+      createdAt: createdAt,
+      hasRussianVersion: !!analysisRu,
     };
 
-    // Всегда возвращаем analysis_en (или fallback на resultJson)
-    if (analysis.analysis_en) {
-      response.analysis_en = analysis.analysis_en; // Сырая строка JSON
-    } else if (analysis.resultJson) {
-      response.analysis_en = analysis.resultJson; // Fallback
+    // Возвращаем analysis_en (или fallback на resultJson)
+    if (analysisEn) {
+      response.analysis_en = analysisEn;
+    } else if (resultJson) {
+      response.analysis_en = resultJson;
     }
 
     // Возвращаем analysis_ru если есть
-    if (analysis.analysis_ru) {
-      response.analysis_ru = analysis.analysis_ru; // Сырая строка JSON
-    }
-
-    // Для обратной совместимости добавляем распарсенные поля основного анализа
-    const mainAnalysis = analysis.analysis_en || analysis.resultJson;
-    if (mainAnalysis) {
-      const parsed = JSON.parse(mainAnalysis);
-      Object.assign(response, parsed);
+    if (analysisRu) {
+      response.analysis_ru = analysisRu;
     }
 
     return NextResponse.json(response);

@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
-import { db, competitors } from "@/lib/db";
-import { eq, and } from "drizzle-orm";
+import { db } from "@/lib/db";
 
 export async function DELETE(
   req: NextRequest,
@@ -23,18 +22,12 @@ export async function DELETE(
     }
 
     // Check if competitor exists and belongs to user
-    const competitor = await db
-      .select()
-      .from(competitors)
-      .where(
-        and(
-          eq(competitors.id, competitorId),
-          eq(competitors.userId, session.user.id)
-        )
-      )
-      .get();
+    const result = await db.execute({
+      sql: "SELECT * FROM competitors WHERE id = ? AND userId = ?",
+      args: [competitorId, session.user.id],
+    });
 
-    if (!competitor) {
+    if (result.rows.length === 0) {
       return NextResponse.json(
         { error: "Competitor not found" },
         { status: 404 }
@@ -42,15 +35,10 @@ export async function DELETE(
     }
 
     // Delete competitor
-    await db
-      .delete(competitors)
-      .where(
-        and(
-          eq(competitors.id, competitorId),
-          eq(competitors.userId, session.user.id)
-        )
-      )
-      .run();
+    await db.execute({
+      sql: "DELETE FROM competitors WHERE id = ? AND userId = ?",
+      args: [competitorId, session.user.id],
+    });
 
     return NextResponse.json({ success: true }, { status: 200 });
   } catch (error) {

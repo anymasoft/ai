@@ -1,14 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
-import { db, competitors, channelVideos, contentIntelligence } from "@/lib/db";
-import { eq, and, desc } from "drizzle-orm";
+import { createClient } from "@libsql/client";
 import OpenAI from "openai";
 
-/**
- * POST /api/channel/[id]/content-intelligence
- * Генерирует AI-анализ контента канала на основе top videos
- */
 export async function POST(
   req: NextRequest,
   context: { params: Promise<{ id: string }> }
@@ -16,12 +11,10 @@ export async function POST(
   try {
     const session = await getServerSession(authOptions);
 
-    // Проверка аутентификации
     if (!session?.user?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // Получаем ID канала из параметров URL
     const { id } = await context.params;
     const competitorId = parseInt(id, 10);
 
@@ -34,84 +27,77 @@ export async function POST(
 
     console.log(`[ContentIntelligence] Запрос анализа для competitor ID: ${competitorId}`);
 
-    // Получаем данные канала из БД
-    const competitor = await db
-      .select()
-      .from(competitors)
-      .where(
-        and(
-          eq(competitors.id, competitorId),
-          eq(competitors.userId, session.user.id)
-        )
-      )
-      .get();
+    const dbPath = process.env.DATABASE_URL || "file:sqlite.db";
+    const client = createClient({
+      url: dbPath.startsWith("file:") ? dbPath : `file:${dbPath}`,
+    });
 
-    // Проверяем что канал существует и принадлежит пользователю
-    if (!competitor) {
+    const competitorResult = await client.execute({
+      sql: "SELECT * FROM competitors WHERE id = ? AND userId = ?",
+      args: [competitorId, session.user.id],
+    });
+
+    if (competitorResult.rows.length === 0) {
+      client.close();
       return NextResponse.json(
         { error: "Competitor not found or access denied" },
         { status: 404 }
       );
     }
 
-    console.log(`[ContentIntelligence] Канал найден: ${competitor.title}`);
+    const competitor = competitorResult.rows[0];
+    const channelId = competitor.channelId as string;
+    const title = competitor.title as string;
 
-    // Получаем top videos канала
-    const videos = await db
-      .select()
-      .from(channelVideos)
-      .where(eq(channelVideos.channelId, competitor.channelId))
-      .orderBy(desc(channelVideos.viewCount))
-      .limit(50) // Анализируем топ 50 видео
-      .all();
+    console.log(`[ContentIntelligence] Канал найден: ${title}`);
 
-    if (videos.length === 0) {
+    const videosResult = await client.execute({
+      sql: "SELECT * FROM channel_videos WHERE channelId = ? ORDER BY viewCount DESC LIMIT 50",
+      args: [channelId],
+    });
+
+    if (videosResult.rows.length === 0) {
+      client.close();
       return NextResponse.json(
         { error: "No videos found. Please sync videos first." },
         { status: 400 }
       );
     }
 
-    console.log(`[ContentIntelligence] Найдено ${videos.length} видео для анализа`);
+    console.log(`[ContentIntelligence] Найдено ${videosResult.rows.length} видео для анализа`);
 
-    // Проверяем, есть ли уже сохранённый анализ (не старше 7 дней)
     const sevenDaysAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
-    const existingAnalysis = await db
-      .select()
-      .from(contentIntelligence)
-      .where(
-        and(
-          eq(contentIntelligence.channelId, competitor.channelId),
-        )
-      )
-      .orderBy(desc(contentIntelligence.generatedAt))
-      .limit(1)
-      .get();
+    const existingResult = await client.execute({
+      sql: "SELECT * FROM content_intelligence WHERE channelId = ? ORDER BY generatedAt DESC LIMIT 1",
+      args: [channelId],
+    });
 
-    // Если анализ существует и свежий - возвращаем его
-    if (existingAnalysis && existingAnalysis.generatedAt > sevenDaysAgo) {
-      console.log(`[ContentIntelligence] Найден свежий анализ`);
-      return NextResponse.json({
-        ...JSON.parse(existingAnalysis.data),
-        generatedAt: existingAnalysis.generatedAt,
-      });
+    if (existingResult.rows.length > 0) {
+      const existing = existingResult.rows[0];
+      const generatedAt = existing.generatedAt as number;
+
+      if (generatedAt > sevenDaysAgo) {
+        console.log(`[ContentIntelligence] Найден свежий анализ`);
+        client.close();
+        return NextResponse.json({
+          ...JSON.parse(existing.data as string),
+          generatedAt: generatedAt,
+        });
+      }
     }
 
     console.log(`[ContentIntelligence] Генерируем новый анализ через OpenAI...`);
 
-    // Подготовка данных для OpenAI
-    const videosData = videos.map(v => ({
+    const videosData = videosResult.rows.map(v => ({
       title: v.title,
       viewCount: v.viewCount,
       publishedAt: v.publishedAt,
     }));
 
-    // Инициализация OpenAI клиента
     const openai = new OpenAI({
       apiKey: process.env.OPENAI_API_KEY,
     });
 
-    // Вызов OpenAI API
     const completion = await openai.chat.completions.create({
       model: "gpt-4o-mini",
       messages: [
@@ -121,7 +107,7 @@ export async function POST(
         },
         {
           role: "user",
-          content: `Проанализируй топ-видео YouTube канала "${competitor.title}" и выдели:
+          content: `Проанализируй топ-видео YouTube канала "${title}" и выдели:
 
 1) ключевые темы (themes) - о чем чаще всего снимают видео
 2) форматы (formats) - какие типы контента используются (обзоры, туториалы, влоги, и т.д.)
@@ -149,28 +135,23 @@ ${JSON.stringify(videosData, null, 2)}
     const responseText = completion.choices[0]?.message?.content;
 
     if (!responseText) {
+      client.close();
       throw new Error("No response from OpenAI");
     }
 
     console.log(`[ContentIntelligence] Получен ответ от OpenAI`);
 
-    // Парсим JSON ответ
     const analysisData = JSON.parse(responseText);
 
-    // Сохраняем результат в базу данных
-    await db
-      .insert(contentIntelligence)
-      .values({
-        channelId: competitor.channelId,
-        data: JSON.stringify(analysisData),
-        data_ru: null, // Сброс русского перевода при пересчёте
-        generatedAt: Date.now(),
-      })
-      .run();
+    await client.execute({
+      sql: "INSERT INTO content_intelligence (channelId, data, generatedAt) VALUES (?, ?, ?)",
+      args: [channelId, JSON.stringify(analysisData), Date.now()],
+    });
 
     console.log(`[ContentIntelligence] Анализ сохранён в БД`);
 
-    // Возвращаем результат клиенту
+    client.close();
+
     return NextResponse.json({
       ...analysisData,
       generatedAt: Date.now(),
@@ -190,10 +171,6 @@ ${JSON.stringify(videosData, null, 2)}
   }
 }
 
-/**
- * GET /api/channel/[id]/content-intelligence
- * Возвращает существующий AI-анализ контента (без генерации нового)
- */
 export async function GET(
   req: NextRequest,
   context: { params: Promise<{ id: string }> }
@@ -215,42 +192,43 @@ export async function GET(
       );
     }
 
-    // Получаем данные канала
-    const competitor = await db
-      .select()
-      .from(competitors)
-      .where(
-        and(
-          eq(competitors.id, competitorId),
-          eq(competitors.userId, session.user.id)
-        )
-      )
-      .get();
+    const dbPath = process.env.DATABASE_URL || "file:sqlite.db";
+    const client = createClient({
+      url: dbPath.startsWith("file:") ? dbPath : `file:${dbPath}`,
+    });
 
-    if (!competitor) {
+    const competitorResult = await client.execute({
+      sql: "SELECT * FROM competitors WHERE id = ? AND userId = ?",
+      args: [competitorId, session.user.id],
+    });
+
+    if (competitorResult.rows.length === 0) {
+      client.close();
       return NextResponse.json(
         { error: "Competitor not found or access denied" },
         { status: 404 }
       );
     }
 
-    // Получаем последний анализ
-    const analysis = await db
-      .select()
-      .from(contentIntelligence)
-      .where(eq(contentIntelligence.channelId, competitor.channelId))
-      .orderBy(desc(contentIntelligence.generatedAt))
-      .limit(1)
-      .get();
+    const channelId = competitorResult.rows[0].channelId as string;
 
-    if (!analysis) {
+    const analysisResult = await client.execute({
+      sql: "SELECT * FROM content_intelligence WHERE channelId = ? ORDER BY generatedAt DESC LIMIT 1",
+      args: [channelId],
+    });
+
+    if (analysisResult.rows.length === 0) {
+      client.close();
       return NextResponse.json({ analysis: null });
     }
 
+    const analysis = analysisResult.rows[0];
+
+    client.close();
+
     return NextResponse.json({
-      ...JSON.parse(analysis.data),
+      ...JSON.parse(analysis.data as string),
       generatedAt: analysis.generatedAt,
-      hasRussianVersion: !!analysis.data_ru,
     });
 
   } catch (error) {

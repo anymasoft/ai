@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
-import { db, competitors, channelVideos, videoComments, commentInsights } from "@/lib/db";
-import { eq, and, desc, inArray } from "drizzle-orm";
+import { createClient } from "@libsql/client";
 import OpenAI from "openai";
 
 /**
@@ -13,11 +12,17 @@ export async function POST(
   req: NextRequest,
   context: { params: Promise<{ id: string }> }
 ) {
+  const dbPath = process.env.DATABASE_URL || "file:sqlite.db";
+  const client = createClient({
+    url: dbPath.startsWith("file:") ? dbPath : `file:${dbPath}`,
+  });
+
   try {
     const session = await getServerSession(authOptions);
 
     // Проверка аутентификации
     if (!session?.user?.id) {
+      client.close();
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -26,6 +31,7 @@ export async function POST(
     const competitorId = parseInt(id, 10);
 
     if (!Number.isFinite(competitorId) || competitorId <= 0) {
+      client.close();
       return NextResponse.json(
         { error: "Invalid competitor ID" },
         { status: 400 }
@@ -35,82 +41,80 @@ export async function POST(
     console.log(`[CommentInsights] Запрос анализа для competitor ID: ${competitorId}`);
 
     // Получаем данные канала из БД
-    const competitor = await db
-      .select()
-      .from(competitors)
-      .where(
-        and(
-          eq(competitors.id, competitorId),
-          eq(competitors.userId, session.user.id)
-        )
-      )
-      .get();
+    const competitorResult = await client.execute({
+      sql: "SELECT * FROM competitors WHERE id = ? AND user_id = ?",
+      args: [competitorId, session.user.id],
+    });
 
     // Проверяем что канал существует и принадлежит пользователю
-    if (!competitor) {
+    if (competitorResult.rows.length === 0) {
+      client.close();
       return NextResponse.json(
         { error: "Competitor not found or access denied" },
         { status: 404 }
       );
     }
 
+    const competitor = competitorResult.rows[0];
+
     console.log(`[CommentInsights] Канал найден: ${competitor.title}`);
 
     // Получаем топ 15 видео канала
-    const videos = await db
-      .select()
-      .from(channelVideos)
-      .where(eq(channelVideos.channelId, competitor.channelId))
-      .orderBy(desc(channelVideos.viewCount))
-      .limit(15)
-      .all();
+    const videosResult = await client.execute({
+      sql: "SELECT * FROM channel_videos WHERE channel_id = ? ORDER BY view_count DESC LIMIT 15",
+      args: [competitor.channel_id],
+    });
 
-    if (videos.length === 0) {
+    if (videosResult.rows.length === 0) {
+      client.close();
       return NextResponse.json(
         { error: "No videos found. Please sync videos first." },
         { status: 400 }
       );
     }
 
-    const videoIds = videos.map((v) => v.videoId);
+    const videos = videosResult.rows;
+    const videoIds = videos.map((v) => v.video_id);
 
     console.log(`[CommentInsights] Найдено ${videos.length} видео`);
 
     // Получаем все комментарии для этих видео
-    const comments = await db
-      .select()
-      .from(videoComments)
-      .where(inArray(videoComments.videoId, videoIds))
-      .orderBy(desc(videoComments.likes))
-      .limit(500) // Топ 500 комментариев по лайкам
-      .all();
+    const placeholders = videoIds.map(() => "?").join(",");
+    const commentsResult = await client.execute({
+      sql: `SELECT * FROM video_comments WHERE video_id IN (${placeholders}) ORDER BY likes DESC LIMIT 500`,
+      args: videoIds,
+    });
 
-    if (comments.length === 0) {
+    if (commentsResult.rows.length === 0) {
+      client.close();
       return NextResponse.json(
         { error: "No comments found. Please sync comments first." },
         { status: 400 }
       );
     }
 
+    const comments = commentsResult.rows;
+
     console.log(`[CommentInsights] Найдено ${comments.length} комментариев для анализа`);
 
     // Проверяем, есть ли уже свежий анализ (не старше 3 дней)
     const threeDaysAgo = Date.now() - 3 * 24 * 60 * 60 * 1000;
-    const existingAnalysis = await db
-      .select()
-      .from(commentInsights)
-      .where(eq(commentInsights.channelId, competitor.channelId))
-      .orderBy(desc(commentInsights.generatedAt))
-      .limit(1)
-      .get();
+    const existingAnalysisResult = await client.execute({
+      sql: "SELECT * FROM comment_insights WHERE channel_id = ? ORDER BY generated_at DESC LIMIT 1",
+      args: [competitor.channel_id],
+    });
 
     // Если анализ существует и свежий - возвращаем его
-    if (existingAnalysis && existingAnalysis.generatedAt > threeDaysAgo) {
-      console.log(`[CommentInsights] Найден свежий анализ`);
-      return NextResponse.json({
-        ...JSON.parse(existingAnalysis.data),
-        generatedAt: existingAnalysis.generatedAt,
-      });
+    if (existingAnalysisResult.rows.length > 0) {
+      const existingAnalysis = existingAnalysisResult.rows[0];
+      if ((existingAnalysis.generated_at as number) > threeDaysAgo) {
+        console.log(`[CommentInsights] Найден свежий анализ`);
+        client.close();
+        return NextResponse.json({
+          ...JSON.parse(existingAnalysis.data as string),
+          generatedAt: existingAnalysis.generated_at,
+        });
+      }
     }
 
     console.log(`[CommentInsights] Генерируем новый анализ через OpenAI...`);
@@ -119,8 +123,8 @@ export async function POST(
     const topComments = comments.slice(0, 200).map((c) => ({
       content: c.content,
       likes: c.likes,
-      authorName: c.authorName,
-      isCreator: c.isCreator,
+      authorName: c.author_name,
+      isCreator: c.is_creator,
     }));
 
     // Инициализация OpenAI клиента
@@ -191,19 +195,14 @@ ${JSON.stringify(topComments, null, 2)}
     };
 
     // Сохраняем результат в базу данных
-    // Используем первое видео из списка как reference (можно использовать любое)
-    await db
-      .insert(commentInsights)
-      .values({
-        videoId: videos[0].videoId, // Reference video
-        channelId: competitor.channelId,
-        data: JSON.stringify(insightsData),
-        data_ru: null, // Сброс русского перевода при пересчёте
-        generatedAt: Date.now(),
-      })
-      .run();
+    await client.execute({
+      sql: "INSERT INTO comment_insights (video_id, channel_id, data, data_ru, generated_at) VALUES (?, ?, ?, ?, ?)",
+      args: [videos[0].video_id, competitor.channel_id, JSON.stringify(insightsData), null, Date.now()],
+    });
 
     console.log(`[CommentInsights] Анализ сохранён в БД`);
+
+    client.close();
 
     // Возвращаем результат клиенту
     return NextResponse.json(
@@ -214,6 +213,7 @@ ${JSON.stringify(topComments, null, 2)}
       { status: 201 }
     );
   } catch (error) {
+    client.close();
     console.error("[CommentInsights] Ошибка:", error);
 
     if (error instanceof Error) {
@@ -235,10 +235,16 @@ export async function GET(
   req: NextRequest,
   context: { params: Promise<{ id: string }> }
 ) {
+  const dbPath = process.env.DATABASE_URL || "file:sqlite.db";
+  const client = createClient({
+    url: dbPath.startsWith("file:") ? dbPath : `file:${dbPath}`,
+  });
+
   try {
     const session = await getServerSession(authOptions);
 
     if (!session?.user?.id) {
+      client.close();
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -246,6 +252,7 @@ export async function GET(
     const competitorId = parseInt(id, 10);
 
     if (!Number.isFinite(competitorId) || competitorId <= 0) {
+      client.close();
       return NextResponse.json(
         { error: "Invalid competitor ID" },
         { status: 400 }
@@ -253,43 +260,43 @@ export async function GET(
     }
 
     // Получаем данные канала
-    const competitor = await db
-      .select()
-      .from(competitors)
-      .where(
-        and(
-          eq(competitors.id, competitorId),
-          eq(competitors.userId, session.user.id)
-        )
-      )
-      .get();
+    const competitorResult = await client.execute({
+      sql: "SELECT * FROM competitors WHERE id = ? AND user_id = ?",
+      args: [competitorId, session.user.id],
+    });
 
-    if (!competitor) {
+    if (competitorResult.rows.length === 0) {
+      client.close();
       return NextResponse.json(
         { error: "Competitor not found or access denied" },
         { status: 404 }
       );
     }
 
-    // Получаем последний анализ
-    const analysis = await db
-      .select()
-      .from(commentInsights)
-      .where(eq(commentInsights.channelId, competitor.channelId))
-      .orderBy(desc(commentInsights.generatedAt))
-      .limit(1)
-      .get();
+    const competitor = competitorResult.rows[0];
 
-    if (!analysis) {
+    // Получаем последний анализ
+    const analysisResult = await client.execute({
+      sql: "SELECT * FROM comment_insights WHERE channel_id = ? ORDER BY generated_at DESC LIMIT 1",
+      args: [competitor.channel_id],
+    });
+
+    if (analysisResult.rows.length === 0) {
+      client.close();
       return NextResponse.json({ analysis: null });
     }
 
+    const analysis = analysisResult.rows[0];
+
+    client.close();
+
     return NextResponse.json({
-      ...JSON.parse(analysis.data),
-      generatedAt: analysis.generatedAt,
+      ...JSON.parse(analysis.data as string),
+      generatedAt: analysis.generated_at,
       hasRussianVersion: !!analysis.data_ru,
     });
   } catch (error) {
+    client.close();
     console.error("[CommentInsights] Ошибка GET:", error);
     return NextResponse.json(
       { error: "Failed to fetch comment insights" },

@@ -25,8 +25,8 @@ interface DeepCommentAnalysisProps {
     cached?: boolean;
     createdAt?: number;
     hasRussianVersion?: boolean;
-    data?: string;
-    data_ru?: string;
+    analysis_en?: string;
+    analysis_ru?: string;
   }) | null;
   hasRequiredData?: boolean;
   analysisLanguage?: "en" | "ru";
@@ -83,7 +83,7 @@ export function DeepCommentAnalysis({
   }
 
   async function handleTranslate() {
-    if (!data || !data.data) {
+    if (!data || !data.analysis_en) {
       toast.error("Run English analysis first");
       return;
     }
@@ -104,7 +104,7 @@ export function DeepCommentAnalysis({
         throw new Error(e.error || "Translation failed");
       }
 
-      // После перевода — сразу забираем свежие данные
+      // После перевода — забираем свежие данные
       const getRes = await fetch(`/api/channel/${channelId}/comments/ai`, {
         method: "GET",
         credentials: "include",
@@ -114,7 +114,7 @@ export function DeepCommentAnalysis({
 
       const updated = await getRes.json();
 
-      updated.hasRussianVersion = !!updated.data_ru;
+      updated.hasRussianVersion = !!updated.analysis_ru;
 
       setData(updated);
     } catch (err) {
@@ -128,8 +128,8 @@ export function DeepCommentAnalysis({
   // Парсинг английской и русской версии
   let displayData = data;
   try {
-    const en = data?.data ? JSON.parse(data.data) : data;
-    const ru = data?.data_ru ? JSON.parse(data.data_ru) : null;
+    const en = data?.analysis_en ? JSON.parse(data.analysis_en) : data;
+    const ru = data?.analysis_ru ? JSON.parse(data.analysis_ru) : null;
 
     displayData = ru ?? en;
   } catch {
@@ -174,7 +174,7 @@ export function DeepCommentAnalysis({
         </div>
 
         <div className="flex gap-2">
-          {!data.data_ru && (
+          {!data.analysis_ru && (
             <Button
               onClick={handleTranslate}
               disabled={translating}

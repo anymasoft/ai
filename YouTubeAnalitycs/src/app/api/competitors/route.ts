@@ -1,9 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
-import { db, competitors, users } from "@/lib/db";
+import { db } from "@/lib/db";
 import { getYoutubeChannelByHandle } from "@/lib/scrapecreators";
-import { eq, and } from "drizzle-orm";
 import { PLAN_LIMITS } from "@/lib/plan-limits";
 import { normalizeYoutubeInput } from "@/lib/youtube/normalize";
 
@@ -15,13 +14,12 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const userCompetitors = await db
-      .select()
-      .from(competitors)
-      .where(eq(competitors.userId, session.user.id))
-      .all();
+    const result = await db.execute({
+      sql: "SELECT * FROM competitors WHERE userId = ?",
+      args: [session.user.id],
+    });
 
-    return NextResponse.json(userCompetitors);
+    return NextResponse.json(result.rows);
   } catch (error) {
     console.error("Error fetching competitors:", error);
     return NextResponse.json(
@@ -49,7 +47,6 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Normalize YouTube input (поддержка URLs, @handles, Unicode)
     const normalized = normalizeYoutubeInput(handle);
 
     if (!normalized.normalizedHandle && !normalized.channelId) {
@@ -59,54 +56,48 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Используем normalizedHandle для API запроса
     const handleToFetch = normalized.normalizedHandle || normalized.channelId || handle.trim();
 
     // Check current competitor count
-    const currentCompetitors = await db
-      .select()
-      .from(competitors)
-      .where(eq(competitors.userId, session.user.id))
-      .all();
+    const currentResult = await db.execute({
+      sql: "SELECT COUNT(*) as count FROM competitors WHERE userId = ?",
+      args: [session.user.id],
+    });
 
-    // Ensure user exists in database (for FOREIGN KEY constraint)
-    let user = await db
-      .select()
-      .from(users)
-      .where(eq(users.id, session.user.id))
-      .get();
+    const currentCount = (currentResult.rows[0].count as number) || 0;
 
-    // If user doesn't exist in DB, create them
-    if (!user) {
-      await db
-        .insert(users)
-        .values({
-          id: String(session.user.id),
-          email: String(session.user.email || ""),
-          name: session.user.name || null,
-          image: session.user.image || null,
-          emailVerified: null,
-          role: "user",
-          plan: session.user.plan || "free",
-          createdAt: Date.now(),
-          updatedAt: Date.now(),
-        })
-        .run();
+    // Ensure user exists
+    const userResult = await db.execute({
+      sql: "SELECT * FROM users WHERE id = ?",
+      args: [session.user.id],
+    });
 
-      // Fetch the newly created user
-      user = await db
-        .select()
-        .from(users)
-        .where(eq(users.id, session.user.id))
-        .get();
+    if (userResult.rows.length === 0) {
+      await db.execute({
+        sql: `INSERT INTO users (id, email, name, image, emailVerified, role, plan, createdAt, updatedAt)
+              VALUES (?, ?, ?, ?, ?, 'user', ?, ?, ?)`,
+        args: [
+          String(session.user.id),
+          String(session.user.email || ""),
+          session.user.name || null,
+          session.user.image || null,
+          null,
+          (session.user as any).plan || "free",
+          Date.now(),
+          Date.now(),
+        ],
+      });
     }
 
-    const plan = user?.plan || session.user.plan || "free";
+    const userRefresh = await db.execute({
+      sql: "SELECT plan FROM users WHERE id = ?",
+      args: [session.user.id],
+    });
 
-    // Get limit based on plan
+    const plan = (userRefresh.rows[0]?.plan as string) || (session.user as any).plan || "free";
     const limit = PLAN_LIMITS[plan as keyof typeof PLAN_LIMITS] ?? 3;
 
-    if (currentCompetitors.length >= limit) {
+    if (currentCount >= limit) {
       return NextResponse.json(
         {
           error: `Competitor limit reached for your plan (${limit} max). Upgrade to add more.`,
@@ -115,22 +106,16 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Fetch channel data from ScrapeCreators (используем нормализованный handle)
+    // Fetch channel data
     const channelData = await getYoutubeChannelByHandle(handleToFetch);
 
-    // Check if this channel already exists for this user
-    const existing = await db
-      .select()
-      .from(competitors)
-      .where(
-        and(
-          eq(competitors.userId, session.user.id),
-          eq(competitors.channelId, channelData.channelId)
-        )
-      )
-      .get();
+    // Check if exists
+    const existingResult = await db.execute({
+      sql: "SELECT * FROM competitors WHERE userId = ? AND channelId = ?",
+      args: [session.user.id, channelData.channelId],
+    });
 
-    if (existing) {
+    if (existingResult.rows.length > 0) {
       return NextResponse.json(
         { error: "This competitor already exists in your list" },
         { status: 409 }
@@ -138,35 +123,33 @@ export async function POST(req: NextRequest) {
     }
 
     // Insert new competitor
-    const result = await db
-      .insert(competitors)
-      .values({
-        userId: String(session.user.id),
-        platform: "youtube",
-        channelId: String(channelData.channelId || ""),
-        handle: String(handleToFetch), // Сохраняем нормализованный handle
-        title: String(channelData.title || "Unknown Channel"),
-        avatarUrl:
-          typeof channelData.avatarUrl === "string" &&
-          channelData.avatarUrl.trim()
-            ? channelData.avatarUrl.trim()
-            : null,
-        subscriberCount: Number.isFinite(channelData.subscriberCount)
-          ? channelData.subscriberCount
-          : 0,
-        videoCount: Number.isFinite(channelData.videoCount)
-          ? channelData.videoCount
-          : 0,
-        viewCount: Number.isFinite(channelData.viewCount)
-          ? channelData.viewCount
-          : 0,
-        lastSyncedAt: Date.now(),
-        createdAt: Date.now(),
-      })
-      .returning()
-      .get();
+    const insertResult = await db.execute({
+      sql: `INSERT INTO competitors
+            (userId, platform, channelId, handle, title, avatarUrl, subscriberCount, videoCount, viewCount, lastSyncedAt, createdAt)
+            VALUES (?, 'youtube', ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      args: [
+        String(session.user.id),
+        String(channelData.channelId || ""),
+        String(handleToFetch),
+        String(channelData.title || "Unknown Channel"),
+        typeof channelData.avatarUrl === "string" && channelData.avatarUrl.trim()
+          ? channelData.avatarUrl.trim()
+          : null,
+        Number.isFinite(channelData.subscriberCount) ? channelData.subscriberCount : 0,
+        Number.isFinite(channelData.videoCount) ? channelData.videoCount : 0,
+        Number.isFinite(channelData.viewCount) ? channelData.viewCount : 0,
+        Date.now(),
+        Date.now(),
+      ],
+    });
 
-    return NextResponse.json(result, { status: 201 });
+    // Get inserted record
+    const newResult = await db.execute({
+      sql: "SELECT * FROM competitors WHERE id = last_insert_rowid()",
+      args: [],
+    });
+
+    return NextResponse.json(newResult.rows[0], { status: 201 });
   } catch (error) {
     console.error("Error adding competitor:", error);
 
