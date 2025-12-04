@@ -72,7 +72,10 @@ export default async function ChannelPage({ params }: PageProps) {
   try {
     // Получаем данные канала из БД
     const competitorResult = await client.execute({
-      sql: "SELECT * FROM competitors WHERE id = ? AND userId = ?",
+      sql: `SELECT id, userId, platform, channelId, handle, title,
+             avatarUrl, subscriberCount, videoCount, viewCount,
+             lastSyncedAt, createdAt
+             FROM competitors WHERE id = ? AND userId = ?`,
       args: [competitorId, session.user.id],
     });
 
