@@ -285,6 +285,26 @@ export function DeepCommentAnalysis({
     );
   }
 
+  // Парсим analysis_en и analysis_ru для выбора нужной версии
+  let displayData = data;
+
+  if (data) {
+    try {
+      // Парсим английскую версию
+      const enData = data.analysis_en ? JSON.parse(data.analysis_en) : data;
+
+      // Парсим русскую версию если есть
+      const ruData = data.analysis_ru ? JSON.parse(data.analysis_ru) : null;
+
+      // Выбираем какую версию показывать
+      displayData = (analysisLanguage === "ru" && ruData) ? ruData : enData;
+    } catch (err) {
+      console.error('[DeepCommentAnalysis] Failed to parse analysis data:', err);
+      // Используем data как fallback
+      displayData = data;
+    }
+  }
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
@@ -294,7 +314,7 @@ export function DeepCommentAnalysis({
             Deep Audience Intelligence (AI v2.0)
           </h2>
           <p className="text-sm text-muted-foreground mt-1">
-            Deep AI analysis of {data.totalAnalyzed} comments
+            Deep AI analysis of {displayData.totalAnalyzed} comments
           </p>
         </div>
         <div className="flex gap-2">
@@ -367,19 +387,19 @@ export function DeepCommentAnalysis({
           <div className="grid grid-cols-3 gap-4">
             <div className="text-center">
               <div className="text-3xl font-bold text-green-600 dark:text-green-400">
-                {data.sentimentSummary.positive}%
+                {displayData.sentimentSummary.positive}%
               </div>
               <div className="text-xs text-muted-foreground mt-1">Positive</div>
             </div>
             <div className="text-center">
               <div className="text-3xl font-bold text-gray-600 dark:text-gray-400">
-                {data.sentimentSummary.neutral}%
+                {displayData.sentimentSummary.neutral}%
               </div>
               <div className="text-xs text-muted-foreground mt-1">Neutral</div>
             </div>
             <div className="text-center">
               <div className="text-3xl font-bold text-red-600 dark:text-red-400">
-                {data.sentimentSummary.negative}%
+                {displayData.sentimentSummary.negative}%
               </div>
               <div className="text-xs text-muted-foreground mt-1">Negative</div>
             </div>
@@ -398,9 +418,9 @@ export function DeepCommentAnalysis({
             </CardTitle>
           </CardHeader>
           <CardContent>
-            {data.themes.length > 0 ? (
+            {displayData.themes.length > 0 ? (
               <ul className="space-y-2">
-                {data.themes.map((theme, idx) => (
+                {displayData.themes.map((theme, idx) => (
                   <li key={idx} className="flex items-start gap-2">
                     <span className="text-blue-600 dark:text-blue-400 mt-1">▪</span>
                     <span className="text-sm">{theme}</span>
@@ -422,9 +442,9 @@ export function DeepCommentAnalysis({
             </CardTitle>
           </CardHeader>
           <CardContent>
-            {data.painPoints.length > 0 ? (
+            {displayData.painPoints.length > 0 ? (
               <ul className="space-y-2">
-                {data.painPoints.map((pain, idx) => (
+                {displayData.painPoints.map((pain, idx) => (
                   <li key={idx} className="flex items-start gap-2">
                     <span className="text-orange-600 dark:text-orange-400 mt-1">⚠</span>
                     <span className="text-sm">{pain}</span>
@@ -446,9 +466,9 @@ export function DeepCommentAnalysis({
             </CardTitle>
           </CardHeader>
           <CardContent>
-            {data.requests.length > 0 ? (
+            {displayData.requests.length > 0 ? (
               <ul className="space-y-2">
-                {data.requests.map((request, idx) => (
+                {displayData.requests.map((request, idx) => (
                   <li key={idx} className="flex items-start gap-2">
                     <span className="text-purple-600 dark:text-purple-400 mt-1">💬</span>
                     <span className="text-sm">{request}</span>
@@ -470,9 +490,9 @@ export function DeepCommentAnalysis({
             </CardTitle>
           </CardHeader>
           <CardContent>
-            {data.praises.length > 0 ? (
+            {displayData.praises.length > 0 ? (
               <ul className="space-y-2">
-                {data.praises.map((praise, idx) => (
+                {displayData.praises.map((praise, idx) => (
                   <li key={idx} className="flex items-start gap-2">
                     <span className="text-pink-600 dark:text-pink-400 mt-1">♥</span>
                     <span className="text-sm">{praise}</span>
@@ -498,9 +518,9 @@ export function DeepCommentAnalysis({
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {data.audienceSegments.length > 0 ? (
+          {displayData.audienceSegments.length > 0 ? (
             <div className="flex flex-wrap gap-2">
-              {data.audienceSegments.map((segment, idx) => (
+              {displayData.audienceSegments.map((segment, idx) => (
                 <span
                   key={idx}
                   className="px-3 py-1 bg-cyan-100 dark:bg-cyan-900/30 text-cyan-900 dark:text-cyan-100 rounded-full text-sm"
@@ -527,9 +547,9 @@ export function DeepCommentAnalysis({
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {data.hiddenPatterns.length > 0 ? (
+          {displayData.hiddenPatterns.length > 0 ? (
             <ul className="space-y-2">
-              {data.hiddenPatterns.map((pattern, idx) => (
+              {displayData.hiddenPatterns.map((pattern, idx) => (
                 <li key={idx} className="flex items-start gap-2">
                   <span className="text-violet-600 dark:text-violet-400 mt-1">→</span>
                   <span className="text-sm">{pattern}</span>
@@ -554,9 +574,9 @@ export function DeepCommentAnalysis({
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {data.actionableIdeas.length > 0 ? (
+          {displayData.actionableIdeas.length > 0 ? (
             <ul className="space-y-3">
-              {data.actionableIdeas.map((idea, idx) => (
+              {displayData.actionableIdeas.map((idea, idx) => (
                 <li key={idx} className="flex items-start gap-2">
                   <span className="text-emerald-600 dark:text-emerald-400 mt-1">💡</span>
                   <span className="text-sm font-medium">{idea}</span>
@@ -570,7 +590,7 @@ export function DeepCommentAnalysis({
       </Card>
 
       {/* Top Quotes */}
-      {data.topQuotes.length > 0 && (
+      {displayData.topQuotes.length > 0 && (
         <Card>
           <CardHeader>
             <CardTitle className="text-lg flex items-center gap-2">
@@ -580,7 +600,7 @@ export function DeepCommentAnalysis({
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
-              {data.topQuotes.slice(0, 8).map((quote, idx) => (
+              {displayData.topQuotes.slice(0, 8).map((quote, idx) => (
                 <blockquote
                   key={idx}
                   className="pl-4 border-l-2 border-gray-300 dark:border-gray-700 text-sm italic text-muted-foreground"

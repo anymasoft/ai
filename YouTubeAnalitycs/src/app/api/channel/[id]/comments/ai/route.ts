@@ -267,33 +267,33 @@ export async function GET(
       return NextResponse.json({ analysis: null });
     }
 
-    // Выбираем нужную версию анализа в зависимости от языка пользователя
-    let analysisData;
-    let analysisLanguage = "en";
-    let hasRussianVersion = false;
-
-    if (userLanguage === "ru" && analysis.analysis_ru) {
-      // Если пользователь хочет русский и он есть - возвращаем русский
-      analysisData = JSON.parse(analysis.analysis_ru);
-      analysisLanguage = "ru";
-      hasRussianVersion = true;
-    } else if (analysis.analysis_en) {
-      // Иначе возвращаем английский (если он есть)
-      analysisData = JSON.parse(analysis.analysis_en);
-      hasRussianVersion = !!analysis.analysis_ru;
-    } else {
-      // Fallback на resultJson для старых записей
-      analysisData = JSON.parse(analysis.resultJson);
-      hasRussianVersion = !!analysis.analysis_ru;
-    }
-
-    return NextResponse.json({
-      ...analysisData,
+    // Возвращаем обе версии (EN и RU) в сыром виде, UI сам выберет нужную
+    const response: any = {
       cached: true,
       createdAt: analysis.createdAt,
-      analysisLanguage,
-      hasRussianVersion,
-    });
+      hasRussianVersion: !!analysis.analysis_ru,
+    };
+
+    // Всегда возвращаем analysis_en (или fallback на resultJson)
+    if (analysis.analysis_en) {
+      response.analysis_en = analysis.analysis_en; // Сырая строка JSON
+    } else if (analysis.resultJson) {
+      response.analysis_en = analysis.resultJson; // Fallback
+    }
+
+    // Возвращаем analysis_ru если есть
+    if (analysis.analysis_ru) {
+      response.analysis_ru = analysis.analysis_ru; // Сырая строка JSON
+    }
+
+    // Для обратной совместимости добавляем распарсенные поля основного анализа
+    const mainAnalysis = analysis.analysis_en || analysis.resultJson;
+    if (mainAnalysis) {
+      const parsed = JSON.parse(mainAnalysis);
+      Object.assign(response, parsed);
+    }
+
+    return NextResponse.json(response);
   } catch (error) {
     console.error("[DeepCommentAI] Ошибка GET:", error);
     return NextResponse.json(
