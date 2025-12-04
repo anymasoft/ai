@@ -124,14 +124,11 @@ export async function POST(
       );
     }
 
-    // Если уже есть русский перевод, возвращаем его
+    // Если уже есть русский перевод, возвращаем успех
     if (existingRu) {
       client.close();
-      console.log(`[TranslateAPI] Русский перевод уже существует, возвращаем из кэша`);
-      return NextResponse.json({
-        analysis: JSON.parse(existingRu),
-        cached: true,
-      });
+      console.log(`[TranslateAPI] Русский перевод уже существует`);
+      return NextResponse.json({ ok: true, cached: true });
     }
 
     console.log(`[TranslateAPI] Начинаем перевод через GPT...`);
@@ -142,9 +139,11 @@ export async function POST(
       messages: [
         {
           role: "system",
-          content: `You are a professional translator. Translate the following JSON object from English to Russian.
-Translate ALL text fields while preserving the JSON structure and field names.
-Return ONLY the translated JSON without any additional text or markdown formatting.`,
+          content: `You are a translation engine.
+Translate the JSON below to Russian.
+Do not change structure, keys or format.
+Only replace English strings with Russian ones.
+Return ONLY valid JSON.`,
         },
         {
           role: "user",
@@ -166,7 +165,7 @@ Return ONLY the translated JSON without any additional text or markdown formatti
 
     console.log(`[TranslateAPI] Перевод завершён, сохраняем в БД...`);
 
-    // Шаг 1: Находим id последней записи
+    // Находим id последней записи
     const selectResult = await client.execute({
       sql: `SELECT id FROM channel_ai_comment_insights
             WHERE channelId = ?
@@ -186,7 +185,7 @@ Return ONLY the translated JSON without any additional text or markdown formatti
 
     const recordId = selectResult.rows[0].id;
 
-    // Шаг 2: Обновляем запись по id (без ORDER BY/LIMIT)
+    // Обновляем запись по id
     await client.execute({
       sql: `UPDATE channel_ai_comment_insights
             SET analysis_ru = ?
@@ -200,14 +199,8 @@ Return ONLY the translated JSON without any additional text or markdown formatti
 
     console.log(`[TranslateAPI] Перевод успешно сохранён`);
 
-    // Возвращаем переведённый анализ
-    return NextResponse.json(
-      {
-        analysis: JSON.parse(translatedJson),
-        cached: false,
-      },
-      { status: 201 }
-    );
+    // Возвращаем успех
+    return NextResponse.json({ ok: true });
   } catch (error) {
     console.error("[TranslateAPI] Ошибка:", error);
 
