@@ -119,10 +119,10 @@ export async function POST(
 
     console.log(`[DeepCommentAI] Создана запись анализа: status='pending'`);
 
-    // Генерация анализа (всегда EN)
+    // Генерация анализа (всегда RU)
     const analysisResult = await analyzeChannelComments(
       commentsForAnalysis,
-      "en",
+      "ru",
       channelId
     );
 
@@ -148,15 +148,15 @@ export async function POST(
 
     const recordId = latestResult.rows[0].id;
 
-    // Обновляем запись: сохраняем EN, удаляем RU
+    // Обновляем запись: сохраняем результат
     await client.execute({
       sql: `UPDATE channel_ai_comment_insights
-            SET resultJson = ?, analysis_en = ?, analysis_ru = NULL, status = 'done'
+            SET resultJson = ?, status = 'done'
             WHERE id = ?`,
-      args: [JSON.stringify(analysisResult), JSON.stringify(analysisResult), recordId],
+      args: [JSON.stringify(analysisResult), recordId],
     });
 
-    console.log(`[DeepCommentAI] Результат сохранён (analysis_en), analysis_ru сброшен`);
+    console.log(`[DeepCommentAI] Результат сохранён`);
 
     client.close();
 
@@ -230,7 +230,7 @@ export async function GET(
 
     // Получаем последний анализ
     const analysisResult = await client.execute({
-      sql: `SELECT analysis_en, analysis_ru, resultJson, createdAt
+      sql: `SELECT resultJson, createdAt
             FROM channel_ai_comment_insights
             WHERE channelId = ?
             ORDER BY createdAt DESC
@@ -244,32 +244,22 @@ export async function GET(
     }
 
     const row = analysisResult.rows[0];
-    const analysisEn = row.analysis_en as string | null;
-    const analysisRu = row.analysis_ru as string | null;
     const resultJson = row.resultJson as string | null;
     const createdAt = row.createdAt as number;
 
     client.close();
 
-    const response: any = {
+    if (!resultJson) {
+      return NextResponse.json({ analysis: null });
+    }
+
+    const parsedResult = JSON.parse(resultJson);
+
+    return NextResponse.json({
+      ...parsedResult,
       cached: true,
       createdAt: createdAt,
-      hasRussianVersion: !!analysisRu,
-    };
-
-    // Возвращаем analysis_en (или fallback на resultJson)
-    if (analysisEn) {
-      response.analysis_en = analysisEn;
-    } else if (resultJson) {
-      response.analysis_en = resultJson;
-    }
-
-    // Возвращаем analysis_ru если есть
-    if (analysisRu) {
-      response.analysis_ru = analysisRu;
-    }
-
-    return NextResponse.json(response);
+    });
   } catch (error) {
     console.error("[DeepCommentAI] Ошибка GET:", error);
     return NextResponse.json(

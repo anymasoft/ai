@@ -1,7 +1,5 @@
 "use client"
 
-import { useState } from "react"
-import { Button } from "@/components/ui/button"
 import { ChannelGrowthChart } from "@/components/charts/ChannelGrowthChart"
 import { TopVideosGrid } from "@/components/channel/TopVideosGrid"
 import { ContentIntelligenceBlock } from "@/components/channel/ContentIntelligenceBlock"
@@ -35,42 +33,17 @@ export function ChannelAnalytics({
   hasVideos,
   hasComments,
 }: ChannelAnalyticsProps) {
-  const [analysisLanguage, setAnalysisLanguage] = useState<"en" | "ru">("en")
-
   return (
     <div className="space-y-6">
-      {/* Analysis Language Selector */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-xl font-semibold">AI Analytics</h2>
-          <p className="text-sm text-muted-foreground">
-            Deep insights powered by artificial intelligence
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <span className="text-sm text-muted-foreground">Analysis Language:</span>
-          <div className="inline-flex rounded-lg border border-border p-1">
-            <Button
-              variant={analysisLanguage === "en" ? "default" : "ghost"}
-              size="sm"
-              onClick={() => setAnalysisLanguage("en")}
-              className="cursor-pointer"
-            >
-              English
-            </Button>
-            <Button
-              variant={analysisLanguage === "ru" ? "default" : "ghost"}
-              size="sm"
-              onClick={() => setAnalysisLanguage("ru")}
-              className="cursor-pointer"
-            >
-              Русский
-            </Button>
-          </div>
-        </div>
+      {/* Header */}
+      <div>
+        <h2 className="text-xl font-semibold">AI Analytics</h2>
+        <p className="text-sm text-muted-foreground">
+          Deep insights powered by artificial intelligence
+        </p>
       </div>
 
-      {/* Charts - no translation needed */}
+      {/* Charts */}
       <ChannelGrowthChart
         metrics={metrics}
         title="Growth Over Time"
@@ -112,7 +85,6 @@ export function ChannelAnalytics({
         channelId={channelId}
         initialData={deepAnalysisData}
         hasRequiredData={hasVideos && hasComments}
-        analysisLanguage={analysisLanguage}
       />
     </div>
   )

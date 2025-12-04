@@ -222,7 +222,6 @@ function getClient() {
           id INTEGER PRIMARY KEY AUTOINCREMENT,
           channelId TEXT NOT NULL,
           data TEXT NOT NULL,
-          data_ru TEXT,
           generatedAt INTEGER NOT NULL
         );`);
 
@@ -288,9 +287,7 @@ function getClient() {
           createdAt INTEGER NOT NULL,
           progress_current INTEGER DEFAULT 0,
           progress_total INTEGER DEFAULT 0,
-          status TEXT DEFAULT 'pending',
-          analysis_en TEXT,
-          analysis_ru TEXT
+          status TEXT DEFAULT 'pending'
         );`);
 
         _client.execute(`CREATE INDEX IF NOT EXISTS idx_channel_ai_insights_channelId
@@ -303,7 +300,6 @@ function getClient() {
           id INTEGER PRIMARY KEY AUTOINCREMENT,
           channelId TEXT NOT NULL,
           data TEXT NOT NULL,
-          data_ru TEXT,
           createdAt INTEGER NOT NULL
         );`);
 
