@@ -85,17 +85,17 @@ export async function POST(
       messages: [
         {
           role: "system",
-          content: "You are an expert in YouTube audience analysis. Provide deep insights about audience behavior, preferences, and patterns."
+          content: "Ты — эксперт по анализу аудитории YouTube. Предоставляй глубокую аналитику о поведении, предпочтениях и паттернах аудитории. ВАЖНО: Отвечай СТРОГО на русском языке. Возвращай JSON с английскими ключами, но ВСЕ значения должны быть на русском языке."
         },
         {
           role: "user",
-          content: `Analyze the audience of YouTube channel "${title}". Provide insights in JSON format with these fields:
-- audienceProfile: array of audience characteristics
-- contentPreferences: array of what audience likes
-- engagementPatterns: array of how audience interacts
-- recommendations: array of actionable recommendations
+          content: `Проанализируй аудиторию YouTube канала "${title}". Предоставь insights в формате JSON с этими полями:
+- audienceProfile: массив характеристик аудитории
+- contentPreferences: массив того, что нравится аудитории
+- engagementPatterns: массив паттернов взаимодействия аудитории
+- recommendations: массив практических рекомендаций
 
-Return ONLY JSON without any additional text.`
+Возвращай ТОЛЬКО JSON без дополнительного текста.`
         }
       ],
       temperature: 0.7,
