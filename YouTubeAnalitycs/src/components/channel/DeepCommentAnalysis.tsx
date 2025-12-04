@@ -305,6 +305,13 @@ export function DeepCommentAnalysis({
     }
   }
 
+  // Безопасный fallback для sentiment
+  const sentiment = displayData.sentimentSummary ?? {
+    positive: 0,
+    negative: 0,
+    neutral: 0,
+  };
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
@@ -387,19 +394,19 @@ export function DeepCommentAnalysis({
           <div className="grid grid-cols-3 gap-4">
             <div className="text-center">
               <div className="text-3xl font-bold text-green-600 dark:text-green-400">
-                {displayData.sentimentSummary.positive}%
+                {sentiment.positive}%
               </div>
               <div className="text-xs text-muted-foreground mt-1">Positive</div>
             </div>
             <div className="text-center">
               <div className="text-3xl font-bold text-gray-600 dark:text-gray-400">
-                {displayData.sentimentSummary.neutral}%
+                {sentiment.neutral}%
               </div>
               <div className="text-xs text-muted-foreground mt-1">Neutral</div>
             </div>
             <div className="text-center">
               <div className="text-3xl font-bold text-red-600 dark:text-red-400">
-                {displayData.sentimentSummary.negative}%
+                {sentiment.negative}%
               </div>
               <div className="text-xs text-muted-foreground mt-1">Negative</div>
             </div>
