@@ -66,7 +66,7 @@ export async function POST(
 
     // Получаем последний анализ с data и data_ru
     const analysisResult = await client.execute({
-      sql: `SELECT data, data_ru
+      sql: `SELECT id, data, data_ru
             FROM audience_insights
             WHERE channelId = ?
             ORDER BY generatedAt DESC
@@ -83,6 +83,7 @@ export async function POST(
     }
 
     const row = analysisResult.rows[0];
+    const recordId = row.id;
     const dataEn = row.data as string | null;
     const existingRu = row.data_ru as string | null;
 
@@ -132,18 +133,12 @@ Return ONLY the translated JSON without any additional text or markdown formatti
       );
     }
 
-    // Сохраняем перевод в БД
+    // Сохраняем перевод в БД по id (двухшаговый подход)
     await client.execute({
       sql: `UPDATE audience_insights
             SET data_ru = ?
-            WHERE channelId = ?
-            AND id = (
-              SELECT id FROM audience_insights
-              WHERE channelId = ?
-              ORDER BY generatedAt DESC
-              LIMIT 1
-            )`,
-      args: [translatedJson, channelId, channelId],
+            WHERE id = ?`,
+      args: [translatedJson, recordId],
     });
 
     client.close();
