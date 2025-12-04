@@ -28,7 +28,10 @@ export default async function Dashboard2() {
     if (session?.user?.id) {
       try {
         const result = await client.execute({
-          sql: "SELECT * FROM competitors WHERE userId = ?",
+          sql: `SELECT id, userId, platform, channelId, handle, title,
+                avatarUrl, subscriberCount, videoCount, viewCount,
+                lastSyncedAt, createdAt
+                FROM competitors WHERE userId = ?`,
           args: [session.user.id],
         });
 

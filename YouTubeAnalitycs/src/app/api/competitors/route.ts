@@ -15,7 +15,10 @@ export async function GET(req: NextRequest) {
     }
 
     const result = await db.execute({
-      sql: "SELECT * FROM competitors WHERE userId = ?",
+      sql: `SELECT id, userId, platform, channelId, handle, title,
+             avatarUrl, subscriberCount, videoCount, viewCount,
+             lastSyncedAt, createdAt
+             FROM competitors WHERE userId = ?`,
       args: [session.user.id],
     });
 
