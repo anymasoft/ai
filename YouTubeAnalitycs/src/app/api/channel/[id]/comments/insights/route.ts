@@ -42,7 +42,7 @@ export async function POST(
 
     // Получаем данные канала из БД
     const competitorResult = await client.execute({
-      sql: "SELECT * FROM competitors WHERE id = ? AND user_id = ?",
+      sql: "SELECT * FROM competitors WHERE id = ? AND userId = ?",
       args: [competitorId, session.user.id],
     });
 
@@ -61,8 +61,8 @@ export async function POST(
 
     // Получаем топ 15 видео канала
     const videosResult = await client.execute({
-      sql: "SELECT * FROM channel_videos WHERE channel_id = ? ORDER BY view_count DESC LIMIT 15",
-      args: [competitor.channel_id],
+      sql: "SELECT * FROM channel_videos WHERE channelId = ? ORDER BY viewCount DESC LIMIT 15",
+      args: [competitor.channelId],
     });
 
     if (videosResult.rows.length === 0) {
@@ -74,14 +74,14 @@ export async function POST(
     }
 
     const videos = videosResult.rows;
-    const videoIds = videos.map((v) => v.video_id);
+    const videoIds = videos.map((v) => v.videoId);
 
     console.log(`[CommentInsights] Найдено ${videos.length} видео`);
 
     // Получаем все комментарии для этих видео
     const placeholders = videoIds.map(() => "?").join(",");
     const commentsResult = await client.execute({
-      sql: `SELECT * FROM video_comments WHERE video_id IN (${placeholders}) ORDER BY likes DESC LIMIT 500`,
+      sql: `SELECT * FROM video_comments WHERE videoId IN (${placeholders}) ORDER BY likes DESC LIMIT 500`,
       args: videoIds,
     });
 
@@ -100,19 +100,19 @@ export async function POST(
     // Проверяем, есть ли уже свежий анализ (не старше 3 дней)
     const threeDaysAgo = Date.now() - 3 * 24 * 60 * 60 * 1000;
     const existingAnalysisResult = await client.execute({
-      sql: "SELECT * FROM comment_insights WHERE channel_id = ? ORDER BY generated_at DESC LIMIT 1",
-      args: [competitor.channel_id],
+      sql: "SELECT * FROM comment_insights WHERE channelId = ? ORDER BY generatedAt DESC LIMIT 1",
+      args: [competitor.channelId],
     });
 
     // Если анализ существует и свежий - возвращаем его
     if (existingAnalysisResult.rows.length > 0) {
       const existingAnalysis = existingAnalysisResult.rows[0];
-      if ((existingAnalysis.generated_at as number) > threeDaysAgo) {
+      if ((existingAnalysis.generatedAt as number) > threeDaysAgo) {
         console.log(`[CommentInsights] Найден свежий анализ`);
         client.close();
         return NextResponse.json({
           ...JSON.parse(existingAnalysis.data as string),
-          generatedAt: existingAnalysis.generated_at,
+          generatedAt: existingAnalysis.generatedAt,
         });
       }
     }
@@ -196,8 +196,8 @@ ${JSON.stringify(topComments, null, 2)}
 
     // Сохраняем результат в базу данных
     await client.execute({
-      sql: "INSERT INTO comment_insights (video_id, channel_id, data, data_ru, generated_at) VALUES (?, ?, ?, ?, ?)",
-      args: [videos[0].video_id, competitor.channel_id, JSON.stringify(insightsData), null, Date.now()],
+      sql: "INSERT INTO comment_insights (videoId, channelId, data, data_ru, generatedAt) VALUES (?, ?, ?, ?, ?)",
+      args: [videos[0].videoId, competitor.channelId, JSON.stringify(insightsData), null, Date.now()],
     });
 
     console.log(`[CommentInsights] Анализ сохранён в БД`);
@@ -261,7 +261,7 @@ export async function GET(
 
     // Получаем данные канала
     const competitorResult = await client.execute({
-      sql: "SELECT * FROM competitors WHERE id = ? AND user_id = ?",
+      sql: "SELECT * FROM competitors WHERE id = ? AND userId = ?",
       args: [competitorId, session.user.id],
     });
 
@@ -277,8 +277,8 @@ export async function GET(
 
     // Получаем последний анализ
     const analysisResult = await client.execute({
-      sql: "SELECT * FROM comment_insights WHERE channel_id = ? ORDER BY generated_at DESC LIMIT 1",
-      args: [competitor.channel_id],
+      sql: "SELECT * FROM comment_insights WHERE channelId = ? ORDER BY generatedAt DESC LIMIT 1",
+      args: [competitor.channelId],
     });
 
     if (analysisResult.rows.length === 0) {
@@ -292,7 +292,7 @@ export async function GET(
 
     return NextResponse.json({
       ...JSON.parse(analysis.data as string),
-      generatedAt: analysis.generated_at,
+      generatedAt: analysis.generatedAt,
       hasRussianVersion: !!analysis.data_ru,
     });
   } catch (error) {

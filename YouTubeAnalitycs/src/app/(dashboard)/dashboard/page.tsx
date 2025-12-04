@@ -28,7 +28,7 @@ export default async function Dashboard2() {
     if (session?.user?.id) {
       try {
         const result = await client.execute({
-          sql: "SELECT * FROM competitors WHERE user_id = ?",
+          sql: "SELECT * FROM competitors WHERE userId = ?",
           args: [session.user.id],
         });
 
@@ -36,9 +36,9 @@ export default async function Dashboard2() {
 
         competitorStats = {
           totalCompetitors: userCompetitors.length,
-          totalSubscribers: userCompetitors.reduce((sum, c) => sum + (c.subscriber_count as number), 0),
-          totalViews: userCompetitors.reduce((sum, c) => sum + (c.view_count as number), 0),
-          totalVideos: userCompetitors.reduce((sum, c) => sum + (c.video_count as number), 0),
+          totalSubscribers: userCompetitors.reduce((sum, c) => sum + (c.subscriberCount as number), 0),
+          totalViews: userCompetitors.reduce((sum, c) => sum + (c.viewCount as number), 0),
+          totalVideos: userCompetitors.reduce((sum, c) => sum + (c.videoCount as number), 0),
         }
       } catch (error) {
         console.error("Failed to fetch competitor stats:", error)

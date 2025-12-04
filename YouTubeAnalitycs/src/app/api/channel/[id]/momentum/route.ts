@@ -80,7 +80,7 @@ export async function POST(
 
     // Получаем данные канала из БД
     const competitorResult = await client.execute({
-      sql: "SELECT * FROM competitors WHERE id = ? AND user_id = ?",
+      sql: "SELECT * FROM competitors WHERE id = ? AND userId = ?",
       args: [competitorId, session.user.id],
     });
 
@@ -99,8 +99,8 @@ export async function POST(
 
     // Получаем последние 150 видео канала
     const videosResult = await client.execute({
-      sql: "SELECT * FROM channel_videos WHERE channel_id = ? ORDER BY published_at DESC LIMIT 150",
-      args: [competitor.channel_id],
+      sql: "SELECT * FROM channel_videos WHERE channelId = ? ORDER BY publishedAt DESC LIMIT 150",
+      args: [competitor.channelId],
     });
 
     if (videosResult.rows.length === 0) {
@@ -117,15 +117,15 @@ export async function POST(
 
     // Вычисляем views_per_day для каждого видео
     const videosWithMetrics: VideoWithMomentum[] = videos.map(v => {
-      const days = daysSincePublish(v.published_at as string);
-      const viewsPerDay = (v.view_count as number) / days;
+      const days = daysSincePublish(v.publishedAt as string);
+      const viewsPerDay = (v.viewCount as number) / days;
 
       return {
         id: v.id as number,
-        videoId: v.video_id as string,
+        videoId: v.videoId as string,
         title: v.title as string,
-        viewCount: v.view_count as number,
-        publishedAt: v.published_at as string,
+        viewCount: v.viewCount as number,
+        publishedAt: v.publishedAt as string,
         viewsPerDay,
         momentumScore: 0, // Будет вычислен позже
         category: "Normal" as const,
@@ -172,14 +172,14 @@ export async function POST(
     // Проверяем, есть ли уже свежий анализ (не старше 3 дней)
     const threeDaysAgo = Date.now() - 3 * 24 * 60 * 60 * 1000;
     const existingAnalysisResult = await client.execute({
-      sql: "SELECT * FROM momentum_insights WHERE channel_id = ? ORDER BY generated_at DESC LIMIT 1",
-      args: [competitor.channel_id],
+      sql: "SELECT * FROM momentum_insights WHERE channelId = ? ORDER BY generatedAt DESC LIMIT 1",
+      args: [competitor.channelId],
     });
 
     // Если анализ существует и свежий - возвращаем его
     if (existingAnalysisResult.rows.length > 0) {
       const existingAnalysis = existingAnalysisResult.rows[0];
-      if ((existingAnalysis.generated_at as number) > threeDaysAgo) {
+      if ((existingAnalysis.generatedAt as number) > threeDaysAgo) {
         console.log(`[Momentum] Найден свежий анализ`);
 
         const parsedData = JSON.parse(existingAnalysis.data as string);
@@ -192,7 +192,7 @@ export async function POST(
             console.log('[Momentum] Обогащаем кэшированные данные videoId из БД');
 
             // Создаём map title -> videoId для быстрого поиска
-            const titleToVideoId = new Map(videos.map(v => [v.title, v.video_id]));
+            const titleToVideoId = new Map(videos.map(v => [v.title, v.videoId]));
 
             // Добавляем videoId к каждому видео
             parsedData.highMomentumVideos = parsedData.highMomentumVideos.map((v: any) => ({
@@ -205,7 +205,7 @@ export async function POST(
         client.close();
         return NextResponse.json({
           ...parsedData,
-          generatedAt: existingAnalysis.generated_at,
+          generatedAt: existingAnalysis.generatedAt,
         });
       }
     }
@@ -291,8 +291,8 @@ ${JSON.stringify(videosForAnalysis, null, 2)}
 
     // Сохраняем результат в базу данных
     await client.execute({
-      sql: "INSERT INTO momentum_insights (channel_id, data, data_ru, generated_at) VALUES (?, ?, ?, ?)",
-      args: [competitor.channel_id, JSON.stringify(momentumData), null, Date.now()],
+      sql: "INSERT INTO momentum_insights (channelId, data, data_ru, generatedAt) VALUES (?, ?, ?, ?)",
+      args: [competitor.channelId, JSON.stringify(momentumData), null, Date.now()],
     });
 
     console.log(`[Momentum] Анализ сохранён в БД`);
@@ -354,7 +354,7 @@ export async function GET(
 
     // Получаем данные канала
     const competitorResult = await client.execute({
-      sql: "SELECT * FROM competitors WHERE id = ? AND user_id = ?",
+      sql: "SELECT * FROM competitors WHERE id = ? AND userId = ?",
       args: [competitorId, session.user.id],
     });
 
@@ -370,8 +370,8 @@ export async function GET(
 
     // Получаем последний анализ
     const analysisResult = await client.execute({
-      sql: "SELECT * FROM momentum_insights WHERE channel_id = ? ORDER BY generated_at DESC LIMIT 1",
-      args: [competitor.channel_id],
+      sql: "SELECT * FROM momentum_insights WHERE channelId = ? ORDER BY generatedAt DESC LIMIT 1",
+      args: [competitor.channelId],
     });
 
     if (analysisResult.rows.length === 0) {
@@ -391,12 +391,12 @@ export async function GET(
 
         // Получаем видео из БД по названиям
         const allVideosResult = await client.execute({
-          sql: "SELECT * FROM channel_videos WHERE channel_id = ?",
-          args: [competitor.channel_id],
+          sql: "SELECT * FROM channel_videos WHERE channelId = ?",
+          args: [competitor.channelId],
         });
 
         // Создаём map title -> videoId для быстрого поиска
-        const titleToVideoId = new Map(allVideosResult.rows.map(v => [v.title, v.video_id]));
+        const titleToVideoId = new Map(allVideosResult.rows.map(v => [v.title, v.videoId]));
 
         // Добавляем videoId к каждому видео
         parsedData.highMomentumVideos = parsedData.highMomentumVideos.map((v: any) => ({
@@ -410,7 +410,7 @@ export async function GET(
 
     return NextResponse.json({
       ...parsedData,
-      generatedAt: analysis.generated_at,
+      generatedAt: analysis.generatedAt,
       hasRussianVersion: !!analysis.data_ru,
     });
 

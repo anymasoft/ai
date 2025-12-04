@@ -72,7 +72,7 @@ export default async function ChannelPage({ params }: PageProps) {
   try {
     // Получаем данные канала из БД
     const competitorResult = await client.execute({
-      sql: "SELECT * FROM competitors WHERE id = ? AND user_id = ?",
+      sql: "SELECT * FROM competitors WHERE id = ? AND userId = ?",
       args: [competitorId, session.user.id],
     });
 
@@ -85,7 +85,7 @@ export default async function ChannelPage({ params }: PageProps) {
 
     // Получаем AI-анализ (если есть)
     const aiInsightResult = await client.execute({
-      sql: "SELECT * FROM ai_insights WHERE competitor_id = ? ORDER BY created_at DESC LIMIT 1",
+      sql: "SELECT * FROM ai_insights WHERE competitorId = ? ORDER BY createdAt DESC LIMIT 1",
       args: [competitorId],
     });
 
@@ -100,24 +100,24 @@ export default async function ChannelPage({ params }: PageProps) {
           opportunities: JSON.parse(aiInsight.opportunities as string) as string[],
           threats: JSON.parse(aiInsight.threats as string) as string[],
           recommendations: JSON.parse(aiInsight.recommendations as string) as string[],
-          createdAt: aiInsight.created_at,
+          createdAt: aiInsight.createdAt,
         }
       : null;
 
-    const avgViews = calculateAvgViews(competitor.view_count as number, competitor.video_count as number);
+    const avgViews = calculateAvgViews(competitor.viewCount as number, competitor.videoCount as number);
 
     // Получаем исторические метрики для графиков
     const metricsResult = await client.execute({
-      sql: "SELECT * FROM channel_metrics WHERE channel_id = ? ORDER BY fetched_at",
-      args: [competitor.channel_id],
+      sql: "SELECT * FROM channel_metrics WHERE channelId = ? ORDER BY fetchedAt",
+      args: [competitor.channelId],
     });
 
     const metrics = metricsResult.rows as any[];
 
     // Получаем топ видео канала
     const videosResult = await client.execute({
-      sql: "SELECT * FROM channel_videos WHERE channel_id = ? ORDER BY view_count DESC",
-      args: [competitor.channel_id],
+      sql: "SELECT * FROM channel_videos WHERE channelId = ? ORDER BY viewCount DESC",
+      args: [competitor.channelId],
     });
 
     const videos = videosResult.rows as any[];
@@ -128,10 +128,10 @@ export default async function ChannelPage({ params }: PageProps) {
     // Проверяем наличие комментариев (если есть видео)
     let hasComments = false;
     if (hasVideos) {
-      const videoIds = videos.map(v => v.video_id);
+      const videoIds = videos.map(v => v.videoId);
       const placeholders = videoIds.map(() => '?').join(',');
       const commentSampleResult = await client.execute({
-        sql: `SELECT * FROM video_comments WHERE video_id IN (${placeholders}) LIMIT 1`,
+        sql: `SELECT * FROM video_comments WHERE videoId IN (${placeholders}) LIMIT 1`,
         args: videoIds,
       });
       hasComments = commentSampleResult.rows.length > 0;
@@ -139,8 +139,8 @@ export default async function ChannelPage({ params }: PageProps) {
 
     // Получаем Content Intelligence анализ
     const intelligenceResult = await client.execute({
-      sql: "SELECT * FROM content_intelligence WHERE channel_id = ? ORDER BY generated_at DESC LIMIT 1",
-      args: [competitor.channel_id],
+      sql: "SELECT * FROM content_intelligence WHERE channelId = ? ORDER BY generatedAt DESC LIMIT 1",
+      args: [competitor.channelId],
     });
 
     const intelligence = intelligenceResult.rows.length > 0 ? intelligenceResult.rows[0] as any : null;
@@ -150,8 +150,8 @@ export default async function ChannelPage({ params }: PageProps) {
 
     // Получаем Momentum Insights анализ
     const momentumResult = await client.execute({
-      sql: "SELECT * FROM momentum_insights WHERE channel_id = ? ORDER BY generated_at DESC LIMIT 1",
-      args: [competitor.channel_id],
+      sql: "SELECT * FROM momentum_insights WHERE channelId = ? ORDER BY generatedAt DESC LIMIT 1",
+      args: [competitor.channelId],
     });
 
     const momentum = momentumResult.rows.length > 0 ? momentumResult.rows[0] as any : null;
@@ -161,8 +161,8 @@ export default async function ChannelPage({ params }: PageProps) {
 
     // Получаем Audience Insights анализ
     const audienceResult = await client.execute({
-      sql: "SELECT * FROM audience_insights WHERE channel_id = ? ORDER BY generated_at DESC LIMIT 1",
-      args: [competitor.channel_id],
+      sql: "SELECT * FROM audience_insights WHERE channelId = ? ORDER BY generatedAt DESC LIMIT 1",
+      args: [competitor.channelId],
     });
 
     const audience = audienceResult.rows.length > 0 ? audienceResult.rows[0] as any : null;
@@ -172,8 +172,8 @@ export default async function ChannelPage({ params }: PageProps) {
 
     // Получаем Comment Insights анализ
     const commentsResult = await client.execute({
-      sql: "SELECT * FROM comment_insights WHERE channel_id = ? ORDER BY generated_at DESC LIMIT 1",
-      args: [competitor.channel_id],
+      sql: "SELECT * FROM comment_insights WHERE channelId = ? ORDER BY generatedAt DESC LIMIT 1",
+      args: [competitor.channelId],
     });
 
     const comments = commentsResult.rows.length > 0 ? commentsResult.rows[0] as any : null;
@@ -183,17 +183,17 @@ export default async function ChannelPage({ params }: PageProps) {
 
     // Получаем Deep Comment Analysis (AI v2.0)
     const deepAnalysisResult = await client.execute({
-      sql: "SELECT * FROM channel_ai_comment_insights WHERE channel_id = ? ORDER BY created_at DESC LIMIT 1",
-      args: [competitor.channel_id],
+      sql: "SELECT * FROM channel_ai_comment_insights WHERE channelId = ? ORDER BY createdAt DESC LIMIT 1",
+      args: [competitor.channelId],
     });
 
     const deepAnalysis = deepAnalysisResult.rows.length > 0 ? deepAnalysisResult.rows[0] as any : null;
 
     // Парсим JSON данные из channel_ai_comment_insights
-    const deepAnalysisData = deepAnalysis ? JSON.parse(deepAnalysis.result_json as string) : null;
+    const deepAnalysisData = deepAnalysis ? JSON.parse(deepAnalysis.resultJson as string) : null;
 
     // Debug: проверка channelId и количества метрик
-    console.log("channelId:", competitor.channel_id);
+    console.log("channelId:", competitor.channelId);
     console.log("metrics rows:", metrics.length);
     console.log("videos rows:", videos.length);
     console.log("content intelligence:", contentData ? "exists" : "not found");
@@ -218,7 +218,7 @@ export default async function ChannelPage({ params }: PageProps) {
         {/* Хедер канала */}
         <div className="flex items-center gap-4">
           <img
-            src={(competitor.avatar_url as string) || "/placeholder.png"}
+            src={(competitor.avatarUrl as string) || "/placeholder.png"}
             alt={competitor.title as string}
             className="w-20 h-20 rounded-full object-cover border-2 border-border"
           />
@@ -254,22 +254,22 @@ export default async function ChannelPage({ params }: PageProps) {
         <div className="flex items-center gap-6 text-sm flex-wrap">
           <div className="flex items-center gap-2">
             <Users className="h-4 w-4 text-muted-foreground" />
-            <span className="font-semibold">{formatNumber(competitor.subscriber_count as number)}</span>
+            <span className="font-semibold">{formatNumber(competitor.subscriberCount as number)}</span>
             <span className="text-muted-foreground">subscribers</span>
           </div>
           <div className="flex items-center gap-2">
             <Video className="h-4 w-4 text-muted-foreground" />
-            <span className="font-semibold">{formatNumber(competitor.video_count as number)}</span>
+            <span className="font-semibold">{formatNumber(competitor.videoCount as number)}</span>
             <span className="text-muted-foreground">videos</span>
           </div>
           <div className="flex items-center gap-2">
             <Eye className="h-4 w-4 text-muted-foreground" />
-            <span className="font-semibold">{formatNumber(competitor.view_count as number)}</span>
+            <span className="font-semibold">{formatNumber(competitor.viewCount as number)}</span>
             <span className="text-muted-foreground">views</span>
           </div>
           <div className="flex items-center gap-2">
             <Calendar className="h-4 w-4 text-muted-foreground" />
-            <span className="text-muted-foreground">Updated: {formatDate(competitor.last_synced_at as number)}</span>
+            <span className="text-muted-foreground">Updated: {formatDate(competitor.lastSyncedAt as number)}</span>
           </div>
         </div>
 
@@ -281,12 +281,12 @@ export default async function ChannelPage({ params }: PageProps) {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="border rounded-lg p-4 bg-muted/40">
               <div className="text-sm text-muted-foreground mb-2">Subscribers</div>
-              <div className="text-3xl font-bold">{formatNumber(competitor.subscriber_count as number)}</div>
+              <div className="text-3xl font-bold">{formatNumber(competitor.subscriberCount as number)}</div>
             </div>
 
             <div className="border rounded-lg p-4 bg-muted/40">
               <div className="text-sm text-muted-foreground mb-2">Total Views</div>
-              <div className="text-3xl font-bold">{formatNumber(competitor.view_count as number)}</div>
+              <div className="text-3xl font-bold">{formatNumber(competitor.viewCount as number)}</div>
             </div>
 
             <div className="border rounded-lg p-4 bg-muted/40">
@@ -421,11 +421,11 @@ export default async function ChannelPage({ params }: PageProps) {
           channelId={competitorId}
           metrics={metrics}
           videos={videos}
-          contentData={contentData ? { ...contentData, generatedAt: intelligence?.generated_at } : null}
-          momentumData={momentumData ? { ...momentumData, generatedAt: momentum?.generated_at } : null}
-          audienceData={audienceData ? { ...audienceData, generatedAt: audience?.generated_at } : null}
-          commentsData={commentsData ? { ...commentsData, generatedAt: comments?.generated_at } : null}
-          deepAnalysisData={deepAnalysisData ? { ...deepAnalysisData, createdAt: deepAnalysis?.created_at } : null}
+          contentData={contentData ? { ...contentData, generatedAt: intelligence?.generatedAt } : null}
+          momentumData={momentumData ? { ...momentumData, generatedAt: momentum?.generatedAt } : null}
+          audienceData={audienceData ? { ...audienceData, generatedAt: audience?.generatedAt } : null}
+          commentsData={commentsData ? { ...commentsData, generatedAt: comments?.generatedAt } : null}
+          deepAnalysisData={deepAnalysisData ? { ...deepAnalysisData, createdAt: deepAnalysis?.createdAt } : null}
           hasVideos={hasVideos}
           hasComments={hasComments}
         />

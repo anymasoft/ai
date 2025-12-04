@@ -42,7 +42,7 @@ export async function POST(
 
     // Получаем данные канала из БД
     const competitorResult = await client.execute({
-      sql: "SELECT * FROM competitors WHERE id = ? AND user_id = ?",
+      sql: "SELECT * FROM competitors WHERE id = ? AND userId = ?",
       args: [competitorId, session.user.id],
     });
 
@@ -61,8 +61,8 @@ export async function POST(
 
     // Получаем топ 30 видео канала по просмотрам
     const videosResult = await client.execute({
-      sql: "SELECT * FROM channel_videos WHERE channel_id = ? ORDER BY view_count DESC LIMIT 30",
-      args: [competitor.channel_id],
+      sql: "SELECT * FROM channel_videos WHERE channelId = ? ORDER BY viewCount DESC LIMIT 30",
+      args: [competitor.channelId],
     });
 
     if (videosResult.rows.length === 0) {
@@ -87,23 +87,23 @@ export async function POST(
       try {
         // Проверяем, есть ли уже детальные данные и не устарели ли они
         const existingDetailsResult = await client.execute({
-          sql: "SELECT * FROM video_details WHERE video_id = ?",
-          args: [video.video_id],
+          sql: "SELECT * FROM video_details WHERE videoId = ?",
+          args: [video.videoId],
         });
 
         if (existingDetailsResult.rows.length > 0) {
           const existingDetails = existingDetailsResult.rows[0];
-          if ((existingDetails.updated_at as number) > sevenDaysAgo) {
-            console.log(`[Enrich] Видео ${video.video_id} уже обогащено (skip)`);
+          if ((existingDetails.updatedAt as number) > sevenDaysAgo) {
+            console.log(`[Enrich] Видео ${video.videoId} уже обогащено (skip)`);
             skipped++;
             continue;
           }
         }
 
         // Формируем URL видео
-        const videoUrl = `https://www.youtube.com/watch?v=${video.video_id}`;
+        const videoUrl = `https://www.youtube.com/watch?v=${video.videoId}`;
 
-        console.log(`[Enrich] Обогащение видео: ${video.video_id}`);
+        console.log(`[Enrich] Обогащение видео: ${video.videoId}`);
 
         // Получаем детальные данные через ScrapeCreators
         const details = await getYoutubeVideoDetails(videoUrl);
@@ -119,14 +119,14 @@ export async function POST(
           await client.execute({
             sql: `UPDATE video_details SET
               url = ?,
-              like_count = ?,
-              comment_count = ?,
-              view_count = ?,
+              likeCount = ?,
+              commentCount = ?,
+              viewCount = ?,
               duration_ms = ?,
               keywords_json = ?,
               transcript_short = ?,
-              updated_at = ?
-              WHERE video_id = ?`,
+              updatedAt = ?
+              WHERE videoId = ?`,
             args: [
               videoUrl,
               details.likeCount,
@@ -136,18 +136,18 @@ export async function POST(
               details.keywords ? JSON.stringify(details.keywords) : null,
               transcriptShort,
               Date.now(),
-              video.video_id,
+              video.videoId,
             ],
           });
         } else {
           // Создаём новую запись
           await client.execute({
             sql: `INSERT INTO video_details (
-              video_id, url, like_count, comment_count, view_count,
-              duration_ms, keywords_json, transcript_short, updated_at
+              videoId, url, likeCount, commentCount, viewCount,
+              duration_ms, keywords_json, transcript_short, updatedAt
             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
             args: [
-              video.video_id,
+              video.videoId,
               videoUrl,
               details.likeCount,
               details.commentCount,
@@ -161,12 +161,12 @@ export async function POST(
         }
 
         enriched++;
-        console.log(`[Enrich] Видео ${video.video_id} обогащено успешно`);
+        console.log(`[Enrich] Видео ${video.videoId} обогащено успешно`);
 
         // Небольшая задержка между запросами (rate limiting)
         await new Promise((resolve) => setTimeout(resolve, 500));
       } catch (error) {
-        console.error(`[Enrich] Ошибка обогащения видео ${video.video_id}:`, error);
+        console.error(`[Enrich] Ошибка обогащения видео ${video.videoId}:`, error);
         errors++;
         // Продолжаем обработку остальных видео
       }
@@ -181,10 +181,10 @@ export async function POST(
     if (enriched > 0 || skipped > 0) {
       try {
         await client.execute({
-          sql: "DELETE FROM audience_insights WHERE channel_id = ?",
-          args: [competitor.channel_id],
+          sql: "DELETE FROM audience_insights WHERE channelId = ?",
+          args: [competitor.channelId],
         });
-        console.log(`[Enrich] Инвалидирован кэш audience insights для канала ${competitor.channel_id}`);
+        console.log(`[Enrich] Инвалидирован кэш audience insights для канала ${competitor.channelId}`);
       } catch (cacheError) {
         console.error(`[Enrich] Ошибка инвалидации кэша:`, cacheError);
         // Не критично, продолжаем

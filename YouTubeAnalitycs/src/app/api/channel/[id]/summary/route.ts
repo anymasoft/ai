@@ -42,7 +42,7 @@ export async function POST(
 
     // Получаем данные канала из БД
     const competitorResult = await client.execute({
-      sql: "SELECT * FROM competitors WHERE id = ? AND user_id = ?",
+      sql: "SELECT * FROM competitors WHERE id = ? AND userId = ?",
       args: [competitorId, session.user.id],
     });
 
@@ -61,7 +61,7 @@ export async function POST(
 
     // Проверяем, есть ли уже сохранённый AI-анализ
     const existingInsightResult = await client.execute({
-      sql: "SELECT * FROM ai_insights WHERE competitor_id = ? ORDER BY created_at DESC LIMIT 1",
+      sql: "SELECT * FROM ai_insights WHERE competitorId = ? ORDER BY createdAt DESC LIMIT 1",
       args: [competitorId],
     });
 
@@ -74,14 +74,14 @@ export async function POST(
 
       return NextResponse.json({
         id: existingInsight.id,
-        competitorId: existingInsight.competitor_id,
+        competitorId: existingInsight.competitorId,
         summary: existingInsight.summary,
         strengths: JSON.parse(existingInsight.strengths as string),
         weaknesses: JSON.parse(existingInsight.weaknesses as string),
         opportunities: JSON.parse(existingInsight.opportunities as string),
         threats: JSON.parse(existingInsight.threats as string),
         recommendations: JSON.parse(existingInsight.recommendations as string),
-        createdAt: existingInsight.created_at,
+        createdAt: existingInsight.createdAt,
       });
     }
 
@@ -110,7 +110,7 @@ export async function POST(
     // Сохраняем результат в базу данных
     const savedInsightResult = await client.execute({
       sql: `INSERT INTO ai_insights (
-        competitor_id, summary, strengths, weaknesses, opportunities, threats, recommendations, created_at
+        competitorId, summary, strengths, weaknesses, opportunities, threats, recommendations, createdAt
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
       args: [
         competitorId,
