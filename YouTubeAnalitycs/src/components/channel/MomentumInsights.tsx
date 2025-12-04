@@ -28,7 +28,6 @@ interface MomentumData {
   hotIdeas: string[];
   explanation: string;
   generatedAt?: number;
-  hasRussianVersion?: boolean;
 }
 
 interface MomentumInsightsProps {
@@ -54,7 +53,6 @@ export function MomentumInsights({
 }: MomentumInsightsProps) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
-  const [translating, setTranslating] = useState(false);
   const [data, setData] = useState<MomentumData | null>(initialData || null);
   const [error, setError] = useState<string | null>(null);
 
@@ -82,33 +80,6 @@ export function MomentumInsights({
       setError(err instanceof Error ? err.message : "Unknown error");
     } finally {
       setLoading(false);
-    }
-  }
-
-  async function handleTranslate() {
-    setTranslating(true);
-    setError(null);
-
-    try {
-      const res = await fetch(`/api/channel/${channelId}/momentum/translate`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ targetLanguage: "ru" }),
-      });
-
-      if (!res.ok) {
-        const errorData = await res.json();
-        throw new Error(errorData.error || "Failed to translate analysis");
-      }
-
-      router.refresh();
-    } catch (err) {
-      console.error("Error translating momentum analysis:", err);
-      setError(err instanceof Error ? err.message : "Unknown error");
-    } finally {
-      setTranslating(false);
     }
   }
 
@@ -194,32 +165,10 @@ export function MomentumInsights({
             What's growing right now
           </p>
         </div>
-        <div className="flex gap-2">
-          {!data.hasRussianVersion && (
-            <Button
-              onClick={handleTranslate}
-              disabled={translating}
-              variant="outline"
-              size="sm"
-              className="gap-2 cursor-pointer"
-            >
-              {translating ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  Translating...
-                </>
-              ) : (
-                <>
-                  🇷🇺 Translate to Russian
-                </>
-              )}
-            </Button>
-          )}
-          <Button onClick={handleGenerate} variant="outline" size="sm" className="gap-2 cursor-pointer">
-            <Flame className="h-4 w-4" />
-            Refresh Analysis
-          </Button>
-        </div>
+        <Button onClick={handleGenerate} variant="outline" size="sm" className="gap-2 cursor-pointer">
+          <Flame className="h-4 w-4" />
+          Refresh Analysis
+        </Button>
       </div>
 
       {/* Stats Bar */}

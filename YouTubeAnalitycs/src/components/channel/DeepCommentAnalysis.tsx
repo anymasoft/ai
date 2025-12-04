@@ -24,12 +24,8 @@ interface DeepCommentAnalysisProps {
   initialData?: (CombinedDeepAnalysis & {
     cached?: boolean;
     createdAt?: number;
-    hasRussianVersion?: boolean;
-    analysis_en?: string;
-    analysis_ru?: string;
   }) | null;
   hasRequiredData?: boolean;
-  analysisLanguage?: "en" | "ru";
 }
 
 interface ProgressData {
@@ -43,11 +39,9 @@ export function DeepCommentAnalysis({
   channelId,
   initialData,
   hasRequiredData = true,
-  analysisLanguage = "en",
 }: DeepCommentAnalysisProps) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
-  const [translating, setTranslating] = useState(false);
   const [data, setData] = useState<any>(initialData || null);
   const [error, setError] = useState<string | null>(null);
   const [progress, setProgress] = useState<ProgressData | null>(null);
@@ -82,60 +76,6 @@ export function DeepCommentAnalysis({
     }
   }
 
-  async function handleTranslate() {
-    if (!data || !data.analysis_en) {
-      toast.error("Run English analysis first");
-      return;
-    }
-
-    setTranslating(true);
-    setError(null);
-
-    try {
-      const res = await fetch(`/api/channel/${channelId}/comments/ai/translate`, {
-        method: "POST",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ language: "ru" }),
-      });
-
-      if (!res.ok) {
-        const e = await res.json();
-        throw new Error(e.error || "Translation failed");
-      }
-
-      // После перевода — забираем свежие данные
-      const getRes = await fetch(`/api/channel/${channelId}/comments/ai`, {
-        method: "GET",
-        credentials: "include",
-      });
-
-      if (!getRes.ok) throw new Error("Failed to fetch updated data");
-
-      const updated = await getRes.json();
-
-      updated.hasRussianVersion = !!updated.analysis_ru;
-
-      setData(updated);
-    } catch (err) {
-      toast.error("Translation failed");
-      setError("Translation failed");
-    } finally {
-      setTranslating(false);
-    }
-  }
-
-  // Парсинг английской и русской версии
-  let displayData = data;
-  try {
-    const en = data?.analysis_en ? JSON.parse(data.analysis_en) : data;
-    const ru = data?.analysis_ru ? JSON.parse(data.analysis_ru) : null;
-
-    displayData = ru ?? en;
-  } catch {
-    displayData = data;
-  }
-
   if (!data) {
     return (
       <Card>
@@ -154,7 +94,7 @@ export function DeepCommentAnalysis({
     );
   }
 
-  const sentiment = displayData.sentimentSummary ?? {
+  const sentiment = data.sentimentSummary ?? {
     positive: 0,
     neutral: 0,
     negative: 0,
@@ -169,35 +109,14 @@ export function DeepCommentAnalysis({
             Deep Audience Intelligence (AI v2.0)
           </h2>
           <p className="text-sm text-muted-foreground mt-1">
-            Deep AI analysis of {displayData.totalAnalyzed} comments
+            Deep AI analysis of {data.totalAnalyzed} comments
           </p>
         </div>
 
-        <div className="flex gap-2">
-          {!data.analysis_ru && (
-            <Button
-              onClick={handleTranslate}
-              disabled={translating}
-              variant="outline"
-              size="sm"
-              className="gap-2 cursor-pointer"
-            >
-              {translating ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  Translating...
-                </>
-              ) : (
-                <>🇷🇺 Translate to Russian</>
-              )}
-            </Button>
-          )}
-
-          <Button onClick={handleGenerate} variant="outline" size="sm" className="gap-2">
-            <Brain className="h-4 w-4" />
-            Refresh Analysis
-          </Button>
-        </div>
+        <Button onClick={handleGenerate} variant="outline" size="sm" className="gap-2">
+          <Brain className="h-4 w-4" />
+          Refresh Analysis
+        </Button>
       </div>
 
       {/* SENTIMENT */}
@@ -224,7 +143,7 @@ export function DeepCommentAnalysis({
       </Card>
 
       {/* THEMES */}
-      {displayData.themes?.length > 0 && (
+      {data.themes?.length > 0 && (
         <Card>
           <CardHeader>
             <CardTitle className="text-lg flex items-center gap-2">
@@ -234,7 +153,7 @@ export function DeepCommentAnalysis({
           </CardHeader>
           <CardContent>
             <ul className="space-y-2">
-              {displayData.themes.map((t: string, i: number) => (
+              {data.themes.map((t: string, i: number) => (
                 <li key={i} className="flex items-start gap-2">
                   ▪ <span>{t}</span>
                 </li>
@@ -245,7 +164,7 @@ export function DeepCommentAnalysis({
       )}
 
       {/* Pain Points */}
-      {displayData.painPoints?.length > 0 && (
+      {data.painPoints?.length > 0 && (
         <Card>
           <CardHeader>
             <CardTitle className="text-lg flex items-center gap-2">
@@ -255,7 +174,7 @@ export function DeepCommentAnalysis({
           </CardHeader>
           <CardContent>
             <ul className="space-y-2">
-              {displayData.painPoints.map((p: string, i: number) => (
+              {data.painPoints.map((p: string, i: number) => (
                 <li key={i} className="flex items-start gap-2">
                   ⚠ <span>{p}</span>
                 </li>
@@ -266,7 +185,7 @@ export function DeepCommentAnalysis({
       )}
 
       {/* REQUESTS */}
-      {displayData.requests?.length > 0 && (
+      {data.requests?.length > 0 && (
         <Card>
           <CardHeader>
             <CardTitle className="text-lg flex items-center gap-2">
@@ -276,7 +195,7 @@ export function DeepCommentAnalysis({
           </CardHeader>
           <CardContent>
             <ul className="space-y-2">
-              {displayData.requests.map((r: string, i: number) => (
+              {data.requests.map((r: string, i: number) => (
                 <li key={i}>💬 {r}</li>
               ))}
             </ul>
@@ -285,7 +204,7 @@ export function DeepCommentAnalysis({
       )}
 
       {/* PRAISES */}
-      {displayData.praises?.length > 0 && (
+      {data.praises?.length > 0 && (
         <Card>
           <CardHeader>
             <CardTitle className="text-lg flex items-center gap-2">
@@ -295,7 +214,7 @@ export function DeepCommentAnalysis({
           </CardHeader>
           <CardContent>
             <ul className="space-y-2">
-              {displayData.praises.map((p: string, i: number) => (
+              {data.praises.map((p: string, i: number) => (
                 <li key={i}>♥ {p}</li>
               ))}
             </ul>
@@ -304,14 +223,14 @@ export function DeepCommentAnalysis({
       )}
 
       {/* SEGMENTS */}
-      {displayData.audienceSegments?.length > 0 && (
+      {data.audienceSegments?.length > 0 && (
         <Card>
           <CardHeader>
             <CardTitle className="text-lg">Audience Segments</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="flex flex-wrap gap-2">
-              {displayData.audienceSegments.map((s: string, i: number) => (
+              {data.audienceSegments.map((s: string, i: number) => (
                 <span key={i} className="px-3 py-1 bg-cyan-100 rounded-full text-sm">
                   {s}
                 </span>
@@ -322,14 +241,14 @@ export function DeepCommentAnalysis({
       )}
 
       {/* HIDDEN PATTERNS */}
-      {displayData.hiddenPatterns?.length > 0 && (
+      {data.hiddenPatterns?.length > 0 && (
         <Card>
           <CardHeader>
             <CardTitle className="text-lg">Hidden Patterns</CardTitle>
           </CardHeader>
           <CardContent>
             <ul className="space-y-2">
-              {displayData.hiddenPatterns.map((p: string, i: number) => (
+              {data.hiddenPatterns.map((p: string, i: number) => (
                 <li key={i}>→ {p}</li>
               ))}
             </ul>
@@ -338,14 +257,14 @@ export function DeepCommentAnalysis({
       )}
 
       {/* ACTIONABLE IDEAS */}
-      {displayData.actionableIdeas?.length > 0 && (
+      {data.actionableIdeas?.length > 0 && (
         <Card>
           <CardHeader>
             <CardTitle className="text-lg">Actionable Recommendations</CardTitle>
           </CardHeader>
           <CardContent>
             <ul className="space-y-3">
-              {displayData.actionableIdeas.map((a: string, i: number) => (
+              {data.actionableIdeas.map((a: string, i: number) => (
                 <li key={i}>💡 {a}</li>
               ))}
             </ul>
@@ -354,14 +273,14 @@ export function DeepCommentAnalysis({
       )}
 
       {/* TOP QUOTES */}
-      {displayData.topQuotes?.length > 0 && (
+      {data.topQuotes?.length > 0 && (
         <Card>
           <CardHeader>
             <CardTitle className="text-lg">Top Quotes from Comments</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
-              {displayData.topQuotes.slice(0, 8).map((quote: string, i: number) => (
+              {data.topQuotes.slice(0, 8).map((quote: string, i: number) => (
                 <blockquote key={i} className="pl-4 border-l-2 text-sm italic">
                   "{quote}"
                 </blockquote>

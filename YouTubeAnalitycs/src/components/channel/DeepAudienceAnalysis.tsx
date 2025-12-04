@@ -15,7 +15,6 @@ interface DeepAudienceData {
   totalAnalyzed?: number;
   channelTitle?: string;
   createdAt?: number;
-  hasRussianVersion?: boolean;
 }
 
 interface DeepAudienceAnalysisProps {
@@ -33,7 +32,6 @@ export function DeepAudienceAnalysis({
   const [loading, setLoading] = useState(false);
   const [data, setData] = useState<DeepAudienceData | null>(initialData || null);
   const [error, setError] = useState<string | null>(null);
-  const [translating, setTranslating] = useState(false);
 
   async function handleGenerate() {
     setLoading(true);
@@ -60,54 +58,6 @@ export function DeepAudienceAnalysis({
       setError(err instanceof Error ? err.message : "Unknown error");
     } finally {
       setLoading(false);
-    }
-  }
-
-  async function handleTranslate() {
-    setTranslating(true);
-    setError(null);
-
-    try {
-      console.log('[DeepAudienceAnalysis] Starting translation for channel:', channelId);
-      const res = await fetch(`/api/channel/${channelId}/deep/translate`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        credentials: "include",
-        body: JSON.stringify({ targetLanguage: "ru" }),
-      });
-
-      if (!res.ok) {
-        const errorData = await res.json();
-        console.error('[DeepAudienceAnalysis] Translation failed:', errorData);
-        throw new Error(errorData.error || "Failed to translate analysis");
-      }
-
-      const result = await res.json();
-      console.log('[DeepAudienceAnalysis] Translation successful, cached:', result.cached);
-
-      // После успешного перевода получаем обновленные данные
-      const getRes = await fetch(`/api/channel/${channelId}/deep`, {
-        method: "GET",
-        credentials: "include",
-      });
-
-      if (!getRes.ok) {
-        throw new Error("Failed to fetch updated analysis");
-      }
-
-      const updatedData = await getRes.json();
-      console.log('[DeepAudienceAnalysis] Updated data fetched, hasRussianVersion:', updatedData.hasRussianVersion);
-
-      // Обновляем локальный state
-      setData(updatedData);
-    } catch (err) {
-      console.error("Error translating deep audience analysis:", err);
-      toast.error(err instanceof Error ? err.message : "Unknown error");
-      setError(err instanceof Error ? err.message : "Unknown error");
-    } finally {
-      setTranslating(false);
     }
   }
 
@@ -181,26 +131,6 @@ export function DeepAudienceAnalysis({
     );
   }
 
-  // Выбираем data_ru или data для отображения
-  let displayData = data;
-
-  if (data) {
-    try {
-      // Парсим английскую версию
-      const enData = (data as any).data ? JSON.parse((data as any).data) : null;
-
-      // Парсим русскую версию если есть
-      const ruData = (data as any).data_ru ? JSON.parse((data as any).data_ru) : null;
-
-      // Если есть русская версия - показываем её, иначе английскую
-      displayData = ruData ?? enData;
-    } catch (err) {
-      console.error('[DeepAudienceAnalysis] Failed to parse analysis data:', err);
-      // Используем data как fallback
-      displayData = data;
-    }
-  }
-
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
@@ -210,41 +140,19 @@ export function DeepAudienceAnalysis({
             Deep Audience Intelligence (AI v2.0)
           </h2>
           <p className="text-sm text-muted-foreground mt-1">
-            Deep analysis of {displayData.channelTitle || 'channel'} audience
+            Deep analysis of {data.channelTitle || 'channel'} audience
           </p>
         </div>
-        <div className="flex gap-2">
-          {!(data as any)?.data_ru && (
-            <Button
-              onClick={handleTranslate}
-              disabled={translating}
-              variant="outline"
-              size="sm"
-              className="gap-2 cursor-pointer"
-            >
-              {translating ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  Translating...
-                </>
-              ) : (
-                <>
-                  🇷🇺 Translate to Russian
-                </>
-              )}
-            </Button>
-          )}
-          <Button onClick={handleGenerate} variant="outline" size="sm" className="gap-2 cursor-pointer">
-            <Brain className="h-4 w-4" />
-            Refresh Analysis
-          </Button>
-        </div>
+        <Button onClick={handleGenerate} variant="outline" size="sm" className="gap-2 cursor-pointer">
+          <Brain className="h-4 w-4" />
+          Refresh Analysis
+        </Button>
       </div>
 
       {/* Main Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {/* Audience Profile */}
-        {displayData.audienceProfile && displayData.audienceProfile.length > 0 && (
+        {data.audienceProfile && data.audienceProfile.length > 0 && (
           <Card>
             <CardHeader>
               <CardTitle className="text-lg flex items-center gap-2">
@@ -254,7 +162,7 @@ export function DeepAudienceAnalysis({
             </CardHeader>
             <CardContent>
               <ul className="space-y-2">
-                {displayData.audienceProfile.map((item, idx) => (
+                {data.audienceProfile.map((item, idx) => (
                   <li key={idx} className="flex items-start gap-2">
                     <span className="text-blue-600 dark:text-blue-400 mt-1">▪</span>
                     <span className="text-sm">{item}</span>
@@ -266,7 +174,7 @@ export function DeepAudienceAnalysis({
         )}
 
         {/* Content Preferences */}
-        {displayData.contentPreferences && displayData.contentPreferences.length > 0 && (
+        {data.contentPreferences && data.contentPreferences.length > 0 && (
           <Card>
             <CardHeader>
               <CardTitle className="text-lg flex items-center gap-2">
@@ -276,7 +184,7 @@ export function DeepAudienceAnalysis({
             </CardHeader>
             <CardContent>
               <ul className="space-y-2">
-                {displayData.contentPreferences.map((pref, idx) => (
+                {data.contentPreferences.map((pref, idx) => (
                   <li key={idx} className="flex items-start gap-2">
                     <span className="text-green-600 dark:text-green-400 mt-1">▪</span>
                     <span className="text-sm">{pref}</span>
@@ -288,7 +196,7 @@ export function DeepAudienceAnalysis({
         )}
 
         {/* Engagement Patterns */}
-        {displayData.engagementPatterns && displayData.engagementPatterns.length > 0 && (
+        {data.engagementPatterns && data.engagementPatterns.length > 0 && (
           <Card>
             <CardHeader>
               <CardTitle className="text-lg flex items-center gap-2">
@@ -298,7 +206,7 @@ export function DeepAudienceAnalysis({
             </CardHeader>
             <CardContent>
               <ul className="space-y-2">
-                {displayData.engagementPatterns.map((pattern, idx) => (
+                {data.engagementPatterns.map((pattern, idx) => (
                   <li key={idx} className="flex items-start gap-2">
                     <span className="text-purple-600 dark:text-purple-400 mt-1">▪</span>
                     <span className="text-sm">{pattern}</span>
@@ -310,7 +218,7 @@ export function DeepAudienceAnalysis({
         )}
 
         {/* Recommendations */}
-        {displayData.recommendations && displayData.recommendations.length > 0 && (
+        {data.recommendations && data.recommendations.length > 0 && (
           <Card>
             <CardHeader>
               <CardTitle className="text-lg flex items-center gap-2">
@@ -320,7 +228,7 @@ export function DeepAudienceAnalysis({
             </CardHeader>
             <CardContent>
               <ul className="space-y-2">
-                {displayData.recommendations.map((rec, idx) => (
+                {data.recommendations.map((rec, idx) => (
                   <li key={idx} className="flex items-start gap-2">
                     <span className="text-yellow-600 dark:text-yellow-400 mt-1">💡</span>
                     <span className="text-sm">{rec}</span>

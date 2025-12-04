@@ -35,7 +35,6 @@ interface AudienceData {
   explanation: string;
   usingFallback?: boolean;
   generatedAt?: number;
-  hasRussianVersion?: boolean;
 }
 
 interface AudienceInsightsProps {
@@ -76,7 +75,6 @@ export function AudienceInsights({
   const [data, setData] = useState<AudienceData | null>(initialData || null);
   const [error, setError] = useState<string | null>(null);
   const [enriching, setEnriching] = useState(false);
-  const [translating, setTranslating] = useState(false);
 
   async function handleGenerate() {
     setLoading(true);
@@ -129,53 +127,6 @@ export function AudienceInsights({
       setError(err instanceof Error ? err.message : "Unknown error");
     } finally {
       setEnriching(false);
-    }
-  }
-
-  async function handleTranslate() {
-    setTranslating(true);
-    setError(null);
-
-    try {
-      console.log('[AudienceInsights] Starting translation for channel:', channelId);
-      const res = await fetch(`/api/channel/${channelId}/audience/translate`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        credentials: "include", // ✅ Важно: отправляем cookies с session
-        body: JSON.stringify({ targetLanguage: "ru" }),
-      });
-
-      if (!res.ok) {
-        const errorData = await res.json();
-        console.error('[AudienceInsights] Translation failed:', errorData);
-        throw new Error(errorData.error || "Failed to translate analysis");
-      }
-
-      const result = await res.json();
-      console.log('[AudienceInsights] Translation successful, cached:', result.cached);
-
-      // После успешного перевода получаем обновленные данные
-      const getRes = await fetch(`/api/channel/${channelId}/audience`, {
-        method: "GET",
-        credentials: "include",
-      });
-
-      if (!getRes.ok) {
-        throw new Error("Failed to fetch updated analysis");
-      }
-
-      const updatedData = await getRes.json();
-      console.log('[AudienceInsights] Updated data fetched, hasRussianVersion:', updatedData.hasRussianVersion);
-
-      // Обновляем локальный state
-      setData(updatedData);
-    } catch (err) {
-      console.error("Error translating audience analysis:", err);
-      setError(err instanceof Error ? err.message : "Unknown error");
-    } finally {
-      setTranslating(false);
     }
   }
 
@@ -249,26 +200,6 @@ export function AudienceInsights({
     );
   }
 
-  // Выбираем data_ru или data для отображения
-  let displayData = data;
-
-  if (data) {
-    try {
-      // Парсим английскую версию
-      const enData = (data as any).data ? JSON.parse((data as any).data) : null;
-
-      // Парсим русскую версию если есть
-      const ruData = (data as any).data_ru ? JSON.parse((data as any).data_ru) : null;
-
-      // Если есть русская версия - показываем её, иначе английскую
-      displayData = ruData ?? enData;
-    } catch (err) {
-      console.error('[AudienceInsights] Failed to parse analysis data:', err);
-      // Используем data как fallback
-      displayData = data;
-    }
-  }
-
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
@@ -281,56 +212,34 @@ export function AudienceInsights({
             Audience engagement and content reactions analysis
           </p>
         </div>
-        <div className="flex gap-2">
-          {!(data as any)?.data_ru && (
-            <Button
-              onClick={handleTranslate}
-              disabled={translating}
-              variant="outline"
-              size="sm"
-              className="gap-2 cursor-pointer"
-            >
-              {translating ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  Translating...
-                </>
-              ) : (
-                <>
-                  🇷🇺 Translate to Russian
-                </>
-              )}
-            </Button>
-          )}
-          <Button onClick={handleGenerate} variant="outline" size="sm" className="gap-2 cursor-pointer">
-            <Users className="h-4 w-4" />
-            Refresh Analysis
-          </Button>
-        </div>
+        <Button onClick={handleGenerate} variant="outline" size="sm" className="gap-2 cursor-pointer">
+          <Users className="h-4 w-4" />
+          Refresh Analysis
+        </Button>
       </div>
 
       {/* Stats Bar */}
       <div className="grid grid-cols-4 gap-4">
         <div className="bg-muted/50 rounded-lg p-4">
-          <div className="text-2xl font-bold">{displayData.stats.totalAnalyzed}</div>
+          <div className="text-2xl font-bold">{data.stats.totalAnalyzed}</div>
           <div className="text-xs text-muted-foreground">Analyzed</div>
         </div>
         <div className="bg-purple-500/10 rounded-lg p-4">
-          <div className="text-2xl font-bold text-purple-600 dark:text-purple-400">{displayData.stats.highEngagement}</div>
+          <div className="text-2xl font-bold text-purple-600 dark:text-purple-400">{data.stats.highEngagement}</div>
           <div className="text-xs text-muted-foreground">High Engagement</div>
         </div>
         <div className="bg-blue-500/10 rounded-lg p-4">
-          <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">{displayData.stats.rising}</div>
+          <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">{data.stats.rising}</div>
           <div className="text-xs text-muted-foreground">Rising</div>
         </div>
         <div className="bg-red-500/10 rounded-lg p-4">
-          <div className="text-2xl font-bold text-red-600 dark:text-red-400">{displayData.stats.weak}</div>
+          <div className="text-2xl font-bold text-red-600 dark:text-red-400">{data.stats.weak}</div>
           <div className="text-xs text-muted-foreground">Weak</div>
         </div>
       </div>
 
       {/* Fallback Warning */}
-      {displayData.usingFallback && (
+      {data.usingFallback && (
         <Card className="border-amber-200 dark:border-amber-900 bg-amber-50/50 dark:bg-amber-950/20">
           <CardContent className="pt-6">
             <div className="flex items-start gap-3">
@@ -381,7 +290,7 @@ export function AudienceInsights({
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <p className="text-sm text-muted-foreground">{displayData.explanation}</p>
+          <p className="text-sm text-muted-foreground">{data.explanation}</p>
         </CardContent>
       </Card>
 
@@ -397,7 +306,7 @@ export function AudienceInsights({
           </CardHeader>
           <CardContent>
             <ul className="space-y-2">
-              {displayData.highEngagementThemes.map((theme, idx) => (
+              {data.highEngagementThemes.map((theme, idx) => (
                 <li key={idx} className="flex items-start gap-2">
                   <span className="text-pink-600 dark:text-pink-400 mt-1">♥</span>
                   <span className="text-sm">{theme}</span>
@@ -417,7 +326,7 @@ export function AudienceInsights({
           </CardHeader>
           <CardContent>
             <ul className="space-y-2">
-              {displayData.engagingFormats.map((format, idx) => (
+              {data.engagingFormats.map((format, idx) => (
                 <li key={idx} className="flex items-start gap-2">
                   <span className="text-green-600 dark:text-green-400 mt-1">💬</span>
                   <span className="text-sm">{format}</span>
@@ -437,7 +346,7 @@ export function AudienceInsights({
           </CardHeader>
           <CardContent>
             <ul className="space-y-2">
-              {displayData.audiencePatterns.map((pattern, idx) => (
+              {data.audiencePatterns.map((pattern, idx) => (
                 <li key={idx} className="flex items-start gap-2">
                   <span className="text-blue-600 dark:text-blue-400 mt-1">👥</span>
                   <span className="text-sm">{pattern}</span>
@@ -461,7 +370,7 @@ export function AudienceInsights({
         </CardHeader>
         <CardContent>
           <ul className="space-y-2">
-            {displayData.weakPoints.map((weak, idx) => (
+            {data.weakPoints.map((weak, idx) => (
               <li key={idx} className="flex items-start gap-2">
                 <span className="text-red-600 dark:text-red-400 mt-1">⚠</span>
                 <span className="text-sm">{weak}</span>
@@ -481,7 +390,7 @@ export function AudienceInsights({
         </CardHeader>
         <CardContent>
           <ul className="space-y-3">
-            {displayData.recommendations.map((rec, idx) => (
+            {data.recommendations.map((rec, idx) => (
               <li key={idx} className="flex items-start gap-2">
                 <span className="text-yellow-600 dark:text-yellow-400 mt-1">→</span>
                 <span className="text-sm">{rec}</span>
@@ -501,7 +410,7 @@ export function AudienceInsights({
         </CardHeader>
         <CardContent>
           <div className="space-y-3">
-            {displayData.highEngagementVideos.map((video, idx) => (
+            {data.highEngagementVideos.map((video, idx) => (
               <div
                 key={idx}
                 className="flex items-center justify-between p-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors"
@@ -517,10 +426,10 @@ export function AudienceInsights({
                 <div className="flex items-center gap-2 ml-4">
                   <div className="text-right">
                     <div className="text-sm font-bold text-purple-600 dark:text-purple-400">
-                      {formatEngagement(video.engagementScore, displayData.usingFallback || false)}
+                      {formatEngagement(video.engagementScore, data.usingFallback || false)}
                     </div>
                     <div className="text-xs text-muted-foreground">
-                      {displayData.usingFallback ? "score" : "engagement"}
+                      {data.usingFallback ? "score" : "engagement"}
                     </div>
                   </div>
                 </div>
