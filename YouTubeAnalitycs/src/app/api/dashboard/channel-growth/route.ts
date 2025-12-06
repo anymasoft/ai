@@ -100,9 +100,25 @@ export async function GET(req: NextRequest) {
 
     // Группируем метрики по каналу
     const metricsMap = new Map<string, Array<{ date: string; subscribers: number; views: number }>>();
+
     metricsResult.rows.forEach(row => {
       const channelId = row.channelId as string;
-      const dateTimestamp = Number(row.date);
+      const rawDate = row.date;
+
+      // Если дата отсутствует или некорректна — пропускаем строку
+      if (!rawDate || isNaN(Number(rawDate))) {
+        return;
+      }
+
+      // Нормализация формата timestamp
+      let ts = Number(rawDate);
+
+      // Если timestamp в миллисекундах — приводим к секундам
+      if (ts > 10_000_000_000) {
+        ts = Math.floor(ts / 1000);
+      }
+
+      const dateTimestamp = ts;
       const dateStr = new Date(dateTimestamp * 1000).toISOString().split("T")[0];
 
       if (!metricsMap.has(channelId)) {
@@ -115,6 +131,36 @@ export async function GET(req: NextRequest) {
         views: Number(row.viewCount),
       });
     });
+
+    // Флаг: есть ли реальные исторические данные
+    const hasHistoricalData = metricsMap.size > 0;
+
+    // Если нет исторических данных — создаём fallback из текущих данных конкурентов
+    if (!hasHistoricalData) {
+      const todayStr = new Date().toISOString().split("T")[0];
+
+      competitorsResult.rows.forEach(row => {
+        const channelId = row.channelId as string;
+        const lastSyncedAt = Number(row.lastSyncedAt);
+
+        // Нормализуем дату lastSyncedAt
+        let syncTs = lastSyncedAt;
+        if (syncTs > 10_000_000_000) {
+          syncTs = Math.floor(syncTs / 1000);
+        }
+
+        // Используем дату синхронизации или сегодняшний день
+        const dateStr = syncTs > 0
+          ? new Date(syncTs * 1000).toISOString().split("T")[0]
+          : todayStr;
+
+        metricsMap.set(channelId, [{
+          date: dateStr,
+          subscribers: Number(row.subscriberCount) || 0,
+          views: Number(row.viewCount) || 0,
+        }]);
+      });
+    }
 
     // Получаем количество видео и даты публикации для расчета upload frequency
     const videosResult = await db.execute({
@@ -231,6 +277,10 @@ export async function GET(req: NextRequest) {
             ? Math.round((channels.reduce((sum, c) => sum + c.uploadFrequency, 0) / channels.length) * 10) / 10
             : 0,
         },
+        ...(hasHistoricalData
+          ? {}
+          : { message: "Fallback data: using current competitor stats until historical metrics are accumulated" }
+        ),
       },
     });
   } catch (error) {
