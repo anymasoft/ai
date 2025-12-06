@@ -1,5 +1,50 @@
 import { PDFDocument, StandardFonts, rgb, PDFPage, PDFFont } from "pdf-lib"
 
+// Транслитерация кириллицы в латиницу (pdf-lib StandardFonts не поддерживают Unicode)
+const CYRILLIC_TO_LATIN: Record<string, string> = {
+  "А": "A", "Б": "B", "В": "V", "Г": "G", "Д": "D", "Е": "E", "Ё": "E",
+  "Ж": "Zh", "З": "Z", "И": "I", "Й": "Y", "К": "K", "Л": "L", "М": "M",
+  "Н": "N", "О": "O", "П": "P", "Р": "R", "С": "S", "Т": "T", "У": "U",
+  "Ф": "F", "Х": "Kh", "Ц": "Ts", "Ч": "Ch", "Ш": "Sh", "Щ": "Shch",
+  "Ъ": "", "Ы": "Y", "Ь": "", "Э": "E", "Ю": "Yu", "Я": "Ya",
+  "а": "a", "б": "b", "в": "v", "г": "g", "д": "d", "е": "e", "ё": "e",
+  "ж": "zh", "з": "z", "и": "i", "й": "y", "к": "k", "л": "l", "м": "m",
+  "н": "n", "о": "o", "п": "p", "р": "r", "с": "s", "т": "t", "у": "u",
+  "ф": "f", "х": "kh", "ц": "ts", "ч": "ch", "ш": "sh", "щ": "shch",
+  "ъ": "", "ы": "y", "ь": "", "э": "e", "ю": "yu", "я": "ya",
+}
+
+/**
+ * Нормализация текста для PDF (транслитерация + очистка)
+ * pdf-lib StandardFonts поддерживают только WinAnsi (Latin-1)
+ */
+export function normalizePDFText(text: string): string {
+  if (!text) return ""
+
+  let result = ""
+  for (const char of text) {
+    if (CYRILLIC_TO_LATIN[char] !== undefined) {
+      result += CYRILLIC_TO_LATIN[char]
+    } else {
+      result += char
+    }
+  }
+
+  return result
+    // заменить длинные тире/эмдеш/эндаш
+    .replace(/[\u2012-\u2015]/g, "-")
+    // заменить кавычки на обычные
+    .replace(/[«»""„]/g, '"')
+    .replace(/['']/g, "'")
+    // удалить emoji (pdf-lib их не поддерживает)
+    .replace(/[\u{1F000}-\u{1FFFF}]/gu, "")
+    // очистить управляющие символы
+    .replace(/[\x00-\x1F\x7F]/g, " ")
+    // убрать множественные пробелы
+    .replace(/\s+/g, " ")
+    .trim()
+}
+
 // Цвета для PDF
 const COLORS = {
   primary: rgb(0.2, 0.4, 0.8),
@@ -65,7 +110,7 @@ export class PDFBuilder {
     const { title, subtitle, generatedAt } = this.options
 
     // Заголовок
-    this.currentPage.drawText(title, {
+    this.currentPage.drawText(normalizePDFText(title), {
       x: MARGIN,
       y: this.yPosition,
       size: 24,
@@ -76,7 +121,7 @@ export class PDFBuilder {
 
     // Подзаголовок
     if (subtitle) {
-      this.currentPage.drawText(subtitle, {
+      this.currentPage.drawText(normalizePDFText(subtitle), {
         x: MARGIN,
         y: this.yPosition,
         size: 12,
@@ -86,8 +131,8 @@ export class PDFBuilder {
       this.yPosition -= 20
     }
 
-    // Дата генерации
-    const dateStr = (generatedAt || new Date()).toLocaleDateString("ru-RU", {
+    // Дата генерации (en-US для совместимости с WinAnsi)
+    const dateStr = (generatedAt || new Date()).toLocaleDateString("en-US", {
       year: "numeric",
       month: "long",
       day: "numeric",
@@ -127,7 +172,7 @@ export class PDFBuilder {
     this.checkNewPage(60)
     this.yPosition -= 15
 
-    this.currentPage.drawText(title, {
+    this.currentPage.drawText(normalizePDFText(title), {
       x: MARGIN,
       y: this.yPosition,
       size: 16,
@@ -143,7 +188,7 @@ export class PDFBuilder {
   addSubtitle(text: string) {
     this.checkNewPage(40)
 
-    this.currentPage.drawText(text, {
+    this.currentPage.drawText(normalizePDFText(text), {
       x: MARGIN,
       y: this.yPosition,
       size: 12,
@@ -157,6 +202,7 @@ export class PDFBuilder {
    * Добавить параграф текста с автоматическим переносом
    */
   addParagraph(text: string, options?: { indent?: number; color?: typeof COLORS.text }) {
+    const normalizedText = normalizePDFText(text)
     const indent = options?.indent || 0
     const color = options?.color || COLORS.text
     const maxWidth = CONTENT_WIDTH - indent
@@ -164,7 +210,7 @@ export class PDFBuilder {
     const lineHeight = 16
 
     // Разбиваем текст на слова
-    const words = text.split(" ")
+    const words = normalizedText.split(" ")
     let currentLine = ""
 
     for (const word of words) {
@@ -213,8 +259,8 @@ export class PDFBuilder {
     items.forEach((item, index) => {
       this.checkNewPage(30)
 
-      const bullet = numbered ? `${index + 1}.` : "•"
-      const bulletWidth = this.font.widthOfTextAtSize(bullet, 11)
+      const normalizedItem = normalizePDFText(item)
+      const bullet = numbered ? `${index + 1}.` : "-"
 
       this.currentPage.drawText(bullet, {
         x: MARGIN + 10,
@@ -226,7 +272,7 @@ export class PDFBuilder {
 
       // Текст элемента с переносом
       const maxWidth = CONTENT_WIDTH - 30
-      const words = item.split(" ")
+      const words = normalizedItem.split(" ")
       let currentLine = ""
       let isFirstLine = true
 
@@ -289,7 +335,7 @@ export class PDFBuilder {
     })
 
     headers.forEach((header, i) => {
-      this.currentPage.drawText(header, {
+      this.currentPage.drawText(normalizePDFText(header), {
         x: xPos + 5,
         y: this.yPosition - 15,
         size: fontSize,
@@ -317,7 +363,8 @@ export class PDFBuilder {
 
       xPos = MARGIN
       row.forEach((cell, i) => {
-        const truncatedCell = cell.length > 40 ? cell.slice(0, 37) + "..." : cell
+        const normalizedCell = normalizePDFText(cell)
+        const truncatedCell = normalizedCell.length > 40 ? normalizedCell.slice(0, 37) + "..." : normalizedCell
         this.currentPage.drawText(truncatedCell, {
           x: xPos + 5,
           y: this.yPosition - 15,
@@ -362,8 +409,10 @@ export class PDFBuilder {
    * Добавить блок с выделением (для важной информации)
    */
   addHighlightBox(title: string, content: string) {
+    const normalizedTitle = normalizePDFText(title)
+    const normalizedContent = normalizePDFText(content)
     const boxPadding = 15
-    const contentLines = this.wrapText(content, CONTENT_WIDTH - boxPadding * 2 - 10, 11)
+    const contentLines = this.wrapText(normalizedContent, CONTENT_WIDTH - boxPadding * 2 - 10, 11)
     const boxHeight = 35 + contentLines.length * 16
 
     this.checkNewPage(boxHeight + 20)
@@ -380,7 +429,7 @@ export class PDFBuilder {
     })
 
     // Заголовок
-    this.currentPage.drawText(title, {
+    this.currentPage.drawText(normalizedTitle, {
       x: MARGIN + boxPadding,
       y: this.yPosition - 20,
       size: 12,

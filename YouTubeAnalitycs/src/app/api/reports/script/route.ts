@@ -5,6 +5,37 @@ import { db } from "@/lib/db"
 import { PDFBuilder } from "@/lib/pdf-generator"
 
 /**
+ * Безопасное преобразование даты (unix timestamp или ISO string)
+ */
+function safeDate(value: unknown): Date {
+  if (typeof value === "number") return new Date(value)
+  if (typeof value === "string") {
+    const parsed = Date.parse(value)
+    if (!isNaN(parsed)) return new Date(parsed)
+  }
+  return new Date() // fallback: now
+}
+
+/**
+ * Безопасный парсинг outline
+ */
+function safeParseOutline(value: unknown): string[] {
+  if (!value) return []
+
+  try {
+    const parsed = JSON.parse(value as string)
+    if (Array.isArray(parsed)) return parsed
+    if (typeof parsed === "string") return parsed.split("\n").filter(Boolean)
+    return []
+  } catch {
+    if (typeof value === "string") {
+      return value.split("\n").filter(Boolean)
+    }
+    return []
+  }
+}
+
+/**
  * GET /api/reports/script
  * Генерирует PDF-отчёт Full Script
  */
@@ -37,11 +68,11 @@ export async function GET(req: NextRequest) {
     const script = scriptResult.rows[0]
     const title = script.title as string
     const hook = script.hook as string
-    const outline = JSON.parse(script.outline as string) as string[]
+    const outline = safeParseOutline(script.outline)
     const scriptText = script.scriptText as string
     const whyItShouldWork = script.whyItShouldWork as string
-    const sourceVideos = JSON.parse(script.sourceVideos as string) as string[]
-    const createdAt = new Date(Number(script.createdAt))
+    const sourceVideos = JSON.parse(script.sourceVideos as string || "[]") as string[]
+    const createdAt = safeDate(script.createdAt)
 
     // Получаем информацию о source videos
     let sourceVideosTitles: string[] = []
@@ -74,14 +105,20 @@ export async function GET(req: NextRequest) {
     // Разбиваем скрипт на параграфы
     const paragraphs = scriptText.split("\n\n").filter((p) => p.trim())
     paragraphs.forEach((paragraph) => {
-      // Проверяем, является ли это заголовком секции
-      if (paragraph.startsWith("##") || paragraph.startsWith("**") || paragraph.length < 50) {
-        const cleanTitle = paragraph.replace(/[#*]/g, "").trim()
+      // Улучшенное определение заголовков
+      const trimmed = paragraph.trim()
+      const isProbablyHeading =
+        trimmed.startsWith("##") ||
+        trimmed.startsWith("**") ||
+        (/^[A-ZА-ЯЁ].{0,60}$/.test(trimmed) && !trimmed.endsWith(".") && (trimmed.match(/\./g) || []).length < 2)
+
+      if (isProbablyHeading) {
+        const cleanTitle = trimmed.replace(/[#*]/g, "").trim()
         if (cleanTitle) {
           pdf.addSubtitle(cleanTitle)
         }
       } else {
-        pdf.addParagraph(paragraph.trim())
+        pdf.addParagraph(trimmed)
         pdf.addSpace(5)
       }
     })
@@ -105,6 +142,11 @@ export async function GET(req: NextRequest) {
       pdf.addSectionTitle("Source Videos (Inspiration)")
       pdf.addParagraph("This script was generated based on analysis of these competitor videos:")
       pdf.addList(sourceVideosTitles.slice(0, 10).map((t, i) => `${i + 1}. ${t.slice(0, 60)}${t.length > 60 ? "..." : ""}`))
+
+      // Показываем количество оставшихся видео
+      if (sourceVideosTitles.length > 10) {
+        pdf.addParagraph(`...and ${sourceVideosTitles.length - 10} more videos`)
+      }
     }
 
     // Metadata
