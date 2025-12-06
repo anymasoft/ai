@@ -1,42 +1,10 @@
-"use client"
-
-import { useEffect, useState } from "react"
 import { ExternalLink, Eye, TrendingUp, Zap, Flame } from "lucide-react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
-import { Skeleton } from "@/components/ui/skeleton"
-
-interface VideoData {
-  videoId: string
-  title: string
-  channelId: string
-  channelTitle: string
-  thumbnailUrl: string | null
-  viewCount: number
-  likeCount: number
-  commentCount: number
-  publishedAt: string
-  viewsPerDay: number
-  momentumScore: number
-  category: "High Momentum" | "Rising" | "Normal" | "Underperforming"
-  url: string
-}
-
-interface VideoPerformanceData {
-  videos: VideoData[]
-  sortBy: string
-  limit: number
-  total: number
-  medianViewsPerDay: number
-  stats: {
-    highMomentum: number
-    rising: number
-    normal: number
-    underperforming: number
-  }
-}
+import Link from "next/link"
+import type { VideoPerformanceData } from "@/lib/dashboard-queries"
 
 function formatNumber(num: number): string {
   if (num >= 1000000) {
@@ -47,79 +15,11 @@ function formatNumber(num: number): string {
   return num.toString()
 }
 
-function VideoSkeleton() {
-  return (
-    <div className="flex items-center p-3 rounded-lg border gap-3">
-      <Skeleton className="h-8 w-8 rounded-full" />
-      <div className="flex-1 space-y-2">
-        <Skeleton className="h-4 w-3/4" />
-        <Skeleton className="h-3 w-1/2" />
-      </div>
-      <Skeleton className="h-6 w-16" />
-    </div>
-  )
+interface TopVideosByMomentumProps {
+  data: VideoPerformanceData | null
 }
 
-export function TopVideosByMomentum() {
-  const [data, setData] = useState<VideoPerformanceData | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-
-  useEffect(() => {
-    async function fetchVideos() {
-      try {
-        const response = await fetch("/api/dashboard/video-performance?sortBy=momentum&limit=5")
-        if (!response.ok) {
-          throw new Error("Failed to fetch top videos")
-        }
-        const result = await response.json()
-        if (result.success) {
-          setData(result.data)
-        } else {
-          throw new Error(result.error || "Unknown error")
-        }
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "Failed to load data")
-      } finally {
-        setLoading(false)
-      }
-    }
-
-    fetchVideos()
-  }, [])
-
-  if (loading) {
-    return (
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
-          <div className="space-y-1">
-            <Skeleton className="h-5 w-40" />
-            <Skeleton className="h-4 w-56" />
-          </div>
-          <Skeleton className="h-9 w-20" />
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <VideoSkeleton />
-          <VideoSkeleton />
-          <VideoSkeleton />
-          <VideoSkeleton />
-          <VideoSkeleton />
-        </CardContent>
-      </Card>
-    )
-  }
-
-  if (error) {
-    return (
-      <Card>
-        <CardHeader>
-          <CardTitle>Top by Momentum</CardTitle>
-          <CardDescription className="text-destructive">{error}</CardDescription>
-        </CardHeader>
-      </Card>
-    )
-  }
-
+export function TopVideosByMomentum({ data }: TopVideosByMomentumProps) {
   if (!data || data.videos.length === 0) {
     return (
       <Card>
@@ -154,13 +54,11 @@ export function TopVideosByMomentum() {
             Best performing videos right now
           </CardDescription>
         </div>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => window.open("/trending", "_self")}
-        >
-          <Eye className="h-4 w-4 mr-2" />
-          View All
+        <Button variant="outline" size="sm" asChild>
+          <Link href="/trending">
+            <Eye className="h-4 w-4 mr-2" />
+            View All
+          </Link>
         </Button>
       </CardHeader>
       <CardContent className="space-y-3">
@@ -226,6 +124,33 @@ export function TopVideosByMomentum() {
           </div>
           <span>{data.total} total videos</span>
         </div>
+      </CardContent>
+    </Card>
+  )
+}
+
+// Skeleton for Suspense fallback
+export function TopVideosByMomentumSkeleton() {
+  return (
+    <Card>
+      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
+        <div className="space-y-1">
+          <div className="h-5 w-40 bg-muted animate-pulse rounded" />
+          <div className="h-4 w-56 bg-muted animate-pulse rounded" />
+        </div>
+        <div className="h-9 w-20 bg-muted animate-pulse rounded" />
+      </CardHeader>
+      <CardContent className="space-y-3">
+        {[...Array(5)].map((_, i) => (
+          <div key={i} className="flex items-center p-3 rounded-lg border gap-3">
+            <div className="h-8 w-8 bg-muted animate-pulse rounded-full" />
+            <div className="flex-1 space-y-2">
+              <div className="h-4 w-3/4 bg-muted animate-pulse rounded" />
+              <div className="h-3 w-1/2 bg-muted animate-pulse rounded" />
+            </div>
+            <div className="h-6 w-16 bg-muted animate-pulse rounded" />
+          </div>
+        ))}
       </CardContent>
     </Card>
   )

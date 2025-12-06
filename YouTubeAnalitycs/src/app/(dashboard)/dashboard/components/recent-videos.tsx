@@ -1,41 +1,9 @@
-"use client"
-
-import { useEffect, useState } from "react"
 import { ExternalLink, Eye, Play, Clock } from "lucide-react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Skeleton } from "@/components/ui/skeleton"
-
-interface VideoData {
-  videoId: string
-  title: string
-  channelId: string
-  channelTitle: string
-  thumbnailUrl: string | null
-  viewCount: number
-  likeCount: number
-  commentCount: number
-  publishedAt: string
-  viewsPerDay: number
-  momentumScore: number
-  category: "High Momentum" | "Rising" | "Normal" | "Underperforming"
-  url: string
-}
-
-interface VideoPerformanceData {
-  videos: VideoData[]
-  sortBy: string
-  limit: number
-  total: number
-  medianViewsPerDay: number
-  stats: {
-    highMomentum: number
-    rising: number
-    normal: number
-    underperforming: number
-  }
-}
+import Link from "next/link"
+import type { VideoPerformanceData } from "@/lib/dashboard-queries"
 
 function formatNumber(num: number): string {
   if (num >= 1000000) {
@@ -60,79 +28,24 @@ function formatTimeAgo(dateString: string): string {
   return `${Math.floor(diffDays / 365)} years ago`
 }
 
-function VideoCardSkeleton() {
-  return (
-    <div className="flex p-3 rounded-lg border gap-3">
-      <Skeleton className="h-16 w-28 rounded-md shrink-0" />
-      <div className="flex-1 space-y-2">
-        <Skeleton className="h-4 w-3/4" />
-        <Skeleton className="h-3 w-1/2" />
-        <Skeleton className="h-3 w-1/3" />
-      </div>
-    </div>
-  )
+function getCategoryBadgeVariant(category: string) {
+  switch (category) {
+    case "High Momentum":
+      return "default"
+    case "Rising":
+      return "secondary"
+    case "Underperforming":
+      return "destructive"
+    default:
+      return "outline"
+  }
 }
 
-export function RecentVideos() {
-  const [data, setData] = useState<VideoPerformanceData | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+interface RecentVideosProps {
+  data: VideoPerformanceData | null
+}
 
-  useEffect(() => {
-    async function fetchVideos() {
-      try {
-        const response = await fetch("/api/dashboard/video-performance?sortBy=recent&limit=5")
-        if (!response.ok) {
-          throw new Error("Failed to fetch recent videos")
-        }
-        const result = await response.json()
-        if (result.success) {
-          setData(result.data)
-        } else {
-          throw new Error(result.error || "Unknown error")
-        }
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "Failed to load data")
-      } finally {
-        setLoading(false)
-      }
-    }
-
-    fetchVideos()
-  }, [])
-
-  if (loading) {
-    return (
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
-          <div className="space-y-1">
-            <Skeleton className="h-5 w-32" />
-            <Skeleton className="h-4 w-48" />
-          </div>
-          <Skeleton className="h-9 w-20" />
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <VideoCardSkeleton />
-          <VideoCardSkeleton />
-          <VideoCardSkeleton />
-          <VideoCardSkeleton />
-          <VideoCardSkeleton />
-        </CardContent>
-      </Card>
-    )
-  }
-
-  if (error) {
-    return (
-      <Card>
-        <CardHeader>
-          <CardTitle>Recent Videos</CardTitle>
-          <CardDescription className="text-destructive">{error}</CardDescription>
-        </CardHeader>
-      </Card>
-    )
-  }
-
+export function RecentVideos({ data }: RecentVideosProps) {
   if (!data || data.videos.length === 0) {
     return (
       <Card>
@@ -152,19 +65,6 @@ export function RecentVideos() {
     )
   }
 
-  const getCategoryBadgeVariant = (category: string) => {
-    switch (category) {
-      case "High Momentum":
-        return "default"
-      case "Rising":
-        return "secondary"
-      case "Underperforming":
-        return "destructive"
-      default:
-        return "outline"
-    }
-  }
-
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
@@ -175,13 +75,11 @@ export function RecentVideos() {
           </CardTitle>
           <CardDescription>Latest competitor uploads</CardDescription>
         </div>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => window.open("/trending", "_self")}
-        >
-          <Eye className="h-4 w-4 mr-2" />
-          View All
+        <Button variant="outline" size="sm" asChild>
+          <Link href="/trending">
+            <Eye className="h-4 w-4 mr-2" />
+            View All
+          </Link>
         </Button>
       </CardHeader>
       <CardContent className="space-y-3">
@@ -232,6 +130,33 @@ export function RecentVideos() {
               </div>
             </div>
           </a>
+        ))}
+      </CardContent>
+    </Card>
+  )
+}
+
+// Skeleton for Suspense fallback
+export function RecentVideosSkeleton() {
+  return (
+    <Card>
+      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
+        <div className="space-y-1">
+          <div className="h-5 w-32 bg-muted animate-pulse rounded" />
+          <div className="h-4 w-48 bg-muted animate-pulse rounded" />
+        </div>
+        <div className="h-9 w-20 bg-muted animate-pulse rounded" />
+      </CardHeader>
+      <CardContent className="space-y-3">
+        {[...Array(5)].map((_, i) => (
+          <div key={i} className="flex p-3 rounded-lg border gap-3">
+            <div className="h-16 w-28 bg-muted animate-pulse rounded-md shrink-0" />
+            <div className="flex-1 space-y-2">
+              <div className="h-4 w-3/4 bg-muted animate-pulse rounded" />
+              <div className="h-3 w-1/2 bg-muted animate-pulse rounded" />
+              <div className="h-3 w-1/3 bg-muted animate-pulse rounded" />
+            </div>
+          </div>
         ))}
       </CardContent>
     </Card>

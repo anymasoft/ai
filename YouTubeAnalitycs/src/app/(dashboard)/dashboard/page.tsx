@@ -1,10 +1,69 @@
-import { MetricsOverview } from "./components/metrics-overview"
+import { Suspense } from "react"
+import { getServerSession } from "next-auth"
+import { authOptions } from "@/lib/auth"
+import { getDashboardKPI, getVideoPerformance } from "@/lib/dashboard-queries"
+
+import { MetricsOverview, MetricsOverviewSkeleton } from "./components/metrics-overview"
 import { MomentumTrendChart } from "./components/momentum-trend-chart"
 import { PerformanceBreakdown } from "./components/performance-breakdown"
-import { RecentVideos } from "./components/recent-videos"
-import { TopVideosByMomentum } from "./components/top-videos-by-momentum"
+import { RecentVideos, RecentVideosSkeleton } from "./components/recent-videos"
+import { TopVideosByMomentum, TopVideosByMomentumSkeleton } from "./components/top-videos-by-momentum"
 import { ChannelInsightsTabs } from "./components/channel-insights-tabs"
 import { YouTubeQuickActions } from "./components/youtube-quick-actions"
+
+// Revalidate every 60 seconds
+export const revalidate = 60
+
+// Server Component for KPI data
+async function KPISection() {
+  const session = await getServerSession(authOptions)
+
+  if (!session?.user?.id) {
+    return <MetricsOverview data={null} />
+  }
+
+  try {
+    const kpiData = await getDashboardKPI(session.user.id)
+    return <MetricsOverview data={kpiData} />
+  } catch (error) {
+    console.error("[Dashboard] Failed to fetch KPI:", error)
+    return <MetricsOverview data={null} />
+  }
+}
+
+// Server Component for Recent Videos
+async function RecentVideosSection() {
+  const session = await getServerSession(authOptions)
+
+  if (!session?.user?.id) {
+    return <RecentVideos data={null} />
+  }
+
+  try {
+    const videosData = await getVideoPerformance(session.user.id, "recent", 5)
+    return <RecentVideos data={videosData} />
+  } catch (error) {
+    console.error("[Dashboard] Failed to fetch recent videos:", error)
+    return <RecentVideos data={null} />
+  }
+}
+
+// Server Component for Top Momentum Videos
+async function TopMomentumSection() {
+  const session = await getServerSession(authOptions)
+
+  if (!session?.user?.id) {
+    return <TopVideosByMomentum data={null} />
+  }
+
+  try {
+    const videosData = await getVideoPerformance(session.user.id, "momentum", 5)
+    return <TopVideosByMomentum data={videosData} />
+  } catch (error) {
+    console.error("[Dashboard] Failed to fetch momentum videos:", error)
+    return <TopVideosByMomentum data={null} />
+  }
+}
 
 export default function Dashboard() {
   return (
@@ -22,22 +81,28 @@ export default function Dashboard() {
 
       {/* Main Dashboard Grid */}
       <div className="@container/main space-y-6">
-        {/* Top Row - Key Metrics */}
-        <MetricsOverview />
+        {/* Top Row - Key Metrics (Server Component with Suspense) */}
+        <Suspense fallback={<MetricsOverviewSkeleton />}>
+          <KPISection />
+        </Suspense>
 
-        {/* Second Row - Charts */}
+        {/* Second Row - Charts (Client Components for interactivity) */}
         <div className="grid gap-6 grid-cols-1 xl:grid-cols-2">
           <MomentumTrendChart />
           <PerformanceBreakdown />
         </div>
 
-        {/* Third Row - Video Lists */}
+        {/* Third Row - Video Lists (Server Components with Suspense) */}
         <div className="grid gap-6 grid-cols-1 xl:grid-cols-2">
-          <RecentVideos />
-          <TopVideosByMomentum />
+          <Suspense fallback={<RecentVideosSkeleton />}>
+            <RecentVideosSection />
+          </Suspense>
+          <Suspense fallback={<TopVideosByMomentumSkeleton />}>
+            <TopMomentumSection />
+          </Suspense>
         </div>
 
-        {/* Fourth Row - Channel Insights */}
+        {/* Fourth Row - Channel Insights (Client Component for tabs/charts) */}
         <ChannelInsightsTabs />
       </div>
     </div>

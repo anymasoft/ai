@@ -1,9 +1,5 @@
-"use client"
-
-import { useEffect, useState } from "react"
 import {
   TrendingUp,
-  TrendingDown,
   Users,
   Eye,
   Tv,
@@ -12,24 +8,7 @@ import {
 } from "lucide-react"
 import { Card, CardAction, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Skeleton } from "@/components/ui/skeleton"
-
-interface KPIData {
-  totalCompetitors: number
-  totalSubscribers: number
-  totalVideos: number
-  totalViews: number
-  avgMomentum: number
-  topMomentumVideo: {
-    videoId: string
-    title: string
-    channelTitle: string
-    viewsPerDay: number
-    momentumScore: number
-    url: string
-  } | null
-  totalScriptsGenerated: number
-}
+import type { KPIData } from "@/lib/dashboard-queries"
 
 function formatNumber(num: number): string {
   if (num >= 1000000000) {
@@ -42,68 +21,16 @@ function formatNumber(num: number): string {
   return num.toString()
 }
 
-function MetricCardSkeleton() {
-  return (
-    <Card>
-      <CardHeader>
-        <Skeleton className="h-4 w-24" />
-        <Skeleton className="h-8 w-16 mt-2" />
-        <CardAction>
-          <Skeleton className="h-5 w-16" />
-        </CardAction>
-      </CardHeader>
-      <CardFooter className="flex-col items-start gap-1.5">
-        <Skeleton className="h-4 w-32" />
-        <Skeleton className="h-3 w-24" />
-      </CardFooter>
-    </Card>
-  )
+interface MetricsOverviewProps {
+  data: KPIData | null
 }
 
-export function MetricsOverview() {
-  const [data, setData] = useState<KPIData | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-
-  useEffect(() => {
-    async function fetchKPI() {
-      try {
-        const response = await fetch("/api/dashboard/kpi")
-        if (!response.ok) {
-          throw new Error("Failed to fetch KPI data")
-        }
-        const result = await response.json()
-        if (result.success) {
-          setData(result.data)
-        } else {
-          throw new Error(result.error || "Unknown error")
-        }
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "Failed to load data")
-      } finally {
-        setLoading(false)
-      }
-    }
-
-    fetchKPI()
-  }, [])
-
-  if (loading) {
-    return (
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <MetricCardSkeleton />
-        <MetricCardSkeleton />
-        <MetricCardSkeleton />
-        <MetricCardSkeleton />
-      </div>
-    )
-  }
-
-  if (error || !data) {
+export function MetricsOverview({ data }: MetricsOverviewProps) {
+  if (!data) {
     return (
       <Card className="p-6">
         <div className="flex items-center justify-center text-muted-foreground">
-          <p>{error || "No data available"}</p>
+          <p>Failed to load metrics</p>
         </div>
       </Card>
     )
@@ -158,15 +85,11 @@ export function MetricsOverview() {
   return (
     <div className="*:data-[slot=card]:from-primary/5 *:data-[slot=card]:to-card dark:*:data-[slot=card]:bg-card *:data-[slot=card]:bg-gradient-to-t *:data-[slot=card]:shadow-xs grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
       {metrics.map((metric) => {
-        const TrendIcon = metric.trend === "up" ? TrendingUp : metric.trend === "down" ? TrendingDown : TrendingUp
+        const TrendIcon = TrendingUp
         const IconComponent = metric.icon
 
         return (
-          <Card
-            key={metric.title}
-            className={metric.link ? "cursor-pointer hover:shadow-md transition-shadow" : ""}
-            onClick={() => metric.link && window.open(metric.link, "_blank")}
-          >
+          <Card key={metric.title}>
             <CardHeader>
               <CardDescription className="flex items-center gap-2">
                 <IconComponent className="h-4 w-4" />
@@ -185,7 +108,11 @@ export function MetricsOverview() {
             <CardFooter className="flex-col items-start gap-1.5 text-sm">
               <div className="line-clamp-1 flex gap-2 font-medium items-center">
                 {metric.footer}
-                {metric.link && <ExternalLink className="h-3 w-3 text-muted-foreground" />}
+                {metric.link && (
+                  <a href={metric.link} target="_blank" rel="noopener noreferrer">
+                    <ExternalLink className="h-3 w-3 text-muted-foreground hover:text-foreground" />
+                  </a>
+                )}
               </div>
               <div className="text-muted-foreground line-clamp-1">
                 {metric.subfooter}
@@ -194,6 +121,29 @@ export function MetricsOverview() {
           </Card>
         )
       })}
+    </div>
+  )
+}
+
+// Skeleton for Suspense fallback
+export function MetricsOverviewSkeleton() {
+  return (
+    <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      {[...Array(4)].map((_, i) => (
+        <Card key={i}>
+          <CardHeader>
+            <div className="h-4 w-24 bg-muted animate-pulse rounded" />
+            <div className="h-8 w-16 mt-2 bg-muted animate-pulse rounded" />
+            <CardAction>
+              <div className="h-5 w-16 bg-muted animate-pulse rounded" />
+            </CardAction>
+          </CardHeader>
+          <CardFooter className="flex-col items-start gap-1.5">
+            <div className="h-4 w-32 bg-muted animate-pulse rounded" />
+            <div className="h-3 w-24 bg-muted animate-pulse rounded" />
+          </CardFooter>
+        </Card>
+      ))}
     </div>
   )
 }
