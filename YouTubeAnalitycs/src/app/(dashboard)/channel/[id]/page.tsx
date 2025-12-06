@@ -12,6 +12,7 @@ import { SyncVideosButton } from "@/components/channel/SyncVideosButton";
 import { SyncCommentsButton } from "@/components/channel/SyncCommentsButton";
 import { SyncAllDataButton } from "@/components/channel/SyncAllDataButton";
 import { ChannelAnalytics } from "@/components/channel/ChannelAnalytics";
+import { ChannelAvatar } from "@/components/channel-avatar";
 
 interface PageProps {
   params: Promise<{ id: string }>;
@@ -222,10 +223,10 @@ export default async function ChannelPage({ params }: PageProps) {
 
         {/* Хедер канала */}
         <div className="flex items-center gap-4">
-          <img
-            src={(competitor.avatarUrl as string) || "/placeholder.png"}
+          <ChannelAvatar
+            src={competitor.avatarUrl as string}
             alt={competitor.title as string}
-            className="w-20 h-20 rounded-full object-cover border-2 border-border"
+            className="w-20 h-20 text-2xl border-2 border-border"
           />
 
           <div className="flex-1">
