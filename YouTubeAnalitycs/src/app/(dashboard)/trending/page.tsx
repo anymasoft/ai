@@ -18,6 +18,30 @@ import { formatChannelHandle, extractHandleFromUrl } from "@/lib/formatHandle";
 type SortField = "momentumScore" | "viewsPerDay" | "viewCount" | "publishedAt";
 type SortDirection = "asc" | "desc";
 
+// Пресеты температуры для генерации сценария
+const SCRIPT_TEMPERATURE_PRESETS = [
+  {
+    key: "strict",
+    label: "Более строгий",
+    description: "Больше фактов, меньше креатива, более предсказуемая подача.",
+    value: 0.4,
+  },
+  {
+    key: "balanced",
+    label: "Сбалансированный",
+    description: "Оптимальный баланс между структурой и креативностью.",
+    value: 0.7,
+  },
+  {
+    key: "creative",
+    label: "Максимальный креатив",
+    description: "Более смелые, парадоксальные и художественные сценарии.",
+    value: 1.0,
+  },
+] as const;
+
+type TemperatureKey = typeof SCRIPT_TEMPERATURE_PRESETS[number]["key"];
+
 interface ChannelInfo {
   channelId: string;
   channelTitle: string;
@@ -39,6 +63,7 @@ export default function TrendingPage() {
   const [savedScript, setSavedScript] = useState<SavedScript | null>(null);
   const [generatingScripts, setGeneratingScripts] = useState(false);
   const [generationError, setGenerationError] = useState<string | null>(null);
+  const [selectedTemperatureKey, setSelectedTemperatureKey] = useState<TemperatureKey>("balanced");
 
   const fetchMomentumVideos = useCallback(async () => {
     try {
@@ -243,6 +268,11 @@ export default function TrendingPage() {
     setGeneratedScripts(null);
     setSavedScript(null);
 
+    // Получаем значение температуры из выбранного пресета
+    const selectedPreset = SCRIPT_TEMPERATURE_PRESETS.find(p => p.key === selectedTemperatureKey)
+      ?? SCRIPT_TEMPERATURE_PRESETS[1]; // balanced по умолчанию
+    const temperature = selectedPreset.value;
+
     try {
       const response = await fetch("/api/scripts/generate", {
         method: "POST",
@@ -251,6 +281,7 @@ export default function TrendingPage() {
         },
         body: JSON.stringify({
           selectedVideoIds: Array.from(selectedVideos),
+          temperature,
         }),
       });
 
@@ -649,27 +680,65 @@ export default function TrendingPage() {
                   <strong>Views/Day</strong> рассчитывается как общее количество просмотров, делённое на дни с момента публикации.
                 </p>
               </div>
+            </div>
 
-              <Button
-                variant="outline"
-                onClick={generateScripts}
-                disabled={selectedVideos.size === 0 || generatingScripts}
-                className="gap-2"
-              >
-                {generatingScripts ? (
-                  <>
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    Генерация...
-                  </>
-                ) : (
-                  <>
-                    <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                    </svg>
-                    Сгенерировать сценарий на основе выбранных видео ({selectedVideos.size})
-                  </>
-                )}
-              </Button>
+            {/* Блок генерации сценария */}
+            <div className="mt-6 p-4 border rounded-lg bg-muted/30">
+              <div className="flex flex-col lg:flex-row lg:items-end gap-6">
+                {/* Селектор креативности */}
+                <div className="flex-1">
+                  <h4 className="font-medium mb-1">Креативность сценария</h4>
+                  <p className="text-sm text-muted-foreground mb-3">
+                    Настройте баланс между строгой структурой и смелыми идеями.
+                  </p>
+                  <div className="flex flex-col sm:flex-row gap-2">
+                    {SCRIPT_TEMPERATURE_PRESETS.map(preset => (
+                      <label
+                        key={preset.key}
+                        className={`flex-1 flex items-start gap-2 p-3 rounded-md border cursor-pointer transition-colors ${
+                          selectedTemperatureKey === preset.key
+                            ? "border-primary bg-primary/5"
+                            : "border-border hover:border-primary/50"
+                        }`}
+                      >
+                        <input
+                          type="radio"
+                          name="scriptTemperature"
+                          value={preset.key}
+                          checked={selectedTemperatureKey === preset.key}
+                          onChange={() => setSelectedTemperatureKey(preset.key)}
+                          className="mt-1"
+                        />
+                        <div>
+                          <span className="font-medium text-sm">{preset.label}</span>
+                          <p className="text-xs text-muted-foreground mt-0.5">{preset.description}</p>
+                        </div>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Кнопка генерации */}
+                <div className="flex-shrink-0">
+                  <Button
+                    onClick={generateScripts}
+                    disabled={selectedVideos.size === 0 || generatingScripts}
+                    className="gap-2 w-full lg:w-auto"
+                  >
+                    {generatingScripts ? (
+                      <>
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        Генерация...
+                      </>
+                    ) : (
+                      <>
+                        <FileText className="h-4 w-4" />
+                        Сгенерировать сценарий ({selectedVideos.size})
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </div>
             </div>
 
             {/* Отображение ошибок генерации */}
