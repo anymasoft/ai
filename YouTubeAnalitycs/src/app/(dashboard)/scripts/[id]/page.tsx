@@ -11,10 +11,14 @@ import { ru } from "date-fns/locale";
 import Link from "next/link";
 import type { SavedScript } from "@/types/scripts";
 
+interface ScriptWithVideos extends SavedScript {
+  sourceVideosData?: Array<{ id: string; title: string }>;
+}
+
 export default function ScriptViewPage() {
   const params = useParams();
   const router = useRouter();
-  const [script, setScript] = useState<SavedScript | null>(null);
+  const [script, setScript] = useState<ScriptWithVideos | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [copying, setCopying] = useState(false);
@@ -261,19 +265,17 @@ export default function ScriptViewPage() {
           </CardHeader>
           <CardContent>
             <div className="space-y-2">
-              {script.sourceVideos.map((videoId, index) => (
-                <div key={videoId} className="flex items-center gap-2 p-2 bg-muted/30 rounded-md">
+              {(script.sourceVideosData || script.sourceVideos.map(id => ({ id, title: id }))).map((video, index) => (
+                <div key={video.id} className="flex items-center gap-2 p-2 bg-muted/30 rounded-md">
                   <Badge variant="secondary">{index + 1}</Badge>
-                  <code className="text-sm font-mono bg-muted px-2 py-1 rounded">
-                    {videoId}
-                  </code>
                   <a
-                    href={`https://www.youtube.com/watch?v=${videoId}`}
+                    href={`https://www.youtube.com/watch?v=${video.id}`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="ml-auto text-sm text-primary hover:underline"
+                    className="text-sm text-primary hover:underline line-clamp-1"
+                    title={video.title}
                   >
-                    Открыть на YouTube
+                    {video.title}
                   </a>
                 </div>
               ))}
