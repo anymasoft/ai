@@ -9,7 +9,8 @@ import { PerformanceBreakdown } from "./components/performance-breakdown"
 import { RecentVideos, RecentVideosSkeleton } from "./components/recent-videos"
 import { TopVideosByMomentum, TopVideosByMomentumSkeleton } from "./components/top-videos-by-momentum"
 import { ChannelInsightsTabs } from "./components/channel-insights-tabs"
-import { YouTubeQuickActions } from "./components/youtube-quick-actions"
+import { DashboardHeader } from "./components/dashboard-header"
+import { DashboardEmptyState } from "./components/dashboard-empty-state"
 
 // Revalidate every 60 seconds
 export const revalidate = 60
@@ -65,45 +66,65 @@ async function TopMomentumSection() {
   }
 }
 
-export default function Dashboard() {
-  return (
-    <div className="flex-1 space-y-6 px-6 pt-0">
-      {/* Header */}
-      <div className="flex md:flex-row flex-col md:items-center justify-between gap-4 md:gap-6">
-        <div className="flex flex-col gap-2">
-          <h1 className="text-2xl font-bold tracking-tight">YouTube Analytics</h1>
-          <p className="text-muted-foreground">
-            Monitor competitor performance and discover trending content
-          </p>
-        </div>
-        <YouTubeQuickActions />
+// Check if user has any data
+async function hasData(): Promise<boolean> {
+  const session = await getServerSession(authOptions)
+  if (!session?.user?.id) return false
+
+  try {
+    const kpiData = await getDashboardKPI(session.user.id)
+    return kpiData.totalCompetitors > 0
+  } catch {
+    return false
+  }
+}
+
+export default async function Dashboard() {
+  const hasUserData = await hasData()
+
+  // Show empty state if no competitors
+  if (!hasUserData) {
+    return (
+      <div className="flex-1 px-4 sm:px-6 lg:px-8 py-6">
+        <DashboardEmptyState />
       </div>
+    )
+  }
+
+  return (
+    <div className="flex-1 px-4 sm:px-6 lg:px-8 py-6 space-y-8" data-dashboard-content>
+      {/* Header with date filter and actions */}
+      <DashboardHeader />
 
       {/* Main Dashboard Grid */}
-      <div className="@container/main space-y-6">
-        {/* Top Row - Key Metrics (Server Component with Suspense) */}
-        <Suspense fallback={<MetricsOverviewSkeleton />}>
-          <KPISection />
-        </Suspense>
+      <div className="space-y-8">
+        {/* Top Row - Key Metrics */}
+        <section>
+          <Suspense fallback={<MetricsOverviewSkeleton />}>
+            <KPISection />
+          </Suspense>
+        </section>
 
-        {/* Second Row - Charts (Client Components for interactivity) */}
-        <div className="grid gap-6 grid-cols-1 xl:grid-cols-2">
+        {/* Second Row - Charts */}
+        <section className="grid gap-6 grid-cols-1 lg:grid-cols-2">
           <MomentumTrendChart />
           <PerformanceBreakdown />
-        </div>
+        </section>
 
-        {/* Third Row - Video Lists (Server Components with Suspense) */}
-        <div className="grid gap-6 grid-cols-1 xl:grid-cols-2">
+        {/* Third Row - Video Lists */}
+        <section className="grid gap-6 grid-cols-1 lg:grid-cols-2">
           <Suspense fallback={<RecentVideosSkeleton />}>
             <RecentVideosSection />
           </Suspense>
           <Suspense fallback={<TopVideosByMomentumSkeleton />}>
             <TopMomentumSection />
           </Suspense>
-        </div>
+        </section>
 
-        {/* Fourth Row - Channel Insights (Client Component for tabs/charts) */}
-        <ChannelInsightsTabs />
+        {/* Fourth Row - Channel Insights */}
+        <section>
+          <ChannelInsightsTabs />
+        </section>
       </div>
     </div>
   )

@@ -28,7 +28,7 @@ interface MetricsOverviewProps {
 export function MetricsOverview({ data }: MetricsOverviewProps) {
   if (!data) {
     return (
-      <Card className="p-6">
+      <Card className="p-6 bg-card/50 backdrop-blur-sm border-border/50">
         <div className="flex items-center justify-center text-muted-foreground">
           <p>Failed to load metrics</p>
         </div>
@@ -83,23 +83,26 @@ export function MetricsOverview({ data }: MetricsOverviewProps) {
   ]
 
   return (
-    <div className="*:data-[slot=card]:from-primary/5 *:data-[slot=card]:to-card dark:*:data-[slot=card]:bg-card *:data-[slot=card]:bg-gradient-to-t *:data-[slot=card]:shadow-xs grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+    <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
       {metrics.map((metric) => {
         const TrendIcon = TrendingUp
         const IconComponent = metric.icon
 
         return (
-          <Card key={metric.title}>
+          <Card
+            key={metric.title}
+            className="bg-card/50 backdrop-blur-sm border-border/50 hover:border-border/80 transition-all duration-300 bg-gradient-to-t from-primary/5 to-card"
+          >
             <CardHeader>
               <CardDescription className="flex items-center gap-2">
-                <IconComponent className="h-4 w-4" />
+                <IconComponent className="h-4 w-4 text-primary" />
                 {metric.title}
               </CardDescription>
               <CardTitle className="text-2xl font-semibold tabular-nums @[250px]/card:text-3xl">
                 {metric.value}
               </CardTitle>
               <CardAction>
-                <Badge variant="outline" className="gap-1">
+                <Badge variant="outline" className="gap-1 bg-background/50">
                   {metric.trend !== "neutral" && <TrendIcon className="h-3 w-3" />}
                   {metric.badge}
                 </Badge>
@@ -109,7 +112,7 @@ export function MetricsOverview({ data }: MetricsOverviewProps) {
               <div className="line-clamp-1 flex gap-2 font-medium items-center">
                 {metric.footer}
                 {metric.link && (
-                  <a href={metric.link} target="_blank" rel="noopener noreferrer">
+                  <a href={metric.link} target="_blank" rel="noopener noreferrer" className="transition-colors">
                     <ExternalLink className="h-3 w-3 text-muted-foreground hover:text-foreground" />
                   </a>
                 )}
@@ -130,17 +133,17 @@ export function MetricsOverviewSkeleton() {
   return (
     <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
       {[...Array(4)].map((_, i) => (
-        <Card key={i}>
+        <Card key={i} className="bg-card/50 backdrop-blur-sm border-border/50">
           <CardHeader>
-            <div className="h-4 w-24 bg-muted animate-pulse rounded" />
-            <div className="h-8 w-16 mt-2 bg-muted animate-pulse rounded" />
+            <div className="h-4 w-24 bg-muted/50 animate-pulse rounded" />
+            <div className="h-8 w-16 mt-2 bg-muted/50 animate-pulse rounded" />
             <CardAction>
-              <div className="h-5 w-16 bg-muted animate-pulse rounded" />
+              <div className="h-5 w-16 bg-muted/30 animate-pulse rounded" />
             </CardAction>
           </CardHeader>
           <CardFooter className="flex-col items-start gap-1.5">
-            <div className="h-4 w-32 bg-muted animate-pulse rounded" />
-            <div className="h-3 w-24 bg-muted animate-pulse rounded" />
+            <div className="h-4 w-32 bg-muted/30 animate-pulse rounded" />
+            <div className="h-3 w-24 bg-muted/30 animate-pulse rounded" />
           </CardFooter>
         </Card>
       ))}

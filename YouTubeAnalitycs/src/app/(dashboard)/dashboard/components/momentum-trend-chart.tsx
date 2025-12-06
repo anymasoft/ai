@@ -1,12 +1,11 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { Area, AreaChart, CartesianGrid, XAxis, YAxis } from "recharts"
+import { Area, AreaChart, CartesianGrid, XAxis, YAxis, ResponsiveContainer } from "recharts"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
-import { Skeleton } from "@/components/ui/skeleton"
 import { TrendingUp, TrendingDown, Minus, Zap } from "lucide-react"
 
 interface TrendDataPoint {
@@ -32,26 +31,30 @@ const chartConfig = {
     label: "Avg Momentum",
     color: "hsl(var(--primary))",
   },
-  highMomentumCount: {
-    label: "High Momentum Videos",
-    color: "hsl(var(--chart-2))",
-  },
 }
 
 function ChartSkeleton() {
   return (
-    <Card>
-      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+    <Card className="bg-card/50 backdrop-blur-sm border-border/50">
+      <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-3 sm:space-y-0 pb-3">
         <div className="space-y-2">
-          <Skeleton className="h-5 w-32" />
-          <Skeleton className="h-4 w-48" />
+          <div className="h-5 w-32 bg-muted/50 animate-pulse rounded" />
+          <div className="h-4 w-48 bg-muted/30 animate-pulse rounded" />
         </div>
-        <Skeleton className="h-9 w-32" />
+        <div className="h-8 w-[130px] bg-muted/50 animate-pulse rounded" />
       </CardHeader>
-      <CardContent className="p-0 pt-6">
-        <div className="px-6 pb-6">
-          <Skeleton className="h-[350px] w-full" />
+      <CardContent className="pt-2">
+        <div className="flex gap-8 mb-4">
+          <div className="space-y-1">
+            <div className="h-3 w-20 bg-muted/30 animate-pulse rounded" />
+            <div className="h-6 w-12 bg-muted/50 animate-pulse rounded" />
+          </div>
+          <div className="space-y-1">
+            <div className="h-3 w-24 bg-muted/30 animate-pulse rounded" />
+            <div className="h-6 w-16 bg-muted/50 animate-pulse rounded" />
+          </div>
         </div>
+        <div className="h-[280px] w-full bg-gradient-to-b from-muted/20 to-transparent animate-pulse rounded-lg" />
       </CardContent>
     </Card>
   )
@@ -93,9 +96,12 @@ export function MomentumTrendChart() {
 
   if (error) {
     return (
-      <Card>
+      <Card className="bg-card/50 backdrop-blur-sm border-border/50">
         <CardHeader>
-          <CardTitle>Momentum Trend</CardTitle>
+          <CardTitle className="flex items-center gap-2 text-lg">
+            <Zap className="h-5 w-5" />
+            Momentum Trend
+          </CardTitle>
           <CardDescription className="text-destructive">{error}</CardDescription>
         </CardHeader>
       </Card>
@@ -104,17 +110,18 @@ export function MomentumTrendChart() {
 
   if (!data || data.trend.length === 0) {
     return (
-      <Card>
+      <Card className="bg-card/50 backdrop-blur-sm border-border/50">
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
+          <CardTitle className="flex items-center gap-2 text-lg">
             <Zap className="h-5 w-5" />
             Momentum Trend
           </CardTitle>
           <CardDescription>No momentum data available yet</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="flex items-center justify-center h-[350px] text-muted-foreground">
-            Add competitors and sync videos to see momentum trends
+          <div className="flex flex-col items-center justify-center h-[280px] text-muted-foreground">
+            <Zap className="h-12 w-12 mb-4 opacity-20" />
+            <p className="text-sm text-center">Add competitors and sync videos to see trends</p>
           </div>
         </CardContent>
       </Card>
@@ -128,9 +135,9 @@ export function MomentumTrendChart() {
       : Minus
 
   const trendColor = data.summary.highMomentumVideosTrend === "up"
-    ? "text-green-600"
+    ? "text-emerald-500"
     : data.summary.highMomentumVideosTrend === "down"
-      ? "text-red-600"
+      ? "text-red-500"
       : "text-muted-foreground"
 
   // Format dates for display
@@ -140,23 +147,23 @@ export function MomentumTrendChart() {
   }))
 
   return (
-    <Card>
-      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-        <div>
-          <CardTitle className="flex items-center gap-2">
-            <Zap className="h-5 w-5" />
+    <Card className="bg-card/50 backdrop-blur-sm border-border/50 hover:border-border/80 transition-colors duration-300">
+      <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-3 sm:space-y-0 pb-3">
+        <div className="space-y-1">
+          <CardTitle className="flex items-center gap-2 text-lg font-semibold">
+            <Zap className="h-5 w-5 text-primary" />
             Momentum Trend
           </CardTitle>
-          <CardDescription className="flex items-center gap-2 mt-1">
+          <CardDescription className="flex items-center gap-2 text-sm">
             <span>Video performance dynamics</span>
-            <Badge variant="outline" className={`gap-1 ${trendColor}`}>
+            <Badge variant="outline" className={`gap-1 text-xs ${trendColor}`}>
               <TrendIcon className="h-3 w-3" />
               {data.summary.highMomentumVideosTrend}
             </Badge>
           </CardDescription>
         </div>
         <Select value={period} onValueChange={setPeriod}>
-          <SelectTrigger className="w-32">
+          <SelectTrigger className="w-[130px] h-8 text-sm bg-background/50 border-border/50 hover:border-border transition-colors">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -166,45 +173,49 @@ export function MomentumTrendChart() {
           </SelectContent>
         </Select>
       </CardHeader>
-      <CardContent className="p-0 pt-6">
-        <div className="px-6 pb-4 flex gap-6 text-sm">
-          <div>
-            <span className="text-muted-foreground">High Momentum Videos:</span>{" "}
-            <span className="font-semibold">{data.summary.totalHighMomentumVideos}</span>
+      <CardContent className="pt-2">
+        {/* Stats Row */}
+        <div className="flex flex-wrap gap-6 sm:gap-10 mb-5">
+          <div className="space-y-0.5">
+            <p className="text-muted-foreground text-xs uppercase tracking-wider">High Momentum</p>
+            <p className="text-2xl font-semibold tabular-nums">{data.summary.totalHighMomentumVideos}</p>
           </div>
-          <div>
-            <span className="text-muted-foreground">Median Views/Day:</span>{" "}
-            <span className="font-semibold">{data.summary.medianViewsPerDay.toLocaleString()}</span>
+          <div className="space-y-0.5">
+            <p className="text-muted-foreground text-xs uppercase tracking-wider">Median Views/Day</p>
+            <p className="text-2xl font-semibold tabular-nums">{data.summary.medianViewsPerDay.toLocaleString()}</p>
           </div>
         </div>
-        <div className="px-6 pb-6">
-          <ChartContainer config={chartConfig} className="h-[350px] w-full">
-            <AreaChart data={chartData} margin={{ top: 10, right: 10, left: 10, bottom: 0 }}>
+
+        {/* Chart */}
+        <ChartContainer config={chartConfig} className="h-[280px] w-full">
+          <ResponsiveContainer width="100%" height="100%">
+            <AreaChart data={chartData} margin={{ top: 8, right: 8, left: -20, bottom: 0 }}>
               <defs>
-                <linearGradient id="colorMomentum" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.4} />
-                  <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0.05} />
-                </linearGradient>
-                <linearGradient id="colorHighMomentum" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="hsl(var(--chart-2))" stopOpacity={0.3} />
-                  <stop offset="95%" stopColor="hsl(var(--chart-2))" stopOpacity={0} />
+                <linearGradient id="momentumGradient" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity={0.25} />
+                  <stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity={0.02} />
                 </linearGradient>
               </defs>
-              <CartesianGrid strokeDasharray="3 3" className="stroke-muted/30" />
+              <CartesianGrid
+                strokeDasharray="3 3"
+                stroke="hsl(var(--border))"
+                strokeOpacity={0.4}
+                vertical={false}
+              />
               <XAxis
                 dataKey="displayDate"
                 axisLine={false}
                 tickLine={false}
-                className="text-xs"
-                tick={{ fontSize: 11 }}
+                tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
                 interval="preserveStartEnd"
+                tickMargin={8}
               />
               <YAxis
                 axisLine={false}
                 tickLine={false}
-                className="text-xs"
-                tick={{ fontSize: 11 }}
+                tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
                 tickFormatter={(value) => `${value > 0 ? "+" : ""}${(value * 100).toFixed(0)}%`}
+                width={48}
               />
               <ChartTooltip
                 content={
@@ -222,12 +233,14 @@ export function MomentumTrendChart() {
                 type="monotone"
                 dataKey="avgMomentum"
                 stroke="hsl(var(--primary))"
-                fill="url(#colorMomentum)"
+                fill="url(#momentumGradient)"
                 strokeWidth={2}
+                animationDuration={750}
+                animationEasing="ease-out"
               />
             </AreaChart>
-          </ChartContainer>
-        </div>
+          </ResponsiveContainer>
+        </ChartContainer>
       </CardContent>
     </Card>
   )

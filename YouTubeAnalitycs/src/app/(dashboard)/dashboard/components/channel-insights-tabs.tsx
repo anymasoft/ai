@@ -51,14 +51,14 @@ function formatNumber(num: number): string {
 
 function ChartSkeleton() {
   return (
-    <Card className="h-fit">
+    <Card className="h-fit bg-card/50 backdrop-blur-sm border-border/50">
       <CardHeader>
-        <Skeleton className="h-5 w-32" />
-        <Skeleton className="h-4 w-48" />
+        <Skeleton className="h-5 w-32 bg-muted/50" />
+        <Skeleton className="h-4 w-48 bg-muted/30" />
       </CardHeader>
       <CardContent>
-        <Skeleton className="h-10 w-full mb-6" />
-        <Skeleton className="h-[350px] w-full" />
+        <Skeleton className="h-10 w-full mb-6 bg-muted/30" />
+        <Skeleton className="h-[350px] w-full bg-gradient-to-b from-muted/20 to-transparent" />
       </CardContent>
     </Card>
   )
@@ -109,9 +109,12 @@ export function ChannelInsightsTabs() {
 
   if (error) {
     return (
-      <Card className="h-fit">
+      <Card className="h-fit bg-card/50 backdrop-blur-sm border-border/50">
         <CardHeader>
-          <CardTitle>Channel Insights</CardTitle>
+          <CardTitle className="flex items-center gap-2 text-lg">
+            <BarChart3 className="h-5 w-5" />
+            Channel Insights
+          </CardTitle>
           <CardDescription className="text-destructive">{error}</CardDescription>
         </CardHeader>
       </Card>
@@ -120,17 +123,18 @@ export function ChannelInsightsTabs() {
 
   if (!data || data.channels.length === 0) {
     return (
-      <Card className="h-fit">
+      <Card className="h-fit bg-card/50 backdrop-blur-sm border-border/50">
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
+          <CardTitle className="flex items-center gap-2 text-lg">
             <BarChart3 className="h-5 w-5" />
             Channel Insights
           </CardTitle>
           <CardDescription>No channel data available</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="flex items-center justify-center h-[300px] text-muted-foreground">
-            Add competitors to see channel insights
+          <div className="flex flex-col items-center justify-center h-[300px] text-muted-foreground">
+            <BarChart3 className="h-12 w-12 mb-4 opacity-20" />
+            <p className="text-sm text-center">Add competitors to see channel insights</p>
           </div>
         </CardContent>
       </Card>
@@ -198,19 +202,19 @@ export function ChannelInsightsTabs() {
   }
 
   return (
-    <Card className="h-fit">
+    <Card className="h-fit bg-card/50 backdrop-blur-sm border-border/50 hover:border-border/80 transition-colors duration-300">
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-        <div>
-          <CardTitle className="flex items-center gap-2">
-            <BarChart3 className="h-5 w-5" />
+        <div className="space-y-1">
+          <CardTitle className="flex items-center gap-2 text-lg font-semibold">
+            <BarChart3 className="h-5 w-5 text-primary" />
             Channel Insights
           </CardTitle>
-          <CardDescription>
+          <CardDescription className="text-sm">
             Competitor performance and growth analysis
           </CardDescription>
         </div>
         <Select value={period} onValueChange={setPeriod}>
-          <SelectTrigger className="w-32">
+          <SelectTrigger className="w-32 bg-background/50 border-border/50 hover:border-border transition-colors">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -222,7 +226,7 @@ export function ChannelInsightsTabs() {
       </CardHeader>
       <CardContent>
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-3 bg-muted/50 p-1 rounded-lg h-12 mb-6">
+          <TabsList className="grid w-full grid-cols-3 bg-muted/30 p-1 rounded-lg h-12 mb-6 border border-border/30">
             <TabsTrigger
               value="growth"
               className="flex items-center gap-2 rounded-md px-4 py-2 text-sm font-medium transition-all data-[state=active]:bg-background data-[state=active]:shadow-sm"
@@ -299,7 +303,7 @@ export function ChannelInsightsTabs() {
                 {data.channels.slice(0, 4).map((channel, index) => (
                   <div
                     key={channel.channelId}
-                    className="p-3 rounded-lg border flex items-center gap-3"
+                    className="p-3 rounded-lg border border-border/50 flex items-center gap-3 hover:bg-muted/30 hover:border-border/80 transition-all duration-200"
                   >
                     <div
                       className="w-1 h-10 rounded-full"
@@ -416,10 +420,10 @@ export function ChannelInsightsTabs() {
             </ChartContainer>
 
             {/* Summary */}
-            <div className="pt-4 border-t">
+            <div className="pt-4 border-t border-border/50">
               <p className="text-sm text-muted-foreground">
                 Average upload frequency across all channels:{" "}
-                <span className="font-semibold text-foreground">
+                <span className="font-semibold text-foreground tabular-nums">
                   {data.summary.avgUploadFrequency} videos/month
                 </span>
               </p>

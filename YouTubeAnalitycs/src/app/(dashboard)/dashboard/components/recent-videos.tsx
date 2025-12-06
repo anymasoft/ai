@@ -48,17 +48,18 @@ interface RecentVideosProps {
 export function RecentVideos({ data }: RecentVideosProps) {
   if (!data || data.videos.length === 0) {
     return (
-      <Card>
+      <Card className="bg-card/50 backdrop-blur-sm border-border/50">
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
+          <CardTitle className="flex items-center gap-2 text-lg">
             <Clock className="h-5 w-5" />
             Recent Videos
           </CardTitle>
           <CardDescription>No videos available</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="flex items-center justify-center h-[200px] text-muted-foreground">
-            Sync competitor videos to see recent content
+          <div className="flex flex-col items-center justify-center h-[200px] text-muted-foreground">
+            <Clock className="h-12 w-12 mb-4 opacity-20" />
+            <p className="text-sm text-center">Sync competitor videos to see recent content</p>
           </div>
         </CardContent>
       </Card>
@@ -66,16 +67,16 @@ export function RecentVideos({ data }: RecentVideosProps) {
   }
 
   return (
-    <Card>
+    <Card className="bg-card/50 backdrop-blur-sm border-border/50 hover:border-border/80 transition-colors duration-300">
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
-        <div>
-          <CardTitle className="flex items-center gap-2">
-            <Clock className="h-5 w-5" />
+        <div className="space-y-1">
+          <CardTitle className="flex items-center gap-2 text-lg font-semibold">
+            <Clock className="h-5 w-5 text-primary" />
             Recent Videos
           </CardTitle>
-          <CardDescription>Latest competitor uploads</CardDescription>
+          <CardDescription className="text-sm">Latest competitor uploads</CardDescription>
         </div>
-        <Button variant="outline" size="sm" asChild>
+        <Button variant="outline" size="sm" asChild className="bg-background/50 border-border/50 hover:border-border hover:bg-background/80 transition-all">
           <Link href="/trending">
             <Eye className="h-4 w-4 mr-2" />
             View All
@@ -89,7 +90,7 @@ export function RecentVideos({ data }: RecentVideosProps) {
             href={video.url}
             target="_blank"
             rel="noopener noreferrer"
-            className="flex p-3 rounded-lg border gap-3 hover:bg-muted/50 transition-colors group"
+            className="flex p-3 rounded-lg border border-border/50 gap-3 hover:bg-muted/30 hover:border-border/80 transition-all duration-200 group"
           >
             {/* Thumbnail */}
             <div className="relative h-16 w-28 rounded-md overflow-hidden shrink-0 bg-muted">

@@ -22,17 +22,18 @@ interface TopVideosByMomentumProps {
 export function TopVideosByMomentum({ data }: TopVideosByMomentumProps) {
   if (!data || data.videos.length === 0) {
     return (
-      <Card>
+      <Card className="bg-card/50 backdrop-blur-sm border-border/50">
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
+          <CardTitle className="flex items-center gap-2 text-lg">
             <Flame className="h-5 w-5" />
             Top by Momentum
           </CardTitle>
           <CardDescription>No videos with momentum data</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="flex items-center justify-center h-[200px] text-muted-foreground">
-            Sync competitor videos to see momentum rankings
+          <div className="flex flex-col items-center justify-center h-[200px] text-muted-foreground">
+            <Flame className="h-12 w-12 mb-4 opacity-20" />
+            <p className="text-sm text-center">Sync competitor videos to see momentum rankings</p>
           </div>
         </CardContent>
       </Card>
@@ -43,18 +44,18 @@ export function TopVideosByMomentum({ data }: TopVideosByMomentumProps) {
   const maxMomentum = Math.max(...data.videos.map(v => v.momentumScore), 1)
 
   return (
-    <Card>
+    <Card className="bg-card/50 backdrop-blur-sm border-border/50 hover:border-border/80 transition-colors duration-300">
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
-        <div>
-          <CardTitle className="flex items-center gap-2">
+        <div className="space-y-1">
+          <CardTitle className="flex items-center gap-2 text-lg font-semibold">
             <Flame className="h-5 w-5 text-orange-500" />
             Top by Momentum
           </CardTitle>
-          <CardDescription>
+          <CardDescription className="text-sm">
             Best performing videos right now
           </CardDescription>
         </div>
-        <Button variant="outline" size="sm" asChild>
+        <Button variant="outline" size="sm" asChild className="bg-background/50 border-border/50 hover:border-border hover:bg-background/80 transition-all">
           <Link href="/trending">
             <Eye className="h-4 w-4 mr-2" />
             View All
@@ -68,7 +69,7 @@ export function TopVideosByMomentum({ data }: TopVideosByMomentumProps) {
             href={video.url}
             target="_blank"
             rel="noopener noreferrer"
-            className="flex items-center p-3 rounded-lg border gap-3 hover:bg-muted/50 transition-colors group"
+            className="flex items-center p-3 rounded-lg border border-border/50 gap-3 hover:bg-muted/30 hover:border-border/80 transition-all duration-200 group"
           >
             {/* Rank */}
             <div className="flex items-center justify-center w-8 h-8 rounded-full bg-primary/10 text-primary font-semibold text-sm shrink-0">
