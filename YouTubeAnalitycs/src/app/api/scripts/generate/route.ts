@@ -375,23 +375,170 @@ function generateSemanticMapFallback(videos: VideoForScript[]): SemanticMap {
 }
 
 // ============================================================================
-// ШАГ 3: ГЕНЕРАЦИЯ НАРРАТИВНОГО СКЕЛЕТА
+// ШАГ 3: ГЕНЕРАЦИЯ НАРРАТИВНОГО СКЕЛЕТА (GPT-ЭТАП 2)
 // ============================================================================
 
 /**
- * Генерирует нарративный скелет на основе семантической карты
- * Пока простая версия - формирует базовый каркас
- * В будущем можно добавить вызов OpenAI для более креативного каркаса
+ * Системный промпт для генерации NarrativeSkeleton
+ */
+const NARRATIVE_SKELETON_SYSTEM_PROMPT = `Ты — сторителлер и сценарный архитектор YouTube.
+Тебе дают Semantic Map — результат анализа трендовых видео конкурентов.
+
+Твоя задача — построить стратегический каркас (Narrative Skeleton) будущего сценария.
+
+ВАЖНО:
+- НЕ пиши сценарий. Только СТРУКТУРУ и КАРКАС.
+- Отвечай СТРОГО на русском языке.
+- Возвращай ТОЛЬКО валидный JSON без markdown-обёрток, без комментариев, без пояснений.
+- Все значения должны быть конкретными и применимыми.`;
+
+/**
+ * Генерирует нарративный скелет на основе семантической карты через OpenAI GPT
+ * Это GPT-ЭТАП 2 pipeline - построение каркаса сценария
  */
 async function generateNarrativeSkeleton(
   map: SemanticMap,
   videos: VideoForScript[]
 ): Promise<NarrativeSkeleton> {
-  // Берём топ-тему как основу
+  console.log(`[NarrativeSkeleton] Начинаем GPT-генерацию каркаса...`);
+
+  const openai = new OpenAI({
+    apiKey: process.env.OPENAI_API_KEY,
+  });
+
+  // Подготавливаем данные SemanticMap для GPT
+  const semanticMapData = {
+    mergedTopics: map.mergedTopics,
+    commonPatterns: map.commonPatterns,
+    conflicts: map.conflicts,
+    paradoxes: map.paradoxes,
+    emotionalSpikes: map.emotionalSpikes,
+    visualMotifs: map.visualMotifs,
+    audienceInterests: map.audienceInterests,
+    rawSummary: map.rawSummary,
+  };
+
+  // Топ-видео для контекста хуков
+  const topVideos = videos
+    .sort((a, b) => b.momentumScore - a.momentumScore)
+    .slice(0, 5)
+    .map(v => ({ title: v.title, views: v.viewCount, momentum: v.momentumScore }));
+
+  // Формируем user prompt
+  const userPrompt = `На основе Semantic Map создай Narrative Skeleton — каркас будущего YouTube сценария.
+
+SEMANTIC MAP:
+${JSON.stringify(semanticMapData, null, 2)}
+
+ТОП-ВИДЕО ДЛЯ ВДОХНОВЕНИЯ (по momentum):
+${JSON.stringify(topVideos, null, 2)}
+
+ЗАДАЧА:
+Создай стратегический каркас сценария со следующими элементами:
+
+1. **coreIdea** — центральная идея видео (1-2 предложения). Это главный посыл, который зритель должен унести.
+
+2. **centralParadox** — центральный парадокс или контринтуитивная мысль (1 предложение). То, что заставит зрителя сказать "Как так?!" и досмотреть.
+
+3. **mainConflict** — главный конфликт видео (1 предложение). Противостояние, которое создаёт напряжение (старое vs новое, мифы vs реальность, страх vs возможность).
+
+4. **mainQuestion** — главный вопрос, на который отвечает видео (1 предложение). Вопрос, который держит внимание зрителя.
+
+5. **emotionalBeats** (4-6 штук) — ключевые эмоциональные моменты видео. Где должны быть пики эмоций? (интрига, шок, надежда, кульминация, удовлетворение).
+
+6. **storyBeats** (5-8 штук) — последовательность крупных логических блоков видео. Структура повествования от начала до конца.
+
+7. **visualMotifs** (3-5 штук) — визуальные образы и сцены, которые усилят воздействие (можно использовать из Semantic Map или предложить новые).
+
+8. **hookCandidates** (3-5 штук) — варианты сильных хуков для первых 3-5 секунд. Конкретные фразы или действия.
+
+9. **endingIdeas** (2-3 штуки) — варианты сильных концовок. Как завершить видео, чтобы зритель подписался/лайкнул/прокомментировал.
+
+Верни ТОЛЬКО JSON в формате:
+{
+  "coreIdea": "...",
+  "centralParadox": "...",
+  "mainConflict": "...",
+  "mainQuestion": "...",
+  "emotionalBeats": ["...", "...", ...],
+  "storyBeats": ["...", "...", ...],
+  "visualMotifs": ["...", "...", ...],
+  "hookCandidates": ["...", "...", ...],
+  "endingIdeas": ["...", "...", ...]
+}`;
+
+  try {
+    const completion = await openai.chat.completions.create({
+      model: "gpt-4o-mini",
+      messages: [
+        { role: "system", content: NARRATIVE_SKELETON_SYSTEM_PROMPT },
+        { role: "user", content: userPrompt },
+      ],
+      temperature: 0.8,
+      max_tokens: 2000,
+    });
+
+    const responseText = completion.choices[0]?.message?.content;
+
+    if (!responseText) {
+      throw new Error("Пустой ответ от OpenAI при генерации NarrativeSkeleton");
+    }
+
+    console.log(`[NarrativeSkeleton] Получен ответ от OpenAI (${responseText.length} символов)`);
+
+    // Парсим JSON с очисткой от возможных markdown-обёрток
+    let skeletonData: NarrativeSkeleton;
+    try {
+      const cleanJson = responseText
+        .replace(/```json\n?/g, '')
+        .replace(/```\n?/g, '')
+        .trim();
+
+      skeletonData = JSON.parse(cleanJson);
+    } catch (parseError) {
+      console.error("[NarrativeSkeleton] Ошибка парсинга JSON:", parseError);
+      console.error("[NarrativeSkeleton] Raw response:", responseText);
+      throw new Error("Ошибка парсинга NarrativeSkeleton от OpenAI");
+    }
+
+    // Валидируем и нормализуем структуру
+    const validatedSkeleton: NarrativeSkeleton = {
+      coreIdea: typeof skeletonData.coreIdea === 'string' ? skeletonData.coreIdea : '',
+      centralParadox: typeof skeletonData.centralParadox === 'string' ? skeletonData.centralParadox : '',
+      mainConflict: typeof skeletonData.mainConflict === 'string' ? skeletonData.mainConflict : '',
+      mainQuestion: typeof skeletonData.mainQuestion === 'string' ? skeletonData.mainQuestion : '',
+      emotionalBeats: Array.isArray(skeletonData.emotionalBeats) ? skeletonData.emotionalBeats : [],
+      storyBeats: Array.isArray(skeletonData.storyBeats) ? skeletonData.storyBeats : [],
+      visualMotifs: Array.isArray(skeletonData.visualMotifs) ? skeletonData.visualMotifs : map.visualMotifs,
+      hookCandidates: Array.isArray(skeletonData.hookCandidates) ? skeletonData.hookCandidates : [],
+      endingIdeas: Array.isArray(skeletonData.endingIdeas) ? skeletonData.endingIdeas : [],
+    };
+
+    console.log(`[NarrativeSkeleton] Каркас успешно создан через GPT`);
+    console.log(`[NarrativeSkeleton] StoryBeats: ${validatedSkeleton.storyBeats.length}, Hooks: ${validatedSkeleton.hookCandidates.length}`);
+
+    return validatedSkeleton;
+
+  } catch (error) {
+    console.error("[NarrativeSkeleton] Ошибка GPT-вызова:", error);
+
+    // Fallback: возвращаем базовую структуру при ошибке GPT
+    console.log("[NarrativeSkeleton] Используем fallback-логику...");
+    return generateNarrativeSkeletonFallback(map, videos);
+  }
+}
+
+/**
+ * Fallback-функция для генерации NarrativeSkeleton без GPT
+ * Используется при ошибках OpenAI API
+ */
+function generateNarrativeSkeletonFallback(
+  map: SemanticMap,
+  videos: VideoForScript[]
+): NarrativeSkeleton {
   const mainTopic = map.mergedTopics[0] || "интересная тема";
   const secondTopic = map.mergedTopics[1] || "";
 
-  // Формируем базовый каркас
   const coreIdea = `Видео о ${mainTopic}` +
     (secondTopic ? ` с фокусом на ${secondTopic}` : "");
 
@@ -403,7 +550,6 @@ async function generateNarrativeSkeleton(
 
   const mainQuestion = `Как использовать ${mainTopic} для достижения результата?`;
 
-  // Базовые эмоциональные точки
   const emotionalBeats = [
     "Интрига в начале - неожиданный факт",
     "Нарастание напряжения - проблема",
@@ -411,7 +557,6 @@ async function generateNarrativeSkeleton(
     "Завершение - призыв к действию",
   ];
 
-  // Структура истории
   const storyBeats = [
     "Хук: привлечь внимание за 3 секунды",
     "Проблема: показать боль аудитории",
@@ -421,28 +566,19 @@ async function generateNarrativeSkeleton(
     "Призыв к действию: что делать дальше",
   ];
 
-  // Варианты хуков на основе топ-видео
   const topVideos = videos
     .sort((a, b) => b.momentumScore - a.momentumScore)
     .slice(0, 3);
 
-  const hookCandidates = topVideos.map(v =>
-    `Адаптация хука из "${v.title.slice(0, 50)}..."`
-  );
+  const hookCandidates = topVideos.length > 0
+    ? topVideos.map(v => `Адаптация: "${v.title.slice(0, 40)}..."`)
+    : [`Шокирующий факт о ${mainTopic}`, `Вопрос: Вы знали, что ${mainTopic}...?`];
 
-  if (hookCandidates.length === 0) {
-    hookCandidates.push(`Шокирующий факт о ${mainTopic}`);
-    hookCandidates.push(`Вопрос: Вы знали, что ${mainTopic}...?`);
-  }
-
-  // Варианты концовок
   const endingIdeas = [
     "Резюме ключевых выводов + призыв подписаться",
     "Открытый вопрос для комментариев",
     "Тизер следующего видео",
   ];
-
-  console.log(`[ScriptGenerate] Нарративный скелет создан`);
 
   return {
     coreIdea,
