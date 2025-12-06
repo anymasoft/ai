@@ -5,21 +5,20 @@ import { useRouter } from "next/navigation"
 import { Command as CommandPrimitive } from "cmdk"
 import {
   Search,
-  LayoutPanelLeft,
   LayoutDashboard,
-  Mail,
-  CheckSquare,
   MessageCircle,
-  Calendar,
   Shield,
-  AlertTriangle,
   Settings,
   HelpCircle,
   CreditCard,
-  User,
   Bell,
   Link2,
   Palette,
+  Target,
+  GitCompare,
+  TrendingUp,
+  FileText,
+  FileBarChart,
   type LucideIcon,
 } from "lucide-react"
 
@@ -127,42 +126,32 @@ export function CommandSearch({ open, onOpenChange }: CommandSearchProps) {
   const commandRef = React.useRef<HTMLDivElement>(null)
 
   const searchItems: SearchItem[] = [
-    // Dashboards
-    { title: "Dashboard", url: "/dashboard", group: "Dashboards", icon: LayoutDashboard },
-    { title: "Dashboard Demo", url: "/dashboard-demo", group: "Dashboards", icon: LayoutPanelLeft },
+    // YouTube Analytics (Главные разделы)
+    { title: "Dashboard", url: "/dashboard", group: "Analytics", icon: LayoutDashboard },
+    { title: "Competitors", url: "/competitors", group: "Analytics", icon: Target },
+    { title: "Compare Channels", url: "/competitors/compare", group: "Analytics", icon: GitCompare },
+    { title: "Trending Content", url: "/trending", group: "Analytics", icon: TrendingUp },
+    { title: "Video Scripts", url: "/scripts", group: "Analytics", icon: FileText },
+    { title: "AI Reports", url: "/reports", group: "Analytics", icon: FileBarChart },
 
-    // Apps
-    { title: "Mail", url: "/mail", group: "Apps", icon: Mail },
-    { title: "Tasks", url: "/tasks", group: "Apps", icon: CheckSquare },
-    { title: "Chat", url: "/chat", group: "Apps", icon: MessageCircle },
-    { title: "Calendar", url: "/calendar", group: "Apps", icon: Calendar },
+    // Chat & Collaboration
+    { title: "AI Assistant", url: "/chat", group: "Tools", icon: MessageCircle },
 
-    // Auth Pages
-    { title: "Sign In 1", url: "/sign-in", group: "Auth Pages", icon: Shield },
-    { title: "Sign In 2", url: "/sign-in-2", group: "Auth Pages", icon: Shield },
-    { title: "Sign Up 1", url: "/sign-up", group: "Auth Pages", icon: Shield },
-    { title: "Sign Up 2", url: "/sign-up-2", group: "Auth Pages", icon: Shield },
-    { title: "Forgot Password 1", url: "/forgot-password", group: "Auth Pages", icon: Shield },
-    { title: "Forgot Password 2", url: "/forgot-password-2", group: "Auth Pages", icon: Shield },
+    // Authentication
+    { title: "Sign In", url: "/sign-in", group: "Auth", icon: Shield },
+    { title: "Sign Up", url: "/sign-up", group: "Auth", icon: Shield },
+    { title: "Forgot Password", url: "/forgot-password", group: "Auth", icon: Shield },
 
-    // Errors
-    { title: "Unauthorized", url: "/errors/unauthorized", group: "Errors", icon: AlertTriangle },
-    { title: "Forbidden", url: "/errors/forbidden", group: "Errors", icon: AlertTriangle },
-    { title: "Not Found", url: "/errors/not-found", group: "Errors", icon: AlertTriangle },
-    { title: "Internal Server Error", url: "/errors/internal-server-error", group: "Errors", icon: AlertTriangle },
-    { title: "Under Maintenance", url: "/errors/under-maintenance", group: "Errors", icon: AlertTriangle },
-
-    // Settings
-    { title: "User Settings", url: "/settings/user", group: "Settings", icon: User },
-    { title: "Account Settings", url: "/settings/account", group: "Settings", icon: Settings },
-    { title: "Plans & Billing", url: "/settings/billing", group: "Settings", icon: CreditCard },
+    // Settings & Account
+    { title: "Account", url: "/settings/account", group: "Settings", icon: Settings },
+    { title: "Billing & Plans", url: "/settings/billing", group: "Settings", icon: CreditCard },
     { title: "Appearance", url: "/settings/appearance", group: "Settings", icon: Palette },
     { title: "Notifications", url: "/settings/notifications", group: "Settings", icon: Bell },
     { title: "Connections", url: "/settings/connections", group: "Settings", icon: Link2 },
 
-    // Pages
-    { title: "FAQs", url: "/faqs", group: "Pages", icon: HelpCircle },
-    { title: "Pricing", url: "/pricing", group: "Pages", icon: CreditCard },
+    // Info Pages
+    { title: "Pricing", url: "/pricing", group: "Info", icon: CreditCard },
+    { title: "FAQs", url: "/faqs", group: "Info", icon: HelpCircle },
   ]
 
   const groupedItems = searchItems.reduce((acc, item) => {
