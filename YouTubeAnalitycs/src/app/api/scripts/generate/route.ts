@@ -698,11 +698,13 @@ const SCRIPT_GENERATOR_SYSTEM_PROMPT_V2 = `Ты — элитный сценар�
 /**
  * Генерирует финальный сценарий через OpenAI
  * Использует скелет и данные видео для создания готового текста
+ * @param temperature - температура для GPT-вызова (влияет на креативность)
  */
 async function generateScriptFromSkeleton(
   skeleton: NarrativeSkeleton,
   videos: VideoForScript[],
-  semanticMap: SemanticMap
+  semanticMap: SemanticMap,
+  temperature: number
 ): Promise<GeneratedScript> {
   const openai = new OpenAI({
     apiKey: process.env.OPENAI_API_KEY,
@@ -773,7 +775,7 @@ ${JSON.stringify(videosContext, null, 2)}
   "whyItShouldWork": "Почему этот сценарий должен сработать (на основе анализа)"
 }`;
 
-  console.log(`[ScriptGenerate] Отправляем запрос в OpenAI...`);
+  console.log(`[ScriptGenerate] Отправляем запрос в OpenAI (temperature: ${temperature})...`);
 
   const completion = await openai.chat.completions.create({
     model: "gpt-4.1-mini",
@@ -787,7 +789,7 @@ ${JSON.stringify(videosContext, null, 2)}
         content: prompt,
       },
     ],
-    temperature: 0.8,
+    temperature,
   });
 
   // Логгирование GPT-ответа
@@ -851,7 +853,10 @@ export async function POST(req: NextRequest) {
 
     // 2. Парсим тело запроса
     const body = await req.json();
-    const { selectedVideoIds } = body as { selectedVideoIds: string[] };
+    const { selectedVideoIds, temperature } = body as {
+      selectedVideoIds: string[];
+      temperature?: number;
+    };
 
     if (!selectedVideoIds || !Array.isArray(selectedVideoIds) || selectedVideoIds.length === 0) {
       return NextResponse.json(
@@ -860,7 +865,16 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    console.log(`[ScriptGenerate] Запрос на генерацию сценария. User: ${userId}, Videos: ${selectedVideoIds.length}`);
+    // Нормализация температуры для финального GPT-вызова
+    let scriptTemperature = 0.8; // дефолт на бэкенде
+    if (typeof temperature === "number" && Number.isFinite(temperature)) {
+      // Ограничиваем диапазон для безопасности
+      const min = 0.3;
+      const max = 1.3;
+      scriptTemperature = Math.min(max, Math.max(min, temperature));
+    }
+
+    console.log(`[ScriptGenerate] Запрос на генерацию сценария. User: ${userId}, Videos: ${selectedVideoIds.length}, Temperature: ${scriptTemperature}`);
 
     // 3. PIPELINE: Сбор данных по видео
     const videos = await collectVideoData(selectedVideoIds, userId);
@@ -882,7 +896,8 @@ export async function POST(req: NextRequest) {
     const generatedScript = await generateScriptFromSkeleton(
       narrativeSkeleton,
       videos,
-      semanticMap
+      semanticMap,
+      scriptTemperature
     );
 
     // 7. Сохранение в БД
