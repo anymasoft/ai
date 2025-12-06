@@ -101,7 +101,7 @@ export async function GET(req: NextRequest) {
 
     pdf.addSectionTitle("Emotional Triggers")
     pdf.addParagraph("Emotional points that drive viewer reactions:")
-    pdf.addList(semanticMap.emotionalSpikes, { bulletColor: { type: "RGB", red: 0.9, green: 0.3, blue: 0.3 } as any })
+    pdf.addList(semanticMap.emotionalSpikes)
 
     pdf.addSectionTitle("Visual Motifs")
     pdf.addParagraph("Visual elements and scenes for video production:")
