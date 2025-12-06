@@ -28,6 +28,7 @@ import {
 import { Trash2, Loader2, AlertCircle, Scale } from "lucide-react"
 import { PLAN_LIMITS } from "@/lib/plan-limits"
 import Link from "next/link"
+import { ChannelAvatar } from "@/components/channel-avatar"
 
 interface Competitor {
   id: number
@@ -256,13 +257,11 @@ export default function CompetitorsPage() {
                   >
                     <TableCell>
                       <div className="flex items-center gap-2">
-                        {competitor.avatarUrl && (
-                          <img
-                            src={competitor.avatarUrl}
-                            alt={competitor.title}
-                            className="h-8 w-8 rounded-full"
-                          />
-                        )}
+                        <ChannelAvatar
+                          src={competitor.avatarUrl}
+                          alt={competitor.title}
+                          className="h-8 w-8"
+                        />
                         <div>
                           <div className="font-medium">{competitor.title}</div>
                           <div className="text-xs text-muted-foreground">

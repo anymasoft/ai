@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/table";
 import { Loader2, AlertCircle, ArrowUpDown, ArrowUp, ArrowDown, Sparkles } from "lucide-react";
 import Link from "next/link";
+import { ChannelAvatar } from "@/components/channel-avatar";
 
 interface CompetitorSummary {
   channelId: string;
@@ -313,13 +314,11 @@ export default function ComparePage() {
                     <TableRow key={competitor.channelId}>
                       <TableCell>
                         <div className="flex items-center gap-2">
-                          {competitor.avatarUrl && (
-                            <img
-                              src={competitor.avatarUrl}
-                              alt={competitor.title}
-                              className="h-10 w-10 rounded-full"
-                            />
-                          )}
+                          <ChannelAvatar
+                            src={competitor.avatarUrl}
+                            alt={competitor.title}
+                            className="h-10 w-10"
+                          />
                           <div>
                             <div className="font-medium">{competitor.title}</div>
                             <div className="text-xs text-muted-foreground">
