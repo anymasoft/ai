@@ -1,69 +1,148 @@
 "use client"
 
-import { useState } from "react"
-import { Calendar, Clock, RefreshCw, Filter } from "lucide-react"
-import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { useState, useRef } from "react"
+import { useRouter } from "next/navigation"
+import { Calendar, Download, Plus, RefreshCw, Loader2, FileText, Image } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Separator } from "@/components/ui/separator"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import Link from "next/link"
 
-export function DashboardHeader() {
-  const [dateRange, setDateRange] = useState("30d")
-  const lastUpdated = new Date().toLocaleString()
+interface DashboardHeaderProps {
+  onPeriodChange?: (period: string) => void
+  currentPeriod?: string
+}
+
+export function DashboardHeader({ onPeriodChange, currentPeriod = "30" }: DashboardHeaderProps) {
+  const router = useRouter()
+  const [syncing, setSyncing] = useState(false)
+  const [exporting, setExporting] = useState(false)
+  const dashboardRef = useRef<HTMLDivElement>(null)
+
+  const handleSync = async () => {
+    setSyncing(true)
+    try {
+      router.refresh()
+    } finally {
+      setTimeout(() => setSyncing(false), 1000)
+    }
+  }
+
+  const handleExport = async (format: "png" | "pdf") => {
+    setExporting(true)
+    try {
+      // Dynamic import to avoid SSR issues
+      if (format === "png") {
+        const html2canvas = (await import("html2canvas")).default
+        const dashboard = document.querySelector("[data-dashboard-content]")
+        if (dashboard) {
+          const canvas = await html2canvas(dashboard as HTMLElement, {
+            backgroundColor: "#0a0a0a",
+            scale: 2,
+          })
+          const link = document.createElement("a")
+          link.download = `dashboard-${new Date().toISOString().split("T")[0]}.png`
+          link.href = canvas.toDataURL("image/png")
+          link.click()
+        }
+      } else {
+        // For PDF, we'll use browser print
+        window.print()
+      }
+    } catch (error) {
+      console.error("Export failed:", error)
+    } finally {
+      setExporting(false)
+    }
+  }
 
   return (
-    <Card>
-      <CardHeader>
-        <div className="flex items-center justify-between">
-          <div>
-            <CardTitle className="text-3xl font-bold">Business Dashboard</CardTitle>
-            <CardDescription className="text-base mt-2">
-              Comprehensive overview of your business performance and key metrics
-            </CardDescription>
-          </div>
-          <div className="flex items-center space-x-2">
-            <Badge variant="outline" className="cursor-pointer">
-              <Clock className="h-3 w-3 mr-1" />
-              Live Data
-            </Badge>
-            <Button variant="outline" size="sm" className="cursor-pointer">
-              <RefreshCw className="h-4 w-4 mr-2" />
-              Refresh
+    <div className="flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
+      {/* Title Section */}
+      <div className="space-y-1.5">
+        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text">
+          YouTube Analytics
+        </h1>
+        <p className="text-sm sm:text-base text-muted-foreground leading-relaxed">
+          Monitor competitor performance and discover trending content
+        </p>
+      </div>
+
+      {/* Actions Section */}
+      <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+        {/* Date Filter */}
+        <Select value={currentPeriod} onValueChange={onPeriodChange}>
+          <SelectTrigger className="w-[140px] h-9 text-sm bg-background/50 backdrop-blur-sm border-border/50 hover:border-border transition-colors">
+            <Calendar className="w-4 h-4 mr-2 text-muted-foreground" />
+            <SelectValue placeholder="Period" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="7">Last 7 days</SelectItem>
+            <SelectItem value="30">Last 30 days</SelectItem>
+            <SelectItem value="90">Last 90 days</SelectItem>
+          </SelectContent>
+        </Select>
+
+        {/* Export Button */}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-9 bg-background/50 backdrop-blur-sm border-border/50 hover:border-border"
+              disabled={exporting}
+            >
+              {exporting ? (
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              ) : (
+                <Download className="w-4 h-4 mr-2" />
+              )}
+              <span className="hidden sm:inline">Export</span>
             </Button>
-          </div>
-        </div>
-        
-        <Separator className="my-4" />
-        
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-4">
-            <div className="flex items-center space-x-2">
-              <Calendar className="h-4 w-4 text-muted-foreground" />
-              <span className="text-sm text-muted-foreground">Date Range:</span>
-              <Select value={dateRange} onValueChange={setDateRange}>
-                <SelectTrigger className="w-40 cursor-pointer">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="7d" className="cursor-pointer">Last 7 days</SelectItem>
-                  <SelectItem value="30d" className="cursor-pointer">Last 30 days</SelectItem>
-                  <SelectItem value="90d" className="cursor-pointer">Last 90 days</SelectItem>
-                  <SelectItem value="1y" className="cursor-pointer">Last year</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <Button variant="outline" size="sm" className="cursor-pointer">
-              <Filter className="h-4 w-4 mr-2" />
-              Filters
-            </Button>
-          </div>
-          
-          <div className="text-sm text-muted-foreground">
-            Last updated: {lastUpdated}
-          </div>
-        </div>
-      </CardHeader>
-    </Card>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem onClick={() => handleExport("png")} className="gap-2 cursor-pointer">
+              <Image className="w-4 h-4" />
+              Export as PNG
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => handleExport("pdf")} className="gap-2 cursor-pointer">
+              <FileText className="w-4 h-4" />
+              Print / PDF
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+
+        {/* Refresh Button */}
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={handleSync}
+          disabled={syncing}
+          className="h-9 bg-background/50 backdrop-blur-sm border-border/50 hover:border-border"
+        >
+          <RefreshCw className={`w-4 h-4 ${syncing ? "animate-spin" : ""}`} />
+        </Button>
+
+        {/* Add Channel Button */}
+        <Button size="sm" asChild className="h-9 gap-2">
+          <Link href="/competitors">
+            <Plus className="w-4 h-4" />
+            <span className="hidden sm:inline">Add Channel</span>
+          </Link>
+        </Button>
+      </div>
+    </div>
   )
 }

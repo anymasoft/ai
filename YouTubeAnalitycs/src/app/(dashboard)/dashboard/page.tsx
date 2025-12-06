@@ -1,91 +1,131 @@
+import { Suspense } from "react"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
-import { createClient } from "@libsql/client"
-import { MetricsOverview } from "./components/metrics-overview"
-import { SalesChart } from "./components/sales-chart"
-import { RecentTransactions } from "./components/recent-transactions"
-import { TopProducts } from "./components/top-products"
-import { CustomerInsights } from "./components/customer-insights"
-import { QuickActions } from "./components/quick-actions"
-import { RevenueBreakdown } from "./components/revenue-breakdown"
+import { getDashboardKPI, getVideoPerformance } from "@/lib/dashboard-queries"
 
-export default async function Dashboard2() {
+import { MetricsOverview, MetricsOverviewSkeleton } from "./components/metrics-overview"
+import { MomentumTrendChart } from "./components/momentum-trend-chart"
+import { PerformanceBreakdown } from "./components/performance-breakdown"
+import { RecentVideos, RecentVideosSkeleton } from "./components/recent-videos"
+import { TopVideosByMomentum, TopVideosByMomentumSkeleton } from "./components/top-videos-by-momentum"
+import { ChannelInsightsTabs } from "./components/channel-insights-tabs"
+import { DashboardHeader } from "./components/dashboard-header"
+import { DashboardEmptyState } from "./components/dashboard-empty-state"
+
+// Revalidate every 60 seconds
+export const revalidate = 60
+
+// Server Component for KPI data
+async function KPISection() {
   const session = await getServerSession(authOptions)
 
-  let competitorStats = {
-    totalCompetitors: 0,
-    totalSubscribers: 0,
-    totalViews: 0,
-    totalVideos: 0,
+  if (!session?.user?.id) {
+    return <MetricsOverview data={null} />
   }
-
-  const dbPath = process.env.DATABASE_URL || "file:sqlite.db";
-  const client = createClient({
-    url: dbPath.startsWith("file:") ? dbPath : `file:${dbPath}`,
-  });
 
   try {
-    if (session?.user?.id) {
-      try {
-        const result = await client.execute({
-          sql: `SELECT id, userId, platform, channelId, handle, title,
-                avatarUrl, subscriberCount, videoCount, viewCount,
-                lastSyncedAt, createdAt
-                FROM competitors WHERE userId = ?`,
-          args: [session.user.id],
-        });
-
-        const userCompetitors = result.rows as any[];
-
-        competitorStats = {
-          totalCompetitors: userCompetitors.length,
-          totalSubscribers: userCompetitors.reduce((sum, c) => sum + (c.subscriberCount as number), 0),
-          totalViews: userCompetitors.reduce((sum, c) => sum + (c.viewCount as number), 0),
-          totalVideos: userCompetitors.reduce((sum, c) => sum + (c.videoCount as number), 0),
-        }
-      } catch (error) {
-        console.error("Failed to fetch competitor stats:", error)
-      }
-    }
-
-    return (
-      <div className="flex-1 space-y-6 px-6 pt-0">
-          {/* Enhanced Header */}
-
-          <div className="flex md:flex-row flex-col md:items-center justify-between gap-4 md:gap-6">
-            <div className="flex flex-col gap-2">
-              <h1 className="text-2xl font-bold tracking-tight">Business Dashboard</h1>
-              <p className="text-muted-foreground">
-                Monitor your business performance and key metrics in real-time
-              </p>
-            </div>
-            <QuickActions />
-          </div>
-
-          {/* Main Dashboard Grid */}
-          <div className="@container/main space-y-6">
-            {/* Top Row - Key Metrics */}
-
-            <MetricsOverview stats={competitorStats} />
-
-            {/* Second Row - Charts in 6-6 columns */}
-            <div className="grid gap-6 grid-cols-1 @5xl:grid-cols-2">
-              <SalesChart />
-              <RevenueBreakdown />
-            </div>
-
-            {/* Third Row - Two Column Layout */}
-            <div className="grid gap-6 grid-cols-1 @5xl:grid-cols-2">
-              <RecentTransactions />
-              <TopProducts />
-            </div>
-
-            {/* Fourth Row - Customer Insights and Team Performance */}
-            <CustomerInsights />
-          </div>
-        </div>
-    )
-  } finally {
-    client.close();
+    const kpiData = await getDashboardKPI(session.user.id)
+    return <MetricsOverview data={kpiData} />
+  } catch (error) {
+    console.error("[Dashboard] Failed to fetch KPI:", error)
+    return <MetricsOverview data={null} />
   }
+}
+
+// Server Component for Recent Videos
+async function RecentVideosSection() {
+  const session = await getServerSession(authOptions)
+
+  if (!session?.user?.id) {
+    return <RecentVideos data={null} />
+  }
+
+  try {
+    const videosData = await getVideoPerformance(session.user.id, "recent", 5)
+    return <RecentVideos data={videosData} />
+  } catch (error) {
+    console.error("[Dashboard] Failed to fetch recent videos:", error)
+    return <RecentVideos data={null} />
+  }
+}
+
+// Server Component for Top Momentum Videos
+async function TopMomentumSection() {
+  const session = await getServerSession(authOptions)
+
+  if (!session?.user?.id) {
+    return <TopVideosByMomentum data={null} />
+  }
+
+  try {
+    const videosData = await getVideoPerformance(session.user.id, "momentum", 5)
+    return <TopVideosByMomentum data={videosData} />
+  } catch (error) {
+    console.error("[Dashboard] Failed to fetch momentum videos:", error)
+    return <TopVideosByMomentum data={null} />
+  }
+}
+
+// Check if user has any data
+async function hasData(): Promise<boolean> {
+  const session = await getServerSession(authOptions)
+  if (!session?.user?.id) return false
+
+  try {
+    const kpiData = await getDashboardKPI(session.user.id)
+    return kpiData.totalCompetitors > 0
+  } catch {
+    return false
+  }
+}
+
+export default async function Dashboard() {
+  const hasUserData = await hasData()
+
+  // Show empty state if no competitors
+  if (!hasUserData) {
+    return (
+      <div className="flex-1 px-4 sm:px-6 lg:px-8 py-6">
+        <DashboardEmptyState />
+      </div>
+    )
+  }
+
+  return (
+    <div className="flex-1 px-4 sm:px-6 lg:px-8 py-6 space-y-8" data-dashboard-content>
+      {/* Header with date filter and actions */}
+      <DashboardHeader />
+
+      {/* Main Dashboard Grid */}
+      <div className="space-y-8">
+        {/* Top Row - Key Metrics */}
+        <section>
+          <Suspense fallback={<MetricsOverviewSkeleton />}>
+            <KPISection />
+          </Suspense>
+        </section>
+
+        {/* Second Row - Charts */}
+        <section className="grid gap-6 grid-cols-1 lg:grid-cols-2">
+          <MomentumTrendChart />
+          <PerformanceBreakdown />
+        </section>
+
+        {/* Third Row - Video Lists */}
+        <section className="grid gap-6 grid-cols-1 lg:grid-cols-2">
+          <Suspense fallback={<RecentVideosSkeleton />}>
+            <RecentVideosSection />
+          </Suspense>
+          <Suspense fallback={<TopVideosByMomentumSkeleton />}>
+            <TopMomentumSection />
+          </Suspense>
+        </section>
+
+        {/* Fourth Row - Channel Insights */}
+        <section>
+          <ChannelInsightsTabs />
+        </section>
+      </div>
+    </div>
+  )
 }
