@@ -1,25 +1,34 @@
 "use client"
 
+import { useEffect, useState } from "react"
 import {
   TrendingUp,
   TrendingDown,
   Users,
-  Video,
   Eye,
-  BarChart3
+  Tv,
+  Zap,
+  ExternalLink
 } from "lucide-react"
 import { Card, CardAction, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
+import { Skeleton } from "@/components/ui/skeleton"
 
-interface CompetitorStats {
+interface KPIData {
   totalCompetitors: number
   totalSubscribers: number
-  totalViews: number
   totalVideos: number
-}
-
-interface MetricsOverviewProps {
-  stats: CompetitorStats
+  totalViews: number
+  avgMomentum: number
+  topMomentumVideo: {
+    videoId: string
+    title: string
+    channelTitle: string
+    viewsPerDay: number
+    momentumScore: number
+    url: string
+  } | null
+  totalScriptsGenerated: number
 }
 
 function formatNumber(num: number): string {
@@ -33,74 +42,152 @@ function formatNumber(num: number): string {
   return num.toString()
 }
 
-export function MetricsOverview({ stats }: MetricsOverviewProps) {
+function MetricCardSkeleton() {
+  return (
+    <Card>
+      <CardHeader>
+        <Skeleton className="h-4 w-24" />
+        <Skeleton className="h-8 w-16 mt-2" />
+        <CardAction>
+          <Skeleton className="h-5 w-16" />
+        </CardAction>
+      </CardHeader>
+      <CardFooter className="flex-col items-start gap-1.5">
+        <Skeleton className="h-4 w-32" />
+        <Skeleton className="h-3 w-24" />
+      </CardFooter>
+    </Card>
+  )
+}
+
+export function MetricsOverview() {
+  const [data, setData] = useState<KPIData | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    async function fetchKPI() {
+      try {
+        const response = await fetch("/api/dashboard/kpi")
+        if (!response.ok) {
+          throw new Error("Failed to fetch KPI data")
+        }
+        const result = await response.json()
+        if (result.success) {
+          setData(result.data)
+        } else {
+          throw new Error(result.error || "Unknown error")
+        }
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Failed to load data")
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchKPI()
+  }, [])
+
+  if (loading) {
+    return (
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <MetricCardSkeleton />
+        <MetricCardSkeleton />
+        <MetricCardSkeleton />
+        <MetricCardSkeleton />
+      </div>
+    )
+  }
+
+  if (error || !data) {
+    return (
+      <Card className="p-6">
+        <div className="flex items-center justify-center text-muted-foreground">
+          <p>{error || "No data available"}</p>
+        </div>
+      </Card>
+    )
+  }
+
   const metrics = [
     {
-      title: "Tracked Competitors",
-      value: stats.totalCompetitors.toString(),
-      description: "YouTube channels",
-      change: stats.totalCompetitors > 0 ? "Active" : "None",
-      trend: stats.totalCompetitors > 0 ? "up" : "down",
-      icon: Users,
-      footer: stats.totalCompetitors > 0 ? "Monitoring competitors" : "Add competitors to track",
-      subfooter: "Track up to your plan limit"
+      title: "Tracked Channels",
+      value: data.totalCompetitors.toString(),
+      icon: Tv,
+      trend: data.totalCompetitors > 0 ? "up" : "neutral",
+      badge: data.totalCompetitors > 0 ? "Active" : "None",
+      footer: data.totalCompetitors > 0 ? "Monitoring competitors" : "Add channels to track",
+      subfooter: `${data.totalScriptsGenerated} scripts generated`
     },
     {
       title: "Total Subscribers",
-      value: formatNumber(stats.totalSubscribers),
-      description: "Combined audience",
-      change: stats.totalSubscribers > 0 ? formatNumber(stats.totalSubscribers) : "0",
-      trend: "up",
+      value: formatNumber(data.totalSubscribers),
       icon: Users,
-      footer: "Aggregated from competitors",
-      subfooter: "Total subscriber base"
-    },
-    {
-      title: "Total Videos",
-      value: formatNumber(stats.totalVideos),
-      description: "Content published",
-      change: stats.totalVideos > 0 ? formatNumber(stats.totalVideos) : "0",
       trend: "up",
-      icon: Video,
-      footer: "Video content tracked",
-      subfooter: "Competitor video count"
+      badge: formatNumber(data.totalSubscribers),
+      footer: "Combined audience reach",
+      subfooter: "Across all channels"
     },
     {
       title: "Total Views",
-      value: formatNumber(stats.totalViews),
-      description: "Cumulative views",
-      change: stats.totalViews > 0 ? formatNumber(stats.totalViews) : "0",
-      trend: "up",
+      value: formatNumber(data.totalViews),
       icon: Eye,
-      footer: "Combined view count",
-      subfooter: "Aggregate performance"
+      trend: "up",
+      badge: formatNumber(data.totalViews),
+      footer: "Cumulative view count",
+      subfooter: `${formatNumber(data.totalVideos)} videos tracked`
+    },
+    {
+      title: "Top Momentum",
+      value: data.topMomentumVideo
+        ? `+${Math.round(data.topMomentumVideo.momentumScore * 100)}%`
+        : "—",
+      icon: Zap,
+      trend: data.topMomentumVideo && data.topMomentumVideo.momentumScore > 0.5 ? "up" : "neutral",
+      badge: data.topMomentumVideo
+        ? `${formatNumber(data.topMomentumVideo.viewsPerDay)}/day`
+        : "No data",
+      footer: data.topMomentumVideo
+        ? data.topMomentumVideo.title.slice(0, 40) + (data.topMomentumVideo.title.length > 40 ? "..." : "")
+        : "No high momentum videos",
+      subfooter: data.topMomentumVideo?.channelTitle || "Sync videos first",
+      link: data.topMomentumVideo?.url
     },
   ]
 
   return (
-    <div className="*:data-[slot=card]:from-primary/5 *:data-[slot=card]:to-card dark:*:data-[slot=card]:bg-card *:data-[slot=card]:bg-gradient-to-t *:data-[slot=card]:shadow-xs grid gap-4 sm:grid-cols-2 @5xl:grid-cols-4">
+    <div className="*:data-[slot=card]:from-primary/5 *:data-[slot=card]:to-card dark:*:data-[slot=card]:bg-card *:data-[slot=card]:bg-gradient-to-t *:data-[slot=card]:shadow-xs grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
       {metrics.map((metric) => {
-        const TrendIcon = metric.trend === "up" ? TrendingUp : TrendingDown
-        
+        const TrendIcon = metric.trend === "up" ? TrendingUp : metric.trend === "down" ? TrendingDown : TrendingUp
+        const IconComponent = metric.icon
+
         return (
-          <Card key={metric.title} className=" cursor-pointer">
+          <Card
+            key={metric.title}
+            className={metric.link ? "cursor-pointer hover:shadow-md transition-shadow" : ""}
+            onClick={() => metric.link && window.open(metric.link, "_blank")}
+          >
             <CardHeader>
-              <CardDescription>{metric.title}</CardDescription>
+              <CardDescription className="flex items-center gap-2">
+                <IconComponent className="h-4 w-4" />
+                {metric.title}
+              </CardDescription>
               <CardTitle className="text-2xl font-semibold tabular-nums @[250px]/card:text-3xl">
                 {metric.value}
               </CardTitle>
               <CardAction>
-                <Badge variant="outline">
-                  <TrendIcon className="h-4 w-4" />
-                  {metric.change}
+                <Badge variant="outline" className="gap-1">
+                  {metric.trend !== "neutral" && <TrendIcon className="h-3 w-3" />}
+                  {metric.badge}
                 </Badge>
               </CardAction>
             </CardHeader>
             <CardFooter className="flex-col items-start gap-1.5 text-sm">
-              <div className="line-clamp-1 flex gap-2 font-medium">
-                {metric.footer} <TrendIcon className="size-4" />
+              <div className="line-clamp-1 flex gap-2 font-medium items-center">
+                {metric.footer}
+                {metric.link && <ExternalLink className="h-3 w-3 text-muted-foreground" />}
               </div>
-              <div className="text-muted-foreground">
+              <div className="text-muted-foreground line-clamp-1">
                 {metric.subfooter}
               </div>
             </CardFooter>
