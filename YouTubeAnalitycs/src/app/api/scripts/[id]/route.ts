@@ -48,6 +48,28 @@ export async function GET(
     }
 
     const row = result.rows[0];
+    const sourceVideoIds: string[] = JSON.parse(row.sourceVideos as string);
+
+    // Получаем названия видео из БД
+    let sourceVideosData: Array<{ id: string; title: string }> = [];
+    if (sourceVideoIds.length > 0) {
+      const placeholders = sourceVideoIds.map(() => "?").join(",");
+      const videosResult = await db.execute({
+        sql: `SELECT videoId, title FROM channel_videos WHERE videoId IN (${placeholders})`,
+        args: sourceVideoIds,
+      });
+
+      const videoTitlesMap = new Map<string, string>();
+      videosResult.rows.forEach(vRow => {
+        videoTitlesMap.set(vRow.videoId as string, vRow.title as string);
+      });
+
+      sourceVideosData = sourceVideoIds.map(id => ({
+        id,
+        title: videoTitlesMap.get(id) || id, // fallback на ID если название не найдено
+      }));
+    }
+
     const script: SavedScript = {
       id: row.id as string,
       userId: row.userId as string,
@@ -56,13 +78,13 @@ export async function GET(
       outline: JSON.parse(row.outline as string),
       scriptText: row.scriptText as string,
       whyItShouldWork: row.whyItShouldWork as string,
-      sourceVideos: JSON.parse(row.sourceVideos as string),
+      sourceVideos: sourceVideoIds,
       createdAt: row.createdAt as number,
     };
 
     console.log(`[ScriptDetail] Returning script ${scriptId} for user ${userId}`);
 
-    return NextResponse.json(script);
+    return NextResponse.json({ ...script, sourceVideosData });
   } catch (error) {
     console.error("[ScriptDetail] Error fetching script:", error);
 
