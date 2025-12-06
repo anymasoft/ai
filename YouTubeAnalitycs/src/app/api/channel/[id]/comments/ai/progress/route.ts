@@ -6,6 +6,7 @@ import { createClient } from "@libsql/client";
 /**
  * GET /api/channel/[id]/comments/ai/progress
  * Возвращает прогресс выполнения глубокого AI-анализа комментариев
+ * НИКОГДА не падает, всегда возвращает JSON с полями по умолчанию.
  */
 export async function GET(
   req: NextRequest,
@@ -15,7 +16,16 @@ export async function GET(
     const session = await getServerSession(authOptions);
 
     if (!session?.user?.id) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      // Возвращаем структуру прогресса с ошибкой, но HTTP 401
+      return NextResponse.json(
+        {
+          status: "error",
+          progress_current: 0,
+          progress_total: 1,
+          percent: 0,
+        },
+        { status: 401 }
+      );
     }
 
     const { id } = await context.params;
@@ -23,7 +33,12 @@ export async function GET(
 
     if (!Number.isFinite(competitorId) || competitorId <= 0) {
       return NextResponse.json(
-        { error: "Invalid competitor ID" },
+        {
+          status: "error",
+          progress_current: 0,
+          progress_total: 1,
+          percent: 0,
+        },
         { status: 400 }
       );
     }
@@ -43,7 +58,12 @@ export async function GET(
     if (competitorResult.rows.length === 0) {
       client.close();
       return NextResponse.json(
-        { error: "Competitor not found or access denied" },
+        {
+          status: "error",
+          progress_current: 0,
+          progress_total: 1,
+          percent: 0,
+        },
         { status: 404 }
       );
     }
@@ -65,9 +85,9 @@ export async function GET(
     if (progressResult.rows.length === 0) {
       return NextResponse.json(
         {
-          status: "not_started",
+          status: "pending",
           progress_current: 0,
-          progress_total: 0,
+          progress_total: 1,
           percent: 0,
         },
         { status: 200 }
@@ -75,29 +95,33 @@ export async function GET(
     }
 
     const row = progressResult.rows[0];
-    const current = (row.progress_current as number) || 0;
-    const total = (row.progress_total as number) || 0;
-    const status = (row.status as string) || 'pending';
-    const percent = total > 0 ? Math.round((current / total) * 100) : 0;
+    const status = (row.status as string) ?? "pending";
+    const progress_current = (row.progress_current as number) ?? 0;
+    const progress_total = (row.progress_total as number) ?? 1;
+    const percent =
+      progress_total > 0
+        ? Math.round((progress_current / progress_total) * 100)
+        : 0;
 
     return NextResponse.json(
       {
         status,
-        progress_current: current,
-        progress_total: total,
+        progress_current,
+        progress_total,
         percent,
       },
       { status: 200 }
     );
   } catch (error) {
-    console.error("[ProgressAPI] Error:", error);
-
-    if (error instanceof Error) {
-      return NextResponse.json({ error: error.message }, { status: 400 });
-    }
-
+    console.error("[progress error]", error);
+    // Всегда возвращаем JSON, даже при неизвестной ошибке
     return NextResponse.json(
-      { error: "Failed to get analysis progress" },
+      {
+        status: "error",
+        progress_current: 0,
+        progress_total: 1,
+        percent: 0,
+      },
       { status: 500 }
     );
   }

@@ -145,6 +145,8 @@ export async function POST(
                   authorChannelId = ?,
                   isVerified = ?,
                   isCreator = ?,
+                  channelId = ?,
+                  data = ?,
                   fetchedAt = ?
                   WHERE commentId = ?`,
                 args: [
@@ -157,6 +159,8 @@ export async function POST(
                   comment.authorChannelId,
                   comment.isVerified ? 1 : 0,
                   comment.isCreator ? 1 : 0,
+                  video.channelId,
+                  null,
                   Date.now(),
                   comment.id,
                 ],
@@ -167,8 +171,8 @@ export async function POST(
                 sql: `INSERT INTO video_comments (
                   videoId, commentId, content, publishedTime, replyLevel,
                   likes, replies, authorName, authorChannelId, isVerified,
-                  isCreator, fetchedAt
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                  isCreator, channelId, data, fetchedAt
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
                 args: [
                   video.videoId,
                   comment.id,
@@ -181,6 +185,8 @@ export async function POST(
                   comment.authorChannelId,
                   comment.isVerified ? 1 : 0,
                   comment.isCreator ? 1 : 0,
+                  video.channelId,
+                  null,
                   Date.now(),
                 ],
               });

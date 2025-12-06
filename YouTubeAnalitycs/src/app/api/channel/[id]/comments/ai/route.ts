@@ -7,11 +7,16 @@ import { analyzeChannelComments, type CommentForAnalysis, normalizeComments, chu
 /**
  * POST /api/channel/[id]/comments/ai
  * Генерирует глубокий AI-анализ комментариев канала (v2.0)
+ * НИКОГДА не падает, всегда возвращает JSON.
  */
 export async function POST(
   req: NextRequest,
   context: { params: Promise<{ id: string }> }
 ) {
+  let client = null;
+  let channelId: string | null = null;
+  let recordId: number | null = null;
+
   try {
     const session = await getServerSession(authOptions);
 
@@ -32,7 +37,7 @@ export async function POST(
     console.log(`[DeepCommentAI] Запрос анализа для competitor ID: ${competitorId}`);
 
     const dbPath = process.env.DATABASE_URL || "file:sqlite.db";
-    const client = createClient({
+    client = createClient({
       url: dbPath.startsWith("file:") ? dbPath : `file:${dbPath}`,
     });
 
@@ -43,14 +48,13 @@ export async function POST(
     });
 
     if (competitorResult.rows.length === 0) {
-      client.close();
       return NextResponse.json(
         { error: "Competitor not found or access denied" },
         { status: 404 }
       );
     }
 
-    const channelId = competitorResult.rows[0].channelId as string;
+    channelId = competitorResult.rows[0].channelId as string;
     const channelTitle = competitorResult.rows[0].title as string;
 
     console.log(`[DeepCommentAI] Канал найден: ${channelTitle}`);
@@ -65,9 +69,8 @@ export async function POST(
     });
 
     if (videosResult.rows.length === 0) {
-      client.close();
       return NextResponse.json(
-        { error: "No videos found. Please sync videos first." },
+        { error: "Sync Top Videos first" },
         { status: 400 }
       );
     }
@@ -87,9 +90,8 @@ export async function POST(
     });
 
     if (commentsResult.rows.length === 0) {
-      client.close();
       return NextResponse.json(
-        { error: "No comments found. Please sync comments first." },
+        { error: "Sync Comments first" },
         { status: 400 }
       );
     }
@@ -119,16 +121,7 @@ export async function POST(
 
     console.log(`[DeepCommentAI] Создана запись анализа: status='pending'`);
 
-    // Генерация анализа (всегда RU)
-    const analysisResult = await analyzeChannelComments(
-      commentsForAnalysis,
-      "ru",
-      channelId
-    );
-
-    console.log(`[DeepCommentAI] Анализ завершён успешно`);
-
-    // Находим id последней записи
+    // Находим id созданной записи
     const latestResult = await client.execute({
       sql: `SELECT id FROM channel_ai_comment_insights
             WHERE channelId = ?
@@ -139,14 +132,22 @@ export async function POST(
 
     if (latestResult.rows.length === 0) {
       console.error('[DeepCommentAI] No record found after creation');
-      client.close();
       return NextResponse.json(
         { error: 'Failed to find created analysis record' },
         { status: 500 }
       );
     }
 
-    const recordId = latestResult.rows[0].id;
+    recordId = latestResult.rows[0].id as number;
+
+    // Генерация анализа (всегда RU)
+    const analysisResult = await analyzeChannelComments(
+      commentsForAnalysis,
+      "ru",
+      channelId
+    );
+
+    console.log(`[DeepCommentAI] Анализ завершён успешно`);
 
     // Обновляем запись: сохраняем результат
     await client.execute({
@@ -158,8 +159,6 @@ export async function POST(
 
     console.log(`[DeepCommentAI] Результат сохранён`);
 
-    client.close();
-
     return NextResponse.json(
       {
         ...analysisResult,
@@ -169,16 +168,38 @@ export async function POST(
       { status: 201 }
     );
   } catch (error) {
-    console.error("[DeepCommentAI] Ошибка:", error);
+    console.error("[ai route crash]", error);
 
-    if (error instanceof Error) {
-      return NextResponse.json({ error: error.message }, { status: 400 });
+    // Если есть channelId и recordId, обновляем статус на error
+    if (client && channelId) {
+      try {
+        await client.execute({
+          sql: `UPDATE channel_ai_comment_insights
+                SET status = 'error'
+                WHERE channelId = ? AND (status = 'pending' OR status = 'processing')
+                ORDER BY createdAt DESC
+                LIMIT 1`,
+          args: [channelId],
+        });
+        console.log(`[ai route] Updated progress to error for channel ${channelId}`);
+      } catch (updateError) {
+        console.error("[ai route] Failed to update error status:", updateError);
+      }
     }
 
+    // Всегда возвращаем JSON, даже при ошибке
     return NextResponse.json(
-      { error: "Failed to generate deep comment analysis" },
+      { error: "internal crash" },
       { status: 500 }
     );
+  } finally {
+    if (client) {
+      try {
+        client.close();
+      } catch (closeError) {
+        console.error("[ai route] Failed to close client:", closeError);
+      }
+    }
   }
 }
 

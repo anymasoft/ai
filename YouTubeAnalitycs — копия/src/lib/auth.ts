@@ -1,0 +1,43 @@
+import { NextAuthOptions } from "next-auth";
+import GoogleProvider from "next-auth/providers/google";
+
+export const authOptions: NextAuthOptions = {
+  providers: [
+    GoogleProvider({
+      clientId: process.env.GOOGLE_CLIENT_ID || "",
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET || "",
+    }),
+  ],
+  session: {
+    strategy: "jwt",
+  },
+  secret: process.env.NEXTAUTH_SECRET,
+  callbacks: {
+    async jwt({ token, user, account }) {
+      if (user) {
+        token.id = user.id;
+        // @ts-ignore - берём role и plan из созданного пользователя в БД
+        token.role = user.role || "user";
+        // @ts-ignore - берём role и plan из созданного пользователя в БД
+        token.plan = user.plan || "free";
+      }
+      return token;
+    },
+    async session({ session, token }) {
+      if (session.user) {
+        // @ts-ignore
+        session.user.id = token.id;
+        // @ts-ignore
+        session.user.role = token.role || "user";
+        // @ts-ignore
+        session.user.plan = token.plan || "free";
+      }
+      return session;
+    },
+  },
+  pages: {
+    signIn: "/sign-in",
+    error: "/sign-in",
+  },
+  debug: true,
+};

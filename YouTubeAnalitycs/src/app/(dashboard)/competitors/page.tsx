@@ -25,8 +25,9 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import { Trash2, Loader2, AlertCircle } from "lucide-react"
+import { Trash2, Loader2, AlertCircle, Scale } from "lucide-react"
 import { PLAN_LIMITS } from "@/lib/plan-limits"
+import Link from "next/link"
 
 interface Competitor {
   id: number
@@ -160,9 +161,19 @@ export default function CompetitorsPage() {
 
   return (
     <div className="container mx-auto px-4 md:px-6 space-y-6">
-      <div className="mb-6">
-        <h1 className="text-3xl font-bold">Competitors Analysis</h1>
-        <p className="text-muted-foreground">Track and analyze your competition</p>
+      <div className="flex items-center justify-between mb-6">
+        <div>
+          <h1 className="text-3xl font-bold">Competitors Analysis</h1>
+          <p className="text-muted-foreground">Track and analyze your competition</p>
+        </div>
+        {competitors.length >= 2 && (
+          <Link href="/competitors/compare">
+            <Button variant="default">
+              <Scale className="mr-2 h-4 w-4" />
+              Compare All
+            </Button>
+          </Link>
+        )}
       </div>
 
       {error && (

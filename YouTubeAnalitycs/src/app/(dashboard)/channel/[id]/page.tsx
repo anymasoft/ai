@@ -130,14 +130,16 @@ export default async function ChannelPage({ params }: PageProps) {
 
     // Проверяем наличие комментариев (если есть видео)
     let hasComments = false;
-    if (hasVideos) {
+    if (hasVideos && videos.length > 0) {
       const videoIds = videos.map(v => v.videoId);
-      const placeholders = videoIds.map(() => '?').join(',');
-      const commentSampleResult = await client.execute({
-        sql: `SELECT * FROM video_comments WHERE videoId IN (${placeholders}) LIMIT 1`,
-        args: videoIds,
-      });
-      hasComments = commentSampleResult.rows.length > 0;
+      if (videoIds.length > 0) {
+        const placeholders = videoIds.map(() => '?').join(',');
+        const commentSampleResult = await client.execute({
+          sql: `SELECT * FROM video_comments WHERE videoId IN (${placeholders}) LIMIT 1`,
+          args: videoIds,
+        });
+        hasComments = commentSampleResult.rows.length > 0;
+      }
     }
 
     // Получаем Content Intelligence анализ

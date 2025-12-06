@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
@@ -45,6 +45,7 @@ export function DeepCommentAnalysis({
   const [data, setData] = useState<any>(initialData || null);
   const [error, setError] = useState<string | null>(null);
   const [progress, setProgress] = useState<ProgressData | null>(null);
+  const intervalRef = useRef<number | NodeJS.Timeout | null>(null);
 
   // Обновляем локальные данные при изменении initialData
   useEffect(() => {
@@ -53,10 +54,22 @@ export function DeepCommentAnalysis({
     }
   }, [initialData]);
 
+  // Очистка интервала при размонтировании
+  useEffect(() => {
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current as any);
+      }
+    };
+  }, []);
+
   async function handleGenerate() {
     setLoading(true);
     setError(null);
+    setProgress(null);
+
     try {
+      // Запускаем анализ
       const res = await fetch(`/api/channel/${channelId}/comments/ai`, {
         method: "POST",
         credentials: "include",
@@ -67,13 +80,104 @@ export function DeepCommentAnalysis({
         throw new Error(e.error || "Failed to generate analysis");
       }
 
-      router.refresh();
+      // Начинаем поллинг прогресса
+      startPolling();
     } catch (err) {
       toast.error("Generation failed");
       setError("Generation failed");
-    } finally {
       setLoading(false);
     }
+  }
+
+  function startPolling() {
+    if (!channelId) return;
+
+    const fetchProgress = async () => {
+      try {
+        const res = await fetch(`/api/channel/${channelId}/comments/ai/progress`, {
+          credentials: "include",
+        });
+        if (!res.ok) {
+          console.warn("[DeepCommentAnalysis] Progress fetch not ok:", res.status);
+          return;
+        }
+        const progressData = await res.json();
+        console.log("[DeepCommentAnalysis] Progress data:", progressData);
+        setProgress(progressData);
+
+        if (progressData.status === "done" || progressData.status === "error") {
+          if (intervalRef.current) {
+            clearInterval(intervalRef.current as any);
+            intervalRef.current = null;
+          }
+          setLoading(false);
+          if (progressData.status === "done") {
+            router.refresh();
+          }
+        }
+      } catch (err) {
+        console.error("[DeepCommentAnalysis] Error fetching progress:", err);
+      }
+    };
+
+    // начальный запрос
+    fetchProgress();
+    // интервальный polling
+    if (intervalRef.current) clearInterval(intervalRef.current as any);
+    intervalRef.current = setInterval(fetchProgress, 1500);
+  }
+
+  if (loading) {
+    const estimatedTimePerChunk = 3; // секунды на чанк
+    const remaining = progress
+      ? (progress.progress_total - progress.progress_current) * estimatedTimePerChunk
+      : 0;
+    const eta = remaining > 0 ? `~${Math.ceil(remaining)}s` : "";
+
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Brain className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
+            Deep Audience Intelligence (AI v2.0)
+          </CardTitle>
+          <CardDescription>
+            Deep audience comment analysis
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-col items-center justify-center py-12 space-y-6">
+            <Loader2 className="h-8 w-8 animate-spin text-indigo-600 dark:text-indigo-400" />
+
+            {progress && progress.status === "processing" && (
+              <>
+                <div className="text-center space-y-2">
+                  <p className="text-sm font-medium">
+                    🔄 Processing {progress.progress_current} / {progress.progress_total} chunks ({progress.percent}%)
+                  </p>
+                  {eta && (
+                    <p className="text-xs text-muted-foreground">
+                      ETA: {eta}
+                    </p>
+                  )}
+                </div>
+
+                <div className="w-full max-w-md">
+                  <Progress value={progress.percent} className="h-2" />
+                </div>
+              </>
+            )}
+
+            {(!progress || progress.status === "pending") && (
+              <div className="text-center space-y-2">
+                <p className="text-muted-foreground">Initializing analysis...</p>
+                <p className="text-sm text-muted-foreground">This may take 30–60 seconds</p>
+              </div>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+    );
   }
 
   if (!data) {
@@ -87,8 +191,31 @@ export function DeepCommentAnalysis({
           <CardDescription>Deep analysis of comments</CardDescription>
         </CardHeader>
         <CardContent>
-          <Button onClick={handleGenerate}>Generate Deep Analysis</Button>
-          {error && <p className="text-red-600 text-sm mt-3">{error}</p>}
+          <div className="flex flex-col items-center justify-center py-6">
+            {!hasRequiredData ? (
+              <>
+                <p className="text-muted-foreground mb-2 text-center">
+                  Sync Comments first
+                </p>
+                <p className="text-sm text-muted-foreground mb-4 text-center">
+                  Click 'Sync Comments' button above to load data.
+                </p>
+                <Button onClick={handleGenerate} disabled title="Sync Comments first">
+                  Generate Deep Analysis
+                </Button>
+              </>
+            ) : (
+              <>
+                <p className="text-muted-foreground mb-4">
+                  Deep AI analysis of audience comments.
+                </p>
+                <Button onClick={handleGenerate}>
+                  Generate Deep Analysis
+                </Button>
+              </>
+            )}
+            {error && <p className="text-red-600 text-sm mt-3">{error}</p>}
+          </div>
         </CardContent>
       </Card>
     );

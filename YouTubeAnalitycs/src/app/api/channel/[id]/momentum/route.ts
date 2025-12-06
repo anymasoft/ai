@@ -106,7 +106,7 @@ export async function POST(
     if (videosResult.rows.length === 0) {
       client.close();
       return NextResponse.json(
-        { error: "No videos found. Please sync videos first." },
+        { error: "Sync Top Videos first" },
         { status: 400 }
       );
     }
@@ -291,8 +291,8 @@ ${JSON.stringify(videosForAnalysis, null, 2)}
 
     // Сохраняем результат в базу данных
     await client.execute({
-      sql: "INSERT INTO momentum_insights (channelId, data, generatedAt) VALUES (?, ?, ?)",
-      args: [competitor.channelId, JSON.stringify(momentumData), Date.now()],
+      sql: "INSERT INTO momentum_insights (channelId, data, data_ru, generatedAt) VALUES (?, ?, ?, ?)",
+      args: [competitor.channelId, JSON.stringify(momentumData), null, Date.now()],
     });
 
     console.log(`[Momentum] Анализ сохранён в БД`);

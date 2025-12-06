@@ -59,6 +59,20 @@ export async function POST(
 
     console.log(`[Sync] Канал найден: ${competitor.title} (${competitor.handle})`);
 
+    // ОТКЛЮЧЕНО для разработки: Проверка частоты синхронизации (раз в 6 часов)
+    // const lastSyncedAt = competitor.lastSyncedAt as number | null;
+    // const sixHoursMs = 6 * 60 * 60 * 1000;
+    // if (lastSyncedAt && Date.now() - lastSyncedAt < sixHoursMs) {
+    //   client.close();
+    //   return NextResponse.json(
+    //     {
+    //       error: "Sync allowed once per 6 hours",
+    //       nextSyncAvailable: new Date(lastSyncedAt + sixHoursMs).toISOString(),
+    //     },
+    //     { status: 429 }
+    //   );
+    // }
+
     // Получаем актуальные данные из ScrapeCreators
     let channelData;
     try {
@@ -83,17 +97,16 @@ export async function POST(
       args: [competitor.channelId, today],
     });
 
-    // TEMPORARY: Allow multiple syncs per day for testing (max 10)
-    // In production, uncomment the check below to allow only 1 sync per day
-    if (existingMetricsResult.rows.length >= 10) {
-      console.log("[Sync] Maximum syncs per day reached (10)");
-      client.close();
-      return NextResponse.json({
-        status: "exists",
-        message: "Maximum syncs per day reached (10). Try again tomorrow.",
-        date: today,
-      });
-    }
+    // ОТКЛЮЧЕНО для разработки: ограничение на количество синхронизаций в день
+    // if (existingMetricsResult.rows.length >= 10) {
+    //   console.log("[Sync] Maximum syncs per day reached (10)");
+    //   client.close();
+    //   return NextResponse.json({
+    //     status: "exists",
+    //     message: "Maximum syncs per day reached (10). Try again tomorrow.",
+    //     date: today,
+    //   });
+    // }
 
     // Production check (currently disabled for testing):
     // if (existingMetricsResult.rows.length > 0) {

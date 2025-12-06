@@ -71,5 +71,10 @@
     "tailwindcss": "^4.1.11",
     "tw-animate-css": "^1.3.6",
     "typescript": "^5"
-  }
+  },
+  "description": "Всегда писать и комментировать только на русском языке.",
+  "main": "index.js",
+  "keywords": [],
+  "author": "",
+  "license": "ISC"
 }

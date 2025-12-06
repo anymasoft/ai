@@ -131,7 +131,7 @@ export async function POST(
     if (videosResult.rows.length === 0) {
       client.close();
       return NextResponse.json(
-        { error: "No videos found. Please sync videos first." },
+        { error: "Sync Top Videos first" },
         { status: 400 }
       );
     }

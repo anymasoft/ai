@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
-import { db } from "@/lib/db";
 import OpenAI from "openai";
 import { createClient } from "@libsql/client";
 
@@ -121,8 +120,8 @@ export async function POST(
 
     // Сохраняем результат
     await client.execute({
-      sql: "INSERT INTO deep_audience (channelId, data, data_ru, createdAt) VALUES (?, ?, NULL, ?)",
-      args: [channelId, JSON.stringify(deepAudienceData), Date.now()],
+      sql: "INSERT INTO deep_audience (channelId, data, data_ru, createdAt) VALUES (?, ?, ?, ?)",
+      args: [channelId, JSON.stringify(deepAudienceData), null, Date.now()],
     });
 
     console.log(`[DeepAudience] Анализ сохранён в БД`);

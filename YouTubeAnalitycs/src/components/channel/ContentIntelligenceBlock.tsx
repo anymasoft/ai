@@ -98,12 +98,12 @@ export function ContentIntelligenceBlock({
             {!hasRequiredData ? (
               <>
                 <p className="text-muted-foreground mb-2 text-center">
-                  Sync videos first
+                  Sync Top Videos first
                 </p>
                 <p className="text-sm text-muted-foreground mb-4 text-center">
                   Click 'Sync Top Videos' above to load data.
                 </p>
-                <Button onClick={handleGenerate} className="gap-2 cursor-pointer" disabled title="Sync videos first">
+                <Button onClick={handleGenerate} className="gap-2 cursor-pointer" disabled title="Sync Top Videos first">
                   <Sparkles className="h-4 w-4" />
                   Generate Analysis
                 </Button>

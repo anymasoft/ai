@@ -59,7 +59,7 @@ export async function POST(
     if (videosResult.rows.length === 0) {
       client.close();
       return NextResponse.json(
-        { error: "No videos found. Please sync videos first." },
+        { error: "Sync Top Videos first" },
         { status: 400 }
       );
     }
@@ -144,8 +144,8 @@ ${JSON.stringify(videosData, null, 2)}
     const analysisData = JSON.parse(responseText);
 
     await client.execute({
-      sql: "INSERT INTO content_intelligence (channelId, data, generatedAt) VALUES (?, ?, ?)",
-      args: [channelId, JSON.stringify(analysisData), Date.now()],
+      sql: "INSERT INTO content_intelligence (channelId, data, data_ru, generatedAt) VALUES (?, ?, ?, ?)",
+      args: [channelId, JSON.stringify(analysisData), null, Date.now()],
     });
 
     console.log(`[ContentIntelligence] Анализ сохранён в БД`);

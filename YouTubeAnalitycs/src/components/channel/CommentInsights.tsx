@@ -105,12 +105,12 @@ export function CommentInsights({
             {!hasRequiredData ? (
               <>
                 <p className="text-muted-foreground mb-2 text-center">
-                  To generate Comment Intelligence, sync videos and comments first.
+                  Sync Comments first
                 </p>
                 <p className="text-sm text-muted-foreground mb-4 text-center">
-                  Click 'Sync Top Videos' and 'Sync Comments' buttons above to load data.
+                  Click 'Sync Comments' button above to load data.
                 </p>
-                <Button onClick={handleGenerate} className="gap-2 cursor-pointer" disabled title="Sync videos and comments first">
+                <Button onClick={handleGenerate} className="gap-2 cursor-pointer" disabled title="Sync Comments first">
                   <MessageSquare className="h-4 w-4" />
                   Generate Comment Analysis
                 </Button>

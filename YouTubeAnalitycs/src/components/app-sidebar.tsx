@@ -7,6 +7,7 @@ import {
   TrendingUp,
   FileBarChart,
   Target,
+  GitCompare,
 } from "lucide-react"
 import Link from "next/link"
 import { useSession } from "next-auth/react"
@@ -38,6 +39,11 @@ const navGroups = [
         title: "Competitors",
         url: "/competitors",
         icon: Target,
+      },
+      {
+        title: "Compare All",
+        url: "/competitors/compare",
+        icon: GitCompare,
       },
       {
         title: "Trending",

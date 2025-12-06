@@ -68,7 +68,7 @@ export async function POST(
     if (videosResult.rows.length === 0) {
       client.close();
       return NextResponse.json(
-        { error: "No videos found. Please sync videos first." },
+        { error: "Sync Top Videos first" },
         { status: 400 }
       );
     }
@@ -88,7 +88,7 @@ export async function POST(
     if (commentsResult.rows.length === 0) {
       client.close();
       return NextResponse.json(
-        { error: "No comments found. Please sync comments first." },
+        { error: "Sync Comments first" },
         { status: 400 }
       );
     }

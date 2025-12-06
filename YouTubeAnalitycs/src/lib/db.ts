@@ -2,88 +2,6 @@ import { createClient } from "@libsql/client";
 
 // Инициализация SQLite базы данных
 let _client: ReturnType<typeof createClient> | null = null;
-let _migrationsRun = false;
-
-/**
- * runMigrations - выполняет миграции БД один раз при старте сервера
- */
-async function runMigrations() {
-  if (_migrationsRun) {
-    return;
-  }
-
-  console.log("[DB] Running migrations...");
-
-  const dbPath = process.env.DATABASE_URL || "file:sqlite.db";
-  const client = createClient({
-    url: dbPath.startsWith("file:") ? dbPath : `file:${dbPath}`,
-  });
-
-  try {
-    // Check if competitors table has old snake_case columns
-    const tableInfo = await client.execute({
-      sql: "PRAGMA table_info(competitors)",
-      args: [],
-    });
-
-    const hasOldSchema = tableInfo.rows.some(
-      (row: any) => row.name === "avatar_url" || row.name === "subscriber_count"
-    );
-
-    if (hasOldSchema) {
-      console.log("[DB] Migrating competitors table to camelCase columns...");
-
-      // Create new table with correct schema
-      await client.execute({
-        sql: `CREATE TABLE IF NOT EXISTS competitors_new (
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          userId TEXT NOT NULL,
-          platform TEXT NOT NULL DEFAULT 'youtube',
-          channelId TEXT NOT NULL,
-          handle TEXT NOT NULL,
-          title TEXT NOT NULL,
-          avatarUrl TEXT,
-          subscriberCount INTEGER NOT NULL DEFAULT 0,
-          videoCount INTEGER NOT NULL DEFAULT 0,
-          viewCount INTEGER NOT NULL DEFAULT 0,
-          lastSyncedAt INTEGER NOT NULL,
-          createdAt INTEGER NOT NULL
-        )`,
-        args: [],
-      });
-
-      // Copy data from old table
-      await client.execute({
-        sql: `INSERT INTO competitors_new
-              SELECT id, userId, platform, channelId, handle, title,
-              avatar_url, subscriber_count, video_count, view_count,
-              last_synced_at, created_at
-              FROM competitors`,
-        args: [],
-      });
-
-      // Drop old table
-      await client.execute({
-        sql: "DROP TABLE competitors",
-        args: [],
-      });
-
-      // Rename new table
-      await client.execute({
-        sql: "ALTER TABLE competitors_new RENAME TO competitors",
-        args: [],
-      });
-
-      console.log("[DB] Competitors table migrated successfully");
-    }
-  } catch (error) {
-    console.log("[DB] Migration check skipped (table may not exist yet):", error);
-  }
-
-  client.close();
-  _migrationsRun = true;
-  console.log("[DB] Migrations completed");
-}
 
 function getClient() {
   if (!_client) {
@@ -93,8 +11,10 @@ function getClient() {
       url: dbPath.startsWith("file:") ? dbPath : `file:${dbPath}`,
     });
 
+    // Инициализация таблиц (выполняется один раз при старте)
     if (process.env.NODE_ENV !== "production") {
       try {
+        // Таблицы NextAuth
         _client.execute(`CREATE TABLE IF NOT EXISTS users (
           id TEXT PRIMARY KEY NOT NULL,
           name TEXT,
@@ -138,6 +58,7 @@ function getClient() {
           PRIMARY KEY (identifier, token)
         );`);
 
+        // Основные таблицы приложения
         _client.execute(`CREATE TABLE IF NOT EXISTS competitors (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
           userId TEXT NOT NULL,
@@ -152,6 +73,14 @@ function getClient() {
           lastSyncedAt INTEGER NOT NULL,
           createdAt INTEGER NOT NULL,
           FOREIGN KEY (userId) REFERENCES users(id) ON DELETE CASCADE
+        );`);
+
+        _client.execute(`CREATE TABLE IF NOT EXISTS channels (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          userId TEXT,
+          channelId TEXT,
+          title TEXT,
+          createdAt INTEGER
         );`);
 
         _client.execute(`CREATE TABLE IF NOT EXISTS ai_insights (
@@ -192,7 +121,8 @@ function getClient() {
           likeCount INTEGER NOT NULL DEFAULT 0,
           commentCount INTEGER NOT NULL DEFAULT 0,
           publishedAt TEXT NOT NULL,
-          fetchedAt INTEGER NOT NULL
+          fetchedAt INTEGER NOT NULL,
+          data TEXT
         );`);
 
         _client.execute(`CREATE INDEX IF NOT EXISTS idx_channel_videos_lookup
@@ -202,6 +132,7 @@ function getClient() {
           id INTEGER PRIMARY KEY AUTOINCREMENT,
           channelId TEXT NOT NULL,
           data TEXT NOT NULL,
+          data_ru TEXT,
           generatedAt INTEGER NOT NULL
         );`);
 
@@ -212,6 +143,7 @@ function getClient() {
           id INTEGER PRIMARY KEY AUTOINCREMENT,
           channelId TEXT NOT NULL,
           data TEXT NOT NULL,
+          data_ru TEXT,
           generatedAt INTEGER NOT NULL
         );`);
 
@@ -222,6 +154,7 @@ function getClient() {
           id INTEGER PRIMARY KEY AUTOINCREMENT,
           channelId TEXT NOT NULL,
           data TEXT NOT NULL,
+          data_ru TEXT,
           generatedAt INTEGER NOT NULL
         );`);
 
@@ -257,7 +190,9 @@ function getClient() {
           authorChannelId TEXT NOT NULL,
           isVerified INTEGER NOT NULL DEFAULT 0,
           isCreator INTEGER NOT NULL DEFAULT 0,
-          fetchedAt INTEGER NOT NULL
+          fetchedAt INTEGER NOT NULL,
+          channelId TEXT,
+          data TEXT
         );`);
 
         _client.execute(`CREATE INDEX IF NOT EXISTS idx_video_comments_video
@@ -271,6 +206,7 @@ function getClient() {
           videoId TEXT NOT NULL,
           channelId TEXT NOT NULL,
           data TEXT NOT NULL,
+          data_ru TEXT,
           generatedAt INTEGER NOT NULL
         );`);
 
@@ -300,6 +236,7 @@ function getClient() {
           id INTEGER PRIMARY KEY AUTOINCREMENT,
           channelId TEXT NOT NULL,
           data TEXT NOT NULL,
+          data_ru TEXT,
           createdAt INTEGER NOT NULL
         );`);
 
@@ -308,6 +245,59 @@ function getClient() {
 
         _client.execute(`CREATE INDEX IF NOT EXISTS idx_deep_audience_createdAt
           ON deep_audience(createdAt DESC);`);
+
+        // Таблица для сравнительного анализа конкурентов
+        _client.execute(`CREATE TABLE IF NOT EXISTS comparative_analysis (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          userId TEXT NOT NULL,
+          data TEXT NOT NULL,
+          data_ru TEXT,
+          generatedAt INTEGER NOT NULL,
+          FOREIGN KEY (userId) REFERENCES users(id) ON DELETE CASCADE
+        );`);
+
+        _client.execute(`CREATE INDEX IF NOT EXISTS idx_comparative_analysis_userId
+          ON comparative_analysis(userId, generatedAt DESC);`);
+
+        // Таблица для AI анализа трендовых видео
+        _client.execute(`CREATE TABLE IF NOT EXISTS trending_insights (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          userId TEXT NOT NULL,
+          videoCount INTEGER NOT NULL DEFAULT 0,
+          summary TEXT NOT NULL,
+          themes TEXT NOT NULL,
+          formats TEXT NOT NULL,
+          recommendations TEXT NOT NULL,
+          generatedAt INTEGER NOT NULL,
+          createdAt INTEGER NOT NULL,
+          FOREIGN KEY (userId) REFERENCES users(id) ON DELETE CASCADE
+        );`);
+
+        _client.execute(`CREATE INDEX IF NOT EXISTS idx_trending_insights_userId
+          ON trending_insights(userId, generatedAt DESC);`);
+
+        _client.execute(`CREATE INDEX IF NOT EXISTS idx_trending_insights_createdAt
+          ON trending_insights(createdAt DESC);`);
+
+        // Таблица для сохранения сгенерированных сценариев
+        _client.execute(`CREATE TABLE IF NOT EXISTS generated_scripts (
+          id TEXT PRIMARY KEY NOT NULL,
+          userId TEXT NOT NULL,
+          title TEXT NOT NULL,
+          hook TEXT NOT NULL,
+          outline TEXT NOT NULL,
+          scriptText TEXT NOT NULL,
+          whyItShouldWork TEXT NOT NULL,
+          sourceVideos TEXT NOT NULL,
+          createdAt INTEGER NOT NULL,
+          FOREIGN KEY (userId) REFERENCES users(id) ON DELETE CASCADE
+        );`);
+
+        _client.execute(`CREATE INDEX IF NOT EXISTS idx_generated_scripts_userId
+          ON generated_scripts(userId, createdAt DESC);`);
+
+        _client.execute(`CREATE INDEX IF NOT EXISTS idx_generated_scripts_createdAt
+          ON generated_scripts(createdAt DESC);`);
 
         console.log("✅ Tables initialized");
       } catch (error) {
@@ -319,7 +309,3 @@ function getClient() {
 }
 
 export const db = getClient();
-
-runMigrations().catch((err) => {
-  console.error("[DB] Migration failed:", err);
-});
