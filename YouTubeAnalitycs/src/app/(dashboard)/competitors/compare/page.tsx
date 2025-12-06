@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useSession } from "next-auth/react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -52,6 +52,8 @@ export default function ComparePage() {
   const [aiAnalysis, setAiAnalysis] = useState<AIAnalysisResult | null>(null);
   const [aiLoading, setAiLoading] = useState(false);
   const [aiError, setAiError] = useState("");
+  // Ref для блокировки race condition между fetchSavedAnalysis и generateAIAnalysis
+  const isRegeneratingRef = useRef(false);
 
   useEffect(() => {
     fetchCompetitors();
@@ -82,6 +84,11 @@ export default function ComparePage() {
   }
 
   async function fetchSavedAnalysis() {
+    // Не загружаем, если уже идёт регенерация
+    if (isRegeneratingRef.current) {
+      return;
+    }
+
     try {
       const res = await fetch("/api/competitors/compare/ai/get");
 
@@ -91,7 +98,8 @@ export default function ComparePage() {
       }
 
       const data = await res.json();
-      if (data.analysis) {
+      // Проверяем ещё раз перед записью (защита от race condition)
+      if (data.analysis && !isRegeneratingRef.current) {
         setAiAnalysis(data.analysis);
         console.log("Loaded saved analysis from", new Date(data.generatedAt).toLocaleString());
       }
@@ -196,6 +204,9 @@ export default function ComparePage() {
   }
 
   async function generateAIAnalysis() {
+    // Блокируем fetchSavedAnalysis от перезаписи результата
+    isRegeneratingRef.current = true;
+
     try {
       setAiLoading(true);
       setAiError("");
@@ -219,6 +230,7 @@ export default function ComparePage() {
       setAiError("Failed to generate AI analysis");
     } finally {
       setAiLoading(false);
+      isRegeneratingRef.current = false;
     }
   }
 
