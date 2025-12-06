@@ -193,23 +193,150 @@ async function collectVideoData(
 }
 
 // ============================================================================
-// ШАГ 2: ГЕНЕРАЦИЯ СЕМАНТИЧЕСКОЙ КАРТЫ
+// ШАГ 2: ГЕНЕРАЦИЯ СЕМАНТИЧЕСКОЙ КАРТЫ (GPT-ЭТАП 1)
 // ============================================================================
 
 /**
- * Генерирует семантическую карту на основе данных видео
- * Пока простая версия - извлекает темы и паттерны из названий
- * В будущем можно добавить вызов OpenAI для более глубокого анализа
+ * Системный промпт для генерации SemanticMap
+ */
+const SEMANTIC_MAP_SYSTEM_PROMPT = `Ты — аналитик YouTube и контент-стратег.
+Тебе дают список популярных видео конкурентов с их названиями, метриками и тегами.
+
+Твоя задача — проанализировать их и создать структурированную Semantic Map (семантическую карту) для будущего сценария.
+
+ВАЖНО:
+- НЕ пиши сценарий. Твоя задача — только АНАЛИЗ.
+- Отвечай СТРОГО на русском языке.
+- Возвращай ТОЛЬКО валидный JSON без markdown-обёрток, без комментариев, без пояснений.
+- Все значения в JSON должны быть на русском языке.`;
+
+/**
+ * Генерирует семантическую карту на основе данных видео через OpenAI GPT
+ * Это GPT-ЭТАП 1 pipeline - анализ и объединение данных
  */
 async function generateSemanticMap(videos: VideoForScript[]): Promise<SemanticMap> {
-  // Извлекаем темы из названий видео
-  const allTitles = videos.map(v => v.title);
+  console.log(`[SemanticMap] Начинаем GPT-анализ ${videos.length} видео...`);
 
-  // Простой анализ: собираем ключевые слова из названий
+  const openai = new OpenAI({
+    apiKey: process.env.OPENAI_API_KEY,
+  });
+
+  // Подготавливаем компактные данные для GPT
+  const videosData = videos.map(v => ({
+    title: v.title,
+    channel: v.channelTitle,
+    views: v.viewCount,
+    viewsPerDay: v.viewsPerDay,
+    momentum: v.momentumScore,
+    tags: v.tags?.slice(0, 5) || [],
+  }));
+
+  // Формируем user prompt
+  const userPrompt = `Проанализируй следующие популярные видео конкурентов и создай Semantic Map.
+
+ДАННЫЕ ВИДЕО:
+${JSON.stringify(videosData, null, 2)}
+
+ЗАДАЧА:
+Проанализируй все видео и выдели:
+
+1. **mergedTopics** (5-10 штук) — объединённые темы, которые прослеживаются во всех видео. Не просто слова из названий, а СМЫСЛОВЫЕ темы (например: "личностный рост", "денежное мышление", "преодоление страхов").
+
+2. **commonPatterns** (5-8 штук) — повторяющиеся паттерны успеха: что общего у этих видео? (структура названий, триггерные слова, форматы подачи, длина, стиль).
+
+3. **conflicts** (3-5 штук) — конфликты и противоречия, которые можно использовать в сценарии (старое vs новое, эксперты vs новички, мифы vs реальность).
+
+4. **paradoxes** (2-4 штуки) — парадоксы и контринтуитивные идеи, которые цепляют внимание (чем больше работаешь — тем меньше зарабатываешь, и т.п.).
+
+5. **emotionalSpikes** (4-6 штук) — эмоциональные точки и триггеры, которые вызывают сильную реакцию аудитории (страх упустить, желание статуса, боль от неудач).
+
+6. **visualMotifs** (3-5 штук) — визуальные образы и сцены, которые можно использовать в видео (роскошная жизнь, трансформация до/после, момент озарения).
+
+7. **audienceInterests** (4-6 штук) — что явно интересует аудиторию этих каналов, на что они реагируют.
+
+8. **rawSummary** — общий текстовый обзор ситуации (2-3 предложения): какой контент популярен, почему, какие возможности для нового видео.
+
+Верни ТОЛЬКО JSON в формате:
+{
+  "mergedTopics": ["тема 1", "тема 2", ...],
+  "commonPatterns": ["паттерн 1", "паттерн 2", ...],
+  "conflicts": ["конфликт 1", "конфликт 2", ...],
+  "paradoxes": ["парадокс 1", "парадокс 2", ...],
+  "emotionalSpikes": ["триггер 1", "триггер 2", ...],
+  "visualMotifs": ["образ 1", "образ 2", ...],
+  "audienceInterests": ["интерес 1", "интерес 2", ...],
+  "rawSummary": "Общий обзор..."
+}`;
+
+  try {
+    const completion = await openai.chat.completions.create({
+      model: "gpt-4o-mini",
+      messages: [
+        { role: "system", content: SEMANTIC_MAP_SYSTEM_PROMPT },
+        { role: "user", content: userPrompt },
+      ],
+      temperature: 0.7,
+      max_tokens: 2000,
+    });
+
+    const responseText = completion.choices[0]?.message?.content;
+
+    if (!responseText) {
+      throw new Error("Пустой ответ от OpenAI при генерации SemanticMap");
+    }
+
+    console.log(`[SemanticMap] Получен ответ от OpenAI (${responseText.length} символов)`);
+
+    // Парсим JSON с очисткой от возможных markdown-обёрток
+    let semanticData: SemanticMap;
+    try {
+      const cleanJson = responseText
+        .replace(/```json\n?/g, '')
+        .replace(/```\n?/g, '')
+        .trim();
+
+      semanticData = JSON.parse(cleanJson);
+    } catch (parseError) {
+      console.error("[SemanticMap] Ошибка парсинга JSON:", parseError);
+      console.error("[SemanticMap] Raw response:", responseText);
+      throw new Error("Ошибка парсинга SemanticMap от OpenAI");
+    }
+
+    // Валидируем и нормализуем структуру
+    const validatedMap: SemanticMap = {
+      mergedTopics: Array.isArray(semanticData.mergedTopics) ? semanticData.mergedTopics : [],
+      commonPatterns: Array.isArray(semanticData.commonPatterns) ? semanticData.commonPatterns : [],
+      conflicts: Array.isArray(semanticData.conflicts) ? semanticData.conflicts : [],
+      paradoxes: Array.isArray(semanticData.paradoxes) ? semanticData.paradoxes : [],
+      emotionalSpikes: Array.isArray(semanticData.emotionalSpikes) ? semanticData.emotionalSpikes : [],
+      visualMotifs: Array.isArray(semanticData.visualMotifs) ? semanticData.visualMotifs : [],
+      audienceInterests: Array.isArray(semanticData.audienceInterests) ? semanticData.audienceInterests : [],
+      rawSummary: typeof semanticData.rawSummary === 'string' ? semanticData.rawSummary : '',
+    };
+
+    console.log(`[SemanticMap] Семантическая карта успешно создана через GPT`);
+    console.log(`[SemanticMap] Темы: ${validatedMap.mergedTopics.length}, Паттерны: ${validatedMap.commonPatterns.length}, Конфликты: ${validatedMap.conflicts.length}`);
+
+    return validatedMap;
+
+  } catch (error) {
+    console.error("[SemanticMap] Ошибка GPT-вызова:", error);
+
+    // Fallback: возвращаем базовую структуру при ошибке GPT
+    console.log("[SemanticMap] Используем fallback-логику...");
+    return generateSemanticMapFallback(videos);
+  }
+}
+
+/**
+ * Fallback-функция для генерации SemanticMap без GPT
+ * Используется при ошибках OpenAI API
+ */
+function generateSemanticMapFallback(videos: VideoForScript[]): SemanticMap {
+  // Извлекаем темы из названий видео
   const wordFrequency = new Map<string, number>();
-  allTitles.forEach(title => {
-    // Разбиваем на слова, убираем короткие и стоп-слова
-    const words = title.toLowerCase()
+  videos.forEach(v => {
+    const words = v.title.toLowerCase()
       .replace(/[^\w\sа-яё]/gi, ' ')
       .split(/\s+/)
       .filter(w => w.length > 3);
@@ -219,43 +346,31 @@ async function generateSemanticMap(videos: VideoForScript[]): Promise<SemanticMa
     });
   });
 
-  // Топ слова как темы
   const topWords = Array.from(wordFrequency.entries())
     .sort((a, b) => b[1] - a[1])
     .slice(0, 10)
     .map(([word]) => word);
 
-  // Собираем теги со всех видео
   const allTags = videos
     .flatMap(v => v.tags || [])
     .filter((tag, i, arr) => arr.indexOf(tag) === i)
     .slice(0, 10);
 
-  // Определяем видео с высоким momentum
   const highMomentum = videos.filter(v => v.momentumScore > 0.5);
   const audienceInterests = highMomentum.map(v => v.title).slice(0, 5);
 
-  // Формируем сводку
   const avgViews = videos.reduce((sum, v) => sum + v.viewCount, 0) / videos.length;
-  const avgMomentum = videos.reduce((sum, v) => sum + v.momentumScore, 0) / videos.length;
-
-  const rawSummary = `Анализ ${videos.length} видео. ` +
-    `Средние просмотры: ${Math.round(avgViews).toLocaleString()}. ` +
-    `Средний momentum: ${avgMomentum.toFixed(2)}. ` +
-    `Топ темы: ${topWords.slice(0, 5).join(', ')}. ` +
-    `Каналы: ${[...new Set(videos.map(v => v.channelTitle))].join(', ')}.`;
-
-  console.log(`[ScriptGenerate] Семантическая карта создана`);
+  const channels = [...new Set(videos.map(v => v.channelTitle))].join(', ');
 
   return {
     mergedTopics: topWords,
     commonPatterns: allTags.length > 0 ? allTags : topWords.slice(0, 5),
-    conflicts: [],           // Будет заполнено в будущих версиях через GPT
-    paradoxes: [],           // Будет заполнено в будущих версиях через GPT
-    emotionalSpikes: [],     // Будет заполнено в будущих версиях через GPT
-    visualMotifs: [],        // Будет заполнено в будущих версиях через GPT
+    conflicts: ["Старый подход vs новый подход"],
+    paradoxes: ["То, что кажется сложным, на самом деле просто"],
+    emotionalSpikes: ["Страх упустить возможность", "Желание быстрого результата"],
+    visualMotifs: ["Трансформация до/после", "Момент успеха"],
     audienceInterests,
-    rawSummary,
+    rawSummary: `Анализ ${videos.length} видео. Средние просмотры: ${Math.round(avgViews).toLocaleString()}. Каналы: ${channels}. Используется fallback-анализ.`,
   };
 }
 
