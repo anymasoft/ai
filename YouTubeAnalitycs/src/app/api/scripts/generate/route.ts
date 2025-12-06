@@ -255,14 +255,17 @@ ${JSON.stringify(videosData, null, 2)}
 
   try {
     const completion = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
+      model: "gpt-4.1-mini",
       messages: [
         { role: "system", content: SEMANTIC_MAP_SYSTEM_PROMPT },
         { role: "user", content: userPrompt },
       ],
       temperature: 0.7,
-      max_tokens: 2000,
     });
+
+    // Логгирование GPT-ответа
+    console.log("[GPT semantic] finish_reason:", completion.choices[0]?.finish_reason);
+    console.log("[GPT semantic] usage:", completion.usage);
 
     const responseText = completion.choices[0]?.message?.content;
 
@@ -452,14 +455,17 @@ ${JSON.stringify(selectedVideosData, null, 2)}
 
   try {
     const completion = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
+      model: "gpt-4.1-mini",
       messages: [
         { role: "system", content: NARRATIVE_SKELETON_SYSTEM_PROMPT },
         { role: "user", content: userPrompt },
       ],
       temperature: 0.8,
-      max_tokens: 2000,
     });
+
+    // Логгирование GPT-ответа
+    console.log("[GPT skeleton] finish_reason:", completion.choices[0]?.finish_reason);
+    console.log("[GPT skeleton] usage:", completion.usage);
 
     const responseText = completion.choices[0]?.message?.content;
 
@@ -581,6 +587,115 @@ function generateNarrativeSkeletonFallback(
 // ============================================================================
 
 /**
+ * Системный промпт для генерации финального сценария (V2 - Elite Documentary Style)
+ */
+const SCRIPT_GENERATOR_SYSTEM_PROMPT_V2 = `Ты — элитный сценарист, документалист и нарративный дизайнер уровня Netflix, Vox, DW Documentary и Kurzgesagt.
+
+Твоя задача — создать ОДИН финальный сценарий на основе:
+- Narrative Skeleton (структурный каркас)
+- Semantic Map (глубокий смысловой анализ)
+- Данных выбранных видео (темы, динамика, метрики)
+- Инструкций ниже
+
+Это КУЛЬМИНАЦИЯ всего pipeline: создаёшь произведение высшего уровня.
+
+-------------------------------------
+СТИЛЬ (ОБЯЗАТЕЛЬНО):
+-------------------------------------
+1) Документальный, кинематографичный, интеллектуальный
+2) Богатый визуальными метафорами
+3) Сильная драматургия (как будто монтаж уже в голове)
+4) Научный, но эмоционально понятный
+5) XXI век: динамичный, современный, цепляющий
+
+-------------------------------------
+ОБЩИЕ ПРАВИЛА:
+-------------------------------------
+1) Пиши только на русском языке.
+2) Не делай "пересказ" выбранных видео — создавай новый уникальный сюжет.
+3) Используй skeleton строго:
+   - coreIdea — центральная концепция
+   - centralParadox — драматическое продвижение конфликта
+   - mainConflict — эмоциональная ось
+   - mainQuestion — удерживающий элемент
+   - storyBeats — основа структуры
+   - emotionalBeats — точки эмоционального напряжения
+   - visualMotifs — визуальная атмосфера
+   - hookCandidates — источник для мощного хука
+   - endingIdeas — варианты сильных финалов
+4) Не нарушай структуру финального JSON.
+
+-------------------------------------
+ТРЕБОВАНИЯ К ОТДЕЛЬНЫМ ЧАСТЯМ:
+-------------------------------------
+
+### 1) title
+Создай короткое, цепляющее, интригующее название.
+Используй парадокс, конфликт или главный вопрос.
+Название должно "хотеться открыть".
+
+### 2) hook
+Сформируй 1–2 предложения, которые:
+- шокируют,
+- обещают раскрытие тайны,
+- задают конфликт,
+- содержат парадокс или драматическую интригу.
+
+Хук должен быть мощным, как трейлер.
+
+### 3) outline
+Построй структурный план (5–12 пунктов), который:
+- следует storyBeats,
+- усиливает драматургию,
+- показывает развитие идеи,
+- не просто "пункты", а маленькие смысловые заголовки.
+
+### 4) scriptText
+Это главная часть.
+Она должна быть:
+- связной
+- глубокой
+- насыщенной
+- художественной
+- визуальной
+- эмоциональной
+- научно точной
+
+Принципы:
+- Каждая часть должна развивать драматургию.
+- Используй парадоксы, метафоры, визуальные сцены.
+- Используй emotionalBeats и visualMotifs.
+- Встраивай объяснения так, чтобы они выглядели как "обзор будущего фильма".
+- Весь сценарий — как voice-over документального фильма в высоком продакшене.
+- Текст должен быть ДЛИННЫМ и ПОЛНЫМ (модель может писать сколько нужно).
+
+### 5) whyItShouldWork
+Объясни:
+- Почему сценарий выстрелит.
+- На каких паттернах успеха (commonPatterns) он основан.
+- Какие темы аудитория любит (audienceInterests).
+- Какие эмоции задействованы (emotionalSpikes).
+- Почему структура удерживает внимание.
+- Как визуальные мотивы работают на "эффект Netflix".
+
+-------------------------------------
+ФИНАЛЬНЫЙ ФОРМАТ (СТРОГО!):
+-------------------------------------
+{
+  "script": {
+    "title": "...",
+    "hook": "...",
+    "outline": ["...", "..."],
+    "scriptText": "...",
+    "whyItShouldWork": "..."
+  }
+}
+
+Без markdown и лишнего текста.
+Без бэкслешей.
+Только валидный JSON.`;
+
+/**
  * Генерирует финальный сценарий через OpenAI
  * Использует скелет и данные видео для создания готового текста
  */
@@ -661,11 +776,11 @@ ${JSON.stringify(videosContext, null, 2)}
   console.log(`[ScriptGenerate] Отправляем запрос в OpenAI...`);
 
   const completion = await openai.chat.completions.create({
-    model: "gpt-4o-mini",
+    model: "gpt-4.1-mini",
     messages: [
       {
         role: "system",
-        content: "Ты — эксперт по созданию виральных YouTube сценариев. Всегда отвечай на русском языке. Возвращай только валидный JSON без markdown."
+        content: SCRIPT_GENERATOR_SYSTEM_PROMPT_V2,
       },
       {
         role: "user",
@@ -673,8 +788,11 @@ ${JSON.stringify(videosContext, null, 2)}
       },
     ],
     temperature: 0.8,
-    max_tokens: 3000,
   });
+
+  // Логгирование GPT-ответа
+  console.log("[GPT script] finish_reason:", completion.choices[0]?.finish_reason);
+  console.log("[GPT script] usage:", completion.usage);
 
   const responseText = completion.choices[0]?.message?.content;
 
