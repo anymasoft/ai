@@ -381,16 +381,19 @@ function generateSemanticMapFallback(videos: VideoForScript[]): SemanticMap {
 /**
  * Системный промпт для генерации NarrativeSkeleton
  */
-const NARRATIVE_SKELETON_SYSTEM_PROMPT = `Ты — сторителлер и сценарный архитектор YouTube.
-Тебе дают Semantic Map — результат анализа трендовых видео конкурентов.
+const NARRATIVE_SKELETON_SYSTEM_PROMPT = `Ты — профессиональный сценарист и storytelling-архитектор YouTube уровня Netflix, DW Documentary, Kurzgesagt.
+Тебе передают Semantic Map с глубинным анализом тем, конфликтов, парадоксов и эмоциональных триггеров.
 
-Твоя задача — построить стратегический каркас (Narrative Skeleton) будущего сценария.
+Твоя задача — построить каркас будущего сценария: narrative skeleton.
 
-ВАЖНО:
-- НЕ пиши сценарий. Только СТРУКТУРУ и КАРКАС.
-- Отвечай СТРОГО на русском языке.
-- Возвращай ТОЛЬКО валидный JSON без markdown-обёрток, без комментариев, без пояснений.
-- Все значения должны быть конкретными и применимыми.`;
+НАСТОЯТЕЛЬНО ВАЖНО:
+- НЕ писать сам сценарий.
+- Генерировать ТОЛЬКО структуру.
+- Вернуть ТОЛЬКО валидный JSON.
+- Никаких комментариев, markdown или пояснений.
+- Пиши строго на русском языке.
+
+Ты работаешь как narrative-engineer, а не как сценарист текста.`;
 
 /**
  * Генерирует нарративный скелет на основе семантической карты через OpenAI GPT
@@ -418,43 +421,38 @@ async function generateNarrativeSkeleton(
     rawSummary: map.rawSummary,
   };
 
-  // Топ-видео для контекста хуков
-  const topVideos = videos
+  // Данные видео для контекста (id/title/momentumScore/viewsPerDay)
+  const selectedVideosData = videos
     .sort((a, b) => b.momentumScore - a.momentumScore)
-    .slice(0, 5)
-    .map(v => ({ title: v.title, views: v.viewCount, momentum: v.momentumScore }));
+    .slice(0, 6)
+    .map(v => ({
+      id: v.id,
+      title: v.title,
+      momentumScore: v.momentumScore,
+      viewsPerDay: v.viewsPerDay,
+    }));
 
   // Формируем user prompt
-  const userPrompt = `На основе Semantic Map создай Narrative Skeleton — каркас будущего YouTube сценария.
+  const userPrompt = `Сформируй Narrative Skeleton на основе semanticMap и ключевой информации о видео.
 
 SEMANTIC MAP:
 ${JSON.stringify(semanticMapData, null, 2)}
 
-ТОП-ВИДЕО ДЛЯ ВДОХНОВЕНИЯ (по momentum):
-${JSON.stringify(topVideos, null, 2)}
+SELECTED VIDEOS (топ по momentum):
+${JSON.stringify(selectedVideosData, null, 2)}
 
-ЗАДАЧА:
-Создай стратегический каркас сценария со следующими элементами:
+Сконструируй:
+- coreIdea (1 предложение) — центральная идея будущего видео, главный посыл
+- centralParadox (1-2 предложения) — главный парадокс, противоречие или "mind-twist", который заставит зрителя сказать "Как так?!"
+- mainConflict (1-2 предложения) — главный конфликт идей, интересов, фактов
+- mainQuestion (1 вопрос) — главный вопрос, который удерживает внимание зрителя до конца
+- emotionalBeats (4-7 пунктов) — ключевые эмоциональные точки (страх, удивление, злость, надежда, шок, кульминация)
+- storyBeats (5-10 пунктов) — крупные блоки будущего сюжета, структура повествования от хука до концовки
+- visualMotifs (3-6 образов) — визуальные образы, сцены, метафоры для усиления воздействия
+- hookCandidates (3-6 идей) — варианты мощных hook'ов для первых 3-5 секунд (конкретные фразы или действия)
+- endingIdeas (2-4 варианта) — варианты концовки/вывода, которые побудят зрителя подписаться/лайкнуть/прокомментировать
 
-1. **coreIdea** — центральная идея видео (1-2 предложения). Это главный посыл, который зритель должен унести.
-
-2. **centralParadox** — центральный парадокс или контринтуитивная мысль (1 предложение). То, что заставит зрителя сказать "Как так?!" и досмотреть.
-
-3. **mainConflict** — главный конфликт видео (1 предложение). Противостояние, которое создаёт напряжение (старое vs новое, мифы vs реальность, страх vs возможность).
-
-4. **mainQuestion** — главный вопрос, на который отвечает видео (1 предложение). Вопрос, который держит внимание зрителя.
-
-5. **emotionalBeats** (4-6 штук) — ключевые эмоциональные моменты видео. Где должны быть пики эмоций? (интрига, шок, надежда, кульминация, удовлетворение).
-
-6. **storyBeats** (5-8 штук) — последовательность крупных логических блоков видео. Структура повествования от начала до конца.
-
-7. **visualMotifs** (3-5 штук) — визуальные образы и сцены, которые усилят воздействие (можно использовать из Semantic Map или предложить новые).
-
-8. **hookCandidates** (3-5 штук) — варианты сильных хуков для первых 3-5 секунд. Конкретные фразы или действия.
-
-9. **endingIdeas** (2-3 штуки) — варианты сильных концовок. Как завершить видео, чтобы зритель подписался/лайкнул/прокомментировал.
-
-Верни ТОЛЬКО JSON в формате:
+Верни строго JSON вида NarrativeSkeleton:
 {
   "coreIdea": "...",
   "centralParadox": "...",
@@ -619,26 +617,43 @@ async function generateScriptFromSkeleton(
     momentum: v.momentumScore,
   }));
 
+  // Формируем полный Narrative Skeleton как JSON для промпта
+  const skeletonData = {
+    coreIdea: skeleton.coreIdea,
+    centralParadox: skeleton.centralParadox,
+    mainConflict: skeleton.mainConflict,
+    mainQuestion: skeleton.mainQuestion,
+    emotionalBeats: skeleton.emotionalBeats,
+    storyBeats: skeleton.storyBeats,
+    visualMotifs: skeleton.visualMotifs,
+    hookCandidates: skeleton.hookCandidates,
+    endingIdeas: skeleton.endingIdeas,
+  };
+
   const prompt = `Ты — эксперт по созданию виральных YouTube сценариев.
-Твоя задача — создать сценарий на основе анализа успешных видео конкурентов.
+Твоя задача — создать финальный сценарий на основе подготовленного Narrative Skeleton и анализа успешных видео конкурентов.
 
 КОНТЕКСТ АНАЛИЗА:
 ${semanticMap.rawSummary}
 
-НАРРАТИВНЫЙ КАРКАС:
-- Главная идея: ${skeleton.coreIdea}
-- Центральный парадокс: ${skeleton.centralParadox}
-- Главный конфликт: ${skeleton.mainConflict}
-- Главный вопрос: ${skeleton.mainQuestion}
-- Варианты хуков: ${skeleton.hookCandidates.join('; ')}
-- Структура: ${skeleton.storyBeats.join(' -> ')}
+NARRATIVE SKELETON (каркас сценария):
+${JSON.stringify(skeletonData, null, 2)}
 
-УСПЕШНЫЕ ВИДЕО ДЛЯ ВДОХНОВЕНИЯ:
+УСПЕШНЫЕ ВИДЕО ДЛЯ ВДОХНОВЛЕНИЯ:
 ${JSON.stringify(videosContext, null, 2)}
 
 ТЕМЫ И ПАТТЕРНЫ:
 - Темы: ${semanticMap.mergedTopics.join(', ')}
 - Интересы аудитории: ${semanticMap.audienceInterests.join(', ')}
+
+ИНСТРУКЦИИ:
+1. Используй coreIdea как основу главного посыла видео
+2. Выбери лучший hook из hookCandidates или создай свой на их основе
+3. Следуй структуре storyBeats при написании scriptText
+4. Включи emotionalBeats в нужные моменты сценария
+5. Используй visualMotifs для описания визуального ряда
+6. Выбери концовку из endingIdeas или создай свою на их основе
+7. Сделай название на основе centralParadox или mainQuestion
 
 ЗАДАЧА:
 Создай сценарий YouTube видео, который:
