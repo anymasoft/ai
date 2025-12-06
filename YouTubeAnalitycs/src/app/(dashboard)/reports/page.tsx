@@ -1,27 +1,347 @@
+"use client"
+
+import { useState, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Skeleton } from "@/components/ui/skeleton"
+import {
+  FileText,
+  Download,
+  Loader2,
+  Map,
+  Sparkles,
+  TrendingUp,
+  ScrollText,
+  AlertCircle,
+  CheckCircle2
+} from "lucide-react"
+
+interface Script {
+  id: string
+  title: string
+  createdAt: number
+}
+
+interface ReportCardProps {
+  title: string
+  description: string
+  icon: React.ReactNode
+  badge?: string
+  disabled?: boolean
+  loading?: boolean
+  onDownload: () => void
+  children?: React.ReactNode
+}
+
+function ReportCard({
+  title,
+  description,
+  icon,
+  badge,
+  disabled,
+  loading,
+  onDownload,
+  children
+}: ReportCardProps) {
+  return (
+    <Card className="bg-card/50 backdrop-blur-sm border-border/50 hover:border-border/80 transition-all duration-300 flex flex-col">
+      <CardHeader className="pb-3">
+        <div className="flex items-start justify-between">
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-lg bg-primary/10 text-primary">
+              {icon}
+            </div>
+            <div>
+              <CardTitle className="text-lg font-semibold">{title}</CardTitle>
+              {badge && (
+                <Badge variant="outline" className="mt-1 text-xs bg-background/50">
+                  {badge}
+                </Badge>
+              )}
+            </div>
+          </div>
+        </div>
+        <CardDescription className="mt-2 text-sm leading-relaxed">
+          {description}
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="flex-1 flex flex-col justify-end gap-4">
+        {children}
+        <Button
+          onClick={onDownload}
+          disabled={disabled || loading}
+          className="w-full gap-2"
+          variant={disabled ? "outline" : "default"}
+        >
+          {loading ? (
+            <>
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Generating PDF...
+            </>
+          ) : (
+            <>
+              <Download className="h-4 w-4" />
+              Download PDF
+            </>
+          )}
+        </Button>
+      </CardContent>
+    </Card>
+  )
+}
+
+function ReportsPageSkeleton() {
+  return (
+    <div className="container mx-auto px-4 md:px-6 py-6">
+      <div className="mb-8">
+        <Skeleton className="h-9 w-64 bg-muted/50" />
+        <Skeleton className="h-5 w-96 mt-2 bg-muted/30" />
+      </div>
+      <div className="grid gap-6 md:grid-cols-2">
+        {[...Array(4)].map((_, i) => (
+          <Card key={i} className="bg-card/50 backdrop-blur-sm border-border/50">
+            <CardHeader>
+              <div className="flex items-center gap-3">
+                <Skeleton className="h-10 w-10 rounded-lg bg-muted/30" />
+                <Skeleton className="h-6 w-40 bg-muted/50" />
+              </div>
+              <Skeleton className="h-16 w-full mt-3 bg-muted/30" />
+            </CardHeader>
+            <CardContent>
+              <Skeleton className="h-10 w-full bg-muted/30" />
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+    </div>
+  )
+}
 
 export default function ReportsPage() {
+  const [scripts, setScripts] = useState<Script[]>([])
+  const [selectedScriptId, setSelectedScriptId] = useState<string>("")
+  const [loading, setLoading] = useState(true)
+  const [downloadingReport, setDownloadingReport] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null)
+  const [success, setSuccess] = useState<string | null>(null)
+
+  // Загрузка списка скриптов для выбора
+  useEffect(() => {
+    async function fetchScripts() {
+      try {
+        const response = await fetch("/api/scripts")
+        if (!response.ok) throw new Error("Failed to fetch scripts")
+        const data = await response.json()
+        setScripts(data.scripts || [])
+        if (data.scripts?.length > 0) {
+          setSelectedScriptId(data.scripts[0].id)
+        }
+      } catch (err) {
+        console.error("Error fetching scripts:", err)
+      } finally {
+        setLoading(false)
+      }
+    }
+    fetchScripts()
+  }, [])
+
+  const downloadPDF = async (reportType: string, params?: Record<string, string>) => {
+    setError(null)
+    setSuccess(null)
+    setDownloadingReport(reportType)
+
+    try {
+      const queryParams = new URLSearchParams(params || {})
+      const response = await fetch(`/api/reports/${reportType}?${queryParams.toString()}`)
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}))
+        throw new Error(errorData.error || `Failed to generate ${reportType} report`)
+      }
+
+      // Получаем PDF как blob
+      const blob = await response.blob()
+      const url = window.URL.createObjectURL(blob)
+
+      // Создаём ссылку для скачивания
+      const link = document.createElement("a")
+      link.href = url
+      link.download = `${reportType}-report-${new Date().toISOString().split("T")[0]}.pdf`
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+
+      // Очищаем URL
+      window.URL.revokeObjectURL(url)
+
+      setSuccess(`${reportType} report downloaded successfully!`)
+      setTimeout(() => setSuccess(null), 3000)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to download report")
+    } finally {
+      setDownloadingReport(null)
+    }
+  }
+
+  if (loading) {
+    return <ReportsPageSkeleton />
+  }
+
+  const hasScripts = scripts.length > 0
+
   return (
-    <div className="container mx-auto px-4 md:px-6">
-      <div className="mb-6">
-        <h1 className="text-3xl font-bold">Reports</h1>
-        <p className="text-muted-foreground">Generate and export your analytics reports</p>
+    <div className="container mx-auto px-4 md:px-6 py-6">
+      {/* Header */}
+      <div className="mb-8">
+        <div className="flex items-center gap-3 mb-2">
+          <FileText className="h-8 w-8 text-primary" />
+          <h1 className="text-3xl font-bold">Premium AI Reports</h1>
+        </div>
+        <p className="text-muted-foreground text-lg">
+          Generate comprehensive PDF reports based on your analytics data
+        </p>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        <Card>
-          <CardHeader>
-            <CardTitle>Coming Soon</CardTitle>
-            <CardDescription>
-              Report generation features will be available soon
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
+      {/* Notifications */}
+      {error && (
+        <div className="mb-6 p-4 rounded-lg bg-destructive/10 border border-destructive/30 flex items-center gap-3">
+          <AlertCircle className="h-5 w-5 text-destructive shrink-0" />
+          <p className="text-sm text-destructive">{error}</p>
+        </div>
+      )}
+
+      {success && (
+        <div className="mb-6 p-4 rounded-lg bg-green-500/10 border border-green-500/30 flex items-center gap-3">
+          <CheckCircle2 className="h-5 w-5 text-green-500 shrink-0" />
+          <p className="text-sm text-green-600 dark:text-green-400">{success}</p>
+        </div>
+      )}
+
+      {/* Report Cards Grid */}
+      <div className="grid gap-6 md:grid-cols-2">
+        {/* 1. Semantic Map Report */}
+        <ReportCard
+          title="Semantic Map Report"
+          description="Deep analysis of themes, patterns, paradoxes, conflicts, and emotional triggers from competitor videos. Understand what makes content resonate with audiences."
+          icon={<Map className="h-5 w-5" />}
+          badge="AI Analysis"
+          loading={downloadingReport === "semantic"}
+          disabled={!hasScripts}
+          onDownload={() => downloadPDF("semantic", { scriptId: selectedScriptId })}
+        >
+          {hasScripts ? (
+            <Select value={selectedScriptId} onValueChange={setSelectedScriptId}>
+              <SelectTrigger className="bg-background/50 border-border/50">
+                <SelectValue placeholder="Select script for analysis" />
+              </SelectTrigger>
+              <SelectContent>
+                {scripts.map((script) => (
+                  <SelectItem key={script.id} value={script.id}>
+                    {script.title}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          ) : (
             <p className="text-sm text-muted-foreground">
-              Stay tuned for updates
+              Generate a script first to create this report
             </p>
-          </CardContent>
-        </Card>
+          )}
+        </ReportCard>
+
+        {/* 2. Narrative Skeleton Report */}
+        <ReportCard
+          title="Narrative Skeleton Report"
+          description="Complete story framework including core idea, central paradox, conflict, emotional beats, story structure, hook candidates, and ending ideas."
+          icon={<Sparkles className="h-5 w-5" />}
+          badge="Story Framework"
+          loading={downloadingReport === "skeleton"}
+          disabled={!hasScripts}
+          onDownload={() => downloadPDF("skeleton", { scriptId: selectedScriptId })}
+        >
+          {hasScripts ? (
+            <Select value={selectedScriptId} onValueChange={setSelectedScriptId}>
+              <SelectTrigger className="bg-background/50 border-border/50">
+                <SelectValue placeholder="Select script" />
+              </SelectTrigger>
+              <SelectContent>
+                {scripts.map((script) => (
+                  <SelectItem key={script.id} value={script.id}>
+                    {script.title}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              Generate a script first to create this report
+            </p>
+          )}
+        </ReportCard>
+
+        {/* 3. Trending Insights Report */}
+        <ReportCard
+          title="Trending Insights Report"
+          description="Top momentum videos, performance metrics, growth trends, niche overview, and actionable recommendations based on competitor analysis."
+          icon={<TrendingUp className="h-5 w-5" />}
+          badge="Market Analysis"
+          loading={downloadingReport === "insights"}
+          onDownload={() => downloadPDF("insights", { period: "30" })}
+        >
+          <Select defaultValue="30">
+            <SelectTrigger className="bg-background/50 border-border/50">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="7">Last 7 days</SelectItem>
+              <SelectItem value="30">Last 30 days</SelectItem>
+              <SelectItem value="90">Last 90 days</SelectItem>
+            </SelectContent>
+          </Select>
+        </ReportCard>
+
+        {/* 4. Full Script Report */}
+        <ReportCard
+          title="Full Script Report"
+          description="Complete generated script with title, hook, detailed outline, full script text, and analysis of why it should perform well."
+          icon={<ScrollText className="h-5 w-5" />}
+          badge="Ready-to-Use"
+          loading={downloadingReport === "script"}
+          disabled={!hasScripts}
+          onDownload={() => downloadPDF("script", { scriptId: selectedScriptId })}
+        >
+          {hasScripts ? (
+            <Select value={selectedScriptId} onValueChange={setSelectedScriptId}>
+              <SelectTrigger className="bg-background/50 border-border/50">
+                <SelectValue placeholder="Select script" />
+              </SelectTrigger>
+              <SelectContent>
+                {scripts.map((script) => (
+                  <SelectItem key={script.id} value={script.id}>
+                    {script.title}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              Generate a script first to create this report
+            </p>
+          )}
+        </ReportCard>
+      </div>
+
+      {/* Info Section */}
+      <div className="mt-8 p-6 rounded-lg bg-muted/30 border border-border/50">
+        <h3 className="text-lg font-semibold mb-2">About Premium Reports</h3>
+        <p className="text-sm text-muted-foreground leading-relaxed">
+          Reports are generated on-demand using your existing analytics data. Each PDF includes
+          comprehensive analysis, actionable insights, and professional formatting suitable for
+          team presentations or personal reference. Reports are not saved - download them immediately
+          after generation.
+        </p>
       </div>
     </div>
   )
