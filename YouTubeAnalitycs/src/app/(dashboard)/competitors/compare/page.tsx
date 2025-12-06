@@ -453,12 +453,17 @@ export default function ComparePage() {
 
                 <Button
                   variant="outline"
-                  onClick={() => {
-                    setAiAnalysis(null);
-                    setAiError("");
-                  }}
+                  onClick={generateAIAnalysis}
+                  disabled={aiLoading}
                 >
-                  Generate New Analysis
+                  {aiLoading ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Analyzing...
+                    </>
+                  ) : (
+                    "Regenerate Analysis"
+                  )}
                 </Button>
               </div>
             )}
