@@ -255,14 +255,17 @@ ${JSON.stringify(videosData, null, 2)}
 
   try {
     const completion = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
+      model: "gpt-4.1-mini",
       messages: [
         { role: "system", content: SEMANTIC_MAP_SYSTEM_PROMPT },
         { role: "user", content: userPrompt },
       ],
       temperature: 0.7,
-      max_tokens: 2000,
     });
+
+    // Логгирование GPT-ответа
+    console.log("[GPT semantic] finish_reason:", completion.choices[0]?.finish_reason);
+    console.log("[GPT semantic] usage:", completion.usage);
 
     const responseText = completion.choices[0]?.message?.content;
 
@@ -452,14 +455,17 @@ ${JSON.stringify(selectedVideosData, null, 2)}
 
   try {
     const completion = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
+      model: "gpt-4.1-mini",
       messages: [
         { role: "system", content: NARRATIVE_SKELETON_SYSTEM_PROMPT },
         { role: "user", content: userPrompt },
       ],
       temperature: 0.8,
-      max_tokens: 2000,
     });
+
+    // Логгирование GPT-ответа
+    console.log("[GPT skeleton] finish_reason:", completion.choices[0]?.finish_reason);
+    console.log("[GPT skeleton] usage:", completion.usage);
 
     const responseText = completion.choices[0]?.message?.content;
 
@@ -727,7 +733,7 @@ ${JSON.stringify(videosContext, null, 2)}
   console.log(`[ScriptGenerate] Отправляем запрос в OpenAI...`);
 
   const completion = await openai.chat.completions.create({
-    model: "gpt-4o-mini",
+    model: "gpt-4.1-mini",
     messages: [
       {
         role: "system",
@@ -739,8 +745,11 @@ ${JSON.stringify(videosContext, null, 2)}
       },
     ],
     temperature: 0.8,
-    max_tokens: 4000,
   });
+
+  // Логгирование GPT-ответа
+  console.log("[GPT script] finish_reason:", completion.choices[0]?.finish_reason);
+  console.log("[GPT script] usage:", completion.usage);
 
   const responseText = completion.choices[0]?.message?.content;
 
