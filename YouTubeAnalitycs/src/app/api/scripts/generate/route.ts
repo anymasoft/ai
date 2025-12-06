@@ -118,7 +118,7 @@ async function collectVideoData(
   const videosResult = await db.execute({
     sql: `
       SELECT
-        videoId, channelId, title, viewCount, likeCount, commentCount, publishedAt, data
+        videoId, channelId, title, viewCount, likeCount, commentCount, publishedAt
       FROM channel_videos
       WHERE videoId IN (${placeholders})
     `,
@@ -145,7 +145,6 @@ async function collectVideoData(
       commentCount: row.commentCount ? Number(row.commentCount) : undefined,
       publishedAt,
       viewsPerDay,
-      data: row.data as string | null,
     };
   });
 
@@ -160,25 +159,11 @@ async function collectVideoData(
       ? (video.viewsPerDay / medianViewsPerDay) - 1
       : 0;
 
-    // Пытаемся извлечь теги из data (если есть)
-    let tags: string[] | undefined;
-    if (video.data) {
-      try {
-        const parsed = JSON.parse(video.data);
-        if (Array.isArray(parsed.keywords)) {
-          tags = parsed.keywords;
-        }
-      } catch {
-        // Игнорируем ошибки парсинга
-      }
-    }
-
     return {
       id: video.videoId,
       title: video.title,
       channelTitle: channelInfo?.title || "Unknown Channel",
       channelHandle: channelInfo?.handle,
-      tags,
       viewCount: video.viewCount,
       likeCount: video.likeCount,
       commentCount: video.commentCount,
