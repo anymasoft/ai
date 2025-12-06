@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
@@ -12,6 +13,7 @@ import Link from "next/link";
 import type { SavedScript } from "@/types/scripts";
 
 export default function ScriptsHistoryPage() {
+  const router = useRouter();
   const [scripts, setScripts] = useState<SavedScript[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -212,7 +214,11 @@ export default function ScriptsHistoryPage() {
                 </TableHeader>
                 <TableBody>
                   {scripts.map((script) => (
-                    <TableRow key={script.id}>
+                    <TableRow
+                      key={script.id}
+                      className="cursor-pointer hover:bg-muted/50"
+                      onClick={() => router.push(`/scripts/${script.id}`)}
+                    >
                       <TableCell>
                         <div className="space-y-1">
                           <div className="font-medium line-clamp-2" title={script.title}>
@@ -246,7 +252,7 @@ export default function ScriptsHistoryPage() {
                           </div>
                         </div>
                       </TableCell>
-                      <TableCell className="text-right">
+                      <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                         <div className="flex justify-end gap-2">
                           <Link href={`/scripts/${script.id}`}>
                             <Button variant="outline" size="sm" className="gap-1">

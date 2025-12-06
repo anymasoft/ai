@@ -8,6 +8,7 @@ import {
   FileBarChart,
   Target,
   GitCompare,
+  FileText,
 } from "lucide-react"
 import Link from "next/link"
 import { useSession } from "next-auth/react"
@@ -49,6 +50,11 @@ const navGroups = [
         title: "Trending",
         url: "/trending",
         icon: TrendingUp,
+      },
+      {
+        title: "Scripts",
+        url: "/scripts",
+        icon: FileText,
       },
       {
         title: "Reports",
