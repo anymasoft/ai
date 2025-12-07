@@ -302,10 +302,10 @@ export default async function ChannelPage({ params }: PageProps) {
           </div>
         </div>
 
-      {/* AI Insights */}
-      <div>
-        <h2 className="text-2xl font-bold mb-4">AI Insights</h2>
-        {insight ? (
+      {/* AI Insights - Only show if data exists */}
+      {insight && (
+        <div>
+          <h2 className="text-2xl font-bold mb-4">AI Insights</h2>
           <div className="space-y-4">
             {/* Summary */}
             <Card>
@@ -412,15 +412,8 @@ export default async function ChannelPage({ params }: PageProps) {
               </CardContent>
             </Card>
           </div>
-        ) : (
-          <Alert>
-            <AlertCircle className="h-4 w-4" />
-            <AlertDescription>
-              No AI analysis available yet.
-            </AlertDescription>
-          </Alert>
-        )}
-      </div>
+        </div>
+      )}
 
         {/* Analytics Section with Language Selector */}
         <ChannelAnalytics
