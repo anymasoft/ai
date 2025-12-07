@@ -126,22 +126,8 @@ export function LandingNavbar() {
         {/* Desktop CTA */}
         <div className="hidden xl:flex items-center space-x-2">
           <ModeToggle variant="ghost" />
-          <Button variant="ghost" size="icon" asChild className="cursor-pointer">
-            <a href="https://github.com/silicondeck/shadcn-dashboard-landing-template" target="_blank" rel="noopener noreferrer" aria-label="GitHub Repository">
-              <Github className="h-5 w-5" />
-            </a>
-          </Button>
-          <Button variant="outline" asChild className="cursor-pointer">
-            <Link href="/dashboard">
-              <LayoutDashboard className="h-4 w-4 mr-2" />
-              Dashboard
-            </Link>
-          </Button>
-          <Button variant="ghost" asChild className="cursor-pointer">
-            <Link href="/sign-in">Sign In</Link>
-          </Button>
           <Button asChild className="cursor-pointer">
-            <Link href="/sign-up">Get Started</Link>
+            <Link href="/sign-in">Sign in</Link>
           </Button>
         </div>
 
@@ -245,24 +231,11 @@ export function LandingNavbar() {
 
               {/* Footer Actions */}
               <div className="border-t p-6 space-y-4">
-
                 {/* Primary Actions */}
                 <div className="space-y-3">
-                  <Button variant="outline" size="lg" asChild className="w-full cursor-pointer">
-                    <Link href="/dashboard">
-                      <LayoutDashboard className="size-4" />
-                      Dashboard
-                    </Link>
+                  <Button asChild size="lg" className="w-full cursor-pointer">
+                    <Link href="/sign-in">Sign in</Link>
                   </Button>
-
-                  <div className="grid grid-cols-2 gap-3">
-                    <Button variant="outline" size="lg" asChild className="cursor-pointer">
-                      <Link href="/sign-in">Sign In</Link>
-                    </Button>
-                    <Button asChild size="lg" className="cursor-pointer" >
-                      <Link href="/sign-up">Get Started</Link>
-                    </Button>
-                  </div>
                 </div>
               </div>
             </div>
