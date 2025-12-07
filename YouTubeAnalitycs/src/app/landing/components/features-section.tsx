@@ -67,17 +67,17 @@ export function FeaturesSection() {
       <div className="container mx-auto px-4 sm:px-6 lg:px-8">
         {/* Section Header */}
         <div className="mx-auto max-w-2xl text-center mb-16">
-          <Badge variant="outline" className="mb-4">Marketplace Features</Badge>
+          <Badge variant="outline" className="mb-4">Возможности платформы</Badge>
           <h2 className="text-3xl font-bold tracking-tight sm:text-4xl mb-4">
-            Everything you need to build amazing web applications
+            Все инструменты для анализа и создания контента
           </h2>
           <p className="text-lg text-muted-foreground">
-            Our marketplace provides curated blocks, templates, landing pages, and admin dashboards to help you build professional applications faster than ever.
+            Анализируйте конкурентов на YouTube, получайте AI-сценарии и инсайты для создания успешного контента на основе реальных данных.
           </p>
         </div>
 
         {/* First Feature Section */}
-        <div className="grid items-center gap-12 lg:grid-cols-2 lg:gap-8 xl:gap-16 mb-24">
+        {/* <div className="grid items-center gap-12 lg:grid-cols-2 lg:gap-8 xl:gap-16 mb-24">
           {/* Left Image */}
           <Image3D
             lightSrc="/feature-1-light.png"
@@ -124,10 +124,10 @@ export function FeaturesSection() {
               </Button>
             </div>
           </div>
-        </div>
+        </div> */}
 
         {/* Second Feature Section - Flipped Layout */}
-        <div className="grid items-center gap-12 lg:grid-cols-2 lg:gap-8 xl:gap-16">
+        {/* <div className="grid items-center gap-12 lg:grid-cols-2 lg:gap-8 xl:gap-16">
           {/* Left Content */}
           <div className="space-y-6 order-2 lg:order-1">
             <div className="space-y-4">
@@ -176,7 +176,7 @@ export function FeaturesSection() {
             direction="right"
             className="order-1 lg:order-2"
           />
-        </div>
+        </div> */}
       </div>
     </section>
   )

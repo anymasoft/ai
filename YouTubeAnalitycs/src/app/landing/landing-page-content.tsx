@@ -28,7 +28,7 @@ export function LandingPageContent() {
       {/* Main Content */}
       <main>
         <HeroSection />
-        <LogoCarousel />
+        {/* <LogoCarousel /> */}
         {/* <StatsSection /> */}
         <AboutSection />
         <FeaturesSection />
@@ -37,7 +37,7 @@ export function LandingPageContent() {
         {/* <TestimonialsSection /> */}
         {/* <BlogSection /> */}
         {/* <FaqSection /> */}
-        <CTASection />
+        {/* <CTASection /> */}
         {/* <ContactSection /> */}
       </main>
 

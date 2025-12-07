@@ -74,7 +74,7 @@ export function PricingSection() {
             Choose your plan
           </h2>
           <p className="text-lg text-muted-foreground mb-8">
-            Start building with our free components or upgrade to Pro for access to premium templates and advanced features.
+            Выберите тариф, который подходит для вашего канала. Начните с базовых функций или выберите профессиональный план для расширенной аналитики и безлимитной генерации сценариев.
           </p>
 
           {/* Billing Toggle */}
