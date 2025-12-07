@@ -150,7 +150,6 @@ export function CommandSearch({ open, onOpenChange }: CommandSearchProps) {
     { title: "Connections", url: "/settings/connections", group: "Settings", icon: Link2 },
 
     // Info Pages
-    { title: "Pricing", url: "/pricing", group: "Info", icon: CreditCard },
     { title: "FAQs", url: "/faqs", group: "Info", icon: HelpCircle },
   ]
 

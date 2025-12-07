@@ -61,6 +61,11 @@ const navGroups = [
         url: "/reports",
         icon: FileBarChart,
       },
+      {
+        title: "FAQ",
+        url: "/faqs",
+        icon: FileText,
+      },
     ],
   },
   {
