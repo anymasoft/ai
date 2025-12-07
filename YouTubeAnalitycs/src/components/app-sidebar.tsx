@@ -9,6 +9,7 @@ import {
   Target,
   GitCompare,
   FileText,
+  MessageSquare,
 } from "lucide-react"
 import Link from "next/link"
 import { useSession } from "next-auth/react"
@@ -65,6 +66,11 @@ const navGroups = [
         title: "FAQ",
         url: "/faqs",
         icon: FileText,
+      },
+      {
+        title: "Feedback",
+        url: "/feedback",
+        icon: MessageSquare,
       },
     ],
   },
