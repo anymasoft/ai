@@ -290,25 +290,24 @@ export async function POST(
         .slice(0, 30);
     }
 
-    // Проверяем, есть ли уже свежий анализ (не старше 3 дней)
-    const threeDaysAgo = Date.now() - 3 * 24 * 60 * 60 * 1000;
-    const existingAnalysisResult = await client.execute({
-      sql: "SELECT * FROM audience_insights WHERE channelId = ? ORDER BY generatedAt DESC LIMIT 1",
-      args: [competitor.channelId],
-    });
-
-    // Если анализ существует и свежий - возвращаем его
-    if (existingAnalysisResult.rows.length > 0) {
-      const existingAnalysis = existingAnalysisResult.rows[0];
-      if ((existingAnalysis.generatedAt as number) > threeDaysAgo) {
-        console.log(`[Audience] Найден свежий анализ`);
-        client.close();
-        return NextResponse.json({
-          ...JSON.parse(existingAnalysis.data as string),
-          generatedAt: existingAnalysis.generatedAt,
-        });
-      }
-    }
+    // TODO: Кэширование отключено на время разработки
+    // В прод. версии раскомментировать, чтобы не регенерировать анализ каждый раз
+    // const threeDaysAgo = Date.now() - 3 * 24 * 60 * 60 * 1000;
+    // const existingAnalysisResult = await client.execute({
+    //   sql: "SELECT * FROM audience_insights WHERE channelId = ? ORDER BY generatedAt DESC LIMIT 1",
+    //   args: [competitor.channelId],
+    // });
+    // if (existingAnalysisResult.rows.length > 0) {
+    //   const existingAnalysis = existingAnalysisResult.rows[0];
+    //   if ((existingAnalysis.generatedAt as number) > threeDaysAgo) {
+    //     console.log(`[Audience] Найден свежий анализ`);
+    //     client.close();
+    //     return NextResponse.json({
+    //       ...JSON.parse(existingAnalysis.data as string),
+    //       generatedAt: existingAnalysis.generatedAt,
+    //     });
+    //   }
+    // }
 
     console.log(`[Audience] Генерируем новый анализ через OpenAI...`);
 
