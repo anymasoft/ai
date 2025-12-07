@@ -25,7 +25,7 @@ export function SWOTAnalysisBlock({
   channelId,
   insight,
 }: SWOTAnalysisBlockProps) {
-  const [isOpen, setIsOpen] = useState(true)
+  const [isOpen, setIsOpen] = useState(false)
 
   if (!insight) {
     return (
