@@ -70,15 +70,15 @@ export function ChannelAnalytics({
   hasVideos,
   hasComments,
 }: ChannelAnalyticsProps) {
-  // Все разделы открыты по умолчанию
+  // Все разделы закрыты по умолчанию - пользователь видит полный обзор доступных аналитических блоков
   const [expanded, setExpanded] = useState({
-    growth: true,
-    videos: true,
-    content: true,
-    momentum: true,
-    audience: true,
-    comments: true,
-    deepAnalysis: true,
+    growth: false,
+    videos: false,
+    content: false,
+    momentum: false,
+    audience: false,
+    comments: false,
+    deepAnalysis: false,
   })
 
   const toggle = (section: keyof typeof expanded) => {
