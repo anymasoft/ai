@@ -8,9 +8,17 @@ import { useToast } from "@/hooks/use-toast";
 
 interface GenerateSwotButtonProps {
   channelId: number;
+  variant?: "default" | "outline" | "ghost";
+  size?: "default" | "sm" | "lg";
+  isUpdate?: boolean;
 }
 
-export function GenerateSwotButton({ channelId }: GenerateSwotButtonProps) {
+export function GenerateSwotButton({
+  channelId,
+  variant = "default",
+  size = "lg",
+  isUpdate = false,
+}: GenerateSwotButtonProps) {
   const [isGenerating, setIsGenerating] = useState(false);
   const router = useRouter();
   const { toast } = useToast();
@@ -31,8 +39,10 @@ export function GenerateSwotButton({ channelId }: GenerateSwotButtonProps) {
       const data = await response.json();
 
       toast({
-        title: "AI-анализ готов!",
-        description: "SWOT-анализ успешно сгенерирован. Страница обновляется...",
+        title: isUpdate ? "AI-анализ обновлён!" : "AI-анализ готов!",
+        description: isUpdate
+          ? "SWOT-анализ успешно обновлён с актуальными данными."
+          : "SWOT-анализ успешно сгенерирован. Страница обновляется...",
       });
 
       // Перезагружаем страницу для отображения нового анализа
@@ -58,17 +68,18 @@ export function GenerateSwotButton({ channelId }: GenerateSwotButtonProps) {
       onClick={handleGenerate}
       disabled={isGenerating}
       className="cursor-pointer"
-      size="lg"
+      size={size}
+      variant={variant}
     >
       {isGenerating ? (
         <>
           <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-          Генерируется AI-анализ...
+          {isUpdate ? "Обновляется..." : "Генерируется..."}
         </>
       ) : (
         <>
           <Sparkles className="mr-2 h-4 w-4" />
-          Сгенерировать AI SWOT-анализ
+          {isUpdate ? "Обновить анализ" : "Сгенерировать AI SWOT-анализ"}
         </>
       )}
     </Button>

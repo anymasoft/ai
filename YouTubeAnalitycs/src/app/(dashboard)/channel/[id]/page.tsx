@@ -311,15 +311,18 @@ export default async function ChannelPage({ params }: PageProps) {
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-2xl font-bold">AI SWOT-анализ канала</h2>
           {insight && (
-            <p className="text-sm text-muted-foreground">
-              Сгенерировано: {new Date(insight.generatedAt).toLocaleDateString('ru-RU', {
-                year: 'numeric',
-                month: 'long',
-                day: 'numeric',
-                hour: '2-digit',
-                minute: '2-digit'
-              })}
-            </p>
+            <div className="flex items-center gap-4">
+              <p className="text-sm text-muted-foreground">
+                Сгенерировано: {new Date(insight.generatedAt).toLocaleDateString('ru-RU', {
+                  year: 'numeric',
+                  month: 'long',
+                  day: 'numeric',
+                  hour: '2-digit',
+                  minute: '2-digit'
+                })}
+              </p>
+              <GenerateSwotButton channelId={competitorId} variant="outline" size="sm" isUpdate={true} />
+            </div>
           )}
         </div>
 
