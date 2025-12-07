@@ -1,5 +1,39 @@
 # История изменений
 
+## [2025-12-07] - BRAND: Замена брендинга ShadcnStore на Beem Analytics
+
+### Изменено
+
+#### Компоненты футеров
+- 📝 **`src/components/site-footer.tsx`**:
+  - Заменено "Made with ❤️ by ShadcnStore Team" на "Made with ❤️ by Beem Analytics"
+  - Удалена внешняя ссылка на shadcnstore.com
+  - Сохранен формат с иконкой сердца
+
+- 📝 **`src/app/landing/components/footer.tsx`**:
+  - Заменен брендовый блок: "ShadcnStore" → "Beem Analytics"
+  - Заменен нижний футер: "Made with ❤️ by ShadcnStore" → "Made with ❤️ by Beem Analytics"
+  - Удалены ссылки на shadcnstore.com (2 места)
+  - Удалена ссылка на GitHub шаблон (https://github.com/silicondeck/shadcn-dashboard-landing-template)
+
+#### Метаданные страниц
+- 📝 **`src/app/(auth)/layout.tsx`**:
+  - Title: "Authentication - ShadcnStore" → "Authentication - Beem Analytics"
+
+- 📝 **`src/app/landing/page.tsx`**:
+  - Title: "ShadcnStore - Modern Admin Dashboard Template" → "Beem Analytics - YouTube Competitors Analytics Platform"
+  - Description: переписан под реальный продукт YouTube Analytics
+  - Keywords: обновлены с admin dashboard на youtube analytics, competitor analysis, content strategy, ai analysis
+  - OpenGraph и Twitter Card метаданные синхронизированы
+
+### Детали изменений
+- Все ссылки на внешние ресурсы шаблона удалены
+- Брендинг обновлен в 4 файлах
+- Сохранен формат "Made with ❤️" во всех футерах
+- Метаданные адаптированы под реальный продукт
+
+---
+
 ## [2025-12-07] - CONTENT: Полная переработка FAQ под YouTube Competitors Analytics
 
 ### Изменено
