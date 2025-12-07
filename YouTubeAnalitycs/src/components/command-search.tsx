@@ -3,27 +3,11 @@
 import * as React from "react"
 import { useRouter } from "next/navigation"
 import { Command as CommandPrimitive } from "cmdk"
-import {
-  Search,
-  LayoutDashboard,
-  MessageCircle,
-  Shield,
-  Settings,
-  HelpCircle,
-  CreditCard,
-  Bell,
-  Link2,
-  Palette,
-  Target,
-  GitCompare,
-  TrendingUp,
-  FileText,
-  FileBarChart,
-  type LucideIcon,
-} from "lucide-react"
+import { Search, type LucideIcon } from "lucide-react"
 
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog"
 import { cn } from "@/lib/utils"
+import { getAllNavigationItems } from "@/config/navigation"
 
 const Command = React.forwardRef<
   React.ElementRef<typeof CommandPrimitive>,
@@ -112,7 +96,7 @@ CommandItem.displayName = CommandPrimitive.Item.displayName
 interface SearchItem {
   title: string
   url: string
-  group: string
+  group?: string
   icon?: LucideIcon
 }
 
@@ -125,40 +109,20 @@ export function CommandSearch({ open, onOpenChange }: CommandSearchProps) {
   const router = useRouter()
   const commandRef = React.useRef<HTMLDivElement>(null)
 
-  const searchItems: SearchItem[] = [
-    // YouTube Analytics (Главные разделы)
-    { title: "Dashboard", url: "/dashboard", group: "Analytics", icon: LayoutDashboard },
-    { title: "Competitors", url: "/competitors", group: "Analytics", icon: Target },
-    { title: "Compare Channels", url: "/competitors/compare", group: "Analytics", icon: GitCompare },
-    { title: "Trending Content", url: "/trending", group: "Analytics", icon: TrendingUp },
-    { title: "Video Scripts", url: "/scripts", group: "Analytics", icon: FileText },
-    { title: "AI Reports", url: "/reports", group: "Analytics", icon: FileBarChart },
-
-    // Chat & Collaboration
-    { title: "AI Assistant", url: "/chat", group: "Tools", icon: MessageCircle },
-
-    // Authentication
-    { title: "Sign In", url: "/sign-in", group: "Auth", icon: Shield },
-    { title: "Sign Up", url: "/sign-up", group: "Auth", icon: Shield },
-    { title: "Forgot Password", url: "/forgot-password", group: "Auth", icon: Shield },
-
-    // Settings & Account
-    { title: "Account", url: "/settings/account", group: "Settings", icon: Settings },
-    { title: "Billing & Plans", url: "/settings/billing", group: "Settings", icon: CreditCard },
-    { title: "Appearance", url: "/settings/appearance", group: "Settings", icon: Palette },
-    { title: "Notifications", url: "/settings/notifications", group: "Settings", icon: Bell },
-    { title: "Connections", url: "/settings/connections", group: "Settings", icon: Link2 },
-
-    // Info Pages
-    { title: "Pricing", url: "/pricing", group: "Info", icon: CreditCard },
-    { title: "FAQs", url: "/faqs", group: "Info", icon: HelpCircle },
-  ]
+  // Используем единственный источник навигации (SSOT)
+  const searchItems = getAllNavigationItems().map((item) => ({
+    title: item.title,
+    url: item.url,
+    group: item.group,
+    icon: item.icon,
+  }))
 
   const groupedItems = searchItems.reduce((acc, item) => {
-    if (!acc[item.group]) {
-      acc[item.group] = []
+    const group = item.group || "Other"
+    if (!acc[group]) {
+      acc[group] = []
     }
-    acc[item.group].push(item)
+    acc[group].push(item)
     return acc
   }, {} as Record<string, SearchItem[]>)
 
