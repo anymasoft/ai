@@ -120,7 +120,63 @@ ${videosData}
 6. После каждой строки таблицы ДОЛЖЕН быть перевод строки.
 7. Если таблица не может быть корректно выведена — не выводи её вообще.
 
-Эти правила критичны для правильного отображения таблиц в пользовательском интерфейсе.`;
+Эти правила критичны для правильного отображения таблиц в пользовательском интерфейсе.
+
+---
+
+## ⚠️ ОБЯЗАТЕЛЬНО: СТРУКТУРИРОВАННЫЙ JSON ДЛЯ ТАБЛИЦ
+
+После полного текстового отчёта ты ОБЯЗАТЕЛЬНО должен добавить структурированные данные для всех таблиц.
+
+**ФОРМАТ ВЫВОДА:**
+
+1. Заверши весь текстовый отчёт (все 7 разделов).
+2. На новой строке выведи ровно: \`__TABLES_JSON__\`
+3. На следующей строке выведи ТОЛЬКО валидный JSON без комментариев и без markdown-блоков.
+
+**JSON-СТРУКТУРА (СТРОГО):**
+
+\`\`\`json
+{
+  "themes": [
+    {
+      "name": "string (название темы)",
+      "videoCount": number (количество видео, целое число),
+      "avgViews": number (средний просмотр, целое число БЕЗ ~ и текста),
+      "trend": "string (краткое описание тренда на русском: Растёт, Падает, Стабильна или подробнее)"
+    }
+  ],
+  "formats": [
+    {
+      "name": "string (название формата)",
+      "videoCount": number (количество видео, целое число),
+      "avgViews": number (средний просмотр, целое число БЕЗ ~ и текста),
+      "features": "string (краткое описание особенностей формата)"
+    }
+  ]
+}
+\`\`\`
+
+**КРИТИЧЕСКИЕ ТРЕБОВАНИЯ К JSON:**
+
+- JSON должен быть строго валидным (проверяй синтаксис!)
+- Поле \`name\` — строка с названием темы/формата
+- Поля \`videoCount\` и \`avgViews\` — ТОЛЬКО целые числа (без тильд ~, без слов, без запятых)
+- Поле \`trend\` (для themes) — краткое текстовое описание на русском
+- Поле \`features\` (для formats) — краткое текстовое описание на русском
+- Если одной из таблиц нет данных — возвращай пустой массив: \`"themes": []\`
+- НЕ добавляй никакие другие поля вне описанной схемы
+- НЕ добавляй никакие комментарии или текст ПОСЛЕ JSON или внутри JSON
+- JSON должен быть компактен и заканчиваться на последней скобке \`}\`
+
+**ПРИМЕР ПОЛНОГО ОТВЕТА:**
+
+(... весь текстовый отчёт 7 разделов ...)
+
+__TABLES_JSON__
+{"themes":[{"name":"Парный трейдинг","videoCount":23,"avgViews":1420,"trend":"Стабильный с пиками на практических кейсах"},{"name":"Рекомендованные стратегии","videoCount":7,"avgViews":2200,"trend":"Растущий"}],"formats":[{"name":"Обзор","videoCount":10,"avgViews":2000,"features":"Технический анализ с примерами"},{"name":"Туториал","videoCount":5,"avgViews":1500,"features":"Пошаговое обучение"}]}
+
+(ничего после JSON не добавляй!)`;
 
 export async function POST(
   req: NextRequest,
@@ -240,9 +296,27 @@ export async function POST(
 
     console.log(`[ContentIntelligence] Получен ответ от OpenAI (${responseText.length} символов)`);
 
+    // Парсим JSON с таблицами из ответа
+    let tablesJson: any = null;
+    const markerIndex = responseText.indexOf("__TABLES_JSON__");
+    let reportText = responseText;
+
+    if (markerIndex !== -1) {
+      reportText = responseText.substring(0, markerIndex).trim();
+      const jsonPart = responseText.substring(markerIndex + "__TABLES_JSON__".length).trim();
+
+      try {
+        tablesJson = JSON.parse(jsonPart);
+        console.log(`[ContentIntelligence] JSON с таблицами успешно распарсен`);
+      } catch (e) {
+        console.warn(`[ContentIntelligence] Не удалось распарсить JSON с таблицами:`, e);
+        // Продолжаем с пустым tablesJson, это не критично
+      }
+    }
+
     // Сохраняем markdown отчёт в БД
     const analysisData = {
-      report: responseText,
+      report: reportText,
       format: "markdown",
       sections: [
         "summary",
@@ -252,7 +326,8 @@ export async function POST(
         "weaknesses",
         "opportunities",
         "recommendations"
-      ]
+      ],
+      ...(tablesJson && { tables: tablesJson })
     };
 
     await client.execute({
@@ -265,8 +340,9 @@ export async function POST(
     client.close();
 
     return NextResponse.json({
-      report: responseText,
+      report: reportText,
       format: "markdown",
+      ...(tablesJson && { tables: tablesJson }),
       generatedAt: Date.now(),
     }, { status: 201 });
 
@@ -346,6 +422,7 @@ export async function GET(
       return NextResponse.json({
         report: parsedData.report,
         format: "markdown",
+        ...(parsedData.tables && { tables: parsedData.tables }),
         generatedAt: analysis.generatedAt,
       });
     }
