@@ -72,6 +72,9 @@ function CollapsibleSection({
   isOpen: boolean;
   onToggle: () => void;
 }) {
+  // Определяем, является ли это разделом с таблицами (themes или formats)
+  const isTableSection = section.title.includes("ОСНОВНЫЕ ТЕМЫ") || section.title.includes("ФОРМАТЫ КОНТЕНТА");
+
   return (
     <Card>
       <CardHeader
@@ -100,6 +103,27 @@ function CollapsibleSection({
                 h4: ({ node, ...props }) => <h4 className="font-medium mt-2 mb-1 text-sm" {...props} />,
                 strong: ({ node, ...props }) => <strong className="font-semibold" {...props} />,
                 code: ({ node, ...props }) => <code className="bg-muted px-1 py-0.5 rounded text-xs font-mono" {...props} />,
+                // Кастомные компоненты для таблиц
+                table: ({ node, ...props }) => (
+                  <div className="overflow-x-auto my-4">
+                    <table className="w-full border-collapse border border-border" {...props} />
+                  </div>
+                ),
+                thead: ({ node, ...props }) => (
+                  <thead className="bg-muted/60 border-b border-border" {...props} />
+                ),
+                tbody: ({ node, ...props }) => (
+                  <tbody {...props} />
+                ),
+                tr: ({ node, ...props }) => (
+                  <tr className="border-b border-border hover:bg-muted/40 transition-colors" {...props} />
+                ),
+                th: ({ node, ...props }) => (
+                  <th className="px-4 py-3 text-left font-semibold text-sm border-r border-border last:border-r-0 text-foreground" {...props} />
+                ),
+                td: ({ node, ...props }) => (
+                  <td className="px-4 py-3 text-sm border-r border-border last:border-r-0 text-muted-foreground" {...props} />
+                ),
               }}
             >
               {section.content}
