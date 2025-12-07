@@ -3,6 +3,57 @@ import { createClient } from "@libsql/client";
 // Инициализация SQLite базы данных
 let _client: ReturnType<typeof createClient> | null = null;
 
+/**
+ * Проверяет существование колонки в таблице
+ * Использует PRAGMA table_info для получения информации о колонках таблицы
+ * Это безопасный способ проверки без попыток выполнения ALTER TABLE
+ */
+function columnExists(client: any, tableName: string, columnName: string): boolean {
+  try {
+    const result = client.execute(`PRAGMA table_info(${tableName});`);
+    // Результат содержит массив объектов с информацией о колонках
+    // Каждый объект имеет поле 'name' с именем колонки
+    const columns = result.rows as Array<{ name: string; [key: string]: any }>;
+    return columns.some(col => col.name === columnName);
+  } catch (e) {
+    // Если PRAGMA не поддерживается (маловероятно), возвращаем false
+    // Это позволит коду дальше попытаться добавить колонку и обработать ошибку правильно
+    return false;
+  }
+}
+
+/**
+ * Добавляет колонку в таблицу ТОЛЬКО если её нет
+ * Идемпотентная операция - безопасна для повторного запуска
+ * @param client - клиент БД
+ * @param tableName - имя таблицы (без кавычек)
+ * @param columnName - имя колонки
+ * @param columnDef - определение колонки (например 'TEXT', 'INTEGER NOT NULL DEFAULT 0')
+ */
+function addColumnIfNotExists(
+  client: any,
+  tableName: string,
+  columnName: string,
+  columnDef: string
+): void {
+  if (columnExists(client, tableName, columnName)) {
+    console.log(`ℹ️  Column ${columnName} already exists in ${tableName}`);
+    return;
+  }
+
+  try {
+    client.execute(`ALTER TABLE ${tableName} ADD COLUMN ${columnName} ${columnDef};`);
+    console.log(`✅ Added column ${columnName} to ${tableName}`);
+  } catch (error: any) {
+    // Если всё же произошла ошибка, выводим её (не скрываем)
+    // Это поможет выявить реальные проблемы с БД
+    console.error(
+      `❌ Failed to add column ${columnName} to ${tableName}: ${error.message}`
+    );
+    throw error; // Пробрасываем ошибку дальше для обработки на уровне выше
+  }
+}
+
 function getClient() {
   if (!_client) {
     const dbPath = process.env.DATABASE_URL || "file:sqlite.db";
@@ -101,21 +152,10 @@ function getClient() {
         );`);
 
         // Миграция: добавляем новые колонки для расширенного SWOT-анализа
-        try {
-          _client.execute(`ALTER TABLE ai_insights ADD COLUMN strategicSummary TEXT;`);
-        } catch (e) {
-          // Колонка уже существует
-        }
-        try {
-          _client.execute(`ALTER TABLE ai_insights ADD COLUMN contentPatterns TEXT;`);
-        } catch (e) {
-          // Колонка уже существует
-        }
-        try {
-          _client.execute(`ALTER TABLE ai_insights ADD COLUMN videoIdeas TEXT;`);
-        } catch (e) {
-          // Колонка уже существует
-        }
+        // Использует idempotent проверку через PRAGMA table_info
+        addColumnIfNotExists(_client, 'ai_insights', 'strategicSummary', 'TEXT');
+        addColumnIfNotExists(_client, 'ai_insights', 'contentPatterns', 'TEXT');
+        addColumnIfNotExists(_client, 'ai_insights', 'videoIdeas', 'TEXT');
 
         _client.execute(`CREATE TABLE IF NOT EXISTS channel_metrics (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -149,12 +189,9 @@ function getClient() {
         _client.execute(`CREATE INDEX IF NOT EXISTS idx_channel_videos_lookup
           ON channel_videos(channelId, videoId);`);
 
-        // Миграция: добавляем поле duration для ISO 8601 формата длительности видео
-        try {
-          _client.execute(`ALTER TABLE channel_videos ADD COLUMN duration TEXT;`);
-        } catch (e) {
-          // Колонка уже существует
-        }
+        // Миграция: добавляем поле duration для длительности видео
+        // Использует idempotent проверку через PRAGMA table_info
+        addColumnIfNotExists(_client, 'channel_videos', 'duration', 'TEXT');
 
         _client.execute(`CREATE TABLE IF NOT EXISTS content_intelligence (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
