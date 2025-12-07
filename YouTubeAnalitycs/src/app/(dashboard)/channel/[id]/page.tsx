@@ -207,6 +207,10 @@ export default async function ChannelPage({ params }: PageProps) {
     console.log("metrics rows:", metrics.length);
     console.log("videos rows:", videos.length);
     console.log("content intelligence:", contentData ? "exists" : "not found");
+    if (contentData) {
+      console.log("contentData format:", contentData.format || "json (old format)");
+      console.log("contentData has report:", !!contentData.report);
+    }
     console.log("momentum insights:", momentumData ? "exists" : "not found");
     console.log("audience insights:", audienceData ? "exists" : "not found");
     console.log("comment insights:", commentsData ? "exists" : "not found");
