@@ -78,14 +78,14 @@ export function FeaturesSection() {
 
         {/* First Feature Section */}
         {/* <div className="grid items-center gap-12 lg:grid-cols-2 lg:gap-8 xl:gap-16 mb-24">
-          {/* Left Image */}
+          Left Image
           <Image3D
             lightSrc="/feature-1-light.png"
             darkSrc="/feature-1-dark.png"
             alt="Analytics dashboard"
             direction="left"
           />
-          {/* Right Content */}
+          Right Content
           <div className="space-y-6">
             <div className="space-y-4">
               <h3 className="text-2xl font-semibold tracking-tight text-balance sm:text-3xl">
@@ -128,7 +128,7 @@ export function FeaturesSection() {
 
         {/* Second Feature Section - Flipped Layout */}
         {/* <div className="grid items-center gap-12 lg:grid-cols-2 lg:gap-8 xl:gap-16">
-          {/* Left Content */}
+          Left Content
           <div className="space-y-6 order-2 lg:order-1">
             <div className="space-y-4">
               <h3 className="text-2xl font-semibold tracking-tight text-balance sm:text-3xl">
@@ -168,7 +168,7 @@ export function FeaturesSection() {
             </div>
           </div>
 
-          {/* Right Image */}
+          Right Image
           <Image3D
             lightSrc="/feature-2-light.png"
             darkSrc="/feature-2-dark.png"
