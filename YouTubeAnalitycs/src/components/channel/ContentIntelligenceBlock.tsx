@@ -25,82 +25,11 @@ interface Section {
 }
 
 /**
- * Парсит таблицы из строк с | и конвертирует в правильный markdown
- * Функция находит группы строк начинающиеся с | и превращает их в таблицы
- */
-function parseAndRebuildTables(markdown: string): string {
-  const lines = markdown.split("\n");
-  const result: string[] = [];
-  let i = 0;
-
-  while (i < lines.length) {
-    const line = lines[i];
-    const trimmedLine = line.trim();
-
-    // Проверяем, это ли строка таблицы
-    if (trimmedLine.startsWith("|") && trimmedLine.includes("|")) {
-      // Собираем все подряд идущие строки таблицы
-      const tableLines: string[] = [];
-      let columnCount = 0;
-
-      // Первая строка - берём количество столбцов
-      const firstLine = trimmedLine;
-      const cells = firstLine.split("|").map(c => c.trim()).filter(c => c.length > 0);
-      columnCount = cells.length;
-      tableLines.push(firstLine);
-      i++;
-
-      // Пропускаем разделитель если есть (строка со всеми дефисами)
-      if (i < lines.length) {
-        const nextLine = lines[i].trim();
-        if (nextLine.startsWith("|") && /^[\|\s\-]+$/.test(nextLine)) {
-          i++; // Пропускаем разделитель
-        }
-      }
-
-      // Собираем все остальные строки таблицы
-      while (i < lines.length) {
-        const currentLine = lines[i].trim();
-        if (currentLine.startsWith("|") && currentLine.includes("|")) {
-          tableLines.push(currentLine);
-          i++;
-        } else {
-          break;
-        }
-      }
-
-      // Строим правильный markdown для таблицы
-      if (tableLines.length >= 1) {
-        // Заголовок
-        result.push(tableLines[0]);
-
-        // Разделитель
-        const separator = "|" + Array(columnCount).fill("---").join("|") + "|";
-        result.push(separator);
-
-        // Все остальные строки данных (кроме первой, которая уже добавлена как заголовок)
-        for (let j = 1; j < tableLines.length; j++) {
-          result.push(tableLines[j]);
-        }
-      }
-    } else {
-      result.push(line);
-      i++;
-    }
-  }
-
-  return result.join("\n");
-}
-
-/**
  * Парсит markdown отчёт и разделяет его на секции
  */
 function parseSections(markdown: string): Section[] {
-  // Сначала парсим и перестраиваем таблицы если нужно
-  const fixedMarkdown = parseAndRebuildTables(markdown);
-
   const sections: Section[] = [];
-  const lines = fixedMarkdown.split("\n");
+  const lines = markdown.split("\n");
   let currentTitle = "";
   let currentContent: string[] = [];
 
@@ -143,9 +72,6 @@ function CollapsibleSection({
   isOpen: boolean;
   onToggle: () => void;
 }) {
-  // Определяем, является ли это разделом с таблицами (themes или formats)
-  const isTableSection = section.title.includes("ОСНОВНЫЕ ТЕМЫ") || section.title.includes("ФОРМАТЫ КОНТЕНТА");
-
   return (
     <Card>
       <CardHeader
@@ -174,27 +100,6 @@ function CollapsibleSection({
                 h4: ({ node, ...props }) => <h4 className="font-medium mt-2 mb-1 text-sm" {...props} />,
                 strong: ({ node, ...props }) => <strong className="font-semibold" {...props} />,
                 code: ({ node, ...props }) => <code className="bg-muted px-1 py-0.5 rounded text-xs font-mono" {...props} />,
-                // Кастомные компоненты для таблиц
-                table: ({ node, ...props }) => (
-                  <div className="overflow-x-auto my-4">
-                    <table className="w-full border-collapse border border-border" {...props} />
-                  </div>
-                ),
-                thead: ({ node, ...props }) => (
-                  <thead className="bg-muted/60 border-b border-border" {...props} />
-                ),
-                tbody: ({ node, ...props }) => (
-                  <tbody {...props} />
-                ),
-                tr: ({ node, ...props }) => (
-                  <tr className="border-b border-border hover:bg-muted/40 transition-colors" {...props} />
-                ),
-                th: ({ node, ...props }) => (
-                  <th className="px-4 py-3 text-left font-semibold text-sm border-r border-border last:border-r-0 text-foreground" {...props} />
-                ),
-                td: ({ node, ...props }) => (
-                  <td className="px-4 py-3 text-sm border-r border-border last:border-r-0 text-muted-foreground" {...props} />
-                ),
               }}
             >
               {section.content}
@@ -206,65 +111,6 @@ function CollapsibleSection({
   );
 }
 
-/**
- * Преобразует старый JSON формат в новый markdown формат
- */
-function convertOldFormatToMarkdown(oldData: any): string {
-  if (oldData.report && oldData.format === "markdown") {
-    return oldData.report;
-  }
-
-  // Старый JSON формат - конвертируем в markdown
-  const lines: string[] = [];
-
-  if (oldData.themes && Array.isArray(oldData.themes)) {
-    lines.push("## ОСНОВНЫЕ ТЕМЫ");
-    lines.push("");
-    oldData.themes.forEach((theme: string) => {
-      lines.push(`- ${theme}`);
-    });
-    lines.push("");
-  }
-
-  if (oldData.formats && Array.isArray(oldData.formats)) {
-    lines.push("## ФОРМАТЫ КОНТЕНТА");
-    lines.push("");
-    oldData.formats.forEach((format: string) => {
-      lines.push(`- ${format}`);
-    });
-    lines.push("");
-  }
-
-  if (oldData.patterns && Array.isArray(oldData.patterns)) {
-    lines.push("## ПОВТОРЯЮЩИЕСЯ ПАТТЕРНЫ");
-    lines.push("");
-    oldData.patterns.forEach((pattern: string) => {
-      lines.push(`- ${pattern}`);
-    });
-    lines.push("");
-  }
-
-  if (oldData.opportunities && Array.isArray(oldData.opportunities)) {
-    lines.push("## ВОЗМОЖНОСТИ");
-    lines.push("");
-    oldData.opportunities.forEach((opportunity: string) => {
-      lines.push(`- ${opportunity}`);
-    });
-    lines.push("");
-  }
-
-  if (oldData.recommendations && Array.isArray(oldData.recommendations)) {
-    lines.push("## РЕКОМЕНДАЦИИ");
-    lines.push("");
-    oldData.recommendations.forEach((rec: string) => {
-      lines.push(`- ${rec}`);
-    });
-    lines.push("");
-  }
-
-  return lines.join("\n") || "No data available";
-}
-
 export function ContentIntelligenceBlock({
   channelId,
   initialData,
@@ -272,24 +118,11 @@ export function ContentIntelligenceBlock({
 }: ContentIntelligenceBlockProps) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
-
-  // Преобразуем старый формат в новый, если нужно
-  const normalizedData: ContentIntelligenceData | null = initialData ? {
-    report: convertOldFormatToMarkdown(initialData),
-    format: "markdown",
-    generatedAt: initialData.generatedAt
-  } : null;
-
-  const [data, setData] = useState<ContentIntelligenceData | null>(normalizedData);
+  const [data, setData] = useState<ContentIntelligenceData | null>(initialData || null);
   const [error, setError] = useState<string | null>(null);
   const [expandedSections, setExpandedSections] = useState<Set<number>>(new Set([0])); // Первая секция открыта по умолчанию
 
   const sections = data ? parseSections(data.report) : [];
-
-  // Debug: логирование для проверки парсинга
-  if (typeof window !== "undefined" && data && sections.length > 0) {
-    console.log(`[ContentIntelligence] Parsed ${sections.length} sections:`, sections.map(s => s.title));
-  }
 
   async function handleGenerate() {
     setLoading(true);
@@ -408,7 +241,7 @@ export function ContentIntelligenceBlock({
   }
 
   return (
-    <CardContent className="space-y-4 pt-6">
+    <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-bold flex items-center gap-2">
@@ -447,6 +280,6 @@ export function ContentIntelligenceBlock({
           Анализ создан: {new Date(data.generatedAt).toLocaleString("ru-RU")}
         </p>
       )}
-    </CardContent>
+    </div>
   );
 }
