@@ -18,6 +18,7 @@ interface ChannelGrowthChartProps {
   metrics: ChannelMetric[];
   title?: string;
   description?: string;
+  hideHeader?: boolean;
 }
 
 /**
@@ -77,44 +78,100 @@ export function ChannelGrowthChart({
   metrics,
   title,
   description,
+  hideHeader,
 }: ChannelGrowthChartProps) {
-  // Если данных совсем нет
-  if (!metrics || metrics.length === 0) {
-    return (
-      <Card>
-        {title && (
-          <CardHeader>
-            <CardTitle>{title}</CardTitle>
-            {description && <CardDescription>{description}</CardDescription>}
-          </CardHeader>
-        )}
-        <CardContent>
-          <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
-            <div className="text-center max-w-md">
-              <p className="text-lg font-semibold mb-3">
-                Insufficient data to display chart
-              </p>
-              <p className="text-sm mb-4">
-                Click the sync button to fetch historical metrics for this channel.
-              </p>
-              <p className="text-xs text-muted-foreground">
-                You can sync once per day.
-              </p>
-            </div>
+  const chartContent = (
+    <>
+      {!metrics || metrics.length === 0 ? (
+        <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
+          <div className="text-center max-w-md">
+            <p className="text-lg font-semibold mb-3">
+              Insufficient data to display chart
+            </p>
+            <p className="text-sm mb-4">
+              Click the sync button to fetch historical metrics for this channel.
+            </p>
+            <p className="text-xs text-muted-foreground">
+              You can sync once per day.
+            </p>
           </div>
-        </CardContent>
-      </Card>
-    );
-  }
+        </div>
+      ) : (
+        <>
+          {(() => {
+            const sortedMetrics = [...metrics].sort(
+              (a, b) => a.fetchedAt - b.fetchedAt
+            );
+            const showWarning = sortedMetrics.length === 1;
 
-  // Сортируем метрики по fetchedAt (timestamp)
-  const sortedMetrics = [...metrics].sort(
-    (a, b) => a.fetchedAt - b.fetchedAt
+            return (
+              <>
+                {showWarning && (
+                  <div className="mb-4 p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-md">
+                    <p className="text-sm text-yellow-800 dark:text-yellow-200">
+                      Data visualization works best with at least 2 data points. Keep syncing daily to see the trend!
+                    </p>
+                  </div>
+                )}
+                <div className="h-[400px] w-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart
+                      data={sortedMetrics}
+                      margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
+                    >
+                      <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                      <XAxis
+                        dataKey="fetchedAt"
+                        tickFormatter={formatDate}
+                        className="text-xs"
+                      />
+                      <YAxis tickFormatter={formatYAxis} className="text-xs" />
+                      <Tooltip content={<CustomTooltip />} />
+                      <Legend />
+                      <Line
+                        type="monotone"
+                        dataKey="subscriberCount"
+                        stroke="#3b82f6"
+                        strokeWidth={2}
+                        dot={{ fill: "#3b82f6", r: 4 }}
+                        activeDot={{ r: 6 }}
+                        name="Subscribers"
+                      />
+                      <Line
+                        type="monotone"
+                        dataKey="viewCount"
+                        stroke="#10b981"
+                        strokeWidth={2}
+                        dot={{ fill: "#10b981", r: 4 }}
+                        activeDot={{ r: 6 }}
+                        name="Total Views"
+                      />
+                      <Line
+                        type="monotone"
+                        dataKey="videoCount"
+                        stroke="#f59e0b"
+                        strokeWidth={2}
+                        dot={{ fill: "#f59e0b", r: 4 }}
+                        activeDot={{ r: 6 }}
+                        name="Videos"
+                      />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
+              </>
+            );
+          })()}
+        </>
+      )}
+    </>
   );
 
-  // Показываем предупреждение если только 1 точка (временно для тестов)
-  const showWarning = sortedMetrics.length === 1;
+  // Если hideHeader=true, возвращаем только CardContent (для обёртки CollapsibleSection)
+  if (hideHeader) {
+    return <CardContent>{chartContent}</CardContent>;
+  }
 
+  // В противном случае, возвращаем полную структуру с Card обёрткой
   return (
     <Card>
       {title && (
@@ -123,60 +180,7 @@ export function ChannelGrowthChart({
           {description && <CardDescription>{description}</CardDescription>}
         </CardHeader>
       )}
-      <CardContent>
-        {showWarning && (
-          <div className="mb-4 p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-md">
-            <p className="text-sm text-yellow-800 dark:text-yellow-200">
-              Data visualization works best with at least 2 data points. Keep syncing daily to see the trend!
-            </p>
-          </div>
-        )}
-        <div className="h-[400px] w-full">
-          <ResponsiveContainer width="100%" height="100%">
-            <LineChart
-              data={sortedMetrics}
-              margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
-            >
-              <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-              <XAxis
-                dataKey="fetchedAt"
-                tickFormatter={formatDate}
-                className="text-xs"
-              />
-              <YAxis tickFormatter={formatYAxis} className="text-xs" />
-              <Tooltip content={<CustomTooltip />} />
-              <Legend />
-              <Line
-                type="monotone"
-                dataKey="subscriberCount"
-                stroke="#3b82f6"
-                strokeWidth={2}
-                dot={{ fill: "#3b82f6", r: 4 }}
-                activeDot={{ r: 6 }}
-                name="Subscribers"
-              />
-              <Line
-                type="monotone"
-                dataKey="viewCount"
-                stroke="#10b981"
-                strokeWidth={2}
-                dot={{ fill: "#10b981", r: 4 }}
-                activeDot={{ r: 6 }}
-                name="Total Views"
-              />
-              <Line
-                type="monotone"
-                dataKey="videoCount"
-                stroke="#f59e0b"
-                strokeWidth={2}
-                dot={{ fill: "#f59e0b", r: 4 }}
-                activeDot={{ r: 6 }}
-                name="Videos"
-              />
-            </LineChart>
-          </ResponsiveContainer>
-        </div>
-      </CardContent>
+      <CardContent>{chartContent}</CardContent>
     </Card>
   );
 }
