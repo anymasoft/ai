@@ -9,7 +9,8 @@ export function SiteFooter() {
           <div className="flex items-center space-x-2 text-sm text-muted-foreground">
             <span>Made with</span>
             <Heart className="h-4 w-4 fill-red-500 text-red-500" />
-            <span>by Beem Analytics</span>
+            <span>by</span>
+            <span className="font-medium text-foreground">Beem Analytics</span>
           </div>
           <p className="text-xs text-muted-foreground">
             Современные инструменты для аналитики YouTube и создания контента на основе данных.
