@@ -119,7 +119,7 @@ ${JSON.stringify({ competitors }, null, 2)}
 `;
 
     const response = await client.chat.completions.create({
-      model: "gpt-4o-mini",
+      model: "gpt-4.1-mini",
       messages: [
         {
           role: "system",
