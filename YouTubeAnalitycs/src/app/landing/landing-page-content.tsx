@@ -37,7 +37,7 @@ export function LandingPageContent() {
         {/* <TestimonialsSection /> */}
         {/* <BlogSection /> */}
         {/* <FaqSection /> */}
-        <CTASection />
+        {/* <CTASection /> */}
         {/* <ContactSection /> */}
       </main>
 
