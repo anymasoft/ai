@@ -171,6 +171,8 @@ export async function analyzeChannel(
 
     const avgDuration = videos.length > 0
       ? videos.reduce((sum, v) => {
+          // Проверяем наличие duration перед использованием
+          if (!v.duration) return sum;
           const match = v.duration.match(/PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/);
           if (!match) return sum;
           const hours = parseInt(match[1] || '0');
