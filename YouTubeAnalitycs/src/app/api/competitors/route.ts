@@ -1,17 +1,21 @@
-import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
-import { db } from "@/lib/db";
-import { getYoutubeChannelByHandle } from "@/lib/scrapecreators";
-import { PLAN_LIMITS } from "@/lib/plan-limits";
-import { normalizeYoutubeInput } from "@/lib/youtube/normalize";
+import { NextRequest, NextResponse } from "next/server"
+import { getServerSession } from "next-auth"
+import { authOptions } from "@/lib/auth"
+import { db } from "@/lib/db"
+import { getYoutubeChannelByHandle } from "@/lib/scrapecreators"
+import { PLAN_LIMITS } from "@/lib/plan-limits"
+import { normalizeYoutubeInput } from "@/lib/youtube/normalize"
+import { addCompetitorSchema, createApiSuccess, createApiError } from "@/lib/api-schemas"
 
 export async function GET(req: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
+    const session = await getServerSession(authOptions)
 
     if (!session?.user?.id) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return NextResponse.json(
+        createApiError("Unauthorized", "Session required"),
+        { status: 401 }
+      )
     }
 
     const result = await db.execute({
@@ -20,60 +24,59 @@ export async function GET(req: NextRequest) {
              lastSyncedAt, createdAt
              FROM competitors WHERE userId = ?`,
       args: [session.user.id],
-    });
+    })
 
-    return NextResponse.json(result.rows);
+    return NextResponse.json(createApiSuccess(result.rows))
   } catch (error) {
-    console.error("Error fetching competitors:", error);
+    console.error("Error fetching competitors:", error)
     return NextResponse.json(
-      { error: "Failed to fetch competitors" },
+      createApiError("FETCH_ERROR", "Failed to fetch competitors"),
       { status: 500 }
-    );
+    )
   }
 }
 
 export async function POST(req: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
+    const session = await getServerSession(authOptions)
 
     if (!session?.user?.id) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    const body = await req.json();
-    const { handle } = body;
-
-    if (!handle || typeof handle !== "string" || !handle.trim()) {
       return NextResponse.json(
-        { error: "Handle is required" },
-        { status: 400 }
-      );
+        createApiError("Unauthorized", "Session required"),
+        { status: 401 }
+      )
     }
 
-    const normalized = normalizeYoutubeInput(handle);
+    const body = await req.json()
+
+    // Validate input with Zod
+    const validatedData = addCompetitorSchema.parse(body)
+    const { handle } = validatedData
+
+    const normalized = normalizeYoutubeInput(handle)
 
     if (!normalized.normalizedHandle && !normalized.channelId) {
       return NextResponse.json(
-        { error: "Invalid YouTube handle or URL" },
+        createApiError("INVALID_INPUT", "Invalid YouTube handle or URL"),
         { status: 400 }
-      );
+      )
     }
 
-    const handleToFetch = normalized.normalizedHandle || normalized.channelId || handle.trim();
+    const handleToFetch = normalized.normalizedHandle || normalized.channelId || handle.trim()
 
     // Check current competitor count
     const currentResult = await db.execute({
       sql: "SELECT COUNT(*) as count FROM competitors WHERE userId = ?",
       args: [session.user.id],
-    });
+    })
 
-    const currentCount = (currentResult.rows[0].count as number) || 0;
+    const currentCount = (currentResult.rows[0].count as number) || 0
 
     // Ensure user exists
     const userResult = await db.execute({
       sql: "SELECT * FROM users WHERE id = ?",
       args: [session.user.id],
-    });
+    })
 
     if (userResult.rows.length === 0) {
       await db.execute({
@@ -89,40 +92,42 @@ export async function POST(req: NextRequest) {
           Date.now(),
           Date.now(),
         ],
-      });
+      })
     }
 
     const userRefresh = await db.execute({
       sql: "SELECT plan FROM users WHERE id = ?",
       args: [session.user.id],
-    });
+    })
 
-    const plan = (userRefresh.rows[0]?.plan as string) || (session.user as any).plan || "free";
-    const limit = PLAN_LIMITS[plan as keyof typeof PLAN_LIMITS] ?? 3;
+    const plan =
+      (userRefresh.rows[0]?.plan as string) || (session.user as any).plan || "free"
+    const limit = PLAN_LIMITS[plan as keyof typeof PLAN_LIMITS] ?? 3
 
     if (currentCount >= limit) {
       return NextResponse.json(
-        {
-          error: `Competitor limit reached for your plan (${limit} max). Upgrade to add more.`,
-        },
+        createApiError(
+          "LIMIT_EXCEEDED",
+          `Competitor limit reached for your plan (${limit} max). Upgrade to add more.`
+        ),
         { status: 402 }
-      );
+      )
     }
 
     // Fetch channel data
-    const channelData = await getYoutubeChannelByHandle(handleToFetch);
+    const channelData = await getYoutubeChannelByHandle(handleToFetch)
 
     // Check if exists
     const existingResult = await db.execute({
       sql: "SELECT * FROM competitors WHERE userId = ? AND channelId = ?",
       args: [session.user.id, channelData.channelId],
-    });
+    })
 
     if (existingResult.rows.length > 0) {
       return NextResponse.json(
-        { error: "This competitor already exists in your list" },
+        createApiError("ALREADY_EXISTS", "This competitor already exists in your list"),
         { status: 409 }
-      );
+      )
     }
 
     // Insert new competitor
@@ -150,19 +155,30 @@ export async function POST(req: NextRequest) {
     const newResult = await db.execute({
       sql: "SELECT * FROM competitors WHERE id = last_insert_rowid()",
       args: [],
-    });
+    })
 
-    return NextResponse.json(newResult.rows[0], { status: 201 });
+    return NextResponse.json(createApiSuccess(newResult.rows[0]), { status: 201 })
   } catch (error) {
-    console.error("Error adding competitor:", error);
+    console.error("Error adding competitor:", error)
 
     if (error instanceof Error) {
-      return NextResponse.json({ error: error.message }, { status: 400 });
+      // Zod validation error
+      if (error.name === "ZodError") {
+        return NextResponse.json(
+          createApiError("VALIDATION_ERROR", error.message),
+          { status: 400 }
+        )
+      }
+
+      return NextResponse.json(
+        createApiError("ERROR", error.message),
+        { status: 400 }
+      )
     }
 
     return NextResponse.json(
-      { error: "Failed to add competitor" },
+      createApiError("INTERNAL_ERROR", "Failed to add competitor"),
       { status: 500 }
-    );
+    )
   }
 }
