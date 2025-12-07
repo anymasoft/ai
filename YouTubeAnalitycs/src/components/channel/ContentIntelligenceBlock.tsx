@@ -25,49 +25,68 @@ interface Section {
 }
 
 /**
- * Переформатирует неправильные таблицы в корректный markdown формат
- * Проблема: GPT иногда выводит разделители в виде длинных строк дефисов
- * вместо |---|---|---|, и react-markdown это не распознает
+ * Парсит таблицы из строк с | и конвертирует в правильный markdown
+ * Функция находит группы строк начинающиеся с | и превращает их в таблицы
  */
-function reformatTables(markdown: string): string {
+function parseAndRebuildTables(markdown: string): string {
   const lines = markdown.split("\n");
   const result: string[] = [];
   let i = 0;
 
   while (i < lines.length) {
     const line = lines[i];
+    const trimmedLine = line.trim();
 
-    // Проверяем, это ли строка с данными таблицы (начинается с |)
-    if (line.trim().startsWith("|")) {
-      const headerLine = line;
-      const headerCells = headerLine.split("|").filter(cell => cell.trim().length > 0);
+    // Проверяем, это ли строка таблицы
+    if (trimmedLine.startsWith("|") && trimmedLine.includes("|")) {
+      // Собираем все подряд идущие строки таблицы
+      const tableLines: string[] = [];
+      let columnCount = 0;
 
-      // Проверяем есть ли следующая строка и похожа ли она на разделитель
-      if (i + 1 < lines.length) {
-        const nextLine = lines[i + 1];
+      // Первая строка - берём количество столбцов
+      const firstLine = trimmedLine;
+      const cells = firstLine.split("|").map(c => c.trim()).filter(c => c.length > 0);
+      columnCount = cells.length;
+      tableLines.push(firstLine);
+      i++;
 
-        // Если это похоже на разделитель таблицы (содержит дефисы и палки)
-        if (nextLine.includes("|") && nextLine.includes("-")) {
-          // Пересчитываем разделитель на основе количества колонок
-          const columnCount = headerCells.length;
-          const separator = "|" + Array(columnCount).fill("---").join("|") + "|";
-
-          result.push(headerLine);
-          result.push(separator);
-          i += 2;
-
-          // Добавляем остальные строки таблицы
-          while (i < lines.length && lines[i].trim().startsWith("|")) {
-            result.push(lines[i]);
-            i++;
-          }
-          continue;
+      // Пропускаем разделитель если есть (строка со всеми дефисами)
+      if (i < lines.length) {
+        const nextLine = lines[i].trim();
+        if (nextLine.startsWith("|") && /^[\|\s\-]+$/.test(nextLine)) {
+          i++; // Пропускаем разделитель
         }
       }
-    }
 
-    result.push(line);
-    i++;
+      // Собираем все остальные строки таблицы
+      while (i < lines.length) {
+        const currentLine = lines[i].trim();
+        if (currentLine.startsWith("|") && currentLine.includes("|")) {
+          tableLines.push(currentLine);
+          i++;
+        } else {
+          break;
+        }
+      }
+
+      // Строим правильный markdown для таблицы
+      if (tableLines.length >= 1) {
+        // Заголовок
+        result.push(tableLines[0]);
+
+        // Разделитель
+        const separator = "|" + Array(columnCount).fill("---").join("|") + "|";
+        result.push(separator);
+
+        // Все остальные строки данных (кроме первой, которая уже добавлена как заголовок)
+        for (let j = 1; j < tableLines.length; j++) {
+          result.push(tableLines[j]);
+        }
+      }
+    } else {
+      result.push(line);
+      i++;
+    }
   }
 
   return result.join("\n");
@@ -77,8 +96,8 @@ function reformatTables(markdown: string): string {
  * Парсит markdown отчёт и разделяет его на секции
  */
 function parseSections(markdown: string): Section[] {
-  // Сначала переформатируем таблицы если нужно
-  const fixedMarkdown = reformatTables(markdown);
+  // Сначала парсим и перестраиваем таблицы если нужно
+  const fixedMarkdown = parseAndRebuildTables(markdown);
 
   const sections: Section[] = [];
   const lines = fixedMarkdown.split("\n");
