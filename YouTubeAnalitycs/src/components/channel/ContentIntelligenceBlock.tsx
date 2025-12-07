@@ -164,79 +164,57 @@ export function ContentIntelligenceBlock({
 
   if (loading) {
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Sparkles className="h-5 w-5 text-purple-600 dark:text-purple-400" />
-            Content Intelligence
-          </CardTitle>
-          <CardDescription>
-            Аналитический отчёт об особенностях контент-стратегии
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="flex flex-col items-center justify-center py-12">
-            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground mb-4" />
-            <p className="text-muted-foreground">Генерируется анализ...</p>
-            <p className="text-sm text-muted-foreground mt-2">Это может занять 30-60 секунд</p>
-          </div>
-        </CardContent>
-      </Card>
+      <CardContent className="space-y-4 pt-6">
+        <div className="flex flex-col items-center justify-center py-12">
+          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground mb-4" />
+          <p className="text-muted-foreground">Генерируется анализ...</p>
+          <p className="text-sm text-muted-foreground mt-2">Это может занять 30-60 секунд</p>
+        </div>
+      </CardContent>
     );
   }
 
   if (!data) {
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Sparkles className="h-5 w-5 text-purple-600 dark:text-purple-400" />
-            Content Intelligence
-          </CardTitle>
-          <CardDescription>
-            Аналитический отчёт об особенностях контент-стратегии
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="flex flex-col items-center justify-center py-12">
-            {!hasRequiredData ? (
-              <>
-                <p className="text-muted-foreground mb-2 text-center">
-                  Сначала синхронизируйте видео
-                </p>
-                <p className="text-sm text-muted-foreground mb-4 text-center">
-                  Нажмите кнопку "Sync Top Videos" выше, чтобы загрузить данные.
-                </p>
-                <Button
-                  onClick={handleGenerate}
-                  className="gap-2 cursor-pointer"
-                  disabled
-                  title="Сначала синхронизируйте видео"
-                >
-                  <Sparkles className="h-4 w-4" />
-                  Сгенерировать анализ
-                </Button>
-              </>
-            ) : (
-              <>
-                <p className="text-muted-foreground mb-4">
-                  Получите подробный анализ контент-стратегии канала с конкретными рекомендациями.
-                </p>
-                <Button
-                  onClick={handleGenerate}
-                  className="gap-2 cursor-pointer"
-                >
-                  <Sparkles className="h-4 w-4" />
-                  Сгенерировать анализ
-                </Button>
-              </>
-            )}
-            {error && (
-              <p className="text-sm text-destructive mt-4">{error}</p>
-            )}
-          </div>
-        </CardContent>
-      </Card>
+      <CardContent className="space-y-4 pt-6">
+        <div className="flex flex-col items-center justify-center py-12">
+          {!hasRequiredData ? (
+            <>
+              <p className="text-muted-foreground mb-2 text-center">
+                Сначала синхронизируйте видео
+              </p>
+              <p className="text-sm text-muted-foreground mb-4 text-center">
+                Нажмите кнопку "Sync Top Videos" выше, чтобы загрузить данные.
+              </p>
+              <Button
+                onClick={handleGenerate}
+                className="gap-2 cursor-pointer"
+                disabled
+                title="Сначала синхронизируйте видео"
+              >
+                <Sparkles className="h-4 w-4" />
+                Сгенерировать анализ
+              </Button>
+            </>
+          ) : (
+            <>
+              <p className="text-muted-foreground mb-4">
+                Получите подробный анализ контент-стратегии канала с конкретными рекомендациями.
+              </p>
+              <Button
+                onClick={handleGenerate}
+                className="gap-2 cursor-pointer"
+              >
+                <Sparkles className="h-4 w-4" />
+                Сгенерировать анализ
+              </Button>
+            </>
+          )}
+          {error && (
+            <p className="text-sm text-destructive mt-4">{error}</p>
+          )}
+        </div>
+      </CardContent>
     );
   }
 

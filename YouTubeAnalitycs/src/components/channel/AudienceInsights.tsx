@@ -156,71 +156,49 @@ export function AudienceInsights({
 
   if (loading) {
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Users className="h-5 w-5 text-purple-600 dark:text-purple-400" />
-            Audience & Engagement
-          </CardTitle>
-          <CardDescription>
-            Audience engagement and content reactions analysis
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="flex flex-col items-center justify-center py-12">
-            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground mb-4" />
-            <p className="text-muted-foreground">Analyzing engagement...</p>
-            <p className="text-sm text-muted-foreground mt-2">This may take 15-25 seconds</p>
-          </div>
-        </CardContent>
-      </Card>
+      <CardContent className="space-y-4 pt-6">
+        <div className="flex flex-col items-center justify-center py-12">
+          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground mb-4" />
+          <p className="text-muted-foreground">Analyzing engagement...</p>
+          <p className="text-sm text-muted-foreground mt-2">This may take 15-25 seconds</p>
+        </div>
+      </CardContent>
     );
   }
 
   if (!data) {
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Users className="h-5 w-5 text-purple-600 dark:text-purple-400" />
-            Audience & Engagement
-          </CardTitle>
-          <CardDescription>
-            Audience engagement and content reactions analysis
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="flex flex-col items-center justify-center py-12">
-            {!hasRequiredData ? (
-              <>
-                <p className="text-muted-foreground mb-2 text-center">
-                  Sync Top Videos first
-                </p>
-                <p className="text-sm text-muted-foreground mb-4 text-center">
-                  Click 'Sync Top Videos' above to load data.
-                </p>
-                <Button onClick={handleGenerate} className="gap-2 cursor-pointer" disabled title="Sync Top Videos first">
-                  <Users className="h-4 w-4" />
-                  Generate Audience Analysis
-                </Button>
-              </>
-            ) : (
-              <>
-                <p className="text-muted-foreground mb-4">
-                  Audience analysis will show which topics get maximum audience reactions.
-                </p>
-                <Button onClick={handleGenerate} className="gap-2 cursor-pointer">
-                  <Users className="h-4 w-4" />
-                  Generate Audience Analysis
-                </Button>
-              </>
-            )}
-            {error && (
-              <p className="text-sm text-destructive mt-4">{error}</p>
-            )}
-          </div>
-        </CardContent>
-      </Card>
+      <CardContent className="space-y-4 pt-6">
+        <div className="flex flex-col items-center justify-center py-12">
+          {!hasRequiredData ? (
+            <>
+              <p className="text-muted-foreground mb-2 text-center">
+                Sync Top Videos first
+              </p>
+              <p className="text-sm text-muted-foreground mb-4 text-center">
+                Click 'Sync Top Videos' above to load data.
+              </p>
+              <Button onClick={handleGenerate} className="gap-2 cursor-pointer" disabled title="Sync Top Videos first">
+                <Users className="h-4 w-4" />
+                Generate Audience Analysis
+              </Button>
+            </>
+          ) : (
+            <>
+              <p className="text-muted-foreground mb-4">
+                Audience analysis will show which topics get maximum audience reactions.
+              </p>
+              <Button onClick={handleGenerate} className="gap-2 cursor-pointer">
+                <Users className="h-4 w-4" />
+                Generate Audience Analysis
+              </Button>
+            </>
+          )}
+          {error && (
+            <p className="text-sm text-destructive mt-4">{error}</p>
+          )}
+        </div>
+      </CardContent>
     );
   }
 
@@ -727,29 +705,21 @@ export function AudienceInsights({
 
   // Если данные есть но структура не соответствует ни старому ни новому формату
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Users className="h-5 w-5 text-purple-600 dark:text-purple-400" />
-          Audience & Engagement
-        </CardTitle>
-      </CardHeader>
-      <CardContent>
-        <div className="flex flex-col items-center justify-center py-12">
-          <AlertTriangle className="h-12 w-12 text-yellow-600 mb-4" />
-          <h3 className="text-lg font-semibold mb-2">Data format error</h3>
-          <p className="text-sm text-muted-foreground mb-6 text-center max-w-md">
-            The analysis data has an unexpected format. Try generating a fresh analysis.
-          </p>
-          <Button onClick={handleGenerate} className="gap-2 cursor-pointer">
-            <Users className="h-4 w-4" />
-            Regenerate Analysis
-          </Button>
-          {error && (
-            <p className="text-sm text-destructive mt-4">{error}</p>
-          )}
-        </div>
-      </CardContent>
-    </Card>
+    <CardContent className="space-y-4 pt-6">
+      <div className="flex flex-col items-center justify-center py-12">
+        <AlertTriangle className="h-12 w-12 text-yellow-600 mb-4" />
+        <h3 className="text-lg font-semibold mb-2">Data format error</h3>
+        <p className="text-sm text-muted-foreground mb-6 text-center max-w-md">
+          The analysis data has an unexpected format. Try generating a fresh analysis.
+        </p>
+        <Button onClick={handleGenerate} className="gap-2 cursor-pointer">
+          <Users className="h-4 w-4" />
+          Regenerate Analysis
+        </Button>
+        {error && (
+          <p className="text-sm text-destructive mt-4">{error}</p>
+        )}
+      </div>
+    </CardContent>
   );
 }
