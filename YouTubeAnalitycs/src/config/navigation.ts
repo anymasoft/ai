@@ -81,11 +81,6 @@ export const navigationConfig: NavGroup[] = [
         description: "Account and preferences",
         items: [
           {
-            title: "Account",
-            url: "/settings/account",
-            description: "Account information",
-          },
-          {
             title: "Billing",
             url: "/settings/billing",
             description: "Billing and subscription",
