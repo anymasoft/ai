@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Sparkles, Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 
 interface GenerateSwotButtonProps {
   channelId: number;
@@ -21,7 +21,6 @@ export function GenerateSwotButton({
 }: GenerateSwotButtonProps) {
   const [isGenerating, setIsGenerating] = useState(false);
   const router = useRouter();
-  const { toast } = useToast();
 
   const handleGenerate = async () => {
     setIsGenerating(true);
@@ -38,11 +37,11 @@ export function GenerateSwotButton({
 
       const data = await response.json();
 
-      toast({
-        title: isUpdate ? "AI-анализ обновлён!" : "AI-анализ готов!",
+      toast(isUpdate ? "AI-анализ обновлён!" : "AI-анализ готов!", {
         description: isUpdate
           ? "SWOT-анализ успешно обновлён с актуальными данными."
           : "SWOT-анализ успешно сгенерирован. Страница обновляется...",
+        duration: 3000,
       });
 
       // Перезагружаем страницу для отображения нового анализа
@@ -50,13 +49,12 @@ export function GenerateSwotButton({
     } catch (error) {
       console.error("Error generating SWOT analysis:", error);
 
-      toast({
-        title: "Ошибка генерации",
+      toast.error("Ошибка генерации", {
         description:
           error instanceof Error
             ? error.message
             : "Не удалось сгенерировать AI-анализ. Попробуйте позже.",
-        variant: "destructive",
+        duration: 4000,
       });
     } finally {
       setIsGenerating(false);
