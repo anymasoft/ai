@@ -16,6 +16,7 @@ export interface VideoData {
   likeCount: number;
   commentCount: number;
   publishedAt: string;
+  duration?: string; // ISO 8601 формат (PT1H2M10S) или undefined
 }
 
 const API_BASE = "https://api.scrapecreators.com/v1/youtube/channel";
@@ -81,6 +82,27 @@ function cleanHandle(handle: string): string {
     .replace(/.*youtube\.com\/channel\//, "")
     .split("/")[0]
     .trim();
+}
+
+/**
+ * Конвертирует количество секунд в ISO 8601 формат длительности
+ * Например: 3665 сек → PT1H1M5S
+ */
+function secondsToISO8601Duration(seconds: number | undefined | null): string | undefined {
+  if (seconds === undefined || seconds === null || typeof seconds !== 'number' || seconds < 0) {
+    return undefined;
+  }
+
+  const hours = Math.floor(seconds / 3600);
+  const minutes = Math.floor((seconds % 3600) / 60);
+  const secs = seconds % 60;
+
+  let duration = 'PT';
+  if (hours > 0) duration += `${hours}H`;
+  if (minutes > 0) duration += `${minutes}M`;
+  if (secs > 0) duration += `${secs}S`;
+
+  return duration === 'PT' ? undefined : duration;
 }
 
 export async function getYoutubeChannelByHandle(
@@ -368,6 +390,10 @@ async function fetchVideosFromAPI(
           0
         ),
         publishedAt: String(video.publishedAt || video.publishedDate || new Date().toISOString()),
+        // Конвертируем lengthSeconds в ISO 8601 формат
+        duration: secondsToISO8601Duration(
+          video.lengthSeconds ?? video.duration ?? undefined
+        ),
       }));
 
       allVideos.push(...normalizedVideos);
