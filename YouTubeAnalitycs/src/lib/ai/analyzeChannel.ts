@@ -300,7 +300,7 @@ ${JSON.stringify(channelData, null, 2)}
     console.log("[AI] Отправка детального промпта к OpenAI для SWOT-анализа:", competitor.handle);
 
     const response = await client.chat.completions.create({
-      model: "gpt-4o-mini",
+      model: "gpt-4.1-mini",
       messages: [
         {
           role: "system",

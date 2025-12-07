@@ -104,7 +104,7 @@ ${index + 1}. "${video.title}"
 
     // Вызов OpenAI API
     const completion = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
+      model: "gpt-4.1-mini",
       messages: [
         {
           role: "system",
