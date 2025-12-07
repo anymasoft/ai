@@ -208,7 +208,8 @@ export function LandingFooter() {
             <div className="flex items-center gap-1">
               <span>Made with</span>
               <Heart className="h-4 w-4 text-red-500 fill-current" />
-              <span>by Beem Analytics</span>
+              <span>by</span>
+              <span className="font-semibold text-foreground">Beem Analytics</span>
             </div>
             <span className="hidden sm:inline">•</span>
             <span>© {new Date().getFullYear()} for the developer community</span>
