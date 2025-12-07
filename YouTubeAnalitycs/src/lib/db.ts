@@ -4,49 +4,61 @@ import { createClient } from "@libsql/client";
 let _client: ReturnType<typeof createClient> | null = null;
 
 /**
- * Проверяет существование колонки в таблице
+ * Асинхронно проверяет существование колонки в таблице
  * Использует PRAGMA table_info для получения информации о колонках таблицы
  * Это безопасный способ проверки без попыток выполнения ALTER TABLE
  */
-function columnExists(client: any, tableName: string, columnName: string): boolean {
+async function columnExists(
+  client: any,
+  tableName: string,
+  columnName: string
+): Promise<boolean> {
   try {
-    const result = client.execute(`PRAGMA table_info(${tableName});`);
+    const result = await client.execute(`PRAGMA table_info(${tableName});`);
     // Результат содержит массив объектов с информацией о колонках
     // Каждый объект имеет поле 'name' с именем колонки
     const columns = result.rows as Array<{ name: string; [key: string]: any }>;
     return columns.some(col => col.name === columnName);
   } catch (e) {
-    // Если PRAGMA не поддерживается (маловероятно), возвращаем false
+    // Если PRAGMA не поддерживается (маловероятно), логируем и возвращаем false
     // Это позволит коду дальше попытаться добавить колонку и обработать ошибку правильно
+    console.warn(`⚠️  Failed to check column existence via PRAGMA: ${e}`);
     return false;
   }
 }
 
 /**
- * Добавляет колонку в таблицу ТОЛЬКО если её нет
+ * Асинхронно добавляет колонку в таблицу ТОЛЬКО если её нет
  * Идемпотентная операция - безопасна для повторного запуска
+ * Никогда не пытается выполнить ALTER TABLE если колонка уже существует
  * @param client - клиент БД
  * @param tableName - имя таблицы (без кавычек)
  * @param columnName - имя колонки
  * @param columnDef - определение колонки (например 'TEXT', 'INTEGER NOT NULL DEFAULT 0')
  */
-function addColumnIfNotExists(
+async function addColumnIfNotExists(
   client: any,
   tableName: string,
   columnName: string,
   columnDef: string
-): void {
-  if (columnExists(client, tableName, columnName)) {
-    console.log(`ℹ️  Column ${columnName} already exists in ${tableName}`);
+): Promise<void> {
+  const exists = await columnExists(client, tableName, columnName);
+
+  if (exists) {
+    console.log(
+      `✔️ Column ${columnName} already exists in ${tableName}, skipping`
+    );
     return;
   }
 
   try {
-    client.execute(`ALTER TABLE ${tableName} ADD COLUMN ${columnName} ${columnDef};`);
-    console.log(`✅ Added column ${columnName} to ${tableName}`);
+    await client.execute(
+      `ALTER TABLE ${tableName} ADD COLUMN ${columnName} ${columnDef};`
+    );
+    console.log(`✔️ Added column ${columnName} to ${tableName}`);
   } catch (error: any) {
     // Если всё же произошла ошибка, выводим её (не скрываем)
-    // Это поможет выявить реальные проблемы с БД
+    // Это поможет выявить реальные проблемы с БД структурой
     console.error(
       `❌ Failed to add column ${columnName} to ${tableName}: ${error.message}`
     );
@@ -54,7 +66,7 @@ function addColumnIfNotExists(
   }
 }
 
-function getClient() {
+async function getClient() {
   if (!_client) {
     const dbPath = process.env.DATABASE_URL || "file:sqlite.db";
 
@@ -153,9 +165,9 @@ function getClient() {
 
         // Миграция: добавляем новые колонки для расширенного SWOT-анализа
         // Использует idempotent проверку через PRAGMA table_info
-        addColumnIfNotExists(_client, 'ai_insights', 'strategicSummary', 'TEXT');
-        addColumnIfNotExists(_client, 'ai_insights', 'contentPatterns', 'TEXT');
-        addColumnIfNotExists(_client, 'ai_insights', 'videoIdeas', 'TEXT');
+        await addColumnIfNotExists(_client, 'ai_insights', 'strategicSummary', 'TEXT');
+        await addColumnIfNotExists(_client, 'ai_insights', 'contentPatterns', 'TEXT');
+        await addColumnIfNotExists(_client, 'ai_insights', 'videoIdeas', 'TEXT');
 
         _client.execute(`CREATE TABLE IF NOT EXISTS channel_metrics (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -191,7 +203,7 @@ function getClient() {
 
         // Миграция: добавляем поле duration для длительности видео
         // Использует idempotent проверку через PRAGMA table_info
-        addColumnIfNotExists(_client, 'channel_videos', 'duration', 'TEXT');
+        await addColumnIfNotExists(_client, 'channel_videos', 'duration', 'TEXT');
 
         _client.execute(`CREATE TABLE IF NOT EXISTS content_intelligence (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -373,4 +385,4 @@ function getClient() {
   return _client;
 }
 
-export const db = getClient();
+export const db = await getClient();
