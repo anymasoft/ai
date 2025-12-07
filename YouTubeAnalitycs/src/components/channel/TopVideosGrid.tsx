@@ -57,26 +57,17 @@ export function TopVideosGrid({ videos, hideHeader }: TopVideosGridProps) {
   const sortedVideos = [...videos].sort((a, b) => b.viewCount - a.viewCount);
   const visibleVideos = sortedVideos.slice(0, limit);
 
-  return (
-    <Card>
-      {!hideHeader && (
-        <CardHeader>
-          <CardTitle>Top Videos</CardTitle>
-          <CardDescription>
-            Список лучших видео канала по просмотрам
-          </CardDescription>
-        </CardHeader>
-      )}
-      <CardContent>
-        {sortedVideos.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
-            <p className="text-center">
-              Нет данных. Нажмите &quot;Sync Top Videos&quot; чтобы загрузить видео канала.
-            </p>
-          </div>
-        ) : (
-          <>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+  const gridContent = (
+    <>
+      {sortedVideos.length === 0 ? (
+        <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
+          <p className="text-center">
+            Нет данных. Нажмите &quot;Sync Top Videos&quot; чтобы загрузить видео канала.
+          </p>
+        </div>
+      ) : (
+        <>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
               {visibleVideos.map((video) => (
                 <Card
                   key={video.id}
@@ -150,7 +141,18 @@ export function TopVideosGrid({ videos, hideHeader }: TopVideosGridProps) {
             )}
           </>
         )}
-      </CardContent>
+    </>
+  );
+
+  // Если hideHeader=true, возвращаем только CardContent (для обёртки CollapsibleSection)
+  if (hideHeader) {
+    return <CardContent className="p-0">{gridContent}</CardContent>;
+  }
+
+  // В противном случае, возвращаем полную структуру с Card обёрткой
+  return (
+    <Card>
+      <CardContent className="p-0">{gridContent}</CardContent>
     </Card>
   );
 }

@@ -53,7 +53,7 @@ function CollapsibleSection({
           )}
         </div>
       </CardHeader>
-      {isOpen && <div className="px-6 pb-6">{children}</div>}
+      {isOpen && children}
     </Card>
   )
 }
@@ -106,6 +106,7 @@ export function ChannelAnalytics({
       >
         <ChannelGrowthChart
           metrics={metrics}
+          hideHeader={true}
         />
       </CollapsibleSection>
 

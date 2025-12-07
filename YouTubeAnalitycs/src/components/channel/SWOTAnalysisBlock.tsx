@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { ChevronDown, ChevronUp, Target, BarChart3, Lightbulb } from "lucide-react"
 import { GenerateSwotButton } from "@/components/channel/GenerateSwotButton"
@@ -43,198 +43,164 @@ export function SWOTAnalysisBlock({
   }
 
   return (
-    <div className="space-y-4">
-      {/* Header with toggle */}
-      <Card>
-        <CardHeader
-          className="cursor-pointer hover:bg-muted/50 transition-colors"
-          onClick={() => setIsOpen(!isOpen)}
-        >
-          <div className="flex items-center justify-between">
-            <h2 className="text-2xl font-bold">AI SWOT-анализ канала</h2>
-            {isOpen ? (
-              <ChevronUp className="h-6 w-6 text-muted-foreground" />
-            ) : (
-              <ChevronDown className="h-6 w-6 text-muted-foreground" />
-            )}
-          </div>
-          {insight && (
-            <p className="text-sm text-muted-foreground mt-2">
-              Сгенерировано: {new Date(insight.generatedAt).toLocaleDateString('ru-RU', {
-                year: 'numeric',
-                month: 'long',
-                day: 'numeric',
-                hour: '2-digit',
-                minute: '2-digit'
-              })}
-            </p>
+    <Card>
+      <CardHeader
+        className="cursor-pointer hover:bg-muted/50 transition-colors"
+        onClick={() => setIsOpen(!isOpen)}
+      >
+        <div className="flex items-center justify-between">
+          <h2 className="text-2xl font-bold">AI SWOT-анализ канала</h2>
+          {isOpen ? (
+            <ChevronUp className="h-6 w-6 text-muted-foreground" />
+          ) : (
+            <ChevronDown className="h-6 w-6 text-muted-foreground" />
           )}
-        </CardHeader>
+        </div>
+        <p className="text-sm text-muted-foreground mt-2">
+          Сгенерировано: {new Date(insight.generatedAt).toLocaleDateString('ru-RU', {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+          })}
+        </p>
+      </CardHeader>
 
-        {isOpen && (
-          <CardContent className="pt-0">
-            <div className="mt-4 flex justify-end">
-              <GenerateSwotButton channelId={channelId} variant="outline" size="sm" isUpdate={true} />
-            </div>
-          </CardContent>
-        )}
-      </Card>
-
-      {/* Content - only shown when open */}
       {isOpen && (
-        <div className="space-y-6">
+        <CardContent className="space-y-6">
+          <div className="flex justify-end">
+            <GenerateSwotButton channelId={channelId} variant="outline" size="sm" isUpdate={true} />
+          </div>
+
           {/* Strategic Summary */}
           {insight.strategicSummary && insight.strategicSummary.length > 0 && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Target className="h-5 w-5 text-primary" />
-                  Стратегическое резюме
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
+            <div>
+              <h3 className="font-semibold text-sm mb-3 flex items-center gap-2">
+                <Target className="h-4 w-4 text-primary" />
+                Стратегическое резюме
+              </h3>
+              <div className="space-y-3">
                 {insight.strategicSummary.map((paragraph, idx) => (
-                  <p key={idx} className="text-muted-foreground leading-relaxed">
+                  <p key={idx} className="text-sm text-muted-foreground leading-relaxed">
                     {paragraph}
                   </p>
                 ))}
-              </CardContent>
-            </Card>
+              </div>
+            </div>
           )}
 
           {/* SWOT Matrix */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {/* Strengths */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg text-green-600 dark:text-green-500">
-                  Сильные стороны
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
+            <div className="space-y-3">
+              <h3 className="font-semibold text-sm text-green-600 dark:text-green-500">Сильные стороны</h3>
+              <div className="space-y-3">
                 {insight.strengths.map((strength, idx) => (
-                  <div key={idx} className="space-y-1">
-                    <h4 className="font-semibold text-sm">{strength.title}</h4>
-                    <p className="text-sm text-muted-foreground">{strength.details}</p>
+                  <div key={idx} className="text-sm">
+                    <h4 className="font-semibold">{strength.title}</h4>
+                    <p className="text-xs text-muted-foreground">{strength.details}</p>
                   </div>
                 ))}
-              </CardContent>
-            </Card>
+              </div>
+            </div>
 
             {/* Weaknesses */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg text-red-600 dark:text-red-500">
-                  Слабые стороны
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
+            <div className="space-y-3">
+              <h3 className="font-semibold text-sm text-red-600 dark:text-red-500">Слабые стороны</h3>
+              <div className="space-y-3">
                 {insight.weaknesses.map((weakness, idx) => (
-                  <div key={idx} className="space-y-1">
-                    <h4 className="font-semibold text-sm">{weakness.title}</h4>
-                    <p className="text-sm text-muted-foreground">{weakness.details}</p>
+                  <div key={idx} className="text-sm">
+                    <h4 className="font-semibold">{weakness.title}</h4>
+                    <p className="text-xs text-muted-foreground">{weakness.details}</p>
                   </div>
                 ))}
-              </CardContent>
-            </Card>
+              </div>
+            </div>
 
             {/* Opportunities */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg text-blue-600 dark:text-blue-500">
-                  Возможности
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
+            <div className="space-y-3">
+              <h3 className="font-semibold text-sm text-blue-600 dark:text-blue-500">Возможности</h3>
+              <div className="space-y-3">
                 {insight.opportunities.map((opportunity, idx) => (
-                  <div key={idx} className="space-y-1">
-                    <h4 className="font-semibold text-sm">{opportunity.title}</h4>
-                    <p className="text-sm text-muted-foreground">{opportunity.details}</p>
+                  <div key={idx} className="text-sm">
+                    <h4 className="font-semibold">{opportunity.title}</h4>
+                    <p className="text-xs text-muted-foreground">{opportunity.details}</p>
                   </div>
                 ))}
-              </CardContent>
-            </Card>
+              </div>
+            </div>
 
             {/* Threats */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg text-orange-600 dark:text-orange-500">
-                  Угрозы
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
+            <div className="space-y-3">
+              <h3 className="font-semibold text-sm text-orange-600 dark:text-orange-500">Угрозы</h3>
+              <div className="space-y-3">
                 {insight.threats.map((threat, idx) => (
-                  <div key={idx} className="space-y-1">
-                    <h4 className="font-semibold text-sm">{threat.title}</h4>
-                    <p className="text-sm text-muted-foreground">{threat.details}</p>
+                  <div key={idx} className="text-sm">
+                    <h4 className="font-semibold">{threat.title}</h4>
+                    <p className="text-xs text-muted-foreground">{threat.details}</p>
                   </div>
                 ))}
-              </CardContent>
-            </Card>
+              </div>
+            </div>
           </div>
 
           {/* Content Patterns */}
           {insight.contentPatterns && insight.contentPatterns.length > 0 && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <BarChart3 className="h-5 w-5 text-primary" />
-                  Паттерны успешного контента
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
+            <div>
+              <h3 className="font-semibold text-sm mb-3 flex items-center gap-2">
+                <BarChart3 className="h-4 w-4 text-primary" />
+                Паттерны успешного контента
+              </h3>
+              <div className="space-y-2">
                 {insight.contentPatterns.map((pattern, idx) => (
-                  <div key={idx} className="flex gap-3">
-                    <Badge variant="secondary" className="shrink-0">{idx + 1}</Badge>
-                    <p className="text-sm text-muted-foreground">{pattern}</p>
+                  <div key={idx} className="flex gap-2">
+                    <Badge variant="secondary" className="shrink-0 text-xs">{idx + 1}</Badge>
+                    <p className="text-xs text-muted-foreground">{pattern}</p>
                   </div>
                 ))}
-              </CardContent>
-            </Card>
+              </div>
+            </div>
           )}
 
           {/* Video Ideas */}
           {insight.videoIdeas && insight.videoIdeas.length > 0 && (
             <div>
-              <h3 className="text-xl font-bold mb-4 flex items-center gap-2">
-                <Lightbulb className="h-5 w-5 text-primary" />
+              <h3 className="font-semibold text-sm mb-3 flex items-center gap-2">
+                <Lightbulb className="h-4 w-4 text-primary" />
                 Идеи для новых видео
               </h3>
-              <div className="grid grid-cols-1 gap-4">
+              <div className="space-y-3">
                 {insight.videoIdeas.map((idea, idx) => (
-                  <Card key={idx} className="overflow-hidden">
-                    <CardHeader className="bg-muted/30">
-                      <div className="flex items-start gap-3">
-                        <Badge variant="default" className="shrink-0">Идея {idx + 1}</Badge>
-                        <div className="space-y-1 flex-1">
-                          <CardTitle className="text-lg">{idea.title}</CardTitle>
-                          <CardDescription className="italic">"{idea.hook}"</CardDescription>
-                        </div>
+                  <div key={idx} className="border rounded-lg p-3 bg-muted/20">
+                    <div className="flex items-start gap-2 mb-2">
+                      <Badge variant="default" className="shrink-0 text-xs">Идея {idx + 1}</Badge>
+                      <div className="flex-1">
+                        <h4 className="font-semibold text-sm">{idea.title}</h4>
+                        <p className="text-xs text-muted-foreground italic">"{idea.hook}"</p>
                       </div>
-                    </CardHeader>
-                    <CardContent className="pt-6 space-y-4">
+                    </div>
+                    <div className="space-y-2 text-xs text-muted-foreground">
                       <div>
-                        <h4 className="font-semibold text-sm mb-2">Описание:</h4>
-                        <p className="text-sm text-muted-foreground">{idea.description}</p>
+                        <p className="font-semibold">Описание:</p>
+                        <p>{idea.description}</p>
                       </div>
                       <div>
-                        <h4 className="font-semibold text-sm mb-2">План сценария:</h4>
+                        <p className="font-semibold">План сценария:</p>
                         <ol className="list-decimal list-inside space-y-1">
                           {idea.outline.map((step, stepIdx) => (
-                            <li key={stepIdx} className="text-sm text-muted-foreground">
-                              {step}
-                            </li>
+                            <li key={stepIdx}>{step}</li>
                           ))}
                         </ol>
                       </div>
-                    </CardContent>
-                  </Card>
+                    </div>
+                  </div>
                 ))}
               </div>
             </div>
           )}
-        </div>
+        </CardContent>
       )}
-    </div>
+    </Card>
   )
 }
