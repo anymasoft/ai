@@ -99,6 +99,7 @@ export async function POST(
             likeCount = ?,
             commentCount = ?,
             publishedAt = ?,
+            duration = ?,
             fetchedAt = ?
             WHERE id = ?`,
           args: [
@@ -108,6 +109,7 @@ export async function POST(
             video.likeCount,
             video.commentCount,
             video.publishedAt,
+            video.duration || null,
             Date.now(),
             existing.id,
           ],
@@ -118,8 +120,8 @@ export async function POST(
         await client.execute({
           sql: `INSERT INTO channel_videos (
             channelId, videoId, title, thumbnailUrl, viewCount,
-            likeCount, commentCount, publishedAt, fetchedAt
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            likeCount, commentCount, publishedAt, duration, fetchedAt
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
           args: [
             competitor.channelId,
             video.videoId,
@@ -129,6 +131,7 @@ export async function POST(
             video.likeCount,
             video.commentCount,
             video.publishedAt,
+            video.duration || null,
             Date.now(),
           ],
         });

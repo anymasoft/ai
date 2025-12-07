@@ -154,6 +154,13 @@ function getClient() {
         _client.execute(`CREATE INDEX IF NOT EXISTS idx_channel_videos_lookup
           ON channel_videos(channelId, videoId);`);
 
+        // Миграция: добавляем поле duration для ISO 8601 формата длительности видео
+        try {
+          _client.execute(`ALTER TABLE channel_videos ADD COLUMN duration TEXT;`);
+        } catch (e) {
+          // Колонка уже существует
+        }
+
         _client.execute(`CREATE TABLE IF NOT EXISTS content_intelligence (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
           channelId TEXT NOT NULL,

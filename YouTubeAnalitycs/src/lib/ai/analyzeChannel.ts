@@ -70,8 +70,9 @@ function calculateEngagement(views: number, likes: number, comments: number): nu
 /**
  * Форматирует длительность видео
  */
-function formatDuration(duration: string): string {
+function formatDuration(duration: string | undefined): string {
   // Duration в формате ISO 8601 (PT1H2M10S)
+  if (!duration) return 'н/д';
   const match = duration.match(/PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/);
   if (!match) return duration;
 
@@ -132,7 +133,7 @@ export async function analyzeChannel(
       viewCount: row.viewCount as number,
       likeCount: row.likeCount as number,
       commentCount: row.commentCount as number,
-      duration: row.duration as string,
+      duration: row.duration as string | undefined,
       description: (row.data ? JSON.parse(row.data as string).snippet?.description : '') || '',
       engagement: calculateEngagement(
         row.viewCount as number,
