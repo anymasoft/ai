@@ -18,6 +18,7 @@ interface VideoData {
 
 interface TopVideosGridProps {
   videos: VideoData[];
+  hideHeader?: boolean;
 }
 
 /**
@@ -49,7 +50,7 @@ function formatDate(dateString: string): string {
   }
 }
 
-export function TopVideosGrid({ videos }: TopVideosGridProps) {
+export function TopVideosGrid({ videos, hideHeader }: TopVideosGridProps) {
   const [limit, setLimit] = useState(24);
 
   // Сортируем видео по количеству просмотров (DESC)
@@ -58,12 +59,14 @@ export function TopVideosGrid({ videos }: TopVideosGridProps) {
 
   return (
     <Card>
-      <CardHeader>
-        <CardTitle>Top Videos</CardTitle>
-        <CardDescription>
-          Список лучших видео канала по просмотрам
-        </CardDescription>
-      </CardHeader>
+      {!hideHeader && (
+        <CardHeader>
+          <CardTitle>Top Videos</CardTitle>
+          <CardDescription>
+            Список лучших видео канала по просмотрам
+          </CardDescription>
+        </CardHeader>
+      )}
       <CardContent>
         {sortedVideos.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
