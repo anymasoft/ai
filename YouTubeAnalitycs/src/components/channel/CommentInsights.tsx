@@ -67,71 +67,49 @@ export function CommentInsights({
 
   if (loading) {
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <MessageSquare className="h-5 w-5 text-teal-600 dark:text-teal-400" />
-            Comment Intelligence
-          </CardTitle>
-          <CardDescription>
-            Audience comments analysis
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="flex flex-col items-center justify-center py-12">
-            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground mb-4" />
-            <p className="text-muted-foreground">Analyzing comments...</p>
-            <p className="text-sm text-muted-foreground mt-2">This may take 15-25 seconds</p>
-          </div>
-        </CardContent>
-      </Card>
+      <CardContent className="space-y-4 pt-6">
+        <div className="flex flex-col items-center justify-center py-12">
+          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground mb-4" />
+          <p className="text-muted-foreground">Analyzing comments...</p>
+          <p className="text-sm text-muted-foreground mt-2">This may take 15-25 seconds</p>
+        </div>
+      </CardContent>
     );
   }
 
   if (!data) {
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <MessageSquare className="h-5 w-5 text-teal-600 dark:text-teal-400" />
-            Comment Intelligence
-          </CardTitle>
-          <CardDescription>
-            Audience comments analysis
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="flex flex-col items-center justify-center py-12">
-            {!hasRequiredData ? (
-              <>
-                <p className="text-muted-foreground mb-2 text-center">
-                  Sync Comments first
-                </p>
-                <p className="text-sm text-muted-foreground mb-4 text-center">
-                  Click 'Sync Comments' button above to load data.
-                </p>
-                <Button onClick={handleGenerate} className="gap-2 cursor-pointer" disabled title="Sync Comments first">
-                  <MessageSquare className="h-4 w-4" />
-                  Generate Comment Analysis
-                </Button>
-              </>
-            ) : (
-              <>
-                <p className="text-muted-foreground mb-4">
-                  Comment Intelligence will show interests, pain points, and requests from audience comments.
-                </p>
-                <Button onClick={handleGenerate} className="gap-2 cursor-pointer">
-                  <MessageSquare className="h-4 w-4" />
-                  Generate Comment Analysis
-                </Button>
-              </>
-            )}
-            {error && (
-              <p className="text-sm text-destructive mt-4">{error}</p>
-            )}
-          </div>
-        </CardContent>
-      </Card>
+      <CardContent className="space-y-4 pt-6">
+        <div className="flex flex-col items-center justify-center py-12">
+          {!hasRequiredData ? (
+            <>
+              <p className="text-muted-foreground mb-2 text-center">
+                Sync Comments first
+              </p>
+              <p className="text-sm text-muted-foreground mb-4 text-center">
+                Click 'Sync Comments' button above to load data.
+              </p>
+              <Button onClick={handleGenerate} className="gap-2 cursor-pointer" disabled title="Sync Comments first">
+                <MessageSquare className="h-4 w-4" />
+                Generate Comment Analysis
+              </Button>
+            </>
+          ) : (
+            <>
+              <p className="text-muted-foreground mb-4">
+                Comment Intelligence will show interests, pain points, and requests from audience comments.
+              </p>
+              <Button onClick={handleGenerate} className="gap-2 cursor-pointer">
+                <MessageSquare className="h-4 w-4" />
+                Generate Comment Analysis
+              </Button>
+            </>
+          )}
+          {error && (
+            <p className="text-sm text-destructive mt-4">{error}</p>
+          )}
+        </div>
+      </CardContent>
     );
   }
 

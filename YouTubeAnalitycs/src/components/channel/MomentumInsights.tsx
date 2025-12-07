@@ -85,71 +85,49 @@ export function MomentumInsights({
 
   if (loading) {
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Flame className="h-5 w-5 text-orange-600 dark:text-orange-400" />
-            Momentum Insights
-          </CardTitle>
-          <CardDescription>
-            What's growing right now
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="flex flex-col items-center justify-center py-12">
-            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground mb-4" />
-            <p className="text-muted-foreground">Analyzing momentum...</p>
-            <p className="text-sm text-muted-foreground mt-2">This may take 15-25 seconds</p>
-          </div>
-        </CardContent>
-      </Card>
+      <CardContent className="space-y-4 pt-6">
+        <div className="flex flex-col items-center justify-center py-12">
+          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground mb-4" />
+          <p className="text-muted-foreground">Analyzing momentum...</p>
+          <p className="text-sm text-muted-foreground mt-2">This may take 15-25 seconds</p>
+        </div>
+      </CardContent>
     );
   }
 
   if (!data) {
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Flame className="h-5 w-5 text-orange-600 dark:text-orange-400" />
-            Momentum Insights
-          </CardTitle>
-          <CardDescription>
-            What's growing right now
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="flex flex-col items-center justify-center py-12">
-            {!hasRequiredData ? (
-              <>
-                <p className="text-muted-foreground mb-2 text-center">
-                  Sync Top Videos first
-                </p>
-                <p className="text-sm text-muted-foreground mb-4 text-center">
-                  Click 'Sync Top Videos' above to load data.
-                </p>
-                <Button onClick={handleGenerate} className="gap-2 cursor-pointer" disabled title="Sync Top Videos first">
-                  <Flame className="h-4 w-4" />
-                  Generate Momentum Analysis
-                </Button>
-              </>
-            ) : (
-              <>
-                <p className="text-muted-foreground mb-4">
-                  Momentum analysis will show which topics and formats are trending right now.
-                </p>
-                <Button onClick={handleGenerate} className="gap-2 cursor-pointer">
-                  <Flame className="h-4 w-4" />
-                  Generate Momentum Analysis
-                </Button>
-              </>
-            )}
-            {error && (
-              <p className="text-sm text-destructive mt-4">{error}</p>
-            )}
-          </div>
-        </CardContent>
-      </Card>
+      <CardContent className="space-y-4 pt-6">
+        <div className="flex flex-col items-center justify-center py-12">
+          {!hasRequiredData ? (
+            <>
+              <p className="text-muted-foreground mb-2 text-center">
+                Sync Top Videos first
+              </p>
+              <p className="text-sm text-muted-foreground mb-4 text-center">
+                Click 'Sync Top Videos' above to load data.
+              </p>
+              <Button onClick={handleGenerate} className="gap-2 cursor-pointer" disabled title="Sync Top Videos first">
+                <Flame className="h-4 w-4" />
+                Generate Momentum Analysis
+              </Button>
+            </>
+          ) : (
+            <>
+              <p className="text-muted-foreground mb-4">
+                Momentum analysis will show which topics and formats are trending right now.
+              </p>
+              <Button onClick={handleGenerate} className="gap-2 cursor-pointer">
+                <Flame className="h-4 w-4" />
+                Generate Momentum Analysis
+              </Button>
+            </>
+          )}
+          {error && (
+            <p className="text-sm text-destructive mt-4">{error}</p>
+          )}
+        </div>
+      </CardContent>
     );
   }
 
