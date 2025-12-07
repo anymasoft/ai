@@ -72,6 +72,15 @@ function calculateTitleScore(title: string): number {
 /**
  * POST /api/channel/[id]/audience
  * Генерирует audience engagement анализ для видео канала
+ *
+ * PROD CHECKLIST:
+ * [ ] Раскомментировать кэширование (строка 293-310, 3 дня кэша)
+ * [ ] Проверить max_tokens - должен быть удален (модель остановится сама)
+ * [ ] Убедиться что используется только gpt-4.1-mini
+ * [ ] Проверить temperature (текущее: 0.6, для конкретики)
+ * [ ] Валидировать JSON парсинг из OpenAI (строка 451)
+ * [ ] Проверить обработку ошибок API (try-catch на строке 447)
+ * [ ] Убедиться что видео с недостаточными данными обрабатываются корректно
  */
 export async function POST(
   req: NextRequest,
@@ -290,8 +299,9 @@ export async function POST(
         .slice(0, 30);
     }
 
-    // TODO: Кэширование отключено на время разработки
-    // В прод. версии раскомментировать, чтобы не регенерировать анализ каждый раз
+    // TODO [PROD]: Кэширование отключено на время разработки
+    // В прод. версии РАСКОММЕНТИРОВАТЬ, чтобы не регенерировать анализ каждый раз
+    // Кэш 3 дня для одного канала
     // const threeDaysAgo = Date.now() - 3 * 24 * 60 * 60 * 1000;
     // const existingAnalysisResult = await client.execute({
     //   sql: "SELECT * FROM audience_insights WHERE channelId = ? ORDER BY generatedAt DESC LIMIT 1",
@@ -332,7 +342,8 @@ export async function POST(
       apiKey: process.env.OPENAI_API_KEY,
     });
 
-    // Формируем промпт с учётом режима анализа
+    // TODO [PROD]: Промпты v2.0 (проверить качество анализа перед продакшном)
+    // Система должна быть эксперт, пользователь получит JSON с 8 разделами
     const systemPrompt = "Ты — эксперт по YouTube-аналитике, продуктовый стратег и специалист по поведенческой сегментации аудитории. Твоя задача — определить: 1) кто смотрит этот канал; 2) какие у них мотивы, ожидания и боли; 3) какие сегменты аудитории существуют; 4) что им нравится и что НЕ нравится; 5) как автору использовать это, чтобы резко ускорить рост. Отвечай ТОЛЬКО на русском языке. JSON ответ должен содержать разделы согласно структуре ответа. Все значения должны быть конкретными, не общими фразами.";
 
     const userPrompt = `Ты получишь JSON с топ-видео канала "${competitor.title}", включая title, views, publishedAt, durationSeconds, isShort, engagementRate, likes, comments.
@@ -455,7 +466,9 @@ ${JSON.stringify(videosForAnalysis, null, 2)}
 
     console.log(`[Audience] Получен ответ от OpenAI`);
 
-    // Парсим JSON ответ
+    // TODO [PROD]: Убедиться что JSON парсится корректно
+    // Если модель вернёт невалидный JSON, весь запрос упадёт
+    // Можно добавить try-catch и fallback анализ если нужно
     const aiAnalysis = JSON.parse(responseText);
 
     // Формируем итоговые данные
