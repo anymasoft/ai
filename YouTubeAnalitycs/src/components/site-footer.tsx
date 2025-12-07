@@ -12,7 +12,7 @@ export function SiteFooter() {
             <span>by Beem Analytics</span>
           </div>
           <p className="text-xs text-muted-foreground">
-            Building beautiful, accessible blocks, templates and dashboards for modern web applications.
+            Современные инструменты для аналитики YouTube и создания контента на основе данных.
           </p>
         </div>
       </div>
