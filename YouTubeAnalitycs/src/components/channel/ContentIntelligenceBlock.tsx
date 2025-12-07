@@ -25,11 +25,63 @@ interface Section {
 }
 
 /**
+ * Переформатирует неправильные таблицы в корректный markdown формат
+ * Проблема: GPT иногда выводит разделители в виде длинных строк дефисов
+ * вместо |---|---|---|, и react-markdown это не распознает
+ */
+function reformatTables(markdown: string): string {
+  const lines = markdown.split("\n");
+  const result: string[] = [];
+  let i = 0;
+
+  while (i < lines.length) {
+    const line = lines[i];
+
+    // Проверяем, это ли строка с данными таблицы (начинается с |)
+    if (line.trim().startsWith("|")) {
+      const headerLine = line;
+      const headerCells = headerLine.split("|").filter(cell => cell.trim().length > 0);
+
+      // Проверяем есть ли следующая строка и похожа ли она на разделитель
+      if (i + 1 < lines.length) {
+        const nextLine = lines[i + 1];
+
+        // Если это похоже на разделитель таблицы (содержит дефисы и палки)
+        if (nextLine.includes("|") && nextLine.includes("-")) {
+          // Пересчитываем разделитель на основе количества колонок
+          const columnCount = headerCells.length;
+          const separator = "|" + Array(columnCount).fill("---").join("|") + "|";
+
+          result.push(headerLine);
+          result.push(separator);
+          i += 2;
+
+          // Добавляем остальные строки таблицы
+          while (i < lines.length && lines[i].trim().startsWith("|")) {
+            result.push(lines[i]);
+            i++;
+          }
+          continue;
+        }
+      }
+    }
+
+    result.push(line);
+    i++;
+  }
+
+  return result.join("\n");
+}
+
+/**
  * Парсит markdown отчёт и разделяет его на секции
  */
 function parseSections(markdown: string): Section[] {
+  // Сначала переформатируем таблицы если нужно
+  const fixedMarkdown = reformatTables(markdown);
+
   const sections: Section[] = [];
-  const lines = markdown.split("\n");
+  const lines = fixedMarkdown.split("\n");
   let currentTitle = "";
   let currentContent: string[] = [];
 
