@@ -106,8 +106,6 @@ export function ChannelAnalytics({
       >
         <ChannelGrowthChart
           metrics={metrics}
-          title="Growth Over Time"
-          description="Historical metrics"
         />
       </CollapsibleSection>
 
@@ -117,7 +115,7 @@ export function ChannelAnalytics({
         isOpen={expanded.videos}
         onToggle={() => toggle("videos")}
       >
-        <TopVideosGrid videos={videos} />
+        <TopVideosGrid videos={videos} hideHeader={true} />
       </CollapsibleSection>
 
       {/* Content Intelligence */}

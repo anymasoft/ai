@@ -75,17 +75,19 @@ function CustomTooltip({ active, payload, label }: any) {
 
 export function ChannelGrowthChart({
   metrics,
-  title = "Growth Over Time",
-  description = "Historical metrics for this channel",
+  title,
+  description,
 }: ChannelGrowthChartProps) {
   // Если данных совсем нет
   if (!metrics || metrics.length === 0) {
     return (
       <Card>
-        <CardHeader>
-          <CardTitle>{title}</CardTitle>
-          <CardDescription>{description}</CardDescription>
-        </CardHeader>
+        {title && (
+          <CardHeader>
+            <CardTitle>{title}</CardTitle>
+            {description && <CardDescription>{description}</CardDescription>}
+          </CardHeader>
+        )}
         <CardContent>
           <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
             <div className="text-center max-w-md">
@@ -115,10 +117,12 @@ export function ChannelGrowthChart({
 
   return (
     <Card>
-      <CardHeader>
-        <CardTitle>{title}</CardTitle>
-        <CardDescription>{description}</CardDescription>
-      </CardHeader>
+      {title && (
+        <CardHeader>
+          <CardTitle>{title}</CardTitle>
+          {description && <CardDescription>{description}</CardDescription>}
+        </CardHeader>
+      )}
       <CardContent>
         {showWarning && (
           <div className="mb-4 p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-md">
