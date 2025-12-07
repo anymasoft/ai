@@ -22,24 +22,22 @@ export function HeroSection() {
           <div className="mb-8 flex justify-center">
             <Badge variant="outline" className="px-4 py-2 border-foreground">
               <Star className="w-3 h-3 mr-2 fill-current" />
-              New: Premium Template Collection
+              AI-анализ конкурентов + генерация сценариев
               <ArrowRight className="w-3 h-3 ml-2" />
             </Badge>
           </div>
 
           {/* Main Headline */}
           <h1 className="mb-6 text-4xl font-bold tracking-tight sm:text-6xl lg:text-7xl">
-            Build Better
+            AI-сценарист для YouTube: анализирует конкурентов и
             <span className="bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
-              {" "}Web Applications{" "}
+              {" "}подсказывает, что снимать дальше{" "}
             </span>
-            with Ready-Made Components
           </h1>
 
           {/* Subheading */}
           <p className="mx-auto mb-10 max-w-2xl text-lg text-muted-foreground sm:text-xl">
-            Accelerate your development with our curated collection of blocks, templates, landing pages,
-            and admin dashboards. From free components to complete solutions, built with shadcn/ui.
+            Добавьте конкурентов → нажмите Sync — сервис сам соберёт данные, выявит успешные паттерны и выдаст готовые сценарные идеи, основанные на том, что работает в вашей нише прямо сейчас.
           </p>
 
           {/* CTA Buttons */}
