@@ -8,56 +8,56 @@ import { useState } from 'react'
 
 const plans = [
   {
-    name: 'Free',
-    description: 'Perfect for getting started with essential components',
-    monthlyPrice: 0,
-    yearlyPrice: 0,
+    name: 'Basic',
+    description: 'Для начинающих авторов',
+    monthlyPrice: 19,
+    yearlyPrice: 15,
     features: [
-      'Access to 50+ free components',
-      'Basic dashboard templates',
-      'Community support',
-      'GitHub repository access',
-      'Documentation and guides'
+      'До 30 AI-сценариев в месяц',
+      'Отслеживание до 10 конкурентов',
+      'Базовая аналитика роликов и каналов',
+      'Генерация многоуровневых сценариев',
+      'Экспорт сценариев в PDF/текст',
+      'Поддержка по email'
     ],
     cta: 'Get Started',
     popular: false
   },
   {
-    name: 'Pro',
-    description: 'For developers who need premium templates and components',
-    monthlyPrice: 19,
-    yearlyPrice: 15,
+    name: 'Professional',
+    description: 'Для растущих каналов',
+    monthlyPrice: 79,
+    yearlyPrice: 63,
     features: [
-      'Premium template collection',
-      'Advanced dashboard layouts',
-      'Priority support',
-      'Commercial use license',
-      'Early access to new releases',
-      'Figma design files',
-      'Custom component requests',
-      'Direct developer access',
-      'Exclusive design resources'
+      'Безлимитные сценарии',
+      'До 50 конкурентов',
+      'Расширенная аналитика',
+      'Исторические метрики',
+      'Приоритетная поддержка',
+      'Доступ к Premium-отчётам',
+      'Рекомендации «Что снимать завтра»'
     ],
     cta: 'Get Started',
     popular: true,
-    includesPrevious: 'All Free features, plus'
+    includesPrevious: 'All Basic features, plus'
   },
   {
-    name: 'Lifetime',
-    description: 'One-time payment for lifetime access to everything',
-    monthlyPrice: 299,
-    yearlyPrice: 299,
+    name: 'Enterprise',
+    description: 'Для профессиональных команд',
+    monthlyPrice: 199,
+    yearlyPrice: 159,
     features: [
-      'Lifetime updates and support',
-      'Private Discord channel',
-      'No recurring fees ever',
-      'Future template access',
-      'VIP support priority',
-      'Exclusive beta features'
+      'Безлимитные сценарии',
+      'До 200 конкурентов',
+      'Полные аналитические отчёты',
+      'Индивидуальные рекомендации по контенту',
+      'Интеграции под бизнес',
+      'Выделенный менеджер',
+      'SLA и расширенная безопасность'
     ],
     cta: 'Get Started',
     popular: false,
-    includesPrevious: 'All Pro features, plus'
+    includesPrevious: 'All Professional features, plus'
   }
 ]
 
@@ -127,16 +127,10 @@ export function PricingSection() {
                   {/* Pricing */}
                   <div>
                     <div className="text-4xl font-bold mb-1">
-                      {plan.name === 'Lifetime' ? (
-                        `$${plan.monthlyPrice}`
-                      ) : plan.name === 'Free' ? (
-                        '$0'
-                      ) : (
-                        `$${isYearly ? plan.yearlyPrice : plan.monthlyPrice}`
-                      )}
+                      ${isYearly ? plan.yearlyPrice : plan.monthlyPrice}
                     </div>
                     <div className="text-muted-foreground text-sm">
-                      {plan.name === 'Lifetime' ? 'One-time payment' : 'Per month'}
+                      Per month
                     </div>
                   </div>
 
