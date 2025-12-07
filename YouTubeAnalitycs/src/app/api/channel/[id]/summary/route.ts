@@ -2,11 +2,99 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { createClient } from "@libsql/client";
-// import { analyzeChannel } from "@/lib/ai/analyzeChannel"; // Временно отключено - генерация будет позже
+import { analyzeChannel, type ChannelSwotAnalysis, type SwotPoint, type VideoIdea } from "@/lib/ai/analyzeChannel";
 
 /**
  * GET /api/channel/[id]/summary
- * Возвращает существующий AI-анализ канала (без генерации новых)
+ * Возвращает существующий AI-анализ канала (если есть)
+ */
+export async function GET(
+  req: NextRequest,
+  context: { params: Promise<{ id: string }> }
+) {
+  const dbPath = process.env.DATABASE_URL || "file:sqlite.db";
+  const client = createClient({
+    url: dbPath.startsWith("file:") ? dbPath : `file:${dbPath}`,
+  });
+
+  try {
+    const session = await getServerSession(authOptions);
+
+    if (!session?.user?.id) {
+      client.close();
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const { id } = await context.params;
+    const competitorId = parseInt(id, 10);
+
+    if (!Number.isFinite(competitorId) || competitorId <= 0) {
+      client.close();
+      return NextResponse.json(
+        { error: "Invalid competitor ID" },
+        { status: 400 }
+      );
+    }
+
+    // Проверяем что канал принадлежит пользователю
+    const competitorResult = await client.execute({
+      sql: "SELECT * FROM competitors WHERE id = ? AND userId = ?",
+      args: [competitorId, session.user.id],
+    });
+
+    if (competitorResult.rows.length === 0) {
+      client.close();
+      return NextResponse.json(
+        { error: "Competitor not found or access denied" },
+        { status: 404 }
+      );
+    }
+
+    // Получаем существующий AI-анализ
+    const insightResult = await client.execute({
+      sql: "SELECT * FROM ai_insights WHERE competitorId = ? ORDER BY createdAt DESC LIMIT 1",
+      args: [competitorId],
+    });
+
+    client.close();
+
+    if (insightResult.rows.length === 0) {
+      return NextResponse.json({ insight: null });
+    }
+
+    const row = insightResult.rows[0];
+
+    // Парсим данные из БД
+    const insight: ChannelSwotAnalysis = {
+      strengths: JSON.parse(row.strengths as string) as SwotPoint[],
+      weaknesses: JSON.parse(row.weaknesses as string) as SwotPoint[],
+      opportunities: JSON.parse(row.opportunities as string) as SwotPoint[],
+      threats: JSON.parse(row.threats as string) as SwotPoint[],
+      strategicSummary: row.strategicSummary ? JSON.parse(row.strategicSummary as string) as string[] : [],
+      contentPatterns: row.contentPatterns ? JSON.parse(row.contentPatterns as string) as string[] : [],
+      videoIdeas: row.videoIdeas ? JSON.parse(row.videoIdeas as string) as VideoIdea[] : [],
+      generatedAt: row.generatedAt as string || new Date(row.createdAt as number).toISOString(),
+    };
+
+    return NextResponse.json({ insight });
+  } catch (error) {
+    client.close();
+    console.error("[API] Ошибка при получении AI-анализа:", error);
+
+    if (error instanceof Error) {
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+
+    return NextResponse.json(
+      { error: "Failed to fetch AI insights" },
+      { status: 500 }
+    );
+  }
+}
+
+/**
+ * POST /api/channel/[id]/summary
+ * Генерирует новый AI-анализ канала и сохраняет в БД
  */
 export async function POST(
   req: NextRequest,
@@ -20,13 +108,11 @@ export async function POST(
   try {
     const session = await getServerSession(authOptions);
 
-    // Проверка аутентификации
     if (!session?.user?.id) {
       client.close();
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // Получаем ID канала из параметров URL
     const { id } = await context.params;
     const competitorId = parseInt(id, 10);
 
@@ -38,15 +124,14 @@ export async function POST(
       );
     }
 
-    console.log(`[API] Запрос AI-анализа для competitor ID: ${competitorId}`);
+    console.log(`[API] Запрос генерации AI-анализа для competitor ID: ${competitorId}`);
 
-    // Получаем данные канала из БД
+    // Проверяем что канал принадлежит пользователю
     const competitorResult = await client.execute({
       sql: "SELECT * FROM competitors WHERE id = ? AND userId = ?",
       args: [competitorId, session.user.id],
     });
 
-    // Проверяем что канал существует и принадлежит пользователю
     if (competitorResult.rows.length === 0) {
       client.close();
       return NextResponse.json(
@@ -58,68 +143,41 @@ export async function POST(
     const competitor = competitorResult.rows[0];
 
     console.log(`[API] Канал найден: ${competitor.title} (@${competitor.handle})`);
+    console.log(`[API] Запуск генерации детального SWOT-анализа...`);
 
-    // Проверяем, есть ли уже сохранённый AI-анализ
-    const existingInsightResult = await client.execute({
-      sql: "SELECT * FROM ai_insights WHERE competitorId = ? ORDER BY createdAt DESC LIMIT 1",
-      args: [competitorId],
-    });
-
-    // Если анализ существует - возвращаем его
-    if (existingInsightResult.rows.length > 0) {
-      const existingInsight = existingInsightResult.rows[0];
-      console.log(`[API] Найден существующий AI-анализ (ID: ${existingInsight.id})`);
-
-      client.close();
-
-      return NextResponse.json({
-        id: existingInsight.id,
-        competitorId: existingInsight.competitorId,
-        summary: existingInsight.summary,
-        strengths: JSON.parse(existingInsight.strengths as string),
-        weaknesses: JSON.parse(existingInsight.weaknesses as string),
-        opportunities: JSON.parse(existingInsight.opportunities as string),
-        threats: JSON.parse(existingInsight.threats as string),
-        recommendations: JSON.parse(existingInsight.recommendations as string),
-        createdAt: existingInsight.createdAt,
-      });
-    }
-
-    // Если анализа нет - возвращаем null (генерация отключена на этом этапе)
-    console.log("[API] AI-анализ не найден, возвращаем null");
-    client.close();
-    return NextResponse.json({ insight: null });
-
-    /*
-    // ========== КОД ГЕНЕРАЦИИ AI-АНАЛИЗА (ОТКЛЮЧЁН) ==========
-    // Будет активирован позже, когда появится полноценная аналитика
-
-    console.log("[API] AI-анализ не найден, генерируем новый...");
-
-    // Генерируем новый AI-анализ
-    const analysis = await analyzeChannel({
-      title: competitor.title,
-      handle: competitor.handle,
-      subscriberCount: competitor.subscriberCount,
-      videoCount: competitor.videoCount,
-      viewCount: competitor.viewCount,
-    });
+    // Генерируем AI-анализ
+    const analysis = await analyzeChannel(competitorId.toString());
 
     console.log("[API] AI-анализ получен, сохраняем в БД...");
 
-    // Сохраняем результат в базу данных
+    // Сохраняем в базу данных
     const savedInsightResult = await client.execute({
       sql: `INSERT INTO ai_insights (
-        competitorId, summary, strengths, weaknesses, opportunities, threats, recommendations, createdAt
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+        competitorId,
+        summary,
+        strengths,
+        weaknesses,
+        opportunities,
+        threats,
+        recommendations,
+        strategicSummary,
+        contentPatterns,
+        videoIdeas,
+        generatedAt,
+        createdAt
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       args: [
         competitorId,
-        String(analysis.summary),
+        analysis.strategicSummary.join('\n\n'), // summary = первые абзацы стратегического резюме
         JSON.stringify(analysis.strengths),
         JSON.stringify(analysis.weaknesses),
         JSON.stringify(analysis.opportunities),
         JSON.stringify(analysis.threats),
-        JSON.stringify(analysis.recommendations),
+        JSON.stringify(analysis.videoIdeas.map(v => v.title)), // recommendations = названия идей видео
+        JSON.stringify(analysis.strategicSummary),
+        JSON.stringify(analysis.contentPatterns),
+        JSON.stringify(analysis.videoIdeas),
+        analysis.generatedAt,
         Date.now(),
       ],
     });
@@ -128,32 +186,24 @@ export async function POST(
 
     client.close();
 
-    // Возвращаем результат клиенту
+    // Возвращаем результат
     return NextResponse.json(
       {
-        id: Number(savedInsightResult.lastInsertRowid),
-        competitorId: competitorId,
-        summary: String(analysis.summary),
-        strengths: analysis.strengths,
-        weaknesses: analysis.weaknesses,
-        opportunities: analysis.opportunities,
-        threats: analysis.threats,
-        recommendations: analysis.recommendations,
-        createdAt: Date.now(),
+        insight: analysis,
+        id: Number(savedInsightResult.lastInsertRowid)
       },
       { status: 201 }
     );
-    */
   } catch (error) {
     client.close();
-    console.error("[API] Ошибка при получении AI-анализа:", error);
+    console.error("[API] Ошибка при генерации AI-анализа:", error);
 
     if (error instanceof Error) {
-      return NextResponse.json({ error: error.message }, { status: 400 });
+      return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
     return NextResponse.json(
-      { error: "Failed to fetch channel summary" },
+      { error: "Failed to generate AI insights" },
       { status: 500 }
     );
   }

@@ -92,9 +92,35 @@ function getClient() {
           opportunities TEXT NOT NULL,
           threats TEXT NOT NULL,
           recommendations TEXT NOT NULL,
+          strategicSummary TEXT,
+          contentPatterns TEXT,
+          videoIdeas TEXT,
+          generatedAt TEXT,
           createdAt INTEGER NOT NULL,
           FOREIGN KEY (competitorId) REFERENCES competitors(id) ON DELETE CASCADE
         );`);
+
+        // Миграция: добавляем новые колонки для расширенного SWOT-анализа
+        try {
+          _client.execute(`ALTER TABLE ai_insights ADD COLUMN strategicSummary TEXT;`);
+        } catch (e) {
+          // Колонка уже существует
+        }
+        try {
+          _client.execute(`ALTER TABLE ai_insights ADD COLUMN contentPatterns TEXT;`);
+        } catch (e) {
+          // Колонка уже существует
+        }
+        try {
+          _client.execute(`ALTER TABLE ai_insights ADD COLUMN videoIdeas TEXT;`);
+        } catch (e) {
+          // Колонка уже существует
+        }
+        try {
+          _client.execute(`ALTER TABLE ai_insights ADD COLUMN generatedAt TEXT;`);
+        } catch (e) {
+          // Колонка уже существует
+        }
 
         _client.execute(`CREATE TABLE IF NOT EXISTS channel_metrics (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
