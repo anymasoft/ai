@@ -18,7 +18,6 @@ interface VideoData {
 
 interface TopVideosGridProps {
   videos: VideoData[];
-  hideHeader?: boolean;
 }
 
 /**
@@ -50,24 +49,25 @@ function formatDate(dateString: string): string {
   }
 }
 
-export function TopVideosGrid({ videos, hideHeader }: TopVideosGridProps) {
+export function TopVideosGrid({ videos }: TopVideosGridProps) {
   const [limit, setLimit] = useState(24);
 
   // Сортируем видео по количеству просмотров (DESC)
   const sortedVideos = [...videos].sort((a, b) => b.viewCount - a.viewCount);
   const visibleVideos = sortedVideos.slice(0, limit);
 
-  const gridContent = (
-    <>
-      {sortedVideos.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
-          <p className="text-center">
-            Нет данных. Нажмите &quot;Sync Top Videos&quot; чтобы загрузить видео канала.
-          </p>
-        </div>
-      ) : (
-        <>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+  return (
+    <CardContent className="p-0">
+      <>
+        {sortedVideos.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
+            <p className="text-center">
+              Нет данных. Нажмите &quot;Sync Top Videos&quot; чтобы загрузить видео канала.
+            </p>
+          </div>
+        ) : (
+          <>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
               {visibleVideos.map((video) => (
                 <Card
                   key={video.id}
@@ -141,18 +141,7 @@ export function TopVideosGrid({ videos, hideHeader }: TopVideosGridProps) {
             )}
           </>
         )}
-    </>
-  );
-
-  // Если hideHeader=true, возвращаем только CardContent (для обёртки CollapsibleSection)
-  if (hideHeader) {
-    return <CardContent className="p-0">{gridContent}</CardContent>;
-  }
-
-  // В противном случае, возвращаем полную структуру с Card обёрткой
-  return (
-    <Card>
-      <CardContent className="p-0">{gridContent}</CardContent>
-    </Card>
+      </>
+    </CardContent>
   );
 }
