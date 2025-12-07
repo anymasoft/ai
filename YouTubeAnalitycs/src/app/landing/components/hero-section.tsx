@@ -48,7 +48,7 @@ export function HeroSection() {
                 <ArrowRight className="ml-2 h-4 w-4" />
               </Link>
             </Button>
-            <Button variant="outline" size="lg" className="text-base cursor-pointer" asChild>
+            <Button variant="outline" size="lg" className="text-base cursor-pointer hidden" asChild>
               <a href="#">
                 <Play className="mr-2 h-4 w-4" />
                 Watch Demo
