@@ -1,5 +1,8 @@
 "use client"
 
+import { useState } from "react"
+import { Card, CardHeader, CardTitle } from "@/components/ui/card"
+import { ChevronDown, ChevronUp } from "lucide-react"
 import { ChannelGrowthChart } from "@/components/charts/ChannelGrowthChart"
 import { TopVideosGrid } from "@/components/channel/TopVideosGrid"
 import { ContentIntelligenceBlock } from "@/components/channel/ContentIntelligenceBlock"
@@ -21,6 +24,40 @@ interface ChannelAnalyticsProps {
   hasComments: boolean
 }
 
+/**
+ * Обёртка для сворачиваемого раздела
+ */
+function CollapsibleSection({
+  title,
+  isOpen,
+  onToggle,
+  children,
+}: {
+  title: string
+  isOpen: boolean
+  onToggle: () => void
+  children: React.ReactNode
+}) {
+  return (
+    <Card>
+      <CardHeader
+        className="cursor-pointer hover:bg-muted/50 transition-colors"
+        onClick={onToggle}
+      >
+        <div className="flex items-center justify-between">
+          <CardTitle className="text-lg">{title}</CardTitle>
+          {isOpen ? (
+            <ChevronUp className="h-5 w-5 text-muted-foreground" />
+          ) : (
+            <ChevronDown className="h-5 w-5 text-muted-foreground" />
+          )}
+        </div>
+      </CardHeader>
+      {isOpen && <div className="px-6 pb-6">{children}</div>}
+    </Card>
+  )
+}
+
 export function ChannelAnalytics({
   channelId,
   metrics,
@@ -33,6 +70,24 @@ export function ChannelAnalytics({
   hasVideos,
   hasComments,
 }: ChannelAnalyticsProps) {
+  // Все разделы открыты по умолчанию
+  const [expanded, setExpanded] = useState({
+    growth: true,
+    videos: true,
+    content: true,
+    momentum: true,
+    audience: true,
+    comments: true,
+    deepAnalysis: true,
+  })
+
+  const toggle = (section: keyof typeof expanded) => {
+    setExpanded(prev => ({
+      ...prev,
+      [section]: !prev[section],
+    }))
+  }
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -43,49 +98,92 @@ export function ChannelAnalytics({
         </p>
       </div>
 
-      {/* Charts */}
-      <ChannelGrowthChart
-        metrics={metrics}
+      {/* Growth Chart */}
+      <CollapsibleSection
         title="Growth Over Time"
-        description="Historical metrics"
-      />
+        isOpen={expanded.growth}
+        onToggle={() => toggle("growth")}
+      >
+        <ChannelGrowthChart
+          metrics={metrics}
+          title="Growth Over Time"
+          description="Historical metrics"
+        />
+      </CollapsibleSection>
 
-      <TopVideosGrid videos={videos} />
+      {/* Top Videos */}
+      <CollapsibleSection
+        title="Top Videos"
+        isOpen={expanded.videos}
+        onToggle={() => toggle("videos")}
+      >
+        <TopVideosGrid videos={videos} />
+      </CollapsibleSection>
 
-      {/* AI Content Intelligence */}
-      <ContentIntelligenceBlock
-        channelId={channelId}
-        initialData={contentData}
-        hasRequiredData={hasVideos}
-      />
+      {/* Content Intelligence */}
+      <CollapsibleSection
+        title="Content Intelligence"
+        isOpen={expanded.content}
+        onToggle={() => toggle("content")}
+      >
+        <ContentIntelligenceBlock
+          channelId={channelId}
+          initialData={contentData}
+          hasRequiredData={hasVideos}
+        />
+      </CollapsibleSection>
 
       {/* Momentum Insights */}
-      <MomentumInsights
-        channelId={channelId}
-        initialData={momentumData}
-        hasRequiredData={hasVideos}
-      />
+      <CollapsibleSection
+        title="Momentum Insights"
+        isOpen={expanded.momentum}
+        onToggle={() => toggle("momentum")}
+      >
+        <MomentumInsights
+          channelId={channelId}
+          initialData={momentumData}
+          hasRequiredData={hasVideos}
+        />
+      </CollapsibleSection>
 
-      {/* Audience & Engagement */}
-      <AudienceInsights
-        channelId={channelId}
-        initialData={audienceData}
-        hasRequiredData={hasVideos}
-      />
+      {/* Audience Insights */}
+      <CollapsibleSection
+        title="Audience & Engagement"
+        isOpen={expanded.audience}
+        onToggle={() => toggle("audience")}
+      >
+        <AudienceInsights
+          channelId={channelId}
+          initialData={audienceData}
+          hasRequiredData={hasVideos}
+        />
+      </CollapsibleSection>
 
       {/* Comment Intelligence */}
-      <CommentInsights
-        channelId={channelId}
-        initialData={commentsData}
-        hasRequiredData={hasVideos && hasComments}
-      />
+      <CollapsibleSection
+        title="Comment Intelligence"
+        isOpen={expanded.comments}
+        onToggle={() => toggle("comments")}
+      >
+        <CommentInsights
+          channelId={channelId}
+          initialData={commentsData}
+          hasRequiredData={hasVideos && hasComments}
+        />
+      </CollapsibleSection>
 
-      {/* Deep Comment Analysis (AI v2.0) */}
-      <DeepCommentAnalysis
-        channelId={channelId}
-        initialData={deepAnalysisData}
-        hasRequiredData={hasVideos && hasComments}
-      />
+      {/* Deep Comment Analysis */}
+      <CollapsibleSection
+        title="Deep Comment Analysis"
+        isOpen={expanded.deepAnalysis}
+        onToggle={() => toggle("deepAnalysis")}
+      >
+        <DeepCommentAnalysis
+          channelId={channelId}
+          initialData={deepAnalysisData}
+          hasRequiredData={hasVideos && hasComments}
+        />
+      </CollapsibleSection>
     </div>
   )
 }
