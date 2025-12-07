@@ -116,11 +116,6 @@ function getClient() {
         } catch (e) {
           // Колонка уже существует
         }
-        try {
-          _client.execute(`ALTER TABLE ai_insights ADD COLUMN generatedAt TEXT;`);
-        } catch (e) {
-          // Колонка уже существует
-        }
 
         _client.execute(`CREATE TABLE IF NOT EXISTS channel_metrics (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
