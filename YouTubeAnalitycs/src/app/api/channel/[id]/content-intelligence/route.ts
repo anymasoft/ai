@@ -220,25 +220,26 @@ export async function POST(
 
     console.log(`[ContentIntelligence] Найдено ${videosResult.rows.length} видео для анализа`);
 
-    const sevenDaysAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
-    const existingResult = await client.execute({
-      sql: "SELECT * FROM content_intelligence WHERE channelId = ? ORDER BY generatedAt DESC LIMIT 1",
-      args: [channelId],
-    });
+    // TODO [PROD]: Включить кеширование перед production развертыванием
+    // const sevenDaysAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
+    // const existingResult = await client.execute({
+    //   sql: "SELECT * FROM content_intelligence WHERE channelId = ? ORDER BY generatedAt DESC LIMIT 1",
+    //   args: [channelId],
+    // });
 
-    if (existingResult.rows.length > 0) {
-      const existing = existingResult.rows[0];
-      const generatedAt = existing.generatedAt as number;
+    // if (existingResult.rows.length > 0) {
+    //   const existing = existingResult.rows[0];
+    //   const generatedAt = existing.generatedAt as number;
 
-      if (generatedAt > sevenDaysAgo) {
-        console.log(`[ContentIntelligence] Найден свежий анализ`);
-        client.close();
-        return NextResponse.json({
-          ...JSON.parse(existing.data as string),
-          generatedAt: generatedAt,
-        });
-      }
-    }
+    //   if (generatedAt > sevenDaysAgo) {
+    //     console.log(`[ContentIntelligence] Найден свежий анализ`);
+    //     client.close();
+    //     return NextResponse.json({
+    //       ...JSON.parse(existing.data as string),
+    //       generatedAt: generatedAt,
+    //     });
+    //   }
+    // }
 
     console.log(`[ContentIntelligence] Генерируем новый анализ через OpenAI...`);
 
