@@ -333,7 +333,6 @@ ${JSON.stringify(channelData, null, 2)}
         },
       ],
       temperature: 0.8,
-      max_tokens: 8000, // Увеличено для максимально детального анализа с 5-12 пунктами каждой категории
       response_format: { type: "json_object" },
     });
 
