@@ -211,8 +211,6 @@ export function LandingFooter() {
               <span>by</span>
               <span className="font-semibold text-foreground">Beem Analytics</span>
             </div>
-            <span className="hidden sm:inline">•</span>
-            <span>© {new Date().getFullYear()} for the developer community</span>
           </div>
           <div className="flex items-center space-x-4 text-sm text-muted-foreground mt-4 md:mt-0">
             <a href="#privacy" className="hover:text-foreground transition-colors">
