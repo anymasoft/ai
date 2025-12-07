@@ -7,9 +7,29 @@ import { Loader2, Sparkles, ChevronDown, ChevronUp } from "lucide-react";
 import { useRouter } from "next/navigation";
 import Markdown from "react-markdown";
 
+interface TableTheme {
+  name: string;
+  videoCount: number;
+  avgViews: number;
+  trend: string;
+}
+
+interface TableFormat {
+  name: string;
+  videoCount: number;
+  avgViews: number;
+  features: string;
+}
+
+interface TablesJson {
+  themes?: TableTheme[];
+  formats?: TableFormat[];
+}
+
 interface ContentIntelligenceData {
   report: string;
   format: "markdown";
+  tables?: TablesJson;
   generatedAt?: number;
 }
 
@@ -22,12 +42,74 @@ interface ContentIntelligenceBlockProps {
 interface Section {
   title: string;
   content: string;
+  tableKey?: "themes" | "formats"; // Если секция имеет структурированные данные
+}
+
+/**
+ * Компонент для отображения красивой таблицы тем
+ */
+function ThemesTable({ themes }: { themes: TableTheme[] }) {
+  return (
+    <div className="overflow-x-auto">
+      <table className="w-full text-sm border-collapse">
+        <thead>
+          <tr className="border-b-2 border-border">
+            <th className="text-left px-4 py-3 font-semibold bg-muted/50">Тема</th>
+            <th className="text-center px-4 py-3 font-semibold bg-muted/50">Видео</th>
+            <th className="text-center px-4 py-3 font-semibold bg-muted/50">Просмотры</th>
+            <th className="text-left px-4 py-3 font-semibold bg-muted/50">Тренд</th>
+          </tr>
+        </thead>
+        <tbody>
+          {themes.map((theme, idx) => (
+            <tr key={idx} className="border-b border-border hover:bg-muted/30 transition-colors">
+              <td className="px-4 py-3 text-left">{theme.name}</td>
+              <td className="px-4 py-3 text-center font-medium">{theme.videoCount}</td>
+              <td className="px-4 py-3 text-center font-medium">{theme.avgViews.toLocaleString("ru-RU")}</td>
+              <td className="px-4 py-3 text-left text-sm text-muted-foreground">{theme.trend}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+/**
+ * Компонент для отображения красивой таблицы форматов
+ */
+function FormatsTable({ formats }: { formats: TableFormat[] }) {
+  return (
+    <div className="overflow-x-auto">
+      <table className="w-full text-sm border-collapse">
+        <thead>
+          <tr className="border-b-2 border-border">
+            <th className="text-left px-4 py-3 font-semibold bg-muted/50">Формат</th>
+            <th className="text-center px-4 py-3 font-semibold bg-muted/50">Видео</th>
+            <th className="text-center px-4 py-3 font-semibold bg-muted/50">Просмотры</th>
+            <th className="text-left px-4 py-3 font-semibold bg-muted/50">Особенности</th>
+          </tr>
+        </thead>
+        <tbody>
+          {formats.map((format, idx) => (
+            <tr key={idx} className="border-b border-border hover:bg-muted/30 transition-colors">
+              <td className="px-4 py-3 text-left">{format.name}</td>
+              <td className="px-4 py-3 text-center font-medium">{format.videoCount}</td>
+              <td className="px-4 py-3 text-center font-medium">{format.avgViews.toLocaleString("ru-RU")}</td>
+              <td className="px-4 py-3 text-left text-sm text-muted-foreground">{format.features}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
 }
 
 /**
  * Парсит markdown отчёт и разделяет его на секции
+ * Также определяет, есть ли структурированные данные для таблиц
  */
-function parseSections(markdown: string): Section[] {
+function parseSections(markdown: string, tables?: TablesJson): Section[] {
   const sections: Section[] = [];
   const lines = markdown.split("\n");
   let currentTitle = "";
@@ -39,7 +121,8 @@ function parseSections(markdown: string): Section[] {
       if (currentTitle) {
         sections.push({
           title: currentTitle,
-          content: currentContent.join("\n").trim()
+          content: currentContent.join("\n").trim(),
+          tableKey: getTableKeyForTitle(currentTitle, tables)
         });
       }
       currentTitle = line.replace("## ", "").trim();
@@ -53,11 +136,28 @@ function parseSections(markdown: string): Section[] {
   if (currentTitle) {
     sections.push({
       title: currentTitle,
-      content: currentContent.join("\n").trim()
+      content: currentContent.join("\n").trim(),
+      tableKey: getTableKeyForTitle(currentTitle, tables)
     });
   }
 
   return sections;
+}
+
+/**
+ * Определяет, есть ли структурированные данные для этого раздела
+ */
+function getTableKeyForTitle(title: string, tables?: TablesJson): "themes" | "formats" | undefined {
+  if (!tables) return undefined;
+
+  const lowerTitle = title.toLowerCase();
+  if (lowerTitle.includes("тема") && tables.themes) {
+    return "themes";
+  }
+  if (lowerTitle.includes("формат") && tables.formats) {
+    return "formats";
+  }
+  return undefined;
 }
 
 /**
@@ -66,12 +166,17 @@ function parseSections(markdown: string): Section[] {
 function CollapsibleSection({
   section,
   isOpen,
-  onToggle
+  onToggle,
+  tablesData
 }: {
   section: Section;
   isOpen: boolean;
   onToggle: () => void;
+  tablesData?: TablesJson;
 }) {
+  // Если есть структурированные данные для таблицы, выводим красивый компонент
+  const hasStructuredData = section.tableKey && tablesData;
+
   return (
     <Card>
       <CardHeader
@@ -89,6 +194,19 @@ function CollapsibleSection({
       </CardHeader>
       {isOpen && (
         <CardContent>
+          {/* Если есть структурированные данные для таблицы - выводим её */}
+          {hasStructuredData && section.tableKey === "themes" && tablesData.themes && (
+            <div className="mb-4">
+              <ThemesTable themes={tablesData.themes} />
+            </div>
+          )}
+          {hasStructuredData && section.tableKey === "formats" && tablesData.formats && (
+            <div className="mb-4">
+              <FormatsTable formats={tablesData.formats} />
+            </div>
+          )}
+
+          {/* Markdown контент секции (описание) */}
           <div className="prose prose-sm dark:prose-invert max-w-none text-sm">
             <Markdown
               components={{
@@ -122,7 +240,7 @@ export function ContentIntelligenceBlock({
   const [error, setError] = useState<string | null>(null);
   const [expandedSections, setExpandedSections] = useState<Set<number>>(new Set([0])); // Первая секция открыта по умолчанию
 
-  const sections = data ? parseSections(data.report) : [];
+  const sections = data ? parseSections(data.report, data.tables) : [];
 
   async function handleGenerate() {
     setLoading(true);
@@ -249,6 +367,7 @@ export function ContentIntelligenceBlock({
             section={section}
             isOpen={expandedSections.has(index)}
             onToggle={() => toggleSection(index)}
+            tablesData={data?.tables}
           />
         ))}
       </div>
