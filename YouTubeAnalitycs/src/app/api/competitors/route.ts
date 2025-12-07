@@ -22,7 +22,8 @@ export async function GET(req: NextRequest) {
       args: [session.user.id],
     });
 
-    return NextResponse.json(result.rows);
+    const competitors = Array.isArray(result.rows) ? result.rows : [];
+    return NextResponse.json(competitors);
   } catch (error) {
     console.error("Error fetching competitors:", error);
     return NextResponse.json(
