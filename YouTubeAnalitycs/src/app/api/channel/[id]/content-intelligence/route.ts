@@ -181,7 +181,6 @@ ${JSON.stringify(videosData, null, 2)}
         }
       ],
       temperature: 0.6,
-      max_tokens: 4000,
     });
 
     const responseText = completion.choices[0]?.message?.content;
