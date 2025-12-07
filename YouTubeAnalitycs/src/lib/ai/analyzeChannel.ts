@@ -96,6 +96,7 @@ function formatDuration(duration: string | undefined): string {
 export async function analyzeChannel(
   channelId: string
 ): Promise<ChannelSwotAnalysis> {
+  console.log("[AI] Начало analyzeChannel для channelId:", channelId);
   const client = getOpenAIClient();
 
   // Подключаемся к БД для получения данных канала
@@ -106,6 +107,7 @@ export async function analyzeChannel(
 
   try {
     // Получаем данные канала
+    console.log("[AI] Запрос данных канала из БД...");
     const competitorResult = await dbClient.execute({
       sql: "SELECT * FROM competitors WHERE id = ?",
       args: [channelId],
@@ -116,8 +118,10 @@ export async function analyzeChannel(
     }
 
     const competitor = competitorResult.rows[0];
+    console.log("[AI] Канал найден:", competitor.title, "- channelId:", competitor.channelId);
 
     // Получаем топ-20 видео канала для анализа
+    console.log("[AI] Запрос видео из БД...");
     const videosResult = await dbClient.execute({
       sql: `SELECT * FROM channel_videos
             WHERE channelId = ?
@@ -125,6 +129,13 @@ export async function analyzeChannel(
             LIMIT 20`,
       args: [competitor.channelId],
     });
+
+    console.log("[AI] Получено видео:", videosResult.rows.length);
+
+    if (videosResult.rows.length === 0) {
+      console.warn("[AI] ВНИМАНИЕ: видео не найдены в БД! Синхронизируйте видео перед генерацией анализа.");
+      throw new Error("No videos found for this channel. Please sync videos first.");
+    }
 
     const videos = videosResult.rows.map(row => ({
       videoId: row.videoId as string,
@@ -143,6 +154,7 @@ export async function analyzeChannel(
     }));
 
     // Получаем исторические метрики для анализа динамики
+    console.log("[AI] Запрос метрик из БД...");
     const metricsResult = await dbClient.execute({
       sql: `SELECT * FROM channel_metrics
             WHERE channelId = ?
@@ -150,6 +162,8 @@ export async function analyzeChannel(
             LIMIT 30`,
       args: [competitor.channelId],
     });
+
+    console.log("[AI] Получено метрик:", metricsResult.rows.length);
 
     const metrics = metricsResult.rows.map(row => ({
       subscriberCount: row.subscriberCount as number,
@@ -318,7 +332,10 @@ ${JSON.stringify(channelData, null, 2)}
 `;
 
     console.log("[AI] Отправка детального промпта к OpenAI для SWOT-анализа:", competitor.handle);
+    console.log("[AI] Размер промпта:", prompt.length, "символов");
+    console.log("[AI] Ожидание ответа от gpt-4.1-mini (это может занять 2-5 минут)...");
 
+    const startTime = Date.now();
     const response = await client.chat.completions.create({
       model: "gpt-4.1-mini",
       messages: [
@@ -335,6 +352,8 @@ ${JSON.stringify(channelData, null, 2)}
       temperature: 0.8,
       response_format: { type: "json_object" },
     });
+    const elapsed = Date.now() - startTime;
+    console.log("[AI] Ответ от OpenAI получен за", elapsed, "мс");
 
     const content = response.choices[0]?.message?.content;
 
@@ -342,6 +361,7 @@ ${JSON.stringify(channelData, null, 2)}
       throw new Error("OpenAI returned empty response");
     }
 
+    console.log("[AI] Размер ответа:", content.length, "символов");
     console.log("[AI] Получен ответ от OpenAI, парсинг JSON...");
 
     // Парсим JSON ответ
