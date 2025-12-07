@@ -191,6 +191,11 @@ export function ContentIntelligenceBlock({
 
   const sections = data ? parseSections(data.report) : [];
 
+  // Debug: логирование для проверки парсинга
+  if (typeof window !== "undefined" && data && sections.length > 0) {
+    console.log(`[ContentIntelligence] Parsed ${sections.length} sections:`, sections.map(s => s.title));
+  }
+
   async function handleGenerate() {
     setLoading(true);
     setError(null);
