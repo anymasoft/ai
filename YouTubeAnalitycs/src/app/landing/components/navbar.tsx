@@ -58,7 +58,13 @@ const solutionsItems = [
 
 // Smooth scroll function
 const smoothScrollTo = (targetId: string) => {
-  if (targetId.startsWith('#')) {
+  if (targetId === '#') {
+    // Scroll to top of page
+    window.scrollTo({
+      top: 0,
+      behavior: 'smooth'
+    })
+  } else if (targetId.startsWith('#')) {
     const element = document.querySelector(targetId)
     if (element) {
       element.scrollIntoView({
