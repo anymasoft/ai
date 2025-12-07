@@ -111,6 +111,65 @@ function CollapsibleSection({
   );
 }
 
+/**
+ * Преобразует старый JSON формат в новый markdown формат
+ */
+function convertOldFormatToMarkdown(oldData: any): string {
+  if (oldData.report && oldData.format === "markdown") {
+    return oldData.report;
+  }
+
+  // Старый JSON формат - конвертируем в markdown
+  const lines: string[] = [];
+
+  if (oldData.themes && Array.isArray(oldData.themes)) {
+    lines.push("## ОСНОВНЫЕ ТЕМЫ");
+    lines.push("");
+    oldData.themes.forEach((theme: string) => {
+      lines.push(`- ${theme}`);
+    });
+    lines.push("");
+  }
+
+  if (oldData.formats && Array.isArray(oldData.formats)) {
+    lines.push("## ФОРМАТЫ КОНТЕНТА");
+    lines.push("");
+    oldData.formats.forEach((format: string) => {
+      lines.push(`- ${format}`);
+    });
+    lines.push("");
+  }
+
+  if (oldData.patterns && Array.isArray(oldData.patterns)) {
+    lines.push("## ПОВТОРЯЮЩИЕСЯ ПАТТЕРНЫ");
+    lines.push("");
+    oldData.patterns.forEach((pattern: string) => {
+      lines.push(`- ${pattern}`);
+    });
+    lines.push("");
+  }
+
+  if (oldData.opportunities && Array.isArray(oldData.opportunities)) {
+    lines.push("## ВОЗМОЖНОСТИ");
+    lines.push("");
+    oldData.opportunities.forEach((opportunity: string) => {
+      lines.push(`- ${opportunity}`);
+    });
+    lines.push("");
+  }
+
+  if (oldData.recommendations && Array.isArray(oldData.recommendations)) {
+    lines.push("## РЕКОМЕНДАЦИИ");
+    lines.push("");
+    oldData.recommendations.forEach((rec: string) => {
+      lines.push(`- ${rec}`);
+    });
+    lines.push("");
+  }
+
+  return lines.join("\n") || "No data available";
+}
+
 export function ContentIntelligenceBlock({
   channelId,
   initialData,
@@ -118,11 +177,24 @@ export function ContentIntelligenceBlock({
 }: ContentIntelligenceBlockProps) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
-  const [data, setData] = useState<ContentIntelligenceData | null>(initialData || null);
+
+  // Преобразуем старый формат в новый, если нужно
+  const normalizedData: ContentIntelligenceData | null = initialData ? {
+    report: convertOldFormatToMarkdown(initialData),
+    format: "markdown",
+    generatedAt: initialData.generatedAt
+  } : null;
+
+  const [data, setData] = useState<ContentIntelligenceData | null>(normalizedData);
   const [error, setError] = useState<string | null>(null);
   const [expandedSections, setExpandedSections] = useState<Set<number>>(new Set([0])); // Первая секция открыта по умолчанию
 
   const sections = data ? parseSections(data.report) : [];
+
+  // Debug: логирование для проверки парсинга
+  if (typeof window !== "undefined" && data && sections.length > 0) {
+    console.log(`[ContentIntelligence] Parsed ${sections.length} sections:`, sections.map(s => s.title));
+  }
 
   async function handleGenerate() {
     setLoading(true);
