@@ -147,7 +147,7 @@ export async function POST(
       );
     }
 
-    const videos = videosResult.rows.map(row => ({
+    let videos = videosResult.rows.map(row => ({
       id: row.id as number,
       videoId: row.videoId as string,
       title: row.title as string,
@@ -159,6 +159,35 @@ export async function POST(
     }));
 
     console.log(`[Audience] Найдено ${videos.length} видео для анализа`);
+
+    // Фильтруем видео с валидной датой публикации
+    videos = videos.filter(v => {
+      const publishedAt = v.publishedAt as string;
+      if (!publishedAt || publishedAt.startsWith("0000")) {
+        console.warn(`[Audience] Пропуск видео ${v.videoId} (невалидная дата: ${publishedAt})`);
+        return false;
+      }
+      try {
+        const date = new Date(publishedAt);
+        if (isNaN(date.getTime())) {
+          console.warn(`[Audience] Пропуск видео ${v.videoId} (непарсируемая дата: ${publishedAt})`);
+          return false;
+        }
+        return true;
+      } catch {
+        return false;
+      }
+    });
+
+    if (videos.length === 0) {
+      client.close();
+      return NextResponse.json(
+        { error: "No videos with valid publication dates" },
+        { status: 400 }
+      );
+    }
+
+    console.log(`[Audience] Видео с валидными датами: ${videos.length}`);
 
     // Обогащаем видео данными из videoDetails если доступны
     const sevenDaysAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;

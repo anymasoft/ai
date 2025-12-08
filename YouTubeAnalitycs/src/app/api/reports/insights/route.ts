@@ -46,23 +46,34 @@ export async function GET(req: NextRequest) {
       args: channelIds,
     })
 
-    // Рассчитываем momentum для видео
-    const videosWithMomentum = videosResult.rows.map((row) => {
-      const viewCount = Number(row.viewCount)
-      const publishedAt = new Date(row.publishedAt as string)
-      const daysOld = Math.max(1, (Date.now() - publishedAt.getTime()) / (1000 * 60 * 60 * 24))
-      const viewsPerDay = viewCount / daysOld
+    // Фильтруем видео с валидной датой и рассчитываем momentum
+    const videosWithMomentum = videosResult.rows
+      .filter((row) => {
+        const publishedAt = row.publishedAt as string;
+        if (!publishedAt || publishedAt.startsWith("0000")) return false;
+        try {
+          const date = new Date(publishedAt);
+          return !isNaN(date.getTime());
+        } catch {
+          return false;
+        }
+      })
+      .map((row) => {
+        const viewCount = Number(row.viewCount)
+        const publishedAt = new Date(row.publishedAt as string)
+        const daysOld = Math.max(1, (Date.now() - publishedAt.getTime()) / (1000 * 60 * 60 * 24))
+        const viewsPerDay = viewCount / daysOld
 
-      return {
-        videoId: row.videoId as string,
-        title: row.title as string,
-        channelTitle: row.channelTitle as string,
-        viewCount,
-        likeCount: Number(row.likeCount),
-        viewsPerDay: Math.round(viewsPerDay),
-        publishedAt: publishedAt.toLocaleDateString("en-US"),
-      }
-    })
+        return {
+          videoId: row.videoId as string,
+          title: row.title as string,
+          channelTitle: row.channelTitle as string,
+          viewCount,
+          likeCount: Number(row.likeCount),
+          viewsPerDay: Math.round(viewsPerDay),
+          publishedAt: publishedAt.toLocaleDateString("en-US"),
+        }
+      })
 
     // Сортируем по viewsPerDay (momentum)
     const topMomentum = [...videosWithMomentum].sort((a, b) => b.viewsPerDay - a.viewsPerDay).slice(0, 10)

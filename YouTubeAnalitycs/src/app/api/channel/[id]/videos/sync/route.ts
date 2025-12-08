@@ -3,6 +3,11 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { createClient } from "@libsql/client";
 import { getYoutubeChannelVideos } from "@/lib/scrapecreators";
+import {
+  resolveVideoPublishDate,
+  getVideoCommentsFromDB,
+  getVideoNeighborsFromDB,
+} from "@/lib/publish-date-resolver";
 
 /**
  * POST /api/channel/[id]/videos/sync
@@ -77,16 +82,61 @@ export async function POST(
 
     console.log(`[VideoSync] Получено ${videos.length} видео из API`);
 
-    // Сохраняем или обновляем видео в БД
+    // Сохраняем или обновляем видео в БД с resolver'ом для дат
     let inserted = 0;
     let updated = 0;
+    let resolvedDates = 0;
 
     for (const video of videos) {
-      // Проверяем, существует ли уже такое видео
+      // Сначала проверяем, существует ли уже такое видео
       const existingResult = await client.execute({
         sql: "SELECT * FROM channel_videos WHERE channelId = ? AND videoId = ?",
         args: [competitor.channelId, video.videoId],
       });
+
+      // Резолвим дату публикации (многоступенчатый fallback)
+      let resolvedPublishedAt = video.publishedAt;
+
+      // Если дата отсутствует или невалидна - пытаемся восстановить её
+      if (!resolvedPublishedAt || resolvedPublishedAt.startsWith("0000")) {
+        console.log(
+          `[VideoSync] Resolving date for video ${video.videoId} (current: ${resolvedPublishedAt})`
+        );
+
+        // Получаем комментарии и соседей (может быть полезно для интерполяции)
+        const comments = await getVideoCommentsFromDB(video.videoId);
+        const neighbors = await getVideoNeighborsFromDB(
+          competitor.channelId,
+          video.videoId
+        );
+
+        // Используем резолвер
+        const resolved = await resolveVideoPublishDate(
+          video.videoId,
+          {
+            videoId: video.videoId,
+            publishedAt: video.publishedAt,
+            viewCount: video.viewCount,
+          },
+          comments,
+          neighbors
+        );
+
+        if (resolved) {
+          resolvedPublishedAt = resolved;
+          resolvedDates++;
+          console.log(
+            `[VideoSync] Successfully resolved date for ${video.videoId}: ${resolved}`
+          );
+        } else {
+          // Если не смогли восстановить - используем текущую дату как fallback
+          // (это крайний случай, обычно один из резолверов должен сработать)
+          resolvedPublishedAt = new Date().toISOString().split("T")[0];
+          console.warn(
+            `[VideoSync] Could not resolve date for ${video.videoId}, using today's date`
+          );
+        }
+      }
 
       if (existingResult.rows.length > 0) {
         // Обновляем существующее видео
@@ -108,7 +158,7 @@ export async function POST(
             video.viewCount,
             video.likeCount,
             video.commentCount,
-            video.publishedAt,
+            resolvedPublishedAt,
             video.duration || null,
             Date.now(),
             existing.id,
@@ -130,7 +180,7 @@ export async function POST(
             video.viewCount,
             video.likeCount,
             video.commentCount,
-            video.publishedAt,
+            resolvedPublishedAt,
             video.duration || null,
             Date.now(),
           ],
@@ -139,7 +189,9 @@ export async function POST(
       }
     }
 
-    console.log(`[VideoSync] Синхронизация завершена: ${inserted} добавлено, ${updated} обновлено`);
+    console.log(
+      `[VideoSync] Синхронизация завершена: ${inserted} добавлено, ${updated} обновлено, ${resolvedDates} дат восстановлено`
+    );
 
     // Подсчитываем общее количество видео для этого канала
     const totalVideosResult = await client.execute({
@@ -154,6 +206,7 @@ export async function POST(
         status: "ok",
         added: inserted,
         updated: updated,
+        resolvedDates: resolvedDates,
         totalVideos: totalVideosResult.rows.length,
       },
       { status: 200 }

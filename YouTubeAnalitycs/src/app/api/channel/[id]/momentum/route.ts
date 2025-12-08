@@ -115,8 +115,40 @@ export async function POST(
 
     console.log(`[Momentum] Найдено ${videos.length} видео для анализа`);
 
+    // Фильтруем видео с валидной датой публикации
+    const validVideos = videos.filter((v: any) => {
+      const publishedAt = v.publishedAt as string;
+      // Исключаем видео с невалидными датами
+      if (!publishedAt || publishedAt.startsWith("0000")) {
+        console.warn(`[Momentum] Пропуск видео ${v.videoId} (невалидная дата: ${publishedAt})`);
+        return false;
+      }
+      try {
+        const date = new Date(publishedAt);
+        if (isNaN(date.getTime())) {
+          console.warn(`[Momentum] Пропуск видео ${v.videoId} (непарсируемая дата: ${publishedAt})`);
+          return false;
+        }
+        return true;
+      } catch {
+        return false;
+      }
+    });
+
+    if (validVideos.length === 0) {
+      client.close();
+      return NextResponse.json(
+        { error: "No videos with valid publication dates" },
+        { status: 400 }
+      );
+    }
+
+    console.log(
+      `[Momentum] Видео с валидными датами: ${validVideos.length}/${videos.length}`
+    );
+
     // Вычисляем views_per_day для каждого видео
-    const videosWithMetrics: VideoWithMomentum[] = videos.map(v => {
+    const videosWithMetrics: VideoWithMomentum[] = validVideos.map((v: any) => {
       const days = daysSincePublish(v.publishedAt as string);
       const viewsPerDay = (v.viewCount as number) / days;
 
