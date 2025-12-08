@@ -93,22 +93,35 @@ export async function GET(req: NextRequest) {
       });
 
       if (videosResult.rows.length > 0) {
-        // Рассчитываем viewsPerDay для каждого видео
-        const now = Date.now();
-        const videosWithMomentum = videosResult.rows.map(row => {
-          const publishedAt = new Date(row.publishedAt as string).getTime();
-          const daysSincePublish = Math.max(1, (now - publishedAt) / (1000 * 60 * 60 * 24));
-          const viewsPerDay = (row.viewCount as number) / daysSincePublish;
-
-          return {
-            videoId: row.videoId as string,
-            title: row.title as string,
-            channelTitle: row.channelTitle as string,
-            viewCount: row.viewCount as number,
-            viewsPerDay,
-            momentumScore: 0, // Будет рассчитан после определения медианы
-          };
+        // Фильтруем видео с валидной датой
+        const validRows = videosResult.rows.filter(row => {
+          const publishedAt = row.publishedAt as string;
+          if (!publishedAt || publishedAt.startsWith("0000")) return false;
+          try {
+            const date = new Date(publishedAt);
+            return !isNaN(date.getTime());
+          } catch {
+            return false;
+          }
         });
+
+        if (validRows.length > 0) {
+          // Рассчитываем viewsPerDay для каждого видео
+          const now = Date.now();
+          const videosWithMomentum = validRows.map(row => {
+            const publishedAt = new Date(row.publishedAt as string).getTime();
+            const daysSincePublish = Math.max(1, (now - publishedAt) / (1000 * 60 * 60 * 24));
+            const viewsPerDay = (row.viewCount as number) / daysSincePublish;
+
+            return {
+              videoId: row.videoId as string,
+              title: row.title as string,
+              channelTitle: row.channelTitle as string,
+              viewCount: row.viewCount as number,
+              viewsPerDay,
+              momentumScore: 0, // Будет рассчитан после определения медианы
+            };
+          });
 
         // Рассчитываем медиану viewsPerDay
         const viewsPerDayValues = videosWithMomentum.map(v => v.viewsPerDay).sort((a, b) => a - b);
@@ -142,6 +155,7 @@ export async function GET(req: NextRequest) {
               url: `https://www.youtube.com/watch?v=${top.videoId}`,
             };
           }
+        }
         }
       }
     }

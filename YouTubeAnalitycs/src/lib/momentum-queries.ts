@@ -170,6 +170,23 @@ export async function getTopMomentumVideos(
 
     for (const row of videosResult.rows) {
       const publishedAt = row.publishedAt as string;
+
+      // Пропускаем видео с невалидными датами
+      if (!publishedAt || publishedAt.startsWith("0000")) {
+        console.warn(`[MomentumQueries] Skipping video ${row.videoId} with invalid date`);
+        continue;
+      }
+
+      try {
+        const date = new Date(publishedAt);
+        if (isNaN(date.getTime())) {
+          console.warn(`[MomentumQueries] Skipping video ${row.videoId} with unparseable date: ${publishedAt}`);
+          continue;
+        }
+      } catch {
+        continue;
+      }
+
       const viewCount = Number(row.viewCount) || 0;
 
       // Рассчитываем days since publish
@@ -187,6 +204,14 @@ export async function getTopMomentumVideos(
         viewsPerDay,
         momentumScore: 0, // Будет рассчитан после
       });
+    }
+
+    if (videosWithMetrics.length === 0) {
+      console.warn("[MomentumQueries] No videos with valid publication dates");
+      return {
+        items: [],
+        summary: { topChannels: [], avgMomentum: 0, totalVideos: 0 },
+      };
     }
 
     // 4. Рассчитываем медиану viewsPerDay

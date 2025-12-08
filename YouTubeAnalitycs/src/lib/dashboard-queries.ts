@@ -122,7 +122,20 @@ export const getDashboardKPI = cache(async (userId: string): Promise<KPIData> =>
 
     if (videosResult.rows.length > 0) {
       const now = Date.now();
-      const videosWithMomentum = videosResult.rows.map(row => {
+
+      // Фильтруем видео с валидной датой публикации
+      const validRows = videosResult.rows.filter(row => {
+        const publishedAt = row.publishedAt as string;
+        if (!publishedAt || publishedAt.startsWith("0000")) return false;
+        try {
+          const date = new Date(publishedAt);
+          return !isNaN(date.getTime());
+        } catch {
+          return false;
+        }
+      });
+
+      const videosWithMomentum = validRows.map(row => {
         const publishedAt = new Date(row.publishedAt as string).getTime();
         const daysSincePublish = Math.max(1, (now - publishedAt) / (1000 * 60 * 60 * 24));
         const viewsPerDay = (Number(row.viewCount) || 0) / daysSincePublish;
@@ -224,8 +237,29 @@ export const getVideoPerformance = cache(async (
     };
   }
 
+  // Фильтруем видео с валидной датой публикации
+  const validRows = videosResult.rows.filter(row => {
+    const publishedAt = row.publishedAt as string;
+    if (!publishedAt || publishedAt.startsWith("0000")) return false;
+    try {
+      const date = new Date(publishedAt);
+      return !isNaN(date.getTime());
+    } catch {
+      return false;
+    }
+  });
+
+  if (validRows.length === 0) {
+    return {
+      videos: [],
+      total: 0,
+      medianViewsPerDay: 0,
+      stats: { highMomentum: 0, rising: 0, normal: 0, underperforming: 0 },
+    };
+  }
+
   const now = Date.now();
-  const videosWithMetrics: VideoPerformance[] = videosResult.rows.map(row => {
+  const videosWithMetrics: VideoPerformance[] = validRows.map(row => {
     const publishedAt = new Date(row.publishedAt as string).getTime();
     const daysSincePublish = Math.max(1, (now - publishedAt) / (1000 * 60 * 60 * 24));
     const viewsPerDay = (Number(row.viewCount) || 0) / daysSincePublish;
