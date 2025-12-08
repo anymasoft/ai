@@ -379,11 +379,6 @@ async function fetchVideosFromAPI(
         console.log("Video date received:", {
           videoId: video.videoId || video.id,
           publishedTime,
-          rawFields: {
-            publishedTime: video.publishedTime,
-            publishedAt: video.publishedAt,
-            publishedDate: video.publishedDate,
-          },
         });
 
         return {
@@ -520,11 +515,6 @@ export async function getYoutubeVideoDetails(url: string) {
     console.log("Video details date received:", {
       videoId: data.videoId || data.id,
       publishedTime,
-      rawFields: {
-        publishedTime: data.publishedTime,
-        publishedAt: data.publishedAt,
-        publishedDate: data.publishedDate,
-      },
     });
 
     const videoDetails = {

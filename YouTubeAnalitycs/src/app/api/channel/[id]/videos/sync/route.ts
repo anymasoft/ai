@@ -77,65 +77,22 @@ export async function POST(
 
     console.log(`[VideoSync] Получено ${videos.length} видео из API`);
 
-    // Сохраняем или обновляем видео в БД с resolver'ом для дат
+    // Сохраняем или обновляем видео в БД
     let inserted = 0;
     let updated = 0;
-    let resolvedDates = 0;
 
     for (const video of videos) {
-      // Сначала проверяем, существует ли уже такое видео
+      // Проверяем, существует ли уже такое видео
       const existingResult = await client.execute({
         sql: "SELECT * FROM channel_videos WHERE channelId = ? AND videoId = ?",
         args: [competitor.channelId, video.videoId],
       });
 
-      // Резолвим дату публикации (многоступенчатый fallback)
-      let resolvedPublishedAt = video.publishedAt;
-
-      // Если дата отсутствует или невалидна - пытаемся восстановить её
-      if (!resolvedPublishedAt || resolvedPublishedAt.startsWith("0000")) {
-        console.log(
-          `[VideoSync] Resolving date for video ${video.videoId} (current: ${resolvedPublishedAt})`
-        );
-
-        // Получаем комментарии и соседей (может быть полезно для интерполяции)
-        const comments = await getVideoCommentsFromDB(video.videoId);
-        const neighbors = await getVideoNeighborsFromDB(
-          competitor.channelId as string,
-          video.videoId as string
-        );
-
-        // Используем резолвер
-        const resolved = await resolveVideoPublishDate(
-          video.videoId,
-          {
-            videoId: video.videoId,
-            publishedAt: (video.publishedAt as string | null) || null,
-            viewCount: video.viewCount,
-          },
-          comments,
-          neighbors
-        );
-
-        if (resolved) {
-          resolvedPublishedAt = resolved;
-          resolvedDates++;
-          console.log(
-            `[VideoSync] Successfully resolved date for ${video.videoId}: ${resolved}`
-          );
-        } else {
-          // Если не смогли восстановить - используем текущую дату как fallback
-          // (это крайний случай, обычно один из резолверов должен сработать)
-          resolvedPublishedAt = new Date().toISOString().split("T")[0];
-          console.warn(
-            `[VideoSync] Could not resolve date for ${video.videoId}, using today's date`
-          );
-        }
-      }
-
       if (existingResult.rows.length > 0) {
         // Обновляем существующее видео
         const existing = existingResult.rows[0];
+        const oldDate = existing.publishedAt;
+
         await client.execute({
           sql: `UPDATE channel_videos SET
             title = ?,
@@ -153,12 +110,25 @@ export async function POST(
             video.viewCount,
             video.likeCount,
             video.commentCount,
-            resolvedPublishedAt,
+            video.publishedAt,
             video.duration || null,
             Date.now(),
             existing.id,
           ],
         });
+
+        if (oldDate !== video.publishedAt) {
+          console.log(
+            `[VideoSync] Video ${video.videoId} date BEFORE update: ${oldDate}`
+          );
+          console.log(
+            `[VideoSync] Video ${video.videoId} date AFTER update: ${video.publishedAt}`
+          );
+          console.log(
+            `[VideoSync] Source API date: ${video.publishedAt}`
+          );
+        }
+
         updated++;
       } else {
         // Вставляем новое видео
@@ -175,18 +145,21 @@ export async function POST(
             video.viewCount,
             video.likeCount,
             video.commentCount,
-            resolvedPublishedAt,
+            video.publishedAt,
             video.duration || null,
             Date.now(),
           ],
         });
+
+        console.log(
+          `[VideoSync] Video ${video.videoId} inserted with date: ${video.publishedAt}`
+        );
+
         inserted++;
       }
     }
 
-    console.log(
-      `[VideoSync] Синхронизация завершена: ${inserted} добавлено, ${updated} обновлено, ${resolvedDates} дат восстановлено`
-    );
+    console.log(`[VideoSync] Синхронизация завершена: ${inserted} добавлено, ${updated} обновлено`);
 
     // Подсчитываем общее количество видео для этого канала
     const totalVideosResult = await client.execute({
@@ -201,7 +174,6 @@ export async function POST(
         status: "ok",
         added: inserted,
         updated: updated,
-        resolvedDates: resolvedDates,
         totalVideos: totalVideosResult.rows.length,
       },
       { status: 200 }
