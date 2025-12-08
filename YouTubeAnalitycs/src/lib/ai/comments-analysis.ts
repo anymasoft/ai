@@ -204,15 +204,15 @@ const DEEP_COMMENTS_PROMPT_RU = `Ты - высокопрофессиональн
 ТВОЯ ЗАДАЧА: Вернуть JSON анализ СТРОГО в следующей структуре:
 
 {
-  "emotionalOverview": "описание преобладающего тона и эмоций (3-4 предложения)",
-  "keyTopics": [минимум 3 объекта с полями: name, description, examples (массив 3 строк), motive, usage],
-  "positiveTriggers": [минимум 3 объекта с полями: trigger, what_praised, why_resonates, video_types],
-  "negativeTriggers": [минимум 3 объекта с полями: trigger, what_causes_negativity, why_harmful, fix, example],
-  "faq": [минимум 3 объекта с полями: question, why_appears, action],
-  "audienceSegments": [минимум 3 объекта с полями: segment, description, writes_about, understanding_level, motives, suitable_content, growth_strategy],
-  "behavioralInsights": [минимум 5 строк с реальными паттернами поведения],
-  "missingElements": [минимум 3 строки о том чего не хватает аудитории],
-  "growthOpportunities": [минимум 3 объекта с полями: opportunity, based_on, how_use, expected_effect],
+  "emotionalOverview": "описание преобладающего тона и эмоций (максимум 250 символов, 2-3 предложения)",
+  "keyTopics": [минимум 3 объекта с полями: name (5-10 слов), description (1 предложение), examples (массив 3 строк по 3-5 слов), motive (1 фраза 5-10 слов), usage (1 предложение)],
+  "positiveTriggers": [минимум 3 объекта с полями: trigger (5-10 слов), what_praised (1 предложение), why_resonates (1 предложение), video_types (1 предложение)],
+  "negativeTriggers": [минимум 3 объекта с полями: trigger (5-10 слов), what_causes_negativity (1 предложение), why_harmful (1 предложение), fix (1 предложение), example (1 фраза)],
+  "faq": [минимум 3 объекта с полями: question (1 вопрос 5-15 слов), why_appears (1 предложение), action (1 предложение)],
+  "audienceSegments": [минимум 3 объекта с полями: segment (5-10 слов), description (1 предложение), writes_about (1 предложение), understanding_level (1 предложение), motives (1 фраза 5-10 слов), suitable_content (1 предложение), growth_strategy (1 предложение)],
+  "behavioralInsights": [минимум 5 строк, каждая 1 предложение 10-20 слов],
+  "missingElements": [минимум 3 строки, каждая 1 предложение 10-20 слов],
+  "growthOpportunities": [минимум 3 объекта с полями: opportunity (5-10 слов), based_on (1 предложение), how_use (1 предложение), expected_effect (1 предложение)],
   "checklist": [ровно 8 строк для действий: Убрать, Добавить, Усилить, Изменить, Частить, Упростить, Углубить, Делать регулярно]
 }
 
@@ -224,7 +224,8 @@ const DEEP_COMMENTS_PROMPT_RU = `Ты - высокопрофессиональн
 5. Если комментариев мало - все равно заполни ВСЕ поля минимальным контентом.
 6. Ответ начинается с { и заканчивается с } и больше ничем.
 7. Все текстовые значения на русском языке.
-8. Работай ТОЛЬКО с реальными данными из комментариев. Никаких выдумок.`;
+8. Работай ТОЛЬКО с реальными данными из комментариев. Никаких выдумок.
+9. Все текстовые значения должны быть максимально краткими: каждое поле 1-2 предложения максимум. Длинные описания запрещены.`;
 
 const DEEP_COMMENTS_PROMPT_EN = `You are a highly professional YouTube audience behavior analyst. Your task is to conduct a complete and deep analysis of comments.
 
@@ -233,15 +234,15 @@ INPUT DATA: Array of comments (text, author, likes).
 YOUR TASK: Return JSON analysis STRICTLY in the following structure:
 
 {
-  "emotionalOverview": "description of dominant tone and emotions (3-4 sentences)",
-  "keyTopics": [minimum 3 objects with fields: name, description, examples (array of 3 strings), motive, usage],
-  "positiveTriggers": [minimum 3 objects with fields: trigger, what_praised, why_resonates, video_types],
-  "negativeTriggers": [minimum 3 objects with fields: trigger, what_causes_negativity, why_harmful, fix, example],
-  "faq": [minimum 3 objects with fields: question, why_appears, action],
-  "audienceSegments": [minimum 3 objects with fields: segment, description, writes_about, understanding_level, motives, suitable_content, growth_strategy],
-  "behavioralInsights": [minimum 5 strings with real behavior patterns],
-  "missingElements": [minimum 3 strings about what audience lacks],
-  "growthOpportunities": [minimum 3 objects with fields: opportunity, based_on, how_use, expected_effect],
+  "emotionalOverview": "description of dominant tone and emotions (max 250 chars, 2-3 sentences)",
+  "keyTopics": [minimum 3 objects with fields: name (5-10 words), description (1 sentence), examples (array 3 strings of 3-5 words each), motive (1 phrase 5-10 words), usage (1 sentence)],
+  "positiveTriggers": [minimum 3 objects with fields: trigger (5-10 words), what_praised (1 sentence), why_resonates (1 sentence), video_types (1 sentence)],
+  "negativeTriggers": [minimum 3 objects with fields: trigger (5-10 words), what_causes_negativity (1 sentence), why_harmful (1 sentence), fix (1 sentence), example (1 phrase)],
+  "faq": [minimum 3 objects with fields: question (1 question 5-15 words), why_appears (1 sentence), action (1 sentence)],
+  "audienceSegments": [minimum 3 objects with fields: segment (5-10 words), description (1 sentence), writes_about (1 sentence), understanding_level (1 sentence), motives (1 phrase 5-10 words), suitable_content (1 sentence), growth_strategy (1 sentence)],
+  "behavioralInsights": [minimum 5 strings, each 1 sentence 10-20 words],
+  "missingElements": [minimum 3 strings, each 1 sentence 10-20 words],
+  "growthOpportunities": [minimum 3 objects with fields: opportunity (5-10 words), based_on (1 sentence), how_use (1 sentence), expected_effect (1 sentence)],
   "checklist": [exactly 8 strings for actions: Remove, Add, Amplify, Change, Increase, Simplify, Deepen, Do]
 }
 
@@ -253,7 +254,8 @@ STRICT REQUIREMENTS:
 5. If few comments - still fill ALL fields with minimum content.
 6. Answer starts with { and ends with } and nothing more.
 7. All text values in English.
-8. Work ONLY with real data from comments. No hallucinations.`;
+8. Work ONLY with real data from comments. No hallucinations.
+9. All text values must be concise: each field max 1-2 sentences. Long descriptions are forbidden.`;
 
 /**
  * Безопасно извлекает JSON-объект из строки
@@ -357,7 +359,7 @@ export async function generateDeepAnalysis(
         },
       ],
       temperature: 0.7,
-      max_tokens: 2000,
+      max_tokens: 6000,
       response_format: { type: "json_object" },
     });
 
