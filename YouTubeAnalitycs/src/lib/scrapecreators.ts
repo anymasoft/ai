@@ -33,10 +33,22 @@ function isHtmlResponse(text: string): boolean {
  * Извлекает URL аватара из разных форматов ответа API
  */
 function extractAvatarUrl(avatar: any): string | null {
-  if (!avatar) return null;
+  if (!avatar) {
+    console.log("[extractAvatarUrl] avatar is null/undefined");
+    return null;
+  }
+
+  console.log("[extractAvatarUrl] Processing avatar:", {
+    avatarType: typeof avatar,
+    isString: typeof avatar === "string",
+    hasUrl: avatar?.url !== undefined,
+    hasImage: avatar?.image !== undefined,
+    keys: typeof avatar === "object" ? Object.keys(avatar).slice(0, 5) : "not-an-object",
+  });
 
   // Случай 1: avatar уже строка
   if (typeof avatar === "string" && avatar.trim()) {
+    console.log("[extractAvatarUrl] Case 1: avatar is string - returning");
     return avatar.trim();
   }
 
@@ -46,15 +58,30 @@ function extractAvatarUrl(avatar: any): string | null {
     // Берём последний элемент (обычно самое большое разрешение)
     const best = sources[sources.length - 1];
     if (best?.url && typeof best.url === "string") {
+      console.log("[extractAvatarUrl] Case 2: avatar.image.sources[] - returning");
       return best.url.trim();
     }
   }
 
   // Случай 3: avatar.url напрямую
   if (avatar?.url && typeof avatar.url === "string") {
+    console.log("[extractAvatarUrl] Case 3: avatar.url - returning");
     return avatar.url.trim();
   }
 
+  // Случай 4: avatar_url (с подчеркиванием, если API использует snake_case)
+  if (avatar?.avatar_url && typeof avatar.avatar_url === "string") {
+    console.log("[extractAvatarUrl] Case 4: avatar_url - returning");
+    return avatar.avatar_url.trim();
+  }
+
+  // Случай 5: avatarUrl (camelCase)
+  if (avatar?.avatarUrl && typeof avatar.avatarUrl === "string") {
+    console.log("[extractAvatarUrl] Case 5: avatarUrl - returning");
+    return avatar.avatarUrl.trim();
+  }
+
+  console.log("[extractAvatarUrl] No matching avatar format found");
   return null;
 }
 
@@ -182,11 +209,25 @@ export async function getYoutubeChannelByHandle(
     }
 
     // Нормализация данных
+    console.log("[ScrapeCreators] API response keys:", Object.keys(data).slice(0, 10));
+    console.log("[ScrapeCreators] Avatar field:", {
+      avatar: data.avatar,
+      avatarUrl: data.avatarUrl,
+      avatar_url: data.avatar_url,
+      channelAvatar: data.channelAvatar,
+    });
+
+    const extractedAvatarUrl = extractAvatarUrl(data.avatar);
+    console.log("[ScrapeCreators] Extracted avatar URL:", {
+      result: extractedAvatarUrl,
+      extracted: extractedAvatarUrl !== null ? "YES" : "NO",
+    });
+
     const channelData: ChannelData = {
       channelId: String(data.channelId || data.id || ""),
       title: String(data.name || data.title || "Unknown Channel"),
       handle: cleanedHandle,
-      avatarUrl: extractAvatarUrl(data.avatar),
+      avatarUrl: extractedAvatarUrl,
       subscriberCount: safeNumber(
         data.subscriberCount ?? data.subscriberCountInt ?? data.subscribers,
         0

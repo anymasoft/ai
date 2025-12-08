@@ -69,25 +69,25 @@ export function TopVideosByMomentum({ data }: TopVideosByMomentumProps) {
             href={video.url}
             target="_blank"
             rel="noopener noreferrer"
-            className="flex items-center p-3 rounded-lg border border-border/50 gap-3 hover:bg-muted/30 hover:border-border/80 transition-all duration-200 group"
+            className="flex items-center p-4 rounded-lg border border-border/50 gap-4 hover:bg-muted/40 hover:border-border/80 hover:shadow-md transition-all duration-300 group"
           >
             {/* Rank */}
-            <div className="flex items-center justify-center w-8 h-8 rounded-full bg-primary/10 text-primary font-semibold text-sm shrink-0">
-              #{index + 1}
+            <div className="flex items-center justify-center w-9 h-9 rounded-full bg-gradient-to-br from-primary/20 to-primary/10 text-primary font-bold text-sm shrink-0">
+              {index + 1}
             </div>
 
             {/* Content */}
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2 mb-1">
-                <p className="text-sm font-medium truncate">{video.title}</p>
+            <div className="flex-1 min-w-0 space-y-2">
+              <div className="flex items-center gap-2">
+                <p className="text-sm font-semibold truncate text-foreground">{video.title}</p>
                 <ExternalLink className="h-3 w-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
               </div>
-              <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                <span>{video.channelTitle}</span>
-                <span>-</span>
-                <span>{formatNumber(video.viewsPerDay)}/day</span>
+              <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                <span className="font-medium">{video.channelTitle}</span>
+                <span>·</span>
+                <span>{formatNumber(video.viewsPerDay)}/день</span>
               </div>
-              <div className="flex items-center gap-2 mt-2">
+              <div className="flex items-center gap-2 pt-1">
                 <Progress
                   value={(video.momentumScore / maxMomentum) * 100}
                   className="h-1.5 flex-1"
@@ -96,15 +96,15 @@ export function TopVideosByMomentum({ data }: TopVideosByMomentumProps) {
             </div>
 
             {/* Momentum Badge */}
-            <div className="text-right shrink-0">
+            <div className="text-right shrink-0 space-y-1">
               <Badge
                 variant={video.category === "High Momentum" ? "default" : "secondary"}
-                className="gap-1"
+                className="gap-1 whitespace-nowrap"
               >
                 <TrendingUp className="h-3 w-3" />
                 +{Math.round(video.momentumScore * 100)}%
               </Badge>
-              <p className="text-xs text-muted-foreground mt-1">
+              <p className="text-xs text-muted-foreground font-medium">
                 {formatNumber(video.viewCount)} views
               </p>
             </div>
@@ -112,18 +112,18 @@ export function TopVideosByMomentum({ data }: TopVideosByMomentumProps) {
         ))}
 
         {/* Stats footer */}
-        <div className="pt-3 border-t flex items-center justify-between text-sm text-muted-foreground">
+        <div className="pt-4 mt-2 border-t flex items-center justify-between text-xs text-muted-foreground font-medium">
           <div className="flex items-center gap-4">
-            <span className="flex items-center gap-1">
+            <span className="flex items-center gap-1.5">
               <Zap className="h-3 w-3 text-orange-500" />
-              {data.stats.highMomentum} high momentum
+              {data.stats.highMomentum} momentum
             </span>
-            <span className="flex items-center gap-1">
+            <span className="flex items-center gap-1.5">
               <TrendingUp className="h-3 w-3 text-green-500" />
               {data.stats.rising} rising
             </span>
           </div>
-          <span>{data.total} total videos</span>
+          <span>{data.total} всего</span>
         </div>
       </CardContent>
     </Card>

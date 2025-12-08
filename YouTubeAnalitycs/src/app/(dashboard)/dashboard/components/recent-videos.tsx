@@ -77,7 +77,7 @@ export function RecentVideos({ data }: RecentVideosProps) {
             href={video.url}
             target="_blank"
             rel="noopener noreferrer"
-            className="flex p-3 rounded-lg border border-border/50 gap-3 hover:bg-muted/30 hover:border-border/80 transition-all duration-200 group"
+            className="flex p-4 rounded-lg border border-border/50 gap-4 hover:bg-muted/40 hover:border-border/80 hover:shadow-md transition-all duration-300 group"
           >
             {/* Thumbnail */}
             <div className="relative h-16 w-28 rounded-md overflow-hidden shrink-0 bg-muted">
@@ -85,7 +85,7 @@ export function RecentVideos({ data }: RecentVideosProps) {
                 <img
                   src={video.thumbnailUrl}
                   alt={video.title}
-                  className="h-full w-full object-cover"
+                  className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.05]"
                 />
               ) : (
                 <div className="h-full w-full flex items-center justify-center">
@@ -98,19 +98,19 @@ export function RecentVideos({ data }: RecentVideosProps) {
             </div>
 
             {/* Content */}
-            <div className="flex-1 min-w-0 space-y-1">
-              <p className="text-sm font-medium line-clamp-2 leading-tight">
+            <div className="flex-1 min-w-0 space-y-2">
+              <p className="text-sm font-semibold line-clamp-2 leading-tight text-foreground">
                 {video.title}
               </p>
-              <p className="text-xs text-muted-foreground">
+              <p className="text-xs text-muted-foreground font-medium">
                 {video.channelTitle}
               </p>
-              <div className="flex items-center gap-2 flex-wrap">
+              <div className="flex items-center gap-3 flex-wrap pt-1">
                 <Badge variant={getCategoryBadgeVariant(video.category)} className="text-xs">
                   {video.category === "High Momentum" ? `+${Math.round(video.momentumScore * 100)}%` : video.category}
                 </Badge>
                 <span className="text-xs text-muted-foreground">
-                  {formatNumber(video.viewsPerDay)}/day
+                  {formatNumber(video.viewsPerDay)}/день
                 </span>
                 <span className="text-xs text-muted-foreground">
                   {formatPublishedDate(video.publishedAt, "en")}
