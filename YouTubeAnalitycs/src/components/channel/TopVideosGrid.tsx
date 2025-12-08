@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ExternalLink } from "lucide-react";
 import { formatPublishedDate } from "@/lib/date-formatting";
@@ -43,88 +43,90 @@ export function TopVideosGrid({ videos }: TopVideosGridProps) {
 
   return (
     <CardContent className="p-0">
-      {sortedVideos.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
-          <p className="text-center">
-            Нет данных. Нажмите &quot;Sync Top Videos&quot; чтобы загрузить видео канала.
-          </p>
-        </div>
-      ) : (
-        <>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-            {visibleVideos.map((video) => (
-              <Card
-                key={video.id}
-                className="group overflow-hidden transition-all duration-200 hover:shadow-lg hover:scale-[1.03]"
-              >
-                <CardContent className="p-0">
-                  <a
-                    href={`https://www.youtube.com/watch?v=${video.videoId}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="block"
-                  >
-                    {video.thumbnailUrl ? (
-                      <img
-                        src={video.thumbnailUrl}
-                        alt={video.title}
-                        className="w-full aspect-video object-cover"
-                      />
-                    ) : (
-                      <div className="w-full aspect-video bg-muted flex items-center justify-center text-sm text-muted-foreground">
-                        Нет превью
-                      </div>
-                    )}
-                  </a>
-
-                  <div className="p-4 space-y-3">
-                    <h3 className="font-medium text-sm leading-tight line-clamp-2 min-h-[2.5rem]">
-                      {video.title}
-                    </h3>
-
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="font-semibold text-foreground">
-                        {formatViews(video.viewCount)} просмотров
-                      </span>
-                      <span className="text-muted-foreground text-xs">
-                        {formatPublishedDate(video.publishedAt, "ru")}
-                      </span>
-                    </div>
-
-                    <Button
-                      asChild
-                      variant="outline"
-                      size="sm"
-                      className="w-full"
-                    >
-                      <a
-                        href={`https://www.youtube.com/watch?v=${video.videoId}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center gap-2"
-                      >
-                        <ExternalLink className="w-4 h-4" />
-                        Открыть видео на YouTube
-                      </a>
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
+      <>
+        {sortedVideos.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
+            <p className="text-center">
+              Нет данных. Нажмите &quot;Sync Top Videos&quot; чтобы загрузить видео канала.
+            </p>
           </div>
+        ) : (
+          <>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {visibleVideos.map((video) => (
+                <Card
+                  key={video.id}
+                  className="group h-full overflow-hidden transition-all duration-300 ease-out hover:shadow-lg hover:scale-[1.02] border border-border/50"
+                >
+                  <CardContent className="p-0 flex flex-col h-full">
+                    <a
+                      href={`https://www.youtube.com/watch?v=${video.videoId}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="block overflow-hidden"
+                    >
+                      {video.thumbnailUrl ? (
+                        <img
+                          src={video.thumbnailUrl}
+                          alt={video.title}
+                          className="w-full aspect-video object-cover transition-transform duration-300 group-hover:scale-[1.04]"
+                        />
+                      ) : (
+                        <div className="w-full aspect-video bg-muted flex items-center justify-center text-sm text-muted-foreground">
+                          Нет превью
+                        </div>
+                      )}
+                    </a>
 
-          {sortedVideos.length > limit && (
-            <div className="flex justify-center mt-6">
-              <Button
-                onClick={() => setLimit((prev) => prev + 24)}
-                variant="outline"
-              >
-                Показать ещё 24
-              </Button>
+                    <div className="flex-1 flex flex-col px-5 py-4 space-y-3">
+                      <h3 className="font-semibold text-sm leading-tight line-clamp-2 min-h-[2.5rem] text-foreground">
+                        {video.title}
+                      </h3>
+
+                      <div className="flex-1 flex items-end justify-between text-xs gap-2">
+                        <span className="font-semibold text-foreground">
+                          {formatViews(video.viewCount)} просмотров
+                        </span>
+                        <span className="text-muted-foreground whitespace-nowrap">
+                          {formatPublishedDate(video.publishedAt, "ru")}
+                        </span>
+                      </div>
+
+                      <Button
+                        asChild
+                        variant="outline"
+                        size="sm"
+                        className="w-full mt-1 transition-all duration-200"
+                      >
+                        <a
+                          href={`https://www.youtube.com/watch?v=${video.videoId}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-2"
+                        >
+                          <ExternalLink className="w-4 h-4" />
+                          Открыть видео
+                        </a>
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
             </div>
-          )}
-        </>
-      )}
+
+            {sortedVideos.length > limit && (
+              <div className="flex justify-center mt-6">
+                <Button
+                  onClick={() => setLimit((prev) => prev + 24)}
+                  variant="outline"
+                >
+                  Показать ещё 24
+                </Button>
+              </div>
+            )}
+          </>
+        )}
+      </>
     </CardContent>
   );
 }
