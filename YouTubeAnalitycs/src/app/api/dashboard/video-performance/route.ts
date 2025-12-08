@@ -117,8 +117,8 @@ export async function GET(req: NextRequest) {
     });
 
     const videosWithMetrics: VideoPerformance[] = validRows.map(row => {
-      const publishedAt = new Date(row.publishedAt as string).getTime();
-      const daysSincePublish = Math.max(1, (now - publishedAt) / (1000 * 60 * 60 * 24));
+      const publishedAtMs = new Date(row.publishedAt as string).getTime();
+      const daysSincePublish = Math.max(1, (now - publishedAtMs) / (1000 * 60 * 60 * 24));
       const viewsPerDay = (row.viewCount as number) / daysSincePublish;
       const channelId = row.channelId as string;
 
@@ -176,7 +176,7 @@ export async function GET(req: NextRequest) {
         break;
       case "recent":
         sortedVideos = [...videosWithMetrics].sort(
-          (a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime()
+          (a, b) => (b.publishedAt as string).localeCompare(a.publishedAt as string)
         );
         break;
       case "momentum":

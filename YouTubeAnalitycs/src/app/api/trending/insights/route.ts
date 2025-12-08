@@ -82,7 +82,7 @@ ${index + 1}. "${video.title}"
    Канал: ${video.channelTitle}
    Momentum Score: ${(video.momentumScore * 100).toFixed(0)}%
    Просмотров в день: ${Math.round(video.viewsPerDay).toLocaleString()}
-   Опубликовано: ${new Date(video.publishedAt).toLocaleDateString("ru-RU")}
+   Опубликовано: ${new Date(video.publishedAt).toLocaleDateString("ru-RU", { timeZone: "UTC" })}
 `).join("\n")}
 
 Проанализируй эти видео и определи:

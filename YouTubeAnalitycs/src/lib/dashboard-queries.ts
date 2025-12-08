@@ -301,7 +301,7 @@ export const getVideoPerformance = cache(async (
       break;
     case "recent":
       sortedVideos = [...videosWithMetrics].sort(
-        (a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime()
+        (a, b) => (b.publishedAt as string).localeCompare(a.publishedAt as string)
       );
       break;
     case "momentum":

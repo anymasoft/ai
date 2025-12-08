@@ -176,16 +176,16 @@ export async function GET(req: NextRequest) {
     });
 
     // Группируем видео по каналу для расчета частоты загрузок
-    const videoDatesMap = new Map<string, Date[]>();
+    const videoDatesMap = new Map<string, number[]>();
     videosResult.rows.forEach(row => {
       const channelId = row.channelId as string;
-      const publishedAt = new Date(row.publishedAt as string);
+      const publishedAtMs = new Date(row.publishedAt as string).getTime();
 
       if (!videoDatesMap.has(channelId)) {
         videoDatesMap.set(channelId, []);
       }
 
-      videoDatesMap.get(channelId)!.push(publishedAt);
+      videoDatesMap.get(channelId)!.push(publishedAtMs);
     });
 
     // Формируем данные по каждому каналу
@@ -199,15 +199,15 @@ export async function GET(req: NextRequest) {
       const avgViewsPerVideo = currentVideos > 0 ? Math.round(currentViews / currentVideos) : 0;
 
       // Рассчитываем upload frequency (видео в месяц)
-      const videoDates = videoDatesMap.get(channelId) || [];
+      const videoDatesMs = videoDatesMap.get(channelId) || [];
       let uploadFrequency = 0;
 
-      if (videoDates.length >= 2) {
-        const latestDate = videoDates[0];
-        const oldestDate = videoDates[videoDates.length - 1];
-        const monthsSpan = Math.max(1, (latestDate.getTime() - oldestDate.getTime()) / (1000 * 60 * 60 * 24 * 30));
-        uploadFrequency = Math.round((videoDates.length / monthsSpan) * 10) / 10;
-      } else if (videoDates.length === 1) {
+      if (videoDatesMs.length >= 2) {
+        const latestDateMs = videoDatesMs[0];
+        const oldestDateMs = videoDatesMs[videoDatesMs.length - 1];
+        const monthsSpan = Math.max(1, (latestDateMs - oldestDateMs) / (1000 * 60 * 60 * 24 * 30));
+        uploadFrequency = Math.round((videoDatesMs.length / monthsSpan) * 10) / 10;
+      } else if (videoDatesMs.length === 1) {
         uploadFrequency = 1; // Минимум 1 видео
       }
 
