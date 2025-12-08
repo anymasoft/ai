@@ -291,7 +291,7 @@ const DEEP_COMMENTS_PROMPT_RU = `Ты — эксперт по анализу п�
 3. Никаких длинных цитат. Максимум 3-6 слов.
 4. Не повторяй сами комментарии — анализируй их.
 5. Все текстовые поля на русском языке.
-6. **ОБЯЗАТЕЛЬНО:** Возвращай ТОЛЬКО корректный JSON без каких-либо пояснений, пустых строк, markdown блоков (\`\`\`), комментариев или текста до и после. Ответ должен начинаться с { и заканчиваться с }. Если нет JSON в ответе — это ошибка.`;
+6. ОБЯЗАТЕЛЬНО: Возвращай ТОЛЬКО корректный JSON без каких-либо пояснений, пустых строк, markdown блоков, комментариев или текста до и после. Ответ должен начинаться с { и заканчиваться с }. Если нет JSON в ответе — это ошибка.`;
 
 const DEEP_COMMENTS_PROMPT_EN = `You are an expert in analyzing YouTube audience behavior, a specialist in cognitive triggers, emotional analytics, and extracting hidden patterns from large arrays of comments.
 
@@ -386,7 +386,7 @@ CRITICAL RULES:
 2. If data is limited — make careful conclusions ("based on available comments we can infer…").
 3. No long quotes. Maximum 3-6 words.
 4. Don't repeat comments — analyze them.
-5. **MANDATORY:** Return ONLY valid JSON with NO explanations, empty lines, markdown blocks (```), comments, or text before/after. Response MUST start with { and end with }. If response doesn't contain valid JSON — this is an error.`;
+5. MANDATORY: Return ONLY valid JSON with NO explanations, empty lines, markdown blocks, comments, or text before/after. Response MUST start with { and end with }. If response doesn't contain valid JSON — this is an error.`;
 
 /**
  * Безопасно извлекает JSON-объект из строки
