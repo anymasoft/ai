@@ -197,196 +197,63 @@ export function chunkComments(
 /**
  * Премиальный промпт для глубокого анализа комментариев
  */
-const DEEP_COMMENTS_PROMPT_RU = `Ты - эксперт по анализу поведения аудитории YouTube, специалист по когнитивным триггерам, эмоциональной аналитике и извлечению скрытых паттернов из больших массивов комментариев.
+const DEEP_COMMENTS_PROMPT_RU = `Ты - высокопрофессиональный аналитик поведения аудитории YouTube. Твоя задача - провести полный и глубокий анализ комментариев.
 
-Тебе передан массив комментариев к видео канала. Каждый комментарий содержит текст, автора, количество лайков.
+ВХОДНЫЕ ДАННЫЕ: Массив комментариев (текст, автор, лайки).
 
-Твоя задача - провести глубокий многоуровневый анализ аудитории, выявив эмоциональные реакции, когнитивные паттерны, скрытые потребности, темы вызывающие вовлечённость, барьеры к росту и инсайты для улучшения контента.
-
-Работай только с реальными данными. Никаких домыслов или фантазий.
-
-ВЕРНИ ТОЛЬКО JSON в ТОЧНО ТАКОЙ СТРУКТУРЕ и НИЧЕГО БОЛЬШЕ:
+ТВОЯ ЗАДАЧА: Вернуть JSON анализ СТРОГО в следующей структуре:
 
 {
-  "emotionalOverview": "2-4 абзаца о преобладающем тоне, распределении эмоций, связи с автором",
-  "keyTopics": [
-    {
-      "name": "название темы",
-      "description": "что обсуждают люди",
-      "examples": ["цитата 1", "цитата 2", "цитата 3"],
-      "motive": "стоящий за темой мотив",
-      "usage": "как использовать в контенте"
-    }
-  ],
-  "positiveTriggers": [
-    {
-      "trigger": "название триггера",
-      "what_praised": "что именно хвалят",
-      "why_resonates": "почему вызывает отклик",
-      "video_types": "какие видео усиливают"
-    }
-  ],
-  "negativeTriggers": [
-    {
-      "trigger": "название",
-      "what_causes_negativity": "что вызывает критику",
-      "why_harmful": "почему мешает",
-      "fix": "как исправить",
-      "example": "пример из комментариев"
-    }
-  ],
-  "faq": [
-    {
-      "question": "вопрос аудитории",
-      "why_appears": "почему появляется",
-      "action": "что делать автору"
-    }
-  ],
-  "audienceSegments": [
-    {
-      "segment": "название сегмента",
-      "description": "кто это",
-      "writes_about": "что пишет",
-      "understanding_level": "уровень понимания темы",
-      "motives": "мотивы",
-      "suitable_content": "какие видео подходят",
-      "growth_strategy": "как увеличить этот сегмент"
-    }
-  ],
-  "behavioralInsights": [
-    "что люди лайкают",
-    "какие темы вызывают длинные комментарии",
-    "какие видео провоцируют споры",
-    "что зрители называют уникальным"
-  ],
-  "missingElements": [
-    "дефицит какой информации",
-    "какой глубины не хватает",
-    "что вызывает непонимание",
-    "что люди спрашивают повторно"
-  ],
-  "growthOpportunities": [
-    {
-      "opportunity": "возможность",
-      "based_on": "на основе каких комментариев",
-      "how_use": "как использовать",
-      "expected_effect": "ожидаемый эффект (ER, CTR, retention, подписчики)"
-    }
-  ],
-  "checklist": [
-    "Убрать →",
-    "Добавить →",
-    "Усилить →",
-    "Изменить →",
-    "Частить →",
-    "Упростить →",
-    "Углубить →",
-    "Делать регулярно →"
-  ]
+  "emotionalOverview": "описание преобладающего тона и эмоций (3-4 предложения)",
+  "keyTopics": [минимум 3 объекта с полями: name, description, examples (массив 3 строк), motive, usage],
+  "positiveTriggers": [минимум 3 объекта с полями: trigger, what_praised, why_resonates, video_types],
+  "negativeTriggers": [минимум 3 объекта с полями: trigger, what_causes_negativity, why_harmful, fix, example],
+  "faq": [минимум 3 объекта с полями: question, why_appears, action],
+  "audienceSegments": [минимум 3 объекта с полями: segment, description, writes_about, understanding_level, motives, suitable_content, growth_strategy],
+  "behavioralInsights": [минимум 5 строк с реальными паттернами поведения],
+  "missingElements": [минимум 3 строки о том чего не хватает аудитории],
+  "growthOpportunities": [минимум 3 объекта с полями: opportunity, based_on, how_use, expected_effect],
+  "checklist": [ровно 8 строк для действий: Убрать, Добавить, Усилить, Изменить, Частить, Упростить, Углубить, Делать регулярно]
 }
 
-КРИТИЧЕСКИЕ ПРАВИЛА:
-1. ТОЛЬКО анализ по данным. Никаких выдумок.
-2. Если данных мало - делай аккуратные выводы ("по имеющимся комментариям можно предположить...").
-3. Никаких длинных цитат. Максимум 3-6 слов.
-4. Не повторяй сами комментарии - анализируй их.
-5. Все текстовые поля на русском языке.
-6. ОБЯЗАТЕЛЬНО: Возвращай ТОЛЬКО корректный JSON без каких-либо пояснений, пустых строк, markdown блоков, комментариев или текста до и после. Ответ должен начинаться с { и заканчиваться с }. Если нет JSON в ответе - это ошибка.`;
+ЖЁСТКИЕ ТРЕБОВАНИЯ:
+1. ВСЕ 10 ПОЛЕЙ ОБЯЗАТЕЛЬНЫ. Ни одного нельзя пропускать.
+2. КАЖДЫЙ массив должен содержать минимум элементов указанное количество. Если данных мало - заполни пустыми strings или пустыми объектами но НЕ удаляй поле.
+3. ОТВЕТ ДОЛЖЕН БЫТЬ ВАЛИДНЫЙ JSON. Проверь скобки, запятые, кавычки.
+4. НИКАКИХ пояснений, НИКАКИХ текста до и после JSON. Только JSON от { до }.
+5. Если комментариев мало - все равно заполни ВСЕ поля минимальным контентом.
+6. Ответ начинается с { и заканчивается с } и больше ничем.
+7. Все текстовые значения на русском языке.
+8. Работай ТОЛЬКО с реальными данными из комментариев. Никаких выдумок.`;
 
-const DEEP_COMMENTS_PROMPT_EN = `You are an expert in analyzing YouTube audience behavior, a specialist in cognitive triggers, emotional analytics, and extracting hidden patterns from large arrays of comments.
+const DEEP_COMMENTS_PROMPT_EN = `You are a highly professional YouTube audience behavior analyst. Your task is to conduct a complete and deep analysis of comments.
 
-You have been provided with an array of comments from video channels. Each comment contains text, author, and likes count.
+INPUT DATA: Array of comments (text, author, likes).
 
-Your task is to conduct a deep multi-level audience analysis, revealing emotional reactions, cognitive patterns, hidden needs, themes driving engagement, barriers to growth, and insights for content improvement.
-
-Work only with real data. No hallucinations or fantasies.
-
-RETURN ONLY JSON in this EXACT STRUCTURE:
+YOUR TASK: Return JSON analysis STRICTLY in the following structure:
 
 {
-  "emotionalOverview": "2-4 paragraphs about dominant tone, emotion distribution, creator connection",
-  "keyTopics": [
-    {
-      "name": "topic name",
-      "description": "what people discuss",
-      "examples": ["quote 1", "quote 2", "quote 3"],
-      "motive": "underlying motive",
-      "usage": "how to use in content"
-    }
-  ],
-  "positiveTriggers": [
-    {
-      "trigger": "trigger name",
-      "what_praised": "what exactly they praise",
-      "why_resonates": "why it resonates emotionally",
-      "video_types": "which video types amplify"
-    }
-  ],
-  "negativeTriggers": [
-    {
-      "trigger": "name",
-      "what_causes_negativity": "what triggers criticism",
-      "why_harmful": "why it harms engagement",
-      "fix": "how to fix",
-      "example": "example from comments"
-    }
-  ],
-  "faq": [
-    {
-      "question": "audience question",
-      "why_appears": "why it appears",
-      "action": "what creator should do"
-    }
-  ],
-  "audienceSegments": [
-    {
-      "segment": "segment name",
-      "description": "who they are",
-      "writes_about": "what they write about",
-      "understanding_level": "topic comprehension level",
-      "motives": "their motives",
-      "suitable_content": "what content fits",
-      "growth_strategy": "how to grow this segment"
-    }
-  ],
-  "behavioralInsights": [
-    "what people like",
-    "which topics cause long comments",
-    "which videos provoke debates",
-    "what viewers call unique"
-  ],
-  "missingElements": [
-    "missing information",
-    "lacking depth",
-    "causing confusion",
-    "repeated questions"
-  ],
-  "growthOpportunities": [
-    {
-      "opportunity": "opportunity",
-      "based_on": "which comments support this",
-      "how_use": "how to leverage",
-      "expected_effect": "expected impact (ER, CTR, retention, subs)"
-    }
-  ],
-  "checklist": [
-    "Remove →",
-    "Add →",
-    "Amplify →",
-    "Change →",
-    "Increase frequency →",
-    "Simplify →",
-    "Deepen →",
-    "Do regularly →"
-  ]
+  "emotionalOverview": "description of dominant tone and emotions (3-4 sentences)",
+  "keyTopics": [minimum 3 objects with fields: name, description, examples (array of 3 strings), motive, usage],
+  "positiveTriggers": [minimum 3 objects with fields: trigger, what_praised, why_resonates, video_types],
+  "negativeTriggers": [minimum 3 objects with fields: trigger, what_causes_negativity, why_harmful, fix, example],
+  "faq": [minimum 3 objects with fields: question, why_appears, action],
+  "audienceSegments": [minimum 3 objects with fields: segment, description, writes_about, understanding_level, motives, suitable_content, growth_strategy],
+  "behavioralInsights": [minimum 5 strings with real behavior patterns],
+  "missingElements": [minimum 3 strings about what audience lacks],
+  "growthOpportunities": [minimum 3 objects with fields: opportunity, based_on, how_use, expected_effect],
+  "checklist": [exactly 8 strings for actions: Remove, Add, Amplify, Change, Increase, Simplify, Deepen, Do]
 }
 
-CRITICAL RULES:
-1. ONLY analysis based on provided data. No hallucinations.
-2. If data is limited - make careful conclusions ("based on available comments we can infer...").
-3. No long quotes. Maximum 3-6 words.
-4. Don't repeat comments - analyze them.
-5. MANDATORY: Return ONLY valid JSON with NO explanations, empty lines, markdown blocks, comments, or text before/after. Response MUST start with { and end with }. If response doesn't contain valid JSON - this is an error.`;
+STRICT REQUIREMENTS:
+1. ALL 10 FIELDS ARE MANDATORY. Do not skip any field.
+2. EACH array must contain minimum number of elements. If data is sparse - fill with empty strings or empty objects but DO NOT remove the field.
+3. ANSWER MUST BE VALID JSON. Check brackets, commas, quotes.
+4. NO explanations, NO text before and after JSON. Only JSON from opening brace to closing brace.
+5. If few comments - still fill ALL fields with minimum content.
+6. Answer starts with { and ends with } and nothing more.
+7. All text values in English.
+8. Work ONLY with real data from comments. No hallucinations.`;
 
 /**
  * Безопасно извлекает JSON-объект из строки
