@@ -98,13 +98,13 @@ export async function GET(req: NextRequest) {
     });
 
     const videosWithMomentum = validRows.map(row => {
-      const publishedAt = new Date(row.publishedAt as string).getTime();
-      const daysSincePublish = Math.max(1, (now - publishedAt) / (1000 * 60 * 60 * 24));
+      const publishedAtMs = new Date(row.publishedAt as string).getTime();
+      const daysSincePublish = Math.max(1, (now - publishedAtMs) / (1000 * 60 * 60 * 24));
       const viewsPerDay = (row.viewCount as number) / daysSincePublish;
 
       return {
         videoId: row.videoId as string,
-        publishedAt: new Date(row.publishedAt as string),
+        publishedAt: row.publishedAt as string,
         viewsPerDay,
         momentumScore: 0,
       };
@@ -141,7 +141,7 @@ export async function GET(req: NextRequest) {
 
     // Заполняем данные из видео
     videosWithMomentum.forEach(v => {
-      const dateStr = v.publishedAt.toISOString().split("T")[0];
+      const dateStr = v.publishedAt.split("T")[0];
       const entry = dateMap.get(dateStr);
 
       if (entry) {

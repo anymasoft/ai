@@ -660,10 +660,11 @@ export async function getYoutubeVideoComments(params: {
       const comments = Array.isArray(data.comments) ? data.comments : Array.isArray(data) ? data : [];
 
       // Нормализуем комментарии
+      // ВАЖНО: publishedTime берется ТОЛЬКО из API, без fallback'ов на текущую дату
       const normalizedComments = comments.map((comment: any) => ({
         id: String(comment.id || comment.commentId || ""),
         content: String(comment.content || comment.text || ""),
-        publishedTime: String(comment.publishedTime || comment.publishedAt || new Date().toISOString()),
+        publishedTime: String(comment.publishedTime || comment.publishedAt || ""),
         replyLevel: safeNumber(comment.replyLevel ?? comment.level, 0),
         likes: safeNumber(comment.likes ?? comment.likeCount, 0),
         replies: safeNumber(comment.replies ?? comment.replyCount, 0),
