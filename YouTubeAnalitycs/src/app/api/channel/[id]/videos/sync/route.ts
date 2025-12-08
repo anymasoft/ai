@@ -106,8 +106,8 @@ export async function POST(
         // Получаем комментарии и соседей (может быть полезно для интерполяции)
         const comments = await getVideoCommentsFromDB(video.videoId);
         const neighbors = await getVideoNeighborsFromDB(
-          competitor.channelId,
-          video.videoId
+          competitor.channelId as string,
+          video.videoId as string
         );
 
         // Используем резолвер
@@ -115,7 +115,7 @@ export async function POST(
           video.videoId,
           {
             videoId: video.videoId,
-            publishedAt: video.publishedAt,
+            publishedAt: (video.publishedAt as string | null) || null,
             viewCount: video.viewCount,
           },
           comments,
