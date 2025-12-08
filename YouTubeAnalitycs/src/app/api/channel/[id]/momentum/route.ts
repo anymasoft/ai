@@ -169,47 +169,7 @@ export async function POST(
       );
     }
 
-    // Проверяем, есть ли уже свежий анализ (не старше 3 дней)
-    const threeDaysAgo = Date.now() - 3 * 24 * 60 * 60 * 1000;
-    const existingAnalysisResult = await client.execute({
-      sql: "SELECT * FROM momentum_insights WHERE channelId = ? ORDER BY generatedAt DESC LIMIT 1",
-      args: [competitor.channelId],
-    });
-
-    // Если анализ существует и свежий - возвращаем его
-    if (existingAnalysisResult.rows.length > 0) {
-      const existingAnalysis = existingAnalysisResult.rows[0];
-      if ((existingAnalysis.generatedAt as number) > threeDaysAgo) {
-        console.log(`[Momentum] Найден свежий анализ`);
-
-        const parsedData = JSON.parse(existingAnalysis.data as string);
-
-        // Если в старых данных нет videoId, добавляем его из БД
-        if (parsedData.highMomentumVideos && parsedData.highMomentumVideos.length > 0) {
-          const needsVideoId = parsedData.highMomentumVideos.some((v: any) => !v.videoId);
-
-          if (needsVideoId) {
-            console.log('[Momentum] Обогащаем кэшированные данные videoId из БД');
-
-            // Создаём map title -> videoId для быстрого поиска
-            const titleToVideoId = new Map(videos.map(v => [v.title, v.videoId]));
-
-            // Добавляем videoId к каждому видео
-            parsedData.highMomentumVideos = parsedData.highMomentumVideos.map((v: any) => ({
-              ...v,
-              videoId: titleToVideoId.get(v.title) || ''
-            }));
-          }
-        }
-
-        client.close();
-        return NextResponse.json({
-          ...parsedData,
-          generatedAt: existingAnalysis.generatedAt,
-        });
-      }
-    }
-
+    console.log(`[MomentumInsights] Forced regen (limits disabled) - всегда генерируем свежий анализ`);
     console.log(`[Momentum] Генерируем новый анализ через OpenAI...`);
 
     // Подготовка данных для OpenAI
@@ -289,20 +249,29 @@ ${JSON.stringify(videosForAnalysis, null, 2)}
       ...aiAnalysis,
     };
 
-    // Сохраняем результат в базу данных
+    const now = Date.now();
+
+    // Сохраняем результат в базу данных (DELETE + INSERT для гарантированного обновления)
+    // Удаляем старый анализ для этого канала
     await client.execute({
-      sql: "INSERT INTO momentum_insights (channelId, data, data_ru, generatedAt) VALUES (?, ?, ?, ?)",
-      args: [competitor.channelId, JSON.stringify(momentumData), null, Date.now()],
+      sql: "DELETE FROM momentum_insights WHERE channelId = ?",
+      args: [competitor.channelId],
     });
 
-    console.log(`[Momentum] Анализ сохранён в БД`);
+    // Вставляем свежий анализ
+    await client.execute({
+      sql: "INSERT INTO momentum_insights (channelId, data, data_ru, generatedAt) VALUES (?, ?, ?, ?)",
+      args: [competitor.channelId, JSON.stringify(momentumData), null, now],
+    });
+
+    console.log(`[Momentum] Анализ сохранён в БД (свежая генерация)`);
 
     client.close();
 
     // Возвращаем результат клиенту
     return NextResponse.json({
       ...momentumData,
-      generatedAt: Date.now(),
+      generatedAt: now,
     }, { status: 201 });
 
   } catch (error) {
