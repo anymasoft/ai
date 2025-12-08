@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { createClient } from "@libsql/client";
-import { analyzeChannelComments, type CommentForAnalysis, normalizeComments, chunkComments } from "@/lib/ai/comments-analysis";
+import { type CommentForAnalysis, normalizeComments } from "@/lib/ai/comments-analysis";
+import { analyzeCommentsWithOrchestrator } from "@/lib/ai/comments-orchestrator";
 
 /**
  * POST /api/channel/[id]/comments/ai
@@ -105,18 +106,14 @@ export async function POST(
       authorName: c.authorName as string,
     }));
 
-    const normalizedComments = normalizeComments(commentsForAnalysis);
-    const chunks = chunkComments(normalizedComments);
-    const totalChunks = chunks.length;
-
-    console.log(`[DeepCommentAI] Будет обработано ${totalChunks} чанков комментариев`);
+    console.log(`[DeepCommentAI] Подготовлено ${commentsForAnalysis.length} комментариев для анализа`);
 
     // Создаём запись анализа
     await client.execute({
       sql: `INSERT INTO channel_ai_comment_insights
             (channelId, resultJson, createdAt, progress_current, progress_total, status)
             VALUES (?, ?, ?, ?, ?, ?)`,
-      args: [channelId, JSON.stringify({}), Date.now(), 0, totalChunks, 'pending'],
+      args: [channelId, JSON.stringify({}), Date.now(), 0, 10, 'pending'],
     });
 
     console.log(`[DeepCommentAI] Создана запись анализа: status='pending'`);
@@ -140,11 +137,10 @@ export async function POST(
 
     recordId = latestResult.rows[0].id as number;
 
-    // Генерация анализа (всегда RU)
-    const analysisResult = await analyzeChannelComments(
+    // Генерация анализа через новый orchestrator (все 10 модулей параллельно)
+    const analysisResult = await analyzeCommentsWithOrchestrator(
       commentsForAnalysis,
-      "ru",
-      channelId
+      "ru"
     );
 
     console.log(`[DeepCommentAI] Анализ завершён успешно`);
