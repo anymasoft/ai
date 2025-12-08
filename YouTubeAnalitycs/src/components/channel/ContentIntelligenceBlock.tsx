@@ -27,8 +27,8 @@ interface TablesJson {
 }
 
 interface ContentIntelligenceData {
-  report: string;
-  format: "markdown";
+  report?: string;
+  format?: "markdown";
   tables?: TablesJson;
   generatedAt?: number;
 }
@@ -106,12 +106,37 @@ function FormatsTable({ formats }: { formats: TableFormat[] }) {
 }
 
 /**
+ * Безопасное разделение строки, защита от undefined/null
+ */
+function safeSplit(value: unknown, delimiter: string): string[] {
+  if (typeof value !== "string") {
+    if (value !== undefined && value !== null) {
+      console.warn("[ContentIntelligence] Invalid content type, expected string but got:", typeof value);
+    } else {
+      console.warn("[ContentIntelligence] Missing or invalid content field");
+    }
+    return [];
+  }
+  if (value.trim() === "") {
+    console.warn("[ContentIntelligence] Empty content field");
+    return [];
+  }
+  return value.split(delimiter);
+}
+
+/**
  * Парсит markdown отчёт и разделяет его на секции
  * Также определяет, есть ли структурированные данные для таблиц
  */
-function parseSections(markdown: string, tables?: TablesJson): Section[] {
+function parseSections(markdown: unknown, tables?: TablesJson): Section[] {
   const sections: Section[] = [];
-  const lines = markdown.split("\n");
+  const lines = safeSplit(markdown, "\n");
+
+  // Если контент пустой, возвращаем пустой массив
+  if (lines.length === 0) {
+    return [];
+  }
+
   let currentTitle = "";
   let currentContent: string[] = [];
 
@@ -176,6 +201,8 @@ function CollapsibleSection({
 }) {
   // Если есть структурированные данные для таблицы, выводим красивый компонент
   const hasStructuredData = section.tableKey && tablesData;
+  // Проверяем валидность контента
+  const hasContent = section.content && section.content.trim().length > 0;
 
   return (
     <Card>
@@ -207,22 +234,26 @@ function CollapsibleSection({
           )}
 
           {/* Markdown контент секции (описание) */}
-          <div className="prose prose-sm dark:prose-invert max-w-none text-sm">
-            <Markdown
-              components={{
-                p: ({ node, ...props }) => <p className="mb-3 text-sm leading-relaxed" {...props} />,
-                ul: ({ node, ...props }) => <ul className="list-disc list-inside space-y-2 mb-3" {...props} />,
-                ol: ({ node, ...props }) => <ol className="list-decimal list-inside space-y-2 mb-3" {...props} />,
-                li: ({ node, ...props }) => <li className="text-sm leading-relaxed" {...props} />,
-                h3: ({ node, ...props }) => <h3 className="font-semibold mt-3 mb-2 text-sm" {...props} />,
-                h4: ({ node, ...props }) => <h4 className="font-medium mt-2 mb-1 text-sm" {...props} />,
-                strong: ({ node, ...props }) => <strong className="font-semibold" {...props} />,
-                code: ({ node, ...props }) => <code className="bg-muted px-1 py-0.5 rounded text-xs font-mono" {...props} />,
-              }}
-            >
-              {section.content}
-            </Markdown>
-          </div>
+          {hasContent ? (
+            <div className="prose prose-sm dark:prose-invert max-w-none text-sm">
+              <Markdown
+                components={{
+                  p: ({ node, ...props }) => <p className="mb-3 text-sm leading-relaxed" {...props} />,
+                  ul: ({ node, ...props }) => <ul className="list-disc list-inside space-y-2 mb-3" {...props} />,
+                  ol: ({ node, ...props }) => <ol className="list-decimal list-inside space-y-2 mb-3" {...props} />,
+                  li: ({ node, ...props }) => <li className="text-sm leading-relaxed" {...props} />,
+                  h3: ({ node, ...props }) => <h3 className="font-semibold mt-3 mb-2 text-sm" {...props} />,
+                  h4: ({ node, ...props }) => <h4 className="font-medium mt-2 mb-1 text-sm" {...props} />,
+                  strong: ({ node, ...props }) => <strong className="font-semibold" {...props} />,
+                  code: ({ node, ...props }) => <code className="bg-muted px-1 py-0.5 rounded text-xs font-mono" {...props} />,
+                }}
+              >
+                {section.content}
+              </Markdown>
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground">No content available</p>
+          )}
         </CardContent>
       )}
     </Card>
@@ -240,7 +271,10 @@ export function ContentIntelligenceBlock({
   const [error, setError] = useState<string | null>(null);
   const [expandedSections, setExpandedSections] = useState<Set<number>>(new Set([0])); // Первая секция открыта по умолчанию
 
-  const sections = data ? parseSections(data.report, data.tables) : [];
+  // Безопасное получение секций с защитой от undefined данных
+  const sections = data && data.report
+    ? parseSections(data.report, data.tables)
+    : [];
 
   async function handleGenerate() {
     setLoading(true);
@@ -292,7 +326,10 @@ export function ContentIntelligenceBlock({
     );
   }
 
-  if (!data) {
+  // Проверяем, нет ли данных или они пусты
+  const hasValidData = data && data.report && data.report.trim().length > 0;
+
+  if (!hasValidData) {
     return (
       <CardContent className="space-y-4 pt-6">
         <div className="flex flex-col items-center justify-center py-12">
