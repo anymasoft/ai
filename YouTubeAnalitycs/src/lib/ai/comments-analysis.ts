@@ -291,7 +291,7 @@ const DEEP_COMMENTS_PROMPT_RU = `Ты — эксперт по анализу п�
 3. Никаких длинных цитат. Максимум 3-6 слов.
 4. Не повторяй сами комментарии — анализируй их.
 5. Все текстовые поля на русском языке.
-6. Возвращай ТОЛЬКО JSON без дополнительного текста.`;
+6. **ОБЯЗАТЕЛЬНО:** Возвращай ТОЛЬКО корректный JSON без каких-либо пояснений, пустых строк, markdown блоков (\`\`\`), комментариев или текста до и после. Ответ должен начинаться с { и заканчиваться с }. Если нет JSON в ответе — это ошибка.`;
 
 const DEEP_COMMENTS_PROMPT_EN = `You are an expert in analyzing YouTube audience behavior, a specialist in cognitive triggers, emotional analytics, and extracting hidden patterns from large arrays of comments.
 
@@ -386,7 +386,76 @@ CRITICAL RULES:
 2. If data is limited — make careful conclusions ("based on available comments we can infer…").
 3. No long quotes. Maximum 3-6 words.
 4. Don't repeat comments — analyze them.
-5. Return ONLY JSON with no additional text.`;
+5. **MANDATORY:** Return ONLY valid JSON with NO explanations, empty lines, markdown blocks (```), comments, or text before/after. Response MUST start with { and end with }. If response doesn't contain valid JSON — this is an error.`;
+
+/**
+ * Безопасно извлекает JSON-объект из строки
+ * Ищет первую { и последнюю } и берёт текст между ними
+ * Нужно потому что LLM иногда добавляет пояснения вокруг JSON
+ */
+function extractJsonObject(raw: string): string | null {
+  const start = raw.indexOf("{");
+  const end = raw.lastIndexOf("}");
+
+  if (start === -1 || end === -1 || end < start) {
+    return null;
+  }
+
+  return raw.slice(start, end + 1);
+}
+
+/**
+ * Безопасно парсит JSON с fallback на пустую структуру
+ */
+function safeParseJson(content: string, language: string = "en"): DeepAnalysisResult {
+  try {
+    // 1. Попытаемся парсить как есть
+    const analysis = JSON.parse(content);
+    return analysis;
+  } catch (firstError) {
+    console.warn("[DeepAnalysis] Failed to parse JSON directly, attempting to extract JSON object...", firstError);
+
+    // 2. Попробуем вытащить JSON объект из текста
+    const jsonCandidate = extractJsonObject(content);
+
+    if (!jsonCandidate) {
+      console.error("[DeepAnalysis] Could not extract JSON object from response. First 500 chars:", content.slice(0, 500));
+      // Возвращаем пустую структуру вместо ошибки
+      return createEmptyAnalysisResult();
+    }
+
+    try {
+      const analysis = JSON.parse(jsonCandidate);
+      console.log("[DeepAnalysis] Successfully extracted and parsed JSON object");
+      return analysis;
+    } catch (secondError) {
+      console.error("[DeepAnalysis] Failed to parse extracted JSON object:", secondError, "Content:", jsonCandidate.slice(0, 500));
+      // Возвращаем пустую структуру вместо ошибки
+      return createEmptyAnalysisResult();
+    }
+  }
+}
+
+/**
+ * Создаёт пустую структуру анализа с безопасными значениями
+ */
+function createEmptyAnalysisResult(): DeepAnalysisResult {
+  return {
+    themes: [],
+    pain_points: [],
+    requests: [],
+    praises: [],
+    segments: [],
+    sentiment_summary: {
+      positive: 0,
+      negative: 0,
+      neutral: 0,
+    },
+    quotes: [],
+    hidden_patterns: [],
+    ideas: [],
+  };
+}
 
 /**
  * Генерирует глубокий анализ одного чанка комментариев через GPT-4.1-mini
@@ -431,11 +500,14 @@ export async function generateDeepAnalysis(
       throw new Error("OpenAI returned empty response");
     }
 
-    console.log("[DeepAnalysis] Successfully generated analysis");
+    console.log("[DeepAnalysis] Successfully received response from OpenAI");
 
-    const analysis: DeepAnalysisResult = JSON.parse(content);
+    // Безопасный парсинг JSON с fallback на пустую структуру
+    const analysis: DeepAnalysisResult = safeParseJson(content, language);
 
-    // Мягкая валидация структуры с fallback значениями
+    console.log("[DeepAnalysis] JSON parsed successfully (or fallback applied)");
+
+    // Двойная валидация структуры с fallback значениями
     const validatedAnalysis: DeepAnalysisResult = {
       themes: Array.isArray(analysis.themes) ? analysis.themes : [],
       pain_points: Array.isArray(analysis.pain_points) ? analysis.pain_points : [],
