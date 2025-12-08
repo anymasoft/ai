@@ -195,7 +195,201 @@ export function chunkComments(
 }
 
 /**
- * Генерирует глубокий анализ одного чанка комментариев через GPT-4o-mini
+ * Премиальный промпт для глубокого анализа комментариев
+ */
+const DEEP_COMMENTS_PROMPT_RU = `Ты — эксперт по анализу поведения аудитории YouTube, специалист по когнитивным триггерам, эмоциональной аналитике и извлечению скрытых паттернов из больших массивов комментариев.
+
+Тебе передан массив комментариев к видео канала. Каждый комментарий содержит текст, автора, количество лайков.
+
+Твоя задача — провести глубокий многоуровневый анализ аудитории, выявив эмоциональные реакции, когнитивные паттерны, скрытые потребности, темы вызывающие вовлечённость, барьеры к росту и инсайты для улучшения контента.
+
+Работай только с реальными данными. Никаких домыслов или фантазий.
+
+ВЕРНИ ТОЛЬКО JSON в ТОЧНО ТАКОЙ СТРУКТУРЕ и НИЧЕГО БОЛЬШЕ:
+
+{
+  "emotionalOverview": "2-4 абзаца о преобладающем тоне, распределении эмоций, связи с автором",
+  "keyTopics": [
+    {
+      "name": "название темы",
+      "description": "что обсуждают люди",
+      "examples": ["цитата 1", "цитата 2", "цитата 3"],
+      "motive": "стоящий за темой мотив",
+      "usage": "как использовать в контенте"
+    }
+  ],
+  "positiveTriggers": [
+    {
+      "trigger": "название триггера",
+      "what_praised": "что именно хвалят",
+      "why_resonates": "почему вызывает отклик",
+      "video_types": "какие видео усиливают"
+    }
+  ],
+  "negativeTriggers": [
+    {
+      "trigger": "название",
+      "what_causes_negativity": "что вызывает критику",
+      "why_harmful": "почему мешает",
+      "fix": "как исправить",
+      "example": "пример из комментариев"
+    }
+  ],
+  "faq": [
+    {
+      "question": "вопрос аудитории",
+      "why_appears": "почему появляется",
+      "action": "что делать автору"
+    }
+  ],
+  "audienceSegments": [
+    {
+      "segment": "название сегмента",
+      "description": "кто это",
+      "writes_about": "что пишет",
+      "understanding_level": "уровень понимания темы",
+      "motives": "мотивы",
+      "suitable_content": "какие видео подходят",
+      "growth_strategy": "как увеличить этот сегмент"
+    }
+  ],
+  "behavioralInsights": [
+    "что люди лайкают",
+    "какие темы вызывают длинные комментарии",
+    "какие видео провоцируют споры",
+    "что зрители называют уникальным"
+  ],
+  "missingElements": [
+    "дефицит какой информации",
+    "какой глубины не хватает",
+    "что вызывает непонимание",
+    "что люди спрашивают повторно"
+  ],
+  "growthOpportunities": [
+    {
+      "opportunity": "возможность",
+      "based_on": "на основе каких комментариев",
+      "how_use": "как использовать",
+      "expected_effect": "ожидаемый эффект (ER, CTR, retention, подписчики)"
+    }
+  ],
+  "checklist": [
+    "Убрать →",
+    "Добавить →",
+    "Усилить →",
+    "Изменить →",
+    "Частить →",
+    "Упростить →",
+    "Углубить →",
+    "Делать регулярно →"
+  ]
+}
+
+КРИТИЧЕСКИЕ ПРАВИЛА:
+1. ТОЛЬКО анализ по данным. Никаких выдумок.
+2. Если данных мало — делай аккуратные выводы ("по имеющимся комментариям можно предположить…").
+3. Никаких длинных цитат. Максимум 3-6 слов.
+4. Не повторяй сами комментарии — анализируй их.
+5. Все текстовые поля на русском языке.
+6. Возвращай ТОЛЬКО JSON без дополнительного текста.`;
+
+const DEEP_COMMENTS_PROMPT_EN = `You are an expert in analyzing YouTube audience behavior, a specialist in cognitive triggers, emotional analytics, and extracting hidden patterns from large arrays of comments.
+
+You have been provided with an array of comments from video channels. Each comment contains text, author, and likes count.
+
+Your task is to conduct a deep multi-level audience analysis, revealing emotional reactions, cognitive patterns, hidden needs, themes driving engagement, barriers to growth, and insights for content improvement.
+
+Work only with real data. No hallucinations or fantasies.
+
+RETURN ONLY JSON in this EXACT STRUCTURE:
+
+{
+  "emotionalOverview": "2-4 paragraphs about dominant tone, emotion distribution, creator connection",
+  "keyTopics": [
+    {
+      "name": "topic name",
+      "description": "what people discuss",
+      "examples": ["quote 1", "quote 2", "quote 3"],
+      "motive": "underlying motive",
+      "usage": "how to use in content"
+    }
+  ],
+  "positiveTriggers": [
+    {
+      "trigger": "trigger name",
+      "what_praised": "what exactly they praise",
+      "why_resonates": "why it resonates emotionally",
+      "video_types": "which video types amplify"
+    }
+  ],
+  "negativeTriggers": [
+    {
+      "trigger": "name",
+      "what_causes_negativity": "what triggers criticism",
+      "why_harmful": "why it harms engagement",
+      "fix": "how to fix",
+      "example": "example from comments"
+    }
+  ],
+  "faq": [
+    {
+      "question": "audience question",
+      "why_appears": "why it appears",
+      "action": "what creator should do"
+    }
+  ],
+  "audienceSegments": [
+    {
+      "segment": "segment name",
+      "description": "who they are",
+      "writes_about": "what they write about",
+      "understanding_level": "topic comprehension level",
+      "motives": "their motives",
+      "suitable_content": "what content fits",
+      "growth_strategy": "how to grow this segment"
+    }
+  ],
+  "behavioralInsights": [
+    "what people like",
+    "which topics cause long comments",
+    "which videos provoke debates",
+    "what viewers call unique"
+  ],
+  "missingElements": [
+    "missing information",
+    "lacking depth",
+    "causing confusion",
+    "repeated questions"
+  ],
+  "growthOpportunities": [
+    {
+      "opportunity": "opportunity",
+      "based_on": "which comments support this",
+      "how_use": "how to leverage",
+      "expected_effect": "expected impact (ER, CTR, retention, subs)"
+    }
+  ],
+  "checklist": [
+    "Remove →",
+    "Add →",
+    "Amplify →",
+    "Change →",
+    "Increase frequency →",
+    "Simplify →",
+    "Deepen →",
+    "Do regularly →"
+  ]
+}
+
+CRITICAL RULES:
+1. ONLY analysis based on provided data. No hallucinations.
+2. If data is limited — make careful conclusions ("based on available comments we can infer…").
+3. No long quotes. Maximum 3-6 words.
+4. Don't repeat comments — analyze them.
+5. Return ONLY JSON with no additional text.`;
+
+/**
+ * Генерирует глубокий анализ одного чанка комментариев через GPT-4.1-mini
  */
 export async function generateDeepAnalysis(
   chunk: string,
@@ -209,81 +403,7 @@ export async function generateDeepAnalysis(
 
   const openai = new OpenAI({ apiKey });
 
-  const systemPrompt = language === "ru"
-    ? `Ты — эксперт по анализу аудитории YouTube.
-Твоя задача — извлекать глубокие инсайты из реальных комментариев.
-ВСЕГДА базируй инсайты ТОЛЬКО на предоставленных комментариях.
-НИКОГДА не придумывай данные.
-Если не уверен — скажи "Недостаточно данных".
-
-ЗАДАЧА:
-Проанализируй следующие комментарии YouTube глубоко.
-ВЕРНИ ТОЛЬКО JSON в ТОЧНО ТАКОЙ СТРУКТУРЕ:
-
-{
-  "themes": [],
-  "pain_points": [],
-  "requests": [],
-  "praises": [],
-  "segments": [],
-  "sentiment_summary": {
-    "positive": 0,
-    "negative": 0,
-    "neutral": 0
-  },
-  "quotes": [],
-  "hidden_patterns": [],
-  "ideas": []
-}
-
-ПРАВИЛА:
-- "themes": высокоуровневые темы, о которых говорит аудитория
-- "pain_points": фрустрации, проблемы, жалобы
-- "requests": что аудитория явно просит
-- "praises": что им нравится или ценят
-- "segments": группы пользователей (например: новички, эксперты, скептики)
-- "quotes": реальные ТОЧНЫЕ цитаты из комментариев (максимум 1 предложение)
-- "hidden_patterns": инсайты, которые не очевидны на поверхности
-- "ideas": действенные предложения для автора канала
-
-Делай инсайты краткими и реальными. Все текстовые поля на русском языке.`
-    : `You are an expert YouTube audience research analyst.
-Your job is to extract deep insights from real comments.
-ALWAYS base insights ONLY on provided comments.
-NEVER hallucinate.
-If you are unsure — say "Not enough data".
-
-TASK:
-Analyze the following YouTube comments deeply.
-RETURN JSON ONLY in this EXACT STRUCTURE:
-
-{
-  "themes": [],
-  "pain_points": [],
-  "requests": [],
-  "praises": [],
-  "segments": [],
-  "sentiment_summary": {
-    "positive": 0,
-    "negative": 0,
-    "neutral": 0
-  },
-  "quotes": [],
-  "hidden_patterns": [],
-  "ideas": []
-}
-
-RULES:
-- "themes": high-level topics the audience talks about
-- "pain_points": frustrations, problems, complaints
-- "requests": what audience explicitly asks
-- "praises": what they love or appreciate
-- "segments": groups of users (e.g. beginners, experts, skeptics)
-- "quotes": real exact quotes from comments (1 sentence max)
-- "hidden_patterns": insights that are not obvious on surface
-- "ideas": actionable suggestions for creator
-
-Make insights concise and real.`;
+  const systemPrompt = language === "ru" ? DEEP_COMMENTS_PROMPT_RU : DEEP_COMMENTS_PROMPT_EN;
 
   console.log(`[DeepAnalysis] Generating analysis for chunk (${chunk.length} chars, language: ${language})`);
 
