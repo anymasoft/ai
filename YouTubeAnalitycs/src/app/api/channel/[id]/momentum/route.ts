@@ -9,7 +9,7 @@ interface VideoWithMomentum {
   videoId: string;
   title: string;
   viewCount: number;
-  publishedAt: string;
+  publishedAt: string | null; // Может быть null если API не вернул дату
   viewsPerDay: number;
   momentumScore: number;
   category: "High Momentum" | "Rising" | "Normal" | "Underperforming";
@@ -115,8 +115,38 @@ export async function POST(
 
     console.log(`[Momentum] Найдено ${videos.length} видео для анализа`);
 
+    // Фильтруем видео с валидной датой публикации
+    // (API может вернуть null если publishedTime не был доступен)
+    const videosWithValidDates = videos.filter((v: any) => {
+      if (!v.publishedAt) {
+        console.warn(`[Momentum] Пропуск видео ${v.videoId} - нет даты публикации`);
+        return false;
+      }
+      try {
+        const date = new Date(v.publishedAt);
+        if (isNaN(date.getTime())) {
+          console.warn(`[Momentum] Пропуск видео ${v.videoId} - невалидная дата: ${v.publishedAt}`);
+          return false;
+        }
+        return true;
+      } catch {
+        console.warn(`[Momentum] Пропуск видео ${v.videoId} - ошибка парсинга даты`);
+        return false;
+      }
+    });
+
+    console.log(`[Momentum] Видео с валидными датами: ${videosWithValidDates.length}/${videos.length}`);
+
+    if (videosWithValidDates.length === 0) {
+      client.close();
+      return NextResponse.json(
+        { error: "No videos with valid publication dates" },
+        { status: 400 }
+      );
+    }
+
     // Вычисляем views_per_day для каждого видео
-    const videosWithMetrics: VideoWithMomentum[] = videos.map(v => {
+    const videosWithMetrics: VideoWithMomentum[] = videosWithValidDates.map((v: any) => {
       const days = daysSincePublish(v.publishedAt as string);
       const viewsPerDay = (v.viewCount as number) / days;
 

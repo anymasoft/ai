@@ -15,7 +15,7 @@ export interface VideoData {
   viewCount: number;
   likeCount: number;
   commentCount: number;
-  publishedAt: string;
+  publishedAt: string | null; // Берется из API поля publishedTime, может быть null если API не вернул дату
   duration?: string; // ISO 8601 формат (PT1H2M10S) или undefined
 }
 
@@ -373,28 +373,44 @@ async function fetchVideosFromAPI(
       const videos = Array.isArray(data.videos) ? data.videos : Array.isArray(data) ? data : [];
 
       // Нормализуем и добавляем видео
-      const normalizedVideos: VideoData[] = videos.map((video: any) => ({
-        videoId: String(video.videoId || video.id || ""),
-        title: String(video.title || video.name || "Untitled Video"),
-        thumbnailUrl: extractThumbnailUrl(video.thumbnail || video.thumbnailUrl),
-        viewCount: safeNumber(
-          video.viewCount ?? video.viewCountInt ?? video.views,
-          0
-        ),
-        likeCount: safeNumber(
-          video.likeCount ?? video.likeCountInt ?? video.likes,
-          0
-        ),
-        commentCount: safeNumber(
-          video.commentCount ?? video.commentCountInt ?? video.comments,
-          0
-        ),
-        publishedAt: String(video.publishedAt || video.publishedDate || new Date().toISOString()),
-        // Конвертируем lengthSeconds в ISO 8601 формат
-        duration: secondsToISO8601Duration(
-          video.lengthSeconds ?? video.duration ?? undefined
-        ),
-      }));
+      const normalizedVideos: VideoData[] = videos.map((video: any) => {
+        // ВАЖНО: API ScrapeCreators возвращает дату в поле publishedTime, это единственный источник истины
+        const publishedTime = video.publishedTime || null;
+        console.log("Video date received:", {
+          videoId: video.videoId || video.id,
+          publishedTime,
+          rawFields: {
+            publishedTime: video.publishedTime,
+            publishedAt: video.publishedAt,
+            publishedDate: video.publishedDate,
+          },
+        });
+
+        return {
+          videoId: String(video.videoId || video.id || ""),
+          title: String(video.title || video.name || "Untitled Video"),
+          thumbnailUrl: extractThumbnailUrl(video.thumbnail || video.thumbnailUrl),
+          viewCount: safeNumber(
+            video.viewCount ?? video.viewCountInt ?? video.views,
+            0
+          ),
+          likeCount: safeNumber(
+            video.likeCount ?? video.likeCountInt ?? video.likes,
+            0
+          ),
+          commentCount: safeNumber(
+            video.commentCount ?? video.commentCountInt ?? video.comments,
+            0
+          ),
+          // ВАЖНО: используем publishedTime как единственный источник истины
+          // Если поля нет - присваиваем null (БЕЗ восстановления и fallback'ов)
+          publishedAt: publishedTime || null,
+          // Конвертируем lengthSeconds в ISO 8601 формат
+          duration: secondsToISO8601Duration(
+            video.lengthSeconds ?? video.duration ?? undefined
+          ),
+        };
+      });
 
       allVideos.push(...normalizedVideos);
 
@@ -499,6 +515,18 @@ export async function getYoutubeVideoDetails(url: string) {
     }
 
     // Нормализация данных
+    // ВАЖНО: используем publishedTime как единственный источник истины для даты публикации
+    const publishedTime = data.publishedTime || null;
+    console.log("Video details date received:", {
+      videoId: data.videoId || data.id,
+      publishedTime,
+      rawFields: {
+        publishedTime: data.publishedTime,
+        publishedAt: data.publishedAt,
+        publishedDate: data.publishedDate,
+      },
+    });
+
     const videoDetails = {
       videoId: String(data.videoId || data.id || ""),
       title: String(data.title || data.name || "Untitled Video"),
@@ -514,7 +542,8 @@ export async function getYoutubeVideoDetails(url: string) {
         data.viewCount ?? data.viewCountInt ?? data.views,
         0
       ),
-      publishDate: String(data.publishDate || data.publishedAt || new Date().toISOString()),
+      // Используем publishedTime как единственный источник, без fallback'ов
+      publishDate: publishedTime || null,
       durationMs: safeNumber(data.durationMs ?? data.duration, undefined),
       keywords: Array.isArray(data.keywords) ? data.keywords : undefined,
       transcriptText: data.transcript_only_text || null,

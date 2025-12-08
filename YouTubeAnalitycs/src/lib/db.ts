@@ -193,7 +193,7 @@ async function getClient() {
           viewCount INTEGER NOT NULL DEFAULT 0,
           likeCount INTEGER NOT NULL DEFAULT 0,
           commentCount INTEGER NOT NULL DEFAULT 0,
-          publishedAt TEXT NOT NULL,
+          publishedAt TEXT,
           fetchedAt INTEGER NOT NULL,
           data TEXT
         );`);
