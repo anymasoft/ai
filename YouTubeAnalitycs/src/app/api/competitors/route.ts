@@ -22,6 +22,16 @@ export async function GET(req: NextRequest) {
       args: [session.user.id],
     });
 
+    console.log("[Competitors GET] Fetched competitors:", {
+      count: result.rows.length,
+      competitors: result.rows.map((r: any) => ({
+        id: r.id,
+        title: r.title,
+        avatarUrl: r.avatarUrl,
+        hasAvatarUrl: r.avatarUrl !== null && r.avatarUrl !== undefined,
+      })),
+    });
+
     return NextResponse.json(result.rows);
   } catch (error) {
     console.error("Error fetching competitors:", error);
@@ -112,6 +122,13 @@ export async function POST(req: NextRequest) {
     // Fetch channel data
     const channelData = await getYoutubeChannelByHandle(handleToFetch);
 
+    console.log("[Competitors POST] Channel data received:", {
+      channelId: channelData.channelId,
+      title: channelData.title,
+      avatarUrl: channelData.avatarUrl,
+      subscriberCount: channelData.subscriberCount,
+    });
+
     // Check if exists
     const existingResult = await db.execute({
       sql: "SELECT * FROM competitors WHERE userId = ? AND channelId = ?",
@@ -125,6 +142,16 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // Prepare avatar URL
+    const avatarUrlForDb = typeof channelData.avatarUrl === "string" && channelData.avatarUrl.trim()
+      ? channelData.avatarUrl.trim()
+      : null;
+
+    console.log("[Competitors POST] Inserting with avatar URL:", {
+      avatarUrl: avatarUrlForDb,
+      isNull: avatarUrlForDb === null,
+    });
+
     // Insert new competitor
     const insertResult = await db.execute({
       sql: `INSERT INTO competitors
@@ -135,9 +162,7 @@ export async function POST(req: NextRequest) {
         String(channelData.channelId || ""),
         String(handleToFetch),
         String(channelData.title || "Unknown Channel"),
-        typeof channelData.avatarUrl === "string" && channelData.avatarUrl.trim()
-          ? channelData.avatarUrl.trim()
-          : null,
+        avatarUrlForDb,
         Number.isFinite(channelData.subscriberCount) ? channelData.subscriberCount : 0,
         Number.isFinite(channelData.videoCount) ? channelData.videoCount : 0,
         Number.isFinite(channelData.viewCount) ? channelData.viewCount : 0,
@@ -150,6 +175,13 @@ export async function POST(req: NextRequest) {
     const newResult = await db.execute({
       sql: "SELECT * FROM competitors WHERE id = last_insert_rowid()",
       args: [],
+    });
+
+    console.log("[Competitors POST] Inserted record:", {
+      id: newResult.rows[0]?.id,
+      title: newResult.rows[0]?.title,
+      avatarUrl: newResult.rows[0]?.avatarUrl,
+      avatarUrlIsNull: newResult.rows[0]?.avatarUrl === null,
     });
 
     return NextResponse.json(newResult.rows[0], { status: 201 });
