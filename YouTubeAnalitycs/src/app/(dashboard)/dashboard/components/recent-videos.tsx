@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import Link from "next/link"
 import type { VideoPerformanceData } from "@/lib/dashboard-queries"
+import { formatPublishedDate } from "@/lib/date-formatting"
 
 function formatNumber(num: number): string {
   if (num >= 1000000) {
@@ -12,32 +13,6 @@ function formatNumber(num: number): string {
     return (num / 1000).toFixed(1) + "K"
   }
   return num.toString()
-}
-
-function formatTimeAgo(dateString: string | null): string {
-  if (!dateString) {
-    return "Date unknown"
-  }
-
-  try {
-    const date = new Date(dateString)
-    if (isNaN(date.getTime())) {
-      return "Date unknown"
-    }
-
-    const now = new Date()
-    const diffMs = now.getTime() - date.getTime()
-    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24))
-
-    if (diffDays === 0) return "Today"
-    if (diffDays === 1) return "Yesterday"
-    if (diffDays < 7) return `${diffDays} days ago`
-    if (diffDays < 30) return `${Math.floor(diffDays / 7)} weeks ago`
-    if (diffDays < 365) return `${Math.floor(diffDays / 30)} months ago`
-    return `${Math.floor(diffDays / 365)} years ago`
-  } catch (error) {
-    return "Date unknown"
-  }
 }
 
 function getCategoryBadgeVariant(category: string) {
@@ -138,7 +113,7 @@ export function RecentVideos({ data }: RecentVideosProps) {
                   {formatNumber(video.viewsPerDay)}/day
                 </span>
                 <span className="text-xs text-muted-foreground">
-                  {formatTimeAgo(video.publishedAt)}
+                  {formatPublishedDate(video.publishedAt, "en")}
                 </span>
               </div>
             </div>

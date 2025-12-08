@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ExternalLink } from "lucide-react";
+import { formatPublishedDate } from "@/lib/date-formatting";
 
 interface VideoData {
   id: number;
@@ -31,29 +32,6 @@ function formatViews(views: number): string {
     return `${(views / 1000).toFixed(1)}K`;
   }
   return views.toString();
-}
-
-/**
- * Форматирует дату публикации
- */
-function formatDate(dateString: string | null): string {
-  if (!dateString) {
-    return "Дата неизвестна";
-  }
-
-  try {
-    const date = new Date(dateString);
-    if (isNaN(date.getTime())) {
-      return "Дата неизвестна";
-    }
-    return date.toLocaleDateString("ru-RU", {
-      day: "numeric",
-      month: "long",
-      year: "numeric",
-    });
-  } catch (error) {
-    return "Дата неизвестна";
-  }
 }
 
 export function TopVideosGrid({ videos }: TopVideosGridProps) {
@@ -110,7 +88,7 @@ export function TopVideosGrid({ videos }: TopVideosGridProps) {
                           {formatViews(video.viewCount)} просмотров
                         </span>
                         <span className="text-muted-foreground text-xs">
-                          {formatDate(video.publishedAt)}
+                          {formatPublishedDate(video.publishedAt, "ru")}
                         </span>
                       </div>
 

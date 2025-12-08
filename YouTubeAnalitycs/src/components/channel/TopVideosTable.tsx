@@ -12,6 +12,7 @@ import {
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ExternalLink } from "lucide-react";
+import { formatPublishedDateCompact } from "@/lib/date-formatting";
 
 interface VideoData {
   id: number;
@@ -39,29 +40,6 @@ function formatViews(views: number): string {
     return `${(views / 1000).toFixed(1)}K`;
   }
   return views.toString();
-}
-
-/**
- * Форматирует дату публикации
- */
-function formatDate(dateString: string | null): string {
-  if (!dateString) {
-    return "—";
-  }
-
-  try {
-    const date = new Date(dateString);
-    if (isNaN(date.getTime())) {
-      return "—";
-    }
-    return date.toLocaleDateString("ru-RU", {
-      day: "2-digit",
-      month: "short",
-      year: "numeric",
-    });
-  } catch (error) {
-    return "—";
-  }
 }
 
 export function TopVideosTable({ videos }: TopVideosTableProps) {
@@ -124,7 +102,7 @@ export function TopVideosTable({ videos }: TopVideosTableProps) {
                     </TableCell>
                     <TableCell>
                       <span className="text-sm text-muted-foreground">
-                        {formatDate(video.publishedAt)}
+                        {formatPublishedDateCompact(video.publishedAt, "ru")}
                       </span>
                     </TableCell>
                     <TableCell className="text-center">
