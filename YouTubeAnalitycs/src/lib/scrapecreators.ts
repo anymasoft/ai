@@ -389,7 +389,8 @@ async function fetchVideosFromAPI(
           video.commentCount ?? video.commentCountInt ?? video.comments,
           0
         ),
-        publishedAt: String(video.publishedAt || video.publishedDate || new Date().toISOString()),
+        // NOTE: publishedAt может быть null/пусто - это обработает resolveVideoPublishDate
+        publishedAt: video.publishedAt || video.publishedDate || null,
         // Конвертируем lengthSeconds в ISO 8601 формат
         duration: secondsToISO8601Duration(
           video.lengthSeconds ?? video.duration ?? undefined
