@@ -63,6 +63,11 @@ export async function generateBehavioralInsights(
   comments: CommentForAnalysis[],
   language: "ru" | "en" = "en"
 ): Promise<string[]> {
+  // Проверка на пустой массив комментариев
+  if (!comments || comments.length === 0) {
+    console.warn("[behavioral-insights] No comments provided");
+    return createEmptyInsights(language);
+  }
   const apiKey = process.env.OPENAI_API_KEY;
 
   if (!apiKey) {

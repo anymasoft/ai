@@ -63,6 +63,11 @@ export async function generateMissingElements(
   comments: CommentForAnalysis[],
   language: "ru" | "en" = "en"
 ): Promise<string[]> {
+  // Проверка на пустой массив комментариев
+  if (!comments || comments.length === 0) {
+    console.warn("[missing-elements] No comments provided");
+    return createEmptyElements(language);
+  }
   const apiKey = process.env.OPENAI_API_KEY;
 
   if (!apiKey) {

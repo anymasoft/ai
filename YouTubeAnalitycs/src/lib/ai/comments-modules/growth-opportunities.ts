@@ -93,6 +93,11 @@ export async function generateGrowthOpportunities(
   comments: CommentForAnalysis[],
   language: "ru" | "en" = "en"
 ): Promise<GrowthOpportunity[]> {
+  // Проверка на пустой массив комментариев
+  if (!comments || comments.length === 0) {
+    console.warn("[growth-opportunities] No comments provided");
+    return createEmptyOpportunities(language);
+  }
   const apiKey = process.env.OPENAI_API_KEY;
 
   if (!apiKey) {

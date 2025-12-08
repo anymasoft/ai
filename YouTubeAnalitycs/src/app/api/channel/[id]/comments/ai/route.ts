@@ -108,6 +108,18 @@ export async function POST(
 
     console.log(`[DeepCommentAI] Подготовлено ${commentsForAnalysis.length} комментариев для анализа`);
 
+    // Нормализуем комментарии перед анализом (удаляем emoji, URL, HTML и т.п.)
+    const normalizedComments = normalizeComments(commentsForAnalysis);
+    console.log(`[DeepCommentAI] Нормализовано ${normalizedComments.length} комментариев (отфильтровано ${commentsForAnalysis.length - normalizedComments.length})`);
+
+    // Если нет валидных комментариев, прерываем анализ
+    if (normalizedComments.length === 0) {
+      return NextResponse.json(
+        { error: "No valid comments to analyze after normalization" },
+        { status: 400 }
+      );
+    }
+
     // Создаём запись анализа
     await client.execute({
       sql: `INSERT INTO channel_ai_comment_insights
@@ -139,7 +151,7 @@ export async function POST(
 
     // Генерация анализа через новый orchestrator (все 10 модулей параллельно)
     const analysisResult = await analyzeCommentsWithOrchestrator(
-      commentsForAnalysis,
+      normalizedComments,
       "ru"
     );
 

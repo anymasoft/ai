@@ -109,6 +109,16 @@ export async function analyzeCommentsWithOrchestrator(
 function validateResult(
   result: DeepAnalysisOrchestratorResult
 ): DeepAnalysisOrchestratorResult {
+  // Валидируем checklist: должно быть РОВНО 8 элементов
+  let validatedChecklist = Array.isArray(result.checklist)
+    ? result.checklist.slice(0, 8)
+    : [];
+
+  // Если меньше 8 элементов, добавляем пустые
+  while (validatedChecklist.length < 8) {
+    validatedChecklist.push("");
+  }
+
   return {
     emotionalOverview: String(result.emotionalOverview || "").slice(0, 500),
     keyTopics: Array.isArray(result.keyTopics) ? result.keyTopics : [],
@@ -131,7 +141,7 @@ function validateResult(
     growthOpportunities: Array.isArray(result.growthOpportunities)
       ? result.growthOpportunities
       : [],
-    checklist: Array.isArray(result.checklist) ? result.checklist : [],
+    checklist: validatedChecklist,
     totalAnalyzed: result.totalAnalyzed || 0,
     language: result.language || "en",
   };

@@ -111,6 +111,11 @@ export async function generateChecklist(
   comments: CommentForAnalysis[],
   language: "ru" | "en" = "en"
 ): Promise<string[]> {
+  // Проверка на пустой массив комментариев
+  if (!comments || comments.length === 0) {
+    console.warn("[checklist] No comments provided");
+    return createEmptyChecklist(language);
+  }
   const apiKey = process.env.OPENAI_API_KEY;
 
   if (!apiKey) {

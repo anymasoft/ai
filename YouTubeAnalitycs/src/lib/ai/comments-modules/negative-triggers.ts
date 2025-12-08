@@ -96,6 +96,11 @@ export async function generateNegativeTriggers(
   comments: CommentForAnalysis[],
   language: "ru" | "en" = "en"
 ): Promise<NegativeTrigger[]> {
+  // Проверка на пустой массив комментариев
+  if (!comments || comments.length === 0) {
+    console.warn("[negative-triggers] No comments provided");
+    return createEmptyNegativeTriggers(language);
+  }
   const apiKey = process.env.OPENAI_API_KEY;
 
   if (!apiKey) {

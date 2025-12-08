@@ -84,6 +84,11 @@ export async function generateFAQ(
   comments: CommentForAnalysis[],
   language: "ru" | "en" = "en"
 ): Promise<FAQ[]> {
+  // Проверка на пустой массив комментариев
+  if (!comments || comments.length === 0) {
+    console.warn("[faq] No comments provided");
+    return createEmptyFAQ(language);
+  }
   const apiKey = process.env.OPENAI_API_KEY;
 
   if (!apiKey) {

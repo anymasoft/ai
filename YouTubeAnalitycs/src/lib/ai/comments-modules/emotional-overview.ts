@@ -42,6 +42,14 @@ export async function generateEmotionalOverview(
   comments: CommentForAnalysis[],
   language: "ru" | "en" = "en"
 ): Promise<string> {
+  // Проверка на пустой массив комментариев
+  if (!comments || comments.length === 0) {
+    console.warn("[emotionalOverview] No comments provided");
+    return language === "ru"
+      ? "Нет комментариев для анализа."
+      : "No comments to analyze.";
+  }
+
   const apiKey = process.env.OPENAI_API_KEY;
 
   if (!apiKey) {

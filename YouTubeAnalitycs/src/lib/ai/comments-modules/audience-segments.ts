@@ -112,6 +112,11 @@ export async function generateAudienceSegments(
   comments: CommentForAnalysis[],
   language: "ru" | "en" = "en"
 ): Promise<AudienceSegment[]> {
+  // Проверка на пустой массив комментариев
+  if (!comments || comments.length === 0) {
+    console.warn("[audience-segments] No comments provided");
+    return createEmptySegments(language);
+  }
   const apiKey = process.env.OPENAI_API_KEY;
 
   if (!apiKey) {

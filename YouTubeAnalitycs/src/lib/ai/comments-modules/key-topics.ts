@@ -114,11 +114,17 @@ export async function generateKeyTopics(
   comments: CommentForAnalysis[],
   lang: "ru" | "en" = "en"
 ): Promise<KeyTopic[]> {
+  // Проверка на пустой массив комментариев
+  if (!comments || comments.length === 0) {
+    console.warn("[keyTopics] No comments provided");
+    return createEmptyKeyTopics(lang);
+  }
+
   const apiKey = process.env.OPENAI_API_KEY;
 
   if (!apiKey) {
     console.error("[keyTopics] OPENAI_API_KEY not configured");
-    return createEmptyKeyTopics();
+    return createEmptyKeyTopics(lang);
   }
 
   const openai = new OpenAI({ apiKey });

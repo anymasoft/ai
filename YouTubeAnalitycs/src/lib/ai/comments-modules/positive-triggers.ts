@@ -88,6 +88,12 @@ export async function generatePositiveTriggers(
   comments: CommentForAnalysis[],
   language: "ru" | "en" = "en"
 ): Promise<PositiveTrigger[]> {
+  // Проверка на пустой массив комментариев
+  if (!comments || comments.length === 0) {
+    console.warn("[positiveTriggers] No comments provided");
+    return createEmptyPositiveTriggers(language);
+  }
+
   const apiKey = process.env.OPENAI_API_KEY;
 
   if (!apiKey) {
