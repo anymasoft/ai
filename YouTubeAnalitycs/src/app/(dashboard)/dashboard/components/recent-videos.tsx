@@ -1,10 +1,41 @@
+"use client"
+
+import { useEffect, useState } from "react"
 import { ExternalLink, Eye, Play, Clock } from "lucide-react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import Link from "next/link"
-import type { VideoPerformanceData } from "@/lib/dashboard-queries"
-import { formatPublishedDate } from "@/lib/date-formatting"
+import { Skeleton } from "@/components/ui/skeleton"
+
+interface VideoData {
+  videoId: string
+  title: string
+  channelId: string
+  channelTitle: string
+  thumbnailUrl: string | null
+  viewCount: number
+  likeCount: number
+  commentCount: number
+  publishedAt: string
+  viewsPerDay: number
+  momentumScore: number
+  category: "High Momentum" | "Rising" | "Normal" | "Underperforming"
+  url: string
+}
+
+interface VideoPerformanceData {
+  videos: VideoData[]
+  sortBy: string
+  limit: number
+  total: number
+  medianViewsPerDay: number
+  stats: {
+    highMomentum: number
+    rising: number
+    normal: number
+    underperforming: number
+  }
+}
 
 function formatNumber(num: number): string {
   if (num >= 1000000) {
@@ -15,38 +46,119 @@ function formatNumber(num: number): string {
   return num.toString()
 }
 
-function getCategoryBadgeVariant(category: string) {
-  switch (category) {
-    case "High Momentum":
-      return "default"
-    case "Rising":
-      return "secondary"
-    case "Underperforming":
-      return "destructive"
-    default:
-      return "outline"
+function formatTimeAgo(dateString: string): string {
+  const date = new Date(dateString)
+  const now = new Date()
+  const diffMs = now.getTime() - date.getTime()
+  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24))
+
+  if (diffDays === 0) return "Today"
+  if (diffDays === 1) return "Yesterday"
+  if (diffDays < 7) return `${diffDays} days ago`
+  if (diffDays < 30) return `${Math.floor(diffDays / 7)} weeks ago`
+  if (diffDays < 365) return `${Math.floor(diffDays / 30)} months ago`
+  return `${Math.floor(diffDays / 365)} years ago`
+}
+
+function VideoCardSkeleton() {
+  return (
+    <div className="flex p-3 rounded-lg border gap-3">
+      <Skeleton className="h-16 w-28 rounded-md shrink-0" />
+      <div className="flex-1 space-y-2">
+        <Skeleton className="h-4 w-3/4" />
+        <Skeleton className="h-3 w-1/2" />
+        <Skeleton className="h-3 w-1/3" />
+      </div>
+    </div>
+  )
+}
+
+export function RecentVideos() {
+  const [data, setData] = useState<VideoPerformanceData | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    async function fetchVideos() {
+      try {
+        const response = await fetch("/api/dashboard/video-performance?sortBy=recent&limit=5")
+        if (!response.ok) {
+          throw new Error("Failed to fetch recent videos")
+        }
+        const result = await response.json()
+        if (result.success) {
+          setData(result.data)
+        } else {
+          throw new Error(result.error || "Unknown error")
+        }
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Failed to load data")
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchVideos()
+  }, [])
+
+  if (loading) {
+    return (
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
+          <div className="space-y-1">
+            <Skeleton className="h-5 w-32" />
+            <Skeleton className="h-4 w-48" />
+          </div>
+          <Skeleton className="h-9 w-20" />
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <VideoCardSkeleton />
+          <VideoCardSkeleton />
+          <VideoCardSkeleton />
+          <VideoCardSkeleton />
+          <VideoCardSkeleton />
+        </CardContent>
+      </Card>
+    )
   }
-}
 
-interface RecentVideosProps {
-  data: VideoPerformanceData | null
-}
+  if (error) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Recent Videos</CardTitle>
+          <CardDescription className="text-destructive">{error}</CardDescription>
+        </CardHeader>
+      </Card>
+    )
+  }
 
-export function RecentVideos({ data }: RecentVideosProps) {
+  const getCategoryBadgeVariant = (category: string) => {
+    switch (category) {
+      case "High Momentum":
+        return "default"
+      case "Rising":
+        return "secondary"
+      case "Underperforming":
+        return "destructive"
+      default:
+        return "outline"
+    }
+  }
+
   if (!data || data.videos.length === 0) {
     return (
-      <Card className="bg-card/50 backdrop-blur-sm border-border/50">
+      <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-lg">
+          <CardTitle className="flex items-center gap-2">
             <Clock className="h-5 w-5" />
             Recent Videos
           </CardTitle>
           <CardDescription>No videos available</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="flex flex-col items-center justify-center h-[200px] text-muted-foreground">
-            <Clock className="h-12 w-12 mb-4 opacity-20" />
-            <p className="text-sm text-center">Sync competitor videos to see recent content</p>
+          <div className="flex items-center justify-center h-[200px] text-muted-foreground">
+            Sync competitor videos to see recent content
           </div>
         </CardContent>
       </Card>
@@ -54,20 +166,22 @@ export function RecentVideos({ data }: RecentVideosProps) {
   }
 
   return (
-    <Card className="bg-card/50 backdrop-blur-sm border-border/50 hover:border-border/80 transition-colors duration-300">
+    <Card>
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
-        <div className="space-y-1">
-          <CardTitle className="flex items-center gap-2 text-lg font-semibold">
-            <Clock className="h-5 w-5 text-primary" />
+        <div>
+          <CardTitle className="flex items-center gap-2">
+            <Clock className="h-5 w-5" />
             Recent Videos
           </CardTitle>
-          <CardDescription className="text-sm">Latest competitor uploads</CardDescription>
+          <CardDescription>Latest competitor uploads</CardDescription>
         </div>
-        <Button variant="outline" size="sm" asChild className="bg-background/50 border-border/50 hover:border-border hover:bg-background/80 transition-all">
-          <Link href="/trending">
-            <Eye className="h-4 w-4 mr-2" />
-            View All
-          </Link>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => window.open("/trending", "_self")}
+        >
+          <Eye className="h-4 w-4 mr-2" />
+          View All
         </Button>
       </CardHeader>
       <CardContent className="space-y-3">
@@ -77,7 +191,7 @@ export function RecentVideos({ data }: RecentVideosProps) {
             href={video.url}
             target="_blank"
             rel="noopener noreferrer"
-            className="flex p-4 rounded-lg border border-border/50 gap-4 hover:bg-muted/40 hover:border-border/80 hover:shadow-md transition-all duration-300 group"
+            className="flex p-3 rounded-lg border gap-3 hover:bg-muted/50 transition-colors group"
           >
             {/* Thumbnail */}
             <div className="relative h-16 w-28 rounded-md overflow-hidden shrink-0 bg-muted">
@@ -85,7 +199,7 @@ export function RecentVideos({ data }: RecentVideosProps) {
                 <img
                   src={video.thumbnailUrl}
                   alt={video.title}
-                  className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.05]"
+                  className="h-full w-full object-cover"
                 />
               ) : (
                 <div className="h-full w-full flex items-center justify-center">
@@ -98,22 +212,22 @@ export function RecentVideos({ data }: RecentVideosProps) {
             </div>
 
             {/* Content */}
-            <div className="flex-1 min-w-0 space-y-2">
-              <p className="text-sm font-semibold line-clamp-2 leading-tight text-foreground">
+            <div className="flex-1 min-w-0 space-y-1">
+              <p className="text-sm font-medium line-clamp-2 leading-tight">
                 {video.title}
               </p>
-              <p className="text-xs text-muted-foreground font-medium">
+              <p className="text-xs text-muted-foreground">
                 {video.channelTitle}
               </p>
-              <div className="flex items-center gap-3 flex-wrap pt-1">
+              <div className="flex items-center gap-2 flex-wrap">
                 <Badge variant={getCategoryBadgeVariant(video.category)} className="text-xs">
                   {video.category === "High Momentum" ? `+${Math.round(video.momentumScore * 100)}%` : video.category}
                 </Badge>
                 <span className="text-xs text-muted-foreground">
-                  {formatNumber(video.viewsPerDay)}/день
+                  {formatNumber(video.viewsPerDay)}/day
                 </span>
                 <span className="text-xs text-muted-foreground">
-                  {formatPublishedDate(video.publishedAt, "en")}
+                  {formatTimeAgo(video.publishedAt)}
                 </span>
               </div>
             </div>

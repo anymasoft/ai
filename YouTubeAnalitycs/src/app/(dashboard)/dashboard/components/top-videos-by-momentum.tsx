@@ -1,10 +1,42 @@
+"use client"
+
+import { useEffect, useState } from "react"
 import { ExternalLink, Eye, TrendingUp, Zap, Flame } from "lucide-react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
-import Link from "next/link"
-import type { VideoPerformanceData } from "@/lib/dashboard-queries"
+import { Skeleton } from "@/components/ui/skeleton"
+
+interface VideoData {
+  videoId: string
+  title: string
+  channelId: string
+  channelTitle: string
+  thumbnailUrl: string | null
+  viewCount: number
+  likeCount: number
+  commentCount: number
+  publishedAt: string
+  viewsPerDay: number
+  momentumScore: number
+  category: "High Momentum" | "Rising" | "Normal" | "Underperforming"
+  url: string
+}
+
+interface VideoPerformanceData {
+  videos: VideoData[]
+  sortBy: string
+  limit: number
+  total: number
+  medianViewsPerDay: number
+  stats: {
+    highMomentum: number
+    rising: number
+    normal: number
+    underperforming: number
+  }
+}
 
 function formatNumber(num: number): string {
   if (num >= 1000000) {
@@ -15,25 +47,92 @@ function formatNumber(num: number): string {
   return num.toString()
 }
 
-interface TopVideosByMomentumProps {
-  data: VideoPerformanceData | null
+function VideoSkeleton() {
+  return (
+    <div className="flex items-center p-3 rounded-lg border gap-3">
+      <Skeleton className="h-8 w-8 rounded-full" />
+      <div className="flex-1 space-y-2">
+        <Skeleton className="h-4 w-3/4" />
+        <Skeleton className="h-3 w-1/2" />
+      </div>
+      <Skeleton className="h-6 w-16" />
+    </div>
+  )
 }
 
-export function TopVideosByMomentum({ data }: TopVideosByMomentumProps) {
+export function TopVideosByMomentum() {
+  const [data, setData] = useState<VideoPerformanceData | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    async function fetchVideos() {
+      try {
+        const response = await fetch("/api/dashboard/video-performance?sortBy=momentum&limit=5")
+        if (!response.ok) {
+          throw new Error("Failed to fetch top videos")
+        }
+        const result = await response.json()
+        if (result.success) {
+          setData(result.data)
+        } else {
+          throw new Error(result.error || "Unknown error")
+        }
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Failed to load data")
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchVideos()
+  }, [])
+
+  if (loading) {
+    return (
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
+          <div className="space-y-1">
+            <Skeleton className="h-5 w-40" />
+            <Skeleton className="h-4 w-56" />
+          </div>
+          <Skeleton className="h-9 w-20" />
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <VideoSkeleton />
+          <VideoSkeleton />
+          <VideoSkeleton />
+          <VideoSkeleton />
+          <VideoSkeleton />
+        </CardContent>
+      </Card>
+    )
+  }
+
+  if (error) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Top by Momentum</CardTitle>
+          <CardDescription className="text-destructive">{error}</CardDescription>
+        </CardHeader>
+      </Card>
+    )
+  }
+
   if (!data || data.videos.length === 0) {
     return (
-      <Card className="bg-card/50 backdrop-blur-sm border-border/50">
+      <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-lg">
+          <CardTitle className="flex items-center gap-2">
             <Flame className="h-5 w-5" />
             Top by Momentum
           </CardTitle>
           <CardDescription>No videos with momentum data</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="flex flex-col items-center justify-center h-[200px] text-muted-foreground">
-            <Flame className="h-12 w-12 mb-4 opacity-20" />
-            <p className="text-sm text-center">Sync competitor videos to see momentum rankings</p>
+          <div className="flex items-center justify-center h-[200px] text-muted-foreground">
+            Sync competitor videos to see momentum rankings
           </div>
         </CardContent>
       </Card>
@@ -44,22 +143,24 @@ export function TopVideosByMomentum({ data }: TopVideosByMomentumProps) {
   const maxMomentum = Math.max(...data.videos.map(v => v.momentumScore), 1)
 
   return (
-    <Card className="bg-card/50 backdrop-blur-sm border-border/50 hover:border-border/80 transition-colors duration-300">
+    <Card>
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
-        <div className="space-y-1">
-          <CardTitle className="flex items-center gap-2 text-lg font-semibold">
+        <div>
+          <CardTitle className="flex items-center gap-2">
             <Flame className="h-5 w-5 text-orange-500" />
             Top by Momentum
           </CardTitle>
-          <CardDescription className="text-sm">
+          <CardDescription>
             Best performing videos right now
           </CardDescription>
         </div>
-        <Button variant="outline" size="sm" asChild className="bg-background/50 border-border/50 hover:border-border hover:bg-background/80 transition-all">
-          <Link href="/trending">
-            <Eye className="h-4 w-4 mr-2" />
-            View All
-          </Link>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => window.open("/trending", "_self")}
+        >
+          <Eye className="h-4 w-4 mr-2" />
+          View All
         </Button>
       </CardHeader>
       <CardContent className="space-y-3">
@@ -69,25 +170,25 @@ export function TopVideosByMomentum({ data }: TopVideosByMomentumProps) {
             href={video.url}
             target="_blank"
             rel="noopener noreferrer"
-            className="flex items-center p-4 rounded-lg border border-border/50 gap-4 hover:bg-muted/40 hover:border-border/80 hover:shadow-md transition-all duration-300 group"
+            className="flex items-center p-3 rounded-lg border gap-3 hover:bg-muted/50 transition-colors group"
           >
             {/* Rank */}
-            <div className="flex items-center justify-center w-9 h-9 rounded-full bg-gradient-to-br from-primary/20 to-primary/10 text-primary font-bold text-sm shrink-0">
-              {index + 1}
+            <div className="flex items-center justify-center w-8 h-8 rounded-full bg-primary/10 text-primary font-semibold text-sm shrink-0">
+              #{index + 1}
             </div>
 
             {/* Content */}
-            <div className="flex-1 min-w-0 space-y-2">
-              <div className="flex items-center gap-2">
-                <p className="text-sm font-semibold truncate text-foreground">{video.title}</p>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 mb-1">
+                <p className="text-sm font-medium truncate">{video.title}</p>
                 <ExternalLink className="h-3 w-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
               </div>
-              <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                <span className="font-medium">{video.channelTitle}</span>
-                <span>·</span>
-                <span>{formatNumber(video.viewsPerDay)}/день</span>
+              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                <span>{video.channelTitle}</span>
+                <span>-</span>
+                <span>{formatNumber(video.viewsPerDay)}/day</span>
               </div>
-              <div className="flex items-center gap-2 pt-1">
+              <div className="flex items-center gap-2 mt-2">
                 <Progress
                   value={(video.momentumScore / maxMomentum) * 100}
                   className="h-1.5 flex-1"
@@ -96,15 +197,15 @@ export function TopVideosByMomentum({ data }: TopVideosByMomentumProps) {
             </div>
 
             {/* Momentum Badge */}
-            <div className="text-right shrink-0 space-y-1">
+            <div className="text-right shrink-0">
               <Badge
                 variant={video.category === "High Momentum" ? "default" : "secondary"}
-                className="gap-1 whitespace-nowrap"
+                className="gap-1"
               >
                 <TrendingUp className="h-3 w-3" />
                 +{Math.round(video.momentumScore * 100)}%
               </Badge>
-              <p className="text-xs text-muted-foreground font-medium">
+              <p className="text-xs text-muted-foreground mt-1">
                 {formatNumber(video.viewCount)} views
               </p>
             </div>
@@ -112,46 +213,19 @@ export function TopVideosByMomentum({ data }: TopVideosByMomentumProps) {
         ))}
 
         {/* Stats footer */}
-        <div className="pt-4 mt-2 border-t flex items-center justify-between text-xs text-muted-foreground font-medium">
+        <div className="pt-3 border-t flex items-center justify-between text-sm text-muted-foreground">
           <div className="flex items-center gap-4">
-            <span className="flex items-center gap-1.5">
+            <span className="flex items-center gap-1">
               <Zap className="h-3 w-3 text-orange-500" />
-              {data.stats.highMomentum} momentum
+              {data.stats.highMomentum} high momentum
             </span>
-            <span className="flex items-center gap-1.5">
+            <span className="flex items-center gap-1">
               <TrendingUp className="h-3 w-3 text-green-500" />
               {data.stats.rising} rising
             </span>
           </div>
-          <span>{data.total} всего</span>
+          <span>{data.total} total videos</span>
         </div>
-      </CardContent>
-    </Card>
-  )
-}
-
-// Skeleton for Suspense fallback
-export function TopVideosByMomentumSkeleton() {
-  return (
-    <Card>
-      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
-        <div className="space-y-1">
-          <div className="h-5 w-40 bg-muted animate-pulse rounded" />
-          <div className="h-4 w-56 bg-muted animate-pulse rounded" />
-        </div>
-        <div className="h-9 w-20 bg-muted animate-pulse rounded" />
-      </CardHeader>
-      <CardContent className="space-y-3">
-        {[...Array(5)].map((_, i) => (
-          <div key={i} className="flex items-center p-3 rounded-lg border gap-3">
-            <div className="h-8 w-8 bg-muted animate-pulse rounded-full" />
-            <div className="flex-1 space-y-2">
-              <div className="h-4 w-3/4 bg-muted animate-pulse rounded" />
-              <div className="h-3 w-1/2 bg-muted animate-pulse rounded" />
-            </div>
-            <div className="h-6 w-16 bg-muted animate-pulse rounded" />
-          </div>
-        ))}
       </CardContent>
     </Card>
   )

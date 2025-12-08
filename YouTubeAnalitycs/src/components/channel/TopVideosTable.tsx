@@ -12,7 +12,6 @@ import {
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ExternalLink } from "lucide-react";
-import { formatPublishedDateCompact } from "@/lib/date-formatting";
 
 interface VideoData {
   id: number;
@@ -42,6 +41,22 @@ function formatViews(views: number): string {
   return views.toString();
 }
 
+/**
+ * Форматирует дату публикации
+ */
+function formatDate(dateString: string): string {
+  try {
+    const date = new Date(dateString);
+    return date.toLocaleDateString("ru-RU", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+    });
+  } catch (error) {
+    return dateString;
+  }
+}
+
 export function TopVideosTable({ videos }: TopVideosTableProps) {
   const [limit, setLimit] = useState(50);
 
@@ -50,16 +65,16 @@ export function TopVideosTable({ videos }: TopVideosTableProps) {
   const visibleVideos = sortedVideos.slice(0, limit);
 
   return (
-    <Card className="border-border/50">
-      <CardHeader className="pb-4">
+    <Card>
+      <CardHeader>
         <CardTitle>Top Videos</CardTitle>
         <CardDescription>
           Список лучших видео канала по просмотрам
         </CardDescription>
       </CardHeader>
-      <CardContent className="p-0">
+      <CardContent>
         {sortedVideos.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-12 text-muted-foreground px-4">
+          <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
             <p className="text-center">
               Нет данных. Нажмите &quot;Sync Top Videos&quot; чтобы загрузить видео канала.
             </p>
@@ -68,52 +83,49 @@ export function TopVideosTable({ videos }: TopVideosTableProps) {
           <div className="overflow-x-auto">
             <Table>
               <TableHeader>
-                <TableRow className="hover:bg-transparent">
-                  <TableHead className="w-[120px] px-5 py-3">Превью</TableHead>
-                  <TableHead className="px-5 py-3">Название</TableHead>
-                  <TableHead className="w-[120px] px-5 py-3">Просмотры</TableHead>
-                  <TableHead className="w-[140px] px-5 py-3">Опубликовано</TableHead>
-                  <TableHead className="w-[80px] px-5 py-3 text-center">Ссылка</TableHead>
+                <TableRow>
+                  <TableHead className="w-[120px]">Превью</TableHead>
+                  <TableHead>Название</TableHead>
+                  <TableHead className="w-[120px]">Просмотры</TableHead>
+                  <TableHead className="w-[140px]">Опубликовано</TableHead>
+                  <TableHead className="w-[80px] text-center">Ссылка</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {visibleVideos.map((video) => (
-                  <TableRow
-                    key={video.id}
-                    className="hover:bg-muted/50 transition-colors duration-200 border-border/50"
-                  >
-                    <TableCell className="px-5 py-3 h-16">
+                  <TableRow key={video.id}>
+                    <TableCell>
                       {video.thumbnailUrl ? (
                         <img
                           src={video.thumbnailUrl}
                           alt={video.title}
-                          className="w-full h-full rounded-sm border border-border/50 object-cover hover:opacity-90 transition-opacity"
+                          className="w-full h-auto rounded border border-border object-cover"
                         />
                       ) : (
-                        <div className="w-full h-full bg-muted rounded-sm flex items-center justify-center text-xs text-muted-foreground">
+                        <div className="w-full aspect-video bg-muted rounded flex items-center justify-center text-xs text-muted-foreground">
                           Нет превью
                         </div>
                       )}
                     </TableCell>
-                    <TableCell className="px-5 py-3">
+                    <TableCell>
                       <div className="max-w-md">
-                        <div className="font-semibold line-clamp-2 text-foreground">{video.title}</div>
+                        <div className="font-medium line-clamp-2">{video.title}</div>
                       </div>
                     </TableCell>
-                    <TableCell className="px-5 py-3">
-                      <span className="font-bold text-foreground">{formatViews(video.viewCount)}</span>
+                    <TableCell>
+                      <span className="font-semibold">{formatViews(video.viewCount)}</span>
                     </TableCell>
-                    <TableCell className="px-5 py-3">
-                      <span className="text-sm text-muted-foreground font-medium">
-                        {formatPublishedDateCompact(video.publishedAt, "ru")}
+                    <TableCell>
+                      <span className="text-sm text-muted-foreground">
+                        {formatDate(video.publishedAt)}
                       </span>
                     </TableCell>
-                    <TableCell className="px-5 py-3 text-center">
+                    <TableCell className="text-center">
                       <a
                         href={`https://www.youtube.com/watch?v=${video.videoId}`}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1 text-primary hover:text-primary/80 transition-colors duration-200"
+                        className="inline-flex items-center gap-1 text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
                         title="Открыть на YouTube"
                       >
                         <ExternalLink className="w-4 h-4" />
@@ -127,7 +139,7 @@ export function TopVideosTable({ videos }: TopVideosTableProps) {
         )}
 
         {sortedVideos.length > limit && (
-          <div className="flex justify-center mt-6 px-4 pb-4">
+          <div className="flex justify-center mt-4">
             <Button
               onClick={() => setLimit((prev) => prev + 50)}
               variant="outline"

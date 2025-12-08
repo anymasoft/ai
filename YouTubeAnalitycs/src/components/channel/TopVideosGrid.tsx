@@ -42,8 +42,14 @@ export function TopVideosGrid({ videos }: TopVideosGridProps) {
   const visibleVideos = sortedVideos.slice(0, limit);
 
   return (
-    <CardContent className="p-0">
-      <>
+    <Card>
+      <CardHeader>
+        <CardTitle>Top Videos</CardTitle>
+        <CardDescription>
+          Список лучших видео канала по просмотрам
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
         {sortedVideos.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
             <p className="text-center">
@@ -52,24 +58,24 @@ export function TopVideosGrid({ videos }: TopVideosGridProps) {
           </div>
         ) : (
           <>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
               {visibleVideos.map((video) => (
                 <Card
                   key={video.id}
-                  className="group h-full overflow-hidden transition-all duration-300 ease-out hover:shadow-lg hover:scale-[1.02] border border-border/50"
+                  className="group overflow-hidden transition-all duration-200 hover:shadow-lg hover:scale-[1.03]"
                 >
-                  <CardContent className="p-0 flex flex-col h-full">
+                  <CardContent className="p-0">
                     <a
                       href={`https://www.youtube.com/watch?v=${video.videoId}`}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="block overflow-hidden"
+                      className="block"
                     >
                       {video.thumbnailUrl ? (
                         <img
                           src={video.thumbnailUrl}
                           alt={video.title}
-                          className="w-full aspect-video object-cover transition-transform duration-300 group-hover:scale-[1.04]"
+                          className="w-full aspect-video object-cover"
                         />
                       ) : (
                         <div className="w-full aspect-video bg-muted flex items-center justify-center text-sm text-muted-foreground">
@@ -78,16 +84,16 @@ export function TopVideosGrid({ videos }: TopVideosGridProps) {
                       )}
                     </a>
 
-                    <div className="flex-1 flex flex-col px-5 py-4 space-y-3">
-                      <h3 className="font-semibold text-sm leading-tight line-clamp-2 min-h-[2.5rem] text-foreground">
+                    <div className="p-4 space-y-3">
+                      <h3 className="font-medium text-sm leading-tight line-clamp-2 min-h-[2.5rem]">
                         {video.title}
                       </h3>
 
-                      <div className="flex-1 flex items-end justify-between text-xs gap-2">
+                      <div className="flex items-center justify-between text-sm">
                         <span className="font-semibold text-foreground">
                           {formatViews(video.viewCount)} просмотров
                         </span>
-                        <span className="text-muted-foreground whitespace-nowrap">
+                        <span className="text-muted-foreground text-xs">
                           {formatPublishedDate(video.publishedAt, "ru")}
                         </span>
                       </div>
@@ -96,7 +102,7 @@ export function TopVideosGrid({ videos }: TopVideosGridProps) {
                         asChild
                         variant="outline"
                         size="sm"
-                        className="w-full mt-1 transition-all duration-200"
+                        className="w-full"
                       >
                         <a
                           href={`https://www.youtube.com/watch?v=${video.videoId}`}
@@ -105,7 +111,7 @@ export function TopVideosGrid({ videos }: TopVideosGridProps) {
                           className="inline-flex items-center gap-2"
                         >
                           <ExternalLink className="w-4 h-4" />
-                          Открыть видео
+                          Открыть видео на YouTube
                         </a>
                       </Button>
                     </div>
@@ -126,7 +132,7 @@ export function TopVideosGrid({ videos }: TopVideosGridProps) {
             )}
           </>
         )}
-      </>
-    </CardContent>
+      </CardContent>
+    </Card>
   );
 }
