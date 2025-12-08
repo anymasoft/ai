@@ -97,26 +97,7 @@ export async function POST(
 
     console.log(`[CommentInsights] Найдено ${comments.length} комментариев для анализа`);
 
-    // Проверяем, есть ли уже свежий анализ (не старше 3 дней)
-    const threeDaysAgo = Date.now() - 3 * 24 * 60 * 60 * 1000;
-    const existingAnalysisResult = await client.execute({
-      sql: "SELECT * FROM comment_insights WHERE channelId = ? ORDER BY generatedAt DESC LIMIT 1",
-      args: [competitor.channelId],
-    });
-
-    // Если анализ существует и свежий - возвращаем его
-    if (existingAnalysisResult.rows.length > 0) {
-      const existingAnalysis = existingAnalysisResult.rows[0];
-      if ((existingAnalysis.generatedAt as number) > threeDaysAgo) {
-        console.log(`[CommentInsights] Найден свежий анализ`);
-        client.close();
-        return NextResponse.json({
-          ...JSON.parse(existingAnalysis.data as string),
-          generatedAt: existingAnalysis.generatedAt,
-        });
-      }
-    }
-
+    console.log(`[CommentInsights] Forced regen (limits disabled) - всегда генерируем свежий анализ`);
     console.log(`[CommentInsights] Генерируем новый анализ через OpenAI...`);
 
     // Подготовка данных для OpenAI - берём топ 200 комментариев
@@ -194,13 +175,22 @@ ${JSON.stringify(topComments, null, 2)}
       ...aiAnalysis,
     };
 
-    // Сохраняем результат в базу данных
+    const now = Date.now();
+
+    // Сохраняем результат в базу данных (DELETE + INSERT для гарантированного обновления)
+    // Удаляем старый анализ для этого канала
     await client.execute({
-      sql: "INSERT INTO comment_insights (videoId, channelId, data, data_ru, generatedAt) VALUES (?, ?, ?, ?, ?)",
-      args: [videos[0].videoId, competitor.channelId, JSON.stringify(insightsData), null, Date.now()],
+      sql: "DELETE FROM comment_insights WHERE channelId = ?",
+      args: [competitor.channelId],
     });
 
-    console.log(`[CommentInsights] Анализ сохранён в БД`);
+    // Вставляем свежий анализ
+    await client.execute({
+      sql: "INSERT INTO comment_insights (videoId, channelId, data, data_ru, generatedAt) VALUES (?, ?, ?, ?, ?)",
+      args: [videos[0].videoId, competitor.channelId, JSON.stringify(insightsData), null, now],
+    });
+
+    console.log(`[CommentInsights] Анализ сохранён в БД (свежая генерация)`);
 
     client.close();
 
@@ -208,7 +198,7 @@ ${JSON.stringify(topComments, null, 2)}
     return NextResponse.json(
       {
         ...insightsData,
-        generatedAt: Date.now(),
+        generatedAt: now,
       },
       { status: 201 }
     );
