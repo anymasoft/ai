@@ -533,7 +533,7 @@ export async function getYoutubeVideoDetails(url: string) {
         0
       ),
       // Используем publishedTime как единственный источник, без fallback'ов
-      publishDate: publishedTime || null,
+      publishedAt: publishedTime || null,
       durationMs: safeNumber(data.durationMs ?? data.duration, undefined),
       keywords: Array.isArray(data.keywords) ? data.keywords : undefined,
       transcriptText: data.transcript_only_text || null,
