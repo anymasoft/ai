@@ -76,6 +76,37 @@ function normalizeToISODate(dateStr: string | null | undefined): string | null {
 }
 
 /**
+ * Санити-чек для разрешённой даты
+ * Отклоняет даты из будущего и логирует их
+ */
+function sanitizeResolvedDate(
+  videoId: string,
+  dateStr: string | null | undefined,
+  stepName: string
+): string | null {
+  if (!dateStr) return null;
+
+  try {
+    const dateObj = new Date(dateStr);
+    const now = new Date();
+    const tomorrow = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+
+    // Отклоняем даты из будущего
+    if (dateObj > tomorrow) {
+      console.warn(
+        `[PublishDate][SANITY CHECK] ${stepName} returned future date for ${videoId}: ${dateStr}, rejecting`
+      );
+      return null;
+    }
+
+    return dateStr;
+  } catch (error) {
+    console.warn(`[PublishDate][SANITY CHECK] Error checking date for ${videoId}`);
+    return null;
+  }
+}
+
+/**
  * Шаг 1: Проверяет ScrapeCreators publishedAt
  */
 function resolveScrapeCreatorsDate(
@@ -84,10 +115,13 @@ function resolveScrapeCreatorsDate(
   if (isValidISODate(scraped.publishedAt)) {
     const normalized = normalizeToISODate(scraped.publishedAt);
     if (normalized) {
-      console.log(
-        `[PublishDate] Step 1 SUCCESS: ScrapeCreators date for ${scraped.videoId}: ${normalized}`
-      );
-      return normalized;
+      const sanitized = sanitizeResolvedDate(scraped.videoId, normalized, "Step 1");
+      if (sanitized) {
+        console.log(
+          `[PublishDate] Step 1 SUCCESS: ScrapeCreators date for ${scraped.videoId}: ${sanitized}`
+        );
+        return sanitized;
+      }
     }
   }
   return null;
@@ -126,10 +160,13 @@ async function fetchYoutubeOEmbedDate(videoId: string): Promise<string | null> {
     if (data.published_at) {
       const normalized = normalizeToISODate(data.published_at);
       if (normalized) {
-        console.log(
-          `[PublishDate] Step 2 SUCCESS: YouTube oEmbed date for ${videoId}: ${normalized}`
-        );
-        return normalized;
+        const sanitized = sanitizeResolvedDate(videoId, normalized, "Step 2");
+        if (sanitized) {
+          console.log(
+            `[PublishDate] Step 2 SUCCESS: YouTube oEmbed date for ${videoId}: ${sanitized}`
+          );
+          return sanitized;
+        }
       }
     }
 
@@ -145,61 +182,80 @@ async function fetchYoutubeOEmbedDate(videoId: string): Promise<string | null> {
 
 /**
  * Шаг 3: Интерполяция по соседним видео
+ * КОНСЕРВАТИВНЫЙ подход: интерполируем ТОЛЬКО если есть обе даты (prev и next)
+ * Step 3b и 3c отключены как ненадёжные (приводят к одинаковым датам)
  */
 function resolveByNeighbors(
-  neighbors: VideoNeighbors | undefined
+  neighbors: VideoNeighbors | undefined,
+  videoId: string
 ): string | null {
-  if (!neighbors) return null;
+  if (!neighbors) {
+    console.log(`[PublishDate][DEBUG] No neighbors for ${videoId}`);
+    return null;
+  }
 
   const prevDate = neighbors.prev?.publishedAt;
   const nextDate = neighbors.next?.publishedAt;
 
-  // Если есть обе даты - берём середину
+  console.log(
+    `[PublishDate][DEBUG Step 3] Neighbors for ${videoId}:`,
+    {
+      prevVideoId: neighbors.prev?.videoId,
+      prevDate,
+      nextVideoId: neighbors.next?.videoId,
+      nextDate,
+    }
+  );
+
+  // ТОЛЬКО Step 3a: Если есть обе даты - берём середину
+  // Это ЕДИНСТВЕННЫЙ надёжный способ интерполяции
   if (isValidISODate(prevDate) && isValidISODate(nextDate)) {
     try {
       const prev = new Date(prevDate!).getTime();
       const next = new Date(nextDate!).getTime();
+
+      // Санити-чек: prev должен быть раньше next
+      if (prev >= next) {
+        console.warn(
+          `[PublishDate] Step 3a SKIPPED: prev date >= next date for ${videoId}`
+        );
+        return null;
+      }
+
       const middle = new Date((prev + next) / 2);
       const result = middle.toISOString().split("T")[0];
-      console.log(
-        `[PublishDate] Step 3a SUCCESS: Interpolated date from neighbors: ${result}`
-      );
-      return result;
-    } catch {
-      // Игнорируем, переходим к следующему варианту
+
+      const sanitized = sanitizeResolvedDate(videoId, result, "Step 3a");
+      if (sanitized) {
+        console.log(
+          `[PublishDate] Step 3a SUCCESS: Interpolated date from neighbors: ${sanitized}`
+        );
+        return sanitized;
+      }
+      return null;
+    } catch (error) {
+      console.warn(`[PublishDate] Step 3a ERROR:`, error);
+      return null;
     }
   }
 
-  // Если есть только prev - примерно через день после
-  if (isValidISODate(prevDate)) {
-    try {
-      const prev = new Date(prevDate!);
-      const estimated = new Date(prev.getTime() + 24 * 60 * 60 * 1000);
-      const result = estimated.toISOString().split("T")[0];
-      console.log(
-        `[PublishDate] Step 3b SUCCESS: Estimated date after previous video: ${result}`
-      );
-      return result;
-    } catch {
-      // Игнорируем
-    }
+  // Step 3b и 3c отключены как ненадёжные
+  // (приводили к одинаковым датам для всех видео без данных)
+  if (isValidISODate(prevDate) && !isValidISODate(nextDate)) {
+    console.log(
+      `[PublishDate] Step 3b DISABLED: only prev date available, skipping (unreliable)`
+    );
+    return null;
   }
 
-  // Если есть только next - примерно за день до
-  if (isValidISODate(nextDate)) {
-    try {
-      const next = new Date(nextDate!);
-      const estimated = new Date(next.getTime() - 24 * 60 * 60 * 1000);
-      const result = estimated.toISOString().split("T")[0];
-      console.log(
-        `[PublishDate] Step 3c SUCCESS: Estimated date before next video: ${result}`
-      );
-      return result;
-    } catch {
-      // Игнорируем
-    }
+  if (!isValidISODate(prevDate) && isValidISODate(nextDate)) {
+    console.log(
+      `[PublishDate] Step 3c DISABLED: only next date available, skipping (unreliable)`
+    );
+    return null;
   }
 
+  console.log(`[PublishDate] Step 3 SKIPPED: no valid neighbors`);
   return null;
 }
 
@@ -207,7 +263,8 @@ function resolveByNeighbors(
  * Шаг 4: Дата первого комментария (Вариант E)
  */
 function resolveByFirstComment(
-  comments: CommentDataForResolver[] | null | undefined
+  comments: CommentDataForResolver[] | null | undefined,
+  videoId: string
 ): string | null {
   if (!comments || !Array.isArray(comments) || comments.length === 0) {
     return null;
@@ -226,10 +283,13 @@ function resolveByFirstComment(
     const firstDate = datedComments[0].original;
     const normalized = normalizeToISODate(firstDate);
     if (normalized) {
-      console.log(
-        `[PublishDate] Step 4 SUCCESS: First comment date: ${normalized}`
-      );
-      return normalized;
+      const sanitized = sanitizeResolvedDate(videoId, normalized, "Step 4");
+      if (sanitized) {
+        console.log(
+          `[PublishDate] Step 4 SUCCESS: First comment date: ${sanitized}`
+        );
+        return sanitized;
+      }
     }
   }
 
@@ -265,10 +325,14 @@ function resolveByViewsPerDay(video: VideoDataForResolver): string | null {
     const estimated = new Date(now.getTime() - days * 24 * 60 * 60 * 1000);
     const result = estimated.toISOString().split("T")[0];
 
-    console.log(
-      `[PublishDate] Step 5 SUCCESS: Estimated by viewsPerDay (${days.toFixed(1)} days): ${result}`
-    );
-    return result;
+    const sanitized = sanitizeResolvedDate(video.videoId, result, "Step 5");
+    if (sanitized) {
+      console.log(
+        `[PublishDate] Step 5 SUCCESS: Estimated by viewsPerDay (${days.toFixed(1)} days): ${sanitized}`
+      );
+      return sanitized;
+    }
+    return null;
   } catch (error) {
     console.warn(
       `[PublishDate] viewsPerDay calculation failed:`,
@@ -298,11 +362,11 @@ export async function resolveVideoPublishDate(
   if (step2) return step2;
 
   // Шаг 3: Интерполяция по соседям
-  const step3 = resolveByNeighbors(neighbors);
+  const step3 = resolveByNeighbors(neighbors, videoId);
   if (step3) return step3;
 
   // Шаг 4: Дата первого комментария
-  const step4 = resolveByFirstComment(comments);
+  const step4 = resolveByFirstComment(comments, videoId);
   if (step4) return step4;
 
   // Шаг 5: viewsPerDay оценка
