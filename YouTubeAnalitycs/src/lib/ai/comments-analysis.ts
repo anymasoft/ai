@@ -435,8 +435,27 @@ export async function generateDeepAnalysis(
 
     const analysis: DeepAnalysisResult = JSON.parse(content);
 
-    // Валидация структуры
-    if (
+    // Мягкая валидация структуры с fallback значениями
+    const validatedAnalysis: DeepAnalysisResult = {
+      themes: Array.isArray(analysis.themes) ? analysis.themes : [],
+      pain_points: Array.isArray(analysis.pain_points) ? analysis.pain_points : [],
+      requests: Array.isArray(analysis.requests) ? analysis.requests : [],
+      praises: Array.isArray(analysis.praises) ? analysis.praises : [],
+      segments: Array.isArray(analysis.segments) ? analysis.segments : [],
+      sentiment_summary: analysis.sentiment_summary &&
+        typeof analysis.sentiment_summary === 'object' &&
+        'positive' in analysis.sentiment_summary &&
+        'negative' in analysis.sentiment_summary &&
+        'neutral' in analysis.sentiment_summary
+        ? analysis.sentiment_summary
+        : { positive: 0, negative: 0, neutral: 0 },
+      quotes: Array.isArray(analysis.quotes) ? analysis.quotes : [],
+      hidden_patterns: Array.isArray(analysis.hidden_patterns) ? analysis.hidden_patterns : [],
+      ideas: Array.isArray(analysis.ideas) ? analysis.ideas : [],
+    };
+
+    // Логируем если были заполнены fallback значения
+    const hasDefaults =
       !Array.isArray(analysis.themes) ||
       !Array.isArray(analysis.pain_points) ||
       !Array.isArray(analysis.requests) ||
@@ -445,12 +464,13 @@ export async function generateDeepAnalysis(
       !analysis.sentiment_summary ||
       !Array.isArray(analysis.quotes) ||
       !Array.isArray(analysis.hidden_patterns) ||
-      !Array.isArray(analysis.ideas)
-    ) {
-      throw new Error("Invalid analysis structure from OpenAI");
+      !Array.isArray(analysis.ideas);
+
+    if (hasDefaults) {
+      console.warn("[DeepAnalysis] Некоторые поля были заполнены fallback значениями. Структура исправлена.");
     }
 
-    return analysis;
+    return validatedAnalysis;
   } catch (error) {
     console.error("[DeepAnalysis] Error:", error);
     if (error instanceof Error) {
@@ -560,6 +580,7 @@ export async function analyzeChannelComments(
 
     // 3. Анализ каждого чанка
     const chunkResults: DeepAnalysisResult[] = [];
+    let failedChunks = 0;
 
     for (let i = 0; i < chunks.length; i++) {
       console.log(`[analyzeChannelComments] Analyzing chunk ${i + 1}/${chunks.length}`);
@@ -577,13 +598,16 @@ export async function analyzeChannelComments(
           await new Promise((resolve) => setTimeout(resolve, 500));
         }
       } catch (error) {
-        console.error(`[analyzeChannelComments] Error analyzing chunk ${i + 1}:`, error);
+        failedChunks++;
+        console.error(`[analyzeChannelComments] Error analyzing chunk ${i + 1}/${chunks.length}:`, error);
         // Продолжаем с остальными чанками
       }
     }
 
+    console.log(`[analyzeChannelComments] Chunk analysis complete: ${chunkResults.length} successful, ${failedChunks} failed out of ${chunks.length}`);
+
     if (chunkResults.length === 0) {
-      throw new Error("All chunk analyses failed");
+      throw new Error(`All ${chunks.length} chunk analyses failed. Cannot proceed.`);
     }
 
     // 4. Объединение результатов

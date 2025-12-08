@@ -170,15 +170,13 @@ export async function POST(
   } catch (error) {
     console.error("[ai route crash]", error);
 
-    // Если есть channelId и recordId, обновляем статус на error
+    // Если есть channelId, обновляем статус на error
     if (client && channelId) {
       try {
         await client.execute({
           sql: `UPDATE channel_ai_comment_insights
                 SET status = 'error'
-                WHERE channelId = ? AND (status = 'pending' OR status = 'processing')
-                ORDER BY createdAt DESC
-                LIMIT 1`,
+                WHERE channelId = ? AND (status = 'pending' OR status = 'processing')`,
           args: [channelId],
         });
         console.log(`[ai route] Updated progress to error for channel ${channelId}`);
@@ -187,10 +185,24 @@ export async function POST(
       }
     }
 
+    // Определяем статус ошибки и сообщение
+    let errorMessage = "Failed to analyze comments";
+    let statusCode = 500;
+
+    if (error instanceof Error) {
+      if (error.message.includes("No valid comments")) {
+        errorMessage = "Not enough valid comments to analyze";
+        statusCode = 400;
+      } else if (error.message.includes("failed") || error.message.includes("Failed")) {
+        errorMessage = "Analysis failed: " + error.message;
+        statusCode = 400;
+      }
+    }
+
     // Всегда возвращаем JSON, даже при ошибке
     return NextResponse.json(
-      { error: "internal crash" },
-      { status: 500 }
+      { error: errorMessage },
+      { status: statusCode }
     );
   } finally {
     if (client) {
