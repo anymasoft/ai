@@ -14,18 +14,30 @@ function formatNumber(num: number): string {
   return num.toString()
 }
 
-function formatTimeAgo(dateString: string): string {
-  const date = new Date(dateString)
-  const now = new Date()
-  const diffMs = now.getTime() - date.getTime()
-  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24))
+function formatTimeAgo(dateString: string | null): string {
+  if (!dateString) {
+    return "Date unknown"
+  }
 
-  if (diffDays === 0) return "Today"
-  if (diffDays === 1) return "Yesterday"
-  if (diffDays < 7) return `${diffDays} days ago`
-  if (diffDays < 30) return `${Math.floor(diffDays / 7)} weeks ago`
-  if (diffDays < 365) return `${Math.floor(diffDays / 30)} months ago`
-  return `${Math.floor(diffDays / 365)} years ago`
+  try {
+    const date = new Date(dateString)
+    if (isNaN(date.getTime())) {
+      return "Date unknown"
+    }
+
+    const now = new Date()
+    const diffMs = now.getTime() - date.getTime()
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24))
+
+    if (diffDays === 0) return "Today"
+    if (diffDays === 1) return "Yesterday"
+    if (diffDays < 7) return `${diffDays} days ago`
+    if (diffDays < 30) return `${Math.floor(diffDays / 7)} weeks ago`
+    if (diffDays < 365) return `${Math.floor(diffDays / 30)} months ago`
+    return `${Math.floor(diffDays / 365)} years ago`
+  } catch (error) {
+    return "Date unknown"
+  }
 }
 
 function getCategoryBadgeVariant(category: string) {

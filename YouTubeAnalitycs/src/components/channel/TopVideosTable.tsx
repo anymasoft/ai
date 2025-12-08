@@ -20,7 +20,7 @@ interface VideoData {
   title: string;
   thumbnailUrl: string | null;
   viewCount: number;
-  publishedAt: string;
+  publishedAt: string | null;
   fetchedAt: number;
 }
 
@@ -44,16 +44,23 @@ function formatViews(views: number): string {
 /**
  * Форматирует дату публикации
  */
-function formatDate(dateString: string): string {
+function formatDate(dateString: string | null): string {
+  if (!dateString) {
+    return "—";
+  }
+
   try {
     const date = new Date(dateString);
+    if (isNaN(date.getTime())) {
+      return "—";
+    }
     return date.toLocaleDateString("ru-RU", {
       day: "2-digit",
       month: "short",
       year: "numeric",
     });
   } catch (error) {
-    return dateString;
+    return "—";
   }
 }
 
