@@ -3,11 +3,6 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { createClient } from "@libsql/client";
 import { getYoutubeChannelVideos } from "@/lib/scrapecreators";
-import {
-  resolveVideoPublishDate,
-  getVideoCommentsFromDB,
-  getVideoNeighborsFromDB,
-} from "@/lib/publish-date-resolver";
 
 /**
  * POST /api/channel/[id]/videos/sync

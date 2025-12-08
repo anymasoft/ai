@@ -10,7 +10,7 @@ interface VideoWithEngagement {
   viewCount: number;
   likeCount: number;
   commentCount: number;
-  publishedAt: string;
+  publishedAt: string | null; // Может быть null если API не вернул дату
   durationSeconds: number | null;
   isShort: boolean;
   engagementScore: number;
@@ -147,7 +147,7 @@ export async function POST(
       );
     }
 
-    let videos = videosResult.rows.map(row => ({
+    const videos = videosResult.rows.map(row => ({
       id: row.id as number,
       videoId: row.videoId as string,
       title: row.title as string,
@@ -161,25 +161,28 @@ export async function POST(
     console.log(`[Audience] Найдено ${videos.length} видео для анализа`);
 
     // Фильтруем видео с валидной датой публикации
-    videos = videos.filter(v => {
-      const publishedAt = v.publishedAt as string;
-      if (!publishedAt || publishedAt.startsWith("0000")) {
-        console.warn(`[Audience] Пропуск видео ${v.videoId} (невалидная дата: ${publishedAt})`);
+    // (API может вернуть null если publishedTime не был доступен)
+    const videosWithValidDates = videos.filter(v => {
+      if (!v.publishedAt) {
+        console.warn(`[Audience] Пропуск видео ${v.videoId} - нет даты публикации`);
         return false;
       }
       try {
-        const date = new Date(publishedAt);
+        const date = new Date(v.publishedAt);
         if (isNaN(date.getTime())) {
-          console.warn(`[Audience] Пропуск видео ${v.videoId} (непарсируемая дата: ${publishedAt})`);
+          console.warn(`[Audience] Пропуск видео ${v.videoId} - невалидная дата: ${v.publishedAt}`);
           return false;
         }
         return true;
       } catch {
+        console.warn(`[Audience] Пропуск видео ${v.videoId} - ошибка парсинга даты`);
         return false;
       }
     });
 
-    if (videos.length === 0) {
+    console.log(`[Audience] Видео с валидными датами: ${videosWithValidDates.length}/${videos.length}`);
+
+    if (videosWithValidDates.length === 0) {
       client.close();
       return NextResponse.json(
         { error: "No videos with valid publication dates" },
@@ -187,13 +190,11 @@ export async function POST(
       );
     }
 
-    console.log(`[Audience] Видео с валидными датами: ${videos.length}`);
-
     // Обогащаем видео данными из videoDetails если доступны
     const sevenDaysAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
     let enrichedCount = 0;
 
-    for (const video of videos) {
+    for (const video of videosWithValidDates) {
       // Проверяем, есть ли детальные данные для этого видео
       const detailsResult = await client.execute({
         sql: "SELECT * FROM video_details WHERE videoId = ?",
@@ -214,14 +215,14 @@ export async function POST(
     console.log(`[Audience] Обогащено ${enrichedCount} видео из videoDetails`);
 
     // Проверяем наличие данных о лайках и комментариях
-    const hasEngagementData = videos.some(v => v.likeCount > 0 || v.commentCount > 0);
+    const hasEngagementData = videosWithValidDates.some(v => v.likeCount > 0 || v.commentCount > 0);
     const usingFallback = !hasEngagementData;
 
     console.log(`[Audience] Режим анализа: ${usingFallback ? 'FALLBACK (proxy metrics)' : 'STANDARD (likes+comments)'}`);
 
     // Вычисляем engagement метрики для каждого видео
-    const videosWithMetrics: VideoWithEngagement[] = videos.map(v => {
-      const days = daysSincePublish(v.publishedAt);
+    const videosWithMetrics: VideoWithEngagement[] = videosWithValidDates.map(v => {
+      const days = daysSincePublish(v.publishedAt as string);
       const viewsPerDay = v.viewCount / days;
       const likeRate = v.viewCount > 0 ? v.likeCount / v.viewCount : 0;
       const commentRate = v.viewCount > 0 ? v.commentCount / v.viewCount : 0;
