@@ -56,7 +56,7 @@ export default function FeedbackPage() {
 
   return (
     <div className="space-y-6">
-      <div>
+      <div className="text-center">
         <h1 className="text-3xl font-bold tracking-tight">Feedback</h1>
         <p className="text-muted-foreground mt-2">
           Отправьте нам свои предложения, вопросы или сообщения об ошибках
