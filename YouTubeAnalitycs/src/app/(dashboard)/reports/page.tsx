@@ -165,16 +165,16 @@ export default function ReportsPage() {
       const blob = await response.blob()
       const url = window.URL.createObjectURL(blob)
 
-      // Создаём ссылку для скачивания
+      // Создаём ссылку для скачивания и запускаем её
       const link = document.createElement("a")
       link.href = url
       link.download = `${reportType}-report-${new Date().toISOString().split("T")[0]}.pdf`
-      document.body.appendChild(link)
       link.click()
-      document.body.removeChild(link)
 
-      // Очищаем URL
-      window.URL.revokeObjectURL(url)
+      // Очищаем URL после небольшой задержки, чтобы браузер успел обработать
+      setTimeout(() => {
+        window.URL.revokeObjectURL(url)
+      }, 100)
 
       setSuccess(`${reportType} report downloaded successfully!`)
       setTimeout(() => setSuccess(null), 3000)
