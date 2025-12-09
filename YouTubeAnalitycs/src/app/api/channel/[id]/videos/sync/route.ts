@@ -8,11 +8,13 @@ import { getUserPlan } from "@/lib/user-plan";
 
 /**
  * POST /api/channel/[id]/videos/sync
- * Синхронизирует топ видео канала с ScrapeCreators API
- * и сохраняет их в channel_videos для анализа контента
  *
- * ЕДИНСТВЕННЫЙ ИСТОЧНИК ДАТЫ: publishDate из /v1/youtube/video
- * Формат: полная ISO 8601 строка (например "2025-05-31T08:14:35-07:00")
+ * Простая синхронизация видео:
+ * 1. Получаем список видео из /v1/youtube/channel-videos
+ * 2. Для каждого видео получаем publishDate из /v1/youtube/video
+ * 3. Сохраняем в БД как есть
+ *
+ * Единственное поле даты: publishDate (ISO 8601 строка)
  */
 export async function POST(
   req: NextRequest,
@@ -26,7 +28,6 @@ export async function POST(
   try {
     const session = await getServerSession(authOptions);
 
-    // Проверка аутентификации
     if (!session?.user?.id) {
       client.close();
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -37,34 +38,26 @@ export async function POST(
 
     if (!Number.isFinite(competitorId) || competitorId <= 0) {
       client.close();
-      return NextResponse.json(
-        { error: "Invalid competitor ID" },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "Invalid competitor ID" }, { status: 400 });
     }
 
-    console.log(`[VideoSync] Запрос синхронизации видео для competitor ID: ${competitorId}`);
+    console.log(`[VideoSync] Начало синхронизации, competitor ID: ${competitorId}`);
 
-    // Получаем данные канала из БД
+    // Получаем канал из БД
     const competitorResult = await client.execute({
       sql: "SELECT * FROM competitors WHERE id = ? AND userId = ?",
       args: [competitorId, session.user.id],
     });
 
-    // Проверяем что канал существует и принадлежит пользователю
     if (competitorResult.rows.length === 0) {
       client.close();
-      return NextResponse.json(
-        { error: "Competitor not found or access denied" },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: "Competitor not found" }, { status: 404 });
     }
 
     const competitor = competitorResult.rows[0];
+    console.log(`[VideoSync] Канал: ${competitor.title}`);
 
-    console.log(`[VideoSync] Канал найден: ${competitor.title} (${competitor.handle})`);
-
-    // Получаем видео из ScrapeCreators с fallback на handle
+    // Получаем список видео из API
     let videos;
     try {
       videos = await getYoutubeChannelVideos(
@@ -72,91 +65,56 @@ export async function POST(
         competitor.handle as string
       );
     } catch (error) {
-      console.error("[VideoSync] Ошибка получения видео из ScrapeCreators:", error);
+      console.error("[VideoSync] Ошибка получения списка видео:", error);
       client.close();
       return NextResponse.json(
-        { error: error instanceof Error ? error.message : "Failed to fetch videos from ScrapeCreators" },
+        { error: error instanceof Error ? error.message : "Failed to fetch videos" },
         { status: 500 }
       );
     }
 
     console.log(`[VideoSync] Получено ${videos.length} видео из API`);
 
-    // === ЛИМИТЫ ПО ТАРИФУ ===
+    // Лимиты по тарифу
     const userPlan = getUserPlan(session);
     const maxVideos = getVideoLimitForPlan(userPlan);
-
-    console.log(`[VideoSync] План пользователя: ${userPlan}, лимит видео: ${maxVideos}`);
-
-    // Обрезаем массив до лимита тарифа
     const limitedVideos = videos.slice(0, maxVideos);
 
-    console.log(`[VideoSync] После лимита: ${limitedVideos.length} видео (было ${videos.length})`);
+    console.log(`[VideoSync] Обрабатываем ${limitedVideos.length} видео (лимит: ${maxVideos})`);
 
-    // Получаем точные даты для каждого видео через /v1/youtube/video
-    // ЕДИНСТВЕННЫЙ ИСТОЧНИК ПРАВДЫ ДЛЯ ДАТЫ: publishDate
-    console.log(`[VideoSync] Запрашиваем publishDate для ${limitedVideos.length} видео...`);
-
-    let datesUpdated = 0;
-    let datesFailed = 0;
-
+    // Получаем publishDate для каждого видео
     for (const video of limitedVideos) {
-      if (video.videoId) {
-        try {
-          const videoUrl = `https://www.youtube.com/watch?v=${video.videoId}`;
-          const details = await getYoutubeVideoDetails(videoUrl);
+      if (!video.videoId) continue;
 
-          console.log(`[VideoSync] Детали для ${video.videoId}:`, {
-            publishDate: details.publishDate,
-          });
+      try {
+        const videoUrl = `https://www.youtube.com/watch?v=${video.videoId}`;
+        const details = await getYoutubeVideoDetails(videoUrl);
 
-          if (details.publishDate) {
-            // Валидация: дата должна парситься и не быть в будущем
-            const parsedDate = new Date(details.publishDate);
-            const isValidDate = !isNaN(parsedDate.getTime());
-            const isNotFuture = parsedDate <= new Date();
+        // Простое присвоение: что вернул API — то и сохраняем
+        video.publishDate = details.publishDate || null;
 
-            if (isValidDate && isNotFuture) {
-              video.publishDate = details.publishDate;
-              datesUpdated++;
-              console.log(`[VideoSync] ✓ publishDate для ${video.videoId}: ${details.publishDate}`);
-            } else {
-              console.warn(`[VideoSync] ✗ Невалидная publishDate для ${video.videoId}:`, {
-                publishDate: details.publishDate,
-                isValidDate,
-                isNotFuture,
-              });
-              datesFailed++;
-            }
-          } else {
-            console.warn(`[VideoSync] ✗ API не вернул publishDate для ${video.videoId}`);
-            datesFailed++;
-          }
-        } catch (err) {
-          console.warn(`[VideoSync] ✗ Ошибка получения publishDate для ${video.videoId}:`, err);
-          datesFailed++;
-        }
+        console.log(`[VideoSync] ${video.videoId}: publishDate = ${video.publishDate}`);
+      } catch (err) {
+        console.warn(`[VideoSync] Ошибка для ${video.videoId}:`, err instanceof Error ? err.message : err);
+        video.publishDate = null;
       }
+
+      // Задержка между запросами
+      await new Promise(resolve => setTimeout(resolve, 200));
     }
 
-    console.log(`[VideoSync] Итого дат: обновлено ${datesUpdated}, ошибок ${datesFailed}`);
-
-    // Сохраняем или обновляем видео в БД
+    // Сохраняем в БД
     let inserted = 0;
     let updated = 0;
 
     for (const video of limitedVideos) {
-      // Проверяем, существует ли уже такое видео
       const existingResult = await client.execute({
-        sql: "SELECT id, publishDate FROM channel_videos WHERE channelId = ? AND videoId = ?",
+        sql: "SELECT id FROM channel_videos WHERE channelId = ? AND videoId = ?",
         args: [competitor.channelId, video.videoId],
       });
 
       if (existingResult.rows.length > 0) {
-        // Обновляем существующее видео
-        const existing = existingResult.rows[0];
-        const oldDate = existing.publishDate;
-
+        // UPDATE
         await client.execute({
           sql: `UPDATE channel_videos SET
             title = ?,
@@ -177,17 +135,12 @@ export async function POST(
             video.publishDate,
             video.duration || null,
             Date.now(),
-            existing.id,
+            existingResult.rows[0].id,
           ],
         });
-
-        if (oldDate !== video.publishDate) {
-          console.log(`[VideoSync] Video ${video.videoId} publishDate: ${oldDate} → ${video.publishDate}`);
-        }
-
         updated++;
       } else {
-        // Вставляем новое видео
+        // INSERT
         await client.execute({
           sql: `INSERT INTO channel_videos (
             channelId, videoId, title, thumbnailUrl, viewCount,
@@ -206,46 +159,35 @@ export async function POST(
             Date.now(),
           ],
         });
-
-        console.log(`[VideoSync] Video ${video.videoId} inserted with publishDate: ${video.publishDate}`);
-
         inserted++;
       }
     }
 
-    console.log(`[VideoSync] Синхронизация завершена: ${inserted} добавлено, ${updated} обновлено`);
-
-    // Подсчитываем общее количество видео для этого канала
-    const totalVideosResult = await client.execute({
+    // Общее количество видео
+    const totalResult = await client.execute({
       sql: "SELECT COUNT(*) as count FROM channel_videos WHERE channelId = ?",
       args: [competitor.channelId],
     });
 
+    const totalVideos = Number(totalResult.rows[0]?.count || 0);
+
+    console.log(`[VideoSync] Готово: добавлено ${inserted}, обновлено ${updated}, всего ${totalVideos}`);
+
     client.close();
 
-    return NextResponse.json(
-      {
-        status: "ok",
-        added: inserted,
-        updated: updated,
-        totalVideos: Number(totalVideosResult.rows[0]?.count || 0),
-        // Информация о лимитах для UI
-        plan: userPlan,
-        videoLimit: maxVideos,
-        videosFromApi: videos.length,
-      },
-      { status: 200 }
-    );
+    return NextResponse.json({
+      status: "ok",
+      added: inserted,
+      updated: updated,
+      totalVideos,
+      plan: userPlan,
+      videoLimit: maxVideos,
+    });
   } catch (error) {
     client.close();
-    console.error("[VideoSync] Ошибка при синхронизации видео:", error);
-
-    if (error instanceof Error) {
-      return NextResponse.json({ error: error.message }, { status: 400 });
-    }
-
+    console.error("[VideoSync] Ошибка:", error);
     return NextResponse.json(
-      { error: "Failed to sync channel videos" },
+      { error: error instanceof Error ? error.message : "Sync failed" },
       { status: 500 }
     );
   }

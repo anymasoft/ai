@@ -198,16 +198,9 @@ async function getClient() {
           data TEXT
         );`);
 
-        // Миграция: переименование publishedAt → publishDate (если старая колонка существует)
-        // SQLite не поддерживает RENAME COLUMN напрямую в старых версиях,
-        // поэтому добавляем новую колонку и копируем данные
+        // publishDate уже определён в CREATE TABLE выше
+        // Добавляем колонку только если её нет (для старых БД)
         await addColumnIfNotExists(_client, 'channel_videos', 'publishDate', 'TEXT');
-        // Копируем данные из старой колонки (если существует) в новую
-        try {
-          await _client.execute(`UPDATE channel_videos SET publishDate = publishedAt WHERE publishDate IS NULL AND publishedAt IS NOT NULL`);
-        } catch {
-          // Игнорируем ошибку если колонка publishedAt не существует
-        }
 
         _client.execute(`CREATE INDEX IF NOT EXISTS idx_channel_videos_lookup
           ON channel_videos(channelId, videoId);`);
