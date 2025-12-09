@@ -9,10 +9,20 @@ import { generateBehavioralInsights } from "./comments-modules/behavioral-insigh
 import { generateMissingElements } from "./comments-modules/missing-elements";
 import { generateGrowthOpportunities } from "./comments-modules/growth-opportunities";
 import { generateChecklist } from "./comments-modules/checklist";
+import { countPositive, countNeutral, countNegative } from "./comments-modules/sentiment-analyzer";
+
+/**
+ * Структура для sentiment анализа
+ */
+export interface SentimentAnalysis {
+  positive: number;
+  neutral: number;
+  negative: number;
+}
 
 /**
  * Общая структура результата анализа
- * Соответствует финальному JSON с 10 обязательными полями
+ * Соответствует финальному JSON с 11 обязательными полями (включая sentiment)
  */
 export interface DeepAnalysisOrchestratorResult {
   emotionalOverview: string;
@@ -25,13 +35,14 @@ export interface DeepAnalysisOrchestratorResult {
   missingElements: string[];
   growthOpportunities: any[];
   checklist: string[];
+  sentiment: SentimentAnalysis;
   totalAnalyzed: number;
   language: string;
 }
 
 /**
  * Основная функция orchestrator
- * Вызывает все 10 модулей параллельно через Promise.all()
+ * Вызывает все 10 модулей + 3 микропромпта sentiment параллельно через Promise.all()
  * Гарантирует полный JSON результат с жёсткой структурой
  */
 export async function analyzeCommentsWithOrchestrator(
@@ -43,7 +54,7 @@ export async function analyzeCommentsWithOrchestrator(
   );
 
   try {
-    // Запускаем все 10 модулей параллельно
+    // Запускаем все 10 модулей + 3 микропромпта sentiment параллельно
     const [
       emotionalOverview,
       keyTopics,
@@ -55,6 +66,9 @@ export async function analyzeCommentsWithOrchestrator(
       missingElements,
       growthOpportunities,
       checklist,
+      positiveCount,
+      neutralCount,
+      negativeCount,
     ] = await Promise.all([
       generateEmotionalOverview(comments, language),
       generateKeyTopics(comments, language),
@@ -66,9 +80,12 @@ export async function analyzeCommentsWithOrchestrator(
       generateMissingElements(comments, language),
       generateGrowthOpportunities(comments, language),
       generateChecklist(comments, language),
+      countPositive(comments, language),
+      countNeutral(comments, language),
+      countNegative(comments, language),
     ]);
 
-    console.log("[CommentsOrchestrator] All modules completed successfully");
+    console.log("[CommentsOrchestrator] All modules and sentiment analysis completed successfully");
 
     // Собираем результаты в финальную структуру
     const result: DeepAnalysisOrchestratorResult = {
@@ -82,11 +99,16 @@ export async function analyzeCommentsWithOrchestrator(
       missingElements: missingElements || [],
       growthOpportunities: growthOpportunities || [],
       checklist: checklist || [],
+      sentiment: {
+        positive: positiveCount || 0,
+        neutral: neutralCount || 0,
+        negative: negativeCount || 0,
+      },
       totalAnalyzed: comments.length,
       language,
     };
 
-    // Валидируем что все 10 полей присутствуют и не undefined
+    // Валидируем что все поля присутствуют и не undefined
     const validated = validateResult(result);
 
     console.log(
@@ -103,7 +125,7 @@ export async function analyzeCommentsWithOrchestrator(
 }
 
 /**
- * Валидирует результат - гарантирует что все 10 полей присутствуют
+ * Валидирует результат - гарантирует что все поля присутствуют
  * и не содержат undefined или null
  */
 function validateResult(
@@ -118,6 +140,13 @@ function validateResult(
   while (validatedChecklist.length < 8) {
     validatedChecklist.push("");
   }
+
+  // Валидируем sentiment
+  const sentiment: SentimentAnalysis = {
+    positive: typeof result.sentiment?.positive === "number" ? result.sentiment.positive : 0,
+    neutral: typeof result.sentiment?.neutral === "number" ? result.sentiment.neutral : 0,
+    negative: typeof result.sentiment?.negative === "number" ? result.sentiment.negative : 0,
+  };
 
   return {
     emotionalOverview: String(result.emotionalOverview || "").slice(0, 500),
@@ -142,6 +171,7 @@ function validateResult(
       ? result.growthOpportunities
       : [],
     checklist: validatedChecklist,
+    sentiment,
     totalAnalyzed: result.totalAnalyzed || 0,
     language: result.language || "en",
   };
@@ -149,7 +179,7 @@ function validateResult(
 
 /**
  * Создаёт безопасный пустой результат с корректной структурой
- * Гарантирует что ВСЕ 10 ПОЛЕЙ присутствуют даже при ошибках
+ * Гарантирует что ВСЕ ПОЛЯ присутствуют даже при ошибках
  */
 function createEmptySafeResult(
   language: "ru" | "en",
@@ -194,6 +224,11 @@ function createEmptySafeResult(
     missingElements: [],
     growthOpportunities: [],
     checklist,
+    sentiment: {
+      positive: 0,
+      neutral: 0,
+      negative: 0,
+    },
     totalAnalyzed: commentCount,
     language,
   };

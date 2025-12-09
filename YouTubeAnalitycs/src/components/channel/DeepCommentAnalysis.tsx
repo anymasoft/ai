@@ -201,11 +201,17 @@ export function DeepCommentAnalysis({
     );
   }
 
-  const sentiment = data.sentimentSummary ?? {
+  const sentiment = data.sentiment ?? data.sentimentSummary ?? {
     positive: 0,
     neutral: 0,
     negative: 0,
   };
+
+  // Вычисляем проценты на основе totalAnalyzed
+  const total = sentiment.positive + sentiment.neutral + sentiment.negative;
+  const positivePercent = total > 0 ? Math.round((sentiment.positive / total) * 100) : 0;
+  const neutralPercent = total > 0 ? Math.round((sentiment.neutral / total) * 100) : 0;
+  const negativePercent = total > 0 ? Math.round((sentiment.negative / total) * 100) : 0;
 
   return (
     <CardContent className="space-y-4 pt-6">
@@ -234,16 +240,16 @@ export function DeepCommentAnalysis({
         <CardContent>
           <div className="grid grid-cols-3 gap-4">
             <div className="text-center">
-              <div className="text-3xl font-bold text-green-600">{sentiment.positive}%</div>
-              <div className="text-xs mt-1">Positive</div>
+              <div className="text-3xl font-bold text-green-600">{positivePercent}%</div>
+              <div className="text-xs mt-1">Positive ({sentiment.positive})</div>
             </div>
             <div className="text-center">
-              <div className="text-3xl font-bold text-gray-600">{sentiment.neutral}%</div>
-              <div className="text-xs mt-1">Neutral</div>
+              <div className="text-3xl font-bold text-gray-600">{neutralPercent}%</div>
+              <div className="text-xs mt-1">Neutral ({sentiment.neutral})</div>
             </div>
             <div className="text-center">
-              <div className="text-3xl font-bold text-red-600">{sentiment.negative}%</div>
-              <div className="text-xs mt-1">Negative</div>
+              <div className="text-3xl font-bold text-red-600">{negativePercent}%</div>
+              <div className="text-xs mt-1">Negative ({sentiment.negative})</div>
             </div>
           </div>
         </CardContent>
