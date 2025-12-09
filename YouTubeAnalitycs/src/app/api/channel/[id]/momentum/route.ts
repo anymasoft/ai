@@ -9,7 +9,7 @@ interface VideoWithMomentum {
   videoId: string;
   title: string;
   viewCount: number;
-  publishedAt: string | null; // Может быть null если API не вернул дату
+  publishDate: string | null; // Может быть null если API не вернул дату
   viewsPerDay: number;
   momentumScore: number;
   category: "High Momentum" | "Rising" | "Normal" | "Underperforming";
@@ -34,10 +34,10 @@ function calculateMedian(numbers: number[]): number {
 /**
  * Вычисляет количество дней с момента публикации
  */
-function daysSincePublish(publishedAt: string): number {
-  const publishDate = new Date(publishedAt);
+function daysSincePublish(publishDate: string): number {
+  const date = new Date(publishDate);
   const now = new Date();
-  const diffMs = now.getTime() - publishDate.getTime();
+  const diffMs = now.getTime() - date.getTime();
   const days = diffMs / (1000 * 60 * 60 * 24);
   return Math.max(days, 1); // Минимум 1 день
 }
@@ -99,7 +99,7 @@ export async function POST(
 
     // Получаем последние 150 видео канала
     const videosResult = await client.execute({
-      sql: "SELECT * FROM channel_videos WHERE channelId = ? ORDER BY publishedAt DESC LIMIT 150",
+      sql: "SELECT * FROM channel_videos WHERE channelId = ? ORDER BY publishDate DESC LIMIT 150",
       args: [competitor.channelId],
     });
 
@@ -116,16 +116,16 @@ export async function POST(
     console.log(`[Momentum] Найдено ${videos.length} видео для анализа`);
 
     // Фильтруем видео с валидной датой публикации
-    // (API может вернуть null если publishedTime не был доступен)
+    // (API может вернуть null если publishDate не был доступен)
     const videosWithValidDates = videos.filter((v: any) => {
-      if (!v.publishedAt) {
+      if (!v.publishDate) {
         console.warn(`[Momentum] Пропуск видео ${v.videoId} - нет даты публикации`);
         return false;
       }
       try {
-        const date = new Date(v.publishedAt);
+        const date = new Date(v.publishDate);
         if (isNaN(date.getTime())) {
-          console.warn(`[Momentum] Пропуск видео ${v.videoId} - невалидная дата: ${v.publishedAt}`);
+          console.warn(`[Momentum] Пропуск видео ${v.videoId} - невалидная дата: ${v.publishDate}`);
           return false;
         }
         return true;
@@ -147,7 +147,7 @@ export async function POST(
 
     // Вычисляем views_per_day для каждого видео
     const videosWithMetrics: VideoWithMomentum[] = videosWithValidDates.map((v: any) => {
-      const days = daysSincePublish(v.publishedAt as string);
+      const days = daysSincePublish(v.publishDate as string);
       const viewsPerDay = (v.viewCount as number) / days;
 
       return {
@@ -155,7 +155,7 @@ export async function POST(
         videoId: v.videoId as string,
         title: v.title as string,
         viewCount: v.viewCount as number,
-        publishedAt: v.publishedAt as string,
+        publishDate: v.publishDate as string,
         viewsPerDay,
         momentumScore: 0, // Будет вычислен позже
         category: "Normal" as const,
@@ -268,7 +268,7 @@ ${JSON.stringify(videosForAnalysis, null, 2)}
         viewCount: v.viewCount,
         viewsPerDay: Math.round(v.viewsPerDay),
         momentumScore: v.momentumScore,
-        publishedAt: v.publishedAt,
+        publishDate: v.publishDate,
       })),
       stats: {
         totalAnalyzed: videos.length,

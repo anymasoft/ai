@@ -12,7 +12,7 @@ interface VideoPerformance {
   viewCount: number;
   likeCount: number;
   commentCount: number;
-  publishedAt: string;
+  publishDate: string;
   viewsPerDay: number;
   momentumScore: number;
   category: "High Momentum" | "Rising" | "Normal" | "Underperforming";
@@ -24,7 +24,7 @@ interface VideoPerformance {
  * Возвращает топ-видео по:
  * - momentum (sortBy=momentum)
  * - viewsPerDay (sortBy=viewsPerDay)
- * - publishedAt / lastSyncedAt (sortBy=recent)
+ * - publishDate / lastSyncedAt (sortBy=recent)
  *
  * Query params:
  * - sortBy: momentum | viewsPerDay | recent (default: momentum)
@@ -83,10 +83,10 @@ export async function GET(req: NextRequest) {
           viewCount,
           likeCount,
           commentCount,
-          publishedAt
+          publishDate
         FROM channel_videos
         WHERE channelId IN (${placeholders})
-        ORDER BY publishedAt DESC
+        ORDER BY publishDate DESC
       `,
       args: [...channelIds],
     });
@@ -106,10 +106,10 @@ export async function GET(req: NextRequest) {
     // Фильтруем видео с валидной датой и рассчитываем momentum
     const now = Date.now();
     const validRows = videosResult.rows.filter(row => {
-      const publishedAt = row.publishedAt as string;
-      if (!publishedAt || publishedAt.startsWith("0000")) return false;
+      const publishDate = row.publishDate as string;
+      if (!publishDate || publishDate.startsWith("0000")) return false;
       try {
-        const date = new Date(publishedAt);
+        const date = new Date(publishDate);
         return !isNaN(date.getTime());
       } catch {
         return false;
@@ -117,8 +117,8 @@ export async function GET(req: NextRequest) {
     });
 
     const videosWithMetrics: VideoPerformance[] = validRows.map(row => {
-      const publishedAtMs = new Date(row.publishedAt as string).getTime();
-      const daysSincePublish = Math.max(1, (now - publishedAtMs) / (1000 * 60 * 60 * 24));
+      const publishDateMs = new Date(row.publishDate as string).getTime();
+      const daysSincePublish = Math.max(1, (now - publishDateMs) / (1000 * 60 * 60 * 24));
       const viewsPerDay = (row.viewCount as number) / daysSincePublish;
       const channelId = row.channelId as string;
 
@@ -131,7 +131,7 @@ export async function GET(req: NextRequest) {
         viewCount: row.viewCount as number,
         likeCount: row.likeCount as number,
         commentCount: row.commentCount as number,
-        publishedAt: row.publishedAt as string,
+        publishDate: row.publishDate as string,
         viewsPerDay,
         momentumScore: 0,
         category: "Normal" as const,
@@ -176,7 +176,7 @@ export async function GET(req: NextRequest) {
         break;
       case "recent":
         sortedVideos = [...videosWithMetrics].sort(
-          (a, b) => (b.publishedAt as string).localeCompare(a.publishedAt as string)
+          (a, b) => b.publishDate.localeCompare(a.publishDate)
         );
         break;
       case "momentum":

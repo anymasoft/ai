@@ -2,7 +2,7 @@ import { db } from "./db";
 
 /**
  * MomentumVideo interface
- * ЕДИНСТВЕННОЕ ПОЛЕ ДЛЯ ДАТЫ: publishDate (ISO 8601 string → timestamp)
+ * ЕДИНСТВЕННОЕ ПОЛЕ ДЛЯ ДАТЫ: publishDate (ISO 8601 string)
  */
 export interface MomentumVideo {
   videoId: string;
@@ -11,7 +11,7 @@ export interface MomentumVideo {
   channelHandle?: string;
   title: string;
   url: string;
-  publishedAt: number; // timestamp из publishDate для совместимости с UI
+  publishDate: string; // ISO 8601 string из БД
   viewCount: number;
   likeCount?: number;
   commentCount?: number;
@@ -233,7 +233,6 @@ export async function getTopMomentumVideos(
       .slice(0, limit);
 
     // 7. Формируем финальный результат
-    // Конвертируем publishDate в timestamp для UI совместимости
     const items: MomentumVideo[] = sortedVideos.map(video => {
       const channelInfo = channelMap.get(video.channelId);
 
@@ -254,8 +253,7 @@ export async function getTopMomentumVideos(
         channelHandle: channelInfo?.handle,
         title: video.title,
         url: `https://www.youtube.com/watch?v=${video.videoId}`,
-        // Конвертируем ISO publishDate в timestamp для UI
-        publishedAt: new Date(video.publishDate).getTime(),
+        publishDate: video.publishDate, // ISO 8601 string напрямую
         viewCount: video.viewCount,
         likeCount: video.likeCount,
         commentCount: video.commentCount,

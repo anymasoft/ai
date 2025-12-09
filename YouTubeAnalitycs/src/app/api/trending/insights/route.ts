@@ -16,7 +16,7 @@ interface TrendingInsightsRequest {
     channelTitle: string;
     momentumScore: number;
     viewsPerDay: number;
-    publishedAt: number;
+    publishDate: string;
   }>;
 }
 
@@ -82,7 +82,7 @@ ${index + 1}. "${video.title}"
    Канал: ${video.channelTitle}
    Momentum Score: ${(video.momentumScore * 100).toFixed(0)}%
    Просмотров в день: ${Math.round(video.viewsPerDay).toLocaleString()}
-   Опубликовано: ${new Date(video.publishedAt).toLocaleDateString("ru-RU", { timeZone: "UTC" })}
+   Опубликовано: ${new Date(video.publishDate).toLocaleDateString("ru-RU", { timeZone: "UTC" })}
 `).join("\n")}
 
 Проанализируй эти видео и определи:

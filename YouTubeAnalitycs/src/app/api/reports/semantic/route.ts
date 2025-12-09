@@ -58,7 +58,7 @@ export async function GET(req: NextRequest) {
 
     const placeholders = sourceVideos.map(() => "?").join(",")
     const videosResult = await db.execute({
-      sql: `SELECT videoId, title, viewCount, likeCount, publishedAt FROM channel_videos WHERE videoId IN (${placeholders})`,
+      sql: `SELECT videoId, title, viewCount, likeCount, publishDate FROM channel_videos WHERE videoId IN (${placeholders})`,
       args: sourceVideos,
     })
 

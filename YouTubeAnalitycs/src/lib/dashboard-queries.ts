@@ -28,7 +28,7 @@ export interface VideoPerformance {
   viewCount: number;
   likeCount: number;
   commentCount: number;
-  publishedAt: string;
+  publishDate: string;
   viewsPerDay: number;
   momentumScore: number;
   category: "High Momentum" | "Rising" | "Normal" | "Underperforming";
@@ -275,7 +275,7 @@ export const getVideoPerformance = cache(async (
       viewCount: Number(row.viewCount) || 0,
       likeCount: Number(row.likeCount) || 0,
       commentCount: Number(row.commentCount) || 0,
-      publishedAt: row.publishDate as string, // UI совместимость: используем publishDate из БД
+      publishDate: row.publishDate as string,
       viewsPerDay,
       momentumScore: 0,
       category: "Normal" as const,
@@ -302,7 +302,7 @@ export const getVideoPerformance = cache(async (
       break;
     case "recent":
       sortedVideos = [...videosWithMetrics].sort(
-        (a, b) => (b.publishedAt as string).localeCompare(a.publishedAt as string)
+        (a, b) => b.publishDate.localeCompare(a.publishDate)
       );
       break;
     case "momentum":

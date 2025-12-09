@@ -246,7 +246,7 @@ export async function POST(
     const videosData = videosResult.rows.map(v => ({
       title: v.title,
       viewCount: v.viewCount,
-      publishedAt: v.publishedAt,
+      publishDate: v.publishDate,
     }));
 
     const openai = new OpenAI({

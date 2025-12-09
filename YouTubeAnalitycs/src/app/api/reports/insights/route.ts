@@ -37,7 +37,7 @@ export async function GET(req: NextRequest) {
     // Получаем видео за период
     const periodStart = Date.now() - validPeriod * 24 * 60 * 60 * 1000
     const videosResult = await db.execute({
-      sql: `SELECT v.videoId, v.channelId, v.title, v.viewCount, v.likeCount, v.publishedAt, c.title as channelTitle
+      sql: `SELECT v.videoId, v.channelId, v.title, v.viewCount, v.likeCount, v.publishDate, c.title as channelTitle
             FROM channel_videos v
             JOIN competitors c ON v.channelId = c.channelId
             WHERE v.channelId IN (${placeholders})
@@ -49,10 +49,10 @@ export async function GET(req: NextRequest) {
     // Фильтруем видео с валидной датой и рассчитываем momentum
     const videosWithMomentum = videosResult.rows
       .filter((row) => {
-        const publishedAt = row.publishedAt as string;
-        if (!publishedAt || publishedAt.startsWith("0000")) return false;
+        const publishDate = row.publishDate as string;
+        if (!publishDate || publishDate.startsWith("0000")) return false;
         try {
-          const date = new Date(publishedAt);
+          const date = new Date(publishDate);
           return !isNaN(date.getTime());
         } catch {
           return false;
@@ -60,8 +60,8 @@ export async function GET(req: NextRequest) {
       })
       .map((row) => {
         const viewCount = Number(row.viewCount)
-        const publishedAt = new Date(row.publishedAt as string)
-        const daysOld = Math.max(1, (Date.now() - publishedAt.getTime()) / (1000 * 60 * 60 * 24))
+        const publishDate = new Date(row.publishDate as string)
+        const daysOld = Math.max(1, (Date.now() - publishDate.getTime()) / (1000 * 60 * 60 * 24))
         const viewsPerDay = viewCount / daysOld
 
         return {
@@ -71,7 +71,7 @@ export async function GET(req: NextRequest) {
           viewCount,
           likeCount: Number(row.likeCount),
           viewsPerDay: Math.round(viewsPerDay),
-          publishedAt: publishedAt.toLocaleDateString("en-US"),
+          publishDate: publishDate.toLocaleDateString("en-US"),
         }
       })
 
