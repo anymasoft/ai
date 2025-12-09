@@ -39,14 +39,11 @@ export function NavMain({
 }) {
   const pathname = usePathname()
 
-  // Проверка активности маршрута с поддержкой вложенных путей
+  // Проверка активности маршрута - только строгое равенство
   const isRouteActive = (url: string): boolean => {
     if (url === "#") return false
-    if (url === "/dashboard") {
-      return pathname === "/dashboard"
-    }
-    // Поддержка /scripts/123, /competitors/compare и т.п.
-    return pathname === url || pathname.startsWith(url + "/")
+    // Активным считается только точное совпадение пути
+    return pathname === url
   }
 
   // Check if any subitem is active to determine if parent should be open
