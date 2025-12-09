@@ -140,7 +140,7 @@ export async function analyzeChannel(
     const videos = videosResult.rows.map(row => ({
       videoId: row.videoId as string,
       title: row.title as string,
-      publishedAt: row.publishedAt as string,
+      publishDate: row.publishDate as string,
       viewCount: row.viewCount as number,
       likeCount: row.likeCount as number,
       commentCount: row.commentCount as number,
@@ -223,7 +223,7 @@ export async function analyzeChannel(
       топ_видео: videos.slice(0, 15).map((v, idx) => ({
         номер: idx + 1,
         название: v.title,
-        опубликовано: new Date(v.publishedAt).toLocaleDateString('ru-RU'),
+        опубликовано: new Date(v.publishDate).toLocaleDateString('ru-RU'),
         просмотры: formatNumber(v.viewCount),
         лайки: formatNumber(v.likeCount),
         комментарии: formatNumber(v.commentCount),

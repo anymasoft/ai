@@ -13,7 +13,7 @@ interface MomentumVideo {
   viewCount: number;
   viewsPerDay: number;
   momentumScore: number;
-  publishedAt: string;
+  publishDate: string;
 }
 
 interface MomentumData {

@@ -23,7 +23,7 @@ type VideoForScript = {
   commentCount?: number;
   viewsPerDay: number;
   momentumScore: number;
-  publishedAt: string;
+  publishDate: string;
 };
 
 /**
@@ -62,10 +62,10 @@ type NarrativeSkeleton = {
 /**
  * Рассчитывает количество дней с момента публикации видео
  */
-function daysSincePublish(publishedAt: string): number {
-  const publishDate = new Date(publishedAt);
+function daysSincePublish(publishDate: string): number {
+  const date = new Date(publishDate);
   const now = new Date();
-  const diffMs = now.getTime() - publishDate.getTime();
+  const diffMs = now.getTime() - date.getTime();
   return Math.max(1, diffMs / (1000 * 60 * 60 * 24));
 }
 
@@ -118,7 +118,7 @@ async function collectVideoData(
   const videosResult = await db.execute({
     sql: `
       SELECT
-        videoId, channelId, title, viewCount, likeCount, commentCount, publishedAt
+        videoId, channelId, title, viewCount, likeCount, commentCount, publishDate
       FROM channel_videos
       WHERE videoId IN (${placeholders})
     `,
@@ -132,8 +132,8 @@ async function collectVideoData(
   // Рассчитываем viewsPerDay для всех видео
   const videosWithMetrics = videosResult.rows.map(row => {
     const viewCount = Number(row.viewCount) || 0;
-    const publishedAt = row.publishedAt as string;
-    const days = daysSincePublish(publishedAt);
+    const publishDate = row.publishDate as string;
+    const days = daysSincePublish(publishDate);
     const viewsPerDay = viewCount / days;
 
     return {
@@ -143,7 +143,7 @@ async function collectVideoData(
       viewCount,
       likeCount: row.likeCount ? Number(row.likeCount) : undefined,
       commentCount: row.commentCount ? Number(row.commentCount) : undefined,
-      publishedAt,
+      publishDate,
       viewsPerDay,
     };
   });
@@ -169,7 +169,7 @@ async function collectVideoData(
       commentCount: video.commentCount,
       viewsPerDay: Math.round(video.viewsPerDay),
       momentumScore: Math.round(momentumScore * 100) / 100,
-      publishedAt: video.publishedAt,
+      publishDate: video.publishDate,
     };
   });
 

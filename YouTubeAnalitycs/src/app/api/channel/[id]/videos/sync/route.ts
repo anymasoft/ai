@@ -10,6 +10,9 @@ import { getUserPlan } from "@/lib/user-plan";
  * POST /api/channel/[id]/videos/sync
  * Синхронизирует топ видео канала с ScrapeCreators API
  * и сохраняет их в channel_videos для анализа контента
+ *
+ * ЕДИНСТВЕННЫЙ ИСТОЧНИК ДАТЫ: publishDate из /v1/youtube/video
+ * Формат: полная ISO 8601 строка (например "2025-05-31T08:14:35-07:00")
  */
 export async function POST(
   req: NextRequest,
@@ -80,90 +83,79 @@ export async function POST(
     console.log(`[VideoSync] Получено ${videos.length} видео из API`);
 
     // === ЛИМИТЫ ПО ТАРИФУ ===
-    // Ограничиваем количество видео в зависимости от плана пользователя
-    // Это экономит кредиты ScrapeCreators и токены AI
     const userPlan = getUserPlan(session);
     const maxVideos = getVideoLimitForPlan(userPlan);
 
     console.log(`[VideoSync] План пользователя: ${userPlan}, лимит видео: ${maxVideos}`);
 
     // Обрезаем массив до лимита тарифа
-    // Видео уже отсортированы по дате (latest first) в API
     const limitedVideos = videos.slice(0, maxVideos);
 
     console.log(`[VideoSync] После лимита: ${limitedVideos.length} видео (было ${videos.length})`);
 
     // Получаем точные даты для каждого видео через /v1/youtube/video
-    // Только для ограниченного набора видео!
-    console.log(`[VideoSync] Запрашиваем точные даты публикации для ${limitedVideos.length} видео...`);
+    // ЕДИНСТВЕННЫЙ ИСТОЧНИК ПРАВДЫ ДЛЯ ДАТЫ: publishDate
+    console.log(`[VideoSync] Запрашиваем publishDate для ${limitedVideos.length} видео...`);
 
     let datesUpdated = 0;
     let datesFailed = 0;
 
     for (const video of limitedVideos) {
       if (video.videoId) {
-        const originalDate = video.publishedAt;
-
         try {
           const videoUrl = `https://www.youtube.com/watch?v=${video.videoId}`;
           const details = await getYoutubeVideoDetails(videoUrl);
 
           console.log(`[VideoSync] Детали для ${video.videoId}:`, {
-            originalDate,
-            apiPublishedAt: details.publishedAt,
-            hasPublishedAt: !!details.publishedAt,
+            publishDate: details.publishDate,
           });
 
-          if (details.publishedAt) {
-            // Валидация: дата должна быть в формате YYYY-MM-DD и не в будущем
-            const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
-            const parsedDate = new Date(details.publishedAt);
-            const isValidFormat = dateRegex.test(details.publishedAt);
+          if (details.publishDate) {
+            // Валидация: дата должна парситься и не быть в будущем
+            const parsedDate = new Date(details.publishDate);
             const isValidDate = !isNaN(parsedDate.getTime());
             const isNotFuture = parsedDate <= new Date();
 
-            if (isValidFormat && isValidDate && isNotFuture) {
-              video.publishedAt = details.publishedAt;
+            if (isValidDate && isNotFuture) {
+              video.publishDate = details.publishDate;
               datesUpdated++;
-              console.log(`[VideoSync] ✓ Дата обновлена для ${video.videoId}: ${originalDate} → ${details.publishedAt}`);
+              console.log(`[VideoSync] ✓ publishDate для ${video.videoId}: ${details.publishDate}`);
             } else {
-              console.warn(`[VideoSync] ✗ Невалидная дата для ${video.videoId}:`, {
-                publishedAt: details.publishedAt,
-                isValidFormat,
+              console.warn(`[VideoSync] ✗ Невалидная publishDate для ${video.videoId}:`, {
+                publishDate: details.publishDate,
                 isValidDate,
                 isNotFuture,
               });
               datesFailed++;
             }
           } else {
-            console.warn(`[VideoSync] ✗ API не вернул publishedAt для ${video.videoId}`);
+            console.warn(`[VideoSync] ✗ API не вернул publishDate для ${video.videoId}`);
             datesFailed++;
           }
         } catch (err) {
-          console.warn(`[VideoSync] ✗ Ошибка получения даты для ${video.videoId}:`, err);
+          console.warn(`[VideoSync] ✗ Ошибка получения publishDate для ${video.videoId}:`, err);
           datesFailed++;
         }
       }
     }
 
-    console.log(`[VideoSync] Итого дат: обновлено ${datesUpdated}, ошибок ${datesFailed}`)
+    console.log(`[VideoSync] Итого дат: обновлено ${datesUpdated}, ошибок ${datesFailed}`);
 
     // Сохраняем или обновляем видео в БД
-    // Используем limitedVideos — только видео в рамках лимита тарифа
     let inserted = 0;
     let updated = 0;
 
     for (const video of limitedVideos) {
       // Проверяем, существует ли уже такое видео
       const existingResult = await client.execute({
-        sql: "SELECT * FROM channel_videos WHERE channelId = ? AND videoId = ?",
+        sql: "SELECT id, publishDate FROM channel_videos WHERE channelId = ? AND videoId = ?",
         args: [competitor.channelId, video.videoId],
       });
 
       if (existingResult.rows.length > 0) {
         // Обновляем существующее видео
         const existing = existingResult.rows[0];
-        const oldDate = existing.publishedAt;
+        const oldDate = existing.publishDate;
 
         await client.execute({
           sql: `UPDATE channel_videos SET
@@ -172,7 +164,7 @@ export async function POST(
             viewCount = ?,
             likeCount = ?,
             commentCount = ?,
-            publishedAt = ?,
+            publishDate = ?,
             duration = ?,
             fetchedAt = ?
             WHERE id = ?`,
@@ -182,23 +174,15 @@ export async function POST(
             video.viewCount,
             video.likeCount,
             video.commentCount,
-            video.publishedAt,
+            video.publishDate,
             video.duration || null,
             Date.now(),
             existing.id,
           ],
         });
 
-        if (oldDate !== video.publishedAt) {
-          console.log(
-            `[VideoSync] Video ${video.videoId} date BEFORE update: ${oldDate}`
-          );
-          console.log(
-            `[VideoSync] Video ${video.videoId} date AFTER update: ${video.publishedAt}`
-          );
-          console.log(
-            `[VideoSync] Source API date: ${video.publishedAt}`
-          );
+        if (oldDate !== video.publishDate) {
+          console.log(`[VideoSync] Video ${video.videoId} publishDate: ${oldDate} → ${video.publishDate}`);
         }
 
         updated++;
@@ -207,7 +191,7 @@ export async function POST(
         await client.execute({
           sql: `INSERT INTO channel_videos (
             channelId, videoId, title, thumbnailUrl, viewCount,
-            likeCount, commentCount, publishedAt, duration, fetchedAt
+            likeCount, commentCount, publishDate, duration, fetchedAt
           ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
           args: [
             competitor.channelId,
@@ -217,15 +201,13 @@ export async function POST(
             video.viewCount,
             video.likeCount,
             video.commentCount,
-            video.publishedAt,
+            video.publishDate,
             video.duration || null,
             Date.now(),
           ],
         });
 
-        console.log(
-          `[VideoSync] Video ${video.videoId} inserted with date: ${video.publishedAt}`
-        );
+        console.log(`[VideoSync] Video ${video.videoId} inserted with publishDate: ${video.publishDate}`);
 
         inserted++;
       }
@@ -235,7 +217,7 @@ export async function POST(
 
     // Подсчитываем общее количество видео для этого канала
     const totalVideosResult = await client.execute({
-      sql: "SELECT * FROM channel_videos WHERE channelId = ?",
+      sql: "SELECT COUNT(*) as count FROM channel_videos WHERE channelId = ?",
       args: [competitor.channelId],
     });
 
@@ -246,7 +228,7 @@ export async function POST(
         status: "ok",
         added: inserted,
         updated: updated,
-        totalVideos: totalVideosResult.rows.length,
+        totalVideos: Number(totalVideosResult.rows[0]?.count || 0),
         // Информация о лимитах для UI
         plan: userPlan,
         videoLimit: maxVideos,

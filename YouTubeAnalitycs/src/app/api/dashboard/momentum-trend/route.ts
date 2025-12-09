@@ -62,10 +62,10 @@ export async function GET(req: NextRequest) {
           v.videoId,
           v.channelId,
           v.viewCount,
-          v.publishedAt
+          v.publishDate
         FROM channel_videos v
         WHERE v.channelId IN (${placeholders})
-        ORDER BY v.publishedAt DESC
+        ORDER BY v.publishDate DESC
       `,
       args: [...channelIds],
     });
@@ -87,10 +87,10 @@ export async function GET(req: NextRequest) {
     // Фильтруем видео с валидной датой и рассчитываем momentum
     const now = Date.now();
     const validRows = videosResult.rows.filter(row => {
-      const publishedAt = row.publishedAt as string;
-      if (!publishedAt || publishedAt.startsWith("0000")) return false;
+      const publishDate = row.publishDate as string;
+      if (!publishDate || publishDate.startsWith("0000")) return false;
       try {
-        const date = new Date(publishedAt);
+        const date = new Date(publishDate);
         return !isNaN(date.getTime());
       } catch {
         return false;
@@ -98,13 +98,13 @@ export async function GET(req: NextRequest) {
     });
 
     const videosWithMomentum = validRows.map(row => {
-      const publishedAtMs = new Date(row.publishedAt as string).getTime();
-      const daysSincePublish = Math.max(1, (now - publishedAtMs) / (1000 * 60 * 60 * 24));
+      const publishDateMs = new Date(row.publishDate as string).getTime();
+      const daysSincePublish = Math.max(1, (now - publishDateMs) / (1000 * 60 * 60 * 24));
       const viewsPerDay = (row.viewCount as number) / daysSincePublish;
 
       return {
         videoId: row.videoId as string,
-        publishedAt: row.publishedAt as string,
+        publishDate: row.publishDate as string,
         viewsPerDay,
         momentumScore: 0,
       };
@@ -141,7 +141,7 @@ export async function GET(req: NextRequest) {
 
     // Заполняем данные из видео
     videosWithMomentum.forEach(v => {
-      const dateStr = v.publishedAt.split("T")[0];
+      const dateStr = v.publishDate.split("T")[0];
       const entry = dateMap.get(dateStr);
 
       if (entry) {

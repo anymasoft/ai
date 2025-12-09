@@ -82,7 +82,7 @@ export async function GET(req: NextRequest) {
             v.channelId,
             v.title,
             v.viewCount,
-            v.publishedAt,
+            v.publishDate,
             c.title as channelTitle
           FROM channel_videos v
           JOIN competitors c ON v.channelId = c.channelId AND c.userId = ?
@@ -95,10 +95,10 @@ export async function GET(req: NextRequest) {
       if (videosResult.rows.length > 0) {
         // Фильтруем видео с валидной датой
         const validRows = videosResult.rows.filter(row => {
-          const publishedAt = row.publishedAt as string;
-          if (!publishedAt || publishedAt.startsWith("0000")) return false;
+          const publishDate = row.publishDate as string;
+          if (!publishDate || publishDate.startsWith("0000")) return false;
           try {
-            const date = new Date(publishedAt);
+            const date = new Date(publishDate);
             return !isNaN(date.getTime());
           } catch {
             return false;
@@ -109,8 +109,8 @@ export async function GET(req: NextRequest) {
           // Рассчитываем viewsPerDay для каждого видео
           const now = Date.now();
           const videosWithMomentum = validRows.map(row => {
-            const publishedAt = new Date(row.publishedAt as string).getTime();
-            const daysSincePublish = Math.max(1, (now - publishedAt) / (1000 * 60 * 60 * 24));
+            const publishDateMs = new Date(row.publishDate as string).getTime();
+            const daysSincePublish = Math.max(1, (now - publishDateMs) / (1000 * 60 * 60 * 24));
             const viewsPerDay = (row.viewCount as number) / daysSincePublish;
 
             return {

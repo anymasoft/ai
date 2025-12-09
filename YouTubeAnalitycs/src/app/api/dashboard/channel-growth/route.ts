@@ -167,10 +167,10 @@ export async function GET(req: NextRequest) {
       sql: `
         SELECT
           channelId,
-          publishedAt
+          publishDate
         FROM channel_videos
         WHERE channelId IN (${placeholders})
-        ORDER BY channelId, publishedAt DESC
+        ORDER BY channelId, publishDate DESC
       `,
       args: [...channelIds],
     });
@@ -179,13 +179,13 @@ export async function GET(req: NextRequest) {
     const videoDatesMap = new Map<string, number[]>();
     videosResult.rows.forEach(row => {
       const channelId = row.channelId as string;
-      const publishedAtMs = new Date(row.publishedAt as string).getTime();
+      const publishDateMs = new Date(row.publishDate as string).getTime();
 
       if (!videoDatesMap.has(channelId)) {
         videoDatesMap.set(channelId, []);
       }
 
-      videoDatesMap.get(channelId)!.push(publishedAtMs);
+      videoDatesMap.get(channelId)!.push(publishDateMs);
     });
 
     // Формируем данные по каждому каналу

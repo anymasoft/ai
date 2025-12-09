@@ -10,7 +10,7 @@ interface VideoWithEngagement {
   viewCount: number;
   likeCount: number;
   commentCount: number;
-  publishedAt: string | null; // Может быть null если API не вернул дату
+  publishDate: string | null; // Может быть null если API не вернул дату
   durationSeconds: number | null;
   isShort: boolean;
   engagementScore: number;
@@ -41,9 +41,9 @@ function calculateMedian(numbers: number[]): number {
 /**
  * Вычисляет количество дней с момента публикации
  */
-function daysSincePublish(publishedAt: string): number {
-  const publishDate = new Date(publishedAt);
-  const diffMs = new Date().getTime() - publishDate.getTime();
+function daysSincePublish(publishDate: string): number {
+  const date = new Date(publishDate);
+  const diffMs = new Date().getTime() - date.getTime();
   return Math.max(diffMs / (1000 * 60 * 60 * 24), 1);
 }
 
@@ -135,7 +135,7 @@ export async function POST(
 
     // Получаем последние 150 видео канала
     const videosResult = await client.execute({
-      sql: "SELECT * FROM channel_videos WHERE channelId = ? ORDER BY publishedAt DESC LIMIT 150",
+      sql: "SELECT * FROM channel_videos WHERE channelId = ? ORDER BY publishDate DESC LIMIT 150",
       args: [competitor.channelId],
     });
 
@@ -154,23 +154,23 @@ export async function POST(
       viewCount: row.viewCount as number,
       likeCount: row.likeCount as number,
       commentCount: row.commentCount as number,
-      publishedAt: row.publishedAt as string,
+      publishDate: row.publishDate as string,
       duration: row.duration as number | null,
     }));
 
     console.log(`[Audience] Найдено ${videos.length} видео для анализа`);
 
     // Фильтруем видео с валидной датой публикации
-    // (API может вернуть null если publishedTime не был доступен)
+    // (API может вернуть null если publishDate не был доступен)
     const videosWithValidDates = videos.filter(v => {
-      if (!v.publishedAt) {
+      if (!v.publishDate) {
         console.warn(`[Audience] Пропуск видео ${v.videoId} - нет даты публикации`);
         return false;
       }
       try {
-        const date = new Date(v.publishedAt);
+        const date = new Date(v.publishDate);
         if (isNaN(date.getTime())) {
-          console.warn(`[Audience] Пропуск видео ${v.videoId} - невалидная дата: ${v.publishedAt}`);
+          console.warn(`[Audience] Пропуск видео ${v.videoId} - невалидная дата: ${v.publishDate}`);
           return false;
         }
         return true;
@@ -222,7 +222,7 @@ export async function POST(
 
     // Вычисляем engagement метрики для каждого видео
     const videosWithMetrics: VideoWithEngagement[] = videosWithValidDates.map(v => {
-      const days = daysSincePublish(v.publishedAt as string);
+      const days = daysSincePublish(v.publishDate as string);
       const viewsPerDay = v.viewCount / days;
       const likeRate = v.viewCount > 0 ? v.likeCount / v.viewCount : 0;
       const commentRate = v.viewCount > 0 ? v.commentCount / v.viewCount : 0;
@@ -241,7 +241,7 @@ export async function POST(
         viewCount: v.viewCount,
         likeCount: v.likeCount,
         commentCount: v.commentCount,
-        publishedAt: v.publishedAt,
+        publishDate: v.publishDate,
         durationSeconds,
         isShort,
         engagementScore: 0, // Будет вычислен после подсчёта медианы
@@ -355,7 +355,7 @@ export async function POST(
     const videosForAnalysis = highEngagementVideos.map(v => ({
       title: v.title,
       views: v.viewCount,
-      publishedAt: v.publishedAt,
+      publishDate: v.publishDate,
       durationSeconds: v.durationSeconds,
       isShort: v.isShort,
       likes: v.likeCount,
@@ -376,7 +376,7 @@ export async function POST(
     // Система должна быть эксперт, пользователь получит JSON с 8 разделами
     const systemPrompt = "Ты — эксперт по YouTube-аналитике, продуктовый стратег и специалист по поведенческой сегментации аудитории. Твоя задача — определить: 1) кто смотрит этот канал; 2) какие у них мотивы, ожидания и боли; 3) какие сегменты аудитории существуют; 4) что им нравится и что НЕ нравится; 5) как автору использовать это, чтобы резко ускорить рост. Отвечай ТОЛЬКО на русском языке. JSON ответ должен содержать разделы согласно структуре ответа. Все значения должны быть конкретными, не общими фразами.";
 
-    const userPrompt = `Ты получишь JSON с топ-видео канала "${competitor.title}", включая title, views, publishedAt, durationSeconds, isShort, engagementRate, likes, comments.
+    const userPrompt = `Ты получишь JSON с топ-видео канала "${competitor.title}", включая title, views, publishDate, durationSeconds, isShort, engagementRate, likes, comments.
 
 ТВОЯ ЗАДАЧА — определить:
 1) кто смотрит этот канал;
@@ -512,7 +512,7 @@ ${JSON.stringify(videosForAnalysis, null, 2)}
         likeRate: v.likeRate,
         commentRate: v.commentRate,
         viewsPerDay: v.viewsPerDay,
-        publishedAt: v.publishedAt,
+        publishDate: v.publishDate,
       })),
       stats: {
         totalAnalyzed: videos.length,
