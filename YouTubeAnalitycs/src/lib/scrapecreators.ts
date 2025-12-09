@@ -415,15 +415,9 @@ async function fetchVideosFromAPI(
 
       // Нормализуем и добавляем видео
       const normalizedVideos: VideoData[] = videos.map((video: any) => {
-        // ВАЖНО: API ScrapeCreators возвращает дату в поле publishedTime
-        // Извлекаем только дату (YYYY-MM-DD) из ISO строки, отбрасывая время
-        const rawPublishedTime = video.publishedTime || null;
-        const publishedDate = rawPublishedTime ? rawPublishedTime.split("T")[0] : null;
-        console.log("Video date received:", {
-          videoId: video.videoId || video.id,
-          rawPublishedTime,
-          publishedDate,
-        });
+        // Извлекаем только дату (YYYY-MM-DD) из publishedTime
+        const publishedTime = video.publishedTime;
+        const publishedAt = publishedTime ? publishedTime.split("T")[0] : null;
 
         return {
           videoId: String(video.videoId || video.id || ""),
@@ -441,8 +435,7 @@ async function fetchVideosFromAPI(
             video.commentCount ?? video.commentCountInt ?? video.comments,
             0
           ),
-          // Сохраняем только дату (YYYY-MM-DD) без времени
-          publishedAt: publishedDate,
+          publishedAt,
           // Конвертируем lengthSeconds в ISO 8601 формат
           duration: secondsToISO8601Duration(
             video.lengthSeconds ?? video.duration ?? undefined
@@ -553,14 +546,9 @@ export async function getYoutubeVideoDetails(url: string) {
     }
 
     // Нормализация данных
-    // Извлекаем дату (YYYY-MM-DD) из publishedTime или publishDate
-    const rawPublishedTime = data.publishedTime || data.publishDate || null;
-    const publishedDate = rawPublishedTime ? rawPublishedTime.split("T")[0] : null;
-    console.log("Video details date received:", {
-      videoId: data.videoId || data.id,
-      rawPublishedTime,
-      publishedDate,
-    });
+    // Извлекаем только дату (YYYY-MM-DD) из publishedTime
+    const publishedTime = data.publishedTime;
+    const publishedAt = publishedTime ? publishedTime.split("T")[0] : null;
 
     const videoDetails = {
       videoId: String(data.videoId || data.id || ""),
@@ -577,8 +565,7 @@ export async function getYoutubeVideoDetails(url: string) {
         data.viewCount ?? data.viewCountInt ?? data.views,
         0
       ),
-      // Сохраняем только дату (YYYY-MM-DD) без времени
-      publishedAt: publishedDate,
+      publishedAt,
       durationMs: safeNumber(data.durationMs ?? data.duration, undefined),
       keywords: Array.isArray(data.keywords) ? data.keywords : undefined,
       transcriptText: data.transcript_only_text || null,
