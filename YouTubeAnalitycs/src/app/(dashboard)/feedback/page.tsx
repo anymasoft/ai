@@ -56,14 +56,15 @@ export default function FeedbackPage() {
 
   return (
     <div className="space-y-6">
-      <div>
+      <div className="text-center">
         <h1 className="text-3xl font-bold tracking-tight">Feedback</h1>
         <p className="text-muted-foreground mt-2">
           Отправьте нам свои предложения, вопросы или сообщения об ошибках
         </p>
       </div>
 
-      <Card className="max-w-2xl">
+      <div className="flex justify-center">
+        <Card className="max-w-2xl">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Mail className="h-5 w-5" />
@@ -155,6 +156,7 @@ export default function FeedbackPage() {
           </Form>
         </CardContent>
       </Card>
+      </div>
     </div>
   )
 }
