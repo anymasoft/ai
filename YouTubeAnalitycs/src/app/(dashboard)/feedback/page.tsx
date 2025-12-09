@@ -63,7 +63,8 @@ export default function FeedbackPage() {
         </p>
       </div>
 
-      <Card className="max-w-2xl">
+      <div className="flex justify-center">
+        <Card className="max-w-2xl">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Mail className="h-5 w-5" />
@@ -155,6 +156,7 @@ export default function FeedbackPage() {
           </Form>
         </CardContent>
       </Card>
+      </div>
     </div>
   )
 }
