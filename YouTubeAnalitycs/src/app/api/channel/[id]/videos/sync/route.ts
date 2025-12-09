@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { createClient } from "@libsql/client";
-import { getYoutubeChannelVideos } from "@/lib/scrapecreators";
+import { getYoutubeChannelVideos, getYoutubeVideoDetails } from "@/lib/scrapecreators";
 
 /**
  * POST /api/channel/[id]/videos/sync
@@ -76,6 +76,23 @@ export async function POST(
     }
 
     console.log(`[VideoSync] Получено ${videos.length} видео из API`);
+
+    // Получаем точные даты для каждого видео через /v1/youtube/video
+    console.log(`[VideoSync] Запрашиваем точные даты публикации...`);
+    for (const video of videos) {
+      if (video.videoId) {
+        try {
+          const videoUrl = `https://www.youtube.com/watch?v=${video.videoId}`;
+          const details = await getYoutubeVideoDetails(videoUrl);
+          if (details.publishedAt) {
+            video.publishedAt = details.publishedAt;
+            console.log(`[VideoSync] Точная дата для ${video.videoId}: ${details.publishedAt}`);
+          }
+        } catch (err) {
+          console.warn(`[VideoSync] Не удалось получить дату для ${video.videoId}:`, err);
+        }
+      }
+    }
 
     // Сохраняем или обновляем видео в БД
     let inserted = 0;
