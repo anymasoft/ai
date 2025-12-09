@@ -17,7 +17,7 @@ interface VideoData {
   viewCount: number
   likeCount: number
   commentCount: number
-  publishedAt: string
+  publishDate: string
   viewsPerDay: number
   momentumScore: number
   category: "High Momentum" | "Rising" | "Normal" | "Underperforming"
@@ -228,7 +228,7 @@ export function RecentVideos() {
                   {formatNumber(video.viewsPerDay)}/day
                 </span>
                 <span className="text-xs text-muted-foreground">
-                  {formatTimeAgo(video.publishedAt)}
+                  {formatTimeAgo(video.publishDate)}
                 </span>
               </div>
             </div>

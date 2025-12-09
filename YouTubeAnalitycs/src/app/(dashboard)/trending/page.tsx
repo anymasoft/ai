@@ -16,7 +16,7 @@ import TrendingInsights from "./components/TrendingInsights";
 import { formatChannelHandle, extractHandleFromUrl } from "@/lib/formatHandle";
 import { formatMomentumPercent } from "@/lib/momentum-formatting";
 
-type SortField = "momentumScore" | "viewsPerDay" | "viewCount" | "publishedAt";
+type SortField = "momentumScore" | "viewsPerDay" | "viewCount" | "publishDate";
 type SortDirection = "asc" | "desc";
 
 // Пресеты температуры для генерации сценария
@@ -486,7 +486,7 @@ export default function TrendingPage() {
                       <Button
                         variant="ghost"
                         className="p-0 h-auto font-medium"
-                        onClick={() => handleSort("publishedAt")}
+                        onClick={() => handleSort("publishDate")}
                       >
                         Video
                       </Button>
@@ -621,13 +621,13 @@ export default function TrendingPage() {
                       <TableCell>
                         <div className="space-y-1">
                           <div className="font-medium">
-                            {formatDistanceToNow(video.publishedAt, {
+                            {formatDistanceToNow(video.publishDate, {
                               addSuffix: true,
                               locale: ru,
                             })}
                           </div>
                           <div className="text-xs text-muted-foreground">
-                            {new Date(video.publishedAt).toLocaleDateString("ru-RU")}
+                            {new Date(video.publishDate).toLocaleDateString("ru-RU")}
                           </div>
                         </div>
                       </TableCell>

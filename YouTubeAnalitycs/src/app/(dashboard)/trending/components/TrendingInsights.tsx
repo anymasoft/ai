@@ -67,7 +67,7 @@ export default function TrendingInsights({ videos }: TrendingInsightsProps) {
         channelTitle: video.channelTitle,
         momentumScore: video.momentumScore,
         viewsPerDay: video.viewsPerDay,
-        publishedAt: video.publishedAt,
+        publishDate: video.publishDate,
       }));
 
       const response = await fetch("/api/trending/insights", {

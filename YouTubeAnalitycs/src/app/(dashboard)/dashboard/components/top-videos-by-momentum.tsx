@@ -18,7 +18,7 @@ interface VideoData {
   viewCount: number
   likeCount: number
   commentCount: number
-  publishedAt: string
+  publishDate: string
   viewsPerDay: number
   momentumScore: number
   category: "High Momentum" | "Rising" | "Normal" | "Underperforming"

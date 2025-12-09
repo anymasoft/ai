@@ -14,7 +14,7 @@ interface VideoData {
   title: string;
   thumbnailUrl: string | null;
   viewCount: number;
-  publishedAt: string | null;
+  publishDate: string | null;
   fetchedAt: number;
 }
 
@@ -105,7 +105,7 @@ export function TopVideosGrid({ videos, userPlan = "free" }: TopVideosGridProps)
                           {formatViews(video.viewCount)}
                         </span>
                         <span>
-                          {formatPublishedDate(video.publishedAt, "ru")}
+                          {formatPublishedDate(video.publishDate, "ru")}
                         </span>
                       </div>
                     </div>

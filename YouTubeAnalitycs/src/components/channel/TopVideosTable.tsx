@@ -21,7 +21,7 @@ interface VideoData {
   title: string;
   thumbnailUrl: string | null;
   viewCount: number;
-  publishedAt: string | null;
+  publishDate: string | null;
   fetchedAt: number;
 }
 
@@ -105,7 +105,7 @@ export function TopVideosTable({ videos }: TopVideosTableProps) {
                     </TableCell>
                     <TableCell className="px-5 py-3">
                       <span className="text-sm text-muted-foreground font-medium">
-                        {formatPublishedDateCompact(video.publishedAt, "ru")}
+                        {formatPublishedDateCompact(video.publishDate, "ru")}
                       </span>
                     </TableCell>
                     <TableCell className="px-5 py-3 text-center">

@@ -15,7 +15,7 @@ interface EngagementVideo {
   likeRate: number;
   commentRate: number;
   viewsPerDay: number;
-  publishedAt: string;
+  publishDate: string;
 }
 
 interface AudienceData {
