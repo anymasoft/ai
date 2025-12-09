@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/table";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ExternalLink } from "lucide-react";
+import { ExternalLink, RefreshCw } from "lucide-react";
 import { formatPublishedDateCompact } from "@/lib/date-formatting";
 
 interface VideoData {
@@ -44,9 +44,28 @@ function formatViews(views: number): string {
 
 export function TopVideosTable({ videos }: TopVideosTableProps) {
   const [limit, setLimit] = useState(50);
+  const [refreshingId, setRefreshingId] = useState<string | null>(null);
+  const [videoList, setVideoList] = useState(videos);
+
+  const refreshDate = async (videoId: string) => {
+    setRefreshingId(videoId);
+    try {
+      const res = await fetch(`/api/video/${videoId}/refresh-date`, { method: "POST" });
+      const result = await res.json();
+      if (result.success && result.publishDate) {
+        setVideoList(prev => prev.map(v =>
+          v.videoId === videoId ? { ...v, publishDate: result.publishDate } : v
+        ));
+      }
+    } catch (err) {
+      console.error("Ошибка обновления даты:", err);
+    } finally {
+      setRefreshingId(null);
+    }
+  };
 
   // Сортируем видео по количеству просмотров (DESC)
-  const sortedVideos = [...videos].sort((a, b) => b.viewCount - a.viewCount);
+  const sortedVideos = [...videoList].sort((a, b) => b.viewCount - a.viewCount);
   const visibleVideos = sortedVideos.slice(0, limit);
 
   return (
@@ -104,9 +123,20 @@ export function TopVideosTable({ videos }: TopVideosTableProps) {
                       <span className="font-bold text-foreground">{formatViews(video.viewCount)}</span>
                     </TableCell>
                     <TableCell className="px-5 py-3">
-                      <span className="text-sm text-muted-foreground font-medium">
-                        {formatPublishedDateCompact(video.publishDate, "ru")}
-                      </span>
+                      {video.publishDate ? (
+                        <span className="text-sm text-muted-foreground font-medium">
+                          {formatPublishedDateCompact(video.publishDate, "ru")}
+                        </span>
+                      ) : (
+                        <button
+                          onClick={() => refreshDate(video.videoId)}
+                          disabled={refreshingId === video.videoId}
+                          title="Обновить дату"
+                          className="text-muted-foreground hover:text-foreground disabled:opacity-50"
+                        >
+                          <RefreshCw className={`h-4 w-4 ${refreshingId === video.videoId ? "animate-spin" : ""}`} />
+                        </button>
+                      )}
                     </TableCell>
                     <TableCell className="px-5 py-3 text-center">
                       <a

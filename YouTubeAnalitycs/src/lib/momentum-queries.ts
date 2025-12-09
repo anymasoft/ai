@@ -11,7 +11,7 @@ export interface MomentumVideo {
   channelHandle?: string;
   title: string;
   url: string;
-  publishDate: string; // ISO 8601 string из БД
+  publishDate: string | null; // ISO 8601 string из БД или null
   viewCount: number;
   likeCount?: number;
   commentCount?: number;

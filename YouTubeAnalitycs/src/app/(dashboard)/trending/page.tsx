@@ -6,7 +6,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { ExternalLink, TrendingUp, BarChart3, Calendar, Eye, Users, Loader2, FileText, ArrowRight, Video } from "lucide-react";
+import { ExternalLink, TrendingUp, BarChart3, Calendar, Eye, Users, Loader2, FileText, ArrowRight, Video, RefreshCw } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { ru } from "date-fns/locale";
 import Link from "next/link";
@@ -65,6 +65,24 @@ export default function TrendingPage() {
   const [generatingScripts, setGeneratingScripts] = useState(false);
   const [generationError, setGenerationError] = useState<string | null>(null);
   const [selectedTemperatureKey, setSelectedTemperatureKey] = useState<TemperatureKey>("balanced");
+  const [refreshingId, setRefreshingId] = useState<string | null>(null);
+
+  const refreshDate = async (videoId: string) => {
+    setRefreshingId(videoId);
+    try {
+      const res = await fetch(`/api/video/${videoId}/refresh-date`, { method: "POST" });
+      const result = await res.json();
+      if (result.success && result.publishDate) {
+        setVideos(prev => prev.map(v =>
+          v.videoId === videoId ? { ...v, publishDate: result.publishDate } : v
+        ));
+      }
+    } catch (err) {
+      console.error("Ошибка обновления даты:", err);
+    } finally {
+      setRefreshingId(null);
+    }
+  };
 
   const fetchMomentumVideos = useCallback(async () => {
     try {
@@ -619,17 +637,28 @@ export default function TrendingPage() {
                         </div>
                       </TableCell>
                       <TableCell>
-                        <div className="space-y-1">
-                          <div className="font-medium">
-                            {formatDistanceToNow(video.publishDate, {
-                              addSuffix: true,
-                              locale: ru,
-                            })}
+                        {video.publishDate ? (
+                          <div className="space-y-1">
+                            <div className="font-medium">
+                              {formatDistanceToNow(video.publishDate, {
+                                addSuffix: true,
+                                locale: ru,
+                              })}
+                            </div>
+                            <div className="text-xs text-muted-foreground">
+                              {new Date(video.publishDate).toLocaleDateString("ru-RU")}
+                            </div>
                           </div>
-                          <div className="text-xs text-muted-foreground">
-                            {new Date(video.publishDate).toLocaleDateString("ru-RU")}
-                          </div>
-                        </div>
+                        ) : (
+                          <button
+                            onClick={() => refreshDate(video.videoId)}
+                            disabled={refreshingId === video.videoId}
+                            title="Обновить дату"
+                            className="text-muted-foreground hover:text-foreground disabled:opacity-50"
+                          >
+                            <RefreshCw className={`h-4 w-4 ${refreshingId === video.videoId ? "animate-spin" : ""}`} />
+                          </button>
+                        )}
                       </TableCell>
                       <TableCell>
                         <div className="space-y-1">
