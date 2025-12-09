@@ -540,12 +540,35 @@ async function fetchVideosFromAPI(
       }
 
       // Нормализуем и добавляем видео
-      // ВАЖНО: API возвращает `id` (не `videoId`) и `publishedTimeText` (относительная дата)
+      // ВАЖНО: API может возвращать publishedTime как:
+      // - ISO дату: "2024-03-15T10:00:00Z" → извлекаем "2024-03-15"
+      // - Относительную дату: "2 years ago" → устанавливаем null (точная дата будет получена через /v1/youtube/video)
+      // - Дату запроса (текущую) → отсекаем валидацией
       const normalizedVideos: VideoData[] = videos.map((video: any) => {
-        // API возвращает относительную дату в publishedTime, но это неточно
-        // Используем её как есть - это лучше чем ничего
-        const publishedTime = video.publishedTime;
-        const publishedAt = publishedTime ? publishedTime.split("T")[0] : null;
+        const rawPublishedTime = video.publishedTime || video.publishedDate || video.uploadDate;
+
+        // Извлекаем и валидируем дату
+        let publishedAt: string | null = null;
+        if (rawPublishedTime) {
+          const dateStr = String(rawPublishedTime);
+          // Извлекаем часть до T (если есть)
+          const extracted = dateStr.includes("T") ? dateStr.split("T")[0] : dateStr;
+
+          // Валидация: должен быть формат YYYY-MM-DD
+          const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+          if (dateRegex.test(extracted)) {
+            const parsedDate = new Date(extracted);
+            const isValidDate = !isNaN(parsedDate.getTime());
+            const isNotFuture = parsedDate <= new Date();
+
+            if (isValidDate && isNotFuture) {
+              publishedAt = extracted;
+            }
+            // Если дата в будущем или невалидна — оставляем null
+            // Точная дата будет получена через getYoutubeVideoDetails()
+          }
+          // Если формат не YYYY-MM-DD (например "2 years ago") — оставляем null
+        }
 
         return {
           // API возвращает `id`, а не `videoId`!
@@ -675,10 +698,45 @@ export async function getYoutubeVideoDetails(url: string) {
     }
 
     // Нормализация данных
-    // ВАЖНО: endpoint /v1/youtube/video возвращает publishDate (не publishedTime!)
-    // Извлекаем только дату (YYYY-MM-DD) из publishDate
-    const publishDate = data.publishDate;
-    const publishedAt = publishDate ? publishDate.split("T")[0] : null;
+    // ВАЖНО: endpoint /v1/youtube/video может возвращать дату в разных полях!
+    // Пробуем все возможные поля: publishDate, publishedDate, uploadDate, date
+    const rawDate = data.publishDate || data.publishedDate || data.uploadDate || data.date;
+
+    // DEBUG: логируем ВСЕ поля с датами из API
+    console.log("[ScrapeCreators] RAW date fields from /v1/youtube/video:", {
+      publishDate: data.publishDate,
+      publishedDate: data.publishedDate,
+      publishedTime: data.publishedTime,
+      uploadDate: data.uploadDate,
+      date: data.date,
+      selectedRawDate: rawDate,
+    });
+
+    // Извлекаем и валидируем дату
+    let publishedAt: string | null = null;
+    if (rawDate) {
+      // Преобразуем в строку и извлекаем YYYY-MM-DD
+      const dateStr = String(rawDate);
+      const extracted = dateStr.includes("T") ? dateStr.split("T")[0] : dateStr;
+
+      // Валидация формата YYYY-MM-DD
+      const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+      if (dateRegex.test(extracted)) {
+        const parsedDate = new Date(extracted);
+        const isValidDate = !isNaN(parsedDate.getTime());
+        const isNotFuture = parsedDate <= new Date();
+
+        if (isValidDate && isNotFuture) {
+          publishedAt = extracted;
+        } else {
+          console.warn("[ScrapeCreators] Invalid or future date:", { extracted, isValidDate, isNotFuture });
+        }
+      } else {
+        console.warn("[ScrapeCreators] Date format invalid:", { dateStr, extracted });
+      }
+    }
+
+    console.log("[ScrapeCreators] Extracted publishedAt:", publishedAt);
 
     const videoDetails = {
       videoId: String(data.videoId || data.id || ""),
@@ -704,6 +762,7 @@ export async function getYoutubeVideoDetails(url: string) {
     console.log("[ScrapeCreators] Video details fetched:", {
       videoId: videoDetails.videoId,
       title: videoDetails.title,
+      publishedAt: videoDetails.publishedAt,
       likeCount: videoDetails.likeCount,
       commentCount: videoDetails.commentCount,
     });
