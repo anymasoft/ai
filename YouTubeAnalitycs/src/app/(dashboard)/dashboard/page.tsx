@@ -34,36 +34,12 @@ async function KPISection() {
 
 // Server Component for Recent Videos
 async function RecentVideosSection() {
-  const session = await getServerSession(authOptions)
-
-  if (!session?.user?.id) {
-    return <RecentVideos data={null} />
-  }
-
-  try {
-    const videosData = await getVideoPerformance(session.user.id, "recent", 5)
-    return <RecentVideos data={videosData} />
-  } catch (error) {
-    console.error("[Dashboard] Failed to fetch recent videos:", error)
-    return <RecentVideos data={null} />
-  }
+  return <RecentVideos />
 }
 
 // Server Component for Top Momentum Videos
 async function TopMomentumSection() {
-  const session = await getServerSession(authOptions)
-
-  if (!session?.user?.id) {
-    return <TopVideosByMomentum data={null} />
-  }
-
-  try {
-    const videosData = await getVideoPerformance(session.user.id, "momentum", 5)
-    return <TopVideosByMomentum data={videosData} />
-  } catch (error) {
-    console.error("[Dashboard] Failed to fetch momentum videos:", error)
-    return <TopVideosByMomentum data={null} />
-  }
+  return <TopVideosByMomentum />
 }
 
 // Check if user has any data
