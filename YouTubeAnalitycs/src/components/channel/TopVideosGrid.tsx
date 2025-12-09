@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { RefreshCw } from "lucide-react";
 import { formatPublishedDate } from "@/lib/date-formatting";
 import { VIDEO_PAGE_SIZE, TIER_VIDEO_LIMITS, canLoadMoreVideos } from "@/config/limits";
 import type { UserPlan } from "@/config/limits";
@@ -40,22 +41,43 @@ function formatViews(views: number): string {
 export function TopVideosGrid({ videos, userPlan = "free" }: TopVideosGridProps) {
   // Используем VIDEO_PAGE_SIZE (12) вместо хардкода 24
   const [visibleCount, setVisibleCount] = useState(VIDEO_PAGE_SIZE);
+  const [refreshingId, setRefreshingId] = useState<string | null>(null);
+  const [videoList, setVideoList] = useState(videos);
+
+  const refreshDate = async (e: React.MouseEvent, videoId: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setRefreshingId(videoId);
+    try {
+      const res = await fetch(`/api/video/${videoId}/refresh-date`, { method: "POST" });
+      const result = await res.json();
+      if (result.success && result.publishDate) {
+        setVideoList(prev => prev.map(v =>
+          v.videoId === videoId ? { ...v, publishDate: result.publishDate } : v
+        ));
+      }
+    } catch (err) {
+      console.error("Ошибка обновления даты:", err);
+    } finally {
+      setRefreshingId(null);
+    }
+  };
 
   // Определяем лимит по тарифу пользователя
   const planLimit = TIER_VIDEO_LIMITS[userPlan];
   // Фактическое количество доступных видео (не больше чем есть в БД и не больше лимита тарифа)
-  const totalAvailable = Math.min(videos.length, planLimit);
+  const totalAvailable = Math.min(videoList.length, planLimit);
   // Может ли пользователь догружать (план позволяет > 12)
   const canLoadMore = canLoadMoreVideos(userPlan);
 
   // Сортируем видео по количеству просмотров (DESC)
-  const sortedVideos = [...videos].sort((a, b) => b.viewCount - a.viewCount);
+  const sortedVideos = [...videoList].sort((a, b) => b.viewCount - a.viewCount);
   // Показываем не больше visibleCount и не больше totalAvailable
   const visibleVideos = sortedVideos.slice(0, Math.min(visibleCount, totalAvailable));
 
   // Debug в dev режиме
   if (process.env.NODE_ENV === "development") {
-    console.log(`[TopVideosGrid] Plan: ${userPlan}, Limit: ${planLimit}, Total in DB: ${videos.length}, Available: ${totalAvailable}, Visible: ${visibleVideos.length}`);
+    console.log(`[TopVideosGrid] Plan: ${userPlan}, Limit: ${planLimit}, Total in DB: ${videoList.length}, Available: ${totalAvailable}, Visible: ${visibleVideos.length}`);
   }
 
   return (
@@ -104,9 +126,18 @@ export function TopVideosGrid({ videos, userPlan = "free" }: TopVideosGridProps)
                         <span className="font-medium">
                           {formatViews(video.viewCount)}
                         </span>
-                        <span>
-                          {formatPublishedDate(video.publishDate, "ru")}
-                        </span>
+                        {video.publishDate ? (
+                          <span>{formatPublishedDate(video.publishDate, "ru")}</span>
+                        ) : (
+                          <button
+                            onClick={(e) => refreshDate(e, video.videoId)}
+                            disabled={refreshingId === video.videoId}
+                            title="Обновить дату"
+                            className="hover:text-foreground disabled:opacity-50"
+                          >
+                            <RefreshCw className={`h-3 w-3 ${refreshingId === video.videoId ? "animate-spin" : ""}`} />
+                          </button>
+                        )}
                       </div>
                     </div>
                   </CardContent>
@@ -127,7 +158,7 @@ export function TopVideosGrid({ videos, userPlan = "free" }: TopVideosGridProps)
             )}
 
             {/* Сообщение для базовых планов без Load more */}
-            {!canLoadMore && videos.length > VIDEO_PAGE_SIZE && (
+            {!canLoadMore && videoList.length > VIDEO_PAGE_SIZE && (
               <div className="flex justify-center mt-6">
                 <p className="text-sm text-muted-foreground">
                   Only {VIDEO_PAGE_SIZE} videos available on your current plan.

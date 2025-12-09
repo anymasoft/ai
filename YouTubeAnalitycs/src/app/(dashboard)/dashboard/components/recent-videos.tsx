@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { ExternalLink, Eye, Play, Clock } from "lucide-react"
+import { ExternalLink, Eye, Play, Clock, RefreshCw } from "lucide-react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -17,7 +17,7 @@ interface VideoData {
   viewCount: number
   likeCount: number
   commentCount: number
-  publishDate: string
+  publishDate: string | null
   viewsPerDay: number
   momentumScore: number
   category: "High Momentum" | "Rising" | "Normal" | "Underperforming"
@@ -78,6 +78,29 @@ export function RecentVideos() {
   const [data, setData] = useState<VideoPerformanceData | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [refreshingId, setRefreshingId] = useState<string | null>(null)
+
+  const refreshDate = async (e: React.MouseEvent, videoId: string) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setRefreshingId(videoId)
+    try {
+      const res = await fetch(`/api/video/${videoId}/refresh-date`, { method: "POST" })
+      const result = await res.json()
+      if (result.success && result.publishDate && data) {
+        setData({
+          ...data,
+          videos: data.videos.map(v =>
+            v.videoId === videoId ? { ...v, publishDate: result.publishDate } : v
+          )
+        })
+      }
+    } catch (err) {
+      console.error("Ошибка обновления даты:", err)
+    } finally {
+      setRefreshingId(null)
+    }
+  }
 
   useEffect(() => {
     async function fetchVideos() {
@@ -227,9 +250,20 @@ export function RecentVideos() {
                 <span className="text-xs text-muted-foreground">
                   {formatNumber(video.viewsPerDay)}/day
                 </span>
-                <span className="text-xs text-muted-foreground">
-                  {formatTimeAgo(video.publishDate)}
-                </span>
+                {video.publishDate ? (
+                  <span className="text-xs text-muted-foreground">
+                    {formatTimeAgo(video.publishDate)}
+                  </span>
+                ) : (
+                  <button
+                    onClick={(e) => refreshDate(e, video.videoId)}
+                    disabled={refreshingId === video.videoId}
+                    title="Обновить дату"
+                    className="text-xs text-muted-foreground hover:text-foreground disabled:opacity-50"
+                  >
+                    <RefreshCw className={`h-3 w-3 ${refreshingId === video.videoId ? "animate-spin" : ""}`} />
+                  </button>
+                )}
               </div>
             </div>
           </a>
