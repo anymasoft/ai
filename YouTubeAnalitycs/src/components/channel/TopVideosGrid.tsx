@@ -1,9 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ExternalLink } from "lucide-react";
 import { formatPublishedDate } from "@/lib/date-formatting";
 
 interface VideoData {
@@ -42,7 +41,7 @@ export function TopVideosGrid({ videos }: TopVideosGridProps) {
   const visibleVideos = sortedVideos.slice(0, limit);
 
   return (
-    <CardContent className="p-0">
+    <CardContent className="p-6">
       <>
         {sortedVideos.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
@@ -52,7 +51,7 @@ export function TopVideosGrid({ videos }: TopVideosGridProps) {
           </div>
         ) : (
           <>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
               {visibleVideos.map((video) => (
                 <Card
                   key={video.id}
@@ -78,36 +77,19 @@ export function TopVideosGrid({ videos }: TopVideosGridProps) {
                       )}
                     </a>
 
-                    <div className="p-4 space-y-3">
-                      <h3 className="font-medium text-sm leading-tight line-clamp-2 min-h-[2.5rem] text-foreground">
+                    <div className="p-3 space-y-2">
+                      <h3 className="font-medium text-xs leading-tight line-clamp-2 text-foreground">
                         {video.title}
                       </h3>
 
-                      <div className="flex items-center justify-between text-xs">
-                        <span className="font-semibold text-foreground">
-                          {formatViews(video.viewCount)} просмотров
+                      <div className="flex items-center justify-between text-[11px] text-muted-foreground">
+                        <span className="font-medium">
+                          {formatViews(video.viewCount)}
                         </span>
-                        <span className="text-muted-foreground whitespace-nowrap">
+                        <span>
                           {formatPublishedDate(video.publishedAt, "ru")}
                         </span>
                       </div>
-
-                      <Button
-                        asChild
-                        variant="outline"
-                        size="sm"
-                        className="w-full"
-                      >
-                        <a
-                          href={`https://www.youtube.com/watch?v=${video.videoId}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-flex items-center gap-2"
-                        >
-                          <ExternalLink className="w-4 h-4" />
-                          Открыть видео
-                        </a>
-                      </Button>
                     </div>
                   </CardContent>
                 </Card>
