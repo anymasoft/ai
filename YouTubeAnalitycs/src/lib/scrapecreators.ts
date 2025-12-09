@@ -529,6 +529,16 @@ async function fetchVideosFromAPI(
       // Извлекаем видео из ответа
       const videos = Array.isArray(data.videos) ? data.videos : Array.isArray(data) ? data : [];
 
+      // DEBUG: логируем сырые данные первого видео
+      if (videos.length > 0) {
+        const firstVideo = videos[0];
+        console.log("[ScrapeCreators] RAW first video from API:", {
+          videoId: firstVideo.videoId,
+          publishedTime: firstVideo.publishedTime,
+          allKeys: Object.keys(firstVideo),
+        });
+      }
+
       // Нормализуем и добавляем видео
       const normalizedVideos: VideoData[] = videos.map((video: any) => {
         // Извлекаем только дату (YYYY-MM-DD) из publishedTime
