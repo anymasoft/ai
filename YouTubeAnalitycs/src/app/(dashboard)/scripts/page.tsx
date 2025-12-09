@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, FileText, Calendar, Video, Copy, Eye } from "lucide-react";
+import { Loader2, FileText, Calendar, Video, Copy, Eye, CheckCircle } from "lucide-react";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import Link from "next/link";
@@ -18,6 +18,7 @@ export default function ScriptsHistoryPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [copyingId, setCopyingId] = useState<string | null>(null);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
 
   const fetchScripts = async () => {
     try {
@@ -52,15 +53,8 @@ export default function ScriptsHistoryPage() {
 
       await navigator.clipboard.writeText(scriptText);
 
-      // Временная обратная связь
-      const originalText = document.getElementById(`copy-btn-${script.id}`)?.textContent;
-      const btn = document.getElementById(`copy-btn-${script.id}`);
-      if (btn) {
-        btn.textContent = "Скопировано!";
-        setTimeout(() => {
-          if (btn) btn.textContent = originalText || "Копировать";
-        }, 2000);
-      }
+      setCopiedId(script.id);
+      setTimeout(() => setCopiedId(null), 2000);
     } catch (err) {
       console.error("Failed to copy:", err);
       alert("Не удалось скопировать сценарий");
@@ -261,7 +255,6 @@ export default function ScriptsHistoryPage() {
                             </Button>
                           </Link>
                           <Button
-                            id={`copy-btn-${script.id}`}
                             variant="outline"
                             size="sm"
                             className="gap-1"
@@ -270,10 +263,17 @@ export default function ScriptsHistoryPage() {
                           >
                             {copyingId === script.id ? (
                               <Loader2 className="h-3 w-3 animate-spin" />
+                            ) : copiedId === script.id ? (
+                              <>
+                                <CheckCircle className="h-3 w-3" />
+                                Скопировано!
+                              </>
                             ) : (
-                              <Copy className="h-3 w-3" />
+                              <>
+                                <Copy className="h-3 w-3" />
+                                Копировать
+                              </>
                             )}
-                            Копировать
                           </Button>
                         </div>
                       </TableCell>
