@@ -1,3 +1,7 @@
+// =============================================================================
+// ИНТЕРФЕЙСЫ ДЛЯ НОРМАЛИЗОВАННЫХ ДАННЫХ (используются в приложении)
+// =============================================================================
+
 export interface ChannelData {
   channelId: string;
   title: string;
@@ -15,8 +19,96 @@ export interface VideoData {
   viewCount: number;
   likeCount: number;
   commentCount: number;
-  publishedAt: string | null; // Берется из API поля publishedTime, может быть null если API не вернул дату
+  publishedAt: string | null; // YYYY-MM-DD формат, извлечённый из API
   duration?: string; // ISO 8601 формат (PT1H2M10S) или undefined
+}
+
+// =============================================================================
+// ИНТЕРФЕЙСЫ ДЛЯ RAW API ОТВЕТОВ ScrapeCreators
+// Документация: см. "Документация Scrapecreators YouTube API.txt"
+// =============================================================================
+
+/**
+ * RAW ответ /v1/youtube/channel
+ * Поля могут быть числовыми ИЛИ текстовыми (с суффиксами K/M/B)
+ */
+interface ScrapeCreatorsChannelResponse {
+  channelId: string;
+  name: string;
+  avatar?: {
+    image?: {
+      sources?: Array<{ url: string; width?: number; height?: number }>;
+    };
+  } | string;
+  subscriberCount?: number;
+  subscriberCountText?: string; // "1.2M subscribers"
+  videoCount?: number;
+  videoCountText?: string; // "500 videos"
+  viewCount?: number;
+  viewCountText?: string; // "10M views"
+}
+
+/**
+ * RAW ответ /v1/youtube/channel-videos
+ * ВАЖНО: использует publishedTime (не publishDate!)
+ */
+interface ScrapeCreatorsChannelVideosResponse {
+  videos: Array<{
+    videoId: string;
+    title: string;
+    thumbnail?: string | { url: string };
+    viewCount?: number;
+    likeCount?: number;
+    commentCount?: number;
+    publishedTime?: string; // ISO 8601: "2025-01-23T22:48:53.914Z"
+    lengthSeconds?: number;
+  }>;
+  continuationToken?: string;
+}
+
+/**
+ * RAW ответ /v1/youtube/video
+ * ВАЖНО: использует publishDate (не publishedTime!)
+ */
+interface ScrapeCreatorsVideoResponse {
+  videoId: string;
+  title: string;
+  viewCount?: number;
+  likeCount?: number;
+  commentCount?: number;
+  publishDate?: string; // ISO 8601: "2019-02-22T00:00:00.000Z"
+  durationMs?: number;
+  keywords?: string[];
+  transcript_only_text?: string;
+}
+
+/**
+ * RAW комментарий из /v1/youtube/video/comments
+ * Использует вложенные объекты author и engagement
+ */
+interface ScrapeCreatorsComment {
+  id: string;
+  content: string;
+  publishedTime?: string;
+  replyLevel?: number;
+  author?: {
+    name?: string;
+    channelId?: string;
+    isCreator?: boolean;
+    isVerified?: boolean;
+  };
+  engagement?: {
+    likes?: number;
+    replies?: number;
+  };
+}
+
+/**
+ * RAW ответ /v1/youtube/video/comments
+ */
+interface ScrapeCreatorsCommentsResponse {
+  comments: ScrapeCreatorsComment[];
+  continuationToken?: string;
 }
 
 const API_BASE = "https://api.scrapecreators.com/v1/youtube/channel";
@@ -97,6 +189,31 @@ function safeNumber(value: any, fallback: number = 0): number {
     return Number.isFinite(parsed) ? parsed : fallback;
   }
   return fallback;
+}
+
+/**
+ * Парсит текстовые счётчики с суффиксами (K, M, B)
+ * Например: "1.2K" → 1200, "10M" → 10000000, "1.5B" → 1500000000
+ * Также обрабатывает строки вида "1.2K videos", "10M views"
+ */
+function parseTextCount(text: string | null | undefined): number {
+  if (!text || typeof text !== "string") return 0;
+
+  // Извлекаем число с возможным суффиксом
+  const match = text.match(/^([\d,.]+)\s*([KMB])?/i);
+  if (!match) return 0;
+
+  const numStr = match[1].replace(/,/g, "");
+  const num = parseFloat(numStr);
+  if (isNaN(num)) return 0;
+
+  const suffix = (match[2] || "").toUpperCase();
+  switch (suffix) {
+    case "K": return Math.round(num * 1_000);
+    case "M": return Math.round(num * 1_000_000);
+    case "B": return Math.round(num * 1_000_000_000);
+    default: return Math.round(num);
+  }
 }
 
 /**
@@ -223,23 +340,22 @@ export async function getYoutubeChannelByHandle(
       extracted: extractedAvatarUrl !== null ? "YES" : "NO",
     });
 
+    // Нормализация: API может возвращать числа напрямую ИЛИ текстовые версии
+    // Приоритет: числовые поля > текстовые поля (videoCountText, viewCountText, subscriberCountText)
     const channelData: ChannelData = {
       channelId: String(data.channelId || data.id || ""),
       title: String(data.name || data.title || "Unknown Channel"),
       handle: cleanedHandle,
       avatarUrl: extractedAvatarUrl,
-      subscriberCount: safeNumber(
-        data.subscriberCount ?? data.subscriberCountInt ?? data.subscribers,
-        0
-      ),
-      videoCount: safeNumber(
-        data.videoCount ?? data.videoCountInt ?? data.videos,
-        0
-      ),
-      viewCount: safeNumber(
-        data.viewCount ?? data.viewCountInt ?? data.views,
-        0
-      ),
+      subscriberCount: safeNumber(data.subscriberCount, 0) ||
+        safeNumber(data.subscriberCountInt, 0) ||
+        parseTextCount(data.subscriberCountText),
+      videoCount: safeNumber(data.videoCount, 0) ||
+        safeNumber(data.videoCountInt, 0) ||
+        parseTextCount(data.videoCountText),
+      viewCount: safeNumber(data.viewCount, 0) ||
+        safeNumber(data.viewCountInt, 0) ||
+        parseTextCount(data.viewCountText),
     };
 
     console.log("[ScrapeCreators] Normalized data:", channelData);
@@ -546,9 +662,10 @@ export async function getYoutubeVideoDetails(url: string) {
     }
 
     // Нормализация данных
-    // Извлекаем только дату (YYYY-MM-DD) из publishedTime
-    const publishedTime = data.publishedTime;
-    const publishedAt = publishedTime ? publishedTime.split("T")[0] : null;
+    // ВАЖНО: endpoint /v1/youtube/video возвращает publishDate (не publishedTime!)
+    // Извлекаем только дату (YYYY-MM-DD) из publishDate
+    const publishDate = data.publishDate;
+    const publishedAt = publishDate ? publishDate.split("T")[0] : null;
 
     const videoDetails = {
       videoId: String(data.videoId || data.id || ""),
@@ -692,18 +809,22 @@ export async function getYoutubeVideoComments(params: {
       const comments = Array.isArray(data.comments) ? data.comments : Array.isArray(data) ? data : [];
 
       // Нормализуем комментарии
-      // ВАЖНО: publishedTime берется ТОЛЬКО из API, без fallback'ов на текущую дату
+      // ВАЖНО: API возвращает вложенные объекты author и engagement
+      // Структура: comment.author.{name, channelId, isCreator, isVerified}
+      //            comment.engagement.{likes, replies}
       const normalizedComments = comments.map((comment: any) => ({
         id: String(comment.id || comment.commentId || ""),
         content: String(comment.content || comment.text || ""),
-        publishedTime: String(comment.publishedTime || comment.publishedAt || ""),
+        publishedTime: String(comment.publishedTime || ""),
         replyLevel: safeNumber(comment.replyLevel ?? comment.level, 0),
-        likes: safeNumber(comment.likes ?? comment.likeCount, 0),
-        replies: safeNumber(comment.replies ?? comment.replyCount, 0),
-        authorName: String(comment.authorName || comment.author || "Unknown"),
-        authorChannelId: String(comment.authorChannelId || comment.channelId || ""),
-        isVerified: Boolean(comment.isVerified || comment.verified),
-        isCreator: Boolean(comment.isCreator || comment.creator),
+        // engagement - вложенный объект
+        likes: safeNumber(comment.engagement?.likes ?? comment.likes ?? 0, 0),
+        replies: safeNumber(comment.engagement?.replies ?? comment.replies ?? 0, 0),
+        // author - вложенный объект
+        authorName: String(comment.author?.name || comment.authorName || "Unknown"),
+        authorChannelId: String(comment.author?.channelId || comment.authorChannelId || ""),
+        isVerified: Boolean(comment.author?.isVerified ?? comment.isVerified ?? false),
+        isCreator: Boolean(comment.author?.isCreator ?? comment.isCreator ?? false),
       }));
 
       allComments.push(...normalizedComments);
