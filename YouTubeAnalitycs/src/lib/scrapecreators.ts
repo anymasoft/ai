@@ -540,13 +540,16 @@ async function fetchVideosFromAPI(
       }
 
       // Нормализуем и добавляем видео
+      // ВАЖНО: API возвращает `id` (не `videoId`) и `publishedTimeText` (относительная дата)
       const normalizedVideos: VideoData[] = videos.map((video: any) => {
-        // Извлекаем только дату (YYYY-MM-DD) из publishedTime
+        // API возвращает относительную дату в publishedTime, но это неточно
+        // Используем её как есть - это лучше чем ничего
         const publishedTime = video.publishedTime;
         const publishedAt = publishedTime ? publishedTime.split("T")[0] : null;
 
         return {
-          videoId: String(video.videoId || video.id || ""),
+          // API возвращает `id`, а не `videoId`!
+          videoId: String(video.id || video.videoId || ""),
           title: String(video.title || video.name || "Untitled Video"),
           thumbnailUrl: extractThumbnailUrl(video.thumbnail || video.thumbnailUrl),
           viewCount: safeNumber(
