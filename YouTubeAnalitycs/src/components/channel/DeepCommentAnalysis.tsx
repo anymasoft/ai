@@ -209,9 +209,26 @@ export function DeepCommentAnalysis({
 
   // Вычисляем проценты на основе totalAnalyzed
   const total = sentiment.positive + sentiment.neutral + sentiment.negative;
-  const positivePercent = total > 0 ? Math.round((sentiment.positive / total) * 100) : 0;
-  const neutralPercent = total > 0 ? Math.round((sentiment.neutral / total) * 100) : 0;
-  const negativePercent = total > 0 ? Math.round((sentiment.negative / total) * 100) : 0;
+
+  // Рассчитываем проценты так, чтобы их сумма была ровно 100%
+  let positivePercent: number;
+  let neutralPercent: number;
+  let negativePercent: number;
+
+  if (total === 0) {
+    positivePercent = 0;
+    neutralPercent = 0;
+    negativePercent = 0;
+  } else {
+    positivePercent = Math.round((sentiment.positive / total) * 100);
+    negativePercent = Math.round((sentiment.negative / total) * 100);
+    neutralPercent = 100 - positivePercent - negativePercent;
+
+    // Защита от крайних случаев
+    if (neutralPercent < 0) {
+      neutralPercent = 0;
+    }
+  }
 
   return (
     <CardContent className="space-y-4 pt-6">
