@@ -340,21 +340,30 @@ export async function getYoutubeChannelByHandle(
       extracted: extractedAvatarUrl !== null ? "YES" : "NO",
     });
 
+    // Логирование отсутствующих документированных полей для диагностики
+    if (data.subscriberCount == null && !data.subscriberCountText) {
+      console.warn("[ScrapeCreators] subscriberCount/subscriberCountText missing for channel", data.channelId);
+    }
+    if (data.videoCount == null && !data.videoCountText) {
+      console.warn("[ScrapeCreators] videoCount/videoCountText missing for channel", data.channelId);
+    }
+    if (data.viewCount == null && !data.viewCountText) {
+      console.warn("[ScrapeCreators] viewCount/viewCountText missing for channel", data.channelId);
+    }
+
     // Нормализация: API может возвращать числа напрямую ИЛИ текстовые версии
-    // Приоритет: числовые поля > текстовые поля (videoCountText, viewCountText, subscriberCountText)
+    // ВАЖНО: используем ТОЛЬКО документированные поля (subscriberCount или subscriberCountText)
+    // Никакого subscriberCountInt - этого поля нет в документации API
     const channelData: ChannelData = {
       channelId: String(data.channelId || data.id || ""),
       title: String(data.name || data.title || "Unknown Channel"),
       handle: cleanedHandle,
       avatarUrl: extractedAvatarUrl,
       subscriberCount: safeNumber(data.subscriberCount, 0) ||
-        safeNumber(data.subscriberCountInt, 0) ||
         parseTextCount(data.subscriberCountText),
       videoCount: safeNumber(data.videoCount, 0) ||
-        safeNumber(data.videoCountInt, 0) ||
         parseTextCount(data.videoCountText),
       viewCount: safeNumber(data.viewCount, 0) ||
-        safeNumber(data.viewCountInt, 0) ||
         parseTextCount(data.viewCountText),
     };
 
@@ -697,21 +706,25 @@ export async function getYoutubeVideoDetails(url: string) {
       }
     }
 
+    // Логирование отсутствующих документированных полей для диагностики
+    if (data.likeCountInt == null) {
+      console.warn("[ScrapeCreators] likeCountInt missing for video", data.id);
+    }
+    if (data.commentCountInt == null) {
+      console.warn("[ScrapeCreators] commentCountInt missing for video", data.id);
+    }
+    if (data.viewCountInt == null) {
+      console.warn("[ScrapeCreators] viewCountInt missing for video", data.id);
+    }
+
     const videoDetails = {
       videoId: String(data.videoId || data.id || ""),
       title: String(data.title || data.name || "Untitled Video"),
-      likeCount: safeNumber(
-        data.likeCount ?? data.likeCountInt ?? data.likes,
-        0
-      ),
-      commentCount: safeNumber(
-        data.commentCount ?? data.commentCountInt ?? data.comments,
-        0
-      ),
-      viewCount: safeNumber(
-        data.viewCount ?? data.viewCountInt ?? data.views,
-        0
-      ),
+      // ВАЖНО: используем ТОЛЬКО документированные поля из API
+      // Документация гарантирует: viewCountInt, likeCountInt, commentCountInt
+      likeCount: safeNumber(data.likeCountInt, 0),
+      commentCount: safeNumber(data.commentCountInt, 0),
+      viewCount: safeNumber(data.viewCountInt, 0),
       publishDate: validatedPublishDate,
       durationMs: safeNumber(data.durationMs ?? data.duration, undefined),
       keywords: Array.isArray(data.keywords) ? data.keywords : undefined,
