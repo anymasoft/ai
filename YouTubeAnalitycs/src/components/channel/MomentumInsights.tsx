@@ -5,6 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Loader2, Flame, TrendingUp, Zap, Lightbulb } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { formatMomentumPercent } from "@/lib/momentum-formatting";
 
 interface MomentumVideo {
   videoId: string;
@@ -276,7 +277,7 @@ export function MomentumInsights({
                 <div className="flex items-center gap-2 ml-4">
                   <div className="text-right">
                     <div className="text-sm font-bold text-orange-600 dark:text-orange-400">
-                      +{(video.momentumScore * 100).toFixed(0)}%
+                      {formatMomentumPercent(video.momentumScore)}
                     </div>
                     <div className="text-xs text-muted-foreground">momentum</div>
                   </div>

@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
+import { formatMomentumPercent } from "@/lib/momentum-formatting"
 
 interface VideoData {
   videoId: string
@@ -221,7 +222,7 @@ export function RecentVideos() {
               </p>
               <div className="flex items-center gap-2 flex-wrap">
                 <Badge variant={getCategoryBadgeVariant(video.category)} className="text-xs">
-                  {video.category === "High Momentum" ? `+${Math.round(video.momentumScore * 100)}%` : video.category}
+                  {video.category === "High Momentum" ? formatMomentumPercent(video.momentumScore) : video.category}
                 </Badge>
                 <span className="text-xs text-muted-foreground">
                   {formatNumber(video.viewsPerDay)}/day

@@ -17,6 +17,7 @@ import { ChannelAvatar } from "@/components/channel-avatar";
 import { GenerateSwotButton } from "@/components/channel/GenerateSwotButton";
 import { SWOTAnalysisBlock } from "@/components/channel/SWOTAnalysisBlock";
 import type { SwotPoint, VideoIdea } from "@/lib/ai/analyzeChannel";
+import { getUserPlan } from "@/lib/user-plan";
 
 interface PageProps {
   params: Promise<{ id: string }>;
@@ -329,6 +330,7 @@ export default async function ChannelPage({ params }: PageProps) {
           deepAnalysisData={deepAnalysisData ? { ...deepAnalysisData, createdAt: deepAnalysis?.createdAt } : null}
           hasVideos={hasVideos}
           hasComments={hasComments}
+          userPlan={getUserPlan(session)}
         />
       </div>
     );

@@ -4,6 +4,8 @@ import { useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { formatPublishedDate } from "@/lib/date-formatting";
+import { VIDEO_PAGE_SIZE, TIER_VIDEO_LIMITS, canLoadMoreVideos } from "@/config/limits";
+import type { UserPlan } from "@/config/limits";
 
 interface VideoData {
   id: number;
@@ -18,6 +20,8 @@ interface VideoData {
 
 interface TopVideosGridProps {
   videos: VideoData[];
+  /** План пользователя для определения лимитов. По умолчанию "free" */
+  userPlan?: UserPlan;
 }
 
 /**
@@ -33,12 +37,26 @@ function formatViews(views: number): string {
   return views.toString();
 }
 
-export function TopVideosGrid({ videos }: TopVideosGridProps) {
-  const [limit, setLimit] = useState(24);
+export function TopVideosGrid({ videos, userPlan = "free" }: TopVideosGridProps) {
+  // Используем VIDEO_PAGE_SIZE (12) вместо хардкода 24
+  const [visibleCount, setVisibleCount] = useState(VIDEO_PAGE_SIZE);
+
+  // Определяем лимит по тарифу пользователя
+  const planLimit = TIER_VIDEO_LIMITS[userPlan];
+  // Фактическое количество доступных видео (не больше чем есть в БД и не больше лимита тарифа)
+  const totalAvailable = Math.min(videos.length, planLimit);
+  // Может ли пользователь догружать (план позволяет > 12)
+  const canLoadMore = canLoadMoreVideos(userPlan);
 
   // Сортируем видео по количеству просмотров (DESC)
   const sortedVideos = [...videos].sort((a, b) => b.viewCount - a.viewCount);
-  const visibleVideos = sortedVideos.slice(0, limit);
+  // Показываем не больше visibleCount и не больше totalAvailable
+  const visibleVideos = sortedVideos.slice(0, Math.min(visibleCount, totalAvailable));
+
+  // Debug в dev режиме
+  if (process.env.NODE_ENV === "development") {
+    console.log(`[TopVideosGrid] Plan: ${userPlan}, Limit: ${planLimit}, Total in DB: ${videos.length}, Available: ${totalAvailable}, Visible: ${visibleVideos.length}`);
+  }
 
   return (
     <CardContent className="p-6">
@@ -96,14 +114,24 @@ export function TopVideosGrid({ videos }: TopVideosGridProps) {
               ))}
             </div>
 
-            {sortedVideos.length > limit && (
+            {/* Кнопка "Load more" — только если план позволяет и есть ещё видео */}
+            {canLoadMore && visibleCount < totalAvailable && (
               <div className="flex justify-center mt-6">
                 <Button
-                  onClick={() => setLimit((prev) => prev + 24)}
+                  onClick={() => setVisibleCount((prev) => Math.min(prev + VIDEO_PAGE_SIZE, totalAvailable))}
                   variant="outline"
                 >
-                  Показать ещё 24
+                  Load more {VIDEO_PAGE_SIZE} videos
                 </Button>
+              </div>
+            )}
+
+            {/* Сообщение для базовых планов без Load more */}
+            {!canLoadMore && videos.length > VIDEO_PAGE_SIZE && (
+              <div className="flex justify-center mt-6">
+                <p className="text-sm text-muted-foreground">
+                  Only {VIDEO_PAGE_SIZE} videos available on your current plan.
+                </p>
               </div>
             )}
           </>

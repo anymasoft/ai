@@ -14,6 +14,7 @@ import type { MomentumVideo } from "@/lib/momentum-queries";
 import type { GeneratedScript, SavedScript } from "@/types/scripts";
 import TrendingInsights from "./components/TrendingInsights";
 import { formatChannelHandle, extractHandleFromUrl } from "@/lib/formatHandle";
+import { formatMomentumPercent } from "@/lib/momentum-formatting";
 
 type SortField = "momentumScore" | "viewsPerDay" | "viewCount" | "publishedAt";
 type SortDirection = "asc" | "desc";
@@ -237,11 +238,8 @@ export default function TrendingPage() {
     return num.toString();
   };
 
-  const formatMomentumScore = (score: number): string => {
-    const percentage = score * 100;
-    const sign = percentage > 0 ? "+" : "";
-    return `${sign}${percentage.toFixed(0)}%`;
-  };
+  // Используем новый хелпер formatMomentumPercent из @/lib/momentum-formatting
+  // Он обрабатывает edge cases и clamp'ит абсурдные значения
 
   const getCategoryBadge = (category?: string) => {
     switch (category) {
@@ -593,7 +591,7 @@ export default function TrendingPage() {
                                   ? "text-red-600"
                                   : "text-foreground"
                           }`}>
-                            {formatMomentumScore(video.momentumScore)}
+                            {formatMomentumPercent(video.momentumScore)}
                           </div>
                           <div className="text-xs text-muted-foreground">
                             vs median
