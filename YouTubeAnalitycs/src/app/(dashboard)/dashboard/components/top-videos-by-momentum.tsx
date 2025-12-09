@@ -231,3 +231,30 @@ export function TopVideosByMomentum() {
     </Card>
   )
 }
+
+// Skeleton for Suspense fallback
+export function TopVideosByMomentumSkeleton() {
+  return (
+    <Card>
+      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
+        <div className="space-y-1">
+          <Skeleton className="h-5 w-40" />
+          <Skeleton className="h-4 w-56" />
+        </div>
+        <Skeleton className="h-9 w-20" />
+      </CardHeader>
+      <CardContent className="space-y-3">
+        {[...Array(5)].map((_, i) => (
+          <div key={i} className="flex items-center p-3 rounded-lg border gap-3">
+            <Skeleton className="h-8 w-8 rounded-full shrink-0" />
+            <div className="flex-1 space-y-2">
+              <Skeleton className="h-4 w-3/4" />
+              <Skeleton className="h-3 w-1/2" />
+            </div>
+            <Skeleton className="h-6 w-16 rounded-full" />
+          </div>
+        ))}
+      </CardContent>
+    </Card>
+  )
+}
