@@ -10,6 +10,7 @@ import { MomentumInsights } from "@/components/channel/MomentumInsights"
 import { AudienceInsights } from "@/components/channel/AudienceInsights"
 import { CommentInsights } from "@/components/channel/CommentInsights"
 import { DeepCommentAnalysis } from "@/components/channel/DeepCommentAnalysis"
+import type { UserPlan } from "@/config/limits"
 
 interface ChannelAnalyticsProps {
   channelId: number
@@ -22,6 +23,8 @@ interface ChannelAnalyticsProps {
   deepAnalysisData: any
   hasVideos: boolean
   hasComments: boolean
+  /** План пользователя для лимитов видео */
+  userPlan?: UserPlan
 }
 
 /**
@@ -69,6 +72,7 @@ export function ChannelAnalytics({
   deepAnalysisData,
   hasVideos,
   hasComments,
+  userPlan = "free",
 }: ChannelAnalyticsProps) {
   // Все разделы закрыты по умолчанию - пользователь видит полный обзор доступных аналитических блоков
   const [expanded, setExpanded] = useState({
@@ -113,7 +117,7 @@ export function ChannelAnalytics({
         isOpen={expanded.videos}
         onToggle={() => toggle("videos")}
       >
-        <TopVideosGrid videos={videos} />
+        <TopVideosGrid videos={videos} userPlan={userPlan} />
       </CollapsibleSection>
 
       {/* Content Intelligence */}

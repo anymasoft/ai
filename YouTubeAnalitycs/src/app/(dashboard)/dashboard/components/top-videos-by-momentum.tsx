@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
 import { Skeleton } from "@/components/ui/skeleton"
+import { formatMomentumPercent } from "@/lib/momentum-formatting"
 
 interface VideoData {
   videoId: string
@@ -203,7 +204,7 @@ export function TopVideosByMomentum() {
                 className="gap-1"
               >
                 <TrendingUp className="h-3 w-3" />
-                +{Math.round(video.momentumScore * 100)}%
+                {formatMomentumPercent(video.momentumScore)}
               </Badge>
               <p className="text-xs text-muted-foreground mt-1">
                 {formatNumber(video.viewCount)} views

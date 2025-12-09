@@ -9,6 +9,7 @@ import {
 import { Card, CardAction, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import type { KPIData } from "@/lib/dashboard-queries"
+import { formatMomentumPercent } from "@/lib/momentum-formatting"
 
 function formatNumber(num: number): string {
   if (num >= 1000000000) {
@@ -67,7 +68,7 @@ export function MetricsOverview({ data }: MetricsOverviewProps) {
     {
       title: "Top Momentum",
       value: data.topMomentumVideo
-        ? `+${Math.round(data.topMomentumVideo.momentumScore * 100)}%`
+        ? formatMomentumPercent(data.topMomentumVideo.momentumScore)
         : "—",
       icon: Zap,
       trend: data.topMomentumVideo && data.topMomentumVideo.momentumScore > 0.5 ? "up" : "neutral",

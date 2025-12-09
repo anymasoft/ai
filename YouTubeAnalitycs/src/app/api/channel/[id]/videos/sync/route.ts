@@ -3,6 +3,8 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { createClient } from "@libsql/client";
 import { getYoutubeChannelVideos, getYoutubeVideoDetails } from "@/lib/scrapecreators";
+import { getVideoLimitForPlan } from "@/config/limits";
+import { getUserPlan } from "@/lib/user-plan";
 
 /**
  * POST /api/channel/[id]/videos/sync
@@ -77,9 +79,24 @@ export async function POST(
 
     console.log(`[VideoSync] Получено ${videos.length} видео из API`);
 
+    // === ЛИМИТЫ ПО ТАРИФУ ===
+    // Ограничиваем количество видео в зависимости от плана пользователя
+    // Это экономит кредиты ScrapeCreators и токены AI
+    const userPlan = getUserPlan(session);
+    const maxVideos = getVideoLimitForPlan(userPlan);
+
+    console.log(`[VideoSync] План пользователя: ${userPlan}, лимит видео: ${maxVideos}`);
+
+    // Обрезаем массив до лимита тарифа
+    // Видео уже отсортированы по дате (latest first) в API
+    const limitedVideos = videos.slice(0, maxVideos);
+
+    console.log(`[VideoSync] После лимита: ${limitedVideos.length} видео (было ${videos.length})`);
+
     // Получаем точные даты для каждого видео через /v1/youtube/video
-    console.log(`[VideoSync] Запрашиваем точные даты публикации...`);
-    for (const video of videos) {
+    // Только для ограниченного набора видео!
+    console.log(`[VideoSync] Запрашиваем точные даты публикации для ${limitedVideos.length} видео...`);
+    for (const video of limitedVideos) {
       if (video.videoId) {
         try {
           const videoUrl = `https://www.youtube.com/watch?v=${video.videoId}`;
@@ -95,10 +112,11 @@ export async function POST(
     }
 
     // Сохраняем или обновляем видео в БД
+    // Используем limitedVideos — только видео в рамках лимита тарифа
     let inserted = 0;
     let updated = 0;
 
-    for (const video of videos) {
+    for (const video of limitedVideos) {
       // Проверяем, существует ли уже такое видео
       const existingResult = await client.execute({
         sql: "SELECT * FROM channel_videos WHERE channelId = ? AND videoId = ?",
@@ -192,6 +210,10 @@ export async function POST(
         added: inserted,
         updated: updated,
         totalVideos: totalVideosResult.rows.length,
+        // Информация о лимитах для UI
+        plan: userPlan,
+        videoLimit: maxVideos,
+        videosFromApi: videos.length,
       },
       { status: 200 }
     );
