@@ -380,6 +380,54 @@ async function getClient() {
         _client.execute(`CREATE INDEX IF NOT EXISTS idx_generated_scripts_createdAt
           ON generated_scripts(createdAt DESC);`);
 
+        // Таблицы глобального кеша YouTube данных
+        // Эти таблицы содержат общие данные, одинаковые для всех пользователей
+
+        // Кеш базовой информации о каналах
+        _client.execute(`CREATE TABLE IF NOT EXISTS channels_cache (
+          channelId TEXT PRIMARY KEY,
+          title TEXT NOT NULL,
+          handle TEXT,
+          avatarUrl TEXT,
+          subscriberCount INTEGER DEFAULT 0,
+          videoCount INTEGER DEFAULT 0,
+          viewCount INTEGER DEFAULT 0,
+          lastUpdated INTEGER NOT NULL
+        );`);
+
+        // Кеш видео каналов (список видео с основными метриками)
+        _client.execute(`CREATE TABLE IF NOT EXISTS channel_videos_cache (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          channelId TEXT NOT NULL,
+          videoId TEXT NOT NULL,
+          title TEXT NOT NULL,
+          thumbnailUrl TEXT,
+          viewCount INTEGER DEFAULT 0,
+          likeCount INTEGER DEFAULT 0,
+          commentCount INTEGER DEFAULT 0,
+          publishDate TEXT,
+          duration TEXT,
+          lastUpdated INTEGER NOT NULL,
+          UNIQUE(videoId)
+        );`);
+
+        _client.execute(`CREATE INDEX IF NOT EXISTS idx_channel_videos_cache_lookup
+          ON channel_videos_cache(channelId, videoId);`);
+
+        // Кеш детальных данных видео (из /v1/youtube/video)
+        _client.execute(`CREATE TABLE IF NOT EXISTS videos_cache (
+          videoId TEXT PRIMARY KEY,
+          title TEXT NOT NULL,
+          viewCount INTEGER DEFAULT 0,
+          likeCount INTEGER DEFAULT 0,
+          commentCount INTEGER DEFAULT 0,
+          publishDate TEXT,
+          durationMs INTEGER,
+          keywords TEXT,
+          transcriptText TEXT,
+          lastUpdated INTEGER NOT NULL
+        );`);
+
         console.log("✅ Tables initialized");
       } catch (error) {
         console.error("❌ DB init error:", error);
