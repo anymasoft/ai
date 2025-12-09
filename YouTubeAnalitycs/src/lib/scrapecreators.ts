@@ -680,6 +680,16 @@ export async function getYoutubeVideoDetails(url: string) {
     const publishDate = data.publishDate;
     const publishedAt = publishDate ? publishDate.split("T")[0] : null;
 
+    // DEBUG: логируем ВСЕ поля с датами из API
+    console.log("[ScrapeCreators] RAW date fields from /v1/youtube/video:", {
+      publishDate: data.publishDate,
+      publishedDate: data.publishedDate,
+      publishedTime: data.publishedTime,
+      uploadDate: data.uploadDate,
+      date: data.date,
+      extractedPublishedAt: publishedAt,
+    });
+
     const videoDetails = {
       videoId: String(data.videoId || data.id || ""),
       title: String(data.title || data.name || "Untitled Video"),
@@ -704,6 +714,7 @@ export async function getYoutubeVideoDetails(url: string) {
     console.log("[ScrapeCreators] Video details fetched:", {
       videoId: videoDetails.videoId,
       title: videoDetails.title,
+      publishedAt: videoDetails.publishedAt,
       likeCount: videoDetails.likeCount,
       commentCount: videoDetails.commentCount,
     });

@@ -96,20 +96,57 @@ export async function POST(
     // Получаем точные даты для каждого видео через /v1/youtube/video
     // Только для ограниченного набора видео!
     console.log(`[VideoSync] Запрашиваем точные даты публикации для ${limitedVideos.length} видео...`);
+
+    let datesUpdated = 0;
+    let datesFailed = 0;
+
     for (const video of limitedVideos) {
       if (video.videoId) {
+        const originalDate = video.publishedAt;
+
         try {
           const videoUrl = `https://www.youtube.com/watch?v=${video.videoId}`;
           const details = await getYoutubeVideoDetails(videoUrl);
+
+          console.log(`[VideoSync] Детали для ${video.videoId}:`, {
+            originalDate,
+            apiPublishedAt: details.publishedAt,
+            hasPublishedAt: !!details.publishedAt,
+          });
+
           if (details.publishedAt) {
-            video.publishedAt = details.publishedAt;
-            console.log(`[VideoSync] Точная дата для ${video.videoId}: ${details.publishedAt}`);
+            // Валидация: дата должна быть в формате YYYY-MM-DD и не в будущем
+            const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+            const parsedDate = new Date(details.publishedAt);
+            const isValidFormat = dateRegex.test(details.publishedAt);
+            const isValidDate = !isNaN(parsedDate.getTime());
+            const isNotFuture = parsedDate <= new Date();
+
+            if (isValidFormat && isValidDate && isNotFuture) {
+              video.publishedAt = details.publishedAt;
+              datesUpdated++;
+              console.log(`[VideoSync] ✓ Дата обновлена для ${video.videoId}: ${originalDate} → ${details.publishedAt}`);
+            } else {
+              console.warn(`[VideoSync] ✗ Невалидная дата для ${video.videoId}:`, {
+                publishedAt: details.publishedAt,
+                isValidFormat,
+                isValidDate,
+                isNotFuture,
+              });
+              datesFailed++;
+            }
+          } else {
+            console.warn(`[VideoSync] ✗ API не вернул publishedAt для ${video.videoId}`);
+            datesFailed++;
           }
         } catch (err) {
-          console.warn(`[VideoSync] Не удалось получить дату для ${video.videoId}:`, err);
+          console.warn(`[VideoSync] ✗ Ошибка получения даты для ${video.videoId}:`, err);
+          datesFailed++;
         }
       }
     }
+
+    console.log(`[VideoSync] Итого дат: обновлено ${datesUpdated}, ошибок ${datesFailed}`)
 
     // Сохраняем или обновляем видео в БД
     // Используем limitedVideos — только видео в рамках лимита тарифа
