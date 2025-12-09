@@ -1,5 +1,9 @@
 import { db } from "./db";
 
+/**
+ * MomentumVideo interface
+ * ЕДИНСТВЕННОЕ ПОЛЕ ДЛЯ ДАТЫ: publishDate (ISO 8601 string → timestamp)
+ */
 export interface MomentumVideo {
   videoId: string;
   channelId: string;
@@ -7,7 +11,7 @@ export interface MomentumVideo {
   channelHandle?: string;
   title: string;
   url: string;
-  publishedAt: number; // timestamp
+  publishedAt: number; // timestamp из publishDate для совместимости с UI
   viewCount: number;
   likeCount?: number;
   commentCount?: number;
@@ -19,10 +23,10 @@ export interface MomentumVideo {
 /**
  * Рассчитывает количество дней с момента публикации видео
  */
-function daysSincePublish(publishedAt: string | number): number {
-  const publishDate = new Date(publishedAt);
+function daysSincePublish(publishDate: string | number): number {
+  const date = new Date(publishDate);
   const now = new Date();
-  const diffMs = now.getTime() - publishDate.getTime();
+  const diffMs = now.getTime() - date.getTime();
   return Math.max(1, diffMs / (1000 * 60 * 60 * 24)); // Минимум 1 день
 }
 
@@ -75,9 +79,7 @@ export async function getUserChannels(userId: string): Promise<Array<{
 
 /**
  * Получает топ видео по momentum score для всех конкурентов пользователя
- * @param userId ID пользователя
- * @param limit Максимальное количество видео (по умолчанию 50)
- * @returns Массив видео с momentum score и список каналов
+ * ИСТОЧНИК ДАТЫ: колонка publishDate в БД
  */
 export async function getTopMomentumVideos(
   userId: string,
@@ -133,6 +135,7 @@ export async function getTopMomentumVideos(
     });
 
     // 2. Получаем все видео этих каналов
+    // ЕДИНСТВЕННЫЙ ИСТОЧНИК ДАТЫ: publishDate
     const placeholders = channelIds.map(() => "?").join(",");
     const videosResult = await db.execute({
       sql: `
@@ -140,7 +143,7 @@ export async function getTopMomentumVideos(
           v.videoId,
           v.channelId,
           v.title,
-          v.publishedAt,
+          v.publishDate,
           v.viewCount,
           v.likeCount,
           v.commentCount
@@ -160,7 +163,7 @@ export async function getTopMomentumVideos(
       videoId: string;
       channelId: string;
       title: string;
-      publishedAt: string;
+      publishDate: string;
       viewCount: number;
       likeCount?: number;
       commentCount?: number;
@@ -169,18 +172,18 @@ export async function getTopMomentumVideos(
     }> = [];
 
     for (const row of videosResult.rows) {
-      const publishedAt = row.publishedAt as string;
+      const publishDate = row.publishDate as string;
 
-      // Пропускаем видео с невалидными датами
-      if (!publishedAt || publishedAt.startsWith("0000")) {
+      // Пропускаем видео без даты или с невалидной датой
+      if (!publishDate || publishDate.startsWith("0000")) {
         console.warn(`[MomentumQueries] Skipping video ${row.videoId} with invalid date`);
         continue;
       }
 
       try {
-        const date = new Date(publishedAt);
+        const date = new Date(publishDate);
         if (isNaN(date.getTime())) {
-          console.warn(`[MomentumQueries] Skipping video ${row.videoId} with unparseable date: ${publishedAt}`);
+          console.warn(`[MomentumQueries] Skipping video ${row.videoId} with unparseable date: ${publishDate}`);
           continue;
         }
       } catch {
@@ -190,14 +193,14 @@ export async function getTopMomentumVideos(
       const viewCount = Number(row.viewCount) || 0;
 
       // Рассчитываем days since publish
-      const days = daysSincePublish(publishedAt);
+      const days = daysSincePublish(publishDate);
       const viewsPerDay = viewCount / days;
 
       videosWithMetrics.push({
         videoId: row.videoId as string,
         channelId: row.channelId as string,
         title: row.title as string,
-        publishedAt,
+        publishDate,
         viewCount,
         likeCount: row.likeCount ? Number(row.likeCount) : undefined,
         commentCount: row.commentCount ? Number(row.commentCount) : undefined,
@@ -208,10 +211,7 @@ export async function getTopMomentumVideos(
 
     if (videosWithMetrics.length === 0) {
       console.warn("[MomentumQueries] No videos with valid publication dates");
-      return {
-        items: [],
-        summary: { topChannels: [], avgMomentum: 0, totalVideos: 0 },
-      };
+      return { items: [], total: 0, medianViewsPerDay: 0, channels };
     }
 
     // 4. Рассчитываем медиану viewsPerDay
@@ -233,6 +233,7 @@ export async function getTopMomentumVideos(
       .slice(0, limit);
 
     // 7. Формируем финальный результат
+    // Конвертируем publishDate в timestamp для UI совместимости
     const items: MomentumVideo[] = sortedVideos.map(video => {
       const channelInfo = channelMap.get(video.channelId);
 
@@ -253,7 +254,8 @@ export async function getTopMomentumVideos(
         channelHandle: channelInfo?.handle,
         title: video.title,
         url: `https://www.youtube.com/watch?v=${video.videoId}`,
-        publishedAt: new Date(video.publishedAt).getTime(),
+        // Конвертируем ISO publishDate в timestamp для UI
+        publishedAt: new Date(video.publishDate).getTime(),
         viewCount: video.viewCount,
         likeCount: video.likeCount,
         commentCount: video.commentCount,

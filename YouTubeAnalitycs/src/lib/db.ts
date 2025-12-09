@@ -193,10 +193,21 @@ async function getClient() {
           viewCount INTEGER NOT NULL DEFAULT 0,
           likeCount INTEGER NOT NULL DEFAULT 0,
           commentCount INTEGER NOT NULL DEFAULT 0,
-          publishedAt TEXT,
+          publishDate TEXT,
           fetchedAt INTEGER NOT NULL,
           data TEXT
         );`);
+
+        // Миграция: переименование publishedAt → publishDate (если старая колонка существует)
+        // SQLite не поддерживает RENAME COLUMN напрямую в старых версиях,
+        // поэтому добавляем новую колонку и копируем данные
+        await addColumnIfNotExists(_client, 'channel_videos', 'publishDate', 'TEXT');
+        // Копируем данные из старой колонки (если существует) в новую
+        try {
+          await _client.execute(`UPDATE channel_videos SET publishDate = publishedAt WHERE publishDate IS NULL AND publishedAt IS NOT NULL`);
+        } catch {
+          // Игнорируем ошибку если колонка publishedAt не существует
+        }
 
         _client.execute(`CREATE INDEX IF NOT EXISTS idx_channel_videos_lookup
           ON channel_videos(channelId, videoId);`);

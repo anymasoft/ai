@@ -19,7 +19,7 @@ export interface VideoData {
   viewCount: number;
   likeCount: number;
   commentCount: number;
-  publishedAt: string | null; // YYYY-MM-DD формат, извлечённый из API
+  publishDate: string | null; // ISO 8601 формат из API (полная строка, без обрезки)
   duration?: string; // ISO 8601 формат (PT1H2M10S) или undefined
 }
 
@@ -540,35 +540,13 @@ async function fetchVideosFromAPI(
       }
 
       // Нормализуем и добавляем видео
-      // ВАЖНО: API может возвращать publishedTime как:
-      // - ISO дату: "2024-03-15T10:00:00Z" → извлекаем "2024-03-15"
-      // - Относительную дату: "2 years ago" → устанавливаем null (точная дата будет получена через /v1/youtube/video)
-      // - Дату запроса (текущую) → отсекаем валидацией
+      // ВАЖНО: API /v1/youtube/channel-videos не возвращает точную дату публикации,
+      // только относительную ("2 years ago"). Поэтому здесь ставим null.
+      // Точная дата будет получена через /v1/youtube/video → publishDate
       const normalizedVideos: VideoData[] = videos.map((video: any) => {
-        const rawPublishedTime = video.publishedTime || video.publishedDate || video.uploadDate;
-
-        // Извлекаем и валидируем дату
-        let publishedAt: string | null = null;
-        if (rawPublishedTime) {
-          const dateStr = String(rawPublishedTime);
-          // Извлекаем часть до T (если есть)
-          const extracted = dateStr.includes("T") ? dateStr.split("T")[0] : dateStr;
-
-          // Валидация: должен быть формат YYYY-MM-DD
-          const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
-          if (dateRegex.test(extracted)) {
-            const parsedDate = new Date(extracted);
-            const isValidDate = !isNaN(parsedDate.getTime());
-            const isNotFuture = parsedDate <= new Date();
-
-            if (isValidDate && isNotFuture) {
-              publishedAt = extracted;
-            }
-            // Если дата в будущем или невалидна — оставляем null
-            // Точная дата будет получена через getYoutubeVideoDetails()
-          }
-          // Если формат не YYYY-MM-DD (например "2 years ago") — оставляем null
-        }
+        // Не пытаемся извлечь дату из channel-videos API — она ненадёжна
+        // Точная дата придёт из getYoutubeVideoDetails()
+        const publishDate: string | null = null;
 
         return {
           // API возвращает `id`, а не `videoId`!
@@ -587,7 +565,7 @@ async function fetchVideosFromAPI(
             video.commentCount ?? video.commentCountInt ?? video.comments,
             0
           ),
-          publishedAt,
+          publishDate,
           // Конвертируем lengthSeconds в ISO 8601 формат
           duration: secondsToISO8601Duration(
             video.lengthSeconds ?? video.duration ?? undefined
@@ -698,45 +676,26 @@ export async function getYoutubeVideoDetails(url: string) {
     }
 
     // Нормализация данных
-    // ВАЖНО: endpoint /v1/youtube/video может возвращать дату в разных полях!
-    // Пробуем все возможные поля: publishDate, publishedDate, uploadDate, date
-    const rawDate = data.publishDate || data.publishedDate || data.uploadDate || data.date;
+    // ЕДИНСТВЕННЫЙ ИСТОЧНИК ПРАВДЫ: data.publishDate из API /v1/youtube/video
+    // Сохраняем полную ISO 8601 строку без обрезки
+    const publishDate: string | null = data.publishDate ? String(data.publishDate) : null;
 
-    // DEBUG: логируем ВСЕ поля с датами из API
-    console.log("[ScrapeCreators] RAW date fields from /v1/youtube/video:", {
-      publishDate: data.publishDate,
-      publishedDate: data.publishedDate,
-      publishedTime: data.publishedTime,
-      uploadDate: data.uploadDate,
-      date: data.date,
-      selectedRawDate: rawDate,
-    });
+    // DEBUG: логируем поле publishDate из API
+    console.log("[ScrapeCreators] publishDate from /v1/youtube/video:", publishDate);
 
-    // Извлекаем и валидируем дату
-    let publishedAt: string | null = null;
-    if (rawDate) {
-      // Преобразуем в строку и извлекаем YYYY-MM-DD
-      const dateStr = String(rawDate);
-      const extracted = dateStr.includes("T") ? dateStr.split("T")[0] : dateStr;
+    // Валидация: дата должна быть ISO 8601 и не в будущем
+    let validatedPublishDate: string | null = null;
+    if (publishDate) {
+      const parsedDate = new Date(publishDate);
+      const isValidDate = !isNaN(parsedDate.getTime());
+      const isNotFuture = parsedDate <= new Date();
 
-      // Валидация формата YYYY-MM-DD
-      const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
-      if (dateRegex.test(extracted)) {
-        const parsedDate = new Date(extracted);
-        const isValidDate = !isNaN(parsedDate.getTime());
-        const isNotFuture = parsedDate <= new Date();
-
-        if (isValidDate && isNotFuture) {
-          publishedAt = extracted;
-        } else {
-          console.warn("[ScrapeCreators] Invalid or future date:", { extracted, isValidDate, isNotFuture });
-        }
+      if (isValidDate && isNotFuture) {
+        validatedPublishDate = publishDate;
       } else {
-        console.warn("[ScrapeCreators] Date format invalid:", { dateStr, extracted });
+        console.warn("[ScrapeCreators] Invalid or future publishDate:", { publishDate, isValidDate, isNotFuture });
       }
     }
-
-    console.log("[ScrapeCreators] Extracted publishedAt:", publishedAt);
 
     const videoDetails = {
       videoId: String(data.videoId || data.id || ""),
@@ -753,7 +712,7 @@ export async function getYoutubeVideoDetails(url: string) {
         data.viewCount ?? data.viewCountInt ?? data.views,
         0
       ),
-      publishedAt,
+      publishDate: validatedPublishDate,
       durationMs: safeNumber(data.durationMs ?? data.duration, undefined),
       keywords: Array.isArray(data.keywords) ? data.keywords : undefined,
       transcriptText: data.transcript_only_text || null,
@@ -762,7 +721,7 @@ export async function getYoutubeVideoDetails(url: string) {
     console.log("[ScrapeCreators] Video details fetched:", {
       videoId: videoDetails.videoId,
       title: videoDetails.title,
-      publishedAt: videoDetails.publishedAt,
+      publishDate: videoDetails.publishDate,
       likeCount: videoDetails.likeCount,
       commentCount: videoDetails.commentCount,
     });
