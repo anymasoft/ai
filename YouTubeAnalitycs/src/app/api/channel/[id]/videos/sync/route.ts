@@ -121,7 +121,8 @@ export async function POST(
       : null;
 
     console.log(`[Sync] Сохранённый nextPageToken:`, savedNextPageToken ? "present" : "none (first page)");
-    let newContinuationToken: string | null = null;  // ИТЕРАЦИЯ 11: будет сохранён после API call
+    // ИТЕРАЦИЯ 11: используем undefined для отличия от null (null значит "не обновлять")
+    let newContinuationToken: string | null | undefined = undefined;
 
     // Получаем видео из кеша или API
     let videos: typeof cachedVideos;
@@ -132,6 +133,9 @@ export async function POST(
       videos = cachedVideos.slice(0, MAX_VIDEOS_PER_PAGE);
       totalAvailableVideos = cachedVideos.length;
       console.log(`[Sync] Из кеша: ${videos.length} видео (всего доступно: ${totalAvailableVideos})`);
+      // ИТЕРАЦИЯ 11: когда используем кеш, НЕ обновляем continuationToken (оставляем undefined)
+      // это сохранит уже сохранённый token для следующей пагинации
+      newContinuationToken = undefined;  // явно указываем "не обновлять"
     } else {
       // Кеш старый или не существует - обновляем через API
       if (cachedChannel) {
@@ -339,13 +343,26 @@ export async function POST(
       const lastSyncAtIso = new Date().toISOString();
 
       // ИТЕРАЦИЯ 11: сохраняем новый continuationToken для следующей пагинации
-      await client.execute({
-        sql: `INSERT INTO user_channel_state (userId, channelId, hasSyncedTopVideos, lastSyncAt, nextPageToken)
-              VALUES (?, ?, 1, ?, ?)
-              ON CONFLICT(userId, channelId) DO UPDATE SET hasSyncedTopVideos = 1, lastSyncAt = ?, nextPageToken = ?`,
-        args: [session.user.id, channelId, lastSyncAtIso, newContinuationToken, lastSyncAtIso, newContinuationToken],
-      });
-      console.log(`[Sync] Обновлено состояние пользователя: hasSyncedTopVideos = 1, lastSyncAt = ${lastSyncAtIso}, nextPageToken =`, newContinuationToken ? "present" : "none (last page?)");
+      // если newContinuationToken === undefined, то это означает "не обновлять" (использовали кеш)
+      if (newContinuationToken === undefined) {
+        // Используем кеш - не обновляем token, сохраняем старый
+        await client.execute({
+          sql: `INSERT INTO user_channel_state (userId, channelId, hasSyncedTopVideos, lastSyncAt)
+                VALUES (?, ?, 1, ?)
+                ON CONFLICT(userId, channelId) DO UPDATE SET hasSyncedTopVideos = 1, lastSyncAt = ?`,
+          args: [session.user.id, channelId, lastSyncAtIso, lastSyncAtIso],
+        });
+        console.log(`[Sync] Обновлено состояние пользователя (из кеша): hasSyncedTopVideos = 1, lastSyncAt = ${lastSyncAtIso}, nextPageToken остался без изменений`);
+      } else {
+        // Получали из API - обновляем token
+        await client.execute({
+          sql: `INSERT INTO user_channel_state (userId, channelId, hasSyncedTopVideos, lastSyncAt, nextPageToken)
+                VALUES (?, ?, 1, ?, ?)
+                ON CONFLICT(userId, channelId) DO UPDATE SET hasSyncedTopVideos = 1, lastSyncAt = ?, nextPageToken = ?`,
+          args: [session.user.id, channelId, lastSyncAtIso, newContinuationToken, lastSyncAtIso, newContinuationToken],
+        });
+        console.log(`[Sync] Обновлено состояние пользователя (из API): hasSyncedTopVideos = 1, lastSyncAt = ${lastSyncAtIso}, nextPageToken =`, newContinuationToken ? "present" : "none (last page?)");
+      }
     } catch (stateError) {
       console.warn(`[Sync] Ошибка при обновлении состояния пользователя (не критично):`, stateError instanceof Error ? stateError.message : stateError);
       // Не прерываем sync, если состояние не обновилось
