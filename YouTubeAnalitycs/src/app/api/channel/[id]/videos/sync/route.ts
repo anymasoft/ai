@@ -3,14 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { createClient } from "@libsql/client";
 import { getYoutubeChannelVideos, getYoutubeVideoDetails } from "@/lib/scrapecreators";
-import { getVideoLimitForPlan } from "@/config/limits";
 import { getUserPlan } from "@/lib/user-plan";
-import {
-  getCachedChannel,
-  getCachedChannelVideos,
-  saveChannelToCache,
-  saveChannelVideosToCache,
-} from "@/lib/cache/youtube-cache";
 
 /**
  * POST /api/channel/[id]/videos/sync
@@ -96,34 +89,49 @@ export async function POST(
     const competitor = competitorResult.rows[0];
     console.log(`[Sync] Канал: ${competitor.title}`);
 
-    // Проверяем глобальный кеш перед запросом API
     const channelId = competitor.channelId as string;
-    const cachedVideos = await getCachedChannelVideos(channelId);
-    const cachedChannel = await getCachedChannel(channelId);
-    const cacheAgeMs = cachedChannel ? Date.now() - cachedChannel.lastUpdated : Infinity;
-    const isCacheFresh = cachedVideos.length > 0 && cacheAgeMs < 24 * 60 * 60 * 1000; // 24 часа
-
-    // ИСПРАВЛЕНИЕ (ИТЕРАЦИЯ 10): Жёсткий лимит 12 видео вместо план-лимитов
-    // НЕ используем plan-based limits, только 12 видео в одной странице
     const MAX_VIDEOS_PER_PAGE = 12;
-    const userPlan = getUserPlan(session);  // для логирования
-    let totalAvailableVideos = 0;  // сколько видео в API / в БД всего
+    const userPlan = getUserPlan(session);
 
-    // TOP-12 ONLY: не используем пагинацию, только берём первые 12 лучших видео
-    console.log(`[Sync] Режим TOP-12 ONLY: не используем continuationToken или пагинацию`);
+    // Проверяем кеш в БД: читаем lastSyncAt из user_channel_state
+    console.log(`[Sync] Проверяем локальный кеш для channelId: ${channelId}`);
+    const userStateResult = await client.execute({
+      sql: "SELECT lastSyncAt FROM user_channel_state WHERE userId = ? AND channelId = ?",
+      args: [session.user.id, channelId],
+    });
 
-    // Получаем видео из кеша или API
-    let videos: typeof cachedVideos;
+    const lastSyncAt = userStateResult.rows.length > 0
+      ? (userStateResult.rows[0].lastSyncAt as string | null)
+      : null;
 
-    if (isCacheFresh && cachedChannel) {
-      console.log(`[Sync] Кеш свежий (${Math.round(cacheAgeMs / 1000 / 60)} минут назад), используем кешированные данные`);
-      // Берём только TOP-12 видео из кеша
-      videos = cachedVideos.slice(0, MAX_VIDEOS_PER_PAGE);
-      totalAvailableVideos = cachedVideos.length;
-      console.log(`[Sync] Из кеша: ${videos.length} видео (всего доступно: ${totalAvailableVideos})`);
+    // Вычисляем возраст кеша (в миллисекундах)
+    const cacheAgeMs = lastSyncAt ? Date.now() - new Date(lastSyncAt).getTime() : Infinity;
+    const CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24 часа
+    const isCacheFresh = lastSyncAt !== null && cacheAgeMs < CACHE_TTL_MS;
+
+    console.log(`[Sync] Кеш статус: lastSyncAt=${lastSyncAt ? new Date(lastSyncAt).toISOString() : "null"}, возраст=${Math.round(cacheAgeMs / 1000 / 60)} минут`);
+
+    // Получаем видео
+    let videos: any[] = [];
+    let totalAvailableVideos = 0;
+
+    // Если кеш свежий, берём видео из БД (не вызываем API)
+    if (isCacheFresh) {
+      console.log(`[Sync] Кеш свежий (<24ч), загружаем видео из БД (без API запроса)`);
+      const dbVideosResult = await client.execute({
+        sql: `SELECT id, channelId, videoId, title, thumbnailUrl, viewCount, publishDate, fetchedAt
+              FROM channel_videos
+              WHERE channelId = ?
+              ORDER BY viewCount DESC
+              LIMIT ?`,
+        args: [channelId, MAX_VIDEOS_PER_PAGE],
+      });
+      videos = dbVideosResult.rows.map(row => ({ ...row }));
+      totalAvailableVideos = videos.length;
+      console.log(`[Sync] Из БД: ${videos.length} видео (кеш из ${lastSyncAt})`);
     } else {
-      // Кеш старый или не существует - обновляем через API
-      if (cachedChannel) {
+      // Кеш старый (>24ч) или не существует - обновляем через API
+      if (lastSyncAt) {
         console.log(`[Sync] Кеш устарел (${Math.round(cacheAgeMs / 1000 / 60 / 60)} часов назад), обновляем через API`);
       } else {
         console.log(`[Sync] Кеш отсутствует, синхронизируем впервые`);
@@ -295,29 +303,6 @@ export async function POST(
     const totalVideos = Number(totalResult.rows[0]?.count || 0);
 
     console.log(`[Sync] Готово: добавлено ${inserted}, обновлено ${updated}, пропущено ${skipped}, всего в БД ${totalVideos}`);
-
-    // Сохраняем данные в глобальный кеш только если не из кеша (экономим API)
-    if (!isCacheFresh) {
-      try {
-        const channelInfo = {
-          channelId: competitor.channelId as string,
-          title: competitor.title as string,
-          handle: competitor.handle as string,
-          avatarUrl: competitor.avatarUrl as string | null,
-          subscriberCount: competitor.subscriberCount as number,
-          videoCount: competitor.videoCount as number,
-          viewCount: competitor.viewCount as number,
-        };
-
-        await saveChannelToCache(channelInfo);
-        await saveChannelVideosToCache(channelId, videos);
-
-        console.log(`[Sync] Сохранено в глобальный кеш: канал и ${videos.length} видео`);
-      } catch (cacheError) {
-        console.warn(`[Sync] Ошибка при сохранении в кеш (не критично):`, cacheError instanceof Error ? cacheError.message : cacheError);
-        // Не прерываем sync, если кеш не сохранился
-      }
-    }
 
     // Обновляем состояние пользователя: отмечаем, что он синхронизировал видео
     try {
