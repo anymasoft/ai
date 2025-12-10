@@ -5,6 +5,12 @@ import { createClient } from "@libsql/client";
 import { getYoutubeChannelVideos, getYoutubeVideoDetails } from "@/lib/scrapecreators";
 import { getVideoLimitForPlan } from "@/config/limits";
 import { getUserPlan } from "@/lib/user-plan";
+import {
+  getCachedChannel,
+  getCachedChannelVideos,
+  saveChannelToCache,
+  saveChannelVideosToCache,
+} from "@/lib/cache/youtube-cache";
 
 /**
  * POST /api/channel/[id]/videos/sync
@@ -90,11 +96,55 @@ export async function POST(
     const competitor = competitorResult.rows[0];
     console.log(`[Sync] Канал: ${competitor.title}`);
 
+    // Проверяем глобальный кеш перед запросом API
+    const channelId = competitor.channelId as string;
+    const cachedVideos = await getCachedChannelVideos(channelId);
+    const cachedChannel = await getCachedChannel(channelId);
+    const cacheAgeMs = cachedChannel ? Date.now() - cachedChannel.lastUpdated : Infinity;
+    const isCacheFresh = cachedVideos.length > 0 && cacheAgeMs < 24 * 60 * 60 * 1000; // 24 часа
+
+    // Если кеш свежий - используем его без API запросов
+    if (isCacheFresh && cachedChannel) {
+      console.log(`[Sync] Кеш свежий (${Math.round(cacheAgeMs / 1000 / 60)} минут назад), используем кешированные данные`);
+
+      const userPlan = getUserPlan(session);
+      const maxVideos = getVideoLimitForPlan(userPlan);
+      const limitedVideos = cachedVideos.slice(0, maxVideos);
+
+      const totalResult = await client.execute({
+        sql: "SELECT COUNT(*) as count FROM channel_videos WHERE channelId = ?",
+        args: [channelId],
+      });
+
+      const totalVideos = Number(totalResult.rows[0]?.count || 0);
+
+      console.log(`[Sync] Возвращаем из кеша: ${limitedVideos.length} видео, всего ${totalVideos}`);
+
+      client.close();
+
+      return NextResponse.json({
+        status: "ok",
+        added: 0,
+        updated: 0,
+        totalVideos,
+        plan: userPlan,
+        videoLimit: maxVideos,
+        fromCache: true, // Добавляем флаг для информации
+      });
+    }
+
+    // Кеш старый или не существует - обновляем через API
+    if (cachedChannel) {
+      console.log(`[Sync] Кеш устарел (${Math.round(cacheAgeMs / 1000 / 60 / 60)} часов назад), обновляем через API`);
+    } else {
+      console.log(`[Sync] Кеш отсутствует, синхронизируем впервые`);
+    }
+
     // Получаем список видео из API
     let videos;
     try {
       videos = await getYoutubeChannelVideos(
-        competitor.channelId as string,
+        channelId,
         competitor.handle as string
       );
     } catch (error) {
@@ -219,12 +269,33 @@ export async function POST(
     // Общее количество видео
     const totalResult = await client.execute({
       sql: "SELECT COUNT(*) as count FROM channel_videos WHERE channelId = ?",
-      args: [competitor.channelId],
+      args: [channelId],
     });
 
     const totalVideos = Number(totalResult.rows[0]?.count || 0);
 
     console.log(`[Sync] Готово: добавлено ${inserted}, обновлено ${updated}, всего ${totalVideos}`);
+
+    // Сохраняем данные в глобальный кеш для будущих синхронизаций
+    try {
+      const channelInfo = {
+        channelId: competitor.channelId as string,
+        title: competitor.title as string,
+        handle: competitor.handle as string,
+        avatarUrl: competitor.avatarUrl as string | null,
+        subscriberCount: competitor.subscriberCount as number,
+        videoCount: competitor.videoCount as number,
+        viewCount: competitor.viewCount as number,
+      };
+
+      await saveChannelToCache(channelInfo);
+      await saveChannelVideosToCache(channelId, limitedVideos);
+
+      console.log(`[Sync] Сохранено в глобальный кеш: канал и ${limitedVideos.length} видео`);
+    } catch (cacheError) {
+      console.warn(`[Sync] Ошибка при сохранении в кеш (не критично):`, cacheError instanceof Error ? cacheError.message : cacheError);
+      // Не прерываем sync, если кеш не сохранился
+    }
 
     client.close();
 
