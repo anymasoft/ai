@@ -21,14 +21,33 @@ import { getUserPlan } from "@/lib/user-plan";
  * Без этого страница может быть закеширована, и router.refresh() не будет эффективен.
  */
 export const dynamic = "force-dynamic";
-export const fetchCache = (url => {
-  // Исключаем NextAuth endpoints из force-no-store, иначе ломается session fetch
-  if (typeof url === "string" && url.startsWith("/api/auth/")) {
-    return "default-cache";
-  }
-  return "force-no-store";
-})();
+export const fetchCache = "force-no-store";
 export const revalidate = 0;
+
+/**
+ * Патчим глобальный fetch для совместимости с NextAuth.
+ * NextAuth нуждается в кешировании /api/auth/session, иначе CLIENT_FETCH_ERROR.
+ * Для остальных запросов применяем cache: "no-store" через init параметры.
+ */
+const originalFetch = fetch;
+(globalThis as any).fetch = (input: RequestInfo | URL, init?: RequestInit) => {
+  try {
+    if (typeof input === "string" && input.startsWith("/api/auth/")) {
+      // Для NextAuth endpoints — использовать обычное поведение без cache override
+      console.log("[Page Fetch Override] NextAuth request detected, using default behavior:", input);
+      return originalFetch(input, init);
+    }
+  } catch (err) {
+    console.warn("[Page Fetch Override] Error checking URL:", err);
+  }
+
+  // Для всех остальных запросов — запрещаем кеширование
+  const newInit = {
+    ...init,
+    cache: "no-store" as const
+  };
+  return originalFetch(input, newInit);
+};
 
 interface PageProps {
   params: Promise<{ id: string }>;
