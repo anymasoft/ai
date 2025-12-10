@@ -26,6 +26,8 @@ interface TopVideosGridProps {
   userPlan?: UserPlan;
   /** Синхронизировал ли пользователь видео этого канала */
   hasSyncedTopVideos?: boolean;
+  /** Нажал ли пользователь "Показать топ-видео" */
+  hasShownVideos?: boolean;
   /** ID конкурента для вызова API */
   channelId?: number;
 }
@@ -43,7 +45,7 @@ function formatViews(views: number): string {
   return views.toString();
 }
 
-export function TopVideosGrid({ videos, userPlan = "free", hasSyncedTopVideos = false, channelId }: TopVideosGridProps) {
+export function TopVideosGrid({ videos, userPlan = "free", hasSyncedTopVideos = false, hasShownVideos = false, channelId }: TopVideosGridProps) {
   const router = useRouter();
   // Используем VIDEO_PAGE_SIZE (12) вместо хардкода 24
   const [visibleCount, setVisibleCount] = useState(VIDEO_PAGE_SIZE);
@@ -119,27 +121,36 @@ export function TopVideosGrid({ videos, userPlan = "free", hasSyncedTopVideos = 
   return (
     <CardContent className="p-6">
       <>
-        {sortedVideos.length === 0 ? (
+        {/* Сценарий A: пользователь ещё не синхронизировал видео */}
+        {!hasSyncedTopVideos ? (
           <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
-            {!hasSyncedTopVideos ? (
+            <p className="text-center">
+              Нет данных. Нажмите &quot;Sync Top Videos&quot; чтобы загрузить видео канала.
+            </p>
+          </div>
+        ) : !hasShownVideos ? (
+          /* Сценарий B: синхронизировано, но "Показать" ещё не нажимали */
+          <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
+            <div className="flex flex-col items-center justify-center gap-4">
               <p className="text-center">
-                Нет данных. Нажмите &quot;Sync Top Videos&quot; чтобы загрузить видео канала.
+                Нет данных. Нажмите кнопку ниже, чтобы загрузить топ-видео.
               </p>
-            ) : (
-              <div className="flex flex-col items-center justify-center gap-4">
-                <p className="text-center">
-                  Нет данных. Нажмите кнопку ниже, чтобы загрузить топ-видео.
-                </p>
-                <Button
-                  onClick={() => handleShowVideos()}
-                  variant="default"
-                  size="sm"
-                  disabled={showingVideos}
-                >
-                  {showingVideos ? "Загружаем..." : "Показать топ-видео"}
-                </Button>
-              </div>
-            )}
+              <Button
+                onClick={() => handleShowVideos()}
+                variant="default"
+                size="sm"
+                disabled={showingVideos}
+              >
+                {showingVideos ? "Загружаем..." : "Показать топ-видео"}
+              </Button>
+            </div>
+          </div>
+        ) : sortedVideos.length === 0 ? (
+          /* Сценарий C: синхронизировано и показано, но видео нет в БД */
+          <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
+            <p className="text-center">
+              Видео не найдены. Попробуйте синхронизировать ещё раз.
+            </p>
           </div>
         ) : (
           <>

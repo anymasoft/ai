@@ -47,7 +47,7 @@ function formatViews(views: number): string {
   return views.toString();
 }
 
-export function TopVideosTable({ videos, hasSyncedTopVideos = false, channelId }: TopVideosTableProps) {
+export function TopVideosTable({ videos, hasSyncedTopVideos = false, hasShownVideos = false, channelId }: TopVideosTableProps) {
   const router = useRouter();
   const [limit, setLimit] = useState(50);
   const [refreshingId, setRefreshingId] = useState<string | null>(null);
@@ -113,27 +113,36 @@ export function TopVideosTable({ videos, hasSyncedTopVideos = false, channelId }
         </CardDescription>
       </CardHeader>
       <CardContent className="p-0">
-        {sortedVideos.length === 0 ? (
+        {/* Сценарий A: пользователь ещё не синхронизировал видео */}
+        {!hasSyncedTopVideos ? (
           <div className="flex flex-col items-center justify-center py-12 text-muted-foreground px-4">
-            {!hasSyncedTopVideos ? (
+            <p className="text-center">
+              Нет данных. Нажмите &quot;Sync Top Videos&quot; чтобы загрузить видео канала.
+            </p>
+          </div>
+        ) : !hasShownVideos ? (
+          /* Сценарий B: синхронизировано, но "Показать" ещё не нажимали */
+          <div className="flex flex-col items-center justify-center py-12 text-muted-foreground px-4">
+            <div className="flex flex-col items-center justify-center gap-4">
               <p className="text-center">
-                Нет данных. Нажмите &quot;Sync Top Videos&quot; чтобы загрузить видео канала.
+                Нет данных. Нажмите кнопку ниже, чтобы загрузить топ-видео.
               </p>
-            ) : (
-              <div className="flex flex-col items-center justify-center gap-4">
-                <p className="text-center">
-                  Нет данных. Нажмите кнопку ниже, чтобы загрузить топ-видео.
-                </p>
-                <Button
-                  onClick={() => handleShowVideos()}
-                  variant="default"
-                  size="sm"
-                  disabled={showingVideos}
-                >
-                  {showingVideos ? "Загружаем..." : "Показать топ-видео"}
-                </Button>
-              </div>
-            )}
+              <Button
+                onClick={() => handleShowVideos()}
+                variant="default"
+                size="sm"
+                disabled={showingVideos}
+              >
+                {showingVideos ? "Загружаем..." : "Показать топ-видео"}
+              </Button>
+            </div>
+          </div>
+        ) : sortedVideos.length === 0 ? (
+          /* Сценарий C: синхронизировано и показано, но видео нет в БД */
+          <div className="flex flex-col items-center justify-center py-12 text-muted-foreground px-4">
+            <p className="text-center">
+              Видео не найдены. Попробуйте синхронизировать ещё раз.
+            </p>
           </div>
         ) : (
           <div className="overflow-x-auto">
