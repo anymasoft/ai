@@ -84,8 +84,6 @@ export function SyncAllDataButton({ channelId }: SyncAllDataButtonProps) {
             });
           }
 
-          // Refresh page even with partial sync
-          router.refresh();
           return;
         }
 
@@ -102,17 +100,12 @@ export function SyncAllDataButton({ channelId }: SyncAllDataButtonProps) {
 
       // All steps completed successfully
       toast.success("All data synced successfully!", { duration: 5000 });
-      router.refresh();
     } catch (error) {
       toast.error("An error occurred during sync");
       console.error("[SyncAllData] Error:", error);
-      // Обновляем UI даже при ошибке
-      router.refresh();
     } finally {
       setSyncing(false);
       setCurrentStep("idle");
-      // Дополнительное обновление для гарантии
-      router.refresh();
     }
   }
 
