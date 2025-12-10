@@ -166,7 +166,7 @@ export function TopVideosGrid({ videos, userPlan = "free", hasShownVideos = fals
         setVideoList(pageData.videos);
         setHasShown(true);
         setPage(pageData.page ?? 0);
-        setHasMore(pageData.hasMore ?? false);
+        // БЫЛО: setHasMore(pageData.hasMore ?? false); // УДАЛЕНО — кнопка всегда видна
         setTotalVideos(pageData.totalVideos ?? pageData.videos.length);
         console.log("[TopVideosGrid] Локальное состояние обновлено, видео готовы к отображению");
       } else {
@@ -220,7 +220,7 @@ export function TopVideosGrid({ videos, userPlan = "free", hasShownVideos = fals
         console.log(`[TopVideosGrid] Добавляем ${data.videos.length} видео к существующему списку`);
         setVideoList(prev => [...prev, ...data.videos]);
         setPage(data.page);
-        setHasMore(data.hasMore ?? false);
+        // БЫЛО: setHasMore(data.hasMore ?? false); // УДАЛЕНО — кнопка всегда видна
         setTotalVideos(data.totalVideos ?? totalVideos);
       } else {
         // Видео на этой странице не в БД
@@ -228,7 +228,7 @@ export function TopVideosGrid({ videos, userPlan = "free", hasShownVideos = fals
         // Пользователь должен нажать "Получить топ-видео" для загрузки следующей страницы
         console.log(`[TopVideosGrid] Страница ${nextPage} не синхронизирована с API`);
         console.log(`[TopVideosGrid] Нажмите "Получить топ-видео" чтобы загрузить следующие 12 видео`);
-        setHasMore(false);
+        // БЫЛО: setHasMore(false); // УДАЛЕНО — кнопка всегда видна
       }
     } catch (err) {
       console.error("[TopVideosGrid] Ошибка при загрузке видео:", err);
@@ -348,15 +348,20 @@ export function TopVideosGrid({ videos, userPlan = "free", hasShownVideos = fals
               ))}
             </div>
 
-            {/* Кнопка "Показать ещё 12" — только если есть ещё видео (ИТЕРАЦИЯ 10: без проверки плана) */}
-            {hasShown && hasMore && (
+            {/* ВАЖНО:
+                Кнопка "Следующие 12 видео" всегда отображается после первой загрузки.
+                Мы намеренно НЕ прячем её по hasMore/totalVideos, чтобы пользователь мог
+                принудительно запросить следующую порцию видео.
+                Единственное условие: в сетке должны быть видео (sortedVideos.length > 0).
+            */}
+            {sortedVideos.length > 0 && (
               <div className="flex justify-center mt-6">
                 <Button
                   onClick={loadMore}
                   variant="outline"
                   disabled={isLoadingMore}
                 >
-                  {isLoadingMore ? "Загружаем..." : "Показать ещё 12"}
+                  {isLoadingMore ? "Загружаем..." : "Следующие 12 видео"}
                 </Button>
               </div>
             )}
