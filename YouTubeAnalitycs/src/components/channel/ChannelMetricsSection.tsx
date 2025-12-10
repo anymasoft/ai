@@ -19,7 +19,7 @@ interface ChannelMetric {
 
 interface ChannelMetricsSectionProps {
   metrics: ChannelMetric[];
-  channelId?: number;
+  channelId?: string;
   /** Нажал ли пользователь "Получить метрики" */
   hasShownMetrics?: boolean;
 }

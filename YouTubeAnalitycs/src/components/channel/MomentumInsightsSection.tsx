@@ -8,7 +8,7 @@ import { MomentumInsights } from "@/components/channel/MomentumInsights";
 
 interface MomentumInsightsSectionProps {
   momentumData: any;
-  channelId?: number;
+  channelId?: string;
   /** Нажал ли пользователь "Получить Momentum" */
   hasShownMomentum?: boolean;
   /** Есть ли видео для анализа */

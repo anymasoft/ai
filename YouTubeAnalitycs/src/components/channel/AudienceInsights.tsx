@@ -48,7 +48,7 @@ interface AudienceData {
 }
 
 interface AudienceInsightsProps {
-  channelId: number;
+  channelId: string;
   initialData?: AudienceData | null;
   hasRequiredData?: boolean;
 }

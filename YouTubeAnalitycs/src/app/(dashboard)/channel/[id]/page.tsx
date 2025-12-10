@@ -536,13 +536,13 @@ export default async function ChannelPage({ params }: PageProps) {
 
       {/* AI SWOT Analysis */}
       <SWOTAnalysisBlock
-        channelId={competitorId}
+        channelId={competitor.channelId as string}
         insight={insight}
       />
 
         {/* Analytics Section */}
         <ChannelAnalytics
-          channelId={competitorId}
+          channelId={competitor.channelId as string}
           metrics={metrics}
           videos={videos}
           contentData={contentData ? { ...contentData, generatedAt: intelligence?.generatedAt } : null}

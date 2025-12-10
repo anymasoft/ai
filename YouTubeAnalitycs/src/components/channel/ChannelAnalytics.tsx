@@ -13,7 +13,7 @@ import { DeepCommentAnalysisSection } from "@/components/channel/DeepCommentAnal
 import type { UserPlan } from "@/config/limits"
 
 interface ChannelAnalyticsProps {
-  channelId: number
+  channelId: string
   metrics: any[]
   videos: any[]
   contentData: any

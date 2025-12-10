@@ -8,7 +8,7 @@ import { GenerateSwotButton } from "@/components/channel/GenerateSwotButton"
 import type { SwotPoint, VideoIdea } from "@/lib/ai/analyzeChannel"
 
 interface SWOTAnalysisBlockProps {
-  channelId: number
+  channelId: string
   insight: {
     strengths: SwotPoint[]
     weaknesses: SwotPoint[]

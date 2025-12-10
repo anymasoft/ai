@@ -7,7 +7,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 
 interface GenerateSwotButtonProps {
-  channelId: number;
+  channelId: string;
   variant?: "default" | "outline" | "ghost";
   size?: "default" | "sm" | "lg";
   isUpdate?: boolean;

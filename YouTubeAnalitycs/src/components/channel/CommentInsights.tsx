@@ -23,7 +23,7 @@ interface CommentInsightsData {
 }
 
 interface CommentInsightsProps {
-  channelId: number;
+  channelId: string;
   initialData?: CommentInsightsData | null;
   hasRequiredData?: boolean;
 }

@@ -8,7 +8,7 @@ import { AudienceInsights } from "@/components/channel/AudienceInsights";
 
 interface AudienceInsightsSectionProps {
   audienceData: any;
-  channelId?: number;
+  channelId?: string;
   /** Нажал ли пользователь "Получить аудиторию" */
   hasShownAudience?: boolean;
   /** Есть ли видео для анализа */
