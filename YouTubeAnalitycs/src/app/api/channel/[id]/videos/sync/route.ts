@@ -166,8 +166,9 @@ export async function POST(
       videos = apiVideos.slice(0, MAX_VIDEOS_PER_PAGE);
       console.log(`[Sync] ОБРЕЗАЛИ до первых ${MAX_VIDEOS_PER_PAGE} видео (было ${apiVideos.length})`);
 
-      // Получаем существующие даты из БД только для API видео
+      // Получаем существующие даты из БД только для ограниченного набора видео
       const existingDates = new Map<string, string | null>();
+      console.log(`[Sync] Проверяем существующие даты для ${videos.length} видео в БД`);
       for (const video of videos) {
         if (!video.videoId) continue;
 
@@ -181,7 +182,9 @@ export async function POST(
         }
       }
 
-      // Получаем publishDate для видео БЕЗ даты (только для API видео, не для кешированных)
+      // Получаем publishDate для видео БЕЗ даты (только для ограниченного набора)
+      console.log(`[Sync] Начинаем получать publishDate для ${videos.length} видео (MAX_VIDEOS_PER_PAGE = ${MAX_VIDEOS_PER_PAGE})`);
+      let publishDateResolvedCount = 0;
       for (const video of videos) {
         if (!video.videoId) continue;
 
@@ -196,10 +199,12 @@ export async function POST(
         // Если даты нет → получаем из API
         const publishDate = await fetchPublishDateWithRetry(video.videoId);
         video.publishDate = publishDate; // может быть null
+        publishDateResolvedCount++;
 
         // Задержка между запросами
         await new Promise(resolve => setTimeout(resolve, 150));
       }
+      console.log(`[Sync] Получено publishDate для ${publishDateResolvedCount} видео (MAX_VIDEOS_PER_PAGE = ${MAX_VIDEOS_PER_PAGE})`);
     }
 
     // Сохраняем в локальную таблицу channel_videos
