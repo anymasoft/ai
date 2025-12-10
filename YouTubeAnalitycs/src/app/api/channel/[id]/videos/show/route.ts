@@ -67,6 +67,15 @@ export async function POST(
       return NextResponse.json({ error: "Failed to update channel state" }, { status: 500 });
     }
 
+    // Гарантируем полный flush WAL перед ответом клиенту
+    // Это критично для SSR: когда page.tsx вызовет router.refresh(), данные должны быть физически записаны в БД
+    try {
+      await client.execute(`PRAGMA wal_checkpoint(FULL);`);
+      console.log("[ShowVideos] WAL checkpoint завершён успешно");
+    } catch (walError) {
+      console.warn("[ShowVideos] Ошибка при WAL checkpoint (не критично):", walError instanceof Error ? walError.message : walError);
+    }
+
     client.close();
 
     return NextResponse.json({

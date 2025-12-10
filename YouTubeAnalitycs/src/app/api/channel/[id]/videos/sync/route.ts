@@ -317,6 +317,15 @@ export async function POST(
       // Не прерываем sync, если состояние не обновилось
     }
 
+    // Гарантируем полный flush WAL перед ответом клиенту
+    // Это критично для SSR: когда page.tsx вызовет router.refresh(), данные должны быть физически записаны в БД
+    try {
+      await client.execute(`PRAGMA wal_checkpoint(FULL);`);
+      console.log("[Sync] WAL checkpoint завершён успешно");
+    } catch (walError) {
+      console.warn("[Sync] Ошибка при WAL checkpoint (не критично):", walError instanceof Error ? walError.message : walError);
+    }
+
     client.close();
 
     return NextResponse.json({
