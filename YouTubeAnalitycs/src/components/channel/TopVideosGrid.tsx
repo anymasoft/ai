@@ -64,6 +64,10 @@ export function TopVideosGrid({ videos, userPlan = "free", hasShownVideos = fals
     setRefreshingId(videoId);
     try {
       const res = await fetch(`/api/video/${videoId}/refresh-date`, { method: "POST" });
+      if (!res.ok) {
+        console.error("Ошибка обновления даты: HTTP " + res.status);
+        return;
+      }
       const result = await res.json();
       if (result.success && result.publishDate) {
         setVideoList(prev => prev.map(v =>
@@ -71,7 +75,7 @@ export function TopVideosGrid({ videos, userPlan = "free", hasShownVideos = fals
         ));
       }
     } catch (err) {
-      console.error("Ошибка обновления даты:", err);
+      console.error("Ошибка обновления даты:", err instanceof Error ? err.message : err);
     } finally {
       setRefreshingId(null);
     }
@@ -92,11 +96,26 @@ export function TopVideosGrid({ videos, userPlan = "free", hasShownVideos = fals
         cache: "no-store",
       });
 
+      // Проверяем статус ответа перед парсингом JSON
+      if (!syncRes.ok) {
+        let errorMsg = `HTTP ${syncRes.status}`;
+        try {
+          const errorData = await syncRes.json();
+          if (errorData.error) {
+            errorMsg = typeof errorData.error === 'string' ? errorData.error : JSON.stringify(errorData.error);
+          }
+        } catch (e) {
+          // Не смогли распарсить JSON, используем статус код
+        }
+        console.error(`[TopVideosGrid] Ошибка синхронизации: ${errorMsg}`);
+        return;
+      }
+
       const syncData = await syncRes.json();
 
       // Проверяем успех операции
       if (!syncData.success) {
-        const errorMsg = syncData.error || "Unknown sync error";
+        const errorMsg = typeof syncData.error === 'string' ? syncData.error : "Unknown sync error";
         console.error(`[TopVideosGrid] Ошибка синхронизации: ${errorMsg}`);
         return;
       }
