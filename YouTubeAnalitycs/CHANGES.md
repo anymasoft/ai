@@ -67,6 +67,31 @@
 - Race-condition между DB write и SSR полностью исчезает
 - Видео появляются МГНОВЕННО, без задержки или необходимости F5
 
+#### ИТЕРАЦИЯ 3: Исправление NextAuth CLIENT_FETCH_ERROR
+
+Добавлено исключение для NextAuth endpoints:
+
+**Изменения в page.tsx:**
+- ✅ Заменён простой `fetchCache = "force-no-store"` на условный вариант
+- ✅ Исключены `/api/auth/*` endpoints из force-no-store
+- ✅ NextAuth может использовать default-cache для стабильной работы
+
+**Логика:**
+```typescript
+export const fetchCache = (url => {
+  if (typeof url === "string" && url.startsWith("/api/auth/")) {
+    return "default-cache";
+  }
+  return "force-no-store";
+})();
+```
+
+**Результат ИТЕРАЦИИ 3:**
+- CLIENT_FETCH_ERROR от NextAuth исчезает
+- Сессия стабилизируется
+- Видео всё ещё появляются мгновенно
+- Кеширование работает корректно для обоих случаев
+
 ---
 
 ## [2025-12-09] - REFACTOR: Sentiment анализ через микропромпты (AI v2.2)

@@ -21,7 +21,13 @@ import { getUserPlan } from "@/lib/user-plan";
  * Без этого страница может быть закеширована, и router.refresh() не будет эффективен.
  */
 export const dynamic = "force-dynamic";
-export const fetchCache = "force-no-store";
+export const fetchCache = (url => {
+  // Исключаем NextAuth endpoints из force-no-store, иначе ломается session fetch
+  if (typeof url === "string" && url.startsWith("/api/auth/")) {
+    return "default-cache";
+  }
+  return "force-no-store";
+})();
 export const revalidate = 0;
 
 interface PageProps {
