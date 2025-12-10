@@ -90,6 +90,14 @@ export async function POST(
     console.log(`[Sync] Канал: ${competitor.title}`);
 
     const channelId = competitor.channelId as string;
+
+    // Защита: channelId не должен быть пустым или undefined
+    if (!channelId || typeof channelId !== 'string' || channelId.trim() === '') {
+      client.close();
+      console.error(`[Sync] Invalid channelId: ${channelId}`);
+      return NextResponse.json({ success: false, error: "Invalid channel ID in database" }, { status: 400 });
+    }
+
     const MAX_VIDEOS_PER_PAGE = 12;
     const userPlan = getUserPlan(session);
 
