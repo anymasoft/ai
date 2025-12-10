@@ -31,8 +31,12 @@ interface TopVideosGridProps {
 
 /**
  * Форматирует числа для читаемости (1000000 => 1.2M)
+ * Безопасная функция: обрабатывает undefined/null/NaN
  */
-function formatViews(views: number): string {
+function formatViews(views: number | undefined | null): string {
+  if (views === undefined || views === null || typeof views !== "number" || !Number.isFinite(views)) {
+    return "0";
+  }
   if (views >= 1000000) {
     return `${(views / 1000000).toFixed(1)}M`;
   }

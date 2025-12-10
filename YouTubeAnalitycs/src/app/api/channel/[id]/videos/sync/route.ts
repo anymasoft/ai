@@ -48,6 +48,26 @@ async function fetchPublishDateWithRetry(videoId: string): Promise<string | null
   return null;
 }
 
+/**
+ * Нормализует данные видео, гарантируя что все числовые поля имеют безопасные значения
+ * Преобразует undefined/null в 0 для viewCount, likeCount, commentCount
+ */
+function normalizeVideoData(video: any) {
+  return {
+    id: video.id,
+    channelId: video.channelId,
+    videoId: video.videoId,
+    title: video.title ?? "Untitled",
+    thumbnailUrl: video.thumbnailUrl ?? null,
+    viewCount: typeof video.viewCount === "number" && Number.isFinite(video.viewCount) ? video.viewCount : 0,
+    likeCount: typeof video.likeCount === "number" && Number.isFinite(video.likeCount) ? video.likeCount : 0,
+    commentCount: typeof video.commentCount === "number" && Number.isFinite(video.commentCount) ? video.commentCount : 0,
+    publishDate: video.publishDate ?? null,
+    duration: video.duration ?? null,
+    fetchedAt: video.fetchedAt ?? Date.now(),
+  };
+}
+
 export async function POST(
   req: NextRequest,
   context: { params: Promise<{ id: string }> }
@@ -96,7 +116,7 @@ export async function POST(
     // ШАГ 1: ПРОВЕРЯЕМ ЕСТЬ ЛИ УЖЕ 12 ВИДЕО В БД С PUBLISHDATE
     console.log(`[Sync] Проверяем наличие видео в БД для channelId: ${channelId}`);
     const existingVideosResult = await client.execute({
-      sql: `SELECT id, videoId, publishDate FROM channel_videos
+      sql: `SELECT id, channelId, videoId, title, thumbnailUrl, viewCount, likeCount, commentCount, publishDate, duration, fetchedAt FROM channel_videos
             WHERE channelId = ?
             ORDER BY viewCount DESC
             LIMIT ?`,
@@ -125,9 +145,12 @@ export async function POST(
 
       client.close();
 
+      // Нормализуем видео перед отправкой (гарантируем безопасные значения)
+      const normalizedCachedVideos = existingVideos.slice(0, MAX_VIDEOS_PER_PAGE).map(normalizeVideoData);
+
       return NextResponse.json({
         success: true,
-        videos: existingVideos.slice(0, MAX_VIDEOS_PER_PAGE),
+        videos: normalizedCachedVideos,
         totalVideos: existingVideos.length,
         added: 0,
         updated: 0,
@@ -312,9 +335,12 @@ export async function POST(
 
     client.close();
 
+    // Нормализуем видео перед отправкой (гарантируем безопасные значения)
+    const normalizedApiVideos = videos.slice(0, MAX_VIDEOS_PER_PAGE).map(normalizeVideoData);
+
     return NextResponse.json({
       success: true,
-      videos: videos.slice(0, MAX_VIDEOS_PER_PAGE),
+      videos: normalizedApiVideos,
       totalVideos,
       added: inserted,
       updated,
