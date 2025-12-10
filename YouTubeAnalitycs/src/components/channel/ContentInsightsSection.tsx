@@ -8,7 +8,7 @@ import { ContentIntelligenceBlock } from "@/components/channel/ContentIntelligen
 
 interface ContentInsightsSectionProps {
   contentData: any;
-  channelId?: number;
+  channelId?: string;
   /** Нажал ли пользователь "Получить Content Intelligence" */
   hasShownContent?: boolean;
   /** Есть ли видео для анализа */

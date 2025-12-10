@@ -32,7 +32,7 @@ interface MomentumData {
 }
 
 interface MomentumInsightsProps {
-  channelId: number;
+  channelId: string;
   initialData?: MomentumData | null;
   hasRequiredData?: boolean;
 }

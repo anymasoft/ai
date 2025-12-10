@@ -8,7 +8,7 @@ import { DeepCommentAnalysis } from "@/components/channel/DeepCommentAnalysis";
 
 interface DeepCommentAnalysisSectionProps {
   deepAnalysisData: any;
-  channelId?: number;
+  channelId?: string;
   /** Нажал ли пользователь "Получить Deep Analysis" */
   hasShownDeepComments?: boolean;
   /** Есть ли комментарии для анализа */

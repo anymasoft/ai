@@ -34,7 +34,7 @@ interface ContentIntelligenceData {
 }
 
 interface ContentIntelligenceBlockProps {
-  channelId: number;
+  channelId: string;
   initialData?: ContentIntelligenceData | null;
   hasRequiredData?: boolean;
 }

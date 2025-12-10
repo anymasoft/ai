@@ -26,8 +26,8 @@ interface TopVideosGridProps {
   userPlan?: UserPlan;
   /** Нажал ли пользователь "Получить топ-видео" */
   hasShownVideos?: boolean;
-  /** ID конкурента для вызова API */
-  channelId?: number;
+  /** YouTube Channel ID (не competitorId) для вызова API */
+  channelId?: string;
 }
 
 /**

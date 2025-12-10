@@ -20,7 +20,7 @@ import { toast } from "sonner";
 import type { CombinedDeepAnalysis } from "@/lib/ai/comments-analysis";
 
 interface DeepCommentAnalysisProps {
-  channelId: number;
+  channelId: string;
   initialData?: (CombinedDeepAnalysis & {
     cached?: boolean;
     createdAt?: number;
