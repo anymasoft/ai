@@ -47,11 +47,15 @@ function formatViews(views: number): string {
 
 export function TopVideosGrid({ videos, userPlan = "free", hasSyncedTopVideos = false, hasShownVideos = false, channelId }: TopVideosGridProps) {
   const router = useRouter();
-  // Используем VIDEO_PAGE_SIZE (12) вместо хардкода 24
-  const [visibleCount, setVisibleCount] = useState(VIDEO_PAGE_SIZE);
   const [refreshingId, setRefreshingId] = useState<string | null>(null);
   const [videoList, setVideoList] = useState(videos);
   const [showingVideos, setShowingVideos] = useState(false);
+
+  // Состояние для постраничной загрузки
+  const [page, setPage] = useState(0);
+  const [hasMore, setHasMore] = useState(true);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [totalVideos, setTotalVideos] = useState(videos.length);
 
   const refreshDate = async (e: React.MouseEvent, videoId: string) => {
     e.preventDefault();
@@ -101,21 +105,45 @@ export function TopVideosGrid({ videos, userPlan = "free", hasSyncedTopVideos = 
     }
   };
 
+  // Загружаем следующую страницу видео
+  const loadMore = async () => {
+    if (!channelId || isLoadingMore) return;
+
+    setIsLoadingMore(true);
+    try {
+      const res = await fetch(`/api/channel/${channelId}/videos/page?page=${page + 1}`);
+      const data = await res.json();
+
+      if (!data.ok) {
+        console.error("Failed to load more videos:", data.error);
+        return;
+      }
+
+      console.log(`[TopVideosGrid] Loaded page ${data.page}: ${data.videos.length} videos, hasMore: ${data.hasMore}`);
+
+      // Добавляем новые видео к существующему списку
+      setVideoList(prev => [...prev, ...data.videos]);
+      setPage(data.page);
+      setHasMore(data.hasMore);
+      setTotalVideos(data.totalVideos);
+    } catch (err) {
+      console.error("Ошибка при загрузке видео:", err);
+    } finally {
+      setIsLoadingMore(false);
+    }
+  };
+
   // Определяем лимит по тарифу пользователя
   const planLimit = TIER_VIDEO_LIMITS[userPlan];
-  // Фактическое количество доступных видео (не больше чем есть в БД и не больше лимита тарифа)
-  const totalAvailable = Math.min(videoList.length, planLimit);
-  // Может ли пользователь догружать (план позволяет > 12)
+  // Может ли пользователь загружать больше видео
   const canLoadMore = canLoadMoreVideos(userPlan);
 
   // Сортируем видео по количеству просмотров (DESC)
   const sortedVideos = [...videoList].sort((a, b) => b.viewCount - a.viewCount);
-  // Показываем не больше visibleCount и не больше totalAvailable
-  const visibleVideos = sortedVideos.slice(0, Math.min(visibleCount, totalAvailable));
 
   // Debug в dev режиме
   if (process.env.NODE_ENV === "development") {
-    console.log(`[TopVideosGrid] Plan: ${userPlan}, Limit: ${planLimit}, Total in DB: ${videoList.length}, Available: ${totalAvailable}, Visible: ${visibleVideos.length}`);
+    console.log(`[TopVideosGrid] Plan: ${userPlan}, Limit: ${planLimit}, Total loaded: ${videoList.length}, HasMore: ${hasMore}`);
   }
 
   return (
@@ -155,7 +183,7 @@ export function TopVideosGrid({ videos, userPlan = "free", hasSyncedTopVideos = 
         ) : (
           <>
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-              {visibleVideos.map((video) => (
+              {sortedVideos.map((video) => (
                 <Card
                   key={video.id}
                   className="group overflow-hidden border border-border/50 rounded-lg shadow-sm hover:shadow-md transition-all duration-150"
@@ -208,14 +236,15 @@ export function TopVideosGrid({ videos, userPlan = "free", hasSyncedTopVideos = 
               ))}
             </div>
 
-            {/* Кнопка "Load more" — только если план позволяет и есть ещё видео */}
-            {canLoadMore && visibleCount < totalAvailable && (
+            {/* Кнопка "Показать ещё 12" — только если есть ещё видео и пользователь может загружать */}
+            {hasShownVideos && canLoadMore && hasMore && (
               <div className="flex justify-center mt-6">
                 <Button
-                  onClick={() => setVisibleCount((prev) => Math.min(prev + VIDEO_PAGE_SIZE, totalAvailable))}
+                  onClick={loadMore}
                   variant="outline"
+                  disabled={isLoadingMore}
                 >
-                  Load more {VIDEO_PAGE_SIZE} videos
+                  {isLoadingMore ? "Загружаем..." : "Показать ещё 12"}
                 </Button>
               </div>
             )}
@@ -224,7 +253,7 @@ export function TopVideosGrid({ videos, userPlan = "free", hasSyncedTopVideos = 
             {!canLoadMore && videoList.length > VIDEO_PAGE_SIZE && (
               <div className="flex justify-center mt-6">
                 <p className="text-sm text-muted-foreground">
-                  Only {VIDEO_PAGE_SIZE} videos available on your current plan.
+                  Ваш тариф ограничивает количество доступных видео. Перейдите на Professional, чтобы видеть больше данных.
                 </p>
               </div>
             )}
