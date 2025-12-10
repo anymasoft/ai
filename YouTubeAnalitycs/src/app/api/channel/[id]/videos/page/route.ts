@@ -2,24 +2,18 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { createClient } from "@libsql/client";
-import { VIDEO_PAGE_SIZE } from "@/config/limits";
 
 /**
- * GET /api/channel/[id]/videos/page?page=N
+ * GET /api/channel/[id]/videos/page
  *
- * Загружает видео постранично (по 12 штук) из channel_videos таблицы.
- * БЕЗ учёта тарифных лимитов (ИТЕРАЦИЯ 10).
- *
- * Параметры:
- * - page: номер страницы (0-based)
+ * Загружает TOP-12 видео из channel_videos таблицы.
+ * Пагинация не поддерживается — всегда возвращает TOP-12.
  *
  * Ответ:
  * {
  *   ok: true,
  *   videos: VideoData[],
- *   hasMore: boolean,
- *   totalVideos: number,
- *   page: number
+ *   totalVideos: number
  * }
  */
 
@@ -48,16 +42,7 @@ export async function GET(
       return NextResponse.json({ error: "Invalid competitor ID" }, { status: 400 });
     }
 
-    // Получаем параметр page из query string
-    const pageParam = req.nextUrl.searchParams.get("page");
-    const page = pageParam ? parseInt(pageParam, 10) : 0;
-
-    if (!Number.isFinite(page) || page < 0) {
-      client.close();
-      return NextResponse.json({ error: "Invalid page parameter" }, { status: 400 });
-    }
-
-    console.log(`[VideosPage] Запрос страницы ${page} для competitor ID: ${competitorId}`);
+    console.log(`[VideosPage] Запрос TOP-12 видео для competitor ID: ${competitorId}`);
 
     // Получаем данные конкурента для channelId
     const competitorResult = await client.execute({
@@ -72,10 +57,19 @@ export async function GET(
 
     const channelId = competitorResult.rows[0].channelId as string;
 
-    // ИТЕРАЦИЯ 10: Простая пагинация из БД
-    // Если видео для этой страницы не в БД, это означает что нужно вызвать sync для неё
-    // Frontend должен вызвать POST /api/channel/[id]/videos/sync перед запросом новой страницы
-    console.log(`[VideosPage] ITERATION 10: Loading paginated videos WITHOUT plan limits`);
+    console.log(`[VideosPage] Загрузка TOP-12 видео для channelId=${channelId}`);
+
+    // Получаем TOP-12 видео из БД
+    const videosResult = await client.execute({
+      sql: `SELECT id, channelId, videoId, title, thumbnailUrl, viewCount, publishDate, fetchedAt
+            FROM channel_videos
+            WHERE channelId = ?
+            ORDER BY viewCount DESC
+            LIMIT 12`,
+      args: [channelId],
+    });
+
+    const videos = videosResult.rows.map(row => ({ ...row }));
 
     // Получаем общее количество видео в БД
     const countResult = await client.execute({
@@ -84,40 +78,15 @@ export async function GET(
     });
 
     const totalVideos = Number(countResult.rows[0]?.count || 0);
-    console.log(`[VideosPage] Total videos in DB: ${totalVideos}`);
 
-    // Вычисляем offset
-    const offset = page * VIDEO_PAGE_SIZE;
-    console.log(`[VideosPage] Page ${page}: offset=${offset}, limit=${VIDEO_PAGE_SIZE}`);
-
-    // Получаем видео для этой страницы
-    const videosResult = await client.execute({
-      sql: `SELECT id, channelId, videoId, title, thumbnailUrl, viewCount, publishDate, fetchedAt
-            FROM channel_videos
-            WHERE channelId = ?
-            ORDER BY viewCount DESC
-            LIMIT ? OFFSET ?`,
-      args: [channelId, VIDEO_PAGE_SIZE, offset],
-    });
-
-    const videos = videosResult.rows.map(row => ({ ...row }));
-
-    // ИТЕРАЦИЯ 10: hasMore зависит только от totalVideos в БД
-    // Определяем, есть ли ещё видео после текущей страницы
-    const nextPageStart = (page + 1) * VIDEO_PAGE_SIZE;
-    const hasMore = nextPageStart < totalVideos;
-
-    console.log(`[VideosPage] Page ${page}: loaded ${videos.length} videos, hasMore=${hasMore}, totalVideos=${totalVideos}`);
+    console.log(`[VideosPage] Загружено ${videos.length} видео (всего в БД: ${totalVideos})`);
 
     client.close();
 
     return NextResponse.json({
       ok: true,
       videos,
-      hasMore,
       totalVideos,
-      page,
-      pageSize: VIDEO_PAGE_SIZE,
     });
   } catch (error) {
     client.close();
