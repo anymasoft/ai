@@ -526,12 +526,27 @@ ${JSON.stringify(videosForAnalysis, null, 2)}
     };
 
     // Сохраняем результат в базу данных
+    const now = Date.now();
     await client.execute({
       sql: "INSERT INTO audience_insights (channelId, data, data_ru, generatedAt) VALUES (?, ?, ?, ?)",
-      args: [competitor.channelId, JSON.stringify(audienceData), null, Date.now()],
+      args: [competitor.channelId, JSON.stringify(audienceData), null, now],
     });
 
     console.log(`[Audience] Анализ сохранён в БД`);
+
+    // Обновляем состояние пользователя: отмечаем, что он выполнил синхронизацию
+    try {
+      await client.execute({
+        sql: `INSERT INTO user_channel_audience_state (userId, channelId, hasShownAudience, lastSyncAt)
+              VALUES (?, ?, 0, ?)
+              ON CONFLICT(userId, channelId) DO UPDATE SET lastSyncAt = ?`,
+        args: [session.user.id, competitor.channelId, now, now],
+      });
+      console.log(`[Audience] Обновлено состояние пользователя: lastSyncAt = ${new Date(now).toISOString()} для channelId=${competitor.channelId}`);
+    } catch (stateError) {
+      console.warn(`[Audience] Ошибка при обновлении состояния пользователя:`, stateError instanceof Error ? stateError.message : stateError);
+      // Не прерываем выполнение - анализ уже сохранён
+    }
 
     client.close();
 

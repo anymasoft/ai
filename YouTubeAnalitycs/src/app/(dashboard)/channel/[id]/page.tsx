@@ -198,6 +198,39 @@ export default async function ChannelPage({ params }: PageProps) {
       ? (metricsStateResult.rows[0].hasShownMetrics as number) === 1
       : false;
 
+    // Получаем состояние показа аудитории для пользователя
+    let audienceStateResult = await client.execute({
+      sql: "SELECT hasShownAudience FROM user_channel_audience_state WHERE userId = ? AND channelId = ?",
+      args: [session.user.id, competitor.channelId],
+    });
+
+    // Если записи нет, создаём её с дефолтными значениями
+    if (audienceStateResult.rows.length === 0) {
+      try {
+        await client.execute({
+          sql: `INSERT INTO user_channel_audience_state (userId, channelId, hasShownAudience)
+                VALUES (?, ?, 0)
+                ON CONFLICT(userId, channelId) DO NOTHING`,
+          args: [session.user.id, competitor.channelId],
+        });
+        console.log("[Channel Page] Created user_channel_audience_state for:", {
+          userId: session.user.id,
+          channelId: competitor.channelId,
+        });
+        // Перезапрашиваем данные после создания
+        audienceStateResult = await client.execute({
+          sql: "SELECT hasShownAudience FROM user_channel_audience_state WHERE userId = ? AND channelId = ?",
+          args: [session.user.id, competitor.channelId],
+        });
+      } catch (error) {
+        console.warn("[Channel Page] Failed to create user_channel_audience_state:", error);
+      }
+    }
+
+    const hasShownAudience = audienceStateResult.rows.length > 0
+      ? (audienceStateResult.rows[0].hasShownAudience as number) === 1
+      : false;
+
     // Проверяем наличие данных для AI-модулей
     const hasVideos = videos.length > 0;
 
@@ -390,6 +423,7 @@ export default async function ChannelPage({ params }: PageProps) {
           hasComments={hasComments}
           userPlan={getUserPlan(session)}
           hasShownMetrics={hasShownMetrics}
+          hasShownAudience={hasShownAudience}
           hasShownVideos={hasShownVideos}
         />
       </div>

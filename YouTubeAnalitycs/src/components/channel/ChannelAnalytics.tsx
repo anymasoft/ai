@@ -7,7 +7,7 @@ import { ChannelMetricsSection } from "@/components/channel/ChannelMetricsSectio
 import { TopVideosGrid } from "@/components/channel/TopVideosGrid"
 import { ContentIntelligenceBlock } from "@/components/channel/ContentIntelligenceBlock"
 import { MomentumInsights } from "@/components/channel/MomentumInsights"
-import { AudienceInsights } from "@/components/channel/AudienceInsights"
+import { AudienceInsightsSection } from "@/components/channel/AudienceInsightsSection"
 import { CommentInsights } from "@/components/channel/CommentInsights"
 import { DeepCommentAnalysis } from "@/components/channel/DeepCommentAnalysis"
 import type { UserPlan } from "@/config/limits"
@@ -27,6 +27,8 @@ interface ChannelAnalyticsProps {
   userPlan?: UserPlan
   /** Нажал ли пользователь "Получить метрики" */
   hasShownMetrics?: boolean
+  /** Нажал ли пользователь "Получить аудиторию" */
+  hasShownAudience?: boolean
   /** Нажал ли пользователь "Получить топ-видео" */
   hasShownVideos?: boolean
 }
@@ -78,6 +80,7 @@ export function ChannelAnalytics({
   hasComments,
   userPlan = "free",
   hasShownMetrics = false,
+  hasShownAudience = false,
   hasShownVideos = false,
 }: ChannelAnalyticsProps) {
   // Все разделы закрыты по умолчанию - пользователь видит полный обзор доступных аналитических блоков
@@ -158,9 +161,10 @@ export function ChannelAnalytics({
         isOpen={expanded.audience}
         onToggle={() => toggle("audience")}
       >
-        <AudienceInsights
+        <AudienceInsightsSection
+          audienceData={audienceData}
           channelId={channelId}
-          initialData={audienceData}
+          hasShownAudience={hasShownAudience}
           hasRequiredData={hasVideos}
         />
       </CollapsibleSection>
