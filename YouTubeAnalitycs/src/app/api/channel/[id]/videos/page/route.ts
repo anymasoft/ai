@@ -57,6 +57,13 @@ export async function GET(
 
     const channelId = competitorResult.rows[0].channelId as string;
 
+    // Защита: channelId не должен быть пустым или undefined
+    if (!channelId || typeof channelId !== 'string' || channelId.trim() === '') {
+      client.close();
+      console.error(`[VideosPage] Invalid channelId: ${channelId}`);
+      return NextResponse.json({ error: "Invalid channel ID in database" }, { status: 400 });
+    }
+
     console.log(`[VideosPage] Загрузка TOP-12 видео для channelId=${channelId}`);
 
     // Получаем TOP-12 видео из БД

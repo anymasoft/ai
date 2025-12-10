@@ -85,7 +85,7 @@ export function TopVideosGrid({ videos, competitorId, userPlan = "free", hasShow
 
   const handleGetTopVideos = async () => {
     if (!competitorId) {
-      console.error("[TopVideosGrid] competitorId not provided");
+      console.error("[TopVideosGrid] competitorId is undefined or invalid");
       return;
     }
 

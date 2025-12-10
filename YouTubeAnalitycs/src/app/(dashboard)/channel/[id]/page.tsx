@@ -122,6 +122,9 @@ export default async function ChannelPage({ params }: PageProps) {
 
     const competitor = { ...competitorResult.rows[0] } as any;
 
+    // Диагностика: убедиться что competitorId и channelId корректны
+    console.log(`[ChannelPage] competitorId: ${competitorId}, channelId: ${competitor.channelId}`);
+
     // Получаем AI-анализ (если есть)
     const aiInsightResult = await client.execute({
       sql: "SELECT * FROM ai_insights WHERE competitorId = ? ORDER BY createdAt DESC LIMIT 1",
