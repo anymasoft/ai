@@ -160,13 +160,14 @@ export async function POST(
       );
     }
 
-    // Извлекаем видео из ответа и сортируем по viewCount DESC
+    // Извлекаем видео из ответа (API уже вернул их отсортированными по popular/viewCount)
+    // Но мы сортируем сами для гарантии TOP-12 по viewCount DESC
     const apiVideos = (apiResponse.videos || apiResponse) as any[];
     const sortedVideos = apiVideos.sort((a, b) => (b.viewCount || 0) - (a.viewCount || 0));
     const videos = sortedVideos.slice(0, MAX_VIDEOS_PER_PAGE);
     totalAvailableVideos = videos.length;
 
-    console.log(`[Sync] Из API получено ${apiVideos.length} видео, отобрано top-${MAX_VIDEOS_PER_PAGE}`);
+    console.log(`[Sync] Из ScrapeCreators получено ${apiVideos.length} видео (sort=popular), отобрано TOP-${MAX_VIDEOS_PER_PAGE} по viewCount DESC`);
 
     if (videos.length === 0) {
       console.warn(`[Sync] ВНИМАНИЕ: API не вернул видео!`);

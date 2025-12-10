@@ -485,10 +485,10 @@ async function fetchVideosFromAPI(
       // ВАЖНО: параметр sort для ScrapeCreators /v1/youtube/channel-videos:
       // - "popular" = сортировка по viewCountInt (по убыванию просмотров, самые просматриваемые сверху)
       // - "latest"  = сортировка по publishDate (по убыванию даты, самые новые сверху)
-      // Текущая стратегия: используем "latest" для получения последних видео
+      // СТРАТЕГИЯ (ИТЕРАЦИЯ 12): используем ТОЛЬКО "popular" для TOP-12 самых популярных видео
       const params = new URLSearchParams({
         [paramType]: paramValue,
-        sort: "latest",  // сортировка по дате публикации (самые новые сверху)
+        sort: "popular",  // ✅ КРИТИЧЕСКИ: только popular для TOP-12 видео
         includeExtras: "true",
       });
 
