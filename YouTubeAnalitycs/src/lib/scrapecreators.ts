@@ -463,9 +463,13 @@ async function fetchVideosFromAPI(
       pageCount++;
 
       // Формируем URL с параметрами
+      // ВАЖНО: параметр sort для ScrapeCreators /v1/youtube/channel-videos:
+      // - "popular" = сортировка по viewCountInt (по убыванию просмотров, самые просматриваемые сверху)
+      // - "latest"  = сортировка по publishDate (по убыванию даты, самые новые сверху)
+      // Текущая стратегия: используем "latest" для получения последних видео
       const params = new URLSearchParams({
         [paramType]: paramValue,
-        sort: "latest",
+        sort: "latest",  // сортировка по дате публикации (самые новые сверху)
         includeExtras: "true",
       });
 
