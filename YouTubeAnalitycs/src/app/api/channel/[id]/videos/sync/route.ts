@@ -103,16 +103,21 @@ export async function POST(
     const cacheAgeMs = cachedChannel ? Date.now() - cachedChannel.lastUpdated : Infinity;
     const isCacheFresh = cachedVideos.length > 0 && cacheAgeMs < 24 * 60 * 60 * 1000; // 24 часа
 
-    // Инициализируем переменные для обоих путей
-    const userPlan = getUserPlan(session);
-    const maxVideos = getVideoLimitForPlan(userPlan);
-    let videos: typeof cachedVideos;
+    // ИСПРАВЛЕНИЕ (ИТЕРАЦИЯ 10): Жёсткий лимит 12 видео вместо план-лимитов
+    // НЕ используем plan-based limits, только 12 видео в одной странице
+    const MAX_VIDEOS_PER_PAGE = 12;
+    const userPlan = getUserPlan(session);  // для логирования
+    let totalAvailableVideos = 0;  // сколько видео в API / в БД всего
 
     // Получаем видео из кеша или API
+    let videos: typeof cachedVideos;
+
     if (isCacheFresh && cachedChannel) {
       console.log(`[Sync] Кеш свежий (${Math.round(cacheAgeMs / 1000 / 60)} минут назад), используем кешированные данные`);
-      videos = cachedVideos.slice(0, maxVideos);
-      console.log(`[Sync] Из кеша: ${videos.length} видео`);
+      // ИСПРАВЛЕНИЕ: из кеша берём только 12 видео
+      videos = cachedVideos.slice(0, MAX_VIDEOS_PER_PAGE);
+      totalAvailableVideos = cachedVideos.length;
+      console.log(`[Sync] Из кеша: ${videos.length} видео (всего доступно: ${totalAvailableVideos})`);
     } else {
       // Кеш старый или не существует - обновляем через API
       if (cachedChannel) {
@@ -121,14 +126,14 @@ export async function POST(
         console.log(`[Sync] Кеш отсутствует, синхронизируем впервые`);
       }
 
-      // Получаем список видео из API с лимитом по тарифу
-      // 🔑 ОПТИМИЗАЦИЯ: передаём maxVideos чтобы API загружал только нужное количество
+      // ИСПРАВЛЕНИЕ (ИТЕРАЦИЯ 10): Получаем ВСЕ видео из API, но сохраняем только 12
+      // API может вернуть много видео, мы возьмём только первые 12 для синхронизации
       let apiVideos;
       try {
         apiVideos = await getYoutubeChannelVideos(
           channelId,
           competitor.handle as string,
-          maxVideos  // Передаём лимит, чтобы не загружать лишние страницы
+          999  // Запрашиваем много, чтобы знать totalAvailableVideos
         );
       } catch (error) {
         console.error("[Sync] Ошибка получения списка видео:", error);
@@ -139,7 +144,8 @@ export async function POST(
         );
       }
 
-      console.log(`[Sync] Получено ${apiVideos.length} видео из API (лимит был: ${maxVideos})`);
+      totalAvailableVideos = apiVideos.length;
+      console.log(`[Sync] Получено ${apiVideos.length} видео из API, сохраняем только первые ${MAX_VIDEOS_PER_PAGE}`);
 
       // ДИАГНОСТИКА: логируем структуру первого видео
       if (apiVideos.length > 0) {
@@ -155,9 +161,10 @@ export async function POST(
         console.warn(`[Sync] ВНИМАНИЕ: API вернул 0 видео!`);
       }
 
-      // ПРИМЕЧАНИЕ: apiVideos уже ограничены maxVideos, дополнительно НЕ обрезаем
-      videos = apiVideos;
-      console.log(`[Sync] Обрабатываем ${videos.length} видео (максимум: ${maxVideos})`);
+      // ИСПРАВЛЕНИЕ (ИТЕРАЦИЯ 10): Ограничиваем видео на 12 ПЕРЕД обработкой
+      // Это гарантирует что мы сохраняем только одну страницу (12 видео)
+      videos = apiVideos.slice(0, MAX_VIDEOS_PER_PAGE);
+      console.log(`[Sync] После ограничения: обрабатываем ${videos.length} видео (из ${totalAvailableVideos} доступных)`);
 
       // Получаем существующие даты из БД только для API видео
       const existingDates = new Map<string, string | null>();
@@ -330,12 +337,13 @@ export async function POST(
 
     return NextResponse.json({
       status: "ok",
-      videos,
-      totalVideos,
+      videos,  // Первые 12 видео (сохранённые в БД)
+      totalVideos,  // Всего видео в БД
+      totalAvailableVideos,  // Сколько видео было в API (может быть больше чем сохранили)
       added: inserted,
       updated,
       plan: userPlan,
-      videoLimit: maxVideos,
+      videoLimit: MAX_VIDEOS_PER_PAGE,  // Всегда 12
       ...(isCacheFresh && { fromCache: true }),
     });
   } catch (error) {
