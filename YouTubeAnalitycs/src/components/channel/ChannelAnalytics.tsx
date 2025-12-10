@@ -75,6 +75,7 @@ function CollapsibleSection({
 }
 
 export function ChannelAnalytics({
+  competitorId,
   channelId,
   metrics,
   videos,
