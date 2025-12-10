@@ -21,6 +21,8 @@ import { getUserPlan } from "@/lib/user-plan";
  * Без этого страница может быть закеширована, и router.refresh() не будет эффективен.
  */
 export const dynamic = "force-dynamic";
+export const fetchCache = "force-no-store";
+export const revalidate = 0;
 
 interface PageProps {
   params: Promise<{ id: string }>;
