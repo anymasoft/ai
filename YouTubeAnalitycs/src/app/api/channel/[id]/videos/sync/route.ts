@@ -138,6 +138,21 @@ export async function POST(
       }
 
       console.log(`[Sync] Получено ${apiVideos.length} видео из API`);
+
+      // ДИАГНОСТИКА: логируем структуру первого видео
+      if (apiVideos.length > 0) {
+        const firstVideo = apiVideos[0];
+        console.log(`[Sync] Первое видео из API:`, {
+          videoId: firstVideo.videoId,
+          title: firstVideo.title,
+          viewCount: firstVideo.viewCount,
+          hasVideoId: !!firstVideo.videoId,
+          videoIdLength: firstVideo.videoId?.length || 0,
+        });
+      } else {
+        console.warn(`[Sync] ВНИМАНИЕ: API вернул 0 видео!`);
+      }
+
       videos = apiVideos.slice(0, maxVideos);
       console.log(`[Sync] Обрабатываем ${videos.length} видео (лимит: ${maxVideos})`);
 
@@ -180,9 +195,16 @@ export async function POST(
     // Сохраняем в локальную таблицу channel_videos
     let inserted = 0;
     let updated = 0;
+    let skipped = 0;
+
+    console.log(`[Sync] Начало сохранения ${videos.length} видео в БД`);
 
     for (const video of videos) {
-      if (!video.videoId) continue;
+      if (!video.videoId) {
+        console.warn(`[Sync] Пропущено видео без videoId:`, { title: video.title, videoId: video.videoId });
+        skipped++;
+        continue;
+      }
 
       const existingResult = await client.execute({
         sql: "SELECT id, publishDate FROM channel_videos WHERE channelId = ? AND videoId = ?",
@@ -251,7 +273,7 @@ export async function POST(
 
     const totalVideos = Number(totalResult.rows[0]?.count || 0);
 
-    console.log(`[Sync] Готово: добавлено ${inserted}, обновлено ${updated}, всего ${totalVideos}`);
+    console.log(`[Sync] Готово: добавлено ${inserted}, обновлено ${updated}, пропущено ${skipped}, всего в БД ${totalVideos}`);
 
     // Сохраняем данные в глобальный кеш только если не из кеша (экономим API)
     if (!isCacheFresh) {

@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useState, useEffect, useRef } from "react";
 import { useSession } from "next-auth/react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -19,6 +20,7 @@ import { ChannelAvatar } from "@/components/channel-avatar";
 
 interface CompetitorSummary {
   channelId: string;
+  id: number;
   handle: string;
   title: string;
   avatarUrl?: string;
@@ -45,6 +47,7 @@ type SortDirection = "asc" | "desc";
 export default function ComparePage() {
   const { data: session } = useSession();
   const [competitors, setCompetitors] = useState<CompetitorSummary[]>([]);
+  const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [sortField, setSortField] = useState<SortField>("subscribers");
@@ -120,6 +123,10 @@ export default function ComparePage() {
     }
   }
 
+
+  function handleRowClick(competitorId: number) {
+    router.push(`/channel/${competitorId}`)
+  }
   function getSortedCompetitors(): CompetitorSummary[] {
     const sorted = [...competitors].sort((a, b) => {
       const aVal = a[sortField];
@@ -323,7 +330,7 @@ export default function ComparePage() {
                 </TableHeader>
                 <TableBody>
                   {sortedCompetitors.map((competitor) => (
-                    <TableRow key={competitor.channelId}>
+                    <TableRow key={competitor.channelId} onClick={() => handleRowClick(competitor.id)} className="cursor-pointer hover:bg-muted transition-colors">
                       <TableCell>
                         <div className="flex items-center gap-2">
                           <ChannelAvatar

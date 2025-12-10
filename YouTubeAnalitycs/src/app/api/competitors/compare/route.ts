@@ -4,6 +4,7 @@ import { authOptions } from "@/lib/auth";
 import { db } from "@/lib/db";
 
 export interface CompetitorSummary {
+  id: number;
   channelId: string;
   handle: string;
   title: string;
@@ -33,7 +34,7 @@ export async function GET(req: NextRequest) {
 
     // Получаем всех конкурентов пользователя
     const competitorsResult = await db.execute({
-      sql: `SELECT channelId, handle, title, avatarUrl, subscriberCount,
+      sql: `SELECT id, channelId, handle, title, avatarUrl, subscriberCount,
              videoCount, viewCount, lastSyncedAt
              FROM competitors
              WHERE userId = ?

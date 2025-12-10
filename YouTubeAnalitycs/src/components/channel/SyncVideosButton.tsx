@@ -36,6 +36,9 @@ export function SyncVideosButton({ channelId }: SyncVideosButtonProps) {
       toast.success(
         `Videos synced! ${added} new, ${updated} updated (total: ${total})`
       );
+
+      // Обновляем UI после успешной синхронизации
+      router.refresh();
     } catch (error) {
       toast.error("An error occurred while syncing videos");
       console.error("[SyncVideos] Error:", error);
