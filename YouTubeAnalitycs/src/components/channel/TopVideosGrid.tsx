@@ -55,6 +55,11 @@ export function TopVideosGrid({ videos, userPlan = "free", hasShownVideos = fals
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [totalVideos, setTotalVideos] = useState(videos.length);
 
+  // DEBUG: логируем при изменении пропсов (особенно hasShownVideos)
+  if (process.env.NODE_ENV === "development") {
+    console.log(`[TopVideosGrid DEBUG] props update: hasShownVideos=${hasShownVideos}, videosCount=${videos.length}, videoListCount=${videoList.length}`);
+  }
+
   const refreshDate = async (e: React.MouseEvent, videoId: string) => {
     e.preventDefault();
     e.stopPropagation();
@@ -76,24 +81,36 @@ export function TopVideosGrid({ videos, userPlan = "free", hasShownVideos = fals
 
   const handleGetTopVideos = async () => {
     if (!channelId) {
-      console.error("channelId not provided");
+      console.error("[TopVideosGrid] channelId not provided");
       return;
     }
 
+    console.log(`[TopVideosGrid] Начало получения топ-видео для channelId=${channelId}`);
     setShowingVideos(true);
     try {
       // Шаг 1: Синхронизируем видео
+      console.log(`[TopVideosGrid] Шаг 1: Синхронизация видео...`);
       const syncRes = await fetch(`/api/channel/${channelId}/videos/sync`, {
         method: "POST",
       });
 
       if (!syncRes.ok) {
         const syncError = await syncRes.json();
-        console.error("Failed to sync videos:", syncError);
+        console.error(`[TopVideosGrid] Ошибка синхронизации:`, syncError);
         return;
       }
 
+      const syncData = await syncRes.json();
+      console.log(`[TopVideosGrid] Синхронизация успешна:`, {
+        status: syncData.status,
+        videosCount: syncData.videos?.length,
+        totalVideos: syncData.totalVideos,
+        added: syncData.added,
+        updated: syncData.updated,
+      });
+
       // Шаг 2: Отмечаем видео как показанные
+      console.log(`[TopVideosGrid] Шаг 2: Отметить видео как показанные...`);
       const showRes = await fetch(`/api/channel/${channelId}/videos/show`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -101,14 +118,19 @@ export function TopVideosGrid({ videos, userPlan = "free", hasShownVideos = fals
 
       if (!showRes.ok) {
         const showError = await showRes.json();
-        console.error("Failed to show videos:", showError);
+        console.error(`[TopVideosGrid] Ошибка при отметке видео:`, showError);
         return;
       }
 
+      const showData = await showRes.json();
+      console.log(`[TopVideosGrid] Видео отмечены как показанные:`, showData);
+
       // Шаг 3: Обновляем UI после успешного завершения обеих операций
+      console.log(`[TopVideosGrid] Шаг 3: Обновление UI через router.refresh()...`);
       router.refresh();
+      console.log(`[TopVideosGrid] router.refresh() вызван успешно`);
     } catch (err) {
-      console.error("Ошибка при получении топ-видео:", err);
+      console.error(`[TopVideosGrid] Ошибка при получении топ-видео:`, err instanceof Error ? err.message : err);
     } finally {
       setShowingVideos(false);
     }
