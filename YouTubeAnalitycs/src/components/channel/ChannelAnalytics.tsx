@@ -6,7 +6,7 @@ import { ChevronDown, ChevronUp } from "lucide-react"
 import { ChannelMetricsSection } from "@/components/channel/ChannelMetricsSection"
 import { TopVideosGrid } from "@/components/channel/TopVideosGrid"
 import { ContentIntelligenceBlock } from "@/components/channel/ContentIntelligenceBlock"
-import { MomentumInsights } from "@/components/channel/MomentumInsights"
+import { MomentumInsightsSection } from "@/components/channel/MomentumInsightsSection"
 import { AudienceInsightsSection } from "@/components/channel/AudienceInsightsSection"
 import { CommentInsights } from "@/components/channel/CommentInsights"
 import { DeepCommentAnalysis } from "@/components/channel/DeepCommentAnalysis"
@@ -27,6 +27,8 @@ interface ChannelAnalyticsProps {
   userPlan?: UserPlan
   /** Нажал ли пользователь "Получить метрики" */
   hasShownMetrics?: boolean
+  /** Нажал ли пользователь "Получить Momentum" */
+  hasShownMomentum?: boolean
   /** Нажал ли пользователь "Получить аудиторию" */
   hasShownAudience?: boolean
   /** Нажал ли пользователь "Получить топ-видео" */
@@ -80,6 +82,7 @@ export function ChannelAnalytics({
   hasComments,
   userPlan = "free",
   hasShownMetrics = false,
+  hasShownMomentum = false,
   hasShownAudience = false,
   hasShownVideos = false,
 }: ChannelAnalyticsProps) {
@@ -148,9 +151,10 @@ export function ChannelAnalytics({
         isOpen={expanded.momentum}
         onToggle={() => toggle("momentum")}
       >
-        <MomentumInsights
+        <MomentumInsightsSection
+          momentumData={momentumData}
           channelId={channelId}
-          initialData={momentumData}
+          hasShownMomentum={hasShownMomentum}
           hasRequiredData={hasVideos}
         />
       </CollapsibleSection>

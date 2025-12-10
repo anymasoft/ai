@@ -231,6 +231,39 @@ export default async function ChannelPage({ params }: PageProps) {
       ? (audienceStateResult.rows[0].hasShownAudience as number) === 1
       : false;
 
+    // Получаем состояние показа momentum для пользователя
+    let momentumStateResult = await client.execute({
+      sql: "SELECT hasShownMomentum FROM user_channel_momentum_state WHERE userId = ? AND channelId = ?",
+      args: [session.user.id, competitor.channelId],
+    });
+
+    // Если записи нет, создаём её с дефолтными значениями
+    if (momentumStateResult.rows.length === 0) {
+      try {
+        await client.execute({
+          sql: `INSERT INTO user_channel_momentum_state (userId, channelId, hasShownMomentum)
+                VALUES (?, ?, 0)
+                ON CONFLICT(userId, channelId) DO NOTHING`,
+          args: [session.user.id, competitor.channelId],
+        });
+        console.log("[Channel Page] Created user_channel_momentum_state for:", {
+          userId: session.user.id,
+          channelId: competitor.channelId,
+        });
+        // Перезапрашиваем данные после создания
+        momentumStateResult = await client.execute({
+          sql: "SELECT hasShownMomentum FROM user_channel_momentum_state WHERE userId = ? AND channelId = ?",
+          args: [session.user.id, competitor.channelId],
+        });
+      } catch (error) {
+        console.warn("[Channel Page] Failed to create user_channel_momentum_state:", error);
+      }
+    }
+
+    const hasShownMomentum = momentumStateResult.rows.length > 0
+      ? (momentumStateResult.rows[0].hasShownMomentum as number) === 1
+      : false;
+
     // Проверяем наличие данных для AI-модулей
     const hasVideos = videos.length > 0;
 
@@ -423,6 +456,7 @@ export default async function ChannelPage({ params }: PageProps) {
           hasComments={hasComments}
           userPlan={getUserPlan(session)}
           hasShownMetrics={hasShownMetrics}
+          hasShownMomentum={hasShownMomentum}
           hasShownAudience={hasShownAudience}
           hasShownVideos={hasShownVideos}
         />
