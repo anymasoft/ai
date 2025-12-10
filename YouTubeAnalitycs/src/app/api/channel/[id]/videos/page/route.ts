@@ -72,8 +72,9 @@ export async function GET(
 
     const channelId = competitorResult.rows[0].channelId as string;
 
-    // ИТЕРАЦИЯ 10: Отключаем все тарифные лимиты
-    // Пагинация работает без ограничений по плану
+    // ИТЕРАЦИЯ 10: Простая пагинация из БД
+    // Если видео для этой страницы не в БД, это означает что нужно вызвать sync для неё
+    // Frontend должен вызвать POST /api/channel/[id]/videos/sync перед запросом новой страницы
     console.log(`[VideosPage] ITERATION 10: Loading paginated videos WITHOUT plan limits`);
 
     // Получаем общее количество видео в БД

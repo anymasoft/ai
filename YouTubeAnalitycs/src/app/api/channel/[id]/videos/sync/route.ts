@@ -126,14 +126,14 @@ export async function POST(
         console.log(`[Sync] Кеш отсутствует, синхронизируем впервые`);
       }
 
-      // ИСПРАВЛЕНИЕ (ИТЕРАЦИЯ 10): Получаем ВСЕ видео из API, но сохраняем только 12
-      // API может вернуть много видео, мы возьмём только первые 12 для синхронизации
+      // ИСПРАВЛЕНИЕ (ИТЕРАЦИЯ 10): Загружаем ТОЛЬКО первые 12 видео из API
+      // НЕ жжём зря токены — грузим ровно сколько нужно
       let apiVideos;
       try {
         apiVideos = await getYoutubeChannelVideos(
           channelId,
           competitor.handle as string,
-          999  // Запрашиваем много, чтобы знать totalAvailableVideos
+          MAX_VIDEOS_PER_PAGE  // Загружаем ТОЛЬКО 12 видео
         );
       } catch (error) {
         console.error("[Sync] Ошибка получения списка видео:", error);
@@ -145,7 +145,7 @@ export async function POST(
       }
 
       totalAvailableVideos = apiVideos.length;
-      console.log(`[Sync] Получено ${apiVideos.length} видео из API, сохраняем только первые ${MAX_VIDEOS_PER_PAGE}`);
+      console.log(`[Sync] Получено ${apiVideos.length} видео из API (запросили MAX_VIDEOS_PER_PAGE=${MAX_VIDEOS_PER_PAGE})`);
 
       // ДИАГНОСТИКА: логируем структуру первого видео
       if (apiVideos.length > 0) {
@@ -161,10 +161,9 @@ export async function POST(
         console.warn(`[Sync] ВНИМАНИЕ: API вернул 0 видео!`);
       }
 
-      // ИСПРАВЛЕНИЕ (ИТЕРАЦИЯ 10): Ограничиваем видео на 12 ПЕРЕД обработкой
-      // Это гарантирует что мы сохраняем только одну страницу (12 видео)
-      videos = apiVideos.slice(0, MAX_VIDEOS_PER_PAGE);
-      console.log(`[Sync] После ограничения: обрабатываем ${videos.length} видео (из ${totalAvailableVideos} доступных)`);
+      // Видео уже ограничены MAX_VIDEOS_PER_PAGE в запросе, просто обрабатываем их
+      videos = apiVideos;
+      console.log(`[Sync] Обрабатываем ${videos.length} видео (запросили ${MAX_VIDEOS_PER_PAGE})`);
 
       // Получаем существующие даты из БД только для API видео
       const existingDates = new Map<string, string | null>();
@@ -337,13 +336,13 @@ export async function POST(
 
     return NextResponse.json({
       status: "ok",
-      videos,  // Первые 12 видео (сохранённые в БД)
+      videos,  // 12 видео (сохранённые в БД)
       totalVideos,  // Всего видео в БД
-      totalAvailableVideos,  // Сколько видео было в API (может быть больше чем сохранили)
       added: inserted,
       updated,
       plan: userPlan,
       videoLimit: MAX_VIDEOS_PER_PAGE,  // Всегда 12
+      videosLoaded: totalAvailableVideos,  // Сколько видео мы загрузили на этот раз из API (для диагностики)
       ...(isCacheFresh && { fromCache: true }),
     });
   } catch (error) {

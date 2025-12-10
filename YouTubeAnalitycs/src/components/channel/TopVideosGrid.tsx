@@ -191,14 +191,15 @@ export function TopVideosGrid({ videos, userPlan = "free", hasShownVideos = fals
     }
   };
 
-  // ИТЕРАЦИЯ 10: Загружаем следующую страницу видео
+  // ИТЕРАЦИЯ 10: Загружаем следующую страницу видео из БД
+  // Если видео на этой странице не синхронизировано, нужно нажать "Получить топ-видео" для синхронизации
   const loadMore = async () => {
     if (!channelId || isLoadingMore) return;
 
     setIsLoadingMore(true);
     try {
       const nextPage = page + 1;
-      console.log(`[TopVideosGrid] Загрузка страницы ${nextPage}...`);
+      console.log(`[TopVideosGrid] Загрузка страницы ${nextPage} из БД...`);
 
       const res = await fetch(
         `/api/channel/${channelId}/videos/page?page=${nextPage}`,
@@ -212,16 +213,21 @@ export function TopVideosGrid({ videos, userPlan = "free", hasShownVideos = fals
 
       const data = await res.json();
 
-      console.log(`[TopVideosGrid] Страница ${data.page}: загружено ${data.videos?.length} видео, hasMore=${data.hasMore}`);
+      console.log(`[TopVideosGrid] Page ${nextPage}: loaded ${data.videos?.length} videos, hasMore=${data.hasMore}`);
 
-      // Добавляем новые видео к существующему ЛОКАЛЬНОМУ списку
+      // Добавляем новые видео к существующему списку
       if (data.videos && data.videos.length > 0) {
+        console.log(`[TopVideosGrid] Добавляем ${data.videos.length} видео к существующему списку`);
         setVideoList(prev => [...prev, ...data.videos]);
         setPage(data.page);
         setHasMore(data.hasMore ?? false);
         setTotalVideos(data.totalVideos ?? totalVideos);
       } else {
-        console.log(`[TopVideosGrid] Видео на странице ${nextPage} не найдены`);
+        // Видео на этой странице не в БД
+        // Это означает что они не синхронизированы с API
+        // Пользователь должен нажать "Получить топ-видео" для загрузки следующей страницы
+        console.log(`[TopVideosGrid] Страница ${nextPage} не синхронизирована с API`);
+        console.log(`[TopVideosGrid] Нажмите "Получить топ-видео" чтобы загрузить следующие 12 видео`);
         setHasMore(false);
       }
     } catch (err) {
