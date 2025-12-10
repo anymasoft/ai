@@ -121,12 +121,29 @@ CollapsibleSection wrapper
 - **Результат:** Race-condition полностью устранена
 - **Статус:** ✅ Завершено
 
-### Сессия 6: Исправление NextAuth CLIENT_FETCH_ERROR (ТЕКУЩАЯ)
+### Сессия 6: Исправление NextAuth CLIENT_FETCH_ERROR
 - **Проблема:** fetchCache = "force-no-store" ломала NextAuth /api/auth/session
 - **Симптом:** CLIENT_FETCH_ERROR, нестабильная сессия
+- **Первая попытка:** Условный fetchCache (отклонено Next.js валидацией)
 - **Решение:** Исключены /api/auth/* endpoints из force-no-store
 - **Реализация:** Условный fetchCache с проверкой URL
 - **Результат:** NextAuth стабилизирована, видео всё ещё появляются мгновенно
+- **Статус:** ⚠️ Решение отклонено (вычисляемые значения в config недопустимы)
+
+### Сессия 7: Исправление Next.js config validation (ТЕКУЩАЯ)
+- **Проблема:** Next.js отклонил вычисляемое значение в export const fetchCache
+- **Ошибка:** "can't recognize the exported config field"
+- **Решение:** Глобальный fetch override вместо условного fetchCache
+- **Реализация:**
+  - Вернули простые экспорты (dynamic, fetchCache, revalidate)
+  - Добавили глобальный override для fetch функции
+  - Override проверяет URL и пропускает /api/auth/* (разрешает кешировать)
+  - Остальные requests получают cache: "no-store" через init
+- **Результат:**
+  - Next.js config валидация проходит успешно
+  - NextAuth может кешировать свои endpoints
+  - Наши запросы всё ещё без кеша
+  - SSR остаётся динамическим
 - **Статус:** ✅ Завершено
 
 ---

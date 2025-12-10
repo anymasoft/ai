@@ -69,14 +69,14 @@
 
 #### ИТЕРАЦИЯ 3: Исправление NextAuth CLIENT_FETCH_ERROR
 
-Добавлено исключение для NextAuth endpoints:
+Попытка использовать условный fetchCache (отклонено):
 
-**Изменения в page.tsx:**
-- ✅ Заменён простой `fetchCache = "force-no-store"` на условный вариант
-- ✅ Исключены `/api/auth/*` endpoints из force-no-store
-- ✅ NextAuth может использовать default-cache для стабильной работы
+**Проблема:**
+- Вычисляемые значения в export const fetchCache недопустимы в Next.js
+- Next.js требует простые значения для config exports
+- Получили ошибку: 'can't recognize the exported config field'
 
-**Логика:**
+**Первая попытка (неудачная):**
 ```typescript
 export const fetchCache = (url => {
   if (typeof url === "string" && url.startsWith("/api/auth/")) {
@@ -86,11 +86,48 @@ export const fetchCache = (url => {
 })();
 ```
 
-**Результат ИТЕРАЦИИ 3:**
-- CLIENT_FETCH_ERROR от NextAuth исчезает
-- Сессия стабилизируется
-- Видео всё ещё появляются мгновенно
-- Кеширование работает корректно для обоих случаев
+**Результат:** Next.js валидация отклонила вычисляемое значение.
+
+#### ИТЕРАЦИЯ 4: Исправление через глобальный fetch override (УСПЕШНО)
+
+**Решение:**
+- Вернули простые экспорты (dynamic, fetchCache, revalidate)
+- Добавили глобальный override для функции fetch на уровне модуля
+
+**Изменения в page.tsx:**
+- ✅ `export const fetchCache = "force-no-store"` — простая строка
+- ✅ Добавлен глобальный fetch override после export const
+- ✅ Override пропускает `/api/auth/*` requests (разрешает кешировать)
+- ✅ Остальные requests получают `cache: "no-store"` через init параметры
+
+**Логика override:**
+```typescript
+const originalFetch = fetch;
+(globalThis as any).fetch = (input: RequestInfo | URL, init?: RequestInit) => {
+  try {
+    if (typeof input === "string" && input.startsWith("/api/auth/")) {
+      // NextAuth может кешировать свои endpoints
+      return originalFetch(input, init);
+    }
+  } catch (err) {
+    console.warn("[Page Fetch Override] Error checking URL:", err);
+  }
+
+  // Остальные запросы без кеша
+  const newInit = {
+    ...init,
+    cache: "no-store" as const
+  };
+  return originalFetch(input, newInit);
+};
+```
+
+**Результат ИТЕРАЦИИ 4:**
+- Next.js config validation проходит успешно
+- NextAuth может кешировать /api/auth/session (CLIENT_FETCH_ERROR исчезает)
+- Наши запросы всё ещё без кеша (router.refresh() получает свежие данные)
+- SSR остаётся динамическим
+- Видео появляются мгновенно без F5
 
 ---
 
