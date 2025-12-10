@@ -51,6 +51,7 @@ async function fetchPublishDateWithRetry(videoId: string): Promise<string | null
 /**
  * Нормализует данные видео, гарантируя что все числовые поля имеют безопасные значения
  * Преобразует undefined/null в 0 для viewCount, likeCount, commentCount
+ * Используется ДО отправки клиенту
  */
 function normalizeVideoData(video: any) {
   return {
@@ -65,6 +66,25 @@ function normalizeVideoData(video: any) {
     publishDate: video.publishDate ?? null,
     duration: video.duration ?? null,
     fetchedAt: video.fetchedAt ?? Date.now(),
+  };
+}
+
+/**
+ * Создает "безопасное" видео для сохранения в БД (КРИТИЧЕСКАЯ ФУНКЦИЯ)
+ * Гарантирует что ВСЕ значения безопасны: нет undefined/null для числовых полей
+ * Используется ПЕРЕД INSERT/UPDATE в базу данных
+ */
+function createSafeVideoForDB(video: any, channelId: string) {
+  return {
+    channelId: channelId,
+    videoId: String(video.videoId || "").trim() || undefined,
+    title: String(video.title || "Untitled").trim(),
+    thumbnailUrl: video.thumbnailUrl ? String(video.thumbnailUrl).trim() : null,
+    viewCount: typeof video.viewCount === "number" && Number.isFinite(video.viewCount) ? Math.floor(video.viewCount) : 0,
+    likeCount: typeof video.likeCount === "number" && Number.isFinite(video.likeCount) ? Math.floor(video.likeCount) : 0,
+    commentCount: typeof video.commentCount === "number" && Number.isFinite(video.commentCount) ? Math.floor(video.commentCount) : 0,
+    publishDate: video.publishDate ? String(video.publishDate).trim() : null,
+    duration: video.duration ? String(video.duration).trim() : null,
   };
 }
 
@@ -235,20 +255,23 @@ export async function POST(
         continue;
       }
 
+      // КРИТИЧЕСКИ: нормализуем видео перед сохранением в БД
+      const safeVideo = createSafeVideoForDB(video, channelId);
+
       // ⚠️ ВАЖНО: используем валидированную переменную channelId, НЕ competitor.channelId
-      console.log(`[DB] Проверяем видео videoId=${video.videoId}, channelId=${channelId}`);
+      console.log(`[DB] Проверяем видео videoId=${safeVideo.videoId}, channelId=${channelId}`);
 
       const existingResult = await client.execute({
         sql: "SELECT id, publishDate FROM channel_videos WHERE channelId = ? AND videoId = ?",
-        args: [channelId, video.videoId],
+        args: [channelId, safeVideo.videoId],
       });
 
       if (existingResult.rows.length > 0) {
         const existing = existingResult.rows[0];
         const oldDate = existing.publishDate as string | null;
-        const finalDate = video.publishDate || oldDate;
+        const finalDate = safeVideo.publishDate || oldDate;
 
-        console.log(`[DB] UPDATE: videoId=${video.videoId}, id=${existing.id}`);
+        console.log(`[DB] UPDATE: videoId=${safeVideo.videoId}, id=${existing.id}`);
 
         await client.execute({
           sql: `UPDATE channel_videos SET
@@ -262,20 +285,20 @@ export async function POST(
             fetchedAt = ?
             WHERE id = ?`,
           args: [
-            video.title,
-            video.thumbnailUrl,
-            video.viewCount,
-            video.likeCount,
-            video.commentCount,
+            safeVideo.title,
+            safeVideo.thumbnailUrl,
+            safeVideo.viewCount,
+            safeVideo.likeCount,
+            safeVideo.commentCount,
             finalDate,
-            video.duration || null,
+            safeVideo.duration,
             Date.now(),
             existing.id,
           ],
         });
         updated++;
       } else {
-        console.log(`[DB] INSERT: videoId=${video.videoId}, channelId=${channelId}`);
+        console.log(`[DB] INSERT: videoId=${safeVideo.videoId}, channelId=${channelId}`);
 
         await client.execute({
           sql: `INSERT INTO channel_videos (
@@ -283,15 +306,15 @@ export async function POST(
             likeCount, commentCount, publishDate, duration, fetchedAt
           ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
           args: [
-            channelId,
-            video.videoId,
-            video.title,
-            video.thumbnailUrl,
-            video.viewCount,
-            video.likeCount,
-            video.commentCount,
-            video.publishDate,
-            video.duration || null,
+            safeVideo.channelId,
+            safeVideo.videoId,
+            safeVideo.title,
+            safeVideo.thumbnailUrl,
+            safeVideo.viewCount,
+            safeVideo.likeCount,
+            safeVideo.commentCount,
+            safeVideo.publishDate,
+            safeVideo.duration,
             Date.now(),
           ],
         });

@@ -209,6 +209,16 @@ async function getClient() {
         // Использует idempotent проверку через PRAGMA table_info
         await addColumnIfNotExists(_client, 'channel_videos', 'duration', 'TEXT');
 
+        // КРИТИЧЕСКАЯ МИГРАЦИЯ (ИТЕРАЦИЯ 13): гарантируем что все необходимые поля существуют
+        // Это исправляет баг где под вторым пользователем видео загружались с undefined полями
+        await addColumnIfNotExists(_client, 'channel_videos', 'channelId', 'TEXT NOT NULL');
+        await addColumnIfNotExists(_client, 'channel_videos', 'thumbnailUrl', 'TEXT');
+        await addColumnIfNotExists(_client, 'channel_videos', 'viewCount', 'INTEGER NOT NULL DEFAULT 0');
+        await addColumnIfNotExists(_client, 'channel_videos', 'likeCount', 'INTEGER NOT NULL DEFAULT 0');
+        await addColumnIfNotExists(_client, 'channel_videos', 'commentCount', 'INTEGER NOT NULL DEFAULT 0');
+        await addColumnIfNotExists(_client, 'channel_videos', 'publishDate', 'TEXT');
+        await addColumnIfNotExists(_client, 'channel_videos', 'fetchedAt', 'INTEGER NOT NULL');
+
         _client.execute(`CREATE TABLE IF NOT EXISTS content_intelligence (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
           channelId TEXT NOT NULL,
