@@ -106,9 +106,13 @@ export function SyncAllDataButton({ channelId }: SyncAllDataButtonProps) {
     } catch (error) {
       toast.error("An error occurred during sync");
       console.error("[SyncAllData] Error:", error);
+      // Обновляем UI даже при ошибке
+      router.refresh();
     } finally {
       setSyncing(false);
       setCurrentStep("idle");
+      // Дополнительное обновление для гарантии
+      router.refresh();
     }
   }
 

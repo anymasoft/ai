@@ -44,6 +44,8 @@ export function SyncVideosButton({ channelId }: SyncVideosButtonProps) {
       console.error("[SyncVideos] Error:", error);
     } finally {
       setSyncing(false);
+      // Дополнительное обновление для гарантии
+      router.refresh();
     }
   }
 
