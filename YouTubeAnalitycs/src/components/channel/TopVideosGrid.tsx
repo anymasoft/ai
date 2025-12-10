@@ -92,15 +92,16 @@ export function TopVideosGrid({ videos, userPlan = "free", hasShownVideos = fals
         cache: "no-store",
       });
 
-      if (!syncRes.ok) {
-        const syncError = await syncRes.json();
-        console.error(`[TopVideosGrid] Ошибка синхронизации:`, syncError);
+      const syncData = await syncRes.json();
+
+      // Проверяем успех операции
+      if (!syncData.success) {
+        const errorMsg = syncData.error || "Unknown sync error";
+        console.error(`[TopVideosGrid] Ошибка синхронизации: ${errorMsg}`);
         return;
       }
 
-      const syncData = await syncRes.json();
       console.log(`[TopVideosGrid] Синхронизация успешна:`, {
-        status: syncData.status,
         videosCount: syncData.videos?.length,
         added: syncData.added,
         updated: syncData.updated,
@@ -110,7 +111,7 @@ export function TopVideosGrid({ videos, userPlan = "free", hasShownVideos = fals
       if (syncData.videos && syncData.videos.length > 0) {
         setVideoList(syncData.videos);
         setHasShown(true);
-        console.log("[TopVideosGrid] Видео обновлены");
+        console.log(`[TopVideosGrid] Видео обновлены (${syncData.videos.length} штук)`);
       } else {
         setHasShown(true);
         setVideoList([]);
