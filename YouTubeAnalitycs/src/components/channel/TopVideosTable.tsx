@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   Table,
   TableBody,
@@ -45,6 +46,7 @@ function formatViews(views: number): string {
 }
 
 export function TopVideosTable({ videos, hasSyncedTopVideos = false }: TopVideosTableProps) {
+  const router = useRouter();
   const [limit, setLimit] = useState(50);
   const [refreshingId, setRefreshingId] = useState<string | null>(null);
   const [videoList, setVideoList] = useState(videos);
@@ -86,9 +88,18 @@ export function TopVideosTable({ videos, hasSyncedTopVideos = false }: TopVideos
                 Нет данных. Нажмите &quot;Sync Top Videos&quot; чтобы загрузить видео канала.
               </p>
             ) : (
-              <p className="text-center">
-                Нет видео. Синхронизация не вернула результатов.
-              </p>
+              <div className="flex flex-col items-center justify-center gap-4">
+                <p className="text-center">
+                  Нет данных. Нажмите кнопку ниже, чтобы загрузить топ-видео.
+                </p>
+                <Button
+                  onClick={() => router.refresh()}
+                  variant="default"
+                  size="sm"
+                >
+                  Показать топ-видео
+                </Button>
+              </div>
             )}
           </div>
         ) : (
