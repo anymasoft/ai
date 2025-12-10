@@ -8,10 +8,6 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { TrendingUp, Users, Video, Eye, BarChart3, Calendar, AlertCircle, ArrowLeft, ExternalLink, Lightbulb, Target } from "lucide-react";
-import { SyncMetricsButton } from "@/components/channel/SyncMetricsButton";
-import { SyncVideosButton } from "@/components/channel/SyncVideosButton";
-import { SyncCommentsButton } from "@/components/channel/SyncCommentsButton";
-import { SyncAllDataButton } from "@/components/channel/SyncAllDataButton";
 import { ChannelAnalytics } from "@/components/channel/ChannelAnalytics";
 import { ChannelAvatar } from "@/components/channel-avatar";
 import { GenerateSwotButton } from "@/components/channel/GenerateSwotButton";
@@ -293,14 +289,6 @@ export default async function ChannelPage({ params }: PageProps) {
               <ExternalLink className="w-3 h-3" />
             </a>
           </div>
-
-          {/* Кнопки синхронизации метрик, видео и комментариев */}
-          <div className="self-start flex gap-2">
-            <SyncAllDataButton channelId={competitorId} />
-            <SyncMetricsButton channelId={competitorId} />
-            <SyncVideosButton channelId={competitorId} />
-            <SyncCommentsButton channelId={competitorId} />
-          </div>
         </div>
 
         {/* Метрики в строку */}
@@ -355,7 +343,7 @@ export default async function ChannelPage({ params }: PageProps) {
         insight={insight}
       />
 
-        {/* Analytics Section with Language Selector */}
+        {/* Analytics Section */}
         <ChannelAnalytics
           channelId={competitorId}
           metrics={metrics}
@@ -368,7 +356,6 @@ export default async function ChannelPage({ params }: PageProps) {
           hasVideos={hasVideos}
           hasComments={hasComments}
           userPlan={getUserPlan(session)}
-          hasSyncedTopVideos={hasSyncedTopVideos}
           hasShownVideos={hasShownVideos}
         />
       </div>

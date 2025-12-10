@@ -25,9 +25,7 @@ interface ChannelAnalyticsProps {
   hasComments: boolean
   /** План пользователя для лимитов видео */
   userPlan?: UserPlan
-  /** Синхронизировал ли пользователь видео этого канала */
-  hasSyncedTopVideos?: boolean
-  /** Нажал ли пользователь "Показать топ-видео" */
+  /** Нажал ли пользователь "Получить топ-видео" */
   hasShownVideos?: boolean
 }
 
@@ -77,7 +75,6 @@ export function ChannelAnalytics({
   hasVideos,
   hasComments,
   userPlan = "free",
-  hasSyncedTopVideos = false,
   hasShownVideos = false,
 }: ChannelAnalyticsProps) {
   // Все разделы закрыты по умолчанию - пользователь видит полный обзор доступных аналитических блоков
@@ -123,7 +120,7 @@ export function ChannelAnalytics({
         isOpen={expanded.videos}
         onToggle={() => toggle("videos")}
       >
-        <TopVideosGrid videos={videos} userPlan={userPlan} hasSyncedTopVideos={hasSyncedTopVideos} hasShownVideos={hasShownVideos} channelId={channelId} />
+        <TopVideosGrid videos={videos} userPlan={userPlan} hasShownVideos={hasShownVideos} channelId={channelId} />
       </CollapsibleSection>
 
       {/* Content Intelligence */}
