@@ -542,6 +542,7 @@ export default async function ChannelPage({ params }: PageProps) {
 
         {/* Analytics Section */}
         <ChannelAnalytics
+          competitorId={competitorId}
           channelId={competitor.channelId as string}
           metrics={metrics}
           videos={videos}

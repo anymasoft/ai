@@ -13,6 +13,7 @@ import { DeepCommentAnalysisSection } from "@/components/channel/DeepCommentAnal
 import type { UserPlan } from "@/config/limits"
 
 interface ChannelAnalyticsProps {
+  competitorId: number
   channelId: string
   metrics: any[]
   videos: any[]
@@ -135,7 +136,7 @@ export function ChannelAnalytics({
         isOpen={expanded.videos}
         onToggle={() => toggle("videos")}
       >
-        <TopVideosGrid videos={videos} userPlan={userPlan} hasShownVideos={hasShownVideos} channelId={channelId} />
+        <TopVideosGrid videos={videos} userPlan={userPlan} hasShownVideos={hasShownVideos} competitorId={competitorId} channelId={channelId} />
       </CollapsibleSection>
 
       {/* Content Intelligence */}
