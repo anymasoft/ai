@@ -46,6 +46,7 @@ export async function GET(
     console.log(`[VideosPage] Запрос TOP-12 видео для channelId=${channelId}`);
 
     // Проверяем что этот channelId принадлежит текущему пользователю
+    console.log(`[DB] SELECT competitors: args=[${channelId}, ${session.user.id}]`);
     const competitorResult = await client.execute({
       sql: "SELECT id FROM competitors WHERE channelId = ? AND userId = ?",
       args: [channelId, session.user.id],
@@ -59,6 +60,7 @@ export async function GET(
     console.log(`[VideosPage] Загрузка TOP-12 видео для channelId=${channelId}`);
 
     // Получаем TOP-12 видео из БД
+    console.log(`[DB] SELECT videos: args=[${channelId}]`);
     const videosResult = await client.execute({
       sql: `SELECT id, channelId, videoId, title, thumbnailUrl, viewCount, publishDate, fetchedAt
             FROM channel_videos
@@ -71,6 +73,7 @@ export async function GET(
     const videos = videosResult.rows.map(row => ({ ...row }));
 
     // Получаем общее количество видео в БД
+    console.log(`[DB] COUNT videos: args=[${channelId}]`);
     const countResult = await client.execute({
       sql: "SELECT COUNT(*) as count FROM channel_videos WHERE channelId = ?",
       args: [channelId],

@@ -93,159 +93,138 @@ export async function POST(
     const MAX_VIDEOS_PER_PAGE = 12;
     const userPlan = getUserPlan(session);
 
-    // Проверяем кеш в БД: читаем lastSyncAt из user_channel_state
-    console.log(`[Sync] Проверяем локальный кеш для channelId: ${channelId}`);
-    const userStateResult = await client.execute({
-      sql: "SELECT lastSyncAt FROM user_channel_state WHERE userId = ? AND channelId = ?",
-      args: [session.user.id, channelId],
+    // ШАГ 1: ПРОВЕРЯЕМ ЕСТЬ ЛИ УЖЕ 12 ВИДЕО В БД С PUBLISHDATE
+    console.log(`[Sync] Проверяем наличие видео в БД для channelId: ${channelId}`);
+    const existingVideosResult = await client.execute({
+      sql: `SELECT id, videoId, publishDate FROM channel_videos
+            WHERE channelId = ?
+            ORDER BY viewCount DESC
+            LIMIT ?`,
+      args: [channelId, MAX_VIDEOS_PER_PAGE],
     });
 
-    const lastSyncAt = userStateResult.rows.length > 0
-      ? (userStateResult.rows[0].lastSyncAt as string | null)
-      : null;
+    const existingVideos = existingVideosResult.rows || [];
+    const videosWithPublishDate = existingVideos.filter((v: any) => v.publishDate != null);
 
-    // Вычисляем возраст кеша (в миллисекундах)
-    const cacheAgeMs = lastSyncAt ? Date.now() - new Date(lastSyncAt).getTime() : Infinity;
-    const CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24 часа
-    const isCacheFresh = lastSyncAt !== null && cacheAgeMs < CACHE_TTL_MS;
+    // Если уже есть 12+ видео с publishDate - не идем в API
+    if (videosWithPublishDate.length >= MAX_VIDEOS_PER_PAGE) {
+      console.log(`[Sync] В БД уже есть ${videosWithPublishDate.length} видео с publishDate, используем их без API`);
 
-    console.log(`[Sync] Кеш статус: lastSyncAt=${lastSyncAt ? new Date(lastSyncAt).toISOString() : "null"}, возраст=${Math.round(cacheAgeMs / 1000 / 60)} минут`);
+      // Обновляем lastSyncAt
+      try {
+        const lastSyncAtIso = new Date().toISOString();
+        await client.execute({
+          sql: `INSERT INTO user_channel_state (userId, channelId, hasSyncedTopVideos, lastSyncAt)
+                VALUES (?, ?, 1, ?)
+                ON CONFLICT(userId, channelId) DO UPDATE SET hasSyncedTopVideos = 1, lastSyncAt = ?`,
+          args: [session.user.id, channelId, lastSyncAtIso, lastSyncAtIso],
+        });
+      } catch (e) {
+        console.warn(`[Sync] Ошибка обновления lastSyncAt:`, e instanceof Error ? e.message : e);
+      }
 
-    // Получаем видео
-    let videos: any[] = [];
+      client.close();
+
+      return NextResponse.json({
+        success: true,
+        videos: existingVideos.slice(0, MAX_VIDEOS_PER_PAGE),
+        totalVideos: existingVideos.length,
+        added: 0,
+        updated: 0,
+        source: "db_cache",
+        plan: userPlan,
+        videoLimit: MAX_VIDEOS_PER_PAGE,
+      });
+    }
+
+    // ШАГ 2: ЕСЛИ ДАННЫХ НЕТ - ХОДИМ В API
+    console.log(`[Sync] В БД найдено только ${existingVideos.length} видео, загружаем из API`);
+
     let totalAvailableVideos = 0;
 
-    // Если кеш свежий, берём видео из БД (не вызываем API)
-    if (isCacheFresh) {
-      console.log(`[Sync] Кеш свежий (<24ч), загружаем видео из БД (без API запроса)`);
-      const dbVideosResult = await client.execute({
-        sql: `SELECT id, channelId, videoId, title, thumbnailUrl, viewCount, publishDate, fetchedAt
-              FROM channel_videos
-              WHERE channelId = ?
-              ORDER BY viewCount DESC
-              LIMIT ?`,
-        args: [channelId, MAX_VIDEOS_PER_PAGE],
+    // Загружаем видео из API (TOP-12 ONLY)
+    let apiResponse;
+    try {
+      apiResponse = await getYoutubeChannelVideos(
+        channelId,
+        competitor.handle as string,
+        MAX_VIDEOS_PER_PAGE
+      );
+    } catch (error) {
+      console.error("[Sync] Ошибка получения списка видео:", error);
+      client.close();
+      const errorMsg = error instanceof Error ? error.message : "Failed to fetch videos";
+      return NextResponse.json(
+        { success: false, error: errorMsg },
+        { status: 500 }
+      );
+    }
+
+    // Извлекаем видео из ответа и сортируем по viewCount DESC
+    const apiVideos = (apiResponse.videos || apiResponse) as any[];
+    const sortedVideos = apiVideos.sort((a, b) => (b.viewCount || 0) - (a.viewCount || 0));
+    const videos = sortedVideos.slice(0, MAX_VIDEOS_PER_PAGE);
+    totalAvailableVideos = videos.length;
+
+    console.log(`[Sync] Из API получено ${apiVideos.length} видео, отобрано top-${MAX_VIDEOS_PER_PAGE}`);
+
+    if (videos.length === 0) {
+      console.warn(`[Sync] ВНИМАНИЕ: API не вернул видео!`);
+      client.close();
+      return NextResponse.json({
+        success: true,
+        videos: [],
+        totalVideos: 0,
+        added: 0,
+        updated: 0,
+        source: "api",
+        plan: userPlan,
+        videoLimit: MAX_VIDEOS_PER_PAGE,
       });
-      videos = dbVideosResult.rows.map(row => ({ ...row }));
-      totalAvailableVideos = videos.length;
-      console.log(`[Sync] Из БД: ${videos.length} видео (кеш из ${lastSyncAt})`);
-    } else {
-      // Кеш старый (>24ч) или не существует - обновляем через API
-      if (lastSyncAt) {
-        console.log(`[Sync] Кеш устарел (${Math.round(cacheAgeMs / 1000 / 60 / 60)} часов назад), обновляем через API`);
-      } else {
-        console.log(`[Sync] Кеш отсутствует, синхронизируем впервые`);
-      }
+    }
 
-      // Загружаем видео из API (TOP-12 ONLY)
-      let apiResponse;
-      try {
-        apiResponse = await getYoutubeChannelVideos(
-          channelId,
-          competitor.handle as string,
-          MAX_VIDEOS_PER_PAGE  // Загружаем максимум 12 видео
-        );
-      } catch (error) {
-        console.error("[Sync] Ошибка получения списка видео:", error);
-        client.close();
-        const errorMsg = error instanceof Error ? error.message : "Failed to fetch videos";
-        return NextResponse.json(
-          { success: false, error: errorMsg },
-          { status: 500 }
-        );
-      }
-
-      // Извлекаем видео из ответа
-      const apiVideos = apiResponse.videos || apiResponse;
-
-      totalAvailableVideos = apiVideos.length;
-      console.log(`[Sync] Получено ${apiVideos.length} видео из API`);
-
-      // ДИАГНОСТИКА: логируем структуру первого видео
-      if (apiVideos.length > 0) {
-        const firstVideo = apiVideos[0];
-        console.log(`[Sync] Первое видео из API:`, {
-          videoId: firstVideo.videoId,
-          title: firstVideo.title,
-          viewCount: firstVideo.viewCount,
-          hasVideoId: !!firstVideo.videoId,
-          videoIdLength: firstVideo.videoId?.length || 0,
-        });
-      } else {
-        console.warn(`[Sync] ВНИМАНИЕ: API вернул 0 видео!`);
-      }
-
-      // ИСПРАВЛЕНИЕ: параметр MAX_VIDEOS_PER_PAGE — это количество СТРАНИЦ API, не видео
-      // Поэтому обрезаем результат ЯВНО ЗДЕСЬ до 12 видео
-      videos = apiVideos.slice(0, MAX_VIDEOS_PER_PAGE);
-      console.log(`[Sync] ОБРЕЗАЛИ до первых ${MAX_VIDEOS_PER_PAGE} видео (было ${apiVideos.length})`);
-
-      // Получаем существующие даты из БД только для ограниченного набора видео
-      const existingDates = new Map<string, string | null>();
-      console.log(`[Sync] Проверяем существующие даты для ${videos.length} видео в БД`);
-      for (const video of videos) {
-        if (!video.videoId) continue;
-
-        const existing = await client.execute({
-          sql: "SELECT publishDate FROM channel_videos WHERE channelId = ? AND videoId = ?",
-          args: [competitor.channelId, video.videoId],
-        });
-
-        if (existing.rows.length > 0) {
-          existingDates.set(video.videoId, existing.rows[0].publishDate as string | null);
-        }
-      }
-
-      // Получаем publishDate для видео БЕЗ даты (только для ограниченного набора)
-      console.log(`[Sync] Начинаем получать publishDate для ${videos.length} видео (MAX_VIDEOS_PER_PAGE = ${MAX_VIDEOS_PER_PAGE})`);
-      let publishDateResolvedCount = 0;
-      for (const video of videos) {
-        if (!video.videoId) continue;
-
-        const existingDate = existingDates.get(video.videoId);
-
-        // Если дата уже есть в БД → НЕ трогаем
-        if (existingDate) {
-          video.publishDate = existingDate;
-          continue;
-        }
-
-        // Если даты нет → получаем из API
+    // Получаем publishDate для каждого видео из API
+    console.log(`[Sync] Получаем publishDate для ${videos.length} видео`);
+    let publishDateResolvedCount = 0;
+    for (const video of videos) {
+      if (!video.videoId) continue;
+      if (!video.publishDate) {
         const publishDate = await fetchPublishDateWithRetry(video.videoId);
-        video.publishDate = publishDate; // может быть null
+        video.publishDate = publishDate;
         publishDateResolvedCount++;
-
-        // Задержка между запросами
         await new Promise(resolve => setTimeout(resolve, 150));
       }
-      console.log(`[Sync] Получено publishDate для ${publishDateResolvedCount} видео (MAX_VIDEOS_PER_PAGE = ${MAX_VIDEOS_PER_PAGE})`);
     }
+    console.log(`[Sync] Получено publishDate для ${publishDateResolvedCount} видео`);
 
     // Сохраняем в локальную таблицу channel_videos
     let inserted = 0;
     let updated = 0;
     let skipped = 0;
 
-    console.log(`[Sync] Начало сохранения ${videos.length} видео в БД`);
+    console.log(`[Sync] Начинаем сохранять ${videos.length} видео в БД`);
 
     for (const video of videos) {
       if (!video.videoId) {
-        console.warn(`[Sync] Пропущено видео без videoId:`, { title: video.title, videoId: video.videoId });
+        console.warn(`[Sync] Пропущено видео без videoId:`, { title: video.title });
         skipped++;
         continue;
       }
 
+      // ⚠️ ВАЖНО: используем валидированную переменную channelId, НЕ competitor.channelId
+      console.log(`[DB] Проверяем видео videoId=${video.videoId}, channelId=${channelId}`);
+
       const existingResult = await client.execute({
         sql: "SELECT id, publishDate FROM channel_videos WHERE channelId = ? AND videoId = ?",
-        args: [competitor.channelId, video.videoId],
+        args: [channelId, video.videoId],
       });
 
       if (existingResult.rows.length > 0) {
         const existing = existingResult.rows[0];
         const oldDate = existing.publishDate as string | null;
-
-        // Если старая дата есть, а новая null → сохраняем старую
         const finalDate = video.publishDate || oldDate;
+
+        console.log(`[DB] UPDATE: videoId=${video.videoId}, id=${existing.id}`);
 
         await client.execute({
           sql: `UPDATE channel_videos SET
@@ -272,13 +251,15 @@ export async function POST(
         });
         updated++;
       } else {
+        console.log(`[DB] INSERT: videoId=${video.videoId}, channelId=${channelId}`);
+
         await client.execute({
           sql: `INSERT INTO channel_videos (
             channelId, videoId, title, thumbnailUrl, viewCount,
             likeCount, commentCount, publishDate, duration, fetchedAt
           ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
           args: [
-            competitor.channelId,
+            channelId,
             video.videoId,
             video.title,
             video.thumbnailUrl,
@@ -304,22 +285,23 @@ export async function POST(
 
     console.log(`[Sync] Готово: добавлено ${inserted}, обновлено ${updated}, пропущено ${skipped}, всего в БД ${totalVideos}`);
 
-    // Обновляем состояние пользователя: отмечаем, что он синхронизировал видео
+    // Обновляем состояние пользователя
     try {
       const lastSyncAtIso = new Date().toISOString();
+      console.log(`[DB] Обновляем user_channel_state: userId=${session.user.id}, channelId=${channelId}`);
+
       await client.execute({
         sql: `INSERT INTO user_channel_state (userId, channelId, hasSyncedTopVideos, lastSyncAt)
               VALUES (?, ?, 1, ?)
               ON CONFLICT(userId, channelId) DO UPDATE SET hasSyncedTopVideos = 1, lastSyncAt = ?`,
         args: [session.user.id, channelId, lastSyncAtIso, lastSyncAtIso],
       });
-      console.log(`[Sync] Обновлено состояние пользователя: hasSyncedTopVideos = 1, lastSyncAt = ${lastSyncAtIso}`);
+      console.log(`[Sync] Обновлено состояние пользователя: lastSyncAt = ${lastSyncAtIso}`);
     } catch (stateError) {
-      console.warn(`[Sync] Ошибка при обновлении состояния пользователя (не критично):`, stateError instanceof Error ? stateError.message : stateError);
+      console.warn(`[Sync] Ошибка обновления состояния:`, stateError instanceof Error ? stateError.message : stateError);
     }
 
     // Гарантируем полный flush WAL перед ответом клиенту
-    // Это критично для SSR: когда page.tsx вызовет router.refresh(), данные должны быть физически записаны в БД
     try {
       await client.execute(`PRAGMA wal_checkpoint(FULL);`);
       console.log("[Sync] WAL checkpoint завершён успешно");
@@ -331,14 +313,13 @@ export async function POST(
 
     return NextResponse.json({
       success: true,
-      videos,  // 12 видео (сохранённые в БД)
-      totalVideos,  // Всего видео в БД
+      videos: videos.slice(0, MAX_VIDEOS_PER_PAGE),
+      totalVideos,
       added: inserted,
       updated,
+      source: "api",
       plan: userPlan,
-      videoLimit: MAX_VIDEOS_PER_PAGE,  // Всегда 12
-      videosLoaded: totalAvailableVideos,  // Сколько видео мы загрузили на этот раз из API (для диагностики)
-      ...(isCacheFresh && { fromCache: true }),
+      videoLimit: MAX_VIDEOS_PER_PAGE,
     });
   } catch (error) {
     client.close();
