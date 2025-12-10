@@ -191,44 +191,55 @@ export function TopVideosGrid({ videos, userPlan = "free", hasShownVideos = fals
     }
   };
 
-  // Загружаем следующую страницу видео (с использованием локального состояния)
+  // ИТЕРАЦИЯ 10: Загружаем следующую страницу видео из БД
+  // Если видео на этой странице не синхронизировано, нужно нажать "Получить топ-видео" для синхронизации
   const loadMore = async () => {
     if (!channelId || isLoadingMore) return;
 
     setIsLoadingMore(true);
     try {
       const nextPage = page + 1;
-      console.log(`[TopVideosGrid] Loading page ${nextPage}...`);
+      console.log(`[TopVideosGrid] Загрузка страницы ${nextPage} из БД...`);
 
       const res = await fetch(
         `/api/channel/${channelId}/videos/page?page=${nextPage}`,
         { cache: "no-store" }
       );
-      const data = await res.json();
 
-      if (!data.ok) {
-        console.error("Failed to load more videos:", data.error);
+      if (!res.ok) {
+        console.error(`[TopVideosGrid] Ошибка загрузки страницы ${nextPage}: HTTP ${res.status}`);
         return;
       }
 
-      console.log(`[TopVideosGrid] Loaded page ${data.page}: ${data.videos.length} videos, hasMore: ${data.hasMore}`);
+      const data = await res.json();
 
-      // Добавляем новые видео к существующему ЛОКАЛЬНОМУ списку
-      setVideoList(prev => [...prev, ...data.videos]);
-      setPage(data.page);
-      setHasMore(data.hasMore ?? false);
-      setTotalVideos(data.totalVideos ?? totalVideos);
+      console.log(`[TopVideosGrid] Page ${nextPage}: loaded ${data.videos?.length} videos, hasMore=${data.hasMore}`);
+
+      // Добавляем новые видео к существующему списку
+      if (data.videos && data.videos.length > 0) {
+        console.log(`[TopVideosGrid] Добавляем ${data.videos.length} видео к существующему списку`);
+        setVideoList(prev => [...prev, ...data.videos]);
+        setPage(data.page);
+        setHasMore(data.hasMore ?? false);
+        setTotalVideos(data.totalVideos ?? totalVideos);
+      } else {
+        // Видео на этой странице не в БД
+        // Это означает что они не синхронизированы с API
+        // Пользователь должен нажать "Получить топ-видео" для загрузки следующей страницы
+        console.log(`[TopVideosGrid] Страница ${nextPage} не синхронизирована с API`);
+        console.log(`[TopVideosGrid] Нажмите "Получить топ-видео" чтобы загрузить следующие 12 видео`);
+        setHasMore(false);
+      }
     } catch (err) {
-      console.error("Ошибка при загрузке видео:", err);
+      console.error("[TopVideosGrid] Ошибка при загрузке видео:", err);
     } finally {
       setIsLoadingMore(false);
     }
   };
 
-  // Определяем лимит по тарифу пользователя
-  const planLimit = TIER_VIDEO_LIMITS[userPlan];
-  // Может ли пользователь загружать больше видео
-  const canLoadMore = canLoadMoreVideos(userPlan);
+  // Определяем лимит по тарифу пользователя (осталось для совместимости, но не используется)
+  const planLimit = TIER_VIDEO_LIMITS[userPlan];  // больше не используется в ИТЕРАЦИИ 10
+  // const canLoadMore = canLoadMoreVideos(userPlan);  // ИТЕРАЦИЯ 10: отключено
 
   // Сортируем видео по количеству просмотров (DESC)
   const sortedVideos = [...videoList].sort((a, b) => b.viewCount - a.viewCount);
@@ -337,8 +348,8 @@ export function TopVideosGrid({ videos, userPlan = "free", hasShownVideos = fals
               ))}
             </div>
 
-            {/* Кнопка "Показать ещё 12" — только если есть ещё видео и пользователь может загружать */}
-            {hasShown && canLoadMore && hasMore && (
+            {/* Кнопка "Показать ещё 12" — только если есть ещё видео (ИТЕРАЦИЯ 10: без проверки плана) */}
+            {hasShown && hasMore && (
               <div className="flex justify-center mt-6">
                 <Button
                   onClick={loadMore}
@@ -347,15 +358,6 @@ export function TopVideosGrid({ videos, userPlan = "free", hasShownVideos = fals
                 >
                   {isLoadingMore ? "Загружаем..." : "Показать ещё 12"}
                 </Button>
-              </div>
-            )}
-
-            {/* Сообщение для базовых планов без Load more */}
-            {!canLoadMore && videoList.length > VIDEO_PAGE_SIZE && (
-              <div className="flex justify-center mt-6">
-                <p className="text-sm text-muted-foreground">
-                  Ваш тариф ограничивает количество доступных видео. Перейдите на Professional, чтобы видеть больше данных.
-                </p>
               </div>
             )}
           </>

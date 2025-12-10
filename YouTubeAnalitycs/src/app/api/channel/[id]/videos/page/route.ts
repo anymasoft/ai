@@ -2,14 +2,13 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { createClient } from "@libsql/client";
-import { VIDEO_PAGE_SIZE, getVideoLimitForPlan } from "@/config/limits";
-import { getUserPlan } from "@/lib/user-plan";
+import { VIDEO_PAGE_SIZE } from "@/config/limits";
 
 /**
  * GET /api/channel/[id]/videos/page?page=N
  *
- * Загружает видео постранично из channel_videos таблицы.
- * Соблюдает тарифные лимиты.
+ * Загружает видео постранично (по 12 штук) из channel_videos таблицы.
+ * БЕЗ учёта тарифных лимитов (ИТЕРАЦИЯ 10).
  *
  * Параметры:
  * - page: номер страницы (0-based)
@@ -20,8 +19,7 @@ import { getUserPlan } from "@/lib/user-plan";
  *   videos: VideoData[],
  *   hasMore: boolean,
  *   totalVideos: number,
- *   page: number,
- *   maxVideos: number
+ *   page: number
  * }
  */
 
@@ -74,12 +72,10 @@ export async function GET(
 
     const channelId = competitorResult.rows[0].channelId as string;
 
-    // НОВОЕ (ИТЕРАЦИЯ 9): Отключаем тарифные лимиты временно для чистого тестирования пагинации
-    // const userPlan = getUserPlan(session);
-    // const maxVideos = getVideoLimitForPlan(userPlan);
-    // Вместо этого загружаем ВСЕ видео без ограничений
-    const maxVideos = 999999;  // Практически неограниченный лимит
-    console.log(`[VideosPage] ITERATION 9: Plan limits disabled, max videos set to unlimited: ${maxVideos}`);
+    // ИТЕРАЦИЯ 10: Простая пагинация из БД
+    // Если видео для этой страницы не в БД, это означает что нужно вызвать sync для неё
+    // Frontend должен вызвать POST /api/channel/[id]/videos/sync перед запросом новой страницы
+    console.log(`[VideosPage] ITERATION 10: Loading paginated videos WITHOUT plan limits`);
 
     // Получаем общее количество видео в БД
     const countResult = await client.execute({
@@ -92,20 +88,7 @@ export async function GET(
 
     // Вычисляем offset
     const offset = page * VIDEO_PAGE_SIZE;
-
-    // Проверяем, не превышает ли уже запрошенное количество лимит
-    if (offset >= maxVideos) {
-      console.log(`[VideosPage] Offset ${offset} >= max videos ${maxVideos}, no more videos available`);
-      client.close();
-      return NextResponse.json({
-        ok: true,
-        videos: [],
-        hasMore: false,
-        totalVideos,
-        page,
-        maxVideos,
-      });
-    }
+    console.log(`[VideosPage] Page ${page}: offset=${offset}, limit=${VIDEO_PAGE_SIZE}`);
 
     // Получаем видео для этой страницы
     const videosResult = await client.execute({
@@ -119,12 +102,12 @@ export async function GET(
 
     const videos = videosResult.rows.map(row => ({ ...row }));
 
-    // НОВОЕ (ИТЕРАЦИЯ 9): hasMore теперь зависит только от totalVideos (без учёта плана)
-    // Определяем, есть ли ещё видео в БД
+    // ИТЕРАЦИЯ 10: hasMore зависит только от totalVideos в БД
+    // Определяем, есть ли ещё видео после текущей страницы
     const nextPageStart = (page + 1) * VIDEO_PAGE_SIZE;
     const hasMore = nextPageStart < totalVideos;
 
-    console.log(`[VideosPage] Page ${page}: loaded ${videos.length} videos, hasMore: ${hasMore}`);
+    console.log(`[VideosPage] Page ${page}: loaded ${videos.length} videos, hasMore=${hasMore}, totalVideos=${totalVideos}`);
 
     client.close();
 
@@ -134,7 +117,7 @@ export async function GET(
       hasMore,
       totalVideos,
       page,
-      maxVideos,
+      pageSize: VIDEO_PAGE_SIZE,
     });
   } catch (error) {
     client.close();
