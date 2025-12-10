@@ -109,33 +109,18 @@ export async function POST(
     const userPlan = getUserPlan(session);  // для логирования
     let totalAvailableVideos = 0;  // сколько видео в API / в БД всего
 
-    // ИТЕРАЦИЯ 11: Читаем nextPageToken из user_channel_state для пагинации
-    console.log(`[Sync] Читаем nextPageToken из user_channel_state для channelId: ${channelId}`);
-    const userStateResult = await client.execute({
-      sql: "SELECT nextPageToken FROM user_channel_state WHERE userId = ? AND channelId = ?",
-      args: [session.user.id, channelId],
-    });
-
-    const savedNextPageToken = userStateResult.rows.length > 0
-      ? (userStateResult.rows[0].nextPageToken as string | null)
-      : null;
-
-    console.log(`[Sync] Сохранённый nextPageToken:`, savedNextPageToken ? "present" : "none (first page)");
-    // ИТЕРАЦИЯ 11: используем undefined для отличия от null (null значит "не обновлять")
-    let newContinuationToken: string | null | undefined = undefined;
+    // TOP-12 ONLY: не используем пагинацию, только берём первые 12 лучших видео
+    console.log(`[Sync] Режим TOP-12 ONLY: не используем continuationToken или пагинацию`);
 
     // Получаем видео из кеша или API
     let videos: typeof cachedVideos;
 
     if (isCacheFresh && cachedChannel) {
       console.log(`[Sync] Кеш свежий (${Math.round(cacheAgeMs / 1000 / 60)} минут назад), используем кешированные данные`);
-      // ИСПРАВЛЕНИЕ: из кеша берём только 12 видео
+      // Берём только TOP-12 видео из кеша
       videos = cachedVideos.slice(0, MAX_VIDEOS_PER_PAGE);
       totalAvailableVideos = cachedVideos.length;
       console.log(`[Sync] Из кеша: ${videos.length} видео (всего доступно: ${totalAvailableVideos})`);
-      // ИТЕРАЦИЯ 11: когда используем кеш, НЕ обновляем continuationToken (оставляем undefined)
-      // это сохранит уже сохранённый token для следующей пагинации
-      newContinuationToken = undefined;  // явно указываем "не обновлять"
     } else {
       // Кеш старый или не существует - обновляем через API
       if (cachedChannel) {
@@ -144,16 +129,13 @@ export async function POST(
         console.log(`[Sync] Кеш отсутствует, синхронизируем впервые`);
       }
 
-      // ИСПРАВЛЕНИЕ (ИТЕРАЦИЯ 10): Загружаем ТОЛЬКО первые 12 видео из API
-      // НЕ жжём зря токены — грузим ровно сколько нужно
-      // ИТЕРАЦИЯ 11: передаём savedNextPageToken для пагинации
+      // Загружаем видео из API (TOP-12 ONLY)
       let apiResponse;
       try {
         apiResponse = await getYoutubeChannelVideos(
           channelId,
           competitor.handle as string,
-          MAX_VIDEOS_PER_PAGE,  // Загружаем ТОЛЬКО 12 видео
-          savedNextPageToken    // ИТЕРАЦИЯ 11: продолжаем с сохранённого токена
+          MAX_VIDEOS_PER_PAGE  // Загружаем максимум 12 видео
         );
       } catch (error) {
         console.error("[Sync] Ошибка получения списка видео:", error);
@@ -164,12 +146,11 @@ export async function POST(
         );
       }
 
-      // ИТЕРАЦИЯ 11: распаковываем ответ, теперь это объект { videos, continuationToken }
-      const apiVideos = apiResponse.videos;
-      newContinuationToken = apiResponse.continuationToken;
+      // Извлекаем видео из ответа
+      const apiVideos = apiResponse.videos || apiResponse;
 
       totalAvailableVideos = apiVideos.length;
-      console.log(`[Sync] Получено ${apiVideos.length} видео из API, новый continuationToken:`, newContinuationToken ? "present" : "none (last page?)");
+      console.log(`[Sync] Получено ${apiVideos.length} видео из API`);
 
       // ДИАГНОСТИКА: логируем структуру первого видео
       if (apiVideos.length > 0) {
@@ -337,35 +318,18 @@ export async function POST(
       }
     }
 
-    // Обновляем состояние пользователя: отмечаем, что он синхронизировал видео этого канала
+    // Обновляем состояние пользователя: отмечаем, что он синхронизировал видео
     try {
-      // ИСПРАВЛЕНИЕ: записываем lastSyncAt как ISO-строку (а не миллисекунды)
       const lastSyncAtIso = new Date().toISOString();
-
-      // ИТЕРАЦИЯ 11: сохраняем новый continuationToken для следующей пагинации
-      // если newContinuationToken === undefined, то это означает "не обновлять" (использовали кеш)
-      if (newContinuationToken === undefined) {
-        // Используем кеш - не обновляем token, сохраняем старый
-        await client.execute({
-          sql: `INSERT INTO user_channel_state (userId, channelId, hasSyncedTopVideos, lastSyncAt)
-                VALUES (?, ?, 1, ?)
-                ON CONFLICT(userId, channelId) DO UPDATE SET hasSyncedTopVideos = 1, lastSyncAt = ?`,
-          args: [session.user.id, channelId, lastSyncAtIso, lastSyncAtIso],
-        });
-        console.log(`[Sync] Обновлено состояние пользователя (из кеша): hasSyncedTopVideos = 1, lastSyncAt = ${lastSyncAtIso}, nextPageToken остался без изменений`);
-      } else {
-        // Получали из API - обновляем token
-        await client.execute({
-          sql: `INSERT INTO user_channel_state (userId, channelId, hasSyncedTopVideos, lastSyncAt, nextPageToken)
-                VALUES (?, ?, 1, ?, ?)
-                ON CONFLICT(userId, channelId) DO UPDATE SET hasSyncedTopVideos = 1, lastSyncAt = ?, nextPageToken = ?`,
-          args: [session.user.id, channelId, lastSyncAtIso, newContinuationToken, lastSyncAtIso, newContinuationToken],
-        });
-        console.log(`[Sync] Обновлено состояние пользователя (из API): hasSyncedTopVideos = 1, lastSyncAt = ${lastSyncAtIso}, nextPageToken =`, newContinuationToken ? "present" : "none (last page?)");
-      }
+      await client.execute({
+        sql: `INSERT INTO user_channel_state (userId, channelId, hasSyncedTopVideos, lastSyncAt)
+              VALUES (?, ?, 1, ?)
+              ON CONFLICT(userId, channelId) DO UPDATE SET hasSyncedTopVideos = 1, lastSyncAt = ?`,
+        args: [session.user.id, channelId, lastSyncAtIso, lastSyncAtIso],
+      });
+      console.log(`[Sync] Обновлено состояние пользователя: hasSyncedTopVideos = 1, lastSyncAt = ${lastSyncAtIso}`);
     } catch (stateError) {
       console.warn(`[Sync] Ошибка при обновлении состояния пользователя (не критично):`, stateError instanceof Error ? stateError.message : stateError);
-      // Не прерываем sync, если состояние не обновилось
     }
 
     // Гарантируем полный flush WAL перед ответом клиенту

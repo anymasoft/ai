@@ -6,7 +6,6 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { RefreshCw } from "lucide-react";
 import { formatPublishedDate } from "@/lib/date-formatting";
-import { VIDEO_PAGE_SIZE, TIER_VIDEO_LIMITS, canLoadMoreVideos } from "@/config/limits";
 import type { UserPlan } from "@/config/limits";
 
 interface VideoData {
@@ -46,22 +45,12 @@ function formatViews(views: number): string {
 export function TopVideosGrid({ videos, userPlan = "free", hasShownVideos = false, channelId }: TopVideosGridProps) {
   const router = useRouter();
   const [refreshingId, setRefreshingId] = useState<string | null>(null);
-  // НОВОЕ (ИТЕРАЦИЯ 9): Начинаем с пустого списка (видео теперь загружаются только на клиенте через /api)
   const [videoList, setVideoList] = useState<VideoData[]>([]);
   const [showingVideos, setShowingVideos] = useState(false);
-
-  // Состояние для постраничной загрузки
-  const [page, setPage] = useState(0);
-  const [hasMore, setHasMore] = useState(false);  // НОВОЕ (ИТЕРАЦИЯ 9): Начинаем с false
-  const [isLoadingMore, setIsLoadingMore] = useState(false);
-  const [totalVideos, setTotalVideos] = useState(0);  // НОВОЕ (ИТЕРАЦИЯ 9): Начинаем с 0
-
-  // Локальное состояние для управления показом видео
   const [hasShown, setHasShown] = useState(hasShownVideos);
 
-  // НОВОЕ (ИТЕРАЦИЯ 9): Логируем инициализацию
   if (process.env.NODE_ENV === "development") {
-    console.log("[TopVideosGrid INIT (v9)] Pure client-side pagination mode", {
+    console.log("[TopVideosGrid] TOP-12 ONLY mode", {
       channelId,
       userPlan,
       hasShownVideos,
@@ -94,11 +83,10 @@ export function TopVideosGrid({ videos, userPlan = "free", hasShownVideos = fals
       return;
     }
 
-    console.log(`[TopVideosGrid] Начало получения топ-видео для channelId=${channelId}`);
+    console.log(`[TopVideosGrid] Получение топ-12 видео для channelId=${channelId}`);
     setShowingVideos(true);
     try {
-      // Шаг 1: Синхронизируем видео
-      console.log(`[TopVideosGrid] Шаг 1: Синхронизация видео...`);
+      // Синхронизируем видео (TOP-12 ONLY)
       const syncRes = await fetch(`/api/channel/${channelId}/videos/sync`, {
         method: "POST",
         cache: "no-store",
@@ -114,145 +102,43 @@ export function TopVideosGrid({ videos, userPlan = "free", hasShownVideos = fals
       console.log(`[TopVideosGrid] Синхронизация успешна:`, {
         status: syncData.status,
         videosCount: syncData.videos?.length,
-        totalVideos: syncData.totalVideos,
         added: syncData.added,
         updated: syncData.updated,
       });
 
-      // Шаг 2: Отмечаем видео как показанные
-      console.log(`[TopVideosGrid] Шаг 2: Отметить видео как показанные...`);
-      const showRes = await fetch(`/api/channel/${channelId}/videos/show`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        cache: "no-store",
-      });
-
-      if (!showRes.ok) {
-        const showError = await showRes.json();
-        console.error(`[TopVideosGrid] Ошибка при отметке видео:`, showError);
-        return;
-      }
-
-      const showData = await showRes.json();
-      console.log(`[TopVideosGrid] Видео отмечены как показанные:`, showData);
-
-      // Шаг 3: НОВОЕ - загружаем первую страницу видео сразу на клиенте
-      console.log(`[TopVideosGrid] Шаг 3: Загрузка первой страницы видео...`);
-      const pageRes = await fetch(
-        `/api/channel/${channelId}/videos/page?page=0`,
-        {
-          method: "GET",
-          cache: "no-store",
-        }
-      );
-
-      if (!pageRes.ok) {
-        console.error(`[TopVideosGrid] Ошибка загрузки первой страницы:`, pageRes.status);
-        // Fallback на router.refresh если прямая загрузка не удалась
-        console.log("[TopVideosGrid] Используем fallback router.refresh()");
-        router.refresh();
-        return;
-      }
-
-      const pageData = await pageRes.json();
-      console.log(`[TopVideosGrid] Первая страница загружена:`, {
-        videosCount: pageData.videos?.length,
-        hasMore: pageData.hasMore,
-        page: pageData.page,
-      });
-
-      // КЛЮЧЕВОЙ ШАГ: обновляем локальное состояние для немедленного отображения
-      if (pageData.videos && pageData.videos.length > 0) {
-        setVideoList(pageData.videos);
+      // Обновляем состояние с полученными видео
+      if (syncData.videos && syncData.videos.length > 0) {
+        setVideoList(syncData.videos);
         setHasShown(true);
-        setPage(pageData.page ?? 0);
-        // БЫЛО: setHasMore(pageData.hasMore ?? false); // УДАЛЕНО — кнопка всегда видна
-        setTotalVideos(pageData.totalVideos ?? pageData.videos.length);
-        console.log("[TopVideosGrid] Локальное состояние обновлено, видео готовы к отображению");
+        console.log("[TopVideosGrid] Видео обновлены");
       } else {
-        // Видео не найдены, но состояние отмечено как "показано"
         setHasShown(true);
         setVideoList([]);
-        console.log("[TopVideosGrid] Видео не найдены, но состояние отмечено как показано");
+        console.log("[TopVideosGrid] Видео не найдены");
       }
 
-      // Шаг 4: Мягкий бэкап - попробуем router.refresh() для синхронизации SSR, но не критично
+      // Обновляем UI через router.refresh()
       try {
-        console.log("[TopVideosGrid] Шаг 4: Выполняем router.refresh() как бэкап для SSR...");
         router.refresh();
-        console.log("[TopVideosGrid] router.refresh() выполнен успешно");
-      } catch (refreshErr) {
-        console.warn("[TopVideosGrid] router.refresh() failed (non-critical):", refreshErr);
+      } catch (err) {
+        console.warn("[TopVideosGrid] router.refresh() failed (non-critical):", err);
       }
     } catch (err) {
-      console.error(`[TopVideosGrid] Ошибка при получении топ-видео:`, err instanceof Error ? err.message : err);
+      console.error(`[TopVideosGrid] Ошибка:`, err instanceof Error ? err.message : err);
     } finally {
       setShowingVideos(false);
     }
   };
 
-  // ИТЕРАЦИЯ 10: Загружаем следующую страницу видео из БД
-  // Если видео на этой странице не синхронизировано, нужно нажать "Получить топ-видео" для синхронизации
-  const loadMore = async () => {
-    if (!channelId || isLoadingMore) return;
-
-    setIsLoadingMore(true);
-    try {
-      const nextPage = page + 1;
-      console.log(`[TopVideosGrid] Загрузка страницы ${nextPage} из БД...`);
-
-      const res = await fetch(
-        `/api/channel/${channelId}/videos/page?page=${nextPage}`,
-        { cache: "no-store" }
-      );
-
-      if (!res.ok) {
-        console.error(`[TopVideosGrid] Ошибка загрузки страницы ${nextPage}: HTTP ${res.status}`);
-        return;
-      }
-
-      const data = await res.json();
-
-      console.log(`[TopVideosGrid] Page ${nextPage}: loaded ${data.videos?.length} videos, hasMore=${data.hasMore}`);
-
-      // Добавляем новые видео к существующему списку
-      if (data.videos && data.videos.length > 0) {
-        console.log(`[TopVideosGrid] Добавляем ${data.videos.length} видео к существующему списку`);
-        setVideoList(prev => [...prev, ...data.videos]);
-        setPage(data.page);
-        // БЫЛО: setHasMore(data.hasMore ?? false); // УДАЛЕНО — кнопка всегда видна
-        setTotalVideos(data.totalVideos ?? totalVideos);
-      } else {
-        // Видео на этой странице не в БД
-        // Это означает что они не синхронизированы с API
-        // Пользователь должен нажать "Получить топ-видео" для загрузки следующей страницы
-        console.log(`[TopVideosGrid] Страница ${nextPage} не синхронизирована с API`);
-        console.log(`[TopVideosGrid] Нажмите "Получить топ-видео" чтобы загрузить следующие 12 видео`);
-        // БЫЛО: setHasMore(false); // УДАЛЕНО — кнопка всегда видна
-      }
-    } catch (err) {
-      console.error("[TopVideosGrid] Ошибка при загрузке видео:", err);
-    } finally {
-      setIsLoadingMore(false);
-    }
-  };
-
-  // Определяем лимит по тарифу пользователя (осталось для совместимости, но не используется)
-  const planLimit = TIER_VIDEO_LIMITS[userPlan];  // больше не используется в ИТЕРАЦИИ 10
-  // const canLoadMore = canLoadMoreVideos(userPlan);  // ИТЕРАЦИЯ 10: отключено
 
   // Сортируем видео по количеству просмотров (DESC)
   const sortedVideos = [...videoList].sort((a, b) => b.viewCount - a.viewCount);
 
   // Debug в dev режиме
   if (process.env.NODE_ENV === "development") {
-    console.log(`[TopVideosGrid RENDER]`, {
-      userPlan,
-      planLimit,
+    console.log(`[TopVideosGrid RENDER] TOP-12 ONLY`, {
       totalLoaded: videoList.length,
-      hasMore,
       hasShown,
-      page,
     });
   }
 
@@ -348,23 +234,6 @@ export function TopVideosGrid({ videos, userPlan = "free", hasShownVideos = fals
               ))}
             </div>
 
-            {/* ВАЖНО:
-                Кнопка "Следующие 12 видео" всегда отображается после первой загрузки.
-                Мы намеренно НЕ прячем её по hasMore/totalVideos, чтобы пользователь мог
-                принудительно запросить следующую порцию видео.
-                Единственное условие: в сетке должны быть видео (sortedVideos.length > 0).
-            */}
-            {sortedVideos.length > 0 && (
-              <div className="flex justify-center mt-6">
-                <Button
-                  onClick={loadMore}
-                  variant="outline"
-                  disabled={isLoadingMore}
-                >
-                  {isLoadingMore ? "Загружаем..." : "Следующие 12 видео"}
-                </Button>
-              </div>
-            )}
           </>
         )}
       </>
