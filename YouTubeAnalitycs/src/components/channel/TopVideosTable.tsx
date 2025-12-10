@@ -14,6 +14,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { ExternalLink, RefreshCw } from "lucide-react";
 import { formatPublishedDateCompact } from "@/lib/date-formatting";
+import { canLoadMoreVideos } from "@/config/limits";
+import type { UserPlan } from "@/config/limits";
 
 interface VideoData {
   id: number;
@@ -30,6 +32,10 @@ interface TopVideosTableProps {
   videos: VideoData[];
   /** Синхронизировал ли пользователь видео этого канала */
   hasSyncedTopVideos?: boolean;
+  /** Нажал ли пользователь "Показать топ-видео" */
+  hasShownVideos?: boolean;
+  /** План пользователя для определения лимитов */
+  userPlan?: UserPlan;
   /** ID конкурента для вызова API */
   channelId?: number;
 }
@@ -47,12 +53,17 @@ function formatViews(views: number): string {
   return views.toString();
 }
 
-export function TopVideosTable({ videos, hasSyncedTopVideos = false, hasShownVideos = false, channelId }: TopVideosTableProps) {
+export function TopVideosTable({ videos, hasSyncedTopVideos = false, hasShownVideos = false, userPlan = "free", channelId }: TopVideosTableProps) {
   const router = useRouter();
-  const [limit, setLimit] = useState(50);
   const [refreshingId, setRefreshingId] = useState<string | null>(null);
   const [videoList, setVideoList] = useState(videos);
   const [showingVideos, setShowingVideos] = useState(false);
+
+  // Состояние для постраничной загрузки
+  const [page, setPage] = useState(0);
+  const [hasMore, setHasMore] = useState(true);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [totalVideos, setTotalVideos] = useState(videos.length);
 
   const refreshDate = async (videoId: string) => {
     setRefreshingId(videoId);
@@ -100,9 +111,36 @@ export function TopVideosTable({ videos, hasSyncedTopVideos = false, hasShownVid
     }
   };
 
+  // Загружаем следующую страницу видео
+  const loadMore = async () => {
+    if (!channelId || isLoadingMore) return;
+
+    setIsLoadingMore(true);
+    try {
+      const res = await fetch(`/api/channel/${channelId}/videos/page?page=${page + 1}`);
+      const data = await res.json();
+
+      if (!data.ok) {
+        console.error("Failed to load more videos:", data.error);
+        return;
+      }
+
+      console.log(`[TopVideosTable] Loaded page ${data.page}: ${data.videos.length} videos, hasMore: ${data.hasMore}`);
+
+      // Добавляем новые видео к существующему списку
+      setVideoList(prev => [...prev, ...data.videos]);
+      setPage(data.page);
+      setHasMore(data.hasMore);
+      setTotalVideos(data.totalVideos);
+    } catch (err) {
+      console.error("Ошибка при загрузке видео:", err);
+    } finally {
+      setIsLoadingMore(false);
+    }
+  };
+
   // Сортируем видео по количеству просмотров (DESC)
   const sortedVideos = [...videoList].sort((a, b) => b.viewCount - a.viewCount);
-  const visibleVideos = sortedVideos.slice(0, limit);
 
   return (
     <Card className="border-border/50">
@@ -157,7 +195,7 @@ export function TopVideosTable({ videos, hasSyncedTopVideos = false, hasShownVid
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {visibleVideos.map((video) => (
+                {sortedVideos.map((video) => (
                   <TableRow
                     key={video.id}
                     className="hover:bg-muted/50 transition-colors duration-200 border-border/50"
@@ -217,13 +255,15 @@ export function TopVideosTable({ videos, hasSyncedTopVideos = false, hasShownVid
           </div>
         )}
 
-        {sortedVideos.length > limit && (
+        {/* Кнопка "Показать ещё 12" — только если есть ещё видео и пользователь может загружать */}
+        {hasShownVideos && canLoadMoreVideos(userPlan) && hasMore && (
           <div className="flex justify-center mt-6 px-4 pb-4">
             <Button
-              onClick={() => setLimit((prev) => prev + 50)}
+              onClick={loadMore}
               variant="outline"
+              disabled={isLoadingMore}
             >
-              Показать ещё 50
+              {isLoadingMore ? "Загружаем..." : "Показать ещё 12"}
             </Button>
           </div>
         )}
