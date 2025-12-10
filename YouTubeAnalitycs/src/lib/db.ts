@@ -433,9 +433,14 @@ async function getClient() {
           userId TEXT NOT NULL,
           channelId TEXT NOT NULL,
           hasSyncedTopVideos INTEGER NOT NULL DEFAULT 0,
+          hasShownVideos INTEGER NOT NULL DEFAULT 0,
 
           PRIMARY KEY (userId, channelId)
         );`);
+
+        // Миграция: добавляем колонку hasShownVideos для отслеживания показа видео
+        // Использует idempotent проверку через PRAGMA table_info
+        await addColumnIfNotExists(_client, 'user_channel_state', 'hasShownVideos', 'INTEGER NOT NULL DEFAULT 0');
 
         console.log("✅ Tables initialized");
       } catch (error) {

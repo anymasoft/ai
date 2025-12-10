@@ -26,6 +26,8 @@ interface TopVideosGridProps {
   userPlan?: UserPlan;
   /** Синхронизировал ли пользователь видео этого канала */
   hasSyncedTopVideos?: boolean;
+  /** ID конкурента для вызова API */
+  channelId?: number;
 }
 
 /**
@@ -41,12 +43,13 @@ function formatViews(views: number): string {
   return views.toString();
 }
 
-export function TopVideosGrid({ videos, userPlan = "free", hasSyncedTopVideos = false }: TopVideosGridProps) {
+export function TopVideosGrid({ videos, userPlan = "free", hasSyncedTopVideos = false, channelId }: TopVideosGridProps) {
   const router = useRouter();
   // Используем VIDEO_PAGE_SIZE (12) вместо хардкода 24
   const [visibleCount, setVisibleCount] = useState(VIDEO_PAGE_SIZE);
   const [refreshingId, setRefreshingId] = useState<string | null>(null);
   const [videoList, setVideoList] = useState(videos);
+  const [showingVideos, setShowingVideos] = useState(false);
 
   const refreshDate = async (e: React.MouseEvent, videoId: string) => {
     e.preventDefault();
@@ -64,6 +67,35 @@ export function TopVideosGrid({ videos, userPlan = "free", hasSyncedTopVideos = 
       console.error("Ошибка обновления даты:", err);
     } finally {
       setRefreshingId(null);
+    }
+  };
+
+  const handleShowVideos = async () => {
+    if (!channelId) {
+      console.error("channelId not provided");
+      return;
+    }
+
+    setShowingVideos(true);
+    try {
+      const res = await fetch(`/api/channel/${channelId}/videos/show`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+      });
+
+      const result = await res.json();
+
+      if (!res.ok) {
+        console.error("Failed to show videos:", result.error);
+        return;
+      }
+
+      // Обновляем UI после успешного вызова
+      router.refresh();
+    } catch (err) {
+      console.error("Ошибка при показе видео:", err);
+    } finally {
+      setShowingVideos(false);
     }
   };
 
@@ -99,11 +131,12 @@ export function TopVideosGrid({ videos, userPlan = "free", hasSyncedTopVideos = 
                   Нет данных. Нажмите кнопку ниже, чтобы загрузить топ-видео.
                 </p>
                 <Button
-                  onClick={() => router.refresh()}
+                  onClick={() => handleShowVideos()}
                   variant="default"
                   size="sm"
+                  disabled={showingVideos}
                 >
-                  Показать топ-видео
+                  {showingVideos ? "Загружаем..." : "Показать топ-видео"}
                 </Button>
               </div>
             )}

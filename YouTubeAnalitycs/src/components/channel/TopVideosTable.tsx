@@ -30,6 +30,8 @@ interface TopVideosTableProps {
   videos: VideoData[];
   /** Синхронизировал ли пользователь видео этого канала */
   hasSyncedTopVideos?: boolean;
+  /** ID конкурента для вызова API */
+  channelId?: number;
 }
 
 /**
@@ -45,11 +47,12 @@ function formatViews(views: number): string {
   return views.toString();
 }
 
-export function TopVideosTable({ videos, hasSyncedTopVideos = false }: TopVideosTableProps) {
+export function TopVideosTable({ videos, hasSyncedTopVideos = false, channelId }: TopVideosTableProps) {
   const router = useRouter();
   const [limit, setLimit] = useState(50);
   const [refreshingId, setRefreshingId] = useState<string | null>(null);
   const [videoList, setVideoList] = useState(videos);
+  const [showingVideos, setShowingVideos] = useState(false);
 
   const refreshDate = async (videoId: string) => {
     setRefreshingId(videoId);
@@ -65,6 +68,35 @@ export function TopVideosTable({ videos, hasSyncedTopVideos = false }: TopVideos
       console.error("Ошибка обновления даты:", err);
     } finally {
       setRefreshingId(null);
+    }
+  };
+
+  const handleShowVideos = async () => {
+    if (!channelId) {
+      console.error("channelId not provided");
+      return;
+    }
+
+    setShowingVideos(true);
+    try {
+      const res = await fetch(`/api/channel/${channelId}/videos/show`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+      });
+
+      const result = await res.json();
+
+      if (!res.ok) {
+        console.error("Failed to show videos:", result.error);
+        return;
+      }
+
+      // Обновляем UI после успешного вызова
+      router.refresh();
+    } catch (err) {
+      console.error("Ошибка при показе видео:", err);
+    } finally {
+      setShowingVideos(false);
     }
   };
 
@@ -93,11 +125,12 @@ export function TopVideosTable({ videos, hasSyncedTopVideos = false }: TopVideos
                   Нет данных. Нажмите кнопку ниже, чтобы загрузить топ-видео.
                 </p>
                 <Button
-                  onClick={() => router.refresh()}
+                  onClick={() => handleShowVideos()}
                   variant="default"
                   size="sm"
+                  disabled={showingVideos}
                 >
-                  Показать топ-видео
+                  {showingVideos ? "Загружаем..." : "Показать топ-видео"}
                 </Button>
               </div>
             )}
