@@ -121,12 +121,14 @@ export async function POST(
         console.log(`[Sync] Кеш отсутствует, синхронизируем впервые`);
       }
 
-      // Получаем список видео из API
+      // Получаем список видео из API с лимитом по тарифу
+      // 🔑 ОПТИМИЗАЦИЯ: передаём maxVideos чтобы API загружал только нужное количество
       let apiVideos;
       try {
         apiVideos = await getYoutubeChannelVideos(
           channelId,
-          competitor.handle as string
+          competitor.handle as string,
+          maxVideos  // Передаём лимит, чтобы не загружать лишние страницы
         );
       } catch (error) {
         console.error("[Sync] Ошибка получения списка видео:", error);
@@ -137,7 +139,7 @@ export async function POST(
         );
       }
 
-      console.log(`[Sync] Получено ${apiVideos.length} видео из API`);
+      console.log(`[Sync] Получено ${apiVideos.length} видео из API (лимит был: ${maxVideos})`);
 
       // ДИАГНОСТИКА: логируем структуру первого видео
       if (apiVideos.length > 0) {
@@ -153,8 +155,9 @@ export async function POST(
         console.warn(`[Sync] ВНИМАНИЕ: API вернул 0 видео!`);
       }
 
-      videos = apiVideos.slice(0, maxVideos);
-      console.log(`[Sync] Обрабатываем ${videos.length} видео (лимит: ${maxVideos})`);
+      // ПРИМЕЧАНИЕ: apiVideos уже ограничены maxVideos, дополнительно НЕ обрезаем
+      videos = apiVideos;
+      console.log(`[Sync] Обрабатываем ${videos.length} видео (максимум: ${maxVideos})`);
 
       // Получаем существующие даты из БД только для API видео
       const existingDates = new Map<string, string | null>();

@@ -410,7 +410,8 @@ function extractThumbnailUrl(thumbnail: any): string | null {
  */
 export async function getYoutubeChannelVideos(
   channelId: string,
-  handle?: string
+  handle?: string,
+  maxVideos?: number  // Новый параметр: максимальное количество видео для загрузки
 ): Promise<VideoData[]> {
   const apiKey = process.env.SCRAPECREATORS_API_KEY;
 
@@ -418,11 +419,11 @@ export async function getYoutubeChannelVideos(
     throw new Error("SCRAPECREATORS_API_KEY is not configured");
   }
 
-  console.log("[ScrapeCreators] Начало загрузки видео для channelId:", channelId, "handle:", handle);
+  console.log("[ScrapeCreators] Начало загрузки видео для channelId:", channelId, "handle:", handle, "maxVideos limit:", maxVideos || "unlimited");
 
   // Сначала пробуем с channelId
   try {
-    return await fetchVideosFromAPI(apiKey, "channelId", channelId);
+    return await fetchVideosFromAPI(apiKey, "channelId", channelId, maxVideos);
   } catch (error) {
     console.warn("[ScrapeCreators] Не удалось загрузить по channelId:", error instanceof Error ? error.message : error);
 
@@ -430,7 +431,7 @@ export async function getYoutubeChannelVideos(
     if (handle) {
       console.log("[VideoSync] Using fallback from channelId → handle");
       try {
-        return await fetchVideosFromAPI(apiKey, "handle", handle);
+        return await fetchVideosFromAPI(apiKey, "handle", handle, maxVideos);
       } catch (fallbackError) {
         console.error("[ScrapeCreators] Fallback на handle тоже не сработал:", fallbackError);
         throw new Error("ScrapeCreators: videos unavailable for this channel");
@@ -444,11 +445,13 @@ export async function getYoutubeChannelVideos(
 
 /**
  * Внутренняя функция для загрузки видео с указанными параметрами
+ * @param maxVideos - максимальное количество видео для загрузки (остановиться при достижении)
  */
 async function fetchVideosFromAPI(
   apiKey: string,
   paramType: "channelId" | "handle",
-  paramValue: string
+  paramValue: string,
+  maxVideos?: number
 ): Promise<VideoData[]> {
   const allVideos: VideoData[] = [];
   let continuationToken: string | null = null;
@@ -633,10 +636,16 @@ async function fetchVideosFromAPI(
 
       allVideos.push(...normalizedVideos);
 
-      console.log(`[ScrapeCreators] Page ${pageCount}: получено ${normalizedVideos.length} видео`);
+      console.log(`[ScrapeCreators] Page ${pageCount}: получено ${normalizedVideos.length} видео, всего: ${allVideos.length}`);
 
       // Проверяем наличие continuationToken для следующей страницы
       continuationToken = data.continuationToken || null;
+
+      // 🔑 ОПТИМИЗАЦИЯ: остановиться если достигли maxVideos
+      if (maxVideos && allVideos.length >= maxVideos) {
+        console.log(`[ScrapeCreators] Достигнут лимит видео (${maxVideos}), прекращаем загрузку. Загружено: ${allVideos.length}`);
+        break;
+      }
 
       // Ограничиваем количество страниц
       if (pageCount >= maxPages) {
