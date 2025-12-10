@@ -42,7 +42,7 @@ export function DashboardEmptyState() {
           </CardHeader>
           <CardContent>
             <CardDescription className="text-sm leading-relaxed">
-              Monitor subscriber growth, view counts, and upload frequency across channels.
+              Мониторьте рост каналов: подписчики, просмотры, частота публикаций — всё в одном месте.
             </CardDescription>
           </CardContent>
         </Card>
@@ -56,7 +56,7 @@ export function DashboardEmptyState() {
           </CardHeader>
           <CardContent>
             <CardDescription className="text-sm leading-relaxed">
-              Find videos that are outperforming expectations and trending topics.
+              Ловите вирусные видео до того, как о них узнают остальные.
             </CardDescription>
           </CardContent>
         </Card>
@@ -70,7 +70,7 @@ export function DashboardEmptyState() {
           </CardHeader>
           <CardContent>
             <CardDescription className="text-sm leading-relaxed">
-              Create AI-powered video scripts based on trending content patterns.
+              Генерируйте сценарии, которые повторяют структуру самых быстрорастущих видео.
             </CardDescription>
           </CardContent>
         </Card>
