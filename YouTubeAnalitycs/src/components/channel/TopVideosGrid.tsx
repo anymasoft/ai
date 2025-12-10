@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { RefreshCw } from "lucide-react";
@@ -41,6 +42,7 @@ function formatViews(views: number): string {
 }
 
 export function TopVideosGrid({ videos, userPlan = "free", hasSyncedTopVideos = false }: TopVideosGridProps) {
+  const router = useRouter();
   // Используем VIDEO_PAGE_SIZE (12) вместо хардкода 24
   const [visibleCount, setVisibleCount] = useState(VIDEO_PAGE_SIZE);
   const [refreshingId, setRefreshingId] = useState<string | null>(null);
@@ -92,9 +94,18 @@ export function TopVideosGrid({ videos, userPlan = "free", hasSyncedTopVideos = 
                 Нет данных. Нажмите &quot;Sync Top Videos&quot; чтобы загрузить видео канала.
               </p>
             ) : (
-              <p className="text-center">
-                Нет видео. Синхронизация не вернула результатов.
-              </p>
+              <div className="flex flex-col items-center justify-center gap-4">
+                <p className="text-center">
+                  Нет данных. Нажмите кнопку ниже, чтобы загрузить топ-видео.
+                </p>
+                <Button
+                  onClick={() => router.refresh()}
+                  variant="default"
+                  size="sm"
+                >
+                  Показать топ-видео
+                </Button>
+              </div>
             )}
           </div>
         ) : (
