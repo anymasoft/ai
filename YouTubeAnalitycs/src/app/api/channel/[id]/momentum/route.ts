@@ -296,6 +296,20 @@ ${JSON.stringify(videosForAnalysis, null, 2)}
 
     console.log(`[Momentum] Анализ сохранён в БД (свежая генерация)`);
 
+    // Обновляем состояние пользователя: отмечаем, что он выполнил синхронизацию
+    try {
+      await client.execute({
+        sql: `INSERT INTO user_channel_momentum_state (userId, channelId, hasShownMomentum, lastSyncAt)
+              VALUES (?, ?, 0, ?)
+              ON CONFLICT(userId, channelId) DO UPDATE SET lastSyncAt = ?`,
+        args: [session.user.id, competitor.channelId, now, now],
+      });
+      console.log(`[Momentum] Обновлено состояние пользователя: lastSyncAt = ${new Date(now).toISOString()} для channelId=${competitor.channelId}`);
+    } catch (stateError) {
+      console.warn(`[Momentum] Ошибка при обновлении состояния пользователя:`, stateError instanceof Error ? stateError.message : stateError);
+      // Не прерываем выполнение - анализ уже сохранён
+    }
+
     client.close();
 
     // Возвращаем результат клиенту

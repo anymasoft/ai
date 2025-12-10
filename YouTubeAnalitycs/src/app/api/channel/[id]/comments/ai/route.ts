@@ -167,6 +167,21 @@ export async function POST(
 
     console.log(`[DeepCommentAI] Результат сохранён`);
 
+    // Обновляем состояние пользователя: отмечаем, что он выполнил синхронизацию глубокого анализа комментариев
+    try {
+      const now = Date.now();
+      await client.execute({
+        sql: `INSERT INTO user_channel_deep_comments_state (userId, channelId, hasShownDeepComments, lastSyncAt)
+              VALUES (?, ?, 0, ?)
+              ON CONFLICT(userId, channelId) DO UPDATE SET lastSyncAt = ?`,
+        args: [session.user.id, channelId, now, now],
+      });
+      console.log(`[DeepCommentAI] Обновлено состояние пользователя: lastSyncAt = ${new Date(now).toISOString()} для channelId=${channelId}`);
+    } catch (stateError) {
+      console.warn(`[DeepCommentAI] Ошибка при обновлении состояния пользователя:`, stateError instanceof Error ? stateError.message : stateError);
+      // Не прерываем выполнение - анализ уже сохранён
+    }
+
     return NextResponse.json(
       {
         ...analysisResult,

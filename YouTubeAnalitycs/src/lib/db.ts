@@ -446,6 +446,91 @@ async function getClient() {
         await addColumnIfNotExists(_client, 'user_channel_state', 'lastSyncAt', 'INTEGER');
         await addColumnIfNotExists(_client, 'user_channel_state', 'lastShownAt', 'INTEGER');
 
+        // Состояние пользователя для метрик каждого канала (показаны ли метрики)
+        _client.execute(`CREATE TABLE IF NOT EXISTS user_channel_metrics_state (
+          userId TEXT NOT NULL,
+          channelId TEXT NOT NULL,
+          hasShownMetrics INTEGER NOT NULL DEFAULT 0,
+          lastSyncAt INTEGER,
+          lastShownAt INTEGER,
+
+          PRIMARY KEY (userId, channelId)
+        );`);
+
+        // Миграция: добавляем новые колонки для отслеживания состояния метрик
+        // Использует idempotent проверку через PRAGMA table_info
+        await addColumnIfNotExists(_client, 'user_channel_metrics_state', 'hasShownMetrics', 'INTEGER NOT NULL DEFAULT 0');
+        await addColumnIfNotExists(_client, 'user_channel_metrics_state', 'lastSyncAt', 'INTEGER');
+        await addColumnIfNotExists(_client, 'user_channel_metrics_state', 'lastShownAt', 'INTEGER');
+
+        // Состояние пользователя для аудитории каждого канала (загружена ли аудитория)
+        _client.execute(`CREATE TABLE IF NOT EXISTS user_channel_audience_state (
+          userId TEXT NOT NULL,
+          channelId TEXT NOT NULL,
+          hasShownAudience INTEGER NOT NULL DEFAULT 0,
+          lastSyncAt INTEGER,
+          lastShownAt INTEGER,
+
+          PRIMARY KEY (userId, channelId)
+        );`);
+
+        // Миграция: добавляем новые колонки для отслеживания состояния аудитории
+        // Использует idempotent проверку через PRAGMA table_info
+        await addColumnIfNotExists(_client, 'user_channel_audience_state', 'hasShownAudience', 'INTEGER NOT NULL DEFAULT 0');
+        await addColumnIfNotExists(_client, 'user_channel_audience_state', 'lastSyncAt', 'INTEGER');
+        await addColumnIfNotExists(_client, 'user_channel_audience_state', 'lastShownAt', 'INTEGER');
+
+        // Состояние пользователя для momentum каждого канала (загружен ли momentum)
+        _client.execute(`CREATE TABLE IF NOT EXISTS user_channel_momentum_state (
+          userId TEXT NOT NULL,
+          channelId TEXT NOT NULL,
+          hasShownMomentum INTEGER NOT NULL DEFAULT 0,
+          lastSyncAt INTEGER,
+          lastShownAt INTEGER,
+
+          PRIMARY KEY (userId, channelId)
+        );`);
+
+        // Миграция: добавляем новые колонки для отслеживания состояния momentum
+        // Использует idempotent проверку через PRAGMA table_info
+        await addColumnIfNotExists(_client, 'user_channel_momentum_state', 'hasShownMomentum', 'INTEGER NOT NULL DEFAULT 0');
+        await addColumnIfNotExists(_client, 'user_channel_momentum_state', 'lastSyncAt', 'INTEGER');
+        await addColumnIfNotExists(_client, 'user_channel_momentum_state', 'lastShownAt', 'INTEGER');
+
+        // Состояние пользователя для глубокого анализа комментариев каждого канала (выполнен ли анализ)
+        _client.execute(`CREATE TABLE IF NOT EXISTS user_channel_deep_comments_state (
+          userId TEXT NOT NULL,
+          channelId TEXT NOT NULL,
+          hasShownDeepComments INTEGER NOT NULL DEFAULT 0,
+          lastSyncAt INTEGER,
+          lastShownAt INTEGER,
+
+          PRIMARY KEY (userId, channelId)
+        );`);
+
+        // Миграция: добавляем новые колонки для отслеживания состояния глубокого анализа комментариев
+        // Использует idempotent проверку через PRAGMA table_info
+        await addColumnIfNotExists(_client, 'user_channel_deep_comments_state', 'hasShownDeepComments', 'INTEGER NOT NULL DEFAULT 0');
+        await addColumnIfNotExists(_client, 'user_channel_deep_comments_state', 'lastSyncAt', 'INTEGER');
+        await addColumnIfNotExists(_client, 'user_channel_deep_comments_state', 'lastShownAt', 'INTEGER');
+
+        // Состояние пользователя для контент-аналитики каждого канала (загружена ли аналитика)
+        _client.execute(`CREATE TABLE IF NOT EXISTS user_channel_content_state (
+          userId TEXT NOT NULL,
+          channelId TEXT NOT NULL,
+          hasShownContent INTEGER NOT NULL DEFAULT 0,
+          lastSyncAt INTEGER,
+          lastShownAt INTEGER,
+
+          PRIMARY KEY (userId, channelId)
+        );`);
+
+        // Миграция: добавляем новые колонки для отслеживания состояния контент-аналитики
+        // Использует idempotent проверку через PRAGMA table_info
+        await addColumnIfNotExists(_client, 'user_channel_content_state', 'hasShownContent', 'INTEGER NOT NULL DEFAULT 0');
+        await addColumnIfNotExists(_client, 'user_channel_content_state', 'lastSyncAt', 'INTEGER');
+        await addColumnIfNotExists(_client, 'user_channel_content_state', 'lastShownAt', 'INTEGER');
+
         console.log("✅ Tables initialized");
       } catch (error) {
         console.error("❌ DB init error:", error);

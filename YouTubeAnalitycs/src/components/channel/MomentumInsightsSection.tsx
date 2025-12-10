@@ -1,0 +1,116 @@
+"use client";
+
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { MomentumInsights } from "@/components/channel/MomentumInsights";
+
+interface MomentumInsightsSectionProps {
+  momentumData: any;
+  channelId?: number;
+  /** Нажал ли пользователь "Получить Momentum" */
+  hasShownMomentum?: boolean;
+  /** Есть ли видео для анализа */
+  hasRequiredData?: boolean;
+}
+
+export function MomentumInsightsSection({
+  momentumData,
+  channelId,
+  hasShownMomentum = false,
+  hasRequiredData = false,
+}: MomentumInsightsSectionProps) {
+  const router = useRouter();
+  const [loadingMomentum, setLoadingMomentum] = useState(false);
+
+  const handleGetMomentum = async () => {
+    if (!channelId) {
+      console.error("channelId not provided");
+      return;
+    }
+
+    setLoadingMomentum(true);
+    try {
+      // Шаг 1: Генерируем momentum анализ
+      const syncRes = await fetch(`/api/channel/${channelId}/momentum`, {
+        method: "POST",
+      });
+
+      if (!syncRes.ok) {
+        const syncError = await syncRes.json();
+        console.error("Failed to sync momentum:", syncError);
+        return;
+      }
+
+      // Шаг 2: Отмечаем momentum как показанный
+      const showRes = await fetch(`/api/channel/${channelId}/momentum/show`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+      });
+
+      if (!showRes.ok) {
+        const showError = await showRes.json();
+        console.error("Failed to show momentum:", showError);
+        return;
+      }
+
+      // Шаг 3: Обновляем UI после успешного завершения обеих операций
+      router.refresh();
+    } catch (err) {
+      console.error("Ошибка при получении momentum:", err);
+    } finally {
+      setLoadingMomentum(false);
+    }
+  };
+
+  return (
+    <CardContent className="p-6">
+      <>
+        {/* STATE 1: Пользователь никогда не нажимал кнопку "Получить Momentum" */}
+        {!hasShownMomentum ? (
+          <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
+            <div className="flex flex-col items-center justify-center gap-4">
+              <p className="text-center">
+                {!hasRequiredData
+                  ? "Загрузите видео канала, чтобы получить анализ momentum."
+                  : "Нет данных. Нажмите «Получить Momentum», чтобы загрузить анализ."}
+              </p>
+              <Button
+                onClick={() => handleGetMomentum()}
+                variant="default"
+                size="sm"
+                disabled={loadingMomentum || !hasRequiredData}
+              >
+                {loadingMomentum ? "Анализируем..." : "Получить Momentum"}
+              </Button>
+            </div>
+          </div>
+        ) : !momentumData ? (
+          /* Пользователь нажимал кнопку, но данные не найдены */
+          <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
+            <p className="text-center">
+              Анализ momentum не найден. Попробуйте получить Momentum ещё раз.
+            </p>
+            <Button
+              onClick={() => handleGetMomentum()}
+              variant="outline"
+              size="sm"
+              className="mt-4"
+              disabled={loadingMomentum}
+            >
+              {loadingMomentum ? "Анализируем..." : "Получить Momentum"}
+            </Button>
+          </div>
+        ) : (
+          /* STATE 2: Есть данные momentum */
+          <MomentumInsights
+            channelId={channelId}
+            initialData={momentumData}
+            hasRequiredData={hasRequiredData}
+          />
+        )}
+      </>
+    </CardContent>
+  );
+}

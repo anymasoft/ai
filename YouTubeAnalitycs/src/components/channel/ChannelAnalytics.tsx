@@ -3,13 +3,13 @@
 import { useState } from "react"
 import { Card, CardHeader, CardTitle } from "@/components/ui/card"
 import { ChevronDown, ChevronUp } from "lucide-react"
-import { ChannelGrowthChart } from "@/components/charts/ChannelGrowthChart"
+import { ChannelMetricsSection } from "@/components/channel/ChannelMetricsSection"
 import { TopVideosGrid } from "@/components/channel/TopVideosGrid"
-import { ContentIntelligenceBlock } from "@/components/channel/ContentIntelligenceBlock"
-import { MomentumInsights } from "@/components/channel/MomentumInsights"
-import { AudienceInsights } from "@/components/channel/AudienceInsights"
+import { ContentInsightsSection } from "@/components/channel/ContentInsightsSection"
+import { MomentumInsightsSection } from "@/components/channel/MomentumInsightsSection"
+import { AudienceInsightsSection } from "@/components/channel/AudienceInsightsSection"
 import { CommentInsights } from "@/components/channel/CommentInsights"
-import { DeepCommentAnalysis } from "@/components/channel/DeepCommentAnalysis"
+import { DeepCommentAnalysisSection } from "@/components/channel/DeepCommentAnalysisSection"
 import type { UserPlan } from "@/config/limits"
 
 interface ChannelAnalyticsProps {
@@ -25,10 +25,18 @@ interface ChannelAnalyticsProps {
   hasComments: boolean
   /** План пользователя для лимитов видео */
   userPlan?: UserPlan
-  /** Синхронизировал ли пользователь видео этого канала */
-  hasSyncedTopVideos?: boolean
-  /** Нажал ли пользователь "Показать топ-видео" */
+  /** Нажал ли пользователь "Получить метрики" */
+  hasShownMetrics?: boolean
+  /** Нажал ли пользователь "Получить Momentum" */
+  hasShownMomentum?: boolean
+  /** Нажал ли пользователь "Получить аудиторию" */
+  hasShownAudience?: boolean
+  /** Нажал ли пользователь "Получить топ-видео" */
   hasShownVideos?: boolean
+  /** Нажал ли пользователь "Получить Content Intelligence" */
+  hasShownContent?: boolean
+  /** Нажал ли пользователь "Получить Deep Analysis" */
+  hasShownDeepComments?: boolean
 }
 
 /**
@@ -77,8 +85,12 @@ export function ChannelAnalytics({
   hasVideos,
   hasComments,
   userPlan = "free",
-  hasSyncedTopVideos = false,
+  hasShownMetrics = false,
+  hasShownMomentum = false,
+  hasShownAudience = false,
   hasShownVideos = false,
+  hasShownContent = false,
+  hasShownDeepComments = false,
 }: ChannelAnalyticsProps) {
   // Все разделы закрыты по умолчанию - пользователь видит полный обзор доступных аналитических блоков
   const [expanded, setExpanded] = useState({
@@ -114,7 +126,7 @@ export function ChannelAnalytics({
         isOpen={expanded.growth}
         onToggle={() => toggle("growth")}
       >
-        <ChannelGrowthChart metrics={metrics} />
+        <ChannelMetricsSection metrics={metrics} hasShownMetrics={hasShownMetrics} channelId={channelId} />
       </CollapsibleSection>
 
       {/* Top Videos */}
@@ -123,7 +135,7 @@ export function ChannelAnalytics({
         isOpen={expanded.videos}
         onToggle={() => toggle("videos")}
       >
-        <TopVideosGrid videos={videos} userPlan={userPlan} hasSyncedTopVideos={hasSyncedTopVideos} hasShownVideos={hasShownVideos} channelId={channelId} />
+        <TopVideosGrid videos={videos} userPlan={userPlan} hasShownVideos={hasShownVideos} channelId={channelId} />
       </CollapsibleSection>
 
       {/* Content Intelligence */}
@@ -132,9 +144,10 @@ export function ChannelAnalytics({
         isOpen={expanded.content}
         onToggle={() => toggle("content")}
       >
-        <ContentIntelligenceBlock
+        <ContentInsightsSection
           channelId={channelId}
-          initialData={contentData}
+          contentData={contentData}
+          hasShownContent={hasShownContent}
           hasRequiredData={hasVideos}
         />
       </CollapsibleSection>
@@ -145,9 +158,10 @@ export function ChannelAnalytics({
         isOpen={expanded.momentum}
         onToggle={() => toggle("momentum")}
       >
-        <MomentumInsights
+        <MomentumInsightsSection
+          momentumData={momentumData}
           channelId={channelId}
-          initialData={momentumData}
+          hasShownMomentum={hasShownMomentum}
           hasRequiredData={hasVideos}
         />
       </CollapsibleSection>
@@ -158,9 +172,10 @@ export function ChannelAnalytics({
         isOpen={expanded.audience}
         onToggle={() => toggle("audience")}
       >
-        <AudienceInsights
+        <AudienceInsightsSection
+          audienceData={audienceData}
           channelId={channelId}
-          initialData={audienceData}
+          hasShownAudience={hasShownAudience}
           hasRequiredData={hasVideos}
         />
       </CollapsibleSection>
@@ -184,9 +199,10 @@ export function ChannelAnalytics({
         isOpen={expanded.deepAnalysis}
         onToggle={() => toggle("deepAnalysis")}
       >
-        <DeepCommentAnalysis
+        <DeepCommentAnalysisSection
           channelId={channelId}
-          initialData={deepAnalysisData}
+          deepAnalysisData={deepAnalysisData}
+          hasShownDeepComments={hasShownDeepComments}
           hasRequiredData={hasVideos && hasComments}
         />
       </CollapsibleSection>

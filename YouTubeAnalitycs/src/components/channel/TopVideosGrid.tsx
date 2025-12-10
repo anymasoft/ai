@@ -24,9 +24,7 @@ interface TopVideosGridProps {
   videos: VideoData[];
   /** План пользователя для определения лимитов. По умолчанию "free" */
   userPlan?: UserPlan;
-  /** Синхронизировал ли пользователь видео этого канала */
-  hasSyncedTopVideos?: boolean;
-  /** Нажал ли пользователь "Показать топ-видео" */
+  /** Нажал ли пользователь "Получить топ-видео" */
   hasShownVideos?: boolean;
   /** ID конкурента для вызова API */
   channelId?: number;
@@ -45,7 +43,7 @@ function formatViews(views: number): string {
   return views.toString();
 }
 
-export function TopVideosGrid({ videos, userPlan = "free", hasSyncedTopVideos = false, hasShownVideos = false, channelId }: TopVideosGridProps) {
+export function TopVideosGrid({ videos, userPlan = "free", hasShownVideos = false, channelId }: TopVideosGridProps) {
   const router = useRouter();
   const [refreshingId, setRefreshingId] = useState<string | null>(null);
   const [videoList, setVideoList] = useState(videos);
@@ -76,7 +74,7 @@ export function TopVideosGrid({ videos, userPlan = "free", hasSyncedTopVideos = 
     }
   };
 
-  const handleShowVideos = async () => {
+  const handleGetTopVideos = async () => {
     if (!channelId) {
       console.error("channelId not provided");
       return;
@@ -84,22 +82,33 @@ export function TopVideosGrid({ videos, userPlan = "free", hasSyncedTopVideos = 
 
     setShowingVideos(true);
     try {
-      const res = await fetch(`/api/channel/${channelId}/videos/show`, {
+      // Шаг 1: Синхронизируем видео
+      const syncRes = await fetch(`/api/channel/${channelId}/videos/sync`, {
+        method: "POST",
+      });
+
+      if (!syncRes.ok) {
+        const syncError = await syncRes.json();
+        console.error("Failed to sync videos:", syncError);
+        return;
+      }
+
+      // Шаг 2: Отмечаем видео как показанные
+      const showRes = await fetch(`/api/channel/${channelId}/videos/show`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
       });
 
-      const result = await res.json();
-
-      if (!res.ok) {
-        console.error("Failed to show videos:", result.error);
+      if (!showRes.ok) {
+        const showError = await showRes.json();
+        console.error("Failed to show videos:", showError);
         return;
       }
 
-      // Обновляем UI после успешного вызова
+      // Шаг 3: Обновляем UI после успешного завершения обеих операций
       router.refresh();
     } catch (err) {
-      console.error("Ошибка при показе видео:", err);
+      console.error("Ошибка при получении топ-видео:", err);
     } finally {
       setShowingVideos(false);
     }
@@ -149,36 +158,38 @@ export function TopVideosGrid({ videos, userPlan = "free", hasSyncedTopVideos = 
   return (
     <CardContent className="p-6">
       <>
-        {/* Сценарий A: пользователь ещё не синхронизировал видео */}
-        {!hasSyncedTopVideos ? (
-          <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
-            <p className="text-center">
-              Нет данных. Нажмите &quot;Sync Top Videos&quot; чтобы загрузить видео канала.
-            </p>
-          </div>
-        ) : !hasShownVideos ? (
-          /* Сценарий B: синхронизировано, но "Показать" ещё не нажимали */
+        {/* STATE 1: Пользователь никогда не нажимал кнопку "Получить топ-видео" */}
+        {!hasShownVideos ? (
           <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
             <div className="flex flex-col items-center justify-center gap-4">
               <p className="text-center">
-                Нет данных. Нажмите кнопку ниже, чтобы загрузить топ-видео.
+                Нет данных. Нажмите «Получить топ-видео», чтобы загрузить первые ролики.
               </p>
               <Button
-                onClick={() => handleShowVideos()}
+                onClick={() => handleGetTopVideos()}
                 variant="default"
                 size="sm"
                 disabled={showingVideos}
               >
-                {showingVideos ? "Загружаем..." : "Показать топ-видео"}
+                {showingVideos ? "Загружаем..." : "Получить топ-видео"}
               </Button>
             </div>
           </div>
         ) : sortedVideos.length === 0 ? (
-          /* Сценарий C: синхронизировано и показано, но видео нет в БД */
+          /* Пользователь нажимал кнопку, но видео не найдены */
           <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
             <p className="text-center">
-              Видео не найдены. Попробуйте синхронизировать ещё раз.
+              Видео не найдены. Попробуйте получить топ-видео ещё раз.
             </p>
+            <Button
+              onClick={() => handleGetTopVideos()}
+              variant="outline"
+              size="sm"
+              className="mt-4"
+              disabled={showingVideos}
+            >
+              {showingVideos ? "Загружаем..." : "Получить топ-видео"}
+            </Button>
           </div>
         ) : (
           <>
