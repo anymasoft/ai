@@ -15,6 +15,13 @@ import { SWOTAnalysisBlock } from "@/components/channel/SWOTAnalysisBlock";
 import type { SwotPoint, VideoIdea } from "@/lib/ai/analyzeChannel";
 import { getUserPlan } from "@/lib/user-plan";
 
+/**
+ * Отключаем кеширование страницы канала.
+ * Необходимо для корректной работы router.refresh() после синхронизации видео.
+ * Без этого страница может быть закеширована, и router.refresh() не будет эффективен.
+ */
+export const dynamic = "force-dynamic";
+
 interface PageProps {
   params: Promise<{ id: string }>;
 }
@@ -164,6 +171,16 @@ export default async function ChannelPage({ params }: PageProps) {
     const hasShownVideos = userStateResult.rows.length > 0
       ? (userStateResult.rows[0].hasShownVideos as number) === 1
       : false;
+
+    // DEBUG: логируем состояние видео для отладки UI обновления
+    if (process.env.NODE_ENV === "development") {
+      console.log(`[ChannelPage DEBUG] user_channel_state для userId=${session.user.id}, channelId=${competitor.channelId}:`, {
+        hasSyncedTopVideos,
+        hasShownVideos,
+        totalVideos: videos.length,
+        userStateRows: userStateResult.rows.length,
+      });
+    }
 
     // Получаем состояние показа метрик для пользователя
     let metricsStateResult = await client.execute({
