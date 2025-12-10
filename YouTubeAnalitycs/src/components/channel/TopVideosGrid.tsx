@@ -205,7 +205,7 @@ export function TopVideosGrid({ videos, competitorId, userPlan = "free", hasShow
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
               {sortedVideos.map((video) => (
                 <Card
-                  key={video.id}
+                  key={video.videoId}
                   className="group overflow-hidden border border-border/50 rounded-lg shadow-sm hover:shadow-md transition-all duration-150"
                 >
                   <CardContent className="p-0">
