@@ -445,6 +445,9 @@ async function getClient() {
         await addColumnIfNotExists(_client, 'user_channel_state', 'hasShownVideos', 'INTEGER NOT NULL DEFAULT 0');
         await addColumnIfNotExists(_client, 'user_channel_state', 'lastSyncAt', 'INTEGER');
         await addColumnIfNotExists(_client, 'user_channel_state', 'lastShownAt', 'INTEGER');
+        // НОВОЕ (ИТЕРАЦИЯ 11): добавляем колонку для сохранения continuationToken из ScrapeCreators
+        // Это позволяет загружать следующие страницы видео при повторных вызовах Sync
+        await addColumnIfNotExists(_client, 'user_channel_state', 'nextPageToken', 'TEXT');
 
         // Состояние пользователя для метрик каждого канала (показаны ли метрики)
         _client.execute(`CREATE TABLE IF NOT EXISTS user_channel_metrics_state (

@@ -109,6 +109,20 @@ export async function POST(
     const userPlan = getUserPlan(session);  // для логирования
     let totalAvailableVideos = 0;  // сколько видео в API / в БД всего
 
+    // ИТЕРАЦИЯ 11: Читаем nextPageToken из user_channel_state для пагинации
+    console.log(`[Sync] Читаем nextPageToken из user_channel_state для channelId: ${channelId}`);
+    const userStateResult = await client.execute({
+      sql: "SELECT nextPageToken FROM user_channel_state WHERE userId = ? AND channelId = ?",
+      args: [session.user.id, channelId],
+    });
+
+    const savedNextPageToken = userStateResult.rows.length > 0
+      ? (userStateResult.rows[0].nextPageToken as string | null)
+      : null;
+
+    console.log(`[Sync] Сохранённый nextPageToken:`, savedNextPageToken ? "present" : "none (first page)");
+    let newContinuationToken: string | null = null;  // ИТЕРАЦИЯ 11: будет сохранён после API call
+
     // Получаем видео из кеша или API
     let videos: typeof cachedVideos;
 
@@ -128,12 +142,14 @@ export async function POST(
 
       // ИСПРАВЛЕНИЕ (ИТЕРАЦИЯ 10): Загружаем ТОЛЬКО первые 12 видео из API
       // НЕ жжём зря токены — грузим ровно сколько нужно
-      let apiVideos;
+      // ИТЕРАЦИЯ 11: передаём savedNextPageToken для пагинации
+      let apiResponse;
       try {
-        apiVideos = await getYoutubeChannelVideos(
+        apiResponse = await getYoutubeChannelVideos(
           channelId,
           competitor.handle as string,
-          MAX_VIDEOS_PER_PAGE  // Загружаем ТОЛЬКО 12 видео
+          MAX_VIDEOS_PER_PAGE,  // Загружаем ТОЛЬКО 12 видео
+          savedNextPageToken    // ИТЕРАЦИЯ 11: продолжаем с сохранённого токена
         );
       } catch (error) {
         console.error("[Sync] Ошибка получения списка видео:", error);
@@ -144,8 +160,12 @@ export async function POST(
         );
       }
 
+      // ИТЕРАЦИЯ 11: распаковываем ответ, теперь это объект { videos, continuationToken }
+      const apiVideos = apiResponse.videos;
+      newContinuationToken = apiResponse.continuationToken;
+
       totalAvailableVideos = apiVideos.length;
-      console.log(`[Sync] Получено ${apiVideos.length} видео из API`);
+      console.log(`[Sync] Получено ${apiVideos.length} видео из API, новый continuationToken:`, newContinuationToken ? "present" : "none (last page?)");
 
       // ДИАГНОСТИКА: логируем структуру первого видео
       if (apiVideos.length > 0) {
@@ -317,13 +337,15 @@ export async function POST(
     try {
       // ИСПРАВЛЕНИЕ: записываем lastSyncAt как ISO-строку (а не миллисекунды)
       const lastSyncAtIso = new Date().toISOString();
+
+      // ИТЕРАЦИЯ 11: сохраняем новый continuationToken для следующей пагинации
       await client.execute({
-        sql: `INSERT INTO user_channel_state (userId, channelId, hasSyncedTopVideos, lastSyncAt)
-              VALUES (?, ?, 1, ?)
-              ON CONFLICT(userId, channelId) DO UPDATE SET hasSyncedTopVideos = 1, lastSyncAt = ?`,
-        args: [session.user.id, channelId, lastSyncAtIso, lastSyncAtIso],
+        sql: `INSERT INTO user_channel_state (userId, channelId, hasSyncedTopVideos, lastSyncAt, nextPageToken)
+              VALUES (?, ?, 1, ?, ?)
+              ON CONFLICT(userId, channelId) DO UPDATE SET hasSyncedTopVideos = 1, lastSyncAt = ?, nextPageToken = ?`,
+        args: [session.user.id, channelId, lastSyncAtIso, newContinuationToken, lastSyncAtIso, newContinuationToken],
       });
-      console.log(`[Sync] Обновлено состояние пользователя: hasSyncedTopVideos = 1, lastSyncAt = ${lastSyncAtIso}`);
+      console.log(`[Sync] Обновлено состояние пользователя: hasSyncedTopVideos = 1, lastSyncAt = ${lastSyncAtIso}, nextPageToken =`, newContinuationToken ? "present" : "none (last page?)");
     } catch (stateError) {
       console.warn(`[Sync] Ошибка при обновлении состояния пользователя (не критично):`, stateError instanceof Error ? stateError.message : stateError);
       // Не прерываем sync, если состояние не обновилось
