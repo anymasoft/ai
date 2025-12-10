@@ -157,7 +157,8 @@ export function TopVideosGrid({ videos, channelId, userPlan = "free", hasShownVi
   };
 
 
-  // Сортируем видео по количеству просмотров (DESC)
+  // Backend уже вернул TOP-12 отсортированные по viewCount DESC (sort=popular в ScrapeCreators)
+  // Эта сортировка косметическая, для гарантии порядка в UI
   const sortedVideos = [...videoList].sort((a, b) => b.viewCount - a.viewCount);
 
   // Debug в dev режиме
