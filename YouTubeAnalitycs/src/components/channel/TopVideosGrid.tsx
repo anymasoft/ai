@@ -46,36 +46,27 @@ function formatViews(views: number): string {
 export function TopVideosGrid({ videos, userPlan = "free", hasShownVideos = false, channelId }: TopVideosGridProps) {
   const router = useRouter();
   const [refreshingId, setRefreshingId] = useState<string | null>(null);
-  const [videoList, setVideoList] = useState(videos);
+  // НОВОЕ (ИТЕРАЦИЯ 9): Начинаем с пустого списка (видео теперь загружаются только на клиенте через /api)
+  const [videoList, setVideoList] = useState<VideoData[]>([]);
   const [showingVideos, setShowingVideos] = useState(false);
 
   // Состояние для постраничной загрузки
   const [page, setPage] = useState(0);
-  const [hasMore, setHasMore] = useState(true);
+  const [hasMore, setHasMore] = useState(false);  // НОВОЕ (ИТЕРАЦИЯ 9): Начинаем с false
   const [isLoadingMore, setIsLoadingMore] = useState(false);
-  const [totalVideos, setTotalVideos] = useState(videos.length);
+  const [totalVideos, setTotalVideos] = useState(0);  // НОВОЕ (ИТЕРАЦИЯ 9): Начинаем с 0
 
-  // НОВОЕ: локальное состояние для управления показом видео (вместо зависимости от пропсов)
+  // Локальное состояние для управления показом видео
   const [hasShown, setHasShown] = useState(hasShownVideos);
-  const [isInitialisedFromProps, setIsInitialisedFromProps] = useState(false);
 
-  // Синхронизируем начальные пропсы в локальный стейт (один раз при первом рендере)
-  useEffect(() => {
-    if (!isInitialisedFromProps) {
-      console.log("[TopVideosGrid INIT] Synchronizing props to local state:", {
-        hasShownVideos,
-        videosCount: videos.length,
-      });
-      setVideoList(videos);
-      setHasShown(hasShownVideos);
-      setTotalVideos(videos.length);
-      setIsInitialisedFromProps(true);
-    }
-  }, [hasShownVideos, videos, isInitialisedFromProps]);
-
-  // DEBUG: логируем при изменении пропсов (особенно hasShownVideos)
+  // НОВОЕ (ИТЕРАЦИЯ 9): Логируем инициализацию
   if (process.env.NODE_ENV === "development") {
-    console.log(`[TopVideosGrid DEBUG] props update: hasShownVideos=${hasShownVideos}, videosCount=${videos.length}, videoListCount=${videoList.length}, hasShown=${hasShown}`);
+    console.log("[TopVideosGrid INIT (v9)] Pure client-side pagination mode", {
+      channelId,
+      userPlan,
+      hasShownVideos,
+      initialVideoListLength: videoList.length,
+    });
   }
 
   const refreshDate = async (e: React.MouseEvent, videoId: string) => {

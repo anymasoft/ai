@@ -74,11 +74,12 @@ export async function GET(
 
     const channelId = competitorResult.rows[0].channelId as string;
 
-    // Получаем тарифный лимит пользователя
-    const userPlan = getUserPlan(session);
-    const maxVideos = getVideoLimitForPlan(userPlan);
-
-    console.log(`[VideosPage] User plan: ${userPlan}, max videos: ${maxVideos}`);
+    // НОВОЕ (ИТЕРАЦИЯ 9): Отключаем тарифные лимиты временно для чистого тестирования пагинации
+    // const userPlan = getUserPlan(session);
+    // const maxVideos = getVideoLimitForPlan(userPlan);
+    // Вместо этого загружаем ВСЕ видео без ограничений
+    const maxVideos = 999999;  // Практически неограниченный лимит
+    console.log(`[VideosPage] ITERATION 9: Plan limits disabled, max videos set to unlimited: ${maxVideos}`);
 
     // Получаем общее количество видео в БД
     const countResult = await client.execute({
@@ -118,12 +119,10 @@ export async function GET(
 
     const videos = videosResult.rows.map(row => ({ ...row }));
 
-    // Определяем, есть ли ещё видео
-    // hasMore = true если:
-    // 1. Есть видео в следующей страничке
-    // 2. AND количество загруженных видео не превышает лимит тарифа
+    // НОВОЕ (ИТЕРАЦИЯ 9): hasMore теперь зависит только от totalVideos (без учёта плана)
+    // Определяем, есть ли ещё видео в БД
     const nextPageStart = (page + 1) * VIDEO_PAGE_SIZE;
-    const hasMore = nextPageStart < totalVideos && nextPageStart < maxVideos;
+    const hasMore = nextPageStart < totalVideos;
 
     console.log(`[VideosPage] Page ${page}: loaded ${videos.length} videos, hasMore: ${hasMore}`);
 

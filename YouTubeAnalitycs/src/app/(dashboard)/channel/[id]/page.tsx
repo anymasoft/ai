@@ -154,13 +154,10 @@ export default async function ChannelPage({ params }: PageProps) {
 
     const metrics = metricsResult.rows.map(row => ({ ...row }));
 
-    // Получаем топ видео канала
-    const videosResult = await client.execute({
-      sql: "SELECT * FROM channel_videos WHERE channelId = ? ORDER BY viewCount DESC",
-      args: [competitor.channelId],
-    });
-
-    const videos = videosResult.rows.map(row => ({ ...row }));
+    // НОВОЕ (ИТЕРАЦИЯ 9): Отключаем получение видео через SSR
+    // Видео теперь загружаются чисто на клиенте через /api/channel/[id]/videos/page?page=0
+    // Это позволяет реализовать правильную клиентскую пагинацию (12 видео за раз)
+    const videos: any[] = [];
 
     // Получаем состояние синхронизации видео для пользователя
     let userStateResult = await client.execute({
@@ -374,22 +371,13 @@ export default async function ChannelPage({ params }: PageProps) {
       ? (deepCommentsStateResult.rows[0].hasShownDeepComments as number) === 1
       : false;
 
-    // Проверяем наличие данных для AI-модулей
-    const hasVideos = videos.length > 0;
+    // НОВОЕ (ИТЕРАЦИЯ 9): hasVideos теперь всегда false при SSR
+    // Видео загружаются на клиенте после sync/show, поэтому проверку нельзя делать на сервере
+    const hasVideos = false;
 
-    // Проверяем наличие комментариев (если есть видео)
-    let hasComments = false;
-    if (hasVideos && videos.length > 0) {
-      const videoIds = videos.map(v => v.videoId);
-      if (videoIds.length > 0) {
-        const placeholders = videoIds.map(() => '?').join(',');
-        const commentSampleResult = await client.execute({
-          sql: `SELECT * FROM video_comments WHERE videoId IN (${placeholders}) LIMIT 1`,
-          args: videoIds,
-        });
-        hasComments = commentSampleResult.rows.length > 0;
-      }
-    }
+    // НОВОЕ (ИТЕРАЦИЯ 9): hasComments также всегда false при SSR
+    // Комментарии проверяются на клиенте после загрузки видео
+    const hasComments = false;
 
     // Получаем Content Intelligence анализ
     const intelligenceResult = await client.execute({
