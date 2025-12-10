@@ -145,7 +145,7 @@ export async function POST(
       }
 
       totalAvailableVideos = apiVideos.length;
-      console.log(`[Sync] Получено ${apiVideos.length} видео из API (запросили MAX_VIDEOS_PER_PAGE=${MAX_VIDEOS_PER_PAGE})`);
+      console.log(`[Sync] Получено ${apiVideos.length} видео из API`);
 
       // ДИАГНОСТИКА: логируем структуру первого видео
       if (apiVideos.length > 0) {
@@ -161,9 +161,10 @@ export async function POST(
         console.warn(`[Sync] ВНИМАНИЕ: API вернул 0 видео!`);
       }
 
-      // Видео уже ограничены MAX_VIDEOS_PER_PAGE в запросе, просто обрабатываем их
-      videos = apiVideos;
-      console.log(`[Sync] Обрабатываем ${videos.length} видео (запросили ${MAX_VIDEOS_PER_PAGE})`);
+      // ИСПРАВЛЕНИЕ: параметр MAX_VIDEOS_PER_PAGE — это количество СТРАНИЦ API, не видео
+      // Поэтому обрезаем результат ЯВНО ЗДЕСЬ до 12 видео
+      videos = apiVideos.slice(0, MAX_VIDEOS_PER_PAGE);
+      console.log(`[Sync] ОБРЕЗАЛИ до первых ${MAX_VIDEOS_PER_PAGE} видео (было ${apiVideos.length})`);
 
       // Получаем существующие даты из БД только для API видео
       const existingDates = new Map<string, string | null>();
