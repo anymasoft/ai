@@ -35,33 +35,25 @@ export async function GET(
     }
 
     const { id } = await context.params;
-    const competitorId = parseInt(id, 10);
 
-    if (!Number.isFinite(competitorId) || competitorId <= 0) {
+    // Защита: id должен быть непустой строкой (это channelId, а не competitorId)
+    if (!id || typeof id !== 'string' || id.trim() === '' || id === 'undefined') {
       client.close();
-      return NextResponse.json({ error: "Invalid competitor ID" }, { status: 400 });
+      return NextResponse.json({ error: "channelId is missing or invalid" }, { status: 400 });
     }
 
-    console.log(`[VideosPage] Запрос TOP-12 видео для competitor ID: ${competitorId}`);
+    const channelId = id;
+    console.log(`[VideosPage] Запрос TOP-12 видео для channelId=${channelId}`);
 
-    // Получаем данные конкурента для channelId
+    // Проверяем что этот channelId принадлежит текущему пользователю
     const competitorResult = await client.execute({
-      sql: "SELECT channelId FROM competitors WHERE id = ? AND userId = ?",
-      args: [competitorId, session.user.id],
+      sql: "SELECT id FROM competitors WHERE channelId = ? AND userId = ?",
+      args: [channelId, session.user.id],
     });
 
     if (competitorResult.rows.length === 0) {
       client.close();
-      return NextResponse.json({ error: "Competitor not found" }, { status: 404 });
-    }
-
-    const channelId = competitorResult.rows[0].channelId as string;
-
-    // Защита: channelId не должен быть пустым или undefined
-    if (!channelId || typeof channelId !== 'string' || channelId.trim() === '') {
-      client.close();
-      console.error(`[VideosPage] Invalid channelId: ${channelId}`);
-      return NextResponse.json({ error: "Invalid channel ID in database" }, { status: 400 });
+      return NextResponse.json({ error: "Channel not found or not authorized" }, { status: 404 });
     }
 
     console.log(`[VideosPage] Загрузка TOP-12 видео для channelId=${channelId}`);

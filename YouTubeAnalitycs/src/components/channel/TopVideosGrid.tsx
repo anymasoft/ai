@@ -21,14 +21,12 @@ interface VideoData {
 
 interface TopVideosGridProps {
   videos: VideoData[];
-  /** Конкурент ID (число) для вызова API */
-  competitorId: number;
+  /** YouTube Channel ID (строка) для вызова API */
+  channelId: string;
   /** План пользователя для определения лимитов. По умолчанию "free" */
   userPlan?: UserPlan;
   /** Нажал ли пользователь "Получить топ-видео" */
   hasShownVideos?: boolean;
-  /** YouTube Channel ID (для логирования) */
-  channelId?: string;
 }
 
 /**
@@ -44,12 +42,18 @@ function formatViews(views: number): string {
   return views.toString();
 }
 
-export function TopVideosGrid({ videos, competitorId, userPlan = "free", hasShownVideos = false, channelId }: TopVideosGridProps) {
+export function TopVideosGrid({ videos, channelId, userPlan = "free", hasShownVideos = false }: TopVideosGridProps) {
   const router = useRouter();
   const [refreshingId, setRefreshingId] = useState<string | null>(null);
   const [videoList, setVideoList] = useState<VideoData[]>([]);
   const [showingVideos, setShowingVideos] = useState(false);
   const [hasShown, setHasShown] = useState(hasShownVideos);
+
+  // Защита: если channelId не передан, не рендерим компонент
+  if (!channelId) {
+    console.error("[TopVideosGrid] channelId is undefined, component cannot render");
+    return null;
+  }
 
   if (process.env.NODE_ENV === "development") {
     console.log("[TopVideosGrid] TOP-12 ONLY mode", {
@@ -84,16 +88,16 @@ export function TopVideosGrid({ videos, competitorId, userPlan = "free", hasShow
   };
 
   const handleGetTopVideos = async () => {
-    if (!competitorId) {
-      console.error("[TopVideosGrid] competitorId is undefined or invalid");
+    if (!channelId) {
+      console.error("[TopVideosGrid] channelId is undefined, cannot sync");
       return;
     }
 
-    console.log(`[TopVideosGrid] Получение топ-12 видео для competitorId=${competitorId}`);
+    console.log(`[TopVideosGrid] Получение топ-12 видео для channelId=${channelId}`);
     setShowingVideos(true);
     try {
       // Синхронизируем видео (TOP-12 ONLY)
-      const syncRes = await fetch(`/api/channel/${competitorId}/videos/sync`, {
+      const syncRes = await fetch(`/api/channel/${channelId}/videos/sync`, {
         method: "POST",
         cache: "no-store",
       });

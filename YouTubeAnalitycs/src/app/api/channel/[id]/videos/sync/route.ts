@@ -66,37 +66,29 @@ export async function POST(
     }
 
     const { id } = await context.params;
-    const competitorId = parseInt(id, 10);
 
-    if (!Number.isFinite(competitorId) || competitorId <= 0) {
+    // Защита: id должен быть непустой строкой (это channelId, а не competitorId)
+    if (!id || typeof id !== 'string' || id.trim() === '' || id === 'undefined') {
       client.close();
-      return NextResponse.json({ success: false, error: "Invalid competitor ID" }, { status: 400 });
+      return NextResponse.json({ success: false, error: "channelId is missing or invalid" }, { status: 400 });
     }
 
-    console.log(`[Sync] Начало синхронизации, competitor ID: ${competitorId}`);
+    const channelId = id;
+    console.log(`[Sync] Начало синхронизации для channelId: ${channelId}`);
 
-    // Получаем канал из БД
+    // Проверяем что этот channelId принадлежит текущему пользователю
     const competitorResult = await client.execute({
-      sql: "SELECT * FROM competitors WHERE id = ? AND userId = ?",
-      args: [competitorId, session.user.id],
+      sql: "SELECT id, title FROM competitors WHERE channelId = ? AND userId = ?",
+      args: [channelId, session.user.id],
     });
 
     if (competitorResult.rows.length === 0) {
       client.close();
-      return NextResponse.json({ success: false, error: "Competitor not found" }, { status: 404 });
+      return NextResponse.json({ success: false, error: "Channel not found or not authorized" }, { status: 404 });
     }
 
     const competitor = competitorResult.rows[0];
     console.log(`[Sync] Канал: ${competitor.title}`);
-
-    const channelId = competitor.channelId as string;
-
-    // Защита: channelId не должен быть пустым или undefined
-    if (!channelId || typeof channelId !== 'string' || channelId.trim() === '') {
-      client.close();
-      console.error(`[Sync] Invalid channelId: ${channelId}`);
-      return NextResponse.json({ success: false, error: "Invalid channel ID in database" }, { status: 400 });
-    }
 
     const MAX_VIDEOS_PER_PAGE = 12;
     const userPlan = getUserPlan(session);
