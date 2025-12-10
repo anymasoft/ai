@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -55,9 +55,27 @@ export function TopVideosGrid({ videos, userPlan = "free", hasShownVideos = fals
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [totalVideos, setTotalVideos] = useState(videos.length);
 
+  // НОВОЕ: локальное состояние для управления показом видео (вместо зависимости от пропсов)
+  const [hasShown, setHasShown] = useState(hasShownVideos);
+  const [isInitialisedFromProps, setIsInitialisedFromProps] = useState(false);
+
+  // Синхронизируем начальные пропсы в локальный стейт (один раз при первом рендере)
+  useEffect(() => {
+    if (!isInitialisedFromProps) {
+      console.log("[TopVideosGrid INIT] Synchronizing props to local state:", {
+        hasShownVideos,
+        videosCount: videos.length,
+      });
+      setVideoList(videos);
+      setHasShown(hasShownVideos);
+      setTotalVideos(videos.length);
+      setIsInitialisedFromProps(true);
+    }
+  }, [hasShownVideos, videos, isInitialisedFromProps]);
+
   // DEBUG: логируем при изменении пропсов (особенно hasShownVideos)
   if (process.env.NODE_ENV === "development") {
-    console.log(`[TopVideosGrid DEBUG] props update: hasShownVideos=${hasShownVideos}, videosCount=${videos.length}, videoListCount=${videoList.length}`);
+    console.log(`[TopVideosGrid DEBUG] props update: hasShownVideos=${hasShownVideos}, videosCount=${videos.length}, videoListCount=${videoList.length}, hasShown=${hasShown}`);
   }
 
   const refreshDate = async (e: React.MouseEvent, videoId: string) => {
@@ -92,6 +110,7 @@ export function TopVideosGrid({ videos, userPlan = "free", hasShownVideos = fals
       console.log(`[TopVideosGrid] Шаг 1: Синхронизация видео...`);
       const syncRes = await fetch(`/api/channel/${channelId}/videos/sync`, {
         method: "POST",
+        cache: "no-store",
       });
 
       if (!syncRes.ok) {
@@ -114,6 +133,7 @@ export function TopVideosGrid({ videos, userPlan = "free", hasShownVideos = fals
       const showRes = await fetch(`/api/channel/${channelId}/videos/show`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        cache: "no-store",
       });
 
       if (!showRes.ok) {
@@ -125,10 +145,54 @@ export function TopVideosGrid({ videos, userPlan = "free", hasShownVideos = fals
       const showData = await showRes.json();
       console.log(`[TopVideosGrid] Видео отмечены как показанные:`, showData);
 
-      // Шаг 3: Обновляем UI после успешного завершения обеих операций
-      console.log(`[TopVideosGrid] Шаг 3: Обновление UI через router.refresh()...`);
-      router.refresh();
-      console.log(`[TopVideosGrid] router.refresh() вызван успешно`);
+      // Шаг 3: НОВОЕ - загружаем первую страницу видео сразу на клиенте
+      console.log(`[TopVideosGrid] Шаг 3: Загрузка первой страницы видео...`);
+      const pageRes = await fetch(
+        `/api/channel/${channelId}/videos/page?page=0`,
+        {
+          method: "GET",
+          cache: "no-store",
+        }
+      );
+
+      if (!pageRes.ok) {
+        console.error(`[TopVideosGrid] Ошибка загрузки первой страницы:`, pageRes.status);
+        // Fallback на router.refresh если прямая загрузка не удалась
+        console.log("[TopVideosGrid] Используем fallback router.refresh()");
+        router.refresh();
+        return;
+      }
+
+      const pageData = await pageRes.json();
+      console.log(`[TopVideosGrid] Первая страница загружена:`, {
+        videosCount: pageData.videos?.length,
+        hasMore: pageData.hasMore,
+        page: pageData.page,
+      });
+
+      // КЛЮЧЕВОЙ ШАГ: обновляем локальное состояние для немедленного отображения
+      if (pageData.videos && pageData.videos.length > 0) {
+        setVideoList(pageData.videos);
+        setHasShown(true);
+        setPage(pageData.page ?? 0);
+        setHasMore(pageData.hasMore ?? false);
+        setTotalVideos(pageData.totalVideos ?? pageData.videos.length);
+        console.log("[TopVideosGrid] Локальное состояние обновлено, видео готовы к отображению");
+      } else {
+        // Видео не найдены, но состояние отмечено как "показано"
+        setHasShown(true);
+        setVideoList([]);
+        console.log("[TopVideosGrid] Видео не найдены, но состояние отмечено как показано");
+      }
+
+      // Шаг 4: Мягкий бэкап - попробуем router.refresh() для синхронизации SSR, но не критично
+      try {
+        console.log("[TopVideosGrid] Шаг 4: Выполняем router.refresh() как бэкап для SSR...");
+        router.refresh();
+        console.log("[TopVideosGrid] router.refresh() выполнен успешно");
+      } catch (refreshErr) {
+        console.warn("[TopVideosGrid] router.refresh() failed (non-critical):", refreshErr);
+      }
     } catch (err) {
       console.error(`[TopVideosGrid] Ошибка при получении топ-видео:`, err instanceof Error ? err.message : err);
     } finally {
@@ -136,13 +200,19 @@ export function TopVideosGrid({ videos, userPlan = "free", hasShownVideos = fals
     }
   };
 
-  // Загружаем следующую страницу видео
+  // Загружаем следующую страницу видео (с использованием локального состояния)
   const loadMore = async () => {
     if (!channelId || isLoadingMore) return;
 
     setIsLoadingMore(true);
     try {
-      const res = await fetch(`/api/channel/${channelId}/videos/page?page=${page + 1}`);
+      const nextPage = page + 1;
+      console.log(`[TopVideosGrid] Loading page ${nextPage}...`);
+
+      const res = await fetch(
+        `/api/channel/${channelId}/videos/page?page=${nextPage}`,
+        { cache: "no-store" }
+      );
       const data = await res.json();
 
       if (!data.ok) {
@@ -152,11 +222,11 @@ export function TopVideosGrid({ videos, userPlan = "free", hasShownVideos = fals
 
       console.log(`[TopVideosGrid] Loaded page ${data.page}: ${data.videos.length} videos, hasMore: ${data.hasMore}`);
 
-      // Добавляем новые видео к существующему списку
+      // Добавляем новые видео к существующему ЛОКАЛЬНОМУ списку
       setVideoList(prev => [...prev, ...data.videos]);
       setPage(data.page);
-      setHasMore(data.hasMore);
-      setTotalVideos(data.totalVideos);
+      setHasMore(data.hasMore ?? false);
+      setTotalVideos(data.totalVideos ?? totalVideos);
     } catch (err) {
       console.error("Ошибка при загрузке видео:", err);
     } finally {
@@ -174,14 +244,21 @@ export function TopVideosGrid({ videos, userPlan = "free", hasShownVideos = fals
 
   // Debug в dev режиме
   if (process.env.NODE_ENV === "development") {
-    console.log(`[TopVideosGrid] Plan: ${userPlan}, Limit: ${planLimit}, Total loaded: ${videoList.length}, HasMore: ${hasMore}`);
+    console.log(`[TopVideosGrid RENDER]`, {
+      userPlan,
+      planLimit,
+      totalLoaded: videoList.length,
+      hasMore,
+      hasShown,
+      page,
+    });
   }
 
   return (
     <CardContent className="p-6">
       <>
         {/* STATE 1: Пользователь никогда не нажимал кнопку "Получить топ-видео" */}
-        {!hasShownVideos ? (
+        {!hasShown ? (
           <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
             <div className="flex flex-col items-center justify-center gap-4">
               <p className="text-center">
@@ -270,7 +347,7 @@ export function TopVideosGrid({ videos, userPlan = "free", hasShownVideos = fals
             </div>
 
             {/* Кнопка "Показать ещё 12" — только если есть ещё видео и пользователь может загружать */}
-            {hasShownVideos && canLoadMore && hasMore && (
+            {hasShown && canLoadMore && hasMore && (
               <div className="flex justify-center mt-6">
                 <Button
                   onClick={loadMore}
