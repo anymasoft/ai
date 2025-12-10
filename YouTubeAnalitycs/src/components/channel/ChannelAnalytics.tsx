@@ -120,7 +120,7 @@ export function ChannelAnalytics({
         isOpen={expanded.videos}
         onToggle={() => toggle("videos")}
       >
-        <TopVideosGrid videos={videos} userPlan={userPlan} hasSyncedTopVideos={hasSyncedTopVideos} />
+        <TopVideosGrid videos={videos} userPlan={userPlan} hasSyncedTopVideos={hasSyncedTopVideos} channelId={channelId} />
       </CollapsibleSection>
 
       {/* Content Intelligence */}
