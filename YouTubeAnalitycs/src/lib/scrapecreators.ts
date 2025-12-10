@@ -536,30 +536,79 @@ async function fetchVideosFromAPI(
       }
 
       // Извлекаем видео из ответа
-      const videos = Array.isArray(data.videos) ? data.videos : Array.isArray(data) ? data : [];
+      // Пробуем несколько возможных структур API ответа
+      let videos: any[] = [];
+
+      if (Array.isArray(data.videos)) {
+        videos = data.videos;
+        console.log("[ScrapeCreators] Found videos in data.videos");
+      } else if (Array.isArray(data.items)) {
+        videos = data.items;
+        console.log("[ScrapeCreators] Found videos in data.items");
+      } else if (Array.isArray(data)) {
+        videos = data;
+        console.log("[ScrapeCreators] Data itself is array");
+      } else {
+        console.warn("[ScrapeCreators] Could not find videos array in response");
+      }
+
+      console.log("[ScrapeCreators] Extracted videos count:", {
+        rawVideosLength: videos.length,
+        dataStructure: {
+          hasVideos: Array.isArray(data.videos),
+          hasItems: Array.isArray(data.items),
+          isArray: Array.isArray(data),
+          dataKeys: data && typeof data === 'object' ? Object.keys(data).slice(0, 10) : 'not-object',
+        },
+      });
 
       // DEBUG: логируем сырые данные первого видео
       if (videos.length > 0) {
         const firstVideo = videos[0];
         console.log("[ScrapeCreators] RAW first video from API:", {
           videoId: firstVideo.videoId,
+          id: firstVideo.id,
+          title: firstVideo.title,
           publishedTime: firstVideo.publishedTime,
           allKeys: Object.keys(firstVideo),
         });
+      } else {
+        console.warn("[ScrapeCreators] WARNING: No videos extracted from API response!");
+        if (data && typeof data === 'object') {
+          console.warn("[ScrapeCreators] API response structure:", {
+            hasVideos: data.videos !== undefined,
+            videosType: typeof data.videos,
+            videosLength: Array.isArray(data.videos) ? data.videos.length : 'not-array',
+            dataSample: JSON.stringify(data).slice(0, 300),
+          });
+        }
       }
 
       // Нормализуем и добавляем видео
       // ВАЖНО: API /v1/youtube/channel-videos не возвращает точную дату публикации,
       // только относительную ("2 years ago"). Поэтому здесь ставим null.
       // Точная дата будет получена через /v1/youtube/video → publishDate
-      const normalizedVideos: VideoData[] = videos.map((video: any) => {
+      const normalizedVideos: VideoData[] = videos.map((video: any, index: number) => {
         // Не пытаемся извлечь дату из channel-videos API — она ненадёжна
         // Точная дата придёт из getYoutubeVideoDetails()
         const publishDate: string | null = null;
 
+        // Извлекаем videoId из разных возможных полей
+        const videoId = String(video.id || video.videoId || "").trim();
+
+        // Логируем если videoId пустой
+        if (!videoId && index < 3) {
+          console.warn("[ScrapeCreators] Empty videoId for video at index", index, {
+            hasId: !!video.id,
+            hasVideoId: !!video.videoId,
+            id: video.id,
+            videoId: video.videoId,
+            allKeys: Object.keys(video),
+          });
+        }
+
         return {
-          // API возвращает `id`, а не `videoId`!
-          videoId: String(video.id || video.videoId || ""),
+          videoId,
           title: String(video.title || video.name || "Untitled Video"),
           thumbnailUrl: extractThumbnailUrl(video.thumbnail || video.thumbnailUrl),
           viewCount: safeNumber(
