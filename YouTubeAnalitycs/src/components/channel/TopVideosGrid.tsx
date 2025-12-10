@@ -23,6 +23,8 @@ interface TopVideosGridProps {
   videos: VideoData[];
   /** План пользователя для определения лимитов. По умолчанию "free" */
   userPlan?: UserPlan;
+  /** Синхронизировал ли пользователь видео этого канала */
+  hasSyncedTopVideos?: boolean;
 }
 
 /**
@@ -38,7 +40,7 @@ function formatViews(views: number): string {
   return views.toString();
 }
 
-export function TopVideosGrid({ videos, userPlan = "free" }: TopVideosGridProps) {
+export function TopVideosGrid({ videos, userPlan = "free", hasSyncedTopVideos = false }: TopVideosGridProps) {
   // Используем VIDEO_PAGE_SIZE (12) вместо хардкода 24
   const [visibleCount, setVisibleCount] = useState(VIDEO_PAGE_SIZE);
   const [refreshingId, setRefreshingId] = useState<string | null>(null);
@@ -85,9 +87,15 @@ export function TopVideosGrid({ videos, userPlan = "free" }: TopVideosGridProps)
       <>
         {sortedVideos.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
-            <p className="text-center">
-              Нет данных. Нажмите &quot;Sync Top Videos&quot; чтобы загрузить видео канала.
-            </p>
+            {!hasSyncedTopVideos ? (
+              <p className="text-center">
+                Нет данных. Нажмите &quot;Sync Top Videos&quot; чтобы загрузить видео канала.
+              </p>
+            ) : (
+              <p className="text-center">
+                Нет видео. Синхронизация не вернула результатов.
+              </p>
+            )}
           </div>
         ) : (
           <>

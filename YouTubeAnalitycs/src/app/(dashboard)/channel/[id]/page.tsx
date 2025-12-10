@@ -132,6 +132,16 @@ export default async function ChannelPage({ params }: PageProps) {
 
     const videos = videosResult.rows.map(row => ({ ...row }));
 
+    // Получаем состояние синхронизации видео для пользователя
+    const userStateResult = await client.execute({
+      sql: "SELECT hasSyncedTopVideos FROM user_channel_state WHERE userId = ? AND channelId = ?",
+      args: [session.user.id, competitor.channelId],
+    });
+
+    const hasSyncedTopVideos = userStateResult.rows.length > 0
+      ? (userStateResult.rows[0].hasSyncedTopVideos as number) === 1
+      : false;
+
     // Проверяем наличие данных для AI-модулей
     const hasVideos = videos.length > 0;
 
@@ -331,6 +341,7 @@ export default async function ChannelPage({ params }: PageProps) {
           hasVideos={hasVideos}
           hasComments={hasComments}
           userPlan={getUserPlan(session)}
+          hasSyncedTopVideos={hasSyncedTopVideos}
         />
       </div>
     );

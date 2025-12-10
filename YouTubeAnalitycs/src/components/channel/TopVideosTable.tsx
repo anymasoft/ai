@@ -27,6 +27,8 @@ interface VideoData {
 
 interface TopVideosTableProps {
   videos: VideoData[];
+  /** Синхронизировал ли пользователь видео этого канала */
+  hasSyncedTopVideos?: boolean;
 }
 
 /**
@@ -42,7 +44,7 @@ function formatViews(views: number): string {
   return views.toString();
 }
 
-export function TopVideosTable({ videos }: TopVideosTableProps) {
+export function TopVideosTable({ videos, hasSyncedTopVideos = false }: TopVideosTableProps) {
   const [limit, setLimit] = useState(50);
   const [refreshingId, setRefreshingId] = useState<string | null>(null);
   const [videoList, setVideoList] = useState(videos);
@@ -79,9 +81,15 @@ export function TopVideosTable({ videos }: TopVideosTableProps) {
       <CardContent className="p-0">
         {sortedVideos.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-12 text-muted-foreground px-4">
-            <p className="text-center">
-              Нет данных. Нажмите &quot;Sync Top Videos&quot; чтобы загрузить видео канала.
-            </p>
+            {!hasSyncedTopVideos ? (
+              <p className="text-center">
+                Нет данных. Нажмите &quot;Sync Top Videos&quot; чтобы загрузить видео канала.
+              </p>
+            ) : (
+              <p className="text-center">
+                Нет видео. Синхронизация не вернула результатов.
+              </p>
+            )}
           </div>
         ) : (
           <div className="overflow-x-auto">

@@ -428,6 +428,15 @@ async function getClient() {
           lastUpdated INTEGER NOT NULL
         );`);
 
+        // Состояние пользователя для каждого канала (синхронизированы ли видео)
+        _client.execute(`CREATE TABLE IF NOT EXISTS user_channel_state (
+          userId TEXT NOT NULL,
+          channelId TEXT NOT NULL,
+          hasSyncedTopVideos INTEGER NOT NULL DEFAULT 0,
+
+          PRIMARY KEY (userId, channelId)
+        );`);
+
         console.log("✅ Tables initialized");
       } catch (error) {
         console.error("❌ DB init error:", error);

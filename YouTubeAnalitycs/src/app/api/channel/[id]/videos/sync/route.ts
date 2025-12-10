@@ -276,6 +276,20 @@ export async function POST(
       }
     }
 
+    // Обновляем состояние пользователя: отмечаем, что он синхронизировал видео этого канала
+    try {
+      await client.execute({
+        sql: `INSERT INTO user_channel_state (userId, channelId, hasSyncedTopVideos)
+              VALUES (?, ?, 1)
+              ON CONFLICT(userId, channelId) DO UPDATE SET hasSyncedTopVideos = 1`,
+        args: [session.user.id, channelId],
+      });
+      console.log(`[Sync] Обновлено состояние пользователя: hasSyncedTopVideos = 1`);
+    } catch (stateError) {
+      console.warn(`[Sync] Ошибка при обновлении состояния пользователя (не критично):`, stateError instanceof Error ? stateError.message : stateError);
+      // Не прерываем sync, если состояние не обновилось
+    }
+
     client.close();
 
     return NextResponse.json({
