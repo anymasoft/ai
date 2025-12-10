@@ -446,6 +446,23 @@ async function getClient() {
         await addColumnIfNotExists(_client, 'user_channel_state', 'lastSyncAt', 'INTEGER');
         await addColumnIfNotExists(_client, 'user_channel_state', 'lastShownAt', 'INTEGER');
 
+        // Состояние пользователя для метрик каждого канала (показаны ли метрики)
+        _client.execute(`CREATE TABLE IF NOT EXISTS user_channel_metrics_state (
+          userId TEXT NOT NULL,
+          channelId TEXT NOT NULL,
+          hasShownMetrics INTEGER NOT NULL DEFAULT 0,
+          lastSyncAt INTEGER,
+          lastShownAt INTEGER,
+
+          PRIMARY KEY (userId, channelId)
+        );`);
+
+        // Миграция: добавляем новые колонки для отслеживания состояния метрик
+        // Использует idempotent проверку через PRAGMA table_info
+        await addColumnIfNotExists(_client, 'user_channel_metrics_state', 'hasShownMetrics', 'INTEGER NOT NULL DEFAULT 0');
+        await addColumnIfNotExists(_client, 'user_channel_metrics_state', 'lastSyncAt', 'INTEGER');
+        await addColumnIfNotExists(_client, 'user_channel_metrics_state', 'lastShownAt', 'INTEGER');
+
         console.log("✅ Tables initialized");
       } catch (error) {
         console.error("❌ DB init error:", error);

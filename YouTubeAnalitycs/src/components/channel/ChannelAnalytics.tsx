@@ -3,7 +3,7 @@
 import { useState } from "react"
 import { Card, CardHeader, CardTitle } from "@/components/ui/card"
 import { ChevronDown, ChevronUp } from "lucide-react"
-import { ChannelGrowthChart } from "@/components/charts/ChannelGrowthChart"
+import { ChannelMetricsSection } from "@/components/channel/ChannelMetricsSection"
 import { TopVideosGrid } from "@/components/channel/TopVideosGrid"
 import { ContentIntelligenceBlock } from "@/components/channel/ContentIntelligenceBlock"
 import { MomentumInsights } from "@/components/channel/MomentumInsights"
@@ -25,6 +25,8 @@ interface ChannelAnalyticsProps {
   hasComments: boolean
   /** План пользователя для лимитов видео */
   userPlan?: UserPlan
+  /** Нажал ли пользователь "Получить метрики" */
+  hasShownMetrics?: boolean
   /** Нажал ли пользователь "Получить топ-видео" */
   hasShownVideos?: boolean
 }
@@ -75,6 +77,7 @@ export function ChannelAnalytics({
   hasVideos,
   hasComments,
   userPlan = "free",
+  hasShownMetrics = false,
   hasShownVideos = false,
 }: ChannelAnalyticsProps) {
   // Все разделы закрыты по умолчанию - пользователь видит полный обзор доступных аналитических блоков
@@ -111,7 +114,7 @@ export function ChannelAnalytics({
         isOpen={expanded.growth}
         onToggle={() => toggle("growth")}
       >
-        <ChannelGrowthChart metrics={metrics} />
+        <ChannelMetricsSection metrics={metrics} hasShownMetrics={hasShownMetrics} channelId={channelId} />
       </CollapsibleSection>
 
       {/* Top Videos */}
