@@ -297,6 +297,39 @@ export default async function ChannelPage({ params }: PageProps) {
       ? (contentStateResult.rows[0].hasShownContent as number) === 1
       : false;
 
+    // Получаем состояние показа глубокого анализа комментариев для пользователя
+    let deepCommentsStateResult = await client.execute({
+      sql: "SELECT hasShownDeepComments FROM user_channel_deep_comments_state WHERE userId = ? AND channelId = ?",
+      args: [session.user.id, competitor.channelId],
+    });
+
+    // Если записи нет, создаём её с дефолтными значениями
+    if (deepCommentsStateResult.rows.length === 0) {
+      try {
+        await client.execute({
+          sql: `INSERT INTO user_channel_deep_comments_state (userId, channelId, hasShownDeepComments)
+                VALUES (?, ?, 0)
+                ON CONFLICT(userId, channelId) DO NOTHING`,
+          args: [session.user.id, competitor.channelId],
+        });
+        console.log("[Channel Page] Created user_channel_deep_comments_state for:", {
+          userId: session.user.id,
+          channelId: competitor.channelId,
+        });
+        // Перезапрашиваем данные после создания
+        deepCommentsStateResult = await client.execute({
+          sql: "SELECT hasShownDeepComments FROM user_channel_deep_comments_state WHERE userId = ? AND channelId = ?",
+          args: [session.user.id, competitor.channelId],
+        });
+      } catch (error) {
+        console.warn("[Channel Page] Failed to create user_channel_deep_comments_state:", error);
+      }
+    }
+
+    const hasShownDeepComments = deepCommentsStateResult.rows.length > 0
+      ? (deepCommentsStateResult.rows[0].hasShownDeepComments as number) === 1
+      : false;
+
     // Проверяем наличие данных для AI-модулей
     const hasVideos = videos.length > 0;
 
@@ -493,6 +526,7 @@ export default async function ChannelPage({ params }: PageProps) {
           hasShownAudience={hasShownAudience}
           hasShownVideos={hasShownVideos}
           hasShownContent={hasShownContent}
+          hasShownDeepComments={hasShownDeepComments}
         />
       </div>
     );

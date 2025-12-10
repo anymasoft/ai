@@ -9,7 +9,7 @@ import { ContentInsightsSection } from "@/components/channel/ContentInsightsSect
 import { MomentumInsightsSection } from "@/components/channel/MomentumInsightsSection"
 import { AudienceInsightsSection } from "@/components/channel/AudienceInsightsSection"
 import { CommentInsights } from "@/components/channel/CommentInsights"
-import { DeepCommentAnalysis } from "@/components/channel/DeepCommentAnalysis"
+import { DeepCommentAnalysisSection } from "@/components/channel/DeepCommentAnalysisSection"
 import type { UserPlan } from "@/config/limits"
 
 interface ChannelAnalyticsProps {
@@ -35,6 +35,8 @@ interface ChannelAnalyticsProps {
   hasShownVideos?: boolean
   /** Нажал ли пользователь "Получить Content Intelligence" */
   hasShownContent?: boolean
+  /** Нажал ли пользователь "Получить Deep Analysis" */
+  hasShownDeepComments?: boolean
 }
 
 /**
@@ -88,6 +90,7 @@ export function ChannelAnalytics({
   hasShownAudience = false,
   hasShownVideos = false,
   hasShownContent = false,
+  hasShownDeepComments = false,
 }: ChannelAnalyticsProps) {
   // Все разделы закрыты по умолчанию - пользователь видит полный обзор доступных аналитических блоков
   const [expanded, setExpanded] = useState({
@@ -196,9 +199,10 @@ export function ChannelAnalytics({
         isOpen={expanded.deepAnalysis}
         onToggle={() => toggle("deepAnalysis")}
       >
-        <DeepCommentAnalysis
+        <DeepCommentAnalysisSection
           channelId={channelId}
-          initialData={deepAnalysisData}
+          deepAnalysisData={deepAnalysisData}
+          hasShownDeepComments={hasShownDeepComments}
           hasRequiredData={hasVideos && hasComments}
         />
       </CollapsibleSection>
