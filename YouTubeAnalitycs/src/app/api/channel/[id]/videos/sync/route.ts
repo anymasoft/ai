@@ -69,7 +69,7 @@ export async function POST(
 
     if (!session?.user?.id) {
       client.close();
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
     }
 
     const { id } = await context.params;
@@ -77,7 +77,7 @@ export async function POST(
 
     if (!Number.isFinite(competitorId) || competitorId <= 0) {
       client.close();
-      return NextResponse.json({ error: "Invalid competitor ID" }, { status: 400 });
+      return NextResponse.json({ success: false, error: "Invalid competitor ID" }, { status: 400 });
     }
 
     console.log(`[Sync] Начало синхронизации, competitor ID: ${competitorId}`);
@@ -90,7 +90,7 @@ export async function POST(
 
     if (competitorResult.rows.length === 0) {
       client.close();
-      return NextResponse.json({ error: "Competitor not found" }, { status: 404 });
+      return NextResponse.json({ success: false, error: "Competitor not found" }, { status: 404 });
     }
 
     const competitor = competitorResult.rows[0];
@@ -140,8 +140,9 @@ export async function POST(
       } catch (error) {
         console.error("[Sync] Ошибка получения списка видео:", error);
         client.close();
+        const errorMsg = error instanceof Error ? error.message : "Failed to fetch videos";
         return NextResponse.json(
-          { error: error instanceof Error ? error.message : "Failed to fetch videos" },
+          { success: false, error: errorMsg },
           { status: 500 }
         );
       }
@@ -344,7 +345,7 @@ export async function POST(
     client.close();
 
     return NextResponse.json({
-      status: "ok",
+      success: true,
       videos,  // 12 видео (сохранённые в БД)
       totalVideos,  // Всего видео в БД
       added: inserted,
@@ -356,9 +357,13 @@ export async function POST(
     });
   } catch (error) {
     client.close();
+    const errorMessage = error instanceof Error ? error.message : "Sync failed";
     console.error("[Sync] Ошибка:", error);
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Sync failed" },
+      {
+        success: false,
+        error: errorMessage,
+      },
       { status: 500 }
     );
   }
