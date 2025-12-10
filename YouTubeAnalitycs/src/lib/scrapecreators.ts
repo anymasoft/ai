@@ -23,6 +23,15 @@ export interface VideoData {
   duration?: string; // ISO 8601 формат (PT1H2M10S) или undefined
 }
 
+/**
+ * Ответ от getYoutubeChannelVideos с поддержкой пагинации
+ * ИТЕРАЦИЯ 11: добавлена поддержка continuationToken для загрузки следующих страниц видео
+ */
+export interface ChannelVideosResponse {
+  videos: VideoData[];
+  continuationToken: string | null;
+}
+
 // =============================================================================
 // ИНТЕРФЕЙСЫ ДЛЯ RAW API ОТВЕТОВ ScrapeCreators
 // Документация: см. "Документация Scrapecreators YouTube API.txt"
@@ -407,23 +416,31 @@ function extractThumbnailUrl(thumbnail: any): string | null {
 /**
  * Получает список видео канала через ScrapeCreators API с поддержкой пагинации
  * Пробует сначала channelId, потом fallback на handle
+ *
+ * ИТЕРАЦИЯ 11: добавлена поддержка continuationToken для пагинации
+ * @param channelId - ID канала YouTube
+ * @param handle - handle канала (fallback)
+ * @param maxVideos - максимальное количество видео для загрузки (без этого параметра загружает ВСЕ)
+ * @param continuationToken - токен для продолжения загрузки с предыдущей страницы (ИТЕРАЦИЯ 11)
+ * @returns объект с videos и continuationToken для следующей страницы
  */
 export async function getYoutubeChannelVideos(
   channelId: string,
   handle?: string,
-  maxVideos?: number  // Новый параметр: максимальное количество видео для загрузки
-): Promise<VideoData[]> {
+  maxVideos?: number,
+  continuationToken?: string | null  // ИТЕРАЦИЯ 11: поддержка пагинации
+): Promise<ChannelVideosResponse> {
   const apiKey = process.env.SCRAPECREATORS_API_KEY;
 
   if (!apiKey) {
     throw new Error("SCRAPECREATORS_API_KEY is not configured");
   }
 
-  console.log("[ScrapeCreators] Начало загрузки видео для channelId:", channelId, "handle:", handle, "maxVideos limit:", maxVideos || "unlimited");
+  console.log("[ScrapeCreators] Начало загрузки видео для channelId:", channelId, "handle:", handle, "maxVideos limit:", maxVideos || "unlimited", "continuationToken:", continuationToken ? "present" : "none");
 
   // Сначала пробуем с channelId
   try {
-    return await fetchVideosFromAPI(apiKey, "channelId", channelId, maxVideos);
+    return await fetchVideosFromAPI(apiKey, "channelId", channelId, maxVideos, continuationToken);
   } catch (error) {
     console.warn("[ScrapeCreators] Не удалось загрузить по channelId:", error instanceof Error ? error.message : error);
 
@@ -431,7 +448,7 @@ export async function getYoutubeChannelVideos(
     if (handle) {
       console.log("[VideoSync] Using fallback from channelId → handle");
       try {
-        return await fetchVideosFromAPI(apiKey, "handle", handle, maxVideos);
+        return await fetchVideosFromAPI(apiKey, "handle", handle, maxVideos, continuationToken);
       } catch (fallbackError) {
         console.error("[ScrapeCreators] Fallback на handle тоже не сработал:", fallbackError);
         throw new Error("ScrapeCreators: videos unavailable for this channel");
@@ -446,15 +463,17 @@ export async function getYoutubeChannelVideos(
 /**
  * Внутренняя функция для загрузки видео с указанными параметрами
  * @param maxVideos - максимальное количество видео для загрузки (остановиться при достижении)
+ * @param initialToken - начальный continuationToken для загрузки следующей страницы (ИТЕРАЦИЯ 11)
  */
 async function fetchVideosFromAPI(
   apiKey: string,
   paramType: "channelId" | "handle",
   paramValue: string,
-  maxVideos?: number
-): Promise<VideoData[]> {
+  maxVideos?: number,
+  initialToken?: string | null  // ИТЕРАЦИЯ 11: поддержка пагинации
+): Promise<ChannelVideosResponse> {
   const allVideos: VideoData[] = [];
-  let continuationToken: string | null = null;
+  let continuationToken: string | null = initialToken || null;  // ИТЕРАЦИЯ 11: начинаем с переданного токена
   let pageCount = 0;
   const maxPages = 5; // Ограничение на количество страниц для избежания бесконечных циклов
 
@@ -662,10 +681,15 @@ async function fetchVideosFromAPI(
     console.log("[ScrapeCreators] Всего загружено видео:", {
       totalCount: allVideos.length,
       pages: pageCount,
+      continuationToken: continuationToken ? "present" : "none",  // ИТЕРАЦИЯ 11
       sample: allVideos[0],
     });
 
-    return allVideos;
+    // ИТЕРАЦИЯ 11: возвращаем объект с videos и continuationToken для пагинации
+    return {
+      videos: allVideos,
+      continuationToken: continuationToken || null,
+    };
   } catch (error) {
     if (error instanceof Error) {
       throw error;
