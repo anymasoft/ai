@@ -21,11 +21,13 @@ interface VideoData {
 
 interface TopVideosGridProps {
   videos: VideoData[];
+  /** Конкурент ID (число) для вызова API */
+  competitorId: number;
   /** План пользователя для определения лимитов. По умолчанию "free" */
   userPlan?: UserPlan;
   /** Нажал ли пользователь "Получить топ-видео" */
   hasShownVideos?: boolean;
-  /** YouTube Channel ID (не competitorId) для вызова API */
+  /** YouTube Channel ID (для логирования) */
   channelId?: string;
 }
 
@@ -42,7 +44,7 @@ function formatViews(views: number): string {
   return views.toString();
 }
 
-export function TopVideosGrid({ videos, userPlan = "free", hasShownVideos = false, channelId }: TopVideosGridProps) {
+export function TopVideosGrid({ videos, competitorId, userPlan = "free", hasShownVideos = false, channelId }: TopVideosGridProps) {
   const router = useRouter();
   const [refreshingId, setRefreshingId] = useState<string | null>(null);
   const [videoList, setVideoList] = useState<VideoData[]>([]);
@@ -82,16 +84,16 @@ export function TopVideosGrid({ videos, userPlan = "free", hasShownVideos = fals
   };
 
   const handleGetTopVideos = async () => {
-    if (!channelId) {
-      console.error("[TopVideosGrid] channelId not provided");
+    if (!competitorId) {
+      console.error("[TopVideosGrid] competitorId not provided");
       return;
     }
 
-    console.log(`[TopVideosGrid] Получение топ-12 видео для channelId=${channelId}`);
+    console.log(`[TopVideosGrid] Получение топ-12 видео для competitorId=${competitorId}`);
     setShowingVideos(true);
     try {
       // Синхронизируем видео (TOP-12 ONLY)
-      const syncRes = await fetch(`/api/channel/${channelId}/videos/sync`, {
+      const syncRes = await fetch(`/api/channel/${competitorId}/videos/sync`, {
         method: "POST",
         cache: "no-store",
       });
