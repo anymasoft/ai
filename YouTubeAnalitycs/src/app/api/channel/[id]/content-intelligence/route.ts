@@ -311,12 +311,27 @@ export async function POST(
       ...(tablesJson && { tables: tablesJson })
     };
 
+    const now = Date.now();
     await client.execute({
       sql: "INSERT INTO content_intelligence (channelId, data, data_ru, generatedAt) VALUES (?, ?, ?, ?)",
-      args: [channelId, JSON.stringify(analysisData), null, Date.now()],
+      args: [channelId, JSON.stringify(analysisData), null, now],
     });
 
     console.log(`[ContentIntelligence] Анализ сохранён в БД`);
+
+    // Обновляем состояние пользователя: отмечаем, что он выполнил синхронизацию контент-аналитики
+    try {
+      await client.execute({
+        sql: `INSERT INTO user_channel_content_state (userId, channelId, hasShownContent, lastSyncAt)
+              VALUES (?, ?, 0, ?)
+              ON CONFLICT(userId, channelId) DO UPDATE SET lastSyncAt = ?`,
+        args: [session.user.id, channelId, now, now],
+      });
+      console.log(`[ContentIntelligence] Обновлено состояние пользователя: lastSyncAt = ${new Date(now).toISOString()} для channelId=${channelId}`);
+    } catch (stateError) {
+      console.warn(`[ContentIntelligence] Ошибка при обновлении состояния пользователя:`, stateError instanceof Error ? stateError.message : stateError);
+      // Не прерываем выполнение - анализ уже сохранён
+    }
 
     client.close();
 

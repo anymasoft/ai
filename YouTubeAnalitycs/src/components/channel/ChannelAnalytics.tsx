@@ -5,7 +5,7 @@ import { Card, CardHeader, CardTitle } from "@/components/ui/card"
 import { ChevronDown, ChevronUp } from "lucide-react"
 import { ChannelMetricsSection } from "@/components/channel/ChannelMetricsSection"
 import { TopVideosGrid } from "@/components/channel/TopVideosGrid"
-import { ContentIntelligenceBlock } from "@/components/channel/ContentIntelligenceBlock"
+import { ContentInsightsSection } from "@/components/channel/ContentInsightsSection"
 import { MomentumInsightsSection } from "@/components/channel/MomentumInsightsSection"
 import { AudienceInsightsSection } from "@/components/channel/AudienceInsightsSection"
 import { CommentInsights } from "@/components/channel/CommentInsights"
@@ -33,6 +33,8 @@ interface ChannelAnalyticsProps {
   hasShownAudience?: boolean
   /** Нажал ли пользователь "Получить топ-видео" */
   hasShownVideos?: boolean
+  /** Нажал ли пользователь "Получить Content Intelligence" */
+  hasShownContent?: boolean
 }
 
 /**
@@ -85,6 +87,7 @@ export function ChannelAnalytics({
   hasShownMomentum = false,
   hasShownAudience = false,
   hasShownVideos = false,
+  hasShownContent = false,
 }: ChannelAnalyticsProps) {
   // Все разделы закрыты по умолчанию - пользователь видит полный обзор доступных аналитических блоков
   const [expanded, setExpanded] = useState({
@@ -138,9 +141,10 @@ export function ChannelAnalytics({
         isOpen={expanded.content}
         onToggle={() => toggle("content")}
       >
-        <ContentIntelligenceBlock
+        <ContentInsightsSection
           channelId={channelId}
-          initialData={contentData}
+          contentData={contentData}
+          hasShownContent={hasShownContent}
           hasRequiredData={hasVideos}
         />
       </CollapsibleSection>

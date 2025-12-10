@@ -264,6 +264,39 @@ export default async function ChannelPage({ params }: PageProps) {
       ? (momentumStateResult.rows[0].hasShownMomentum as number) === 1
       : false;
 
+    // Получаем состояние показа контент-аналитики для пользователя
+    let contentStateResult = await client.execute({
+      sql: "SELECT hasShownContent FROM user_channel_content_state WHERE userId = ? AND channelId = ?",
+      args: [session.user.id, competitor.channelId],
+    });
+
+    // Если записи нет, создаём её с дефолтными значениями
+    if (contentStateResult.rows.length === 0) {
+      try {
+        await client.execute({
+          sql: `INSERT INTO user_channel_content_state (userId, channelId, hasShownContent)
+                VALUES (?, ?, 0)
+                ON CONFLICT(userId, channelId) DO NOTHING`,
+          args: [session.user.id, competitor.channelId],
+        });
+        console.log("[Channel Page] Created user_channel_content_state for:", {
+          userId: session.user.id,
+          channelId: competitor.channelId,
+        });
+        // Перезапрашиваем данные после создания
+        contentStateResult = await client.execute({
+          sql: "SELECT hasShownContent FROM user_channel_content_state WHERE userId = ? AND channelId = ?",
+          args: [session.user.id, competitor.channelId],
+        });
+      } catch (error) {
+        console.warn("[Channel Page] Failed to create user_channel_content_state:", error);
+      }
+    }
+
+    const hasShownContent = contentStateResult.rows.length > 0
+      ? (contentStateResult.rows[0].hasShownContent as number) === 1
+      : false;
+
     // Проверяем наличие данных для AI-модулей
     const hasVideos = videos.length > 0;
 
@@ -459,6 +492,7 @@ export default async function ChannelPage({ params }: PageProps) {
           hasShownMomentum={hasShownMomentum}
           hasShownAudience={hasShownAudience}
           hasShownVideos={hasShownVideos}
+          hasShownContent={hasShownContent}
         />
       </div>
     );
