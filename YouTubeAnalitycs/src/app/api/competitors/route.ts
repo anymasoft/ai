@@ -184,6 +184,22 @@ export async function POST(req: NextRequest) {
       avatarUrlIsNull: newResult.rows[0]?.avatarUrl === null,
     });
 
+    // Создаём запись в user_channel_state для отслеживания UX-состояния
+    const newCompetitor = newResult.rows[0];
+    if (newCompetitor) {
+      try {
+        await db.execute({
+          sql: `INSERT INTO user_channel_state (userId, channelId, hasSyncedTopVideos, hasShownVideos)
+                VALUES (?, ?, 0, 0)
+                ON CONFLICT(userId, channelId) DO NOTHING`,
+          args: [session.user.id, newCompetitor.channelId as string],
+        });
+        console.log("[Competitors POST] Created user_channel_state for channelId:", newCompetitor.channelId);
+      } catch (stateError) {
+        console.warn("[Competitors POST] Failed to create user_channel_state (non-critical):", stateError);
+      }
+    }
+
     return NextResponse.json(newResult.rows[0], { status: 201 });
   } catch (error) {
     console.error("Error adding competitor:", error);

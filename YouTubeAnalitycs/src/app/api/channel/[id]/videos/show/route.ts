@@ -52,13 +52,14 @@ export async function POST(
 
     // Обновляем состояние пользователя: отмечаем, что он показал видео этого канала
     try {
+      const now = Date.now();
       await client.execute({
-        sql: `INSERT INTO user_channel_state (userId, channelId, hasShownVideos)
-              VALUES (?, ?, 1)
-              ON CONFLICT(userId, channelId) DO UPDATE SET hasShownVideos = 1`,
-        args: [session.user.id, channelId],
+        sql: `INSERT INTO user_channel_state (userId, channelId, hasShownVideos, lastShownAt)
+              VALUES (?, ?, 1, ?)
+              ON CONFLICT(userId, channelId) DO UPDATE SET hasShownVideos = 1, lastShownAt = ?`,
+        args: [session.user.id, channelId, now, now],
       });
-      console.log(`[ShowVideos] Обновлено состояние пользователя: hasShownVideos = 1 для channelId=${channelId}`);
+      console.log(`[ShowVideos] Обновлено состояние пользователя: hasShownVideos = 1, lastShownAt = ${new Date(now).toISOString()} для channelId=${channelId}`);
     } catch (stateError) {
       console.error(`[ShowVideos] Ошибка при обновлении состояния пользователя:`, stateError instanceof Error ? stateError.message : stateError);
       client.close();

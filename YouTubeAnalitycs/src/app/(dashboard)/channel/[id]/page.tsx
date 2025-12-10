@@ -133,13 +133,40 @@ export default async function ChannelPage({ params }: PageProps) {
     const videos = videosResult.rows.map(row => ({ ...row }));
 
     // Получаем состояние синхронизации видео для пользователя
-    const userStateResult = await client.execute({
-      sql: "SELECT hasSyncedTopVideos FROM user_channel_state WHERE userId = ? AND channelId = ?",
+    let userStateResult = await client.execute({
+      sql: "SELECT hasSyncedTopVideos, hasShownVideos FROM user_channel_state WHERE userId = ? AND channelId = ?",
       args: [session.user.id, competitor.channelId],
     });
 
+    // Если записи нет, создаём её с дефолтными значениями
+    if (userStateResult.rows.length === 0) {
+      try {
+        await client.execute({
+          sql: `INSERT INTO user_channel_state (userId, channelId, hasSyncedTopVideos, hasShownVideos)
+                VALUES (?, ?, 0, 0)
+                ON CONFLICT(userId, channelId) DO NOTHING`,
+          args: [session.user.id, competitor.channelId],
+        });
+        console.log("[Channel Page] Created user_channel_state for:", {
+          userId: session.user.id,
+          channelId: competitor.channelId,
+        });
+        // Перезапрашиваем данные после создания
+        userStateResult = await client.execute({
+          sql: "SELECT hasSyncedTopVideos, hasShownVideos FROM user_channel_state WHERE userId = ? AND channelId = ?",
+          args: [session.user.id, competitor.channelId],
+        });
+      } catch (error) {
+        console.warn("[Channel Page] Failed to create user_channel_state:", error);
+      }
+    }
+
     const hasSyncedTopVideos = userStateResult.rows.length > 0
       ? (userStateResult.rows[0].hasSyncedTopVideos as number) === 1
+      : false;
+
+    const hasShownVideos = userStateResult.rows.length > 0
+      ? (userStateResult.rows[0].hasShownVideos as number) === 1
       : false;
 
     // Проверяем наличие данных для AI-модулей
@@ -342,6 +369,7 @@ export default async function ChannelPage({ params }: PageProps) {
           hasComments={hasComments}
           userPlan={getUserPlan(session)}
           hasSyncedTopVideos={hasSyncedTopVideos}
+          hasShownVideos={hasShownVideos}
         />
       </div>
     );
