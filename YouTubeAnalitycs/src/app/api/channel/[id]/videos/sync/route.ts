@@ -111,25 +111,19 @@ export async function POST(
       const maxVideos = getVideoLimitForPlan(userPlan);
       const limitedVideos = cachedVideos.slice(0, maxVideos);
 
-      const totalResult = await client.execute({
-        sql: "SELECT COUNT(*) as count FROM channel_videos WHERE channelId = ?",
-        args: [channelId],
-      });
-
-      const totalVideos = Number(totalResult.rows[0]?.count || 0);
-
-      console.log(`[Sync] Возвращаем из кеша: ${limitedVideos.length} видео, всего ${totalVideos}`);
+      console.log(`[Sync] Возвращаем из кеша: ${limitedVideos.length} видео из ${cachedVideos.length} всего`);
 
       client.close();
 
       return NextResponse.json({
         status: "ok",
+        videos: limitedVideos,
+        totalVideos: cachedVideos.length,
         added: 0,
         updated: 0,
-        totalVideos,
         plan: userPlan,
         videoLimit: maxVideos,
-        fromCache: true, // Добавляем флаг для информации
+        fromCache: true,
       });
     }
 
