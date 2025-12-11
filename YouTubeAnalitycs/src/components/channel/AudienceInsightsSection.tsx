@@ -9,8 +9,6 @@ import { AudienceInsights } from "@/components/channel/AudienceInsights";
 interface AudienceInsightsSectionProps {
   audienceData: any;
   channelId?: string;
-  /** Нажал ли пользователь "Получить аудиторию" */
-  hasShownAudience?: boolean;
   /** Есть ли видео для анализа */
   hasRequiredData?: boolean;
 }
@@ -18,7 +16,6 @@ interface AudienceInsightsSectionProps {
 export function AudienceInsightsSection({
   audienceData,
   channelId,
-  hasShownAudience = false,
   hasRequiredData = false,
 }: AudienceInsightsSectionProps) {
   const router = useRouter();
@@ -67,14 +64,12 @@ export function AudienceInsightsSection({
   return (
     <CardContent className="p-6">
       <>
-        {/* STATE 1: Пользователь никогда не нажимал кнопку "Получить аудиторию" */}
-        {!hasShownAudience ? (
+        {!audienceData ? (
+          /* Данные не загружены - показываем кнопку */
           <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
             <div className="flex flex-col items-center justify-center gap-4">
               <p className="text-center">
-                {!hasRequiredData
-                  ? "Загрузите видео канала, чтобы получить анализ аудитории."
-                  : "Нет данных. Нажмите «Получить аудиторию», чтобы загрузить анализ."}
+                Нажмите кнопку ниже, чтобы получить анализ аудитории.
               </p>
               <Button
                 onClick={() => handleGetAudience()}
@@ -86,24 +81,8 @@ export function AudienceInsightsSection({
               </Button>
             </div>
           </div>
-        ) : !audienceData ? (
-          /* Пользователь нажимал кнопку, но данные не найдены */
-          <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
-            <p className="text-center">
-              Анализ аудитории не найден. Попробуйте получить аудиторию ещё раз.
-            </p>
-            <Button
-              onClick={() => handleGetAudience()}
-              variant="outline"
-              size="sm"
-              className="mt-4"
-              disabled={loadingAudience}
-            >
-              {loadingAudience ? "Анализируем..." : "Получить аудиторию"}
-            </Button>
-          </div>
         ) : (
-          /* STATE 2: Есть данные аудитории */
+          /* Данные загружены - показываем анализ */
           <AudienceInsights
             channelId={channelId}
             initialData={audienceData}

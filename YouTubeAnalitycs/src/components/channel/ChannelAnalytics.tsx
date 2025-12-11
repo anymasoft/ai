@@ -23,14 +23,6 @@ interface ChannelAnalyticsProps {
   hasComments: boolean
   /** План пользователя для лимитов видео */
   userPlan?: UserPlan
-  /** Нажал ли пользователь "Получить Momentum" */
-  hasShownMomentum?: boolean
-  /** Нажал ли пользователь "Получить аудиторию" */
-  hasShownAudience?: boolean
-  /** Нажал ли пользователь "Получить Content Intelligence" */
-  hasShownContent?: boolean
-  /** Нажал ли пользователь "Получить Deep Analysis" */
-  hasShownDeepComments?: boolean
 }
 
 /**
@@ -78,10 +70,6 @@ export function ChannelAnalytics({
   hasVideos,
   hasComments,
   userPlan = "free",
-  hasShownMomentum = false,
-  hasShownAudience = false,
-  hasShownContent = false,
-  hasShownDeepComments = false,
 }: ChannelAnalyticsProps) {
   // Все разделы закрыты по умолчанию - пользователь видит полный обзор доступных аналитических блоков
   const [expanded, setExpanded] = useState({
@@ -128,7 +116,6 @@ export function ChannelAnalytics({
         <ContentInsightsSection
           channelId={channelId}
           contentData={contentData}
-          hasShownContent={hasShownContent}
           hasRequiredData={hasVideos}
         />
       </CollapsibleSection>
@@ -142,7 +129,6 @@ export function ChannelAnalytics({
         <MomentumInsightsSection
           momentumData={momentumData}
           channelId={channelId}
-          hasShownMomentum={hasShownMomentum}
           hasRequiredData={hasVideos}
         />
       </CollapsibleSection>
@@ -156,7 +142,6 @@ export function ChannelAnalytics({
         <AudienceInsightsSection
           audienceData={audienceData}
           channelId={channelId}
-          hasShownAudience={hasShownAudience}
           hasRequiredData={hasVideos}
         />
       </CollapsibleSection>
@@ -183,7 +168,6 @@ export function ChannelAnalytics({
         <DeepCommentAnalysisSection
           channelId={channelId}
           deepAnalysisData={deepAnalysisData}
-          hasShownDeepComments={hasShownDeepComments}
           hasRequiredData={hasVideos && hasComments}
         />
       </CollapsibleSection>

@@ -9,8 +9,6 @@ import { DeepCommentAnalysis } from "@/components/channel/DeepCommentAnalysis";
 interface DeepCommentAnalysisSectionProps {
   deepAnalysisData: any;
   channelId?: string;
-  /** Нажал ли пользователь "Получить Deep Analysis" */
-  hasShownDeepComments?: boolean;
   /** Есть ли комментарии для анализа */
   hasRequiredData?: boolean;
 }
@@ -18,7 +16,6 @@ interface DeepCommentAnalysisSectionProps {
 export function DeepCommentAnalysisSection({
   deepAnalysisData,
   channelId,
-  hasShownDeepComments = false,
   hasRequiredData = false,
 }: DeepCommentAnalysisSectionProps) {
   const router = useRouter();
@@ -68,14 +65,12 @@ export function DeepCommentAnalysisSection({
   return (
     <CardContent className="p-6">
       <>
-        {/* STATE 1: Пользователь никогда не нажимал кнопку "Получить Deep Analysis" */}
-        {!hasShownDeepComments ? (
+        {!deepAnalysisData ? (
+          /* Данные не загружены - показываем кнопку */
           <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
             <div className="flex flex-col items-center justify-center gap-4">
               <p className="text-center">
-                {!hasRequiredData
-                  ? "Загрузите комментарии канала, чтобы получить глубокий анализ."
-                  : "Нет данных. Нажмите «Получить Deep Analysis», чтобы загрузить анализ."}
+                Нажмите кнопку ниже, чтобы получить глубокий анализ комментариев.
               </p>
               <Button
                 onClick={() => handleGetDeepAnalysis()}
@@ -87,24 +82,8 @@ export function DeepCommentAnalysisSection({
               </Button>
             </div>
           </div>
-        ) : !deepAnalysisData ? (
-          /* Пользователь нажимал кнопку, но данные не найдены */
-          <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
-            <p className="text-center">
-              Глубокий анализ комментариев не найден. Попробуйте получить Deep Analysis ещё раз.
-            </p>
-            <Button
-              onClick={() => handleGetDeepAnalysis()}
-              variant="outline"
-              size="sm"
-              className="mt-4"
-              disabled={loadingDeepAnalysis}
-            >
-              {loadingDeepAnalysis ? "Анализируем..." : "Получить Deep Analysis"}
-            </Button>
-          </div>
         ) : (
-          /* STATE 2: Есть данные глубокого анализа */
+          /* Данные загружены - показываем анализ */
           <DeepCommentAnalysis
             channelId={channelId}
             initialData={deepAnalysisData}
