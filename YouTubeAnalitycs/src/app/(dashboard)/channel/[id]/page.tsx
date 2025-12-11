@@ -544,7 +544,6 @@ export default async function ChannelPage({ params }: PageProps) {
           hasShownMetrics={hasShownMetrics}
           hasShownMomentum={hasShownMomentum}
           hasShownAudience={hasShownAudience}
-          hasShownVideos={hasShownVideos}
           hasShownContent={hasShownContent}
           hasShownDeepComments={hasShownDeepComments}
         />
