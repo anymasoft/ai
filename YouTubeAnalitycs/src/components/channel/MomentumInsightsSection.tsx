@@ -75,7 +75,7 @@ export function MomentumInsightsSection({
                 onClick={() => handleGetMomentum()}
                 variant="default"
                 size="sm"
-                disabled={loadingMomentum || !hasRequiredData}
+                disabled={loadingMomentum}
               >
                 {loadingMomentum ? "Анализируем..." : "Получить Momentum"}
               </Button>

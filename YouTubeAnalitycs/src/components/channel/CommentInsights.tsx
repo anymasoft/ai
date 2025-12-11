@@ -81,30 +81,13 @@ export function CommentInsights({
     return (
       <CardContent className="space-y-4 pt-6">
         <div className="flex flex-col items-center justify-center py-12">
-          {!hasRequiredData ? (
-            <>
-              <p className="text-muted-foreground mb-2 text-center">
-                Sync Comments first
-              </p>
-              <p className="text-sm text-muted-foreground mb-4 text-center">
-                Click 'Sync Comments' button above to load data.
-              </p>
-              <Button onClick={handleGenerate} className="gap-2 cursor-pointer" disabled title="Sync Comments first">
-                <MessageSquare className="h-4 w-4" />
-                Generate Comment Analysis
-              </Button>
-            </>
-          ) : (
-            <>
-              <p className="text-muted-foreground mb-4">
-                Comment Intelligence will show interests, pain points, and requests from audience comments.
-              </p>
-              <Button onClick={handleGenerate} className="gap-2 cursor-pointer">
-                <MessageSquare className="h-4 w-4" />
-                Generate Comment Analysis
-              </Button>
-            </>
-          )}
+          <p className="text-muted-foreground mb-4">
+            Comment Intelligence will show interests, pain points, and requests from audience comments.
+          </p>
+          <Button onClick={handleGenerate} className="gap-2 cursor-pointer" disabled={loading}>
+            <MessageSquare className="h-4 w-4" />
+            Generate Comment Analysis
+          </Button>
           {error && (
             <p className="text-sm text-destructive mt-4">{error}</p>
           )}

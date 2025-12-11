@@ -75,7 +75,7 @@ export function AudienceInsightsSection({
                 onClick={() => handleGetAudience()}
                 variant="default"
                 size="sm"
-                disabled={loadingAudience || !hasRequiredData}
+                disabled={loadingAudience}
               >
                 {loadingAudience ? "Анализируем..." : "Получить аудиторию"}
               </Button>
