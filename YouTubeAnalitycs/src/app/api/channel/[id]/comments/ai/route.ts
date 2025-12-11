@@ -80,19 +80,19 @@ export async function POST(
 
     console.log(`[DeepCommentAI] Найдено ${videosResult.rows.length} видео`);
 
-    // Получаем комментарии
+    // Получаем комментарии из глобальной таблицы channel_comments
     const placeholders = videoIds.map(() => "?").join(",");
     const commentsResult = await client.execute({
-      sql: `SELECT content, likes, authorName FROM video_comments
+      sql: `SELECT author, text, likeCountInt FROM channel_comments
             WHERE videoId IN (${placeholders})
-            ORDER BY likes DESC
+            ORDER BY likeCountInt DESC
             LIMIT 1000`,
       args: videoIds,
     });
 
     if (commentsResult.rows.length === 0) {
       return NextResponse.json(
-        { error: "Sync Comments first" },
+        { error: "No comments found. Please add the channel to sync comments automatically." },
         { status: 400 }
       );
     }
@@ -101,9 +101,9 @@ export async function POST(
 
     // Подготовка данных для анализа
     const commentsForAnalysis: CommentForAnalysis[] = commentsResult.rows.map((c) => ({
-      content: c.content as string,
-      likes: c.likes as number,
-      authorName: c.authorName as string,
+      content: c.text as string,
+      likes: c.likeCountInt as number,
+      authorName: c.author as string,
     }));
 
     console.log(`[DeepCommentAI] Подготовлено ${commentsForAnalysis.length} комментариев для анализа`);
