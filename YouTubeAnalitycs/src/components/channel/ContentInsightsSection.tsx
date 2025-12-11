@@ -9,8 +9,6 @@ import { ContentIntelligenceBlock } from "@/components/channel/ContentIntelligen
 interface ContentInsightsSectionProps {
   contentData: any;
   channelId?: string;
-  /** Нажал ли пользователь "Получить Content Intelligence" */
-  hasShownContent?: boolean;
   /** Есть ли видео для анализа */
   hasRequiredData?: boolean;
 }
@@ -18,7 +16,6 @@ interface ContentInsightsSectionProps {
 export function ContentInsightsSection({
   contentData,
   channelId,
-  hasShownContent = false,
   hasRequiredData = false,
 }: ContentInsightsSectionProps) {
   const router = useRouter();
@@ -67,14 +64,12 @@ export function ContentInsightsSection({
   return (
     <CardContent className="p-6">
       <>
-        {/* STATE 1: Пользователь никогда не нажимал кнопку "Получить Content Intelligence" */}
-        {!hasShownContent ? (
+        {!contentData ? (
+          /* Данные не загружены - показываем кнопку */
           <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
             <div className="flex flex-col items-center justify-center gap-4">
               <p className="text-center">
-                {!hasRequiredData
-                  ? "Загрузите видео канала, чтобы получить анализ контент-аналитики."
-                  : "Нет данных. Нажмите «Получить Content Intelligence», чтобы загрузить анализ."}
+                Нажмите кнопку ниже, чтобы получить анализ контент-аналитики.
               </p>
               <Button
                 onClick={() => handleGetContent()}
@@ -86,24 +81,8 @@ export function ContentInsightsSection({
               </Button>
             </div>
           </div>
-        ) : !contentData ? (
-          /* Пользователь нажимал кнопку, но данные не найдены */
-          <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
-            <p className="text-center">
-              Анализ контент-аналитики не найден. Попробуйте получить Content Intelligence ещё раз.
-            </p>
-            <Button
-              onClick={() => handleGetContent()}
-              variant="outline"
-              size="sm"
-              className="mt-4"
-              disabled={loadingContent}
-            >
-              {loadingContent ? "Анализируем..." : "Получить Content Intelligence"}
-            </Button>
-          </div>
         ) : (
-          /* STATE 2: Есть данные контент-аналитики */
+          /* Данные загружены - показываем анализ */
           <ContentIntelligenceBlock
             channelId={channelId}
             initialData={contentData}

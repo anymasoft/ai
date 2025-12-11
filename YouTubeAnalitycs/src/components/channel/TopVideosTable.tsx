@@ -30,10 +30,6 @@ interface VideoData {
 
 interface TopVideosTableProps {
   videos: VideoData[];
-  /** Синхронизировал ли пользователь видео этого канала */
-  hasSyncedTopVideos?: boolean;
-  /** Нажал ли пользователь "Показать топ-видео" */
-  hasShownVideos?: boolean;
   /** План пользователя для определения лимитов */
   userPlan?: UserPlan;
   /** ID конкурента для вызова API */
@@ -53,11 +49,10 @@ function formatViews(views: number): string {
   return views.toString();
 }
 
-export function TopVideosTable({ videos, hasSyncedTopVideos = false, hasShownVideos = false, userPlan = "free", channelId }: TopVideosTableProps) {
+export function TopVideosTable({ videos, userPlan = "free", channelId }: TopVideosTableProps) {
   const router = useRouter();
   const [refreshingId, setRefreshingId] = useState<string | null>(null);
   const [videoList, setVideoList] = useState(videos);
-  const [showingVideos, setShowingVideos] = useState(false);
 
   // Состояние для постраничной загрузки
   const [page, setPage] = useState(0);
@@ -82,34 +77,6 @@ export function TopVideosTable({ videos, hasSyncedTopVideos = false, hasShownVid
     }
   };
 
-  const handleShowVideos = async () => {
-    if (!channelId) {
-      console.error("channelId not provided");
-      return;
-    }
-
-    setShowingVideos(true);
-    try {
-      const res = await fetch(`/api/channel/${channelId}/videos/show`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-      });
-
-      const result = await res.json();
-
-      if (!res.ok) {
-        console.error("Failed to show videos:", result.error);
-        return;
-      }
-
-      // Обновляем UI после успешного вызова
-      router.refresh();
-    } catch (err) {
-      console.error("Ошибка при показе видео:", err);
-    } finally {
-      setShowingVideos(false);
-    }
-  };
 
   // Загружаем следующую страницу видео
   const loadMore = async () => {
@@ -151,32 +118,8 @@ export function TopVideosTable({ videos, hasSyncedTopVideos = false, hasShownVid
         </CardDescription>
       </CardHeader>
       <CardContent className="p-0">
-        {/* Сценарий A: пользователь ещё не синхронизировал видео */}
-        {!hasSyncedTopVideos ? (
-          <div className="flex flex-col items-center justify-center py-12 text-muted-foreground px-4">
-            <p className="text-center">
-              Нет данных. Нажмите &quot;Sync Top Videos&quot; чтобы загрузить видео канала.
-            </p>
-          </div>
-        ) : !hasShownVideos ? (
-          /* Сценарий B: синхронизировано, но "Показать" ещё не нажимали */
-          <div className="flex flex-col items-center justify-center py-12 text-muted-foreground px-4">
-            <div className="flex flex-col items-center justify-center gap-4">
-              <p className="text-center">
-                Нет данных. Нажмите кнопку ниже, чтобы загрузить топ-видео.
-              </p>
-              <Button
-                onClick={() => handleShowVideos()}
-                variant="default"
-                size="sm"
-                disabled={showingVideos}
-              >
-                {showingVideos ? "Загружаем..." : "Показать топ-видео"}
-              </Button>
-            </div>
-          </div>
-        ) : sortedVideos.length === 0 ? (
-          /* Сценарий C: синхронизировано и показано, но видео нет в БД */
+        {sortedVideos.length === 0 ? (
+          /* Нет видео в БД */
           <div className="flex flex-col items-center justify-center py-12 text-muted-foreground px-4">
             <p className="text-center">
               Видео не найдены. Попробуйте синхронизировать ещё раз.
@@ -256,7 +199,7 @@ export function TopVideosTable({ videos, hasSyncedTopVideos = false, hasShownVid
         )}
 
         {/* Кнопка "Показать ещё 12" — только если есть ещё видео и пользователь может загружать */}
-        {hasShownVideos && canLoadMoreVideos(userPlan) && hasMore && (
+        {canLoadMoreVideos(userPlan) && hasMore && (
           <div className="flex justify-center mt-6 px-4 pb-4">
             <Button
               onClick={loadMore}
