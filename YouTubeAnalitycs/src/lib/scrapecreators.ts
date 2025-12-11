@@ -940,18 +940,24 @@ export async function getYoutubeVideoComments(params: {
 
       // Нормализуем комментарии
       // ВАЖНО: API возвращает вложенные объекты author и engagement
-      // Структура: comment.author.{name, channelId, isCreator, isVerified}
-      //            comment.engagement.{likes, replies}
+      // Структура ScrapeCreators: comment.author.{name, channelId, isCreator, isVerified}
+      //                           comment.engagement.{likes, replies}
+      //
+      // Названия полей ДОЛЖНЫ совпадать с sync-channel-comments.ts:
+      // - content → text (текст комментария)
+      // - publishedTime → publishedAt (дата публикации)
+      // - author.name → author (имя автора)
+      // - engagement.likes → likes (количество лайков)
       const normalizedComments = comments.map((comment: any) => ({
         id: String(comment.id || comment.commentId || ""),
-        content: String(comment.content || comment.text || ""),
-        publishedTime: String(comment.publishedTime || ""),
+        text: String(comment.content || comment.text || ""),  // ✅ ИСПРАВЛЕНО: content → text
+        publishedAt: String(comment.publishedTime || ""),     // ✅ ИСПРАВЛЕНО: publishedTime → publishedAt
         replyLevel: safeNumber(comment.replyLevel ?? comment.level, 0),
         // engagement - вложенный объект
         likes: safeNumber(comment.engagement?.likes ?? comment.likes ?? 0, 0),
         replies: safeNumber(comment.engagement?.replies ?? comment.replies ?? 0, 0),
-        // author - вложенный объект
-        authorName: String(comment.author?.name || comment.authorName || "Unknown"),
+        // author - вложенный объект (в sync-channel-comments используется только имя)
+        author: String(comment.author?.name || comment.authorName || "Unknown"),  // ✅ ИСПРАВЛЕНО: authorName → author
         authorChannelId: String(comment.author?.channelId || comment.authorChannelId || ""),
         isVerified: Boolean(comment.author?.isVerified ?? comment.isVerified ?? false),
         isCreator: Boolean(comment.author?.isCreator ?? comment.isCreator ?? false),
