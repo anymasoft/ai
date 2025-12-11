@@ -76,7 +76,7 @@ export function DeepCommentAnalysisSection({
                 onClick={() => handleGetDeepAnalysis()}
                 variant="default"
                 size="sm"
-                disabled={loadingDeepAnalysis || !hasRequiredData}
+                disabled={loadingDeepAnalysis}
               >
                 {loadingDeepAnalysis ? "Анализируем..." : "Получить Deep Analysis"}
               </Button>

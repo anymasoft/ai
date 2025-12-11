@@ -75,7 +75,7 @@ export function ContentInsightsSection({
                 onClick={() => handleGetContent()}
                 variant="default"
                 size="sm"
-                disabled={loadingContent || !hasRequiredData}
+                disabled={loadingContent}
               >
                 {loadingContent ? "Анализируем..." : "Получить Content Intelligence"}
               </Button>
