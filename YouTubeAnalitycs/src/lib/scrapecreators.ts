@@ -438,52 +438,39 @@ export async function getYoutubeChannelVideos(
 
   console.log("[ScrapeCreators] Начало загрузки видео для channelId:", channelId, "handle:", handle, "maxVideos limit:", maxVideos || "unlimited", "continuationToken:", continuationToken ? "present" : "none");
 
-  // Сначала пробуем с channelId
+  // СТРАТЕГИЯ: сначала пробуем handle (более надёжный), потом channelId
+  // API возвращает видео через handle надёжнее и БЕЗ параметров уже отсортировано по популярности
+  if (handle) {
+    try {
+      console.log("[ScrapeCreators] Пробуем получить видео через handle (ПЕРВАЯ попытка)");
+      const result = await fetchVideosFromAPI(apiKey, "handle", handle, maxVideos, continuationToken);
+
+      if (result.videos.length > 0) {
+        console.log(`[ScrapeCreators] ✅ Через handle получено ${result.videos.length} видео`);
+        return result;
+      } else {
+        console.log("[ScrapeCreators] Handle вернул 0 видео, пробуем channelId");
+      }
+    } catch (error) {
+      console.warn("[ScrapeCreators] Ошибка при запросе через handle:", error instanceof Error ? error.message : error);
+    }
+  }
+
+  // Fallback на channelId если handle не сработал или недоступен
   try {
+    console.log("[ScrapeCreators] Пробуем получить видео через channelId (FALLBACK)");
     const result = await fetchVideosFromAPI(apiKey, "channelId", channelId, maxVideos, continuationToken);
 
-    // ВАЖНО: если channelId вернул пустой результат но есть handle, попробовать с handle
-    if (result.videos.length === 0 && handle) {
-      console.log("[ScrapeCreators] ⚠️ FALLBACK: channelId вернул 0 видео для", { channelId, handle });
-      try {
-        console.log("[ScrapeCreators] Fallback: пробуем получить видео через handle...");
-        const fallbackResult = await fetchVideosFromAPI(apiKey, "handle", handle, maxVideos, continuationToken);
-        console.log("[ScrapeCreators] Fallback результат:", { videosCount: fallbackResult.videos.length });
-
-        if (fallbackResult.videos.length > 0) {
-          console.log(`[ScrapeCreators] ✅ Fallback сработал! Получено ${fallbackResult.videos.length} видео через handle`);
-          return fallbackResult;
-        } else {
-          console.log("[ScrapeCreators] ⚠️ Fallback на handle вернул тоже 0 видео");
-        }
-      } catch (fallbackError) {
-        console.error("[ScrapeCreators] ❌ Fallback на handle выбросил ошибку:", {
-          errorMessage: fallbackError instanceof Error ? fallbackError.message : String(fallbackError),
-          handle,
-          channelId
-        });
-        // Если fallback тоже не сработал, возвращаем пустой результат с логированием
-      }
+    if (result.videos.length > 0) {
+      console.log(`[ScrapeCreators] ✅ Через channelId получено ${result.videos.length} видео`);
+      return result;
+    } else {
+      console.log("[ScrapeCreators] ❌ Ни handle ни channelId не вернули видео");
+      return { videos: [], continuationToken: null };
     }
-
-    console.log("[ScrapeCreators] Возвращаем результат (channelId):", { videosCount: result.videos.length, channelId, handle });
-    return result;
   } catch (error) {
-    console.warn("[ScrapeCreators] Не удалось загрузить по channelId:", error instanceof Error ? error.message : error);
-
-    // Если есть handle - пробуем fallback
-    if (handle) {
-      console.log("[ScrapeCreators] Ошибка channelId - попробуем fallback на handle");
-      try {
-        return await fetchVideosFromAPI(apiKey, "handle", handle, maxVideos, continuationToken);
-      } catch (fallbackError) {
-        console.error("[ScrapeCreators] Fallback на handle тоже не сработал:", fallbackError instanceof Error ? fallbackError.message : fallbackError);
-        throw new Error("ScrapeCreators: videos unavailable for this channel");
-      }
-    }
-
-    // Если handle нет - пробрасываем оригинальную ошибку
-    throw error;
+    console.error("[ScrapeCreators] Ошибка при запросе через channelId:", error instanceof Error ? error.message : error);
+    throw new Error("ScrapeCreators: videos unavailable for this channel");
   }
 }
 
@@ -505,16 +492,17 @@ async function fetchVideosFromAPI(
   let pageCount = 0;
   const maxPages = 5; // Ограничение на количество страниц для избежания бесконечных циклов
 
-  // Стратегия: пробуем разные комбинации параметров ТОЛЬКО для sort=popular
-  // КРИТИЧЕСКИ ВАЖНО: НИКОГДА не используем sort=latest - это может вернуть рандомные видео
-  // Пробуем только вариации includeExtras параметра
+  // Стратегия: пробуем разные комбинации параметров
+  // КРИТИЧЕСКИ ВАЖНО: ТОЛЬКО sort=popular и no-sort, никогда sort=latest!
+  // API уже возвращает видео отсортированные по популярности без параметров
   type SortStrategy = {
-    sort: string;
+    sort?: string;
     includeExtras?: string;
     label: string;
   };
 
   const sortStrategies: SortStrategy[] = [
+    { label: "no params (default popular)" },
     { sort: "popular", includeExtras: "true", label: "popular+extras" },
     { sort: "popular", label: "popular only" },
   ];
