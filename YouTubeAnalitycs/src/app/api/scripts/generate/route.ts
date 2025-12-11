@@ -118,7 +118,7 @@ async function collectVideoData(
   const videosResult = await db.execute({
     sql: `
       SELECT
-        videoId, channelId, title, viewCount, likeCount, commentCount, publishDate
+        videoId, channelId, title, viewCountInt, likeCountInt, commentCountInt, publishDate
       FROM channel_videos
       WHERE videoId IN (${placeholders})
     `,
@@ -131,7 +131,7 @@ async function collectVideoData(
 
   // Рассчитываем viewsPerDay для всех видео
   const videosWithMetrics = videosResult.rows.map(row => {
-    const viewCount = Number(row.viewCount) || 0;
+    const viewCount = Number(row.viewCountInt) || 0;
     const publishDate = row.publishDate as string;
     const days = daysSincePublish(publishDate);
     const viewsPerDay = viewCount / days;
@@ -141,8 +141,8 @@ async function collectVideoData(
       channelId: row.channelId as string,
       title: row.title as string,
       viewCount,
-      likeCount: row.likeCount ? Number(row.likeCount) : undefined,
-      commentCount: row.commentCount ? Number(row.commentCount) : undefined,
+      likeCount: row.likeCountInt ? Number(row.likeCountInt) : undefined,
+      commentCount: row.commentCountInt ? Number(row.commentCountInt) : undefined,
       publishDate,
       viewsPerDay,
     };

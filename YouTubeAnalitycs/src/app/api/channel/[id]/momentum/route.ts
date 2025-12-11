@@ -8,7 +8,7 @@ interface VideoWithMomentum {
   id: number;
   videoId: string;
   title: string;
-  viewCount: number;
+  viewCountInt: number;
   publishDate: string | null; // Может быть null если API не вернул дату
   viewsPerDay: number;
   momentumScore: number;
@@ -148,13 +148,13 @@ export async function POST(
     // Вычисляем views_per_day для каждого видео
     const videosWithMetrics: VideoWithMomentum[] = videosWithValidDates.map((v: any) => {
       const days = daysSincePublish(v.publishDate as string);
-      const viewsPerDay = (v.viewCount as number) / days;
+      const viewsPerDay = (v.viewCountInt as number) / days;
 
       return {
         id: v.id as number,
         videoId: v.videoId as string,
         title: v.title as string,
-        viewCount: v.viewCount as number,
+        viewCountInt: v.viewCountInt as number,
         publishDate: v.publishDate as string,
         viewsPerDay,
         momentumScore: 0, // Будет вычислен позже
@@ -205,7 +205,7 @@ export async function POST(
     // Подготовка данных для OpenAI
     const videosForAnalysis = highMomentumVideos.map(v => ({
       title: v.title,
-      viewCount: v.viewCount,
+      viewCount: v.viewCountInt,
       viewsPerDay: Math.round(v.viewsPerDay),
       momentumScore: `+${(v.momentumScore * 100).toFixed(0)}%`,
     }));
@@ -265,7 +265,7 @@ ${JSON.stringify(videosForAnalysis, null, 2)}
       highMomentumVideos: highMomentumVideos.slice(0, 10).map(v => ({
         videoId: v.videoId,
         title: v.title,
-        viewCount: v.viewCount,
+        viewCount: v.viewCountInt,
         viewsPerDay: Math.round(v.viewsPerDay),
         momentumScore: v.momentumScore,
         publishDate: v.publishDate,

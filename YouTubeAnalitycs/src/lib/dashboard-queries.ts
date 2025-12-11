@@ -113,7 +113,7 @@ export const getDashboardKPI = cache(async (userId: string): Promise<KPIData> =>
 
     const videosResult = await db.execute({
       sql: `
-        SELECT videoId, channelId, title, viewCount, publishDate
+        SELECT videoId, channelId, title, viewCountInt, publishDate
         FROM channel_videos
         WHERE channelId IN (${placeholders})
       `,
@@ -138,7 +138,7 @@ export const getDashboardKPI = cache(async (userId: string): Promise<KPIData> =>
       const videosWithMomentum = validRows.map(row => {
         const publishDateMs = new Date(row.publishDate as string).getTime();
         const daysSincePublish = Math.max(1, (now - publishDateMs) / (1000 * 60 * 60 * 24));
-        const viewsPerDay = (Number(row.viewCount) || 0) / daysSincePublish;
+        const viewsPerDay = (Number(row.viewCountInt) || 0) / daysSincePublish;
 
         return {
           videoId: row.videoId as string,
@@ -221,7 +221,7 @@ export const getVideoPerformance = cache(async (
   // ИСТОЧНИК ДАТЫ: колонка publishDate
   const videosResult = await db.execute({
     sql: `
-      SELECT videoId, channelId, title, thumbnailUrl, viewCount, likeCount, commentCount, publishDate
+      SELECT videoId, channelId, title, thumbnailUrl, viewCountInt, likeCountInt, commentCountInt, publishDate
       FROM channel_videos
       WHERE channelId IN (${placeholders})
       ORDER BY publishDate DESC
@@ -263,7 +263,7 @@ export const getVideoPerformance = cache(async (
   const videosWithMetrics: VideoPerformance[] = validRows.map(row => {
     const publishDateMs = new Date(row.publishDate as string).getTime();
     const daysSincePublish = Math.max(1, (now - publishDateMs) / (1000 * 60 * 60 * 24));
-    const viewsPerDay = (Number(row.viewCount) || 0) / daysSincePublish;
+    const viewsPerDay = (Number(row.viewCountInt) || 0) / daysSincePublish;
     const channelId = row.channelId as string;
 
     return {
@@ -272,9 +272,9 @@ export const getVideoPerformance = cache(async (
       channelId,
       channelTitle: channelTitleMap.get(channelId) || "Unknown",
       thumbnailUrl: row.thumbnailUrl as string | null,
-      viewCount: Number(row.viewCount) || 0,
-      likeCount: Number(row.likeCount) || 0,
-      commentCount: Number(row.commentCount) || 0,
+      viewCount: Number(row.viewCountInt) || 0,
+      likeCount: Number(row.likeCountInt) || 0,
+      commentCount: Number(row.commentCountInt) || 0,
       publishDate: row.publishDate as string,
       viewsPerDay,
       momentumScore: 0,

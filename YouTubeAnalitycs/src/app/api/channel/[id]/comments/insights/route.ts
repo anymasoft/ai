@@ -61,7 +61,7 @@ export async function POST(
 
     // Получаем топ 15 видео канала
     const videosResult = await client.execute({
-      sql: "SELECT * FROM channel_videos WHERE channelId = ? ORDER BY viewCount DESC LIMIT 15",
+      sql: "SELECT * FROM channel_videos WHERE channelId = ? ORDER BY viewCountInt DESC LIMIT 15",
       args: [competitor.channelId],
     });
 

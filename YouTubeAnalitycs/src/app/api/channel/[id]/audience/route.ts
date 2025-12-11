@@ -7,9 +7,9 @@ import OpenAI from "openai";
 interface VideoWithEngagement {
   id: number;
   title: string;
-  viewCount: number;
-  likeCount: number;
-  commentCount: number;
+  viewCountInt: number;
+  likeCountInt: number;
+  commentCountInt: number;
   publishDate: string | null; // Может быть null если API не вернул дату
   durationSeconds: number | null;
   isShort: boolean;
@@ -151,11 +151,11 @@ export async function POST(
       id: row.id as number,
       videoId: row.videoId as string,
       title: row.title as string,
-      viewCount: row.viewCount as number,
-      likeCount: row.likeCount as number,
-      commentCount: row.commentCount as number,
+      viewCountInt: row.viewCountInt as number,
+      likeCountInt: row.likeCountInt as number,
+      commentCountInt: row.commentCountInt as number,
       publishDate: row.publishDate as string,
-      duration: row.duration as number | null,
+      durationSeconds: row.durationSeconds as number | null,
     }));
 
     console.log(`[Audience] Найдено ${videos.length} видео для анализа`);
@@ -205,8 +205,8 @@ export async function POST(
       if (detailsResult.rows.length > 0) {
         const details = detailsResult.rows[0];
         if ((details.updatedAt as number) > sevenDaysAgo) {
-          video.likeCount = details.likeCount as number;
-          video.commentCount = details.commentCount as number;
+          video.likeCountInt = details.likeCount as number;
+          video.commentCountInt = details.commentCount as number;
           enrichedCount++;
         }
       }
@@ -215,7 +215,7 @@ export async function POST(
     console.log(`[Audience] Обогащено ${enrichedCount} видео из videoDetails`);
 
     // Проверяем наличие данных о лайках и комментариях
-    const hasEngagementData = videosWithValidDates.some(v => v.likeCount > 0 || v.commentCount > 0);
+    const hasEngagementData = videosWithValidDates.some(v => v.likeCountInt > 0 || v.commentCountInt > 0);
     const usingFallback = !hasEngagementData;
 
     console.log(`[Audience] Режим анализа: ${usingFallback ? 'FALLBACK (proxy metrics)' : 'STANDARD (likes+comments)'}`);
@@ -223,24 +223,24 @@ export async function POST(
     // Вычисляем engagement метрики для каждого видео
     const videosWithMetrics: VideoWithEngagement[] = videosWithValidDates.map(v => {
       const days = daysSincePublish(v.publishDate as string);
-      const viewsPerDay = v.viewCount / days;
-      const likeRate = v.viewCount > 0 ? v.likeCount / v.viewCount : 0;
-      const commentRate = v.viewCount > 0 ? v.commentCount / v.viewCount : 0;
+      const viewsPerDay = v.viewCountInt / days;
+      const likeRate = v.viewCountInt > 0 ? v.likeCountInt / v.viewCountInt : 0;
+      const commentRate = v.viewCountInt > 0 ? v.commentCountInt / v.viewCountInt : 0;
       const titleScore = calculateTitleScore(v.title);
 
       // Вычисляем momentum_score (упрощенная версия без БД)
       const momentumScore = 0; // TODO: можно интегрировать с momentum_insights если нужно
 
       // Вычисляем durationSeconds и isShort
-      const durationSeconds = v.duration ? Math.round(v.duration) : null;
+      const durationSeconds = v.durationSeconds ? Math.round(v.durationSeconds) : null;
       const isShort = durationSeconds ? durationSeconds < 60 : false;
 
       return {
         id: v.id,
         title: v.title,
-        viewCount: v.viewCount,
-        likeCount: v.likeCount,
-        commentCount: v.commentCount,
+        viewCountInt: v.viewCountInt,
+        likeCountInt: v.likeCountInt,
+        commentCountInt: v.commentCountInt,
         publishDate: v.publishDate,
         durationSeconds,
         isShort,
@@ -354,12 +354,12 @@ export async function POST(
     // Подготовка данных для OpenAI
     const videosForAnalysis = highEngagementVideos.map(v => ({
       title: v.title,
-      views: v.viewCount,
+      views: v.viewCountInt,
       publishDate: v.publishDate,
       durationSeconds: v.durationSeconds,
       isShort: v.isShort,
-      likes: v.likeCount,
-      comments: v.commentCount,
+      likes: v.likeCountInt,
+      comments: v.commentCountInt,
       engagementRate: `${((v.likeRate + v.commentRate) * 100).toFixed(2)}%`,
       viewsPerDay: Math.round(v.viewsPerDay),
       engagementScore: v.engagementScore.toFixed(6),
@@ -505,9 +505,9 @@ ${JSON.stringify(videosForAnalysis, null, 2)}
     const audienceData = {
       highEngagementVideos: highEngagementVideos.slice(0, 10).map(v => ({
         title: v.title,
-        viewCount: v.viewCount,
-        likeCount: v.likeCount,
-        commentCount: v.commentCount,
+        viewCount: v.viewCountInt,
+        likeCount: v.likeCountInt,
+        commentCount: v.commentCountInt,
         engagementScore: v.engagementScore,
         likeRate: v.likeRate,
         commentRate: v.commentRate,

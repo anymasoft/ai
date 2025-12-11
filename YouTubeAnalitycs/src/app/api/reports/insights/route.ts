@@ -37,11 +37,11 @@ export async function GET(req: NextRequest) {
     // Получаем видео за период
     const periodStart = Date.now() - validPeriod * 24 * 60 * 60 * 1000
     const videosResult = await db.execute({
-      sql: `SELECT v.videoId, v.channelId, v.title, v.viewCount, v.likeCount, v.publishDate, c.title as channelTitle
+      sql: `SELECT v.videoId, v.channelId, v.title, v.viewCountInt, v.likeCountInt, v.publishDate, c.title as channelTitle
             FROM channel_videos v
             JOIN competitors c ON v.channelId = c.channelId
             WHERE v.channelId IN (${placeholders})
-            ORDER BY v.viewCount DESC
+            ORDER BY v.viewCountInt DESC
             LIMIT 50`,
       args: channelIds,
     })
@@ -59,7 +59,7 @@ export async function GET(req: NextRequest) {
         }
       })
       .map((row) => {
-        const viewCount = Number(row.viewCount)
+        const viewCount = Number(row.viewCountInt)
         const publishDate = new Date(row.publishDate as string)
         const daysOld = Math.max(1, (Date.now() - publishDate.getTime()) / (1000 * 60 * 60 * 24))
         const viewsPerDay = viewCount / daysOld
@@ -69,7 +69,7 @@ export async function GET(req: NextRequest) {
           title: row.title as string,
           channelTitle: row.channelTitle as string,
           viewCount,
-          likeCount: Number(row.likeCount),
+          likeCount: Number(row.likeCountInt),
           viewsPerDay: Math.round(viewsPerDay),
           publishDate: publishDate.toLocaleDateString("en-US"),
         }

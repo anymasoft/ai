@@ -125,7 +125,7 @@ export async function analyzeChannel(
     const videosResult = await dbClient.execute({
       sql: `SELECT * FROM channel_videos
             WHERE channelId = ?
-            ORDER BY viewCount DESC
+            ORDER BY viewCountInt DESC
             LIMIT 20`,
       args: [competitor.channelId],
     });
@@ -141,15 +141,15 @@ export async function analyzeChannel(
       videoId: row.videoId as string,
       title: row.title as string,
       publishDate: row.publishDate as string,
-      viewCount: row.viewCount as number,
-      likeCount: row.likeCount as number,
-      commentCount: row.commentCount as number,
-      duration: row.duration as string | undefined,
+      viewCount: row.viewCountInt as number,
+      likeCount: row.likeCountInt as number,
+      commentCount: row.commentCountInt as number,
+      duration: row.durationSeconds as string | undefined,
       description: (row.data ? JSON.parse(row.data as string).snippet?.description : '') || '',
       engagement: calculateEngagement(
-        row.viewCount as number,
-        row.likeCount as number,
-        row.commentCount as number
+        row.viewCountInt as number,
+        row.likeCountInt as number,
+        row.commentCountInt as number
       ),
     }));
 
