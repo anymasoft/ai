@@ -107,6 +107,11 @@ export async function POST(
       authorName: c.author,
     }));
 
+    console.log(`[CommentInsights] topComments prepared: ${topComments.length} comments`);
+    if (topComments.length > 0) {
+      console.log(`[CommentInsights] First comment sample:`, topComments[0]);
+    }
+
     // Инициализация OpenAI клиента
     const openai = new OpenAI({
       apiKey: process.env.OPENAI_API_KEY,
@@ -160,9 +165,32 @@ ${JSON.stringify(topComments, null, 2)}
     }
 
     console.log(`[CommentInsights] Получен ответ от OpenAI`);
+    console.log(`[CommentInsights] Raw response from OpenAI:`, responseText);
 
     // Парсим JSON ответ
-    const aiAnalysis = JSON.parse(responseText);
+    let aiAnalysis;
+    try {
+      aiAnalysis = JSON.parse(responseText);
+    } catch (parseErr) {
+      console.error(`[CommentInsights] JSON parse error:`, parseErr);
+      console.error(`[CommentInsights] Response text:`, responseText);
+      throw new Error(`Failed to parse OpenAI response: ${parseErr instanceof Error ? parseErr.message : String(parseErr)}`);
+    }
+
+    console.log(`[CommentInsights] Parsed AI analysis:`, JSON.stringify(aiAnalysis, null, 2));
+
+    // Валидируем структуру ответа от OpenAI
+    const validatedAnalysis = {
+      audienceInterests: Array.isArray(aiAnalysis.audienceInterests) ? aiAnalysis.audienceInterests : [],
+      audiencePainPoints: Array.isArray(aiAnalysis.audiencePainPoints) ? aiAnalysis.audiencePainPoints : [],
+      requestedTopics: Array.isArray(aiAnalysis.requestedTopics) ? aiAnalysis.requestedTopics : [],
+      complaints: Array.isArray(aiAnalysis.complaints) ? aiAnalysis.complaints : [],
+      praises: Array.isArray(aiAnalysis.praises) ? aiAnalysis.praises : [],
+      nextVideoIdeasFromAudience: Array.isArray(aiAnalysis.nextVideoIdeasFromAudience) ? aiAnalysis.nextVideoIdeasFromAudience : [],
+      explanation: typeof aiAnalysis.explanation === "string" ? aiAnalysis.explanation : "No explanation provided",
+    };
+
+    console.log(`[CommentInsights] Validated analysis:`, JSON.stringify(validatedAnalysis, null, 2));
 
     // Формируем итоговые данные
     const insightsData = {
@@ -171,7 +199,7 @@ ${JSON.stringify(topComments, null, 2)}
         analyzedComments: topComments.length,
         totalVideos: videos.length,
       },
-      ...aiAnalysis,
+      ...validatedAnalysis,
     };
 
     const now = Date.now();
