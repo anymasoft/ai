@@ -203,7 +203,27 @@ export async function POST(req: NextRequest) {
           totalVideos: syncResult.totalVideos,
         });
 
-        // Автоматическая синхронизация комментариев
+        // ❌ КРИТИЧЕСКИ ВАЖНО: если видео не получены - удаляем конкурента и отказываем добавление
+        if (!syncResult.success || syncResult.totalVideos === 0) {
+          console.error("[Competitors POST] ❌ Видео не получены! Отказываем добавление канала");
+
+          // Удаляем только что добавленного конкурента из БД
+          await db.execute({
+            sql: "DELETE FROM competitors WHERE id = ?",
+            args: [(newCompetitor as any).id],
+          });
+          console.log("[Competitors POST] Конкурент удален из БД");
+
+          return NextResponse.json(
+            {
+              error: "Невозможно получить видео канала. Попробуйте позже — возможно, YouTube временно ограничил доступ к данным.",
+              code: "NO_VIDEOS_AVAILABLE"
+            },
+            { status: 400 }
+          );
+        }
+
+        // Автоматическая синхронизация комментариев (только если видео успешно получены)
         console.log("[Competitors POST] Начинаем автоматическую синхронизацию комментариев для channelId:", newCompetitor.channelId);
         try {
           const commentsResult = await syncChannelComments(newCompetitor.channelId as string);
@@ -216,9 +236,22 @@ export async function POST(req: NextRequest) {
           // Не прерываем процесс добавления конкурента если синхронизация комментариев упала
         }
       } catch (syncError) {
-        console.error("[Competitors POST] Ошибка синхронизации видео (non-critical):", syncError);
-        // Не прерываем процесс добавления конкурента если синхронизация упала
-        // Пользователь может вручную обновить позже
+        console.error("[Competitors POST] Ошибка синхронизации видео:", syncError);
+
+        // Удаляем конкурента при критической ошибке синхронизации
+        await db.execute({
+          sql: "DELETE FROM competitors WHERE id = ?",
+          args: [(newCompetitor as any).id],
+        });
+        console.log("[Competitors POST] Конкурент удален из БД после ошибки");
+
+        return NextResponse.json(
+          {
+            error: "Ошибка при получении видео канала. Пожалуйста, попробуйте снова.",
+            code: "SYNC_ERROR"
+          },
+          { status: 400 }
+        );
       }
     }
 

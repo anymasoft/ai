@@ -428,7 +428,9 @@ export async function getYoutubeChannelVideos(
   channelId: string,
   handle?: string,
   maxVideos?: number,
-  continuationToken?: string | null  // ИТЕРАЦИЯ 11: поддержка пагинации
+  continuationToken?: string | null,  // ИТЕРАЦИЯ 11: поддержка пагинации
+  channelUrl?: string,  // НОВОЕ: прямой URL канала (самый надежный способ)
+  sortBy?: "popular" | "latest"  // НОВОЕ: параметр сортировки для fallback логики
 ): Promise<ChannelVideosResponse> {
   const apiKey = process.env.SCRAPECREATORS_API_KEY;
 
@@ -436,17 +438,40 @@ export async function getYoutubeChannelVideos(
     throw new Error("SCRAPECREATORS_API_KEY is not configured");
   }
 
-  console.log("[ScrapeCreators] Начало загрузки видео для channelId:", channelId, "handle:", handle, "maxVideos limit:", maxVideos || "unlimited", "continuationToken:", continuationToken ? "present" : "none");
+  console.log("[ScrapeCreators] Начало загрузки видео", {
+    channelUrl,
+    handle,
+    channelId,
+    maxVideos: maxVideos || "unlimited",
+    sortBy: sortBy || "popular (default)",
+    continuationToken: continuationToken ? "present" : "none"
+  });
 
-  // СТРАТЕГИЯ: сначала пробуем handle (более надёжный), потом channelId
-  // API возвращает видео через handle надёжнее и БЕЗ параметров уже отсортировано по популярности
-  if (handle) {
+  // СТРАТЕГИЯ: сначала пробуем URL (самый надёжный!), потом handle, потом channelId
+  if (channelUrl) {
     try {
-      console.log("[ScrapeCreators] Пробуем получить видео через handle (ПЕРВАЯ попытка)");
-      const result = await fetchVideosFromAPI(apiKey, "handle", handle, maxVideos, continuationToken);
+      console.log("[ScrapeCreators] 🔵 Пробуем получить видео через URL (ПЕРВАЯ попытка)");
+      const result = await fetchVideosFromAPI(apiKey, "url", channelUrl, maxVideos, continuationToken, sortBy);
 
       if (result.videos.length > 0) {
-        console.log(`[ScrapeCreators] ✅ Через handle получено ${result.videos.length} видео`);
+        console.log(`[ScrapeCreators] ✅ Через URL получено ${result.videos.length} видео (sort=${sortBy})`);
+        return result;
+      } else {
+        console.log("[ScrapeCreators] URL вернул 0 видео, пробуем handle");
+      }
+    } catch (error) {
+      console.warn("[ScrapeCreators] Ошибка при запросе через URL:", error instanceof Error ? error.message : error);
+    }
+  }
+
+  // Fallback на handle
+  if (handle) {
+    try {
+      console.log("[ScrapeCreators] 🟡 Пробуем получить видео через handle (ВТОРАЯ попытка)");
+      const result = await fetchVideosFromAPI(apiKey, "handle", handle, maxVideos, continuationToken, sortBy);
+
+      if (result.videos.length > 0) {
+        console.log(`[ScrapeCreators] ✅ Через handle получено ${result.videos.length} видео (sort=${sortBy})`);
         return result;
       } else {
         console.log("[ScrapeCreators] Handle вернул 0 видео, пробуем channelId");
@@ -456,16 +481,16 @@ export async function getYoutubeChannelVideos(
     }
   }
 
-  // Fallback на channelId если handle не сработал или недоступен
+  // Fallback на channelId если URL и handle не сработали или недоступны
   try {
-    console.log("[ScrapeCreators] Пробуем получить видео через channelId (FALLBACK)");
-    const result = await fetchVideosFromAPI(apiKey, "channelId", channelId, maxVideos, continuationToken);
+    console.log("[ScrapeCreators] 🔴 Пробуем получить видео через channelId (ТРЕТЬЯ попытка)");
+    const result = await fetchVideosFromAPI(apiKey, "channelId", channelId, maxVideos, continuationToken, sortBy);
 
     if (result.videos.length > 0) {
-      console.log(`[ScrapeCreators] ✅ Через channelId получено ${result.videos.length} видео`);
+      console.log(`[ScrapeCreators] ✅ Через channelId получено ${result.videos.length} видео (sort=${sortBy})`);
       return result;
     } else {
-      console.log("[ScrapeCreators] ❌ Ни handle ни channelId не вернули видео");
+      console.log("[ScrapeCreators] ❌ Ни URL ни handle ни channelId не вернули видео");
       return { videos: [], continuationToken: null };
     }
   } catch (error) {
@@ -482,27 +507,29 @@ export async function getYoutubeChannelVideos(
  */
 async function fetchVideosFromAPI(
   apiKey: string,
-  paramType: "channelId" | "handle",
+  paramType: "channelId" | "handle" | "url",
   paramValue: string,
   maxVideos?: number,
-  initialToken?: string | null  // ИТЕРАЦИЯ 11: поддержка пагинации
+  initialToken?: string | null,  // ИТЕРАЦИЯ 11: поддержка пагинации
+  sortBy?: "popular" | "latest"  // НОВОЕ: параметр сортировки
 ): Promise<ChannelVideosResponse> {
   const allVideos: VideoData[] = [];
   let continuationToken: string | null = initialToken || null;  // ИТЕРАЦИЯ 11: начинаем с переданного токена
   let pageCount = 0;
   const maxPages = 5; // Ограничение на количество страниц для избежания бесконечных циклов
 
-  // Стратегия: пробуем разные комбинации параметров с sort=popular
-  // КРИТИЧЕСКИ ВАЖНО: ТОЛЬКО sort=popular, НИКОГДА sort=latest!
+  // Стратегия: пробуем разные комбинации параметров
+  // Используем переданный sortBy или по умолчанию popular
   type SortStrategy = {
     sort: string;
     includeExtras?: string;
     label: string;
   };
 
+  const baseSortBy = sortBy || "popular";
   const sortStrategies: SortStrategy[] = [
-    { sort: "popular", label: "sort=popular only" },
-    { sort: "popular", includeExtras: "true", label: "sort=popular+extras" },
+    { sort: baseSortBy, label: `sort=${baseSortBy} only` },
+    { sort: baseSortBy, includeExtras: "true", label: `sort=${baseSortBy}+extras` },
   ];
 
   let currentStrategyIndex = 0;

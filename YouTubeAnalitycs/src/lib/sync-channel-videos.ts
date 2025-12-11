@@ -110,14 +110,17 @@ export async function syncChannelTopVideos(
       `[SyncVideos] В БД найдено ${existingVideosCount} видео, загружаем из API`
     );
 
-    // ШАГ 2: Получаем видео из ScrapeCreators (sort=popular)
+    // ШАГ 2: Получаем видео из ScrapeCreators (sort=popular, с fallback на sort=latest)
     let apiVideos;
     try {
-      console.log(`[SyncVideos] Запрашиваем видео из ScrapeCreators: channelId=${channelId}, handle=${handle}`);
-      const response = await getYoutubeChannelVideos(
+      console.log(`[SyncVideos] 🔵 Попытка 1: Запрашиваем видео (sort=popular) для channelId=${channelId}, handle=${handle}`);
+      let response = await getYoutubeChannelVideos(
         channelId,
         handle,
-        MAX_VIDEOS * 2 // Запрашиваем больше на случай фильтрации
+        MAX_VIDEOS * 2, // Запрашиваем больше на случай фильтрации
+        null,
+        undefined,
+        "popular"  // ПЕРВАЯ ПОПЫТКА: sort=popular
       );
 
       // IMPORTANT: response is ChannelVideosResponse { videos: [...], continuationToken: ... }
@@ -134,6 +137,33 @@ export async function syncChannelTopVideos(
           responseKeys: Object.keys(response)
         });
         throw new Error("API videos is not an array");
+      }
+
+      // FALLBACK: если popular вернул 0 видео, пробуем latest
+      if (apiVideos.length === 0) {
+        console.warn(`[SyncVideos] ⚠️ sort=popular вернул 0 видео. Пробуем FALLBACK: sort=latest`);
+        try {
+          const fallbackResponse = await getYoutubeChannelVideos(
+            channelId,
+            handle,
+            MAX_VIDEOS * 2,
+            null,
+            undefined,
+            "latest"  // FALLBACK: sort=latest
+          );
+
+          if (fallbackResponse && Array.isArray(fallbackResponse.videos) && fallbackResponse.videos.length > 0) {
+            console.log(`[SyncVideos] ✅ Fallback на sort=latest вернул ${fallbackResponse.videos.length} видео`);
+            apiVideos = fallbackResponse.videos;
+            response = fallbackResponse;
+          } else {
+            console.warn(`[SyncVideos] ❌ Fallback на sort=latest тоже вернул 0 видео`);
+          }
+        } catch (fallbackError) {
+          console.warn(`[SyncVideos] Ошибка при fallback на sort=latest:`, fallbackError instanceof Error ? fallbackError.message : fallbackError);
+        }
+      } else {
+        console.log(`[SyncVideos] ✅ sort=popular вернул ${apiVideos.length} видео`);
       }
 
       console.log(`[SyncVideos] Получено ${apiVideos.length} видео из API`, {
