@@ -162,19 +162,23 @@ export async function POST(
   req: NextRequest,
   context: { params: Promise<{ id: string }> }
 ) {
+  console.log("[ContentIntelligence] === POST HANDLER CALLED ===");
+
   try {
     const session = await getServerSession(authOptions);
 
     if (!session?.user?.id) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      console.log("[ContentIntelligence] Ошибка: нет сессии");
+      return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 401 });
     }
 
     const { id } = await context.params;
     const competitorId = parseInt(id, 10);
 
     if (!Number.isFinite(competitorId) || competitorId <= 0) {
+      console.log("[ContentIntelligence] Ошибка: некорректный ID");
       return NextResponse.json(
-        { error: "Invalid competitor ID" },
+        { ok: false, error: "Invalid competitor ID" },
         { status: 400 }
       );
     }
@@ -335,24 +339,46 @@ export async function POST(
 
     client.close();
 
-    return NextResponse.json({
+    const successResponse = {
+      ok: true,
       report: reportText,
       format: "markdown",
       ...(tablesJson && { tables: tablesJson }),
       generatedAt: Date.now(),
-    }, { status: 201 });
+    };
+
+    console.log("[ContentIntelligence] === УСПЕШНЫЙ ОТВЕТ ===");
+    console.log("[ContentIntelligence] report.length:", reportText.length);
+    console.log("[ContentIntelligence] response object keys:", Object.keys(successResponse));
+
+    return NextResponse.json(successResponse, { status: 201 });
 
   } catch (error) {
-    console.error("[ContentIntelligence] Ошибка:", error);
+    console.error("[ContentIntelligence] === ОШИБКА В CATCH ===");
+    console.error("[ContentIntelligence] error type:", typeof error);
+    console.error("[ContentIntelligence] error instanceof Error:", error instanceof Error);
+
+    if (error instanceof Error) {
+      console.error("[ContentIntelligence] error.message:", error.message);
+      console.error("[ContentIntelligence] error.stack:", error.stack);
+    } else {
+      console.error("[ContentIntelligence] error value:", String(error));
+    }
 
     const errorMessage = error instanceof Error
       ? (error.message || "Failed to generate content intelligence")
       : String(error) || "Failed to generate content intelligence";
 
-    return NextResponse.json(
-      { ok: false, error: errorMessage },
-      { status: 500 }
-    );
+    const errorResponse = {
+      ok: false,
+      error: errorMessage,
+      timestamp: new Date().toISOString(),
+    };
+
+    console.log("[ContentIntelligence] === ВОЗВРАЩАЕМ ОШИБКУ ===");
+    console.log("[ContentIntelligence] errorResponse:", errorResponse);
+
+    return NextResponse.json(errorResponse, { status: 500 });
   }
 }
 
@@ -360,19 +386,23 @@ export async function GET(
   req: NextRequest,
   context: { params: Promise<{ id: string }> }
 ) {
+  console.log("[ContentIntelligence] === GET HANDLER CALLED ===");
+
   try {
     const session = await getServerSession(authOptions);
 
     if (!session?.user?.id) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      console.log("[ContentIntelligence] Ошибка GET: нет сессии");
+      return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 401 });
     }
 
     const { id } = await context.params;
     const competitorId = parseInt(id, 10);
 
     if (!Number.isFinite(competitorId) || competitorId <= 0) {
+      console.log("[ContentIntelligence] Ошибка GET: некорректный ID");
       return NextResponse.json(
-        { error: "Invalid competitor ID" },
+        { ok: false, error: "Invalid competitor ID" },
         { status: 400 }
       );
     }
@@ -389,8 +419,9 @@ export async function GET(
 
     if (competitorResult.rows.length === 0) {
       client.close();
+      console.log("[ContentIntelligence] Ошибка GET: конкурент не найден");
       return NextResponse.json(
-        { error: "Competitor not found or access denied" },
+        { ok: false, error: "Competitor not found or access denied" },
         { status: 404 }
       );
     }
@@ -404,7 +435,8 @@ export async function GET(
 
     if (analysisResult.rows.length === 0) {
       client.close();
-      return NextResponse.json({ analysis: null });
+      console.log("[ContentIntelligence] GET: анализ не найден для канала");
+      return NextResponse.json({ ok: false, analysis: null, error: "No analysis found" });
     }
 
     const analysis = analysisResult.rows[0];
@@ -415,30 +447,53 @@ export async function GET(
 
     // Поддержка обоих форматов: старый JSON и новый markdown
     if (parsedData.format === "markdown" && parsedData.report) {
-      return NextResponse.json({
+      const getResponse = {
+        ok: true,
         report: parsedData.report,
         format: "markdown",
         ...(parsedData.tables && { tables: parsedData.tables }),
         generatedAt: analysis.generatedAt,
-      });
+      };
+      console.log("[ContentIntelligence] === GET УСПЕШНЫЙ ОТВЕТ (markdown) ===");
+      console.log("[ContentIntelligence] response keys:", Object.keys(getResponse));
+      return NextResponse.json(getResponse);
     }
 
     // Для обратной совместимости со старым JSON форматом
-    return NextResponse.json({
+    const compatResponse = {
+      ok: true,
       ...parsedData,
       generatedAt: analysis.generatedAt,
-    });
+    };
+    console.log("[ContentIntelligence] === GET УСПЕШНЫЙ ОТВЕТ (legacy) ===");
+    console.log("[ContentIntelligence] response keys:", Object.keys(compatResponse));
+    return NextResponse.json(compatResponse);
 
   } catch (error) {
-    console.error("[ContentIntelligence] Ошибка GET:", error);
+    console.error("[ContentIntelligence] === ОШИБКА В GET CATCH ===");
+    console.error("[ContentIntelligence] error type:", typeof error);
+    console.error("[ContentIntelligence] error instanceof Error:", error instanceof Error);
+
+    if (error instanceof Error) {
+      console.error("[ContentIntelligence] error.message:", error.message);
+      console.error("[ContentIntelligence] error.stack:", error.stack);
+    } else {
+      console.error("[ContentIntelligence] error value:", String(error));
+    }
 
     const errorMessage = error instanceof Error
       ? (error.message || "Failed to fetch content intelligence")
       : String(error) || "Failed to fetch content intelligence";
 
-    return NextResponse.json(
-      { ok: false, error: errorMessage },
-      { status: 500 }
-    );
+    const errorResponse = {
+      ok: false,
+      error: errorMessage,
+      timestamp: new Date().toISOString(),
+    };
+
+    console.log("[ContentIntelligence] === ВОЗВРАЩАЕМ ОШИБКУ GET ===");
+    console.log("[ContentIntelligence] errorResponse:", errorResponse);
+
+    return NextResponse.json(errorResponse, { status: 500 });
   }
 }
