@@ -188,38 +188,6 @@ export default async function ChannelPage({ params }: PageProps) {
     // user_channel_state теперь используется ТОЛЬКО для аналитики (audience, momentum, content)
     // Для топ-видео больше не нужны флаги hasSyncedTopVideos и hasShownVideos
 
-    // Получаем состояние показа метрик для пользователя
-      sql: "SELECT hasShownMetrics FROM user_channel_metrics_state WHERE userId = ? AND channelId = ?",
-      args: [session.user.id, competitor.channelId],
-    });
-
-    // Если записи нет, создаём её с дефолтными значениями
-    if (metricsStateResult.rows.length === 0) {
-      try {
-        await client.execute({
-          sql: `INSERT INTO user_channel_metrics_state (userId, channelId, hasShownMetrics)
-                VALUES (?, ?, 0)
-                ON CONFLICT(userId, channelId) DO NOTHING`,
-          args: [session.user.id, competitor.channelId],
-        });
-        console.log("[Channel Page] Created user_channel_metrics_state for:", {
-          userId: session.user.id,
-          channelId: competitor.channelId,
-        });
-        // Перезапрашиваем данные после создания
-        metricsStateResult = await client.execute({
-          sql: "SELECT hasShownMetrics FROM user_channel_metrics_state WHERE userId = ? AND channelId = ?",
-          args: [session.user.id, competitor.channelId],
-        });
-      } catch (error) {
-        console.warn("[Channel Page] Failed to create user_channel_metrics_state:", error);
-      }
-    }
-
-    const hasShownMetrics = metricsStateResult.rows.length > 0
-      ? (metricsStateResult.rows[0].hasShownMetrics as number) === 1
-      : false;
-
     // Получаем состояние показа аудитории для пользователя
     let audienceStateResult = await client.execute({
       sql: "SELECT hasShownAudience FROM user_channel_audience_state WHERE userId = ? AND channelId = ?",
