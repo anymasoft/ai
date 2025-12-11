@@ -444,19 +444,29 @@ export async function getYoutubeChannelVideos(
 
     // ВАЖНО: если channelId вернул пустой результат но есть handle, попробовать с handle
     if (result.videos.length === 0 && handle) {
-      console.log("[ScrapeCreators] channelId вернул 0 видео, пробуем fallback на handle");
+      console.log("[ScrapeCreators] ⚠️ FALLBACK: channelId вернул 0 видео для", { channelId, handle });
       try {
+        console.log("[ScrapeCreators] Fallback: пробуем получить видео через handle...");
         const fallbackResult = await fetchVideosFromAPI(apiKey, "handle", handle, maxVideos, continuationToken);
+        console.log("[ScrapeCreators] Fallback результат:", { videosCount: fallbackResult.videos.length });
+
         if (fallbackResult.videos.length > 0) {
-          console.log(`[ScrapeCreators] Fallback на handle сработал: получено ${fallbackResult.videos.length} видео`);
+          console.log(`[ScrapeCreators] ✅ Fallback сработал! Получено ${fallbackResult.videos.length} видео через handle`);
           return fallbackResult;
+        } else {
+          console.log("[ScrapeCreators] ⚠️ Fallback на handle вернул тоже 0 видео");
         }
       } catch (fallbackError) {
-        console.warn("[ScrapeCreators] Fallback на handle выбросил ошибку:", fallbackError instanceof Error ? fallbackError.message : fallbackError);
+        console.error("[ScrapeCreators] ❌ Fallback на handle выбросил ошибку:", {
+          errorMessage: fallbackError instanceof Error ? fallbackError.message : String(fallbackError),
+          handle,
+          channelId
+        });
         // Если fallback тоже не сработал, возвращаем пустой результат с логированием
       }
     }
 
+    console.log("[ScrapeCreators] Возвращаем результат (channelId):", { videosCount: result.videos.length, channelId, handle });
     return result;
   } catch (error) {
     console.warn("[ScrapeCreators] Не удалось загрузить по channelId:", error instanceof Error ? error.message : error);
