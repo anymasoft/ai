@@ -31,8 +31,6 @@ interface ChannelAnalyticsProps {
   hasShownMomentum?: boolean
   /** Нажал ли пользователь "Получить аудиторию" */
   hasShownAudience?: boolean
-  /** Нажал ли пользователь "Получить топ-видео" */
-  hasShownVideos?: boolean
   /** Нажал ли пользователь "Получить Content Intelligence" */
   hasShownContent?: boolean
   /** Нажал ли пользователь "Получить Deep Analysis" */
@@ -88,7 +86,6 @@ export function ChannelAnalytics({
   hasShownMetrics = false,
   hasShownMomentum = false,
   hasShownAudience = false,
-  hasShownVideos = false,
   hasShownContent = false,
   hasShownDeepComments = false,
 }: ChannelAnalyticsProps) {
@@ -135,7 +132,7 @@ export function ChannelAnalytics({
         isOpen={expanded.videos}
         onToggle={() => toggle("videos")}
       >
-        <TopVideosGrid videos={videos} userPlan={userPlan} hasShownVideos={hasShownVideos} channelId={channelId} />
+        <TopVideosGrid videos={videos} userPlan={userPlan} channelId={channelId} />
       </CollapsibleSection>
 
       {/* Content Intelligence */}
