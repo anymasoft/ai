@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { ContentIntelligenceBlock } from "@/components/channel/ContentIntelligenceBlock";
 
 interface ContentInsightsSectionProps {
+  competitorId: number;
   contentData: any;
   channelId?: string;
   /** Есть ли видео для анализа */
@@ -14,6 +15,7 @@ interface ContentInsightsSectionProps {
 }
 
 export function ContentInsightsSection({
+  competitorId,
   contentData,
   channelId,
   hasRequiredData = false,
@@ -22,15 +24,15 @@ export function ContentInsightsSection({
   const [loadingContent, setLoadingContent] = useState(false);
 
   const handleGetContent = async () => {
-    if (!channelId) {
-      console.error("channelId not provided");
+    if (!competitorId) {
+      console.error("competitorId not provided");
       return;
     }
 
     setLoadingContent(true);
     try {
       // Шаг 1: Генерируем анализ контент-аналитики
-      const syncRes = await fetch(`/api/channel/${channelId}/content-intelligence`, {
+      const syncRes = await fetch(`/api/channel/${competitorId}/content-intelligence`, {
         method: "POST",
       });
 
@@ -41,7 +43,7 @@ export function ContentInsightsSection({
       }
 
       // Шаг 2: Отмечаем контент-аналитику как показанную
-      const showRes = await fetch(`/api/channel/${channelId}/content/show`, {
+      const showRes = await fetch(`/api/channel/${competitorId}/content/show`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
       });

@@ -8,6 +8,7 @@ import { GenerateSwotButton } from "@/components/channel/GenerateSwotButton"
 import type { SwotPoint, VideoIdea } from "@/lib/ai/analyzeChannel"
 
 interface SWOTAnalysisBlockProps {
+  competitorId: number
   channelId: string
   insight: {
     strengths: SwotPoint[]
@@ -22,6 +23,7 @@ interface SWOTAnalysisBlockProps {
 }
 
 export function SWOTAnalysisBlock({
+  competitorId,
   channelId,
   insight,
 }: SWOTAnalysisBlockProps) {
@@ -36,7 +38,7 @@ export function SWOTAnalysisBlock({
           <p className="text-sm text-muted-foreground mb-6 text-center max-w-md">
             Получите детальный AI-анализ канала с рекомендациями и идеями для новых видео
           </p>
-          <GenerateSwotButton channelId={channelId} />
+          <GenerateSwotButton competitorId={competitorId} channelId={channelId} />
         </CardContent>
       </Card>
     )
@@ -70,7 +72,7 @@ export function SWOTAnalysisBlock({
       {isOpen && (
         <CardContent className="space-y-6">
           <div className="flex justify-end">
-            <GenerateSwotButton channelId={channelId} variant="outline" size="sm" isUpdate={true} />
+            <GenerateSwotButton competitorId={competitorId} channelId={channelId} variant="outline" size="sm" isUpdate={true} />
           </div>
 
           {/* Strategic Summary */}

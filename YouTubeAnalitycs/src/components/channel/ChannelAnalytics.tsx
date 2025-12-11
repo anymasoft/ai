@@ -12,6 +12,7 @@ import { DeepCommentAnalysisSection } from "@/components/channel/DeepCommentAnal
 import type { UserPlan } from "@/config/limits"
 
 interface ChannelAnalyticsProps {
+  competitorId: number
   channelId: string
   videos: any[]
   contentData: any
@@ -60,6 +61,7 @@ function CollapsibleSection({
 }
 
 export function ChannelAnalytics({
+  competitorId,
   channelId,
   videos,
   contentData,
@@ -114,6 +116,7 @@ export function ChannelAnalytics({
         onToggle={() => toggle("content")}
       >
         <ContentInsightsSection
+          competitorId={competitorId}
           channelId={channelId}
           contentData={contentData}
           hasRequiredData={hasVideos}
@@ -127,6 +130,7 @@ export function ChannelAnalytics({
         onToggle={() => toggle("momentum")}
       >
         <MomentumInsightsSection
+          competitorId={competitorId}
           momentumData={momentumData}
           channelId={channelId}
           hasRequiredData={hasVideos}
@@ -140,6 +144,7 @@ export function ChannelAnalytics({
         onToggle={() => toggle("audience")}
       >
         <AudienceInsightsSection
+          competitorId={competitorId}
           audienceData={audienceData}
           channelId={channelId}
           hasRequiredData={hasVideos}
@@ -153,6 +158,7 @@ export function ChannelAnalytics({
         onToggle={() => toggle("comments")}
       >
         <CommentInsights
+          competitorId={competitorId}
           channelId={channelId}
           initialData={commentsData}
           hasRequiredData={hasVideos && hasComments}
@@ -166,6 +172,7 @@ export function ChannelAnalytics({
         onToggle={() => toggle("deepAnalysis")}
       >
         <DeepCommentAnalysisSection
+          competitorId={competitorId}
           channelId={channelId}
           deepAnalysisData={deepAnalysisData}
           hasRequiredData={hasVideos && hasComments}

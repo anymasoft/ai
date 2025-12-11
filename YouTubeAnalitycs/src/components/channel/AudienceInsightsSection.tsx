@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { AudienceInsights } from "@/components/channel/AudienceInsights";
 
 interface AudienceInsightsSectionProps {
+  competitorId: number;
   audienceData: any;
   channelId?: string;
   /** Есть ли видео для анализа */
@@ -14,6 +15,7 @@ interface AudienceInsightsSectionProps {
 }
 
 export function AudienceInsightsSection({
+  competitorId,
   audienceData,
   channelId,
   hasRequiredData = false,
@@ -22,15 +24,15 @@ export function AudienceInsightsSection({
   const [loadingAudience, setLoadingAudience] = useState(false);
 
   const handleGetAudience = async () => {
-    if (!channelId) {
-      console.error("channelId not provided");
+    if (!competitorId) {
+      console.error("competitorId not provided");
       return;
     }
 
     setLoadingAudience(true);
     try {
       // Шаг 1: Синхронизируем аудиторию (генерируем анализ)
-      const syncRes = await fetch(`/api/channel/${channelId}/audience`, {
+      const syncRes = await fetch(`/api/channel/${competitorId}/audience`, {
         method: "POST",
       });
 
@@ -41,7 +43,7 @@ export function AudienceInsightsSection({
       }
 
       // Шаг 2: Отмечаем аудиторию как показанную
-      const showRes = await fetch(`/api/channel/${channelId}/audience/show`, {
+      const showRes = await fetch(`/api/channel/${competitorId}/audience/show`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
       });
