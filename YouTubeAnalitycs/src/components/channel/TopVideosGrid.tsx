@@ -58,6 +58,8 @@ function formatViews(views: number | undefined | null): string {
 export function TopVideosGrid({ videos, channelId, userPlan = "free" }: TopVideosGridProps) {
   const router = useRouter();
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [refreshingId, setRefreshingId] = useState<string | null>(null);
+  const [videoList, setVideoList] = useState(videos);
 
   if (!channelId) {
     console.error("[TopVideosGrid] channelId is undefined, component cannot render");
@@ -70,6 +72,26 @@ export function TopVideosGrid({ videos, channelId, userPlan = "free" }: TopVideo
       videosCount: videos.length,
     });
   }
+
+  // Обновляет дату публикации одного видео
+  const refreshDate = async (e: React.MouseEvent, videoId: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setRefreshingId(videoId);
+    try {
+      const res = await fetch(`/api/video/${videoId}/refresh-date`, { method: "POST" });
+      const result = await res.json();
+      if (result.success && result.publishDate) {
+        setVideoList(prev => prev.map(v =>
+          v.videoId === videoId ? { ...v, publishDate: result.publishDate } : v
+        ));
+      }
+    } catch (err) {
+      console.error("[TopVideosGrid] Ошибка обновления даты:", err);
+    } finally {
+      setRefreshingId(null);
+    }
+  };
 
   // Обновляет (переполняет кеш) и перезагружает топ-видео
   const handleRefreshVideos = async () => {
@@ -120,7 +142,7 @@ export function TopVideosGrid({ videos, channelId, userPlan = "free" }: TopVideo
   }
 
   // Видео есть → показываем грид TOP-12
-  const sortedVideos = [...videos].sort((a, b) => b.viewCountInt - a.viewCountInt);
+  const sortedVideos = [...videoList].sort((a, b) => b.viewCountInt - a.viewCountInt);
 
   return (
     <CardContent className="p-6">
@@ -175,8 +197,17 @@ export function TopVideosGrid({ videos, channelId, userPlan = "free" }: TopVideo
                     <span className="font-medium">
                       {formatViews(video.viewCountInt)} просмотров
                     </span>
-                    {video.publishDate && (
+                    {video.publishDate ? (
                       <span>{formatPublishedDate(video.publishDate, "ru")}</span>
+                    ) : (
+                      <button
+                        onClick={(e) => refreshDate(e, video.videoId)}
+                        disabled={refreshingId === video.videoId}
+                        title="Обновить дату публикации"
+                        className="hover:text-foreground disabled:opacity-50"
+                      >
+                        <RefreshCw className={`h-3 w-3 ${refreshingId === video.videoId ? "animate-spin" : ""}`} />
+                      </button>
                     )}
                   </div>
                 </div>
