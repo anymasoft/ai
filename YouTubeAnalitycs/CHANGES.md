@@ -1,5 +1,118 @@
 # История изменений
 
+## [2025-12-11] - АУДИТ И ИСПРАВЛЕНИЯ: Полная цепочка видеоданных (SWOT → Sync → Database)
+
+### Статус: ✅ ЗАВЕРШЕНО
+
+Проведён **ГЛУБОКИЙ АУДИТ** всей цепочки получения видеоданных с исправлением на трёх уровнях:
+
+#### Проблема
+SWOT-анализ не получал данные о длительности видео, количестве лайков и комментариев, несмотря на то что они были в БД. Показывал:
+- "Отсутствие данных о длительности"
+- "Нулевая вовлеченность" хотя данные в БД присутствовали
+
+#### Корневая причина
+Цепочка имела 3 проблемных места:
+
+**1. Проблема в analyzeChannel.ts (точка A - SWOT-анализ)**
+- `duration` трактовалась как ISO-строка, но в БД это INTEGER (количество секунд)
+- Функция `formatDuration()` пыталась распарсить число как regex-паттерн → регулярно возвращала undefined
+- avgDuration всегда был 0
+- Удалены скрывающие ошибки try-catch блоки
+
+**2. Проблема в sync-channel-videos.ts (КОРНЕВАЯ ПРИЧИНА - точка B)**
+- Функция `fetchPublishDateWithRetry()` вызывала `getYoutubeVideoDetails()` которая возвращает ПОЛНЫЕ данные:
+  - `likeCountInt`, `commentCountInt`, `viewCountInt`, `durationMs`, `publishDate`
+- **НО** функция использовала ТОЛЬКО `publishDate` и ИГНОРИРОВАЛА ВСЕ остальные поля!
+- Все остальные метрики в БД сохранялись как 0/null
+- Видеоданные теряются в точке сохранения в БД
+
+**3. Проблема в /channel/[id]/page.tsx (точка C - graceful fallback)**
+- При отсутствии таблиц БД страница крашилась с LibsqlError вместо красивой 404
+- Нет проверки существования таблиц перед SELECT
+
+#### Решение
+
+**1. Исправлена подготовка данных в analyzeChannel.ts (commit 3c1afc0)**
+```
+- Переименована formatDuration() → formatDurationFromSeconds()
+- Изменён тип: duration: string → durationSeconds: number | undefined
+- Исправлены все расчёты avgDuration (простое суммирование вместо regex)
+- Добавлено логирование SWOT INPUT VIDEOS для видимости данных перед отправкой в GPT
+- Удалены все try-catch блоки (выносят ошибки, не скрывают их)
+Файл: src/lib/ai/analyzeChannel.ts
+```
+
+**2. Исправлена цепочка получения данных в sync-channel-videos.ts (commit 27325d1)**
+```
+- Переименована fetchPublishDateWithRetry() → fetchVideoFullDetailsWithRetry()
+- Функция теперь возвращает ВСЕ поля: publishDate, likeCount, commentCount, durationSeconds
+- Конвертирует durationMs → durationSeconds (целые числа)
+- Обновлена логика в ШАГ 4: теперь ИСПОЛЬЗУЮТСЯ все полученные данные
+  video.likeCount = videoDetails.likeCount
+  video.commentCount = videoDetails.commentCount
+  video.durationSeconds = videoDetails.durationSeconds
+- Добавлено 3-уровневое критическое логирование на каждом этапе
+Файл: src/lib/sync-channel-videos.ts
+```
+
+**3. Добавлена graceful fallback в /channel/[id]/page.tsx (commit 5b2db9f)**
+```
+- Добавлен импорт: notFound из next/navigation
+- Создана функция existsTable() для проверки наличия таблицы перед SELECT
+- Добавлена проверка существования таблицы competitors перед выборкой
+- Заменена redirect() на notFound() при отсутствии канала
+- Добавлен catch блок который ловит любые ошибки БД и возвращает notFound()
+- Результат: красивая 404 страница вместо LibsqlError краша
+Файл: src/app/(dashboard)/channel/[id]/page.tsx
+```
+
+#### Результат
+
+**ДО:**
+```
+[AI] SWOT INPUT VIDEOS:
+[
+  {videoId: "xxx", title: "...", viewCount: 1000000, likeCount: 0, commentCount: 0, durationSeconds: null}
+]
+GPT видит: "Нулевая вовлеченность. Отсутствие данных о длительности"
+```
+
+**ПОСЛЕ:**
+```
+[AI] SWOT INPUT VIDEOS:
+[
+  {videoId: "xxx", title: "...", viewCount: 1000000, likeCount: 50000, commentCount: 5000, durationSeconds: 720}
+]
+GPT видит: "Высокий engagement (5.5%). Среднее видео 12 минут"
+```
+
+**Плюсы:**
+- ✅ GPT получает корректные значения лайков и комментариев
+- ✅ Длительность видео корректно конвертируется из миллисекунд в секунды
+- ✅ Engagement вычисляется правильно ((likeCount + commentCount*2)/viewCount)
+- ✅ SWOT-анализ основан на РЕАЛЬНЫХ данных из БД
+- ✅ Страница канала красиво отображает 404 при пустой БД вместо краша
+- ✅ Полное логирование на всех уровнях (ШАГ 1-6 в sync, SWOT INPUT в analyzeChannel)
+
+#### Затронутые файлы
+
+| Файл | Статус | Коммит |
+|------|--------|--------|
+| `src/lib/ai/analyzeChannel.ts` | ✏️ Исправлен | 3c1afc0 |
+| `src/lib/sync-channel-videos.ts` | ✏️ Исправлен | 27325d1 |
+| `src/app/(dashboard)/channel/[id]/page.tsx` | ✏️ Исправлен | 5b2db9f |
+
+#### Архитектурная целостность
+
+- ✅ Никаких изменений в схеме БД
+- ✅ Никаких изменений в API endpoints
+- ✅ Никаких изменений в UI компонентах
+- ✅ Никаких изменений в OpenAI промптах
+- ✅ Только ТОЧНЫЕ ИСПРАВЛЕНИЯ в трёх критических местах
+
+---
+
 ## [2025-12-11] - FIX: Comment Intelligence - Правильная архитектура синхронизации состояния
 
 ### Проблема
