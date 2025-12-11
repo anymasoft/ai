@@ -207,6 +207,7 @@ export async function analyzeChannel(
         лайки: formatNumber(v.likeCount),
         комментарии: formatNumber(v.commentCount),
         длительность: formatDuration(v.duration),
+        длительность_секунды: v.durationSeconds || 0,
         вовлеченность: v.engagement.toFixed(3) + '%',
       })),
     };
