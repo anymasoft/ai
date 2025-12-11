@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -25,8 +25,6 @@ interface TopVideosGridProps {
   channelId: string;
   /** План пользователя для определения лимитов. По умолчанию "free" */
   userPlan?: UserPlan;
-  /** Нажал ли пользователь "Получить топ-видео" */
-  hasShownVideos?: boolean;
 }
 
 /**
@@ -46,12 +44,10 @@ function formatViews(views: number | undefined | null): string {
   return views.toString();
 }
 
-export function TopVideosGrid({ videos, channelId, userPlan = "free", hasShownVideos = false }: TopVideosGridProps) {
+export function TopVideosGrid({ videos, channelId, userPlan = "free" }: TopVideosGridProps) {
   const router = useRouter();
   const [refreshingId, setRefreshingId] = useState<string | null>(null);
-  const [videoList, setVideoList] = useState<VideoData[]>([]);
-  const [showingVideos, setShowingVideos] = useState(false);
-  const [hasShown, setHasShown] = useState(hasShownVideos);
+  const [isSyncing, setIsSyncing] = useState(false);
 
   // Защита: если channelId не передан, не рендерим компонент
   if (!channelId) {
@@ -63,8 +59,7 @@ export function TopVideosGrid({ videos, channelId, userPlan = "free", hasShownVi
     console.log("[TopVideosGrid] TOP-12 ONLY mode", {
       channelId,
       userPlan,
-      hasShownVideos,
-      initialVideoListLength: videoList.length,
+      videosCount: videos.length,
     });
   }
 
@@ -80,9 +75,7 @@ export function TopVideosGrid({ videos, channelId, userPlan = "free", hasShownVi
       }
       const result = await res.json();
       if (result.success && result.publishDate) {
-        setVideoList(prev => prev.map(v =>
-          v.videoId === videoId ? { ...v, publishDate: result.publishDate } : v
-        ));
+        router.refresh();
       }
     } catch (err) {
       console.error("Ошибка обновления даты:", err instanceof Error ? err.message : err);
@@ -98,7 +91,7 @@ export function TopVideosGrid({ videos, channelId, userPlan = "free", hasShownVi
     }
 
     console.log(`[TopVideosGrid] Получение топ-12 видео для channelId=${channelId}`);
-    setShowingVideos(true);
+    setIsSyncing(true);
     try {
       // Синхронизируем видео (TOP-12 ONLY)
       const syncRes = await fetch(`/api/channel/${channelId}/videos/sync`, {
@@ -136,17 +129,6 @@ export function TopVideosGrid({ videos, channelId, userPlan = "free", hasShownVi
         updated: syncData.updated,
       });
 
-      // Обновляем состояние с полученными видео
-      if (syncData.videos && syncData.videos.length > 0) {
-        setVideoList(syncData.videos);
-        setHasShown(true);
-        console.log(`[TopVideosGrid] Видео обновлены (${syncData.videos.length} штук)`);
-      } else {
-        setHasShown(true);
-        setVideoList([]);
-        console.log("[TopVideosGrid] Видео не найдены");
-      }
-
       // Обновляем UI через router.refresh()
       try {
         router.refresh();
@@ -156,118 +138,99 @@ export function TopVideosGrid({ videos, channelId, userPlan = "free", hasShownVi
     } catch (err) {
       console.error(`[TopVideosGrid] Ошибка:`, err instanceof Error ? err.message : err);
     } finally {
-      setShowingVideos(false);
+      setIsSyncing(false);
     }
   };
-
-
-  // Backend уже вернул TOP-12 отсортированные по viewCount DESC (sort=popular в ScrapeCreators)
-  // Эта сортировка косметическая, для гарантии порядка в UI
-  const sortedVideos = [...videoList].sort((a, b) => b.viewCount - a.viewCount);
 
   // Debug в dev режиме
   if (process.env.NODE_ENV === "development") {
     console.log(`[TopVideosGrid RENDER] TOP-12 ONLY`, {
-      totalLoaded: videoList.length,
-      hasShown,
+      videosLength: videos.length,
     });
   }
 
+  // ВАЖНО:
+  // Отображение топ-видео завязано ТОЛЬКО на факте наличия записей в videos[].
+  // Если videos.length === 0 — предлагаем "Получить топ-видео".
+  // Если videos.length > 0 — всегда показываем грид 12 видео (TOP-12 only).
+
+  if (videos.length === 0) {
+    return (
+      <CardContent className="p-6">
+        <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
+          <p className="text-center mb-4">
+            Видео не найдены. Получить топ-видео?
+          </p>
+          <Button
+            onClick={handleGetTopVideos}
+            disabled={isSyncing}
+          >
+            {isSyncing ? "Загружаем..." : "Получить топ-видео"}
+          </Button>
+        </div>
+      </CardContent>
+    );
+  }
+
+  // Видео есть — показываем грид (TOP-12 ONLY)
+  const sortedVideos = [...videos].sort((a, b) => b.viewCount - a.viewCount);
+
   return (
     <CardContent className="p-6">
-      <>
-        {/* STATE 1: Пользователь никогда не нажимал кнопку "Получить топ-видео" */}
-        {!hasShown ? (
-          <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
-            <div className="flex flex-col items-center justify-center gap-4">
-              <p className="text-center">
-                Нет данных. Нажмите «Получить топ-видео», чтобы загрузить первые ролики.
-              </p>
-              <Button
-                onClick={() => handleGetTopVideos()}
-                variant="default"
-                size="sm"
-                disabled={showingVideos}
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+        {sortedVideos.map((video) => (
+          <Card
+            key={video.videoId}
+            className="group overflow-hidden border border-border/50 rounded-lg shadow-sm hover:shadow-md transition-all duration-150"
+          >
+            <CardContent className="p-0">
+              <a
+                href={`https://www.youtube.com/watch?v=${video.videoId}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="block"
               >
-                {showingVideos ? "Загружаем..." : "Получить топ-видео"}
-              </Button>
-            </div>
-          </div>
-        ) : sortedVideos.length === 0 ? (
-          /* Пользователь нажимал кнопку, но видео не найдены */
-          <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
-            <p className="text-center">
-              Видео не найдены. Попробуйте получить топ-видео ещё раз.
-            </p>
-            <Button
-              onClick={() => handleGetTopVideos()}
-              variant="outline"
-              size="sm"
-              className="mt-4"
-              disabled={showingVideos}
-            >
-              {showingVideos ? "Загружаем..." : "Получить топ-видео"}
-            </Button>
-          </div>
-        ) : (
-          <>
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-              {sortedVideos.map((video) => (
-                <Card
-                  key={video.videoId}
-                  className="group overflow-hidden border border-border/50 rounded-lg shadow-sm hover:shadow-md transition-all duration-150"
-                >
-                  <CardContent className="p-0">
-                    <a
-                      href={`https://www.youtube.com/watch?v=${video.videoId}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="block"
+                {video.thumbnailUrl ? (
+                  <img
+                    src={video.thumbnailUrl}
+                    alt={video.title}
+                    className="w-full aspect-video object-cover"
+                  />
+                ) : (
+                  <div className="w-full aspect-video bg-muted flex items-center justify-center text-sm text-muted-foreground">
+                    Нет превью
+                  </div>
+                )}
+              </a>
+
+              <div className="p-3 space-y-2">
+                <h3 className="font-medium text-xs leading-tight line-clamp-2 text-foreground">
+                  {video.title}
+                </h3>
+
+                <div className="flex items-center justify-between text-[11px] text-muted-foreground">
+                  <span className="font-medium">
+                    {formatViews(video.viewCount)}
+                  </span>
+                  {video.publishDate ? (
+                    <span>{formatPublishedDate(video.publishDate, "ru")}</span>
+                  ) : (
+                    <button
+                      onClick={(e) => refreshDate(e, video.videoId)}
+                      disabled={refreshingId === video.videoId}
+                      title="Обновить дату"
+                      className="hover:text-foreground disabled:opacity-50"
                     >
-                      {video.thumbnailUrl ? (
-                        <img
-                          src={video.thumbnailUrl}
-                          alt={video.title}
-                          className="w-full aspect-video object-cover"
-                        />
-                      ) : (
-                        <div className="w-full aspect-video bg-muted flex items-center justify-center text-sm text-muted-foreground">
-                          Нет превью
-                        </div>
-                      )}
-                    </a>
-
-                    <div className="p-3 space-y-2">
-                      <h3 className="font-medium text-xs leading-tight line-clamp-2 text-foreground">
-                        {video.title}
-                      </h3>
-
-                      <div className="flex items-center justify-between text-[11px] text-muted-foreground">
-                        <span className="font-medium">
-                          {formatViews(video.viewCount)}
-                        </span>
-                        {video.publishDate ? (
-                          <span>{formatPublishedDate(video.publishDate, "ru")}</span>
-                        ) : (
-                          <button
-                            onClick={(e) => refreshDate(e, video.videoId)}
-                            disabled={refreshingId === video.videoId}
-                            title="Обновить дату"
-                            className="hover:text-foreground disabled:opacity-50"
-                          >
-                            <RefreshCw className={`h-3 w-3 ${refreshingId === video.videoId ? "animate-spin" : ""}`} />
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-
-          </>
-        )}
-      </>
+                      <RefreshCw className={`h-3 w-3 ${refreshingId === video.videoId ? "animate-spin" : ""}`} />
+                    </button>
+                  )}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
     </CardContent>
   );
 }
+
