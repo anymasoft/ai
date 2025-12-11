@@ -328,18 +328,24 @@ async function getClient() {
 
         _client.execute(`CREATE TABLE IF NOT EXISTS comment_insights (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
+          userId TEXT NOT NULL,
           videoId TEXT NOT NULL,
           channelId TEXT NOT NULL,
           data TEXT NOT NULL,
           data_ru TEXT,
-          generatedAt INTEGER NOT NULL
+          generatedAt INTEGER NOT NULL,
+          FOREIGN KEY (userId) REFERENCES users(id) ON DELETE CASCADE,
+          UNIQUE(userId, channelId)
         );`);
 
         _client.execute(`CREATE INDEX IF NOT EXISTS idx_comment_insights_lookup
-          ON comment_insights(videoId, generatedAt DESC);`);
+          ON comment_insights(userId, videoId, generatedAt DESC);`);
 
         _client.execute(`CREATE INDEX IF NOT EXISTS idx_comment_insights_channel
-          ON comment_insights(channelId, generatedAt DESC);`);
+          ON comment_insights(userId, channelId, generatedAt DESC);`);
+
+        // Миграция: добавляем userId для архитектуры per-user Comment Intelligence
+        await addColumnIfNotExists(_client, 'comment_insights', 'userId', 'TEXT');
 
         _client.execute(`CREATE TABLE IF NOT EXISTS channel_ai_comment_insights (
           id INTEGER PRIMARY KEY AUTOINCREMENT,

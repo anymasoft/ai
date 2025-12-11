@@ -215,10 +215,10 @@ ${JSON.stringify(topComments, null, 2)}
     const now = Date.now();
 
     // Сохраняем результат в базу данных (DELETE + INSERT для гарантированного обновления)
-    // Удаляем старый анализ для этого канала
+    // Удаляем старый анализ для этого канала и пользователя
     await client.execute({
-      sql: "DELETE FROM comment_insights WHERE channelId = ?",
-      args: [competitor.channelId],
+      sql: "DELETE FROM comment_insights WHERE userId = ? AND channelId = ?",
+      args: [session.user.id, competitor.channelId],
     });
 
     // Вставляем свежий анализ
@@ -226,8 +226,8 @@ ${JSON.stringify(topComments, null, 2)}
     console.log(`[CommentInsights] Сериализованные данные для БД (первые 200 символов):`, serializedData.substring(0, 200));
 
     await client.execute({
-      sql: "INSERT INTO comment_insights (videoId, channelId, data, data_ru, generatedAt) VALUES (?, ?, ?, ?, ?)",
-      args: [videos[0].videoId, competitor.channelId, serializedData, null, now],
+      sql: "INSERT INTO comment_insights (userId, videoId, channelId, data, data_ru, generatedAt) VALUES (?, ?, ?, ?, ?, ?)",
+      args: [session.user.id, videos[0].videoId, competitor.channelId, serializedData, null, now],
     });
 
     console.log(`[CommentInsights] Анализ сохранён в БД (свежая генерация)`);
@@ -311,10 +311,10 @@ export async function GET(
 
     const competitor = competitorResult.rows[0];
 
-    // Получаем последний анализ
+    // Получаем последний анализ пользователя
     const analysisResult = await client.execute({
-      sql: "SELECT * FROM comment_insights WHERE channelId = ? ORDER BY generatedAt DESC LIMIT 1",
-      args: [competitor.channelId],
+      sql: "SELECT * FROM comment_insights WHERE userId = ? AND channelId = ? ORDER BY generatedAt DESC LIMIT 1",
+      args: [session.user.id, competitor.channelId],
     });
 
     if (analysisResult.rows.length === 0) {
