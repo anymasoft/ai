@@ -505,10 +505,11 @@ async function fetchVideosFromAPI(
   let pageCount = 0;
   const maxPages = 5; // Ограничение на количество страниц для избежания бесконечных циклов
 
-  // Стратегия: пробуем разные комбинации параметров сортировки
-  // Если primary-комбинация вернула 0 видео, пробуем другие
+  // Стратегия: пробуем разные комбинации параметров ТОЛЬКО для sort=popular
+  // КРИТИЧЕСКИ ВАЖНО: НИКОГДА не используем sort=latest - это может вернуть рандомные видео
+  // Пробуем только вариации includeExtras параметра
   type SortStrategy = {
-    sort?: string;
+    sort: string;
     includeExtras?: string;
     label: string;
   };
@@ -516,9 +517,6 @@ async function fetchVideosFromAPI(
   const sortStrategies: SortStrategy[] = [
     { sort: "popular", includeExtras: "true", label: "popular+extras" },
     { sort: "popular", label: "popular only" },
-    { sort: "latest", includeExtras: "true", label: "latest+extras" },
-    { sort: "latest", label: "latest only" },
-    { label: "no sort params" },
   ];
 
   let currentStrategyIndex = 0;
