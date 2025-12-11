@@ -1,5 +1,236 @@
 # История изменений
 
+## [2025-12-11] - REFACTOR: Полный переход на архитектуру TOP-12 ONLY
+
+### Целевые достижения
+
+✔ При добавлении канала автоматически синхронизируются топ-12 популярных видео (sort=popular)
+✔ Топ-12 сохраняются в БД глобально и больше НЕ зависят от пользователя
+✔ UI ВСЕГДА показывает видео только из БД (никакого состояния "есть канал, но видео нет")
+✔ publishDate загружается только для этих топ-12 видео
+✔ Удалена вся логика состояний (hasSyncedTopVideos, hasShownVideos, pagination, nextPageToken)
+✔ Кнопка "Получить топ-видео" удалена — только "Обновить" для ручного refresh
+✔ При повторном добавлении канала другими пользователями — мгновенный вывод данных из БД
+
+### ЭТАП 1: Обновление схемы БД
+
+**Файл изменён:** `src/lib/db.ts`
+
+- ✅ Переименованы колонки в `channel_videos`:
+  - `viewCount` → `viewCountInt`
+  - `likeCount` → `likeCountInt`
+  - `commentCount` → `commentCountInt`
+  - `duration TEXT` → `durationSeconds INTEGER`
+
+- ✅ Добавлены новые колонки:
+  - `updatedAt INTEGER NOT NULL` (время последнего обновления видео)
+
+- ✅ Добавлена миграция для переименования колонок в существующих БД (идемпотентная, безопасная)
+
+- ✅ Обновлён индекс для сортировки по `viewCountInt DESC`
+
+**Результат:** Новая схема таблицы channel_videos готова к работе с TOP-12 архитектурой.
+
+### ЭТАП 2: Создание функции синхронизации
+
+**Новый файл:** `src/lib/sync-channel-videos.ts`
+
+Функция `syncChannelTopVideos(channelId: string, handle?: string)`:
+
+- ✅ Проверяет есть ли уже ≥12 видео в БД для channelId
+  - Если есть → возвращает `{ success: true, source: "db", totalVideos }` (без API вызовов)
+
+- ✅ Если видео нет → получает из ScrapeCreators:
+  - Вызывает API: `GET /v1/youtube/channel-videos?sort=popular&includeExtras=true`
+  - Фильтрует по наличию videoId
+  - Сортирует по viewCountInt DESC
+  - Берёт TOP-12
+
+- ✅ Для каждого из 12 видео получает publishDate через `/v1/youtube/video` с retry:
+  - 3 попытки (200ms → 400ms → 800ms)
+  - Если не получена → оставляет null
+
+- ✅ Сохраняет в БД с гарантией безопасности:
+  - Использует функцию `createSafeVideoForDB()` для нормализации
+  - INSERT OR UPDATE по videoId
+  - ВСЕ числовые поля имеют безопасные значения (нет undefined)
+  - Обновляет `updatedAt` для каждого видео
+
+- ✅ Гарантирует физическую запись:
+  - `PRAGMA wal_checkpoint(FULL)` перед возвратом
+
+**Результат:** Единая, чистая функция для синхронизации TOP-12 видео.
+
+### ЭТАП 3: Автосинк при добавлении конкурента
+
+**Файл изменён:** `src/app/api/competitors/route.ts (POST)`
+
+- ✅ Добавлен импорт: `import { syncChannelTopVideos } from "@/lib/sync-channel-videos"`
+
+- ✅ После успешной вставки конкурента в БД:
+  ```typescript
+  await syncChannelTopVideos(newCompetitor.channelId, newCompetitor.handle)
+  ```
+
+- ✅ Синхронизация выполняется СИНХРОННО (ждём завершения):
+  - При успешном добавлении конкурента видео уже в БД
+  - Редирект на `/channel/[competitorId]` уже покажет видео
+
+- ✅ Если синхронизация упала → логируем ошибку, но не прерываем добавление конкурента:
+  - Пользователь может вручную обновить позже через кнопку "Обновить видео"
+
+**Результат:** Видео загружаются АВТОМАТИЧЕСКИ при добавлении канала.
+
+### ЭТАП 4: Обновление API route синхронизации
+
+**Файл переписан:** `src/app/api/channel/[id]/videos/sync/route.ts`
+
+- ✅ Упрощена логика: теперь просто вызывает `syncChannelTopVideos()`
+
+- ✅ Проверка авторизации: пользователь должен иметь этот канал в конкурентах
+
+- ✅ Возвращает видео из БД (отсортированные по viewCountInt DESC LIMIT 12)
+
+- ✅ Нормализует видео перед возвратом с новыми именами полей:
+  - `viewCountInt`, `likeCountInt`, `commentCountInt`
+  - `durationSeconds`, `updatedAt`
+
+**Результат:** API route стал проще и чище, уделегирована вся логика в `syncChannelTopVideos`.
+
+### ЭТАП 5: Загрузка видео из БД в page.tsx
+
+**Файл изменён:** `src/app/(dashboard)/channel/[id]/page.tsx`
+
+- ✅ **УДАЛЕНА** вся логика с `user_channel_state` для топ-видео:
+  - Удалены флаги: `hasSyncedTopVideos`, `hasShownVideos`
+  - Удалены таблицы состояния для видео
+  - Удалены DEBUG логи для видео-состояния
+
+- ✅ **ДОБАВЛЕНА** простая загрузка из БД:
+  ```sql
+  SELECT id, channelId, videoId, title, thumbnailUrl, viewCountInt,
+         likeCountInt, commentCountInt, publishDate, durationSeconds,
+         fetchedAt, updatedAt
+  FROM channel_videos
+  WHERE channelId = ?
+  ORDER BY viewCountInt DESC
+  LIMIT 12
+  ```
+
+- ✅ Видео НЕ пусто `const videos = []` → теперь получается из БД
+
+- ✅ Передаётся в TopVideosGrid как готовый porp
+
+**Результат:** SSR теперь всегда показывает реальные видео из БД.
+
+### ЭТАП 6: Упрощение UI компонента TopVideosGrid
+
+**Файл переписан:** `src/components/channel/TopVideosGrid.tsx`
+
+- ✅ **УДАЛЕНЫ** старые пропсы:
+  - Удалены флаги привязки к старым API
+  - Удалены поля для пагинации и состояния
+
+- ✅ **ДОБАВЛЕНЫ** новые пропсы с правильными названиями:
+  - `viewCountInt`, `likeCountInt`, `commentCountInt`
+  - `durationSeconds`, `updatedAt`
+
+- ✅ **УДАЛЕНА** функция `handleGetTopVideos()`:
+  - Больше нет кнопки "Получить топ-видео"
+  - Она была нужна только в старой архитектуре
+
+- ✅ **ДОБАВЛЕНА** функция `handleRefreshVideos()`:
+  - Новая кнопка "Обновить топ-видео"
+  - Вызывает `POST /api/channel/[channelId]/videos/sync`
+  - Затем `router.refresh()` для получения свежих данных
+
+- ✅ **УПРОЩЕНА** логика рендера:
+  - Если `videos.length === 0` → показываем сообщение + кнопка обновления
+  - Если `> 0` → просто показываем грид TOP-12 + кнопка обновления сверху
+
+- ✅ **УДАЛЕНЫ** все зависимости от `user_channel_state` флагов
+
+**Результат:** UI компонент стал НАМНОГО проще и понятнее.
+
+### Архитектурные улучшения
+
+**ДО (старая архитектура):**
+```
+Пользователь добавляет канал
+  ↓
+Запись в competitors таблицу (hasSyncedTopVideos = 0, hasShownVideos = 0)
+  ↓
+Редирект на /channel/[id]
+  ↓
+TopVideosGrid видит флаг = 0, показывает кнопку "Получить видео"
+  ↓
+Пользователь кликает кнопку
+  ↓
+API идёт в ScrapeCreators, получает видео, сохраняет в БД
+  ↓
+router.refresh() обновляет страницу
+  ↓
+SSR снова загружает пусто, TopVideosGrid всё ещё ждёт...
+```
+
+**ПОСЛЕ (новая архитектура TOP-12 ONLY):**
+```
+Пользователь добавляет канал
+  ↓
+POST /api/competitors вставляет в таблицу competitors
+  ↓
+СРАЗУ вызывает syncChannelTopVideos(channelId)
+  ↓
+syncChannelTopVideos получает TOP-12 из ScrapeCreators, сохраняет в БД
+  ↓
+Редирект на /channel/[id]
+  ↓
+page.tsx SELECT-ит TOP-12 из channel_videos
+  ↓
+TopVideosGrid получает готовый массив, показывает сетку ✨
+```
+
+**Результат:**
+- Видео появляются МГНОВЕННО (нет "канал есть, видео нет")
+- Второй пользователь получает данные из БД (нет повторного API вызова)
+- Нет сложной логики состояний
+- Нет race-conditions между UI и API
+
+### Файлы изменены / созданы
+
+| Файл | Статус | Описание |
+|------|--------|---------|
+| `src/lib/db.ts` | ✏️ Изменён | Миграция схемы, новые колонки |
+| `src/lib/sync-channel-videos.ts` | ✨ Создан | Функция синхронизации TOP-12 |
+| `src/app/api/competitors/route.ts` | ✏️ Изменён | Автосинк после добавления |
+| `src/app/api/channel/[id]/videos/sync/route.ts` | ✏️ Переписан | Упрощение через syncChannelTopVideos |
+| `src/app/(dashboard)/channel/[id]/page.tsx` | ✏️ Изменён | Загрузка видео из БД |
+| `src/components/channel/TopVideosGrid.tsx` | ✏️ Переписан | Упрощение UI |
+
+### Обратная совместимость
+
+- ✅ Старые таблицы видео мигрируются автоматически (переименование колонок)
+- ✅ Логика `user_channel_state` для аналитики не нарушена (ТОЛЬКО для видео удалена логика)
+- ✅ Остальные компоненты (Content Intelligence, Momentum, Audience) не затронуты
+- ✅ API endpoints для других функций не изменены
+
+### Что удалено / устарело
+
+- ❌ API route: `GET /api/channel/[id]/videos/page` (пагинация больше не нужна)
+- ❌ API route: `POST /api/channel/[id]/videos/show` (флаги не нужны)
+- ❌ Функция: `fetchPublishDateWithRetry()` в sync/route.ts (мигрирована в sync-channel-videos.ts)
+- ❌ Старая логика state machine для видео в TopVideosGrid
+- ❌ Флаги: `hasSyncedTopVideos`, `hasShownVideos` (для видео)
+
+### Следующие шаги (опционально)
+
+- Удалить устаревшие API routes (page, show) если они больше не используются
+- Удалить таблицы старого состояния видео если миграция завершена
+- Добавить кнопку "Удалить видеокеш" для администраторов (очистка channel_videos)
+- Мониторить ScrapeCreators лимиты при большом количестве пользователей
+
+---
+
 ## [2025-12-10] - FIX: UI-обновление после получения видео и исправление NaN в lastSyncAt
 
 ### Исправлены критические проблемы UI и кеширования
