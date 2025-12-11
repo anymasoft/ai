@@ -312,7 +312,20 @@ export default async function ChannelPage({ params }: PageProps) {
             </div>
 
             <a
-              href={(competitor.handle as string).startsWith('http') ? (competitor.handle as string) : `https://www.youtube.com/@${competitor.handle}`}
+              href={(() => {
+                const handle = (competitor.handle as string) || '';
+                // Если это полный URL, используем как есть
+                if (handle.startsWith('http')) {
+                  // Если URL не содержит "@", добавляем его перед handle
+                  if (handle.includes('youtube.com/') && !handle.includes('youtube.com/@')) {
+                    return handle.replace('youtube.com/', 'youtube.com/@');
+                  }
+                  return handle;
+                }
+                // Если это просто handle, добавляем "@" если его нет
+                const cleanHandle = handle.startsWith('@') ? handle.substring(1) : handle;
+                return `https://www.youtube.com/@${cleanHandle}`;
+              })()}
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center gap-1 text-blue-600 text-sm hover:underline dark:text-blue-400"

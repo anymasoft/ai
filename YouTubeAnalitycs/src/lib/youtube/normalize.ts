@@ -48,6 +48,21 @@ export function normalizeYoutubeInput(input: string): NormalizedYoutubeInput {
     return result;
   }
 
+  // 2b. Если это URL вида youtube.com/handle (БЕЗ @)
+  const urlPatternNoAt = /youtube\.com\/([^\/\s@]+)$/i;
+  const urlMatchNoAt = raw.match(urlPatternNoAt);
+
+  if (urlMatchNoAt) {
+    const encodedHandle = urlMatchNoAt[1];
+    try {
+      result.normalizedHandle = decodeURIComponent(encodedHandle);
+    } catch {
+      result.normalizedHandle = encodedHandle;
+    }
+    result.type = "url";
+    return result;
+  }
+
   // 3. Если ввод начинается с "@"
   if (raw.startsWith("@")) {
     result.normalizedHandle = raw.substring(1); // Убираем @
