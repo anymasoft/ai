@@ -190,34 +190,64 @@ async function getClient() {
           videoId TEXT NOT NULL UNIQUE,
           title TEXT NOT NULL,
           thumbnailUrl TEXT,
-          viewCount INTEGER NOT NULL DEFAULT 0,
-          likeCount INTEGER NOT NULL DEFAULT 0,
-          commentCount INTEGER NOT NULL DEFAULT 0,
+          viewCountInt INTEGER NOT NULL DEFAULT 0,
+          likeCountInt INTEGER NOT NULL DEFAULT 0,
+          commentCountInt INTEGER NOT NULL DEFAULT 0,
           publishDate TEXT,
+          durationSeconds INTEGER,
           fetchedAt INTEGER NOT NULL,
+          updatedAt INTEGER NOT NULL,
           data TEXT
         );`);
 
-        // publishDate уже определён в CREATE TABLE выше
-        // Добавляем колонку только если её нет (для старых БД)
+        // МИГРАЦИЯ: переименовываем колонки для новой архитектуры TOP-12
+        try {
+          const tableInfo = await _client.execute(`PRAGMA table_info(channel_videos);`);
+          const columns = tableInfo.rows as any[];
+          const hasViewCount = columns.some((c: any) => c.name === 'viewCount');
+          const hasViewCountInt = columns.some((c: any) => c.name === 'viewCountInt');
+
+          if (hasViewCount && !hasViewCountInt) {
+            console.log("[MIGRATION] Переименовываем колонки channel_videos на новую схему...");
+            try {
+              await _client.execute(`ALTER TABLE channel_videos RENAME COLUMN viewCount TO viewCountInt;`);
+            } catch (e) {
+              console.warn("[MIGRATION] Ошибка переименования viewCount:", e);
+            }
+            try {
+              await _client.execute(`ALTER TABLE channel_videos RENAME COLUMN likeCount TO likeCountInt;`);
+            } catch (e) {
+              console.warn("[MIGRATION] Ошибка переименования likeCount:", e);
+            }
+            try {
+              await _client.execute(`ALTER TABLE channel_videos RENAME COLUMN commentCount TO commentCountInt;`);
+            } catch (e) {
+              console.warn("[MIGRATION] Ошибка переименования commentCount:", e);
+            }
+            try {
+              await _client.execute(`ALTER TABLE channel_videos RENAME COLUMN duration TO durationSeconds;`);
+            } catch (e) {
+              console.warn("[MIGRATION] Ошибка переименования duration:", e);
+            }
+            console.log("[MIGRATION] ✔️ Колонки переименованы успешно");
+          }
+        } catch (e) {
+          console.warn("[MIGRATION] Не удалось проверить schema channel_videos:", e);
+        }
+
+        // Добавляем новые колонки если их нет
+        await addColumnIfNotExists(_client, 'channel_videos', 'viewCountInt', 'INTEGER NOT NULL DEFAULT 0');
+        await addColumnIfNotExists(_client, 'channel_videos', 'likeCountInt', 'INTEGER NOT NULL DEFAULT 0');
+        await addColumnIfNotExists(_client, 'channel_videos', 'commentCountInt', 'INTEGER NOT NULL DEFAULT 0');
+        await addColumnIfNotExists(_client, 'channel_videos', 'durationSeconds', 'INTEGER');
         await addColumnIfNotExists(_client, 'channel_videos', 'publishDate', 'TEXT');
-
-        _client.execute(`CREATE INDEX IF NOT EXISTS idx_channel_videos_lookup
-          ON channel_videos(channelId, videoId);`);
-
-        // Миграция: добавляем поле duration для длительности видео
-        // Использует idempotent проверку через PRAGMA table_info
-        await addColumnIfNotExists(_client, 'channel_videos', 'duration', 'TEXT');
-
-        // КРИТИЧЕСКАЯ МИГРАЦИЯ (ИТЕРАЦИЯ 13): гарантируем что все необходимые поля существуют
-        // Это исправляет баг где под вторым пользователем видео загружались с undefined полями
-        await addColumnIfNotExists(_client, 'channel_videos', 'channelId', 'TEXT NOT NULL');
-        await addColumnIfNotExists(_client, 'channel_videos', 'thumbnailUrl', 'TEXT');
-        await addColumnIfNotExists(_client, 'channel_videos', 'viewCount', 'INTEGER NOT NULL DEFAULT 0');
-        await addColumnIfNotExists(_client, 'channel_videos', 'likeCount', 'INTEGER NOT NULL DEFAULT 0');
-        await addColumnIfNotExists(_client, 'channel_videos', 'commentCount', 'INTEGER NOT NULL DEFAULT 0');
-        await addColumnIfNotExists(_client, 'channel_videos', 'publishDate', 'TEXT');
+        await addColumnIfNotExists(_client, 'channel_videos', 'updatedAt', 'INTEGER NOT NULL DEFAULT ' + Date.now());
         await addColumnIfNotExists(_client, 'channel_videos', 'fetchedAt', 'INTEGER NOT NULL');
+
+        // Обновляем индекс для новой схемы
+        _client.execute(`DROP INDEX IF EXISTS idx_channel_videos_lookup;`);
+        _client.execute(`CREATE INDEX IF NOT EXISTS idx_channel_videos_lookup
+          ON channel_videos(channelId, viewCountInt DESC);`);
 
         _client.execute(`CREATE TABLE IF NOT EXISTS content_intelligence (
           id INTEGER PRIMARY KEY AUTOINCREMENT,

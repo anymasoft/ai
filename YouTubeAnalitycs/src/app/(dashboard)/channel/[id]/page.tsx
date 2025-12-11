@@ -157,57 +157,42 @@ export default async function ChannelPage({ params }: PageProps) {
 
     const metrics = metricsResult.rows.map(row => ({ ...row }));
 
-    // НОВОЕ (ИТЕРАЦИЯ 9): Отключаем получение видео через SSR
-    // Видео теперь загружаются чисто на клиенте через /api/channel/[id]/videos/page?page=0
-    // Это позволяет реализовать правильную клиентскую пагинацию (12 видео за раз)
-    const videos: any[] = [];
-
-    // Получаем состояние синхронизации видео для пользователя
-    let userStateResult = await client.execute({
-      sql: "SELECT hasSyncedTopVideos, hasShownVideos FROM user_channel_state WHERE userId = ? AND channelId = ?",
-      args: [session.user.id, competitor.channelId],
+    // НОВОЕ (ЭТАП 4): Загружаем TOP-12 видео из БД (архитектура TOP-12 ONLY)
+    // Видео уже синхронизированы при добавлении конкурента
+    // Просто получаем готовые данные из channel_videos
+    const videosResult = await client.execute({
+      sql: `SELECT id, channelId, videoId, title, thumbnailUrl, viewCountInt, likeCountInt, commentCountInt,
+             publishDate, durationSeconds, fetchedAt, updatedAt
+             FROM channel_videos
+             WHERE channelId = ?
+             ORDER BY viewCountInt DESC
+             LIMIT 12`,
+      args: [competitor.channelId],
     });
 
-    // Если записи нет, создаём её с дефолтными значениями
-    if (userStateResult.rows.length === 0) {
-      try {
-        await client.execute({
-          sql: `INSERT INTO user_channel_state (userId, channelId, hasSyncedTopVideos, hasShownVideos)
-                VALUES (?, ?, 0, 0)
-                ON CONFLICT(userId, channelId) DO NOTHING`,
-          args: [session.user.id, competitor.channelId],
-        });
-        console.log("[Channel Page] Created user_channel_state for:", {
-          userId: session.user.id,
-          channelId: competitor.channelId,
-        });
-        // Перезапрашиваем данные после создания
-        userStateResult = await client.execute({
-          sql: "SELECT hasSyncedTopVideos, hasShownVideos FROM user_channel_state WHERE userId = ? AND channelId = ?",
-          args: [session.user.id, competitor.channelId],
-        });
-      } catch (error) {
-        console.warn("[Channel Page] Failed to create user_channel_state:", error);
-      }
-    }
+    const videos = (videosResult.rows || []).map((video: any) => ({
+      id: video.id,
+      channelId: video.channelId,
+      videoId: video.videoId,
+      title: video.title,
+      thumbnailUrl: video.thumbnailUrl,
+      viewCountInt: video.viewCountInt,
+      likeCountInt: video.likeCountInt,
+      commentCountInt: video.commentCountInt,
+      publishDate: video.publishDate,
+      durationSeconds: video.durationSeconds,
+      fetchedAt: video.fetchedAt,
+      updatedAt: video.updatedAt,
+    }));
 
-    const hasSyncedTopVideos = userStateResult.rows.length > 0
-      ? (userStateResult.rows[0].hasSyncedTopVideos as number) === 1
-      : false;
+    console.log("[Channel Page] Загружены видео из БД:", {
+      channelId: competitor.channelId,
+      videosCount: videos.length,
+    });
 
-    const hasShownVideos = userStateResult.rows.length > 0
-      ? (userStateResult.rows[0].hasShownVideos as number) === 1
-      : false;
-
-    // DEBUG: логируем состояние видео для отладки UI обновления
-    if (process.env.NODE_ENV === "development") {
-      console.log(`[ChannelPage DEBUG] user_channel_state для userId=${session.user.id}, channelId=${competitor.channelId}:`, {
-        hasSyncedTopVideos,
-        hasShownVideos,
-        totalVideos: videos.length,
-        userStateRows: userStateResult.rows.length,
-      });
-    }
+    // ПРИМЕЧАНИЕ (ЭТАП 4): Старая логика user_channel_state для видео удалена
+    // user_channel_state теперь используется ТОЛЬКО для аналитики (audience, momentum, content)
+    // Для топ-видео больше не нужны флаги hasSyncedTopVideos и hasShownVideos
 
     // Получаем состояние показа метрик для пользователя
     let metricsStateResult = await client.execute({

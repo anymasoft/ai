@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { getYoutubeChannelByHandle } from "@/lib/scrapecreators";
+import { syncChannelTopVideos } from "@/lib/sync-channel-videos";
 import { PLAN_LIMITS } from "@/lib/plan-limits";
 import { normalizeYoutubeInput } from "@/lib/youtube/normalize";
 
@@ -184,23 +185,30 @@ export async function POST(req: NextRequest) {
       avatarUrlIsNull: newResult.rows[0]?.avatarUrl === null,
     });
 
-    // Создаём запись в user_channel_state для отслеживания UX-состояния
-    const newCompetitor = newResult.rows[0];
-    if (newCompetitor) {
+    const newCompetitor = newResult.rows[0] as any;
+
+    // НОВОЕ (ЭТАП 3): Автоматическая синхронизация TOP-12 видео после добавления конкурента
+    // Это гарантирует, что при переходе на /channel/[id] видео уже будут в БД
+    if (newCompetitor && newCompetitor.channelId) {
+      console.log("[Competitors POST] НОВОЕ: Начинаем автоматическую синхронизацию видео для channelId:", newCompetitor.channelId);
       try {
-        await db.execute({
-          sql: `INSERT INTO user_channel_state (userId, channelId, hasSyncedTopVideos, hasShownVideos)
-                VALUES (?, ?, 0, 0)
-                ON CONFLICT(userId, channelId) DO NOTHING`,
-          args: [session.user.id, newCompetitor.channelId as string],
+        const syncResult = await syncChannelTopVideos(
+          newCompetitor.channelId as string,
+          newCompetitor.handle as string
+        );
+        console.log("[Competitors POST] Синхронизация завершена:", {
+          success: syncResult.success,
+          source: syncResult.source,
+          totalVideos: syncResult.totalVideos,
         });
-        console.log("[Competitors POST] Created user_channel_state for channelId:", newCompetitor.channelId);
-      } catch (stateError) {
-        console.warn("[Competitors POST] Failed to create user_channel_state (non-critical):", stateError);
+      } catch (syncError) {
+        console.error("[Competitors POST] Ошибка синхронизации видео (non-critical):", syncError);
+        // Не прерываем процесс добавления конкурента если синхронизация упала
+        // Пользователь может вручную обновить позже
       }
     }
 
-    return NextResponse.json(newResult.rows[0], { status: 201 });
+    return NextResponse.json(newCompetitor, { status: 201 });
   } catch (error) {
     console.error("Error adding competitor:", error);
 
