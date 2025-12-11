@@ -26,22 +26,38 @@ const MAX_VIDEOS = 12;
 const RETRY_DELAYS = [200, 400, 800];
 
 /**
- * Получает publishDate с retry (3 попытки)
+ * Получает полные данные видео (publishDate, likeCount, commentCount, duration) с retry (3 попытки)
  */
-async function fetchPublishDateWithRetry(videoId: string): Promise<string | null> {
+async function fetchVideoFullDetailsWithRetry(videoId: string): Promise<{
+  publishDate: string | null;
+  likeCount: number;
+  commentCount: number;
+  durationSeconds: number | undefined;
+}> {
   const videoUrl = `https://www.youtube.com/watch?v=${videoId}`;
 
   for (let attempt = 0; attempt < RETRY_DELAYS.length; attempt++) {
     try {
       const details = await getYoutubeVideoDetails(videoUrl);
-      if (details.publishDate) {
-        console.log(`[SyncVideos] ${videoId}: publishDate = ${details.publishDate}`);
-        return details.publishDate;
-      }
-      console.log(`[SyncVideos] ${videoId}: API не вернул publishDate (попытка ${attempt + 1})`);
+      console.log(`[SyncVideos] ${videoId}: Получены полные данные (попытка ${attempt + 1}):`, {
+        publishDate: details.publishDate,
+        likeCount: details.likeCount,
+        commentCount: details.commentCount,
+        durationMs: details.durationMs,
+      });
+
+      // Конвертируем durationMs в durationSeconds
+      const durationSeconds = details.durationMs ? Math.floor(details.durationMs / 1000) : undefined;
+
+      return {
+        publishDate: details.publishDate,
+        likeCount: details.likeCount,
+        commentCount: details.commentCount,
+        durationSeconds,
+      };
     } catch (err) {
       console.warn(
-        `[SyncVideos] ${videoId}: ошибка (попытка ${attempt + 1}):`,
+        `[SyncVideos] ${videoId}: ошибка при получении данных (попытка ${attempt + 1}):`,
         err instanceof Error ? err.message : err
       );
     }
@@ -51,8 +67,13 @@ async function fetchPublishDateWithRetry(videoId: string): Promise<string | null
     }
   }
 
-  console.log(`[SyncVideos] ${videoId}: не удалось получить publishDate`);
-  return null;
+  console.log(`[SyncVideos] ${videoId}: не удалось получить полные данные видео`);
+  return {
+    publishDate: null,
+    likeCount: 0,
+    commentCount: 0,
+    durationSeconds: undefined,
+  };
 }
 
 /**
@@ -60,7 +81,7 @@ async function fetchPublishDateWithRetry(videoId: string): Promise<string | null
  * Гарантирует что ВСЕ значения безопасны (нет undefined)
  */
 function createSafeVideoForDB(video: any, channelId: string): VideoData {
-  return {
+  const safeVideo = {
     videoId: String(video.videoId || "").trim() || "",
     title: String(video.title || "Untitled").trim(),
     thumbnailUrl: video.thumbnailUrl ? String(video.thumbnailUrl).trim() : null,
@@ -70,6 +91,18 @@ function createSafeVideoForDB(video: any, channelId: string): VideoData {
     publishDate: video.publishDate ? String(video.publishDate).trim() : null,
     durationSeconds: video.durationSeconds ? Math.floor(video.durationSeconds) : undefined,
   };
+
+  // КРИТИЧЕСКОЕ ЛОГИРОВАНИЕ: показываем какие данные попадают в БД
+  console.log(`[SyncVideos] createSafeVideoForDB для ${safeVideo.videoId}:`, {
+    title: safeVideo.title,
+    viewCountInt: safeVideo.viewCountInt,
+    likeCountInt: safeVideo.likeCountInt,
+    commentCountInt: safeVideo.commentCountInt,
+    durationSeconds: safeVideo.durationSeconds,
+    publishDate: safeVideo.publishDate,
+  });
+
+  return safeVideo;
 }
 
 /**
@@ -204,20 +237,29 @@ export async function syncChannelTopVideos(
       `[SyncVideos] Получены ${filtered.length} видео из ScrapeCreators`
     );
 
-    // ШАГ 4: Получаем publishDate для каждого видео
-    console.log(`[SyncVideos] Получаем publishDate для ${filtered.length} видео`);
-    let publishDateCount = 0;
+    // ШАГ 4: Получаем полные данные видео (publishDate, likeCount, commentCount, duration)
+    console.log(`[SyncVideos] Получаем полные данные для ${filtered.length} видео`);
+    let detailsCount = 0;
     for (const video of filtered) {
       if (!video.videoId) continue;
-      if (!video.publishDate) {
-        const publishDate = await fetchPublishDateWithRetry(video.videoId);
-        video.publishDate = publishDate;
-        publishDateCount++;
-        await new Promise((resolve) => setTimeout(resolve, 150));
+
+      const videoDetails = await fetchVideoFullDetailsWithRetry(video.videoId);
+
+      // Обновляем все поля из полученных данных
+      if (videoDetails.publishDate) {
+        video.publishDate = videoDetails.publishDate;
       }
+      // КРИТИЧЕСКИ: обновляем likeCount и commentCount из полного API ответа
+      // Это переопишет нулевые значения из getYoutubeChannelVideos
+      video.likeCount = videoDetails.likeCount;
+      video.commentCount = videoDetails.commentCount;
+      video.durationSeconds = videoDetails.durationSeconds;
+
+      detailsCount++;
+      await new Promise((resolve) => setTimeout(resolve, 150));
     }
     console.log(
-      `[SyncVideos] Получено publishDate для ${publishDateCount} видео`
+      `[SyncVideos] Получены полные данные для ${detailsCount} видео`
     );
 
     // ШАГ 5: Сохраняем в БД
@@ -234,9 +276,13 @@ export async function syncChannelTopVideos(
       }
 
       const safeVideo = createSafeVideoForDB(video, channelId);
-      console.log(`[SyncVideos] Обработка видео: ${safeVideo.videoId}`, {
+      console.log(`[SyncVideos] Перед сохранением видео: ${safeVideo.videoId}`, {
         title: safeVideo.title,
-        viewCount: safeVideo.viewCountInt,
+        viewCountInt: safeVideo.viewCountInt,
+        likeCountInt: safeVideo.likeCountInt,
+        commentCountInt: safeVideo.commentCountInt,
+        durationSeconds: safeVideo.durationSeconds,
+        publishDate: safeVideo.publishDate,
         channelId,
       });
 
@@ -249,7 +295,25 @@ export async function syncChannelTopVideos(
       if (existingResult.rows.length > 0) {
         // UPDATE
         const existing = existingResult.rows[0];
-        console.log(`[SyncVideos] UPDATE видео ${safeVideo.videoId}`, { id: existing.id });
+        const updateArgs = [
+          channelId,
+          safeVideo.title,
+          safeVideo.thumbnailUrl,
+          safeVideo.viewCountInt,
+          safeVideo.likeCountInt,
+          safeVideo.commentCountInt,
+          safeVideo.publishDate,
+          safeVideo.durationSeconds || null,
+          now,
+          existing.id,
+        ];
+        console.log(`[SyncVideos] UPDATE видео ${safeVideo.videoId}`, {
+          id: existing.id,
+          likeCountInt: safeVideo.likeCountInt,
+          commentCountInt: safeVideo.commentCountInt,
+          durationSeconds: safeVideo.durationSeconds || null,
+          publishDate: safeVideo.publishDate,
+        });
         await client.execute({
           sql: `UPDATE channel_videos SET
             channelId = ?,
@@ -262,43 +326,38 @@ export async function syncChannelTopVideos(
             durationSeconds = ?,
             updatedAt = ?
             WHERE id = ?`,
-          args: [
-            channelId,
-            safeVideo.title,
-            safeVideo.thumbnailUrl,
-            safeVideo.viewCountInt,
-            safeVideo.likeCountInt,
-            safeVideo.commentCountInt,
-            safeVideo.publishDate,
-            safeVideo.durationSeconds || null,
-            now,
-            existing.id,
-          ],
+          args: updateArgs,
         });
         updated++;
         console.log(`[SyncVideos] UPDATE успешен для ${safeVideo.videoId}`);
       } else {
         // INSERT
-        console.log(`[SyncVideos] INSERT новое видео ${safeVideo.videoId}`);
+        const insertArgs = [
+          channelId,
+          safeVideo.videoId,
+          safeVideo.title,
+          safeVideo.thumbnailUrl,
+          safeVideo.viewCountInt,
+          safeVideo.likeCountInt,
+          safeVideo.commentCountInt,
+          safeVideo.publishDate,
+          safeVideo.durationSeconds || null,
+          now,
+          now,
+        ];
+        console.log(`[SyncVideos] INSERT новое видео ${safeVideo.videoId}:`, {
+          likeCountInt: safeVideo.likeCountInt,
+          commentCountInt: safeVideo.commentCountInt,
+          durationSeconds: safeVideo.durationSeconds || null,
+          publishDate: safeVideo.publishDate,
+        });
         await client.execute({
           sql: `INSERT INTO channel_videos (
             channelId, videoId, title, thumbnailUrl, viewCountInt,
             likeCountInt, commentCountInt, publishDate, durationSeconds,
             fetchedAt, updatedAt
           ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-          args: [
-            channelId,
-            safeVideo.videoId,
-            safeVideo.title,
-            safeVideo.thumbnailUrl,
-            safeVideo.viewCountInt,
-            safeVideo.likeCountInt,
-            safeVideo.commentCountInt,
-            safeVideo.publishDate,
-            safeVideo.durationSeconds || null,
-            now,
-            now,
-          ],
+          args: insertArgs,
         });
         inserted++;
         console.log(`[SyncVideos] INSERT успешен для ${safeVideo.videoId}`);
