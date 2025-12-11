@@ -229,10 +229,10 @@ export default async function ChannelPage({ params }: PageProps) {
     // Парсим JSON данные из audience_insights
     const audienceData = audience ? JSON.parse(audience.data as string) : null;
 
-    // Получаем Comment Insights анализ
+    // Получаем Comment Insights анализ пользователя
     const commentsResult = await client.execute({
-      sql: "SELECT * FROM comment_insights WHERE channelId = ? ORDER BY generatedAt DESC LIMIT 1",
-      args: [competitor.channelId],
+      sql: "SELECT * FROM comment_insights WHERE userId = ? AND channelId = ? ORDER BY generatedAt DESC LIMIT 1",
+      args: [session.user.id, competitor.channelId],
     });
 
     const comments = commentsResult.rows.length > 0 ? commentsResult.rows[0] as any : null;
