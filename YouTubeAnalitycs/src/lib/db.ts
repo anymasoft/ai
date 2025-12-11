@@ -169,21 +169,6 @@ async function getClient() {
         await addColumnIfNotExists(_client, 'ai_insights', 'contentPatterns', 'TEXT');
         await addColumnIfNotExists(_client, 'ai_insights', 'videoIdeas', 'TEXT');
 
-        _client.execute(`CREATE TABLE IF NOT EXISTS channel_metrics (
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          userId TEXT NOT NULL,
-          channelId TEXT NOT NULL,
-          subscriberCount INTEGER NOT NULL DEFAULT 0,
-          videoCount INTEGER NOT NULL DEFAULT 0,
-          viewCount INTEGER NOT NULL DEFAULT 0,
-          date TEXT NOT NULL,
-          fetchedAt INTEGER NOT NULL,
-          FOREIGN KEY (userId) REFERENCES users(id) ON DELETE CASCADE
-        );`);
-
-        _client.execute(`CREATE INDEX IF NOT EXISTS idx_channel_metrics_lookup
-          ON channel_metrics(channelId, date);`);
-
         _client.execute(`CREATE TABLE IF NOT EXISTS channel_videos (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
           channelId TEXT NOT NULL,
@@ -488,23 +473,6 @@ async function getClient() {
         // НОВОЕ (ИТЕРАЦИЯ 11): добавляем колонку для сохранения continuationToken из ScrapeCreators
         // Это позволяет загружать следующие страницы видео при повторных вызовах Sync
         await addColumnIfNotExists(_client, 'user_channel_state', 'nextPageToken', 'TEXT');
-
-        // Состояние пользователя для метрик каждого канала (показаны ли метрики)
-        _client.execute(`CREATE TABLE IF NOT EXISTS user_channel_metrics_state (
-          userId TEXT NOT NULL,
-          channelId TEXT NOT NULL,
-          hasShownMetrics INTEGER NOT NULL DEFAULT 0,
-          lastSyncAt INTEGER,
-          lastShownAt INTEGER,
-
-          PRIMARY KEY (userId, channelId)
-        );`);
-
-        // Миграция: добавляем новые колонки для отслеживания состояния метрик
-        // Использует idempotent проверку через PRAGMA table_info
-        await addColumnIfNotExists(_client, 'user_channel_metrics_state', 'hasShownMetrics', 'INTEGER NOT NULL DEFAULT 0');
-        await addColumnIfNotExists(_client, 'user_channel_metrics_state', 'lastSyncAt', 'INTEGER');
-        await addColumnIfNotExists(_client, 'user_channel_metrics_state', 'lastShownAt', 'INTEGER');
 
         // Состояние пользователя для аудитории каждого канала (загружена ли аудитория)
         _client.execute(`CREATE TABLE IF NOT EXISTS user_channel_audience_state (

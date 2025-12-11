@@ -149,13 +149,7 @@ export default async function ChannelPage({ params }: PageProps) {
 
     const avgViews = calculateAvgViews(competitor.viewCount as number, competitor.videoCount as number);
 
-    // Получаем исторические метрики для графиков
-    const metricsResult = await client.execute({
-      sql: "SELECT * FROM channel_metrics WHERE channelId = ? ORDER BY fetchedAt",
-      args: [competitor.channelId],
-    });
 
-    const metrics = metricsResult.rows.map(row => ({ ...row }));
 
     // НОВОЕ (ЭТАП 4): Загружаем TOP-12 видео из БД (архитектура TOP-12 ONLY)
     // Видео уже синхронизированы при добавлении конкурента
@@ -195,7 +189,6 @@ export default async function ChannelPage({ params }: PageProps) {
     // Для топ-видео больше не нужны флаги hasSyncedTopVideos и hasShownVideos
 
     // Получаем состояние показа метрик для пользователя
-    let metricsStateResult = await client.execute({
       sql: "SELECT hasShownMetrics FROM user_channel_metrics_state WHERE userId = ? AND channelId = ?",
       args: [session.user.id, competitor.channelId],
     });
@@ -424,7 +417,7 @@ export default async function ChannelPage({ params }: PageProps) {
 
     // Debug: проверка channelId и количества метрик
     console.log("channelId:", competitor.channelId);
-    console.log("metrics rows:", metrics.length);
+
     console.log("videos rows:", videos.length);
     console.log("content intelligence:", contentData ? "exists" : "not found");
     if (contentData) {
@@ -531,7 +524,6 @@ export default async function ChannelPage({ params }: PageProps) {
         {/* Analytics Section */}
         <ChannelAnalytics
           channelId={competitor.channelId as string}
-          metrics={metrics}
           videos={videos}
           contentData={contentData ? { ...contentData, generatedAt: intelligence?.generatedAt } : null}
           momentumData={momentumData ? { ...momentumData, generatedAt: momentum?.generatedAt } : null}
@@ -541,7 +533,6 @@ export default async function ChannelPage({ params }: PageProps) {
           hasVideos={hasVideos}
           hasComments={hasComments}
           userPlan={getUserPlan(session)}
-          hasShownMetrics={hasShownMetrics}
           hasShownMomentum={hasShownMomentum}
           hasShownAudience={hasShownAudience}
           hasShownContent={hasShownContent}

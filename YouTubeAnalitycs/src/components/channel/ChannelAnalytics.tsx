@@ -3,7 +3,6 @@
 import { useState } from "react"
 import { Card, CardHeader, CardTitle } from "@/components/ui/card"
 import { ChevronDown, ChevronUp } from "lucide-react"
-import { ChannelMetricsSection } from "@/components/channel/ChannelMetricsSection"
 import { TopVideosGrid } from "@/components/channel/TopVideosGrid"
 import { ContentInsightsSection } from "@/components/channel/ContentInsightsSection"
 import { MomentumInsightsSection } from "@/components/channel/MomentumInsightsSection"
@@ -14,7 +13,6 @@ import type { UserPlan } from "@/config/limits"
 
 interface ChannelAnalyticsProps {
   channelId: string
-  metrics: any[]
   videos: any[]
   contentData: any
   momentumData: any
@@ -25,8 +23,6 @@ interface ChannelAnalyticsProps {
   hasComments: boolean
   /** План пользователя для лимитов видео */
   userPlan?: UserPlan
-  /** Нажал ли пользователь "Получить метрики" */
-  hasShownMetrics?: boolean
   /** Нажал ли пользователь "Получить Momentum" */
   hasShownMomentum?: boolean
   /** Нажал ли пользователь "Получить аудиторию" */
@@ -73,7 +69,6 @@ function CollapsibleSection({
 
 export function ChannelAnalytics({
   channelId,
-  metrics,
   videos,
   contentData,
   momentumData,
@@ -83,7 +78,6 @@ export function ChannelAnalytics({
   hasVideos,
   hasComments,
   userPlan = "free",
-  hasShownMetrics = false,
   hasShownMomentum = false,
   hasShownAudience = false,
   hasShownContent = false,
@@ -91,7 +85,6 @@ export function ChannelAnalytics({
 }: ChannelAnalyticsProps) {
   // Все разделы закрыты по умолчанию - пользователь видит полный обзор доступных аналитических блоков
   const [expanded, setExpanded] = useState({
-    growth: false,
     videos: false,
     content: false,
     momentum: false,
@@ -116,15 +109,6 @@ export function ChannelAnalytics({
           Deep insights powered by artificial intelligence
         </p>
       </div>
-
-      {/* Growth Chart */}
-      <CollapsibleSection
-        title="Growth Over Time"
-        isOpen={expanded.growth}
-        onToggle={() => toggle("growth")}
-      >
-        <ChannelMetricsSection metrics={metrics} hasShownMetrics={hasShownMetrics} channelId={channelId} />
-      </CollapsibleSection>
 
       {/* Top Videos */}
       <CollapsibleSection
