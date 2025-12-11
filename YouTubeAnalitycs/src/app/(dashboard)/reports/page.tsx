@@ -197,10 +197,10 @@ export default function ReportsPage() {
       <div className="mb-8">
         <div className="flex items-center gap-3 mb-2">
           <FileText className="h-8 w-8 text-primary" />
-          <h1 className="text-3xl font-bold">Premium AI Reports</h1>
+          <h1 className="text-3xl font-bold">Премиальные AI-отчёты</h1>
         </div>
         <p className="text-muted-foreground text-lg">
-          Generate comprehensive PDF reports based on your analytics data
+          Создавайте подробные PDF-отчёты на основе вашей аналитики
         </p>
       </div>
 
@@ -224,9 +224,9 @@ export default function ReportsPage() {
         {/* 1. Semantic Map Report */}
         <ReportCard
           title="Semantic Map Report"
-          description="Deep analysis of themes, patterns, paradoxes, conflicts, and emotional triggers from competitor videos. Understand what makes content resonate with audiences."
+          description="Глубокий анализ тем, паттернов, конфликтов, парадоксов и эмоциональных триггеров в роликах конкурентов. Понимание того, почему контент вызывает отклик у аудитории."
           icon={<Map className="h-5 w-5" />}
-          badge="AI Analysis"
+          badge="AI-Аналитика"
           loading={downloadingReport === "semantic"}
           disabled={!hasScripts}
           onDownload={() => downloadPDF("semantic", { scriptId: selectedScriptId })}
@@ -246,7 +246,7 @@ export default function ReportsPage() {
             </Select>
           ) : (
             <p className="text-sm text-muted-foreground">
-              Generate a script first to create this report
+              Сначала сгенерируйте сценарий, чтобы создать этот отчёт
             </p>
           )}
         </ReportCard>
@@ -254,9 +254,9 @@ export default function ReportsPage() {
         {/* 2. Narrative Skeleton Report */}
         <ReportCard
           title="Narrative Skeleton Report"
-          description="Complete story framework including core idea, central paradox, conflict, emotional beats, story structure, hook candidates, and ending ideas."
+          description="Полная структура истории: основная идея, ключевой парадокс, конфликт, эмоциональные акценты, композиция сюжета, варианты хука и идеи финала."
           icon={<Sparkles className="h-5 w-5" />}
-          badge="Story Framework"
+          badge="Структура истории"
           loading={downloadingReport === "skeleton"}
           disabled={!hasScripts}
           onDownload={() => downloadPDF("skeleton", { scriptId: selectedScriptId })}
@@ -276,7 +276,7 @@ export default function ReportsPage() {
             </Select>
           ) : (
             <p className="text-sm text-muted-foreground">
-              Generate a script first to create this report
+              Сначала сгенерируйте сценарий, чтобы создать этот отчёт
             </p>
           )}
         </ReportCard>
@@ -284,9 +284,9 @@ export default function ReportsPage() {
         {/* 3. Trending Insights Report */}
         <ReportCard
           title="Trending Insights Report"
-          description="Top momentum videos, performance metrics, growth trends, niche overview, and actionable recommendations based on competitor analysis."
+          description="Топовые трендовые видео, ключевые метрики, динамика роста, обзор ниши и практические рекомендации на основе анализа конкурентов."
           icon={<TrendingUp className="h-5 w-5" />}
-          badge="Market Analysis"
+          badge="Анализ ниши"
           loading={downloadingReport === "insights"}
           onDownload={() => downloadPDF("insights", { period: "30" })}
         >
@@ -295,9 +295,9 @@ export default function ReportsPage() {
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="7">Last 7 days</SelectItem>
-              <SelectItem value="30">Last 30 days</SelectItem>
-              <SelectItem value="90">Last 90 days</SelectItem>
+              <SelectItem value="7">За последние 7 дней</SelectItem>
+              <SelectItem value="30">За последние 30 дней</SelectItem>
+              <SelectItem value="90">За последние 90 дней</SelectItem>
             </SelectContent>
           </Select>
         </ReportCard>
@@ -305,9 +305,9 @@ export default function ReportsPage() {
         {/* 4. Full Script Report */}
         <ReportCard
           title="Full Script Report"
-          description="Complete generated script with title, hook, detailed outline, full script text, and analysis of why it should perform well."
+          description="Полный готовый сценарий с заголовком, хуком, детализированным планом, полным текстом сценария и объяснением, почему он должен показывать высокие результаты."
           icon={<ScrollText className="h-5 w-5" />}
-          badge="Ready-to-Use"
+          badge="Готовый к использованию"
           loading={downloadingReport === "script"}
           disabled={!hasScripts}
           onDownload={() => downloadPDF("script", { scriptId: selectedScriptId })}
@@ -327,7 +327,7 @@ export default function ReportsPage() {
             </Select>
           ) : (
             <p className="text-sm text-muted-foreground">
-              Generate a script first to create this report
+              Сначала сгенерируйте сценарий, чтобы создать этот отчёт
             </p>
           )}
         </ReportCard>
@@ -335,12 +335,9 @@ export default function ReportsPage() {
 
       {/* Info Section */}
       <div className="mt-8 p-6 rounded-lg bg-muted/30 border border-border/50">
-        <h3 className="text-lg font-semibold mb-2">About Premium Reports</h3>
+        <h3 className="text-lg font-semibold mb-2">О премиальных отчётах</h3>
         <p className="text-sm text-muted-foreground leading-relaxed">
-          Reports are generated on-demand using your existing analytics data. Each PDF includes
-          comprehensive analysis, actionable insights, and professional formatting suitable for
-          team presentations or personal reference. Reports are not saved - download them immediately
-          after generation.
+          Отчёты создаются по запросу на основе вашей аналитики. Каждый PDF содержит глубокий анализ, практические рекомендации и профессиональное оформление, подходящее как для презентаций, так и для личного использования. Отчёты не сохраняются — скачайте их сразу после генерации.
         </p>
       </div>
     </div>
