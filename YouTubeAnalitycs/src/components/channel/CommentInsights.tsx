@@ -74,13 +74,12 @@ export function CommentInsights({
       });
 
       // Сразу устанавливаем данные в состояние чтобы отобразить результат
+      // API гарантирует что данные сохранены в БД перед возвратом ответа
       setData(result);
 
-      // Обновляем страницу чтобы синхронизировать другие компоненты и БД
-      // С небольшой задержкой чтобы React успел перерендерить компонент
-      setTimeout(() => {
-        router.refresh();
-      }, 100);
+      // Сразу же обновляем страницу чтобы синхронизировать SSR данные
+      // useEffect синхронизирует initialData с локальным состоянием
+      router.refresh();
     } catch (err) {
       console.error("Error generating comment insights:", err);
       setError(err instanceof Error ? err.message : "Unknown error");
