@@ -438,30 +438,45 @@ export async function getYoutubeChannelVideos(
 
   console.log("[ScrapeCreators] Начало загрузки видео для channelId:", channelId, "handle:", handle, "maxVideos limit:", maxVideos || "unlimited", "continuationToken:", continuationToken ? "present" : "none");
 
-  // Сначала пробуем с channelId
-  try {
-    return await fetchVideosFromAPI(apiKey, "channelId", channelId, maxVideos, continuationToken);
-  } catch (error) {
-    console.warn("[ScrapeCreators] Не удалось загрузить по channelId:", error instanceof Error ? error.message : error);
+  // СТРАТЕГИЯ: сначала пробуем handle (более надёжный), потом channelId
+  // API возвращает видео через handle надёжнее и БЕЗ параметров уже отсортировано по популярности
+  if (handle) {
+    try {
+      console.log("[ScrapeCreators] Пробуем получить видео через handle (ПЕРВАЯ попытка)");
+      const result = await fetchVideosFromAPI(apiKey, "handle", handle, maxVideos, continuationToken);
 
-    // Если есть handle - пробуем fallback
-    if (handle) {
-      console.log("[VideoSync] Using fallback from channelId → handle");
-      try {
-        return await fetchVideosFromAPI(apiKey, "handle", handle, maxVideos, continuationToken);
-      } catch (fallbackError) {
-        console.error("[ScrapeCreators] Fallback на handle тоже не сработал:", fallbackError);
-        throw new Error("ScrapeCreators: videos unavailable for this channel");
+      if (result.videos.length > 0) {
+        console.log(`[ScrapeCreators] ✅ Через handle получено ${result.videos.length} видео`);
+        return result;
+      } else {
+        console.log("[ScrapeCreators] Handle вернул 0 видео, пробуем channelId");
       }
+    } catch (error) {
+      console.warn("[ScrapeCreators] Ошибка при запросе через handle:", error instanceof Error ? error.message : error);
     }
+  }
 
-    // Если handle нет - пробрасываем оригинальную ошибку
-    throw error;
+  // Fallback на channelId если handle не сработал или недоступен
+  try {
+    console.log("[ScrapeCreators] Пробуем получить видео через channelId (FALLBACK)");
+    const result = await fetchVideosFromAPI(apiKey, "channelId", channelId, maxVideos, continuationToken);
+
+    if (result.videos.length > 0) {
+      console.log(`[ScrapeCreators] ✅ Через channelId получено ${result.videos.length} видео`);
+      return result;
+    } else {
+      console.log("[ScrapeCreators] ❌ Ни handle ни channelId не вернули видео");
+      return { videos: [], continuationToken: null };
+    }
+  } catch (error) {
+    console.error("[ScrapeCreators] Ошибка при запросе через channelId:", error instanceof Error ? error.message : error);
+    throw new Error("ScrapeCreators: videos unavailable for this channel");
   }
 }
 
 /**
  * Внутренняя функция для загрузки видео с указанными параметрами
+ * Пробует разные комбинации параметров если первая попытка вернула пустой результат
  * @param maxVideos - максимальное количество видео для загрузки (остановиться при достижении)
  * @param initialToken - начальный continuationToken для загрузки следующей страницы (ИТЕРАЦИЯ 11)
  */
@@ -477,20 +492,47 @@ async function fetchVideosFromAPI(
   let pageCount = 0;
   const maxPages = 5; // Ограничение на количество страниц для избежания бесконечных циклов
 
+  // Стратегия: пробуем разные комбинации параметров с sort=popular
+  // КРИТИЧЕСКИ ВАЖНО: ТОЛЬКО sort=popular, НИКОГДА sort=latest!
+  type SortStrategy = {
+    sort: string;
+    includeExtras?: string;
+    label: string;
+  };
+
+  const sortStrategies: SortStrategy[] = [
+    { sort: "popular", label: "sort=popular only" },
+    { sort: "popular", includeExtras: "true", label: "sort=popular+extras" },
+  ];
+
+  let currentStrategyIndex = 0;
+
   try {
     do {
       pageCount++;
 
-      // Формируем URL с параметрами
-      // ВАЖНО: параметр sort для ScrapeCreators /v1/youtube/channel-videos:
-      // - "popular" = сортировка по viewCountInt (по убыванию просмотров, самые просматриваемые сверху)
-      // - "latest"  = сортировка по publishDate (по убыванию даты, самые новые сверху)
-      // СТРАТЕГИЯ (ИТЕРАЦИЯ 12): используем ТОЛЬКО "popular" для TOP-12 самых популярных видео
+      // Выбираем текущую стратегию
+      const strategy = sortStrategies[currentStrategyIndex];
+
+      // Если это не первая страница, остаемся с текущей стратегией
+      // Если это первая страница новой стратегии (после того как предыдущая вернула 0), сбрасываем continuationToken
+      if (pageCount === 1 && currentStrategyIndex > 0) {
+        continuationToken = null;
+        console.log(`[ScrapeCreators] Пробуем другую стратегию: ${strategy.label}`);
+      }
+
+      // Формируем URL с параметрами текущей стратегии
       const params = new URLSearchParams({
         [paramType]: paramValue,
-        sort: "popular",  // ✅ КРИТИЧЕСКИ: только popular для TOP-12 видео
-        includeExtras: "true",
       });
+
+      if (strategy.sort) {
+        params.append("sort", strategy.sort);
+      }
+
+      if (strategy.includeExtras) {
+        params.append("includeExtras", strategy.includeExtras);
+      }
 
       if (continuationToken) {
         params.append("continuationToken", continuationToken);
@@ -603,8 +645,9 @@ async function fetchVideosFromAPI(
         }
       }
 
+      // Примечание: videos найден успешно, но может быть пустым - это не ошибка
       if (videos.length === 0) {
-        console.warn("[ScrapeCreators] Could not find videos array in response after all attempts");
+        console.log("[ScrapeCreators] Videos array found but is empty");
       }
 
       console.log("[ScrapeCreators] Extracted videos count:", {
@@ -702,10 +745,19 @@ async function fetchVideosFromAPI(
 
       allVideos.push(...normalizedVideos);
 
-      console.log(`[ScrapeCreators] Page ${pageCount}: получено ${normalizedVideos.length} видео, всего: ${allVideos.length}`);
+      console.log(`[ScrapeCreators] Page ${pageCount} (стратегия: ${strategy.label}): получено ${normalizedVideos.length} видео, всего: ${allVideos.length}`);
 
       // Проверяем наличие continuationToken для следующей страницы
       continuationToken = data.continuationToken || null;
+
+      // КРИТИЧЕСКИ: если стратегия вернула 0 видео на первой странице, переходим на следующую
+      if (normalizedVideos.length === 0 && pageCount === 1 && currentStrategyIndex < sortStrategies.length - 1) {
+        console.log(`[ScrapeCreators] Стратегия "${strategy.label}" вернула 0 видео, переходим на следующую`);
+        currentStrategyIndex++;
+        pageCount = 0; // Сбрасываем счетчик страниц для новой стратегии
+        continuationToken = null; // Сбрасываем токен
+        continue;
+      }
 
       // 🔑 ОПТИМИЗАЦИЯ: остановиться если достигли maxVideos
       if (maxVideos && allVideos.length >= maxVideos) {
@@ -724,6 +776,7 @@ async function fetchVideosFromAPI(
     console.log("[ScrapeCreators] Всего загружено видео:", {
       totalCount: allVideos.length,
       pages: pageCount,
+      usedStrategy: sortStrategies[currentStrategyIndex]?.label || "unknown",
       continuationToken: continuationToken ? "present" : "none",  // ИТЕРАЦИЯ 11
       sample: allVideos[0],
     });
