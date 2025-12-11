@@ -130,10 +130,14 @@ export async function syncChannelComments(
         // Сохраняем комментарии в БД
         for (const comment of comments) {
           try {
+            // Генерируем уникальный ID для комментария: videoId_timestamp
+            const commentId = `${videoId}_${now}_${totalComments}`;
+
             await client.execute({
-              sql: `INSERT INTO channel_comments (videoId, channelId, author, text, likeCountInt, publishedAt, fetchedAt)
-                    VALUES (?, ?, ?, ?, ?, ?, ?)`,
+              sql: `INSERT INTO channel_comments (id, videoId, channelId, author, text, likeCountInt, publishedAt, fetchedAt)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
               args: [
+                commentId,
                 videoId,
                 channelId,
                 String(comment.author || "Unknown").trim() || "Unknown",
