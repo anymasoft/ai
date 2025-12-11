@@ -4,6 +4,7 @@ import { authOptions } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { getYoutubeChannelByHandle } from "@/lib/scrapecreators";
 import { syncChannelTopVideos } from "@/lib/sync-channel-videos";
+import { syncChannelComments } from "@/lib/sync-channel-comments";
 import { PLAN_LIMITS } from "@/lib/plan-limits";
 import { normalizeYoutubeInput } from "@/lib/youtube/normalize";
 
@@ -196,11 +197,24 @@ export async function POST(req: NextRequest) {
           newCompetitor.channelId as string,
           newCompetitor.handle as string
         );
-        console.log("[Competitors POST] Синхронизация завершена:", {
+        console.log("[Competitors POST] Синхронизация видео завершена:", {
           success: syncResult.success,
           source: syncResult.source,
           totalVideos: syncResult.totalVideos,
         });
+
+        // Автоматическая синхронизация комментариев
+        console.log("[Competitors POST] Начинаем автоматическую синхронизацию комментариев для channelId:", newCompetitor.channelId);
+        try {
+          const commentsResult = await syncChannelComments(newCompetitor.channelId as string);
+          console.log("[Competitors POST] Синхронизация комментариев завершена:", {
+            success: commentsResult.success,
+            totalComments: commentsResult.totalComments,
+          });
+        } catch (commentsError) {
+          console.warn("[Competitors POST] Ошибка синхронизации комментариев (non-critical):", commentsError);
+          // Не прерываем процесс добавления конкурента если синхронизация комментариев упала
+        }
       } catch (syncError) {
         console.error("[Competitors POST] Ошибка синхронизации видео (non-critical):", syncError);
         // Не прерываем процесс добавления конкурента если синхронизация упала
