@@ -440,17 +440,34 @@ export async function getYoutubeChannelVideos(
 
   // Сначала пробуем с channelId
   try {
-    return await fetchVideosFromAPI(apiKey, "channelId", channelId, maxVideos, continuationToken);
+    const result = await fetchVideosFromAPI(apiKey, "channelId", channelId, maxVideos, continuationToken);
+
+    // ВАЖНО: если channelId вернул пустой результат но есть handle, попробовать с handle
+    if (result.videos.length === 0 && handle) {
+      console.log("[ScrapeCreators] channelId вернул 0 видео, пробуем fallback на handle");
+      try {
+        const fallbackResult = await fetchVideosFromAPI(apiKey, "handle", handle, maxVideos, continuationToken);
+        if (fallbackResult.videos.length > 0) {
+          console.log(`[ScrapeCreators] Fallback на handle сработал: получено ${fallbackResult.videos.length} видео`);
+          return fallbackResult;
+        }
+      } catch (fallbackError) {
+        console.warn("[ScrapeCreators] Fallback на handle выбросил ошибку:", fallbackError instanceof Error ? fallbackError.message : fallbackError);
+        // Если fallback тоже не сработал, возвращаем пустой результат с логированием
+      }
+    }
+
+    return result;
   } catch (error) {
     console.warn("[ScrapeCreators] Не удалось загрузить по channelId:", error instanceof Error ? error.message : error);
 
     // Если есть handle - пробуем fallback
     if (handle) {
-      console.log("[VideoSync] Using fallback from channelId → handle");
+      console.log("[ScrapeCreators] Ошибка channelId - попробуем fallback на handle");
       try {
         return await fetchVideosFromAPI(apiKey, "handle", handle, maxVideos, continuationToken);
       } catch (fallbackError) {
-        console.error("[ScrapeCreators] Fallback на handle тоже не сработал:", fallbackError);
+        console.error("[ScrapeCreators] Fallback на handle тоже не сработал:", fallbackError instanceof Error ? fallbackError.message : fallbackError);
         throw new Error("ScrapeCreators: videos unavailable for this channel");
       }
     }
@@ -603,8 +620,9 @@ async function fetchVideosFromAPI(
         }
       }
 
+      // Примечание: videos найден успешно, но может быть пустым - это не ошибка
       if (videos.length === 0) {
-        console.warn("[ScrapeCreators] Could not find videos array in response after all attempts");
+        console.log("[ScrapeCreators] Videos array found but is empty");
       }
 
       console.log("[ScrapeCreators] Extracted videos count:", {
