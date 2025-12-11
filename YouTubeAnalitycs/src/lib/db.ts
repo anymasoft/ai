@@ -234,6 +234,25 @@ async function getClient() {
         _client.execute(`CREATE INDEX IF NOT EXISTS idx_channel_videos_lookup
           ON channel_videos(channelId, viewCountInt DESC);`);
 
+        // Глобальная таблица комментариев ко всем видео
+        // Комментарии сохраняются глобально (не привязаны к пользователю)
+        _client.execute(`CREATE TABLE IF NOT EXISTS channel_comments (
+          id TEXT PRIMARY KEY,
+          videoId TEXT NOT NULL,
+          channelId TEXT NOT NULL,
+          author TEXT,
+          text TEXT,
+          likeCountInt INTEGER DEFAULT 0,
+          publishedAt TEXT,
+          fetchedAt INTEGER NOT NULL
+        );`);
+
+        _client.execute(`CREATE INDEX IF NOT EXISTS idx_channel_comments_video
+          ON channel_comments(videoId);`);
+
+        _client.execute(`CREATE INDEX IF NOT EXISTS idx_channel_comments_channel
+          ON channel_comments(channelId);`);
+
         _client.execute(`CREATE TABLE IF NOT EXISTS content_intelligence (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
           channelId TEXT NOT NULL,

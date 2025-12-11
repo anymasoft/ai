@@ -78,17 +78,17 @@ export async function POST(
 
     console.log(`[CommentInsights] Найдено ${videos.length} видео`);
 
-    // Получаем все комментарии для этих видео
+    // Получаем все комментарии для этих видео из глобальной таблицы
     const placeholders = videoIds.map(() => "?").join(",");
     const commentsResult = await client.execute({
-      sql: `SELECT * FROM video_comments WHERE videoId IN (${placeholders}) ORDER BY likes DESC LIMIT 500`,
+      sql: `SELECT * FROM channel_comments WHERE videoId IN (${placeholders}) ORDER BY likeCountInt DESC LIMIT 500`,
       args: videoIds,
     });
 
     if (commentsResult.rows.length === 0) {
       client.close();
       return NextResponse.json(
-        { error: "Sync Comments first" },
+        { error: "No comments found. Please add the channel to sync comments automatically." },
         { status: 400 }
       );
     }
@@ -102,10 +102,9 @@ export async function POST(
 
     // Подготовка данных для OpenAI - берём топ 200 комментариев
     const topComments = comments.slice(0, 200).map((c) => ({
-      content: c.content,
-      likes: c.likes,
-      authorName: c.author_name,
-      isCreator: c.is_creator,
+      content: c.text,
+      likes: c.likeCountInt,
+      authorName: c.author,
     }));
 
     // Инициализация OpenAI клиента
