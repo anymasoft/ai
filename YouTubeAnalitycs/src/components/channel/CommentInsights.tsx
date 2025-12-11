@@ -23,12 +23,14 @@ interface CommentInsightsData {
 }
 
 interface CommentInsightsProps {
+  competitorId: number;
   channelId: string;
   initialData?: CommentInsightsData | null;
   hasRequiredData?: boolean;
 }
 
 export function CommentInsights({
+  competitorId,
   channelId,
   initialData,
   hasRequiredData = true
@@ -43,7 +45,7 @@ export function CommentInsights({
     setError(null);
 
     try {
-      const res = await fetch(`/api/channel/${channelId}/comments/insights`, {
+      const res = await fetch(`/api/channel/${competitorId}/comments/insights`, {
         method: "POST",
       });
 

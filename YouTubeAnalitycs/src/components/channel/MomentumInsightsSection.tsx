@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { MomentumInsights } from "@/components/channel/MomentumInsights";
 
 interface MomentumInsightsSectionProps {
+  competitorId: number;
   momentumData: any;
   channelId?: string;
   /** Есть ли видео для анализа */
@@ -14,6 +15,7 @@ interface MomentumInsightsSectionProps {
 }
 
 export function MomentumInsightsSection({
+  competitorId,
   momentumData,
   channelId,
   hasRequiredData = false,
@@ -22,15 +24,15 @@ export function MomentumInsightsSection({
   const [loadingMomentum, setLoadingMomentum] = useState(false);
 
   const handleGetMomentum = async () => {
-    if (!channelId) {
-      console.error("channelId not provided");
+    if (!competitorId) {
+      console.error("competitorId not provided");
       return;
     }
 
     setLoadingMomentum(true);
     try {
       // Шаг 1: Генерируем momentum анализ
-      const syncRes = await fetch(`/api/channel/${channelId}/momentum`, {
+      const syncRes = await fetch(`/api/channel/${competitorId}/momentum`, {
         method: "POST",
       });
 
@@ -41,7 +43,7 @@ export function MomentumInsightsSection({
       }
 
       // Шаг 2: Отмечаем momentum как показанный
-      const showRes = await fetch(`/api/channel/${channelId}/momentum/show`, {
+      const showRes = await fetch(`/api/channel/${competitorId}/momentum/show`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
       });

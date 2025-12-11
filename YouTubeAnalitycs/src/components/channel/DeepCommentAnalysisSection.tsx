@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { DeepCommentAnalysis } from "@/components/channel/DeepCommentAnalysis";
 
 interface DeepCommentAnalysisSectionProps {
+  competitorId: number;
   deepAnalysisData: any;
   channelId?: string;
   /** Есть ли комментарии для анализа */
@@ -14,6 +15,7 @@ interface DeepCommentAnalysisSectionProps {
 }
 
 export function DeepCommentAnalysisSection({
+  competitorId,
   deepAnalysisData,
   channelId,
   hasRequiredData = false,
@@ -22,15 +24,15 @@ export function DeepCommentAnalysisSection({
   const [loadingDeepAnalysis, setLoadingDeepAnalysis] = useState(false);
 
   const handleGetDeepAnalysis = async () => {
-    if (!channelId) {
-      console.error("channelId not provided");
+    if (!competitorId) {
+      console.error("competitorId not provided");
       return;
     }
 
     setLoadingDeepAnalysis(true);
     try {
       // Шаг 1: Генерируем глубокий анализ комментариев
-      const syncRes = await fetch(`/api/channel/${channelId}/comments/ai`, {
+      const syncRes = await fetch(`/api/channel/${competitorId}/comments/ai`, {
         method: "POST",
         credentials: "include",
       });
@@ -42,7 +44,7 @@ export function DeepCommentAnalysisSection({
       }
 
       // Шаг 2: Отмечаем глубокий анализ как показанный
-      const showRes = await fetch(`/api/channel/${channelId}/deep-comments/show`, {
+      const showRes = await fetch(`/api/channel/${competitorId}/deep-comments/show`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
       });

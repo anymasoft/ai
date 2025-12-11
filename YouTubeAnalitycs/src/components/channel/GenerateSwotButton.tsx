@@ -7,13 +7,15 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 
 interface GenerateSwotButtonProps {
-  channelId: string;
+  competitorId: number;
+  channelId?: string;
   variant?: "default" | "outline" | "ghost";
   size?: "default" | "sm" | "lg";
   isUpdate?: boolean;
 }
 
 export function GenerateSwotButton({
+  competitorId,
   channelId,
   variant = "default",
   size = "lg",
@@ -26,7 +28,7 @@ export function GenerateSwotButton({
     setIsGenerating(true);
 
     try {
-      const response = await fetch(`/api/channel/${channelId}/summary`, {
+      const response = await fetch(`/api/channel/${competitorId}/summary`, {
         method: "POST",
       });
 
