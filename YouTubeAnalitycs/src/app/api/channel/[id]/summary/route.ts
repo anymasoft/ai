@@ -81,12 +81,12 @@ export async function GET(
     client.close();
     console.error("[API] Ошибка при получении AI-анализа:", error);
 
-    if (error instanceof Error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
-    }
+    const errorMessage = error instanceof Error
+      ? (error.message || "Failed to fetch AI insights")
+      : String(error) || "Failed to fetch AI insights";
 
     return NextResponse.json(
-      { error: "Failed to fetch AI insights" },
+      { ok: false, error: errorMessage },
       { status: 500 }
     );
   }
@@ -198,12 +198,12 @@ export async function POST(
     client.close();
     console.error("[API] Ошибка при генерации AI-анализа:", error);
 
-    if (error instanceof Error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
-    }
+    const errorMessage = error instanceof Error
+      ? (error.message || "Failed to generate AI insights")
+      : String(error) || "Failed to generate AI insights";
 
     return NextResponse.json(
-      { error: "Failed to generate AI insights" },
+      { ok: false, error: errorMessage },
       { status: 500 }
     );
   }
