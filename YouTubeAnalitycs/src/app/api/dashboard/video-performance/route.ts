@@ -80,9 +80,9 @@ export async function GET(req: NextRequest) {
           channelId,
           title,
           thumbnailUrl,
-          viewCount,
-          likeCount,
-          commentCount,
+          viewCountInt,
+          likeCountInt,
+          commentCountInt,
           publishDate
         FROM channel_videos
         WHERE channelId IN (${placeholders})
@@ -119,7 +119,7 @@ export async function GET(req: NextRequest) {
     const videosWithMetrics: VideoPerformance[] = validRows.map(row => {
       const publishDateMs = new Date(row.publishDate as string).getTime();
       const daysSincePublish = Math.max(1, (now - publishDateMs) / (1000 * 60 * 60 * 24));
-      const viewsPerDay = (row.viewCount as number) / daysSincePublish;
+      const viewsPerDay = (row.viewCountInt as number) / daysSincePublish;
       const channelId = row.channelId as string;
 
       return {
@@ -128,9 +128,9 @@ export async function GET(req: NextRequest) {
         channelId,
         channelTitle: channelTitleMap.get(channelId) || "Unknown",
         thumbnailUrl: row.thumbnailUrl as string | null,
-        viewCount: row.viewCount as number,
-        likeCount: row.likeCount as number,
-        commentCount: row.commentCount as number,
+        viewCount: row.viewCountInt as number,
+        likeCount: row.likeCountInt as number,
+        commentCount: row.commentCountInt as number,
         publishDate: row.publishDate as string,
         viewsPerDay,
         momentumScore: 0,

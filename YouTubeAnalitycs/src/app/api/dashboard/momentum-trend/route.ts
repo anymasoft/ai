@@ -61,7 +61,7 @@ export async function GET(req: NextRequest) {
         SELECT
           v.videoId,
           v.channelId,
-          v.viewCount,
+          v.viewCountInt,
           v.publishDate
         FROM channel_videos v
         WHERE v.channelId IN (${placeholders})
@@ -100,7 +100,7 @@ export async function GET(req: NextRequest) {
     const videosWithMomentum = validRows.map(row => {
       const publishDateMs = new Date(row.publishDate as string).getTime();
       const daysSincePublish = Math.max(1, (now - publishDateMs) / (1000 * 60 * 60 * 24));
-      const viewsPerDay = (row.viewCount as number) / daysSincePublish;
+      const viewsPerDay = (row.viewCountInt as number) / daysSincePublish;
 
       return {
         videoId: row.videoId as string,

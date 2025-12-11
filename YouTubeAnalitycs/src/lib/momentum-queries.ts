@@ -144,12 +144,12 @@ export async function getTopMomentumVideos(
           v.channelId,
           v.title,
           v.publishDate,
-          v.viewCount,
-          v.likeCount,
-          v.commentCount
+          v.viewCountInt,
+          v.likeCountInt,
+          v.commentCountInt
         FROM channel_videos v
         WHERE v.channelId IN (${placeholders})
-        ORDER BY v.viewCount DESC
+        ORDER BY v.viewCountInt DESC
       `,
       args: [...channelIds],
     });
@@ -190,7 +190,7 @@ export async function getTopMomentumVideos(
         continue;
       }
 
-      const viewCount = Number(row.viewCount) || 0;
+      const viewCount = Number(row.viewCountInt) || 0;
 
       // Рассчитываем days since publish
       const days = daysSincePublish(publishDate);
@@ -202,8 +202,8 @@ export async function getTopMomentumVideos(
         title: row.title as string,
         publishDate,
         viewCount,
-        likeCount: row.likeCount ? Number(row.likeCount) : undefined,
-        commentCount: row.commentCount ? Number(row.commentCount) : undefined,
+        likeCount: row.likeCountInt ? Number(row.likeCountInt) : undefined,
+        commentCount: row.commentCountInt ? Number(row.commentCountInt) : undefined,
         viewsPerDay,
         momentumScore: 0, // Будет рассчитан после
       });

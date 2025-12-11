@@ -81,13 +81,13 @@ export async function GET(req: NextRequest) {
             v.videoId,
             v.channelId,
             v.title,
-            v.viewCount,
+            v.viewCountInt,
             v.publishDate,
             c.title as channelTitle
           FROM channel_videos v
           JOIN competitors c ON v.channelId = c.channelId AND c.userId = ?
           WHERE v.channelId IN (${placeholders})
-          ORDER BY v.viewCount DESC
+          ORDER BY v.viewCountInt DESC
         `,
         args: [userId, ...channelIds],
       });
@@ -111,13 +111,13 @@ export async function GET(req: NextRequest) {
           const videosWithMomentum = validRows.map(row => {
             const publishDateMs = new Date(row.publishDate as string).getTime();
             const daysSincePublish = Math.max(1, (now - publishDateMs) / (1000 * 60 * 60 * 24));
-            const viewsPerDay = (row.viewCount as number) / daysSincePublish;
+            const viewsPerDay = (row.viewCountInt as number) / daysSincePublish;
 
             return {
               videoId: row.videoId as string,
               title: row.title as string,
               channelTitle: row.channelTitle as string,
-              viewCount: row.viewCount as number,
+              viewCount: row.viewCountInt as number,
               viewsPerDay,
               momentumScore: 0, // Будет рассчитан после определения медианы
             };

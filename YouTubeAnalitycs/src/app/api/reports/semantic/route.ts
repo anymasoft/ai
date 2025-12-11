@@ -58,7 +58,7 @@ export async function GET(req: NextRequest) {
 
     const placeholders = sourceVideos.map(() => "?").join(",")
     const videosResult = await db.execute({
-      sql: `SELECT videoId, title, viewCount, likeCount, publishDate FROM channel_videos WHERE videoId IN (${placeholders})`,
+      sql: `SELECT videoId, title, viewCountInt, likeCountInt, publishDate FROM channel_videos WHERE videoId IN (${placeholders})`,
       args: sourceVideos,
     })
 
@@ -66,8 +66,8 @@ export async function GET(req: NextRequest) {
     const semanticMap = await generateSemanticMapForReport(
       videosResult.rows.map((row) => ({
         title: row.title as string,
-        viewCount: Number(row.viewCount),
-        likeCount: Number(row.likeCount),
+        viewCount: Number(row.viewCountInt),
+        likeCount: Number(row.likeCountInt),
       }))
     )
 
@@ -118,8 +118,8 @@ export async function GET(req: NextRequest) {
       ["Title", "Views", "Likes"],
       videosResult.rows.slice(0, 10).map((row) => [
         (row.title as string).slice(0, 35) + "...",
-        Number(row.viewCount).toLocaleString(),
-        Number(row.likeCount).toLocaleString(),
+        Number(row.viewCountInt).toLocaleString(),
+        Number(row.likeCountInt).toLocaleString(),
       ]),
       { columnWidths: [280, 100, 100] }
     )

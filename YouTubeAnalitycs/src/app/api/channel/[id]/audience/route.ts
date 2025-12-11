@@ -151,11 +151,11 @@ export async function POST(
       id: row.id as number,
       videoId: row.videoId as string,
       title: row.title as string,
-      viewCount: row.viewCountInt as number,
-      likeCount: row.likeCountInt as number,
-      commentCount: row.commentCountInt as number,
+      viewCountInt: row.viewCountInt as number,
+      likeCountInt: row.likeCountInt as number,
+      commentCountInt: row.commentCountInt as number,
       publishDate: row.publishDate as string,
-      duration: row.durationSeconds as number | null,
+      durationSeconds: row.durationSeconds as number | null,
     }));
 
     console.log(`[Audience] Найдено ${videos.length} видео для анализа`);
@@ -205,8 +205,8 @@ export async function POST(
       if (detailsResult.rows.length > 0) {
         const details = detailsResult.rows[0];
         if ((details.updatedAt as number) > sevenDaysAgo) {
-          video.likeCount = details.likeCount as number;
-          video.commentCount = details.commentCount as number;
+          video.likeCountInt = details.likeCount as number;
+          video.commentCountInt = details.commentCount as number;
           enrichedCount++;
         }
       }
@@ -215,7 +215,7 @@ export async function POST(
     console.log(`[Audience] Обогащено ${enrichedCount} видео из videoDetails`);
 
     // Проверяем наличие данных о лайках и комментариях
-    const hasEngagementData = videosWithValidDates.some(v => v.likeCount > 0 || v.commentCount > 0);
+    const hasEngagementData = videosWithValidDates.some(v => v.likeCountInt > 0 || v.commentCountInt > 0);
     const usingFallback = !hasEngagementData;
 
     console.log(`[Audience] Режим анализа: ${usingFallback ? 'FALLBACK (proxy metrics)' : 'STANDARD (likes+comments)'}`);
@@ -223,24 +223,24 @@ export async function POST(
     // Вычисляем engagement метрики для каждого видео
     const videosWithMetrics: VideoWithEngagement[] = videosWithValidDates.map(v => {
       const days = daysSincePublish(v.publishDate as string);
-      const viewsPerDay = v.viewCount / days;
-      const likeRate = v.viewCount > 0 ? v.likeCount / v.viewCount : 0;
-      const commentRate = v.viewCount > 0 ? v.commentCount / v.viewCount : 0;
+      const viewsPerDay = v.viewCountInt / days;
+      const likeRate = v.viewCountInt > 0 ? v.likeCountInt / v.viewCountInt : 0;
+      const commentRate = v.viewCountInt > 0 ? v.commentCountInt / v.viewCountInt : 0;
       const titleScore = calculateTitleScore(v.title);
 
       // Вычисляем momentum_score (упрощенная версия без БД)
       const momentumScore = 0; // TODO: можно интегрировать с momentum_insights если нужно
 
       // Вычисляем durationSeconds и isShort
-      const durationSeconds = v.duration ? Math.round(v.duration) : null;
+      const durationSeconds = v.durationSeconds ? Math.round(v.durationSeconds) : null;
       const isShort = durationSeconds ? durationSeconds < 60 : false;
 
       return {
         id: v.id,
         title: v.title,
-        viewCountInt: v.viewCount,
-        likeCountInt: v.likeCount,
-        commentCountInt: v.commentCount,
+        viewCountInt: v.viewCountInt,
+        likeCountInt: v.likeCountInt,
+        commentCountInt: v.commentCountInt,
         publishDate: v.publishDate,
         durationSeconds,
         isShort,
