@@ -560,12 +560,12 @@ ${JSON.stringify(videosForAnalysis, null, 2)}
     client.close();
     console.error("[Audience] Ошибка:", error);
 
-    if (error instanceof Error) {
-      return NextResponse.json({ error: error.message }, { status: 400 });
-    }
+    const errorMessage = error instanceof Error
+      ? (error.message || "Failed to generate audience analysis")
+      : String(error) || "Failed to generate audience analysis";
 
     return NextResponse.json(
-      { error: "Failed to generate audience analysis" },
+      { ok: false, error: errorMessage },
       { status: 500 }
     );
   }
@@ -658,8 +658,13 @@ export async function GET(
   } catch (error) {
     client.close();
     console.error("[Audience] Ошибка GET:", error);
+
+    const errorMessage = error instanceof Error
+      ? (error.message || "Failed to fetch audience analysis")
+      : String(error) || "Failed to fetch audience analysis";
+
     return NextResponse.json(
-      { error: "Failed to fetch audience analysis" },
+      { ok: false, error: errorMessage },
       { status: 500 }
     );
   }

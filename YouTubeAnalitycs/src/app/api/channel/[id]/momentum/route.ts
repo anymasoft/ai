@@ -322,12 +322,12 @@ ${JSON.stringify(videosForAnalysis, null, 2)}
     client.close();
     console.error("[Momentum] Ошибка:", error);
 
-    if (error instanceof Error) {
-      return NextResponse.json({ error: error.message }, { status: 400 });
-    }
+    const errorMessage = error instanceof Error
+      ? (error.message || "Failed to generate momentum analysis")
+      : String(error) || "Failed to generate momentum analysis";
 
     return NextResponse.json(
-      { error: "Failed to generate momentum analysis" },
+      { ok: false, error: errorMessage },
       { status: 500 }
     );
   }
@@ -430,8 +430,13 @@ export async function GET(
   } catch (error) {
     client.close();
     console.error("[Momentum] Ошибка GET:", error);
+
+    const errorMessage = error instanceof Error
+      ? (error.message || "Failed to fetch momentum analysis")
+      : String(error) || "Failed to fetch momentum analysis";
+
     return NextResponse.json(
-      { error: "Failed to fetch momentum analysis" },
+      { ok: false, error: errorMessage },
       { status: 500 }
     );
   }

@@ -217,14 +217,18 @@ export async function POST(
         errorMessage = "Not enough valid comments to analyze";
         statusCode = 400;
       } else if (error.message.includes("failed") || error.message.includes("Failed")) {
-        errorMessage = "Analysis failed: " + error.message;
+        errorMessage = "Analysis failed: " + (error.message || "unknown error");
         statusCode = 400;
+      } else {
+        errorMessage = error.message || errorMessage;
       }
+    } else {
+      errorMessage = String(error) || errorMessage;
     }
 
     // Всегда возвращаем JSON, даже при ошибке
     return NextResponse.json(
-      { error: errorMessage },
+      { ok: false, error: errorMessage },
       { status: statusCode }
     );
   } finally {
@@ -318,8 +322,13 @@ export async function GET(
     });
   } catch (error) {
     console.error("[DeepCommentAI] Ошибка GET:", error);
+
+    const errorMessage = error instanceof Error
+      ? (error.message || "Failed to fetch deep comment analysis")
+      : String(error) || "Failed to fetch deep comment analysis";
+
     return NextResponse.json(
-      { error: "Failed to fetch deep comment analysis" },
+      { ok: false, error: errorMessage },
       { status: 500 }
     );
   }

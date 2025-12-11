@@ -345,12 +345,12 @@ export async function POST(
   } catch (error) {
     console.error("[ContentIntelligence] Ошибка:", error);
 
-    if (error instanceof Error) {
-      return NextResponse.json({ error: error.message }, { status: 400 });
-    }
+    const errorMessage = error instanceof Error
+      ? (error.message || "Failed to generate content intelligence")
+      : String(error) || "Failed to generate content intelligence";
 
     return NextResponse.json(
-      { error: "Failed to generate content intelligence" },
+      { ok: false, error: errorMessage },
       { status: 500 }
     );
   }
@@ -431,8 +431,13 @@ export async function GET(
 
   } catch (error) {
     console.error("[ContentIntelligence] Ошибка GET:", error);
+
+    const errorMessage = error instanceof Error
+      ? (error.message || "Failed to fetch content intelligence")
+      : String(error) || "Failed to fetch content intelligence";
+
     return NextResponse.json(
-      { error: "Failed to fetch content intelligence" },
+      { ok: false, error: errorMessage },
       { status: 500 }
     );
   }
