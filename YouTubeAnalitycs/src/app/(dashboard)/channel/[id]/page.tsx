@@ -1,4 +1,4 @@
-import { redirect } from "next/navigation";
+import { redirect, notFound } from "next/navigation";
 import Link from "next/link";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
@@ -78,6 +78,23 @@ function formatDate(timestamp: number): string {
 }
 
 /**
+ * Проверяет существование таблицы в SQLite
+ * Возвращает true если таблица существует, false иначе
+ */
+async function existsTable(client: any, tableName: string): Promise<boolean> {
+  try {
+    const result = await client.execute({
+      sql: `SELECT name FROM sqlite_master WHERE type='table' AND name=?`,
+      args: [tableName],
+    });
+    return result.rows.length > 0;
+  } catch (err) {
+    console.error(`[ChannelPage] Ошибка проверки таблицы ${tableName}:`, err);
+    return false;
+  }
+}
+
+/**
  * Вычисляет средние просмотры на видео
  */
 function calculateAvgViews(viewCount: number, videoCount: number): number {
@@ -106,6 +123,14 @@ export default async function ChannelPage({ params }: PageProps) {
   });
 
   try {
+    // GRACEFUL FALLBACK: Проверяем существование таблицы competitors перед SELECT
+    const competitorsTableExists = await existsTable(client, "competitors");
+    if (!competitorsTableExists) {
+      console.log("[ChannelPage] Таблица competitors не существует, возвращаем 404");
+      client.close();
+      return notFound();
+    }
+
     // Получаем данные канала из БД
     const competitorResult = await client.execute({
       sql: `SELECT id, userId, platform, channelId, handle, title,
@@ -117,7 +142,8 @@ export default async function ChannelPage({ params }: PageProps) {
 
     // Если канал не найден или не принадлежит пользователю
     if (competitorResult.rows.length === 0) {
-      redirect("/competitors");
+      client.close();
+      return notFound();
     }
 
     const competitor = { ...competitorResult.rows[0] } as any;
@@ -405,6 +431,19 @@ export default async function ChannelPage({ params }: PageProps) {
         />
       </div>
     );
+  } catch (error) {
+    // GRACEFUL FALLBACK: Обработка ошибок БД (например, если таблицы не существуют)
+    console.error("[ChannelPage] Ошибка при загрузке страницы канала:", error instanceof Error ? error.message : error);
+
+    // Если это ошибка LibSQL (таблица не существует и т.д.), вернуть 404
+    if (error instanceof Error && error.message.includes("no such table")) {
+      client.close();
+      return notFound();
+    }
+
+    // Для других ошибок БД также возвращаем 404 вместо краша
+    client.close();
+    return notFound();
   } finally {
     client.close();
   }
