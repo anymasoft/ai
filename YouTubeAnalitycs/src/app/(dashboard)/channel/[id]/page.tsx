@@ -238,7 +238,22 @@ export default async function ChannelPage({ params }: PageProps) {
     const comments = commentsResult.rows.length > 0 ? commentsResult.rows[0] as any : null;
 
     // Парсим JSON данные из comment_insights
-    const commentsData = comments ? JSON.parse(comments.data as string) : null;
+    let commentsData = null;
+    if (comments) {
+      try {
+        commentsData = JSON.parse(comments.data as string);
+        console.log("[ChannelPage] Comment Insights парсен успешно:", {
+          hasStats: !!commentsData.stats,
+          audienceInterestsLength: commentsData.audienceInterests?.length || 0,
+          complaintsLength: commentsData.complaints?.length || 0,
+          praisesLength: commentsData.praises?.length || 0,
+          generatedAt: comments.generatedAt,
+        });
+      } catch (parseErr) {
+        console.error("[ChannelPage] Ошибка парсинга comment_insights JSON:", parseErr);
+        console.log("[ChannelPage] Raw comments.data:", comments.data);
+      }
+    }
 
     // Получаем Deep Comment Analysis (AI v2.0)
     const deepAnalysisResult = await client.execute({
@@ -252,18 +267,21 @@ export default async function ChannelPage({ params }: PageProps) {
     const deepAnalysisData = deepAnalysis ? JSON.parse(deepAnalysis.resultJson as string) : null;
 
     // Debug: проверка channelId и количества метрик
-    console.log("channelId:", competitor.channelId);
+    console.log("[ChannelPage] Загруженные данные для канала:", competitor.channelId);
 
-    console.log("videos rows:", videos.length);
-    console.log("content intelligence:", contentData ? "exists" : "not found");
+    console.log("[ChannelPage] Metrics count - videos:", videos.length);
+    console.log("[ChannelPage] Content Intelligence:", contentData ? "exists" : "not found");
     if (contentData) {
-      console.log("contentData format:", contentData.format || "json (old format)");
-      console.log("contentData has report:", !!contentData.report);
+      console.log("[ChannelPage] ContentData format:", contentData.format || "json (old format)");
+      console.log("[ChannelPage] ContentData has report:", !!contentData.report);
     }
-    console.log("momentum insights:", momentumData ? "exists" : "not found");
-    console.log("audience insights:", audienceData ? "exists" : "not found");
-    console.log("comment insights:", commentsData ? "exists" : "not found");
-    console.log("deep analysis:", deepAnalysisData ? "exists" : "not found");
+    console.log("[ChannelPage] Momentum Insights:", momentumData ? "exists" : "not found");
+    console.log("[ChannelPage] Audience Insights:", audienceData ? "exists" : "not found");
+    console.log("[ChannelPage] Comment Insights:", commentsData ? "exists" : "not found", {
+      hasStats: !!commentsData?.stats,
+      interestsCount: commentsData?.audienceInterests?.length || 0,
+    });
+    console.log("[ChannelPage] Deep Analysis:", deepAnalysisData ? "exists" : "not found");
 
     return (
       <div className="container mx-auto px-4 md:px-6 space-y-6 pb-12">
@@ -363,11 +381,11 @@ export default async function ChannelPage({ params }: PageProps) {
           competitorId={competitorId}
           channelId={competitor.channelId as string}
           videos={videos}
-          contentData={contentData ? { ...contentData, generatedAt: intelligence?.generatedAt } : null}
-          momentumData={momentumData ? { ...momentumData, generatedAt: momentum?.generatedAt } : null}
-          audienceData={audienceData ? { ...audienceData, generatedAt: audience?.generatedAt } : null}
-          commentsData={commentsData ? { ...commentsData, generatedAt: comments?.generatedAt } : null}
-          deepAnalysisData={deepAnalysisData ? { ...deepAnalysisData, createdAt: deepAnalysis?.createdAt } : null}
+          contentData={contentData && intelligence ? { ...contentData, generatedAt: intelligence.generatedAt } : null}
+          momentumData={momentumData && momentum ? { ...momentumData, generatedAt: momentum.generatedAt } : null}
+          audienceData={audienceData && audience ? { ...audienceData, generatedAt: audience.generatedAt } : null}
+          commentsData={commentsData && comments ? { ...commentsData, generatedAt: comments.generatedAt } : null}
+          deepAnalysisData={deepAnalysisData && deepAnalysis ? { ...deepAnalysisData, createdAt: deepAnalysis.createdAt } : null}
           hasVideos={hasVideos}
           hasComments={hasComments}
           userPlan={getUserPlan(session)}

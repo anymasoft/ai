@@ -202,6 +202,16 @@ ${JSON.stringify(topComments, null, 2)}
       ...validatedAnalysis,
     };
 
+    console.log(`[CommentInsights] Final insightsData структура:`, {
+      hasStats: !!insightsData.stats,
+      hasAudienceInterests: !!insightsData.audienceInterests,
+      audienceInterestsCount: insightsData.audienceInterests?.length || 0,
+      hasComplaints: !!insightsData.complaints,
+      complaintsCount: insightsData.complaints?.length || 0,
+      hasPraises: !!insightsData.praises,
+      praisesCount: insightsData.praises?.length || 0,
+    });
+
     const now = Date.now();
 
     // Сохраняем результат в базу данных (DELETE + INSERT для гарантированного обновления)
@@ -212,23 +222,32 @@ ${JSON.stringify(topComments, null, 2)}
     });
 
     // Вставляем свежий анализ
+    const serializedData = JSON.stringify(insightsData);
+    console.log(`[CommentInsights] Сериализованные данные для БД (первые 200 символов):`, serializedData.substring(0, 200));
+
     await client.execute({
       sql: "INSERT INTO comment_insights (videoId, channelId, data, data_ru, generatedAt) VALUES (?, ?, ?, ?, ?)",
-      args: [videos[0].videoId, competitor.channelId, JSON.stringify(insightsData), null, now],
+      args: [videos[0].videoId, competitor.channelId, serializedData, null, now],
     });
 
     console.log(`[CommentInsights] Анализ сохранён в БД (свежая генерация)`);
 
     client.close();
 
+    // Формируем финальный ответ клиенту
+    const responseData = {
+      ...insightsData,
+      generatedAt: now,
+    };
+
+    console.log(`[CommentInsights] Отправляем клиенту ответ с структурой:`, {
+      hasStats: !!responseData.stats,
+      audienceInterestsCount: responseData.audienceInterests?.length || 0,
+      generatedAt: responseData.generatedAt,
+    });
+
     // Возвращаем результат клиенту
-    return NextResponse.json(
-      {
-        ...insightsData,
-        generatedAt: now,
-      },
-      { status: 201 }
-    );
+    return NextResponse.json(responseData, { status: 201 });
   } catch (error) {
     client.close();
     console.error("[CommentInsights] Ошибка:", error);

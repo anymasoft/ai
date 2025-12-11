@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Loader2, MessageSquare, Sparkles, Heart, AlertCircle, ThumbsUp, Lightbulb } from "lucide-react";
@@ -40,6 +40,18 @@ export function CommentInsights({
   const [data, setData] = useState<CommentInsightsData | null>(initialData || null);
   const [error, setError] = useState<string | null>(null);
 
+  // Синхронизируем локальное состояние с initialData из SSR
+  // Это нужно для обновления после router.refresh()
+  useEffect(() => {
+    if (initialData) {
+      console.log("[CommentInsights] Синхронизация initialData с state:", {
+        hasAudienceInterests: !!initialData.audienceInterests?.length,
+        totalInterests: initialData.audienceInterests?.length || 0,
+      });
+      setData(initialData);
+    }
+  }, [initialData?.generatedAt]); // Зависимость только от generatedAt чтобы избежать лишних обновлений
+
   async function handleGenerate() {
     setLoading(true);
     setError(null);
@@ -55,9 +67,18 @@ export function CommentInsights({
       }
 
       const result = await res.json();
+      console.log("[CommentInsights] Получен результат от API:", {
+        hasStats: !!result.stats,
+        audienceInterestsCount: result.audienceInterests?.length || 0,
+        complaintsCount: result.complaints?.length || 0,
+      });
+
+      // Сразу устанавливаем данные в состояние чтобы отобразить результат
+      // API гарантирует что данные сохранены в БД перед возвратом ответа
       setData(result);
 
-      // Обновляем страницу чтобы показать новые данные
+      // Сразу же обновляем страницу чтобы синхронизировать SSR данные
+      // useEffect синхронизирует initialData с локальным состоянием
       router.refresh();
     } catch (err) {
       console.error("Error generating comment insights:", err);
