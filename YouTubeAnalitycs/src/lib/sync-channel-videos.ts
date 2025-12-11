@@ -113,25 +113,60 @@ export async function syncChannelTopVideos(
     // ШАГ 2: Получаем видео из ScrapeCreators (sort=popular)
     let apiVideos;
     try {
+      console.log(`[SyncVideos] Запрашиваем видео из ScrapeCreators: channelId=${channelId}, handle=${handle}`);
       const response = await getYoutubeChannelVideos(
         channelId,
         handle,
         MAX_VIDEOS * 2 // Запрашиваем больше на случай фильтрации
       );
-      apiVideos = (response.videos || response) as any[];
+
+      // IMPORTANT: response is ChannelVideosResponse { videos: [...], continuationToken: ... }
+      if (!response || typeof response !== 'object') {
+        console.error(`[SyncVideos] Invalid response structure:`, { responseType: typeof response });
+        throw new Error("Invalid API response structure");
+      }
+
+      apiVideos = response.videos;
+
+      if (!Array.isArray(apiVideos)) {
+        console.error(`[SyncVideos] response.videos is not an array:`, {
+          videosType: typeof apiVideos,
+          responseKeys: Object.keys(response)
+        });
+        throw new Error("API videos is not an array");
+      }
+
+      console.log(`[SyncVideos] Получено ${apiVideos.length} видео из API`, {
+        responseStructure: { hasVideos: !!response.videos, hasContinuation: !!response.continuationToken },
+        sampleVideoIds: apiVideos.slice(0, 3).map((v: any) => v.videoId || v.id || 'MISSING'),
+      });
     } catch (error) {
       console.error("[SyncVideos] Ошибка получения списка видео:", error);
       throw error;
     }
 
-    // ШАГ 3: Фильтруем и сортируем TOP-12 по viewCountInt
+    // ШАГ 3: Фильтруем и сортируем TOP-12 по viewCount
+    const videosBeforeFilter = apiVideos.length;
+    const videosWithoutId = apiVideos.filter((v) => !v.videoId).length;
+
     const filtered = apiVideos
       .filter((v) => v.videoId)
       .sort((a, b) => (b.viewCount || 0) - (a.viewCount || 0))
       .slice(0, MAX_VIDEOS);
 
+    console.log(`[SyncVideos] Фильтрация видео:`, {
+      before: videosBeforeFilter,
+      videosWithoutId,
+      after: filtered.length,
+      filtered: filtered.map((v) => ({ videoId: v.videoId, title: v.title, viewCount: v.viewCount })),
+    });
+
     if (filtered.length === 0) {
-      console.warn(`[SyncVideos] API не вернул видео для channelId: ${channelId}`);
+      console.warn(`[SyncVideos] API не вернул видео для channelId: ${channelId}. Возможные причины:`, {
+        totalVideosFromAPI: videosBeforeFilter,
+        videosWithoutId,
+        apiVideos: apiVideos.slice(0, 2).map((v: any) => ({ id: v.id, videoId: v.videoId, title: v.title })),
+      });
       return { success: true, source: "api", totalVideos: 0 };
     }
 
@@ -160,15 +195,20 @@ export async function syncChannelTopVideos(
     let updated = 0;
     const now = Date.now();
 
-    console.log(`[SyncVideos] Начинаем сохранять ${filtered.length} видео в БД`);
+    console.log(`[SyncVideos] Начинаем сохранять ${filtered.length} видео в БД для channelId: ${channelId}`);
 
     for (const video of filtered) {
       if (!video.videoId) {
-        console.warn("[SyncVideos] Пропущено видео без videoId");
+        console.warn("[SyncVideos] Пропущено видео без videoId", { title: video.title });
         continue;
       }
 
       const safeVideo = createSafeVideoForDB(video, channelId);
+      console.log(`[SyncVideos] Обработка видео: ${safeVideo.videoId}`, {
+        title: safeVideo.title,
+        viewCount: safeVideo.viewCountInt,
+        channelId,
+      });
 
       // Проверяем существует ли видео
       const existingResult = await client.execute({
@@ -179,6 +219,7 @@ export async function syncChannelTopVideos(
       if (existingResult.rows.length > 0) {
         // UPDATE
         const existing = existingResult.rows[0];
+        console.log(`[SyncVideos] UPDATE видео ${safeVideo.videoId}`, { id: existing.id });
         await client.execute({
           sql: `UPDATE channel_videos SET
             channelId = ?,
@@ -205,8 +246,10 @@ export async function syncChannelTopVideos(
           ],
         });
         updated++;
+        console.log(`[SyncVideos] UPDATE успешен для ${safeVideo.videoId}`);
       } else {
         // INSERT
+        console.log(`[SyncVideos] INSERT новое видео ${safeVideo.videoId}`);
         await client.execute({
           sql: `INSERT INTO channel_videos (
             channelId, videoId, title, thumbnailUrl, viewCountInt,
@@ -228,6 +271,7 @@ export async function syncChannelTopVideos(
           ],
         });
         inserted++;
+        console.log(`[SyncVideos] INSERT успешен для ${safeVideo.videoId}`);
       }
     }
 

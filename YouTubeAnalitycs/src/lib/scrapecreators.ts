@@ -564,31 +564,63 @@ async function fetchVideosFromAPI(
       // Извлекаем видео из ответа
       // Пробуем несколько возможных структур API ответа
       let videos: any[] = [];
+      let extractionMethod = "none";
 
       if (Array.isArray(data.videos)) {
         videos = data.videos;
+        extractionMethod = "data.videos";
         console.log("[ScrapeCreators] Found videos in data.videos");
       } else if (Array.isArray(data.items)) {
         videos = data.items;
+        extractionMethod = "data.items";
         console.log("[ScrapeCreators] Found videos in data.items");
+      } else if (Array.isArray(data.result?.videos)) {
+        videos = data.result.videos;
+        extractionMethod = "data.result.videos";
+        console.log("[ScrapeCreators] Found videos in data.result.videos");
+      } else if (Array.isArray(data.data?.videos)) {
+        videos = data.data.videos;
+        extractionMethod = "data.data.videos";
+        console.log("[ScrapeCreators] Found videos in data.data.videos");
       } else if (Array.isArray(data)) {
         videos = data;
+        extractionMethod = "direct-array";
         console.log("[ScrapeCreators] Data itself is array");
-      } else {
-        console.warn("[ScrapeCreators] Could not find videos array in response");
+      } else if (data && typeof data === 'object') {
+        // FALLBACK: пробуем найти первый массив в объекте
+        const keys = Object.keys(data);
+        for (const key of keys) {
+          if (Array.isArray(data[key]) && data[key].length > 0) {
+            const firstItem = data[key][0];
+            // Проверяем что это похоже на видео (имеет id/videoId и title)
+            if ((firstItem.id || firstItem.videoId) && (firstItem.title || firstItem.name)) {
+              videos = data[key];
+              extractionMethod = `data.${key}`;
+              console.log(`[ScrapeCreators] Found videos in data.${key} (fallback detection)`);
+              break;
+            }
+          }
+        }
+      }
+
+      if (videos.length === 0) {
+        console.warn("[ScrapeCreators] Could not find videos array in response after all attempts");
       }
 
       console.log("[ScrapeCreators] Extracted videos count:", {
         rawVideosLength: videos.length,
+        extractionMethod,
         dataStructure: {
           hasVideos: Array.isArray(data.videos),
           hasItems: Array.isArray(data.items),
+          hasResultVideos: Array.isArray(data.result?.videos),
+          hasDataVideos: Array.isArray(data.data?.videos),
           isArray: Array.isArray(data),
-          dataKeys: data && typeof data === 'object' ? Object.keys(data).slice(0, 10) : 'not-object',
+          dataKeys: data && typeof data === 'object' ? Object.keys(data) : 'not-object',
         },
       });
 
-      // DEBUG: логируем сырые данные первого видео
+      // DEBUG: логируем сырые данные первого видео и sample других видео
       if (videos.length > 0) {
         const firstVideo = videos[0];
         console.log("[ScrapeCreators] RAW first video from API:", {
@@ -596,16 +628,27 @@ async function fetchVideosFromAPI(
           id: firstVideo.id,
           title: firstVideo.title,
           publishedTime: firstVideo.publishedTime,
+          viewCount: firstVideo.viewCount,
           allKeys: Object.keys(firstVideo),
+        });
+
+        // Логируем статистику по всем видео
+        const videosWithId = videos.filter((v: any) => v.id || v.videoId).length;
+        const videosWithoutId = videos.length - videosWithId;
+        console.log("[ScrapeCreators] Video ID statistics:", {
+          totalVideos: videos.length,
+          videosWithId,
+          videosWithoutId,
+          sampledVideoIds: videos.slice(0, 3).map((v: any) => v.id || v.videoId || 'MISSING'),
         });
       } else {
         console.warn("[ScrapeCreators] WARNING: No videos extracted from API response!");
         if (data && typeof data === 'object') {
-          console.warn("[ScrapeCreators] API response structure:", {
-            hasVideos: data.videos !== undefined,
-            videosType: typeof data.videos,
-            videosLength: Array.isArray(data.videos) ? data.videos.length : 'not-array',
-            dataSample: JSON.stringify(data).slice(0, 300),
+          console.warn("[ScrapeCreators] Full API response structure (first 500 chars):", {
+            dataSample: JSON.stringify(data).slice(0, 500),
+            dataKeys: Object.keys(data),
+            paramType,
+            paramValue,
           });
         }
       }
