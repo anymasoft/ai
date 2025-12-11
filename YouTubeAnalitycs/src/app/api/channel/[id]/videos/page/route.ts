@@ -62,10 +62,10 @@ export async function GET(
     // Получаем TOP-12 видео из БД
     console.log(`[DB] SELECT videos: args=[${channelId}]`);
     const videosResult = await client.execute({
-      sql: `SELECT id, channelId, videoId, title, thumbnailUrl, viewCount, publishDate, fetchedAt
+      sql: `SELECT id, channelId, videoId, title, thumbnailUrl, viewCountInt, publishDate, fetchedAt
             FROM channel_videos
             WHERE channelId = ?
-            ORDER BY viewCount DESC
+            ORDER BY viewCountInt DESC
             LIMIT 12`,
       args: [channelId],
     });

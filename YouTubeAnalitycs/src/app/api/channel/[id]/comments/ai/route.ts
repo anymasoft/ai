@@ -64,7 +64,7 @@ export async function POST(
     const videosResult = await client.execute({
       sql: `SELECT videoId FROM channel_videos
             WHERE channelId = ?
-            ORDER BY viewCount DESC
+            ORDER BY viewCountInt DESC
             LIMIT 30`,
       args: [channelId],
     });

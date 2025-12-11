@@ -210,7 +210,7 @@ export async function POST(
     console.log(`[ContentIntelligence] Канал найден: ${title}`);
 
     const videosResult = await client.execute({
-      sql: "SELECT * FROM channel_videos WHERE channelId = ? ORDER BY viewCount DESC LIMIT 50",
+      sql: "SELECT * FROM channel_videos WHERE channelId = ? ORDER BY viewCountInt DESC LIMIT 50",
       args: [channelId],
     });
 
@@ -249,7 +249,7 @@ export async function POST(
 
     const videosData = videosResult.rows.map(v => ({
       title: v.title,
-      viewCount: v.viewCount,
+      viewCount: v.viewCountInt,
       publishDate: v.publishDate,
     }));
 

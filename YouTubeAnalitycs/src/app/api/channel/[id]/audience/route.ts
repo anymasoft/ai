@@ -7,9 +7,9 @@ import OpenAI from "openai";
 interface VideoWithEngagement {
   id: number;
   title: string;
-  viewCount: number;
-  likeCount: number;
-  commentCount: number;
+  viewCountInt: number;
+  likeCountInt: number;
+  commentCountInt: number;
   publishDate: string | null; // Может быть null если API не вернул дату
   durationSeconds: number | null;
   isShort: boolean;
@@ -151,11 +151,11 @@ export async function POST(
       id: row.id as number,
       videoId: row.videoId as string,
       title: row.title as string,
-      viewCount: row.viewCount as number,
-      likeCount: row.likeCount as number,
-      commentCount: row.commentCount as number,
+      viewCount: row.viewCountInt as number,
+      likeCount: row.likeCountInt as number,
+      commentCount: row.commentCountInt as number,
       publishDate: row.publishDate as string,
-      duration: row.duration as number | null,
+      duration: row.durationSeconds as number | null,
     }));
 
     console.log(`[Audience] Найдено ${videos.length} видео для анализа`);
@@ -238,9 +238,9 @@ export async function POST(
       return {
         id: v.id,
         title: v.title,
-        viewCount: v.viewCount,
-        likeCount: v.likeCount,
-        commentCount: v.commentCount,
+        viewCountInt: v.viewCount,
+        likeCountInt: v.likeCount,
+        commentCountInt: v.commentCount,
         publishDate: v.publishDate,
         durationSeconds,
         isShort,
@@ -354,12 +354,12 @@ export async function POST(
     // Подготовка данных для OpenAI
     const videosForAnalysis = highEngagementVideos.map(v => ({
       title: v.title,
-      views: v.viewCount,
+      views: v.viewCountInt,
       publishDate: v.publishDate,
       durationSeconds: v.durationSeconds,
       isShort: v.isShort,
-      likes: v.likeCount,
-      comments: v.commentCount,
+      likes: v.likeCountInt,
+      comments: v.commentCountInt,
       engagementRate: `${((v.likeRate + v.commentRate) * 100).toFixed(2)}%`,
       viewsPerDay: Math.round(v.viewsPerDay),
       engagementScore: v.engagementScore.toFixed(6),
@@ -505,9 +505,9 @@ ${JSON.stringify(videosForAnalysis, null, 2)}
     const audienceData = {
       highEngagementVideos: highEngagementVideos.slice(0, 10).map(v => ({
         title: v.title,
-        viewCount: v.viewCount,
-        likeCount: v.likeCount,
-        commentCount: v.commentCount,
+        viewCount: v.viewCountInt,
+        likeCount: v.likeCountInt,
+        commentCount: v.commentCountInt,
         engagementScore: v.engagementScore,
         likeRate: v.likeRate,
         commentRate: v.commentRate,
