@@ -153,26 +153,7 @@ export async function analyzeChannel(
       ),
     }));
 
-    // Получаем исторические метрики для анализа динамики
-    console.log("[AI] Запрос метрик из БД...");
-    const metricsResult = await dbClient.execute({
-      sql: `SELECT * FROM channel_metrics
-            WHERE channelId = ?
-            ORDER BY fetchedAt DESC
-            LIMIT 30`,
-      args: [competitor.channelId],
-    });
-
-    console.log("[AI] Получено метрик:", metricsResult.rows.length);
-
-    const metrics = metricsResult.rows.map(row => ({
-      subscriberCount: row.subscriberCount as number,
-      videoCount: row.videoCount as number,
-      viewCount: row.viewCount as number,
-      date: row.date as string,
-      fetchedAt: row.fetchedAt as number,
-    }));
-
+    // НОВАЯ АРХИТЕКТУРА: Без исторических метрик — анализируем только текущие данные и TOP-12 видео
     dbClient.close();
 
     // Вычисляем агрегированные метрики
@@ -197,16 +178,14 @@ export async function analyzeChannel(
         }, 0) / videos.length
       : 0;
 
-    // Анализ динамики роста
-    let growthRate = 0;
-    if (metrics.length >= 2) {
-      const latest = metrics[0];
-      const oldest = metrics[metrics.length - 1];
-      const daysDiff = (latest.fetchedAt - oldest.fetchedAt) / (1000 * 60 * 60 * 24);
-      if (daysDiff > 0) {
-        growthRate = ((latest.subscriberCount - oldest.subscriberCount) / oldest.subscriberCount) * 100;
-      }
-    }
+    // Анализ динамики: считаем на основе скорости выхода видео (momentum)
+    // Вместо исторических метрик используем дневное моментум по TOP-3 видео
+    const top3Videos = videos.slice(0, 3);
+    const avgViewsPerDay = top3Videos.length > 0
+      ? Math.round(top3Videos.reduce((sum, v) => sum + v.viewCount, 0) / top3Videos.length / 30)
+      : 0;
+
+    const growthRate = avgViewsPerDay > 0 ? (avgViewsPerDay / (competitor.subscriberCount / 1000)).toFixed(1) : 0;
 
     // Формируем компактный блок данных для промпта
     const channelData = {
@@ -218,7 +197,7 @@ export async function analyzeChannel(
         средние_просмотры_на_видео: formatNumber(avgViews),
         медианные_просмотры: formatNumber(medianViews),
         средняя_длительность: `${Math.floor(avgDuration / 60)}м ${Math.floor(avgDuration % 60)}с`,
-        рост_подписчиков: metrics.length >= 2 ? `${growthRate.toFixed(1)}%` : 'н/д',
+        рост_подписчиков: `${growthRate}% daily (synthetic)`,
       },
       топ_видео: videos.slice(0, 15).map((v, idx) => ({
         номер: idx + 1,

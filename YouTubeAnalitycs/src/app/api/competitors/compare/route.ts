@@ -49,7 +49,38 @@ export async function GET(req: NextRequest) {
 
     console.log(`[CompareAPI] Found ${competitorsResult.rows.length} competitors`);
 
-    // Формируем массив CompetitorSummary с дополнительными метриками
+    // Получаем видео каждого конкурента для расчета viewsPerDay
+    const videosResult = await db.execute({
+      sql: `
+        SELECT
+          channelId,
+          publishDate,
+          viewCountInt
+        FROM channel_videos
+        WHERE channelId IN (${competitorsResult.rows.map(() => "?").join(",")})
+        ORDER BY channelId, publishDate ASC
+      `,
+      args: competitorsResult.rows.map(row => row.channelId),
+    });
+
+    // Группируем видео по каналу
+    const videosMap = new Map<string, Array<{
+      publishDate: string;
+      viewCount: number;
+    }>>();
+
+    videosResult.rows.forEach(row => {
+      const channelId = String(row.channelId);
+      if (!videosMap.has(channelId)) {
+        videosMap.set(channelId, []);
+      }
+      videosMap.get(channelId)!.push({
+        publishDate: row.publishDate as string,
+        viewCount: Number(row.viewCountInt) || 0,
+      });
+    });
+
+    console.log(`[CompareAPI] Loaded videos for ${videosMap.size} channels`);
     const competitors: CompetitorSummary[] = await Promise.all(
       competitorsResult.rows.map(async (row) => {
         const channelId = String(row.channelId || "");
@@ -57,61 +88,27 @@ export async function GET(req: NextRequest) {
         const videoCount = Number(row.videoCount) || 0;
         const avgViewsPerVideo = videoCount > 0 ? Math.round(viewCount / videoCount) : 0;
 
-        // Получаем метрики для расчета viewsPerDay и growth7d
+        // НОВАЯ АРХИТЕКТУРА: Вычисляем метрики в real-time без исторических данных
         let viewsPerDay: number | null = null;
         let growth7d: number | null = null;
 
         try {
-          // A. Две последние записи из channel_metrics для расчета viewsPerDay
-          const latestMetricsResult = await db.execute({
-            sql: `SELECT viewCount, subscriberCount, date
-                  FROM channel_metrics
-                  WHERE channelId = ?
-                  ORDER BY date DESC
-                  LIMIT 2`,
-            args: [channelId],
-          });
-
-          if (latestMetricsResult.rows.length >= 2) {
-            const last = latestMetricsResult.rows[0];
-            const prev = latestMetricsResult.rows[1];
-
-            const lastViewCount = Number(last.viewCount) || 0;
-            const prevViewCount = Number(prev.viewCount) || 0;
-            const lastDate = Number(last.date) || 0;
-            const prevDate = Number(prev.date) || 0;
-
-            const deltaViews = lastViewCount - prevViewCount;
-            const days = Math.max(1, (lastDate - prevDate) / 86400);
-            viewsPerDay = Math.round(deltaViews / days);
+          // Рассчитываем viewsPerDay на основе видео
+          const videos = videosMap.get(channelId) || [];
+          if (videos.length >= 2) {
+            // Дата первого видео
+            const firstPublishDate = new Date(videos[0].publishDate).getTime();
+            const lastPublishDate = new Date(videos[videos.length - 1].publishDate).getTime();
+            const daysSinceFirstVideo = Math.max(1, (lastPublishDate - firstPublishDate) / (1000 * 60 * 60 * 24));
+            viewsPerDay = Math.round(viewCount / daysSinceFirstVideo);
+          } else if (videos.length === 1) {
+            // Если только одно видео — используем его просмотры как viewsPerDay
+            viewsPerDay = videos[0].viewCount;
           }
 
-          // B. Запись примерно 7 дней назад для расчета growth7d
-          const weekAgoResult = await db.execute({
-            sql: `SELECT viewCount, subscriberCount, date
-                  FROM channel_metrics
-                  WHERE channelId = ?
-                    AND date <= strftime('%s','now') - 7*86400
-                  ORDER BY date DESC
-                  LIMIT 1`,
-            args: [channelId],
-          });
-
-          // Получаем последнюю запись метрик для сравнения
-          const currentMetricsResult = await db.execute({
-            sql: `SELECT subscriberCount
-                  FROM channel_metrics
-                  WHERE channelId = ?
-                  ORDER BY date DESC
-                  LIMIT 1`,
-            args: [channelId],
-          });
-
-          if (weekAgoResult.rows.length > 0 && currentMetricsResult.rows.length > 0) {
-            const currentSubscribers = Number(currentMetricsResult.rows[0].subscriberCount) || 0;
-            const weekAgoSubscribers = Number(weekAgoResult.rows[0].subscriberCount) || 0;
-            growth7d = currentSubscribers - weekAgoSubscribers;
-          }
+          // growth7d — не вычисляем без исторических данных
+          // В будущем можно использовать TOP-3 видео momentum
+          growth7d = null;
         } catch (error) {
           console.error(`[CompareAPI] Error calculating metrics for channel ${channelId}:`, error);
           // Продолжаем с null значениями

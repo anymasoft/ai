@@ -7,7 +7,7 @@ import { getYoutubeChannelByHandle } from "@/lib/scrapecreators";
 /**
  * POST /api/channel/[id]/sync
  * Синхронизирует метрики канала с ScrapeCreators API
- * и сохраняет их в channel_metrics для построения графиков
+ * и обновляет competitors таблицу (без сохранения исторических метрик)
  */
 export async function POST(
   req: NextRequest,
@@ -86,56 +86,7 @@ export async function POST(
       );
     }
 
-    // Формируем сегодняшнюю дату в формате YYYY-MM-DD
-    const today = new Date().toISOString().split("T")[0];
-
-    console.log(`[Sync] Проверка наличия записи за ${today}`);
-
-    // Проверяем, есть ли уже запись за сегодня
-    const existingMetricsResult = await client.execute({
-      sql: "SELECT * FROM channel_metrics WHERE channelId = ? AND date = ?",
-      args: [competitor.channelId, today],
-    });
-
-    // ОТКЛЮЧЕНО для разработки: ограничение на количество синхронизаций в день
-    // if (existingMetricsResult.rows.length >= 10) {
-    //   console.log("[Sync] Maximum syncs per day reached (10)");
-    //   client.close();
-    //   return NextResponse.json({
-    //     status: "exists",
-    //     message: "Maximum syncs per day reached (10). Try again tomorrow.",
-    //     date: today,
-    //   });
-    // }
-
-    // Production check (currently disabled for testing):
-    // if (existingMetricsResult.rows.length > 0) {
-    //   console.log("[Sync] Запись за сегодня уже существует");
-    //   client.close();
-    //   return NextResponse.json({
-    //     status: "exists",
-    //     message: "Metrics for today already exist. Try again tomorrow.",
-    //     date: today,
-    //   });
-    // }
-
-    console.log(`[Sync] Создаём запись (${existingMetricsResult.rows.length + 1}/10 за сегодня)`);
-
-    // Вставляем новую запись в channel_metrics
-    const newMetricResult = await client.execute({
-      sql: `INSERT INTO channel_metrics (
-        userId, channelId, subscriberCount, videoCount, viewCount, date, fetchedAt
-      ) VALUES (?, ?, ?, ?, ?, ?, ?)`,
-      args: [
-        session.user.id,
-        competitor.channelId,
-        channelData.subscriberCount,
-        channelData.videoCount,
-        channelData.viewCount,
-        today,
-        Date.now(),
-      ],
-    });
+    console.log(`[Sync] Обновление competitors таблицы`);
 
     // Обновляем данные в таблице competitors
     await client.execute({
@@ -154,31 +105,22 @@ export async function POST(
       ],
     });
 
-    console.log(`[Sync] Метрики успешно синхронизированы (ID: ${newMetricResult.lastInsertRowid})`);
-
-    // Count total metrics for this channel
-    const totalMetricsResult = await client.execute({
-      sql: "SELECT * FROM channel_metrics WHERE channelId = ?",
-      args: [competitor.channelId],
-    });
+    console.log(`[Sync] Канал успешно синхронизирован`);
 
     client.close();
 
     return NextResponse.json(
       {
         status: "ok",
-        message: `Metrics synced successfully (${totalMetricsResult.rows.length} data points)`,
+        message: "Channel synced successfully",
         metrics: {
-          id: Number(newMetricResult.lastInsertRowid),
           subscriberCount: channelData.subscriberCount,
           videoCount: channelData.videoCount,
           viewCount: channelData.viewCount,
-          date: today,
-          fetchedAt: Date.now(),
+          lastSyncedAt: Date.now(),
         },
-        totalDataPoints: totalMetricsResult.rows.length,
       },
-      { status: 201 }
+      { status: 200 }
     );
   } catch (error) {
     client.close();
