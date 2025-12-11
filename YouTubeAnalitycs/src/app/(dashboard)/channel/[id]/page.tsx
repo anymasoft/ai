@@ -190,12 +190,178 @@ export default async function ChannelPage({ params }: PageProps) {
       videosCount: videos.length,
     });
 
-    // АРХИТЕКТУРА TOP-12 ONLY: Все аналитические данные загружаются автоматически в SSR
-    // Таблицы user_channel_*_state удалены - флаги hasShownX больше не нужны
-    // Все данные готовы при загрузке страницы
+    // ПРИМЕЧАНИЕ (ЭТАП 4): Старая логика user_channel_state для видео удалена
+    // user_channel_state теперь используется ТОЛЬКО для аналитики (audience, momentum, content)
+    // Для топ-видео больше не нужны флаги hasSyncedTopVideos и hasShownVideos
 
-    // hasVideos определяется наличием данных в videos массиве
-    const hasVideos = videos.length > 0;
+    // Получаем состояние показа метрик для пользователя
+    let metricsStateResult = await client.execute({
+      sql: "SELECT hasShownMetrics FROM user_channel_metrics_state WHERE userId = ? AND channelId = ?",
+      args: [session.user.id, competitor.channelId],
+    });
+
+    // Если записи нет, создаём её с дефолтными значениями
+    if (metricsStateResult.rows.length === 0) {
+      try {
+        await client.execute({
+          sql: `INSERT INTO user_channel_metrics_state (userId, channelId, hasShownMetrics)
+                VALUES (?, ?, 0)
+                ON CONFLICT(userId, channelId) DO NOTHING`,
+          args: [session.user.id, competitor.channelId],
+        });
+        console.log("[Channel Page] Created user_channel_metrics_state for:", {
+          userId: session.user.id,
+          channelId: competitor.channelId,
+        });
+        // Перезапрашиваем данные после создания
+        metricsStateResult = await client.execute({
+          sql: "SELECT hasShownMetrics FROM user_channel_metrics_state WHERE userId = ? AND channelId = ?",
+          args: [session.user.id, competitor.channelId],
+        });
+      } catch (error) {
+        console.warn("[Channel Page] Failed to create user_channel_metrics_state:", error);
+      }
+    }
+
+    const hasShownMetrics = metricsStateResult.rows.length > 0
+      ? (metricsStateResult.rows[0].hasShownMetrics as number) === 1
+      : false;
+
+    // Получаем состояние показа аудитории для пользователя
+    let audienceStateResult = await client.execute({
+      sql: "SELECT hasShownAudience FROM user_channel_audience_state WHERE userId = ? AND channelId = ?",
+      args: [session.user.id, competitor.channelId],
+    });
+
+    // Если записи нет, создаём её с дефолтными значениями
+    if (audienceStateResult.rows.length === 0) {
+      try {
+        await client.execute({
+          sql: `INSERT INTO user_channel_audience_state (userId, channelId, hasShownAudience)
+                VALUES (?, ?, 0)
+                ON CONFLICT(userId, channelId) DO NOTHING`,
+          args: [session.user.id, competitor.channelId],
+        });
+        console.log("[Channel Page] Created user_channel_audience_state for:", {
+          userId: session.user.id,
+          channelId: competitor.channelId,
+        });
+        // Перезапрашиваем данные после создания
+        audienceStateResult = await client.execute({
+          sql: "SELECT hasShownAudience FROM user_channel_audience_state WHERE userId = ? AND channelId = ?",
+          args: [session.user.id, competitor.channelId],
+        });
+      } catch (error) {
+        console.warn("[Channel Page] Failed to create user_channel_audience_state:", error);
+      }
+    }
+
+    const hasShownAudience = audienceStateResult.rows.length > 0
+      ? (audienceStateResult.rows[0].hasShownAudience as number) === 1
+      : false;
+
+    // Получаем состояние показа momentum для пользователя
+    let momentumStateResult = await client.execute({
+      sql: "SELECT hasShownMomentum FROM user_channel_momentum_state WHERE userId = ? AND channelId = ?",
+      args: [session.user.id, competitor.channelId],
+    });
+
+    // Если записи нет, создаём её с дефолтными значениями
+    if (momentumStateResult.rows.length === 0) {
+      try {
+        await client.execute({
+          sql: `INSERT INTO user_channel_momentum_state (userId, channelId, hasShownMomentum)
+                VALUES (?, ?, 0)
+                ON CONFLICT(userId, channelId) DO NOTHING`,
+          args: [session.user.id, competitor.channelId],
+        });
+        console.log("[Channel Page] Created user_channel_momentum_state for:", {
+          userId: session.user.id,
+          channelId: competitor.channelId,
+        });
+        // Перезапрашиваем данные после создания
+        momentumStateResult = await client.execute({
+          sql: "SELECT hasShownMomentum FROM user_channel_momentum_state WHERE userId = ? AND channelId = ?",
+          args: [session.user.id, competitor.channelId],
+        });
+      } catch (error) {
+        console.warn("[Channel Page] Failed to create user_channel_momentum_state:", error);
+      }
+    }
+
+    const hasShownMomentum = momentumStateResult.rows.length > 0
+      ? (momentumStateResult.rows[0].hasShownMomentum as number) === 1
+      : false;
+
+    // Получаем состояние показа контент-аналитики для пользователя
+    let contentStateResult = await client.execute({
+      sql: "SELECT hasShownContent FROM user_channel_content_state WHERE userId = ? AND channelId = ?",
+      args: [session.user.id, competitor.channelId],
+    });
+
+    // Если записи нет, создаём её с дефолтными значениями
+    if (contentStateResult.rows.length === 0) {
+      try {
+        await client.execute({
+          sql: `INSERT INTO user_channel_content_state (userId, channelId, hasShownContent)
+                VALUES (?, ?, 0)
+                ON CONFLICT(userId, channelId) DO NOTHING`,
+          args: [session.user.id, competitor.channelId],
+        });
+        console.log("[Channel Page] Created user_channel_content_state for:", {
+          userId: session.user.id,
+          channelId: competitor.channelId,
+        });
+        // Перезапрашиваем данные после создания
+        contentStateResult = await client.execute({
+          sql: "SELECT hasShownContent FROM user_channel_content_state WHERE userId = ? AND channelId = ?",
+          args: [session.user.id, competitor.channelId],
+        });
+      } catch (error) {
+        console.warn("[Channel Page] Failed to create user_channel_content_state:", error);
+      }
+    }
+
+    const hasShownContent = contentStateResult.rows.length > 0
+      ? (contentStateResult.rows[0].hasShownContent as number) === 1
+      : false;
+
+    // Получаем состояние показа глубокого анализа комментариев для пользователя
+    let deepCommentsStateResult = await client.execute({
+      sql: "SELECT hasShownDeepComments FROM user_channel_deep_comments_state WHERE userId = ? AND channelId = ?",
+      args: [session.user.id, competitor.channelId],
+    });
+
+    // Если записи нет, создаём её с дефолтными значениями
+    if (deepCommentsStateResult.rows.length === 0) {
+      try {
+        await client.execute({
+          sql: `INSERT INTO user_channel_deep_comments_state (userId, channelId, hasShownDeepComments)
+                VALUES (?, ?, 0)
+                ON CONFLICT(userId, channelId) DO NOTHING`,
+          args: [session.user.id, competitor.channelId],
+        });
+        console.log("[Channel Page] Created user_channel_deep_comments_state for:", {
+          userId: session.user.id,
+          channelId: competitor.channelId,
+        });
+        // Перезапрашиваем данные после создания
+        deepCommentsStateResult = await client.execute({
+          sql: "SELECT hasShownDeepComments FROM user_channel_deep_comments_state WHERE userId = ? AND channelId = ?",
+          args: [session.user.id, competitor.channelId],
+        });
+      } catch (error) {
+        console.warn("[Channel Page] Failed to create user_channel_deep_comments_state:", error);
+      }
+    }
+
+    const hasShownDeepComments = deepCommentsStateResult.rows.length > 0
+      ? (deepCommentsStateResult.rows[0].hasShownDeepComments as number) === 1
+      : false;
+
+    // НОВОЕ (ИТЕРАЦИЯ 9): hasVideos теперь всегда false при SSR
+    // Видео загружаются на клиенте после sync/show, поэтому проверку нельзя делать на сервере
+    const hasVideos = false;
 
     // НОВОЕ (ИТЕРАЦИЯ 9): hasComments также всегда false при SSR
     // Комментарии проверяются на клиенте после загрузки видео
@@ -375,6 +541,11 @@ export default async function ChannelPage({ params }: PageProps) {
           hasVideos={hasVideos}
           hasComments={hasComments}
           userPlan={getUserPlan(session)}
+          hasShownMetrics={hasShownMetrics}
+          hasShownMomentum={hasShownMomentum}
+          hasShownAudience={hasShownAudience}
+          hasShownContent={hasShownContent}
+          hasShownDeepComments={hasShownDeepComments}
         />
       </div>
     );
