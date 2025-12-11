@@ -489,6 +489,7 @@ export async function getYoutubeChannelVideos(
 
 /**
  * Внутренняя функция для загрузки видео с указанными параметрами
+ * Пробует разные комбинации параметров если первая попытка вернула пустой результат
  * @param maxVideos - максимальное количество видео для загрузки (остановиться при достижении)
  * @param initialToken - начальный continuationToken для загрузки следующей страницы (ИТЕРАЦИЯ 11)
  */
@@ -504,20 +505,50 @@ async function fetchVideosFromAPI(
   let pageCount = 0;
   const maxPages = 5; // Ограничение на количество страниц для избежания бесконечных циклов
 
+  // Стратегия: пробуем разные комбинации параметров сортировки
+  // Если primary-комбинация вернула 0 видео, пробуем другие
+  type SortStrategy = {
+    sort?: string;
+    includeExtras?: string;
+    label: string;
+  };
+
+  const sortStrategies: SortStrategy[] = [
+    { sort: "popular", includeExtras: "true", label: "popular+extras" },
+    { sort: "popular", label: "popular only" },
+    { sort: "latest", includeExtras: "true", label: "latest+extras" },
+    { sort: "latest", label: "latest only" },
+    { label: "no sort params" },
+  ];
+
+  let currentStrategyIndex = 0;
+
   try {
     do {
       pageCount++;
 
-      // Формируем URL с параметрами
-      // ВАЖНО: параметр sort для ScrapeCreators /v1/youtube/channel-videos:
-      // - "popular" = сортировка по viewCountInt (по убыванию просмотров, самые просматриваемые сверху)
-      // - "latest"  = сортировка по publishDate (по убыванию даты, самые новые сверху)
-      // СТРАТЕГИЯ (ИТЕРАЦИЯ 12): используем ТОЛЬКО "popular" для TOP-12 самых популярных видео
+      // Выбираем текущую стратегию
+      const strategy = sortStrategies[currentStrategyIndex];
+
+      // Если это не первая страница, остаемся с текущей стратегией
+      // Если это первая страница новой стратегии (после того как предыдущая вернула 0), сбрасываем continuationToken
+      if (pageCount === 1 && currentStrategyIndex > 0) {
+        continuationToken = null;
+        console.log(`[ScrapeCreators] Пробуем другую стратегию: ${strategy.label}`);
+      }
+
+      // Формируем URL с параметрами текущей стратегии
       const params = new URLSearchParams({
         [paramType]: paramValue,
-        sort: "popular",  // ✅ КРИТИЧЕСКИ: только popular для TOP-12 видео
-        includeExtras: "true",
       });
+
+      if (strategy.sort) {
+        params.append("sort", strategy.sort);
+      }
+
+      if (strategy.includeExtras) {
+        params.append("includeExtras", strategy.includeExtras);
+      }
 
       if (continuationToken) {
         params.append("continuationToken", continuationToken);
@@ -730,10 +761,19 @@ async function fetchVideosFromAPI(
 
       allVideos.push(...normalizedVideos);
 
-      console.log(`[ScrapeCreators] Page ${pageCount}: получено ${normalizedVideos.length} видео, всего: ${allVideos.length}`);
+      console.log(`[ScrapeCreators] Page ${pageCount} (стратегия: ${strategy.label}): получено ${normalizedVideos.length} видео, всего: ${allVideos.length}`);
 
       // Проверяем наличие continuationToken для следующей страницы
       continuationToken = data.continuationToken || null;
+
+      // КРИТИЧЕСКИ: если стратегия вернула 0 видео на первой странице, переходим на следующую
+      if (normalizedVideos.length === 0 && pageCount === 1 && currentStrategyIndex < sortStrategies.length - 1) {
+        console.log(`[ScrapeCreators] Стратегия "${strategy.label}" вернула 0 видео, переходим на следующую`);
+        currentStrategyIndex++;
+        pageCount = 0; // Сбрасываем счетчик страниц для новой стратегии
+        continuationToken = null; // Сбрасываем токен
+        continue;
+      }
 
       // 🔑 ОПТИМИЗАЦИЯ: остановиться если достигли maxVideos
       if (maxVideos && allVideos.length >= maxVideos) {
@@ -752,6 +792,7 @@ async function fetchVideosFromAPI(
     console.log("[ScrapeCreators] Всего загружено видео:", {
       totalCount: allVideos.length,
       pages: pageCount,
+      usedStrategy: sortStrategies[currentStrategyIndex]?.label || "unknown",
       continuationToken: continuationToken ? "present" : "none",  // ИТЕРАЦИЯ 11
       sample: allVideos[0],
     });
