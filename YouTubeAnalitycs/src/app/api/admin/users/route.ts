@@ -14,7 +14,7 @@ export async function GET(request: NextRequest) {
         u.name,
         u.plan,
         u.createdAt,
-        u.disabled || 0 as disabled
+        COALESCE(u.disabled, 0) as disabled
       FROM users u
       ORDER BY u.createdAt DESC
       LIMIT 500
