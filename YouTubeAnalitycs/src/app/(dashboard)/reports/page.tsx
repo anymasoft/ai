@@ -334,9 +334,8 @@ export default function ReportsPage() {
 }
 */
 
-// Redirekt na 404 - funktsiya otklyuchena
-import { notFound } from "next/navigation"
+import { redirect } from "next/navigation"
 
 export default function ReportsPage() {
-  notFound()
+  redirect("/not-found")
 }
