@@ -334,13 +334,9 @@ export default function ReportsPage() {
 }
 */
 
-// FALLBACK: Placeholder while reports are disabled
+// Redirekt na 404 - funktsiya otklyuchena
+import { notFound } from "next/navigation"
+
 export default function ReportsPage() {
-  return (
-    <div className="container mx-auto px-4 md:px-6 py-6">
-      <div className="text-center py-12">
-        <p className="text-muted-foreground">Reports are currently unavailable</p>
-      </div>
-    </div>
-  )
+  notFound()
 }
