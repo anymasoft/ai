@@ -140,8 +140,26 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             items={[
               {
                 title: "Panel",
-                url: "/admin/users",
+                url: "#",
                 icon: BarChart3,
+                items: [
+                  {
+                    title: "Users",
+                    url: "/admin/users",
+                  },
+                  {
+                    title: "Limits",
+                    url: "/admin/limits",
+                  },
+                  {
+                    title: "Payments",
+                    url: "/admin/payments",
+                  },
+                  {
+                    title: "System",
+                    url: "/admin/system",
+                  },
+                ],
               },
             ]}
           />

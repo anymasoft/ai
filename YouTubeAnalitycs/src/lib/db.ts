@@ -87,6 +87,7 @@ async function getClient() {
           role TEXT NOT NULL DEFAULT 'user',
           plan TEXT NOT NULL DEFAULT 'free',
           language TEXT NOT NULL DEFAULT 'en',
+          disabled INTEGER NOT NULL DEFAULT 0,
           createdAt INTEGER NOT NULL,
           updatedAt INTEGER NOT NULL
         );`);
@@ -120,6 +121,9 @@ async function getClient() {
           expires INTEGER NOT NULL,
           PRIMARY KEY (identifier, token)
         );`);
+
+        // Добавляем колонку disabled к существующим таблицам users
+        await addColumnIfNotExists(_client, 'users', 'disabled', 'INTEGER NOT NULL DEFAULT 0');
 
         // Основные таблицы приложения
         _client.execute(`CREATE TABLE IF NOT EXISTS competitors (
