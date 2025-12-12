@@ -9,6 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogTitle } from "@/components/ui/alert-dialog"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Loader2, RefreshCcw } from "lucide-react"
 import { toast } from "sonner"
 
@@ -28,6 +29,7 @@ export default function AdminLimitsPage() {
   const [loading, setLoading] = useState(true)
   const [editingUser, setEditingUser] = useState<string>("")
   const [formData, setFormData] = useState({
+    plan: "free",
     analysesPerDay: 0,
     scriptsPerDay: 0,
     cooldownHours: 0,
@@ -57,6 +59,7 @@ export default function AdminLimitsPage() {
   function openEditDialog(limit: UserLimit) {
     setEditingUser(limit.userId)
     setFormData({
+      plan: limit.plan,
       analysesPerDay: limit.analysesPerDay,
       scriptsPerDay: limit.scriptsPerDay,
       cooldownHours: limit.cooldownHours,
@@ -66,15 +69,27 @@ export default function AdminLimitsPage() {
 
   async function saveLimits() {
     try {
-      const res = await fetch("/api/admin/limits", {
+      const res = await fetch("/api/admin/users", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           userId: editingUser,
-          ...formData,
+          plan: formData.plan,
         }),
       })
-      if (!res.ok) throw new Error("Failed to update limits")
+      
+      // Также обновляем лимиты
+      const res2 = await fetch("/api/admin/limits", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userId: editingUser,
+          analysesPerDay: formData.analysesPerDay,
+          scriptsPerDay: formData.scriptsPerDay,
+          cooldownHours: formData.cooldownHours,
+        }),
+      })
+      if (!res.ok || !res2.ok) throw new Error("Failed to update limits")
       toast.success("Limits updated")
       setShowEditDialog(false)
       fetchLimits()
@@ -178,6 +193,22 @@ export default function AdminLimitsPage() {
                                 <DialogTitle>Edit Limits - {limit.email}</DialogTitle>
                               </DialogHeader>
                               <div className="space-y-4">
+                                <div>
+                                  <Label htmlFor="plan">Plan</Label>
+                                  <Select value={formData.plan} onValueChange={(value) =>
+                                    setFormData({ ...formData, plan: value })
+                                  }>
+                                    <SelectTrigger id="plan">
+                                      <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      <SelectItem value="free">Free</SelectItem>
+                                      <SelectItem value="pro">Pro</SelectItem>
+                                      <SelectItem value="business">Business</SelectItem>
+                                      <SelectItem value="enterprise">Enterprise</SelectItem>
+                                    </SelectContent>
+                                  </Select>
+                                </div>
                                 <div>
                                   <Label htmlFor="analyses">Analyses per Day</Label>
                                   <Input
