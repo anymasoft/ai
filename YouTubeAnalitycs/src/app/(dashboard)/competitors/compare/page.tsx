@@ -125,8 +125,10 @@ export default function ComparePage() {
   }
 
 
-  function handleRowClick(channelId: string) {
-    router.push(`/channel/${channelId}`)
+  function handleRowClick(channelId: string, e: React.MouseEvent) {
+    e.stopPropagation();
+    e.preventDefault();
+    router.push(`/channel/${channelId}`);
   }
   function getSortedCompetitors(): CompetitorSummary[] {
     const sorted = [...competitors].sort((a, b) => {
@@ -331,7 +333,7 @@ export default function ComparePage() {
                 </TableHeader>
                 <TableBody>
                   {sortedCompetitors.map((competitor) => (
-                    <TableRow key={competitor.channelId} onClick={() => handleRowClick(competitor.channelId)} className="cursor-pointer hover:bg-muted transition-colors">
+                    <TableRow key={competitor.channelId} onClick={(e) => handleRowClick(competitor.channelId, e)} className="cursor-pointer hover:bg-muted transition-colors">
                       <TableCell>
                         <div className="flex items-center gap-2">
                           <ChannelAvatar
