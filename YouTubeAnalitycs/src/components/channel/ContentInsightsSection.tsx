@@ -88,6 +88,7 @@ export function ContentInsightsSection({
           /* Данные загружены - показываем анализ */
           <ContentIntelligenceBlock
             channelId={channelId}
+            competitorId={competitorId}
             initialData={contentData}
             hasRequiredData={hasRequiredData}
           />

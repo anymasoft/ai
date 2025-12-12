@@ -89,6 +89,7 @@ export function DeepCommentAnalysisSection({
           /* Данные загружены - показываем анализ */
           <DeepCommentAnalysis
             channelId={channelId}
+            competitorId={competitorId}
             initialData={deepAnalysisData}
             hasRequiredData={hasRequiredData}
           />

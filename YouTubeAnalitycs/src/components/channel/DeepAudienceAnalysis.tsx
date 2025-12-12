@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Loader2, Brain, Users, Lightbulb, TrendingUp } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+import { useGenerationStatusStore } from "@/store/generationStatusStore";
 
 interface DeepAudienceData {
   audienceProfile?: string[];
@@ -29,12 +30,14 @@ export function DeepAudienceAnalysis({
   hasRequiredData = true
 }: DeepAudienceAnalysisProps) {
   const router = useRouter();
-  const [loading, setLoading] = useState(false);
+  const { getStatus, setStatus } = useGenerationStatusStore();
+  const generationKey = `${channelId}:deep-audience`;
+  const loading = getStatus(generationKey) === "loading";
   const [data, setData] = useState<DeepAudienceData | null>(initialData || null);
   const [error, setError] = useState<string | null>(null);
 
   async function handleGenerate() {
-    setLoading(true);
+    setStatus(generationKey, "loading");
     setError(null);
 
     try {
@@ -44,11 +47,13 @@ export function DeepAudienceAnalysis({
 
       if (!res.ok) {
         const errorData = await res.json();
+        setStatus(generationKey, "error");
         throw new Error(errorData.error || "Failed to generate deep audience analysis");
       }
 
       const result = await res.json();
       setData(result);
+      setStatus(generationKey, "success");
 
       // Обновляем страницу чтобы показать новые данные
       router.refresh();
@@ -56,8 +61,7 @@ export function DeepAudienceAnalysis({
       console.error("Error generating deep audience analysis:", err);
       toast.error(err instanceof Error ? err.message : "Unknown error");
       setError(err instanceof Error ? err.message : "Unknown error");
-    } finally {
-      setLoading(false);
+      setStatus(generationKey, "error");
     }
   }
 

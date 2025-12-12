@@ -88,6 +88,7 @@ export function MomentumInsightsSection({
           /* Данные загружены - показываем анализ */
           <MomentumInsights
             channelId={channelId}
+            competitorId={competitorId}
             initialData={momentumData}
             hasRequiredData={hasRequiredData}
           />

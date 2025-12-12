@@ -87,6 +87,7 @@ export function AudienceInsightsSection({
         ) : (
           /* Данные загружены - показываем анализ */
           <AudienceInsights
+            competitorId={competitorId}
             channelId={channelId}
             initialData={audienceData}
             hasRequiredData={hasRequiredData}

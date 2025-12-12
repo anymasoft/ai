@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Loader2, Users, Heart, MessageCircle, TrendingDown, Lightbulb, Sparkles, AlertTriangle, Users2, Brain, Zap } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useAnalysisProgressStore } from "@/store/analysisProgressStore";
+import { useGenerationStatusStore } from "@/store/generationStatusStore";
 
 interface EngagementVideo {
   title: string;
@@ -49,6 +50,7 @@ interface AudienceData {
 }
 
 interface AudienceInsightsProps {
+  competitorId: number;
   channelId: string;
   initialData?: AudienceData | null;
   hasRequiredData?: boolean;
@@ -91,6 +93,7 @@ function isOldFormatData(data: AudienceData | null | undefined): boolean {
 }
 
 export function AudienceInsights({
+  competitorId,
   channelId,
   initialData,
   hasRequiredData = true
@@ -98,12 +101,14 @@ export function AudienceInsights({
   const router = useRouter();
   const { start, finish, isGenerating } = useAnalysisProgressStore();
   const isEnrichingAudience = isGenerating(channelId, 'audience');
-  const [loading, setLoading] = useState(false);
+  const { getStatus, setStatus } = useGenerationStatusStore();
+  const generationKey = `${competitorId}:audience-detail`;
+  const loading = getStatus(generationKey) === "loading";
   const [data, setData] = useState<AudienceData | null>(initialData || null);
   const [error, setError] = useState<string | null>(null);
 
   async function handleGenerate() {
-    setLoading(true);
+    setStatus(generationKey, "loading");
     setError(null);
 
     try {
@@ -113,19 +118,20 @@ export function AudienceInsights({
 
       if (!res.ok) {
         const errorData = await res.json();
+        setStatus(generationKey, "error");
         throw new Error(errorData.error || "Failed to generate audience analysis");
       }
 
       const result = await res.json();
       setData(result);
+      setStatus(generationKey, "success");
 
       // Обновляем страницу чтобы показать новые данные
       router.refresh();
     } catch (err) {
       console.error("Error generating audience analysis:", err);
       setError(err instanceof Error ? err.message : "Unknown error");
-    } finally {
-      setLoading(false);
+      setStatus(generationKey, "error");
     }
   }
 

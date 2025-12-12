@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Loader2, Sparkles, ChevronDown, ChevronUp } from "lucide-react";
 import { useRouter } from "next/navigation";
 import Markdown from "react-markdown";
+import { useGenerationStatusStore } from "@/store/generationStatusStore";
 
 interface TableTheme {
   name: string;
@@ -35,6 +36,7 @@ interface ContentIntelligenceData {
 
 interface ContentIntelligenceBlockProps {
   channelId: string;
+  competitorId: number;
   initialData?: ContentIntelligenceData | null;
   hasRequiredData?: boolean;
 }
@@ -262,11 +264,15 @@ function CollapsibleSection({
 
 export function ContentIntelligenceBlock({
   channelId,
+  competitorId,
   initialData,
   hasRequiredData = true
 }: ContentIntelligenceBlockProps) {
   const router = useRouter();
-  const [loading, setLoading] = useState(false);
+  const { getStatus, setStatus } = useGenerationStatusStore();
+  const generationKey = `${competitorId}:content-detail`;
+  const loading = getStatus(generationKey) === "loading";
+
   const [data, setData] = useState<ContentIntelligenceData | null>(initialData || null);
   const [error, setError] = useState<string | null>(null);
   const [expandedSections, setExpandedSections] = useState<Set<number>>(new Set([0])); // Первая секция открыта по умолчанию
@@ -277,7 +283,7 @@ export function ContentIntelligenceBlock({
     : [];
 
   async function handleGenerate() {
-    setLoading(true);
+    setStatus(generationKey, "loading");
     setError(null);
 
     try {
@@ -293,14 +299,14 @@ export function ContentIntelligenceBlock({
       const result = await res.json();
       setData(result);
       setExpandedSections(new Set([0])); // Открываем первую секцию при новой генерации
+      setStatus(generationKey, "success");
 
       // Обновляем страницу чтобы показать новые данные
       router.refresh();
     } catch (err) {
       console.error("Error generating content intelligence:", err);
       setError(err instanceof Error ? err.message : "Unknown error");
-    } finally {
-      setLoading(false);
+      setStatus(generationKey, "error");
     }
   }
 
