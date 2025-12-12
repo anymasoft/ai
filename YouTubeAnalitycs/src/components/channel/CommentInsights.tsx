@@ -98,6 +98,7 @@ export function CommentInsights({
       // Сразу устанавливаем данные в состояние чтобы отобразить результат
       // API гарантирует что данные сохранены в БД перед возвратом ответа
       setData(result);
+      setCooldownUntil(Date.now() + COOLDOWN_MS);
       setStatus(generationKey, "success");
 
       // Сразу же обновляем страницу чтобы синхронизировать SSR данные
@@ -126,7 +127,7 @@ export function CommentInsights({
           <p className="text-muted-foreground mb-4">
             Comment Intelligence will show interests, pain points, and requests from audience comments.
           </p>
-          <Button onClick={handleGenerate} className="gap-2 cursor-pointer" disabled={loading}>
+          <Button variant="default" onClick={handleGenerate} className="gap-2 cursor-pointer" disabled={loading}>
             <MessageSquare className="h-4 w-4" />
             {loading ? "Анализируется..." : "Generate Comment Analysis"}
           </Button>
@@ -156,7 +157,7 @@ export function CommentInsights({
             onClick={handleGenerate}
             size="icon"
             variant="outline"
-            disabled={loading}
+            disabled={loading || isCooldownActive}
           >
             {loading ? (
               <Loader2 className="h-4 w-4 animate-spin" />
@@ -166,7 +167,9 @@ export function CommentInsights({
           </Button>
         </TooltipTrigger>
         <TooltipContent>
-          Refresh Analysis
+          {isCooldownActive && getCooldownTimeRemaining()
+            ? `Available in ${getCooldownTimeRemaining()!.hours}h ${getCooldownTimeRemaining()!.minutes}m`
+            : "Refresh Analysis"}
         </TooltipContent>
       </Tooltip>
       </div>

@@ -142,6 +142,7 @@ export function AudienceInsights({
 
       const result = await res.json();
       setData(result);
+      setCooldownUntil(Date.now() + COOLDOWN_MS);
       setStatus(generationKey, "success");
 
       // Обновляем страницу чтобы показать новые данные
@@ -201,7 +202,7 @@ export function AudienceInsights({
               <p className="text-sm text-muted-foreground mb-4 text-center">
                 Click 'Sync Top Videos' above to load data.
               </p>
-              <Button onClick={handleGenerate} className="gap-2 cursor-pointer" disabled title="Sync Top Videos first">
+              <Button variant="default" onClick={handleGenerate} className="gap-2 cursor-pointer" disabled title="Sync Top Videos first">
                 <Users className="h-4 w-4" />
                 Generate Audience Analysis
               </Button>
@@ -211,7 +212,7 @@ export function AudienceInsights({
               <p className="text-muted-foreground mb-4">
                 Audience analysis will show which topics get maximum audience reactions.
               </p>
-              <Button onClick={handleGenerate} className="gap-2 cursor-pointer">
+              <Button variant="default" onClick={handleGenerate} className="gap-2 cursor-pointer">
                 <Users className="h-4 w-4" />
                 Generate Audience Analysis
               </Button>
@@ -249,12 +250,15 @@ export function AudienceInsights({
                 onClick={handleGenerate}
                 size="icon"
                 variant="outline"
+                disabled={isCooldownActive}
               >
                 <RefreshCcw className="h-4 w-4" />
               </Button>
             </TooltipTrigger>
             <TooltipContent>
-              Refresh Analysis
+              {isCooldownActive && getCooldownTimeRemaining()
+                ? `Available in ${getCooldownTimeRemaining()!.hours}h ${getCooldownTimeRemaining()!.minutes}m`
+                : "Refresh Analysis"}
             </TooltipContent>
           </Tooltip>
         </div>
@@ -495,12 +499,15 @@ export function AudienceInsights({
                 onClick={handleGenerate}
                 size="icon"
                 variant="outline"
+                disabled={isCooldownActive}
               >
                 <RefreshCcw className="h-4 w-4" />
               </Button>
             </TooltipTrigger>
             <TooltipContent>
-              Refresh Analysis
+              {isCooldownActive && getCooldownTimeRemaining()
+                ? `Available in ${getCooldownTimeRemaining()!.hours}h ${getCooldownTimeRemaining()!.minutes}m`
+                : "Refresh Analysis"}
             </TooltipContent>
           </Tooltip>
         </div>

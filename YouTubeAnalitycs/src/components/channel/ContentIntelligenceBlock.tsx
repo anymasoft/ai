@@ -316,6 +316,7 @@ export function ContentIntelligenceBlock({
 
       const result = await res.json();
       setData(result);
+      setCooldownUntil(Date.now() + COOLDOWN_MS);
       setExpandedSections(new Set([0])); // Открываем первую секцию при новой генерации
       setStatus(generationKey, "success");
 
@@ -363,6 +364,7 @@ export function ContentIntelligenceBlock({
                 Нажмите кнопку "Sync Top Videos" выше, чтобы загрузить данные.
               </p>
               <Button
+                variant="default"
                 onClick={handleGenerate}
                 className="gap-2 cursor-pointer"
                 disabled
@@ -378,6 +380,7 @@ export function ContentIntelligenceBlock({
                 Получите подробный анализ контент-стратегии канала с конкретными рекомендациями.
               </p>
               <Button
+                variant="default"
                 onClick={handleGenerate}
                 className="gap-2 cursor-pointer"
               >
@@ -412,6 +415,7 @@ export function ContentIntelligenceBlock({
               onClick={handleGenerate}
               size="icon"
               variant="outline"
+              disabled={isCooldownActive}
             >
               <RefreshCcw className="h-4 w-4" />
             </Button>

@@ -134,6 +134,7 @@ export function DeepCommentAnalysis({
             intervalRef.current = null;
           }
           if (progressData.status === "done") {
+            setCooldownUntil(Date.now() + COOLDOWN_MS);
             setStatus(generationKey, "success");
             router.refresh();
           } else {
@@ -173,7 +174,8 @@ export function DeepCommentAnalysis({
               <p className="text-sm text-muted-foreground mb-4 text-center">
                 Click 'Sync Comments' button above to load data.
               </p>
-              <Button onClick={handleGenerate} disabled title="Sync Comments first">
+              <Button variant="default" onClick={handleGenerate} disabled title="Sync Comments first" className="gap-2">
+                <Brain className="h-4 w-4" />
                 Generate Deep Analysis
               </Button>
             </>
@@ -182,7 +184,8 @@ export function DeepCommentAnalysis({
               <p className="text-muted-foreground mb-4">
                 Deep AI analysis of audience comments.
               </p>
-              <Button onClick={handleGenerate}>
+              <Button variant="default" onClick={handleGenerate} className="gap-2">
+                <Brain className="h-4 w-4" />
                 Generate Deep Analysis
               </Button>
             </>
@@ -241,12 +244,15 @@ export function DeepCommentAnalysis({
               onClick={handleGenerate}
               size="icon"
               variant="outline"
+              disabled={isCooldownActive}
             >
               <RefreshCcw className="h-4 w-4" />
             </Button>
           </TooltipTrigger>
           <TooltipContent>
-            Refresh Analysis
+            {isCooldownActive && getCooldownTimeRemaining()
+              ? `Available in ${getCooldownTimeRemaining()!.hours}h ${getCooldownTimeRemaining()!.minutes}m`
+              : "Refresh Analysis"}
           </TooltipContent>
         </Tooltip>
       </div>
