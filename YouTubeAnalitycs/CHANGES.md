@@ -5,6 +5,51 @@ All changes are tracked in git history.
 
 ---
 
+## 2025-12-12 - Унификация Кнопки "Regenerate Analysis" (Button Policy)
+
+### Контекст
+На странице `/competitors/compare` после генерации AI-анализа была кнопка "Regenerate Analysis" для перегенерации анализа. Она относится к UPDATE ANALYTICS (TYPE B) - дорогая операция перегенерации.
+
+### Требование
+Привести кнопку к стандарту Secondary Update Button согласно Button Policy.
+
+### Изменения - Файл: `src/app/(dashboard)/competitors/compare/page.tsx`
+
+1. **Добавлены импорты:**
+   ```tsx
+   import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
+   import { RefreshCcw } from "lucide-react"
+   ```
+
+2. **Перемещена и переделана кнопка:**
+   - БЫЛО: Текстовая `<Button>Regenerate Analysis</Button>` в конце анализа
+   - СТАЛО: icon-only `<Button size="icon" variant="outline">` в CardHeader
+
+3. **Размещение:**
+   - Из конца блока анализа → в CardHeader рядом с заголовком
+   - CardHeader: `flex justify-between` (title слева, button справа)
+
+4. **Визуал:**
+   ```tsx
+   <Tooltip>
+     <TooltipTrigger asChild>
+       <Button size="icon" variant="outline">
+         <RefreshCcw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
+       </Button>
+     </TooltipTrigger>
+     <TooltipContent>Обновить анализ сравнения</TooltipContent>
+   </Tooltip>
+   ```
+
+### Результат
+- ✅ Button Policy соответствие (icon-only, UPDATE ANALYTICS)
+- ✅ Не провоцирует спам-клики
+- ✅ Естественное размещение (рядом с заголовком)
+- ✅ Единообразность со всеми UPDATE ANALYTICS кнопками
+- ✅ Нет API/логики изменений
+
+---
+
 ## 2025-12-12 - Унификация Кнопки "Обновить топ-видео" (Button Policy)
 
 ### Контекст
