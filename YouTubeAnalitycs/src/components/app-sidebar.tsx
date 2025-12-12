@@ -57,6 +57,15 @@ const navGroups = [
         url: "/scripts",
         icon: FileText,
       },
+      // DISABLED: PDF reports with Russian content show as transliteration (bad UX)
+      // Uncomment to re-enable when solution is found
+      /*
+      {
+        title: "Reports",
+        url: "/reports",
+        icon: FileBarChart,
+      },
+      */
       {
         title: "FAQ",
         url: "/faqs",
