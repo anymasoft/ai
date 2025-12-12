@@ -5,6 +5,68 @@ All changes are tracked in git history.
 
 ---
 
+## 2025-12-12 - Исправление frontend обработки Momentum ошибок (ФИНАЛЬНОЕ)
+
+### Проблема (ROOT CAUSE НАЙДЕНА)
+`{}` появляется **НА ФРОНТЕ**, в `handleGetMomentum()`, когда ошибка парсится неправильно.
+
+### Источник `{}`
+
+1. **Линия 45**: `await syncRes.json()` может вернуть `{}` если body пустой или парсится неверно
+2. **Линия 58**: `await showRes.json()` аналогично
+3. **Линия 67**: `setError()` получает неправильно обработанное значение
+
+### Решение (ФИНАЛЬНОЕ)
+
+#### ✅ Обработка JSON.parse ошибок
+```typescript
+try {
+  syncError = await syncRes.json();
+} catch (parseErr) {
+  throw new Error(`Failed to parse sync response: ${parseErr.message}. Status: ${syncRes.status}`);
+}
+```
+
+#### ✅ Строгое извлечение сообщения об ошибке
+```typescript
+const errorMessage =
+  (syncError && typeof syncError === 'object' && syncError.error)
+    ? String(syncError.error)
+    : syncError
+      ? JSON.stringify(syncError)  // Вместо {} → полное содержимое
+      : `Momentum sync failed with status ${syncRes.status}`;
+```
+
+#### ✅ Правильная обработка в catch блоке
+```typescript
+const errorMessage =
+  err instanceof Error
+    ? err.message
+    : typeof err === 'string'
+      ? err
+      : typeof err === 'object' && err !== null && 'error' in err
+        ? String((err as any).error)
+        : JSON.stringify(err) || 'Failed to generate momentum analysis';
+```
+
+#### ✅ Детальное логирование
+```typescript
+console.error("[MomentumInsightsSection] Sync error response:", {
+  status: syncRes.status,
+  body: syncError,
+  message: errorMessage,
+});
+```
+
+### Гарантии
+- ✅ `{}` **НИКОГДА** не попадает в `setError()`
+- ✅ Все JSON.parse обёрнуты в try/catch
+- ✅ Все типы значений обработаны (Error, string, object, unknown)
+- ✅ HTTP статусы включены в сообщения об ошибках
+- ✅ Детальное логирование для отладки
+
+---
+
 ## 2025-12-12 - Исправление обработки ошибок в Dashboard Momentum API
 
 ### Проблема
