@@ -5,6 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Loader2, Users, Heart, MessageCircle, TrendingDown, Lightbulb, Sparkles, AlertTriangle, Users2, Brain, Zap } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { useAnalysisProgressStore } from "@/store/analysisProgressStore";
 
 interface EngagementVideo {
   title: string;
@@ -95,10 +96,11 @@ export function AudienceInsights({
   hasRequiredData = true
 }: AudienceInsightsProps) {
   const router = useRouter();
+  const { start, finish, isGenerating } = useAnalysisProgressStore();
+  const isEnrichingAudience = isGenerating(channelId, 'audience');
   const [loading, setLoading] = useState(false);
   const [data, setData] = useState<AudienceData | null>(initialData || null);
   const [error, setError] = useState<string | null>(null);
-  const [enriching, setEnriching] = useState(false);
 
   async function handleGenerate() {
     setLoading(true);
@@ -128,7 +130,7 @@ export function AudienceInsights({
   }
 
   async function handleEnrich() {
-    setEnriching(true);
+    start(channelId, 'audience');
     setError(null);
 
     try {
@@ -150,7 +152,7 @@ export function AudienceInsights({
       console.error("Error enriching videos:", err);
       setError(err instanceof Error ? err.message : "Unknown error");
     } finally {
-      setEnriching(false);
+      finish(channelId, 'audience');
     }
   }
 
@@ -241,12 +243,12 @@ export function AudienceInsights({
                   </p>
                   <Button
                     onClick={handleEnrich}
-                    disabled={enriching}
+                    disabled={isEnrichingAudience}
                     size="sm"
                     variant="outline"
                     className="gap-2 border-amber-400 text-amber-900 hover:bg-amber-100 dark:text-amber-100 dark:hover:bg-amber-900/20 cursor-pointer"
                   >
-                    {enriching ? (
+                    {isEnrichingAudience ? (
                       <>
                         <Loader2 className="h-4 w-4 animate-spin" />
                         Enriching data...
@@ -499,12 +501,12 @@ export function AudienceInsights({
                   </p>
                   <Button
                     onClick={handleEnrich}
-                    disabled={enriching}
+                    disabled={isEnrichingAudience}
                     size="sm"
                     variant="outline"
                     className="gap-2 border-amber-400 text-amber-900 hover:bg-amber-100 dark:text-amber-100 dark:hover:bg-amber-900/20 cursor-pointer"
                   >
-                    {enriching ? (
+                    {isEnrichingAudience ? (
                       <>
                         <Loader2 className="h-4 w-4 animate-spin" />
                         Enriching data...

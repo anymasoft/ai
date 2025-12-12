@@ -1,15 +1,15 @@
 "use client";
 
-import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ContentIntelligenceBlock } from "@/components/channel/ContentIntelligenceBlock";
+import { useAnalysisProgressStore } from "@/store/analysisProgressStore";
 
 interface ContentInsightsSectionProps {
   competitorId: number;
   contentData: any;
-  channelId?: string;
+  channelId: string;
   /** Есть ли видео для анализа */
   hasRequiredData?: boolean;
 }
@@ -21,7 +21,8 @@ export function ContentInsightsSection({
   hasRequiredData = false,
 }: ContentInsightsSectionProps) {
   const router = useRouter();
-  const [loadingContent, setLoadingContent] = useState(false);
+  const { start, finish, isGenerating } = useAnalysisProgressStore();
+  const isGeneratingContent = isGenerating(channelId, 'content');
 
   const handleGetContent = async () => {
     if (!competitorId) {
@@ -29,7 +30,7 @@ export function ContentInsightsSection({
       return;
     }
 
-    setLoadingContent(true);
+    start(channelId, 'content');
     try {
       // Шаг 1: Генерируем анализ контент-аналитики
       const syncRes = await fetch(`/api/channel/${competitorId}/content-intelligence`, {
@@ -59,7 +60,7 @@ export function ContentInsightsSection({
     } catch (err) {
       console.error("Ошибка при получении контент-аналитики:", err);
     } finally {
-      setLoadingContent(false);
+      finish(channelId, 'content');
     }
   };
 
@@ -77,9 +78,9 @@ export function ContentInsightsSection({
                 onClick={() => handleGetContent()}
                 variant="default"
                 size="sm"
-                disabled={loadingContent}
+                disabled={isGeneratingContent}
               >
-                {loadingContent ? "Анализируем..." : "Получить Content Intelligence"}
+                {isGeneratingContent ? "Анализируем..." : "Получить Content Intelligence"}
               </Button>
             </div>
           </div>

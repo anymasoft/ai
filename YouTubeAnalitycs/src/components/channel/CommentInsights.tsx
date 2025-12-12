@@ -5,6 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Loader2, MessageSquare, Sparkles, Heart, AlertCircle, ThumbsUp, Lightbulb } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { useAnalysisProgressStore } from "@/store/analysisProgressStore";
 
 interface CommentInsightsData {
   stats: {
@@ -36,6 +37,8 @@ export function CommentInsights({
   hasRequiredData = true
 }: CommentInsightsProps) {
   const router = useRouter();
+  const { start, finish, isGenerating } = useAnalysisProgressStore();
+  const isRefreshingCommentAnalysis = isGenerating(channelId, 'comment');
   const [loading, setLoading] = useState(false);
   const [data, setData] = useState<CommentInsightsData | null>(initialData || null);
   const [error, setError] = useState<string | null>(null);
@@ -53,7 +56,7 @@ export function CommentInsights({
   }, [initialData?.generatedAt]); // Зависимость только от generatedAt чтобы избежать лишних обновлений
 
   async function handleGenerate() {
-    setLoading(true);
+    start(channelId, 'comment');
     setError(null);
 
     try {
@@ -84,7 +87,7 @@ export function CommentInsights({
       console.error("Error generating comment insights:", err);
       setError(err instanceof Error ? err.message : "Unknown error");
     } finally {
-      setLoading(false);
+      finish(channelId, 'comment');
     }
   }
 
@@ -107,9 +110,9 @@ export function CommentInsights({
           <p className="text-muted-foreground mb-4">
             Comment Intelligence will show interests, pain points, and requests from audience comments.
           </p>
-          <Button onClick={handleGenerate} className="gap-2 cursor-pointer" disabled={loading}>
+          <Button onClick={handleGenerate} className="gap-2 cursor-pointer" disabled={isRefreshingCommentAnalysis}>
             <MessageSquare className="h-4 w-4" />
-            Generate Comment Analysis
+            {isRefreshingCommentAnalysis ? "Анализируется..." : "Generate Comment Analysis"}
           </Button>
           {error && (
             <p className="text-sm text-destructive mt-4">{error}</p>
@@ -131,9 +134,9 @@ export function CommentInsights({
             Interests, pain points and requests from audience comments
           </p>
         </div>
-        <Button onClick={handleGenerate} variant="outline" size="sm" className="gap-2 cursor-pointer">
+        <Button onClick={handleGenerate} variant="outline" size="sm" className="gap-2 cursor-pointer" disabled={isRefreshingCommentAnalysis}>
           <MessageSquare className="h-4 w-4" />
-          Refresh Analysis
+          {isRefreshingCommentAnalysis ? "Обновляется..." : "Refresh Analysis"}
         </Button>
       </div>
 

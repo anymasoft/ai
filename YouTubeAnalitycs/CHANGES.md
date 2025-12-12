@@ -1,5 +1,117 @@
 # История изменений
 
+## [2025-12-12] - REFACTOR: Улучшение управления состоянием анализа - keyed Zustand store (v2.4)
+
+### Проблема с v2.3
+v2.3 использовал простой глобальный store с состояниями типа `isGeneratingContent`, `isGeneratingMomentum` и т.д.
+Это создавало проблемы при работе с несколькими каналами одновременно - состояние смешивалось между ними.
+
+### Новая архитектура v2.4
+Создан продвинутый keyed Zustand store (`src/store/analysisProgressStore.ts`) с архитектурой:
+```
+inProgress: {
+  [channelId]: {
+    content?: boolean
+    momentum?: boolean
+    audience?: boolean
+    comment?: boolean
+    deep?: boolean
+    swot?: boolean
+  }
+}
+```
+
+### Основные улучшения
+1. **Keyed по channelId** - каждый канал имеет независимый процесс анализа
+2. **Методы манипуляции** - `start(channelId, type)` и `finish(channelId, type)`
+3. **Безопасность при unmount/remount** - состояние сохраняется в памяти store
+4. **Масштабируемость** - легко добавлять новые типы анализа
+5. **Гарантия finish() в catch** - используется try-catch-finally во всех компонентах
+
+### Обновленные компоненты
+Все 7 Section/Button компонентов переведены на новый store:
+- ✅ ContentInsightsSection.tsx → `isGenerating(channelId, 'content')`
+- ✅ MomentumInsightsSection.tsx → `isGenerating(channelId, 'momentum')`
+- ✅ AudienceInsightsSection.tsx → `isGenerating(channelId, 'audience')`
+- ✅ DeepCommentAnalysisSection.tsx → `isGenerating(channelId, 'deep')`
+- ✅ GenerateSwotButton.tsx → `isGenerating(channelId, 'swot')`
+- ✅ CommentInsights.tsx (Refresh) → `isGenerating(channelId, 'comment')`
+- ✅ AudienceInsights.tsx (Enrich) → `isGenerating(channelId, 'audience')`
+
+### Результат
+- Состояние анализа НИКОГДА не теряется при collapse/expand
+- Поддержка множественных каналов в одной сессии
+- Надежное управление loading state через глобальный store
+- Состояние сохраняется при unmount/remount компонентов
+
+---
+
+## [2025-12-12] - FEATURE: Глобальное управление состоянием кнопок анализа через Zustand (v2.3)
+
+### Проблема
+Кнопки анализа теряли состояние "Анализируется..." при:
+- Свертывании/развертывании секций
+- Ререндере компонента
+- Смене вкладок на странице
+- Обновлении layout
+- Переходе на другую страницу и обратно
+
+Состояние было привязано к локальному React `useState`, который сбрасывался при ререндере.
+
+### Решение
+Создан глобальный Zustand store для управления состоянием всех аналитических кнопок.
+
+**1. Новый файл store (src/store/analysisState.ts)**
+- ✅ Создан Zustand store с состояниями для всех кнопок:
+  - `isGeneratingContent` - Content Intelligence
+  - `isGeneratingMomentum` - Momentum Insights
+  - `isGeneratingAudience` - Audience Insights
+  - `isGeneratingComments` - Comment Analysis (главная кнопка в DeepCommentAnalysisSection)
+  - `isGeneratingDeep` - Deep Comment Analysis
+  - `isGeneratingSWOT` - SWOT Analysis
+  - `isRefreshingCommentAnalysis` - Refresh кнопка в CommentInsights
+  - `isEnrichingAudience` - Обогащение данных аудитории в AudienceInsights
+
+**2. Обновленные Section компоненты (главные кнопки для запуска анализа)**
+- ✅ ContentInsightsSection.tsx - использует `useAnalysisStore()` для `isGeneratingContent`
+- ✅ MomentumInsightsSection.tsx - использует `useAnalysisStore()` для `isGeneratingMomentum`
+- ✅ AudienceInsightsSection.tsx - использует `useAnalysisStore()` для `isGeneratingAudience`
+- ✅ DeepCommentAnalysisSection.tsx - использует `useAnalysisStore()` для `isGeneratingDeep`
+- ✅ GenerateSwotButton.tsx - использует `useAnalysisStore()` для `isGeneratingSWOT`
+
+**3. Обновленные Display компоненты (вторичные кнопки внутри раздела)**
+- ✅ CommentInsights.tsx - использует `useAnalysisStore()` для `isRefreshingCommentAnalysis` (Refresh Analysis кнопка)
+- ✅ AudienceInsights.tsx - использует `useAnalysisStore()` для `isEnrichingAudience` (Get real likes/comments кнопка)
+
+### Архитектура
+
+```
+GlobalStore (Zustand)
+├── isGeneratingContent ──> ContentInsightsSection
+├── isGeneratingMomentum ──> MomentumInsightsSection
+├── isGeneratingAudience ──> AudienceInsightsSection
+├── isGeneratingComments ──> DeepCommentAnalysisSection
+├── isGeneratingDeep ────> DeepCommentAnalysisSection
+├── isGeneratingSWOT ────> GenerateSwotButton
+├── isRefreshingCommentAnalysis ──> CommentInsights (Refresh кнопка)
+└── isEnrichingAudience ──> AudienceInsights (Enrich кнопка)
+```
+
+### Гарантии
+✅ Состояние кнопок НИКОГДА не теряется при свертывании/развертывании
+✅ Состояние СОХРАНЯЕТСЯ при переходе между страницами (глобальный store)
+✅ UI не мигает - состояние управляется централизованно
+✅ Чистая архитектура - нет дублирования логики
+✅ Простое расширение - добавление новой кнопки требует одной строки в store
+
+### Результат
+- Профессиональный UX - кнопки не сбрасывают состояние
+- Надежность - NO RACE CONDITIONS между ререндерами
+- Масштабируемость - легко добавить новые кнопки анализа
+- Отсутствие побочных эффектов - каждая кнопка управляет своим состоянием
+
+---
+
 ## [2025-12-11] - FIX: Comment Intelligence - Правильная архитектура синхронизации состояния
 
 ### Проблема

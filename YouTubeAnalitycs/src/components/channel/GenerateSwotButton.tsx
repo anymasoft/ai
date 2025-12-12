@@ -1,14 +1,14 @@
 "use client";
 
-import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Sparkles, Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+import { useAnalysisProgressStore } from "@/store/analysisProgressStore";
 
 interface GenerateSwotButtonProps {
   competitorId: number;
-  channelId?: string;
+  channelId: string;
   variant?: "default" | "outline" | "ghost";
   size?: "default" | "sm" | "lg";
   isUpdate?: boolean;
@@ -21,11 +21,12 @@ export function GenerateSwotButton({
   size = "lg",
   isUpdate = false,
 }: GenerateSwotButtonProps) {
-  const [isGenerating, setIsGenerating] = useState(false);
+  const { start, finish, isGenerating } = useAnalysisProgressStore();
+  const isGeneratingSWOT = isGenerating(channelId, 'swot');
   const router = useRouter();
 
   const handleGenerate = async () => {
-    setIsGenerating(true);
+    start(channelId, 'swot');
 
     try {
       const response = await fetch(`/api/channel/${competitorId}/summary`, {
@@ -59,19 +60,19 @@ export function GenerateSwotButton({
         duration: 4000,
       });
     } finally {
-      setIsGenerating(false);
+      finish(channelId, 'swot');
     }
   };
 
   return (
     <Button
       onClick={handleGenerate}
-      disabled={isGenerating}
+      disabled={isGeneratingSWOT}
       className="cursor-pointer"
       size={size}
       variant={variant}
     >
-      {isGenerating ? (
+      {isGeneratingSWOT ? (
         <>
           <Loader2 className="mr-2 h-4 w-4 animate-spin" />
           {isUpdate ? "Обновляется..." : "Генерируется..."}
