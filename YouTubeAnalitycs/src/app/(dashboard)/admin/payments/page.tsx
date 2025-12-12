@@ -18,6 +18,7 @@ interface Payment {
   userId: string
   email: string
   plan: string
+  disabled: boolean
   isPaid: boolean
   expiresAt: number | null
   provider: string

@@ -12,6 +12,7 @@ export async function GET(request: NextRequest) {
         u.id as userId,
         u.email,
         u.plan,
+        COALESCE(u.disabled, 0) as disabled,
         COALESCE(s.isPaid, 0) as isPaid,
         s.expiresAt,
         COALESCE(s.provider, 'manual') as provider
@@ -26,6 +27,7 @@ export async function GET(request: NextRequest) {
       userId: row.userId,
       email: row.email,
       plan: row.plan || "free",
+      disabled: row.disabled === 1,
       isPaid: row.isPaid === 1,
       expiresAt: row.expiresAt,
       provider: row.provider,
