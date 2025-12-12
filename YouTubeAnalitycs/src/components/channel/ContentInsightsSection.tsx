@@ -5,6 +5,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ContentIntelligenceBlock } from "@/components/channel/ContentIntelligenceBlock";
 import { useAnalysisProgressStore } from "@/store/analysisProgressStore";
+import { AnalysisLoadingState } from "@/components/ui/AnalysisLoadingState";
 
 interface ContentInsightsSectionProps {
   competitorId: number;
@@ -67,7 +68,13 @@ export function ContentInsightsSection({
   return (
     <CardContent className="p-6">
       <>
-        {!contentData ? (
+        {isGeneratingContent ? (
+          /* Генерация в процессе - показываем лоадер */
+          <AnalysisLoadingState
+            title="Generating content analysis..."
+            subtitle="This may take 15-25 seconds"
+          />
+        ) : !contentData ? (
           /* Данные не загружены - показываем кнопку */
           <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
             <div className="flex flex-col items-center justify-center gap-4">
@@ -78,9 +85,8 @@ export function ContentInsightsSection({
                 onClick={() => handleGetContent()}
                 variant="default"
                 size="sm"
-                disabled={isGeneratingContent}
               >
-                {isGeneratingContent ? "Анализируем..." : "Получить Content Intelligence"}
+                Получить Content Intelligence
               </Button>
             </div>
           </div>

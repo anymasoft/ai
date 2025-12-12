@@ -5,6 +5,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { MomentumInsights } from "@/components/channel/MomentumInsights";
 import { useAnalysisProgressStore } from "@/store/analysisProgressStore";
+import { AnalysisLoadingState } from "@/components/ui/AnalysisLoadingState";
 
 interface MomentumInsightsSectionProps {
   competitorId: number;
@@ -67,7 +68,13 @@ export function MomentumInsightsSection({
   return (
     <CardContent className="p-6">
       <>
-        {!momentumData ? (
+        {isGeneratingMomentum ? (
+          /* Генерация в процессе - показываем лоадер */
+          <AnalysisLoadingState
+            title="Generating momentum analysis..."
+            subtitle="This may take 15-25 seconds"
+          />
+        ) : !momentumData ? (
           /* Данные не загружены - показываем кнопку */
           <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
             <div className="flex flex-col items-center justify-center gap-4">
@@ -78,9 +85,8 @@ export function MomentumInsightsSection({
                 onClick={() => handleGetMomentum()}
                 variant="default"
                 size="sm"
-                disabled={isGeneratingMomentum}
               >
-                {isGeneratingMomentum ? "Анализируем..." : "Получить Momentum"}
+                Получить Momentum
               </Button>
             </div>
           </div>

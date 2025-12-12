@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { AudienceInsights } from "@/components/channel/AudienceInsights";
+import { AnalysisLoadingState } from "@/components/ui/AnalysisLoadingState";
 import { useAnalysisProgressStore } from "@/store/analysisProgressStore";
 
 interface AudienceInsightsSectionProps {
@@ -67,7 +68,13 @@ export function AudienceInsightsSection({
   return (
     <CardContent className="p-6">
       <>
-        {!audienceData ? (
+        {isGeneratingAudience ? (
+          /* Идёт генерация - показываем Loading State */
+          <AnalysisLoadingState
+            title="Generating audience analysis..."
+            subtitle="This may take 20-30 seconds"
+          />
+        ) : !audienceData ? (
           /* Данные не загружены - показываем кнопку */
           <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
             <div className="flex flex-col items-center justify-center gap-4">
@@ -78,9 +85,8 @@ export function AudienceInsightsSection({
                 onClick={() => handleGetAudience()}
                 variant="default"
                 size="sm"
-                disabled={isGeneratingAudience}
               >
-                {isGeneratingAudience ? "Анализируем..." : "Получить аудиторию"}
+                Получить аудиторию
               </Button>
             </div>
           </div>
