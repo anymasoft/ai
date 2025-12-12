@@ -1,7 +1,8 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import { Sparkles, Loader2 } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { Sparkles, Loader2, RefreshCcw } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { useAnalysisProgressStore } from "@/store/analysisProgressStore";
@@ -10,8 +11,9 @@ interface GenerateSwotButtonProps {
   competitorId: number;
   channelId: string;
   variant?: "default" | "outline" | "ghost";
-  size?: "default" | "sm" | "lg";
+  size?: "default" | "sm" | "lg" | "icon";
   isUpdate?: boolean;
+  iconOnly?: boolean;
 }
 
 export function GenerateSwotButton({
@@ -20,10 +22,13 @@ export function GenerateSwotButton({
   variant = "default",
   size = "lg",
   isUpdate = false,
+  iconOnly = false,
 }: GenerateSwotButtonProps) {
   const { start, finish, isGenerating } = useAnalysisProgressStore();
   const isGeneratingSWOT = isGenerating(channelId, 'swot');
   const router = useRouter();
+
+  const tooltipText = isUpdate ? "Обновить SWOT-анализ" : "Сгенерировать SWOT-анализ";
 
   const handleGenerate = async () => {
     start(channelId, 'swot');
@@ -64,6 +69,34 @@ export function GenerateSwotButton({
     }
   };
 
+  // Icon-only mode for secondary button
+  if (iconOnly) {
+    return (
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Button
+            onClick={handleGenerate}
+            disabled={isGeneratingSWOT}
+            size="icon"
+            variant={variant}
+          >
+            {isGeneratingSWOT ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : isUpdate ? (
+              <RefreshCcw className="h-4 w-4" />
+            ) : (
+              <Sparkles className="h-4 w-4" />
+            )}
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent>
+          {tooltipText}
+        </TooltipContent>
+      </Tooltip>
+    );
+  }
+
+  // Full text mode for primary button
   return (
     <Button
       onClick={handleGenerate}
