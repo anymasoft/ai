@@ -9,7 +9,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogTitle } from "@/components/ui/alert-dialog"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
-import { Loader2, MoreHorizontal, RefreshCcw } from "lucide-react"
+import { Loader2, MoreHorizontal, RefreshCcw, X } from "lucide-react"
+import { Input } from "@/components/ui/input"
 import { toast } from "sonner"
 
 interface User {
@@ -31,6 +32,9 @@ export default function AdminUsersPage() {
   const [showResetDialog, setShowResetDialog] = useState(false)
   const [showDisableDialog, setShowDisableDialog] = useState(false)
   const [disableAction, setDisableAction] = useState<"disable" | "enable">("disable")
+  const [filterEmail, setFilterEmail] = useState("")
+  const [filterPlan, setFilterPlan] = useState("")
+  const [filterStatus, setFilterStatus] = useState("")
 
   useEffect(() => {
     fetchUsers()
@@ -118,6 +122,14 @@ export default function AdminUsersPage() {
     return colors[plan] || "bg-gray-100 text-gray-800"
   }
 
+  // Фильтруем пользователей
+  const filteredUsers = users.filter((user) => {
+    const matchEmail = user.email.toLowerCase().includes(filterEmail.toLowerCase())
+    const matchPlan = !filterPlan || user.plan === filterPlan
+    const matchStatus = !filterStatus || (filterStatus === "active" ? !user.disabled : user.disabled)
+    return matchEmail && matchPlan && matchStatus
+  })
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -165,7 +177,7 @@ export default function AdminUsersPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {users.map((user) => (
+                  {filteredUsers.map((user) => (
                     <TableRow key={user.id}>
                       <TableCell className="font-mono text-sm">{user.email}</TableCell>
                       <TableCell>{user.name || "—"}</TableCell>
