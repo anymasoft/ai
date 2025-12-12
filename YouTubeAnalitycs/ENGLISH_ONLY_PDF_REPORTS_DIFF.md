@@ -5,9 +5,8 @@
 Все PDF отчеты теперь генерируются **ТОЛЬКО на английском языке**.
 
 - ✅ Не изменен `src/lib/pdf-generator.ts` (не трогаем normalizePDFText)
-- ✅ Все 4 API роутера обновлены с требованием английского
 - ✅ AI-генерируемые отчеты (semantic, skeleton): требование в prompt + retry логика
-- ✅ Готовые отчеты (script, insights): post-check валидация кириллицы
+- ✅ Готовые отчеты (script, insights): работают как раньше, кириллица транслитерируется в pdf-generator
 
 ## Новый файл
 
@@ -132,52 +131,14 @@ export function jsonOnlyASCII(obj: unknown): boolean
 ### 3. `src/app/api/reports/script/route.ts`
 
 **Что изменилось:**
-- Импорт: `import { containsCyrillic } from "@/lib/report-validators"`
-- После получения скрипта из DB добавлена проверка:
-
-```typescript
-// Проверка на кириллицу в критичных полях
-if (
-  containsCyrillic(title) ||
-  containsCyrillic(hook) ||
-  containsCyrillic(scriptText) ||
-  containsCyrillic(whyItShouldWork) ||
-  outline.some(item => containsCyrillic(item))
-) {
-  return NextResponse.json(
-    { ok: true, data: null, reason: "report_language_invalid" },
-    { status: 200 }
-  )
-}
-```
-
-**Логика:**
-- Если в готовом скрипте найдена кириллица → возвращаем `{ ok: true, data: null, reason: "report_language_invalid" }`
-- Клиент может обработать эту ошибку и предложить пользователю перегенерировать скрипт на английском
+- Никаких изменений
+- Готовые данные пропускаются через `normalizePDFText()` в pdf-generator.ts
 
 ### 4. `src/app/api/reports/insights/route.ts`
 
 **Что изменилось:**
-- Импорт: `import { containsCyrillic } from "@/lib/report-validators"`
-- После получения insights из DB добавлена проверка:
-
-```typescript
-// Проверка на кириллицу в insights
-if (
-  containsCyrillic(insightsSummary) ||
-  themes.some(t => containsCyrillic(t)) ||
-  formats.some(f => containsCyrillic(f)) ||
-  recommendations.some(r => containsCyrillic(r))
-) {
-  return NextResponse.json(
-    { ok: true, data: null, reason: "report_language_invalid" },
-    { status: 200 }
-  )
-}
-```
-
-**Логика:**
-- Если в insights найдена кириллица → возвращаем `{ ok: true, data: null, reason: "report_language_invalid" }`
+- Никаких изменений
+- Готовые данные пропускаются через `normalizePDFText()` в pdf-generator.ts
 
 ## Поведение системы
 
@@ -190,11 +151,12 @@ if (
 
 ### Для готовых отчетов (script, insights):
 
-1. **Загрузка**: берем данные из DB
-2. **Проверка**: сканируем все строки на кириллицу
+1. **Загрузка**: берем данные из DB (могут быть на русском или английском)
+2. **Генерация PDF**: все текстовые данные пропускаются через `normalizePDFText()` в pdf-generator.ts
 3. **Результат**:
-   - Если кириллица найдена → `{ ok: true, data: null, reason: "report_language_invalid" }`
-   - Если все чисто → продолжаем генерацию PDF
+   - Кириллица → транслитерация в латиницу (ограничение pdf-lib StandardFonts)
+   - Английский текст → без изменений
+   - PDF готов и отправляется клиенту
 
 ## Технические детали
 
@@ -219,8 +181,16 @@ if (
 
 ## Результат
 
-✅ **Все PDF отчеты теперь ENGLISH-ONLY**
-- Нет кириллицы в генерируемых отчетах
-- Нет требования к изменению pdf-generator.ts
-- Быстрый фикс с минимальными изменениями
-- Fallback гарантирует что система не ломается если что-то пошло не так
+✅ **AI-генерируемые отчеты (semantic, skeleton) теперь ENGLISH-ONLY**
+- AI генерирует данные только на английском языке
+- Проверка на кириллицу + retry логика гарантирует качество
+- Fallback данные на английском если обе попытки失败
+
+✅ **Готовые отчеты (script, insights) работают как раньше**
+- Кириллица автоматически транслитерируется через `normalizePDFText()` в pdf-generator.ts
+- Это ограничение pdf-lib StandardFonts, которые не поддерживают Unicode
+- Никаких новых валидаций - все данные проходят как есть
+
+✅ **Минимальный diff без изменения pdf-generator.ts**
+- Только prompt обновления в AI-генерируемых функциях
+- Готовые отчеты не изменены (используют существующую транслитерацию)
