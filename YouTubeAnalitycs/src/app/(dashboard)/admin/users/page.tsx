@@ -125,8 +125,8 @@ export default function AdminUsersPage() {
   // Фильтруем пользователей
   const filteredUsers = users.filter((user) => {
     const matchEmail = user.email.toLowerCase().includes(filterEmail.toLowerCase())
-    const matchPlan = !filterPlan || user.plan === filterPlan
-    const matchStatus = !filterStatus || (filterStatus === "active" ? !user.disabled : user.disabled)
+    const matchPlan = filterPlan === "all" || !filterPlan || user.plan === filterPlan
+    const matchStatus = filterStatus === "all" || !filterStatus || (filterStatus === "active" ? !user.disabled : user.disabled)
     return matchEmail && matchPlan && matchStatus
   })
 
