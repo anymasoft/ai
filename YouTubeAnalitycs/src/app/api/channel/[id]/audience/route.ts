@@ -183,11 +183,13 @@ export async function POST(
     console.log(`[Audience] Видео с валидными датами: ${videosWithValidDates.length}/${videos.length}`);
 
     if (videosWithValidDates.length === 0) {
+      console.info(`[Audience] Empty state: нет видео с валидными датами`);
       client.close();
-      return NextResponse.json(
-        { error: "No videos with valid publication dates" },
-        { status: 400 }
-      );
+      return NextResponse.json({
+        ok: true,
+        data: null,
+        reason: "insufficient_valid_dates"
+      }, { status: 200 });
     }
 
     // Обогащаем видео данными из videoDetails если доступны

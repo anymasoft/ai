@@ -132,7 +132,20 @@ export async function GET(req: NextRequest) {
     });
 
     if (videosWithMomentum.length === 0) {
-      throw new Error('[Dashboard Momentum] No valid videos found for momentum calculation');
+      console.info('[Dashboard Momentum] Empty state: нет валидных видео для расчёта');
+      return NextResponse.json({
+        success: true,
+        data: {
+          period: validPeriod,
+          trend: [],
+          summary: {
+            avgMomentumChange: 0,
+            highMomentumVideosTrend: "stable",
+            totalHighMomentumVideos: 0,
+            medianViewsPerDay: 0,
+          },
+        },
+      });
     }
 
     // Рассчитываем медиану viewsPerDay

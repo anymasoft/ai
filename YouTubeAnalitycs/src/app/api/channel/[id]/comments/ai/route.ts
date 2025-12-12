@@ -70,10 +70,12 @@ export async function POST(
     });
 
     if (videosResult.rows.length === 0) {
-      return NextResponse.json(
-        { error: "Sync Top Videos first" },
-        { status: 400 }
-      );
+      console.info(`[DeepCommentAI] Empty state: нет видео для анализа`);
+      return NextResponse.json({
+        ok: true,
+        data: null,
+        reason: "insufficient_videos"
+      }, { status: 200 });
     }
 
     const videoIds = videosResult.rows.map((v) => v.videoId as string);
@@ -91,10 +93,12 @@ export async function POST(
     });
 
     if (commentsResult.rows.length === 0) {
-      return NextResponse.json(
-        { error: "No comments found. Please add the channel to sync comments automatically." },
-        { status: 400 }
-      );
+      console.info(`[DeepCommentAI] Empty state: нет комментариев для анализа`);
+      return NextResponse.json({
+        ok: true,
+        data: null,
+        reason: "insufficient_comments"
+      }, { status: 200 });
     }
 
     console.log(`[DeepCommentAI] Найдено ${commentsResult.rows.length} комментариев`);
@@ -114,10 +118,12 @@ export async function POST(
 
     // Если нет валидных комментариев, прерываем анализ
     if (normalizedComments.length === 0) {
-      return NextResponse.json(
-        { error: "No valid comments to analyze after normalization" },
-        { status: 400 }
-      );
+      console.info(`[DeepCommentAI] Empty state: нет валидных комментариев после нормализации`);
+      return NextResponse.json({
+        ok: true,
+        data: null,
+        reason: "insufficient_valid_comments"
+      }, { status: 200 });
     }
 
     // Создаём запись анализа
