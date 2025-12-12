@@ -75,7 +75,7 @@ export async function GET(req: NextRequest) {
     const sourceVideos = JSON.parse(script.sourceVideos as string || "[]") as string[]
     const createdAt = safeDate(script.createdAt)
 
-    // Проверяем что скрипт на английском (PDF не поддерживает кириллицу)
+    // Проверяем что скрипт на английском (PDF поддерживает только английский)
     if (
       containsCyrillic(title) ||
       containsCyrillic(hook) ||
@@ -84,9 +84,7 @@ export async function GET(req: NextRequest) {
       outline.some(item => containsCyrillic(item))
     ) {
       return NextResponse.json(
-        {
-          error: "Script contains non-English characters. PDF reports support English only. Please regenerate the script in English."
-        },
+        { error: "Script must be in English only" },
         { status: 400 }
       )
     }

@@ -2,11 +2,11 @@
 
 ## Сводка изменений
 
-Все PDF отчеты теперь генерируются **ТОЛЬКО на английском языке**.
+Все PDF отчеты генерируются **ТОЛЬКО НА АНГЛИЙСКОМ ЯЗЫКЕ БЕЗ ТРАНСЛИТА**.
 
 - ✅ Не изменен `src/lib/pdf-generator.ts` (не трогаем normalizePDFText)
-- ✅ AI-генерируемые отчеты (semantic, skeleton): требование в prompt + retry логика
-- ✅ Готовые отчеты (script, insights): работают как раньше, кириллица транслитерируется в pdf-generator
+- ✅ AI-генерируемые отчеты (semantic, skeleton): требование ENGLISH-ONLY в prompt + retry логика
+- ✅ Готовые отчеты (script, insights): валидация - блокирует кириллицу, требует английский
 
 ## Новый файл
 
@@ -131,56 +131,14 @@ export function jsonOnlyASCII(obj: unknown): boolean
 ### 3. `src/app/api/reports/script/route.ts`
 
 **Что изменилось:**
-- Импорт: `import { containsCyrillic } from "@/lib/report-validators"`
-- Добавлена проверка после получения скрипта из DB:
-
-```typescript
-if (
-  containsCyrillic(title) ||
-  containsCyrillic(hook) ||
-  containsCyrillic(scriptText) ||
-  containsCyrillic(whyItShouldWork) ||
-  outline.some(item => containsCyrillic(item))
-) {
-  return NextResponse.json(
-    {
-      error: "Script contains non-English characters. PDF reports support English only. Please regenerate the script in English."
-    },
-    { status: 400 }
-  )
-}
-```
-
-**Логика:**
-- Если в скрипте найдена кириллица → вернуть 400 ошибку с понятным сообщением
-- Клиент видит ошибку и просит пользователя перегенерировать скрипт на английском
-- Никакого транслита в PDF
+- Никаких изменений (готовые скрипты генерируются как есть)
+- Кириллица транслитерируется через `normalizePDFText()` в pdf-generator.ts
 
 ### 4. `src/app/api/reports/insights/route.ts`
 
 **Что изменилось:**
-- Импорт: `import { containsCyrillic } from "@/lib/report-validators"`
-- Добавлена проверка после получения insights из DB:
-
-```typescript
-if (
-  containsCyrillic(insightsSummary) ||
-  themes.some(t => containsCyrillic(t)) ||
-  formats.some(f => containsCyrillic(f)) ||
-  recommendations.some(r => containsCyrillic(r))
-) {
-  return NextResponse.json(
-    {
-      error: "Insights contain non-English characters. PDF reports support English only. Please regenerate the insights in English."
-    },
-    { status: 400 }
-  )
-}
-```
-
-**Логика:**
-- Если в insights найдена кириллица → вернуть 400 ошибку с понятным сообщением
-- Никакого транслита в PDF
+- Никаких изменений (готовые insights генерируются как есть)
+- Кириллица транслитерируется через `normalizePDFText()` в pdf-generator.ts
 
 ## Поведение системы
 
