@@ -98,7 +98,7 @@ export async function GET(req: NextRequest) {
       formats = JSON.parse((insight.formats as string) || "[]")
       recommendations = JSON.parse((insight.recommendations as string) || "[]")
 
-      // Проверка на кириллицу в insights
+      // Проверяем что insights на английском (PDF не поддерживает кириллицу)
       if (
         containsCyrillic(insightsSummary) ||
         themes.some(t => containsCyrillic(t)) ||
@@ -106,8 +106,10 @@ export async function GET(req: NextRequest) {
         recommendations.some(r => containsCyrillic(r))
       ) {
         return NextResponse.json(
-          { ok: true, data: null, reason: "report_language_invalid" },
-          { status: 200 }
+          {
+            error: "Insights contain non-English characters. PDF reports support English only. Please regenerate the insights in English."
+          },
+          { status: 400 }
         )
       }
     }

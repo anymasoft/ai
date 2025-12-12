@@ -5,9 +5,8 @@
 Все PDF отчеты теперь генерируются **ТОЛЬКО на английском языке**.
 
 - ✅ Не изменен `src/lib/pdf-generator.ts` (не трогаем normalizePDFText)
-- ✅ Все 4 API роутера обновлены с требованием английского
 - ✅ AI-генерируемые отчеты (semantic, skeleton): требование в prompt + retry логика
-- ✅ Готовые отчеты (script, insights): post-check валидация кириллицы
+- ✅ Готовые отчеты (script, insights): работают как раньше, кириллица транслитерируется в pdf-generator
 
 ## Новый файл
 
@@ -133,10 +132,9 @@ export function jsonOnlyASCII(obj: unknown): boolean
 
 **Что изменилось:**
 - Импорт: `import { containsCyrillic } from "@/lib/report-validators"`
-- После получения скрипта из DB добавлена проверка:
+- Добавлена проверка после получения скрипта из DB:
 
 ```typescript
-// Проверка на кириллицу в критичных полях
 if (
   containsCyrillic(title) ||
   containsCyrillic(hook) ||
@@ -145,24 +143,26 @@ if (
   outline.some(item => containsCyrillic(item))
 ) {
   return NextResponse.json(
-    { ok: true, data: null, reason: "report_language_invalid" },
-    { status: 200 }
+    {
+      error: "Script contains non-English characters. PDF reports support English only. Please regenerate the script in English."
+    },
+    { status: 400 }
   )
 }
 ```
 
 **Логика:**
-- Если в готовом скрипте найдена кириллица → возвращаем `{ ok: true, data: null, reason: "report_language_invalid" }`
-- Клиент может обработать эту ошибку и предложить пользователю перегенерировать скрипт на английском
+- Если в скрипте найдена кириллица → вернуть 400 ошибку с понятным сообщением
+- Клиент видит ошибку и просит пользователя перегенерировать скрипт на английском
+- Никакого транслита в PDF
 
 ### 4. `src/app/api/reports/insights/route.ts`
 
 **Что изменилось:**
 - Импорт: `import { containsCyrillic } from "@/lib/report-validators"`
-- После получения insights из DB добавлена проверка:
+- Добавлена проверка после получения insights из DB:
 
 ```typescript
-// Проверка на кириллицу в insights
 if (
   containsCyrillic(insightsSummary) ||
   themes.some(t => containsCyrillic(t)) ||
@@ -170,14 +170,17 @@ if (
   recommendations.some(r => containsCyrillic(r))
 ) {
   return NextResponse.json(
-    { ok: true, data: null, reason: "report_language_invalid" },
-    { status: 200 }
+    {
+      error: "Insights contain non-English characters. PDF reports support English only. Please regenerate the insights in English."
+    },
+    { status: 400 }
   )
 }
 ```
 
 **Логика:**
-- Если в insights найдена кириллица → возвращаем `{ ok: true, data: null, reason: "report_language_invalid" }`
+- Если в insights найдена кириллица → вернуть 400 ошибку с понятным сообщением
+- Никакого транслита в PDF
 
 ## Поведение системы
 
@@ -191,10 +194,11 @@ if (
 ### Для готовых отчетов (script, insights):
 
 1. **Загрузка**: берем данные из DB
-2. **Проверка**: сканируем все строки на кириллицу
+2. **Проверка**: сканируем все текстовые поля на кириллицу
 3. **Результат**:
-   - Если кириллица найдена → `{ ok: true, data: null, reason: "report_language_invalid" }`
-   - Если все чисто → продолжаем генерацию PDF
+   - Если найдена кириллица → вернуть 400 ошибку с сообщением "regenerate in English"
+   - Если только английский текст → генерируем красивый PDF
+   - Никакого транслита - либо нормальный текст, либо ошибка
 
 ## Технические детали
 
@@ -219,8 +223,21 @@ if (
 
 ## Результат
 
-✅ **Все PDF отчеты теперь ENGLISH-ONLY**
-- Нет кириллицы в генерируемых отчетах
-- Нет требования к изменению pdf-generator.ts
-- Быстрый фикс с минимальными изменениями
-- Fallback гарантирует что система не ломается если что-то пошло не так
+✅ **Все PDF отчеты теперь ENGLISH-ONLY и БЕЗ ТРАНСЛИТА**
+
+**AI-генерируемые отчеты (semantic, skeleton):**
+- AI генерирует данные только на английском языке через prompt
+- Проверка на кириллицу + retry логика гарантирует качество
+- Fallback данные на английском если обе попытки失败
+
+**Готовые отчеты (script, insights):**
+- Post-check валидация: если найдена кириллица → 400 ошибка
+- Ошибка содержит понятное сообщение: "Please regenerate the script in English"
+- Если данные на английском → красивый PDF без проблем
+- НИКАКОГО ТРАНСЛИТА - либо нормальный текст, либо понятная ошибка
+
+✅ **Преимущества:**
+- Нет некрасивого транслита ("Temy, svyazannye s zhiznyu...")
+- Отчеты красивые и читабельные на английском
+- Пользователь явно видит что нужно перегенерировать на английском
+- Минимальный и надежный фикс без сложных инструкций
