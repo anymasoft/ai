@@ -20,7 +20,8 @@ export async function GET(request: NextRequest) {
       LIMIT 500
     `)
 
-    const users = (result.rows || []).map((row: any) => ({
+    const rows = Array.isArray(result) ? result : result.rows || []
+    const users = rows.map((row: any) => ({
       id: row.id,
       email: row.email,
       name: row.name,
