@@ -5,6 +5,7 @@ import { useState, useEffect, useRef } from "react";
 import { useSession } from "next-auth/react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
   Table,
@@ -14,7 +15,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Loader2, AlertCircle, ArrowUpDown, ArrowUp, ArrowDown, Sparkles } from "lucide-react";
+import { Loader2, AlertCircle, ArrowUpDown, ArrowUp, ArrowDown, Sparkles, RefreshCcw } from "lucide-react";
 import Link from "next/link";
 import { ChannelAvatar } from "@/components/channel-avatar";
 
@@ -375,13 +376,35 @@ export default function ComparePage() {
       {competitors.length > 0 && (
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Sparkles className="h-5 w-5" />
-              AI Comparative Analysis
-            </CardTitle>
-            <CardDescription>
-              Get AI-powered insights comparing all your competitors
-            </CardDescription>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="flex items-center gap-2">
+                  <Sparkles className="h-5 w-5" />
+                  AI Comparative Analysis
+                </CardTitle>
+                <CardDescription>
+                  Get AI-powered insights comparing all your competitors
+                </CardDescription>
+              </div>
+              {aiAnalysis && (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      size="icon"
+                      variant="outline"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        generateAIAnalysis();
+                      }}
+                      disabled={aiLoading}
+                    >
+                      <RefreshCcw className={`h-4 w-4 ${aiLoading ? "animate-spin" : ""}`} />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>Обновить анализ сравнения</TooltipContent>
+                </Tooltip>
+              )}
+            </div>
           </CardHeader>
           <CardContent>
             {aiError && (
@@ -469,21 +492,6 @@ export default function ComparePage() {
                     </ul>
                   </div>
                 )}
-
-                <Button
-                  variant="outline"
-                  onClick={generateAIAnalysis}
-                  disabled={aiLoading}
-                >
-                  {aiLoading ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Analyzing...
-                    </>
-                  ) : (
-                    "Regenerate Analysis"
-                  )}
-                </Button>
               </div>
             )}
           </CardContent>
