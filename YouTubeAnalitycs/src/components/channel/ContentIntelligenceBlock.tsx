@@ -277,6 +277,22 @@ export function ContentIntelligenceBlock({
 
   const [data, setData] = useState<ContentIntelligenceData | null>(initialData || null);
   const [error, setError] = useState<string | null>(null);
+  const [cooldownUntil, setCooldownUntil] = useState<number | null>(null);
+  const COOLDOWN_MS = 86400000; // TODO: заменить на значение из API meta.cooldown.nextAllowedAt
+
+  const getCooldownTimeRemaining = () => {
+    if (!cooldownUntil) return null;
+    const remaining = cooldownUntil - Date.now();
+    if (remaining <= 0) {
+      setCooldownUntil(null);
+      return null;
+    }
+    const hours = Math.floor(remaining / 3600000);
+    const minutes = Math.floor((remaining % 3600000) / 60000);
+    return { hours, minutes };
+  };
+
+  const isCooldownActive = cooldownUntil && Date.now() < cooldownUntil;
   const [expandedSections, setExpandedSections] = useState<Set<number>>(new Set([0])); // Первая секция открыта по умолчанию
 
   // Безопасное получение секций с защитой от undefined данных
@@ -401,7 +417,9 @@ export function ContentIntelligenceBlock({
             </Button>
           </TooltipTrigger>
           <TooltipContent>
-            Обновить анализ
+            {isCooldownActive && getCooldownTimeRemaining()
+              ? `Обновление доступно через ${getCooldownTimeRemaining()!.hours}ч ${getCooldownTimeRemaining()!.minutes}м`
+              : "Обновить анализ"}
           </TooltipContent>
         </Tooltip>
       </div>

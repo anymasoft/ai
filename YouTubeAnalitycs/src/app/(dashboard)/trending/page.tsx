@@ -67,6 +67,22 @@ export default function TrendingPage() {
   const [generationError, setGenerationError] = useState<string | null>(null);
   const [selectedTemperatureKey, setSelectedTemperatureKey] = useState<TemperatureKey>("balanced");
   const [refreshingId, setRefreshingId] = useState<string | null>(null);
+  const [videosCooldownUntil, setVideosCooldownUntil] = useState<number | null>(null);
+  const VIDEOS_COOLDOWN_MS = 86400000; // TODO: заменить на значение из API meta.cooldown.nextAllowedAt
+
+  const getVideosCooldownTimeRemaining = () => {
+    if (!videosCooldownUntil) return null;
+    const remaining = videosCooldownUntil - Date.now();
+    if (remaining <= 0) {
+      setVideosCooldownUntil(null);
+      return null;
+    }
+    const hours = Math.floor(remaining / 3600000);
+    const minutes = Math.floor((remaining % 3600000) / 60000);
+    return { hours, minutes };
+  };
+
+  const isVideosCooldownActive = videosCooldownUntil && Date.now() < videosCooldownUntil;
 
   const refreshDate = async (videoId: string) => {
     setRefreshingId(videoId);
@@ -107,6 +123,7 @@ export default function TrendingPage() {
       if (data.success) {
         console.log(`Successfully fetched ${data.items?.length || 0} videos and ${data.channels?.length || 0} channels`);
         setVideos(data.items || []);
+        setVideosCooldownUntil(Date.now() + VIDEOS_COOLDOWN_MS);
         setChannels(data.channels || []);
         // Сбрасываем выбранные видео и сценарии при обновлении
         setSelectedVideos(new Set());
@@ -448,13 +465,15 @@ export default function TrendingPage() {
                       console.log("Обновить button clicked!");
                       fetchMomentumVideos();
                     }}
-                    disabled={loading}
+                    disabled={loading || isVideosCooldownActive}
                   >
                     <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent>
-                  Обновить видео
+                  {isVideosCooldownActive && getVideosCooldownTimeRemaining()
+                    ? `Обновление доступно через ${getVideosCooldownTimeRemaining()!.hours}ч ${getVideosCooldownTimeRemaining()!.minutes}м`
+                    : "Обновить видео"}
                 </TooltipContent>
               </Tooltip>
             </div>

@@ -51,6 +51,22 @@ export function DeepCommentAnalysis({
 
   const [data, setData] = useState<any>(initialData || null);
   const [error, setError] = useState<string | null>(null);
+  const [cooldownUntil, setCooldownUntil] = useState<number | null>(null);
+  const COOLDOWN_MS = 86400000; // TODO: заменить на значение из API meta.cooldown.nextAllowedAt
+
+  const getCooldownTimeRemaining = () => {
+    if (!cooldownUntil) return null;
+    const remaining = cooldownUntil - Date.now();
+    if (remaining <= 0) {
+      setCooldownUntil(null);
+      return null;
+    }
+    const hours = Math.floor(remaining / 3600000);
+    const minutes = Math.floor((remaining % 3600000) / 60000);
+    return { hours, minutes };
+  };
+
+  const isCooldownActive = cooldownUntil && Date.now() < cooldownUntil;
   const [progress, setProgress] = useState<ProgressData | null>(null);
   const intervalRef = useRef<number | NodeJS.Timeout | null>(null);
 

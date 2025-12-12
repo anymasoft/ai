@@ -24,8 +24,25 @@ export default function TrendingInsights({ videos }: TrendingInsightsProps) {
   const [loading, setLoading] = useState(false);
   const [loadingSaved, setLoadingSaved] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [cooldownUntil, setCooldownUntil] = useState<number | null>(null);
+  const COOLDOWN_MS = 86400000; // TODO: заменить на значение из API meta.cooldown.nextAllowedAt
+
 
   // Загрузка сохраненного анализа при инициализации
+  const getCooldownTimeRemaining = () => {
+    if (!cooldownUntil) return null;
+    const remaining = cooldownUntil - Date.now();
+    if (remaining <= 0) {
+      setCooldownUntil(null);
+      return null;
+    }
+    const hours = Math.floor(remaining / 3600000);
+    const minutes = Math.floor((remaining % 3600000) / 60000);
+    return { hours, minutes };
+  };
+
+  const isCooldownActive = cooldownUntil && Date.now() < cooldownUntil;
+
   useEffect(() => {
     loadSavedInsights();
   }, []);
@@ -43,6 +60,7 @@ export default function TrendingInsights({ videos }: TrendingInsightsProps) {
 
       if (data.success && data.hasInsights) {
         setInsights(data.insights);
+        setCooldownUntil(Date.now() + COOLDOWN_MS);
       }
     } catch (err) {
       console.error("Ошибка загрузки сохраненных insights:", err);
@@ -137,13 +155,15 @@ export default function TrendingInsights({ videos }: TrendingInsightsProps) {
                   size="icon"
                   variant="outline"
                   onClick={generateInsights}
-                  disabled={loading || videos.length === 0}
+                  disabled={loading || videos.length === 0 || isCooldownActive}
                 >
                   <RefreshCcw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
                 </Button>
               </TooltipTrigger>
               <TooltipContent>
-                Обновить анализ
+                {isCooldownActive && getCooldownTimeRemaining()
+                  ? `Обновление доступно через ${getCooldownTimeRemaining()!.hours}ч ${getCooldownTimeRemaining()!.minutes}м`
+                  : "Обновить анализ"}
               </TooltipContent>
             </Tooltip>
           )}
