@@ -3,7 +3,8 @@
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Loader2, MessageSquare, Sparkles, Heart, AlertCircle, ThumbsUp, Lightbulb } from "lucide-react";
+import { MessageSquare, Sparkles, Heart, AlertCircle, ThumbsUp, Lightbulb } from "lucide-react";
+import { AnalysisLoadingState } from "@/components/ui/AnalysisLoadingState";
 import { useRouter } from "next/navigation";
 import { useGenerationStatusStore } from "@/store/generationStatusStore";
 
@@ -94,13 +95,10 @@ export function CommentInsights({
 
   if (loading) {
     return (
-      <CardContent className="space-y-4 pt-6">
-        <div className="flex flex-col items-center justify-center py-12">
-          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground mb-4" />
-          <p className="text-muted-foreground">Analyzing comments...</p>
-          <p className="text-sm text-muted-foreground mt-2">This may take 15-25 seconds</p>
-        </div>
-      </CardContent>
+      <AnalysisLoadingState
+        title="Analyzing comments..."
+        subtitle="This may take 15-25 seconds"
+      />
     );
   }
 

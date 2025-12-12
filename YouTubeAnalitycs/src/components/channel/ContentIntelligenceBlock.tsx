@@ -3,10 +3,11 @@
 import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Loader2, Sparkles, ChevronDown, ChevronUp } from "lucide-react";
+import { Sparkles, ChevronDown, ChevronUp } from "lucide-react";
 import { useRouter } from "next/navigation";
 import Markdown from "react-markdown";
 import { useGenerationStatusStore } from "@/store/generationStatusStore";
+import { AnalysisLoadingState } from "@/components/ui/AnalysisLoadingState";
 
 interface TableTheme {
   name: string;
@@ -322,13 +323,10 @@ export function ContentIntelligenceBlock({
 
   if (loading) {
     return (
-      <CardContent className="space-y-4 pt-6">
-        <div className="flex flex-col items-center justify-center py-12">
-          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground mb-4" />
-          <p className="text-muted-foreground">Генерируется анализ...</p>
-          <p className="text-sm text-muted-foreground mt-2">Это может занять 30-60 секунд</p>
-        </div>
-      </CardContent>
+      <AnalysisLoadingState
+        title="Генерируется анализ..."
+        subtitle="Это может занять 30-60 секунд"
+      />
     );
   }
 
