@@ -258,7 +258,34 @@ ${JSON.stringify(videosForAnalysis, null, 2)}
     console.log(`[Momentum] Получен ответ от OpenAI`);
 
     // Парсим JSON ответ
-    const aiAnalysis = JSON.parse(responseText);
+    let aiAnalysis;
+    try {
+      aiAnalysis = JSON.parse(responseText);
+    } catch (parseError) {
+      const parseErrorMsg = parseError instanceof Error ? parseError.message : String(parseError);
+      throw new Error(`[Momentum] Failed to parse OpenAI response as JSON: ${parseErrorMsg}. Response: ${responseText.substring(0, 200)}`);
+    }
+
+    // Проверяем что aiAnalysis имеет необходимые поля
+    if (!aiAnalysis || typeof aiAnalysis !== 'object') {
+      throw new Error(`[Momentum] OpenAI response is not a valid object: ${responseText.substring(0, 100)}`);
+    }
+
+    if (!Array.isArray(aiAnalysis.hotThemes)) {
+      throw new Error(`[Momentum] Missing or invalid hotThemes in OpenAI response`);
+    }
+
+    if (!Array.isArray(aiAnalysis.hotFormats)) {
+      throw new Error(`[Momentum] Missing or invalid hotFormats in OpenAI response`);
+    }
+
+    if (!Array.isArray(aiAnalysis.hotIdeas)) {
+      throw new Error(`[Momentum] Missing or invalid hotIdeas in OpenAI response`);
+    }
+
+    if (typeof aiAnalysis.explanation !== 'string') {
+      throw new Error(`[Momentum] Missing or invalid explanation in OpenAI response`);
+    }
 
     // Формируем итоговые данные
     const momentumData = {
@@ -322,12 +349,22 @@ ${JSON.stringify(videosForAnalysis, null, 2)}
     client.close();
     console.error("[Momentum] Ошибка:", error);
 
+    if (error instanceof Error) {
+      console.error("[Momentum] Stack:", error.stack);
+    }
+
     const errorMessage = error instanceof Error
       ? (error.message || "Failed to generate momentum analysis")
       : String(error) || "Failed to generate momentum analysis";
 
     return NextResponse.json(
-      { ok: false, error: errorMessage },
+      {
+        ok: false,
+        error: errorMessage,
+        ...(process.env.NODE_ENV === "development" && {
+          stack: error instanceof Error ? error.stack : undefined
+        })
+      },
       { status: 500 }
     );
   }
@@ -393,7 +430,13 @@ export async function GET(
     }
 
     const analysis = analysisResult.rows[0];
-    const parsedData = JSON.parse(analysis.data as string);
+    let parsedData;
+    try {
+      parsedData = JSON.parse(analysis.data as string);
+    } catch (parseError) {
+      const parseErrorMsg = parseError instanceof Error ? parseError.message : String(parseError);
+      throw new Error(`[Momentum] Failed to parse stored momentum data as JSON: ${parseErrorMsg}`);
+    }
 
     // Если в старых данных нет videoId, добавляем его из БД
     if (parsedData.highMomentumVideos && parsedData.highMomentumVideos.length > 0) {
@@ -431,12 +474,22 @@ export async function GET(
     client.close();
     console.error("[Momentum] Ошибка GET:", error);
 
+    if (error instanceof Error) {
+      console.error("[Momentum] GET Stack:", error.stack);
+    }
+
     const errorMessage = error instanceof Error
       ? (error.message || "Failed to fetch momentum analysis")
       : String(error) || "Failed to fetch momentum analysis";
 
     return NextResponse.json(
-      { ok: false, error: errorMessage },
+      {
+        ok: false,
+        error: errorMessage,
+        ...(process.env.NODE_ENV === "development" && {
+          stack: error instanceof Error ? error.stack : undefined
+        })
+      },
       { status: 500 }
     );
   }
