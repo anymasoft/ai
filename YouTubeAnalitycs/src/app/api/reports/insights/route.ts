@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { db } from "@/lib/db"
 import { PDFBuilder } from "@/lib/pdf-generator"
+import { containsCyrillic } from "@/lib/report-validators"
 
 /**
  * GET /api/reports/insights
@@ -96,6 +97,21 @@ export async function GET(req: NextRequest) {
       themes = JSON.parse((insight.themes as string) || "[]")
       formats = JSON.parse((insight.formats as string) || "[]")
       recommendations = JSON.parse((insight.recommendations as string) || "[]")
+
+      // Проверяем что insights на английском (PDF не поддерживает кириллицу)
+      if (
+        containsCyrillic(insightsSummary) ||
+        themes.some(t => containsCyrillic(t)) ||
+        formats.some(f => containsCyrillic(f)) ||
+        recommendations.some(r => containsCyrillic(r))
+      ) {
+        return NextResponse.json(
+          {
+            error: "Insights contain non-English characters. PDF reports support English only. Please regenerate the insights in English."
+          },
+          { status: 400 }
+        )
+      }
     }
 
     // Создаём PDF

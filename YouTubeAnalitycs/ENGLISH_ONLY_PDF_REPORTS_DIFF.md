@@ -131,14 +131,56 @@ export function jsonOnlyASCII(obj: unknown): boolean
 ### 3. `src/app/api/reports/script/route.ts`
 
 **Что изменилось:**
-- Никаких изменений
-- Готовые данные пропускаются через `normalizePDFText()` в pdf-generator.ts
+- Импорт: `import { containsCyrillic } from "@/lib/report-validators"`
+- Добавлена проверка после получения скрипта из DB:
+
+```typescript
+if (
+  containsCyrillic(title) ||
+  containsCyrillic(hook) ||
+  containsCyrillic(scriptText) ||
+  containsCyrillic(whyItShouldWork) ||
+  outline.some(item => containsCyrillic(item))
+) {
+  return NextResponse.json(
+    {
+      error: "Script contains non-English characters. PDF reports support English only. Please regenerate the script in English."
+    },
+    { status: 400 }
+  )
+}
+```
+
+**Логика:**
+- Если в скрипте найдена кириллица → вернуть 400 ошибку с понятным сообщением
+- Клиент видит ошибку и просит пользователя перегенерировать скрипт на английском
+- Никакого транслита в PDF
 
 ### 4. `src/app/api/reports/insights/route.ts`
 
 **Что изменилось:**
-- Никаких изменений
-- Готовые данные пропускаются через `normalizePDFText()` в pdf-generator.ts
+- Импорт: `import { containsCyrillic } from "@/lib/report-validators"`
+- Добавлена проверка после получения insights из DB:
+
+```typescript
+if (
+  containsCyrillic(insightsSummary) ||
+  themes.some(t => containsCyrillic(t)) ||
+  formats.some(f => containsCyrillic(f)) ||
+  recommendations.some(r => containsCyrillic(r))
+) {
+  return NextResponse.json(
+    {
+      error: "Insights contain non-English characters. PDF reports support English only. Please regenerate the insights in English."
+    },
+    { status: 400 }
+  )
+}
+```
+
+**Логика:**
+- Если в insights найдена кириллица → вернуть 400 ошибку с понятным сообщением
+- Никакого транслита в PDF
 
 ## Поведение системы
 
@@ -151,12 +193,12 @@ export function jsonOnlyASCII(obj: unknown): boolean
 
 ### Для готовых отчетов (script, insights):
 
-1. **Загрузка**: берем данные из DB (могут быть на русском или английском)
-2. **Генерация PDF**: все текстовые данные пропускаются через `normalizePDFText()` в pdf-generator.ts
+1. **Загрузка**: берем данные из DB
+2. **Проверка**: сканируем все текстовые поля на кириллицу
 3. **Результат**:
-   - Кириллица → транслитерация в латиницу (ограничение pdf-lib StandardFonts)
-   - Английский текст → без изменений
-   - PDF готов и отправляется клиенту
+   - Если найдена кириллица → вернуть 400 ошибку с сообщением "regenerate in English"
+   - Если только английский текст → генерируем красивый PDF
+   - Никакого транслита - либо нормальный текст, либо ошибка
 
 ## Технические детали
 
@@ -181,16 +223,21 @@ export function jsonOnlyASCII(obj: unknown): boolean
 
 ## Результат
 
-✅ **AI-генерируемые отчеты (semantic, skeleton) теперь ENGLISH-ONLY**
-- AI генерирует данные только на английском языке
+✅ **Все PDF отчеты теперь ENGLISH-ONLY и БЕЗ ТРАНСЛИТА**
+
+**AI-генерируемые отчеты (semantic, skeleton):**
+- AI генерирует данные только на английском языке через prompt
 - Проверка на кириллицу + retry логика гарантирует качество
 - Fallback данные на английском если обе попытки失败
 
-✅ **Готовые отчеты (script, insights) работают как раньше**
-- Кириллица автоматически транслитерируется через `normalizePDFText()` в pdf-generator.ts
-- Это ограничение pdf-lib StandardFonts, которые не поддерживают Unicode
-- Никаких новых валидаций - все данные проходят как есть
+**Готовые отчеты (script, insights):**
+- Post-check валидация: если найдена кириллица → 400 ошибка
+- Ошибка содержит понятное сообщение: "Please regenerate the script in English"
+- Если данные на английском → красивый PDF без проблем
+- НИКАКОГО ТРАНСЛИТА - либо нормальный текст, либо понятная ошибка
 
-✅ **Минимальный diff без изменения pdf-generator.ts**
-- Только prompt обновления в AI-генерируемых функциях
-- Готовые отчеты не изменены (используют существующую транслитерацию)
+✅ **Преимущества:**
+- Нет некрасивого транслита ("Temy, svyazannye s zhiznyu...")
+- Отчеты красивые и читабельные на английском
+- Пользователь явно видит что нужно перегенерировать на английском
+- Минимальный и надежный фикс без сложных инструкций
