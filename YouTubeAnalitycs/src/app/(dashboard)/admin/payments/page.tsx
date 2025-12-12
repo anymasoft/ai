@@ -144,7 +144,12 @@ export default function AdminPaymentsPage() {
   const filteredPayments = payments.filter((payment) => {
     const matchEmail = payment.email.toLowerCase().includes(filterEmail.toLowerCase())
     const matchPlan = filterPlan === "all" || !filterPlan || payment.plan === filterPlan
-    const matchStatus = filterStatus === "all" || !filterStatus || (filterStatus === "paid" ? payment.isPaid : !payment.isPaid)
+    const matchStatus =
+      filterStatus === "all" ||
+      !filterStatus ||
+      (filterStatus === "active" ? (payment.isPaid && !payment.disabled) :
+       filterStatus === "pending" ? (!payment.isPaid && !payment.disabled) :
+       filterStatus === "disabled" ? payment.disabled : true)
     return matchEmail && matchPlan && matchStatus
   })
 
@@ -217,8 +222,9 @@ export default function AdminPaymentsPage() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">All statuses</SelectItem>
-                    <SelectItem value="paid">Active</SelectItem>
-                    <SelectItem value="free">Free</SelectItem>
+                    <SelectItem value="active">Active</SelectItem>
+                    <SelectItem value="pending">Pending</SelectItem>
+                    <SelectItem value="disabled">Disabled</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -254,7 +260,7 @@ export default function AdminPaymentsPage() {
                       </TableCell>
                       <TableCell>
                         <Badge variant={payment.isPaid ? "default" : "secondary"}>
-                          {payment.isPaid ? "Paid" : "Free"}
+                          {payment.disabled ? "Disabled" : payment.isPaid ? "Active" : "Pending"}
                         </Badge>
                       </TableCell>
                       <TableCell>{formatDate(payment.expiresAt)}</TableCell>
