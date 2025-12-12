@@ -120,6 +120,11 @@ export default function TrendingInsights({ videos }: TrendingInsightsProps) {
                 <Loader2 className="h-4 w-4 animate-spin" />
                 Генерация...
               </>
+            ) : insights ? (
+              <>
+                <Sparkles className="h-4 w-4" />
+                Обновить анализ
+              </>
             ) : (
               <>
                 <Sparkles className="h-4 w-4" />
@@ -252,25 +257,6 @@ export default function TrendingInsights({ videos }: TrendingInsightsProps) {
                   </li>
                 ))}
               </ul>
-            </div>
-
-            <div className="pt-4 border-t">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={generateInsights}
-                disabled={loading}
-                className="gap-2"
-              >
-                {loading ? (
-                  <>
-                    <Loader2 className="h-3 w-3 animate-spin" />
-                    Обновление анализа...
-                  </>
-                ) : (
-                  "Обновить анализ"
-                )}
-              </Button>
             </div>
           </div>
         )}
