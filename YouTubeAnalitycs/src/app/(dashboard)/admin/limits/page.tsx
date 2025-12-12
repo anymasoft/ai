@@ -121,7 +121,7 @@ export default function AdminLimitsPage() {
   // Фильтруем лимиты
   const filteredLimits = limits.filter((limit) => {
     const matchEmail = limit.email.toLowerCase().includes(filterEmail.toLowerCase())
-    const matchPlan = !filterPlan || limit.plan === filterPlan
+    const matchPlan = filterPlan === "all" || !filterPlan || limit.plan === filterPlan
     return matchEmail && matchPlan
   })
 
@@ -178,7 +178,7 @@ export default function AdminLimitsPage() {
                     <SelectValue placeholder="All plans" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">All plans</SelectItem>
+                    <SelectItem value="all">All plans</SelectItem>
                     <SelectItem value="free">Free</SelectItem>
                     <SelectItem value="pro">Pro</SelectItem>
                     <SelectItem value="business">Business</SelectItem>

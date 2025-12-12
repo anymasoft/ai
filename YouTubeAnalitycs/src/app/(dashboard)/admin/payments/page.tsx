@@ -142,8 +142,8 @@ export default function AdminPaymentsPage() {
   // Фильтруем платежи
   const filteredPayments = payments.filter((payment) => {
     const matchEmail = payment.email.toLowerCase().includes(filterEmail.toLowerCase())
-    const matchPlan = !filterPlan || payment.plan === filterPlan
-    const matchStatus = !filterStatus || (filterStatus === "paid" ? payment.isPaid : !payment.isPaid)
+    const matchPlan = filterPlan === "all" || !filterPlan || payment.plan === filterPlan
+    const matchStatus = filterStatus === "all" || !filterStatus || (filterStatus === "paid" ? payment.isPaid : !payment.isPaid)
     return matchEmail && matchPlan && matchStatus
   })
 
@@ -200,7 +200,7 @@ export default function AdminPaymentsPage() {
                     <SelectValue placeholder="All plans" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">All plans</SelectItem>
+                    <SelectItem value="all">All plans</SelectItem>
                     <SelectItem value="free">Free</SelectItem>
                     <SelectItem value="pro">Pro</SelectItem>
                     <SelectItem value="business">Business</SelectItem>
@@ -215,7 +215,7 @@ export default function AdminPaymentsPage() {
                     <SelectValue placeholder="All statuses" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">All statuses</SelectItem>
+                    <SelectItem value="all">All statuses</SelectItem>
                     <SelectItem value="paid">Active</SelectItem>
                     <SelectItem value="free">Free</SelectItem>
                   </SelectContent>
