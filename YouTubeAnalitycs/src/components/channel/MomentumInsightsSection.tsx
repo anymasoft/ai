@@ -40,6 +40,27 @@ function normalizeError(e: unknown): Error {
   return new Error("Unknown momentum error");
 }
 
+/**
+ * Читает ошибку из API ответа
+ * Попробует json(), если упадёт — читает text()
+ */
+async function readApiError(res: Response): Promise<string> {
+  try {
+    const data = await res.json();
+    if (data?.error) return String(data.error);
+    if (data?.message) return String(data.message);
+    if (data?.ok === false && data?.error) return String(data.error);
+    return `API error with status ${res.status}`;
+  } catch {
+    try {
+      const text = await res.text();
+      return text || `API error with status ${res.status}`;
+    } catch {
+      return `API error with status ${res.status}`;
+    }
+  }
+}
+
 export function MomentumInsightsSection({
   competitorId,
   momentumData,
@@ -50,6 +71,7 @@ export function MomentumInsightsSection({
   const { start, finish, isGenerating } = useAnalysisProgressStore();
   const isGeneratingMomentum = isGenerating(channelId, 'momentum');
   const [error, setError] = useState<string | null>(null);
+  const [emptyReason, setEmptyReason] = useState<string | null>(null);
 
   const handleGetMomentum = async () => {
     if (!competitorId) {
@@ -59,6 +81,7 @@ export function MomentumInsightsSection({
 
     start(channelId, 'momentum');
     setError(null);
+    setEmptyReason(null);
     try {
       // Шаг 1: Генерируем momentum анализ
       const syncRes = await fetch(`/api/channel/${competitorId}/momentum`, {
@@ -66,10 +89,18 @@ export function MomentumInsightsSection({
       });
 
       if (!syncRes.ok) {
-        const syncText = await syncRes.text().catch(() => "");
-        throw new Error(
-          syncText || `Momentum sync failed with status ${syncRes.status}`
-        );
+        const errorMsg = await readApiError(syncRes);
+
+        // Обработка empty-state кейсов как нормального результата, не ошибки
+        if (errorMsg.includes("No high momentum videos found") ||
+            errorMsg.includes("No videos with valid publication dates") ||
+            errorMsg.includes("Sync Top Videos first")) {
+          console.info(`[MomentumInsightsSection] Empty state: ${errorMsg}`);
+          setEmptyReason(errorMsg);
+          return;
+        }
+
+        throw new Error(errorMsg);
       }
 
       // Шаг 2: Отмечаем momentum как показанный
@@ -79,10 +110,8 @@ export function MomentumInsightsSection({
       });
 
       if (!showRes.ok) {
-        const showText = await showRes.text().catch(() => "");
-        throw new Error(
-          showText || `Momentum show failed with status ${showRes.status}`
-        );
+        const showErrorMsg = await readApiError(showRes);
+        throw new Error(showErrorMsg);
       }
 
       // Шаг 3: Обновляем UI после успешного завершения обеих операций
@@ -91,12 +120,8 @@ export function MomentumInsightsSection({
       const error = normalizeError(err);
 
       console.error(
-        "[MomentumInsightsSection] FINAL ERROR:",
+        "[MomentumInsightsSection] Error:",
         error.message
-      );
-      console.error(
-        "[MomentumInsightsSection] Stack:",
-        error.stack
       );
 
       setError(error.message);
@@ -114,6 +139,26 @@ export function MomentumInsightsSection({
             title="Generating momentum analysis..."
             subtitle="This may take 15-25 seconds"
           />
+        ) : emptyReason ? (
+          /* Данные есть но они пусты - показываем empty state */
+          <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
+            <div className="flex flex-col items-center justify-center gap-4">
+              <p className="text-center text-sm">
+                {emptyReason === "Sync Top Videos first"
+                  ? "Сначала синхронизируйте видео"
+                  : emptyReason.includes("No high momentum")
+                    ? "На этом канале нет видео с высоким momentum"
+                    : "Недостаточно данных для анализа momentum"}
+              </p>
+              <Button
+                onClick={() => handleGetMomentum()}
+                variant="default"
+                size="sm"
+              >
+                Повторить
+              </Button>
+            </div>
+          </div>
         ) : !momentumData ? (
           /* Данные не загружены - показываем кнопку */
           <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
