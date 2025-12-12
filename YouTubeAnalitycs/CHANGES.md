@@ -5,6 +5,42 @@ All changes are tracked in git history.
 
 ---
 
+## 2025-12-12 - Унификация Кнопки "Обновить топ-видео" (Button Policy)
+
+### Контекст
+На странице канала в компоненте `TopVideosGrid` была кнопка для обновления списка топ-видео. Кнопка использовала текст + иконку (size="sm"), что не соответствовало icon-only паттерну для вторичных действий.
+
+### Изменения - Файл: `src/components/channel/TopVideosGrid.tsx`
+
+1. **Добавлены импорты Tooltip:**
+   ```tsx
+   import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
+   ```
+
+2. **Преобразована в icon-only паттерн:**
+   - БЫЛО: `<Button size="sm" variant="outline" className="gap-2">`
+   - СТАЛО: `<Button size="icon" variant="outline">`
+
+3. **Обёрнута в Tooltip:**
+   ```tsx
+   <Tooltip>
+     <TooltipTrigger asChild>
+       <Button size="icon" variant="outline">
+         <RefreshCw className={`h-4 w-4 ${isRefreshing ? "animate-spin" : ""}`} />
+       </Button>
+     </TooltipTrigger>
+     <TooltipContent>Обновить топ-видео</TooltipContent>
+   </Tooltip>
+   ```
+
+### Результат
+- ✅ Единообразный стиль со всеми вторичными кнопками
+- ✅ Автоматически применены `cursor-pointer` и `disabled:cursor-not-allowed`
+- ✅ Лучшая доступность через Tooltip
+- ✅ Согласованность с Button Policy (SECONDARY pattern)
+
+---
+
 ## 2025-12-12 - Глобальный Cursor для всех Кнопок (UX POLISH)
 
 ### Проблема
