@@ -1,0 +1,274 @@
+"use client"
+
+import { useState, useEffect } from "react"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogTitle } from "@/components/ui/alert-dialog"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { Badge } from "@/components/ui/badge"
+import { Loader2, RefreshCcw } from "lucide-react"
+import { toast } from "sonner"
+
+interface UserLimit {
+  userId: string
+  email: string
+  plan: string
+  analysesPerDay: number
+  scriptsPerDay: number
+  cooldownHours: number
+  analysesUsed?: number
+  scriptsUsed?: number
+}
+
+export default function AdminLimitsPage() {
+  const [limits, setLimits] = useState<UserLimit[]>([])
+  const [loading, setLoading] = useState(true)
+  const [editingUser, setEditingUser] = useState<string>("")
+  const [formData, setFormData] = useState({
+    analysesPerDay: 0,
+    scriptsPerDay: 0,
+    cooldownHours: 0,
+  })
+  const [showEditDialog, setShowEditDialog] = useState(false)
+  const [showResetDialog, setShowResetDialog] = useState(false)
+
+  useEffect(() => {
+    fetchLimits()
+  }, [])
+
+  async function fetchLimits() {
+    try {
+      setLoading(true)
+      const res = await fetch("/api/admin/limits")
+      if (!res.ok) throw new Error("Failed to fetch limits")
+      const data = await res.json()
+      setLimits(data.limits || [])
+    } catch (error) {
+      console.error("Error:", error)
+      toast.error("Failed to load limits")
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  function openEditDialog(limit: UserLimit) {
+    setEditingUser(limit.userId)
+    setFormData({
+      analysesPerDay: limit.analysesPerDay,
+      scriptsPerDay: limit.scriptsPerDay,
+      cooldownHours: limit.cooldownHours,
+    })
+    setShowEditDialog(true)
+  }
+
+  async function saveLimits() {
+    try {
+      const res = await fetch("/api/admin/limits", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userId: editingUser,
+          ...formData,
+        }),
+      })
+      if (!res.ok) throw new Error("Failed to update limits")
+      toast.success("Limits updated")
+      setShowEditDialog(false)
+      fetchLimits()
+    } catch (error) {
+      console.error("Error:", error)
+      toast.error("Failed to update limits")
+    }
+  }
+
+  async function resetUsageToday(userId: string) {
+    try {
+      const res = await fetch("/api/admin/limits/reset-today", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId }),
+      })
+      if (!res.ok) throw new Error("Failed to reset usage")
+      toast.success("Usage reset for today")
+      setShowResetDialog(false)
+      fetchLimits()
+    } catch (error) {
+      console.error("Error:", error)
+      toast.error("Failed to reset usage")
+    }
+  }
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold">Usage Limits</h1>
+          <p className="text-muted-foreground">Configure daily limits per user</p>
+        </div>
+        <Button
+          variant="outline"
+          size="icon"
+          onClick={fetchLimits}
+          disabled={loading}
+        >
+          <RefreshCcw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
+        </Button>
+      </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>User Limits</CardTitle>
+          <CardDescription>
+            Edit per-user daily limits and reset counters
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {loading ? (
+            <div className="flex justify-center py-8">
+              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+            </div>
+          ) : limits.length === 0 ? (
+            <div className="py-8 text-center text-muted-foreground">
+              No limits configured
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Email</TableHead>
+                    <TableHead>Plan</TableHead>
+                    <TableHead className="text-right">Analyses/Day</TableHead>
+                    <TableHead className="text-right">Scripts/Day</TableHead>
+                    <TableHead className="text-right">Used Today</TableHead>
+                    <TableHead className="text-right">Cooldown (h)</TableHead>
+                    <TableHead>Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {limits.map((limit) => (
+                    <TableRow key={limit.userId}>
+                      <TableCell className="font-mono text-sm">{limit.email}</TableCell>
+                      <TableCell>
+                        <Badge variant="outline">{limit.plan}</Badge>
+                      </TableCell>
+                      <TableCell className="text-right">{limit.analysesPerDay}</TableCell>
+                      <TableCell className="text-right">{limit.scriptsPerDay}</TableCell>
+                      <TableCell className="text-right">
+                        {limit.analysesUsed || 0} / {limit.scriptsUsed || 0}
+                      </TableCell>
+                      <TableCell className="text-right">{limit.cooldownHours}</TableCell>
+                      <TableCell>
+                        <div className="flex gap-2">
+                          <Dialog open={showEditDialog && editingUser === limit.userId} onOpenChange={setShowEditDialog}>
+                            <DialogTrigger asChild>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => openEditDialog(limit)}
+                              >
+                                Edit
+                              </Button>
+                            </DialogTrigger>
+                            <DialogContent>
+                              <DialogHeader>
+                                <DialogTitle>Edit Limits - {limit.email}</DialogTitle>
+                              </DialogHeader>
+                              <div className="space-y-4">
+                                <div>
+                                  <Label htmlFor="analyses">Analyses per Day</Label>
+                                  <Input
+                                    id="analyses"
+                                    type="number"
+                                    value={formData.analysesPerDay}
+                                    onChange={(e) =>
+                                      setFormData({
+                                        ...formData,
+                                        analysesPerDay: parseInt(e.target.value) || 0,
+                                      })
+                                    }
+                                  />
+                                </div>
+                                <div>
+                                  <Label htmlFor="scripts">Scripts per Day</Label>
+                                  <Input
+                                    id="scripts"
+                                    type="number"
+                                    value={formData.scriptsPerDay}
+                                    onChange={(e) =>
+                                      setFormData({
+                                        ...formData,
+                                        scriptsPerDay: parseInt(e.target.value) || 0,
+                                      })
+                                    }
+                                  />
+                                </div>
+                                <div>
+                                  <Label htmlFor="cooldown">Cooldown Hours</Label>
+                                  <Input
+                                    id="cooldown"
+                                    type="number"
+                                    value={formData.cooldownHours}
+                                    onChange={(e) =>
+                                      setFormData({
+                                        ...formData,
+                                        cooldownHours: parseInt(e.target.value) || 0,
+                                      })
+                                    }
+                                  />
+                                </div>
+                                <div className="flex gap-2">
+                                  <Button onClick={saveLimits}>Save</Button>
+                                  <Button
+                                    variant="outline"
+                                    onClick={() => setShowEditDialog(false)}
+                                  >
+                                    Cancel
+                                  </Button>
+                                </div>
+                              </div>
+                            </DialogContent>
+                          </Dialog>
+
+                          <AlertDialog open={showResetDialog && editingUser === limit.userId} onOpenChange={setShowResetDialog}>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => {
+                                setEditingUser(limit.userId)
+                                setShowResetDialog(true)
+                              }}
+                            >
+                              Reset
+                            </Button>
+                            <AlertDialogContent>
+                              <AlertDialogTitle>Reset Usage</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                Reset daily usage counter for {limit.email}? This will clear today's usage.
+                              </AlertDialogDescription>
+                              <div className="flex gap-2 justify-end">
+                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                <AlertDialogAction
+                                  onClick={() => resetUsageToday(limit.userId)}
+                                >
+                                  Reset
+                                </AlertDialogAction>
+                              </div>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  )
+}
