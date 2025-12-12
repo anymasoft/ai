@@ -1,5 +1,6 @@
 import { NextAuthOptions } from "next-auth";
 import GoogleProvider from "next-auth/providers/google";
+import { db } from "./db";
 
 export const authOptions: NextAuthOptions = {
   providers: [
@@ -13,6 +14,37 @@ export const authOptions: NextAuthOptions = {
   },
   secret: process.env.NEXTAUTH_SECRET,
   callbacks: {
+    async signIn({ user }) {
+      try {
+        if (!user.id || !user.email) return false;
+
+        // Проверяем, существует ли пользователь в БД
+        const existing = await db.execute(
+          "SELECT id FROM users WHERE id = ?",
+          [user.id]
+        );
+
+        const rows = Array.isArray(existing) ? existing : existing.rows || [];
+
+        if (rows.length === 0) {
+          // Создаём нового пользователя в БД
+          await db.execute(
+            "INSERT INTO users (id, email, name, createdAt, updatedAt) VALUES (?, ?, ?, ?, ?)",
+            [
+              user.id,
+              user.email,
+              user.name || user.email.split("@")[0],
+              Math.floor(Date.now() / 1000),
+              Math.floor(Date.now() / 1000),
+            ]
+          );
+        }
+        return true;
+      } catch (error) {
+        console.error("Error in signIn callback:", error);
+        return false;
+      }
+    },
     async jwt({ token, user, account }) {
       if (user) {
         token.id = user.id;
