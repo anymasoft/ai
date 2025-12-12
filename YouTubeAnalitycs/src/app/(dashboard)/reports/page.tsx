@@ -1,3 +1,7 @@
+// DISABLED: PDF reports with Russian content show as transliteration
+// Uncomment the code below to re-enable when solution is found
+
+/*
 "use client"
 
 import { useState, useEffect } from "react"
@@ -193,7 +197,6 @@ export default function ReportsPage() {
 
   return (
     <div className="container mx-auto px-4 md:px-6 py-6">
-      {/* Header */}
       <div className="mb-8">
         <div className="flex items-center gap-3 mb-2">
           <FileText className="h-8 w-8 text-primary" />
@@ -204,7 +207,6 @@ export default function ReportsPage() {
         </p>
       </div>
 
-      {/* Notifications */}
       {error && (
         <div className="mb-6 p-4 rounded-lg bg-destructive/10 border border-destructive/30 flex items-center gap-3">
           <AlertCircle className="h-5 w-5 text-destructive shrink-0" />
@@ -219,12 +221,10 @@ export default function ReportsPage() {
         </div>
       )}
 
-      {/* Report Cards Grid */}
       <div className="grid gap-6 md:grid-cols-2">
-        {/* 1. Semantic Map Report */}
         <ReportCard
           title="Semantic Map Report"
-          description="Глубокий анализ тем, паттернов, конфликтов, парадоксов и эмоциональных триггеров в роликах конкурентов. Понимание того, почему контент вызывает отклик у аудитории."
+          description="Глубокий анализ тем, паттернов, конфликтов, парадоксов и эмоциональных триггеров в роликах конкурентов."
           icon={<Map className="h-5 w-5" />}
           badge="AI-Аналитика"
           loading={downloadingReport === "semantic"}
@@ -246,15 +246,14 @@ export default function ReportsPage() {
             </Select>
           ) : (
             <p className="text-sm text-muted-foreground">
-              Сначала сгенерируйте сценарий, чтобы создать этот отчёт
+              Сначала сгенерируйте сценарий
             </p>
           )}
         </ReportCard>
 
-        {/* 2. Narrative Skeleton Report */}
         <ReportCard
           title="Narrative Skeleton Report"
-          description="Полная структура истории: основная идея, ключевой парадокс, конфликт, эмоциональные акценты, композиция сюжета, варианты хука и идеи финала."
+          description="Полная структура истории: основная идея, ключевой парадокс, конфликт, эмоциональные акценты."
           icon={<Sparkles className="h-5 w-5" />}
           badge="Структура истории"
           loading={downloadingReport === "skeleton"}
@@ -276,15 +275,14 @@ export default function ReportsPage() {
             </Select>
           ) : (
             <p className="text-sm text-muted-foreground">
-              Сначала сгенерируйте сценарий, чтобы создать этот отчёт
+              Сначала сгенерируйте сценарий
             </p>
           )}
         </ReportCard>
 
-        {/* 3. Trending Insights Report */}
         <ReportCard
           title="Trending Insights Report"
-          description="Топовые трендовые видео, ключевые метрики, динамика роста, обзор ниши и практические рекомендации на основе анализа конкурентов."
+          description="Топовые трендовые видео, ключевые метрики, динамика роста, обзор ниши."
           icon={<TrendingUp className="h-5 w-5" />}
           badge="Анализ ниши"
           loading={downloadingReport === "insights"}
@@ -302,10 +300,9 @@ export default function ReportsPage() {
           </Select>
         </ReportCard>
 
-        {/* 4. Full Script Report */}
         <ReportCard
           title="Full Script Report"
-          description="Полный готовый сценарий с заголовком, хуком, детализированным планом, полным текстом сценария и объяснением, почему он должен показывать высокие результаты."
+          description="Полный готовый сценарий с заголовком, хуком, детализированным планом."
           icon={<ScrollText className="h-5 w-5" />}
           badge="Готовый к использованию"
           loading={downloadingReport === "script"}
@@ -327,18 +324,22 @@ export default function ReportsPage() {
             </Select>
           ) : (
             <p className="text-sm text-muted-foreground">
-              Сначала сгенерируйте сценарий, чтобы создать этот отчёт
+              Сначала сгенерируйте сценарий
             </p>
           )}
         </ReportCard>
       </div>
+    </div>
+  )
+}
+*/
 
-      {/* Info Section */}
-      <div className="mt-8 p-6 rounded-lg bg-muted/30 border border-border/50">
-        <h3 className="text-lg font-semibold mb-2">О премиальных отчётах</h3>
-        <p className="text-sm text-muted-foreground leading-relaxed">
-          Отчёты создаются по запросу на основе вашей аналитики. Каждый PDF содержит глубокий анализ, практические рекомендации и профессиональное оформление, подходящее как для презентаций, так и для личного использования. Отчёты не сохраняются — скачайте их сразу после генерации.
-        </p>
+// FALLBACK: Placeholder while reports are disabled
+export default function ReportsPage() {
+  return (
+    <div className="container mx-auto px-4 md:px-6 py-6">
+      <div className="text-center py-12">
+        <p className="text-muted-foreground">Reports are currently unavailable</p>
       </div>
     </div>
   )
