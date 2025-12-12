@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -24,6 +25,7 @@ export function MomentumInsightsSection({
   const router = useRouter();
   const { start, finish, isGenerating } = useAnalysisProgressStore();
   const isGeneratingMomentum = isGenerating(channelId, 'momentum');
+  const [error, setError] = useState<string | null>(null);
 
   const handleGetMomentum = async () => {
     if (!competitorId) {
@@ -32,6 +34,7 @@ export function MomentumInsightsSection({
     }
 
     start(channelId, 'momentum');
+    setError(null);
     try {
       // Шаг 1: Генерируем momentum анализ
       const syncRes = await fetch(`/api/channel/${competitorId}/momentum`, {
@@ -40,8 +43,9 @@ export function MomentumInsightsSection({
 
       if (!syncRes.ok) {
         const syncError = await syncRes.json();
-        console.error("Failed to sync momentum:", syncError);
-        return;
+        const errorMessage = syncError?.error || "Failed to sync momentum";
+        console.error("[MomentumInsightsSection] Sync error:", syncError);
+        throw new Error(errorMessage);
       }
 
       // Шаг 2: Отмечаем momentum как показанный
@@ -52,14 +56,17 @@ export function MomentumInsightsSection({
 
       if (!showRes.ok) {
         const showError = await showRes.json();
-        console.error("Failed to show momentum:", showError);
-        return;
+        const errorMessage = showError?.error || "Failed to show momentum";
+        console.error("[MomentumInsightsSection] Show error:", showError);
+        throw new Error(errorMessage);
       }
 
       // Шаг 3: Обновляем UI после успешного завершения обеих операций
       router.refresh();
     } catch (err) {
-      console.error("Ошибка при получении momentum:", err);
+      const errorMessage = err instanceof Error ? err.message : "Failed to generate momentum analysis";
+      console.error("[MomentumInsightsSection] Error:", err);
+      setError(errorMessage);
     } finally {
       finish(channelId, 'momentum');
     }
@@ -92,12 +99,19 @@ export function MomentumInsightsSection({
           </div>
         ) : (
           /* Данные загружены - показываем анализ */
-          <MomentumInsights
-            channelId={channelId}
-            competitorId={competitorId}
-            initialData={momentumData}
-            hasRequiredData={hasRequiredData}
-          />
+          <div>
+            {error && (
+              <div className="mb-4 p-4 rounded-lg bg-destructive/10 border border-destructive/20">
+                <p className="text-sm text-destructive">{error}</p>
+              </div>
+            )}
+            <MomentumInsights
+              channelId={channelId}
+              competitorId={competitorId}
+              initialData={momentumData}
+              hasRequiredData={hasRequiredData}
+            />
+          </div>
         )}
       </>
     </CardContent>
