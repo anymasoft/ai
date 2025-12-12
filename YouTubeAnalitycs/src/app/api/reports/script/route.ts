@@ -3,7 +3,6 @@ import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { db } from "@/lib/db"
 import { PDFBuilder } from "@/lib/pdf-generator"
-import { containsCyrillic } from "@/lib/report-validators"
 
 /**
  * Безопасное преобразование даты (unix timestamp или ISO string)
@@ -74,20 +73,6 @@ export async function GET(req: NextRequest) {
     const whyItShouldWork = script.whyItShouldWork as string
     const sourceVideos = JSON.parse(script.sourceVideos as string || "[]") as string[]
     const createdAt = safeDate(script.createdAt)
-
-    // Проверяем что скрипт на английском (PDF поддерживает только английский)
-    if (
-      containsCyrillic(title) ||
-      containsCyrillic(hook) ||
-      containsCyrillic(scriptText) ||
-      containsCyrillic(whyItShouldWork) ||
-      outline.some(item => containsCyrillic(item))
-    ) {
-      return NextResponse.json(
-        { error: "Script must be in English only" },
-        { status: 400 }
-      )
-    }
 
     // Получаем информацию о source videos
     let sourceVideosTitles: string[] = []
