@@ -34,6 +34,9 @@ export default function AdminPaymentsPage() {
   const [showMarkPaidDialog, setShowMarkPaidDialog] = useState(false)
   const [showCancelDialog, setShowCancelDialog] = useState(false)
   const [showExtendDialog, setShowExtendDialog] = useState(false)
+  const [filterEmail, setFilterEmail] = useState("")
+  const [filterPlan, setFilterPlan] = useState("")
+  const [filterStatus, setFilterStatus] = useState("")
 
   useEffect(() => {
     fetchPayments()
@@ -136,6 +139,14 @@ export default function AdminPaymentsPage() {
     return new Date(timestamp).toLocaleDateString()
   }
 
+  // Фильтруем платежи
+  const filteredPayments = payments.filter((payment) => {
+    const matchEmail = payment.email.toLowerCase().includes(filterEmail.toLowerCase())
+    const matchPlan = !filterPlan || payment.plan === filterPlan
+    const matchStatus = !filterStatus || (filterStatus === "paid" ? payment.isPaid : !payment.isPaid)
+    return matchEmail && matchPlan && matchStatus
+  })
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -161,11 +172,62 @@ export default function AdminPaymentsPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
+          <div className="mb-6 space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <label className="text-sm font-medium">Email</label>
+                <div className="flex gap-2 mt-1">
+                  <Input
+                    placeholder="Filter by email..."
+                    value={filterEmail}
+                    onChange={(e) => setFilterEmail(e.target.value)}
+                  />
+                  {filterEmail && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => setFilterEmail("")}
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  )}
+                </div>
+              </div>
+              <div>
+                <label className="text-sm font-medium">Plan</label>
+                <Select value={filterPlan} onValueChange={setFilterPlan}>
+                  <SelectTrigger className="mt-1">
+                    <SelectValue placeholder="All plans" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">All plans</SelectItem>
+                    <SelectItem value="free">Free</SelectItem>
+                    <SelectItem value="pro">Pro</SelectItem>
+                    <SelectItem value="business">Business</SelectItem>
+                    <SelectItem value="enterprise">Enterprise</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <label className="text-sm font-medium">Status</label>
+                <Select value={filterStatus} onValueChange={setFilterStatus}>
+                  <SelectTrigger className="mt-1">
+                    <SelectValue placeholder="All statuses" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">All statuses</SelectItem>
+                    <SelectItem value="paid">Active</SelectItem>
+                    <SelectItem value="free">Free</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          </div>
           {loading ? (
             <div className="flex justify-center py-8">
               <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
             </div>
-          ) : payments.length === 0 ? (
+          ) : filteredPayments.length === 0 ? (
             <div className="py-8 text-center text-muted-foreground">
               No payments found
             </div>

@@ -36,6 +36,8 @@ export default function AdminLimitsPage() {
   })
   const [showEditDialog, setShowEditDialog] = useState(false)
   const [showResetDialog, setShowResetDialog] = useState(false)
+  const [filterEmail, setFilterEmail] = useState("")
+  const [filterPlan, setFilterPlan] = useState("")
 
   useEffect(() => {
     fetchLimits()
@@ -116,6 +118,13 @@ export default function AdminLimitsPage() {
     }
   }
 
+  // Фильтруем лимиты
+  const filteredLimits = limits.filter((limit) => {
+    const matchEmail = limit.email.toLowerCase().includes(filterEmail.toLowerCase())
+    const matchPlan = !filterPlan || limit.plan === filterPlan
+    return matchEmail && matchPlan
+  })
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -141,11 +150,49 @@ export default function AdminLimitsPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
+          <div className="mb-6 space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="text-sm font-medium">Email</label>
+                <div className="flex gap-2 mt-1">
+                  <Input
+                    placeholder="Filter by email..."
+                    value={filterEmail}
+                    onChange={(e) => setFilterEmail(e.target.value)}
+                  />
+                  {filterEmail && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => setFilterEmail("")}
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  )}
+                </div>
+              </div>
+              <div>
+                <label className="text-sm font-medium">Plan</label>
+                <Select value={filterPlan} onValueChange={setFilterPlan}>
+                  <SelectTrigger className="mt-1">
+                    <SelectValue placeholder="All plans" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">All plans</SelectItem>
+                    <SelectItem value="free">Free</SelectItem>
+                    <SelectItem value="pro">Pro</SelectItem>
+                    <SelectItem value="business">Business</SelectItem>
+                    <SelectItem value="enterprise">Enterprise</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          </div>
           {loading ? (
             <div className="flex justify-center py-8">
               <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
             </div>
-          ) : limits.length === 0 ? (
+          ) : filteredLimits.length === 0 ? (
             <div className="py-8 text-center text-muted-foreground">
               No limits configured
             </div>
@@ -164,7 +211,7 @@ export default function AdminLimitsPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {limits.map((limit) => (
+                  {filteredLimits.map((limit) => (
                     <TableRow key={limit.userId}>
                       <TableCell className="font-mono text-sm">{limit.email}</TableCell>
                       <TableCell>
