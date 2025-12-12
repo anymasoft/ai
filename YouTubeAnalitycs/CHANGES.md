@@ -5,6 +5,83 @@ All changes are tracked in git history.
 
 ---
 
+## 2025-12-12 - Унификация secondary кнопок на странице /channel/{id} (UI UNIFICATION)
+
+### Проблема
+На странице аналитики канала (/channel/{id}) было 6 кнопок для обновления аналитики:
+- ContentIntelligenceBlock: "Обновить анализ"
+- MomentumInsights: "Refresh Analysis"
+- AudienceInsights: 2x "Refresh Analysis"
+- CommentInsights: "Refresh Analysis" (с loading состоянием)
+- DeepCommentAnalysis: "Refresh Analysis"
+- DeepAudienceAnalysis: "Refresh Analysis"
+
+Проблемы:
+- Кнопки были текстовыми, занимали место
+- Визуально конкурировали с PRIMARY кнопками (Generate)
+- Не было единого паттерна оформления
+- Различные иконки (Sparkles, Flame, Users, MessageSquare, Brain)
+
+### Решение
+**Файлы обновлены (6 компонентов):**
+- `/src/components/channel/ContentIntelligenceBlock.tsx`
+- `/src/components/channel/MomentumInsights.tsx`
+- `/src/components/channel/AudienceInsights.tsx`
+- `/src/components/channel/CommentInsights.tsx`
+- `/src/components/channel/DeepCommentAnalysis.tsx`
+- `/src/components/channel/DeepAudienceAnalysis.tsx`
+
+#### Унификация pattern:
+Все secondary кнопки переведены на icon-only:
+
+**ДО:**
+```tsx
+<Button onClick={handleGenerate} variant="outline" size="sm" className="gap-2 cursor-pointer">
+  <Sparkles className="h-4 w-4" />
+  Обновить анализ
+</Button>
+```
+
+**ПОСЛЕ:**
+```tsx
+<Tooltip>
+  <TooltipTrigger asChild>
+    <Button
+      onClick={handleGenerate}
+      size="icon"
+      variant="outline"
+    >
+      <RefreshCcw className="h-4 w-4" />
+    </Button>
+  </TooltipTrigger>
+  <TooltipContent>
+    Обновить анализ
+  </TooltipContent>
+</Tooltip>
+```
+
+#### Особенности реализации:
+1. **Icon унификация:** все используют `RefreshCcw` из lucide-react
+2. **Loading состояние:** CommentInsights показывает `Loader2` с `animate-spin` во время загрузки
+3. **Tooltip:** текст кнопки отображается при hover
+4. **Размеры:** `size="icon"` (40x40px) для компактности
+5. **Вариант:** `variant="outline"` для вторичного стиля
+
+### Результат
+- ✅ Все secondary кнопки визуально одинаковы
+- ✅ Компактнее (только иконка, без текста)
+- ✅ Не отвлекают от primary actions
+- ✅ Tooltip при hover объясняет функцию
+- ✅ Loading animation явно показывает процесс
+- ✅ Готово к будущему rate-limit / cooldown
+
+### Статистика
+- 6 файлов изменено
+- 112 строк добавлено (импорты, Tooltip, улучшения)
+- 36 строк удалено (убрали текст и старые стили)
+
+---
+
 ## 2025-12-12 - Консолидация кнопок управления анализом трендов (UI FIX)
 
 ### Проблема
