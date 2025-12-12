@@ -5,6 +5,37 @@ All changes are tracked in git history.
 
 ---
 
+## 2025-12-12 - Исправление админ панели платежей
+
+Создана админ панель для управления платежами `/admin/payments`.
+
+**Исправлено:**
+- Статус платежа теперь содержит правильные значения: Active, Pending, Disabled
+- Удалено неправильное значение "Free" из колонки Status
+- "Free" корректно определено как тарифный план в колонке Plan, а не как статус платежа
+
+**Созданные файлы:**
+- `/src/app/admin/payments/page.tsx` - страница админ панели
+- `/src/app/admin/payments/components/payments-table.tsx` - компонент таблицы платежей
+- `/src/app/admin/payments/data/payments.json` - данные платежей со правильными статусами
+
+**Структура данных платежа:**
+```json
+{
+  "id": number,
+  "invoiceNumber": string,
+  "date": string,
+  "customer": string,
+  "email": string,
+  "plan": string,
+  "amount": string,
+  "status": "Active" | "Pending" | "Disabled",
+  "dueDate": string
+}
+```
+
+---
+
 ## 2025-12-12 - Реализация safe fallback логики для аналитических API (ПОЛНАЯ)
 
 ### Проблема
