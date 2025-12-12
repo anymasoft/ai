@@ -6,7 +6,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, FileText, Calendar, Video, Copy, Eye, CheckCircle } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { Loader2, RefreshCcw, FileText, Calendar, Video, Copy, Eye, CheckCircle } from "lucide-react";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import Link from "next/link";
@@ -121,25 +122,19 @@ export default function ScriptsHistoryPage() {
 
           {/* Кнопка обновления */}
           <div className="flex justify-end">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={fetchScripts}
-              disabled={loading}
-              className="gap-2"
-            >
-              {loading ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  Обновление...
-                </>
-              ) : (
-                <>
-                  <FileText className="h-4 w-4" />
-                  Обновить список
-                </>
-              )}
-            </Button>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={fetchScripts}
+                  disabled={loading}
+                >
+                  <RefreshCcw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Обновить список сценариев</TooltipContent>
+            </Tooltip>
           </div>
         </div>
       </div>
