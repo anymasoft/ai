@@ -5,6 +5,54 @@ All changes are tracked in git history.
 
 ---
 
+## 2025-12-12 - Глобальный Cursor для всех Кнопок (UX POLISH)
+
+### Проблема
+При наведении на кнопки курсор не менялся на pointer, особенно для:
+- icon-only кнопок
+- outline / ghost вариантов
+- кнопок в Tooltip обёртках
+
+Результат: непонятно, кликабельна кнопка или нет → плохой UX
+
+### Решение - Глобальный cursor в Button компоненте
+
+**Файл:** `src/components/ui/button.tsx`
+
+Добавлены Tailwind классы к базовому buttonVariants:
+```tsx
+// БЫЛО:
+"inline-flex items-center justify-center gap-2 ... disabled:opacity-50 ..."
+
+// СТАЛО:
+"inline-flex items-center justify-center gap-2 ... cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed ..."
+```
+
+**Результат:**
+- ✅ Все enabled кнопки → `cursor: pointer` (рука с пальцем)
+- ✅ Все disabled кнопки → `cursor: not-allowed`
+- ✅ Применено глобально ко ВСЕМ кнопкам БЕЗ исключений
+- ✅ Работает со всеми вариантами (default, outline, ghost, destructive, etc.)
+- ✅ Работает со всеми размерами (default, sm, lg, icon)
+- ✅ Работает с asChild pattern
+- ✅ Работает в Tooltip обёртках
+
+### Гарантии
+
+- ✅ UX однозначен: hand = clickable, not-allowed = disabled
+- ✅ Нет нужды в ручных cursor-pointer в компонентах
+- ✅ Единая точка контроля для всех кнопок
+- ✅ Обратная совместимость: не ломает существующие кнопки
+- ✅ Специфичность: disabled:cursor-not-allowed перебивает cursor-pointer
+
+### Статистика
+
+- 1 файл изменено
+- 2 класса добавлено (cursor-pointer, disabled:cursor-not-allowed)
+- 0 компонентов нужно менять
+
+---
+
 ## 2025-12-12 - Унификация secondary кнопок на странице /channel/{id} (UI UNIFICATION)
 
 ### Проблема
