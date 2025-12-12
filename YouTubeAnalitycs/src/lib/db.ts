@@ -78,7 +78,7 @@ async function getClient() {
     if (process.env.NODE_ENV !== "production") {
       try {
         // Таблицы NextAuth
-        _client.execute(`CREATE TABLE IF NOT EXISTS users (
+        await _client.execute(`CREATE TABLE IF NOT EXISTS users (
           id TEXT PRIMARY KEY NOT NULL,
           name TEXT,
           email TEXT NOT NULL UNIQUE,
@@ -92,7 +92,7 @@ async function getClient() {
           updatedAt INTEGER NOT NULL
         );`);
 
-        _client.execute(`CREATE TABLE IF NOT EXISTS accounts (
+        await _client.execute(`CREATE TABLE IF NOT EXISTS accounts (
           userId TEXT NOT NULL,
           type TEXT NOT NULL,
           provider TEXT NOT NULL,
@@ -108,14 +108,14 @@ async function getClient() {
           FOREIGN KEY (userId) REFERENCES users(id) ON DELETE CASCADE
         );`);
 
-        _client.execute(`CREATE TABLE IF NOT EXISTS sessions (
+        await _client.execute(`CREATE TABLE IF NOT EXISTS sessions (
           sessionToken TEXT PRIMARY KEY NOT NULL,
           userId TEXT NOT NULL,
           expires INTEGER NOT NULL,
           FOREIGN KEY (userId) REFERENCES users(id) ON DELETE CASCADE
         );`);
 
-        _client.execute(`CREATE TABLE IF NOT EXISTS verificationTokens (
+        await _client.execute(`CREATE TABLE IF NOT EXISTS verificationTokens (
           identifier TEXT NOT NULL,
           token TEXT NOT NULL,
           expires INTEGER NOT NULL,
@@ -126,7 +126,7 @@ async function getClient() {
         await addColumnIfNotExists(_client, 'users', 'disabled', 'INTEGER NOT NULL DEFAULT 0');
 
         // Основные таблицы приложения
-        _client.execute(`CREATE TABLE IF NOT EXISTS competitors (
+        await _client.execute(`CREATE TABLE IF NOT EXISTS competitors (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
           userId TEXT NOT NULL,
           platform TEXT NOT NULL DEFAULT 'youtube',
@@ -142,7 +142,7 @@ async function getClient() {
           FOREIGN KEY (userId) REFERENCES users(id) ON DELETE CASCADE
         );`);
 
-        _client.execute(`CREATE TABLE IF NOT EXISTS channels (
+        await _client.execute(`CREATE TABLE IF NOT EXISTS channels (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
           userId TEXT,
           channelId TEXT,
@@ -150,7 +150,7 @@ async function getClient() {
           createdAt INTEGER
         );`);
 
-        _client.execute(`CREATE TABLE IF NOT EXISTS ai_insights (
+        await _client.execute(`CREATE TABLE IF NOT EXISTS ai_insights (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
           competitorId INTEGER NOT NULL,
           summary TEXT NOT NULL,
@@ -173,7 +173,7 @@ async function getClient() {
         await addColumnIfNotExists(_client, 'ai_insights', 'contentPatterns', 'TEXT');
         await addColumnIfNotExists(_client, 'ai_insights', 'videoIdeas', 'TEXT');
 
-        _client.execute(`CREATE TABLE IF NOT EXISTS channel_videos (
+        await _client.execute(`CREATE TABLE IF NOT EXISTS channel_videos (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
           channelId TEXT NOT NULL,
           videoId TEXT NOT NULL UNIQUE,
@@ -234,13 +234,13 @@ async function getClient() {
         await addColumnIfNotExists(_client, 'channel_videos', 'fetchedAt', 'INTEGER NOT NULL');
 
         // Обновляем индекс для новой схемы
-        _client.execute(`DROP INDEX IF EXISTS idx_channel_videos_lookup;`);
-        _client.execute(`CREATE INDEX IF NOT EXISTS idx_channel_videos_lookup
+        await _client.execute(`DROP INDEX IF EXISTS idx_channel_videos_lookup;`);
+        await _client.execute(`CREATE INDEX IF NOT EXISTS idx_channel_videos_lookup
           ON channel_videos(channelId, viewCountInt DESC);`);
 
         // Глобальная таблица комментариев ко всем видео
         // Комментарии сохраняются глобально (не привязаны к пользователю)
-        _client.execute(`CREATE TABLE IF NOT EXISTS channel_comments (
+        await _client.execute(`CREATE TABLE IF NOT EXISTS channel_comments (
           id TEXT PRIMARY KEY,
           videoId TEXT NOT NULL,
           channelId TEXT NOT NULL,
@@ -251,13 +251,13 @@ async function getClient() {
           fetchedAt INTEGER NOT NULL
         );`);
 
-        _client.execute(`CREATE INDEX IF NOT EXISTS idx_channel_comments_video
+        await _client.execute(`CREATE INDEX IF NOT EXISTS idx_channel_comments_video
           ON channel_comments(videoId);`);
 
-        _client.execute(`CREATE INDEX IF NOT EXISTS idx_channel_comments_channel
+        await _client.execute(`CREATE INDEX IF NOT EXISTS idx_channel_comments_channel
           ON channel_comments(channelId);`);
 
-        _client.execute(`CREATE TABLE IF NOT EXISTS content_intelligence (
+        await _client.execute(`CREATE TABLE IF NOT EXISTS content_intelligence (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
           channelId TEXT NOT NULL,
           data TEXT NOT NULL,
@@ -265,10 +265,10 @@ async function getClient() {
           generatedAt INTEGER NOT NULL
         );`);
 
-        _client.execute(`CREATE INDEX IF NOT EXISTS idx_content_intelligence_lookup
+        await _client.execute(`CREATE INDEX IF NOT EXISTS idx_content_intelligence_lookup
           ON content_intelligence(channelId, generatedAt DESC);`);
 
-        _client.execute(`CREATE TABLE IF NOT EXISTS momentum_insights (
+        await _client.execute(`CREATE TABLE IF NOT EXISTS momentum_insights (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
           channelId TEXT NOT NULL,
           data TEXT NOT NULL,
@@ -276,10 +276,10 @@ async function getClient() {
           generatedAt INTEGER NOT NULL
         );`);
 
-        _client.execute(`CREATE INDEX IF NOT EXISTS idx_momentum_insights_lookup
+        await _client.execute(`CREATE INDEX IF NOT EXISTS idx_momentum_insights_lookup
           ON momentum_insights(channelId, generatedAt DESC);`);
 
-        _client.execute(`CREATE TABLE IF NOT EXISTS audience_insights (
+        await _client.execute(`CREATE TABLE IF NOT EXISTS audience_insights (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
           channelId TEXT NOT NULL,
           data TEXT NOT NULL,
@@ -287,10 +287,10 @@ async function getClient() {
           generatedAt INTEGER NOT NULL
         );`);
 
-        _client.execute(`CREATE INDEX IF NOT EXISTS idx_audience_insights_lookup
+        await _client.execute(`CREATE INDEX IF NOT EXISTS idx_audience_insights_lookup
           ON audience_insights(channelId, generatedAt DESC);`);
 
-        _client.execute(`CREATE TABLE IF NOT EXISTS video_details (
+        await _client.execute(`CREATE TABLE IF NOT EXISTS video_details (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
           videoId TEXT NOT NULL UNIQUE,
           url TEXT NOT NULL,
@@ -303,10 +303,10 @@ async function getClient() {
           updatedAt INTEGER NOT NULL
         );`);
 
-        _client.execute(`CREATE INDEX IF NOT EXISTS idx_video_details_lookup
+        await _client.execute(`CREATE INDEX IF NOT EXISTS idx_video_details_lookup
           ON video_details(videoId);`);
 
-        _client.execute(`CREATE TABLE IF NOT EXISTS video_comments (
+        await _client.execute(`CREATE TABLE IF NOT EXISTS video_comments (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
           videoId TEXT NOT NULL,
           commentId TEXT NOT NULL UNIQUE,
@@ -324,13 +324,13 @@ async function getClient() {
           data TEXT
         );`);
 
-        _client.execute(`CREATE INDEX IF NOT EXISTS idx_video_comments_video
+        await _client.execute(`CREATE INDEX IF NOT EXISTS idx_video_comments_video
           ON video_comments(videoId, publishedTime DESC);`);
 
-        _client.execute(`CREATE INDEX IF NOT EXISTS idx_video_comments_author
+        await _client.execute(`CREATE INDEX IF NOT EXISTS idx_video_comments_author
           ON video_comments(authorChannelId);`);
 
-        _client.execute(`CREATE TABLE IF NOT EXISTS comment_insights (
+        await _client.execute(`CREATE TABLE IF NOT EXISTS comment_insights (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
           userId TEXT NOT NULL,
           videoId TEXT NOT NULL,
@@ -342,16 +342,16 @@ async function getClient() {
           UNIQUE(userId, channelId)
         );`);
 
-        _client.execute(`CREATE INDEX IF NOT EXISTS idx_comment_insights_lookup
+        await _client.execute(`CREATE INDEX IF NOT EXISTS idx_comment_insights_lookup
           ON comment_insights(userId, videoId, generatedAt DESC);`);
 
-        _client.execute(`CREATE INDEX IF NOT EXISTS idx_comment_insights_channel
+        await _client.execute(`CREATE INDEX IF NOT EXISTS idx_comment_insights_channel
           ON comment_insights(userId, channelId, generatedAt DESC);`);
 
         // Миграция: добавляем userId для архитектуры per-user Comment Intelligence
         await addColumnIfNotExists(_client, 'comment_insights', 'userId', 'TEXT');
 
-        _client.execute(`CREATE TABLE IF NOT EXISTS channel_ai_comment_insights (
+        await _client.execute(`CREATE TABLE IF NOT EXISTS channel_ai_comment_insights (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
           channelId TEXT NOT NULL,
           resultJson TEXT NOT NULL,
@@ -361,13 +361,13 @@ async function getClient() {
           status TEXT DEFAULT 'pending'
         );`);
 
-        _client.execute(`CREATE INDEX IF NOT EXISTS idx_channel_ai_insights_channelId
+        await _client.execute(`CREATE INDEX IF NOT EXISTS idx_channel_ai_insights_channelId
           ON channel_ai_comment_insights(channelId);`);
 
-        _client.execute(`CREATE INDEX IF NOT EXISTS idx_channel_ai_insights_createdAt
+        await _client.execute(`CREATE INDEX IF NOT EXISTS idx_channel_ai_insights_createdAt
           ON channel_ai_comment_insights(createdAt DESC);`);
 
-        _client.execute(`CREATE TABLE IF NOT EXISTS deep_audience (
+        await _client.execute(`CREATE TABLE IF NOT EXISTS deep_audience (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
           channelId TEXT NOT NULL,
           data TEXT NOT NULL,
@@ -375,14 +375,14 @@ async function getClient() {
           createdAt INTEGER NOT NULL
         );`);
 
-        _client.execute(`CREATE INDEX IF NOT EXISTS idx_deep_audience_channelId
+        await _client.execute(`CREATE INDEX IF NOT EXISTS idx_deep_audience_channelId
           ON deep_audience(channelId);`);
 
-        _client.execute(`CREATE INDEX IF NOT EXISTS idx_deep_audience_createdAt
+        await _client.execute(`CREATE INDEX IF NOT EXISTS idx_deep_audience_createdAt
           ON deep_audience(createdAt DESC);`);
 
         // Таблица для сравнительного анализа конкурентов
-        _client.execute(`CREATE TABLE IF NOT EXISTS comparative_analysis (
+        await _client.execute(`CREATE TABLE IF NOT EXISTS comparative_analysis (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
           userId TEXT NOT NULL,
           data TEXT NOT NULL,
@@ -391,11 +391,11 @@ async function getClient() {
           FOREIGN KEY (userId) REFERENCES users(id) ON DELETE CASCADE
         );`);
 
-        _client.execute(`CREATE INDEX IF NOT EXISTS idx_comparative_analysis_userId
+        await _client.execute(`CREATE INDEX IF NOT EXISTS idx_comparative_analysis_userId
           ON comparative_analysis(userId, generatedAt DESC);`);
 
         // Таблица для AI анализа трендовых видео
-        _client.execute(`CREATE TABLE IF NOT EXISTS trending_insights (
+        await _client.execute(`CREATE TABLE IF NOT EXISTS trending_insights (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
           userId TEXT NOT NULL,
           videoCount INTEGER NOT NULL DEFAULT 0,
@@ -408,14 +408,14 @@ async function getClient() {
           FOREIGN KEY (userId) REFERENCES users(id) ON DELETE CASCADE
         );`);
 
-        _client.execute(`CREATE INDEX IF NOT EXISTS idx_trending_insights_userId
+        await _client.execute(`CREATE INDEX IF NOT EXISTS idx_trending_insights_userId
           ON trending_insights(userId, generatedAt DESC);`);
 
-        _client.execute(`CREATE INDEX IF NOT EXISTS idx_trending_insights_createdAt
+        await _client.execute(`CREATE INDEX IF NOT EXISTS idx_trending_insights_createdAt
           ON trending_insights(createdAt DESC);`);
 
         // Таблица для сохранения сгенерированных сценариев
-        _client.execute(`CREATE TABLE IF NOT EXISTS generated_scripts (
+        await _client.execute(`CREATE TABLE IF NOT EXISTS generated_scripts (
           id TEXT PRIMARY KEY NOT NULL,
           userId TEXT NOT NULL,
           title TEXT NOT NULL,
@@ -428,17 +428,17 @@ async function getClient() {
           FOREIGN KEY (userId) REFERENCES users(id) ON DELETE CASCADE
         );`);
 
-        _client.execute(`CREATE INDEX IF NOT EXISTS idx_generated_scripts_userId
+        await _client.execute(`CREATE INDEX IF NOT EXISTS idx_generated_scripts_userId
           ON generated_scripts(userId, createdAt DESC);`);
 
-        _client.execute(`CREATE INDEX IF NOT EXISTS idx_generated_scripts_createdAt
+        await _client.execute(`CREATE INDEX IF NOT EXISTS idx_generated_scripts_createdAt
           ON generated_scripts(createdAt DESC);`);
 
         // Таблицы глобального кеша YouTube данных
         // Эти таблицы содержат общие данные, одинаковые для всех пользователей
 
         // Кеш базовой информации о каналах
-        _client.execute(`CREATE TABLE IF NOT EXISTS channels_cache (
+        await _client.execute(`CREATE TABLE IF NOT EXISTS channels_cache (
           channelId TEXT PRIMARY KEY,
           title TEXT NOT NULL,
           handle TEXT,
@@ -450,7 +450,7 @@ async function getClient() {
         );`);
 
         // Кеш видео каналов (список видео с основными метриками)
-        _client.execute(`CREATE TABLE IF NOT EXISTS channel_videos_cache (
+        await _client.execute(`CREATE TABLE IF NOT EXISTS channel_videos_cache (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
           channelId TEXT NOT NULL,
           videoId TEXT NOT NULL,
@@ -465,11 +465,11 @@ async function getClient() {
           UNIQUE(videoId)
         );`);
 
-        _client.execute(`CREATE INDEX IF NOT EXISTS idx_channel_videos_cache_lookup
+        await _client.execute(`CREATE INDEX IF NOT EXISTS idx_channel_videos_cache_lookup
           ON channel_videos_cache(channelId, videoId);`);
 
         // Кеш детальных данных видео (из /v1/youtube/video)
-        _client.execute(`CREATE TABLE IF NOT EXISTS videos_cache (
+        await _client.execute(`CREATE TABLE IF NOT EXISTS videos_cache (
           videoId TEXT PRIMARY KEY,
           title TEXT NOT NULL,
           viewCount INTEGER DEFAULT 0,
@@ -483,7 +483,7 @@ async function getClient() {
         );`);
 
         // Состояние пользователя для каждого канала (синхронизированы ли видео)
-        _client.execute(`CREATE TABLE IF NOT EXISTS user_channel_state (
+        await _client.execute(`CREATE TABLE IF NOT EXISTS user_channel_state (
           userId TEXT NOT NULL,
           channelId TEXT NOT NULL,
           hasSyncedTopVideos INTEGER NOT NULL DEFAULT 0,
@@ -504,7 +504,7 @@ async function getClient() {
         await addColumnIfNotExists(_client, 'user_channel_state', 'nextPageToken', 'TEXT');
 
         // Состояние пользователя для аудитории каждого канала (загружена ли аудитория)
-        _client.execute(`CREATE TABLE IF NOT EXISTS user_channel_audience_state (
+        await _client.execute(`CREATE TABLE IF NOT EXISTS user_channel_audience_state (
           userId TEXT NOT NULL,
           channelId TEXT NOT NULL,
           hasShownAudience INTEGER NOT NULL DEFAULT 0,
@@ -521,7 +521,7 @@ async function getClient() {
         await addColumnIfNotExists(_client, 'user_channel_audience_state', 'lastShownAt', 'INTEGER');
 
         // Состояние пользователя для momentum каждого канала (загружен ли momentum)
-        _client.execute(`CREATE TABLE IF NOT EXISTS user_channel_momentum_state (
+        await _client.execute(`CREATE TABLE IF NOT EXISTS user_channel_momentum_state (
           userId TEXT NOT NULL,
           channelId TEXT NOT NULL,
           hasShownMomentum INTEGER NOT NULL DEFAULT 0,
@@ -538,7 +538,7 @@ async function getClient() {
         await addColumnIfNotExists(_client, 'user_channel_momentum_state', 'lastShownAt', 'INTEGER');
 
         // Состояние пользователя для глубокого анализа комментариев каждого канала (выполнен ли анализ)
-        _client.execute(`CREATE TABLE IF NOT EXISTS user_channel_deep_comments_state (
+        await _client.execute(`CREATE TABLE IF NOT EXISTS user_channel_deep_comments_state (
           userId TEXT NOT NULL,
           channelId TEXT NOT NULL,
           hasShownDeepComments INTEGER NOT NULL DEFAULT 0,
@@ -555,7 +555,7 @@ async function getClient() {
         await addColumnIfNotExists(_client, 'user_channel_deep_comments_state', 'lastShownAt', 'INTEGER');
 
         // Состояние пользователя для контент-аналитики каждого канала (загружена ли аналитика)
-        _client.execute(`CREATE TABLE IF NOT EXISTS user_channel_content_state (
+        await _client.execute(`CREATE TABLE IF NOT EXISTS user_channel_content_state (
           userId TEXT NOT NULL,
           channelId TEXT NOT NULL,
           hasShownContent INTEGER NOT NULL DEFAULT 0,
@@ -573,7 +573,7 @@ async function getClient() {
 
         // ============ ADMIN PANEL TABLES ============
         // Таблица для переопределения подписок (ручное управление платежами)
-        _client.execute(`CREATE TABLE IF NOT EXISTS admin_subscriptions (
+        await _client.execute(`CREATE TABLE IF NOT EXISTS admin_subscriptions (
           userId TEXT PRIMARY KEY,
           plan TEXT DEFAULT 'free',
           isPaid INTEGER DEFAULT 0,
@@ -583,7 +583,7 @@ async function getClient() {
         );`);
 
         // Таблица для пользовательских лимитов
-        _client.execute(`CREATE TABLE IF NOT EXISTS user_limits (
+        await _client.execute(`CREATE TABLE IF NOT EXISTS user_limits (
           userId TEXT PRIMARY KEY,
           analysesPerDay INTEGER DEFAULT 10,
           scriptsPerDay INTEGER DEFAULT 5,
@@ -592,7 +592,7 @@ async function getClient() {
         );`);
 
         // Таблица для суточного использования лимитов
-        _client.execute(`CREATE TABLE IF NOT EXISTS user_usage_daily (
+        await _client.execute(`CREATE TABLE IF NOT EXISTS user_usage_daily (
           userId TEXT NOT NULL,
           day TEXT NOT NULL,
           analysesUsed INTEGER DEFAULT 0,
@@ -602,18 +602,18 @@ async function getClient() {
         );`);
 
         // Таблица для системных флагов
-        _client.execute(`CREATE TABLE IF NOT EXISTS system_flags (
+        await _client.execute(`CREATE TABLE IF NOT EXISTS system_flags (
           key TEXT PRIMARY KEY,
           value TEXT DEFAULT 'false',
           updatedAt INTEGER DEFAULT (cast(strftime('%s','now') as integer))
         );`);
 
         // Инициализация системных флагов по умолчанию
-        _client.execute(`INSERT OR IGNORE INTO system_flags (key, value) VALUES ('enableTrending', 'true');`);
-        _client.execute(`INSERT OR IGNORE INTO system_flags (key, value) VALUES ('enableComparison', 'true');`);
-        _client.execute(`INSERT OR IGNORE INTO system_flags (key, value) VALUES ('enableReports', 'false');`);
-        _client.execute(`INSERT OR IGNORE INTO system_flags (key, value) VALUES ('enableCooldown', 'false');`);
-        _client.execute(`INSERT OR IGNORE INTO system_flags (key, value) VALUES ('maintenanceMode', 'false');`);
+        await _client.execute(`INSERT OR IGNORE INTO system_flags (key, value) VALUES ('enableTrending', 'true');`);
+        await _client.execute(`INSERT OR IGNORE INTO system_flags (key, value) VALUES ('enableComparison', 'true');`);
+        await _client.execute(`INSERT OR IGNORE INTO system_flags (key, value) VALUES ('enableReports', 'false');`);
+        await _client.execute(`INSERT OR IGNORE INTO system_flags (key, value) VALUES ('enableCooldown', 'false');`);
+        await _client.execute(`INSERT OR IGNORE INTO system_flags (key, value) VALUES ('maintenanceMode', 'false');`);
 
         console.log("✅ Tables initialized");
       } catch (error) {
