@@ -5,6 +5,67 @@ All changes are tracked in git history.
 
 ---
 
+## 2025-12-12 - Обработка empty-state для Momentum без ошибок JSON
+
+### Проблема
+Когда канал не имеет видео с high momentum, API возвращает ошибку "No high momentum videos found", которая фронт обрабатывает как критическую ошибку вместо нормального empty-state.
+
+Результат:
+- FINAL ERROR в console: `No high momentum videos found`
+- UI показывает красную ошибку вместо информативного empty-state
+- JSON-stringified ошибки в логах
+
+### Решение
+
+#### ✅ Добавлена функция readApiError()
+```typescript
+async function readApiError(res: Response): Promise<string> {
+  try {
+    const data = await res.json();
+    if (data?.error) return String(data.error);
+    if (data?.message) return String(data.message);
+    return `API error with status ${res.status}`;
+  } catch {
+    try {
+      const text = await res.text();
+      return text || `API error with status ${res.status}`;
+    } catch {
+      return `API error with status ${res.status}`;
+    }
+  }
+}
+```
+
+#### ✅ Распознавание empty-state кейсов
+```typescript
+if (errorMsg.includes("No high momentum videos found") ||
+    errorMsg.includes("No videos with valid publication dates") ||
+    errorMsg.includes("Sync Top Videos first")) {
+  console.info(`Empty state: ${errorMsg}`);
+  setEmptyReason(errorMsg);
+  return;  // Не throw - это нормальное состояние
+}
+```
+
+#### ✅ Отдельный empty-state UI
+- Выводит пользователю: "На этом канале нет видео с высоким momentum"
+- Кнопка "Повторить" вместо красной ошибки
+- Не заполняет error state
+
+#### ✅ Чистые логи
+- `console.info()` для empty-state
+- `console.error()` только для реальных ошибок
+- Никогда не stringify Error.message
+
+### Гарантии
+- ✅ Empty-state не показывается как ошибка
+- ✅ Нет "FINAL ERROR" для нормальных пустых данных
+- ✅ API ошибки ("No high momentum…") трактуются как пустые данные
+- ✅ Реальные ошибки (500, сетевые) показываются правильно
+- ✅ Никогда не JSON-stringified errors в Error.message
+
+---
+
 ## 2025-12-12 - Исправление frontend обработки Momentum ошибок (ИСТИННО ФИНАЛЬНОЕ)
 
 ### Истинная причина `{}` (ROOT CAUSE)
