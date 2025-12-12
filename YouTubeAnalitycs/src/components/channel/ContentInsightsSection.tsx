@@ -1,10 +1,10 @@
 "use client";
 
-import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ContentIntelligenceBlock } from "@/components/channel/ContentIntelligenceBlock";
+import { useAnalysisStore } from "@/store/analysisState";
 
 interface ContentInsightsSectionProps {
   competitorId: number;
@@ -21,7 +21,7 @@ export function ContentInsightsSection({
   hasRequiredData = false,
 }: ContentInsightsSectionProps) {
   const router = useRouter();
-  const [loadingContent, setLoadingContent] = useState(false);
+  const { isGeneratingContent, setGeneratingContent } = useAnalysisStore();
 
   const handleGetContent = async () => {
     if (!competitorId) {
@@ -29,7 +29,7 @@ export function ContentInsightsSection({
       return;
     }
 
-    setLoadingContent(true);
+    setGeneratingContent(true);
     try {
       // Шаг 1: Генерируем анализ контент-аналитики
       const syncRes = await fetch(`/api/channel/${competitorId}/content-intelligence`, {
@@ -59,7 +59,7 @@ export function ContentInsightsSection({
     } catch (err) {
       console.error("Ошибка при получении контент-аналитики:", err);
     } finally {
-      setLoadingContent(false);
+      setGeneratingContent(false);
     }
   };
 
@@ -77,9 +77,9 @@ export function ContentInsightsSection({
                 onClick={() => handleGetContent()}
                 variant="default"
                 size="sm"
-                disabled={loadingContent}
+                disabled={isGeneratingContent}
               >
-                {loadingContent ? "Анализируем..." : "Получить Content Intelligence"}
+                {isGeneratingContent ? "Анализируем..." : "Получить Content Intelligence"}
               </Button>
             </div>
           </div>

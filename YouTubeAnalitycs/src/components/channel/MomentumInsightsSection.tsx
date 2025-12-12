@@ -1,10 +1,10 @@
 "use client";
 
-import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { MomentumInsights } from "@/components/channel/MomentumInsights";
+import { useAnalysisStore } from "@/store/analysisState";
 
 interface MomentumInsightsSectionProps {
   competitorId: number;
@@ -21,7 +21,7 @@ export function MomentumInsightsSection({
   hasRequiredData = false,
 }: MomentumInsightsSectionProps) {
   const router = useRouter();
-  const [loadingMomentum, setLoadingMomentum] = useState(false);
+  const { isGeneratingMomentum, setGeneratingMomentum } = useAnalysisStore();
 
   const handleGetMomentum = async () => {
     if (!competitorId) {
@@ -29,7 +29,7 @@ export function MomentumInsightsSection({
       return;
     }
 
-    setLoadingMomentum(true);
+    setGeneratingMomentum(true);
     try {
       // Шаг 1: Генерируем momentum анализ
       const syncRes = await fetch(`/api/channel/${competitorId}/momentum`, {
@@ -59,7 +59,7 @@ export function MomentumInsightsSection({
     } catch (err) {
       console.error("Ошибка при получении momentum:", err);
     } finally {
-      setLoadingMomentum(false);
+      setGeneratingMomentum(false);
     }
   };
 
@@ -77,9 +77,9 @@ export function MomentumInsightsSection({
                 onClick={() => handleGetMomentum()}
                 variant="default"
                 size="sm"
-                disabled={loadingMomentum}
+                disabled={isGeneratingMomentum}
               >
-                {loadingMomentum ? "Анализируем..." : "Получить Momentum"}
+                {isGeneratingMomentum ? "Анализируем..." : "Получить Momentum"}
               </Button>
             </div>
           </div>

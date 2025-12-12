@@ -1,10 +1,10 @@
 "use client";
 
-import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { AudienceInsights } from "@/components/channel/AudienceInsights";
+import { useAnalysisStore } from "@/store/analysisState";
 
 interface AudienceInsightsSectionProps {
   competitorId: number;
@@ -21,7 +21,7 @@ export function AudienceInsightsSection({
   hasRequiredData = false,
 }: AudienceInsightsSectionProps) {
   const router = useRouter();
-  const [loadingAudience, setLoadingAudience] = useState(false);
+  const { isGeneratingAudience, setGeneratingAudience } = useAnalysisStore();
 
   const handleGetAudience = async () => {
     if (!competitorId) {
@@ -29,7 +29,7 @@ export function AudienceInsightsSection({
       return;
     }
 
-    setLoadingAudience(true);
+    setGeneratingAudience(true);
     try {
       // Шаг 1: Синхронизируем аудиторию (генерируем анализ)
       const syncRes = await fetch(`/api/channel/${competitorId}/audience`, {
@@ -59,7 +59,7 @@ export function AudienceInsightsSection({
     } catch (err) {
       console.error("Ошибка при получении аудитории:", err);
     } finally {
-      setLoadingAudience(false);
+      setGeneratingAudience(false);
     }
   };
 
@@ -77,9 +77,9 @@ export function AudienceInsightsSection({
                 onClick={() => handleGetAudience()}
                 variant="default"
                 size="sm"
-                disabled={loadingAudience}
+                disabled={isGeneratingAudience}
               >
-                {loadingAudience ? "Анализируем..." : "Получить аудиторию"}
+                {isGeneratingAudience ? "Анализируем..." : "Получить аудиторию"}
               </Button>
             </div>
           </div>
