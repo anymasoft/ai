@@ -3,7 +3,8 @@
 import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Sparkles, ChevronDown, ChevronUp } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { Sparkles, ChevronDown, ChevronUp, RefreshCcw } from "lucide-react";
 import { useRouter } from "next/navigation";
 import Markdown from "react-markdown";
 import { useGenerationStatusStore } from "@/store/generationStatusStore";
@@ -389,15 +390,20 @@ export function ContentIntelligenceBlock({
             Аналитический отчёт об особенностях контент-стратегии
           </p>
         </div>
-        <Button
-          onClick={handleGenerate}
-          variant="outline"
-          size="sm"
-          className="gap-2 cursor-pointer"
-        >
-          <Sparkles className="h-4 w-4" />
-          Обновить анализ
-        </Button>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              onClick={handleGenerate}
+              size="icon"
+              variant="outline"
+            >
+              <RefreshCcw className="h-4 w-4" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>
+            Обновить анализ
+          </TooltipContent>
+        </Tooltip>
       </div>
 
       {/* Collapsible Sections */}

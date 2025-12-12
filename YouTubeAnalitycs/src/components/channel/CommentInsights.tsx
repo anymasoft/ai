@@ -3,7 +3,8 @@
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { MessageSquare, Sparkles, Heart, AlertCircle, ThumbsUp, Lightbulb } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { MessageSquare, Sparkles, Heart, AlertCircle, ThumbsUp, Lightbulb, RefreshCcw, Loader2 } from "lucide-react";
 import { AnalysisLoadingState } from "@/components/ui/AnalysisLoadingState";
 import { useRouter } from "next/navigation";
 import { useGenerationStatusStore } from "@/store/generationStatusStore";
@@ -133,10 +134,25 @@ export function CommentInsights({
             Interests, pain points and requests from audience comments
           </p>
         </div>
-        <Button onClick={handleGenerate} variant="outline" size="sm" className="gap-2 cursor-pointer" disabled={loading}>
-          <MessageSquare className="h-4 w-4" />
-          {loading ? "Обновляется..." : "Refresh Analysis"}
-        </Button>
+        <Tooltip>
+        <TooltipTrigger asChild>
+          <Button
+            onClick={handleGenerate}
+            size="icon"
+            variant="outline"
+            disabled={loading}
+          >
+            {loading ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <RefreshCcw className="h-4 w-4" />
+            )}
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent>
+          Refresh Analysis
+        </TooltipContent>
+      </Tooltip>
       </div>
 
       {/* Stats Bar */}

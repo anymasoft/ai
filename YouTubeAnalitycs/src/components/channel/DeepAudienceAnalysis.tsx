@@ -3,7 +3,8 @@
 import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Brain, Users, Lightbulb, TrendingUp } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { Brain, Users, Lightbulb, TrendingUp, RefreshCcw } from "lucide-react";
 import { AnalysisLoadingState } from "@/components/ui/AnalysisLoadingState";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
@@ -134,10 +135,20 @@ export function DeepAudienceAnalysis({
             Deep analysis of {data.channelTitle || 'channel'} audience
           </p>
         </div>
-        <Button onClick={handleGenerate} variant="outline" size="sm" className="gap-2 cursor-pointer">
-          <Brain className="h-4 w-4" />
+        <Tooltip>
+        <TooltipTrigger asChild>
+          <Button
+            onClick={handleGenerate}
+            size="icon"
+            variant="outline"
+          >
+            <RefreshCcw className="h-4 w-4" />
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent>
           Refresh Analysis
-        </Button>
+        </TooltipContent>
+      </Tooltip>
       </div>
 
       {/* Main Grid */}

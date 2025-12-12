@@ -3,7 +3,8 @@
 import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Flame, TrendingUp, Zap, Lightbulb } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { Flame, TrendingUp, Zap, Lightbulb, RefreshCcw } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { formatMomentumPercent } from "@/lib/momentum-formatting";
 import { useGenerationStatusStore } from "@/store/generationStatusStore";
@@ -148,10 +149,20 @@ export function MomentumInsights({
             What's growing right now
           </p>
         </div>
-        <Button onClick={handleGenerate} variant="outline" size="sm" className="gap-2 cursor-pointer">
-          <Flame className="h-4 w-4" />
+        <Tooltip>
+        <TooltipTrigger asChild>
+          <Button
+            onClick={handleGenerate}
+            size="icon"
+            variant="outline"
+          >
+            <RefreshCcw className="h-4 w-4" />
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent>
           Refresh Analysis
-        </Button>
+        </TooltipContent>
+      </Tooltip>
       </div>
 
       {/* Stats Bar */}

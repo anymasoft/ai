@@ -3,7 +3,8 @@
 import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Loader2, Users, Heart, MessageCircle, TrendingDown, Lightbulb, Sparkles, AlertTriangle, Users2, Brain, Zap } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { Loader2, Users, Heart, MessageCircle, TrendingDown, Lightbulb, Sparkles, AlertTriangle, Users2, Brain, Zap, RefreshCcw } from "lucide-react";
 import { AnalysisLoadingState } from "@/components/ui/AnalysisLoadingState";
 import { useRouter } from "next/navigation";
 import { useAnalysisProgressStore } from "@/store/analysisProgressStore";
@@ -226,10 +227,20 @@ export function AudienceInsights({
               Deep audience analysis powered by AI
             </p>
           </div>
-          <Button onClick={handleGenerate} variant="outline" size="sm" className="gap-2 cursor-pointer">
-            <Users className="h-4 w-4" />
-            Refresh Analysis
-          </Button>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                onClick={handleGenerate}
+                size="icon"
+                variant="outline"
+              >
+                <RefreshCcw className="h-4 w-4" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              Refresh Analysis
+            </TooltipContent>
+          </Tooltip>
         </div>
 
         {/* Fallback Warning */}
@@ -462,10 +473,20 @@ export function AudienceInsights({
               Audience engagement and content reactions analysis
             </p>
           </div>
-          <Button onClick={handleGenerate} variant="outline" size="sm" className="gap-2 cursor-pointer">
-            <Users className="h-4 w-4" />
-            Refresh Analysis
-          </Button>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                onClick={handleGenerate}
+                size="icon"
+                variant="outline"
+              >
+                <RefreshCcw className="h-4 w-4" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              Refresh Analysis
+            </TooltipContent>
+          </Tooltip>
         </div>
 
         {/* Stats Bar */}

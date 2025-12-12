@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Progress } from "@/components/ui/progress";
 import {
   Brain,
@@ -218,10 +219,20 @@ export function DeepCommentAnalysis({
           </p>
         </div>
 
-        <Button onClick={handleGenerate} variant="outline" size="sm" className="gap-2">
-          <Brain className="h-4 w-4" />
-          Refresh Analysis
-        </Button>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              onClick={handleGenerate}
+              size="icon"
+              variant="outline"
+            >
+              <RefreshCcw className="h-4 w-4" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>
+            Refresh Analysis
+          </TooltipContent>
+        </Tooltip>
       </div>
 
       {/* SENTIMENT */}
