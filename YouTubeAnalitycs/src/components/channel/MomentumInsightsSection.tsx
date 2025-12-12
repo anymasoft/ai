@@ -42,9 +42,26 @@ export function MomentumInsightsSection({
       });
 
       if (!syncRes.ok) {
-        const syncError = await syncRes.json();
-        const errorMessage = syncError?.error || "Failed to sync momentum";
-        console.error("[MomentumInsightsSection] Sync error:", syncError);
+        let syncError;
+        try {
+          syncError = await syncRes.json();
+        } catch (parseErr) {
+          const parseErrMsg = parseErr instanceof Error ? parseErr.message : String(parseErr);
+          throw new Error(`[MomentumInsightsSection] Failed to parse sync response: ${parseErrMsg}. Status: ${syncRes.status}`);
+        }
+
+        const errorMessage =
+          (syncError && typeof syncError === 'object' && syncError.error)
+            ? String(syncError.error)
+            : syncError
+              ? JSON.stringify(syncError)
+              : `Momentum sync failed with status ${syncRes.status}`;
+
+        console.error("[MomentumInsightsSection] Sync error response:", {
+          status: syncRes.status,
+          body: syncError,
+          message: errorMessage,
+        });
         throw new Error(errorMessage);
       }
 
@@ -55,17 +72,46 @@ export function MomentumInsightsSection({
       });
 
       if (!showRes.ok) {
-        const showError = await showRes.json();
-        const errorMessage = showError?.error || "Failed to show momentum";
-        console.error("[MomentumInsightsSection] Show error:", showError);
+        let showError;
+        try {
+          showError = await showRes.json();
+        } catch (parseErr) {
+          const parseErrMsg = parseErr instanceof Error ? parseErr.message : String(parseErr);
+          throw new Error(`[MomentumInsightsSection] Failed to parse show response: ${parseErrMsg}. Status: ${showRes.status}`);
+        }
+
+        const errorMessage =
+          (showError && typeof showError === 'object' && showError.error)
+            ? String(showError.error)
+            : showError
+              ? JSON.stringify(showError)
+              : `Momentum show failed with status ${showRes.status}`;
+
+        console.error("[MomentumInsightsSection] Show error response:", {
+          status: showRes.status,
+          body: showError,
+          message: errorMessage,
+        });
         throw new Error(errorMessage);
       }
 
       // Шаг 3: Обновляем UI после успешного завершения обеих операций
       router.refresh();
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : "Failed to generate momentum analysis";
-      console.error("[MomentumInsightsSection] Error:", err);
+      const errorMessage =
+        err instanceof Error
+          ? err.message
+          : typeof err === 'string'
+            ? err
+            : typeof err === 'object' && err !== null && 'error' in err
+              ? String((err as any).error)
+              : JSON.stringify(err) || 'Failed to generate momentum analysis';
+
+      console.error("[MomentumInsightsSection] Catch block error:", {
+        type: err?.constructor?.name,
+        message: errorMessage,
+        original: err,
+      });
       setError(errorMessage);
     } finally {
       finish(channelId, 'momentum');
