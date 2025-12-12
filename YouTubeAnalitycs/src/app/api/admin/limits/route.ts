@@ -21,7 +21,8 @@ export async function GET(request: NextRequest) {
       LIMIT 500
     `)
 
-    const limits = (result.rows || []).map((row: any) => ({
+    const rows = Array.isArray(result) ? result : result.rows || []
+    const limits = rows.map((row: any) => ({
       userId: row.userId,
       email: row.email,
       plan: row.plan || "free",
