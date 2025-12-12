@@ -10,11 +10,13 @@ import {
   GitCompare,
   FileText,
   MessageSquare,
+  BarChart3,
 } from "lucide-react"
 import Link from "next/link"
 import { useSession } from "next-auth/react"
 import { Logo } from "@/components/logo"
 import { SidebarNotification } from "@/components/sidebar-notification"
+import { ADMIN_EMAIL } from "@/lib/admin-config"
 
 import { NavMain } from "@/components/nav-main"
 import { NavUser } from "@/components/nav-user"
@@ -132,6 +134,18 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         {navGroups.map((group) => (
           <NavMain key={group.label} label={group.label} items={group.items} />
         ))}
+        {session?.user?.email === ADMIN_EMAIL && (
+          <NavMain
+            label="Admin"
+            items={[
+              {
+                title: "Panel",
+                url: "/admin/users",
+                icon: BarChart3,
+              },
+            ]}
+          />
+        )}
       </SidebarContent>
       <SidebarFooter>
         <SidebarNotification />
