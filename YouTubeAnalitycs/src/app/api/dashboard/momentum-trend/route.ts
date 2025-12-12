@@ -88,11 +88,19 @@ export async function GET(req: NextRequest) {
     const now = Date.now();
     const validRows = videosResult.rows.filter(row => {
       const publishDate = row.publishDate as string;
-      if (!publishDate || publishDate.startsWith("0000")) return false;
+      if (!publishDate || publishDate.startsWith("0000")) {
+        return false;
+      }
       try {
         const date = new Date(publishDate);
-        return !isNaN(date.getTime());
-      } catch {
+        if (isNaN(date.getTime())) {
+          console.warn(`[Dashboard Momentum] Skipping video with invalid date: ${publishDate}`);
+          return false;
+        }
+        return true;
+      } catch (dateParseError) {
+        const errorMsg = dateParseError instanceof Error ? dateParseError.message : String(dateParseError);
+        console.warn(`[Dashboard Momentum] Date parsing error: ${errorMsg}. Date: ${publishDate}`);
         return false;
       }
     });
@@ -100,7 +108,20 @@ export async function GET(req: NextRequest) {
     const videosWithMomentum = validRows.map(row => {
       const publishDateMs = new Date(row.publishDate as string).getTime();
       const daysSincePublish = Math.max(1, (now - publishDateMs) / (1000 * 60 * 60 * 24));
-      const viewsPerDay = (row.viewCountInt as number) / daysSincePublish;
+
+      if (!Number.isFinite(daysSincePublish)) {
+        throw new Error(`[Dashboard Momentum] Invalid daysSincePublish calculation for video ${row.videoId}: ${daysSincePublish}`);
+      }
+
+      const viewCountInt = row.viewCountInt as number;
+      if (!Number.isFinite(viewCountInt) || viewCountInt < 0) {
+        throw new Error(`[Dashboard Momentum] Invalid viewCount for video ${row.videoId}: ${viewCountInt}`);
+      }
+
+      const viewsPerDay = viewCountInt / daysSincePublish;
+      if (!Number.isFinite(viewsPerDay)) {
+        throw new Error(`[Dashboard Momentum] Invalid viewsPerDay calculation for video ${row.videoId}: ${viewsPerDay}`);
+      }
 
       return {
         videoId: row.videoId as string,
@@ -110,6 +131,10 @@ export async function GET(req: NextRequest) {
       };
     });
 
+    if (videosWithMomentum.length === 0) {
+      throw new Error('[Dashboard Momentum] No valid videos found for momentum calculation');
+    }
+
     // Рассчитываем медиану viewsPerDay
     const viewsPerDayValues = videosWithMomentum.map(v => v.viewsPerDay).sort((a, b) => a - b);
     const mid = Math.floor(viewsPerDayValues.length / 2);
@@ -117,10 +142,17 @@ export async function GET(req: NextRequest) {
       ? (viewsPerDayValues[mid - 1] + viewsPerDayValues[mid]) / 2
       : viewsPerDayValues[mid];
 
+    if (!Number.isFinite(medianViewsPerDay) || medianViewsPerDay < 0) {
+      throw new Error(`[Dashboard Momentum] Invalid medianViewsPerDay calculation: ${medianViewsPerDay}`);
+    }
+
     // Рассчитываем momentumScore
     if (medianViewsPerDay > 0) {
       videosWithMomentum.forEach(v => {
         v.momentumScore = (v.viewsPerDay / medianViewsPerDay) - 1;
+        if (!Number.isFinite(v.momentumScore)) {
+          throw new Error(`[Dashboard Momentum] Invalid momentumScore for video ${v.videoId}: ${v.momentumScore}`);
+        }
       });
     }
 
@@ -204,14 +236,21 @@ export async function GET(req: NextRequest) {
     console.error("[Dashboard MomentumTrend] Error:", error);
 
     if (error instanceof Error) {
-      return NextResponse.json(
-        { success: false, error: error.message },
-        { status: 500 }
-      );
+      console.error("[Dashboard MomentumTrend] Stack:", error.stack);
     }
 
+    const errorMessage = error instanceof Error
+      ? (error.message || "Failed to fetch momentum trend")
+      : String(error) || "Failed to fetch momentum trend";
+
     return NextResponse.json(
-      { success: false, error: "Failed to fetch momentum trend" },
+      {
+        success: false,
+        error: errorMessage,
+        ...(process.env.NODE_ENV === "development" && {
+          stack: error instanceof Error ? error.stack : undefined
+        })
+      },
       { status: 500 }
     );
   }
