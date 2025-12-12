@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { db } from "@/lib/db"
 import { PDFBuilder } from "@/lib/pdf-generator"
+import { containsCyrillic } from "@/lib/report-validators"
 
 /**
  * GET /api/reports/insights
@@ -96,6 +97,19 @@ export async function GET(req: NextRequest) {
       themes = JSON.parse((insight.themes as string) || "[]")
       formats = JSON.parse((insight.formats as string) || "[]")
       recommendations = JSON.parse((insight.recommendations as string) || "[]")
+
+      // Проверка на кириллицу в insights
+      if (
+        containsCyrillic(insightsSummary) ||
+        themes.some(t => containsCyrillic(t)) ||
+        formats.some(f => containsCyrillic(f)) ||
+        recommendations.some(r => containsCyrillic(r))
+      ) {
+        return NextResponse.json(
+          { ok: true, data: null, reason: "report_language_invalid" },
+          { status: 200 }
+        )
+      }
     }
 
     // Создаём PDF

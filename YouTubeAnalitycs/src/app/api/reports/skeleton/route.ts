@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { db } from "@/lib/db"
 import { PDFBuilder } from "@/lib/pdf-generator"
+import { jsonContainsCyrillic } from "@/lib/report-validators"
 import OpenAI from "openai"
 
 /**
@@ -141,7 +142,7 @@ async function generateNarrativeSkeletonForReport(
 ): Promise<NarrativeSkeleton> {
   const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
 
-  const prompt = `Based on this script, create a Narrative Skeleton (story framework).
+  const basePrompt = `Based on this script, create a Narrative Skeleton (story framework).
 
 TITLE: ${title}
 HOOK: ${hook}
@@ -159,23 +160,50 @@ Create:
 8. hookCandidates (3-5 items) - opening variations
 9. endingIdeas (2-4 items) - conclusion options
 
-Return ONLY valid JSON without markdown.`
+Return ONLY valid JSON without markdown.
+ALL TEXT MUST BE IN ENGLISH.
+Use ASCII characters only (avoid non-ASCII).`
 
-  try {
-    const completion = await openai.chat.completions.create({
-      model: "gpt-4.1-mini",
-      messages: [
-        { role: "system", content: "You are a storytelling expert. Return only valid JSON." },
-        { role: "user", content: prompt },
-      ],
-      temperature: 0.8,
-    })
+  async function tryGenerate(isRetry: boolean = false): Promise<NarrativeSkeleton | null> {
+    try {
+      const prompt = isRetry
+        ? basePrompt + "\n\nYou used non-English characters, rewrite in ENGLISH ONLY using ASCII."
+        : basePrompt
 
-    const responseText = completion.choices[0]?.message?.content || ""
-    const cleanJson = responseText.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim()
-    return JSON.parse(cleanJson)
-  } catch {
-    // Fallback
+      const completion = await openai.chat.completions.create({
+        model: "gpt-4.1-mini",
+        messages: [
+          { role: "system", content: "You are a storytelling expert. Return only valid JSON. ALL OUTPUT MUST BE IN ENGLISH ONLY." },
+          { role: "user", content: prompt },
+        ],
+        temperature: 0.8,
+      })
+
+      const responseText = completion.choices[0]?.message?.content || ""
+      const cleanJson = responseText.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim()
+      const parsed = JSON.parse(cleanJson)
+
+      // Проверяем на кириллицу
+      if (jsonContainsCyrillic(parsed)) {
+        return null // Сигнал на retry
+      }
+
+      return parsed
+    } catch {
+      return null
+    }
+  }
+
+  // Первая попытка
+  let result = await tryGenerate(false)
+
+  // Retry если нашли кириллицу
+  if (result === null) {
+    result = await tryGenerate(true)
+  }
+
+  // Если все равно не получилось - возвращаем fallback на английском
+  if (result === null) {
     return {
       coreIdea: `Video about ${title}`,
       centralParadox: "What seems complex is actually simple when you understand the core principle.",
@@ -188,4 +216,6 @@ Return ONLY valid JSON without markdown.`
       endingIdeas: ["Summary with CTA", "Open question for comments", "Teaser for next video"],
     }
   }
+
+  return result
 }
