@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { DeepCommentAnalysis } from "@/components/channel/DeepCommentAnalysis";
+import { AnalysisLoadingState } from "@/components/ui/AnalysisLoadingState";
 import { useAnalysisProgressStore } from "@/store/analysisProgressStore";
 
 interface DeepCommentAnalysisSectionProps {
@@ -68,7 +69,13 @@ export function DeepCommentAnalysisSection({
   return (
     <CardContent className="p-6">
       <>
-        {!deepAnalysisData ? (
+        {isGeneratingDeep ? (
+          /* Идёт генерация - показываем Loading State */
+          <AnalysisLoadingState
+            title="Analyzing comments..."
+            subtitle="This may take 15-25 seconds"
+          />
+        ) : !deepAnalysisData ? (
           /* Данные не загружены - показываем кнопку */
           <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
             <div className="flex flex-col items-center justify-center gap-4">
@@ -79,9 +86,8 @@ export function DeepCommentAnalysisSection({
                 onClick={() => handleGetDeepAnalysis()}
                 variant="default"
                 size="sm"
-                disabled={isGeneratingDeep}
               >
-                {isGeneratingDeep ? "Анализируем..." : "Получить Deep Analysis"}
+                Получить Deep Analysis
               </Button>
             </div>
           </div>
