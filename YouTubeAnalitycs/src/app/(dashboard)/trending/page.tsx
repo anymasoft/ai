@@ -6,6 +6,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { ExternalLink, TrendingUp, BarChart3, Calendar, Eye, Users, Loader2, FileText, ArrowRight, Video, RefreshCw } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { ru } from "date-fns/locale";
@@ -438,18 +439,24 @@ export default function TrendingPage() {
 
             {/* Кнопка обновления */}
             <div className="flex items-center">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  console.log("Обновить button clicked!");
-                  fetchMomentumVideos();
-                }}
-                disabled={loading}
-                className="whitespace-nowrap"
-              >
-                {loading ? "Обновление..." : "Обновить"}
-              </Button>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    size="icon"
+                    variant="outline"
+                    onClick={() => {
+                      console.log("Обновить button clicked!");
+                      fetchMomentumVideos();
+                    }}
+                    disabled={loading}
+                  >
+                    <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  Обновить видео
+                </TooltipContent>
+              </Tooltip>
             </div>
           </div>
         </div>
