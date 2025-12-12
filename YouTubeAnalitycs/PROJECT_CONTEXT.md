@@ -331,56 +331,68 @@ sentiment: {
 
 ## 🎯 Управление состоянием кнопок анализа (Zustand Store)
 
-### Обзор (НОВОЕ в v2.3)
-Глобальное управление состоянием кнопок анализа через Zustand store (`src/store/analysisState.ts`). Решает проблему потери состояния при ререндере компонентов.
+### Обзор (ОБНОВЛЕНО в v2.4)
+Keyed Zustand store для управления состоянием анализа (`src/store/analysisProgressStore.ts`).
+Каждый канал имеет независимое состояние анализа, поддерживает множественные каналы одновременно.
 
-### Основные состояния
+### Архитектура v2.4 (Keyed Store)
 ```ts
-useAnalysisStore() // Используется в компонентах
-├── isGeneratingContent / setGeneratingContent    // Content Intelligence
-├── isGeneratingMomentum / setGeneratingMomentum  // Momentum Insights
-├── isGeneratingAudience / setGeneratingAudience  // Audience Insights
-├── isGeneratingComments / setGeneratingComments  // Deep Comment Analysis
-├── isGeneratingDeep / setGeneratingDeep          // Deep Insights
-├── isGeneratingSWOT / setGeneratingSWOT          // SWOT Analysis
-├── isRefreshingCommentAnalysis / ...             // Refresh кнопка в CommentInsights
-└── isEnrichingAudience / setEnrichingAudience    // Обогащение в AudienceInsights
+useAnalysisProgressStore()
+├── inProgress: Record<channelId, { [analysisType]?: boolean }>
+├── start(channelId: string, type: AnalysisType) => void
+├── finish(channelId: string, type: AnalysisType) => void
+├── isGenerating(channelId: string, type: AnalysisType) => boolean
+├── getChannelProgress(channelId: string) => ChannelProgress
+└── clearAll() => void
 ```
 
-### Как использовать
-```tsx
-// В любом компоненте
-const { isGeneratingContent, setGeneratingContent } = useAnalysisStore();
+### Типы анализа (AnalysisType)
+```ts
+type AnalysisType = 'content' | 'comment' | 'audience' | 'momentum' | 'swot' | 'deep'
+```
 
-// Во время анализа
-setGeneratingContent(true);
+### Как использовать (v2.4)
+```tsx
+// В компоненте с channelId
+const { start, finish, isGenerating } = useAnalysisProgressStore();
+
+// Для начала анализа
+const isLoading = isGenerating(channelId, 'content');
+
+// Во время async операции
+start(channelId, 'content');
 try {
   await fetch(...); // API call
+} catch (err) {
+  // ... обработка ошибки
 } finally {
-  setGeneratingContent(false);
+  finish(channelId, 'content'); // ОБЯЗАТЕЛЬНО вызывается
 }
 
 // В кнопке
-<Button disabled={isGeneratingContent}>
-  {isGeneratingContent ? "Анализируем..." : "Получить анализ"}
+<Button disabled={isLoading}>
+  {isLoading ? "Анализируем..." : "Получить анализ"}
 </Button>
 ```
 
 ### Где используется
-- **Section компоненты** (главные кнопки запуска анализа):
-  - ContentInsightsSection.tsx
-  - MomentumInsightsSection.tsx
-  - AudienceInsightsSection.tsx
-  - DeepCommentAnalysisSection.tsx
-  - GenerateSwotButton.tsx
-- **Display компоненты** (вторичные кнопки внутри раздела):
-  - CommentInsights.tsx (Refresh Analysis)
-  - AudienceInsights.tsx (Get real likes/comments)
+- **Section компоненты**:
+  - ContentInsightsSection.tsx → start/finish(channelId, 'content')
+  - MomentumInsightsSection.tsx → start/finish(channelId, 'momentum')
+  - AudienceInsightsSection.tsx → start/finish(channelId, 'audience')
+  - DeepCommentAnalysisSection.tsx → start/finish(channelId, 'deep')
+  - GenerateSwotButton.tsx → start/finish(channelId, 'swot')
+- **Display компоненты**:
+  - CommentInsights.tsx → start/finish(channelId, 'comment')
+  - AudienceInsights.tsx → start/finish(channelId, 'audience') для Enrich
 
 ### Гарантии
-- Состояние НИКОГДА не теряется при свертывании/развертывании
-- Состояние СОХРАНЯЕТСЯ при переходе между страницами
-- UI не мигает - централизованное управление
+- Состояние по каналам НЕ смешивается
+- Collapse/Expand НЕ сбрасывают состояние
+- Состояние сохраняется при unmount/remount
+- Множественные каналы работают независимо
+- finish() ГАРАНТИРОВАНО вызывается через finally
+- Масштабируется на новые типы анализа
 
 ---
 
@@ -413,5 +425,5 @@ try {
 ---
 
 **Последнее обновление:** 2025-12-12
-**Сессия:** FEATURE - Глобальное управление состоянием кнопок анализа через Zustand
+**Сессия:** REFACTOR - Keyed Zustand store для управления анализом по каналам (v2.4)
 **Статус:** ✅ Завершено

@@ -4,11 +4,11 @@ import { Button } from "@/components/ui/button";
 import { Sparkles, Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { useAnalysisStore } from "@/store/analysisState";
+import { useAnalysisProgressStore } from "@/store/analysisProgressStore";
 
 interface GenerateSwotButtonProps {
   competitorId: number;
-  channelId?: string;
+  channelId: string;
   variant?: "default" | "outline" | "ghost";
   size?: "default" | "sm" | "lg";
   isUpdate?: boolean;
@@ -21,11 +21,12 @@ export function GenerateSwotButton({
   size = "lg",
   isUpdate = false,
 }: GenerateSwotButtonProps) {
-  const { isGeneratingSWOT, setGeneratingSWOT } = useAnalysisStore();
+  const { start, finish, isGenerating } = useAnalysisProgressStore();
+  const isGeneratingSWOT = isGenerating(channelId, 'swot');
   const router = useRouter();
 
   const handleGenerate = async () => {
-    setGeneratingSWOT(true);
+    start(channelId, 'swot');
 
     try {
       const response = await fetch(`/api/channel/${competitorId}/summary`, {
@@ -59,7 +60,7 @@ export function GenerateSwotButton({
         duration: 4000,
       });
     } finally {
-      setGeneratingSWOT(false);
+      finish(channelId, 'swot');
     }
   };
 

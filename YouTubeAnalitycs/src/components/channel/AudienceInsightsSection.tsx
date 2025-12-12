@@ -4,12 +4,12 @@ import { useRouter } from "next/navigation";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { AudienceInsights } from "@/components/channel/AudienceInsights";
-import { useAnalysisStore } from "@/store/analysisState";
+import { useAnalysisProgressStore } from "@/store/analysisProgressStore";
 
 interface AudienceInsightsSectionProps {
   competitorId: number;
   audienceData: any;
-  channelId?: string;
+  channelId: string;
   /** Есть ли видео для анализа */
   hasRequiredData?: boolean;
 }
@@ -21,7 +21,8 @@ export function AudienceInsightsSection({
   hasRequiredData = false,
 }: AudienceInsightsSectionProps) {
   const router = useRouter();
-  const { isGeneratingAudience, setGeneratingAudience } = useAnalysisStore();
+  const { start, finish, isGenerating } = useAnalysisProgressStore();
+  const isGeneratingAudience = isGenerating(channelId, 'audience');
 
   const handleGetAudience = async () => {
     if (!competitorId) {
@@ -29,7 +30,7 @@ export function AudienceInsightsSection({
       return;
     }
 
-    setGeneratingAudience(true);
+    start(channelId, 'audience');
     try {
       // Шаг 1: Синхронизируем аудиторию (генерируем анализ)
       const syncRes = await fetch(`/api/channel/${competitorId}/audience`, {
@@ -59,7 +60,7 @@ export function AudienceInsightsSection({
     } catch (err) {
       console.error("Ошибка при получении аудитории:", err);
     } finally {
-      setGeneratingAudience(false);
+      finish(channelId, 'audience');
     }
   };
 

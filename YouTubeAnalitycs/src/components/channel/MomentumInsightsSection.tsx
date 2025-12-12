@@ -4,12 +4,12 @@ import { useRouter } from "next/navigation";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { MomentumInsights } from "@/components/channel/MomentumInsights";
-import { useAnalysisStore } from "@/store/analysisState";
+import { useAnalysisProgressStore } from "@/store/analysisProgressStore";
 
 interface MomentumInsightsSectionProps {
   competitorId: number;
   momentumData: any;
-  channelId?: string;
+  channelId: string;
   /** Есть ли видео для анализа */
   hasRequiredData?: boolean;
 }
@@ -21,7 +21,8 @@ export function MomentumInsightsSection({
   hasRequiredData = false,
 }: MomentumInsightsSectionProps) {
   const router = useRouter();
-  const { isGeneratingMomentum, setGeneratingMomentum } = useAnalysisStore();
+  const { start, finish, isGenerating } = useAnalysisProgressStore();
+  const isGeneratingMomentum = isGenerating(channelId, 'momentum');
 
   const handleGetMomentum = async () => {
     if (!competitorId) {
@@ -29,7 +30,7 @@ export function MomentumInsightsSection({
       return;
     }
 
-    setGeneratingMomentum(true);
+    start(channelId, 'momentum');
     try {
       // Шаг 1: Генерируем momentum анализ
       const syncRes = await fetch(`/api/channel/${competitorId}/momentum`, {
@@ -59,7 +60,7 @@ export function MomentumInsightsSection({
     } catch (err) {
       console.error("Ошибка при получении momentum:", err);
     } finally {
-      setGeneratingMomentum(false);
+      finish(channelId, 'momentum');
     }
   };
 

@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Loader2, MessageSquare, Sparkles, Heart, AlertCircle, ThumbsUp, Lightbulb } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useAnalysisStore } from "@/store/analysisState";
+import { useAnalysisProgressStore } from "@/store/analysisProgressStore";
 
 interface CommentInsightsData {
   stats: {
@@ -37,7 +37,8 @@ export function CommentInsights({
   hasRequiredData = true
 }: CommentInsightsProps) {
   const router = useRouter();
-  const { isRefreshingCommentAnalysis, setRefreshingCommentAnalysis } = useAnalysisStore();
+  const { start, finish, isGenerating } = useAnalysisProgressStore();
+  const isRefreshingCommentAnalysis = isGenerating(channelId, 'comment');
   const [loading, setLoading] = useState(false);
   const [data, setData] = useState<CommentInsightsData | null>(initialData || null);
   const [error, setError] = useState<string | null>(null);
@@ -55,7 +56,7 @@ export function CommentInsights({
   }, [initialData?.generatedAt]); // Зависимость только от generatedAt чтобы избежать лишних обновлений
 
   async function handleGenerate() {
-    setRefreshingCommentAnalysis(true);
+    start(channelId, 'comment');
     setError(null);
 
     try {
@@ -86,7 +87,7 @@ export function CommentInsights({
       console.error("Error generating comment insights:", err);
       setError(err instanceof Error ? err.message : "Unknown error");
     } finally {
-      setRefreshingCommentAnalysis(false);
+      finish(channelId, 'comment');
     }
   }
 

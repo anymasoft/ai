@@ -1,6 +1,52 @@
 # История изменений
 
-## [2025-12-12] - FEATURE: Глобальное управление состоянием кнопок анализа через Zustand
+## [2025-12-12] - REFACTOR: Улучшение управления состоянием анализа - keyed Zustand store (v2.4)
+
+### Проблема с v2.3
+v2.3 использовал простой глобальный store с состояниями типа `isGeneratingContent`, `isGeneratingMomentum` и т.д.
+Это создавало проблемы при работе с несколькими каналами одновременно - состояние смешивалось между ними.
+
+### Новая архитектура v2.4
+Создан продвинутый keyed Zustand store (`src/store/analysisProgressStore.ts`) с архитектурой:
+```
+inProgress: {
+  [channelId]: {
+    content?: boolean
+    momentum?: boolean
+    audience?: boolean
+    comment?: boolean
+    deep?: boolean
+    swot?: boolean
+  }
+}
+```
+
+### Основные улучшения
+1. **Keyed по channelId** - каждый канал имеет независимый процесс анализа
+2. **Методы манипуляции** - `start(channelId, type)` и `finish(channelId, type)`
+3. **Безопасность при unmount/remount** - состояние сохраняется в памяти store
+4. **Масштабируемость** - легко добавлять новые типы анализа
+5. **Гарантия finish() в catch** - используется try-catch-finally во всех компонентах
+
+### Обновленные компоненты
+Все 7 Section/Button компонентов переведены на новый store:
+- ✅ ContentInsightsSection.tsx → `isGenerating(channelId, 'content')`
+- ✅ MomentumInsightsSection.tsx → `isGenerating(channelId, 'momentum')`
+- ✅ AudienceInsightsSection.tsx → `isGenerating(channelId, 'audience')`
+- ✅ DeepCommentAnalysisSection.tsx → `isGenerating(channelId, 'deep')`
+- ✅ GenerateSwotButton.tsx → `isGenerating(channelId, 'swot')`
+- ✅ CommentInsights.tsx (Refresh) → `isGenerating(channelId, 'comment')`
+- ✅ AudienceInsights.tsx (Enrich) → `isGenerating(channelId, 'audience')`
+
+### Результат
+- Состояние анализа НИКОГДА не теряется при collapse/expand
+- Поддержка множественных каналов в одной сессии
+- Надежное управление loading state через глобальный store
+- Состояние сохраняется при unmount/remount компонентов
+
+---
+
+## [2025-12-12] - FEATURE: Глобальное управление состоянием кнопок анализа через Zustand (v2.3)
 
 ### Проблема
 Кнопки анализа теряли состояние "Анализируется..." при:

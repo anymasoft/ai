@@ -4,12 +4,12 @@ import { useRouter } from "next/navigation";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { DeepCommentAnalysis } from "@/components/channel/DeepCommentAnalysis";
-import { useAnalysisStore } from "@/store/analysisState";
+import { useAnalysisProgressStore } from "@/store/analysisProgressStore";
 
 interface DeepCommentAnalysisSectionProps {
   competitorId: number;
   deepAnalysisData: any;
-  channelId?: string;
+  channelId: string;
   /** Есть ли комментарии для анализа */
   hasRequiredData?: boolean;
 }
@@ -21,7 +21,8 @@ export function DeepCommentAnalysisSection({
   hasRequiredData = false,
 }: DeepCommentAnalysisSectionProps) {
   const router = useRouter();
-  const { isGeneratingDeep, setGeneratingDeep } = useAnalysisStore();
+  const { start, finish, isGenerating } = useAnalysisProgressStore();
+  const isGeneratingDeep = isGenerating(channelId, 'deep');
 
   const handleGetDeepAnalysis = async () => {
     if (!competitorId) {
@@ -29,7 +30,7 @@ export function DeepCommentAnalysisSection({
       return;
     }
 
-    setGeneratingDeep(true);
+    start(channelId, 'deep');
     try {
       // Шаг 1: Генерируем глубокий анализ комментариев
       const syncRes = await fetch(`/api/channel/${competitorId}/comments/ai`, {
@@ -60,7 +61,7 @@ export function DeepCommentAnalysisSection({
     } catch (err) {
       console.error("Ошибка при получении глубокого анализа комментариев:", err);
     } finally {
-      setGeneratingDeep(false);
+      finish(channelId, 'deep');
     }
   };
 

@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Loader2, Users, Heart, MessageCircle, TrendingDown, Lightbulb, Sparkles, AlertTriangle, Users2, Brain, Zap } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useAnalysisStore } from "@/store/analysisState";
+import { useAnalysisProgressStore } from "@/store/analysisProgressStore";
 
 interface EngagementVideo {
   title: string;
@@ -96,7 +96,8 @@ export function AudienceInsights({
   hasRequiredData = true
 }: AudienceInsightsProps) {
   const router = useRouter();
-  const { isEnrichingAudience, setEnrichingAudience } = useAnalysisStore();
+  const { start, finish, isGenerating } = useAnalysisProgressStore();
+  const isEnrichingAudience = isGenerating(channelId, 'audience');
   const [loading, setLoading] = useState(false);
   const [data, setData] = useState<AudienceData | null>(initialData || null);
   const [error, setError] = useState<string | null>(null);
@@ -129,7 +130,7 @@ export function AudienceInsights({
   }
 
   async function handleEnrich() {
-    setEnrichingAudience(true);
+    start(channelId, 'audience');
     setError(null);
 
     try {
@@ -151,7 +152,7 @@ export function AudienceInsights({
       console.error("Error enriching videos:", err);
       setError(err instanceof Error ? err.message : "Unknown error");
     } finally {
-      setEnrichingAudience(false);
+      finish(channelId, 'audience');
     }
   }
 
