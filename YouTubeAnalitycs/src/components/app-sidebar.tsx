@@ -10,11 +10,13 @@ import {
   GitCompare,
   FileText,
   MessageSquare,
+  BarChart3,
 } from "lucide-react"
 import Link from "next/link"
 import { useSession } from "next-auth/react"
 import { Logo } from "@/components/logo"
 import { SidebarNotification } from "@/components/sidebar-notification"
+import { ADMIN_EMAIL } from "@/lib/admin-config"
 
 import { NavMain } from "@/components/nav-main"
 import { NavUser } from "@/components/nav-user"
@@ -57,11 +59,15 @@ const navGroups = [
         url: "/scripts",
         icon: FileText,
       },
+      // DISABLED: PDF reports with Russian content show as transliteration (bad UX)
+      // Uncomment to re-enable when solution is found
+      /*
       {
         title: "Reports",
         url: "/reports",
         icon: FileBarChart,
       },
+      */
       {
         title: "FAQ",
         url: "/faqs",
@@ -128,6 +134,36 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         {navGroups.map((group) => (
           <NavMain key={group.label} label={group.label} items={group.items} />
         ))}
+        {session?.user?.email === ADMIN_EMAIL && (
+          <NavMain
+            label="Admin"
+            items={[
+              {
+                title: "Panel",
+                url: "#",
+                icon: BarChart3,
+                items: [
+                  {
+                    title: "Users",
+                    url: "/admin/users",
+                  },
+                  {
+                    title: "Limits",
+                    url: "/admin/limits",
+                  },
+                  {
+                    title: "Payments",
+                    url: "/admin/payments",
+                  },
+                  {
+                    title: "System",
+                    url: "/admin/system",
+                  },
+                ],
+              },
+            ]}
+          />
+        )}
       </SidebarContent>
       <SidebarFooter>
         <SidebarNotification />

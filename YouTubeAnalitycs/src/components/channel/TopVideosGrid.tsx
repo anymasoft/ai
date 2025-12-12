@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { RefreshCw } from "lucide-react";
 import { formatPublishedDate } from "@/lib/date-formatting";
 import type { UserPlan } from "@/config/limits";
@@ -149,16 +150,19 @@ export function TopVideosGrid({ videos, channelId, userPlan = "free" }: TopVideo
       <div className="space-y-4">
         {/* Кнопка обновления TOP-12 видео */}
         <div className="flex justify-end">
-          <Button
-            onClick={handleRefreshVideos}
-            disabled={isRefreshing}
-            size="sm"
-            variant="outline"
-            className="gap-2"
-          >
-            <RefreshCw className={`h-4 w-4 ${isRefreshing ? "animate-spin" : ""}`} />
-            {isRefreshing ? "Обновляем..." : "Обновить топ-видео"}
-          </Button>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                onClick={handleRefreshVideos}
+                disabled={isRefreshing}
+                size="icon"
+                variant="outline"
+              >
+                <RefreshCw className={`h-4 w-4 ${isRefreshing ? "animate-spin" : ""}`} />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Обновить топ-видео</TooltipContent>
+          </Tooltip>
         </div>
 
         {/* Грид видео (TOP-12 ONLY) */}

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 import { getToken } from 'next-auth/jwt'
+import { ADMIN_EMAIL } from '@/lib/admin-config'
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
@@ -29,6 +30,28 @@ export async function middleware(request: NextRequest) {
 
   // Allow public routes
   if (publicRoutes.includes(pathname)) {
+    return NextResponse.next();
+  }
+
+  // Admin-only routes (check first, before other protected routes)
+  if (pathname.startsWith('/admin') || pathname.startsWith('/api/admin')) {
+    const token = await getToken({
+      req: request,
+      secret: process.env.NEXTAUTH_SECRET
+    });
+
+    // If no token, redirect to sign-in
+    if (!token) {
+      const signInUrl = new URL('/sign-in', request.url);
+      signInUrl.searchParams.set('callbackUrl', pathname);
+      return NextResponse.redirect(signInUrl);
+    }
+
+    // If not admin email, redirect to home
+    if (token.email !== ADMIN_EMAIL) {
+      return NextResponse.redirect(new URL('/', request.url));
+    }
+
     return NextResponse.next();
   }
 

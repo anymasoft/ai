@@ -3,7 +3,8 @@
 import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Loader2, Users, Heart, MessageCircle, TrendingDown, Lightbulb, Sparkles, AlertTriangle, Users2, Brain, Zap } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { Loader2, Users, Heart, MessageCircle, TrendingDown, Lightbulb, Sparkles, AlertTriangle, Users2, Brain, Zap, RefreshCcw } from "lucide-react";
 import { AnalysisLoadingState } from "@/components/ui/AnalysisLoadingState";
 import { useRouter } from "next/navigation";
 import { useAnalysisProgressStore } from "@/store/analysisProgressStore";
@@ -107,6 +108,22 @@ export function AudienceInsights({
   const loading = getStatus(generationKey) === "loading";
   const [data, setData] = useState<AudienceData | null>(initialData || null);
   const [error, setError] = useState<string | null>(null);
+  const [cooldownUntil, setCooldownUntil] = useState<number | null>(null);
+  const COOLDOWN_MS = 86400000; // TODO: заменить на значение из API meta.cooldown.nextAllowedAt
+
+  const getCooldownTimeRemaining = () => {
+    if (!cooldownUntil) return null;
+    const remaining = cooldownUntil - Date.now();
+    if (remaining <= 0) {
+      setCooldownUntil(null);
+      return null;
+    }
+    const hours = Math.floor(remaining / 3600000);
+    const minutes = Math.floor((remaining % 3600000) / 60000);
+    return { hours, minutes };
+  };
+
+  const isCooldownActive = cooldownUntil && Date.now() < cooldownUntil;
 
   async function handleGenerate() {
     setStatus(generationKey, "loading");
@@ -125,6 +142,7 @@ export function AudienceInsights({
 
       const result = await res.json();
       setData(result);
+      setCooldownUntil(Date.now() + COOLDOWN_MS);
       setStatus(generationKey, "success");
 
       // Обновляем страницу чтобы показать новые данные
@@ -184,7 +202,7 @@ export function AudienceInsights({
               <p className="text-sm text-muted-foreground mb-4 text-center">
                 Click 'Sync Top Videos' above to load data.
               </p>
-              <Button onClick={handleGenerate} className="gap-2 cursor-pointer" disabled title="Sync Top Videos first">
+              <Button variant="default" onClick={handleGenerate} className="gap-2 cursor-pointer" disabled title="Sync Top Videos first">
                 <Users className="h-4 w-4" />
                 Generate Audience Analysis
               </Button>
@@ -194,7 +212,7 @@ export function AudienceInsights({
               <p className="text-muted-foreground mb-4">
                 Audience analysis will show which topics get maximum audience reactions.
               </p>
-              <Button onClick={handleGenerate} className="gap-2 cursor-pointer">
+              <Button variant="default" onClick={handleGenerate} className="gap-2 cursor-pointer">
                 <Users className="h-4 w-4" />
                 Generate Audience Analysis
               </Button>
@@ -226,10 +244,23 @@ export function AudienceInsights({
               Deep audience analysis powered by AI
             </p>
           </div>
-          <Button onClick={handleGenerate} variant="outline" size="sm" className="gap-2 cursor-pointer">
-            <Users className="h-4 w-4" />
-            Refresh Analysis
-          </Button>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                onClick={handleGenerate}
+                size="icon"
+                variant="outline"
+                disabled={isCooldownActive}
+              >
+                <RefreshCcw className="h-4 w-4" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              {isCooldownActive && getCooldownTimeRemaining()
+                ? `Available in ${getCooldownTimeRemaining()!.hours}h ${getCooldownTimeRemaining()!.minutes}m`
+                : "Refresh Analysis"}
+            </TooltipContent>
+          </Tooltip>
         </div>
 
         {/* Fallback Warning */}
@@ -462,10 +493,23 @@ export function AudienceInsights({
               Audience engagement and content reactions analysis
             </p>
           </div>
-          <Button onClick={handleGenerate} variant="outline" size="sm" className="gap-2 cursor-pointer">
-            <Users className="h-4 w-4" />
-            Refresh Analysis
-          </Button>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                onClick={handleGenerate}
+                size="icon"
+                variant="outline"
+                disabled={isCooldownActive}
+              >
+                <RefreshCcw className="h-4 w-4" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              {isCooldownActive && getCooldownTimeRemaining()
+                ? `Available in ${getCooldownTimeRemaining()!.hours}h ${getCooldownTimeRemaining()!.minutes}m`
+                : "Refresh Analysis"}
+            </TooltipContent>
+          </Tooltip>
         </div>
 
         {/* Stats Bar */}

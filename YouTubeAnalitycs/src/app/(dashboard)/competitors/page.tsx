@@ -279,7 +279,7 @@ export default function CompetitorsPage() {
                         variant="ghost"
                         size="sm"
                         onClick={(e) => openDeleteDialog(competitor.id, e)}
-                        className="cursor-pointer"
+                        className="cursor-pointer text-destructive hover:text-destructive hover:bg-destructive/10"
                         title="Удалить конкурента"
                       >
                         <Trash2 className="h-4 w-4" />
@@ -296,18 +296,18 @@ export default function CompetitorsPage() {
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Удалить канал?</AlertDialogTitle>
+            <AlertDialogTitle>Удалить конкурента?</AlertDialogTitle>
             <AlertDialogDescription>
-              Вы уверены, что хотите удалить этот канал? Действие необратимо.
+              Вы уверены, что хотите удалить этого конкурента? Это действие необратимо и удалит все связанные данные.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>Отмена</AlertDialogCancel>
             <AlertDialogAction
               onClick={confirmDelete}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              Delete
+              Удалить
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

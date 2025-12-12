@@ -161,13 +161,15 @@ Create a semantic analysis with:
 7. audienceInterests (4-5 items) - audience preferences
 8. rawSummary (2-3 sentences) - overall analysis
 
-Return ONLY valid JSON without markdown.`
+Return ONLY valid JSON without markdown.
+ALL TEXT MUST BE IN ENGLISH.
+Use ASCII characters only.`
 
   try {
     const completion = await openai.chat.completions.create({
       model: "gpt-4.1-mini",
       messages: [
-        { role: "system", content: "You are a content analyst. Return only valid JSON." },
+        { role: "system", content: "You are a content analyst. Return only valid JSON. ALL OUTPUT MUST BE IN ENGLISH ONLY." },
         { role: "user", content: prompt },
       ],
       temperature: 0.7,
@@ -177,7 +179,7 @@ Return ONLY valid JSON without markdown.`
     const cleanJson = responseText.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim()
     return JSON.parse(cleanJson)
   } catch {
-    // Fallback
+    // Fallback на английском если генерация не сработала
     return {
       mergedTopics: videos.slice(0, 5).map((v) => v.title.split(" ").slice(0, 3).join(" ")),
       commonPatterns: ["Engaging titles", "Clear value proposition", "Emotional hooks"],

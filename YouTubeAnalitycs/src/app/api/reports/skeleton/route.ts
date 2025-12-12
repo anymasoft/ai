@@ -159,13 +159,15 @@ Create:
 8. hookCandidates (3-5 items) - opening variations
 9. endingIdeas (2-4 items) - conclusion options
 
-Return ONLY valid JSON without markdown.`
+Return ONLY valid JSON without markdown.
+ALL TEXT MUST BE IN ENGLISH.
+Use ASCII characters only.`
 
   try {
     const completion = await openai.chat.completions.create({
       model: "gpt-4.1-mini",
       messages: [
-        { role: "system", content: "You are a storytelling expert. Return only valid JSON." },
+        { role: "system", content: "You are a storytelling expert. Return only valid JSON. ALL OUTPUT MUST BE IN ENGLISH ONLY." },
         { role: "user", content: prompt },
       ],
       temperature: 0.8,
@@ -175,7 +177,7 @@ Return ONLY valid JSON without markdown.`
     const cleanJson = responseText.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim()
     return JSON.parse(cleanJson)
   } catch {
-    // Fallback
+    // Fallback на английском если генерация не сработала
     return {
       coreIdea: `Video about ${title}`,
       centralParadox: "What seems complex is actually simple when you understand the core principle.",

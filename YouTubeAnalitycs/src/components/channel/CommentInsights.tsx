@@ -3,7 +3,8 @@
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { MessageSquare, Sparkles, Heart, AlertCircle, ThumbsUp, Lightbulb } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { MessageSquare, Sparkles, Heart, AlertCircle, ThumbsUp, Lightbulb, RefreshCcw, Loader2 } from "lucide-react";
 import { AnalysisLoadingState } from "@/components/ui/AnalysisLoadingState";
 import { useRouter } from "next/navigation";
 import { useGenerationStatusStore } from "@/store/generationStatusStore";
@@ -43,6 +44,22 @@ export function CommentInsights({
   const loading = getStatus(generationKey) === "loading";
   const [data, setData] = useState<CommentInsightsData | null>(initialData || null);
   const [error, setError] = useState<string | null>(null);
+  const [cooldownUntil, setCooldownUntil] = useState<number | null>(null);
+  const COOLDOWN_MS = 86400000; // TODO: заменить на значение из API meta.cooldown.nextAllowedAt
+
+  const getCooldownTimeRemaining = () => {
+    if (!cooldownUntil) return null;
+    const remaining = cooldownUntil - Date.now();
+    if (remaining <= 0) {
+      setCooldownUntil(null);
+      return null;
+    }
+    const hours = Math.floor(remaining / 3600000);
+    const minutes = Math.floor((remaining % 3600000) / 60000);
+    return { hours, minutes };
+  };
+
+  const isCooldownActive = cooldownUntil && Date.now() < cooldownUntil;
 
   // Синхронизируем локальное состояние с initialData из SSR
   // Это нужно для обновления после router.refresh()
@@ -81,6 +98,7 @@ export function CommentInsights({
       // Сразу устанавливаем данные в состояние чтобы отобразить результат
       // API гарантирует что данные сохранены в БД перед возвратом ответа
       setData(result);
+      setCooldownUntil(Date.now() + COOLDOWN_MS);
       setStatus(generationKey, "success");
 
       // Сразу же обновляем страницу чтобы синхронизировать SSR данные
@@ -109,7 +127,7 @@ export function CommentInsights({
           <p className="text-muted-foreground mb-4">
             Comment Intelligence will show interests, pain points, and requests from audience comments.
           </p>
-          <Button onClick={handleGenerate} className="gap-2 cursor-pointer" disabled={loading}>
+          <Button variant="default" onClick={handleGenerate} className="gap-2 cursor-pointer" disabled={loading}>
             <MessageSquare className="h-4 w-4" />
             {loading ? "Анализируется..." : "Generate Comment Analysis"}
           </Button>
@@ -133,10 +151,27 @@ export function CommentInsights({
             Interests, pain points and requests from audience comments
           </p>
         </div>
-        <Button onClick={handleGenerate} variant="outline" size="sm" className="gap-2 cursor-pointer" disabled={loading}>
-          <MessageSquare className="h-4 w-4" />
-          {loading ? "Обновляется..." : "Refresh Analysis"}
-        </Button>
+        <Tooltip>
+        <TooltipTrigger asChild>
+          <Button
+            onClick={handleGenerate}
+            size="icon"
+            variant="outline"
+            disabled={loading || isCooldownActive}
+          >
+            {loading ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <RefreshCcw className="h-4 w-4" />
+            )}
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent>
+          {isCooldownActive && getCooldownTimeRemaining()
+            ? `Available in ${getCooldownTimeRemaining()!.hours}h ${getCooldownTimeRemaining()!.minutes}m`
+            : "Refresh Analysis"}
+        </TooltipContent>
+      </Tooltip>
       </div>
 
       {/* Stats Bar */}

@@ -6,6 +6,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { ExternalLink, TrendingUp, BarChart3, Calendar, Eye, Users, Loader2, FileText, ArrowRight, Video, RefreshCw } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { ru } from "date-fns/locale";
@@ -66,6 +67,22 @@ export default function TrendingPage() {
   const [generationError, setGenerationError] = useState<string | null>(null);
   const [selectedTemperatureKey, setSelectedTemperatureKey] = useState<TemperatureKey>("balanced");
   const [refreshingId, setRefreshingId] = useState<string | null>(null);
+  const [videosCooldownUntil, setVideosCooldownUntil] = useState<number | null>(null);
+  const VIDEOS_COOLDOWN_MS = 86400000; // TODO: заменить на значение из API meta.cooldown.nextAllowedAt
+
+  const getVideosCooldownTimeRemaining = () => {
+    if (!videosCooldownUntil) return null;
+    const remaining = videosCooldownUntil - Date.now();
+    if (remaining <= 0) {
+      setVideosCooldownUntil(null);
+      return null;
+    }
+    const hours = Math.floor(remaining / 3600000);
+    const minutes = Math.floor((remaining % 3600000) / 60000);
+    return { hours, minutes };
+  };
+
+  const isVideosCooldownActive = videosCooldownUntil && Date.now() < videosCooldownUntil;
 
   const refreshDate = async (videoId: string) => {
     setRefreshingId(videoId);
@@ -106,6 +123,7 @@ export default function TrendingPage() {
       if (data.success) {
         console.log(`Successfully fetched ${data.items?.length || 0} videos and ${data.channels?.length || 0} channels`);
         setVideos(data.items || []);
+        setVideosCooldownUntil(Date.now() + VIDEOS_COOLDOWN_MS);
         setChannels(data.channels || []);
         // Сбрасываем выбранные видео и сценарии при обновлении
         setSelectedVideos(new Set());
@@ -438,18 +456,24 @@ export default function TrendingPage() {
 
             {/* Кнопка обновления */}
             <div className="flex items-center">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  console.log("Обновить button clicked!");
-                  fetchMomentumVideos();
-                }}
-                disabled={loading}
-                className="whitespace-nowrap"
-              >
-                {loading ? "Обновление..." : "Обновить"}
-              </Button>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    size="icon"
+                    variant="outline"
+                    onClick={() => {
+                      console.log("Обновить button clicked!");
+                      fetchMomentumVideos();
+                    }}
+                    disabled={loading}
+                  >
+                    <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  Обновить видео
+                </TooltipContent>
+              </Tooltip>
             </div>
           </div>
         </div>

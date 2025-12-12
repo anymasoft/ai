@@ -3,7 +3,8 @@
 import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Brain, Users, Lightbulb, TrendingUp } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { Brain, Users, Lightbulb, TrendingUp, RefreshCcw } from "lucide-react";
 import { AnalysisLoadingState } from "@/components/ui/AnalysisLoadingState";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
@@ -36,6 +37,22 @@ export function DeepAudienceAnalysis({
   const loading = getStatus(generationKey) === "loading";
   const [data, setData] = useState<DeepAudienceData | null>(initialData || null);
   const [error, setError] = useState<string | null>(null);
+  const [cooldownUntil, setCooldownUntil] = useState<number | null>(null);
+  const COOLDOWN_MS = 86400000; // TODO: заменить на значение из API meta.cooldown.nextAllowedAt
+
+  const getCooldownTimeRemaining = () => {
+    if (!cooldownUntil) return null;
+    const remaining = cooldownUntil - Date.now();
+    if (remaining <= 0) {
+      setCooldownUntil(null);
+      return null;
+    }
+    const hours = Math.floor(remaining / 3600000);
+    const minutes = Math.floor((remaining % 3600000) / 60000);
+    return { hours, minutes };
+  };
+
+  const isCooldownActive = cooldownUntil && Date.now() < cooldownUntil;
 
   async function handleGenerate() {
     setStatus(generationKey, "loading");
@@ -54,6 +71,7 @@ export function DeepAudienceAnalysis({
 
       const result = await res.json();
       setData(result);
+      setCooldownUntil(Date.now() + COOLDOWN_MS);
       setStatus(generationKey, "success");
 
       // Обновляем страницу чтобы показать новые данные
@@ -97,7 +115,7 @@ export function DeepAudienceAnalysis({
                 <p className="text-sm text-muted-foreground mb-4 text-center">
                   Click 'Sync Top Videos' above to load data.
                 </p>
-                <Button onClick={handleGenerate} className="gap-2 cursor-pointer" disabled title="Sync data first">
+                <Button variant="default" onClick={handleGenerate} className="gap-2 cursor-pointer" disabled title="Sync data first">
                   <Brain className="h-4 w-4" />
                   Generate Deep Analysis
                 </Button>
@@ -107,7 +125,7 @@ export function DeepAudienceAnalysis({
                 <p className="text-muted-foreground mb-4">
                   Deep analysis will reveal audience behavior patterns and preferences.
                 </p>
-                <Button onClick={handleGenerate} className="gap-2 cursor-pointer">
+                <Button variant="default" onClick={handleGenerate} className="gap-2 cursor-pointer">
                   <Brain className="h-4 w-4" />
                   Generate Deep Analysis
                 </Button>
@@ -134,10 +152,23 @@ export function DeepAudienceAnalysis({
             Deep analysis of {data.channelTitle || 'channel'} audience
           </p>
         </div>
-        <Button onClick={handleGenerate} variant="outline" size="sm" className="gap-2 cursor-pointer">
-          <Brain className="h-4 w-4" />
-          Refresh Analysis
-        </Button>
+        <Tooltip>
+        <TooltipTrigger asChild>
+          <Button
+            onClick={handleGenerate}
+            size="icon"
+            variant="outline"
+            disabled={isCooldownActive}
+          >
+            <RefreshCcw className="h-4 w-4" />
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent>
+          {isCooldownActive && getCooldownTimeRemaining()
+            ? `Available in ${getCooldownTimeRemaining()!.hours}h ${getCooldownTimeRemaining()!.minutes}m`
+            : "Refresh Analysis"}
+        </TooltipContent>
+      </Tooltip>
       </div>
 
       {/* Main Grid */}

@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Progress } from "@/components/ui/progress";
 import {
   Brain,
@@ -13,6 +14,7 @@ import {
   Lightbulb,
   TrendingUp,
   Quote,
+  RefreshCcw,
 } from "lucide-react";
 import { AnalysisLoadingState } from "@/components/ui/AnalysisLoadingState";
 import { useRouter } from "next/navigation";
@@ -50,6 +52,22 @@ export function DeepCommentAnalysis({
 
   const [data, setData] = useState<any>(initialData || null);
   const [error, setError] = useState<string | null>(null);
+  const [cooldownUntil, setCooldownUntil] = useState<number | null>(null);
+  const COOLDOWN_MS = 86400000; // TODO: заменить на значение из API meta.cooldown.nextAllowedAt
+
+  const getCooldownTimeRemaining = () => {
+    if (!cooldownUntil) return null;
+    const remaining = cooldownUntil - Date.now();
+    if (remaining <= 0) {
+      setCooldownUntil(null);
+      return null;
+    }
+    const hours = Math.floor(remaining / 3600000);
+    const minutes = Math.floor((remaining % 3600000) / 60000);
+    return { hours, minutes };
+  };
+
+  const isCooldownActive = cooldownUntil && Date.now() < cooldownUntil;
   const [progress, setProgress] = useState<ProgressData | null>(null);
   const intervalRef = useRef<number | NodeJS.Timeout | null>(null);
 
@@ -117,6 +135,7 @@ export function DeepCommentAnalysis({
             intervalRef.current = null;
           }
           if (progressData.status === "done") {
+            setCooldownUntil(Date.now() + COOLDOWN_MS);
             setStatus(generationKey, "success");
             router.refresh();
           } else {
@@ -156,7 +175,8 @@ export function DeepCommentAnalysis({
               <p className="text-sm text-muted-foreground mb-4 text-center">
                 Click 'Sync Comments' button above to load data.
               </p>
-              <Button onClick={handleGenerate} disabled title="Sync Comments first">
+              <Button variant="default" onClick={handleGenerate} disabled title="Sync Comments first" className="gap-2">
+                <Brain className="h-4 w-4" />
                 Generate Deep Analysis
               </Button>
             </>
@@ -165,7 +185,8 @@ export function DeepCommentAnalysis({
               <p className="text-muted-foreground mb-4">
                 Deep AI analysis of audience comments.
               </p>
-              <Button onClick={handleGenerate}>
+              <Button variant="default" onClick={handleGenerate} className="gap-2">
+                <Brain className="h-4 w-4" />
                 Generate Deep Analysis
               </Button>
             </>
@@ -218,10 +239,23 @@ export function DeepCommentAnalysis({
           </p>
         </div>
 
-        <Button onClick={handleGenerate} variant="outline" size="sm" className="gap-2">
-          <Brain className="h-4 w-4" />
-          Refresh Analysis
-        </Button>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              onClick={handleGenerate}
+              size="icon"
+              variant="outline"
+              disabled={isCooldownActive}
+            >
+              <RefreshCcw className="h-4 w-4" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>
+            {isCooldownActive && getCooldownTimeRemaining()
+              ? `Available in ${getCooldownTimeRemaining()!.hours}h ${getCooldownTimeRemaining()!.minutes}m`
+              : "Refresh Analysis"}
+          </TooltipContent>
+        </Tooltip>
       </div>
 
       {/* SENTIMENT */}
