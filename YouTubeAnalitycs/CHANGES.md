@@ -5,6 +5,48 @@ All changes are tracked in git history.
 
 ---
 
+## 2025-12-12 - Исправление навигации со страницы сравнения конкурентов
+
+### Проблема
+На странице `/competitors/compare` при клике на строку канала в таблице пользователь попадал на `/competitors` вместо того чтобы перейти на страницу конкретного канала.
+
+### Причина
+Функция `handleRowClick` передавала неправильный ID:
+- Передавалось: `competitor.id` (ID записи в базе данных)
+- Нужно было: `competitor.channelId` (YouTube ID канала для маршрута)
+
+### Изменения - Файл: `src/app/(dashboard)/competitors/compare/page.tsx`
+
+1. **Исправлена функция handleRowClick (строка 128):**
+   ```tsx
+   // БЫЛО
+   function handleRowClick(competitorId: number) {
+     router.push(`/channel/${competitorId}`)
+   }
+
+   // СТАЛО
+   function handleRowClick(channelId: string) {
+     router.push(`/channel/${channelId}`)
+   }
+   ```
+
+2. **Обновлён вызов функции (строка 334):**
+   ```tsx
+   // БЫЛО
+   onClick={() => handleRowClick(competitor.id)}
+
+   // СТАЛО
+   onClick={() => handleRowClick(competitor.channelId)}
+   ```
+
+### Результат
+- ✅ Клик на строку канала теперь всегда переводит на страницу этого канала
+- ✅ URL правильный: `/channel/[channelId]` вместо `/channel/[id]`
+- ✅ Навигация интуитивна и работает как ожидается
+- ✅ Типизация исправлена (string вместо number)
+
+---
+
 ## 2025-12-12 - Унификация Кнопки "Regenerate Analysis" (Button Policy)
 
 ### Контекст
