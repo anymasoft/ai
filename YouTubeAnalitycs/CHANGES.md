@@ -5,65 +5,68 @@ All changes are tracked in git history.
 
 ---
 
-## 2025-12-12 - Исправление frontend обработки Momentum ошибок (ФИНАЛЬНОЕ)
+## 2025-12-12 - Исправление frontend обработки Momentum ошибок (ИСТИННО ФИНАЛЬНОЕ)
 
-### Проблема (ROOT CAUSE НАЙДЕНА)
-`{}` появляется **НА ФРОНТЕ**, в `handleGetMomentum()`, когда ошибка парсится неправильно.
+### Истинная причина `{}` (ROOT CAUSE)
+**НИКОГДА не бросать объекты вместо Error**.
 
-### Источник `{}`
+Старый код:
+```ts
+const syncError = await syncRes.json()
+throw syncError  // ← ❌ КРИТИЧЕСКАЯ ОШИБКА
+```
 
-1. **Линия 45**: `await syncRes.json()` может вернуть `{}` если body пустой или парсится неверно
-2. **Линия 58**: `await showRes.json()` аналогично
-3. **Линия 67**: `setError()` получает неправильно обработанное значение
+Результат:
+- `throw {}` → `instanceof Error === false`
+- `message === undefined`
+- console.error показывает `{}`
 
-### Решение (ФИНАЛЬНОЕ)
+### Решение (ПРАВИЛЬНОЕ)
 
-#### ✅ Обработка JSON.parse ошибок
+#### ✅ Функция нормализации ошибок
 ```typescript
-try {
-  syncError = await syncRes.json();
-} catch (parseErr) {
-  throw new Error(`Failed to parse sync response: ${parseErr.message}. Status: ${syncRes.status}`);
+function normalizeError(e: unknown): Error {
+  if (e instanceof Error) return e;
+  if (typeof e === "string") return new Error(e);
+  if (e && typeof e === "object") {
+    try {
+      return new Error(`Momentum error: ${JSON.stringify(e)}`);
+    } catch {
+      return new Error(`Momentum error: [non-serializable]`);
+    }
+  }
+  return new Error("Unknown momentum error");
 }
 ```
 
-#### ✅ Строгое извлечение сообщения об ошибке
+#### ✅ Никогда не парсим JSON в error path
 ```typescript
-const errorMessage =
-  (syncError && typeof syncError === 'object' && syncError.error)
-    ? String(syncError.error)
-    : syncError
-      ? JSON.stringify(syncError)  // Вместо {} → полное содержимое
-      : `Momentum sync failed with status ${syncRes.status}`;
+if (!syncRes.ok) {
+  const syncText = await syncRes.text().catch(() => "");
+  throw new Error(
+    syncText || `Momentum sync failed with status ${syncRes.status}`
+  );
+}
 ```
 
-#### ✅ Правильная обработка в catch блоке
+#### ✅ Простой и надёжный catch блок
 ```typescript
-const errorMessage =
-  err instanceof Error
-    ? err.message
-    : typeof err === 'string'
-      ? err
-      : typeof err === 'object' && err !== null && 'error' in err
-        ? String((err as any).error)
-        : JSON.stringify(err) || 'Failed to generate momentum analysis';
+catch (err) {
+  const error = normalizeError(err);  // ← Гарантирует Error
+  console.error(
+    "[MomentumInsightsSection] FINAL ERROR:",
+    error.message
+  );
+  setError(error.message);  // ← Всегда string, никогда не {}
+}
 ```
 
-#### ✅ Детальное логирование
-```typescript
-console.error("[MomentumInsightsSection] Sync error response:", {
-  status: syncRes.status,
-  body: syncError,
-  message: errorMessage,
-});
-```
-
-### Гарантии
-- ✅ `{}` **НИКОГДА** не попадает в `setError()`
-- ✅ Все JSON.parse обёрнуты в try/catch
-- ✅ Все типы значений обработаны (Error, string, object, unknown)
-- ✅ HTTP статусы включены в сообщения об ошибках
-- ✅ Детальное логирование для отладки
+### Гарантии (100%)
+- ✅ `{}` **ФИЗИЧЕСКИ НЕВОЗМОЖЕН** - normalizeError гарантирует Error
+- ✅ `message` **ВСЕГДА ЕСТЬ** - все пути ведут к Error с message
+- ✅ `setError()` **ВСЕГДА STRING** - никогда не object
+- ✅ console.error **ВСЕГДА ЧИТАЕМО** - Error.message всегда валиден
+- ✅ Нет JSON.parse в error path - упрощение без потерь
 
 ---
 
