@@ -58,11 +58,6 @@ const navGroups = [
         icon: FileText,
       },
       {
-        title: "Reports",
-        url: "/reports",
-        icon: FileBarChart,
-      },
-      {
         title: "FAQ",
         url: "/faqs",
         icon: FileText,
