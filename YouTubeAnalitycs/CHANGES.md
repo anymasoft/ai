@@ -533,3 +533,103 @@ Dashboard `/api/dashboard/momentum-trend` возвращал пустые оши
 - ✅ Полная совместимость с существующими API endpoints
 - ✅ Не требуются изменения в backend
 - ✅ Масштабируется на новые типы анализа
+
+---
+
+## 2025-12-12 - Визуальный Cooldown для Secondary Кнопок (UI ONLY, NO BACKEND)
+
+### Проблема
+Пользователи могли спамить кликами на secondary кнопки (refresh/update) и запускать дорогостоящие операции несколько раз подряд. Нужна была защита от случайных кликов БЕЗ реального rate-limit на backend.
+
+### Решение - ТОЛЬКО UI, локальный state
+
+**Общий паттерн для всех secondary кнопок:**
+
+```tsx
+const [cooldownUntil, setCooldownUntil] = useState<number | null>(null);
+const COOLDOWN_MS = 86400000; // TODO: заменить на API meta.cooldown.nextAllowedAt
+
+const getCooldownTimeRemaining = () => {
+  if (!cooldownUntil) return null;
+  const remaining = cooldownUntil - Date.now();
+  if (remaining <= 0) {
+    setCooldownUntil(null);
+    return null;
+  }
+  const hours = Math.floor(remaining / 3600000);
+  const minutes = Math.floor((remaining % 3600000) / 60000);
+  return { hours, minutes };
+};
+
+const isCooldownActive = cooldownUntil && Date.now() < cooldownUntil;
+```
+
+#### Поведение при нажатии:
+1. Пользователь кликает secondary кнопку
+2. Операция выполняется успешно
+3. Кнопка тут же становится disabled: `disabled={... || isCooldownActive}`
+4. Tooltip меняется: `"Обновление доступно через 24ч 0м"`
+5. Через 24 часа кнопка автоматически становится активной
+
+#### Компоненты обновлены (8 файлов):
+
+**Страница /trending:**
+- ✅ TrendingInsights.tsx (кнопка "Обновить анализ")
+- ✅ page.tsx (кнопка "Обновить видео")
+
+**Страница /channel/{id}:**
+- ✅ ContentIntelligenceBlock.tsx ("Обновить анализ")
+- ✅ MomentumInsights.tsx ("Refresh Analysis")
+- ✅ AudienceInsights.tsx ("Refresh Analysis" x2)
+- ✅ CommentInsights.tsx ("Refresh Analysis")
+- ✅ DeepCommentAnalysis.tsx ("Refresh Analysis")
+- ✅ DeepAudienceAnalysis.tsx ("Refresh Analysis")
+
+### Важные моменты (КРИТИЧНО)
+
+**ЧТО ЗАЩИЩЕНО:**
+- ✅ Secondary кнопки (refresh/update existing) → COOLDOWN
+- ✅ Только после успешного выполнения → set cooldownUntil
+- ✅ Tooltip показывает время до разблокировки
+- ✅ Автоматическое восстановление после истечения
+
+**ЧТО НЕ ЗАЩИЩЕНО:**
+- ❌ Primary кнопки (Generate/Create) → БЕЗ cooldown
+- ❌ Уже существующих ограничений → не добавлены
+- ❌ Backend API → не изменён
+
+**Дефолт cooldown:**
+- COOLDOWN_MS = 86400000 (24 часа)
+- TODO: Заменить на значение из API response meta.cooldown.nextAllowedAt
+
+### Примеры UI
+
+**Было:**
+```
+[↻] Обновить анализ
+```
+
+**Стало (до срабатывания):**
+```
+[↻] Обновить анализ (на hover)
+```
+
+**Стало (после срабатывания):**
+```
+[↻] (disabled) (на hover: "Обновление доступно через 24ч 0м")
+```
+
+### Гарантии
+
+- ✅ Чистый клиентский код, no backend changes
+- ✅ API responses формата не менялись
+- ✅ Бизнес-логика не трогалась
+- ✅ Primary actions остаются без cooldown
+- ✅ После истечения cooldown кнопка автоматически становится активной
+- ✅ State персистентности нет (обновление страницы = reset cooldown)
+
+### Статистика
+
+- 8 файлов изменено
+- 142 строки добавлено (cooldown logic + tooltip updates)
+- 5 строк удалено (очистка)
