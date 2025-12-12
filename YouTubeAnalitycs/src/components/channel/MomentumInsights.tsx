@@ -3,10 +3,11 @@
 import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Loader2, Flame, TrendingUp, Zap, Lightbulb } from "lucide-react";
+import { Flame, TrendingUp, Zap, Lightbulb } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { formatMomentumPercent } from "@/lib/momentum-formatting";
 import { useGenerationStatusStore } from "@/store/generationStatusStore";
+import { AnalysisLoadingState } from "@/components/ui/AnalysisLoadingState";
 
 interface MomentumVideo {
   videoId: string;
@@ -92,13 +93,10 @@ export function MomentumInsights({
 
   if (loading) {
     return (
-      <CardContent className="space-y-4 pt-6">
-        <div className="flex flex-col items-center justify-center py-12">
-          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground mb-4" />
-          <p className="text-muted-foreground">Analyzing momentum...</p>
-          <p className="text-sm text-muted-foreground mt-2">This may take 15-25 seconds</p>
-        </div>
-      </CardContent>
+      <AnalysisLoadingState
+        title="Analyzing momentum..."
+        subtitle="This may take 15-25 seconds"
+      />
     );
   }
 

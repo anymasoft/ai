@@ -3,7 +3,8 @@
 import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Loader2, Brain, Users, Lightbulb, TrendingUp } from "lucide-react";
+import { Brain, Users, Lightbulb, TrendingUp } from "lucide-react";
+import { AnalysisLoadingState } from "@/components/ui/AnalysisLoadingState";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { useGenerationStatusStore } from "@/store/generationStatusStore";
@@ -67,24 +68,10 @@ export function DeepAudienceAnalysis({
 
   if (loading) {
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Brain className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
-            Deep Audience Intelligence (AI v2.0)
-          </CardTitle>
-          <CardDescription>
-            Deep AI analysis of audience behavior and preferences
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="flex flex-col items-center justify-center py-12">
-            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground mb-4" />
-            <p className="text-muted-foreground">Analyzing audience...</p>
-            <p className="text-sm text-muted-foreground mt-2">This may take 15-25 seconds</p>
-          </div>
-        </CardContent>
-      </Card>
+      <AnalysisLoadingState
+        title="Generating deep analysis..."
+        subtitle="This may take 20-30 seconds"
+      />
     );
   }
 

@@ -5,7 +5,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import {
-  Loader2,
   Brain,
   Heart,
   AlertCircle,
@@ -15,6 +14,7 @@ import {
   TrendingUp,
   Quote,
 } from "lucide-react";
+import { AnalysisLoadingState } from "@/components/ui/AnalysisLoadingState";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import type { CombinedDeepAnalysis } from "@/lib/ai/comments-analysis";
@@ -136,44 +136,11 @@ export function DeepCommentAnalysis({
   }
 
   if (loading) {
-    const estimatedTimePerChunk = 3; // секунды на чанк
-    const remaining = progress
-      ? (progress.progress_total - progress.progress_current) * estimatedTimePerChunk
-      : 0;
-    const eta = remaining > 0 ? `~${Math.ceil(remaining)}s` : "";
-
     return (
-      <CardContent className="space-y-4 pt-6">
-        <div className="flex flex-col items-center justify-center py-12 space-y-6">
-          <Loader2 className="h-8 w-8 animate-spin text-indigo-600 dark:text-indigo-400" />
-
-          {progress && progress.status === "processing" && (
-            <>
-              <div className="text-center space-y-2">
-                <p className="text-sm font-medium">
-                  🔄 Processing {progress.progress_current} / {progress.progress_total} chunks ({progress.percent}%)
-                </p>
-                {eta && (
-                  <p className="text-xs text-muted-foreground">
-                    ETA: {eta}
-                  </p>
-                )}
-              </div>
-
-              <div className="w-full max-w-md">
-                <Progress value={progress.percent} className="h-2" />
-              </div>
-            </>
-          )}
-
-          {(!progress || progress.status === "pending") && (
-            <div className="text-center space-y-2">
-              <p className="text-muted-foreground">Initializing analysis...</p>
-              <p className="text-sm text-muted-foreground">This may take 30–60 seconds</p>
-            </div>
-          )}
-        </div>
-      </CardContent>
+      <AnalysisLoadingState
+        title="Analyzing comments..."
+        subtitle="This may take 15-25 seconds"
+      />
     );
   }
 

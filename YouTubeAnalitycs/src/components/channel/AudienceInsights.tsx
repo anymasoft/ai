@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Loader2, Users, Heart, MessageCircle, TrendingDown, Lightbulb, Sparkles, AlertTriangle, Users2, Brain, Zap } from "lucide-react";
+import { AnalysisLoadingState } from "@/components/ui/AnalysisLoadingState";
 import { useRouter } from "next/navigation";
 import { useAnalysisProgressStore } from "@/store/analysisProgressStore";
 import { useGenerationStatusStore } from "@/store/generationStatusStore";
@@ -164,13 +165,10 @@ export function AudienceInsights({
 
   if (loading) {
     return (
-      <CardContent className="space-y-4 pt-6">
-        <div className="flex flex-col items-center justify-center py-12">
-          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground mb-4" />
-          <p className="text-muted-foreground">Analyzing engagement...</p>
-          <p className="text-sm text-muted-foreground mt-2">This may take 15-25 seconds</p>
-        </div>
-      </CardContent>
+      <AnalysisLoadingState
+        title="Generating audience analysis..."
+        subtitle="This may take 20-30 seconds"
+      />
     );
   }
 
