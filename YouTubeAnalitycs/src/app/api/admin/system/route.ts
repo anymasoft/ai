@@ -11,7 +11,7 @@ export async function GET(request: NextRequest) {
       SELECT key, value FROM system_flags ORDER BY key
     `)
 
-    const flags: Record<string, boolean> = {
+    const flags: Record<string, boolean | string> = {
       enableTrending: true,
       enableComparison: true,
       enableReports: false,
@@ -20,7 +20,8 @@ export async function GET(request: NextRequest) {
     }
 
     // Parse values from DB
-    (result.rows || []).forEach((row: any) => {
+    const rows = Array.isArray(result) ? result : result.rows || []
+    rows.forEach((row: any) => {
       const value = row.value === "true" ? true : row.value === "false" ? false : row.value
       flags[row.key] = value
     })
