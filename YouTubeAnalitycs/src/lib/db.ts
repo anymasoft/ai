@@ -567,6 +567,50 @@ async function getClient() {
         await addColumnIfNotExists(_client, 'user_channel_content_state', 'lastSyncAt', 'INTEGER');
         await addColumnIfNotExists(_client, 'user_channel_content_state', 'lastShownAt', 'INTEGER');
 
+        // ============ ADMIN PANEL TABLES ============
+        // Таблица для переопределения подписок (ручное управление платежами)
+        _client.execute(`CREATE TABLE IF NOT EXISTS admin_subscriptions (
+          userId TEXT PRIMARY KEY,
+          plan TEXT DEFAULT 'free',
+          isPaid INTEGER DEFAULT 0,
+          expiresAt INTEGER,
+          provider TEXT DEFAULT 'manual',
+          updatedAt INTEGER DEFAULT (cast(strftime('%s','now') as integer))
+        );`);
+
+        // Таблица для пользовательских лимитов
+        _client.execute(`CREATE TABLE IF NOT EXISTS user_limits (
+          userId TEXT PRIMARY KEY,
+          analysesPerDay INTEGER DEFAULT 10,
+          scriptsPerDay INTEGER DEFAULT 5,
+          cooldownHours INTEGER DEFAULT 0,
+          updatedAt INTEGER DEFAULT (cast(strftime('%s','now') as integer))
+        );`);
+
+        // Таблица для суточного использования лимитов
+        _client.execute(`CREATE TABLE IF NOT EXISTS user_usage_daily (
+          userId TEXT NOT NULL,
+          day TEXT NOT NULL,
+          analysesUsed INTEGER DEFAULT 0,
+          scriptsUsed INTEGER DEFAULT 0,
+          updatedAt INTEGER DEFAULT (cast(strftime('%s','now') as integer)),
+          PRIMARY KEY (userId, day)
+        );`);
+
+        // Таблица для системных флагов
+        _client.execute(`CREATE TABLE IF NOT EXISTS system_flags (
+          key TEXT PRIMARY KEY,
+          value TEXT DEFAULT 'false',
+          updatedAt INTEGER DEFAULT (cast(strftime('%s','now') as integer))
+        );`);
+
+        // Инициализация системных флагов по умолчанию
+        _client.execute(`INSERT OR IGNORE INTO system_flags (key, value) VALUES ('enableTrending', 'true');`);
+        _client.execute(`INSERT OR IGNORE INTO system_flags (key, value) VALUES ('enableComparison', 'true');`);
+        _client.execute(`INSERT OR IGNORE INTO system_flags (key, value) VALUES ('enableReports', 'false');`);
+        _client.execute(`INSERT OR IGNORE INTO system_flags (key, value) VALUES ('enableCooldown', 'false');`);
+        _client.execute(`INSERT OR IGNORE INTO system_flags (key, value) VALUES ('maintenanceMode', 'false');`);
+
         console.log("✅ Tables initialized");
       } catch (error) {
         console.error("❌ DB init error:", error);
