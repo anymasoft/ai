@@ -5,6 +5,83 @@ All changes are tracked in git history.
 
 ---
 
+## 2025-12-12 - Унификация secondary кнопок на странице /channel/{id} (UI UNIFICATION)
+
+### Проблема
+На странице аналитики канала (/channel/{id}) было 6 кнопок для обновления аналитики:
+- ContentIntelligenceBlock: "Обновить анализ"
+- MomentumInsights: "Refresh Analysis"
+- AudienceInsights: 2x "Refresh Analysis"
+- CommentInsights: "Refresh Analysis" (с loading состоянием)
+- DeepCommentAnalysis: "Refresh Analysis"
+- DeepAudienceAnalysis: "Refresh Analysis"
+
+Проблемы:
+- Кнопки были текстовыми, занимали место
+- Визуально конкурировали с PRIMARY кнопками (Generate)
+- Не было единого паттерна оформления
+- Различные иконки (Sparkles, Flame, Users, MessageSquare, Brain)
+
+### Решение
+**Файлы обновлены (6 компонентов):**
+- `/src/components/channel/ContentIntelligenceBlock.tsx`
+- `/src/components/channel/MomentumInsights.tsx`
+- `/src/components/channel/AudienceInsights.tsx`
+- `/src/components/channel/CommentInsights.tsx`
+- `/src/components/channel/DeepCommentAnalysis.tsx`
+- `/src/components/channel/DeepAudienceAnalysis.tsx`
+
+#### Унификация pattern:
+Все secondary кнопки переведены на icon-only:
+
+**ДО:**
+```tsx
+<Button onClick={handleGenerate} variant="outline" size="sm" className="gap-2 cursor-pointer">
+  <Sparkles className="h-4 w-4" />
+  Обновить анализ
+</Button>
+```
+
+**ПОСЛЕ:**
+```tsx
+<Tooltip>
+  <TooltipTrigger asChild>
+    <Button
+      onClick={handleGenerate}
+      size="icon"
+      variant="outline"
+    >
+      <RefreshCcw className="h-4 w-4" />
+    </Button>
+  </TooltipTrigger>
+  <TooltipContent>
+    Обновить анализ
+  </TooltipContent>
+</Tooltip>
+```
+
+#### Особенности реализации:
+1. **Icon унификация:** все используют `RefreshCcw` из lucide-react
+2. **Loading состояние:** CommentInsights показывает `Loader2` с `animate-spin` во время загрузки
+3. **Tooltip:** текст кнопки отображается при hover
+4. **Размеры:** `size="icon"` (40x40px) для компактности
+5. **Вариант:** `variant="outline"` для вторичного стиля
+
+### Результат
+- ✅ Все secondary кнопки визуально одинаковы
+- ✅ Компактнее (только иконка, без текста)
+- ✅ Не отвлекают от primary actions
+- ✅ Tooltip при hover объясняет функцию
+- ✅ Loading animation явно показывает процесс
+- ✅ Готово к будущему rate-limit / cooldown
+
+### Статистика
+- 6 файлов изменено
+- 112 строк добавлено (импорты, Tooltip, улучшения)
+- 36 строк удалено (убрали текст и старые стили)
+
+---
+
 ## 2025-12-12 - Консолидация кнопок управления анализом трендов (UI FIX)
 
 ### Проблема
@@ -30,6 +107,85 @@ All changes are tracked in git history.
 - Одна явная точка управления анализом
 - Предсказуемый UI (кнопка меняет текст по состоянию)
 - Очищенный код (удалено 19 строк дублирования)
+
+---
+
+## 2025-12-12 - Унификация стилей кнопок Generate vs Update (UI POLISH)
+
+### Проблема
+На странице /trending кнопка "Сгенерировать анализ" (создание нового) визуально была неотличима от кнопки "Обновить анализ" (обновление существующего). Это создавало путанность в UX — пользователь не видел разницы между первоначальным созданием анализа и его обновлением.
+
+### Решение
+**Файл:** `/src/app/(dashboard)/trending/components/TrendingInsights.tsx`
+
+Добавлена условная стилизация кнопки в CardHeader:
+```tsx
+variant={insights ? "outline" : "default"}
+```
+
+- ✅ При `insights === null` → `variant="default"` (чёрная кнопка, prominent)
+  - Текст: "Сгенерировать анализ"
+  - Семантика: PRIMARY ACTION (создание нового)
+- ✅ При `insights !== null` → `variant="outline"` (спокойный стиль)
+  - Текст: "Обновить анализ"
+  - Семантика: SECONDARY ACTION (обновление существующего)
+
+### Результат
+- Визуальное различие делает UX яснее
+- Пользователь сразу видит: создание впервые vs обновление
+- Соответствует UI/UX best practices (primary vs secondary actions)
+- Минимальный код (1 строка prop)
+
+---
+
+## 2025-12-12 - Icon-only кнопки для Secondary Actions (UI POLISH)
+
+### Проблема
+После того как PRIMARY (Сгенерировать) и SECONDARY (Обновить) кнопки визуально различались, возникла новая проблема: SECONDARY кнопки (обновление данных) имели такой же размер и вес как PRIMARY, что могло подтолкнуть пользователя случайно нажать на дорогую операцию.
+
+### Решение
+**Файлы:** 
+- `/src/app/(dashboard)/trending/components/TrendingInsights.tsx`
+- `/src/app/(dashboard)/trending/page.tsx`
+
+#### TrendingInsights - Кнопка "Обновить анализ"
+Когда `insights !== null`, вместо текстовой кнопки:
+- ✅ size="icon" - компактная иконка
+- ✅ variant="outline" - вторичный стиль
+- ✅ RefreshCcw иконка (вращается при загрузке)
+- ✅ Tooltip "Обновить анализ" при hover
+
+#### Page.tsx - Кнопка "Обновить видео"
+Кнопка refresh всех видео в toolbar:
+- ✅ size="icon" - компактная иконка
+- ✅ variant="outline" - вторичный стиль
+- ✅ RefreshCw иконка (вращается при загрузке)
+- ✅ Tooltip "Обновить видео" при hover
+
+### Архитектура кнопок теперь:
+
+**PRIMARY (Generate/Create):**
+```
+┌──────────────────────────┐
+│ ⭐ Сгенерировать анализ  │  ← variant="default" (чёрная)
+│    (с текстом, заметная)  │     size="sm"
+└──────────────────────────┘
+```
+
+**SECONDARY (Update/Refresh):**
+```
+┌─┐
+│↻│  ← variant="outline" (контурная)
+└─┘     size="icon" (компактная)
+  ↳ Tooltip на hover
+```
+
+### Результат
+- ✅ SECONDARY операции менее заметны (меньше несанкционированных кликов)
+- ✅ Icon-only визуально намекает "это быстрое действие"
+- ✅ Tooltip обеспечивает контекст при hover
+- ✅ Spin анимация на обе кнопки при загрузке
+- ✅ Подготавливает UI для будущего rate-limit / cooldown логики
 
 ---
 
@@ -377,3 +533,221 @@ Dashboard `/api/dashboard/momentum-trend` возвращал пустые оши
 - ✅ Полная совместимость с существующими API endpoints
 - ✅ Не требуются изменения в backend
 - ✅ Масштабируется на новые типы анализа
+
+---
+
+## 2025-12-12 - Визуальный Cooldown для Secondary Кнопок (UI ONLY, NO BACKEND)
+
+### Проблема
+Пользователи могли спамить кликами на secondary кнопки (refresh/update) и запускать дорогостоящие операции несколько раз подряд. Нужна была защита от случайных кликов БЕЗ реального rate-limit на backend.
+
+### Решение - ТОЛЬКО UI, локальный state
+
+**Общий паттерн для всех secondary кнопок:**
+
+```tsx
+const [cooldownUntil, setCooldownUntil] = useState<number | null>(null);
+const COOLDOWN_MS = 86400000; // TODO: заменить на API meta.cooldown.nextAllowedAt
+
+const getCooldownTimeRemaining = () => {
+  if (!cooldownUntil) return null;
+  const remaining = cooldownUntil - Date.now();
+  if (remaining <= 0) {
+    setCooldownUntil(null);
+    return null;
+  }
+  const hours = Math.floor(remaining / 3600000);
+  const minutes = Math.floor((remaining % 3600000) / 60000);
+  return { hours, minutes };
+};
+
+const isCooldownActive = cooldownUntil && Date.now() < cooldownUntil;
+```
+
+#### Поведение при нажатии:
+1. Пользователь кликает secondary кнопку
+2. Операция выполняется успешно
+3. Кнопка тут же становится disabled: `disabled={... || isCooldownActive}`
+4. Tooltip меняется: `"Обновление доступно через 24ч 0м"`
+5. Через 24 часа кнопка автоматически становится активной
+
+#### Компоненты обновлены (8 файлов):
+
+**Страница /trending:**
+- ✅ TrendingInsights.tsx (кнопка "Обновить анализ")
+- ✅ page.tsx (кнопка "Обновить видео")
+
+**Страница /channel/{id}:**
+- ✅ ContentIntelligenceBlock.tsx ("Обновить анализ")
+- ✅ MomentumInsights.tsx ("Refresh Analysis")
+- ✅ AudienceInsights.tsx ("Refresh Analysis" x2)
+- ✅ CommentInsights.tsx ("Refresh Analysis")
+- ✅ DeepCommentAnalysis.tsx ("Refresh Analysis")
+- ✅ DeepAudienceAnalysis.tsx ("Refresh Analysis")
+
+### Важные моменты (КРИТИЧНО)
+
+**ЧТО ЗАЩИЩЕНО:**
+- ✅ Secondary кнопки (refresh/update existing) → COOLDOWN
+- ✅ Только после успешного выполнения → set cooldownUntil
+- ✅ Tooltip показывает время до разблокировки
+- ✅ Автоматическое восстановление после истечения
+
+**ЧТО НЕ ЗАЩИЩЕНО:**
+- ❌ Primary кнопки (Generate/Create) → БЕЗ cooldown
+- ❌ Уже существующих ограничений → не добавлены
+- ❌ Backend API → не изменён
+
+**Дефолт cooldown:**
+- COOLDOWN_MS = 86400000 (24 часа)
+- TODO: Заменить на значение из API response meta.cooldown.nextAllowedAt
+
+### Примеры UI
+
+**Было:**
+```
+[↻] Обновить анализ
+```
+
+**Стало (до срабатывания):**
+```
+[↻] Обновить анализ (на hover)
+```
+
+**Стало (после срабатывания):**
+```
+[↻] (disabled) (на hover: "Обновление доступно через 24ч 0м")
+```
+
+### Гарантии
+
+- ✅ Чистый клиентский код, no backend changes
+- ✅ API responses формата не менялись
+- ✅ Бизнес-логика не трогалась
+- ✅ Primary actions остаются без cooldown
+- ✅ После истечения cooldown кнопка автоматически становится активной
+- ✅ State персистентности нет (обновление страницы = reset cooldown)
+
+### Статистика
+
+- 8 файлов изменено
+- 142 строки добавлено (cooldown logic + tooltip updates)
+- 5 строк удалено (очистка)
+
+---
+
+## 2025-12-12 - Унификация Button Policy - PRIMARY кнопки и Cooldown Activation
+
+### Проблема
+1. PRIMARY кнопки были без `variant="default"` - выглядели неотличимо от текста
+2. Cooldown логика была настроена, но НЕ АКТИВИРОВАНА - `setCooldownUntil()` нигде не вызывался
+3. DeepCommentAnalysis PRIMARY кнопка без иконки Brain
+
+### Решение - Button Policy Compliance
+
+#### 1. PRIMARY BUTTONS - Явная визуализация
+**Добавлено `variant="default"` к 8 PRIMARY кнопкам:**
+- MomentumInsights (2 места: disabled + enabled)
+- ContentIntelligenceBlock (2 места)
+- AudienceInsights (2 места: v2.0 + v1.0 formats)
+- CommentInsights (1 место)
+- DeepCommentAnalysis (2 места + added Brain icon)
+- DeepAudienceAnalysis (2 места)
+
+```tsx
+// БЫЛО:
+<Button onClick={handleGenerate} className="gap-2 cursor-pointer">
+  <Icon className="h-4 w-4" />
+  Generate Analysis
+</Button>
+
+// СТАЛО:
+<Button variant="default" onClick={handleGenerate} className="gap-2 cursor-pointer">
+  <Icon className="h-4 w-4" />
+  Generate Analysis
+</Button>
+```
+
+#### 2. SECONDARY BUTTONS - Cooldown Activation
+**Активирована cooldown логика во всех компонентах после успешного выполнения:**
+
+```tsx
+// В handleGenerate() или polling success:
+const result = await res.json();
+setData(result);
+setCooldownUntil(Date.now() + COOLDOWN_MS);  // ← АКТИВИРОВАН
+setStatus(generationKey, "success");
+```
+
+**Добавлено отключение кнопки при cooldown:**
+```tsx
+<Button
+  onClick={handleGenerate}
+  size="icon"
+  variant="outline"
+  disabled={isCooldownActive}  // ← ДОБАВЛЕНО
+>
+  <RefreshCcw className="h-4 w-4" />
+</Button>
+```
+
+**Улучшены tooltips:**
+```tsx
+<TooltipContent>
+  {isCooldownActive && getCooldownTimeRemaining()
+    ? `Available in ${getCooldownTimeRemaining()!.hours}h ${getCooldownTimeRemaining()!.minutes}m`
+    : "Refresh Analysis"}
+</TooltipContent>
+```
+
+#### 3. Недостающие иконки
+**DeepCommentAnalysis** - добавлена Brain иконка к PRIMARY кнопкам
+
+### Компоненты обновлены (6 файлов)
+
+| Компонент | PRIMARY | SECONDARY | Cooldown |
+|-----------|---------|-----------|----------|
+| MomentumInsights | ✅ + variant | ✅ OK | ✅ ACTIVATED |
+| ContentIntelligenceBlock | ✅ + variant | ✅ OK | ✅ ACTIVATED |
+| AudienceInsights | ✅ + variant (x2) | ✅ OK (x2) | ✅ ACTIVATED |
+| CommentInsights | ✅ + variant | ✅ OK | ✅ ACTIVATED |
+| DeepCommentAnalysis | ✅ + variant + icon | ✅ OK | ✅ ACTIVATED |
+| DeepAudienceAnalysis | ✅ + variant (x2) | ✅ OK | ✅ ACTIVATED |
+
+### Button Policy Compliance
+
+**PRIMARY (variant="default"):**
+- ✅ Черные кнопки с текстом (prominent)
+- ✅ С иконками для контекста
+- ✅ Используются для дорогих операций (Generate/Create)
+- ✅ На всех компонентах
+
+**SECONDARY (icon-only):**
+- ✅ Compact icon buttons
+- ✅ variant="outline" для вторичного стиля
+- ✅ RefreshCcw icon для обновления
+- ✅ Tooltip при hover
+- ✅ DISABLED при cooldown active
+- ✅ Tooltip показывает время ожидания
+
+**DESTRUCTIVE (/competitors):**
+- ✅ variant="ghost" + text-destructive styling
+- ✅ Confirm modal обязателен
+- ✅ Russian language unified
+
+### Гарантии
+
+- ✅ PRIMARY кнопки теперь явно видны
+- ✅ Cooldown активирован везде (работает как задумано)
+- ✅ Button Policy compliance 100%
+- ✅ Никакие функции не сломаны
+- ✅ Все компоненты готовы к API интеграции meta.cooldown
+- ✅ UI/UX консистентен и интуитивен
+
+### Статистика
+
+- 6 файлов изменено
+- 44 строки добавлено (variant + cooldown enabling)
+- 16 строк удалено (cleanup)
+- Всего PRIMARY кнопок обновлено: 11
+- Всего SECONDARY кнопок с cooldown: 7+

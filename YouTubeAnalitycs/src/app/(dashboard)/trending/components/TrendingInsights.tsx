@@ -4,7 +4,8 @@ import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Sparkles, TrendingUp, Film, Lightbulb, ListChecks } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { Loader2, Sparkles, TrendingUp, Film, Lightbulb, ListChecks, RefreshCcw } from "lucide-react";
 import type { MomentumVideo } from "@/lib/momentum-queries";
 
 interface TrendingInsightsProps {
@@ -23,8 +24,25 @@ export default function TrendingInsights({ videos }: TrendingInsightsProps) {
   const [loading, setLoading] = useState(false);
   const [loadingSaved, setLoadingSaved] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [cooldownUntil, setCooldownUntil] = useState<number | null>(null);
+  const COOLDOWN_MS = 86400000; // TODO: заменить на значение из API meta.cooldown.nextAllowedAt
+
 
   // Загрузка сохраненного анализа при инициализации
+  const getCooldownTimeRemaining = () => {
+    if (!cooldownUntil) return null;
+    const remaining = cooldownUntil - Date.now();
+    if (remaining <= 0) {
+      setCooldownUntil(null);
+      return null;
+    }
+    const hours = Math.floor(remaining / 3600000);
+    const minutes = Math.floor((remaining % 3600000) / 60000);
+    return { hours, minutes };
+  };
+
+  const isCooldownActive = cooldownUntil && Date.now() < cooldownUntil;
+
   useEffect(() => {
     loadSavedInsights();
   }, []);
@@ -42,6 +60,7 @@ export default function TrendingInsights({ videos }: TrendingInsightsProps) {
 
       if (data.success && data.hasInsights) {
         setInsights(data.insights);
+        setCooldownUntil(Date.now() + COOLDOWN_MS);
       }
     } catch (err) {
       console.error("Ошибка загрузки сохраненных insights:", err);
@@ -110,28 +129,44 @@ export default function TrendingInsights({ videos }: TrendingInsightsProps) {
               Анализ трендовых видео с помощью искусственного интеллекта
             </CardDescription>
           </div>
-          <Button
-            onClick={generateInsights}
-            disabled={loading || videos.length === 0}
-            className="gap-2"
-          >
-            {loading ? (
-              <>
-                <Loader2 className="h-4 w-4 animate-spin" />
-                Генерация...
-              </>
-            ) : insights ? (
-              <>
-                <Sparkles className="h-4 w-4" />
-                Обновить анализ
-              </>
-            ) : (
-              <>
-                <Sparkles className="h-4 w-4" />
-                Сгенерировать анализ
-              </>
-            )}
-          </Button>
+          {!insights ? (
+            <Button
+              variant="default"
+              onClick={generateInsights}
+              disabled={loading || videos.length === 0}
+              className="gap-2"
+            >
+              {loading ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Генерация...
+                </>
+              ) : (
+                <>
+                  <Sparkles className="h-4 w-4" />
+                  Сгенерировать анализ
+                </>
+              )}
+            </Button>
+          ) : (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  size="icon"
+                  variant="outline"
+                  onClick={generateInsights}
+                  disabled={loading || videos.length === 0 || isCooldownActive}
+                >
+                  <RefreshCcw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                {isCooldownActive && getCooldownTimeRemaining()
+                  ? `Обновление доступно через ${getCooldownTimeRemaining()!.hours}ч ${getCooldownTimeRemaining()!.minutes}м`
+                  : "Обновить анализ"}
+              </TooltipContent>
+            </Tooltip>
+          )}
         </div>
       </CardHeader>
 

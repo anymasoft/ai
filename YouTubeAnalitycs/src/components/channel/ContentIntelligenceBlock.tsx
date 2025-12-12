@@ -3,7 +3,8 @@
 import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Sparkles, ChevronDown, ChevronUp } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { Sparkles, ChevronDown, ChevronUp, RefreshCcw } from "lucide-react";
 import { useRouter } from "next/navigation";
 import Markdown from "react-markdown";
 import { useGenerationStatusStore } from "@/store/generationStatusStore";
@@ -276,6 +277,22 @@ export function ContentIntelligenceBlock({
 
   const [data, setData] = useState<ContentIntelligenceData | null>(initialData || null);
   const [error, setError] = useState<string | null>(null);
+  const [cooldownUntil, setCooldownUntil] = useState<number | null>(null);
+  const COOLDOWN_MS = 86400000; // TODO: заменить на значение из API meta.cooldown.nextAllowedAt
+
+  const getCooldownTimeRemaining = () => {
+    if (!cooldownUntil) return null;
+    const remaining = cooldownUntil - Date.now();
+    if (remaining <= 0) {
+      setCooldownUntil(null);
+      return null;
+    }
+    const hours = Math.floor(remaining / 3600000);
+    const minutes = Math.floor((remaining % 3600000) / 60000);
+    return { hours, minutes };
+  };
+
+  const isCooldownActive = cooldownUntil && Date.now() < cooldownUntil;
   const [expandedSections, setExpandedSections] = useState<Set<number>>(new Set([0])); // Первая секция открыта по умолчанию
 
   // Безопасное получение секций с защитой от undefined данных
@@ -299,6 +316,7 @@ export function ContentIntelligenceBlock({
 
       const result = await res.json();
       setData(result);
+      setCooldownUntil(Date.now() + COOLDOWN_MS);
       setExpandedSections(new Set([0])); // Открываем первую секцию при новой генерации
       setStatus(generationKey, "success");
 
@@ -346,6 +364,7 @@ export function ContentIntelligenceBlock({
                 Нажмите кнопку "Sync Top Videos" выше, чтобы загрузить данные.
               </p>
               <Button
+                variant="default"
                 onClick={handleGenerate}
                 className="gap-2 cursor-pointer"
                 disabled
@@ -361,6 +380,7 @@ export function ContentIntelligenceBlock({
                 Получите подробный анализ контент-стратегии канала с конкретными рекомендациями.
               </p>
               <Button
+                variant="default"
                 onClick={handleGenerate}
                 className="gap-2 cursor-pointer"
               >
@@ -389,15 +409,23 @@ export function ContentIntelligenceBlock({
             Аналитический отчёт об особенностях контент-стратегии
           </p>
         </div>
-        <Button
-          onClick={handleGenerate}
-          variant="outline"
-          size="sm"
-          className="gap-2 cursor-pointer"
-        >
-          <Sparkles className="h-4 w-4" />
-          Обновить анализ
-        </Button>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              onClick={handleGenerate}
+              size="icon"
+              variant="outline"
+              disabled={isCooldownActive}
+            >
+              <RefreshCcw className="h-4 w-4" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>
+            {isCooldownActive && getCooldownTimeRemaining()
+              ? `Обновление доступно через ${getCooldownTimeRemaining()!.hours}ч ${getCooldownTimeRemaining()!.minutes}м`
+              : "Обновить анализ"}
+          </TooltipContent>
+        </Tooltip>
       </div>
 
       {/* Collapsible Sections */}
