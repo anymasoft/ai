@@ -111,6 +111,7 @@ export default function TrendingInsights({ videos }: TrendingInsightsProps) {
             </CardDescription>
           </div>
           <Button
+            variant={insights ? "outline" : "default"}
             onClick={generateInsights}
             disabled={loading || videos.length === 0}
             className="gap-2"
