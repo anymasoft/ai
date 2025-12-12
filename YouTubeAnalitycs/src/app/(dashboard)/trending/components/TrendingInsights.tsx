@@ -155,15 +155,13 @@ export default function TrendingInsights({ videos }: TrendingInsightsProps) {
                   size="icon"
                   variant="outline"
                   onClick={generateInsights}
-                  disabled={loading || videos.length === 0 || isCooldownActive}
+                  disabled={loading || videos.length === 0}
                 >
                   <RefreshCcw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
                 </Button>
               </TooltipTrigger>
               <TooltipContent>
-                {isCooldownActive && getCooldownTimeRemaining()
-                  ? `Обновление доступно через ${getCooldownTimeRemaining()!.hours}ч ${getCooldownTimeRemaining()!.minutes}м`
-                  : "Обновить анализ"}
+                Обновить анализ
               </TooltipContent>
             </Tooltip>
           )}

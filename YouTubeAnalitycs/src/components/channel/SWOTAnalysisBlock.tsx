@@ -72,7 +72,7 @@ export function SWOTAnalysisBlock({
       {isOpen && (
         <CardContent className="space-y-6">
           <div className="flex justify-end">
-            <GenerateSwotButton competitorId={competitorId} channelId={channelId} variant="outline" size="sm" isUpdate={true} />
+            <GenerateSwotButton competitorId={competitorId} channelId={channelId} variant="outline" size="icon" isUpdate={true} iconOnly={true} />
           </div>
 
           {/* Strategic Summary */}

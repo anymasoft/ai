@@ -465,15 +465,13 @@ export default function TrendingPage() {
                       console.log("Обновить button clicked!");
                       fetchMomentumVideos();
                     }}
-                    disabled={loading || isVideosCooldownActive}
+                    disabled={loading}
                   >
                     <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent>
-                  {isVideosCooldownActive && getVideosCooldownTimeRemaining()
-                    ? `Обновление доступно через ${getVideosCooldownTimeRemaining()!.hours}ч ${getVideosCooldownTimeRemaining()!.minutes}м`
-                    : "Обновить видео"}
+                  Обновить видео
                 </TooltipContent>
               </Tooltip>
             </div>
