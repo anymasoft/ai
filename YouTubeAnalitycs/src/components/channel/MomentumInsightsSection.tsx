@@ -16,6 +16,30 @@ interface MomentumInsightsSectionProps {
   hasRequiredData?: boolean;
 }
 
+/**
+ * Нормализует любую ошибку в Error объект
+ * НИКОГДА не возвращает пустой объект или неизвестный тип
+ */
+function normalizeError(e: unknown): Error {
+  if (e instanceof Error) {
+    return e;
+  }
+
+  if (typeof e === "string") {
+    return new Error(e);
+  }
+
+  if (e && typeof e === "object") {
+    try {
+      return new Error(`Momentum error: ${JSON.stringify(e)}`);
+    } catch {
+      return new Error(`Momentum error: [non-serializable object]`);
+    }
+  }
+
+  return new Error("Unknown momentum error");
+}
+
 export function MomentumInsightsSection({
   competitorId,
   momentumData,
@@ -42,27 +66,10 @@ export function MomentumInsightsSection({
       });
 
       if (!syncRes.ok) {
-        let syncError;
-        try {
-          syncError = await syncRes.json();
-        } catch (parseErr) {
-          const parseErrMsg = parseErr instanceof Error ? parseErr.message : String(parseErr);
-          throw new Error(`[MomentumInsightsSection] Failed to parse sync response: ${parseErrMsg}. Status: ${syncRes.status}`);
-        }
-
-        const errorMessage =
-          (syncError && typeof syncError === 'object' && syncError.error)
-            ? String(syncError.error)
-            : syncError
-              ? JSON.stringify(syncError)
-              : `Momentum sync failed with status ${syncRes.status}`;
-
-        console.error("[MomentumInsightsSection] Sync error response:", {
-          status: syncRes.status,
-          body: syncError,
-          message: errorMessage,
-        });
-        throw new Error(errorMessage);
+        const syncText = await syncRes.text().catch(() => "");
+        throw new Error(
+          syncText || `Momentum sync failed with status ${syncRes.status}`
+        );
       }
 
       // Шаг 2: Отмечаем momentum как показанный
@@ -72,47 +79,27 @@ export function MomentumInsightsSection({
       });
 
       if (!showRes.ok) {
-        let showError;
-        try {
-          showError = await showRes.json();
-        } catch (parseErr) {
-          const parseErrMsg = parseErr instanceof Error ? parseErr.message : String(parseErr);
-          throw new Error(`[MomentumInsightsSection] Failed to parse show response: ${parseErrMsg}. Status: ${showRes.status}`);
-        }
-
-        const errorMessage =
-          (showError && typeof showError === 'object' && showError.error)
-            ? String(showError.error)
-            : showError
-              ? JSON.stringify(showError)
-              : `Momentum show failed with status ${showRes.status}`;
-
-        console.error("[MomentumInsightsSection] Show error response:", {
-          status: showRes.status,
-          body: showError,
-          message: errorMessage,
-        });
-        throw new Error(errorMessage);
+        const showText = await showRes.text().catch(() => "");
+        throw new Error(
+          showText || `Momentum show failed with status ${showRes.status}`
+        );
       }
 
       // Шаг 3: Обновляем UI после успешного завершения обеих операций
       router.refresh();
     } catch (err) {
-      const errorMessage =
-        err instanceof Error
-          ? err.message
-          : typeof err === 'string'
-            ? err
-            : typeof err === 'object' && err !== null && 'error' in err
-              ? String((err as any).error)
-              : JSON.stringify(err) || 'Failed to generate momentum analysis';
+      const error = normalizeError(err);
 
-      console.error("[MomentumInsightsSection] Catch block error:", {
-        type: err?.constructor?.name,
-        message: errorMessage,
-        original: err,
-      });
-      setError(errorMessage);
+      console.error(
+        "[MomentumInsightsSection] FINAL ERROR:",
+        error.message
+      );
+      console.error(
+        "[MomentumInsightsSection] Stack:",
+        error.stack
+      );
+
+      setError(error.message);
     } finally {
       finish(channelId, 'momentum');
     }
