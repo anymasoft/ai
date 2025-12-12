@@ -751,3 +751,127 @@ setStatus(generationKey, "success");
 - 16 строк удалено (cleanup)
 - Всего PRIMARY кнопок обновлено: 11
 - Всего SECONDARY кнопок с cooldown: 7+
+
+---
+
+## 2025-12-12 - Выравнивание Secondary Кнопок (UI CONSISTENCY, NO PROTECTION)
+
+### Проблема
+1. Secondary кнопки на /trending были ЗАБЛОКИРОВАНЫ cooldown логикой
+2. Secondary кнопки на /channel/{id} РАБОТАЛИ нормально
+3. SWOT secondary кнопка не соответствовала UI паттерну (был текст вместо иконки)
+
+**Результат:** Система была в ПРОТИВОРЕЧИВОМ состоянии
+
+### Решение - Убрать реальную защиту, оставить UI готовым
+
+#### 1. /trending — Удалить блокировку
+**TrendingInsights.tsx:**
+- ❌ Было: `disabled={loading || videos.length === 0 || isCooldownActive}`
+- ✅ Стало: `disabled={loading || videos.length === 0}`
+- Упрощен tooltip (убрано отображение cooldown времени)
+
+**TrendingPage/page.tsx:**
+- ❌ Было: `disabled={loading || isVideosCooldownActive}`
+- ✅ Стало: `disabled={loading}`
+- Упрощен tooltip (убрано отображение cooldown времени)
+
+```tsx
+// БЫЛО - кнопка была заблокирована
+<Button
+  disabled={loading || videos.length === 0 || isCooldownActive}
+  onClick={generateInsights}
+>
+  <RefreshCcw />
+</Button>
+
+// СТАЛО - кнопка работает как на /channel/{id}
+<Button
+  disabled={loading || videos.length === 0}
+  onClick={generateInsights}
+>
+  <RefreshCcw />
+</Button>
+```
+
+#### 2. SWOT — Унификация Secondary Button
+**GenerateSwotButton.tsx - добавлена поддержка icon-only режима:**
+- Добавлен параметр `iconOnly: boolean`
+- При `iconOnly={true}` показывает только иконку с Tooltip
+- RefreshCcw для update, Sparkles для generate
+
+**SWOTAnalysisBlock.tsx:**
+- ❌ Было: `<GenerateSwotButton ... variant="outline" size="sm" isUpdate={true} />`
+- ✅ Стало: `<GenerateSwotButton ... variant="outline" size="icon" isUpdate={true} iconOnly={true} />`
+
+```tsx
+// БЫЛО - текстовая кнопка
+<GenerateSwotButton
+  variant="outline"
+  size="sm"
+  isUpdate={true}
+/>
+
+// СТАЛО - icon-only как все secondary кнопки
+<GenerateSwotButton
+  variant="outline"
+  size="icon"
+  isUpdate={true}
+  iconOnly={true}
+/>
+```
+
+### Состояние системы после изменений
+
+```
+SECONDARY BUTTONS EVERYWHERE:
+
+/trending
+  - TrendingInsights refresh: ✅ WORK (no protection)
+  - TrendingPage videos: ✅ WORK (no protection)
+
+/channel/{id}
+  - MomentumInsights: ✅ WORK (no protection)
+  - ContentIntelligenceBlock: ✅ WORK (no protection)
+  - AudienceInsights: ✅ WORK (no protection)
+  - CommentInsights: ✅ WORK (no protection)
+  - DeepCommentAnalysis: ✅ WORK (no protection)
+  - DeepAudienceAnalysis: ✅ WORK (no protection)
+
+/channel/{id}/analysis (SWOT)
+  - SWOT update: ✅ WORK (no protection, icon-only)
+
+ВИЗУАЛЬНАЯ КОНСИСТЕНТНОСТЬ:
+- Все icon-only (size="icon")
+- Все variant="outline"
+- Все RefreshCcw для update
+- Все с Tooltip
+- Все БЕЗ реальной защиты от спама
+```
+
+### Гарантии
+
+**ЧТО РАБОТАЕТ:**
+- ✅ Все secondary кнопки РАБОТАЮТ везде
+- ✅ Все выглядят одинаково (icon-only pattern)
+- ✅ Нет блокировки, нет реальной защиты
+
+**ЧТО НЕ ИЗМЕНИЛОСЬ:**
+- ✅ API не менялся
+- ✅ Handlers не менялись
+- ✅ PRIMARY кнопки не трогали
+- ✅ Cooldown state переменные остались (для совместимости)
+
+**ГОТОВНОСТЬ К ЗАЩИТЕ:**
+- ✅ UI полностью готов к cooldown визуализации
+- ✅ Структура поддерживает disabled={isCooldownActive}
+- ✅ Tooltips готовы показывать время
+- ✅ Остаётся только подключить реальный cooldown из API
+
+### Статистика
+
+- 4 файла изменено
+- 40 строк добавлено (icon-only support)
+- 11 строк удалено (cleanup)
+- Secondary кнопок унифицировано: 7+
+- Компонентов обновлено: 2 (/trending) + 1 (SWOT)
