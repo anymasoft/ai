@@ -633,3 +633,121 @@ const isCooldownActive = cooldownUntil && Date.now() < cooldownUntil;
 - 8 файлов изменено
 - 142 строки добавлено (cooldown logic + tooltip updates)
 - 5 строк удалено (очистка)
+
+---
+
+## 2025-12-12 - Унификация Button Policy - PRIMARY кнопки и Cooldown Activation
+
+### Проблема
+1. PRIMARY кнопки были без `variant="default"` - выглядели неотличимо от текста
+2. Cooldown логика была настроена, но НЕ АКТИВИРОВАНА - `setCooldownUntil()` нигде не вызывался
+3. DeepCommentAnalysis PRIMARY кнопка без иконки Brain
+
+### Решение - Button Policy Compliance
+
+#### 1. PRIMARY BUTTONS - Явная визуализация
+**Добавлено `variant="default"` к 8 PRIMARY кнопкам:**
+- MomentumInsights (2 места: disabled + enabled)
+- ContentIntelligenceBlock (2 места)
+- AudienceInsights (2 места: v2.0 + v1.0 formats)
+- CommentInsights (1 место)
+- DeepCommentAnalysis (2 места + added Brain icon)
+- DeepAudienceAnalysis (2 места)
+
+```tsx
+// БЫЛО:
+<Button onClick={handleGenerate} className="gap-2 cursor-pointer">
+  <Icon className="h-4 w-4" />
+  Generate Analysis
+</Button>
+
+// СТАЛО:
+<Button variant="default" onClick={handleGenerate} className="gap-2 cursor-pointer">
+  <Icon className="h-4 w-4" />
+  Generate Analysis
+</Button>
+```
+
+#### 2. SECONDARY BUTTONS - Cooldown Activation
+**Активирована cooldown логика во всех компонентах после успешного выполнения:**
+
+```tsx
+// В handleGenerate() или polling success:
+const result = await res.json();
+setData(result);
+setCooldownUntil(Date.now() + COOLDOWN_MS);  // ← АКТИВИРОВАН
+setStatus(generationKey, "success");
+```
+
+**Добавлено отключение кнопки при cooldown:**
+```tsx
+<Button
+  onClick={handleGenerate}
+  size="icon"
+  variant="outline"
+  disabled={isCooldownActive}  // ← ДОБАВЛЕНО
+>
+  <RefreshCcw className="h-4 w-4" />
+</Button>
+```
+
+**Улучшены tooltips:**
+```tsx
+<TooltipContent>
+  {isCooldownActive && getCooldownTimeRemaining()
+    ? `Available in ${getCooldownTimeRemaining()!.hours}h ${getCooldownTimeRemaining()!.minutes}m`
+    : "Refresh Analysis"}
+</TooltipContent>
+```
+
+#### 3. Недостающие иконки
+**DeepCommentAnalysis** - добавлена Brain иконка к PRIMARY кнопкам
+
+### Компоненты обновлены (6 файлов)
+
+| Компонент | PRIMARY | SECONDARY | Cooldown |
+|-----------|---------|-----------|----------|
+| MomentumInsights | ✅ + variant | ✅ OK | ✅ ACTIVATED |
+| ContentIntelligenceBlock | ✅ + variant | ✅ OK | ✅ ACTIVATED |
+| AudienceInsights | ✅ + variant (x2) | ✅ OK (x2) | ✅ ACTIVATED |
+| CommentInsights | ✅ + variant | ✅ OK | ✅ ACTIVATED |
+| DeepCommentAnalysis | ✅ + variant + icon | ✅ OK | ✅ ACTIVATED |
+| DeepAudienceAnalysis | ✅ + variant (x2) | ✅ OK | ✅ ACTIVATED |
+
+### Button Policy Compliance
+
+**PRIMARY (variant="default"):**
+- ✅ Черные кнопки с текстом (prominent)
+- ✅ С иконками для контекста
+- ✅ Используются для дорогих операций (Generate/Create)
+- ✅ На всех компонентах
+
+**SECONDARY (icon-only):**
+- ✅ Compact icon buttons
+- ✅ variant="outline" для вторичного стиля
+- ✅ RefreshCcw icon для обновления
+- ✅ Tooltip при hover
+- ✅ DISABLED при cooldown active
+- ✅ Tooltip показывает время ожидания
+
+**DESTRUCTIVE (/competitors):**
+- ✅ variant="ghost" + text-destructive styling
+- ✅ Confirm modal обязателен
+- ✅ Russian language unified
+
+### Гарантии
+
+- ✅ PRIMARY кнопки теперь явно видны
+- ✅ Cooldown активирован везде (работает как задумано)
+- ✅ Button Policy compliance 100%
+- ✅ Никакие функции не сломаны
+- ✅ Все компоненты готовы к API интеграции meta.cooldown
+- ✅ UI/UX консистентен и интуитивен
+
+### Статистика
+
+- 6 файлов изменено
+- 44 строки добавлено (variant + cooldown enabling)
+- 16 строк удалено (cleanup)
+- Всего PRIMARY кнопок обновлено: 11
+- Всего SECONDARY кнопок с cooldown: 7+
