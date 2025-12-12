@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Loader2, Flame, TrendingUp, Zap, Lightbulb } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { formatMomentumPercent } from "@/lib/momentum-formatting";
+import { useGenerationStatusStore } from "@/store/generationStatusStore";
 
 interface MomentumVideo {
   videoId: string;
@@ -33,6 +34,7 @@ interface MomentumData {
 
 interface MomentumInsightsProps {
   channelId: string;
+  competitorId: number;
   initialData?: MomentumData | null;
   hasRequiredData?: boolean;
 }
@@ -49,16 +51,20 @@ function formatNumber(num: number): string {
 
 export function MomentumInsights({
   channelId,
+  competitorId,
   initialData,
   hasRequiredData = true
 }: MomentumInsightsProps) {
   const router = useRouter();
-  const [loading, setLoading] = useState(false);
+  const { getStatus, setStatus } = useGenerationStatusStore();
+  const generationKey = `${competitorId}:momentum-detail`;
+  const loading = getStatus(generationKey) === "loading";
+
   const [data, setData] = useState<MomentumData | null>(initialData || null);
   const [error, setError] = useState<string | null>(null);
 
   async function handleGenerate() {
-    setLoading(true);
+    setStatus(generationKey, "loading");
     setError(null);
 
     try {
@@ -73,14 +79,14 @@ export function MomentumInsights({
 
       const result = await res.json();
       setData(result);
+      setStatus(generationKey, "success");
 
       // Обновляем страницу чтобы показать новые данные
       router.refresh();
     } catch (err) {
       console.error("Error generating momentum analysis:", err);
       setError(err instanceof Error ? err.message : "Unknown error");
-    } finally {
-      setLoading(false);
+      setStatus(generationKey, "error");
     }
   }
 

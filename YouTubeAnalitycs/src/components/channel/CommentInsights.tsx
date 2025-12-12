@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Loader2, MessageSquare, Sparkles, Heart, AlertCircle, ThumbsUp, Lightbulb } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useAnalysisProgressStore } from "@/store/analysisProgressStore";
+import { useGenerationStatusStore } from "@/store/generationStatusStore";
 
 interface CommentInsightsData {
   stats: {
@@ -37,9 +37,9 @@ export function CommentInsights({
   hasRequiredData = true
 }: CommentInsightsProps) {
   const router = useRouter();
-  const { start, finish, isGenerating } = useAnalysisProgressStore();
-  const isRefreshingCommentAnalysis = isGenerating(channelId, 'comment');
-  const [loading, setLoading] = useState(false);
+  const { getStatus, setStatus } = useGenerationStatusStore();
+  const generationKey = `${competitorId}:comment-analysis`;
+  const loading = getStatus(generationKey) === "loading";
   const [data, setData] = useState<CommentInsightsData | null>(initialData || null);
   const [error, setError] = useState<string | null>(null);
 
@@ -56,7 +56,7 @@ export function CommentInsights({
   }, [initialData?.generatedAt]); // Зависимость только от generatedAt чтобы избежать лишних обновлений
 
   async function handleGenerate() {
-    start(channelId, 'comment');
+    setStatus(generationKey, "loading");
     setError(null);
 
     try {
@@ -66,6 +66,7 @@ export function CommentInsights({
 
       if (!res.ok) {
         const errorData = await res.json();
+        setStatus(generationKey, "error");
         throw new Error(errorData.error || "Failed to generate comment insights");
       }
 
@@ -79,6 +80,7 @@ export function CommentInsights({
       // Сразу устанавливаем данные в состояние чтобы отобразить результат
       // API гарантирует что данные сохранены в БД перед возвратом ответа
       setData(result);
+      setStatus(generationKey, "success");
 
       // Сразу же обновляем страницу чтобы синхронизировать SSR данные
       // useEffect синхронизирует initialData с локальным состоянием
@@ -86,8 +88,7 @@ export function CommentInsights({
     } catch (err) {
       console.error("Error generating comment insights:", err);
       setError(err instanceof Error ? err.message : "Unknown error");
-    } finally {
-      finish(channelId, 'comment');
+      setStatus(generationKey, "error");
     }
   }
 
@@ -110,9 +111,9 @@ export function CommentInsights({
           <p className="text-muted-foreground mb-4">
             Comment Intelligence will show interests, pain points, and requests from audience comments.
           </p>
-          <Button onClick={handleGenerate} className="gap-2 cursor-pointer" disabled={isRefreshingCommentAnalysis}>
+          <Button onClick={handleGenerate} className="gap-2 cursor-pointer" disabled={loading}>
             <MessageSquare className="h-4 w-4" />
-            {isRefreshingCommentAnalysis ? "Анализируется..." : "Generate Comment Analysis"}
+            {loading ? "Анализируется..." : "Generate Comment Analysis"}
           </Button>
           {error && (
             <p className="text-sm text-destructive mt-4">{error}</p>
@@ -134,9 +135,9 @@ export function CommentInsights({
             Interests, pain points and requests from audience comments
           </p>
         </div>
-        <Button onClick={handleGenerate} variant="outline" size="sm" className="gap-2 cursor-pointer" disabled={isRefreshingCommentAnalysis}>
+        <Button onClick={handleGenerate} variant="outline" size="sm" className="gap-2 cursor-pointer" disabled={loading}>
           <MessageSquare className="h-4 w-4" />
-          {isRefreshingCommentAnalysis ? "Обновляется..." : "Refresh Analysis"}
+          {loading ? "Обновляется..." : "Refresh Analysis"}
         </Button>
       </div>
 

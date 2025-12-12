@@ -18,9 +18,11 @@ import {
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import type { CombinedDeepAnalysis } from "@/lib/ai/comments-analysis";
+import { useGenerationStatusStore } from "@/store/generationStatusStore";
 
 interface DeepCommentAnalysisProps {
   channelId: string;
+  competitorId: number;
   initialData?: (CombinedDeepAnalysis & {
     cached?: boolean;
     createdAt?: number;
@@ -37,11 +39,15 @@ interface ProgressData {
 
 export function DeepCommentAnalysis({
   channelId,
+  competitorId,
   initialData,
   hasRequiredData = true,
 }: DeepCommentAnalysisProps) {
   const router = useRouter();
-  const [loading, setLoading] = useState(false);
+  const { getStatus, setStatus } = useGenerationStatusStore();
+  const generationKey = `${competitorId}:deep-comment`;
+  const loading = getStatus(generationKey) === "loading";
+
   const [data, setData] = useState<any>(initialData || null);
   const [error, setError] = useState<string | null>(null);
   const [progress, setProgress] = useState<ProgressData | null>(null);
@@ -64,7 +70,7 @@ export function DeepCommentAnalysis({
   }, []);
 
   async function handleGenerate() {
-    setLoading(true);
+    setStatus(generationKey, "loading");
     setError(null);
     setProgress(null);
 
@@ -85,7 +91,7 @@ export function DeepCommentAnalysis({
     } catch (err) {
       toast.error("Generation failed");
       setError("Generation failed");
-      setLoading(false);
+      setStatus(generationKey, "error");
     }
   }
 
@@ -110,9 +116,11 @@ export function DeepCommentAnalysis({
             clearInterval(intervalRef.current as any);
             intervalRef.current = null;
           }
-          setLoading(false);
           if (progressData.status === "done") {
+            setStatus(generationKey, "success");
             router.refresh();
+          } else {
+            setStatus(generationKey, "error");
           }
         }
       } catch (err) {
