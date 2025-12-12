@@ -14,6 +14,7 @@ import {
   Lightbulb,
   TrendingUp,
   Quote,
+  RefreshCcw,
 } from "lucide-react";
 import { AnalysisLoadingState } from "@/components/ui/AnalysisLoadingState";
 import { useRouter } from "next/navigation";
