@@ -215,11 +215,13 @@ export async function POST(
     });
 
     if (videosResult.rows.length === 0) {
+      console.info(`[ContentIntelligence] Empty state: нет видео для анализа`);
       client.close();
-      return NextResponse.json(
-        { error: "Sync Top Videos first" },
-        { status: 400 }
-      );
+      return NextResponse.json({
+        ok: true,
+        data: null,
+        reason: "insufficient_videos"
+      }, { status: 200 });
     }
 
     console.log(`[ContentIntelligence] Найдено ${videosResult.rows.length} видео для анализа`);

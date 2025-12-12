@@ -183,31 +183,60 @@ export async function POST(
       }
     });
 
-    // Фильтруем High Momentum видео
-    const highMomentumVideos = videosWithMetrics
+    // Реализуем fallback иерархию: high → rising → normal → top by views → empty
+    let videosForAnalysis = videosWithMetrics
       .filter(v => v.category === "High Momentum")
       .sort((a, b) => b.momentumScore - a.momentumScore)
-      .slice(0, 20); // Топ 20
+      .slice(0, 20);
 
-    console.log(`[Momentum] High Momentum видео: ${highMomentumVideos.length}`);
+    console.log(`[Momentum] High Momentum видео: ${videosForAnalysis.length}`);
 
-    if (highMomentumVideos.length === 0) {
+    if (videosForAnalysis.length === 0) {
+      console.info(`[Momentum] Fallback: нет High Momentum видео, пытаемся использовать Rising`);
+      videosForAnalysis = videosWithMetrics
+        .filter(v => v.category === "Rising")
+        .sort((a, b) => b.momentumScore - a.momentumScore)
+        .slice(0, 20);
+      console.log(`[Momentum] Rising видео: ${videosForAnalysis.length}`);
+    }
+
+    if (videosForAnalysis.length === 0) {
+      console.info(`[Momentum] Fallback: нет Rising видео, пытаемся использовать Normal`);
+      videosForAnalysis = videosWithMetrics
+        .filter(v => v.category === "Normal")
+        .sort((a, b) => b.viewsPerDay - a.viewsPerDay)
+        .slice(0, 20);
+      console.log(`[Momentum] Normal видео: ${videosForAnalysis.length}`);
+    }
+
+    if (videosForAnalysis.length === 0) {
+      console.info(`[Momentum] Fallback: нет Normal видео, пытаемся использовать top по views`);
+      videosForAnalysis = videosWithMetrics
+        .sort((a, b) => b.viewCountInt - a.viewCountInt)
+        .slice(0, 20);
+      console.log(`[Momentum] Top videos по views: ${videosForAnalysis.length}`);
+    }
+
+    // Если нет видео вообще - возвращаем empty state, не ошибку
+    if (videosForAnalysis.length === 0) {
+      console.info(`[Momentum] Empty state: нет видео для анализа`);
       client.close();
-      return NextResponse.json(
-        { error: "No high momentum videos found" },
-        { status: 400 }
-      );
+      return NextResponse.json({
+        ok: true,
+        data: null,
+        reason: "insufficient_videos"
+      }, { status: 200 });
     }
 
     console.log(`[MomentumInsights] Forced regen (limits disabled) - всегда генерируем свежий анализ`);
     console.log(`[Momentum] Генерируем новый анализ через OpenAI...`);
 
     // Подготовка данных для OpenAI
-    const videosForAnalysis = highMomentumVideos.map(v => ({
+    const videosForOpenAI = videosForAnalysis.map(v => ({
       title: v.title,
       viewCount: v.viewCountInt,
       viewsPerDay: Math.round(v.viewsPerDay),
-      momentumScore: `+${(v.momentumScore * 100).toFixed(0)}%`,
+      momentumScore: `${v.momentumScore >= 0 ? '+' : ''}${(v.momentumScore * 100).toFixed(0)}%`,
     }));
 
     // Инициализация OpenAI клиента
@@ -225,16 +254,16 @@ export async function POST(
         },
         {
           role: "user",
-          content: `Проанализируй список видео с высоким momentum (показы выше медианы на 50%+) канала "${competitor.title}".
+          content: `Проанализируй список видео канала "${competitor.title}" на предмет трендов и паттернов.
 
 Выяви:
-1) hotThemes - основные темы, которые дают высокие показы сейчас
+1) hotThemes - основные темы, которые работают
 2) hotFormats - форматы видео, которые работают лучше всего
 3) hotIdeas - конкретные идеи для создания контента
-4) explanation - краткое объяснение почему эти темы растут
+4) explanation - краткое объяснение основных паттернов
 
-Видео с High Momentum:
-${JSON.stringify(videosForAnalysis, null, 2)}
+Видео для анализа:
+${JSON.stringify(videosForOpenAI, null, 2)}
 
 Ответь ТОЛЬКО в формате JSON без дополнительного текста:
 {
@@ -289,7 +318,7 @@ ${JSON.stringify(videosForAnalysis, null, 2)}
 
     // Формируем итоговые данные
     const momentumData = {
-      highMomentumVideos: highMomentumVideos.slice(0, 10).map(v => ({
+      highMomentumVideos: videosForAnalysis.slice(0, 10).map(v => ({
         videoId: v.videoId,
         title: v.title,
         viewCount: v.viewCountInt,
@@ -299,7 +328,7 @@ ${JSON.stringify(videosForAnalysis, null, 2)}
       })),
       stats: {
         totalAnalyzed: videos.length,
-        highMomentum: highMomentumVideos.length,
+        highMomentum: videosWithMetrics.filter(v => v.category === "High Momentum").length,
         rising: videosWithMetrics.filter(v => v.category === "Rising").length,
         medianViewsPerDay: Math.round(medianViewsPerDay),
       },

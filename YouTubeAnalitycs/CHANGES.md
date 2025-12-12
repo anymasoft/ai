@@ -5,6 +5,109 @@ All changes are tracked in git history.
 
 ---
 
+## 2025-12-12 - Реализация safe fallback логики для аналитических API (ПОЛНАЯ)
+
+### Проблема
+Аналитические API возвращали ошибки при недостаточности данных, что обрабатывалось фронтом как критические ошибки вместо пустых состояний. Различали по принципу "NO DATA ≠ ERROR".
+
+### Решение - ПОЛНАЯ реализация safe fallbacks
+
+#### ✅ Приоритет 1: Momentum API fallback hierarchy
+**Файл:** `/api/channel/[id]/momentum/route.ts`
+
+Реализована иерархия fallback:
+1. High momentum видео (score > 0.5) - основной вариант
+2. Rising видео (score > 0.1) - если нет high momentum
+3. Normal видео (score > -0.3) - если нет rising
+4. Top видео по views - если нет normal
+5. Empty state `ok: true, data: null` - если нет видео вообще
+
+**Гарантии:**
+- ✅ НИКОГДА не выбрасывает "No high momentum videos found"
+- ✅ Всегда использует доступные видео для анализа OpenAI
+- ✅ Статистика отражает реальные категории (высокий momentum, rising и т.п.)
+- ✅ `console.info()` для fallback логики, не `console.error()`
+
+#### ✅ Приоритет 2: Dashboard Momentum empty state
+**Файл:** `/api/dashboard/momentum-trend/route.ts`
+
+Заменено:
+- ❌ `throw new Error('No valid videos found...')`
+- ✅ `return ok: true, trend: [], summary: {}`
+
+Возвращает пустой тренд с нулевыми метриками при отсутствии видео.
+
+#### ✅ Приоритет 3: Audience Analysis fallback
+**Файл:** `/api/channel/[id]/audience/route.ts`
+
+Заменено:
+- ❌ `return error: "No videos with valid publication dates"`
+- ✅ `return ok: true, data: null, reason: "insufficient_valid_dates"`
+
+Сохранён существующий fallback: если нет High Engagement видео, использует top 30 по engagement score.
+
+#### ✅ Приоритет 4: Content Intelligence empty state
+**Файл:** `/api/channel/[id]/content-intelligence/route.ts`
+
+Заменено:
+- ❌ `return error: "Sync Top Videos first"`
+- ✅ `return ok: true, data: null, reason: "insufficient_videos"`
+
+#### ✅ Приоритет 5: Comments Analysis ТОЛЬКО empty state (БЕЗ generic insights)
+**Файлы:**
+- `/api/channel/[id]/comments/insights/route.ts`
+- `/api/channel/[id]/comments/ai/route.ts`
+
+Заменено (3 точки в каждом файле):
+- ❌ `return error: "Sync Top Videos first"` → ✅ `return ok: true, data: null, reason: "insufficient_videos"`
+- ❌ `return error: "No comments found..."` → ✅ `return ok: true, data: null, reason: "insufficient_comments"`
+- ❌ `return error: "No valid comments..."` → ✅ `return ok: true, data: null, reason: "insufficient_valid_comments"`
+
+**КРИТИЧЕСКОЕ ТРЕБОВАНИЕ ВЫПОЛНЕНО:**
+- ✅ Комментарии НЕ имеют generic insights fallback
+- ✅ ТОЛЬКО empty state возвращается
+- ✅ Комментарии = первичный источник данных, без них анализ невозможен
+
+### Новая архитектура ответов
+
+**Success (есть данные):**
+```json
+{
+  "ok": true,
+  "data": { ... },
+  "generatedAt": timestamp
+}
+```
+
+**Empty state (нет данных, это НОРМАЛЬНО):**
+```json
+{
+  "ok": true,
+  "data": null,
+  "reason": "insufficient_videos|insufficient_comments|insufficient_valid_comments|...",
+  "status": 200
+}
+```
+
+**Error (реальная ошибка):**
+```json
+{
+  "ok": false,
+  "error": "Meaningful error message",
+  "status": 500
+}
+```
+
+### Гарантии архитектуры
+- ✅ **Определённость**: Каждый API имеет явный path для empty state
+- ✅ **Детерминизм**: No data всегда = `ok: true, status: 200`, не ошибка
+- ✅ **Масштабируемость**: Fallback hierarchy extensible (можно добавить ещё уровни)
+- ✅ **Comments safety**: Абсолютно НИКАКИХ generic insights
+- ✅ **Logging clarity**: `console.info()` для empty states, `console.error()` только для real errors
+- ✅ **Frontend compatibility**: Фронт ожидает именно этот формат (`ok: true/false`)
+
+---
+
 ## 2025-12-12 - Обработка empty-state для Momentum без ошибок JSON
 
 ### Проблема

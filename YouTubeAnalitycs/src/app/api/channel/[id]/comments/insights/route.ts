@@ -66,11 +66,13 @@ export async function POST(
     });
 
     if (videosResult.rows.length === 0) {
+      console.info(`[CommentInsights] Empty state: нет видео для анализа`);
       client.close();
-      return NextResponse.json(
-        { error: "Sync Top Videos first" },
-        { status: 400 }
-      );
+      return NextResponse.json({
+        ok: true,
+        data: null,
+        reason: "insufficient_videos"
+      }, { status: 200 });
     }
 
     const videos = videosResult.rows;
@@ -86,11 +88,13 @@ export async function POST(
     });
 
     if (commentsResult.rows.length === 0) {
+      console.info(`[CommentInsights] Empty state: нет комментариев для анализа`);
       client.close();
-      return NextResponse.json(
-        { error: "No comments found. Please add the channel to sync comments automatically." },
-        { status: 400 }
-      );
+      return NextResponse.json({
+        ok: true,
+        data: null,
+        reason: "insufficient_comments"
+      }, { status: 200 });
     }
 
     const comments = commentsResult.rows;
