@@ -32,19 +32,34 @@ export default function BillingSettings() {
   const userPlan = (session?.user?.plan || "free") as PlanType;
 
   // DEV-only: подтверждение платежа через confirm endpoint
-  // Вызывается когда пользователь возвращается с ЮKassa с paymentId в URL
-  // Защита от повторного вызова через confirmProcessedRef
+  // Вызывается когда пользователь возвращается с ЮKassa с success=1 в URL
+  // paymentId может быть в URL или в sessionStorage (оставлено перед редиректом на ЮKassa)
   useEffect(() => {
     const confirmPayment = async () => {
       const isSuccess = searchParams.get('success') === '1';
-      const paymentId = searchParams.get('paymentId');
+      
+      // Сначала проверяем paymentId в URL
+      let paymentId = searchParams.get('paymentId');
+      
+      // Если paymentId нет в URL, ищем его в sessionStorage
+      // (Он был сохранён перед редиректом на ЮKassa в pricing-plans.tsx)
+      if (!paymentId && typeof window !== 'undefined') {
+        paymentId = sessionStorage.getItem('pendingPaymentId');
+        console.log('[BillingPage] Retrieved paymentId from sessionStorage:', paymentId);
+      }
 
       // Условия для вызова confirm:
       // 1. success=1 в URL
-      // 2. paymentId присутствует
+      // 2. paymentId присутствует (из URL или sessionStorage)
       // 3. Пользователь аутентифицирован
       // 4. Confirm ещё не был обработан в этой сессии
       if (!isSuccess || !paymentId || !session?.user?.id || confirmProcessedRef.current) {
+        console.log('[BillingPage] Skipping confirm:', {
+          isSuccess,
+          hasPaymentId: !!paymentId,
+          hasUserId: !!session?.user?.id,
+          alreadyProcessed: confirmProcessedRef.current
+        });
         return;
       }
 
@@ -91,6 +106,11 @@ export default function BillingSettings() {
 
           // Обновляем usage информацию
           await fetchUsage();
+
+          // Очищаем pendingPaymentId из sessionStorage
+          if (typeof window !== 'undefined') {
+            sessionStorage.removeItem('pendingPaymentId');
+          }
 
           console.log('[BillingPage] Payment confirmed successfully');
         } else {
