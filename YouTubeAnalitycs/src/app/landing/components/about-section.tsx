@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent } from '@/components/ui/card'
 import { CardDecorator } from '@/components/ui/card-decorator'
-import { Github, Code, Palette, Layout, Crown } from 'lucide-react'
+import { Code, Palette, Layout } from 'lucide-react'
 
 const values = [
   {
@@ -21,11 +21,6 @@ const values = [
     icon: Layout,
     title: 'Тренды и инсайты',
     description: 'Отслеживание трендов, анализ динамики роста и рекомендации "Что снимать завтра".'
-  },
-  {
-    icon: Crown,
-    title: 'Экспорт и отчеты',
-    description: 'Генерация подробных отчетов в PDF, таблицы метрик и экспорт данных для дальнейшего анализа.'
   }
 ]
 
