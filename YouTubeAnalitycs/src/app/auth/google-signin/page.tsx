@@ -2,12 +2,25 @@
 
 import { useEffect } from "react"
 import { signIn } from "next-auth/react"
+import { useRouter } from "next/navigation"
 
 export default function GoogleSignInPopup() {
+  const router = useRouter()
+
   useEffect(() => {
     // Automatically trigger Google OAuth when this page loads
-    signIn("google", { callbackUrl: "/auth-callback" })
-  }, [])
+    // On disabled user, NextAuth will redirect to error page
+    // We need to handle that redirect and pass it to parent window
+    
+    signIn("google", { 
+      callbackUrl: "/auth-callback",
+      redirect: true
+    }).catch((error) => {
+      console.error("Sign in error:", error)
+      // If signIn fails, redirect to auth-callback with error
+      router.push("/auth-callback?error=SignInError")
+    })
+  }, [router])
 
   return (
     <div className="flex min-h-screen items-center justify-center">

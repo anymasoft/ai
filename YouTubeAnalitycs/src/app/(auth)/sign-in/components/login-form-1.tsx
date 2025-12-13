@@ -17,13 +17,20 @@ export function LoginForm1({
   ...props
 }: React.ComponentProps<"div">) {
 
-  // Listen for auth success message from popup
+  // Listen for auth success or error message from popup
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
       if (event.origin !== window.location.origin) return;
+      
       if (event.data.type === "auth-success") {
         // Redirect to dashboard after successful auth
         window.location.href = "/dashboard";
+      }
+      
+      if (event.data.type === "auth-error") {
+        // Redirect to error page (for disabled users or other errors)
+        // The popup closed itself, so just redirect the main window
+        window.location.href = event.data.redirectTo;
       }
     };
 
