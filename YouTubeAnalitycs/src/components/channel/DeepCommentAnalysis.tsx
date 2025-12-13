@@ -101,14 +101,14 @@ export function DeepCommentAnalysis({
 
       if (!res.ok) {
         const e = await res.json();
-        throw new Error(e.error || "Failed to generate analysis");
+        throw new Error(e.error || "Не удалось сгенерировать анализ");
       }
 
       // Начинаем поллинг прогресса
       startPolling();
     } catch (err) {
-      toast.error("Generation failed");
-      setError("Generation failed");
+      toast.error("Ошибка генерации");
+      setError("Ошибка генерации");
       setStatus(generationKey, "error");
     }
   }
@@ -157,8 +157,8 @@ export function DeepCommentAnalysis({
   if (loading) {
     return (
       <AnalysisLoadingState
-        title="Analyzing comments..."
-        subtitle="This may take 15-25 seconds"
+        title="Анализирование комментариев..."
+        subtitle="Это может занять 15-25 секунд"
       />
     );
   }
@@ -170,24 +170,24 @@ export function DeepCommentAnalysis({
           {!hasRequiredData ? (
             <>
               <p className="text-muted-foreground mb-2 text-center">
-                Sync Comments first
+                Сначала синхронизируйте комментарии
               </p>
               <p className="text-sm text-muted-foreground mb-4 text-center">
-                Click 'Sync Comments' button above to load data.
+                Нажмите кнопку 'Синхронизировать комментарии' выше, чтобы загрузить данные.
               </p>
-              <Button variant="default" onClick={handleGenerate} disabled title="Sync Comments first" className="gap-2">
+              <Button variant="default" onClick={handleGenerate} disabled title="Сначала синхронизируйте комментарии" className="gap-2">
                 <Brain className="h-4 w-4" />
-                Generate Deep Analysis
+                Генерировать глубокий анализ
               </Button>
             </>
           ) : (
             <>
               <p className="text-muted-foreground mb-4">
-                Deep AI analysis of audience comments.
+                Глубокий анализ ИИ комментариев аудитории.
               </p>
               <Button variant="default" onClick={handleGenerate} className="gap-2">
                 <Brain className="h-4 w-4" />
-                Generate Deep Analysis
+                Генерировать глубокий анализ
               </Button>
             </>
           )}
@@ -232,10 +232,10 @@ export function DeepCommentAnalysis({
         <div>
           <h2 className="text-2xl font-bold flex items-center gap-2">
             <Brain className="h-6 w-6 text-indigo-600" />
-            Deep Audience Intelligence (AI v2.1)
+            Глубокий интеллект аудитории (ИИ v2.1)
           </h2>
           <p className="text-sm text-muted-foreground mt-1">
-            Deep AI analysis of {data.totalAnalyzed} comments
+            Глубокий анализ ИИ {data.totalAnalyzed} комментариев
           </p>
         </div>
 
@@ -252,8 +252,8 @@ export function DeepCommentAnalysis({
           </TooltipTrigger>
           <TooltipContent>
             {isCooldownActive && getCooldownTimeRemaining()
-              ? `Available in ${getCooldownTimeRemaining()!.hours}h ${getCooldownTimeRemaining()!.minutes}m`
-              : "Refresh Analysis"}
+              ? `Доступно через ${getCooldownTimeRemaining()!.hours}ч ${getCooldownTimeRemaining()!.minutes}м`
+              : "Обновить анализ"}
           </TooltipContent>
         </Tooltip>
       </div>
@@ -261,21 +261,21 @@ export function DeepCommentAnalysis({
       {/* SENTIMENT */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg">Audience Emotional Profile</CardTitle>
+          <CardTitle className="text-lg">Эмоциональный профиль аудитории</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-3 gap-4">
             <div className="text-center">
               <div className="text-3xl font-bold text-green-600">{positivePercent}%</div>
-              <div className="text-xs mt-1">Positive ({sentiment.positive})</div>
+              <div className="text-xs mt-1">Позитивные ({sentiment.positive})</div>
             </div>
             <div className="text-center">
               <div className="text-3xl font-bold text-gray-600">{neutralPercent}%</div>
-              <div className="text-xs mt-1">Neutral ({sentiment.neutral})</div>
+              <div className="text-xs mt-1">Нейтральные ({sentiment.neutral})</div>
             </div>
             <div className="text-center">
               <div className="text-3xl font-bold text-red-600">{negativePercent}%</div>
-              <div className="text-xs mt-1">Negative ({sentiment.negative})</div>
+              <div className="text-xs mt-1">Негативные ({sentiment.negative})</div>
             </div>
           </div>
         </CardContent>
@@ -287,7 +287,7 @@ export function DeepCommentAnalysis({
           <CardHeader>
             <CardTitle className="text-lg flex items-center gap-2">
               <Heart className="h-5 w-5 text-pink-600" />
-              Emotional Overview
+              Эмоциональный обзор
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -302,7 +302,7 @@ export function DeepCommentAnalysis({
           <CardHeader>
             <CardTitle className="text-lg flex items-center gap-2">
               <TrendingUp className="h-5 w-5 text-blue-600" />
-              Top Themes
+              Популярные темы
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -323,7 +323,7 @@ export function DeepCommentAnalysis({
           <CardHeader>
             <CardTitle className="text-lg flex items-center gap-2">
               <TrendingUp className="h-5 w-5 text-blue-600" />
-              Key Topics
+              Ключевые темы
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -333,10 +333,10 @@ export function DeepCommentAnalysis({
                   <h4 className="font-semibold text-sm">{topic.name}</h4>
                   <p className="text-sm text-muted-foreground mt-1">{topic.description}</p>
                   {topic.examples?.length > 0 && (
-                    <p className="text-xs text-muted-foreground mt-2">Examples: {topic.examples.slice(0, 3).join(", ")}</p>
+                    <p className="text-xs text-muted-foreground mt-2">Примеры: {topic.examples.slice(0, 3).join(", ")}</p>
                   )}
                   {topic.motive && (
-                    <p className="text-xs text-muted-foreground mt-1">Motive: {topic.motive}</p>
+                    <p className="text-xs text-muted-foreground mt-1">Мотив: {topic.motive}</p>
                   )}
                 </div>
               ))}
@@ -351,7 +351,7 @@ export function DeepCommentAnalysis({
           <CardHeader>
             <CardTitle className="text-lg flex items-center gap-2">
               <AlertCircle className="h-5 w-5 text-orange-600" />
-              Audience Pain Points
+              Болевые точки аудитории
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -372,7 +372,7 @@ export function DeepCommentAnalysis({
           <CardHeader>
             <CardTitle className="text-lg flex items-center gap-2">
               <Heart className="h-5 w-5 text-green-600" />
-              Positive Triggers
+              Позитивные триггеры
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -380,10 +380,10 @@ export function DeepCommentAnalysis({
               {data.positiveTriggers.map((trigger: any, i: number) => (
                 <div key={i} className="p-3 bg-green-50 rounded-lg">
                   <h4 className="font-semibold text-sm text-green-900">{trigger.trigger}</h4>
-                  <p className="text-sm text-green-800 mt-1">Praised: {trigger.what_praised}</p>
+                  <p className="text-sm text-green-800 mt-1">Похвала: {trigger.what_praised}</p>
                   <p className="text-xs text-green-700 mt-1">{trigger.why_resonates}</p>
                   {trigger.video_types && (
-                    <p className="text-xs text-muted-foreground mt-1">Video types: {trigger.video_types}</p>
+                    <p className="text-xs text-muted-foreground mt-1">Типы видео: {trigger.video_types}</p>
                   )}
                 </div>
               ))}
@@ -398,7 +398,7 @@ export function DeepCommentAnalysis({
           <CardHeader>
             <CardTitle className="text-lg flex items-center gap-2">
               <MessageSquare className="h-5 w-5 text-purple-600" />
-              Audience Requests
+              Пожелания аудитории
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -417,7 +417,7 @@ export function DeepCommentAnalysis({
           <CardHeader>
             <CardTitle className="text-lg flex items-center gap-2">
               <AlertCircle className="h-5 w-5 text-red-600" />
-              Negative Triggers
+              Негативные триггеры
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -425,10 +425,10 @@ export function DeepCommentAnalysis({
               {data.negativeTriggers.map((trigger: any, i: number) => (
                 <div key={i} className="p-3 bg-red-50 rounded-lg">
                   <h4 className="font-semibold text-sm text-red-900">{trigger.trigger}</h4>
-                  <p className="text-sm text-red-800 mt-1">Cause: {trigger.what_causes_negativity}</p>
+                  <p className="text-sm text-red-800 mt-1">Причина: {trigger.what_causes_negativity}</p>
                   <p className="text-xs text-red-700 mt-1">{trigger.why_harmful}</p>
                   {trigger.fix && (
-                    <p className="text-xs text-blue-700 mt-1">Fix: {trigger.fix}</p>
+                    <p className="text-xs text-blue-700 mt-1">Решение: {trigger.fix}</p>
                   )}
                 </div>
               ))}
@@ -443,7 +443,7 @@ export function DeepCommentAnalysis({
           <CardHeader>
             <CardTitle className="text-lg flex items-center gap-2">
               <Heart className="h-5 w-5 text-pink-600" />
-              What They Like
+              Что им нравится
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -462,7 +462,7 @@ export function DeepCommentAnalysis({
           <CardHeader>
             <CardTitle className="text-lg flex items-center gap-2">
               <MessageSquare className="h-5 w-5 text-indigo-600" />
-              Frequently Asked Questions
+              Частые вопросы
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -471,10 +471,10 @@ export function DeepCommentAnalysis({
                 <div key={i} className="p-3 border-l-4 border-indigo-300">
                   <h4 className="font-semibold text-sm text-indigo-900">{item.question}</h4>
                   {item.why_appears && (
-                    <p className="text-xs text-muted-foreground mt-1">Why: {item.why_appears}</p>
+                    <p className="text-xs text-muted-foreground mt-1">Почему: {item.why_appears}</p>
                   )}
                   {item.action && (
-                    <p className="text-xs text-blue-700 mt-1">Action: {item.action}</p>
+                    <p className="text-xs text-blue-700 mt-1">Действие: {item.action}</p>
                   )}
                 </div>
               ))}
@@ -489,7 +489,7 @@ export function DeepCommentAnalysis({
           <CardHeader>
             <CardTitle className="text-lg flex items-center gap-2">
               <Users className="h-5 w-5 text-cyan-600" />
-              Audience Segments
+              Сегменты аудитории
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -502,25 +502,25 @@ export function DeepCommentAnalysis({
                   <div className="grid grid-cols-2 gap-2 mt-3 text-xs">
                     {segment.writes_about && (
                       <div>
-                        <span className="font-semibold text-cyan-800">Writes about:</span>
+                        <span className="font-semibold text-cyan-800">Пишут о:</span>
                         <p className="text-muted-foreground">{segment.writes_about}</p>
                       </div>
                     )}
                     {segment.understanding_level && (
                       <div>
-                        <span className="font-semibold text-cyan-800">Understanding:</span>
+                        <span className="font-semibold text-cyan-800">Понимание:</span>
                         <p className="text-muted-foreground">{segment.understanding_level}</p>
                       </div>
                     )}
                     {segment.motives && (
                       <div>
-                        <span className="font-semibold text-cyan-800">Motives:</span>
+                        <span className="font-semibold text-cyan-800">Мотивы:</span>
                         <p className="text-muted-foreground">{segment.motives}</p>
                       </div>
                     )}
                     {segment.suitable_content && (
                       <div>
-                        <span className="font-semibold text-cyan-800">Suitable content:</span>
+                        <span className="font-semibold text-cyan-800">Подходящий контент:</span>
                         <p className="text-muted-foreground">{segment.suitable_content}</p>
                       </div>
                     )}
@@ -528,7 +528,7 @@ export function DeepCommentAnalysis({
 
                   {segment.growth_strategy && (
                     <div className="mt-3 p-2 bg-blue-100 rounded">
-                      <p className="text-xs font-semibold text-blue-900">Growth strategy:</p>
+                      <p className="text-xs font-semibold text-blue-900">Стратегия роста:</p>
                       <p className="text-xs text-blue-800">{segment.growth_strategy}</p>
                     </div>
                   )}
@@ -543,7 +543,7 @@ export function DeepCommentAnalysis({
       {data.hiddenPatterns?.length > 0 && (
         <Card>
           <CardHeader>
-            <CardTitle className="text-lg">Hidden Patterns</CardTitle>
+            <CardTitle className="text-lg">Скрытые паттерны</CardTitle>
           </CardHeader>
           <CardContent>
             <ul className="space-y-2">
@@ -561,7 +561,7 @@ export function DeepCommentAnalysis({
           <CardHeader>
             <CardTitle className="text-lg flex items-center gap-2">
               <Brain className="h-5 w-5 text-purple-600" />
-              Behavioral Insights
+              Поведенческие инсайты
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -580,7 +580,7 @@ export function DeepCommentAnalysis({
       {data.actionableIdeas?.length > 0 && (
         <Card>
           <CardHeader>
-            <CardTitle className="text-lg">Actionable Recommendations</CardTitle>
+            <CardTitle className="text-lg">Практические рекомендации</CardTitle>
           </CardHeader>
           <CardContent>
             <ul className="space-y-3">
@@ -598,7 +598,7 @@ export function DeepCommentAnalysis({
           <CardHeader>
             <CardTitle className="text-lg flex items-center gap-2">
               <AlertCircle className="h-5 w-5 text-amber-600" />
-              Missing Elements
+              Отсутствующие элементы
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -619,7 +619,7 @@ export function DeepCommentAnalysis({
           <CardHeader>
             <CardTitle className="text-lg flex items-center gap-2">
               <TrendingUp className="h-5 w-5 text-emerald-600" />
-              Growth Opportunities
+              Возможности роста
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -628,13 +628,13 @@ export function DeepCommentAnalysis({
                 <div key={i} className="p-3 border-l-4 border-emerald-400 bg-emerald-50">
                   <h4 className="font-semibold text-sm text-emerald-900">{opp.opportunity}</h4>
                   {opp.based_on && (
-                    <p className="text-xs text-muted-foreground mt-1">Based on: {opp.based_on}</p>
+                    <p className="text-xs text-muted-foreground mt-1">На основе: {opp.based_on}</p>
                   )}
                   {opp.how_use && (
-                    <p className="text-xs text-emerald-800 mt-1">How to use: {opp.how_use}</p>
+                    <p className="text-xs text-emerald-800 mt-1">Как использовать: {opp.how_use}</p>
                   )}
                   {opp.expected_effect && (
-                    <p className="text-xs text-emerald-700 mt-1">Expected effect: {opp.expected_effect}</p>
+                    <p className="text-xs text-emerald-700 mt-1">Ожидаемый эффект: {opp.expected_effect}</p>
                   )}
                 </div>
               ))}
@@ -647,7 +647,7 @@ export function DeepCommentAnalysis({
       {data.topQuotes?.length > 0 && (
         <Card>
           <CardHeader>
-            <CardTitle className="text-lg">Top Quotes from Comments</CardTitle>
+            <CardTitle className="text-lg">Лучшие цитаты из комментариев</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
@@ -667,16 +667,16 @@ export function DeepCommentAnalysis({
           <CardHeader>
             <CardTitle className="text-lg flex items-center gap-2">
               <Lightbulb className="h-5 w-5 text-yellow-600" />
-              Action Checklist
+              Чек-лист действий
             </CardTitle>
-            <CardDescription>8 key actions to improve content based on audience feedback</CardDescription>
+            <CardDescription>8 ключевых действий для улучшения контента на основе отзывов аудитории</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               {data.checklist.slice(0, 8).map((item: string, i: number) => (
                 <div key={i} className="flex items-start gap-3 p-2 border rounded">
                   <span className="text-lg font-bold text-indigo-600 min-w-6">{i + 1}.</span>
-                  <span className="text-sm leading-relaxed">{item || `Action ${i + 1}`}</span>
+                  <span className="text-sm leading-relaxed">{item || `Действие ${i + 1}`}</span>
                 </div>
               ))}
             </div>
