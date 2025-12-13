@@ -4,14 +4,15 @@ import Link from "next/link"
 import { AccessDeniedError } from "@/app/(auth)/errors/access-denied/components/access-denied-error"
 
 type SignInPageProps = {
-  searchParams: {
+  searchParams: Promise<{
     error?: string
     reason?: string
-  }
+  }>
 }
 
-export default function Page(props: SignInPageProps) {
-  const error = props.searchParams?.error
+export default async function Page(props: SignInPageProps) {
+  const searchParams = await props.searchParams
+  const error = searchParams?.error
 
   // Если это AccessDenied error, показать our custom access denied page
   if (error === "AccessDenied") {
