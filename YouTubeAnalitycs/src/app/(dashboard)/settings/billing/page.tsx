@@ -28,6 +28,7 @@ export default function BillingSettings() {
   
   // Защита от повторного вызова confirm
   const confirmProcessedRef = useRef(false);
+  const shouldReloadRef = useRef(false);
 
   const userPlan = (session?.user?.plan || "free") as PlanType;
 
@@ -79,40 +80,28 @@ export default function BillingSettings() {
         console.log('[BillingPage] Confirm response:', data);
 
         if (data.ok) {
-          console.log('[BillingPage] Confirm successful, updating session...');
-          
+          console.log('[BillingPage] Confirm successful');
+
           // Успешное подтверждение
           setConfirmSuccess(true);
-
-          // ЯВНО обновляем сессию через updateSession()
-          // Это может использовать кеш, поэтому дополнительно делаем fetch
-          const sessionUpdateResult = await updateSession();
-          console.log('[BillingPage] Session update result:', sessionUpdateResult);
-
-          // ДОПОЛНИТЕЛЬНО: явный fetch session для гарантированного обновления
-          // useSession() может использовать кеш, поэтому fetch напрямую
-          try {
-            const sessionResponse = await fetch('/api/auth/session', {
-              cache: 'no-store', // Отключаем кеш
-              headers: {
-                'Pragma': 'no-cache', // Дополнительный заголовок
-              }
-            });
-            const freshSession = await sessionResponse.json();
-            console.log('[BillingPage] Fresh session from /api/auth/session:', freshSession);
-          } catch (sessionFetchError) {
-            console.error('[BillingPage] Error fetching fresh session:', sessionFetchError);
-          }
-
-          // Обновляем usage информацию
-          await fetchUsage();
 
           // Очищаем pendingPaymentId из sessionStorage
           if (typeof window !== 'undefined') {
             sessionStorage.removeItem('pendingPaymentId');
           }
 
-          console.log('[BillingPage] Payment confirmed successfully');
+          console.log('[BillingPage] Payment confirmed successfully, reloading page to refresh session...');
+
+          // КРИТИЧЕСКОЕ: Выполняем полную перезагрузку страницы после небольшой задержки
+          // Это необходимо потому что:
+          // 1. БД обновлена с новым планом (confirm endpoint это сделал)
+          // 2. Но JWT токен в cookie всё ещё содержит старый план
+          // 3. Полная перезагрузка заставляет NextAuth прочитать сессию заново из БД
+          // 4. Новый JWT токен будет сгенерирован с обновлённой информацией о плане
+          shouldReloadRef.current = true;
+          setTimeout(() => {
+            window.location.href = '/settings/billing';
+          }, 1500);
         } else {
           setConfirmError(data.error || 'Ошибка при подтверждении платежа');
           console.error('[BillingPage] Payment confirmation failed:', data.error);
@@ -123,9 +112,11 @@ export default function BillingSettings() {
       } finally {
         setIsConfirming(false);
 
-        // Удаляем параметры из URL независимо от результата confirm
-        // Это предотвращает повторный вызов при перезагрузке страницы
-        router.replace('/settings/billing');
+        // Удаляем параметры из URL только если не делаем полную перезагрузку
+        // Если shouldReloadRef.current === true, то будет window.location.href перезагрузка
+        if (!shouldReloadRef.current) {
+          router.replace('/settings/billing');
+        }
       }
     };
 
