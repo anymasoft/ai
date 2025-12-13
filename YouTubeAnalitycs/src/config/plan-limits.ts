@@ -16,7 +16,7 @@ export interface PlanLimits {
 export const PLAN_LIMITS: Record<PlanType, PlanLimits> = {
   free: {
     id: 'free',
-    name: 'Бесплатный план',
+    name: 'Free',
     price: '0 ₽',
     monthlyScriptLimit: 3,
     description: 'Для знакомства с сервисом',
