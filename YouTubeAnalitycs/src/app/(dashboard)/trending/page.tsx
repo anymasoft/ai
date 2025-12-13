@@ -429,23 +429,23 @@ export default function TrendingPage() {
       case "High Momentum":
         return (
           <Badge className="bg-green-100 text-green-800 hover:bg-green-100">
-            🔥 High Momentum
+            🔥 Высокий рост
           </Badge>
         )
       case "Rising":
         return (
           <Badge className="bg-blue-100 text-blue-800 hover:bg-blue-100">
-            📈 Rising
+            📈 Растёт
           </Badge>
         )
       case "Underperforming":
         return (
           <Badge className="bg-red-100 text-red-800 hover:bg-red-100">
-            📉 Underperforming
+            📉 Проседает
           </Badge>
         )
       default:
-        return <Badge variant="outline">Normal</Badge>
+        return <Badge variant="outline">Обычный</Badge>
     }
   }
 
@@ -558,18 +558,16 @@ export default function TrendingPage() {
     return (
       <div className="container mx-auto px-4 md:px-6">
         <div className="mb-6">
-          <h1 className="text-3xl font-bold">Shared Momentum Explorer</h1>
+          <h1 className="text-3xl font-bold">Тренды конкурентов</h1>
           <p className="text-muted-foreground">
-            Discover the fastest growing videos across all your competitors
+            Самые быстрорастущие видео среди ваших конкурентов
           </p>
         </div>
         <Card>
           <CardContent className="flex items-center justify-center h-64">
             <div className="text-center">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
-              <p className="text-muted-foreground">
-                Loading momentum videos...
-              </p>
+              <p className="text-muted-foreground">Загрузка видео...</p>
             </div>
           </CardContent>
         </Card>
@@ -581,17 +579,17 @@ export default function TrendingPage() {
     return (
       <div className="container mx-auto px-4 md:px-6">
         <div className="mb-6">
-          <h1 className="text-3xl font-bold">Shared Momentum Explorer</h1>
+          <h1 className="text-3xl font-bold">Тренды конкурентов</h1>
           <p className="text-muted-foreground">
-            Discover the fastest growing videos across all your competitors
+            Самые быстрорастущие видео среди ваших конкурентов
           </p>
         </div>
         <Card>
           <CardContent className="flex items-center justify-center h-64">
             <div className="text-center">
-              <p className="text-red-600 mb-2">Error loading momentum videos</p>
+              <p className="text-red-600 mb-2">Ошибка загрузки видео</p>
               <p className="text-muted-foreground text-sm mb-4">{error}</p>
-              <Button onClick={fetchMomentumVideos}>Try Again</Button>
+              <Button onClick={fetchMomentumVideos}>Попробовать снова</Button>
             </div>
           </CardContent>
         </Card>
@@ -608,9 +606,9 @@ export default function TrendingPage() {
         <div className="flex flex-col gap-6">
           {/* Заголовок */}
           <div>
-            <h1 className="text-3xl font-bold">Shared Momentum Explorer</h1>
+            <h1 className="text-3xl font-bold">Тренды конкурентов</h1>
             <p className="text-muted-foreground mt-1">
-              Discover the fastest growing videos across all your competitors
+              Самые быстрорастущие видео среди ваших конкурентов
             </p>
           </div>
 
@@ -655,12 +653,10 @@ export default function TrendingPage() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">Все типы</SelectItem>
-                    <SelectItem value="high">High Momentum</SelectItem>
-                    <SelectItem value="rising">Rising</SelectItem>
-                    <SelectItem value="normal">Normal</SelectItem>
-                    <SelectItem value="underperforming">
-                      Underperforming
-                    </SelectItem>
+                    <SelectItem value="high">Высокий рост</SelectItem>
+                    <SelectItem value="rising">Растёт</SelectItem>
+                    <SelectItem value="normal">Обычный</SelectItem>
+                    <SelectItem value="underperforming">Проседает</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -725,20 +721,20 @@ export default function TrendingPage() {
       {videos.length === 0 ? (
         <Card>
           <CardHeader>
-            <CardTitle>No momentum videos found</CardTitle>
+            <CardTitle>Видео не найдены</CardTitle>
             <CardDescription>
-              Add competitors and sync their channels to see momentum analysis
+              Добавьте конкурентов и синхронизируйте данные, чтобы увидеть тренды
             </CardDescription>
           </CardHeader>
           <CardContent>
             <p className="text-sm text-muted-foreground">
-              Momentum Explorer shows the fastest growing videos across all your
-              competitors. To get started:
+              Этот раздел показывает самые быстрорастущие видео среди ваших
+              конкурентов. Чтобы начать:
             </p>
             <ul className="list-disc pl-5 mt-2 text-sm text-muted-foreground space-y-1">
-              <li>Add competitors to your dashboard</li>
-              <li>Sync their videos and metrics</li>
-              <li>Wait for momentum data to be calculated</li>
+              <li>Добавьте конкурентов</li>
+              <li>Синхронизируйте их видео и метрики</li>
+              <li>Дождитесь расчёта momentum</li>
             </ul>
             <p className="text-sm text-muted-foreground mt-4">
               Или вы можете сгенерировать сценарий по ссылке на YouTube-видео
@@ -749,7 +745,7 @@ export default function TrendingPage() {
       ) : (
         <Card>
           <CardHeader>
-            <CardTitle>Top Momentum Videos</CardTitle>
+            <CardTitle>Топ видео по momentum</CardTitle>
             <CardDescription>
               Показано {sortedVideos.length} из {filteredVideos.length} видео
               (всего {videos.length}). Сортировка по {sortField} (
@@ -797,7 +793,7 @@ export default function TrendingPage() {
                         className="p-0 h-auto font-medium"
                         onClick={() => handleSort("publishDate")}
                       >
-                        Video
+                        Видео
                       </Button>
                     </TableHead>
                     <TableHead>
@@ -817,7 +813,7 @@ export default function TrendingPage() {
                         onClick={() => handleSort("viewsPerDay")}
                       >
                         <BarChart3 className="h-4 w-4 mr-2 inline" />
-                        Views/Day
+                        Просмотров/день
                       </Button>
                     </TableHead>
                     <TableHead>
@@ -827,7 +823,7 @@ export default function TrendingPage() {
                         onClick={() => handleSort("viewCount")}
                       >
                         <Eye className="h-4 w-4 mr-2 inline" />
-                        Total Views
+                        Всего просмотров
                       </Button>
                     </TableHead>
                     <TableHead>
@@ -836,7 +832,7 @@ export default function TrendingPage() {
                         className="p-0 h-auto font-medium"
                       >
                         <Calendar className="h-4 w-4 mr-2 inline" />
-                        Published
+                        Дата
                       </Button>
                     </TableHead>
                     <TableHead>
@@ -845,7 +841,7 @@ export default function TrendingPage() {
                         className="p-0 h-auto font-medium"
                       >
                         <Users className="h-4 w-4 mr-2 inline" />
-                        Channel
+                        Канал
                       </Button>
                     </TableHead>
                   </TableRow>
@@ -906,7 +902,7 @@ export default function TrendingPage() {
                             {formatMomentumPercent(video.momentumScore)}
                           </div>
                           <div className="text-xs text-muted-foreground">
-                            vs median
+                            к медиане
                           </div>
                         </div>
                       </TableCell>
@@ -916,7 +912,7 @@ export default function TrendingPage() {
                             {formatNumber(Math.round(video.viewsPerDay))}
                           </div>
                           <div className="text-xs text-muted-foreground">
-                            per day
+                            в день
                           </div>
                         </div>
                       </TableCell>
@@ -926,7 +922,7 @@ export default function TrendingPage() {
                             {formatNumber(video.viewCount)}
                           </div>
                           <div className="text-xs text-muted-foreground">
-                            total
+                            всего
                           </div>
                         </div>
                       </TableCell>
@@ -1007,8 +1003,8 @@ export default function TrendingPage() {
                   среднего.
                 </p>
                 <p className="mt-1">
-                  <strong>Views/Day</strong> рассчитывается как общее количество
-                  просмотров, делённое на дни с момента публикации.
+                  <strong>Просмотров/день</strong> рассчитывается как общее
+                  количество просмотров, делённое на дни с момента публикации.
                 </p>
               </div>
             </div>

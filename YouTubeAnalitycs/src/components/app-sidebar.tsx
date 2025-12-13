@@ -32,30 +32,30 @@ import {
 
 const navGroups = [
   {
-    label: "Analytics",
+    label: "Аналитика",
     items: [
       {
-        title: "Overview",
+        title: "Обзор",
         url: "/dashboard",
         icon: LayoutDashboard,
       },
       {
-        title: "Competitors",
+        title: "Конкуренты",
         url: "/competitors",
         icon: Target,
       },
       {
-        title: "Compare All",
+        title: "Сравнение",
         url: "/competitors/compare",
         icon: GitCompare,
       },
       {
-        title: "Trending",
+        title: "Сценарии",
         url: "/trending",
         icon: TrendingUp,
       },
       {
-        title: "Scripts",
+        title: "История сценариев",
         url: "/scripts",
         icon: FileText,
       },
@@ -69,31 +69,31 @@ const navGroups = [
       },
       */
       {
-        title: "FAQ",
+        title: "Вопросы",
         url: "/faqs",
         icon: FileText,
       },
       {
-        title: "Feedback",
+        title: "Обратная связь",
         url: "/feedback",
         icon: MessageSquare,
       },
     ],
   },
   {
-    label: "Settings",
+    label: "Настройки",
     items: [
       {
-        title: "Settings",
+        title: "Настройки",
         url: "#",
         icon: Settings,
         items: [
           {
-            title: "Account",
+            title: "Аккаунт",
             url: "/settings/account",
           },
           {
-            title: "Billing",
+            title: "Биллинг",
             url: "/settings/billing",
           },
         ],
@@ -103,13 +103,13 @@ const navGroups = [
 ]
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
-  const { data: session } = useSession();
+  const { data: session } = useSession()
 
   const user = {
-    name: session?.user?.name || "User",
+    name: session?.user?.name || "Пользователь",
     email: session?.user?.email || "user@example.com",
     avatar: session?.user?.image || "",
-  };
+  }
 
   return (
     <Sidebar {...props}>
@@ -122,8 +122,10 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                   <Logo size={24} className="text-current" />
                 </div>
                 <div className="grid flex-1 text-left text-sm leading-tight">
-                  <span className="truncate font-medium">YouTube Analytics</span>
-                  <span className="truncate text-xs">Analytics Platform</span>
+                  <span className="truncate font-medium">
+                    Beem Analytics
+                  </span>
+                  <span className="truncate text-xs">Панель аналитики</span>
                 </div>
               </Link>
             </SidebarMenuButton>
@@ -136,27 +138,27 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         ))}
         {session?.user?.email === ADMIN_EMAIL && (
           <NavMain
-            label="Admin"
+            label="Администрирование"
             items={[
               {
-                title: "Panel",
+                title: "Панель",
                 url: "#",
                 icon: BarChart3,
                 items: [
                   {
-                    title: "Users",
+                    title: "Пользователи",
                     url: "/admin/users",
                   },
                   {
-                    title: "Limits",
+                    title: "Лимиты",
                     url: "/admin/limits",
                   },
                   {
-                    title: "Payments",
+                    title: "Платежи",
                     url: "/admin/payments",
                   },
                   {
-                    title: "System",
+                    title: "Система",
                     url: "/admin/system",
                   },
                 ],

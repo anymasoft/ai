@@ -127,30 +127,30 @@ export function CommandSearch({ open, onOpenChange }: CommandSearchProps) {
 
   const searchItems: SearchItem[] = [
     // YouTube Analytics (Главные разделы)
-    { title: "Dashboard", url: "/dashboard", group: "Analytics", icon: LayoutDashboard },
-    { title: "Competitors", url: "/competitors", group: "Analytics", icon: Target },
-    { title: "Compare Channels", url: "/competitors/compare", group: "Analytics", icon: GitCompare },
-    { title: "Trending Content", url: "/trending", group: "Analytics", icon: TrendingUp },
-    { title: "Video Scripts", url: "/scripts", group: "Analytics", icon: FileText },
-    { title: "AI Reports", url: "/reports", group: "Analytics", icon: FileBarChart },
+    { title: "Панель", url: "/dashboard", group: "Аналитика", icon: LayoutDashboard },
+    { title: "Конкуренты", url: "/competitors", group: "Аналитика", icon: Target },
+    { title: "Сравнение каналов", url: "/competitors/compare", group: "Аналитика", icon: GitCompare },
+    { title: "Тренды", url: "/trending", group: "Аналитика", icon: TrendingUp },
+    { title: "Сценарии", url: "/scripts", group: "Аналитика", icon: FileText },
+    { title: "AI-отчёты", url: "/reports", group: "Аналитика", icon: FileBarChart },
 
     // Chat & Collaboration
-    { title: "AI Assistant", url: "/chat", group: "Tools", icon: MessageCircle },
+    { title: "AI-ассистент", url: "/chat", group: "Инструменты", icon: MessageCircle },
 
     // Authentication
-    { title: "Sign In", url: "/sign-in", group: "Auth", icon: Shield },
-    { title: "Sign Up", url: "/sign-up", group: "Auth", icon: Shield },
-    { title: "Forgot Password", url: "/forgot-password", group: "Auth", icon: Shield },
+    { title: "Вход", url: "/sign-in", group: "Аккаунт", icon: Shield },
+    { title: "Регистрация", url: "/sign-up", group: "Аккаунт", icon: Shield },
+    { title: "Восстановление пароля", url: "/forgot-password", group: "Аккаунт", icon: Shield },
 
     // Settings & Account
-    { title: "Account", url: "/settings/account", group: "Settings", icon: Settings },
-    { title: "Billing & Plans", url: "/settings/billing", group: "Settings", icon: CreditCard },
-    { title: "Appearance", url: "/settings/appearance", group: "Settings", icon: Palette },
-    { title: "Notifications", url: "/settings/notifications", group: "Settings", icon: Bell },
-    { title: "Connections", url: "/settings/connections", group: "Settings", icon: Link2 },
+    { title: "Профиль", url: "/settings/account", group: "Настройки", icon: Settings },
+    { title: "Биллинг и тарифы", url: "/settings/billing", group: "Настройки", icon: CreditCard },
+    { title: "Оформление", url: "/settings/appearance", group: "Настройки", icon: Palette },
+    { title: "Уведомления", url: "/settings/notifications", group: "Настройки", icon: Bell },
+    { title: "Подключения", url: "/settings/connections", group: "Настройки", icon: Link2 },
 
     // Info Pages
-    { title: "FAQs", url: "/faqs", group: "Info", icon: HelpCircle },
+    { title: "Вопросы и ответы", url: "/faqs", group: "Справка", icon: HelpCircle },
   ]
 
   const groupedItems = searchItems.reduce((acc, item) => {
@@ -178,14 +178,14 @@ export function CommandSearch({ open, onOpenChange }: CommandSearchProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="overflow-hidden p-0 shadow-2xl border border-zinc-200 dark:border-zinc-800 max-w-[640px]">
-        <DialogTitle className="sr-only">Command Search</DialogTitle>
+        <DialogTitle className="sr-only">Поиск команд</DialogTitle>
         <Command
           ref={commandRef}
           className="transition-transform duration-100 ease-out"
         >
-          <CommandInput placeholder="What do you need?" autoFocus />
+          <CommandInput placeholder="Что вы хотите сделать?" autoFocus />
           <CommandList>
-            <CommandEmpty>No results found.</CommandEmpty>
+            <CommandEmpty>Ничего не найдено.</CommandEmpty>
             {Object.entries(groupedItems).map(([group, items]) => (
               <CommandGroup key={group} heading={group}>
                 {items.map((item) => {
@@ -217,8 +217,8 @@ export function SearchTrigger({ onClick }: { onClick: () => void }) {
       className="inline-flex items-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 border border-input bg-background shadow-sm hover:bg-accent hover:text-accent-foreground h-8 px-3 py-1 relative w-full justify-start text-muted-foreground sm:pr-12 md:w-36 lg:w-56"
     >
       <Search className="mr-2 h-3.5 w-3.5" />
-      <span className="hidden lg:inline-flex">Search...</span>
-      <span className="inline-flex lg:hidden">Search...</span>
+      <span className="hidden lg:inline-flex">Поиск...</span>
+      <span className="inline-flex lg:hidden">Поиск...</span>
       <kbd className="pointer-events-none absolute right-1.5 top-1.5 hidden h-4 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium opacity-100 sm:flex">
         <span className="text-xs">⌘</span>K
       </kbd>

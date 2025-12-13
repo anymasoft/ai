@@ -3,11 +3,11 @@
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
 import { z } from "zod"
-import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
-import { Input } from '@/components/ui/input'
-import { Textarea } from '@/components/ui/textarea'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
+import { Input } from "@/components/ui/input"
+import { Textarea } from "@/components/ui/textarea"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import {
   Form,
   FormControl,
@@ -16,23 +16,23 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form"
-import { Mail, MessageCircle, Github, BookOpen } from 'lucide-react'
+import { Mail, MessageCircle, Github, BookOpen } from "lucide-react"
 
 const contactFormSchema = z.object({
   firstName: z.string().min(2, {
-    message: "First name must be at least 2 characters.",
+    message: "Имя должно быть не короче 2 символов.",
   }),
   lastName: z.string().min(2, {
-    message: "Last name must be at least 2 characters.",
+    message: "Фамилия должна быть не короче 2 символов.",
   }),
   email: z.string().email({
-    message: "Please enter a valid email address.",
+    message: "Введите корректный email.",
   }),
   subject: z.string().min(5, {
-    message: "Subject must be at least 5 characters.",
+    message: "Тема должна быть не короче 5 символов.",
   }),
   message: z.string().min(10, {
-    message: "Message must be at least 10 characters.",
+    message: "Сообщение должно быть не короче 10 символов.",
   }),
 })
 
@@ -59,12 +59,15 @@ export function ContactSection() {
     <section id="contact" className="py-24 sm:py-32">
       <div className="container mx-auto px-4 sm:px-6 lg:px-8">
         <div className="mx-auto max-w-2xl text-center mb-16">
-          <Badge variant="outline" className="mb-4">Get In Touch</Badge>
+          <Badge variant="outline" className="mb-4">
+            Связаться с нами
+          </Badge>
           <h2 className="text-3xl font-bold tracking-tight sm:text-4xl mb-4">
-            Need help or have questions?
+            Нужна помощь или есть вопросы?
           </h2>
           <p className="text-lg text-muted-foreground">
-            Our team is here to help you get the most out of ShadcnStore. Choose the best way to reach out to us.
+            Мы поможем вам получить максимум пользы от сервиса. Выберите удобный
+            способ связи.
           </p>
         </div>
 
@@ -75,16 +78,26 @@ export function ContactSection() {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <MessageCircle className="h-5 w-5 text-primary" />
-                  Discord Community
+                  Сообщество Discord
                 </CardTitle>
               </CardHeader>
               <CardContent>
                 <p className="text-muted-foreground mb-3">
-                  Join our active community for quick help and discussions with other developers.
+                  Присоединяйтесь к сообществу, чтобы быстро получать помощь и
+                  обсуждать вопросы с другими пользователями.
                 </p>
-                <Button variant="outline" size="sm" className="cursor-pointer" asChild>
-                  <a href="https://discord.com/invite/XEQhPc9a6p" target="_blank" rel="noopener noreferrer">
-                    Join Discord
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="cursor-pointer"
+                  asChild
+                >
+                  <a
+                    href="https://discord.com/invite/XEQhPc9a6p"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    Войти в Discord
                   </a>
                 </Button>
               </CardContent>
@@ -99,11 +112,20 @@ export function ContactSection() {
               </CardHeader>
               <CardContent>
                 <p className="text-muted-foreground mb-3">
-                  Report bugs, request features, or contribute to our open source repository.
+                  Сообщайте об ошибках и оставляйте запросы — всё в одном месте.
                 </p>
-                <Button variant="outline" size="sm" className="cursor-pointer" asChild>
-                  <a href="https://github.com/silicondeck/shadcn-dashboard-landing-template/issues" target="_blank" rel="noopener noreferrer">
-                    View on GitHub
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="cursor-pointer"
+                  asChild
+                >
+                  <a
+                    href="https://github.com/silicondeck/shadcn-dashboard-landing-template/issues"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    Открыть на GitHub
                   </a>
                 </Button>
               </CardContent>
@@ -113,17 +135,20 @@ export function ContactSection() {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <BookOpen className="h-5 w-5 text-primary" />
-                  Documentation
+                  Документация
                 </CardTitle>
               </CardHeader>
               <CardContent>
                 <p className="text-muted-foreground mb-3">
-                  Browse our comprehensive guides, tutorials, and component documentation.
+                  Руководства и материалы по работе с сервисом.
                 </p>
-                <Button variant="outline" size="sm" className="cursor-pointer" asChild>
-                  <a href="#">
-                    View Docs
-                  </a>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="cursor-pointer"
+                  asChild
+                >
+                  <a href="#">Открыть</a>
                 </Button>
               </CardContent>
             </Card>
@@ -135,19 +160,22 @@ export function ContactSection() {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Mail className="h-5 w-5" />
-                  Send us a message
+                  Написать нам
                 </CardTitle>
               </CardHeader>
               <CardContent>
                 <Form {...form}>
-                  <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+                  <form
+                    onSubmit={form.handleSubmit(onSubmit)}
+                    className="space-y-6"
+                  >
                     <div className="grid gap-4 sm:grid-cols-2">
                       <FormField
                         control={form.control}
                         name="firstName"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>First name</FormLabel>
+                            <FormLabel>Имя</FormLabel>
                             <FormControl>
                               <Input placeholder="John" {...field} />
                             </FormControl>
@@ -160,7 +188,7 @@ export function ContactSection() {
                         name="lastName"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Last name</FormLabel>
+                            <FormLabel>Фамилия</FormLabel>
                             <FormControl>
                               <Input placeholder="Doe" {...field} />
                             </FormControl>
@@ -176,7 +204,11 @@ export function ContactSection() {
                         <FormItem>
                           <FormLabel>Email</FormLabel>
                           <FormControl>
-                            <Input type="email" placeholder="john@example.com" {...field} />
+                            <Input
+                              type="email"
+                              placeholder="john@example.com"
+                              {...field}
+                            />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -187,9 +219,12 @@ export function ContactSection() {
                       name="subject"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Subject</FormLabel>
+                          <FormLabel>Тема</FormLabel>
                           <FormControl>
-                            <Input placeholder="Component request, bug report, general inquiry..." {...field} />
+                            <Input
+                              placeholder="Запрос, ошибка, вопрос..."
+                              {...field}
+                            />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -200,10 +235,10 @@ export function ContactSection() {
                       name="message"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Message</FormLabel>
+                          <FormLabel>Сообщение</FormLabel>
                           <FormControl>
                             <Textarea
-                              placeholder="Tell us how we can help you with ShadcnStore components..."
+                              placeholder="Опишите, чем мы можем помочь..."
                               rows={10}
                               className="min-h-50"
                               {...field}
@@ -214,7 +249,7 @@ export function ContactSection() {
                       )}
                     />
                     <Button type="submit" className="w-full cursor-pointer">
-                      Send Message
+                      Отправить
                     </Button>
                   </form>
                 </Form>
