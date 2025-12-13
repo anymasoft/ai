@@ -125,6 +125,10 @@ async function getClient() {
         // Добавляем колонку disabled к существующим таблицам users
         await addColumnIfNotExists(_client, 'users', 'disabled', 'INTEGER NOT NULL DEFAULT 0');
 
+        // Добавляем колонки для работы с платежами через ЮKassa
+        await addColumnIfNotExists(_client, 'users', 'expiresAt', 'INTEGER');
+        await addColumnIfNotExists(_client, 'users', 'paymentProvider', 'TEXT DEFAULT "free"');
+
         // Основные таблицы приложения
         await _client.execute(`CREATE TABLE IF NOT EXISTS competitors (
           id INTEGER PRIMARY KEY AUTOINCREMENT,

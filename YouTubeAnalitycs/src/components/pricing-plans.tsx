@@ -4,8 +4,9 @@ import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Sparkles, Check } from "lucide-react"
+import { Sparkles, Check, Loader2 } from "lucide-react"
 import { cn } from '@/lib/utils'
+import { useState } from "react"
 
 export interface PricingPlan {
   id: string
@@ -63,19 +64,58 @@ const defaultPlans: PricingPlan[] = [
   },
 ]
 
-export function PricingPlans({ 
-  plans = defaultPlans, 
-  mode = 'pricing', 
+export function PricingPlans({
+  plans = defaultPlans,
+  mode = 'pricing',
   currentPlanId,
-  onPlanSelect 
+  onPlanSelect
 }: PricingPlansProps) {
+  const [loadingPlanId, setLoadingPlanId] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const handlePayment = async (planId: string) => {
+    try {
+      setError(null);
+      setLoadingPlanId(planId);
+
+      // Отправляем запрос на создание платежа
+      const response = await fetch('/api/payments/yookassa/create', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ planId }),
+      });
+
+      const data = await response.json();
+
+      if (!data.success || !data.paymentUrl) {
+        setError(data.error || 'Ошибка при создании платежа');
+        return;
+      }
+
+      // Перенаправляем пользователя на страницу оплаты ЮKassa
+      window.location.href = data.paymentUrl;
+    } catch (err) {
+      console.error('Payment error:', err);
+      setError('Ошибка подключения к платежной системе');
+    } finally {
+      setLoadingPlanId(null);
+    }
+  };
+
   const getButtonText = (plan: PricingPlan) => {
     // Если это текущий план - показываем "Текущий план"
     if (currentPlanId === plan.id && mode === 'billing') {
       return 'Текущий план'
     }
 
-    // Кнопки для разных тарифов (одинаковые для обоих режимов)
+    // Для режима billing показываем "Оплатить"
+    if (mode === 'billing' && currentPlanId !== plan.id) {
+      return 'Оплатить'
+    }
+
+    // Кнопки для разных тарифов (для режима pricing)
     if (plan.id === 'basic') {
       return 'Сгенерировать сценарий'
     } else if (plan.id === 'professional') {
@@ -99,8 +139,14 @@ export function PricingPlans({
   }
 
   return (
-    <div className='grid gap-8 lg:grid-cols-3'>
-      {plans.map(tier => (
+    <div className='space-y-4'>
+      {error && (
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-red-700 text-sm">
+          {error}
+        </div>
+      )}
+      <div className='grid gap-8 lg:grid-cols-3'>
+        {plans.map(tier => (
         <Card
           key={tier.id}
           className={cn('flex flex-col pt-0', { 
@@ -145,21 +191,42 @@ export function PricingPlans({
             </div>
           </CardContent>
           <CardFooter>
-            <Button
-              className='w-full cursor-pointer'
-              size='lg'
-              variant={getButtonVariant(tier)}
-              disabled={isButtonDisabled(tier)}
-              aria-label={`${getButtonText(tier)} - ${tier.name} plan`}
-              asChild
-            >
-              <Link href="/sign-in">
-                {getButtonText(tier)}
-              </Link>
-            </Button>
+            {mode === 'billing' ? (
+              <Button
+                className='w-full cursor-pointer'
+                size='lg'
+                variant={getButtonVariant(tier)}
+                disabled={isButtonDisabled(tier) || loadingPlanId === tier.id}
+                onClick={() => handlePayment(tier.id)}
+                aria-label={`${getButtonText(tier)} - ${tier.name} plan`}
+              >
+                {loadingPlanId === tier.id ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Загрузка...
+                  </>
+                ) : (
+                  getButtonText(tier)
+                )}
+              </Button>
+            ) : (
+              <Button
+                className='w-full cursor-pointer'
+                size='lg'
+                variant={getButtonVariant(tier)}
+                disabled={isButtonDisabled(tier)}
+                aria-label={`${getButtonText(tier)} - ${tier.name} plan`}
+                asChild
+              >
+                <Link href="/sign-in">
+                  {getButtonText(tier)}
+                </Link>
+              </Button>
+            )}
           </CardFooter>
         </Card>
       ))}
+      </div>
     </div>
   )
 }
