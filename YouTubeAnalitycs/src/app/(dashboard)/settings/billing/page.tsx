@@ -1,6 +1,7 @@
 'use client'
 
 import { useSession } from "next-auth/react"
+import { usePathname } from "next/navigation"
 import { useEffect, useState } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Alert, AlertDescription } from "@/components/ui/alert"
@@ -17,12 +18,14 @@ interface ScriptUsageInfo {
 
 export default function BillingSettings() {
   const { data: session } = useSession();
+  const pathname = usePathname();
   const [scriptUsage, setScriptUsage] = useState<ScriptUsageInfo | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   const userPlan = (session?.user?.plan || "free") as PlanType;
 
   // Получаем информацию об использовании сценариев
+  // Добавлен pathname в dependency, чтобы fetch вызывался при каждом заходе на страницу
   useEffect(() => {
     if (!session?.user?.id) {
       setIsLoading(false);
@@ -59,7 +62,7 @@ export default function BillingSettings() {
     };
 
     fetchUsage();
-  }, [session?.user?.id]);
+  }, [session?.user?.id, pathname]);
 
   const handlePlanSelect = (planId: string) => {
     // Функция для обработки выбора плана
