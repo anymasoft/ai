@@ -510,7 +510,7 @@ export default function TrendingPage() {
             {momentumFilter !== "all" && ` • Тип: ${momentumFilter}`}
           </CardDescription>
           </CardHeader>
-          <CardContent className="overflow-x-hidden">
+          <CardContent>
             <Table>
               <TableHeader>
                 <TableRow>
@@ -740,7 +740,7 @@ export default function TrendingPage() {
                   <p className="text-sm text-muted-foreground mb-3">
                     Настройте баланс между строгой структурой и смелыми идеями.
                   </p>
-                  <div className="flex flex-col sm:flex-row gap-2">
+                  <div className="flex flex-col md:flex-row gap-2">
                     {SCRIPT_TEMPERATURE_PRESETS.map(preset => (
                       <label
                         key={preset.key}
