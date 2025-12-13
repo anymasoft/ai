@@ -38,7 +38,11 @@ export async function GET(request: NextRequest) {
 
     // Получаем paymentId из параметров
     const paymentId = request.nextUrl.searchParams.get("paymentId");
+
+    console.log(`[YooKassa Confirm] GET request received, paymentId: ${paymentId}`);
+
     if (!paymentId) {
+      console.log('[YooKassa Confirm] Missing paymentId parameter');
       return NextResponse.json(
         { ok: false, error: "paymentId обязателен" },
         { status: 400 }
@@ -47,7 +51,10 @@ export async function GET(request: NextRequest) {
 
     // Проверяем аутентификацию
     const session = await getServerSession(authOptions);
+    console.log(`[YooKassa Confirm] Session check - userId: ${session?.user?.id}`);
+
     if (!session?.user?.id) {
+      console.log('[YooKassa Confirm] Not authenticated');
       return NextResponse.json(
         { ok: false, error: "Требуется аутентификация" },
         { status: 401 }
@@ -90,6 +97,15 @@ export async function GET(request: NextRequest) {
 
     const paymentData = (await response.json()) as YooKassaPayment;
 
+    console.log(
+      `[YooKassa Confirm] Payment received from API:`,
+      JSON.stringify({
+        id: paymentData.id,
+        status: paymentData.status,
+        metadata: paymentData.metadata
+      })
+    );
+
     // Проверяем статус платежа
     if (paymentData.status !== "succeeded") {
       console.log(
@@ -114,6 +130,8 @@ export async function GET(request: NextRequest) {
 
     // Получаем planId из metadata
     const planId = paymentData.metadata?.planId;
+    console.log(`[YooKassa Confirm] Extracted planId: ${planId}`);
+
     if (!planId || !["basic", "professional", "enterprise"].includes(planId)) {
       console.error(
         `[YooKassa Confirm] Invalid planId in metadata: ${planId}`
