@@ -30,6 +30,8 @@ export async function getMonthlyScriptsUsed(userId: string): Promise<number> {
     const rows = Array.isArray(result) ? result : result.rows || [];
     const totalUsed = rows[0]?.totalUsed || 0;
 
+    console.log("[ScriptUsage] SUM query: userId =", userId, "result rows =", JSON.stringify(rows), "totalUsed =", totalUsed);
+
     return Number(totalUsed);
   } catch (error) {
     console.error("[ScriptUsage] Ошибка при получении monthly usage:", error);
@@ -55,6 +57,18 @@ export async function getBillingScriptUsageInfo(
   const monthlyUsed = await getMonthlyScriptsUsed(userId);
   const monthlyRemaining = Math.max(0, monthlyLimit - monthlyUsed);
   const percentageUsed = monthlyLimit > 0 ? Math.round((monthlyUsed / monthlyLimit) * 100) : 0;
+
+  // Логирование для диагностики: показать все записи пользователя в user_usage_daily
+  try {
+    const allRecords = await db.execute({
+      sql: `SELECT userId, day, scriptsUsed FROM user_usage_daily WHERE userId = ? ORDER BY day DESC LIMIT 10`,
+      args: [userId],
+    });
+    const records = Array.isArray(allRecords) ? allRecords : allRecords.rows || [];
+    console.log("[BillingScriptUsageInfo] user_usage_daily records for userId =", userId, ":", JSON.stringify(records));
+  } catch (err) {
+    console.error("[BillingScriptUsageInfo] Error selecting records:", err);
+  }
 
   return {
     monthlyLimit,

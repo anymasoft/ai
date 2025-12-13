@@ -938,6 +938,7 @@ export async function POST(req: NextRequest) {
     }
 
     const userId = session.user.id;
+    console.log("[GENERATOR] userId =", userId, "type:", typeof userId);
 
     // 2. Парсим тело запроса
     const body = await req.json();
@@ -1135,6 +1136,7 @@ export async function POST(req: NextRequest) {
     // 7.1. Инкремент использования сценариев
     const today = new Date().toISOString().split('T')[0];
     const updatedAtTs = Math.floor(Date.now() / 1000);
+    console.log("[GENERATOR] UPSERT user_usage_daily: userId =", userId, "day =", today, "scriptsUsed += 1");
 
     await db.execute({
       sql: `

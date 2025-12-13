@@ -27,9 +27,11 @@ export async function GET(req: NextRequest) {
 
     const userId = session.user.id;
     const plan = (session.user.plan || "free") as PlanType;
+    console.log("[BILLING] userId =", userId, "type:", typeof userId, "plan =", plan);
 
     // Получаем информацию об использовании
     const usageInfo = await getBillingScriptUsageInfo(userId, plan);
+    console.log("[BILLING] usageInfo =", JSON.stringify(usageInfo));
 
     return NextResponse.json(usageInfo, {
       headers: {
