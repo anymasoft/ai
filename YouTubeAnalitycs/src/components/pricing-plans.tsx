@@ -69,21 +69,12 @@ export function PricingPlans({
   onPlanSelect 
 }: PricingPlansProps) {
   const getButtonText = (plan: PricingPlan) => {
-    if (mode === 'billing') {
-      if (currentPlanId === plan.id) {
-        return 'Текущий план'
-      }
-      const currentIndex = plans.findIndex(p => p.id === currentPlanId)
-      const planIndex = plans.findIndex(p => p.id === plan.id)
-
-      if (planIndex > currentIndex) {
-        return 'Перейти на этот план'
-      } else if (planIndex < currentIndex) {
-        return 'Перейти на этот план'
-      }
+    // Если это текущий план - показываем "Текущий план"
+    if (currentPlanId === plan.id && mode === 'billing') {
+      return 'Текущий план'
     }
 
-    // Кнопки для разных тарифов
+    // Кнопки для разных тарифов (одинаковые для обоих режимов)
     if (plan.id === 'basic') {
       return 'Сгенерировать сценарий'
     } else if (plan.id === 'professional') {
