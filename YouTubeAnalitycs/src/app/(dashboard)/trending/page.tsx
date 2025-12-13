@@ -683,14 +683,14 @@ export default function TrendingPage() {
                         </button>
                       )}
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="max-w-[220px]">
                       <div className="space-y-1">
                         <div className="font-medium line-clamp-1" title={video.channelTitle}>
                           <a
                             href={`https://www.youtube.com/${video.channelHandle ? `@${video.channelHandle}` : `channel/${video.channelId}`}`}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="hover:text-primary hover:underline"
+                            className="hover:text-primary hover:underline truncate block"
                           >
                             {video.channelTitle}
                           </a>
