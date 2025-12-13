@@ -684,31 +684,29 @@ export default function TrendingPage() {
             </div>
 
             {/* Кнопка обновления */}
-            {userPlan !== "free" && (
-              <div className="flex items-center">
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      size="icon"
-                      variant="outline"
-                      onClick={() => {
-                        console.log("Обновить button clicked!")
-                        fetchMomentumVideos()
-                      }}
-                      disabled={loading}
-                      className="cursor-pointer"
-                    >
-                      <RefreshCw
-                        className={`h-4 w-4 ${loading ? "animate-spin" : ""}`}
-                      />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    Обновить видео
-                  </TooltipContent>
-                </Tooltip>
-              </div>
-            )}
+            <div className="flex items-center">
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    size="icon"
+                    variant="outline"
+                    onClick={() => {
+                      console.log("Обновить button clicked!")
+                      fetchMomentumVideos()
+                    }}
+                    disabled={loading}
+                    className="cursor-pointer"
+                  >
+                    <RefreshCw
+                      className={`h-4 w-4 ${loading ? "animate-spin" : ""}`}
+                    />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  Обновить видео
+                </TooltipContent>
+              </Tooltip>
+            </div>
           </div>
         </div>
       </div>
@@ -936,7 +934,7 @@ export default function TrendingPage() {
                               )}
                             </div>
                           </div>
-                        ) : userPlan !== "free" ? (
+                        ) : (
                           <button
                             onClick={() => refreshDate(video.videoId)}
                             disabled={refreshingId === video.videoId}
@@ -947,8 +945,6 @@ export default function TrendingPage() {
                               className={`h-4 w-4 ${refreshingId === video.videoId ? "animate-spin" : ""}`}
                             />
                           </button>
-                        ) : (
-                          <span className="text-xs text-muted-foreground">—</span>
                         )}
                       </TableCell>
                       <TableCell>
