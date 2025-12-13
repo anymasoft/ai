@@ -113,7 +113,7 @@ export default function BillingSettings() {
       {/* Информация о бесплатном доступе */}
       {userPlan !== 'free' && (
         <Alert className="border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-950">
-          <CardTitle className="text-base mb-2">Бесплатный доступ</CardTitle>
+          <CardTitle className="text-base mb-2">Free</CardTitle>
           <AlertDescription className="space-y-2">
             <p>
               Free — для знакомства с сервисом.
