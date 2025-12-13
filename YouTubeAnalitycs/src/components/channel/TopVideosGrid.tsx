@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { RefreshCw } from "lucide-react";
 import { formatPublishedDate } from "@/lib/date-formatting";
+import { useRefreshCooldown } from "@/hooks/use-refresh-cooldown";
 import type { UserPlan } from "@/config/limits";
 
 interface VideoData {
@@ -62,6 +63,12 @@ export function TopVideosGrid({ videos, channelId, userPlan = "free" }: TopVideo
   const [refreshingId, setRefreshingId] = useState<string | null>(null);
   const [videoList, setVideoList] = useState(videos);
 
+  // Hook для управления cooldown таймером обновления видео
+  const refreshCooldown = useRefreshCooldown({
+    userPlan,
+    cooldownMs: 60000,
+  });
+
   if (!channelId) {
     console.error("[TopVideosGrid] channelId is undefined, component cannot render");
     return null;
@@ -96,7 +103,15 @@ export function TopVideosGrid({ videos, channelId, userPlan = "free" }: TopVideo
 
   // Обновляет (переполняет кеш) и перезагружает топ-видео
   const handleRefreshVideos = async () => {
+    // Для free-плана запрос не делаем
+    if (refreshCooldown.isFreePlan) {
+      return;
+    }
+
+    // Запускаем cooldown (даже если платный пользователь)
+    refreshCooldown.startCooldown();
     setIsRefreshing(true);
+
     try {
       const res = await fetch(`/api/channel/${channelId}/videos/sync`, {
         method: "POST",
@@ -118,25 +133,40 @@ export function TopVideosGrid({ videos, channelId, userPlan = "free" }: TopVideo
     } catch (err) {
       console.error("[TopVideosGrid] Ошибка при обновлении:", err instanceof Error ? err.message : err);
     } finally {
-      setIsRefreshing(false);
+      // setIsRefreshing сбросится автоматически когда cooldown закончится
+      // но также сбросим здесь если был быстрый ответ
+      if (!refreshCooldown.isOnCooldown) {
+        setIsRefreshing(false);
+      }
     }
   };
 
   // Если видео нет → показываем сообщение
   if (videos.length === 0) {
+    const isButtonDisabled = refreshCooldown.isFreePlan || refreshCooldown.isOnCooldown || isRefreshing;
+
     return (
       <CardContent className="p-6">
         <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
           <p className="text-center mb-4">
             Видео ещё синхронизируются. Попробуйте обновить страницу через несколько секунд.
           </p>
-          <Button
-            onClick={handleRefreshVideos}
-            disabled={isRefreshing}
-            variant="outline"
-          >
-            {isRefreshing ? "Обновляем..." : "Обновить"}
-          </Button>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                onClick={handleRefreshVideos}
+                disabled={isButtonDisabled}
+                variant="outline"
+                className={refreshCooldown.isFreePlan ? "cursor-not-allowed" : "cursor-pointer"}
+              >
+                <RefreshCw className={`h-4 w-4 mr-2 ${(isRefreshing || refreshCooldown.isOnCooldown) ? "animate-spin" : ""}`} />
+                {refreshCooldown.isOnCooldown ? `Обновляем (${refreshCooldown.secondsRemaining}с)...` : isRefreshing ? "Обновляем..." : "Обновить"}
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              {refreshCooldown.getTooltipText('Обновить видео')}
+            </TooltipContent>
+          </Tooltip>
         </div>
       </CardContent>
     );
@@ -154,14 +184,17 @@ export function TopVideosGrid({ videos, channelId, userPlan = "free" }: TopVideo
             <TooltipTrigger asChild>
               <Button
                 onClick={handleRefreshVideos}
-                disabled={isRefreshing}
+                disabled={refreshCooldown.isFreePlan || refreshCooldown.isOnCooldown || isRefreshing}
                 size="icon"
                 variant="outline"
+                className={refreshCooldown.isFreePlan ? "cursor-not-allowed" : "cursor-pointer"}
               >
-                <RefreshCw className={`h-4 w-4 ${isRefreshing ? "animate-spin" : ""}`} />
+                <RefreshCw className={`h-4 w-4 ${(isRefreshing || refreshCooldown.isOnCooldown) ? "animate-spin" : ""}`} />
               </Button>
             </TooltipTrigger>
-            <TooltipContent>Обновить топ-видео</TooltipContent>
+            <TooltipContent>
+              {refreshCooldown.getTooltipText('Обновить топ-видео')}
+            </TooltipContent>
           </Tooltip>
         </div>
 
