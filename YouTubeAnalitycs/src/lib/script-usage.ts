@@ -12,10 +12,8 @@ import type { PlanType } from "@/config/plan-limits";
  */
 export async function getMonthlyScriptsUsed(userId: string): Promise<number> {
   try {
-    // Получаем текущую дату в формате YYYY-MM-01
     const today = new Date();
-    const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
-    const monthPrefix = firstDayOfMonth.toISOString().split('T')[0]; // YYYY-MM-01
+    const monthPrefix = today.toISOString().slice(0, 7);
 
     // Получаем использование всех дней в текущем месяце
     const result = await db.execute({
@@ -24,7 +22,7 @@ export async function getMonthlyScriptsUsed(userId: string): Promise<number> {
         FROM user_usage_daily
         WHERE userId = ? AND day LIKE ?
       `,
-      args: [userId, monthPrefix.substring(0, 7) + '%'], // YYYY-MM%
+      args: [userId, monthPrefix + '%'],
     });
 
     const rows = Array.isArray(result) ? result : result.rows || [];
