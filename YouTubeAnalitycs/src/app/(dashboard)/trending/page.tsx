@@ -20,6 +20,7 @@ import type { UserPlan } from "@/config/limits";
 import TrendingInsights from "./components/TrendingInsights";
 import { formatChannelHandle, extractHandleFromUrl } from "@/lib/formatHandle";
 import { formatMomentumPercent } from "@/lib/momentum-formatting";
+import { ScriptLimitPaywall } from "@/components/script-limit-paywall";
 
 type SortField = "momentumScore" | "viewsPerDay" | "viewCount" | "publishDate";
 type SortDirection = "asc" | "desc";
@@ -77,6 +78,8 @@ export default function TrendingPage() {
   const VIDEOS_COOLDOWN_MS = 86400000; // TODO: заменить на значение из API meta.cooldown.nextAllowedAt
   const [scriptSourceMode, setScriptSourceMode] = useState<"trending" | "specific">("trending");
   const [specificVideoUrl, setSpecificVideoUrl] = useState<string>("");
+  const [monthlyRemaining, setMonthlyRemaining] = useState<number>(0);
+  const [isPaywallOpen, setIsPaywallOpen] = useState(false);
 
   const getVideosCooldownTimeRemaining = () => {
     if (!videosCooldownUntil) return null;
@@ -153,6 +156,25 @@ export default function TrendingPage() {
   useEffect(() => {
     fetchMomentumVideos();
   }, [limit, fetchMomentumVideos]);
+
+  // Получаем информацию об использовании сценариев
+  useEffect(() => {
+    const fetchScriptUsage = async () => {
+      try {
+        const response = await fetch("/api/billing/script-usage");
+        if (response.ok) {
+          const data = await response.json();
+          setMonthlyRemaining(data.monthlyRemaining || 0);
+        }
+      } catch (err) {
+        console.error("[TrendingPage] Ошибка при получении usage:", err);
+      }
+    };
+
+    if (session?.user?.id) {
+      fetchScriptUsage();
+    }
+  }, [session?.user?.id]);
 
   const handleSort = (field: SortField) => {
     if (sortField === field) {
@@ -300,6 +322,12 @@ export default function TrendingPage() {
 
   // Функция для генерации сценариев
   const generateScripts = async () => {
+    // Проверяем лимит сценариев
+    if (monthlyRemaining === 0) {
+      setIsPaywallOpen(true);
+      return;
+    }
+
     // Валидация в зависимости от режима
     if (scriptSourceMode === "trending") {
       if (selectedVideos.size === 0) {
@@ -867,6 +895,7 @@ export default function TrendingPage() {
           <Button
             onClick={generateScripts}
             disabled={
+              monthlyRemaining === 0 ||
               (scriptSourceMode === "trending" && selectedVideos.size === 0) ||
               (scriptSourceMode === "specific" && !specificVideoUrl.trim()) ||
               generatingScripts
@@ -993,6 +1022,9 @@ export default function TrendingPage() {
           </div>
         </div>
       )}
+
+      {/* Paywall для исчерпания лимита сценариев */}
+      <ScriptLimitPaywall isOpen={isPaywallOpen} onClose={() => setIsPaywallOpen(false)} />
     </div>
   );
 }
