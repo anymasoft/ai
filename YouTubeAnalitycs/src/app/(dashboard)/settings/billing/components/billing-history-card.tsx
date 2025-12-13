@@ -1,46 +1,33 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Separator } from "@/components/ui/separator"
-
-interface BillingHistoryItem {
-  id: number
-  month: string
-  plan: string
-  amount: string
-  status: string
-}
+import { AlertCircle } from "lucide-react"
 
 interface BillingHistoryCardProps {
-  history: BillingHistoryItem[]
+  isEmpty?: boolean
 }
 
-export function BillingHistoryCard({ history }: BillingHistoryCardProps) {
+export function BillingHistoryCard({ isEmpty = true }: BillingHistoryCardProps) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Billing History</CardTitle>
+        <CardTitle>История платежей</CardTitle>
         <CardDescription>
-          View your past invoices and payments.
+          Просмотрите свои прошлые счёта и платежи.
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <div className="space-y-4">
-          {history.map((item, index) => (
-            <div key={item.id}>
-              <div className="flex items-center justify-between py-2">
-                <div>
-                  <div className="font-medium">{item.month}</div>
-                  <div className="text-sm text-muted-foreground">{item.plan}</div>
-                </div>
-                <div className="text-right">
-                  <div className="font-medium">{item.amount}</div>
-                  <Badge variant="secondary">{item.status}</Badge>
-                </div>
-              </div>
-              {index < history.length - 1 && <Separator />}
-            </div>
-          ))}
-        </div>
+        {isEmpty ? (
+          <div className="flex flex-col items-center justify-center py-8 text-center">
+            <AlertCircle className="h-10 w-10 text-muted-foreground mb-3" />
+            <p className="text-sm font-medium">История платежей пока пуста</p>
+            <p className="text-xs text-muted-foreground mt-1">
+              История платежей появится после вашего первого платежа.
+            </p>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {/* Здесь будет список платежей, когда интегрируется реальная платёжная система */}
+          </div>
+        )}
       </CardContent>
     </Card>
   )

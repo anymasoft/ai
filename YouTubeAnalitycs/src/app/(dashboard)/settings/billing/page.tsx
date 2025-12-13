@@ -1,77 +1,148 @@
-"use client"
+'use client'
 
 import { useSession } from "next-auth/react"
+import { useEffect, useState } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Alert, AlertDescription } from "@/components/ui/alert"
 import { PricingPlans } from "@/components/pricing-plans"
 import { CurrentPlanCard } from "./components/current-plan-card"
 import { BillingHistoryCard } from "./components/billing-history-card"
+import type { PlanType } from "@/config/plan-limits"
 
-// Import data
-import currentPlanData from "./data/current-plan.json"
-import billingHistoryData from "./data/billing-history.json"
+interface ScriptUsageInfo {
+  monthlyLimit: number
+  monthlyUsed: number
+  percentageUsed: number
+}
 
 export default function BillingSettings() {
   const { data: session } = useSession();
+  const [scriptUsage, setScriptUsage] = useState<ScriptUsageInfo | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  const userPlan = (session?.user?.plan || "free") as PlanType;
+
+  // Получаем информацию об использовании сценариев
+  useEffect(() => {
+    if (!session?.user?.id) {
+      setIsLoading(false);
+      return;
+    }
+
+    const fetchUsage = async () => {
+      try {
+        const response = await fetch("/api/billing/script-usage");
+        if (response.ok) {
+          const data = await response.json();
+          setScriptUsage(data);
+        } else {
+          // При ошибке используем нулевые значения
+          setScriptUsage({
+            monthlyLimit: 0,
+            monthlyUsed: 0,
+            percentageUsed: 0,
+          });
+        }
+      } catch (error) {
+        console.error("[BillingPage] Ошибка при получении usage:", error);
+        // При ошибке сети используем нулевые значения
+        setScriptUsage({
+          monthlyLimit: 0,
+          monthlyUsed: 0,
+          percentageUsed: 0,
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchUsage();
+  }, [session?.user?.id]);
 
   const handlePlanSelect = (planId: string) => {
-    console.log('Plan selected:', planId)
-    // Handle plan selection logic here
+    // Функция для обработки выбора плана
+    // В будущем здесь будет логика оплаты
+    console.log('Selected plan:', planId);
   }
 
-  // Get user plan from session, fallback to currentPlanData
-  const userPlan = session?.user?.plan || "free";
-
-  const planNames: Record<string, string> = {
-    free: "Бесплатный план",
-    basic: "Basic",
-    professional: "Professional",
-    enterprise: "Enterprise",
-  };
-
-  const planPrices: Record<string, string> = {
-    free: "0 ₽",
-    basic: "990 ₽/месяц",
-    professional: "2 490 ₽/месяц",
-    enterprise: "5 990 ₽/месяц",
-  };
-
-  const planData = {
-    ...currentPlanData,
-    planName: planNames[userPlan] || "Free Trial",
-    price: planPrices[userPlan] || "$0/mo",
-  };
+  // Если данные ещё загружаются, показываем прогресс
+  if (isLoading) {
+    return (
+      <div className="space-y-6 px-4 lg:px-6">
+        <div>
+          <h1 className="text-3xl font-bold">Тарифы и биллинг</h1>
+          <p className="text-muted-foreground">
+            Управляйте своей подпиской и информацией о биллинге.
+          </p>
+        </div>
+        <Card>
+          <CardContent className="pt-6">
+            <p className="text-sm text-muted-foreground">Загрузка...</p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 px-4 lg:px-6">
-        <div>
-          <h1 className="text-3xl font-bold">Plans & Billing</h1>
-          <p className="text-muted-foreground">
-            Manage your subscription and billing information.
-          </p>
-        </div>
-
-        <div className="grid gap-6 grid-cols-1 lg:grid-cols-2">
-          <CurrentPlanCard plan={planData} />
-          <BillingHistoryCard history={billingHistoryData} />
-        </div>
-
-        <div className="grid gap-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Available Plans</CardTitle>
-              <CardDescription>
-                Choose a plan that works best for you.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <PricingPlans
-                mode="billing"
-                currentPlanId={userPlan}
-                onPlanSelect={handlePlanSelect}
-              />
-            </CardContent>
-          </Card>
-        </div>
+      <div>
+        <h1 className="text-3xl font-bold">Тарифы и биллинг</h1>
+        <p className="text-muted-foreground">
+          Управляйте своей подпиской и информацией о биллинге.
+        </p>
       </div>
+
+      <div className="grid gap-6 grid-cols-1 lg:grid-cols-2">
+        {scriptUsage && (
+          <CurrentPlanCard
+            planId={userPlan}
+            monthlyUsed={scriptUsage.monthlyUsed}
+            monthlyLimit={scriptUsage.monthlyLimit}
+            percentageUsed={scriptUsage.percentageUsed}
+          />
+        )}
+        <BillingHistoryCard isEmpty={true} />
+      </div>
+
+      {/* Информация о бесплатном доступе */}
+      {userPlan !== 'free' && (
+        <Alert className="border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-950">
+          <CardTitle className="text-base mb-2">Бесплатный доступ</CardTitle>
+          <AlertDescription className="space-y-2">
+            <p>
+              Free — для знакомства с сервисом.
+            </p>
+            <ul className="list-disc list-inside space-y-1 ml-2">
+              <li>До 3 AI-сценариев в месяц</li>
+              <li>Генерация по YouTube-ссылке</li>
+              <li>Без кнопок «Обновить» в аналитике</li>
+              <li>Без повторной генерации</li>
+            </ul>
+            <p className="pt-2">
+              Чтобы использовать регулярно — выберите платный тариф.
+            </p>
+          </AlertDescription>
+        </Alert>
+      )}
+
+      <div className="grid gap-6">
+        <Card>
+          <CardHeader>
+            <CardTitle>Доступные тарифы</CardTitle>
+            <CardDescription>
+              Выберите тариф, который вам подойдёт.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <PricingPlans
+              mode="billing"
+              currentPlanId={userPlan}
+              onPlanSelect={handlePlanSelect}
+            />
+          </CardContent>
+        </Card>
+      </div>
+    </div>
   )
 }
