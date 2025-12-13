@@ -5,6 +5,79 @@ All changes are tracked in git history.
 
 ---
 
+## 2025-12-13 - Обновление страницы /settings/billing с реальными тарифами и лимитами сценариев
+
+### Основные изменения архитектуры
+
+Переделана страница `/settings/billing` для использования реальных данных вместо статических JSON файлов. Главное улучшение: прогресс-бар "оставшиеся дни" преобразован в прогресс "осталось сценариев (в этом месяце)".
+
+#### Новые файлы
+- `src/config/plan-limits.ts` - конфиг с единственным источником истины для лимитов по тарифам:
+  * Free: 3 сценария/месяц
+  * Basic: 30 сценариев/месяц
+  * Professional: 100 сценариев/месяц
+  * Enterprise: 300 сценариев/месяц
+
+- `src/lib/script-usage.ts` - утилиты для получения информации об использовании сценариев из БД:
+  * `getMonthlyScriptsUsed(userId)` - получить использование за текущий месяц
+  * `getBillingScriptUsageInfo(userId, plan)` - полная информация для страницы биллинга
+
+- `src/app/api/billing/script-usage/route.ts` - API endpoint для получения информации об использовании
+
+#### Изменённые компоненты
+- `CurrentPlanCard` - полная переделка:
+  * Теперь показывает "Сценарии в этом месяце" вместо "Дни"
+  * Формат: "X осталось из Y"
+  * Отображает процент использования
+  * Честное сообщение: "Статистика появится после первой генерации" если нет данных
+
+- `BillingHistoryCard` - переделка для real-world use:
+  * Вместо фейковых данных показывает empty state
+  * Готов к интеграции с реальной платёжной системой
+  * Сообщение: "История платежей пока пуста"
+
+- `page.tsx (billing)` - полная переделка:
+  * Удалены import'ы статических JSON файлов (data/current-plan.json, data/billing-history.json)
+  * План берётся из session.user.plan
+  * Информация об использовании получается через API /api/billing/script-usage
+  * Добавлен блок информации о Free плане (видно для всех платных планов):
+    "Free — для знакомства с сервисом. До 3 AI-сценариев в месяц..."
+  * Все тексты на русском
+  * Правильная обработка loading состояния
+
+#### Источники данных (Single Source of Truth)
+- Текущий план пользователя: `session.user.plan`
+- Цены/названия тарифов: `src/components/pricing-plans.tsx` (один источник)
+- Лимиты и использование: новый конфиг `src/config/plan-limits.ts` + БД `user_usage_daily`
+- Использованные сценарии в месяце: подсчёт из таблицы `user_usage_daily` за текущий месяц
+
+#### Валюта и форматирование
+- Все цены в рублях (₽): "990 ₽", "2 490 ₽", "5 990 ₽"
+- Никаких долларов на странице /settings/billing
+- Все текстовые метки на русском
+
+#### Удаленные файлы
+- `src/app/(dashboard)/settings/billing/data/current-plan.json` - больше не используется
+- `src/app/(dashboard)/settings/billing/data/billing-history.json` - больше не используется
+  (Файлы остаются на диске, но не импортируются и не используются на странице)
+
+#### Гарантии
+- Архитектура API полностью сохранена (никаких изменений в backend)
+- Существующие тарифные ID не изменены (free, basic, professional, enterprise)
+- Дизайн shadcn/ui не нарушен
+- Никаких новых библиотек не добавлено
+- Раздел settings переделан только для billing (остальные страницы settings не изменены)
+
+#### Затронутые файлы
+- `YouTubeAnalitycs/src/config/plan-limits.ts` - новый конфиг (создан)
+- `YouTubeAnalitycs/src/lib/script-usage.ts` - новая утилита (создана)
+- `YouTubeAnalitycs/src/app/api/billing/script-usage/route.ts` - новый API endpoint (создан)
+- `YouTubeAnalitycs/src/app/(dashboard)/settings/billing/page.tsx` - переделана
+- `YouTubeAnalitycs/src/app/(dashboard)/settings/billing/components/current-plan-card.tsx` - переделана
+- `YouTubeAnalitycs/src/app/(dashboard)/settings/billing/components/billing-history-card.tsx` - переделана
+
+---
+
 ## 2025-12-13 - Обновление текстов тарифов (только UI, логика подписок не изменена)
 
 ### Обновлены все текстовые описания тарифных планов
