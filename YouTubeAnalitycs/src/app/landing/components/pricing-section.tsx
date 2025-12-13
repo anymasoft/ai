@@ -99,30 +99,29 @@ export function PricingSection() {
         </div>
 
         {/* Free Plan Info */}
-        <div className="mx-auto max-w-6xl mb-8 p-6 rounded-xl border border-dashed bg-muted/30">
-          <div className="text-lg font-semibold mb-3">Бесплатный доступ</div>
-          <p className="text-sm text-muted-foreground leading-relaxed mb-4">
+        <div className="mx-auto max-w-2xl mb-12 p-8 rounded-xl border border-dashed bg-muted/30 text-center">
+          <p className="text-sm font-medium text-muted-foreground leading-relaxed mb-6">
             Free — для знакомства с сервисом
           </p>
-          <ul className="space-y-2 text-sm text-muted-foreground">
-            <li className="flex items-start gap-2">
-              <span className="mt-1.5">•</span>
+          <ul className="space-y-3 text-sm text-muted-foreground">
+            <li className="flex items-center justify-center gap-2">
+              <span>•</span>
               <span>До 3 AI-сценариев в месяц</span>
             </li>
-            <li className="flex items-start gap-2">
-              <span className="mt-1.5">•</span>
+            <li className="flex items-center justify-center gap-2">
+              <span>•</span>
               <span>Генерация по YouTube-ссылке</span>
             </li>
-            <li className="flex items-start gap-2">
-              <span className="mt-1.5">•</span>
+            <li className="flex items-center justify-center gap-2">
+              <span>•</span>
               <span>Без обновления аналитики</span>
             </li>
-            <li className="flex items-start gap-2">
-              <span className="mt-1.5">•</span>
+            <li className="flex items-center justify-center gap-2">
+              <span>•</span>
               <span>Без повторной генерации</span>
             </li>
-            <li className="flex items-start gap-2">
-              <span className="mt-1.5">•</span>
+            <li className="flex items-center justify-center gap-2">
+              <span>•</span>
               <span>Подходит, чтобы попробовать сервис перед оплатой</span>
             </li>
           </ul>
