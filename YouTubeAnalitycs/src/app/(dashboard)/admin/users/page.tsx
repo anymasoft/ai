@@ -254,6 +254,7 @@ export default function AdminUsersPage() {
               No users match the filters
             </div>
           ) : (
+            <>
             <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
@@ -437,6 +438,7 @@ export default function AdminUsersPage() {
                 </div>
               </div>
             )}
+            </>
           )}
         </CardContent>
       </Card>
