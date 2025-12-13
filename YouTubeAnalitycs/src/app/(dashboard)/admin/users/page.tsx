@@ -35,6 +35,8 @@ export default function AdminUsersPage() {
   const [filterEmail, setFilterEmail] = useState("")
   const [filterPlan, setFilterPlan] = useState("")
   const [filterStatus, setFilterStatus] = useState("")
+  const [pageSize, setPageSize] = useState(20)
+  const [currentPage, setCurrentPage] = useState(1)
 
   useEffect(() => {
     fetchUsers()
@@ -130,6 +132,17 @@ export default function AdminUsersPage() {
     return matchEmail && matchPlan && matchStatus
   })
 
+  // Пагинация
+  const totalPages = Math.ceil(filteredUsers.length / pageSize)
+  const startIndex = (currentPage - 1) * pageSize
+  const endIndex = startIndex + pageSize
+  const paginatedUsers = filteredUsers.slice(startIndex, endIndex)
+
+  // Сброс на первую страницу при изменении фильтров
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [filterEmail, filterPlan, filterStatus])
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -152,6 +165,7 @@ export default function AdminUsersPage() {
           <CardTitle>Users List</CardTitle>
           <CardDescription>
             {filteredUsers.length} of {users.length} users
+            {filteredUsers.length > 0 && ` • Page ${currentPage} of ${totalPages}`}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -192,6 +206,22 @@ export default function AdminUsersPage() {
                   <SelectItem value="">All status</SelectItem>
                   <SelectItem value="active">Active</SelectItem>
                   <SelectItem value="disabled">Disabled</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex-1 min-w-[120px]">
+              <label className="text-sm font-medium text-muted-foreground">Per page</label>
+              <Select value={String(pageSize)} onValueChange={(v) => {
+                setPageSize(Number(v))
+                setCurrentPage(1)
+              }}>
+                <SelectTrigger className="mt-1">
+                  <SelectValue placeholder="Rows per page" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="10">10 rows</SelectItem>
+                  <SelectItem value="20">20 rows</SelectItem>
+                  <SelectItem value="50">50 rows</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -237,7 +267,7 @@ export default function AdminUsersPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredUsers.map((user) => (
+                  {paginatedUsers.map((user) => (
                     <TableRow key={user.id}>
                       <TableCell className="font-mono text-sm">{user.email}</TableCell>
                       <TableCell>{user.name || "—"}</TableCell>
@@ -368,6 +398,45 @@ export default function AdminUsersPage() {
                 </TableBody>
               </Table>
             </div>
+
+            {filteredUsers.length > 0 && (
+              <div className="flex items-center justify-between border-t pt-4">
+                <div className="text-sm text-muted-foreground">
+                  Showing {startIndex + 1} to {Math.min(endIndex, filteredUsers.length)} of {filteredUsers.length} results
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                    disabled={currentPage === 1}
+                  >
+                    Previous
+                  </Button>
+                  <div className="flex items-center gap-1">
+                    {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                      <Button
+                        key={page}
+                        variant={currentPage === page ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => setCurrentPage(page)}
+                        className="min-w-[40px]"
+                      >
+                        {page}
+                      </Button>
+                    ))}
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                    disabled={currentPage === totalPages}
+                  >
+                    Next
+                  </Button>
+                </div>
+              </div>
+            )}
           )}
         </CardContent>
       </Card>
