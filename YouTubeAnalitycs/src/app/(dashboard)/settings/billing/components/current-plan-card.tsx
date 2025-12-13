@@ -12,6 +12,7 @@ interface CurrentPlanCardProps {
   monthlyUsed: number
   monthlyLimit: number
   percentageUsed: number
+  billingCycle?: "monthly" | "yearly"
 }
 
 export function CurrentPlanCard({
@@ -19,16 +20,23 @@ export function CurrentPlanCard({
   monthlyUsed,
   monthlyLimit,
   percentageUsed,
+  billingCycle = "monthly",
 }: CurrentPlanCardProps) {
   const plan = getPlanInfo(planId);
   const monthlyRemaining = Math.max(0, monthlyLimit - monthlyUsed);
+
+  // Рассчитываем стоимость в зависимости от billingCycle
+  const basePriceStr = plan.price;
+  const basePrice = parseInt(basePriceStr.replace(/\s/g, ''));
+  const displayPrice = billingCycle === 'yearly' ? (basePrice * 10) : basePrice;
+  const pricePeriod = billingCycle === 'yearly' ? 'в год' : 'в месяц';
 
   return (
     <Card>
       <CardHeader>
         <CardTitle>Текущий тариф</CardTitle>
         <CardDescription>
-          Вы используете план {plan.name}.
+          Вы используете план {plan.name} ({billingCycle === 'yearly' ? 'годовая' : 'месячная'} подписка).
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
@@ -39,8 +47,8 @@ export function CurrentPlanCard({
             <Badge variant="secondary">Активен</Badge>
           </div>
           <div className="text-right">
-            <div className="text-2xl font-bold">{plan.price}</div>
-            <div className="text-sm text-muted-foreground">в месяц</div>
+            <div className="text-2xl font-bold">{displayPrice} ₽</div>
+            <div className="text-sm text-muted-foreground">{pricePeriod}</div>
           </div>
         </div>
 

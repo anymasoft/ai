@@ -31,6 +31,7 @@ export default function BillingSettings() {
   const shouldReloadRef = useRef(false);
 
   const userPlan = (session?.user?.plan || "free") as PlanType;
+  const userBillingCycle = (session?.user?.billingCycle || "monthly") as "monthly" | "yearly";
 
   // DEV-only: подтверждение платежа через confirm endpoint
   // Вызывается когда пользователь возвращается с ЮKassa с success=1 в URL
@@ -240,6 +241,7 @@ export default function BillingSettings() {
             monthlyUsed={scriptUsage.monthlyUsed}
             monthlyLimit={scriptUsage.monthlyLimit}
             percentageUsed={scriptUsage.percentageUsed}
+            billingCycle={userBillingCycle}
           />
         )}
         <BillingHistoryCard isEmpty={true} />

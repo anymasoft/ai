@@ -128,6 +128,7 @@ async function getClient() {
         // Добавляем колонки для работы с платежами через ЮKassa
         await addColumnIfNotExists(_client, 'users', 'expiresAt', 'INTEGER');
         await addColumnIfNotExists(_client, 'users', 'paymentProvider', 'TEXT DEFAULT "free"');
+        await addColumnIfNotExists(_client, 'users', 'billingCycle', 'TEXT DEFAULT "monthly"');
 
         // Основные таблицы приложения
         await _client.execute(`CREATE TABLE IF NOT EXISTS competitors (
