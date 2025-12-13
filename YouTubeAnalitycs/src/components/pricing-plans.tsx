@@ -29,41 +29,35 @@ const defaultPlans: PricingPlan[] = [
     id: 'basic',
     name: 'Basic',
     description: 'Для начинающих авторов',
-    price: '$19',
-    frequency: '/month',
-    features: ['До 30 AI-сценариев в месяц', 'Отслеживание до 10 конкурентов', 'Базовая аналитика роликов и каналов', 'Генерация многоуровневых сценариев', 'Экспорт сценариев в PDF/текст', 'Поддержка по email'],
+    price: '990 ₽',
+    frequency: '/ месяц',
+    features: ['До 30 AI-сценариев в месяц', 'Генерация сценариев по любым YouTube-видео', 'Готовая структура сценария: захват внимания → развитие → финал', 'История всех сгенерированных сценариев', 'Подходит для личных каналов и первых запусков'],
   },
   {
     id: 'professional',
     name: 'Professional',
     description: 'Для растущих каналов',
-    price: '$79',
-    frequency: '/month',
+    price: '2 490 ₽',
+    frequency: '/ месяц',
     features: [
-      'Безлимитные сценарии',
-      'До 50 конкурентов',
-      'Расширенная аналитика',
-      'Исторические метрики',
-      'Приоритетная поддержка',
-      'Доступ к Premium-отчётам',
-      'Рекомендации «Что снимать завтра»',
+      'До 100 AI-сценариев в месяц',
+      'Подходит для регулярного выпуска контента',
+      'Удобно тестировать идеи и форматы видео',
+      'Один инструмент для всех сценариев канала',
     ],
     popular: true,
   },
   {
     id: 'enterprise',
     name: 'Enterprise',
-    description: 'Для профессиональных команд',
-    price: '$199',
-    frequency: '/month',
+    description: 'Для студий и команд',
+    price: '5 990 ₽',
+    frequency: '/ месяц',
     features: [
-      'Безлимитные сценарии',
-      'До 200 конкурентов',
-      'Полные аналитические отчёты',
-      'Индивидуальные рекомендации по контенту',
-      'Интеграции под бизнес',
-      'Выделенный менеджер',
-      'SLA и расширенная безопасность',
+      'До 300 AI-сценариев в месяц',
+      'Подходит для агентств и продакшн-команд',
+      'Коммерческое использование сценариев',
+      'Большие объёмы контента в одном аккаунте',
     ],
   },
 ]
@@ -75,20 +69,21 @@ export function PricingPlans({
   onPlanSelect 
 }: PricingPlansProps) {
   const getButtonText = (plan: PricingPlan) => {
-    if (mode === 'billing') {
-      if (currentPlanId === plan.id) {
-        return 'Current Plan'
-      }
-      const currentIndex = plans.findIndex(p => p.id === currentPlanId)
-      const planIndex = plans.findIndex(p => p.id === plan.id)
-      
-      if (planIndex > currentIndex) {
-        return 'Upgrade Plan'
-      } else if (planIndex < currentIndex) {
-        return 'Downgrade Plan'
-      }
+    // Если это текущий план - показываем "Текущий план"
+    if (currentPlanId === plan.id && mode === 'billing') {
+      return 'Текущий план'
     }
-    return 'Get Started'
+
+    // Кнопки для разных тарифов (одинаковые для обоих режимов)
+    if (plan.id === 'basic') {
+      return 'Сгенерировать сценарий'
+    } else if (plan.id === 'professional') {
+      return 'Создавать сценарии регулярно'
+    } else if (plan.id === 'enterprise') {
+      return 'Использовать в работе'
+    }
+
+    return 'Начать'
   }
 
   const getButtonVariant = (plan: PricingPlan) => {
@@ -118,10 +113,10 @@ export function PricingPlans({
               <Badge className='mx-auto flex w-fit gap-1.5 rounded-full font-medium'>
                 <Sparkles className='!size-4' />
                 {mode === 'pricing' && (
-                <span>Most Popular</span>
+                <span>Самый популярный</span>
                 )}
                 {currentPlanId === tier.id && mode === 'billing' && (
-                  <span>Current Plan</span>
+                  <span>Текущий план</span>
                 )}
               </Badge>
             </div>
