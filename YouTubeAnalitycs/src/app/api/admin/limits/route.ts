@@ -1,6 +1,15 @@
 import { NextRequest, NextResponse } from "next/server"
+import { z } from "zod"
 import { verifyAdminAccess } from "@/lib/admin-api"
 import { db } from "@/lib/db"
+
+// Схема валидации для PATCH запроса
+const updateLimitsSchema = z.object({
+  userId: z.string().min(1, "userId is required"),
+  analysesPerDay: z.number().int().min(0).max(10000).optional(),
+  scriptsPerDay: z.number().int().min(0).max(10000).optional(),
+  cooldownHours: z.number().int().min(0).max(168).optional(), // макс 7 дней
+})
 
 export async function GET(request: NextRequest) {
   const { isAdmin, response } = await verifyAdminAccess(request)
@@ -47,15 +56,17 @@ export async function PATCH(request: NextRequest) {
 
   try {
     const body = await request.json()
-    const { userId, analysesPerDay, scriptsPerDay, cooldownHours } = body
 
-    if (!userId) {
+    // Валидируем данные
+    const validation = updateLimitsSchema.safeParse(body)
+    if (!validation.success) {
       return NextResponse.json(
-        { error: "userId is required" },
+        { error: `Validation error: ${validation.error.errors[0].message}` },
         { status: 400 }
       )
     }
 
+    const { userId, analysesPerDay, scriptsPerDay, cooldownHours } = validation.data
     const updatedAt = Math.floor(Date.now() / 1000)
 
     // Insert or update user_limits
