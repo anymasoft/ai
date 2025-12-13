@@ -1,7 +1,7 @@
 'use client'
 
 import { useSession } from "next-auth/react"
-import { useEffect, useState } from "react"
+import { useEffect, useState, useRef } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Alert, AlertDescription } from "@/components/ui/alert"
@@ -25,11 +25,15 @@ export default function BillingSettings() {
   const [isConfirming, setIsConfirming] = useState(false);
   const [confirmError, setConfirmError] = useState<string | null>(null);
   const [confirmSuccess, setConfirmSuccess] = useState(false);
+  
+  // Защита от повторного вызова confirm
+  const confirmProcessedRef = useRef(false);
 
   const userPlan = (session?.user?.plan || "free") as PlanType;
 
   // DEV-only: подтверждение платежа через confirm endpoint
   // Вызывается когда пользователь возвращается с ЮKassa с paymentId в URL
+  // Защита от повторного вызова через confirmProcessedRef
   useEffect(() => {
     const confirmPayment = async () => {
       const isSuccess = searchParams.get('success') === '1';
@@ -39,10 +43,13 @@ export default function BillingSettings() {
       // 1. success=1 в URL
       // 2. paymentId присутствует
       // 3. Пользователь аутентифицирован
-      // 4. Ещё не подтверждали платёж на этой странице
-      if (!isSuccess || !paymentId || !session?.user?.id || isConfirming || confirmSuccess) {
+      // 4. Confirm ещё не был обработан в этой сессии
+      if (!isSuccess || !paymentId || !session?.user?.id || confirmProcessedRef.current) {
         return;
       }
+
+      // Помечаем что confirm уже был обработан - это защита от повторного вызова
+      confirmProcessedRef.current = true;
 
       try {
         setIsConfirming(true);
@@ -52,40 +59,37 @@ export default function BillingSettings() {
         const response = await fetch(`/api/payments/yookassa/confirm?paymentId=${paymentId}`);
         const data = await response.json();
 
-        if (!data.ok) {
+        if (data.ok) {
+          // Успешное подтверждение
+          setConfirmSuccess(true);
+
+          // Обновляем сессию для получения новых данных о плане
+          await updateSession();
+
+          // Обновляем usage информацию
+          await fetchUsage();
+
+          console.log('[BillingPage] Payment confirmed successfully');
+        } else {
           setConfirmError(data.error || 'Ошибка при подтверждении платежа');
-          return;
+          console.error('[BillingPage] Payment confirmation failed:', data.error);
         }
-
-        // Успешное подтверждение
-        setConfirmSuccess(true);
-
-        // Обновляем сессию для получения новых данных о плане
-        await updateSession();
-
-        // Обновляем usage информацию
-        fetchUsage();
-
-        // Удаляем параметры из URL (replaceState)
-        const url = new URL(window.location.href);
-        url.searchParams.delete('success');
-        url.searchParams.delete('paymentId');
-        window.history.replaceState({}, '', url.toString());
-
-        console.log('[BillingPage] Payment confirmed successfully');
       } catch (error) {
         console.error('[BillingPage] Error confirming payment:', error);
         setConfirmError('Ошибка при подтверждении платежа');
       } finally {
         setIsConfirming(false);
+
+        // Удаляем параметры из URL независимо от результата confirm
+        // Это предотвращает повторный вызов при перезагрузке страницы
+        router.replace('/settings/billing');
       }
     };
 
     confirmPayment();
-  }, [searchParams, session?.user?.id, isConfirming, confirmSuccess, updateSession]);
+  }, [searchParams, session?.user?.id, router, updateSession]);
 
   // Получаем информацию об использовании сценариев
-  // fetchUsage вызывается при маунте и при window focus (возврат во вкладку)
   const fetchUsage = async () => {
     try {
       const response = await fetch("/api/billing/script-usage", {
@@ -115,6 +119,7 @@ export default function BillingSettings() {
     }
   };
 
+  // Инициальная загрузка usage при маунте
   useEffect(() => {
     if (!session?.user?.id) {
       setIsLoading(false);

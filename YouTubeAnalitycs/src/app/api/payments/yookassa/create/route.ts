@@ -109,7 +109,7 @@ export async function POST(request: NextRequest) {
       },
       confirmation: {
         type: "redirect",
-        return_url: `${process.env.NEXTAUTH_URL}/settings/billing?success=1&paymentId={payment_id}`,
+        return_url: `${process.env.NEXTAUTH_URL}/settings/billing?success=1`,
       },
       capture: true,
       description: `Подписка на тариф ${getPlanName(
