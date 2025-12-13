@@ -1150,6 +1150,14 @@ export async function POST(req: NextRequest) {
 
     console.log(`[ScriptGenerate] Использование сценариев обновлено для ${userId} на ${today}`);
 
+    // Лог-проверка: убедиться, что запись реально в БД
+    const checkUsage = await db.execute({
+      sql: `SELECT scriptsUsed FROM user_usage_daily WHERE userId = ? AND day = ?`,
+      args: [userId, today],
+    });
+    const usageRecord = checkUsage.rows?.[0];
+    console.log(`[ScriptGenerate] ПРОВЕРКА БД: userId=${userId}, day=${today}, scriptsUsed=${usageRecord?.scriptsUsed || 'N/A'}`);
+
     // 8. Формируем ответ
     const savedScript: SavedScript = {
       id: scriptId,
