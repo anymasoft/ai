@@ -385,6 +385,20 @@ export default function TrendingPage() {
         setSelectedVideos(new Set());
         setSpecificVideoUrl("");
         console.log(`Successfully generated and saved script: ${data.script.title}`);
+
+        // Обновляем usage сразу после успешной генерации
+        try {
+          const usageRes = await fetch("/api/billing/script-usage", {
+            cache: "no-store",
+          });
+          if (usageRes.ok) {
+            const usageData = await usageRes.json();
+            setMonthlyRemaining(usageData.monthlyRemaining || 0);
+            console.log(`[TrendingPage] Usage обновлено: monthlyRemaining=${usageData.monthlyRemaining}`);
+          }
+        } catch (usageErr) {
+          console.error("[TrendingPage] Ошибка при обновлении usage:", usageErr);
+        }
       } else if (data.scripts) {
         // Старый формат ответа (для обратной совместимости)
         setGeneratedScripts(data.scripts || []);
