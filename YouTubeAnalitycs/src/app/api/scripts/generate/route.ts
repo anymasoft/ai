@@ -1132,6 +1132,24 @@ export async function POST(req: NextRequest) {
 
     console.log(`[ScriptGenerate] Сценарий сохранён в БД: ${scriptId}`);
 
+    // 7.1. Инкремент использования сценариев
+    const today = new Date().toISOString().split('T')[0];
+    const updatedAtTs = Math.floor(Date.now() / 1000);
+
+    await db.execute({
+      sql: `
+        INSERT INTO user_usage_daily (userId, day, scriptsUsed, updatedAt)
+        VALUES (?, ?, 1, ?)
+        ON CONFLICT(userId, day)
+        DO UPDATE SET
+          scriptsUsed = scriptsUsed + 1,
+          updatedAt = excluded.updatedAt
+      `,
+      args: [userId, today, updatedAtTs],
+    });
+
+    console.log(`[ScriptGenerate] Использование сценариев обновлено для ${userId} на ${today}`);
+
     // 8. Формируем ответ
     const savedScript: SavedScript = {
       id: scriptId,
