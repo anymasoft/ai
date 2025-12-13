@@ -696,7 +696,7 @@ export default function TrendingPage() {
                           </a>
                         </div>
                         {video.channelHandle ? (
-                          <div className="text-xs text-muted-foreground">
+                          <div className="text-xs text-muted-foreground max-w-[220px] truncate">
                             {formatChannelHandle(video)}
                           </div>
                         ) : (
