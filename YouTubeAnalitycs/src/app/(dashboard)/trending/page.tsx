@@ -526,6 +526,9 @@ export default function TrendingPage() {
               <li>Sync their videos and metrics</li>
               <li>Wait for momentum data to be calculated</li>
             </ul>
+            <p className="text-sm text-muted-foreground mt-4">
+              Или вы можете сгенерировать сценарий по ссылке на YouTube-видео ниже, даже без добавления конкурентов.
+            </p>
           </CardContent>
         </Card>
       ) : (
@@ -769,226 +772,226 @@ export default function TrendingPage() {
               </div>
             </div>
 
-            {/* Блок генерации сценария */}
-            <div className="mt-6 p-4 border rounded-lg bg-muted/30">
-              {/* Источник для генерации сценария */}
-              <div className="mb-6 pb-6 border-b">
-                <h4 className="font-medium mb-3">Источник для генерации сценария</h4>
-                <div className="space-y-3">
-                  <div className="flex items-start gap-3">
-                    <div className="flex items-center h-5">
-                      <input
-                        type="radio"
-                        id="scriptSourceTrending"
-                        name="scriptSource"
-                        value="trending"
-                        checked={scriptSourceMode === "trending"}
-                        onChange={() => setScriptSourceMode("trending")}
-                        className="h-4 w-4"
-                      />
-                    </div>
-                    <Label htmlFor="scriptSourceTrending" className="cursor-pointer flex-1">
-                      Использовать выбранные трендовые видео
-                    </Label>
-                  </div>
-                  <div className="flex items-start gap-3">
-                    <div className="flex items-center h-5">
-                      <input
-                        type="radio"
-                        id="scriptSourceSpecific"
-                        name="scriptSource"
-                        value="specific"
-                        checked={scriptSourceMode === "specific"}
-                        onChange={() => setScriptSourceMode("specific")}
-                        className="h-4 w-4"
-                      />
-                    </div>
-                    <Label htmlFor="scriptSourceSpecific" className="cursor-pointer flex-1">
-                      Использовать конкретное YouTube-видео
-                    </Label>
-                  </div>
-                </div>
-                <div className="mt-3 ml-7">
-                  <Input
-                    type="text"
-                    placeholder="Вставьте ссылку на YouTube-видео"
-                    disabled={scriptSourceMode === "trending"}
-                    value={specificVideoUrl}
-                    onChange={(e) => setSpecificVideoUrl(e.target.value)}
-                    className="w-full"
-                  />
-                  <p className="text-xs text-muted-foreground mt-2">
-                    Мы проанализируем структуру видео, хуки и подачу,<br />чтобы создать оригинальный сценарий в похожем стиле.
-                  </p>
-                </div>
-              </div>
-
-              {/* Селектор креативности */}
-              <div className="mb-4">
-                <h4 className="font-medium mb-1">Креативность сценария</h4>
-                <p className="text-sm text-muted-foreground mb-3">
-                  Настройте баланс между строгой структурой и смелыми идеями.
-                </p>
-                <div className="flex flex-col md:flex-row gap-2">
-                  {SCRIPT_TEMPERATURE_PRESETS.map(preset => (
-                    <label
-                      key={preset.key}
-                      className={`flex-1 flex items-start gap-2 p-3 rounded-md border cursor-pointer transition-colors ${
-                        selectedTemperatureKey === preset.key
-                          ? "border-primary bg-primary/5"
-                          : "border-border hover:border-primary/50"
-                      }`}
-                    >
-                      <input
-                        type="radio"
-                        name="scriptTemperature"
-                        value={preset.key}
-                        checked={selectedTemperatureKey === preset.key}
-                        onChange={() => setSelectedTemperatureKey(preset.key)}
-                        className="mt-1"
-                      />
-                      <div>
-                        <span className="font-medium text-sm">{preset.label}</span>
-                        <p className="text-xs text-muted-foreground mt-0.5">{preset.description}</p>
-                      </div>
-                    </label>
-                  ))}
-                </div>
-              </div>
-
-              {/* Кнопка генерации */}
-              <div className="flex justify-end">
-                <Button
-                  onClick={generateScripts}
-                  disabled={
-                    (scriptSourceMode === "trending" && selectedVideos.size === 0) ||
-                    (scriptSourceMode === "specific" && !specificVideoUrl.trim()) ||
-                    generatingScripts
-                  }
-                  className="gap-2"
-                >
-                  {generatingScripts ? (
-                    <>
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                      Генерация...
-                    </>
-                  ) : (
-                    <>
-                      <FileText className="h-4 w-4" />
-                      {scriptSourceMode === "trending"
-                        ? `Сгенерировать сценарий (${selectedVideos.size})`
-                        : "Сгенерировать сценарий"
-                      }
-                    </>
-                  )}
-                </Button>
-              </div>
-            </div>
-
-            {/* Отображение ошибок генерации */}
-            {generationError && (
-              <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-md">
-                <p className="text-red-700 font-medium">Ошибка генерации сценариев:</p>
-                <p className="text-red-600 text-sm mt-1">{generationError}</p>
-              </div>
-            )}
-
-            {/* Отображение сохранённого сценария */}
-            {savedScript && (
-              <div className="mt-8">
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-xl font-bold">Сценарий успешно создан и сохранён!</h3>
-                  <Link href={`/scripts/${savedScript.id}`}>
-                    <Button className="gap-2">
-                      <FileText className="h-4 w-4" />
-                      Открыть сценарий
-                      <ArrowRight className="h-4 w-4" />
-                    </Button>
-                  </Link>
-                </div>
-                <Card className="border border-green-200 bg-green-50/50">
-                  <CardHeader>
-                    <CardTitle className="text-lg">{savedScript.title}</CardTitle>
-                    <CardDescription className="text-sm text-gray-600">
-                      {savedScript.hook}
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="flex items-center gap-4 text-sm">
-                      <Badge variant="outline" className="gap-1">
-                        <FileText className="h-3 w-3" />
-                        ID: {savedScript.id.substring(0, 8)}...
-                      </Badge>
-                      <Badge variant="outline" className="gap-1">
-                        <Calendar className="h-3 w-3" />
-                        Создан: {new Date(savedScript.createdAt * 1000).toLocaleDateString("ru-RU")}
-                      </Badge>
-                      <Badge variant="outline" className="gap-1">
-                        <Video className="h-3 w-3" />
-                        Видео: {savedScript.sourceVideos.length}
-                      </Badge>
-                    </div>
-                    <div>
-                      <h4 className="font-medium mb-2">Структура сценария:</h4>
-                      <ul className="list-disc pl-5 space-y-1">
-                        {savedScript.outline.slice(0, 3).map((item, i) => (
-                          <li key={i} className="text-sm">{item}</li>
-                        ))}
-                        {savedScript.outline.length > 3 && (
-                          <li className="text-sm text-muted-foreground">
-                            ... и ещё {savedScript.outline.length - 3} пунктов
-                          </li>
-                        )}
-                      </ul>
-                    </div>
-                    <div className="text-sm text-muted-foreground">
-                      <p>Сценарий сохранён в вашу историю. Вы можете открыть его для просмотра полного текста, копирования или создания новых сценариев.</p>
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
-            )}
-
-            {/* Отображение сгенерированных сценариев (старый формат для обратной совместимости) */}
-            {generatedScripts && generatedScripts.length > 0 && !savedScript && (
-              <div className="mt-8">
-                <h3 className="text-xl font-bold mb-4">Сгенерированные сценарии</h3>
-                <div className="space-y-6">
-                  {generatedScripts.map((script, index) => (
-                    <Card key={index} className="border border-gray-200">
-                      <CardHeader>
-                        <CardTitle className="text-lg">{script.title}</CardTitle>
-                        <CardDescription className="text-sm text-gray-600">
-                          {script.hook}
-                        </CardDescription>
-                      </CardHeader>
-                      <CardContent className="space-y-4">
-                        <div>
-                          <h4 className="font-medium mb-2">Структура сценария:</h4>
-                          <ul className="list-disc pl-5 space-y-1">
-                            {script.outline.map((item, i) => (
-                              <li key={i} className="text-sm">{item}</li>
-                            ))}
-                          </ul>
-                        </div>
-                        <div>
-                          <h4 className="font-medium mb-2">Текст сценария:</h4>
-                          <div className="bg-gray-50 p-4 rounded-md text-sm whitespace-pre-wrap">
-                            {script.scriptText}
-                          </div>
-                        </div>
-                        <div>
-                          <h4 className="font-medium mb-2">Почему это должно выстрелить:</h4>
-                          <p className="text-sm">{script.whyItShouldWork}</p>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
-              </div>
-            )}
           </CardContent>
         </Card>
+      )}
+      {/* Блок генерации сценария */}
+      <div className="mt-6 p-4 border rounded-lg bg-muted/30">
+        {/* Источник для генерации сценария */}
+        <div className="mb-6 pb-6 border-b">
+          <h4 className="font-medium mb-3">Источник для генерации сценария</h4>
+          <div className="space-y-3">
+            <div className="flex items-start gap-3">
+              <div className="flex items-center h-5">
+                <input
+                  type="radio"
+                  id="scriptSourceTrending"
+                  name="scriptSource"
+                  value="trending"
+                  checked={scriptSourceMode === "trending"}
+                  onChange={() => setScriptSourceMode("trending")}
+                  className="h-4 w-4"
+                />
+              </div>
+              <Label htmlFor="scriptSourceTrending" className="cursor-pointer flex-1">
+                Использовать выбранные трендовые видео
+              </Label>
+            </div>
+            <div className="flex items-start gap-3">
+              <div className="flex items-center h-5">
+                <input
+                  type="radio"
+                  id="scriptSourceSpecific"
+                  name="scriptSource"
+                  value="specific"
+                  checked={scriptSourceMode === "specific"}
+                  onChange={() => setScriptSourceMode("specific")}
+                  className="h-4 w-4"
+                />
+              </div>
+              <Label htmlFor="scriptSourceSpecific" className="cursor-pointer flex-1">
+                Использовать конкретное YouTube-видео
+              </Label>
+            </div>
+          </div>
+          <div className="mt-3 ml-7">
+            <Input
+              type="text"
+              placeholder="Вставьте ссылку на YouTube-видео"
+              disabled={scriptSourceMode === "trending"}
+              value={specificVideoUrl}
+              onChange={(e) => setSpecificVideoUrl(e.target.value)}
+              className="w-full"
+            />
+            <p className="text-xs text-muted-foreground mt-2">
+              Мы проанализируем структуру видео, хуки и подачу,<br />чтобы создать оригинальный сценарий в похожем стиле.
+            </p>
+          </div>
+        </div>
+
+        {/* Селектор креативности */}
+        <div className="mb-4">
+          <h4 className="font-medium mb-1">Креативность сценария</h4>
+          <p className="text-sm text-muted-foreground mb-3">
+            Настройте баланс между строгой структурой и смелыми идеями.
+          </p>
+          <div className="flex flex-col md:flex-row gap-2">
+            {SCRIPT_TEMPERATURE_PRESETS.map(preset => (
+              <label
+                key={preset.key}
+                className={`flex-1 flex items-start gap-2 p-3 rounded-md border cursor-pointer transition-colors ${
+                  selectedTemperatureKey === preset.key
+                    ? "border-primary bg-primary/5"
+                    : "border-border hover:border-primary/50"
+                }`}
+              >
+                <input
+                  type="radio"
+                  name="scriptTemperature"
+                  value={preset.key}
+                  checked={selectedTemperatureKey === preset.key}
+                  onChange={() => setSelectedTemperatureKey(preset.key)}
+                  className="mt-1"
+                />
+                <div>
+                  <span className="font-medium text-sm">{preset.label}</span>
+                  <p className="text-xs text-muted-foreground mt-0.5">{preset.description}</p>
+                </div>
+              </label>
+            ))}
+          </div>
+        </div>
+
+        {/* Кнопка генерации */}
+        <div className="flex justify-end">
+          <Button
+            onClick={generateScripts}
+            disabled={
+              (scriptSourceMode === "trending" && selectedVideos.size === 0) ||
+              (scriptSourceMode === "specific" && !specificVideoUrl.trim()) ||
+              generatingScripts
+            }
+            className="gap-2"
+          >
+            {generatingScripts ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Генерация...
+              </>
+            ) : (
+              <>
+                <FileText className="h-4 w-4" />
+                {scriptSourceMode === "trending"
+                  ? `Сгенерировать сценарий (${selectedVideos.size})`
+                  : "Сгенерировать сценарий"
+                }
+              </>
+            )}
+          </Button>
+        </div>
+      </div>
+
+      {/* Отображение ошибок генерации */}
+      {generationError && (
+        <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-md">
+          <p className="text-red-700 font-medium">Ошибка генерации сценариев:</p>
+          <p className="text-red-600 text-sm mt-1">{generationError}</p>
+        </div>
+      )}
+
+      {/* Отображение сохранённого сценария */}
+      {savedScript && (
+        <div className="mt-8">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-xl font-bold">Сценарий успешно создан и сохранён!</h3>
+            <Link href={`/scripts/${savedScript.id}`}>
+              <Button className="gap-2">
+                <FileText className="h-4 w-4" />
+                Открыть сценарий
+                <ArrowRight className="h-4 w-4" />
+              </Button>
+            </Link>
+          </div>
+          <Card className="border border-green-200 bg-green-50/50">
+            <CardHeader>
+              <CardTitle className="text-lg">{savedScript.title}</CardTitle>
+              <CardDescription className="text-sm text-gray-600">
+                {savedScript.hook}
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex items-center gap-4 text-sm">
+                <Badge variant="outline" className="gap-1">
+                  <FileText className="h-3 w-3" />
+                  ID: {savedScript.id.substring(0, 8)}...
+                </Badge>
+                <Badge variant="outline" className="gap-1">
+                  <Calendar className="h-3 w-3" />
+                  Создан: {new Date(savedScript.createdAt * 1000).toLocaleDateString("ru-RU")}
+                </Badge>
+                <Badge variant="outline" className="gap-1">
+                  <Video className="h-3 w-3" />
+                  Видео: {savedScript.sourceVideos.length}
+                </Badge>
+              </div>
+              <div>
+                <h4 className="font-medium mb-2">Структура сценария:</h4>
+                <ul className="list-disc pl-5 space-y-1">
+                  {savedScript.outline.slice(0, 3).map((item, i) => (
+                    <li key={i} className="text-sm">{item}</li>
+                  ))}
+                  {savedScript.outline.length > 3 && (
+                    <li className="text-sm text-muted-foreground">
+                      ... и ещё {savedScript.outline.length - 3} пунктов
+                    </li>
+                  )}
+                </ul>
+              </div>
+              <div className="text-sm text-muted-foreground">
+                <p>Сценарий сохранён в вашу историю. Вы можете открыть его для просмотра полного текста, копирования или создания новых сценариев.</p>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* Отображение сгенерированных сценариев (старый формат для обратной совместимости) */}
+      {generatedScripts && generatedScripts.length > 0 && !savedScript && (
+        <div className="mt-8">
+          <h3 className="text-xl font-bold mb-4">Сгенерированные сценарии</h3>
+          <div className="space-y-6">
+            {generatedScripts.map((script, index) => (
+              <Card key={index} className="border border-gray-200">
+                <CardHeader>
+                  <CardTitle className="text-lg">{script.title}</CardTitle>
+                  <CardDescription className="text-sm text-gray-600">
+                    {script.hook}
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div>
+                    <h4 className="font-medium mb-2">Структура сценария:</h4>
+                    <ul className="list-disc pl-5 space-y-1">
+                      {script.outline.map((item, i) => (
+                        <li key={i} className="text-sm">{item}</li>
+                      ))}
+                    </ul>
+                  </div>
+                  <div>
+                    <h4 className="font-medium mb-2">Текст сценария:</h4>
+                    <div className="bg-gray-50 p-4 rounded-md text-sm whitespace-pre-wrap">
+                      {script.scriptText}
+                    </div>
+                  </div>
+                  <div>
+                    <h4 className="font-medium mb-2">Почему это должно выстрелить:</h4>
+                    <p className="text-sm">{script.whyItShouldWork}</p>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </div>
       )}
     </div>
   );
