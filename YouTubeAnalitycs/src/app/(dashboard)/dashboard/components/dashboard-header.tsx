@@ -73,10 +73,10 @@ export function DashboardHeader({ onPeriodChange, currentPeriod = "30" }: Dashbo
       {/* Title Section */}
       <div className="space-y-1.5">
         <h1 className="text-2xl sm:text-3xl font-bold tracking-tight bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text">
-          YouTube Analytics
+          YouTube Аналитика
         </h1>
         <p className="text-sm sm:text-base text-muted-foreground leading-relaxed">
-          Monitor competitor performance and discover trending content
+          Отслеживайте производительность конкурентов и находите популярный контент
         </p>
       </div>
 
@@ -86,12 +86,12 @@ export function DashboardHeader({ onPeriodChange, currentPeriod = "30" }: Dashbo
         <Select value={currentPeriod} onValueChange={onPeriodChange}>
           <SelectTrigger className="w-[140px] h-9 text-sm bg-background/50 backdrop-blur-sm border-border/50 hover:border-border transition-colors">
             <Calendar className="w-4 h-4 mr-2 text-muted-foreground" />
-            <SelectValue placeholder="Period" />
+            <SelectValue placeholder="Период" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="7">Last 7 days</SelectItem>
-            <SelectItem value="30">Last 30 days</SelectItem>
-            <SelectItem value="90">Last 90 days</SelectItem>
+            <SelectItem value="7">Последние 7 дней</SelectItem>
+            <SelectItem value="30">Последние 30 дней</SelectItem>
+            <SelectItem value="90">Последние 90 дней</SelectItem>
           </SelectContent>
         </Select>
 
@@ -109,17 +109,17 @@ export function DashboardHeader({ onPeriodChange, currentPeriod = "30" }: Dashbo
               ) : (
                 <Download className="w-4 h-4 mr-2" />
               )}
-              <span className="hidden sm:inline">Export</span>
+              <span className="hidden sm:inline">Экспорт</span>
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
             <DropdownMenuItem onClick={() => handleExport("png")} className="gap-2 cursor-pointer">
               <Image className="w-4 h-4" />
-              Export as PNG
+              Экспортировать как PNG
             </DropdownMenuItem>
             <DropdownMenuItem onClick={() => handleExport("pdf")} className="gap-2 cursor-pointer">
               <FileText className="w-4 h-4" />
-              Print / PDF
+              Печать / PDF
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
@@ -139,7 +139,7 @@ export function DashboardHeader({ onPeriodChange, currentPeriod = "30" }: Dashbo
         <Button size="sm" asChild className="h-9 gap-2">
           <Link href="/competitors">
             <Plus className="w-4 h-4" />
-            <span className="hidden sm:inline">Add Channel</span>
+            <span className="hidden sm:inline">Добавить канал</span>
           </Link>
         </Button>
       </div>

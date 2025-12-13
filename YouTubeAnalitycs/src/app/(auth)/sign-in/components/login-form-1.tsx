@@ -21,12 +21,12 @@ export function LoginForm1({
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
       if (event.origin !== window.location.origin) return;
-      
+
       if (event.data.type === "auth-success") {
         // Redirect to dashboard after successful auth
         window.location.href = "/dashboard";
       }
-      
+
       if (event.data.type === "auth-error") {
         // Redirect to error page (for disabled users or other errors)
         // The popup closed itself, so just redirect the main window
@@ -63,9 +63,9 @@ export function LoginForm1({
     <div className={cn("flex flex-col gap-6", className)} {...props}>
       <Card>
         <CardHeader className="text-center">
-          <CardTitle className="text-xl">Sign in to YouTube Analytics</CardTitle>
+          <CardTitle className="text-xl">Войдите в YouTube Аналитику</CardTitle>
           <CardDescription>
-            Sign in with your Google account
+            Войдите с помощью вашего аккаунта Google
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -81,7 +81,7 @@ export function LoginForm1({
                 fill="currentColor"
               />
             </svg>
-            Continue with Google
+            Продолжить с Google
           </Button>
         </CardContent>
       </Card>

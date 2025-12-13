@@ -83,19 +83,19 @@ export function NavUser({
               <DropdownMenuItem asChild className="cursor-pointer">
                 <Link href="/settings/account">
                   <CircleUser />
-                  Account
+                  Аккаунт
                 </Link>
               </DropdownMenuItem>
               <DropdownMenuItem asChild className="cursor-pointer">
                 <Link href="/settings/billing">
                   <CreditCard />
-                  Billing
+                  Биллинг
                 </Link>
               </DropdownMenuItem>
               <DropdownMenuItem asChild className="cursor-pointer">
                 <Link href="/settings/notifications">
                   <BellDot />
-                  Notifications
+                  Уведомления
                 </Link>
               </DropdownMenuItem>
             </DropdownMenuGroup>
@@ -105,7 +105,7 @@ export function NavUser({
               onClick={() => signOut({ callbackUrl: "/landing" })}
             >
               <LogOut />
-              Log out
+              Выход
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

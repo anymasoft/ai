@@ -126,31 +126,31 @@ export function CommandSearch({ open, onOpenChange }: CommandSearchProps) {
   const commandRef = React.useRef<HTMLDivElement>(null)
 
   const searchItems: SearchItem[] = [
-    // YouTube Analytics (Главные разделы)
-    { title: "Панель", url: "/dashboard", group: "Аналитика", icon: LayoutDashboard },
+    // YouTube Analytics (Main sections)
+    { title: "Панель управления", url: "/dashboard", group: "Аналитика", icon: LayoutDashboard },
     { title: "Конкуренты", url: "/competitors", group: "Аналитика", icon: Target },
-    { title: "Сравнение каналов", url: "/competitors/compare", group: "Аналитика", icon: GitCompare },
-    { title: "Тренды", url: "/trending", group: "Аналитика", icon: TrendingUp },
-    { title: "Сценарии", url: "/scripts", group: "Аналитика", icon: FileText },
-    { title: "AI-отчёты", url: "/reports", group: "Аналитика", icon: FileBarChart },
+    { title: "Сравнить каналы", url: "/competitors/compare", group: "Аналитика", icon: GitCompare },
+    { title: "Тренды контента", url: "/trending", group: "Аналитика", icon: TrendingUp },
+    { title: "Сценарии видео", url: "/scripts", group: "Аналитика", icon: FileText },
+    { title: "AI отчеты", url: "/reports", group: "Аналитика", icon: FileBarChart },
 
     // Chat & Collaboration
-    { title: "AI-ассистент", url: "/chat", group: "Инструменты", icon: MessageCircle },
+    { title: "AI ассистент", url: "/chat", group: "Инструменты", icon: MessageCircle },
 
     // Authentication
-    { title: "Вход", url: "/sign-in", group: "Аккаунт", icon: Shield },
-    { title: "Регистрация", url: "/sign-up", group: "Аккаунт", icon: Shield },
-    { title: "Восстановление пароля", url: "/forgot-password", group: "Аккаунт", icon: Shield },
+    { title: "Вход", url: "/sign-in", group: "Аут.", icon: Shield },
+    { title: "Регистрация", url: "/sign-up", group: "Аут.", icon: Shield },
+    { title: "Забыли пароль", url: "/forgot-password", group: "Аут.", icon: Shield },
 
     // Settings & Account
-    { title: "Профиль", url: "/settings/account", group: "Настройки", icon: Settings },
-    { title: "Биллинг и тарифы", url: "/settings/billing", group: "Настройки", icon: CreditCard },
-    { title: "Оформление", url: "/settings/appearance", group: "Настройки", icon: Palette },
-    { title: "Уведомления", url: "/settings/notifications", group: "Настройки", icon: Bell },
-    { title: "Подключения", url: "/settings/connections", group: "Настройки", icon: Link2 },
+    { title: "Аккаунт", url: "/settings/account", group: "Параметры", icon: Settings },
+    { title: "Биллинг и тарифы", url: "/settings/billing", group: "Параметры", icon: CreditCard },
+    { title: "Внешний вид", url: "/settings/appearance", group: "Параметры", icon: Palette },
+    { title: "Уведомления", url: "/settings/notifications", group: "Параметры", icon: Bell },
+    { title: "Подключения", url: "/settings/connections", group: "Параметры", icon: Link2 },
 
     // Info Pages
-    { title: "Вопросы и ответы", url: "/faqs", group: "Справка", icon: HelpCircle },
+    { title: "ЧАВ", url: "/faqs", group: "Информация", icon: HelpCircle },
   ]
 
   const groupedItems = searchItems.reduce((acc, item) => {
@@ -183,9 +183,9 @@ export function CommandSearch({ open, onOpenChange }: CommandSearchProps) {
           ref={commandRef}
           className="transition-transform duration-100 ease-out"
         >
-          <CommandInput placeholder="Что вы хотите сделать?" autoFocus />
+          <CommandInput placeholder="Что вам нужно?" autoFocus />
           <CommandList>
-            <CommandEmpty>Ничего не найдено.</CommandEmpty>
+            <CommandEmpty>Результаты не найдены.</CommandEmpty>
             {Object.entries(groupedItems).map(([group, items]) => (
               <CommandGroup key={group} heading={group}>
                 {items.map((item) => {

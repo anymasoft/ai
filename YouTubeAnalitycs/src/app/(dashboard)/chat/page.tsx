@@ -36,7 +36,7 @@ export default function ChatPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-96">
-        <div className="text-muted-foreground">Loading chat...</div>
+        <div className="text-muted-foreground">Загрузка чата...</div>
       </div>
     )
   }
