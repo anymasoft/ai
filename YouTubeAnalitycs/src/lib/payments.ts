@@ -22,16 +22,26 @@ export async function updateUserPlan({
   paymentProvider = "yookassa",
 }: UpdateUserPlanParams): Promise<void> {
   try {
+    console.log(
+      `[updateUserPlan] Starting update for user ${userId}, new plan: ${plan}, provider: ${paymentProvider}`
+    );
+
     const now = Math.floor(Date.now() / 1000);
-    await db.execute(
+    const result = await db.execute(
       `UPDATE users SET plan = ?, expiresAt = ?, paymentProvider = ?, updatedAt = ? WHERE id = ?`,
       [plan, expiresAt, paymentProvider, now, userId]
     );
+
     console.log(
-      `[Payments] Updated user ${userId} to plan ${plan}, expires at ${expiresAt}`
+      `[updateUserPlan] SQL execute completed for user ${userId}`
+    );
+
+    console.log(
+      `[updateUserPlan] success - user ${userId} updated to plan ${plan}, expires at ${expiresAt}`
     );
   } catch (error) {
-    console.error(`[Payments] Error updating user plan:`, error);
+    console.error(`[updateUserPlan] Error updating user plan:`, error);
+    console.error(`[updateUserPlan] Error details:`, JSON.stringify(error));
     throw error;
   }
 }
