@@ -69,7 +69,12 @@ export function PricingPlans({
   onPlanSelect 
 }: PricingPlansProps) {
   const getButtonText = (plan: PricingPlan) => {
+    // Если это текущий план - показываем "Текущий план"
+    if (currentPlanId === plan.id && mode === 'billing') {
+      return 'Текущий план'
+    }
 
+    // Кнопки для разных тарифов (одинаковые для обоих режимов)
     if (plan.id === 'basic') {
       return 'Сгенерировать сценарий'
     } else if (plan.id === 'professional') {
