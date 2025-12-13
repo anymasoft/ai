@@ -70,33 +70,6 @@ export function PricingSection() {
           <p className="text-lg text-muted-foreground mb-8">
             Выберите тариф, который подходит для вашего канала. Начните с базовых функций или выберите профессиональный план для больших объёмов генерации сценариев.
           </p>
-
-          {/* Billing Toggle */}
-          <div className="flex items-center justify-center mb-2">
-            <ToggleGroup
-              type="single"
-              value={isYearly ? "yearly" : "monthly"}
-              onValueChange={(value) => setIsYearly(value === "yearly")}
-              className="bg-secondary text-secondary-foreground border-none rounded-full p-1 cursor-pointer shadow-none"
-            >
-              <ToggleGroupItem
-                value="monthly"
-                className="data-[state=on]:bg-background data-[state=on]:border-border border-transparent border px-6 !rounded-full data-[state=on]:text-foreground hover:bg-transparent cursor-pointer transition-colors"
-              >
-                Помесячно
-              </ToggleGroupItem>
-              <ToggleGroupItem
-                value="yearly"
-                className="data-[state=on]:bg-background data-[state=on]:border-border border-transparent border px-6 !rounded-full data-[state=on]:text-foreground hover:bg-transparent cursor-pointer transition-colors"
-              >
-                Годовой
-              </ToggleGroupItem>
-            </ToggleGroup>
-          </div>
-
-          <p className="text-sm text-muted-foreground">
-            <span className="text-primary font-semibold">Экономия</span> при годовой подписке
-          </p>
         </div>
 
         {/* Free Plan Info */}
@@ -126,6 +99,34 @@ export function PricingSection() {
               <span>Подходит, чтобы попробовать сервис перед оплатой</span>
             </li>
           </ul>
+        </div>
+
+        {/* Billing Toggle - непосредственно над платными тарифами */}
+        <div className="mx-auto max-w-6xl text-center mb-8">
+          <div className="flex items-center justify-center mb-4">
+            <ToggleGroup
+              type="single"
+              value={isYearly ? "yearly" : "monthly"}
+              onValueChange={(value) => setIsYearly(value === "yearly")}
+              className="bg-secondary text-secondary-foreground border-none rounded-full p-1 cursor-pointer shadow-none"
+            >
+              <ToggleGroupItem
+                value="monthly"
+                className="data-[state=on]:bg-background data-[state=on]:border-border border-transparent border px-6 !rounded-full data-[state=on]:text-foreground hover:bg-transparent cursor-pointer transition-colors"
+              >
+                Помесячно
+              </ToggleGroupItem>
+              <ToggleGroupItem
+                value="yearly"
+                className="data-[state=on]:bg-background data-[state=on]:border-border border-transparent border px-6 !rounded-full data-[state=on]:text-foreground hover:bg-transparent cursor-pointer transition-colors"
+              >
+                Годовой
+              </ToggleGroupItem>
+            </ToggleGroup>
+          </div>
+          <p className="text-sm text-muted-foreground">
+            <span className="text-primary font-semibold">Экономия</span> при годовой подписке
+          </p>
         </div>
 
         {/* Pricing Cards */}
