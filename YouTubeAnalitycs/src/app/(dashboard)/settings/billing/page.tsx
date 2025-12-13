@@ -17,7 +17,7 @@ interface ScriptUsageInfo {
 }
 
 export default function BillingSettings() {
-  const { data: session, update: updateSession } = useSession();
+  const { data: session, update: updateSession, status } = useSession();
   const router = useRouter();
   const searchParams = useSearchParams();
   const [scriptUsage, setScriptUsage] = useState<ScriptUsageInfo | null>(null);
@@ -55,16 +55,39 @@ export default function BillingSettings() {
         setIsConfirming(true);
         setConfirmError(null);
 
+        console.log('[BillingPage] Starting payment confirmation, paymentId:', paymentId);
+
         // Вызываем dev-only confirm endpoint
         const response = await fetch(`/api/payments/yookassa/confirm?paymentId=${paymentId}`);
         const data = await response.json();
 
+        console.log('[BillingPage] Confirm response:', data);
+
         if (data.ok) {
+          console.log('[BillingPage] Confirm successful, updating session...');
+          
           // Успешное подтверждение
           setConfirmSuccess(true);
 
-          // Обновляем сессию для получения новых данных о плане
-          await updateSession();
+          // ЯВНО обновляем сессию через updateSession()
+          // Это может использовать кеш, поэтому дополнительно делаем fetch
+          const sessionUpdateResult = await updateSession();
+          console.log('[BillingPage] Session update result:', sessionUpdateResult);
+
+          // ДОПОЛНИТЕЛЬНО: явный fetch session для гарантированного обновления
+          // useSession() может использовать кеш, поэтому fetch напрямую
+          try {
+            const sessionResponse = await fetch('/api/auth/session', {
+              cache: 'no-store', // Отключаем кеш
+              headers: {
+                'Pragma': 'no-cache', // Дополнительный заголовок
+              }
+            });
+            const freshSession = await sessionResponse.json();
+            console.log('[BillingPage] Fresh session from /api/auth/session:', freshSession);
+          } catch (sessionFetchError) {
+            console.error('[BillingPage] Error fetching fresh session:', sessionFetchError);
+          }
 
           // Обновляем usage информацию
           await fetchUsage();
@@ -171,6 +194,17 @@ export default function BillingSettings() {
           Управляйте своей подпиской и информацией о биллинге.
         </p>
       </div>
+
+      {/* Отладочная информация о сессии (удалить в продакшене) */}
+      {process.env.NODE_ENV === 'development' && (
+        <Alert className="border-gray-200 bg-gray-50 dark:border-gray-800 dark:bg-gray-950">
+          <AlertDescription className="text-gray-700 text-xs font-mono">
+            <div>status: {status}</div>
+            <div>plan: {session?.user?.plan || 'undefined'}</div>
+            <div>userId: {session?.user?.id || 'undefined'}</div>
+          </AlertDescription>
+        </Alert>
+      )}
 
       {/* Сообщение об ошибке подтверждения платежа */}
       {confirmError && (

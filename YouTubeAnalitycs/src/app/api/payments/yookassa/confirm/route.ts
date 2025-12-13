@@ -130,6 +130,10 @@ export async function GET(request: NextRequest) {
       const thirtyDaysInSeconds = 30 * 24 * 60 * 60;
       const expiresAt = now + thirtyDaysInSeconds;
 
+      console.log(
+        `[YooKassa Confirm] Updating plan for user ${session.user.id} to ${planId} (expires at ${expiresAt})`
+      );
+
       await updateUserPlan({
         userId: session.user.id,
         plan: planId as "basic" | "professional" | "enterprise",
@@ -144,6 +148,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ ok: true });
     } catch (error) {
       console.error("[YooKassa Confirm] Error updating user plan:", error);
+      console.error("[YooKassa Confirm] Error details:", JSON.stringify(error));
       return NextResponse.json(
         { ok: false, error: "Ошибка при обновлении плана" },
         { status: 500 }
