@@ -104,7 +104,7 @@ export function UserFormDialog({ onAddUser }: UserFormDialogProps) {
                 <FormItem>
                   <FormLabel>Name</FormLabel>
                   <FormControl>
-                    <Input placeholder="Enter full name" {...field} />
+                    <Input placeholder="Введите полное имя" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -117,7 +117,7 @@ export function UserFormDialog({ onAddUser }: UserFormDialogProps) {
                 <FormItem>
                   <FormLabel>Email</FormLabel>
                   <FormControl>
-                    <Input placeholder="Enter email address" {...field} />
+                    <Input placeholder="Введите адрес электронной почты" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -133,7 +133,7 @@ export function UserFormDialog({ onAddUser }: UserFormDialogProps) {
                     <Select onValueChange={field.onChange} defaultValue={field.value}>
                       <FormControl>
                         <SelectTrigger className="cursor-pointer w-full">
-                          <SelectValue placeholder="Select role" />
+                          <SelectValue placeholder="Выберите роль" />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
@@ -157,7 +157,7 @@ export function UserFormDialog({ onAddUser }: UserFormDialogProps) {
                     <Select onValueChange={field.onChange} defaultValue={field.value}>
                       <FormControl>
                         <SelectTrigger className="cursor-pointer w-full">
-                          <SelectValue placeholder="Select plan" />
+                          <SelectValue placeholder="Выберите тариф" />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
@@ -181,7 +181,7 @@ export function UserFormDialog({ onAddUser }: UserFormDialogProps) {
                     <Select onValueChange={field.onChange} defaultValue={field.value}>
                       <FormControl>
                         <SelectTrigger className="cursor-pointer w-full">
-                          <SelectValue placeholder="Select billing" />
+                          <SelectValue placeholder="Выберите платеж" />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
@@ -203,7 +203,7 @@ export function UserFormDialog({ onAddUser }: UserFormDialogProps) {
                     <Select onValueChange={field.onChange} defaultValue={field.value}>
                       <FormControl>
                         <SelectTrigger className="cursor-pointer w-full">
-                          <SelectValue placeholder="Select status" />
+                          <SelectValue placeholder="Выберите статус" />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>

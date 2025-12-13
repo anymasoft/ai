@@ -189,7 +189,7 @@ export default function AdminLimitsPage() {
                 <label className="text-sm font-medium">Plan</label>
                 <Select value={filterPlan || "all"} onValueChange={setFilterPlan}>
                   <SelectTrigger className="mt-1">
-                    <SelectValue placeholder="All plans" />
+                    <SelectValue placeholder="Все тарифы" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">All plans</SelectItem>
@@ -207,7 +207,7 @@ export default function AdminLimitsPage() {
                   setCurrentPage(1)
                 }}>
                   <SelectTrigger className="mt-1">
-                    <SelectValue placeholder="Rows per page" />
+                    <SelectValue placeholder="Строк на странице" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="10">10 rows</SelectItem>

@@ -164,14 +164,14 @@ export default function CompetitorsPage() {
     <div className="container mx-auto px-4 md:px-6 space-y-6">
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-3xl font-bold">Competitors Analysis</h1>
-          <p className="text-muted-foreground">Track and analyze your competition</p>
+          <h1 className="text-3xl font-bold">Анализ конкурентов</h1>
+          <p className="text-muted-foreground">Отслеживайте и анализируйте ваших конкурентов</p>
         </div>
         {competitors.length >= 2 && (
           <Link href="/competitors/compare">
             <Button variant="default">
               <Scale className="mr-2 h-4 w-4" />
-              Compare All
+              Сравнить всех
             </Button>
           </Link>
         )}
@@ -201,7 +201,7 @@ export default function CompetitorsPage() {
           <form onSubmit={handleAddCompetitor} className="flex gap-2">
             <Input
               type="text"
-              placeholder="Enter channel handle or URL (e.g., @channelname)"
+              placeholder="Введите ручку канала или URL (например, @channelname)"
               value={handle}
               onChange={(e) => setHandle(e.target.value)}
               disabled={loading || isAtLimit}

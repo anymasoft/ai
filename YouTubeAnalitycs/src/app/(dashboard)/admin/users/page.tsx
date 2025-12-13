@@ -200,7 +200,7 @@ export default function AdminUsersPage() {
               <label className="text-sm font-medium text-muted-foreground">Status</label>
               <Select value={filterStatus || "all"} onValueChange={setFilterStatus}>
                 <SelectTrigger className="mt-1">
-                  <SelectValue placeholder="All status" />
+                  <SelectValue placeholder="Все статусы" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All status</SelectItem>
