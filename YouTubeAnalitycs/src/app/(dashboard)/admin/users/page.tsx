@@ -151,10 +151,66 @@ export default function AdminUsersPage() {
         <CardHeader>
           <CardTitle>Users List</CardTitle>
           <CardDescription>
-            {users.length} total users
+            {filteredUsers.length} of {users.length} users
           </CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-4">
+          <div className="flex gap-4 flex-wrap items-end">
+            <div className="flex-1 min-w-[200px]">
+              <label className="text-sm font-medium text-muted-foreground">Email</label>
+              <Input
+                placeholder="Filter by email..."
+                value={filterEmail}
+                onChange={(e) => setFilterEmail(e.target.value)}
+                className="mt-1"
+              />
+            </div>
+            <div className="flex-1 min-w-[150px]">
+              <label className="text-sm font-medium text-muted-foreground">Plan</label>
+              <Select value={filterPlan} onValueChange={setFilterPlan}>
+                <SelectTrigger className="mt-1">
+                  <SelectValue placeholder="All plans" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">All plans</SelectItem>
+                  <SelectItem value="free">Free</SelectItem>
+                  <SelectItem value="basic">Basic</SelectItem>
+                  <SelectItem value="professional">Professional</SelectItem>
+                  <SelectItem value="enterprise">Enterprise</SelectItem>
+                  <SelectItem value="pro">Pro</SelectItem>
+                  <SelectItem value="business">Business</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex-1 min-w-[150px]">
+              <label className="text-sm font-medium text-muted-foreground">Status</label>
+              <Select value={filterStatus} onValueChange={setFilterStatus}>
+                <SelectTrigger className="mt-1">
+                  <SelectValue placeholder="All status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">All status</SelectItem>
+                  <SelectItem value="active">Active</SelectItem>
+                  <SelectItem value="disabled">Disabled</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            {(filterEmail || filterPlan || filterStatus) && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setFilterEmail("")
+                  setFilterPlan("")
+                  setFilterStatus("")
+                }}
+              >
+                <X className="h-4 w-4 mr-1" />
+                Clear
+              </Button>
+            )}
+          </div>
+
           {loading ? (
             <div className="flex justify-center py-8">
               <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
@@ -162,6 +218,10 @@ export default function AdminUsersPage() {
           ) : users.length === 0 ? (
             <div className="py-8 text-center text-muted-foreground">
               No users found
+            </div>
+          ) : filteredUsers.length === 0 ? (
+            <div className="py-8 text-center text-muted-foreground">
+              No users match the filters
             </div>
           ) : (
             <div className="overflow-x-auto">
