@@ -1,11 +1,11 @@
 "use client"
 
-import Link from 'next/link'
-import Image from 'next/image'
-import { ArrowRight, Play, Star } from 'lucide-react'
-import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
-import { DotPattern } from '@/components/dot-pattern'
+import Link from "next/link"
+import Image from "next/image"
+import { ArrowRight, Play, Star } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
+import { DotPattern } from "@/components/dot-pattern"
 
 export function HeroSection() {
   return (
@@ -31,27 +31,35 @@ export function HeroSection() {
           <h1 className="mb-6 text-4xl font-bold tracking-tight sm:text-6xl lg:text-7xl">
             AI-сценарист для YouTube: анализирует конкурентов и
             <span className="bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
-              {" "}подсказывает, что снимать дальше{" "}
+              {" "}
+              подсказывает, что снимать дальше{" "}
             </span>
           </h1>
 
           {/* Subheading */}
           <p className="mx-auto mb-10 max-w-2xl text-lg text-muted-foreground sm:text-xl">
-            Добавьте конкурентов → нажмите Sync — сервис сам соберёт данные, выявит успешные паттерны и выдаст готовые сценарные идеи, основанные на том, что работает в вашей нише прямо сейчас.
+            Добавьте конкурентов → сервис сам соберёт данные,
+            выявит успешные паттерны и выдаст готовые сценарные идеи, основанные
+            на том, что работает в вашей нише прямо сейчас.
           </p>
 
           {/* CTA Buttons */}
           <div className="flex flex-col gap-4 sm:flex-row sm:justify-center">
             <Button size="lg" className="text-base cursor-pointer" asChild>
               <Link href="/sign-in">
-                Sign in
+                Войти
                 <ArrowRight className="ml-2 h-4 w-4" />
               </Link>
             </Button>
-            <Button variant="outline" size="lg" className="text-base cursor-pointer hidden" asChild>
+            <Button
+              variant="outline"
+              size="lg"
+              className="text-base cursor-pointer hidden"
+              asChild
+            >
               <a href="#">
                 <Play className="mr-2 h-4 w-4" />
-                Watch Demo
+                Смотреть демо
               </a>
             </Button>
           </div>
