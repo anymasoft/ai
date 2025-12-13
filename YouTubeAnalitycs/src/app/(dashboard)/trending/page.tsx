@@ -593,7 +593,7 @@ export default function TrendingPage() {
                         className="h-4 w-4 rounded border-gray-300"
                       />
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="max-w-[320px]">
                       <div className="space-y-1">
                         <div className="flex items-start gap-2">
                           <div className="flex-1 min-w-0">
@@ -601,7 +601,7 @@ export default function TrendingPage() {
                               href={video.url}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="font-medium hover:text-primary hover:underline line-clamp-2"
+                              className="font-medium hover:text-primary hover:underline line-clamp-2 block"
                               title={video.title}
                             >
                               {video.title}
