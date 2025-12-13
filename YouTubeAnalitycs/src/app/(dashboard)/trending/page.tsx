@@ -296,9 +296,17 @@ export default function TrendingPage() {
 
   // Функция для генерации сценариев
   const generateScripts = async () => {
-    if (selectedVideos.size === 0) {
-      setGenerationError("Выберите хотя бы одно видео для генерации сценария");
-      return;
+    // Валидация в зависимости от режима
+    if (scriptSourceMode === "trending") {
+      if (selectedVideos.size === 0) {
+        setGenerationError("Выберите хотя бы одно видео для генерации сценария");
+        return;
+      }
+    } else if (scriptSourceMode === "specific") {
+      if (!specificVideoUrl.trim()) {
+        setGenerationError("Введите ссылку на YouTube-видео");
+        return;
+      }
     }
 
     setGeneratingScripts(true);
@@ -312,15 +320,24 @@ export default function TrendingPage() {
     const temperature = selectedPreset.value;
 
     try {
+      const requestBody = scriptSourceMode === "trending"
+        ? {
+            sourceMode: "trending",
+            selectedVideoIds: Array.from(selectedVideos),
+            temperature,
+          }
+        : {
+            sourceMode: "youtube",
+            youtubeUrl: specificVideoUrl.trim(),
+            temperature,
+          };
+
       const response = await fetch("/api/scripts/generate", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
-          selectedVideoIds: Array.from(selectedVideos),
-          temperature,
-        }),
+        body: JSON.stringify(requestBody),
       });
 
       const data = await response.json();
@@ -332,8 +349,9 @@ export default function TrendingPage() {
       // Новый API возвращает один сохранённый сценарий
       if (data.script) {
         setSavedScript(data.script);
-        // Очищаем выбранные видео после успешной генерации
+        // Очищаем выбранные видео и URL после успешной генерации
         setSelectedVideos(new Set());
+        setSpecificVideoUrl("");
         console.log(`Successfully generated and saved script: ${data.script.title}`);
       } else if (data.scripts) {
         // Старый формат ответа (для обратной совместимости)
@@ -835,7 +853,11 @@ export default function TrendingPage() {
               <div className="flex justify-end">
                 <Button
                   onClick={generateScripts}
-                  disabled={selectedVideos.size === 0 || generatingScripts}
+                  disabled={
+                    (scriptSourceMode === "trending" && selectedVideos.size === 0) ||
+                    (scriptSourceMode === "specific" && !specificVideoUrl.trim()) ||
+                    generatingScripts
+                  }
                   className="gap-2"
                 >
                   {generatingScripts ? (
@@ -846,7 +868,10 @@ export default function TrendingPage() {
                   ) : (
                     <>
                       <FileText className="h-4 w-4" />
-                      Сгенерировать сценарий ({selectedVideos.size})
+                      {scriptSourceMode === "trending"
+                        ? `Сгенерировать сценарий (${selectedVideos.size})`
+                        : "Сгенерировать сценарий"
+                      }
                     </>
                   )}
                 </Button>
