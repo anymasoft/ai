@@ -511,215 +511,213 @@ export default function TrendingPage() {
           </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="rounded-md border">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="w-[40px]">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-[40px]">
+                    <input
+                      type="checkbox"
+                      checked={selectedVideos.size === filteredVideos.length && filteredVideos.length > 0}
+                      onChange={toggleSelectAll}
+                      className="h-4 w-4 rounded border-gray-300"
+                      title="Выбрать все"
+                    />
+                  </TableHead>
+                  <TableHead className="w-[300px]">
+                    <Button
+                      variant="ghost"
+                      className="p-0 h-auto font-medium"
+                      onClick={() => handleSort("publishDate")}
+                    >
+                      Video
+                    </Button>
+                  </TableHead>
+                  <TableHead>
+                    <Button
+                      variant="ghost"
+                      className="p-0 h-auto font-medium"
+                      onClick={() => handleSort("momentumScore")}
+                    >
+                      <TrendingUp className="h-4 w-4 mr-2 inline" />
+                      Momentum
+                    </Button>
+                  </TableHead>
+                  <TableHead>
+                    <Button
+                      variant="ghost"
+                      className="p-0 h-auto font-medium"
+                      onClick={() => handleSort("viewsPerDay")}
+                    >
+                      <BarChart3 className="h-4 w-4 mr-2 inline" />
+                      Views/Day
+                    </Button>
+                  </TableHead>
+                  <TableHead>
+                    <Button
+                      variant="ghost"
+                      className="p-0 h-auto font-medium"
+                      onClick={() => handleSort("viewCount")}
+                    >
+                      <Eye className="h-4 w-4 mr-2 inline" />
+                      Total Views
+                    </Button>
+                  </TableHead>
+                  <TableHead>
+                    <Button
+                      variant="ghost"
+                      className="p-0 h-auto font-medium"
+                    >
+                      <Calendar className="h-4 w-4 mr-2 inline" />
+                      Published
+                    </Button>
+                  </TableHead>
+                  <TableHead>
+                    <Button
+                      variant="ghost"
+                      className="p-0 h-auto font-medium"
+                    >
+                      <Users className="h-4 w-4 mr-2 inline" />
+                      Channel
+                    </Button>
+                  </TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {sortedVideos.map((video) => (
+                  <TableRow key={video.videoId}>
+                    <TableCell>
                       <input
                         type="checkbox"
-                        checked={selectedVideos.size === filteredVideos.length && filteredVideos.length > 0}
-                        onChange={toggleSelectAll}
+                        checked={selectedVideos.has(video.videoId)}
+                        onChange={() => toggleVideoSelection(video.videoId)}
                         className="h-4 w-4 rounded border-gray-300"
-                        title="Выбрать все"
                       />
-                    </TableHead>
-                    <TableHead className="w-[300px]">
-                      <Button
-                        variant="ghost"
-                        className="p-0 h-auto font-medium"
-                        onClick={() => handleSort("publishDate")}
-                      >
-                        Video
-                      </Button>
-                    </TableHead>
-                    <TableHead>
-                      <Button
-                        variant="ghost"
-                        className="p-0 h-auto font-medium"
-                        onClick={() => handleSort("momentumScore")}
-                      >
-                        <TrendingUp className="h-4 w-4 mr-2 inline" />
-                        Momentum
-                      </Button>
-                    </TableHead>
-                    <TableHead>
-                      <Button
-                        variant="ghost"
-                        className="p-0 h-auto font-medium"
-                        onClick={() => handleSort("viewsPerDay")}
-                      >
-                        <BarChart3 className="h-4 w-4 mr-2 inline" />
-                        Views/Day
-                      </Button>
-                    </TableHead>
-                    <TableHead>
-                      <Button
-                        variant="ghost"
-                        className="p-0 h-auto font-medium"
-                        onClick={() => handleSort("viewCount")}
-                      >
-                        <Eye className="h-4 w-4 mr-2 inline" />
-                        Total Views
-                      </Button>
-                    </TableHead>
-                    <TableHead>
-                      <Button
-                        variant="ghost"
-                        className="p-0 h-auto font-medium"
-                      >
-                        <Calendar className="h-4 w-4 mr-2 inline" />
-                        Published
-                      </Button>
-                    </TableHead>
-                    <TableHead>
-                      <Button
-                        variant="ghost"
-                        className="p-0 h-auto font-medium"
-                      >
-                        <Users className="h-4 w-4 mr-2 inline" />
-                        Channel
-                      </Button>
-                    </TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {sortedVideos.map((video) => (
-                    <TableRow key={video.videoId}>
-                      <TableCell>
-                        <input
-                          type="checkbox"
-                          checked={selectedVideos.has(video.videoId)}
-                          onChange={() => toggleVideoSelection(video.videoId)}
-                          className="h-4 w-4 rounded border-gray-300"
-                        />
-                      </TableCell>
-                      <TableCell>
-                        <div className="space-y-1">
-                          <div className="flex items-start gap-2">
-                            <div className="flex-1 min-w-0">
+                    </TableCell>
+                    <TableCell>
+                      <div className="space-y-1">
+                        <div className="flex items-start gap-2">
+                          <div className="flex-1 min-w-0">
+                            <a
+                              href={video.url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="font-medium hover:text-primary hover:underline line-clamp-2"
+                              title={video.title}
+                            >
+                              {video.title}
+                            </a>
+                            <div className="flex items-center gap-2 mt-1">
+                              {getCategoryBadge(video.category)}
                               <a
                                 href={video.url}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="font-medium hover:text-primary hover:underline line-clamp-2"
-                                title={video.title}
+                                className="text-muted-foreground hover:text-foreground"
                               >
-                                {video.title}
+                                <ExternalLink className="h-3 w-3" />
                               </a>
-                              <div className="flex items-center gap-2 mt-1">
-                                {getCategoryBadge(video.category)}
-                                <a
-                                  href={video.url}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="text-muted-foreground hover:text-foreground"
-                                >
-                                  <ExternalLink className="h-3 w-3" />
-                                </a>
-                              </div>
                             </div>
                           </div>
                         </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="space-y-1">
-                          <div className={`text-lg font-bold ${
-                            video.momentumScore > 0.5
-                              ? "text-green-600"
-                              : video.momentumScore > 0.1
-                                ? "text-blue-600"
-                                : video.momentumScore < -0.3
-                                  ? "text-red-600"
-                                  : "text-foreground"
-                          }`}>
-                            {formatMomentumPercent(video.momentumScore)}
-                          </div>
-                          <div className="text-xs text-muted-foreground">
-                            vs median
-                          </div>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="space-y-1">
+                        <div className={`text-lg font-bold ${
+                          video.momentumScore > 0.5
+                            ? "text-green-600"
+                            : video.momentumScore > 0.1
+                              ? "text-blue-600"
+                              : video.momentumScore < -0.3
+                                ? "text-red-600"
+                                : "text-foreground"
+                        }`}>
+                          {formatMomentumPercent(video.momentumScore)}
                         </div>
-                      </TableCell>
-                      <TableCell>
+                        <div className="text-xs text-muted-foreground">
+                          vs median
+                        </div>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="space-y-1">
+                        <div className="font-medium">
+                          {formatNumber(Math.round(video.viewsPerDay))}
+                        </div>
+                        <div className="text-xs text-muted-foreground">
+                          per day
+                        </div>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="space-y-1">
+                        <div className="font-medium">
+                          {formatNumber(video.viewCount)}
+                        </div>
+                        <div className="text-xs text-muted-foreground">
+                          total
+                        </div>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      {video.publishDate ? (
                         <div className="space-y-1">
                           <div className="font-medium">
-                            {formatNumber(Math.round(video.viewsPerDay))}
+                            {formatDistanceToNow(video.publishDate, {
+                              addSuffix: true,
+                              locale: ru,
+                            })}
                           </div>
                           <div className="text-xs text-muted-foreground">
-                            per day
+                            {new Date(video.publishDate).toLocaleDateString("ru-RU")}
                           </div>
                         </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="space-y-1">
-                          <div className="font-medium">
-                            {formatNumber(video.viewCount)}
-                          </div>
+                      ) : (
+                        <button
+                          onClick={() => refreshDate(video.videoId)}
+                          disabled={refreshingId === video.videoId}
+                          title="Обновить дату"
+                          className="text-muted-foreground hover:text-foreground disabled:opacity-50"
+                        >
+                          <RefreshCw className={`h-4 w-4 ${refreshingId === video.videoId ? "animate-spin" : ""}`} />
+                        </button>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      <div className="space-y-1">
+                        <div className="font-medium line-clamp-1" title={video.channelTitle}>
+                          <a
+                            href={`https://www.youtube.com/${video.channelHandle ? `@${video.channelHandle}` : `channel/${video.channelId}`}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="hover:text-primary hover:underline"
+                          >
+                            {video.channelTitle}
+                          </a>
+                        </div>
+                        {video.channelHandle ? (
                           <div className="text-xs text-muted-foreground">
-                            total
-                          </div>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        {video.publishDate ? (
-                          <div className="space-y-1">
-                            <div className="font-medium">
-                              {formatDistanceToNow(video.publishDate, {
-                                addSuffix: true,
-                                locale: ru,
-                              })}
-                            </div>
-                            <div className="text-xs text-muted-foreground">
-                              {new Date(video.publishDate).toLocaleDateString("ru-RU")}
-                            </div>
+                            {formatChannelHandle(video)}
                           </div>
                         ) : (
-                          <button
-                            onClick={() => refreshDate(video.videoId)}
-                            disabled={refreshingId === video.videoId}
-                            title="Обновить дату"
-                            className="text-muted-foreground hover:text-foreground disabled:opacity-50"
-                          >
-                            <RefreshCw className={`h-4 w-4 ${refreshingId === video.videoId ? "animate-spin" : ""}`} />
-                          </button>
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        <div className="space-y-1">
-                          <div className="font-medium line-clamp-1" title={video.channelTitle}>
+                          <div className="text-xs text-muted-foreground">
                             <a
-                              href={`https://www.youtube.com/${video.channelHandle ? `@${video.channelHandle}` : `channel/${video.channelId}`}`}
+                              href={`https://www.youtube.com/channel/${video.channelId}`}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="hover:text-primary hover:underline"
+                              className="hover:text-foreground"
+                              title="Открыть канал"
                             >
-                              {video.channelTitle}
+                              <ExternalLink className="h-3 w-3 inline" />
                             </a>
                           </div>
-                          {video.channelHandle ? (
-                            <div className="text-xs text-muted-foreground">
-                              {formatChannelHandle(video)}
-                            </div>
-                          ) : (
-                            <div className="text-xs text-muted-foreground">
-                              <a
-                                href={`https://www.youtube.com/channel/${video.channelId}`}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="hover:text-foreground"
-                                title="Открыть канал"
-                              >
-                                <ExternalLink className="h-3 w-3 inline" />
-                              </a>
-                            </div>
-                          )}
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
+                        )}
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
 
             <div className="mt-6 flex flex-col sm:flex-row items-center justify-between gap-4">
               <div className="text-sm text-muted-foreground">
