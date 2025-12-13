@@ -15,17 +15,17 @@ export function DashboardEmptyState() {
       </div>
 
       <h2 className="text-2xl md:text-3xl font-bold tracking-tight text-center mb-3">
-        Welcome to YouTube Analytics
+        Добро пожаловать в YouTube Аналитику
       </h2>
       <p className="text-muted-foreground text-center max-w-md mb-8 text-base leading-relaxed">
-        Start tracking competitor channels to unlock insights, discover trends, and generate content ideas.
+        Начните отслеживать каналы конкурентов, чтобы раскрыть инсайты, найти тренды и генерировать идеи для контента.
       </p>
 
       <div className="flex flex-col sm:flex-row gap-3 mb-12">
         <Button size="lg" asChild className="gap-2 px-6">
           <Link href="/competitors">
             <Plus className="w-4 h-4" />
-            Add Your First Channel
+            Добавить первый канал
             <ArrowRight className="w-4 h-4 ml-1" />
           </Link>
         </Button>
@@ -38,7 +38,7 @@ export function DashboardEmptyState() {
             <div className="w-10 h-10 rounded-lg bg-blue-500/10 flex items-center justify-center mb-2">
               <Users className="w-5 h-5 text-blue-500" />
             </div>
-            <CardTitle className="text-base">Track Competitors</CardTitle>
+            <CardTitle className="text-base">Отслеживать конкурентов</CardTitle>
           </CardHeader>
           <CardContent>
             <CardDescription className="text-sm leading-relaxed">
@@ -52,7 +52,7 @@ export function DashboardEmptyState() {
             <div className="w-10 h-10 rounded-lg bg-orange-500/10 flex items-center justify-center mb-2">
               <Zap className="w-5 h-5 text-orange-500" />
             </div>
-            <CardTitle className="text-base">Discover Momentum</CardTitle>
+            <CardTitle className="text-base">Откройте новые возможности</CardTitle>
           </CardHeader>
           <CardContent>
             <CardDescription className="text-sm leading-relaxed">
@@ -66,7 +66,7 @@ export function DashboardEmptyState() {
             <div className="w-10 h-10 rounded-lg bg-green-500/10 flex items-center justify-center mb-2">
               <TrendingUp className="w-5 h-5 text-green-500" />
             </div>
-            <CardTitle className="text-base">Generate Scripts</CardTitle>
+            <CardTitle className="text-base">Генерировать сценарии</CardTitle>
           </CardHeader>
           <CardContent>
             <CardDescription className="text-sm leading-relaxed">
