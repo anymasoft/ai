@@ -85,7 +85,7 @@ export default function CompetitorsPage() {
     setSuccess("")
 
     if (!handle.trim()) {
-      setError("Please enter a channel handle or URL")
+      setError("Введите ручку канала или URL")
       return
     }
 
@@ -101,15 +101,15 @@ export default function CompetitorsPage() {
       const data = await res.json()
 
       if (!res.ok) {
-        setError(data.error || "Failed to add competitor")
+        setError(data.error || "Ошибка добавления конкурента")
         return
       }
 
-      setSuccess("Competitor added successfully!")
+      setSuccess("Конкурент успешно добавлен!")
       setHandle("")
       fetchCompetitors()
     } catch (err) {
-      setError("An error occurred while adding the competitor")
+      setError("Произошла ошибка при добавлении конкурента")
     } finally {
       setLoading(false)
     }
@@ -127,14 +127,14 @@ export default function CompetitorsPage() {
     try {
       const res = await fetch(`/api/competitors/${competitorToDelete}`, { method: "DELETE" })
       if (res.ok) {
-        setSuccess("Competitor removed successfully")
+        setSuccess("Конкурент успешно удалён")
         fetchCompetitors()
       } else {
         const data = await res.json()
-        setError(data.error || "Failed to delete competitor")
+        setError(data.error || "Ошибка удаления конкурента")
       }
     } catch (err) {
-      setError("An error occurred while deleting the competitor")
+      setError("Произошла ошибка при удалении конкурента")
     } finally {
       setDeleteDialogOpen(false)
       setCompetitorToDelete(null)
@@ -192,9 +192,9 @@ export default function CompetitorsPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Add Competitor</CardTitle>
+          <CardTitle>Добавить конкурента</CardTitle>
           <CardDescription>
-            Add a YouTube channel to track ({competitors.length}/{limit} used)
+            Добавьте YouTube канал для отслеживания ({competitors.length}/{limit} используется)
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -209,12 +209,12 @@ export default function CompetitorsPage() {
             />
             <Button type="submit" disabled={loading || isAtLimit} className="cursor-pointer">
               {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Add
+              Добавить
             </Button>
           </form>
           {isAtLimit && (
             <p className="text-sm text-muted-foreground mt-2">
-              You have reached your limit for this plan. Upgrade to add more competitors.
+              Вы достигли лимита для этого плана. Обновитесь, чтобы добавить больше конкурентов.
             </p>
           )}
         </CardContent>
@@ -222,9 +222,9 @@ export default function CompetitorsPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Your Competitors</CardTitle>
+          <CardTitle>Ваши конкуренты</CardTitle>
           <CardDescription>
-            Manage and view your tracked competitors
+            Управляйте и просматривайте отслеживаемых конкурентов
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -234,18 +234,18 @@ export default function CompetitorsPage() {
             </div>
           ) : competitors.length === 0 ? (
             <p className="text-center text-muted-foreground py-8">
-              No competitors added yet. Add your first competitor above.
+              Конкуренты не добавлены. Добавьте первого конкурента выше.
             </p>
           ) : (
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Channel</TableHead>
-                  <TableHead>Subscribers</TableHead>
-                  <TableHead>Videos</TableHead>
-                  <TableHead>Total Views</TableHead>
-                  <TableHead>Last Synced</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
+                  <TableHead>Канал</TableHead>
+                  <TableHead>Подписчики</TableHead>
+                  <TableHead>Видео</TableHead>
+                  <TableHead>Всего просмотров</TableHead>
+                  <TableHead>Последняя синхронизация</TableHead>
+                  <TableHead className="text-right">Действия</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>

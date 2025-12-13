@@ -73,7 +73,7 @@ export default function ComparePage() {
 
       if (!res.ok) {
         const data = await res.json();
-        setError(data.error || "Failed to fetch competitors");
+        setError(data.error || "Ошибка загрузки конкурентов");
         return;
       }
 
@@ -81,7 +81,7 @@ export default function ComparePage() {
       setCompetitors(data.competitors || []);
     } catch (err) {
       console.error("Error fetching competitors:", err);
-      setError("Failed to load competitors");
+      setError("Ошибка загрузки конкурентов");
     } finally {
       setLoading(false);
     }
@@ -229,7 +229,7 @@ export default function ComparePage() {
 
       if (!res.ok) {
         const data = await res.json();
-        setAiError(data.error || "Failed to generate AI analysis");
+        setAiError(data.error || "Ошибка генерирования AI анализа");
         return;
       }
 
@@ -237,7 +237,7 @@ export default function ComparePage() {
       setAiAnalysis(analysis);
     } catch (err) {
       console.error("Error generating AI analysis:", err);
-      setAiError("Failed to generate AI analysis");
+      setAiError("Ошибка генерирования AI анализа");
     } finally {
       setAiLoading(false);
       isRegeneratingRef.current = false;
@@ -250,11 +250,11 @@ export default function ComparePage() {
     <div className="container mx-auto px-4 md:px-6 space-y-6">
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-3xl font-bold">Compare Competitors</h1>
-          <p className="text-muted-foreground">Side-by-side comparison of all your tracked channels</p>
+          <h1 className="text-3xl font-bold">Сравнить конкурентов</h1>
+          <p className="text-muted-foreground">Параллельное сравнение всех отслеживаемых каналов</p>
         </div>
         <Link href="/competitors">
-          <Button variant="outline">Back to Competitors</Button>
+          <Button variant="outline">Вернуться к конкурентам</Button>
         </Link>
       </div>
 
@@ -267,9 +267,9 @@ export default function ComparePage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Competitors Comparison</CardTitle>
+          <CardTitle>Сравнение конкурентов</CardTitle>
           <CardDescription>
-            Compare metrics across all your tracked competitors. Click column headers to sort.
+            Сравните метрики всех отслеживаемых конкурентов. Нажимайте на заголовки столбцов для сортировки.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -280,10 +280,10 @@ export default function ComparePage() {
           ) : competitors.length === 0 ? (
             <div className="text-center py-8">
               <p className="text-muted-foreground mb-4">
-                No competitors to compare yet. Add competitors first.
+                Нет конкурентов для сравнения. Добавьте конкурентов в первую очередь.
               </p>
               <Link href="/competitors">
-                <Button>Add Competitors</Button>
+                <Button>Добавить конкурентов</Button>
               </Link>
             </div>
           ) : (
@@ -291,44 +291,44 @@ export default function ComparePage() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Channel</TableHead>
+                    <TableHead>Канал</TableHead>
                     <TableHead
                       className="cursor-pointer hover:bg-muted/50"
                       onClick={() => handleSort("subscribers")}
                     >
-                      Subscribers {renderSortIcon("subscribers")}
+                      Подписчики {renderSortIcon("subscribers")}
                     </TableHead>
                     <TableHead
                       className="cursor-pointer hover:bg-muted/50"
                       onClick={() => handleSort("viewsTotal")}
                     >
-                      Total Views {renderSortIcon("viewsTotal")}
+                      Всего просмотров {renderSortIcon("viewsTotal")}
                     </TableHead>
                     <TableHead
                       className="cursor-pointer hover:bg-muted/50"
                       onClick={() => handleSort("videoCount")}
                     >
-                      Videos {renderSortIcon("videoCount")}
+                      Видео {renderSortIcon("videoCount")}
                     </TableHead>
                     <TableHead
                       className="cursor-pointer hover:bg-muted/50"
                       onClick={() => handleSort("avgViewsPerVideo")}
                     >
-                      Avg Views/Video {renderSortIcon("avgViewsPerVideo")}
+                      Среднее просмотров/видео {renderSortIcon("avgViewsPerVideo")}
                     </TableHead>
                     <TableHead
                       className="cursor-pointer hover:bg-muted/50"
                       onClick={() => handleSort("viewsPerDay")}
                     >
-                      Views/Day {renderSortIcon("viewsPerDay")}
+                      Просмотров/день {renderSortIcon("viewsPerDay")}
                     </TableHead>
                     <TableHead
                       className="cursor-pointer hover:bg-muted/50"
                       onClick={() => handleSort("growth7d")}
                     >
-                      Growth 7d {renderSortIcon("growth7d")}
+                      Рост за 7 дней {renderSortIcon("growth7d")}
                     </TableHead>
-                    <TableHead>Last Synced</TableHead>
+                    <TableHead>Последняя синхронизация</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -382,10 +382,10 @@ export default function ComparePage() {
               <div>
                 <CardTitle className="flex items-center gap-2">
                   <Sparkles className="h-5 w-5" />
-                  AI Comparative Analysis
+                  AI анализ сравнения
                 </CardTitle>
                 <CardDescription>
-                  Get AI-powered insights comparing all your competitors
+                  Получите AI-рекомендации по сравнению всех ваших конкурентов
                 </CardDescription>
               </div>
               {aiAnalysis && (
@@ -419,19 +419,18 @@ export default function ComparePage() {
             {!aiAnalysis ? (
               <div>
                 <p className="text-sm text-muted-foreground mb-4">
-                  Generate AI-powered comparative analysis of your competitors. This will analyze
-                  their strengths, weaknesses, and provide strategic recommendations.
+                  Создайте AI-анализ сравнения ваших конкурентов. Он анализирует их сильные и слабые стороны и предоставляет стратегические рекомендации.
                 </p>
                 <Button onClick={generateAIAnalysis} disabled={aiLoading}>
                   {aiLoading ? (
                     <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Analyzing...
+                      Анализирование...
                     </>
                   ) : (
                     <>
                       <Sparkles className="mr-2 h-4 w-4" />
-                      Generate AI Analysis
+                      Создать AI анализ
                     </>
                   )}
                 </Button>
@@ -439,13 +438,13 @@ export default function ComparePage() {
             ) : (
               <div className="space-y-6">
                 <div>
-                  <h3 className="font-semibold text-lg mb-2">Summary</h3>
+                  <h3 className="font-semibold text-lg mb-2">Итоговое резюме</h3>
                   <p className="text-sm text-muted-foreground">{aiAnalysis.summary}</p>
                 </div>
 
                 {aiAnalysis.leaders.length > 0 && (
                   <div>
-                    <h3 className="font-semibold text-lg mb-2">Leaders</h3>
+                    <h3 className="font-semibold text-lg mb-2">Лидеры</h3>
                     <ul className="list-disc list-inside space-y-1">
                       {aiAnalysis.leaders.map((leader, index) => (
                         <li key={index} className="text-sm text-muted-foreground">
@@ -458,7 +457,7 @@ export default function ComparePage() {
 
                 {aiAnalysis.laggards.length > 0 && (
                   <div>
-                    <h3 className="font-semibold text-lg mb-2">Lagging Channels</h3>
+                    <h3 className="font-semibold text-lg mb-2">Отстающие каналы</h3>
                     <ul className="list-disc list-inside space-y-1">
                       {aiAnalysis.laggards.map((laggard, index) => (
                         <li key={index} className="text-sm text-muted-foreground">
@@ -471,7 +470,7 @@ export default function ComparePage() {
 
                 {aiAnalysis.strategies.length > 0 && (
                   <div>
-                    <h3 className="font-semibold text-lg mb-2">Observed Strategies</h3>
+                    <h3 className="font-semibold text-lg mb-2">Наблюдаемые стратегии</h3>
                     <ul className="list-disc list-inside space-y-1">
                       {aiAnalysis.strategies.map((strategy, index) => (
                         <li key={index} className="text-sm text-muted-foreground">
@@ -484,7 +483,7 @@ export default function ComparePage() {
 
                 {aiAnalysis.recommendations.length > 0 && (
                   <div>
-                    <h3 className="font-semibold text-lg mb-2">Recommendations</h3>
+                    <h3 className="font-semibold text-lg mb-2">Рекомендации</h3>
                     <ul className="list-disc list-inside space-y-1">
                       {aiAnalysis.recommendations.map((recommendation, index) => (
                         <li key={index} className="text-sm text-muted-foreground">
