@@ -99,8 +99,8 @@ export function PricingSection() {
         </div>
 
         {/* Free Plan Info */}
-        <div className="mx-auto max-w-2xl mb-12 p-8 rounded-xl border border-dashed bg-muted/30 text-center">
-          <p className="text-sm font-medium text-muted-foreground leading-relaxed mb-6">
+        <div className="mx-auto max-w-6xl mb-12 p-8 rounded-xl border border-dashed bg-muted/30 text-center">
+          <p className="text-lg font-medium tracking-tight text-muted-foreground leading-relaxed mb-6">
             Free — для знакомства с сервисом
           </p>
           <ul className="space-y-3 text-sm text-muted-foreground">
