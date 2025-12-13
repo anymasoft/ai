@@ -510,7 +510,7 @@ export default function TrendingPage() {
             {momentumFilter !== "all" && ` • Тип: ${momentumFilter}`}
           </CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="overflow-x-hidden">
             <Table>
               <TableHeader>
                 <TableRow>
