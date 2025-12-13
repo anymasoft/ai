@@ -10,54 +10,47 @@ const plans = [
   {
     name: 'Basic',
     description: 'Для начинающих авторов',
-    monthlyPrice: 19,
-    yearlyPrice: 15,
+    monthlyPrice: 990,
+    yearlyPrice: 9900,
     features: [
       'До 30 AI-сценариев в месяц',
-      'Отслеживание до 10 конкурентов',
-      'Базовая аналитика роликов и каналов',
-      'Генерация многоуровневых сценариев',
-      'Экспорт сценариев в PDF/текст',
-      'Поддержка по email'
+      'Генерация сценариев по любым YouTube-видео',
+      'Готовая структура сценария: захват внимания → развитие → финал',
+      'История всех сгенерированных сценариев',
+      'Подходит для личных каналов и первых запусков'
     ],
-    cta: 'Get Started',
+    cta: 'Сгенерировать сценарий',
     popular: false
   },
   {
     name: 'Professional',
     description: 'Для растущих каналов',
-    monthlyPrice: 79,
-    yearlyPrice: 63,
+    monthlyPrice: 2490,
+    yearlyPrice: 24900,
     features: [
-      'Безлимитные сценарии',
-      'До 50 конкурентов',
-      'Расширенная аналитика',
-      'Исторические метрики',
-      'Приоритетная поддержка',
-      'Доступ к Premium-отчётам',
-      'Рекомендации «Что снимать завтра»'
+      'До 100 AI-сценариев в месяц',
+      'Подходит для регулярного выпуска контента',
+      'Удобно тестировать идеи и форматы видео',
+      'Один инструмент для всех сценариев канала'
     ],
-    cta: 'Get Started',
+    cta: 'Создавать сценарии регулярно',
     popular: true,
-    includesPrevious: 'All Basic features, plus'
+    includesPrevious: 'Все возможности Basic, плюс'
   },
   {
     name: 'Enterprise',
-    description: 'Для профессиональных команд',
-    monthlyPrice: 199,
-    yearlyPrice: 159,
+    description: 'Для студий и команд',
+    monthlyPrice: 5990,
+    yearlyPrice: 59900,
     features: [
-      'Безлимитные сценарии',
-      'До 200 конкурентов',
-      'Полные аналитические отчёты',
-      'Индивидуальные рекомендации по контенту',
-      'Интеграции под бизнес',
-      'Выделенный менеджер',
-      'SLA и расширенная безопасность'
+      'До 300 AI-сценариев в месяц',
+      'Подходит для агентств и продакшн-команд',
+      'Коммерческое использование сценариев',
+      'Большие объёмы контента в одном аккаунте'
     ],
-    cta: 'Get Started',
+    cta: 'Использовать в работе',
     popular: false,
-    includesPrevious: 'All Professional features, plus'
+    includesPrevious: 'Все возможности Professional, плюс'
   }
 ]
 
@@ -69,12 +62,12 @@ export function PricingSection() {
       <div className="container mx-auto px-4 sm:px-6 lg:px-8">
         {/* Section Header */}
         <div className="mx-auto max-w-2xl text-center mb-12">
-          <Badge variant="outline" className="mb-4">Pricing Plans</Badge>
+          <Badge variant="outline" className="mb-4">Тарифные планы</Badge>
           <h2 className="text-3xl font-bold tracking-tight sm:text-4xl mb-4">
-            Choose your plan
+            Выберите подходящий план
           </h2>
           <p className="text-lg text-muted-foreground mb-8">
-            Выберите тариф, который подходит для вашего канала. Начните с базовых функций или выберите профессиональный план для расширенной аналитики и безлимитной генерации сценариев.
+            Выберите тариф, который подходит для вашего канала. Начните с базовых функций или выберите профессиональный план для больших объёмов генерации сценариев.
           </p>
 
           {/* Billing Toggle */}
@@ -89,20 +82,50 @@ export function PricingSection() {
                 value="monthly"
                 className="data-[state=on]:bg-background data-[state=on]:border-border border-transparent border px-6 !rounded-full data-[state=on]:text-foreground hover:bg-transparent cursor-pointer transition-colors"
               >
-                Monthly
+                Помесячно
               </ToggleGroupItem>
               <ToggleGroupItem
                 value="yearly"
                 className="data-[state=on]:bg-background data-[state=on]:border-border border-transparent border px-6 !rounded-full data-[state=on]:text-foreground hover:bg-transparent cursor-pointer transition-colors"
               >
-                Annually
+                Годовой
               </ToggleGroupItem>
             </ToggleGroup>
           </div>
 
           <p className="text-sm text-muted-foreground">
-            <span className="text-primary font-semibold">Save 20%</span> On Annual Billing
+            <span className="text-primary font-semibold">Экономия</span> при годовой подписке
           </p>
+        </div>
+
+        {/* Free Plan Info */}
+        <div className="mx-auto max-w-6xl mb-8 p-6 rounded-xl border border-dashed bg-muted/30">
+          <div className="text-lg font-semibold mb-3">Бесплатный доступ</div>
+          <p className="text-sm text-muted-foreground leading-relaxed mb-4">
+            Free — для знакомства с сервисом
+          </p>
+          <ul className="space-y-2 text-sm text-muted-foreground">
+            <li className="flex items-start gap-2">
+              <span className="mt-1.5">•</span>
+              <span>До 3 AI-сценариев в месяц</span>
+            </li>
+            <li className="flex items-start gap-2">
+              <span className="mt-1.5">•</span>
+              <span>Генерация по YouTube-ссылке</span>
+            </li>
+            <li className="flex items-start gap-2">
+              <span className="mt-1.5">•</span>
+              <span>Без обновления аналитики</span>
+            </li>
+            <li className="flex items-start gap-2">
+              <span className="mt-1.5">•</span>
+              <span>Без повторной генерации</span>
+            </li>
+            <li className="flex items-start gap-2">
+              <span className="mt-1.5">•</span>
+              <span>Подходит, чтобы попробовать сервис перед оплатой</span>
+            </li>
+          </ul>
         </div>
 
         {/* Pricing Cards */}
@@ -127,10 +150,10 @@ export function PricingSection() {
                   {/* Pricing */}
                   <div>
                     <div className="text-4xl font-bold mb-1">
-                      ${isYearly ? plan.yearlyPrice : plan.monthlyPrice}
+                      {isYearly ? plan.yearlyPrice : plan.monthlyPrice} ₽
                     </div>
                     <div className="text-muted-foreground text-sm">
-                      Per month
+                      {isYearly ? 'в год' : 'в месяц'}
                     </div>
                   </div>
 
