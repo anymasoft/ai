@@ -170,7 +170,7 @@ export default function AdminLimitsPage() {
                 <label className="text-sm font-medium">Email</label>
                 <div className="flex gap-2 mt-1">
                   <Input
-                    placeholder="Filter by email..."
+                    placeholder="Фильтровать по электронной почте..."
                     value={filterEmail}
                     onChange={(e) => setFilterEmail(e.target.value)}
                   />

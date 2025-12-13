@@ -350,7 +350,7 @@ export default function AdminUsersPage() {
                               </DropdownMenuItem>
                               <AlertDialogContent>
                                 <AlertDialogTitle>
-                                  {disableAction === "disable" ? "Disable User" : "Enable User"}
+                                  {disableAction === "disable" ? "Отключить пользователя" : "Включить пользователя"}
                                 </AlertDialogTitle>
                                 <AlertDialogDescription>
                                   Are you sure you want to {disableAction} this user? This action cannot be undone.
