@@ -684,36 +684,31 @@ export default function TrendingPage() {
             </div>
 
             {/* Кнопка обновления */}
-            <div className="flex items-center">
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    size="icon"
-                    variant="outline"
-                    onClick={() => {
-                      if (userPlan === "free") return
-                      console.log("Обновить button clicked!")
-                      fetchMomentumVideos()
-                    }}
-                    disabled={loading || userPlan === "free"}
-                    className={
-                      userPlan === "free"
-                        ? "cursor-not-allowed"
-                        : "cursor-pointer"
-                    }
-                  >
-                    <RefreshCw
-                      className={`h-4 w-4 ${loading ? "animate-spin" : ""}`}
-                    />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>
-                  {userPlan === "free"
-                    ? "Недоступно на бесплатном тарифе"
-                    : "Обновить видео"}
-                </TooltipContent>
-              </Tooltip>
-            </div>
+            {userPlan !== "free" && (
+              <div className="flex items-center">
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      size="icon"
+                      variant="outline"
+                      onClick={() => {
+                        console.log("Обновить button clicked!")
+                        fetchMomentumVideos()
+                      }}
+                      disabled={loading}
+                      className="cursor-pointer"
+                    >
+                      <RefreshCw
+                        className={`h-4 w-4 ${loading ? "animate-spin" : ""}`}
+                      />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    Обновить видео
+                  </TooltipContent>
+                </Tooltip>
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -941,7 +936,7 @@ export default function TrendingPage() {
                               )}
                             </div>
                           </div>
-                        ) : (
+                        ) : userPlan !== "free" ? (
                           <button
                             onClick={() => refreshDate(video.videoId)}
                             disabled={refreshingId === video.videoId}
@@ -952,6 +947,8 @@ export default function TrendingPage() {
                               className={`h-4 w-4 ${refreshingId === video.videoId ? "animate-spin" : ""}`}
                             />
                           </button>
+                        ) : (
+                          <span className="text-xs text-muted-foreground">—</span>
                         )}
                       </TableCell>
                       <TableCell>
@@ -1013,100 +1010,104 @@ export default function TrendingPage() {
       )}
       {/* Блок генерации сценария */}
       <div className="mt-6 p-4 border rounded-lg bg-muted/30">
-        {/* Источник для генерации сценария */}
-        <div className="mb-6 pb-6 border-b">
-          <h4 className="font-medium mb-3">Источник для генерации сценария</h4>
-          <div className="space-y-3">
-            <div className="flex items-start gap-3">
-              <div className="flex items-center h-5">
-                <input
-                  type="radio"
-                  id="scriptSourceTrending"
-                  name="scriptSource"
-                  value="trending"
-                  checked={scriptSourceMode === "trending"}
-                  onChange={() => setScriptSourceMode("trending")}
-                  className="h-4 w-4"
-                />
-              </div>
-              <Label
-                htmlFor="scriptSourceTrending"
-                className="cursor-pointer flex-1"
-              >
-                Использовать выбранные трендовые видео
-              </Label>
-            </div>
-            <div className="flex items-start gap-3">
-              <div className="flex items-center h-5">
-                <input
-                  type="radio"
-                  id="scriptSourceSpecific"
-                  name="scriptSource"
-                  value="specific"
-                  checked={scriptSourceMode === "specific"}
-                  onChange={() => setScriptSourceMode("specific")}
-                  className="h-4 w-4"
-                />
-              </div>
-              <Label
-                htmlFor="scriptSourceSpecific"
-                className="cursor-pointer flex-1"
-              >
-                Использовать конкретное YouTube-видео
-              </Label>
-            </div>
-          </div>
-          <div className="mt-3 ml-7">
-            <Input
-              type="text"
-              placeholder="Вставьте ссылку на YouTube-видео"
-              disabled={scriptSourceMode === "trending"}
-              value={specificVideoUrl}
-              onChange={(e) => setSpecificVideoUrl(e.target.value)}
-              className="w-full"
-            />
-            <p className="text-xs text-muted-foreground mt-2">
-              Мы проанализируем структуру видео, хуки и подачу,
-              <br />
-              чтобы создать оригинальный сценарий в похожем стиле.
-            </p>
-          </div>
-        </div>
-
-        {/* Селектор креативности */}
-        <div className="mb-4">
-          <h4 className="font-medium mb-1">Креативность сценария</h4>
-          <p className="text-sm text-muted-foreground mb-3">
-            Настройте баланс между строгой структурой и смелыми идеями.
-          </p>
-          <div className="flex flex-col md:flex-row gap-2">
-            {SCRIPT_TEMPERATURE_PRESETS.map((preset) => (
-              <label
-                key={preset.key}
-                className={`flex-1 flex items-start gap-2 p-3 rounded-md border cursor-pointer transition-colors ${
-                  selectedTemperatureKey === preset.key
-                    ? "border-primary bg-primary/5"
-                    : "border-border hover:border-primary/50"
-                }`}
-              >
-                <input
-                  type="radio"
-                  name="scriptTemperature"
-                  value={preset.key}
-                  checked={selectedTemperatureKey === preset.key}
-                  onChange={() => setSelectedTemperatureKey(preset.key)}
-                  className="mt-1"
-                />
-                <div>
-                  <span className="font-medium text-sm">{preset.label}</span>
-                  <p className="text-xs text-muted-foreground mt-0.5">
-                    {preset.description}
-                  </p>
+        {/* Источник для генерации сценария - только для платных */}
+        {userPlan !== "free" && (
+          <div className="mb-6 pb-6 border-b">
+            <h4 className="font-medium mb-3">Источник для генерации сценария</h4>
+            <div className="space-y-3">
+              <div className="flex items-start gap-3">
+                <div className="flex items-center h-5">
+                  <input
+                    type="radio"
+                    id="scriptSourceTrending"
+                    name="scriptSource"
+                    value="trending"
+                    checked={scriptSourceMode === "trending"}
+                    onChange={() => setScriptSourceMode("trending")}
+                    className="h-4 w-4"
+                  />
                 </div>
-              </label>
-            ))}
+                <Label
+                  htmlFor="scriptSourceTrending"
+                  className="cursor-pointer flex-1"
+                >
+                  Использовать выбранные трендовые видео
+                </Label>
+              </div>
+              <div className="flex items-start gap-3">
+                <div className="flex items-center h-5">
+                  <input
+                    type="radio"
+                    id="scriptSourceSpecific"
+                    name="scriptSource"
+                    value="specific"
+                    checked={scriptSourceMode === "specific"}
+                    onChange={() => setScriptSourceMode("specific")}
+                    className="h-4 w-4"
+                  />
+                </div>
+                <Label
+                  htmlFor="scriptSourceSpecific"
+                  className="cursor-pointer flex-1"
+                >
+                  Использовать конкретное YouTube-видео
+                </Label>
+              </div>
+            </div>
+            <div className="mt-3 ml-7">
+              <Input
+                type="text"
+                placeholder="Вставьте ссылку на YouTube-видео"
+                disabled={scriptSourceMode === "trending"}
+                value={specificVideoUrl}
+                onChange={(e) => setSpecificVideoUrl(e.target.value)}
+                className="w-full"
+              />
+              <p className="text-xs text-muted-foreground mt-2">
+                Мы проанализируем структуру видео, хуки и подачу,
+                <br />
+                чтобы создать оригинальный сценарий в похожем стиле.
+              </p>
+            </div>
           </div>
-        </div>
+        )}
+
+        {/* Селектор креативности - только для платных */}
+        {userPlan !== "free" && (
+          <div className="mb-4">
+            <h4 className="font-medium mb-1">Креативность сценария</h4>
+            <p className="text-sm text-muted-foreground mb-3">
+              Настройте баланс между строгой структурой и смелыми идеями.
+            </p>
+            <div className="flex flex-col md:flex-row gap-2">
+              {SCRIPT_TEMPERATURE_PRESETS.map((preset) => (
+                <label
+                  key={preset.key}
+                  className={`flex-1 flex items-start gap-2 p-3 rounded-md border cursor-pointer transition-colors ${
+                    selectedTemperatureKey === preset.key
+                      ? "border-primary bg-primary/5"
+                      : "border-border hover:border-primary/50"
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    name="scriptTemperature"
+                    value={preset.key}
+                    checked={selectedTemperatureKey === preset.key}
+                    onChange={() => setSelectedTemperatureKey(preset.key)}
+                    className="mt-1"
+                  />
+                  <div>
+                    <span className="font-medium text-sm">{preset.label}</span>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      {preset.description}
+                    </p>
+                  </div>
+                </label>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Кнопка генерации */}
         <div className="flex justify-end">
