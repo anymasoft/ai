@@ -18,12 +18,12 @@ export function InternalServerError() {
       />
       <div className='text-center'>
         <h1 className='mb-4 text-3xl font-bold'>500</h1>
-        <h2 className="mb-3 text-2xl font-semibold">Internal Server Error</h2>
-        <p>Something went wrong on our end. We&apos;re working to fix the issue. Please try again later.</p>
+        <h2 className="mb-3 text-2xl font-semibold">Внутренняя ошибка сервера</h2>
+        <p>Что-то пошло не так с нашей стороны. Мы работаем над исправлением проблемы. Пожалуйста, попробуйте позже.</p>
         <div className='mt-6 flex items-center justify-center gap-4 md:mt-8'>
-          <Button className='cursor-pointer' onClick={() => router.push('/trending')}>Go Back Home</Button>
+          <Button className='cursor-pointer' onClick={() => router.push('/trending')}>На главную</Button>
           <Button variant='outline' className='flex cursor-pointer items-center gap-1' onClick={() => router.push('#')}>
-            Contact Us
+            Связаться с нами
           </Button>
         </div>
       </div>

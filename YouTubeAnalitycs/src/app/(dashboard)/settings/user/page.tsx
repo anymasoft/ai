@@ -200,7 +200,7 @@ export default function UserSettingsPage() {
                   <FormItem>
                     <FormLabel>Company</FormLabel>
                     <FormControl>
-                      <Input placeholder="Enter your company" {...field} />
+                      <Input placeholder="Введите вашу компанию" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -215,7 +215,7 @@ export default function UserSettingsPage() {
                   <FormItem>
                     <FormLabel>Phone Number</FormLabel>
                     <FormControl>
-                      <Input type="tel" placeholder="Enter your phone number" {...field} />
+                      <Input type="tel" placeholder="Введите номер телефона" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -230,7 +230,7 @@ export default function UserSettingsPage() {
                   <FormItem>
                     <FormLabel>Location</FormLabel>
                     <FormControl>
-                      <Input placeholder="Enter your location" {...field} />
+                      <Input placeholder="Введите вашу локацию" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -245,7 +245,7 @@ export default function UserSettingsPage() {
                   <FormItem>
                     <FormLabel>Website</FormLabel>
                     <FormControl>
-                      <Input type="url" placeholder="Enter your website" {...field} />
+                      <Input type="url" placeholder="Введите ваш веб-сайт" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -262,7 +262,7 @@ export default function UserSettingsPage() {
                     <Select onValueChange={field.onChange} defaultValue={field.value}>
                       <FormControl>
                         <SelectTrigger className="w-full">
-                          <SelectValue placeholder="Select Language" />
+                          <SelectValue placeholder="Выберите язык" />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
@@ -287,7 +287,7 @@ export default function UserSettingsPage() {
                   <FormItem>
                     <FormLabel>Role</FormLabel>
                     <FormControl>
-                      <Input placeholder="Enter your role" {...field} />
+                      <Input placeholder="Введите вашу роль" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -333,7 +333,7 @@ export default function UserSettingsPage() {
                   <FormLabel>Bio</FormLabel>
                   <FormControl>
                     <Textarea 
-                      placeholder="Tell us a little about yourself..." 
+                      placeholder="Расскажите немного о себе..." 
                       className="min-h-[100px]"
                       {...field}
                     />

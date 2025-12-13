@@ -122,7 +122,7 @@ export default function AccountSettings() {
                       <FormItem>
                         <FormLabel>First Name</FormLabel>
                         <FormControl>
-                          <Input placeholder="Enter your first name" {...field} />
+                          <Input placeholder="Введите ваше имя" {...field} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -135,7 +135,7 @@ export default function AccountSettings() {
                       <FormItem>
                         <FormLabel>Last Name</FormLabel>
                         <FormControl>
-                          <Input placeholder="Enter your last name" {...field} />
+                          <Input placeholder="Введите вашу фамилию" {...field} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -149,7 +149,7 @@ export default function AccountSettings() {
                     <FormItem>
                       <FormLabel>Email Address</FormLabel>
                       <FormControl>
-                        <Input type="email" placeholder="Enter your email" {...field} disabled />
+                        <Input type="email" placeholder="Введите вашу почту" {...field} disabled />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -162,7 +162,7 @@ export default function AccountSettings() {
                     <FormItem>
                       <FormLabel>Username</FormLabel>
                       <FormControl>
-                        <Input placeholder="Enter your username" {...field} />
+                        <Input placeholder="Введите имя пользователя" {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -186,7 +186,7 @@ export default function AccountSettings() {
                     <FormItem>
                       <FormLabel>Current Password</FormLabel>
                       <FormControl>
-                        <Input type="password" placeholder="Enter current password" {...field} />
+                        <Input type="password" placeholder="Введите текущий пароль" {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -199,7 +199,7 @@ export default function AccountSettings() {
                     <FormItem>
                       <FormLabel>New Password</FormLabel>
                       <FormControl>
-                        <Input type="password" placeholder="Enter new password" {...field} />
+                        <Input type="password" placeholder="Введите новый пароль" {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>

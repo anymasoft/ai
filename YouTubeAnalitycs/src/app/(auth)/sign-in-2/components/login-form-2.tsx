@@ -12,34 +12,34 @@ export function LoginForm2({
   return (
     <form className={cn("flex flex-col gap-6", className)} {...props} action="/trending">
       <div className="flex flex-col items-center gap-2 text-center">
-        <h1 className="text-2xl font-bold">Login to your account</h1>
+        <h1 className="text-2xl font-bold">Войдите в свой аккаунт</h1>
         <p className="text-muted-foreground text-sm text-balance">
-          Enter your email below to login to your account
+          Введите вашу почту ниже, чтобы войти в аккаунт
         </p>
       </div>
       <div className="grid gap-6">
         <div className="grid gap-3">
-          <Label htmlFor="email">Email</Label>
+          <Label htmlFor="email">Почта</Label>
           <Input id="email" type="email" placeholder="test@example.com" defaultValue="test@example.com" required />
         </div>
         <div className="grid gap-3">
           <div className="flex items-center">
-            <Label htmlFor="password">Password</Label>
+            <Label htmlFor="password">Пароль</Label>
             <a
               href="/forgot-password-2"
               className="ml-auto text-sm underline-offset-4 hover:underline"
             >
-              Forgot your password?
+              Забыли пароль?
             </a>
           </div>
           <Input id="password" type="password" defaultValue="password" required />
         </div>
         <Button type="submit" className="w-full cursor-pointer">
-          Login
+          Войти
         </Button>
         <div className="after:border-border relative text-center text-sm after:absolute after:inset-0 after:top-1/2 after:z-0 after:flex after:items-center after:border-t">
           <span className="bg-background text-muted-foreground relative z-10 px-2">
-            Or continue with
+            Или продолжите с
           </span>
         </div>
         <Button variant="outline" className="w-full cursor-pointer">
@@ -49,13 +49,13 @@ export function LoginForm2({
               fill="currentColor"
             />
           </svg>
-          Login with GitHub
+          Войти через GitHub
         </Button>
       </div>
       <div className="text-center text-sm">
-        Don&apos;t have an account?{" "}
+        Нет аккаунта?{" "}
         <a href="/sign-up-2" className="underline underline-offset-4">
-          Sign up
+          Зарегистрироваться
         </a>
       </div>
     </form>

@@ -232,7 +232,7 @@ export default function AdminPaymentsPage() {
                 <label className="text-sm font-medium">Status</label>
                 <Select value={filterStatus || "all"} onValueChange={setFilterStatus}>
                   <SelectTrigger className="mt-1">
-                    <SelectValue placeholder="All statuses" />
+                    <SelectValue placeholder="Все статусы" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">All statuses</SelectItem>

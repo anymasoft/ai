@@ -112,7 +112,7 @@ export function MomentumInsights({
   if (loading) {
     return (
       <AnalysisLoadingState
-        title="Analyzing momentum..."
+        title="Анализирование momentum...""
         subtitle="This may take 15-25 seconds"
       />
     );

@@ -87,8 +87,8 @@ export function DeepAudienceAnalysis({
   if (loading) {
     return (
       <AnalysisLoadingState
-        title="Generating deep analysis..."
-        subtitle="This may take 20-30 seconds"
+        title="Анализирование глубоких данных..."
+        subtitle="Это может занять 20-30 секунд"
       />
     );
   }
@@ -99,10 +99,10 @@ export function DeepAudienceAnalysis({
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Brain className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
-            Deep Audience Intelligence (AI v2.0)
+            Глубокая аналитика аудитории (AI v2.0)
           </CardTitle>
           <CardDescription>
-            Deep AI analysis of audience behavior and preferences
+            Глубокий AI анализ поведения и предпочтений аудитории
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -110,24 +110,24 @@ export function DeepAudienceAnalysis({
             {!hasRequiredData ? (
               <>
                 <p className="text-muted-foreground mb-2 text-center">
-                  Sync channel data first
+                  Сначала синхронизируйте данные канала
                 </p>
                 <p className="text-sm text-muted-foreground mb-4 text-center">
-                  Click 'Sync Top Videos' above to load data.
+                  Нажмите 'Синхронизировать видео' выше, чтобы загрузить данные.
                 </p>
-                <Button variant="default" onClick={handleGenerate} className="gap-2 cursor-pointer" disabled title="Sync data first">
+                <Button variant="default" onClick={handleGenerate} className="gap-2 cursor-pointer" disabled title="Сначала синхронизируйте данные">
                   <Brain className="h-4 w-4" />
-                  Generate Deep Analysis
+                  Выполнить анализ
                 </Button>
               </>
             ) : (
               <>
                 <p className="text-muted-foreground mb-4">
-                  Deep analysis will reveal audience behavior patterns and preferences.
+                  Глубокий анализ выявит паттерны поведения и предпочтения аудитории.
                 </p>
                 <Button variant="default" onClick={handleGenerate} className="gap-2 cursor-pointer">
                   <Brain className="h-4 w-4" />
-                  Generate Deep Analysis
+                  Выполнить анализ
                 </Button>
               </>
             )}
@@ -146,10 +146,10 @@ export function DeepAudienceAnalysis({
         <div>
           <h2 className="text-2xl font-bold flex items-center gap-2">
             <Brain className="h-6 w-6 text-indigo-600 dark:text-indigo-400" />
-            Deep Audience Intelligence (AI v2.0)
+            Глубокая аналитика аудитории (AI v2.0)
           </h2>
           <p className="text-sm text-muted-foreground mt-1">
-            Deep analysis of {data.channelTitle || 'channel'} audience
+            Глубокий анализ аудитории канала {data.channelTitle || 'канала'}
           </p>
         </div>
         <Tooltip>
@@ -165,8 +165,8 @@ export function DeepAudienceAnalysis({
         </TooltipTrigger>
         <TooltipContent>
           {isCooldownActive && getCooldownTimeRemaining()
-            ? `Available in ${getCooldownTimeRemaining()!.hours}h ${getCooldownTimeRemaining()!.minutes}m`
-            : "Refresh Analysis"}
+            ? `Доступно через ${getCooldownTimeRemaining()!.hours}ч ${getCooldownTimeRemaining()!.minutes}м`
+            : "Обновить анализ"}
         </TooltipContent>
       </Tooltip>
       </div>
@@ -179,7 +179,7 @@ export function DeepAudienceAnalysis({
             <CardHeader>
               <CardTitle className="text-lg flex items-center gap-2">
                 <Users className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-                Audience Profile
+                Профиль аудитории
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -201,7 +201,7 @@ export function DeepAudienceAnalysis({
             <CardHeader>
               <CardTitle className="text-lg flex items-center gap-2">
                 <TrendingUp className="h-5 w-5 text-green-600 dark:text-green-400" />
-                Content Preferences
+                Предпочтения контента
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -223,7 +223,7 @@ export function DeepAudienceAnalysis({
             <CardHeader>
               <CardTitle className="text-lg flex items-center gap-2">
                 <Users className="h-5 w-5 text-purple-600 dark:text-purple-400" />
-                Engagement Patterns
+                Паттерны взаимодействия
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -245,7 +245,7 @@ export function DeepAudienceAnalysis({
             <CardHeader>
               <CardTitle className="text-lg flex items-center gap-2">
                 <Lightbulb className="h-5 w-5 text-yellow-600 dark:text-yellow-400" />
-                Recommendations
+                Рекомендации
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -264,7 +264,7 @@ export function DeepAudienceAnalysis({
 
       {data.createdAt && (
         <p className="text-xs text-muted-foreground text-center">
-          Analysis generated: {new Date(data.createdAt).toLocaleString("en-US")}
+          Анализ создан: {new Date(data.createdAt).toLocaleString("ru-RU")}
         </p>
       )}
     </div>

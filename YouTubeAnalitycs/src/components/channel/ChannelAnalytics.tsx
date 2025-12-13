@@ -111,7 +111,7 @@ export function ChannelAnalytics({
 
       {/* Content Intelligence */}
       <CollapsibleSection
-        title="Content Intelligence"
+        title="Аналитика контента"
         isOpen={expanded.content}
         onToggle={() => toggle("content")}
       >
@@ -125,7 +125,7 @@ export function ChannelAnalytics({
 
       {/* Momentum Insights */}
       <CollapsibleSection
-        title="Momentum Insights"
+        title="Аналитика Momentum"
         isOpen={expanded.momentum}
         onToggle={() => toggle("momentum")}
       >
@@ -139,7 +139,7 @@ export function ChannelAnalytics({
 
       {/* Audience Insights */}
       <CollapsibleSection
-        title="Audience & Engagement"
+        title="Аудитория и взаимодействие"
         isOpen={expanded.audience}
         onToggle={() => toggle("audience")}
       >
@@ -167,7 +167,7 @@ export function ChannelAnalytics({
 
       {/* Deep Comment Analysis */}
       <CollapsibleSection
-        title="Deep Comment Analysis"
+        title="Глубокий анализ комментариев"
         isOpen={expanded.deepAnalysis}
         onToggle={() => toggle("deepAnalysis")}
       >
