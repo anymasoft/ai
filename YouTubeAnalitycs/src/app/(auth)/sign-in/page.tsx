@@ -1,8 +1,23 @@
 import { LoginForm1 } from "./components/login-form-1"
 import { Logo } from "@/components/logo"
 import Link from "next/link"
+import { AccessDeniedError } from "@/app/(auth)/errors/access-denied/components/access-denied-error"
 
-export default function Page() {
+type SignInPageProps = {
+  searchParams: {
+    error?: string
+    reason?: string
+  }
+}
+
+export default function Page(props: SignInPageProps) {
+  const error = props.searchParams?.error
+
+  // Если это AccessDenied error, показать our custom access denied page
+  if (error === "AccessDenied") {
+    return <AccessDeniedError />
+  }
+
   return (
     <div className="bg-muted flex min-h-svh flex-col items-center justify-center gap-6 p-6 md:p-10">
       <div className="flex w-full max-w-sm flex-col gap-6">
