@@ -515,15 +515,22 @@ export default function TrendingPage() {
           </CardDescription>
           </CardHeader>
           <CardContent>
-            <Table style={{ tableLayout: 'fixed' }}>
-              <TableHeader>
+            {scriptSourceMode === "specific" && (
+              <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-md">
+                <p className="text-sm text-yellow-800">Выбор трендовых видео недоступен при использовании ссылки на видео</p>
+              </div>
+            )}
+            <div className={scriptSourceMode === "specific" ? "opacity-50 pointer-events-none" : ""}>
+              <Table style={{ tableLayout: 'fixed' }}>
+                <TableHeader>
                 <TableRow>
                   <TableHead className="w-[40px]">
                     <input
                       type="checkbox"
                       checked={selectedVideos.size === filteredVideos.length && filteredVideos.length > 0}
                       onChange={toggleSelectAll}
-                      className="h-4 w-4 rounded border-gray-300"
+                      disabled={scriptSourceMode === "specific"}
+                      className={`h-4 w-4 rounded border-gray-300 ${scriptSourceMode === "specific" ? "opacity-50 cursor-not-allowed" : ""}`}
                       title="Выбрать все"
                     />
                   </TableHead>
@@ -594,7 +601,8 @@ export default function TrendingPage() {
                         type="checkbox"
                         checked={selectedVideos.has(video.videoId)}
                         onChange={() => toggleVideoSelection(video.videoId)}
-                        className="h-4 w-4 rounded border-gray-300"
+                        disabled={scriptSourceMode === "specific"}
+                        className={`h-4 w-4 rounded border-gray-300 ${scriptSourceMode === "specific" ? "opacity-50 cursor-not-allowed" : ""}`}
                       />
                     </TableCell>
                     <TableCell>
@@ -721,7 +729,8 @@ export default function TrendingPage() {
                   </TableRow>
                 ))}
               </TableBody>
-            </Table>
+              </Table>
+            </div>
 
             <div className="mt-6 flex flex-col sm:flex-row items-center justify-between gap-4">
               <div className="text-sm text-muted-foreground">
