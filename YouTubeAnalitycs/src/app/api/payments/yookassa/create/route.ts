@@ -11,6 +11,7 @@
  * {
  *   success: boolean
  *   paymentUrl?: string
+ *   paymentId?: string
  *   error?: string
  * }
  */
@@ -108,7 +109,7 @@ export async function POST(request: NextRequest) {
       },
       confirmation: {
         type: "redirect",
-        return_url: `${process.env.NEXTAUTH_URL}/settings/billing?success=1`,
+        return_url: `${process.env.NEXTAUTH_URL}/settings/billing?success=1&paymentId={payment_id}`,
       },
       capture: true,
       description: `Подписка на тариф ${getPlanName(
@@ -167,6 +168,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       success: true,
       paymentUrl: paymentData.confirmation.confirmation_url,
+      paymentId: paymentData.id,
     });
   } catch (error) {
     console.error("[YooKassa] Unexpected error:", error);
