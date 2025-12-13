@@ -21,7 +21,7 @@ export function ForbiddenError() {
         <h2 className="mb-3 text-2xl font-semibold">Forbidden</h2>
         <p>Access to this resource is forbidden. You don&apos;t have the necessary permissions to view this page.</p>
         <div className='mt-6 flex items-center justify-center gap-4 md:mt-8'>
-          <Button className='cursor-pointer' onClick={() => router.push('/dashboard')}>Go Back Home</Button>
+          <Button className='cursor-pointer' onClick={() => router.push('/trending')}>Go Back Home</Button>
           <Button variant='outline' className='flex cursor-pointer items-center gap-1' onClick={() => router.push('#')}>
             Contact Us
           </Button>

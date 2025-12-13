@@ -30,6 +30,7 @@ export function NavMain({
     url: string
     icon?: LucideIcon
     isActive?: boolean
+    isFeatured?: boolean
     items?: {
       title: string
       url: string
@@ -107,7 +108,7 @@ export function NavMain({
                   <SidebarMenuButton
                     asChild
                     tooltip={item.title}
-                    className={`cursor-pointer transition-all ${isActive ? activeClasses : ""}`}
+                    className={`cursor-pointer transition-all ${isActive ? activeClasses : ""} ${item.isFeatured ? "font-semibold text-amber-600 dark:text-amber-400" : ""}`}
                     isActive={isActive}
                   >
                     <Link href={item.url}>

@@ -55,7 +55,7 @@ export function LoginForm1({
     // Fallback if popup is blocked
     if (!popup) {
       console.warn("Popup blocked, using redirect method");
-      signIn("google", { callbackUrl: "/dashboard" });
+      signIn("google", { callbackUrl: "/trending" });
     }
   };
 
