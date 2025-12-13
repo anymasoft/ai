@@ -3,7 +3,95 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { db } from "@/lib/db";
 import OpenAI from "openai";
+import { randomUUID } from "crypto";
 import type { GeneratedScript, SavedScript } from "@/types/scripts";
+
+// ============================================================================
+// УТИЛИТЫ
+// ============================================================================
+
+/**
+ * Парсит videoId из различных форматов YouTube URL
+ * Поддерживает:
+ * - https://www.youtube.com/watch?v=VIDEOID
+ * - https://youtu.be/VIDEOID
+ * - https://www.youtube.com/shorts/VIDEOID
+ */
+function parseYoutubeVideoId(url: string): string | null {
+  if (!url || typeof url !== 'string') return null;
+
+  // Формат: https://youtu.be/VIDEOID
+  let match = url.match(/youtu\.be\/([a-zA-Z0-9_-]{11})/);
+  if (match) return match[1];
+
+  // Формат: https://www.youtube.com/watch?v=VIDEOID или с доп параметрами
+  match = url.match(/youtube\.com\/watch\?.*v=([a-zA-Z0-9_-]{11})/);
+  if (match) return match[1];
+
+  // Формат: https://www.youtube.com/shorts/VIDEOID
+  match = url.match(/youtube\.com\/shorts\/([a-zA-Z0-9_-]{11})/);
+  if (match) return match[1];
+
+  return null;
+}
+
+/**
+ * Получает RAW данные видео с YouTube через Scrapecreators API
+ * Возвращает данные в формате для вставки в channel_videos таблицу
+ */
+async function fetchYouTubeVideoData(
+  youtubeUrl: string,
+  videoId: string
+): Promise<{
+  id: string;
+  title: string;
+  channelId?: string;
+  viewCountInt: number;
+  likeCountInt?: number;
+  commentCountInt?: number;
+  publishDate: string;
+} | null> {
+  try {
+    const apiKey = process.env.SCRAPECREATORS_API_KEY;
+    if (!apiKey) {
+      console.warn("[YouTubeVideoFetch] SCRAPECREATORS_API_KEY not configured");
+      return null;
+    }
+
+    const response = await fetch(
+      `https://api.scrapecreators.com/v1/youtube/video?url=${encodeURIComponent(youtubeUrl)}`,
+      {
+        headers: { "x-api-key": apiKey },
+        timeout: 10000,
+      }
+    );
+
+    if (!response.ok) {
+      console.warn(`[YouTubeVideoFetch] API returned status ${response.status}`);
+      return null;
+    }
+
+    const data = await response.json() as any;
+
+    if (!data.id || !data.title) {
+      console.warn("[YouTubeVideoFetch] Incomplete video data from API");
+      return null;
+    }
+
+    return {
+      id: data.id,
+      title: data.title,
+      channelId: data.channel?.id || data.channelId,
+      viewCountInt: data.viewCountInt || 0,
+      likeCountInt: data.likeCountInt,
+      commentCountInt: data.commentCountInt,
+      publishDate: data.publishDate || new Date().toISOString(),
+    };
+  } catch (error) {
+    console.error("[YouTubeVideoFetch] Error:", error);
+    return null;
+  }
+}
 
 // ============================================================================
 // ТИПЫ ДЛЯ МНОГОШАГОВОГО PIPELINE
@@ -853,16 +941,137 @@ export async function POST(req: NextRequest) {
 
     // 2. Парсим тело запроса
     const body = await req.json();
-    const { selectedVideoIds, temperature } = body as {
-      selectedVideoIds: string[];
+    const { sourceMode = "trending", selectedVideoIds, youtubeUrl, temperature } = body as {
+      sourceMode?: "trending" | "youtube";
+      selectedVideoIds?: string[];
+      youtubeUrl?: string;
       temperature?: number;
     };
 
-    if (!selectedVideoIds || !Array.isArray(selectedVideoIds) || selectedVideoIds.length === 0) {
-      return NextResponse.json(
-        { error: "selectedVideoIds is required and must be a non-empty array" },
-        { status: 400 }
-      );
+    // Валидация контракта
+    let videos: VideoForScript[] = [];
+
+    if (sourceMode === "youtube") {
+      // YouTube режим
+      if (!youtubeUrl || typeof youtubeUrl !== "string" || youtubeUrl.trim().length === 0) {
+        return NextResponse.json(
+          { error: "youtubeUrl is required for youtube sourceMode" },
+          { status: 400 }
+        );
+      }
+
+      const videoId = parseYoutubeVideoId(youtubeUrl);
+      if (!videoId) {
+        return NextResponse.json(
+          { error: "Invalid YouTube URL" },
+          { status: 400 }
+        );
+      }
+
+      console.log(`[ScriptGenerate] YouTube режим. VideoId: ${videoId}`);
+
+      // Попытаемся найти видео в БД
+      let dbVideo = await db.execute({
+        sql: `SELECT videoId, title, channelId, viewCountInt, likeCountInt, commentCountInt, publishDate FROM channel_videos WHERE videoId = ?`,
+        args: [videoId],
+      });
+
+      if (dbVideo.rows.length === 0) {
+        // Видео не в БД — получаем из API и сохраняем
+        const rawVideoData = await fetchYouTubeVideoData(youtubeUrl, videoId);
+        if (!rawVideoData) {
+          return NextResponse.json(
+            { error: "Failed to fetch video data from YouTube" },
+            { status: 502 }
+          );
+        }
+
+        // Сохраняем видео в channel_videos (UPSERT)
+        await db.execute({
+          sql: `
+            INSERT INTO channel_videos
+            (videoId, title, channelId, viewCountInt, likeCountInt, commentCountInt, publishDate, fetchedAt, updatedAt)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT(videoId) DO UPDATE SET
+              title = excluded.title,
+              channelId = excluded.channelId,
+              viewCountInt = excluded.viewCountInt,
+              likeCountInt = excluded.likeCountInt,
+              commentCountInt = excluded.commentCountInt,
+              publishDate = excluded.publishDate,
+              updatedAt = excluded.updatedAt
+          `,
+          args: [
+            rawVideoData.id,
+            rawVideoData.title,
+            rawVideoData.channelId || null,
+            rawVideoData.viewCountInt,
+            rawVideoData.likeCountInt || null,
+            rawVideoData.commentCountInt || null,
+            rawVideoData.publishDate,
+            Math.floor(Date.now() / 1000),
+            Math.floor(Date.now() / 1000),
+          ],
+        });
+
+        console.log(`[ScriptGenerate] Видео сохранено в БД из API`);
+      }
+
+      // Читаем видео из БД (источник правды)
+      const dbVideoRefresh = await db.execute({
+        sql: `SELECT videoId, title, channelId, viewCountInt, likeCountInt, commentCountInt, publishDate FROM channel_videos WHERE videoId = ?`,
+        args: [videoId],
+      });
+
+      if (dbVideoRefresh.rows.length === 0) {
+        return NextResponse.json(
+          { error: "Failed to store video in database" },
+          { status: 500 }
+        );
+      }
+
+      const row = dbVideoRefresh.rows[0];
+      const viewCount = Number(row.viewCountInt) || 0;
+      const publishDate = row.publishDate as string;
+      const days = daysSincePublish(publishDate);
+      const viewsPerDay = viewCount / days;
+
+      // Получаем информацию о канале
+      const channelResult = await db.execute({
+        sql: `SELECT title, handle FROM competitors WHERE channelId = ?`,
+        args: [row.channelId],
+      });
+
+      const channelInfo = channelResult.rows[0];
+
+      videos = [
+        {
+          id: videoId,
+          title: row.title as string,
+          channelTitle: channelInfo?.title || "Unknown Channel",
+          channelHandle: channelInfo?.handle as string | undefined,
+          viewCount,
+          likeCount: row.likeCountInt ? Number(row.likeCountInt) : undefined,
+          commentCount: row.commentCountInt ? Number(row.commentCountInt) : undefined,
+          viewsPerDay: Math.round(viewsPerDay),
+          momentumScore: 0,
+          publishDate,
+        },
+      ];
+      console.log(`[ScriptGenerate] Видео прочитано из БД (YouTube режим)`);
+    } else {
+      // Trending режим (по умолчанию)
+      if (!selectedVideoIds || !Array.isArray(selectedVideoIds) || selectedVideoIds.length === 0) {
+        return NextResponse.json(
+          { error: "selectedVideoIds is required and must be a non-empty array for trending sourceMode" },
+          { status: 400 }
+        );
+      }
+
+      console.log(`[ScriptGenerate] Trending режим. Videos: ${selectedVideoIds.length}`);
+
+      // 3. PIPELINE: Сбор данных по видео (существующая логика)
+      videos = await collectVideoData(selectedVideoIds, userId);
     }
 
     // Нормализация температуры для финального GPT-вызова
@@ -874,10 +1083,7 @@ export async function POST(req: NextRequest) {
       scriptTemperature = Math.min(max, Math.max(min, temperature));
     }
 
-    console.log(`[ScriptGenerate] Запрос на генерацию сценария. User: ${userId}, Videos: ${selectedVideoIds.length}, Temperature: ${scriptTemperature}`);
-
-    // 3. PIPELINE: Сбор данных по видео
-    const videos = await collectVideoData(selectedVideoIds, userId);
+    console.log(`[ScriptGenerate] Начало генерации. User: ${userId}, Videos: ${videos.length}, Temperature: ${scriptTemperature}`);
 
     if (videos.length === 0) {
       return NextResponse.json(
@@ -901,8 +1107,9 @@ export async function POST(req: NextRequest) {
     );
 
     // 7. Сохранение в БД
-    const scriptId = crypto.randomUUID();
+    const scriptId = randomUUID();
     const createdAt = Date.now();
+    const sourceVideoIds = videos.map(v => v.id);
 
     await db.execute({
       sql: `
@@ -918,7 +1125,7 @@ export async function POST(req: NextRequest) {
         JSON.stringify(generatedScript.outline),
         generatedScript.scriptText,
         generatedScript.whyItShouldWork,
-        JSON.stringify(selectedVideoIds),
+        JSON.stringify(sourceVideoIds),
         createdAt,
       ],
     });
@@ -934,7 +1141,7 @@ export async function POST(req: NextRequest) {
       outline: generatedScript.outline,
       scriptText: generatedScript.scriptText,
       whyItShouldWork: generatedScript.whyItShouldWork,
-      sourceVideos: selectedVideoIds,
+      sourceVideos: sourceVideoIds,
       createdAt,
     };
 

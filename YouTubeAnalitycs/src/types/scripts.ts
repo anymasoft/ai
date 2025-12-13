@@ -6,7 +6,10 @@
  * Запрос на генерацию сценария
  */
 export interface GenerateScriptRequest {
-  selectedVideoIds: string[];
+  sourceMode?: "trending" | "youtube";
+  selectedVideoIds?: string[];
+  youtubeUrl?: string;
+  temperature?: number;
 }
 
 /**
