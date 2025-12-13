@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { persist } from "zustand/middleware";
 
 export type AnalysisType = 'content' | 'comment' | 'audience' | 'momentum' | 'swot' | 'deep';
 
@@ -26,44 +27,52 @@ type AnalysisProgressStore = {
   clearAll: () => void;
 };
 
-export const useAnalysisProgressStore = create<AnalysisProgressStore>((set, get) => ({
-  inProgress: {},
+export const useAnalysisProgressStore = create<AnalysisProgressStore>(
+  persist(
+    (set, get) => ({
+      inProgress: {},
 
-  start: (channelId, type) => {
-    set((state) => ({
-      inProgress: {
-        ...state.inProgress,
-        [channelId]: {
-          ...state.inProgress[channelId],
-          [type]: true,
-        },
+      start: (channelId, type) => {
+        set((state) => ({
+          inProgress: {
+            ...state.inProgress,
+            [channelId]: {
+              ...state.inProgress[channelId],
+              [type]: true,
+            },
+          },
+        }));
       },
-    }));
-  },
 
-  finish: (channelId, type) => {
-    set((state) => ({
-      inProgress: {
-        ...state.inProgress,
-        [channelId]: {
-          ...state.inProgress[channelId],
-          [type]: false,
-        },
+      finish: (channelId, type) => {
+        set((state) => ({
+          inProgress: {
+            ...state.inProgress,
+            [channelId]: {
+              ...state.inProgress[channelId],
+              [type]: false,
+            },
+          },
+        }));
       },
-    }));
-  },
 
-  isGenerating: (channelId, type) => {
-    const state = get();
-    return state.inProgress[channelId]?.[type] === true;
-  },
+      isGenerating: (channelId, type) => {
+        const state = get();
+        return state.inProgress[channelId]?.[type] === true;
+      },
 
-  getChannelProgress: (channelId) => {
-    const state = get();
-    return state.inProgress[channelId] || {};
-  },
+      getChannelProgress: (channelId) => {
+        const state = get();
+        return state.inProgress[channelId] || {};
+      },
 
-  clearAll: () => {
-    set({ inProgress: {} });
-  },
-}));
+      clearAll: () => {
+        set({ inProgress: {} });
+      },
+    }),
+    {
+      name: "analysis-progress-store",
+      version: 1,
+    }
+  )
+);
