@@ -36,13 +36,21 @@ function parseYoutubeVideoId(url: string): string | null {
 }
 
 /**
- * Получает данные видео с YouTube через Scrapecreators API
- * В случае ошибки пытается создать минимальный объект видео
+ * Получает RAW данные видео с YouTube через Scrapecreators API
+ * Возвращает данные в формате для вставки в channel_videos таблицу
  */
 async function fetchYouTubeVideoData(
   youtubeUrl: string,
   videoId: string
-): Promise<VideoForScript | null> {
+): Promise<{
+  id: string;
+  title: string;
+  channelId?: string;
+  viewCountInt: number;
+  likeCountInt?: number;
+  commentCountInt?: number;
+  publishDate: string;
+} | null> {
   try {
     const apiKey = process.env.SCRAPECREATORS_API_KEY;
     if (!apiKey) {
@@ -70,22 +78,14 @@ async function fetchYouTubeVideoData(
       return null;
     }
 
-    const publishDate = data.publishDate || new Date().toISOString();
-    const days = daysSincePublish(publishDate);
-    const viewCount = data.viewCountInt || 0;
-    const viewsPerDay = viewCount / days;
-
     return {
       id: data.id,
       title: data.title,
-      channelTitle: data.channel?.title || "Unknown Channel",
-      channelHandle: data.channel?.handle,
-      viewCount,
-      likeCount: data.likeCountInt,
-      commentCount: data.commentCountInt,
-      viewsPerDay: Math.round(viewsPerDay),
-      momentumScore: 0,
-      publishDate,
+      channelId: data.channel?.id || data.channelId,
+      viewCountInt: data.viewCountInt || 0,
+      likeCountInt: data.likeCountInt,
+      commentCountInt: data.commentCountInt,
+      publishDate: data.publishDate || new Date().toISOString(),
     };
   } catch (error) {
     console.error("[YouTubeVideoFetch] Error:", error);
@@ -976,49 +976,89 @@ export async function POST(req: NextRequest) {
         args: [videoId],
       });
 
-      if (dbVideo.rows.length > 0) {
-        // Видео в БД — используем его
-        const row = dbVideo.rows[0];
-        const viewCount = Number(row.viewCountInt) || 0;
-        const publishDate = row.publishDate as string;
-        const days = daysSincePublish(publishDate);
-        const viewsPerDay = viewCount / days;
-
-        const channelResult = await db.execute({
-          sql: `SELECT title, handle FROM competitors WHERE channelId = ?`,
-          args: [row.channelId],
-        });
-
-        const channelInfo = channelResult.rows[0];
-
-        videos = [
-          {
-            id: videoId,
-            title: row.title as string,
-            channelTitle: channelInfo?.title || "Unknown Channel",
-            channelHandle: channelInfo?.handle as string | undefined,
-            viewCount,
-            likeCount: row.likeCountInt ? Number(row.likeCountInt) : undefined,
-            commentCount: row.commentCountInt ? Number(row.commentCountInt) : undefined,
-            viewsPerDay: Math.round(viewsPerDay),
-            momentumScore: 0,
-            publishDate,
-          },
-        ];
-        console.log(`[ScriptGenerate] Видео найдено в БД`);
-      } else {
-        // Видео не в БД — ищем через API
-        const fetchedVideo = await fetchYouTubeVideoData(youtubeUrl, videoId);
-        if (!fetchedVideo) {
+      if (dbVideo.rows.length === 0) {
+        // Видео не в БД — получаем из API и сохраняем
+        const rawVideoData = await fetchYouTubeVideoData(youtubeUrl, videoId);
+        if (!rawVideoData) {
           return NextResponse.json(
             { error: "Failed to fetch video data from YouTube" },
             { status: 502 }
           );
         }
 
-        videos = [fetchedVideo];
-        console.log(`[ScriptGenerate] Видео получено через API`);
+        // Сохраняем видео в channel_videos (UPSERT)
+        await db.execute({
+          sql: `
+            INSERT INTO channel_videos
+            (videoId, title, channelId, viewCountInt, likeCountInt, commentCountInt, publishDate, fetchedAt, updatedAt)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT(videoId) DO UPDATE SET
+              title = excluded.title,
+              channelId = excluded.channelId,
+              viewCountInt = excluded.viewCountInt,
+              likeCountInt = excluded.likeCountInt,
+              commentCountInt = excluded.commentCountInt,
+              publishDate = excluded.publishDate,
+              updatedAt = excluded.updatedAt
+          `,
+          args: [
+            rawVideoData.id,
+            rawVideoData.title,
+            rawVideoData.channelId || null,
+            rawVideoData.viewCountInt,
+            rawVideoData.likeCountInt || null,
+            rawVideoData.commentCountInt || null,
+            rawVideoData.publishDate,
+            Math.floor(Date.now() / 1000),
+            Math.floor(Date.now() / 1000),
+          ],
+        });
+
+        console.log(`[ScriptGenerate] Видео сохранено в БД из API`);
       }
+
+      // Читаем видео из БД (источник правды)
+      const dbVideoRefresh = await db.execute({
+        sql: `SELECT videoId, title, channelId, viewCountInt, likeCountInt, commentCountInt, publishDate FROM channel_videos WHERE videoId = ?`,
+        args: [videoId],
+      });
+
+      if (dbVideoRefresh.rows.length === 0) {
+        return NextResponse.json(
+          { error: "Failed to store video in database" },
+          { status: 500 }
+        );
+      }
+
+      const row = dbVideoRefresh.rows[0];
+      const viewCount = Number(row.viewCountInt) || 0;
+      const publishDate = row.publishDate as string;
+      const days = daysSincePublish(publishDate);
+      const viewsPerDay = viewCount / days;
+
+      // Получаем информацию о канале
+      const channelResult = await db.execute({
+        sql: `SELECT title, handle FROM competitors WHERE channelId = ?`,
+        args: [row.channelId],
+      });
+
+      const channelInfo = channelResult.rows[0];
+
+      videos = [
+        {
+          id: videoId,
+          title: row.title as string,
+          channelTitle: channelInfo?.title || "Unknown Channel",
+          channelHandle: channelInfo?.handle as string | undefined,
+          viewCount,
+          likeCount: row.likeCountInt ? Number(row.likeCountInt) : undefined,
+          commentCount: row.commentCountInt ? Number(row.commentCountInt) : undefined,
+          viewsPerDay: Math.round(viewsPerDay),
+          momentumScore: 0,
+          publishDate,
+        },
+      ];
+      console.log(`[ScriptGenerate] Видео прочитано из БД (YouTube режим)`);
     } else {
       // Trending режим (по умолчанию)
       if (!selectedVideoIds || !Array.isArray(selectedVideoIds) || selectedVideoIds.length === 0) {
