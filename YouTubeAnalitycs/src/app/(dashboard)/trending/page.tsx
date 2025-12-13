@@ -733,60 +733,58 @@ export default function TrendingPage() {
 
             {/* Блок генерации сценария */}
             <div className="mt-6 p-4 border rounded-lg bg-muted/30">
-              <div className="flex flex-col lg:flex-row lg:items-end gap-6">
-                {/* Селектор креативности */}
-                <div className="flex-1">
-                  <h4 className="font-medium mb-1">Креативность сценария</h4>
-                  <p className="text-sm text-muted-foreground mb-3">
-                    Настройте баланс между строгой структурой и смелыми идеями.
-                  </p>
-                  <div className="flex flex-col md:flex-row gap-2">
-                    {SCRIPT_TEMPERATURE_PRESETS.map(preset => (
-                      <label
-                        key={preset.key}
-                        className={`flex-1 flex items-start gap-2 p-3 rounded-md border cursor-pointer transition-colors ${
-                          selectedTemperatureKey === preset.key
-                            ? "border-primary bg-primary/5"
-                            : "border-border hover:border-primary/50"
-                        }`}
-                      >
-                        <input
-                          type="radio"
-                          name="scriptTemperature"
-                          value={preset.key}
-                          checked={selectedTemperatureKey === preset.key}
-                          onChange={() => setSelectedTemperatureKey(preset.key)}
-                          className="mt-1"
-                        />
-                        <div>
-                          <span className="font-medium text-sm">{preset.label}</span>
-                          <p className="text-xs text-muted-foreground mt-0.5">{preset.description}</p>
-                        </div>
-                      </label>
-                    ))}
-                  </div>
+              {/* Селектор креативности */}
+              <div className="mb-4">
+                <h4 className="font-medium mb-1">Креативность сценария</h4>
+                <p className="text-sm text-muted-foreground mb-3">
+                  Настройте баланс между строгой структурой и смелыми идеями.
+                </p>
+                <div className="flex flex-col md:flex-row gap-2">
+                  {SCRIPT_TEMPERATURE_PRESETS.map(preset => (
+                    <label
+                      key={preset.key}
+                      className={`flex-1 flex items-start gap-2 p-3 rounded-md border cursor-pointer transition-colors ${
+                        selectedTemperatureKey === preset.key
+                          ? "border-primary bg-primary/5"
+                          : "border-border hover:border-primary/50"
+                      }`}
+                    >
+                      <input
+                        type="radio"
+                        name="scriptTemperature"
+                        value={preset.key}
+                        checked={selectedTemperatureKey === preset.key}
+                        onChange={() => setSelectedTemperatureKey(preset.key)}
+                        className="mt-1"
+                      />
+                      <div>
+                        <span className="font-medium text-sm">{preset.label}</span>
+                        <p className="text-xs text-muted-foreground mt-0.5">{preset.description}</p>
+                      </div>
+                    </label>
+                  ))}
                 </div>
+              </div>
 
-                {/* Кнопка генерации */}
-                <div className="flex-shrink-0">
-                  <Button
-                    onClick={generateScripts}
-                    disabled={selectedVideos.size === 0 || generatingScripts}
-                    className="gap-2 w-full lg:w-auto"
-                  >
-                    {generatingScripts ? (
-                      <>
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                        Генерация...
-                      </>
-                    ) : (
-                      <>
-                        <FileText className="h-4 w-4" />
-                        Сгенерировать сценарий ({selectedVideos.size})
-                      </>
-                    )}
-                  </Button>
-                </div>
+              {/* Кнопка генерации */}
+              <div className="flex justify-end">
+                <Button
+                  onClick={generateScripts}
+                  disabled={selectedVideos.size === 0 || generatingScripts}
+                  className="gap-2"
+                >
+                  {generatingScripts ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Генерация...
+                    </>
+                  ) : (
+                    <>
+                      <FileText className="h-4 w-4" />
+                      Сгенерировать сценарий ({selectedVideos.size})
+                    </>
+                  )}
+                </Button>
               </div>
             </div>
 
