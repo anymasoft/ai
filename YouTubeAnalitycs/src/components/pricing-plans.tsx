@@ -4,6 +4,7 @@ import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
 import { Sparkles, Check, Loader2 } from "lucide-react"
 import { cn } from '@/lib/utils'
 import { useState } from "react"
@@ -12,8 +13,8 @@ export interface PricingPlan {
   id: string
   name: string
   description: string
-  price: string
-  frequency: string
+  price: number
+  yearlyPrice: number
   features: string[]
   popular?: boolean
   current?: boolean
@@ -31,16 +32,16 @@ const defaultPlans: PricingPlan[] = [
     id: 'basic',
     name: 'Basic',
     description: 'Для начинающих авторов',
-    price: '990 ₽',
-    frequency: '/ месяц',
+    price: 990,
+    yearlyPrice: 9900,
     features: ['До 30 AI-сценариев в месяц', 'Генерация сценариев по любым YouTube-видео', 'Готовая структура сценария: захват внимания → развитие → финал', 'История всех сгенерированных сценариев', 'Подходит для личных каналов и первых запусков'],
   },
   {
     id: 'professional',
     name: 'Professional',
     description: 'Для растущих каналов',
-    price: '2 490 ₽',
-    frequency: '/ месяц',
+    price: 2490,
+    yearlyPrice: 24900,
     features: [
       'До 100 AI-сценариев в месяц',
       'Подходит для регулярного выпуска контента',
@@ -53,8 +54,8 @@ const defaultPlans: PricingPlan[] = [
     id: 'enterprise',
     name: 'Enterprise',
     description: 'Для студий и команд',
-    price: '5 990 ₽',
-    frequency: '/ месяц',
+    price: 5990,
+    yearlyPrice: 59900,
     features: [
       'До 300 AI-сценариев в месяц',
       'Подходит для агентств и продакшн-команд',
@@ -70,6 +71,7 @@ export function PricingPlans({
   currentPlanId,
   onPlanSelect
 }: PricingPlansProps) {
+  const [isYearly, setIsYearly] = useState(false);
   const [loadingPlanId, setLoadingPlanId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -84,7 +86,10 @@ export function PricingPlans({
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ planId }),
+        body: JSON.stringify({
+          planId,
+          billingCycle: isYearly ? 'yearly' : 'monthly'
+        }),
       });
 
       const data = await response.json();
@@ -148,12 +153,38 @@ export function PricingPlans({
   }
 
   return (
-    <div className='space-y-4'>
+    <div className='space-y-8'>
       {error && (
         <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-red-700 text-sm">
           {error}
         </div>
       )}
+
+      {/* Billing Toggle - только в режиме billing */}
+      {mode === 'billing' && (
+        <div className="flex items-center justify-center">
+          <ToggleGroup
+            type="single"
+            value={isYearly ? "yearly" : "monthly"}
+            onValueChange={(value) => setIsYearly(value === "yearly")}
+            className="bg-secondary text-secondary-foreground border-none rounded-full p-1 cursor-pointer shadow-none"
+          >
+            <ToggleGroupItem
+              value="monthly"
+              className="data-[state=on]:bg-background data-[state=on]:border-border border-transparent border px-6 !rounded-full data-[state=on]:text-foreground hover:bg-transparent cursor-pointer transition-colors"
+            >
+              Помесячно
+            </ToggleGroupItem>
+            <ToggleGroupItem
+              value="yearly"
+              className="data-[state=on]:bg-background data-[state=on]:border-border border-transparent border px-6 !rounded-full data-[state=on]:text-foreground hover:bg-transparent cursor-pointer transition-colors"
+            >
+              Годовой
+            </ToggleGroupItem>
+          </ToggleGroup>
+        </div>
+      )}
+
       <div className='grid gap-8 lg:grid-cols-3'>
         {plans.map(tier => (
         <Card
@@ -185,8 +216,12 @@ export function PricingPlans({
           </CardHeader>
           <CardContent className='flex flex-1 flex-col space-y-6'>
             <div className='flex items-baseline justify-center'>
-              <span className='text-4xl font-bold'>{tier.price}</span>
-              <span className='text-muted-foreground text-sm'>{tier.frequency}</span>
+              <span className='text-4xl font-bold'>
+                {isYearly ? tier.yearlyPrice : tier.price} ₽
+              </span>
+              <span className='text-muted-foreground text-sm'>
+                {isYearly ? ' / год' : ' / месяц'}
+              </span>
             </div>
             <div className='space-y-2'>
               {tier.features.map(feature => (

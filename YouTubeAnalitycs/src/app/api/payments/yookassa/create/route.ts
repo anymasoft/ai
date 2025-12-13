@@ -4,7 +4,8 @@
  *
  * Body:
  * {
- *   planId: "basic" | "professional" | "enterprise"
+ *   planId: "basic" | "professional" | "enterprise",
+ *   billingCycle?: "monthly" | "yearly" (по умолчанию "monthly")
  * }
  *
  * Response:
@@ -36,6 +37,7 @@ interface YooKassaPaymentRequest {
   metadata: {
     userId: string;
     planId: string;
+    billingCycle: string;
   };
 }
 
@@ -65,7 +67,7 @@ export async function POST(request: NextRequest) {
 
     // Парсим тело запроса
     const body = await request.json();
-    const { planId } = body;
+    const { planId, billingCycle = 'monthly' } = body;
 
     // Валидируем planId
     if (!planId || !["basic", "professional", "enterprise"].includes(planId)) {
@@ -75,8 +77,16 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Получаем цену тариф в копейках
-    const amountCopecks = getPlanPrice(
+    // Валидируем billingCycle
+    if (!["monthly", "yearly"].includes(billingCycle)) {
+      return NextResponse.json(
+        { success: false, error: "Неверный цикл биллинга" },
+        { status: 400 }
+      );
+    }
+
+    // Получаем базовую цену тариф в копейках (месячная)
+    let amountCopecks = getPlanPrice(
       planId as "basic" | "professional" | "enterprise"
     );
     if (amountCopecks === 0) {
@@ -84,6 +94,15 @@ export async function POST(request: NextRequest) {
         { success: false, error: "Не удалось определить цену тариф" },
         { status: 400 }
       );
+    }
+
+    // Если годовая подписка, применяем годовую цену
+    if (billingCycle === 'yearly') {
+      // Годовая цена примерно в 10 раз выше месячной
+      // basic: 990 * 10 = 9900
+      // professional: 2490 * 10 = 24900
+      // enterprise: 5990 * 10 = 59900
+      amountCopecks = amountCopecks * 10;
     }
 
     // Конвертируем копейки в рубли (строка)
@@ -114,10 +133,11 @@ export async function POST(request: NextRequest) {
       capture: true,
       description: `Подписка на тариф ${getPlanName(
         planId as "basic" | "professional" | "enterprise"
-      )} - ${session.user.email}`,
+      )} (${billingCycle === 'yearly' ? 'Годовая' : 'Месячная'}) - ${session.user.email}`,
       metadata: {
         userId: session.user.id,
         planId: planId,
+        billingCycle: billingCycle,
       },
     };
 

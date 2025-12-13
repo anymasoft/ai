@@ -23,6 +23,7 @@ interface YooKassaPayment {
   metadata: {
     userId: string;
     planId: string;
+    billingCycle?: string;
   };
 }
 
@@ -128,9 +129,10 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Получаем planId из metadata
+    // Получаем planId и billingCycle из metadata
     const planId = paymentData.metadata?.planId;
-    console.log(`[YooKassa Confirm] Extracted planId: ${planId}`);
+    const billingCycle = paymentData.metadata?.billingCycle || 'monthly';
+    console.log(`[YooKassa Confirm] Extracted planId: ${planId}, billingCycle: ${billingCycle}`);
 
     if (!planId || !["basic", "professional", "enterprise"].includes(planId)) {
       console.error(
@@ -145,11 +147,20 @@ export async function GET(request: NextRequest) {
     // Обновляем план пользователя в БД
     try {
       const now = Math.floor(Date.now() / 1000);
-      const thirtyDaysInSeconds = 30 * 24 * 60 * 60;
-      const expiresAt = now + thirtyDaysInSeconds;
+
+      // Рассчитываем срок действия подписки в зависимости от billingCycle
+      let subscriptionDaysInSeconds: number;
+      if (billingCycle === 'yearly') {
+        // 365 дней для годовой подписки
+        subscriptionDaysInSeconds = 365 * 24 * 60 * 60;
+      } else {
+        // 30 дней для месячной подписки (по умолчанию)
+        subscriptionDaysInSeconds = 30 * 24 * 60 * 60;
+      }
+      const expiresAt = now + subscriptionDaysInSeconds;
 
       console.log(
-        `[YooKassa Confirm] Updating plan for user ${session.user.id} to ${planId} (expires at ${expiresAt})`
+        `[YooKassa Confirm] Updating plan for user ${session.user.id} to ${planId} with ${billingCycle} billing (expires at ${expiresAt})`
       );
 
       await updateUserPlan({
@@ -160,7 +171,7 @@ export async function GET(request: NextRequest) {
       });
 
       console.log(
-        `[YooKassa Confirm] Successfully confirmed payment for user ${session.user.id}, plan ${planId}`
+        `[YooKassa Confirm] Successfully confirmed payment for user ${session.user.id}, plan ${planId}, billing cycle: ${billingCycle}`
       );
 
       return NextResponse.json({ ok: true });
