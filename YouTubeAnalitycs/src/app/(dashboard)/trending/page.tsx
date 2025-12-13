@@ -511,7 +511,7 @@ export default function TrendingPage() {
           </CardDescription>
           </CardHeader>
           <CardContent>
-            <Table>
+            <Table style={{ tableLayout: 'fixed' }}>
               <TableHeader>
                 <TableRow>
                   <TableHead className="w-[40px]">
