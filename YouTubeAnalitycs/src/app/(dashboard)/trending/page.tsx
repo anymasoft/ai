@@ -593,7 +593,7 @@ export default function TrendingPage() {
                         className="h-4 w-4 rounded border-gray-300"
                       />
                     </TableCell>
-                    <TableCell className="max-w-[320px]">
+                    <TableCell>
                       <div className="space-y-1">
                         <div className="flex items-start gap-2">
                           <div className="flex-1 min-w-0">
@@ -601,7 +601,7 @@ export default function TrendingPage() {
                               href={video.url}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="font-medium hover:text-primary hover:underline line-clamp-2 block"
+                              className="font-medium hover:text-primary hover:underline block max-w-[320px] overflow-hidden text-ellipsis whitespace-nowrap"
                               title={video.title}
                             >
                               {video.title}
@@ -683,14 +683,14 @@ export default function TrendingPage() {
                         </button>
                       )}
                     </TableCell>
-                    <TableCell className="max-w-[220px]">
+                    <TableCell>
                       <div className="space-y-1">
-                        <div className="font-medium line-clamp-1" title={video.channelTitle}>
+                        <div className="font-medium" title={video.channelTitle}>
                           <a
                             href={`https://www.youtube.com/${video.channelHandle ? `@${video.channelHandle}` : `channel/${video.channelId}`}`}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="hover:text-primary hover:underline truncate block"
+                            className="hover:text-primary hover:underline block max-w-[220px] overflow-hidden text-ellipsis whitespace-nowrap"
                           >
                             {video.channelTitle}
                           </a>
