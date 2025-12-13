@@ -206,17 +206,6 @@ export default function BillingSettings() {
         </p>
       </div>
 
-      {/* Отладочная информация о сессии (удалить в продакшене) */}
-      {process.env.NODE_ENV === 'development' && (
-        <Alert className="border-gray-200 bg-gray-50 dark:border-gray-800 dark:bg-gray-950">
-          <AlertDescription className="text-gray-700 text-xs font-mono">
-            <div>status: {status}</div>
-            <div>plan: {session?.user?.plan || 'undefined'}</div>
-            <div>userId: {session?.user?.id || 'undefined'}</div>
-          </AlertDescription>
-        </Alert>
-      )}
-
       {/* Сообщение об ошибке подтверждения платежа */}
       {confirmError && (
         <Alert className="border-red-200 bg-red-50 dark:border-red-800 dark:bg-red-950">
