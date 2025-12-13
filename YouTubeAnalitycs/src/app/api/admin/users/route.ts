@@ -1,6 +1,17 @@
 import { NextRequest, NextResponse } from "next/server"
+import { z } from "zod"
 import { verifyAdminAccess } from "@/lib/admin-api"
 import { db } from "@/lib/db"
+
+// Валидные тарифные планы
+const VALID_PLANS = ["free", "basic", "professional", "enterprise", "pro", "business"]
+
+// Схема валидации для PATCH запроса
+const updateUserSchema = z.object({
+  userId: z.string().min(1, "userId is required"),
+  plan: z.enum([...VALID_PLANS] as [string, ...string[]]).optional(),
+  disabled: z.boolean().optional(),
+})
 
 export async function GET(request: NextRequest) {
   const { isAdmin, response } = await verifyAdminAccess(request)
@@ -47,20 +58,24 @@ export async function PATCH(request: NextRequest) {
 
   try {
     const body = await request.json()
-    const { userId, plan, disabled } = body
 
-    if (!userId) {
+    // Валидируем данные
+    const validation = updateUserSchema.safeParse(body)
+    if (!validation.success) {
       return NextResponse.json(
-        { error: "userId is required" },
+        { error: `Validation error: ${validation.error.errors[0].message}` },
         { status: 400 }
       )
     }
+
+    const { userId, plan, disabled } = validation.data
+    const updatedAt = Math.floor(Date.now() / 1000)
 
     // Update users table if plan is provided
     if (plan) {
       await db.execute(
         "UPDATE users SET plan = ?, updatedAt = ? WHERE id = ?",
-        [plan, Math.floor(Date.now() / 1000), userId]
+        [plan, updatedAt, userId]
       )
     }
 
@@ -68,7 +83,7 @@ export async function PATCH(request: NextRequest) {
     if (disabled !== undefined) {
       await db.execute(
         "UPDATE users SET disabled = ?, updatedAt = ? WHERE id = ?",
-        [disabled ? 1 : 0, Math.floor(Date.now() / 1000), userId]
+        [disabled ? 1 : 0, updatedAt, userId]
       )
     }
 

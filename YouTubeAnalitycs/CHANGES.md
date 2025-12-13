@@ -5,6 +5,60 @@ All changes are tracked in git history.
 
 ---
 
+## 2025-12-13 - Быстрый аудит админ-панели + минимальные фиксы безопасности
+
+### Проведена полная проверка админ-панели (ЧАСТЬ A)
+
+#### A.1 ACCESS CONTROL - ✅ OK
+- middleware.ts защищает `/admin/*` и `/api/admin/*` проверкой ADMIN_EMAIL
+- verifyAdminAccess() функция на всех API endpoints
+- Non-admin редиректятся на / (ui) или получают 403 (api)
+
+#### A.2 DISABLED USERS - ❌ КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ
+**Проблема:** disabled пользователь МОГА войти в систему
+**Исправлено:** Добавлена проверка флага disabled в signIn callback NextAuth
+- Если disabled=true → запретить вход
+- Залогировать попытку входа блокированного пользователя
+
+#### A.3 LIMITS DATA INTEGRITY - ❌ КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ
+**Проблема:** Нет валидации входных данных в PATCH endpoints
+**Исправлено:** Добавлена Zod валидация во все admin API:
+- /api/admin/limits: analysesPerDay, scriptsPerDay (0..10000), cooldownHours (0..168)
+- /api/admin/payments: plan (из белого списка), isPaid (boolean), expiresAt (timestamp)
+- /api/admin/users: plan (из белого списка), disabled (boolean)
+- Невалидные данные возвращают 400 с описанием ошибки
+
+#### A.4 SYSTEM FLAGS - ✅ OK
+- Флаги сохраняются/читаются из БД корректно
+- Добавлена подпись что Maintenance Mode ещё не интегрирован
+
+#### A.5 UI CONSISTENCY - ❌ ОШИБКИ КОМПИЛЯЦИИ
+**Проблема:** X иконка использовалась в payments и limits без импорта
+**Исправлено:** Добавлены импорты X из lucide-react
+
+### Результаты всех фиксов
+
+| Приоритет | Описание | Файлы | Статус |
+|-----------|---------|-------|--------|
+| P1 | Блокировка disabled пользователей | src/lib/auth.ts | ✅ FIXED |
+| P2 | Zod валидация admin API | src/app/api/admin/{limits,payments,users}/route.ts | ✅ FIXED |
+| P3 | X импорт в UI страницах | src/app/(dashboard)/admin/{payments,limits}/page.tsx | ✅ FIXED |
+| Minor | Подпись Maintenance Mode | src/app/(dashboard)/admin/system/page.tsx | ✅ FIXED |
+
+### Гарантии безопасности
+- ✅ Disabled пользователи не могут войти
+- ✅ API валидирует все входные данные (типы, диапазоны, перечисления)
+- ✅ Невалидные значения не сохраняются в БД
+- ✅ Access control работает на двух уровнях: middleware + API endpoints
+
+### Тестирование (вручную)
+1. Disabled пользователь: попытка sign-in с Google должна блокироваться
+2. Admin API валидация: отправить { analysesPerDay: -1 } должно вернуть 400
+3. Admin API валидация: отправить { plan: "invalid" } должно вернуть 400
+4. UI компиляция: npm run build должен пройти без ошибок
+
+---
+
 ## 2025-12-13 - Удаление дублирующейся папки /app/admin
 
 ### Проблема

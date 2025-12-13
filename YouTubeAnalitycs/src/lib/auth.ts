@@ -20,7 +20,7 @@ export const authOptions: NextAuthOptions = {
 
         // Проверяем, существует ли пользователь в БД
         const existing = await db.execute(
-          "SELECT id FROM users WHERE id = ?",
+          "SELECT id, disabled FROM users WHERE id = ?",
           [user.id]
         );
 
@@ -38,6 +38,13 @@ export const authOptions: NextAuthOptions = {
               Math.floor(Date.now() / 1000),
             ]
           );
+        } else {
+          // Проверяем, не отключен ли пользователь
+          const dbUser = rows[0];
+          if (dbUser.disabled === 1 || dbUser.disabled === true) {
+            console.warn(`[Auth] Disabled user attempted to sign in: ${user.email}`);
+            return false;
+          }
         }
         return true;
       } catch (error) {

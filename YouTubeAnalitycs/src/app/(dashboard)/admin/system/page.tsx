@@ -170,6 +170,7 @@ export default function AdminSystemPage() {
         <CardContent className="space-y-2 text-sm text-muted-foreground">
           <p>• Feature flags are applied immediately to all users</p>
           <p>• Currently NOT enforced in product (only stored)</p>
+          <p>• Maintenance Mode: not yet integrated into authentication flow</p>
           <p>• Integration with product pages will be done in separate task</p>
         </CardContent>
       </Card>

@@ -1,6 +1,19 @@
 import { NextRequest, NextResponse } from "next/server"
+import { z } from "zod"
 import { verifyAdminAccess } from "@/lib/admin-api"
 import { db } from "@/lib/db"
+
+// Валидные тарифные планы
+const VALID_PLANS = ["free", "basic", "professional", "enterprise", "pro", "business"]
+
+// Схема валидации для PATCH запроса
+const updatePaymentSchema = z.object({
+  userId: z.string().min(1, "userId is required"),
+  plan: z.enum([...VALID_PLANS] as [string, ...string[]]).optional(),
+  isPaid: z.boolean().optional(),
+  expiresAt: z.number().int().positive().optional().nullable(),
+  provider: z.string().optional(),
+})
 
 export async function GET(request: NextRequest) {
   const { isAdmin, response } = await verifyAdminAccess(request)
@@ -49,15 +62,17 @@ export async function PATCH(request: NextRequest) {
 
   try {
     const body = await request.json()
-    const { userId, plan, isPaid, expiresAt, provider } = body
 
-    if (!userId) {
+    // Валидируем данные
+    const validation = updatePaymentSchema.safeParse(body)
+    if (!validation.success) {
       return NextResponse.json(
-        { error: "userId is required" },
+        { error: `Validation error: ${validation.error.errors[0].message}` },
         { status: 400 }
       )
     }
 
+    const { userId, plan, isPaid, expiresAt, provider } = validation.data
     const updatedAt = Math.floor(Date.now() / 1000)
 
     // Insert or update admin_subscriptions
