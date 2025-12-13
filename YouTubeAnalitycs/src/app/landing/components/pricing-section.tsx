@@ -1,5 +1,6 @@
 "use client"
 
+import Link from 'next/link'
 import { Check } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -165,8 +166,11 @@ export function PricingSection() {
                           : 'shadow-sm shadow-black/15 border border-transparent bg-background ring-1 ring-foreground/10 hover:bg-muted/50'
                       }`}
                       variant={plan.popular ? 'default' : 'secondary'}
+                      asChild
                     >
-                      {plan.cta}
+                      <Link href="/sign-in">
+                        {plan.cta}
+                      </Link>
                     </Button>
                   </div>
 

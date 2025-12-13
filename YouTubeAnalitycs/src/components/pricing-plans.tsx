@@ -1,5 +1,6 @@
 "use client"
 
+import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -149,10 +150,12 @@ export function PricingPlans({
               size='lg'
               variant={getButtonVariant(tier)}
               disabled={isButtonDisabled(tier)}
-              onClick={() => onPlanSelect?.(tier.id)}
               aria-label={`${getButtonText(tier)} - ${tier.name} plan`}
+              asChild
             >
-              {getButtonText(tier)}
+              <Link href="/sign-in">
+                {getButtonText(tier)}
+              </Link>
             </Button>
           </CardFooter>
         </Card>
