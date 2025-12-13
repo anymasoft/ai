@@ -95,6 +95,7 @@ export function PricingPlans({
       }
 
       // Перенаправляем пользователя на страницу оплаты ЮKassa
+      // paymentId будет добавлен в URL после редиректа с ЮKassa
       window.location.href = data.paymentUrl;
     } catch (err) {
       console.error('Payment error:', err);
