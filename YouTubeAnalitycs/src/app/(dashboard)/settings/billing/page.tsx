@@ -22,17 +22,17 @@ export default function BillingSettings() {
   const userPlan = session?.user?.plan || "free";
 
   const planNames: Record<string, string> = {
-    free: "Free Trial",
-    basic: "Basic Plan",
-    professional: "Professional Plan",
-    enterprise: "Enterprise Plan",
+    free: "Бесплатный план",
+    basic: "Basic",
+    professional: "Professional",
+    enterprise: "Enterprise",
   };
 
   const planPrices: Record<string, string> = {
-    free: "$0/mo",
-    basic: "$19/mo",
-    professional: "$79/mo",
-    enterprise: "$199/mo",
+    free: "0 ₽",
+    basic: "990 ₽/месяц",
+    professional: "2 490 ₽/месяц",
+    enterprise: "5 990 ₽/месяц",
   };
 
   const planData = {
