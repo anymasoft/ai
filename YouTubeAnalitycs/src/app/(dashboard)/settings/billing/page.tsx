@@ -31,7 +31,9 @@ export default function BillingSettings() {
 
     const fetchUsage = async () => {
       try {
-        const response = await fetch("/api/billing/script-usage");
+        const response = await fetch("/api/billing/script-usage", {
+          cache: "no-store",
+        });
         if (response.ok) {
           const data = await response.json();
           setScriptUsage(data);
