@@ -28,13 +28,13 @@ export function LoginForm3({
                 </Link>
               </div>
               <div className="flex flex-col items-center text-center">
-                <h1 className="text-2xl font-bold">Welcome back</h1>
+                <h1 className="text-2xl font-bold">Добро пожаловать обратно</h1>
                 <p className="text-muted-foreground text-balance">
-                  Login to your ShadcnStore account
+                  Войдите в свой аккаунт ShadcnStore
                 </p>
               </div>
               <div className="grid gap-3">
-                <Label htmlFor="email">Email</Label>
+                <Label htmlFor="email">Почта</Label>
                 <Input
                   id="email"
                   type="email"
@@ -45,22 +45,22 @@ export function LoginForm3({
               </div>
               <div className="grid gap-3">
                 <div className="flex items-center">
-                  <Label htmlFor="password">Password</Label>
+                  <Label htmlFor="password">Пароль</Label>
                   <a
                     href="/forgot-password-3"
                     className="ml-auto text-sm underline-offset-2 hover:underline"
                   >
-                    Forgot your password?
+                    Забыли пароль?
                   </a>
                 </div>
                 <Input id="password" type="password" defaultValue="password" required />
               </div>
               <Button type="submit" className="w-full cursor-pointer">
-                Login
+                Войти
               </Button>
               <div className="after:border-border relative text-center text-sm after:absolute after:inset-0 after:top-1/2 after:z-0 after:flex after:items-center after:border-t">
                 <span className="bg-card text-muted-foreground relative z-10 px-2">
-                  Or continue with
+                  Или продолжите с
                 </span>
               </div>
               <div className="grid grid-cols-3 gap-4">
@@ -71,7 +71,7 @@ export function LoginForm3({
                       fill="currentColor"
                     />
                   </svg>
-                  <span className="sr-only">Login with Apple</span>
+                  <span className="sr-only">Войти через Apple</span>
                 </Button>
                 <Button variant="outline" type="button" className="w-full cursor-pointer">
                   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
@@ -80,7 +80,7 @@ export function LoginForm3({
                       fill="currentColor"
                     />
                   </svg>
-                  <span className="sr-only">Login with Google</span>
+                  <span className="sr-only">Войти через Google</span>
                 </Button>
                 <Button variant="outline" type="button" className="w-full cursor-pointer">
                   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
@@ -89,13 +89,13 @@ export function LoginForm3({
                       fill="currentColor"
                     />
                   </svg>
-                  <span className="sr-only">Login with Meta</span>
+                  <span className="sr-only">Войти через Meta</span>
                 </Button>
               </div>
               <div className="text-center text-sm">
-                Don&apos;t have an account?{" "}
+                Нет аккаунта?{" "}
                 <a href="/sign-up-3" className="underline underline-offset-4">
-                  Sign up
+                  Зарегистрироваться
                 </a>
               </div>
             </div>
@@ -111,8 +111,8 @@ export function LoginForm3({
         </CardContent>
       </Card>
       <div className="text-muted-foreground *:[a]:hover:text-primary text-center text-xs text-balance *:[a]:underline *:[a]:underline-offset-4">
-        By clicking continue, you agree to our <a href="#">Terms of Service</a>{" "}
-        and <a href="#">Privacy Policy</a>.
+        Нажимая продолжить, вы согласны с нашей <a href="#">Политикой обслуживания</a>{" "}
+        и <a href="#">Политикой конфиденциальности</a>.
       </div>
     </div>
   )

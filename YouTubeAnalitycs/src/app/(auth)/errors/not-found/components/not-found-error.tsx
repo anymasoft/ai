@@ -18,12 +18,12 @@ export function NotFoundError() {
       />
       <div className='text-center'>
         <h1 className='mb-4 text-3xl font-bold'>404</h1>
-        <h2 className="mb-3 text-2xl font-semibold">Page Not Found</h2>
-        <p>The page you are looking for doesn&apos;t exist or has been moved to another location.</p>
+        <h2 className="mb-3 text-2xl font-semibold">Страница не найдена</h2>
+        <p>Страница, которую вы ищете, не существует или была перемещена на другое место.</p>
         <div className='mt-6 flex items-center justify-center gap-4 md:mt-8'>
-          <Button className='cursor-pointer' onClick={() => router.push('/trending')}>Go Back Home</Button>
+          <Button className='cursor-pointer' onClick={() => router.push('/trending')}>На главную</Button>
           <Button variant='outline' className='flex cursor-pointer items-center gap-1' onClick={() => router.push('#')}>
-            Contact Us
+            Связаться с нами
           </Button>
         </div>
       </div>

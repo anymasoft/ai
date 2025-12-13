@@ -18,12 +18,12 @@ export function ForbiddenError() {
       />
       <div className='text-center'>
         <h1 className='mb-4 text-3xl font-bold'>403</h1>
-        <h2 className="mb-3 text-2xl font-semibold">Forbidden</h2>
-        <p>Access to this resource is forbidden. You don&apos;t have the necessary permissions to view this page.</p>
+        <h2 className="mb-3 text-2xl font-semibold">Запрещено</h2>
+        <p>Доступ к этому ресурсу запрещен. У вас нет необходимых прав для просмотра этой страницы.</p>
         <div className='mt-6 flex items-center justify-center gap-4 md:mt-8'>
-          <Button className='cursor-pointer' onClick={() => router.push('/trending')}>Go Back Home</Button>
+          <Button className='cursor-pointer' onClick={() => router.push('/trending')}>На главную</Button>
           <Button variant='outline' className='flex cursor-pointer items-center gap-1' onClick={() => router.push('#')}>
-            Contact Us
+            Связаться с нами
           </Button>
         </div>
       </div>
