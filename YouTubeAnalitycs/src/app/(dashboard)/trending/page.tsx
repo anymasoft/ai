@@ -1,4 +1,5 @@
 "use client";
+import { useSession } from "next-auth/react";
 
 import { useState, useEffect, useCallback } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -15,6 +16,7 @@ import { ru } from "date-fns/locale";
 import Link from "next/link";
 import type { MomentumVideo } from "@/lib/momentum-queries";
 import type { GeneratedScript, SavedScript } from "@/types/scripts";
+import type { UserPlan } from "@/config/limits";
 import TrendingInsights from "./components/TrendingInsights";
 import { formatChannelHandle, extractHandleFromUrl } from "@/lib/formatHandle";
 import { formatMomentumPercent } from "@/lib/momentum-formatting";
@@ -53,6 +55,8 @@ interface ChannelInfo {
 }
 
 export default function TrendingPage() {
+  const { data: session } = useSession();
+  const userPlan = (session?.user?.plan || "free") as UserPlan;
   const [videos, setVideos] = useState<MomentumVideo[]>([]);
   const [channels, setChannels] = useState<ChannelInfo[]>([]);
   const [loading, setLoading] = useState(true);
@@ -484,19 +488,22 @@ export default function TrendingPage() {
                     size="icon"
                     variant="outline"
                     onClick={() => {
+                      if (userPlan === "free") return;
                       console.log("Обновить button clicked!");
                       fetchMomentumVideos();
                     }}
-                    disabled={loading}
+                    disabled={loading || userPlan === "free"}
+                    className={userPlan === "free" ? "cursor-not-allowed" : "cursor-pointer"}
                   >
                     <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent>
-                  Обновить видео
+                  {userPlan === "free" ? "Недоступно на бесплатном тарифе" : "Обновить видео"}
                 </TooltipContent>
               </Tooltip>
             </div>
+
           </div>
         </div>
       </div>
