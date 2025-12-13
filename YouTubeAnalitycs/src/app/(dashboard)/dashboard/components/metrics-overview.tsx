@@ -66,7 +66,7 @@ export function MetricsOverview({ data }: MetricsOverviewProps) {
       subfooter: `${formatNumber(data.totalVideos)} videos tracked`
     },
     {
-      title: "Top Momentum",
+      title: "Лучший Momentum",
       value: data.topMomentumVideo
         ? formatMomentumPercent(data.topMomentumVideo.momentumScore)
         : "—",

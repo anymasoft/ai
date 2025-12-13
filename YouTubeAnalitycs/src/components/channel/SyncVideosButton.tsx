@@ -56,7 +56,7 @@ export function SyncVideosButton({ channelId }: SyncVideosButtonProps) {
       className="cursor-pointer"
     >
       <Video className={`h-4 w-4 mr-2 ${syncing ? "animate-pulse" : ""}`} />
-      {syncing ? "Syncing..." : "Sync Top Videos"}
+      {syncing ? "Синхронизация..." : "Синхронизировать видео"}
     </Button>
   );
 }

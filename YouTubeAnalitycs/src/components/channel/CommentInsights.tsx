@@ -114,8 +114,8 @@ export function CommentInsights({
   if (loading) {
     return (
       <AnalysisLoadingState
-        title="Analyzing comments..."
-        subtitle="This may take 15-25 seconds"
+        title="Анализирование комментариев...""
+        subtitle="Это может занять 15-25 секунд"
       />
     );
   }
@@ -129,7 +129,7 @@ export function CommentInsights({
           </p>
           <Button variant="default" onClick={handleGenerate} className="gap-2 cursor-pointer" disabled={loading}>
             <MessageSquare className="h-4 w-4" />
-            {loading ? "Анализируется..." : "Generate Comment Analysis"}
+            {loading ? "Анализируется..." : "Анализировать комментарии"}
           </Button>
           {error && (
             <p className="text-sm text-destructive mt-4">{error}</p>
@@ -169,7 +169,7 @@ export function CommentInsights({
         <TooltipContent>
           {isCooldownActive && getCooldownTimeRemaining()
             ? `Available in ${getCooldownTimeRemaining()!.hours}h ${getCooldownTimeRemaining()!.minutes}m`
-            : "Refresh Analysis"}
+            : "Обновить анализ"}
         </TooltipContent>
       </Tooltip>
       </div>

@@ -201,7 +201,7 @@ export default function CompetitorsPage() {
           <form onSubmit={handleAddCompetitor} className="flex gap-2">
             <Input
               type="text"
-              placeholder="Enter channel handle or URL (e.g., @channelname)"
+              placeholder="Введите ручку канала или URL (например, @channelname)"
               value={handle}
               onChange={(e) => setHandle(e.target.value)}
               disabled={loading || isAtLimit}
