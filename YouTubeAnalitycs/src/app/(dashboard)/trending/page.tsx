@@ -1077,92 +1077,42 @@ export default function TrendingPage() {
         </div>
 
         {/* Селектор креативности */}
-        {userPlan === "free" ? (
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <div className="mb-4 opacity-60 cursor-help">
-                <h4 className="font-medium mb-1">
-                  Креативность сценария
-                  <span className="text-xs text-amber-600 ml-2 font-normal">
-                    (доступно на платных тарифах)
-                  </span>
-                </h4>
-                <p className="text-sm text-muted-foreground mb-3">
-                  Настройте баланс между строгой структурой и смелыми идеями.
-                </p>
-                <div className="flex flex-col md:flex-row gap-2 pointer-events-none">
-                  {SCRIPT_TEMPERATURE_PRESETS.map((preset) => (
-                    <label
-                      key={preset.key}
-                      className={`flex-1 flex items-start gap-2 p-3 rounded-md border transition-colors ${
-                        selectedTemperatureKey === preset.key
-                          ? "border-primary bg-primary/5"
-                          : "border-border hover:border-primary/50"
-                      }`}
-                    >
-                      <input
-                        type="radio"
-                        name="scriptTemperature"
-                        value={preset.key}
-                        checked={selectedTemperatureKey === preset.key}
-                        onChange={() => {}}
-                        disabled={true}
-                        className="mt-1"
-                      />
-                      <div>
-                        <span className="font-medium text-sm">{preset.label}</span>
-                        <p className="text-xs text-muted-foreground mt-0.5">
-                          {preset.description}
-                        </p>
-                      </div>
-                    </label>
-                  ))}
+        <div className="mb-4">
+          <h4 className="font-medium mb-1">Креативность сценария</h4>
+          <p className="text-sm text-muted-foreground mb-3">
+            Настройте баланс между строгой структурой и смелыми идеями.
+          </p>
+          <div className="flex flex-col md:flex-row gap-2">
+            {SCRIPT_TEMPERATURE_PRESETS.map((preset) => (
+              <label
+                key={preset.key}
+                className={`flex-1 flex items-start gap-2 p-3 rounded-md border transition-colors cursor-pointer ${
+                  selectedTemperatureKey === preset.key
+                    ? "border-primary bg-primary/5"
+                    : "border-border hover:border-primary/50"
+                }`}
+              >
+                <input
+                  type="radio"
+                  name="scriptTemperature"
+                  value={preset.key}
+                  checked={selectedTemperatureKey === preset.key}
+                  onChange={() => {
+                    setSelectedTemperatureKey(preset.key)
+                  }}
+                  disabled={false}
+                  className="mt-1"
+                />
+                <div>
+                  <span className="font-medium text-sm">{preset.label}</span>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    {preset.description}
+                  </p>
                 </div>
-              </div>
-            </TooltipTrigger>
-            <TooltipContent className="max-w-xs">
-              <p className="text-sm">Настройте креативность генерируемых сценариев</p>
-              <p className="text-xs text-muted-foreground mt-1">Доступно на платных тарифах</p>
-            </TooltipContent>
-          </Tooltip>
-        ) : (
-          <div className="mb-4">
-            <h4 className="font-medium mb-1">Креативность сценария</h4>
-            <p className="text-sm text-muted-foreground mb-3">
-              Настройте баланс между строгой структурой и смелыми идеями.
-            </p>
-            <div className="flex flex-col md:flex-row gap-2">
-              {SCRIPT_TEMPERATURE_PRESETS.map((preset) => (
-                <label
-                  key={preset.key}
-                  className={`flex-1 flex items-start gap-2 p-3 rounded-md border transition-colors cursor-pointer ${
-                    selectedTemperatureKey === preset.key
-                      ? "border-primary bg-primary/5"
-                      : "border-border hover:border-primary/50"
-                  }`}
-                >
-                  <input
-                    type="radio"
-                    name="scriptTemperature"
-                    value={preset.key}
-                    checked={selectedTemperatureKey === preset.key}
-                    onChange={() => {
-                      setSelectedTemperatureKey(preset.key)
-                    }}
-                    disabled={false}
-                    className="mt-1"
-                  />
-                  <div>
-                    <span className="font-medium text-sm">{preset.label}</span>
-                    <p className="text-xs text-muted-foreground mt-0.5">
-                      {preset.description}
-                    </p>
-                  </div>
-                </label>
-              ))}
-            </div>
+              </label>
+            ))}
           </div>
-        )}
+        </div>
 
         {/* Кнопка генерации */}
         <div className="flex justify-end">
