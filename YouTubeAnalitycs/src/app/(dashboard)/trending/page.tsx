@@ -1011,146 +1011,70 @@ export default function TrendingPage() {
       {/* Блок генерации сценария */}
       <div className="mt-6 p-4 border rounded-lg bg-muted/30">
         {/* Источник для генерации сценария */}
-        {userPlan === "free" ? (
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <div className="mb-6 pb-6 border-b opacity-60 cursor-help">
-                <h4 className="font-medium mb-3">
-                  Источник для генерации сценария
-                  <span className="text-xs text-amber-600 ml-2 font-normal">
-                    (доступно на платных тарифах)
-                  </span>
-                </h4>
-                <div className="space-y-3 pointer-events-none">
-                  <div className="flex items-start gap-3">
-                    <div className="flex items-center h-5">
-                      <input
-                        type="radio"
-                        id="scriptSourceTrending"
-                        name="scriptSource"
-                        value="trending"
-                        checked={scriptSourceMode === "trending"}
-                        onChange={() => {}}
-                        disabled={true}
-                        className="h-4 w-4"
-                      />
-                    </div>
-                    <Label
-                      htmlFor="scriptSourceTrending"
-                      className="flex-1 text-muted-foreground"
-                    >
-                      Использовать выбранные трендовые видео
-                    </Label>
-                  </div>
-                  <div className="flex items-start gap-3">
-                    <div className="flex items-center h-5">
-                      <input
-                        type="radio"
-                        id="scriptSourceSpecific"
-                        name="scriptSource"
-                        value="specific"
-                        checked={scriptSourceMode === "specific"}
-                        onChange={() => {}}
-                        disabled={true}
-                        className="h-4 w-4"
-                      />
-                    </div>
-                    <Label
-                      htmlFor="scriptSourceSpecific"
-                      className="flex-1 text-muted-foreground"
-                    >
-                      Использовать конкретное YouTube-видео
-                    </Label>
-                  </div>
-                </div>
-                <div className="mt-3 ml-7 pointer-events-none">
-                  <Input
-                    type="text"
-                    placeholder="Вставьте ссылку на YouTube-видео"
-                    disabled={true}
-                    value={specificVideoUrl}
-                    onChange={() => {}}
-                    className="w-full"
-                  />
-                  <p className="text-xs text-muted-foreground mt-2">
-                    Мы проанализируем структуру видео, хуки и подачу,
-                    <br />
-                    чтобы создать оригинальный сценарий в похожем стиле.
-                  </p>
-                </div>
+        <div className="mb-6 pb-6 border-b">
+          <h4 className="font-medium mb-3">Источник для генерации сценария</h4>
+          <div className="space-y-3">
+            <div className="flex items-start gap-3">
+              <div className="flex items-center h-5">
+                <input
+                  type="radio"
+                  id="scriptSourceTrending"
+                  name="scriptSource"
+                  value="trending"
+                  checked={scriptSourceMode === "trending"}
+                  onChange={() => {
+                    setScriptSourceMode("trending")
+                  }}
+                  disabled={false}
+                  className="h-4 w-4"
+                />
               </div>
-            </TooltipTrigger>
-            <TooltipContent className="max-w-xs">
-              <p className="text-sm">Выберите источник видео для анализа и генерации сценария</p>
-              <p className="text-xs text-muted-foreground mt-1">Доступно на платных тарифах</p>
-            </TooltipContent>
-          </Tooltip>
-        ) : (
-          <div className="mb-6 pb-6 border-b">
-            <h4 className="font-medium mb-3">Источник для генерации сценария</h4>
-            <div className="space-y-3">
-              <div className="flex items-start gap-3">
-                <div className="flex items-center h-5">
-                  <input
-                    type="radio"
-                    id="scriptSourceTrending"
-                    name="scriptSource"
-                    value="trending"
-                    checked={scriptSourceMode === "trending"}
-                    onChange={() => {
-                      setScriptSourceMode("trending")
-                    }}
-                    disabled={false}
-                    className="h-4 w-4"
-                  />
-                </div>
-                <Label
-                  htmlFor="scriptSourceTrending"
-                  className="flex-1 cursor-pointer"
-                >
-                  Использовать выбранные трендовые видео
-                </Label>
-              </div>
-              <div className="flex items-start gap-3">
-                <div className="flex items-center h-5">
-                  <input
-                    type="radio"
-                    id="scriptSourceSpecific"
-                    name="scriptSource"
-                    value="specific"
-                    checked={scriptSourceMode === "specific"}
-                    onChange={() => {
-                      setScriptSourceMode("specific")
-                    }}
-                    disabled={false}
-                    className="h-4 w-4"
-                  />
-                </div>
-                <Label
-                  htmlFor="scriptSourceSpecific"
-                  className="flex-1 cursor-pointer"
-                >
-                  Использовать конкретное YouTube-видео
-                </Label>
-              </div>
+              <Label
+                htmlFor="scriptSourceTrending"
+                className="flex-1 cursor-pointer"
+              >
+                Использовать выбранные трендовые видео
+              </Label>
             </div>
-            <div className="mt-3 ml-7">
-              <Input
-                type="text"
-                placeholder="Вставьте ссылку на YouTube-видео"
-                disabled={scriptSourceMode === "trending"}
-                value={specificVideoUrl}
-                onChange={(e) => setSpecificVideoUrl(e.target.value)}
-                className="w-full"
-              />
-              <p className="text-xs text-muted-foreground mt-2">
-                Мы проанализируем структуру видео, хуки и подачу,
-                <br />
-                чтобы создать оригинальный сценарий в похожем стиле.
-              </p>
+            <div className="flex items-start gap-3">
+              <div className="flex items-center h-5">
+                <input
+                  type="radio"
+                  id="scriptSourceSpecific"
+                  name="scriptSource"
+                  value="specific"
+                  checked={scriptSourceMode === "specific"}
+                  onChange={() => {
+                    setScriptSourceMode("specific")
+                  }}
+                  disabled={false}
+                  className="h-4 w-4"
+                />
+              </div>
+              <Label
+                htmlFor="scriptSourceSpecific"
+                className="flex-1 cursor-pointer"
+              >
+                Использовать конкретное YouTube-видео
+              </Label>
             </div>
           </div>
-        )}
+          <div className="mt-3 ml-7">
+            <Input
+              type="text"
+              placeholder="Вставьте ссылку на YouTube-видео"
+              disabled={scriptSourceMode === "trending"}
+              value={specificVideoUrl}
+              onChange={(e) => setSpecificVideoUrl(e.target.value)}
+              className="w-full"
+            />
+            <p className="text-xs text-muted-foreground mt-2">
+              Мы проанализируем структуру видео, хуки и подачу,
+              <br />
+              чтобы создать оригинальный сценарий в похожем стиле.
+            </p>
+          </div>
+        </div>
 
         {/* Селектор креативности */}
         {userPlan === "free" ? (

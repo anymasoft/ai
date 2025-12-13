@@ -24,7 +24,7 @@ export function LoginForm1({
 
       if (event.data.type === "auth-success") {
         // Redirect to dashboard after successful auth
-        window.location.href = "/dashboard";
+        window.location.href = "/trending";
       }
 
       if (event.data.type === "auth-error") {
