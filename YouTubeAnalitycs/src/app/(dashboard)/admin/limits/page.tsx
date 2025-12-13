@@ -187,7 +187,7 @@ export default function AdminLimitsPage() {
               </div>
               <div>
                 <label className="text-sm font-medium">Plan</label>
-                <Select value={filterPlan} onValueChange={setFilterPlan}>
+                <Select value={filterPlan || "all"} onValueChange={setFilterPlan}>
                   <SelectTrigger className="mt-1">
                     <SelectValue placeholder="All plans" />
                   </SelectTrigger>

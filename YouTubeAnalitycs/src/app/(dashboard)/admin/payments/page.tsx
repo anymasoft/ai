@@ -215,7 +215,7 @@ export default function AdminPaymentsPage() {
               </div>
               <div>
                 <label className="text-sm font-medium">Plan</label>
-                <Select value={filterPlan} onValueChange={setFilterPlan}>
+                <Select value={filterPlan || "all"} onValueChange={setFilterPlan}>
                   <SelectTrigger className="mt-1">
                     <SelectValue placeholder="All plans" />
                   </SelectTrigger>
@@ -230,7 +230,7 @@ export default function AdminPaymentsPage() {
               </div>
               <div>
                 <label className="text-sm font-medium">Status</label>
-                <Select value={filterStatus} onValueChange={setFilterStatus}>
+                <Select value={filterStatus || "all"} onValueChange={setFilterStatus}>
                   <SelectTrigger className="mt-1">
                     <SelectValue placeholder="All statuses" />
                   </SelectTrigger>

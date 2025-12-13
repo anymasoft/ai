@@ -127,8 +127,8 @@ export default function AdminUsersPage() {
   // Фильтруем пользователей
   const filteredUsers = users.filter((user) => {
     const matchEmail = user.email.toLowerCase().includes(filterEmail.toLowerCase())
-    const matchPlan = filterPlan === "all" || !filterPlan || user.plan === filterPlan
-    const matchStatus = filterStatus === "all" || !filterStatus || (filterStatus === "active" ? !user.disabled : user.disabled)
+    const matchPlan = !filterPlan || filterPlan === "all" || user.plan === filterPlan
+    const matchStatus = !filterStatus || filterStatus === "all" || (filterStatus === "active" ? !user.disabled : user.disabled)
     return matchEmail && matchPlan && matchStatus
   })
 
@@ -181,12 +181,12 @@ export default function AdminUsersPage() {
             </div>
             <div className="flex-1 min-w-[150px]">
               <label className="text-sm font-medium text-muted-foreground">Plan</label>
-              <Select value={filterPlan} onValueChange={setFilterPlan}>
+              <Select value={filterPlan || "all"} onValueChange={setFilterPlan}>
                 <SelectTrigger className="mt-1">
                   <SelectValue placeholder="All plans" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All plans</SelectItem>
+                  <SelectItem value="all">All plans</SelectItem>
                   <SelectItem value="free">Free</SelectItem>
                   <SelectItem value="basic">Basic</SelectItem>
                   <SelectItem value="professional">Professional</SelectItem>
@@ -198,12 +198,12 @@ export default function AdminUsersPage() {
             </div>
             <div className="flex-1 min-w-[150px]">
               <label className="text-sm font-medium text-muted-foreground">Status</label>
-              <Select value={filterStatus} onValueChange={setFilterStatus}>
+              <Select value={filterStatus || "all"} onValueChange={setFilterStatus}>
                 <SelectTrigger className="mt-1">
                   <SelectValue placeholder="All status" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All status</SelectItem>
+                  <SelectItem value="all">All status</SelectItem>
                   <SelectItem value="active">Active</SelectItem>
                   <SelectItem value="disabled">Disabled</SelectItem>
                 </SelectContent>
