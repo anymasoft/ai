@@ -7,6 +7,8 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { ExternalLink, TrendingUp, BarChart3, Calendar, Eye, Users, Loader2, FileText, ArrowRight, Video, RefreshCw } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { ru } from "date-fns/locale";
@@ -69,6 +71,8 @@ export default function TrendingPage() {
   const [refreshingId, setRefreshingId] = useState<string | null>(null);
   const [videosCooldownUntil, setVideosCooldownUntil] = useState<number | null>(null);
   const VIDEOS_COOLDOWN_MS = 86400000; // TODO: заменить на значение из API meta.cooldown.nextAllowedAt
+  const [scriptSourceMode, setScriptSourceMode] = useState<"trending" | "specific">("trending");
+  const [specificVideoUrl, setSpecificVideoUrl] = useState<string>("");
 
   const getVideosCooldownTimeRemaining = () => {
     if (!videosCooldownUntil) return null;
@@ -733,6 +737,58 @@ export default function TrendingPage() {
 
             {/* Блок генерации сценария */}
             <div className="mt-6 p-4 border rounded-lg bg-muted/30">
+              {/* Источник для генерации сценария */}
+              <div className="mb-6 pb-6 border-b">
+                <h4 className="font-medium mb-3">Источник для генерации сценария</h4>
+                <div className="space-y-3">
+                  <div className="flex items-start gap-3">
+                    <div className="flex items-center h-5">
+                      <input
+                        type="radio"
+                        id="scriptSourceTrending"
+                        name="scriptSource"
+                        value="trending"
+                        checked={scriptSourceMode === "trending"}
+                        onChange={() => setScriptSourceMode("trending")}
+                        className="h-4 w-4"
+                      />
+                    </div>
+                    <Label htmlFor="scriptSourceTrending" className="cursor-pointer flex-1">
+                      Использовать выбранные трендовые видео
+                    </Label>
+                  </div>
+                  <div className="flex items-start gap-3">
+                    <div className="flex items-center h-5">
+                      <input
+                        type="radio"
+                        id="scriptSourceSpecific"
+                        name="scriptSource"
+                        value="specific"
+                        checked={scriptSourceMode === "specific"}
+                        onChange={() => setScriptSourceMode("specific")}
+                        className="h-4 w-4"
+                      />
+                    </div>
+                    <Label htmlFor="scriptSourceSpecific" className="cursor-pointer flex-1">
+                      Использовать конкретное YouTube-видео
+                    </Label>
+                  </div>
+                </div>
+                <div className="mt-3 ml-7">
+                  <Input
+                    type="text"
+                    placeholder="Вставьте ссылку на YouTube-видео"
+                    disabled={scriptSourceMode === "trending"}
+                    value={specificVideoUrl}
+                    onChange={(e) => setSpecificVideoUrl(e.target.value)}
+                    className="w-full"
+                  />
+                  <p className="text-xs text-muted-foreground mt-2">
+                    Мы проанализируем структуру видео, хуки и подачу,<br />чтобы создать оригинальный сценарий в похожем стиле.
+                  </p>
+                </div>
+              </div>
+
               {/* Селектор креативности */}
               <div className="mb-4">
                 <h4 className="font-medium mb-1">Креативность сценария</h4>
