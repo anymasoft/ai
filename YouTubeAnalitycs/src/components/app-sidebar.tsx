@@ -90,10 +90,6 @@ const navGroups = [
         icon: Settings,
         items: [
           {
-            title: "Аккаунт",
-            url: "/settings/account",
-          },
-          {
             title: "Биллинг",
             url: "/settings/billing",
           },
