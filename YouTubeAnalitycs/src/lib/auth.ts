@@ -61,26 +61,32 @@ export const authOptions: NextAuthOptions = {
         token.role = user.role || "user";
       }
 
-      // КРИТИЧЕСКОЕ: ВСЕГДА синхронизируем plan с БД если есть userId
-      // Это гарантирует что JWT всегда содержит актуальный план
+      // КРИТИЧЕСКОЕ: ВСЕГДА синхронизируем plan и billingCycle с БД если есть userId
+      // Это гарантирует что JWT всегда содержит актуальные данные
       if (token.sub) {
         try {
           const paymentInfo = await getUserPaymentInfo(token.sub);
           if (paymentInfo) {
             // @ts-ignore
             token.plan = paymentInfo.plan;
-            console.log(`[AUTH jwt] Synced plan from DB for user ${token.sub}: ${paymentInfo.plan}`);
+            // @ts-ignore
+            token.billingCycle = paymentInfo.billingCycle;
+            console.log(`[AUTH jwt] Synced plan from DB for user ${token.sub}: ${paymentInfo.plan} (${paymentInfo.billingCycle})`);
           } else {
-            // Если информация не найдена, ставим дефолтный plan
+            // Если информация не найдена, ставим дефолтные значения
             // @ts-ignore
             token.plan = "free";
-            console.log(`[AUTH jwt] No payment info found for user ${token.sub}, setting plan to free`);
+            // @ts-ignore
+            token.billingCycle = "monthly";
+            console.log(`[AUTH jwt] No payment info found for user ${token.sub}, setting defaults`);
           }
         } catch (error) {
-          console.error(`[AUTH jwt] Error syncing plan from DB:`, error);
-          // При ошибке оставляем текущий plan или ставим free
+          console.error(`[AUTH jwt] Error syncing payment info from DB:`, error);
+          // При ошибке оставляем текущие значения или ставим defaults
           // @ts-ignore
           token.plan = token.plan || "free";
+          // @ts-ignore
+          token.billingCycle = token.billingCycle || "monthly";
         }
       }
 
@@ -94,6 +100,8 @@ export const authOptions: NextAuthOptions = {
         session.user.role = token.role || "user";
         // @ts-ignore
         session.user.plan = token.plan || "free";
+        // @ts-ignore
+        session.user.billingCycle = token.billingCycle || "monthly";
       }
       return session;
     },
