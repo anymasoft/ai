@@ -123,7 +123,7 @@ export default function TrendingInsights({ videos }: TrendingInsightsProps) {
           <div>
             <CardTitle className="flex items-center gap-2">
               <Sparkles className="h-5 w-5 text-purple-500" />
-              AI Trending Insights
+              AI-анализ трендов
             </CardTitle>
             <CardDescription>
               Анализ трендовых видео с помощью искусственного интеллекта
