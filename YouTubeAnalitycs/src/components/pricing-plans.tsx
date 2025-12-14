@@ -24,7 +24,6 @@ interface PricingPlansProps {
   plans?: PricingPlan[]
   mode?: 'pricing' | 'billing'
   currentPlanId?: string
-  currentBillingCycle?: "monthly" | "yearly"
   onPlanSelect?: (planId: string) => void
 }
 
@@ -70,7 +69,6 @@ export function PricingPlans({
   plans = defaultPlans,
   mode = 'pricing',
   currentPlanId,
-  currentBillingCycle = "monthly",
   onPlanSelect
 }: PricingPlansProps) {
   const [isYearly, setIsYearly] = useState(false);
@@ -120,20 +118,14 @@ export function PricingPlans({
     }
   };
 
-  // Проверяем, это ли текущий план (учитываем и plan и billingCycle)
-  const isCurrentPlan = (plan: PricingPlan): boolean => {
-    if (mode !== 'billing') return false
-    return currentPlanId === plan.id && currentBillingCycle === (isYearly ? 'yearly' : 'monthly')
-  }
-
   const getButtonText = (plan: PricingPlan) => {
-    // Если это текущий план (план И период совпадают) - показываем "Текущий план"
-    if (isCurrentPlan(plan)) {
+    // Если это текущий план - показываем "Текущий план"
+    if (currentPlanId === plan.id && mode === 'billing') {
       return 'Текущий план'
     }
 
     // Для режима billing показываем "Оплатить"
-    if (mode === 'billing') {
+    if (mode === 'billing' && currentPlanId !== plan.id) {
       return 'Оплатить'
     }
 
@@ -150,14 +142,14 @@ export function PricingPlans({
   }
 
   const getButtonVariant = (plan: PricingPlan) => {
-    if (isCurrentPlan(plan)) {
+    if (mode === 'billing' && currentPlanId === plan.id) {
       return 'outline' as const
     }
     return plan.popular ? 'default' as const : 'outline' as const
   }
 
   const isButtonDisabled = (plan: PricingPlan) => {
-    return isCurrentPlan(plan)
+    return mode === 'billing' && currentPlanId === plan.id
   }
 
   return (

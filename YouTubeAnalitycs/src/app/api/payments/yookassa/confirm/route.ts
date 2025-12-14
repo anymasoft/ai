@@ -168,7 +168,6 @@ export async function GET(request: NextRequest) {
         plan: planId as "basic" | "professional" | "enterprise",
         expiresAt,
         paymentProvider: "yookassa",
-        billingCycle: billingCycle as "monthly" | "yearly",
       });
 
       console.log(

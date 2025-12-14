@@ -9,7 +9,6 @@ interface UpdateUserPlanParams {
   plan: "basic" | "professional" | "enterprise";
   expiresAt: number;
   paymentProvider?: string;
-  billingCycle?: "monthly" | "yearly";
 }
 
 /**
@@ -21,17 +20,16 @@ export async function updateUserPlan({
   plan,
   expiresAt,
   paymentProvider = "yookassa",
-  billingCycle = "monthly",
 }: UpdateUserPlanParams): Promise<void> {
   try {
     console.log(
-      `[updateUserPlan] Starting update for user ${userId}, new plan: ${plan}, billingCycle: ${billingCycle}, provider: ${paymentProvider}`
+      `[updateUserPlan] Starting update for user ${userId}, new plan: ${plan}, provider: ${paymentProvider}`
     );
 
     const now = Math.floor(Date.now() / 1000);
     const result = await db.execute(
-      `UPDATE users SET plan = ?, expiresAt = ?, paymentProvider = ?, billingCycle = ?, updatedAt = ? WHERE id = ?`,
-      [plan, expiresAt, paymentProvider, billingCycle, now, userId]
+      `UPDATE users SET plan = ?, expiresAt = ?, paymentProvider = ?, updatedAt = ? WHERE id = ?`,
+      [plan, expiresAt, paymentProvider, now, userId]
     );
 
     console.log(
@@ -39,7 +37,7 @@ export async function updateUserPlan({
     );
 
     console.log(
-      `[updateUserPlan] success - user ${userId} updated to plan ${plan} (${billingCycle}), expires at ${expiresAt}`
+      `[updateUserPlan] success - user ${userId} updated to plan ${plan}, expires at ${expiresAt}`
     );
   } catch (error) {
     console.error(`[updateUserPlan] Error updating user plan:`, error);
@@ -55,11 +53,10 @@ export async function getUserPaymentInfo(userId: string): Promise<{
   plan: string;
   expiresAt: number | null;
   paymentProvider: string;
-  billingCycle: string;
 } | null> {
   try {
     const result = await db.execute(
-      `SELECT plan, expiresAt, paymentProvider, billingCycle FROM users WHERE id = ?`,
+      `SELECT plan, expiresAt, paymentProvider FROM users WHERE id = ?`,
       [userId]
     );
     const rows = Array.isArray(result) ? result : result.rows || [];
@@ -70,7 +67,6 @@ export async function getUserPaymentInfo(userId: string): Promise<{
       plan: user.plan || "free",
       expiresAt: user.expiresAt || null,
       paymentProvider: user.paymentProvider || "free",
-      billingCycle: user.billingCycle || "monthly",
     };
   } catch (error) {
     console.error(`[Payments] Error getting user payment info:`, error);
