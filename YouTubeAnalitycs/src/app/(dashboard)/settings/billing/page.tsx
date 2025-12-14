@@ -280,6 +280,7 @@ export default function BillingSettings() {
             <PricingPlans
               mode="billing"
               currentPlanId={userPlan}
+              currentBillingCycle={userBillingCycle}
               onPlanSelect={handlePlanSelect}
             />
           </CardContent>
