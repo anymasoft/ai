@@ -4,15 +4,12 @@ import Link from 'next/link'
 import { Check } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
-import { useState } from 'react'
 
 const plans = [
   {
     name: 'Basic',
     description: 'Для начинающих авторов',
     monthlyPrice: 990,
-    yearlyPrice: 9900,
     features: [
       'До 30 AI-сценариев в месяц',
       'Генерация сценариев по любым YouTube-видео',
@@ -27,7 +24,6 @@ const plans = [
     name: 'Professional',
     description: 'Для растущих каналов',
     monthlyPrice: 2490,
-    yearlyPrice: 24900,
     features: [
       'До 100 AI-сценариев в месяц',
       'Подходит для регулярного выпуска контента',
@@ -42,7 +38,6 @@ const plans = [
     name: 'Enterprise',
     description: 'Для студий и команд',
     monthlyPrice: 5990,
-    yearlyPrice: 59900,
     features: [
       'До 300 AI-сценариев в месяц',
       'Подходит для агентств и продакшн-команд',
@@ -56,8 +51,6 @@ const plans = [
 ]
 
 export function PricingSection() {
-  const [isYearly, setIsYearly] = useState(false)
-
   return (
     <section id="pricing" className="py-24 sm:py-32 bg-muted/40">
       <div className="container mx-auto px-4 sm:px-6 lg:px-8">
@@ -151,10 +144,10 @@ export function PricingSection() {
                   {/* Pricing */}
                   <div>
                     <div className="text-4xl font-bold mb-1">
-                      {isYearly ? plan.yearlyPrice : plan.monthlyPrice} ₽
+                      {plan.monthlyPrice} ₽
                     </div>
                     <div className="text-muted-foreground text-sm">
-                      {isYearly ? 'в год' : 'в месяц'}
+                      в месяц
                     </div>
                   </div>
 
