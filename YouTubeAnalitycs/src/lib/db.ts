@@ -586,15 +586,6 @@ async function getClient() {
           updatedAt INTEGER DEFAULT (cast(strftime('%s','now') as integer))
         );`);
 
-        // Таблица для пользовательских лимитов
-        await _client.execute(`CREATE TABLE IF NOT EXISTS user_limits (
-          userId TEXT PRIMARY KEY,
-          analysesPerDay INTEGER DEFAULT 10,
-          scriptsPerDay INTEGER DEFAULT 5,
-          cooldownHours INTEGER DEFAULT 0,
-          updatedAt INTEGER DEFAULT (cast(strftime('%s','now') as integer))
-        );`);
-
         // Таблица для суточного использования лимитов
         await _client.execute(`CREATE TABLE IF NOT EXISTS user_usage_daily (
           userId TEXT NOT NULL,

@@ -17,26 +17,25 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Get current subscription
+    // Get current subscription from users table
     const result = await db.execute(
-      "SELECT expiresAt FROM admin_subscriptions WHERE userId = ?",
+      "SELECT expiresAt FROM users WHERE id = ?",
       [userId]
     )
 
-    const row = (result.rows || [])[0]
+    const row = Array.isArray(result) ? result[0] : (result.rows || [])[0]
     const currentExpiresAt = row?.expiresAt || 0
 
-    // Calculate new expiration date
-    const baseTime = Math.max(currentExpiresAt, Date.now())
-    const newExpiresAt = baseTime + (days * 24 * 60 * 60 * 1000)
+    // Calculate new expiration date (в миллисекундах)
+    const baseTime = Math.max(currentExpiresAt * 1000, Date.now())
+    const newExpiresAt = Math.floor((baseTime + (days * 24 * 60 * 60 * 1000)) / 1000)
     const updatedAt = Math.floor(Date.now() / 1000)
 
-    // Update subscription
-    await db.execute(`
-      INSERT OR REPLACE INTO admin_subscriptions
-      (userId, plan, isPaid, expiresAt, provider, updatedAt)
-      VALUES (?, COALESCE((SELECT plan FROM admin_subscriptions WHERE userId = ?), 'free'), 1, ?, 'manual', ?)
-    `, [userId, userId, newExpiresAt, updatedAt])
+    // Update users table (ONLY source of truth)
+    await db.execute(
+      "UPDATE users SET expiresAt = ?, updatedAt = ? WHERE id = ?",
+      [newExpiresAt, updatedAt, userId]
+    )
 
     return NextResponse.json({ success: true })
   } catch (error) {

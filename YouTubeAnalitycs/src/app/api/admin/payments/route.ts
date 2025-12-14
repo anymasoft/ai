@@ -2,17 +2,16 @@ import { NextRequest, NextResponse } from "next/server"
 import { z } from "zod"
 import { verifyAdminAccess } from "@/lib/admin-api"
 import { db } from "@/lib/db"
+import { updateUserPlan } from "@/lib/payments"
 
-// Валидные тарифные планы
-const VALID_PLANS = ["free", "basic", "professional", "enterprise", "pro", "business"]
+// Валидные тарифные планы (ТОЛЬКО из PLAN_LIMITS)
+const VALID_PLANS = ["basic", "professional", "enterprise"]
 
 // Схема валидации для PATCH запроса
 const updatePaymentSchema = z.object({
   userId: z.string().min(1, "userId is required"),
-  plan: z.enum([...VALID_PLANS] as [string, ...string[]]).optional(),
-  isPaid: z.boolean().optional(),
-  expiresAt: z.number().int().positive().optional().nullable(),
-  provider: z.string().optional(),
+  plan: z.enum([...VALID_PLANS] as [string, ...string[]]),
+  expiresAt: z.number().int().positive(),
 })
 
 export async function GET(request: NextRequest) {
@@ -25,25 +24,24 @@ export async function GET(request: NextRequest) {
         u.id as userId,
         u.email,
         u.plan,
-        COALESCE(u.disabled, 0) as disabled,
-        COALESCE(s.isPaid, 0) as isPaid,
-        s.expiresAt,
-        COALESCE(s.provider, 'manual') as provider
+        u.expiresAt,
+        COALESCE(u.disabled, 0) as disabled
       FROM users u
-      LEFT JOIN admin_subscriptions s ON u.id = s.userId
       ORDER BY u.createdAt DESC
       LIMIT 500
     `)
 
     const rows = Array.isArray(result) ? result : result.rows || []
+    const now = Math.floor(Date.now() / 1000)
+
     const payments = rows.map((row: any) => ({
       userId: row.userId,
       email: row.email,
       plan: row.plan || "free",
       disabled: row.disabled === 1,
-      isPaid: row.isPaid === 1,
+      isPaid: row.plan !== "free" && row.expiresAt && row.expiresAt > now,
       expiresAt: row.expiresAt,
-      provider: row.provider,
+      provider: "yookassa",
     }))
 
     return NextResponse.json({ payments })
@@ -72,22 +70,16 @@ export async function PATCH(request: NextRequest) {
       )
     }
 
-    const { userId, plan, isPaid, expiresAt, provider } = validation.data
-    const updatedAt = Math.floor(Date.now() / 1000)
+    const { userId, plan, expiresAt } = validation.data
 
-    // Insert or update admin_subscriptions
-    await db.execute(`
-      INSERT OR REPLACE INTO admin_subscriptions
-      (userId, plan, isPaid, expiresAt, provider, updatedAt)
-      VALUES (?, ?, ?, ?, ?, ?)
-    `, [
+    // Используем ту же функцию, что и для платежей через YooKassa
+    // Это сбрасывает месячное использование и обновляет план
+    await updateUserPlan({
       userId,
-      plan || "free",
-      isPaid ? 1 : 0,
-      expiresAt || null,
-      provider || "manual",
-      updatedAt
-    ])
+      plan: plan as "basic" | "professional" | "enterprise",
+      expiresAt,
+      paymentProvider: "manual",
+    })
 
     return NextResponse.json({ success: true })
   } catch (error) {
