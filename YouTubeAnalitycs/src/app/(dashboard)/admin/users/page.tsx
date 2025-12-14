@@ -59,8 +59,8 @@ export default function AdminUsersPage() {
 
   async function changePlan(userId: string, newPlan: string) {
     try {
-      const res = await fetch("/api/admin/users", {
-        method: "PATCH",
+      const res = await fetch("/api/admin/users/change-plan", {
+        method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ userId, plan: newPlan }),
       })
@@ -191,8 +191,6 @@ export default function AdminUsersPage() {
                   <SelectItem value="basic">Basic</SelectItem>
                   <SelectItem value="professional">Professional</SelectItem>
                   <SelectItem value="enterprise">Enterprise</SelectItem>
-                  <SelectItem value="pro">Pro</SelectItem>
-                  <SelectItem value="business">Business</SelectItem>
                 </SelectContent>
               </Select>
             </div>

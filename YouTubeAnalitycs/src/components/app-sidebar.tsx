@@ -147,16 +147,8 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                     url: "/admin/users",
                   },
                   {
-                    title: "Лимиты",
-                    url: "/admin/limits",
-                  },
-                  {
                     title: "Платежи",
                     url: "/admin/payments",
-                  },
-                  {
-                    title: "Система",
-                    url: "/admin/system",
                   },
                 ],
               },

@@ -62,11 +62,13 @@ export default function AdminPaymentsPage() {
 
   function openMarkPaidDialog(payment: Payment) {
     setSelectedUser(payment.userId)
+    const defaultExpires = new Date()
+    defaultExpires.setDate(defaultExpires.getDate() + 30)
     setFormData({
-      plan: payment.plan,
+      plan: payment.plan || "basic",
       expiresAt: payment.expiresAt
-        ? new Date(payment.expiresAt).toISOString().split("T")[0]
-        : "",
+        ? new Date(payment.expiresAt * 1000).toISOString().split("T")[0]
+        : defaultExpires.toISOString().split("T")[0],
     })
     setShowMarkPaidDialog(true)
   }
@@ -84,9 +86,7 @@ export default function AdminPaymentsPage() {
         body: JSON.stringify({
           userId: selectedUser,
           plan: formData.plan,
-          isPaid: true,
-          expiresAt: new Date(formData.expiresAt).getTime(),
-          provider: "manual",
+          expiresAt: Math.floor(new Date(formData.expiresAt).getTime() / 1000),
         }),
       })
       if (!res.ok) throw new Error("Failed to mark paid")
@@ -118,13 +118,12 @@ export default function AdminPaymentsPage() {
 
   async function cancelPayment(userId: string) {
     try {
-      const res = await fetch("/api/admin/payments", {
+      const res = await fetch("/api/admin/users", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           userId,
-          isPaid: false,
-          expiresAt: new Date().getTime(),
+          plan: "free",
         }),
       })
       if (!res.ok) throw new Error("Failed to cancel")
@@ -139,7 +138,7 @@ export default function AdminPaymentsPage() {
 
   const formatDate = (timestamp: number | null) => {
     if (!timestamp) return "—"
-    return new Date(timestamp).toLocaleDateString()
+    return new Date(timestamp * 1000).toLocaleDateString()
   }
 
   // Фильтруем платежи
@@ -222,8 +221,8 @@ export default function AdminPaymentsPage() {
                   <SelectContent>
                     <SelectItem value="all">All plans</SelectItem>
                     <SelectItem value="free">Free</SelectItem>
-                    <SelectItem value="pro">Pro</SelectItem>
-                    <SelectItem value="business">Business</SelectItem>
+                    <SelectItem value="basic">Basic</SelectItem>
+                    <SelectItem value="professional">Professional</SelectItem>
                     <SelectItem value="enterprise">Enterprise</SelectItem>
                   </SelectContent>
                 </Select>
