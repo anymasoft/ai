@@ -888,7 +888,6 @@ export default function TrendingPage() {
             </div>
           </div>
         </div>
-      </div>
 
       {videos.length === 0 ? (
         <Card>
