@@ -25,6 +25,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { Trash2, Loader2, AlertCircle, Scale } from "lucide-react"
 import { PLAN_LIMITS } from "@/lib/plan-limits"
 import Link from "next/link"
@@ -275,15 +276,19 @@ export default function CompetitorsPage() {
                     <TableCell>{formatNumber(competitor.viewCount)}</TableCell>
                     <TableCell>{formatDate(competitor.lastSyncedAt)}</TableCell>
                     <TableCell className="text-right">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={(e) => openDeleteDialog(competitor.id, e)}
-                        className="cursor-pointer text-destructive hover:text-destructive hover:bg-destructive/10"
-                        title="Удалить конкурента"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={(e) => openDeleteDialog(competitor.id, e)}
+                            className="cursor-pointer text-destructive hover:text-destructive hover:bg-destructive/10"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>Удалить конкурента</TooltipContent>
+                      </Tooltip>
                     </TableCell>
                   </TableRow>
                 ))}

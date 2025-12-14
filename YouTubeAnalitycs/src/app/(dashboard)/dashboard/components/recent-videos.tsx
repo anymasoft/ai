@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { formatMomentumPercent } from "@/lib/momentum-formatting"
 
 interface VideoData {
@@ -255,14 +256,18 @@ export function RecentVideos() {
                     {formatTimeAgo(video.publishDate)}
                   </span>
                 ) : (
-                  <button
-                    onClick={(e) => refreshDate(e, video.videoId)}
-                    disabled={refreshingId === video.videoId}
-                    title="Обновить дату"
-                    className="text-xs text-muted-foreground hover:text-foreground disabled:opacity-50"
-                  >
-                    <RefreshCw className={`h-3 w-3 ${refreshingId === video.videoId ? "animate-spin" : ""}`} />
-                  </button>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        onClick={(e) => refreshDate(e, video.videoId)}
+                        disabled={refreshingId === video.videoId}
+                        className="text-xs text-muted-foreground hover:text-foreground disabled:opacity-50 cursor-pointer"
+                      >
+                        <RefreshCw className={`h-3 w-3 ${refreshingId === video.videoId ? "animate-spin" : ""}`} />
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent>Обновить дату</TooltipContent>
+                  </Tooltip>
                 )}
               </div>
             </div>

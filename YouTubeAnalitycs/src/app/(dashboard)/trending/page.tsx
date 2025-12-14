@@ -931,17 +931,21 @@ export default function TrendingPage() {
                 <TableHeader>
                   <TableRow>
                     <TableHead className="w-[40px]">
-                      <input
-                        type="checkbox"
-                        checked={
-                          selectedVideos.size === filteredVideos.length &&
-                          filteredVideos.length > 0
-                        }
-                        onChange={toggleSelectAll}
-                        disabled={scriptSourceMode === "specific"}
-                        className={`h-4 w-4 rounded border-gray-300 ${scriptSourceMode === "specific" ? "opacity-50 cursor-not-allowed" : ""}`}
-                        title="Выбрать все"
-                      />
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <input
+                            type="checkbox"
+                            checked={
+                              selectedVideos.size === filteredVideos.length &&
+                              filteredVideos.length > 0
+                            }
+                            onChange={toggleSelectAll}
+                            disabled={scriptSourceMode === "specific"}
+                            className={`h-4 w-4 rounded border-gray-300 cursor-pointer ${scriptSourceMode === "specific" ? "opacity-50 cursor-not-allowed" : ""}`}
+                          />
+                        </TooltipTrigger>
+                        <TooltipContent>Выбрать все</TooltipContent>
+                      </Tooltip>
                     </TableHead>
                     <TableHead className="w-[300px]">
                       <Button
@@ -1098,16 +1102,20 @@ export default function TrendingPage() {
                             </div>
                           </div>
                         ) : (
-                          <button
-                            onClick={() => refreshDate(video.videoId)}
-                            disabled={refreshingId === video.videoId}
-                            title="Обновить дату"
-                            className="text-muted-foreground hover:text-foreground disabled:opacity-50"
-                          >
-                            <RefreshCw
-                              className={`h-4 w-4 ${refreshingId === video.videoId ? "animate-spin" : ""}`}
-                            />
-                          </button>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <button
+                                onClick={() => refreshDate(video.videoId)}
+                                disabled={refreshingId === video.videoId}
+                                className="text-muted-foreground hover:text-foreground disabled:opacity-50 cursor-pointer"
+                              >
+                                <RefreshCw
+                                  className={`h-4 w-4 ${refreshingId === video.videoId ? "animate-spin" : ""}`}
+                                />
+                              </button>
+                            </TooltipTrigger>
+                            <TooltipContent>Обновить дату</TooltipContent>
+                          </Tooltip>
                         )}
                       </TableCell>
                       <TableCell>
@@ -1131,15 +1139,19 @@ export default function TrendingPage() {
                             </div>
                           ) : (
                             <div className="text-xs text-muted-foreground">
-                              <a
-                                href={`https://www.youtube.com/channel/${video.channelId}`}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="hover:text-foreground"
-                                title="Открыть канал"
-                              >
-                                <ExternalLink className="h-3 w-3 inline" />
-                              </a>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <a
+                                    href={`https://www.youtube.com/channel/${video.channelId}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="hover:text-foreground cursor-pointer"
+                                  >
+                                    <ExternalLink className="h-3 w-3 inline" />
+                                  </a>
+                                </TooltipTrigger>
+                                <TooltipContent>Открыть канал</TooltipContent>
+                              </Tooltip>
                             </div>
                           )}
                         </div>
