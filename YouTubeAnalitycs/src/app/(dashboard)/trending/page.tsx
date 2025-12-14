@@ -605,21 +605,6 @@ export default function TrendingPage() {
 
   return (
     <div className="container mx-auto px-4 md:px-6">
-      {/* AI Insights Block - Collapsible */}
-      <div className="mb-6">
-        <Collapsible defaultOpen={false}>
-          <CollapsibleTrigger className="w-full [&[data-state=open]>div>svg]:rotate-180">
-            <div className="flex items-center gap-2 hover:bg-muted/50 transition-colors p-2 -mx-2 rounded cursor-pointer">
-              <ChevronDown className="h-5 w-5 transition-transform duration-200" />
-              <h2 className="text-lg font-semibold">AI-анализ трендов</h2>
-            </div>
-          </CollapsibleTrigger>
-          <CollapsibleContent className="mt-4">
-            <TrendingInsights videos={videos} />
-          </CollapsibleContent>
-        </Collapsible>
-      </div>
-
       {/* Заголовок */}
       <div className="mb-8">
         <h1 className="text-3xl font-bold">Создайте сценарий для YouTube, который набирает просмотры</h1>
@@ -1301,6 +1286,21 @@ export default function TrendingPage() {
           </div>
         </div>
       )}
+
+      {/* AI Insights Block - Collapsible */}
+      <div className="mb-6">
+        <Collapsible defaultOpen={false}>
+          <CollapsibleTrigger className="w-full [&[data-state=open]>div>svg]:rotate-180">
+            <div className="flex items-center gap-2 hover:bg-muted/50 transition-colors p-2 -mx-2 rounded cursor-pointer">
+              <ChevronDown className="h-5 w-5 transition-transform duration-200" />
+              <h2 className="text-lg font-semibold">AI-анализ трендов</h2>
+            </div>
+          </CollapsibleTrigger>
+          <CollapsibleContent className="mt-4">
+            <TrendingInsights videos={videos} />
+          </CollapsibleContent>
+        </Collapsible>
+      </div>
 
       {/* Paywall для исчерпания лимита сценариев */}
       <ScriptLimitPaywall
