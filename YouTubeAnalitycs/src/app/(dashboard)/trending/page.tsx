@@ -608,8 +608,8 @@ export default function TrendingPage() {
       {/* AI Insights Block - Collapsible */}
       <div className="mb-6">
         <Collapsible defaultOpen={false}>
-          <CollapsibleTrigger className="w-full">
-            <div className="flex items-center gap-2 hover:opacity-80 transition-opacity">
+          <CollapsibleTrigger className="w-full [&[data-state=open]>div>svg]:rotate-180">
+            <div className="flex items-center gap-2 hover:bg-muted/50 transition-colors p-2 -mx-2 rounded cursor-pointer">
               <ChevronDown className="h-5 w-5 transition-transform duration-200" />
               <h2 className="text-lg font-semibold">AI-анализ трендов</h2>
             </div>
@@ -622,9 +622,9 @@ export default function TrendingPage() {
 
       {/* Заголовок */}
       <div className="mb-8">
-        <h1 className="text-3xl font-bold">Тренды конкурентов</h1>
+        <h1 className="text-3xl font-bold">Создайте сценарий для YouTube, который набирает просмотры</h1>
         <p className="text-muted-foreground mt-1">
-          Самые быстрорастущие видео среди ваших конкурентов
+          На основе трендов конкурентов или любого видео по ссылке
         </p>
       </div>
 
