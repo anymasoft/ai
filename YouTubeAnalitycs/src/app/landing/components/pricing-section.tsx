@@ -94,34 +94,6 @@ export function PricingSection() {
           </ul>
         </div>
 
-        {/* Billing Toggle - непосредственно над платными тарифами */}
-        <div className="mx-auto max-w-6xl text-center mb-8">
-          <div className="flex items-center justify-center mb-4">
-            <ToggleGroup
-              type="single"
-              value={isYearly ? "yearly" : "monthly"}
-              onValueChange={(value) => setIsYearly(value === "yearly")}
-              className="bg-secondary text-secondary-foreground border-none rounded-full p-1 cursor-pointer shadow-none"
-            >
-              <ToggleGroupItem
-                value="monthly"
-                className="data-[state=on]:bg-background data-[state=on]:border-border border-transparent border px-6 !rounded-full data-[state=on]:text-foreground hover:bg-transparent cursor-pointer transition-colors"
-              >
-                Помесячно
-              </ToggleGroupItem>
-              <ToggleGroupItem
-                value="yearly"
-                className="data-[state=on]:bg-background data-[state=on]:border-border border-transparent border px-6 !rounded-full data-[state=on]:text-foreground hover:bg-transparent cursor-pointer transition-colors"
-              >
-                Годовой
-              </ToggleGroupItem>
-            </ToggleGroup>
-          </div>
-          <p className="text-sm text-muted-foreground">
-            <span className="text-primary font-semibold">Экономия</span> при годовой подписке
-          </p>
-        </div>
-
         {/* Pricing Cards */}
         <div className="mx-auto max-w-6xl">
           <div className="rounded-xl border">
