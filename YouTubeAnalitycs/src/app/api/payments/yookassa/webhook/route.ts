@@ -103,6 +103,17 @@ export async function POST(request: NextRequest) {
       paymentProvider: "yookassa",
     });
 
+    // Логируем платеж в таблицу истории платежей
+    const { PLAN_LIMITS } = await import("@/config/plan-limits");
+    const planPrice = PLAN_LIMITS[planId as "basic" | "professional" | "enterprise"]?.price || "0 ₽";
+
+    const { db } = await import("@/lib/db");
+    await db.execute(
+      `INSERT INTO payments (userId, plan, amount, provider, status, expiresAt, createdAt)
+       VALUES (?, ?, ?, 'yookassa', 'succeeded', ?, ?)`,
+      [userId, planId, planPrice, expiresAt, now]
+    );
+
     console.log(
       `[YooKassa Webhook] Successfully processed payment for user ${userId}, plan ${planId}`
     );
