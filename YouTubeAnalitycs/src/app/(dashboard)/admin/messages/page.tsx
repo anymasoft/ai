@@ -189,11 +189,10 @@ export default function AdminMessagesPage() {
                 <TableHeader>
                   <TableRow>
                     <TableHead className="w-[15%]">От кого</TableHead>
-                    <TableHead className="w-[15%]">Тема</TableHead>
-                    <TableHead className="w-[45%]">Сообщение</TableHead>
-                    <TableHead className="w-[10%]">Дата</TableHead>
-                    <TableHead className="w-[8%]">Статус</TableHead>
-                    <TableHead className="w-[7%] text-right">Действия</TableHead>
+                    <TableHead className="w-[55%]">Сообщение</TableHead>
+                    <TableHead className="w-[12%]">Дата</TableHead>
+                    <TableHead className="w-[10%]">Статус</TableHead>
+                    <TableHead className="w-[8%] text-right">Действия</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -208,9 +207,6 @@ export default function AdminMessagesPage() {
                         <div className="text-xs text-muted-foreground truncate min-w-0" title={message.email}>
                           {message.email}
                         </div>
-                      </TableCell>
-                      <TableCell className="text-sm font-medium truncate overflow-hidden text-ellipsis min-w-0" title={message.subject}>
-                        {message.subject}
                       </TableCell>
                       <TableCell className="text-sm text-muted-foreground truncate overflow-hidden text-ellipsis min-w-0">
                         {truncateMessage(message.message)}
