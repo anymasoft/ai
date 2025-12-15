@@ -622,6 +622,27 @@ async function getClient() {
           updatedAt INTEGER DEFAULT (cast(strftime('%s','now') as integer))
         );`);
 
+        // Таблица для сообщений обратной связи
+        await _client.execute(`CREATE TABLE IF NOT EXISTS admin_messages (
+          id TEXT PRIMARY KEY,
+          email TEXT,
+          firstName TEXT,
+          lastName TEXT,
+          subject TEXT NOT NULL,
+          message TEXT NOT NULL,
+          page TEXT DEFAULT 'feedback',
+          userId TEXT,
+          createdAt INTEGER NOT NULL,
+          isRead INTEGER DEFAULT 0,
+          FOREIGN KEY (userId) REFERENCES users(id) ON DELETE SET NULL
+        );`);
+
+        await _client.execute(`CREATE INDEX IF NOT EXISTS idx_admin_messages_createdAt
+          ON admin_messages(createdAt DESC);`);
+
+        await _client.execute(`CREATE INDEX IF NOT EXISTS idx_admin_messages_isRead
+          ON admin_messages(isRead, createdAt DESC);`);
+
         // Инициализация системных флагов по умолчанию
         await _client.execute(`INSERT OR IGNORE INTO system_flags (key, value) VALUES ('enableTrending', 'true');`);
         await _client.execute(`INSERT OR IGNORE INTO system_flags (key, value) VALUES ('enableComparison', 'true');`);
