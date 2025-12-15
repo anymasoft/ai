@@ -19,32 +19,73 @@ export async function GET(request: NextRequest) {
   if (!isAdmin) return response
 
   try {
-    const result = await db.execute(`
+    const { searchParams } = new URL(request.url)
+    const emailFilter = searchParams.get("email") || ""
+    const fromDate = searchParams.get("from") ? Math.floor(new Date(searchParams.get("from")!).getTime() / 1000) : null
+    const toDate = searchParams.get("to") ? Math.floor(new Date(searchParams.get("to")!).getTime() / 1000) : null
+
+    // Get only real YooKassa payments
+    let query = `
       SELECT
         u.id as userId,
         u.email,
         u.plan,
         u.expiresAt,
-        COALESCE(u.disabled, 0) as disabled
+        u.updatedAt,
+        u.paymentProvider
       FROM users u
-      ORDER BY u.createdAt DESC
-      LIMIT 500
-    `)
+      WHERE u.paymentProvider = 'yookassa' AND u.plan != 'free'
+    `
+
+    const params: any[] = []
+
+    if (emailFilter) {
+      query += ` AND u.email LIKE ?`
+      params.push(`%${emailFilter}%`)
+    }
+
+    if (fromDate) {
+      query += ` AND u.updatedAt >= ?`
+      params.push(fromDate)
+    }
+
+    if (toDate) {
+      query += ` AND u.updatedAt <= ?`
+      params.push(toDate)
+    }
+
+    query += ` ORDER BY u.updatedAt DESC LIMIT 500`
+
+    const result = params.length > 0
+      ? await db.execute({ sql: query, args: params })
+      : await db.execute(query)
 
     const rows = Array.isArray(result) ? result : result.rows || []
-    const now = Math.floor(Date.now() / 1000)
+
+    const { PLAN_LIMITS } = await import("@/config/plan-limits")
 
     const payments = rows.map((row: any) => ({
       userId: row.userId,
       email: row.email,
-      plan: row.plan || "free",
-      disabled: row.disabled === 1,
-      isPaid: row.plan !== "free" && row.expiresAt && row.expiresAt > now,
+      plan: row.plan,
       expiresAt: row.expiresAt,
-      provider: "yookassa",
+      provider: row.paymentProvider,
+      price: PLAN_LIMITS[row.plan as keyof typeof PLAN_LIMITS]?.price || "—",
+      updatedAt: row.updatedAt,
     }))
 
-    return NextResponse.json({ payments })
+    // Calculate total sum
+    const totalSum = payments.reduce((sum, payment) => {
+      const priceStr = payment.price.replace(/[^\d]/g, "")
+      const priceNum = parseInt(priceStr) || 0
+      return sum + priceNum
+    }, 0)
+
+    return NextResponse.json({
+      payments,
+      total: payments.length,
+      totalSum,
+    })
   } catch (error) {
     console.error("Error fetching payments:", error)
     return NextResponse.json(
