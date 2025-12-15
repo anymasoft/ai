@@ -254,13 +254,13 @@ export default function CompetitorsPage() {
                     className="cursor-pointer hover:bg-muted/50"
                   >
                     <TableCell>
-                      <div className="flex items-center gap-2 min-w-0">
+                      <div className="flex items-center gap-2 truncate">
                         <ChannelAvatar
                           src={competitor.avatarUrl}
                           alt={competitor.title}
                           className="h-8 w-8 flex-shrink-0"
                         />
-                        <div className="flex-1 min-w-0">
+                        <div className="truncate min-w-0">
                           <div className="font-medium truncate overflow-hidden text-ellipsis" title={competitor.title}>{competitor.title}</div>
                           <div className="text-xs text-muted-foreground truncate overflow-hidden text-ellipsis" title={competitor.handle}>
                             {competitor.handle}

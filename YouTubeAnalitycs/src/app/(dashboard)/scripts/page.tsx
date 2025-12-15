@@ -221,13 +221,11 @@ export default function ScriptsHistoryPage() {
                     >
                       <TableCell>
                         <div className="space-y-1">
-                          <div className="flex-1 min-w-0">
-                            <div className="font-medium block max-w-[320px] overflow-hidden text-ellipsis truncate" title={script.title}>
-                              {script.title}
-                            </div>
-                            <div className="text-sm text-muted-foreground line-clamp-1" title={script.hook}>
-                              {script.hook}
-                            </div>
+                          <div className="font-medium line-clamp-2 max-w-[300px] truncate" title={script.title}>
+                            {script.title}
+                          </div>
+                          <div className="text-sm text-muted-foreground line-clamp-1 max-w-[300px] truncate" title={script.hook}>
+                            {script.hook}
                           </div>
                         </div>
                       </TableCell>
