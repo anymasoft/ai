@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server" 
+import { NextRequest, NextResponse } from "next/server"
 import { z } from "zod"
 import { verifyAdminAccess } from "@/lib/admin-api"
 import { db } from "@/lib/db"
@@ -14,11 +14,18 @@ const updatePaymentSchema = z.object({
   expiresAt: z.number().int().positive(),
 })
 
-// Helper function to parse date string as local date
-function parseLocalDate(dateString: string): number {
-  const [year, month, day] = dateString.split('-').map(Number)
-  // FIX: создаём дату в UTC, а не в локальном timezone сервера
-  return Math.floor(Date.UTC(year, month - 1, day, 0, 0, 0) / 1000)
+// Начало дня (00:00:00)
+function parseLocalDateStart(dateString: string): number {
+  const [year, month, day] = dateString.split("-").map(Number)
+  const date = new Date(year, month - 1, day, 0, 0, 0, 0)
+  return Math.floor(date.getTime() / 1000)
+}
+
+// Конец дня (23:59:59)
+function parseLocalDateEnd(dateString: string): number {
+  const [year, month, day] = dateString.split("-").map(Number)
+  const date = new Date(year, month - 1, day, 23, 59, 59, 999)
+  return Math.floor(date.getTime() / 1000)
 }
 
 export async function GET(request: NextRequest) {
@@ -35,13 +42,11 @@ export async function GET(request: NextRequest) {
     let toDate: number | null = null
 
     if (fromDateStr) {
-      fromDate = parseLocalDate(fromDateStr)
+      fromDate = parseLocalDateStart(fromDateStr)
     }
 
     if (toDateStr) {
-      toDate = parseLocalDate(toDateStr)
-      // Add 24 hours (86400 seconds) to toDate to include the entire day
-      toDate += 86400
+      toDate = parseLocalDateEnd(toDateStr)
     }
 
     // Debug logging
@@ -77,61 +82,27 @@ export async function GET(request: NextRequest) {
       params.push(`%${emailFilter}%`)
     }
 
-    if (fromDate) {
+    if (fromDate !== null) {
       query += ` AND p.createdAt >= ?`
       params.push(fromDate)
     }
 
-    if (toDate) {
-      query += ` AND p.createdAt < ?`
+    if (toDate !== null) {
+      query += ` AND p.createdAt <= ?`
       params.push(toDate)
     }
 
     query += ` ORDER BY p.createdAt DESC LIMIT 500`
 
-    // Debug: log the query and params
     console.log("SQL Query:", query)
     console.log("Query params:", params)
 
-    const result = params.length > 0
-      ? await db.execute({ sql: query, args: params })
-      : await db.execute(query)
+    const result =
+      params.length > 0
+        ? await db.execute({ sql: query, args: params })
+        : await db.execute(query)
 
     const rows = Array.isArray(result) ? result : result.rows || []
-
-    console.log("Query returned rows:", rows.length)
-
-    // Also check how many rows exist WITHOUT filters
-    if (emailFilter || fromDate || toDate) {
-      const allPaymentsQuery = `
-        SELECT COUNT(*) as total FROM payments p
-        JOIN users u ON p.userId = u.id
-        WHERE p.provider = 'yookassa'
-        ORDER BY p.createdAt DESC LIMIT 500
-      `
-      const allResult = await db.execute(allPaymentsQuery)
-      const allRows = Array.isArray(allResult) ? allResult : allResult.rows || []
-      console.log("Total payments without filters:", allRows[0]?.total || 0)
-    }
-
-    if (rows.length > 0) {
-      console.log("First row:", {
-        id: rows[0].id,
-        email: rows[0].email,
-        createdAt: rows[0].createdAt,
-        createdAtFormatted: new Date(rows[0].createdAt * 1000).toISOString(),
-      })
-      // Log all rows for debugging
-      console.log("All returned payments:")
-      rows.forEach((row: any) => {
-        console.log({
-          id: row.id,
-          email: row.email,
-          createdAt: row.createdAt,
-          createdAtFormatted: new Date(row.createdAt * 1000).toISOString(),
-        })
-      })
-    }
 
     const payments = rows.map((row: any) => ({
       id: row.id,
