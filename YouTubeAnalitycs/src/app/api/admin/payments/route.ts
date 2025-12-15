@@ -102,12 +102,36 @@ export async function GET(request: NextRequest) {
     const rows = Array.isArray(result) ? result : result.rows || []
 
     console.log("Query returned rows:", rows.length)
+
+    // Also check how many rows exist WITHOUT filters
+    if (emailFilter || fromDate || toDate) {
+      const allPaymentsQuery = `
+        SELECT COUNT(*) as total FROM payments p
+        JOIN users u ON p.userId = u.id
+        WHERE p.provider = 'yookassa'
+        ORDER BY p.createdAt DESC LIMIT 500
+      `
+      const allResult = await db.execute(allPaymentsQuery)
+      const allRows = Array.isArray(allResult) ? allResult : allResult.rows || []
+      console.log("Total payments without filters:", allRows[0]?.total || 0)
+    }
+
     if (rows.length > 0) {
       console.log("First row:", {
         id: rows[0].id,
         email: rows[0].email,
         createdAt: rows[0].createdAt,
         createdAtFormatted: new Date(rows[0].createdAt * 1000).toISOString(),
+      })
+      // Log all rows for debugging
+      console.log("All returned payments:")
+      rows.forEach((row: any) => {
+        console.log({
+          id: row.id,
+          email: row.email,
+          createdAt: row.createdAt,
+          createdAtFormatted: new Date(row.createdAt * 1000).toISOString(),
+        })
       })
     }
 
