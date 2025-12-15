@@ -204,7 +204,7 @@ export default function ScriptsHistoryPage() {
                         Сценарий
                       </div>
                     </TableHead>
-                    <TableHead>
+                    <TableHead className="w-[160px]">
                       <div className="flex items-center gap-2">
                         <Calendar className="h-4 w-4" />
                         Создан
@@ -229,7 +229,7 @@ export default function ScriptsHistoryPage() {
                           </div>
                         </div>
                       </TableCell>
-                      <TableCell>
+                      <TableCell className="w-[160px]">
                         <div className="space-y-1">
                           <div className="font-medium">
                             {formatDate(script.createdAt)}
