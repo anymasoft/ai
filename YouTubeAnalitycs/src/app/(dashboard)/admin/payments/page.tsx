@@ -280,7 +280,10 @@ export default function AdminPaymentsPage() {
           ) : (
             <>
             {filteredPayments.length > 0 && (
-              <div className="mb-4">
+              <div className="flex justify-between items-center mb-4">
+                <div className="text-sm text-muted-foreground">
+                  Showing {startIndex + 1} to {Math.min(endIndex, filteredPayments.length)} of {filteredPayments.length} results
+                </div>
                 <div className="text-lg font-semibold">
                   Total: {totalSum.toLocaleString("ru-RU")} ₽
                 </div>
@@ -329,9 +332,6 @@ export default function AdminPaymentsPage() {
             {filteredPayments.length > 0 && (
               <>
               <div className="border-t pt-4 mt-4">
-                <div className="text-sm text-muted-foreground">
-                  Showing {startIndex + 1} to {Math.min(endIndex, filteredPayments.length)} of {filteredPayments.length} results
-                </div>
               </div>
 
               <div className="flex items-center justify-between">
