@@ -160,7 +160,7 @@ export default function AdminMessagesPage() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="space-y-3">
+          <div className="flex items-center justify-between gap-4">
             {/* Фильтр по статусу */}
             <div className="flex gap-2">
               <Button
@@ -204,13 +204,13 @@ export default function AdminMessagesPage() {
                 onKeyDown={(e) => {
                   if (e.key === "Enter") handleSearch()
                 }}
-                className="flex-1"
+                className="w-48"
               />
-              <Button onClick={handleSearch} variant="default">
+              <Button onClick={handleSearch} variant="default" size="sm">
                 Поиск
               </Button>
               {emailFilter && (
-                <Button onClick={handleClearFilter} variant="outline">
+                <Button onClick={handleClearFilter} variant="outline" size="sm">
                   Очистить
                 </Button>
               )}
