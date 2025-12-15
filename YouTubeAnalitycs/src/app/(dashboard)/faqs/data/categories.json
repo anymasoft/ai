@@ -1,10 +1,7 @@
 [
-  { "name": "All", "count": 46 },
-  { "name": "General", "count": 8 },
-  { "name": "Account", "count": 6 },
-  { "name": "Billing", "count": 8 },
-  { "name": "Technical", "count": 9 },
-  { "name": "Privacy", "count": 5 },
-  { "name": "Security", "count": 4 },
-  { "name": "Support", "count": 6 }
+  { "name": "Все", "count": 18 },
+  { "name": "Общие", "count": 8 },
+  { "name": "Аккаунт", "count": 2 },
+  { "name": "Биллинг", "count": 5 },
+  { "name": "Поддержка", "count": 3 }
 ]
