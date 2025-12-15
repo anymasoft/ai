@@ -107,6 +107,11 @@ export default function AdminPaymentsPage() {
     setCurrentPage(1)
   }, [filterEmail, filterFrom, filterTo, pageSize])
 
+  // Сброс на первую страницу при изменении размера страницы
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [pageSize])
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
