@@ -21,7 +21,7 @@ async function getScript(scriptId: string): Promise<ScriptWithVideos> {
   // ЧАСТЬ 1: Проверка авторизации ДО запроса в БД
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) {
-    redirect("/log-in");
+    redirect("/sign-in");
   }
 
   const userId = session.user.id;
