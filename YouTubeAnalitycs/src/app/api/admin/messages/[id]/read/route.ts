@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { db } from "@/lib/db"
-import { verifyAdminAccess } from "@/lib/admin-utils"
+import { verifyAdminAccess } from "@/lib/admin-api"
 
 export async function PATCH(
   request: NextRequest,

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { db } from "@/lib/db"
-import { verifyAdminAccess } from "@/lib/admin-utils"
+import { verifyAdminAccess } from "@/lib/admin-api"
 
 export async function GET(request: NextRequest) {
   const { isAdmin, response } = await verifyAdminAccess(request)

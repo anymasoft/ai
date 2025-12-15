@@ -82,6 +82,22 @@ async function getScript(scriptId: string): Promise<ScriptWithVideos> {
     sourceVideosData,
   };
 
+  return script;
+}
+
+const formatDate = (timestamp: number) => {
+  const date = new Date(timestamp * 1000);
+  return format(date, "dd.MM.yyyy HH:mm", { locale: ru });
+};
+
+export default async function ScriptViewPage({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
+  const { id: scriptId } = await params;
+  const script = await getScript(scriptId);
+
   return (
     <div className="container mx-auto px-4 md:px-6">
       <div className="mb-8">
