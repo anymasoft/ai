@@ -33,10 +33,11 @@ export default function AdminMessagesPage() {
   const [totalPages, setTotalPages] = useState(1)
   const [emailFilter, setEmailFilter] = useState("")
   const [searchEmail, setSearchEmail] = useState("")
+  const [readStatus, setReadStatus] = useState<"all" | "unread" | "read">("all")
 
   useEffect(() => {
     fetchMessages()
-  }, [currentPage, emailFilter])
+  }, [currentPage, emailFilter, readStatus])
 
   async function fetchMessages() {
     try {
@@ -45,6 +46,9 @@ export default function AdminMessagesPage() {
       params.set("page", currentPage.toString())
       if (emailFilter) {
         params.set("email", emailFilter)
+      }
+      if (readStatus !== "all") {
+        params.set("readStatus", readStatus)
       }
 
       const res = await fetch(`/api/admin/messages?${params.toString()}`)
@@ -156,24 +160,61 @@ export default function AdminMessagesPage() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="flex gap-2">
-            <Input
-              placeholder="Поиск по email..."
-              value={searchEmail}
-              onChange={(e) => setSearchEmail(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") handleSearch()
-              }}
-              className="flex-1"
-            />
-            <Button onClick={handleSearch} variant="default">
-              Поиск
-            </Button>
-            {emailFilter && (
-              <Button onClick={handleClearFilter} variant="outline">
-                Очистить
+          <div className="space-y-3">
+            {/* Фильтр по статусу */}
+            <div className="flex gap-2">
+              <Button
+                variant={readStatus === "all" ? "default" : "outline"}
+                size="sm"
+                onClick={() => {
+                  setCurrentPage(1)
+                  setReadStatus("all")
+                }}
+              >
+                Все
               </Button>
-            )}
+              <Button
+                variant={readStatus === "unread" ? "default" : "outline"}
+                size="sm"
+                onClick={() => {
+                  setCurrentPage(1)
+                  setReadStatus("unread")
+                }}
+              >
+                Новые
+              </Button>
+              <Button
+                variant={readStatus === "read" ? "default" : "outline"}
+                size="sm"
+                onClick={() => {
+                  setCurrentPage(1)
+                  setReadStatus("read")
+                }}
+              >
+                Прочитанные
+              </Button>
+            </div>
+
+            {/* Фильтр по email */}
+            <div className="flex gap-2">
+              <Input
+                placeholder="Поиск по email..."
+                value={searchEmail}
+                onChange={(e) => setSearchEmail(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") handleSearch()
+                }}
+                className="flex-1"
+              />
+              <Button onClick={handleSearch} variant="default">
+                Поиск
+              </Button>
+              {emailFilter && (
+                <Button onClick={handleClearFilter} variant="outline">
+                  Очистить
+                </Button>
+              )}
+            </div>
           </div>
           {loading ? (
             <div className="flex justify-center py-8">
