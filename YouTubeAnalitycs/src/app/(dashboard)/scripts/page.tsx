@@ -130,14 +130,13 @@ export default async function ScriptsHistoryPage() {
                         Видео
                       </div>
                     </TableHead>
-                    <TableHead className="text-right">Действия</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {scripts.map((script) => (
-                    <Link key={script.id} href={`/scripts/${script.id}`} className="contents">
-                      <TableRow className="cursor-pointer hover:bg-muted/50">
-                        <TableCell>
+                    <TableRow key={script.id} className="cursor-pointer hover:bg-muted/50">
+                      <TableCell>
+                        <Link href={`/scripts/${script.id}`} className="block">
                           <div className="space-y-1">
                             <div className="font-medium line-clamp-2 max-w-[300px] truncate" title={script.title}>
                               {script.title}
@@ -146,35 +145,32 @@ export default async function ScriptsHistoryPage() {
                               {script.hook}
                             </div>
                           </div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="space-y-1">
-                            <div className="font-medium">
-                              {formatDate(script.createdAt)}
-                            </div>
-                            <div className="text-xs text-muted-foreground">
-                              {format(new Date(script.createdAt * 1000), "dd MMMM yyyy", { locale: ru })}
-                            </div>
+                        </Link>
+                      </TableCell>
+                      <TableCell>
+                        <div className="space-y-1">
+                          <div className="font-medium">
+                            {formatDate(script.createdAt)}
                           </div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="space-y-1">
-                            <div className="font-medium">
-                              <Badge variant="outline" className="gap-1">
-                                <Video className="h-3 w-3" />
-                                {script.sourceVideos.length}
-                              </Badge>
-                            </div>
-                            <div className="text-xs text-muted-foreground">
-                              исходных видео
-                            </div>
+                          <div className="text-xs text-muted-foreground">
+                            {format(new Date(script.createdAt * 1000), "dd MMMM yyyy", { locale: ru })}
                           </div>
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <Eye className="h-4 w-4 text-muted-foreground" />
-                        </TableCell>
-                      </TableRow>
-                    </Link>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="space-y-1">
+                          <div className="font-medium">
+                            <Badge variant="outline" className="gap-1">
+                              <Video className="h-3 w-3" />
+                              {script.sourceVideos.length}
+                            </Badge>
+                          </div>
+                          <div className="text-xs text-muted-foreground">
+                            исходных видео
+                          </div>
+                        </div>
+                      </TableCell>
+                    </TableRow>
                   ))}
                 </TableBody>
               </Table>
