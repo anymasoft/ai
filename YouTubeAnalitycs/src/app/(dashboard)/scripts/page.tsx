@@ -52,6 +52,13 @@ export default function ScriptsHistoryPage() {
     fetchScripts();
   }, []);
 
+  // Редиректим на страницу входа при 401 ошибке
+  useEffect(() => {
+    if (error === "Unauthorized") {
+      router.push("/login");
+    }
+  }, [error, router]);
+
   const handleCopyScript = async (script: SavedScript) => {
     try {
       setCopyingId(script.id);
