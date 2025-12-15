@@ -161,11 +161,11 @@ export default function AdminLimitsPage() {
             </div>
           ) : (
             <>
-            <div className="overflow-x-auto">
-              <Table>
+            <div className="overflow-hidden">
+              <Table className="w-full table-fixed">
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Email</TableHead>
+                    <TableHead className="max-w-[240px]">Email</TableHead>
                     <TableHead>Plan</TableHead>
                     <TableHead>Monthly Limit</TableHead>
                     <TableHead>Usage</TableHead>
@@ -175,7 +175,7 @@ export default function AdminLimitsPage() {
                 <TableBody>
                   {paginatedUsages.map((usage) => (
                     <TableRow key={usage.userId}>
-                      <TableCell className="font-mono text-sm">{usage.email}</TableCell>
+                      <TableCell className="font-mono text-sm truncate overflow-hidden text-ellipsis break-all" title={usage.email}>{usage.email}</TableCell>
                       <TableCell>
                         <Badge variant="outline">{usage.plan}</Badge>
                       </TableCell>

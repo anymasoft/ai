@@ -238,15 +238,15 @@ export default function CompetitorsPage() {
               Конкуренты не добавлены. Добавьте первого конкурента выше.
             </p>
           ) : (
-            <Table>
+            <Table className="w-full table-fixed">
               <TableHeader>
                 <TableRow>
-                  <TableHead>Канал</TableHead>
-                  <TableHead>Подписчики</TableHead>
-                  <TableHead>Видео</TableHead>
-                  <TableHead>Всего просмотров</TableHead>
-                  <TableHead>Последняя синхронизация</TableHead>
-                  <TableHead className="text-right">Действия</TableHead>
+                  <TableHead className="max-w-[200px]">Канал</TableHead>
+                  <TableHead className="w-[120px]">Подписчики</TableHead>
+                  <TableHead className="w-[100px]">Видео</TableHead>
+                  <TableHead className="w-[140px]">Всего просмотров</TableHead>
+                  <TableHead className="w-[130px]">Последняя синхро</TableHead>
+                  <TableHead className="w-[50px] text-right">Действия</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -257,15 +257,15 @@ export default function CompetitorsPage() {
                     className="cursor-pointer hover:bg-muted/50"
                   >
                     <TableCell>
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 truncate">
                         <ChannelAvatar
                           src={competitor.avatarUrl}
                           alt={competitor.title}
-                          className="h-8 w-8"
+                          className="h-8 w-8 flex-shrink-0"
                         />
-                        <div>
-                          <div className="font-medium">{competitor.title}</div>
-                          <div className="text-xs text-muted-foreground">
+                        <div className="truncate min-w-0">
+                          <div className="font-medium truncate overflow-hidden text-ellipsis" title={competitor.title}>{competitor.title}</div>
+                          <div className="text-xs text-muted-foreground truncate overflow-hidden text-ellipsis" title={competitor.handle}>
                             {competitor.handle}
                           </div>
                         </div>

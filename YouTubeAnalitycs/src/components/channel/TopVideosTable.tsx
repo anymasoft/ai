@@ -126,15 +126,15 @@ export function TopVideosTable({ videos, userPlan = "free", channelId }: TopVide
             </p>
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <Table>
+          <div className="overflow-hidden">
+            <Table className="w-full table-fixed">
               <TableHeader>
                 <TableRow className="hover:bg-transparent">
-                  <TableHead className="w-[120px] px-5 py-3">Превью</TableHead>
+                  <TableHead className="w-[100px] px-5 py-3">Превью</TableHead>
                   <TableHead className="px-5 py-3">Название</TableHead>
-                  <TableHead className="w-[120px] px-5 py-3">Просмотры</TableHead>
-                  <TableHead className="w-[140px] px-5 py-3">Опубликовано</TableHead>
-                  <TableHead className="w-[80px] px-5 py-3 text-center">Ссылка</TableHead>
+                  <TableHead className="w-[110px] px-5 py-3">Просмотры</TableHead>
+                  <TableHead className="w-[130px] px-5 py-3">Опубликовано</TableHead>
+                  <TableHead className="w-[60px] px-5 py-3 text-center">Ссылка</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -156,9 +156,9 @@ export function TopVideosTable({ videos, userPlan = "free", channelId }: TopVide
                         </div>
                       )}
                     </TableCell>
-                    <TableCell className="px-5 py-3">
-                      <div className="max-w-md">
-                        <div className="font-semibold line-clamp-2 text-foreground">{video.title}</div>
+                    <TableCell className="px-5 py-3 overflow-hidden">
+                      <div className="truncate overflow-hidden text-ellipsis">
+                        <div className="font-semibold line-clamp-2 text-foreground" title={video.title}>{video.title}</div>
                       </div>
                     </TableCell>
                     <TableCell className="px-5 py-3">

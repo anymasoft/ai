@@ -188,11 +188,11 @@ export default function AdminPaymentsPage() {
             </div>
           ) : (
             <>
-            <div className="overflow-x-auto">
-              <Table>
+            <div className="overflow-hidden">
+              <Table className="w-full table-fixed">
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Email</TableHead>
+                    <TableHead className="max-w-[240px]">Email</TableHead>
                     <TableHead>Plan</TableHead>
                     <TableHead>Price</TableHead>
                     <TableHead>Expires</TableHead>
@@ -203,7 +203,7 @@ export default function AdminPaymentsPage() {
                 <TableBody>
                   {paginatedPayments.map((payment) => (
                     <TableRow key={payment.id}>
-                      <TableCell className="font-mono text-sm">{payment.email}</TableCell>
+                      <TableCell className="font-mono text-sm truncate overflow-hidden text-ellipsis break-all" title={payment.email}>{payment.email}</TableCell>
                       <TableCell>
                         <Badge variant="outline">{payment.plan}</Badge>
                       </TableCell>

@@ -1069,7 +1069,7 @@ export default function TrendingPage() {
                                 href={video.url}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="font-medium hover:text-primary hover:underline block max-w-[320px] overflow-hidden text-ellipsis whitespace-nowrap"
+                                className="font-medium hover:text-primary hover:underline block max-w-[320px] overflow-hidden text-ellipsis truncate"
                                 title={video.title}
                               >
                                 {video.title}
@@ -1171,7 +1171,7 @@ export default function TrendingPage() {
                               href={`https://www.youtube.com/${video.channelHandle ? `@${video.channelHandle}` : `channel/${video.channelId}`}`}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="hover:text-primary hover:underline block max-w-[220px] overflow-hidden text-ellipsis whitespace-nowrap"
+                              className="hover:text-primary hover:underline block max-w-[220px] overflow-hidden text-ellipsis truncate"
                             >
                               {video.channelTitle}
                             </a>
