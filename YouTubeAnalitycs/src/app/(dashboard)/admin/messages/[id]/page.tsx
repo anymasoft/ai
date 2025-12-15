@@ -99,13 +99,14 @@ export default function MessageDetailPage() {
   }
 
   return (
-    <div className="space-y-6">
-      <Button variant="outline" onClick={() => router.back()}>
-        <ArrowLeft className="h-4 w-4 mr-2" />
-        Назад к списку
-      </Button>
+    <div className="container mx-auto px-4">
+      <div className="space-y-6">
+        <Button variant="outline" onClick={() => router.back()}>
+          <ArrowLeft className="h-4 w-4 mr-2" />
+          Назад к списку
+        </Button>
 
-      <Card>
+        <Card>
         <CardHeader>
           <div className="flex items-start justify-between gap-4">
             <div>
@@ -159,6 +160,7 @@ export default function MessageDetailPage() {
           )}
         </CardContent>
       </Card>
+      </div>
     </div>
   )
 }

@@ -40,3 +40,31 @@ export async function GET(
     )
   }
 }
+
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  const { isAdmin, response } = await verifyAdminAccess(request)
+  if (!isAdmin) return response
+
+  try {
+    const id = params.id
+
+    await db.execute(
+      `DELETE FROM admin_messages WHERE id = ?`,
+      [id]
+    )
+
+    return NextResponse.json(
+      { success: true },
+      { status: 200 }
+    )
+  } catch (error) {
+    console.error("Error deleting message:", error)
+    return NextResponse.json(
+      { error: "Ошибка при удалении сообщения" },
+      { status: 500 }
+    )
+  }
+}

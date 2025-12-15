@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
-import { Loader2, RefreshCw, Mail } from "lucide-react"
+import { Loader2, RefreshCw, Mail, Trash2 } from "lucide-react"
 import { toast } from "sonner"
 import { format } from "date-fns"
 import { ru } from "date-fns/locale"
@@ -27,6 +27,7 @@ export default function AdminMessagesPage() {
   const [messages, setMessages] = useState<Message[]>([])
   const [loading, setLoading] = useState(true)
   const [markingAsRead, setMarkingAsRead] = useState<string | null>(null)
+  const [deleting, setDeleting] = useState<string | null>(null)
 
   useEffect(() => {
     fetchMessages()
@@ -67,6 +68,24 @@ export default function AdminMessagesPage() {
       toast.error("Ошибка при обновлении статуса")
     } finally {
       setMarkingAsRead(null)
+    }
+  }
+
+  async function deleteMessage(messageId: string) {
+    try {
+      setDeleting(messageId)
+      const res = await fetch(`/api/admin/messages/${messageId}`, {
+        method: "DELETE",
+      })
+      if (!res.ok) throw new Error("Failed to delete message")
+
+      setMessages((prev) => prev.filter((msg) => msg.id !== messageId))
+      toast.success("Сообщение удалено")
+    } catch (error) {
+      console.error("Error:", error)
+      toast.error("Ошибка при удалении сообщения")
+    } finally {
+      setDeleting(null)
     }
   }
 
@@ -127,12 +146,12 @@ export default function AdminMessagesPage() {
               <Table style={{ tableLayout: 'fixed' }}>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>От кого</TableHead>
-                    <TableHead>Тема</TableHead>
-                    <TableHead>Сообщение</TableHead>
-                    <TableHead>Дата</TableHead>
-                    <TableHead>Статус</TableHead>
-                    <TableHead></TableHead>
+                    <TableHead className="w-[15%]">От кого</TableHead>
+                    <TableHead className="w-[15%]">Тема</TableHead>
+                    <TableHead className="w-[45%]">Сообщение</TableHead>
+                    <TableHead className="w-[15%]">Дата</TableHead>
+                    <TableHead className="w-[8%]">Статус</TableHead>
+                    <TableHead className="w-[2%]"></TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -164,24 +183,23 @@ export default function AdminMessagesPage() {
                           <Badge variant="default">Новое</Badge>
                         )}
                       </TableCell>
-                      <TableCell>
-                        {!message.isRead && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              markAsRead(message.id)
-                            }}
-                            disabled={markingAsRead === message.id}
-                          >
-                            {markingAsRead === message.id ? (
-                              <Loader2 className="h-4 w-4 animate-spin" />
-                            ) : (
-                              "Прочитать"
-                            )}
-                          </Button>
-                        )}
+                      <TableCell className="flex gap-1 justify-end">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            deleteMessage(message.id)
+                          }}
+                          disabled={deleting === message.id}
+                          title="Удалить сообщение"
+                        >
+                          {deleting === message.id ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <Trash2 className="h-4 w-4 text-red-500" />
+                          )}
+                        </Button>
                       </TableCell>
                     </TableRow>
                   ))}
