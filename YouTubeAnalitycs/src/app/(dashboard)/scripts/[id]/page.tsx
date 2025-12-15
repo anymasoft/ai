@@ -1,11 +1,10 @@
-"use client";
-
-import { useState, useEffect } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { redirect } from "next/navigation";
+import { auth } from "@/auth";
+import { db } from "@/lib/db";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, ArrowLeft, Copy, Calendar, Video, FileText, CheckCircle } from "lucide-react";
+import { ArrowLeft, Copy, Calendar, Video, FileText } from "lucide-react";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import Link from "next/link";
@@ -15,148 +14,89 @@ interface ScriptWithVideos extends SavedScript {
   sourceVideosData?: Array<{ id: string; title: string }>;
 }
 
-export default function ScriptViewPage() {
-  const params = useParams();
-  const router = useRouter();
-  const [script, setScript] = useState<ScriptWithVideos | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [copying, setCopying] = useState(false);
-  const [copied, setCopied] = useState(false);
+const formatDate = (timestamp: number) => {
+  const date = new Date(timestamp * 1000);
+  return format(date, "dd.MM.yyyy HH:mm", { locale: ru });
+};
 
-  const scriptId = params.id as string;
-
-  const fetchScript = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-
-      const response = await fetch(`/api/scripts/${scriptId}`);
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || "Failed to fetch script");
-      }
-
-      setScript(data);
-    } catch (err) {
-      console.error("Error fetching script:", err);
-      setError(err instanceof Error ? err.message : "Unknown error");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    if (scriptId) {
-      fetchScript();
-    }
-  }, [scriptId]);
-
-  // Редиректим на страницу входа при 401 ошибке
-  useEffect(() => {
-    if (error === "Unauthorized") {
-      router.push("/login");
-    } else if (error === "Script not found or access denied") {
-      // Редиректим на несуществующий путь для показа 404 страницы
-      if (typeof window !== 'undefined') {
-        window.location.href = '/not-found';
-      }
-    }
-  }, [error, router]);
-
-  const handleCopyScript = async () => {
-    if (!script) return;
-
-    try {
-      setCopying(true);
-
-      const scriptText = `Заголовок: ${script.title}\n\nХук: ${script.hook}\n\nСтруктура:\n${script.outline.map((item, i) => `${i + 1}. ${item}`).join('\n')}\n\nТекст сценария:\n${script.scriptText}\n\nПочему должно выстрелить:\n${script.whyItShouldWork}`;
-
-      await navigator.clipboard.writeText(scriptText);
-
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    } catch (err) {
-      console.error("Failed to copy:", err);
-      alert("Не удалось скопировать сценарий");
-    } finally {
-      setCopying(false);
-    }
-  };
-
-  const formatDate = (timestamp: number) => {
-    const date = new Date(timestamp * 1000);
-    return format(date, "dd.MM.yyyy HH:mm", { locale: ru });
-  };
-
-  if (loading && !script) {
-    return (
-      <div className="container mx-auto px-4 md:px-6">
-        <div className="mb-6">
-          <h1 className="text-3xl font-bold">Просмотр сценария</h1>
-          <p className="text-muted-foreground">Загрузка деталей сценария...</p>
-        </div>
-        <Card>
-          <CardContent className="flex items-center justify-center h-64">
-            <div className="text-center">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
-              <p className="text-muted-foreground">Загрузка сценария...</p>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    );
+async function getScript(scriptId: string): Promise<ScriptWithVideos> {
+  // ЧАСТЬ 1: Проверка авторизации ДО запроса в БД
+  const session = await auth();
+  if (!session?.user?.id) {
+    redirect("/log-in");
   }
 
-  if (error && !script) {
-    return (
-      <div className="container mx-auto px-4 md:px-6">
-        <div className="mb-6">
-          <h1 className="text-3xl font-bold">Просмотр сценария</h1>
-          <p className="text-muted-foreground">Ошибка загрузки сценария</p>
-        </div>
-        <Card>
-          <CardContent className="flex items-center justify-center h-64">
-            <div className="text-center">
-              <p className="text-red-600 mb-2">Ошибка загрузки сценария</p>
-              <p className="text-muted-foreground text-sm mb-4">{error}</p>
-              <div className="flex gap-2 justify-center">
-                <Button onClick={fetchScript}>Попробовать снова</Button>
-                <Link href="/scripts">
-                  <Button variant="outline">Назад к списку</Button>
-                </Link>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    );
+  const userId = session.user.id;
+
+  // ЧАСТЬ 2: Загрузка сценария
+  const result = await db.execute({
+    sql: `
+      SELECT
+        id, userId, title, hook, outline, scriptText, whyItShouldWork,
+        sourceVideos, createdAt
+      FROM generated_scripts
+      WHERE id = ?
+      LIMIT 1
+    `,
+    args: [scriptId],
+  });
+
+  if (result.rows.length === 0) {
+    redirect("/scripts");
   }
 
-  if (!script) {
-    return (
-      <div className="container mx-auto px-4 md:px-6">
-        <div className="mb-6">
-          <h1 className="text-3xl font-bold">Сценарий не найден</h1>
-          <p className="text-muted-foreground">Запрошенный сценарий не существует или у вас нет к нему доступа</p>
-        </div>
-        <Card>
-          <CardContent className="flex items-center justify-center h-64">
-            <div className="text-center">
-              <p className="text-muted-foreground mb-4">Сценарий с ID "{scriptId}" не найден</p>
-              <Link href="/scripts">
-                <Button className="gap-2">
-                  <ArrowLeft className="h-4 w-4" />
-                  Назад к списку сценариев
-                </Button>
-              </Link>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    );
+  const row = result.rows[0];
+
+  // ЧАСТЬ 3: Проверка доступа - принадлежит ли сценарий пользователю
+  if (row.userId !== userId) {
+    redirect("/scripts");
   }
+
+  const sourceVideoIds: string[] = JSON.parse(row.sourceVideos as string);
+
+  // Загрузить названия видео
+  let sourceVideosData: Array<{ id: string; title: string }> = [];
+  if (sourceVideoIds.length > 0) {
+    const placeholders = sourceVideoIds.map(() => "?").join(",");
+    const videosResult = await db.execute({
+      sql: `SELECT videoId, title FROM channel_videos WHERE videoId IN (${placeholders})`,
+      args: sourceVideoIds,
+    });
+
+    const videoTitlesMap = new Map<string, string>();
+    videosResult.rows.forEach((vRow) => {
+      videoTitlesMap.set(vRow.videoId as string, vRow.title as string);
+    });
+
+    sourceVideosData = sourceVideoIds.map((id) => ({
+      id,
+      title: videoTitlesMap.get(id) || id,
+    }));
+  }
+
+  const script: ScriptWithVideos = {
+    id: row.id as string,
+    userId: row.userId as string,
+    title: row.title as string,
+    hook: row.hook as string,
+    outline: JSON.parse(row.outline as string),
+    scriptText: row.scriptText as string,
+    whyItShouldWork: row.whyItShouldWork as string,
+    sourceVideos: sourceVideoIds,
+    createdAt: row.createdAt as number,
+    sourceVideosData,
+  };
+
+  return script;
+}
+
+export default async function ScriptViewPage({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
+  const { id: scriptId } = await params;
+  const script = await getScript(scriptId);
 
   return (
     <div className="container mx-auto px-4 md:px-6">
@@ -179,22 +119,10 @@ export default function ScriptViewPage() {
               </p>
             </div>
 
-            <div className="flex gap-2">
-              <Button
-                onClick={handleCopyScript}
-                disabled={copying}
-                className="gap-2"
-              >
-                {copying ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : copied ? (
-                  <CheckCircle className="h-4 w-4" />
-                ) : (
-                  <Copy className="h-4 w-4" />
-                )}
-                {copied ? "Скопировано!" : "Копировать сценарий"}
-              </Button>
-            </div>
+            <Button disabled className="gap-2" title="Копирование невозможно">
+              <Copy className="h-4 w-4" />
+              Копировать сценарий
+            </Button>
           </div>
 
           {/* Мета-информация */}
@@ -277,20 +205,22 @@ export default function ScriptViewPage() {
           </CardHeader>
           <CardContent>
             <div className="space-y-2">
-              {(script.sourceVideosData || script.sourceVideos.map(id => ({ id, title: id }))).map((video, index) => (
-                <div key={video.id} className="flex items-center gap-2 p-2 bg-muted/30 rounded-md">
-                  <Badge variant="secondary">{index + 1}</Badge>
-                  <a
-                    href={`https://www.youtube.com/watch?v=${video.id}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-sm text-primary hover:underline line-clamp-1"
-                    title={video.title}
-                  >
-                    {video.title}
-                  </a>
-                </div>
-              ))}
+              {(script.sourceVideosData || script.sourceVideos.map((id) => ({ id, title: id }))).map(
+                (video, index) => (
+                  <div key={video.id} className="flex items-center gap-2 p-2 bg-muted/30 rounded-md">
+                    <Badge variant="secondary">{index + 1}</Badge>
+                    <a
+                      href={`https://www.youtube.com/watch?v=${video.id}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-sm text-primary hover:underline line-clamp-1"
+                      title={video.title}
+                    >
+                      {video.title}
+                    </a>
+                  </div>
+                )
+              )}
             </div>
             <p className="text-sm text-muted-foreground mt-4">
               Всего использовано {script.sourceVideos.length} видео для анализа и генерации этого сценария.
@@ -306,28 +236,12 @@ export default function ScriptViewPage() {
               Назад к списку
             </Button>
           </Link>
-          <div className="flex gap-2">
-            <Button
-              onClick={handleCopyScript}
-              disabled={copying}
-              className="gap-2"
-            >
-              {copying ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : copied ? (
-                <CheckCircle className="h-4 w-4" />
-              ) : (
-                <Copy className="h-4 w-4" />
-              )}
-              {copied ? "Скопировано!" : "Копировать сценарий"}
+          <Link href="/trending">
+            <Button className="gap-2">
+              <Video className="h-4 w-4" />
+              Создать новый сценарий
             </Button>
-            <Link href="/trending">
-              <Button className="gap-2">
-                <Video className="h-4 w-4" />
-                Создать новый сценарий
-              </Button>
-            </Link>
-          </div>
+          </Link>
         </div>
       </div>
     </div>
