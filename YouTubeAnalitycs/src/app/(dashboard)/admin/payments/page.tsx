@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
-import { Loader2, RefreshCcw, X } from "lucide-react"
+import { Loader2, RefreshCcw, X, Calendar as CalendarIcon } from "lucide-react"
 import { toast } from "sonner"
 import {
   Select,
@@ -15,6 +15,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { Calendar } from "@/components/ui/calendar"
 
 interface Payment {
   id: number
@@ -33,6 +35,8 @@ export default function AdminPaymentsPage() {
   const [filterEmail, setFilterEmail] = useState("")
   const [filterFrom, setFilterFrom] = useState("")
   const [filterTo, setFilterTo] = useState("")
+  const [selectedFromDate, setSelectedFromDate] = useState<Date | undefined>()
+  const [selectedToDate, setSelectedToDate] = useState<Date | undefined>()
   const [pageSize, setPageSize] = useState(20)
   const [currentPage, setCurrentPage] = useState(1)
   const [totalSum, setTotalSum] = useState(0)
@@ -66,6 +70,29 @@ export default function AdminPaymentsPage() {
   const formatDate = (timestamp: number | null) => {
     if (!timestamp) return "—"
     return new Date(timestamp * 1000).toLocaleDateString()
+  }
+
+  const formatDisplayDate = (date: Date | undefined) => {
+    if (!date) return "Выберите дату"
+    return date.toLocaleDateString("ru-RU", { year: "numeric", month: "short", day: "numeric" })
+  }
+
+  const handleFromDateSelect = (date: Date | undefined) => {
+    setSelectedFromDate(date)
+    if (date) {
+      setFilterFrom(date.toISOString().split("T")[0])
+    } else {
+      setFilterFrom("")
+    }
+  }
+
+  const handleToDateSelect = (date: Date | undefined) => {
+    setSelectedToDate(date)
+    if (date) {
+      setFilterTo(date.toISOString().split("T")[0])
+    } else {
+      setFilterTo("")
+    }
   }
 
   const formatPrice = (price: string) => {
@@ -159,22 +186,58 @@ export default function AdminPaymentsPage() {
               </div>
             </div>
             <div>
-              <label className="text-sm font-medium text-muted-foreground">From</label>
-              <Input
-                type="date"
-                value={filterFrom}
-                onChange={(e) => setFilterFrom(e.target.value)}
-                className="mt-1"
-              />
+              <label className="text-sm font-medium text-muted-foreground">От</label>
+              <div className="mt-1">
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className="w-full justify-start text-left font-normal"
+                    >
+                      <CalendarIcon className="h-4 w-4 mr-2" />
+                      {formatDisplayDate(selectedFromDate)}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={selectedFromDate}
+                      onSelect={handleFromDateSelect}
+                      disabled={(date) =>
+                        selectedToDate ? date > selectedToDate : false
+                      }
+                      initialFocus
+                    />
+                  </PopoverContent>
+                </Popover>
+              </div>
             </div>
             <div>
-              <label className="text-sm font-medium text-muted-foreground">To</label>
-              <Input
-                type="date"
-                value={filterTo}
-                onChange={(e) => setFilterTo(e.target.value)}
-                className="mt-1"
-              />
+              <label className="text-sm font-medium text-muted-foreground">До</label>
+              <div className="mt-1">
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className="w-full justify-start text-left font-normal"
+                    >
+                      <CalendarIcon className="h-4 w-4 mr-2" />
+                      {formatDisplayDate(selectedToDate)}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={selectedToDate}
+                      onSelect={handleToDateSelect}
+                      disabled={(date) =>
+                        selectedFromDate ? date < selectedFromDate : false
+                      }
+                      initialFocus
+                    />
+                  </PopoverContent>
+                </Popover>
+              </div>
             </div>
           </div>
 
