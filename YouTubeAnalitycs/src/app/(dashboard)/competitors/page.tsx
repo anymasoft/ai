@@ -238,15 +238,12 @@ export default function CompetitorsPage() {
               Конкуренты не добавлены. Добавьте первого конкурента выше.
             </p>
           ) : (
-            <Table className="w-full table-fixed">
+            <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="max-w-[200px]">Канал</TableHead>
-                  <TableHead className="w-[120px]">Подписчики</TableHead>
-                  <TableHead className="w-[100px]">Видео</TableHead>
-                  <TableHead className="w-[140px]">Всего просмотров</TableHead>
-                  <TableHead className="w-[130px]">Последняя синхро</TableHead>
-                  <TableHead className="w-[50px] text-right">Действия</TableHead>
+                  <TableHead>Канал</TableHead>
+                  <TableHead>Подписчики</TableHead>
+                  <TableHead>Видео</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -257,13 +254,13 @@ export default function CompetitorsPage() {
                     className="cursor-pointer hover:bg-muted/50"
                   >
                     <TableCell>
-                      <div className="flex items-center gap-2 truncate">
+                      <div className="flex items-center gap-2 min-w-0">
                         <ChannelAvatar
                           src={competitor.avatarUrl}
                           alt={competitor.title}
                           className="h-8 w-8 flex-shrink-0"
                         />
-                        <div className="truncate min-w-0">
+                        <div className="flex-1 min-w-0">
                           <div className="font-medium truncate overflow-hidden text-ellipsis" title={competitor.title}>{competitor.title}</div>
                           <div className="text-xs text-muted-foreground truncate overflow-hidden text-ellipsis" title={competitor.handle}>
                             {competitor.handle}
@@ -271,25 +268,10 @@ export default function CompetitorsPage() {
                         </div>
                       </div>
                     </TableCell>
-                    <TableCell>{formatNumber(competitor.subscriberCount)}</TableCell>
-                    <TableCell>{formatNumber(competitor.videoCount)}</TableCell>
-                    <TableCell>{formatNumber(competitor.viewCount)}</TableCell>
-                    <TableCell>{formatDate(competitor.lastSyncedAt)}</TableCell>
-                    <TableCell className="text-right">
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={(e) => openDeleteDialog(competitor.id, e)}
-                            className="cursor-pointer text-destructive hover:text-destructive hover:bg-destructive/10"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent>Удалить конкурента</TooltipContent>
-                      </Tooltip>
+                    <TableCell className="font-medium">
+                      {formatNumber(competitor.subscriberCount)}
                     </TableCell>
+                    <TableCell>{formatNumber(competitor.videoCount)}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>
