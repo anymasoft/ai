@@ -90,7 +90,7 @@ export default async function ChannelPage({ params }: PageProps) {
 
   // Проверка аутентификации
   if (!session?.user?.id) {
-    redirect("/api/auth/signin");
+    redirect("/sign-in");
   }
 
   const { id } = await params;
