@@ -1,4 +1,7 @@
-
+import { redirect } from "next/navigation";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
+import { db } from "@/lib/db";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -16,7 +19,7 @@ interface ScriptWithVideos extends SavedScript {
 
 async function getScript(scriptId: string): Promise<ScriptWithVideos> {
   // ЧАСТЬ 1: Проверка авторизации ДО запроса в БД
-  const session = await auth();
+  const session = await getServerSession(authOptions);
   if (!session?.user?.id) {
     redirect("/log-in");
   }
