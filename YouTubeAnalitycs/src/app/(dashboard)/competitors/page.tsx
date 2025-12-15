@@ -238,7 +238,7 @@ export default function CompetitorsPage() {
               Конкуренты не добавлены. Добавьте первого конкурента выше.
             </p>
           ) : (
-            <Table>
+            <Table style={{ tableLayout: 'fixed' }}>
               <TableHeader>
                 <TableRow>
                   <TableHead>Канал</TableHead>
