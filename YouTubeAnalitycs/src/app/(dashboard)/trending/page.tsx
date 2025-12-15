@@ -775,6 +775,49 @@ export default function TrendingPage() {
         </CardContent>
       </Card>
 
+      {/* Отображение сгенерированных сценариев сразу после генерации */}
+      {generatedScripts && generatedScripts.length > 0 && !savedScript && (
+        <div className="mt-8 mb-8">
+          <h3 className="text-xl font-bold mb-4">Сгенерированные сценарии</h3>
+          <div className="space-y-6">
+            {generatedScripts.map((script, index) => (
+              <Card key={index} className="border border-gray-200">
+                <CardHeader>
+                  <CardTitle className="text-lg">{script.title}</CardTitle>
+                  <CardDescription className="text-sm text-gray-600">
+                    {script.hook}
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div>
+                    <h4 className="font-medium mb-2">Структура сценария:</h4>
+                    <ul className="list-disc pl-5 space-y-1">
+                      {script.outline.map((item, i) => (
+                        <li key={i} className="text-sm">
+                          {item}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                  <div>
+                    <h4 className="font-medium mb-2">Текст сценария:</h4>
+                    <div className="bg-gray-50 p-4 rounded-md text-sm whitespace-pre-wrap">
+                      {script.scriptText}
+                    </div>
+                  </div>
+                  <div>
+                    <h4 className="font-medium mb-2">
+                      Почему это должно выстрелить:
+                    </h4>
+                    <p className="text-sm">{script.whyItShouldWork}</p>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Фильтры и контролы */}
       <div className="mb-8">
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
@@ -1253,49 +1296,6 @@ export default function TrendingPage() {
               </div>
             </CardContent>
           </Card>
-        </div>
-      )}
-
-      {/* Отображение сгенерированных сценариев (старый формат для обратной совместимости) */}
-      {generatedScripts && generatedScripts.length > 0 && !savedScript && (
-        <div className="mt-8">
-          <h3 className="text-xl font-bold mb-4">Сгенерированные сценарии</h3>
-          <div className="space-y-6">
-            {generatedScripts.map((script, index) => (
-              <Card key={index} className="border border-gray-200">
-                <CardHeader>
-                  <CardTitle className="text-lg">{script.title}</CardTitle>
-                  <CardDescription className="text-sm text-gray-600">
-                    {script.hook}
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div>
-                    <h4 className="font-medium mb-2">Структура сценария:</h4>
-                    <ul className="list-disc pl-5 space-y-1">
-                      {script.outline.map((item, i) => (
-                        <li key={i} className="text-sm">
-                          {item}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                  <div>
-                    <h4 className="font-medium mb-2">Текст сценария:</h4>
-                    <div className="bg-gray-50 p-4 rounded-md text-sm whitespace-pre-wrap">
-                      {script.scriptText}
-                    </div>
-                  </div>
-                  <div>
-                    <h4 className="font-medium mb-2">
-                      Почему это должно выстрелить:
-                    </h4>
-                    <p className="text-sm">{script.whyItShouldWork}</p>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
         </div>
       )}
 
