@@ -53,6 +53,18 @@ export default function ScriptViewPage() {
     }
   }, [scriptId]);
 
+  // Редиректим на страницу входа при 401 ошибке
+  useEffect(() => {
+    if (error === "Unauthorized") {
+      router.push("/login");
+    } else if (error === "Script not found or access denied") {
+      // Редиректим на несуществующий путь для показа 404 страницы
+      if (typeof window !== 'undefined') {
+        window.location.href = '/not-found';
+      }
+    }
+  }, [error, router]);
+
   const handleCopyScript = async () => {
     if (!script) return;
 
