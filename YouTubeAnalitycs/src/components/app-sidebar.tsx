@@ -154,6 +154,10 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                     title: "Платежи",
                     url: "/admin/payments",
                   },
+                  {
+                    title: "Сообщения",
+                    url: "/admin/messages",
+                  },
                 ],
               },
             ]}
