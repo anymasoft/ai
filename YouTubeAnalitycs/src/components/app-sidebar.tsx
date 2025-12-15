@@ -71,7 +71,7 @@ const navGroups = [
       },
       */
       {
-        title: "Вопросы",
+        title: "FAQ",
         url: "/faqs",
         icon: FileText,
       },
