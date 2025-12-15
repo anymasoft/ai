@@ -14,6 +14,15 @@ const updatePaymentSchema = z.object({
   expiresAt: z.number().int().positive(),
 })
 
+// Helper function to parse date string as local date
+function parseLocalDate(dateString: string): number {
+  const [year, month, day] = dateString.split('-').map(Number)
+  // Create date in local timezone (00:00:00)
+  const date = new Date(year, month - 1, day, 0, 0, 0, 0)
+  // Convert to Unix timestamp (seconds)
+  return Math.floor(date.getTime() / 1000)
+}
+
 export async function GET(request: NextRequest) {
   const { isAdmin, response } = await verifyAdminAccess(request)
   if (!isAdmin) return response
@@ -21,11 +30,19 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
     const emailFilter = searchParams.get("email") || ""
-    const fromDate = searchParams.get("from") ? Math.floor(new Date(searchParams.get("from")!).getTime() / 1000) : null
-    let toDate = searchParams.get("to") ? Math.floor(new Date(searchParams.get("to")!).getTime() / 1000) : null
+    const fromDateStr = searchParams.get("from")
+    const toDateStr = searchParams.get("to")
 
-    // Add 24 hours (86400 seconds) to toDate to include the entire day
-    if (toDate) {
+    let fromDate: number | null = null
+    let toDate: number | null = null
+
+    if (fromDateStr) {
+      fromDate = parseLocalDate(fromDateStr)
+    }
+
+    if (toDateStr) {
+      toDate = parseLocalDate(toDateStr)
+      // Add 24 hours (86400 seconds) to toDate to include the entire day
       toDate += 86400
     }
 
