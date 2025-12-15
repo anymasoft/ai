@@ -165,7 +165,7 @@ export default function AdminPaymentsPage() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="space-y-3">
             <div>
               <label className="text-sm font-medium text-muted-foreground">Email</label>
               <div className="flex gap-2 mt-1">
@@ -185,58 +185,78 @@ export default function AdminPaymentsPage() {
                 )}
               </div>
             </div>
-            <div>
-              <label className="text-sm font-medium text-muted-foreground">От</label>
-              <div className="mt-1">
-                <Popover>
-                  <PopoverTrigger asChild>
+            <div className="flex gap-4">
+              <div className="flex-1">
+                <label className="text-sm font-medium text-muted-foreground">От</label>
+                <div className="flex gap-2 mt-1">
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        className="flex-1 justify-start text-left font-normal"
+                      >
+                        <CalendarIcon className="h-4 w-4 mr-2" />
+                        {formatDisplayDate(selectedFromDate)}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar
+                        mode="single"
+                        selected={selectedFromDate}
+                        onSelect={handleFromDateSelect}
+                        disabled={(date) =>
+                          selectedToDate ? date > selectedToDate : false
+                        }
+                        initialFocus
+                      />
+                    </PopoverContent>
+                  </Popover>
+                  {selectedFromDate && (
                     <Button
-                      variant="outline"
-                      className="w-full justify-start text-left font-normal"
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => handleFromDateSelect(undefined)}
                     >
-                      <CalendarIcon className="h-4 w-4 mr-2" />
-                      {formatDisplayDate(selectedFromDate)}
+                      <X className="h-4 w-4" />
                     </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
-                    <Calendar
-                      mode="single"
-                      selected={selectedFromDate}
-                      onSelect={handleFromDateSelect}
-                      disabled={(date) =>
-                        selectedToDate ? date > selectedToDate : false
-                      }
-                      initialFocus
-                    />
-                  </PopoverContent>
-                </Popover>
+                  )}
+                </div>
               </div>
-            </div>
-            <div>
-              <label className="text-sm font-medium text-muted-foreground">До</label>
-              <div className="mt-1">
-                <Popover>
-                  <PopoverTrigger asChild>
+              <div className="flex-1">
+                <label className="text-sm font-medium text-muted-foreground">До</label>
+                <div className="flex gap-2 mt-1">
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        className="flex-1 justify-start text-left font-normal"
+                      >
+                        <CalendarIcon className="h-4 w-4 mr-2" />
+                        {formatDisplayDate(selectedToDate)}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar
+                        mode="single"
+                        selected={selectedToDate}
+                        onSelect={handleToDateSelect}
+                        disabled={(date) =>
+                          selectedFromDate ? date < selectedFromDate : false
+                        }
+                        initialFocus
+                      />
+                    </PopoverContent>
+                  </Popover>
+                  {selectedToDate && (
                     <Button
-                      variant="outline"
-                      className="w-full justify-start text-left font-normal"
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => handleToDateSelect(undefined)}
                     >
-                      <CalendarIcon className="h-4 w-4 mr-2" />
-                      {formatDisplayDate(selectedToDate)}
+                      <X className="h-4 w-4" />
                     </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
-                    <Calendar
-                      mode="single"
-                      selected={selectedToDate}
-                      onSelect={handleToDateSelect}
-                      disabled={(date) =>
-                        selectedFromDate ? date < selectedFromDate : false
-                      }
-                      initialFocus
-                    />
-                  </PopoverContent>
-                </Popover>
+                  )}
+                </div>
               </div>
             </div>
           </div>

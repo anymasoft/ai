@@ -22,7 +22,12 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url)
     const emailFilter = searchParams.get("email") || ""
     const fromDate = searchParams.get("from") ? Math.floor(new Date(searchParams.get("from")!).getTime() / 1000) : null
-    const toDate = searchParams.get("to") ? Math.floor(new Date(searchParams.get("to")!).getTime() / 1000) : null
+    let toDate = searchParams.get("to") ? Math.floor(new Date(searchParams.get("to")!).getTime() / 1000) : null
+
+    // Add 24 hours (86400 seconds) to toDate to include the entire day
+    if (toDate) {
+      toDate += 86400
+    }
 
     // Get only real YooKassa payments from payments table
     let query = `
@@ -53,7 +58,7 @@ export async function GET(request: NextRequest) {
     }
 
     if (toDate) {
-      query += ` AND p.createdAt <= ?`
+      query += ` AND p.createdAt < ?`
       params.push(toDate)
     }
 
