@@ -134,15 +134,15 @@ export default function AdminMessagesPage() {
               Сообщений нет
             </div>
           ) : (
-            <div className="overflow-x-auto">
-              <Table>
+            <div className="overflow-hidden">
+              <Table className="w-full table-fixed">
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="w-[200px]">От кого</TableHead>
+                    <TableHead className="w-[180px]">От кого</TableHead>
                     <TableHead className="w-[150px]">Тема</TableHead>
-                    <TableHead className="flex-1">Сообщение</TableHead>
-                    <TableHead className="w-[140px]">Дата</TableHead>
-                    <TableHead className="w-[100px]">Статус</TableHead>
+                    <TableHead>Сообщение</TableHead>
+                    <TableHead className="w-[120px]">Дата</TableHead>
+                    <TableHead className="w-[80px]">Статус</TableHead>
                     <TableHead className="w-[50px]"></TableHead>
                   </TableRow>
                 </TableHeader>
@@ -156,17 +156,16 @@ export default function AdminMessagesPage() {
                         setIsDialogOpen(true)
                       }}
                     >
-                      <TableCell className="font-medium">
-                        {message.firstName} {message.lastName}
-                        <br />
-                        <span className="text-sm text-muted-foreground">
+                      <TableCell className="font-medium text-sm">
+                        <div className="truncate">{message.firstName} {message.lastName}</div>
+                        <div className="text-xs text-muted-foreground truncate" title={message.email}>
                           {message.email}
-                        </span>
+                        </div>
                       </TableCell>
-                      <TableCell className="text-sm font-medium">
+                      <TableCell className="text-sm font-medium truncate overflow-hidden text-ellipsis" title={message.subject}>
                         {message.subject}
                       </TableCell>
-                      <TableCell className="text-sm text-muted-foreground max-w-xs">
+                      <TableCell className="text-sm text-muted-foreground truncate overflow-hidden text-ellipsis">
                         {truncateMessage(message.message)}
                       </TableCell>
                       <TableCell className="text-sm">

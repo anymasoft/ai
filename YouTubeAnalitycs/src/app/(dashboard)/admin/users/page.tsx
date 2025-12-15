@@ -355,11 +355,11 @@ export default function AdminUsersPage() {
             </div>
           ) : (
             <>
-            <div className="overflow-x-auto">
-              <Table>
+            <div className="overflow-hidden">
+              <Table className="w-full table-fixed">
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Email</TableHead>
+                    <TableHead className="max-w-[240px]">Email</TableHead>
                     <TableHead>Name</TableHead>
                     <TableHead>Plan</TableHead>
                     <TableHead>Expires</TableHead>
@@ -371,7 +371,7 @@ export default function AdminUsersPage() {
                 <TableBody>
                   {paginatedUsers.map((user) => (
                     <TableRow key={user.id}>
-                      <TableCell className="font-mono text-sm">{user.email}</TableCell>
+                      <TableCell className="font-mono text-sm truncate overflow-hidden text-ellipsis break-all" title={user.email}>{user.email}</TableCell>
                       <TableCell>{user.name || "—"}</TableCell>
                       <TableCell>
                         <Badge className={getPlanColor(user.plan)}>
