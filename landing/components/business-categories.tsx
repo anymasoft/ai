@@ -1,13 +1,6 @@
 import Image from "next/image";
-import Logo01 from "@/public/images/logo-01.png";
-import Logo02 from "@/public/images/logo-01.png";
-import Logo03 from "@/public/images/logo-01.png";
-import Logo04 from "@/public/images/logo-01.png";
-import Logo05 from "@/public/images/logo-01.png";
-import Logo06 from "@/public/images/logo-01.png";
-import Logo07 from "@/public/images/logo-01.png";
-import Logo08 from "@/public/images/logo-01.png";
-import Logo09 from "@/public/images/logo-01.png";
+
+const logoSrc = "/images/logo-01.png";
 
 export default function BusinessCategories() {
   return (
@@ -179,7 +172,7 @@ export default function BusinessCategories() {
                 <div className="flex h-24 w-24 items-center justify-center rounded-full bg-white shadow-lg shadow-black/[0.03] before:absolute before:inset-0 before:m-[8.334%] before:rounded-[inherit] before:border before:border-gray-700/5 before:bg-gray-200/60 before:[mask-image:linear-gradient(to_bottom,black,transparent)]">
                   <Image
                     className="relative"
-                    src={Logo01}
+                    src={logoSrc}
                     width={32}
                     height={32}
                     alt="Logo 01"
@@ -195,7 +188,7 @@ export default function BusinessCategories() {
                     <div className="flex h-16 w-16 items-center justify-center rounded-full bg-white shadow-lg shadow-black/[0.03] before:absolute before:inset-0 before:m-[8.334%] before:rounded-[inherit] before:border before:border-gray-700/5 before:bg-gray-200/60 before:[mask-image:linear-gradient(to_bottom,black,transparent)]">
                       <Image
                         className="relative"
-                        src={Logo02}
+                        src={logoSrc}
                         width={23}
                         height={22}
                         alt="Logo 02"
@@ -208,7 +201,7 @@ export default function BusinessCategories() {
                     <div className="flex h-16 w-16 items-center justify-center rounded-full bg-white shadow-lg shadow-black/[0.03] before:absolute before:inset-0 before:m-[8.334%] before:rounded-[inherit] before:border before:border-gray-700/5 before:bg-gray-200/60 before:[mask-image:linear-gradient(to_bottom,black,transparent)]">
                       <Image
                         className="relative"
-                        src={Logo03}
+                        src={logoSrc}
                         width={22}
                         height={22}
                         alt="Logo 03"
@@ -221,7 +214,7 @@ export default function BusinessCategories() {
                     <div className="flex h-20 w-20 items-center justify-center rounded-full bg-white shadow-lg shadow-black/[0.03] before:absolute before:inset-0 before:m-[8.334%] before:rounded-[inherit] before:border before:border-gray-700/5 before:bg-gray-200/60 before:[mask-image:linear-gradient(to_bottom,black,transparent)]">
                       <Image
                         className="relative"
-                        src={Logo04}
+                        src={logoSrc}
                         width={24}
                         height={22}
                         alt="Logo 04"
@@ -234,7 +227,7 @@ export default function BusinessCategories() {
                     <div className="flex h-20 w-20 items-center justify-center rounded-full bg-white shadow-lg shadow-black/[0.03] before:absolute before:inset-0 before:m-[8.334%] before:rounded-[inherit] before:border before:border-gray-700/5 before:bg-gray-200/60 before:[mask-image:linear-gradient(to_bottom,black,transparent)]">
                       <Image
                         className="relative"
-                        src={Logo05}
+                        src={logoSrc}
                         width={25}
                         height={25}
                         alt="Logo 05"
@@ -247,7 +240,7 @@ export default function BusinessCategories() {
                     <div className="flex h-20 w-20 items-center justify-center rounded-full bg-white shadow-lg shadow-black/[0.03] before:absolute before:inset-0 before:m-[8.334%] before:rounded-[inherit] before:border before:border-gray-700/5 before:bg-gray-200/60 before:[mask-image:linear-gradient(to_bottom,black,transparent)]">
                       <Image
                         className="relative"
-                        src={Logo06}
+                        src={logoSrc}
                         width={20}
                         height={18}
                         alt="Logo 06"
@@ -260,7 +253,7 @@ export default function BusinessCategories() {
                     <div className="flex h-20 w-20 items-center justify-center rounded-full bg-white shadow-lg shadow-black/[0.03] before:absolute before:inset-0 before:m-[8.334%] before:rounded-[inherit] before:border before:border-gray-700/5 before:bg-gray-200/60 before:[mask-image:linear-gradient(to_bottom,black,transparent)]">
                       <Image
                         className="relative"
-                        src={Logo07}
+                        src={logoSrc}
                         width={25}
                         height={25}
                         alt="Logo 07"
@@ -273,7 +266,7 @@ export default function BusinessCategories() {
                     <div className="flex h-12 w-12 items-center justify-center rounded-full border border-gray-200/60 bg-white shadow-lg">
                       <Image
                         className="relative"
-                        src={Logo08}
+                        src={logoSrc}
                         width={20}
                         height={20}
                         alt="Logo 08"
@@ -286,7 +279,7 @@ export default function BusinessCategories() {
                     <div className="flex h-12 w-12 items-center justify-center rounded-full border border-gray-200/60 bg-white shadow-lg">
                       <Image
                         className="relative"
-                        src={Logo09}
+                        src={logoSrc}
                         width={21}
                         height={13}
                         alt="Logo 09"

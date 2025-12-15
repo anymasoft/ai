@@ -1,7 +1,6 @@
 "use client"
 
 import Image from "next/image"
-import logoImage from "@/public/logo.png"
 
 interface LogoProps {
   size?: number
@@ -20,9 +19,10 @@ export function Logo({ size = 24, className }: LogoProps) {
       className={className}
     >
       <Image
-        src={logoImage}
+        src="/logo.png"
         alt="Logo"
-        fill
+        width={size}
+        height={size}
         style={{ objectFit: "contain" }}
         priority
       />
