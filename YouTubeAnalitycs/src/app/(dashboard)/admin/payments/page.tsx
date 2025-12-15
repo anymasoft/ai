@@ -166,11 +166,20 @@ export default function AdminPaymentsPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Payment Transactions</CardTitle>
-          <CardDescription>
-            {filteredPayments.length} payments found
-            {filteredPayments.length > 0 && ` • Total: ${totalSum} ₽ • Page ${currentPage} of ${totalPages}`}
-          </CardDescription>
+          <div className="flex justify-between items-center">
+            <div>
+              <CardTitle>Payment Transactions</CardTitle>
+              <CardDescription>
+                {filteredPayments.length} payments found
+                {filteredPayments.length > 0 && ` • Page ${currentPage} of ${totalPages}`}
+              </CardDescription>
+            </div>
+            {filteredPayments.length > 0 && (
+              <div className="text-lg font-semibold">
+                Total: {totalSum.toLocaleString("ru-RU")} ₽
+              </div>
+            )}
+          </div>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex gap-3 items-end flex-wrap">
@@ -279,17 +288,6 @@ export default function AdminPaymentsPage() {
             </div>
           ) : (
             <>
-            {filteredPayments.length > 0 && (
-              <div className="flex justify-between items-center mb-4">
-                <div className="text-sm text-muted-foreground">
-                  Showing {startIndex + 1} to {Math.min(endIndex, filteredPayments.length)} of {filteredPayments.length} results
-                </div>
-                <div className="text-lg font-semibold">
-                  Total: {totalSum.toLocaleString("ru-RU")} ₽
-                </div>
-              </div>
-            )}
-
             <div className="overflow-hidden">
               <Table className="w-full table-fixed">
                 <TableHeader>
