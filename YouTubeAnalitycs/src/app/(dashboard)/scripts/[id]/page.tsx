@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter, notFound } from "next/navigation";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -103,29 +103,9 @@ export default function ScriptViewPage() {
     );
   }
 
-  // Показываем 404 для неавторизованного доступа или когда сценарий не найден
+  // Редиректим на 404 при неавторизованном доступе или если сценарий не найден
   if (error && !script && (error.statusCode === 401 || error.statusCode === 404)) {
-    return (
-      <div className="container mx-auto px-4 md:px-6">
-        <div className="mb-6">
-          <h1 className="text-3xl font-bold">Сценарий не найден</h1>
-          <p className="text-muted-foreground">Запрошенный сценарий не существует или у вас нет к нему доступа</p>
-        </div>
-        <Card>
-          <CardContent className="flex items-center justify-center h-64">
-            <div className="text-center">
-              <p className="text-muted-foreground mb-4">Сценарий с ID "{scriptId}" не найден</p>
-              <Link href="/scripts">
-                <Button className="gap-2">
-                  <ArrowLeft className="h-4 w-4" />
-                  Назад к списку сценариев
-                </Button>
-              </Link>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    );
+    notFound();
   }
 
   // Показываем ошибку для других типов ошибок
