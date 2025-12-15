@@ -195,7 +195,7 @@ export default function ScriptsHistoryPage() {
           </CardHeader>
           <CardContent>
             <div className="rounded-md border">
-              <Table>
+              <Table style={{ tableLayout: 'fixed' }}>
                 <TableHeader>
                   <TableRow>
                     <TableHead>
