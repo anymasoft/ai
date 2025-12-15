@@ -17,10 +17,8 @@ const updatePaymentSchema = z.object({
 // Helper function to parse date string as local date
 function parseLocalDate(dateString: string): number {
   const [year, month, day] = dateString.split('-').map(Number)
-  // Create date in local timezone (00:00:00)
-  const date = new Date(year, month - 1, day, 0, 0, 0, 0)
-  // Convert to Unix timestamp (seconds)
-  return Math.floor(date.getTime() / 1000)
+  // FIX: создаём дату в UTC, а не в локальном timezone сервера
+  return Math.floor(Date.UTC(year, month - 1, day, 0, 0, 0) / 1000)
 }
 
 export async function GET(request: NextRequest) {
