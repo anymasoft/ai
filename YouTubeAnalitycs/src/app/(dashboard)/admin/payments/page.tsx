@@ -8,6 +8,13 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge"
 import { Loader2, RefreshCcw, X } from "lucide-react"
 import { toast } from "sonner"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 
 interface Payment {
   id: number
@@ -99,6 +106,11 @@ export default function AdminPaymentsPage() {
   useEffect(() => {
     setCurrentPage(1)
   }, [filterEmail, filterFrom, filterTo])
+
+  // Сброс на первую страницу при изменении размера страницы
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [pageSize])
 
   return (
     <div className="space-y-6">
@@ -229,7 +241,20 @@ export default function AdminPaymentsPage() {
               </div>
 
               <div className="flex items-center justify-between">
-                <div />
+                <div className="flex items-center gap-2">
+                  <label className="text-sm font-medium text-muted-foreground">Records per page:</label>
+                  <Select value={pageSize.toString()} onValueChange={(value) => setPageSize(parseInt(value))}>
+                    <SelectTrigger className="w-[120px]">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="10">10</SelectItem>
+                      <SelectItem value="20">20</SelectItem>
+                      <SelectItem value="50">50</SelectItem>
+                      <SelectItem value="100">100</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
                 <div className="flex gap-2">
                   <Button
                     variant="outline"
