@@ -46,6 +46,16 @@ export async function GET(request: NextRequest) {
       toDate += 86400
     }
 
+    // Debug logging
+    console.log("Date filter debug:", {
+      fromDateStr,
+      toDateStr,
+      fromDate,
+      toDate,
+      fromDateFormatted: fromDate ? new Date(fromDate * 1000).toISOString() : null,
+      toDateFormatted: toDate ? new Date(toDate * 1000).toISOString() : null,
+    })
+
     // Get only real YooKassa payments from payments table
     let query = `
       SELECT
@@ -81,11 +91,49 @@ export async function GET(request: NextRequest) {
 
     query += ` ORDER BY p.createdAt DESC LIMIT 500`
 
+    // Debug: log the query and params
+    console.log("SQL Query:", query)
+    console.log("Query params:", params)
+
     const result = params.length > 0
       ? await db.execute({ sql: query, args: params })
       : await db.execute(query)
 
     const rows = Array.isArray(result) ? result : result.rows || []
+
+    console.log("Query returned rows:", rows.length)
+
+    // Also check how many rows exist WITHOUT filters
+    if (emailFilter || fromDate || toDate) {
+      const allPaymentsQuery = `
+        SELECT COUNT(*) as total FROM payments p
+        JOIN users u ON p.userId = u.id
+        WHERE p.provider = 'yookassa'
+        ORDER BY p.createdAt DESC LIMIT 500
+      `
+      const allResult = await db.execute(allPaymentsQuery)
+      const allRows = Array.isArray(allResult) ? allResult : allResult.rows || []
+      console.log("Total payments without filters:", allRows[0]?.total || 0)
+    }
+
+    if (rows.length > 0) {
+      console.log("First row:", {
+        id: rows[0].id,
+        email: rows[0].email,
+        createdAt: rows[0].createdAt,
+        createdAtFormatted: new Date(rows[0].createdAt * 1000).toISOString(),
+      })
+      // Log all rows for debugging
+      console.log("All returned payments:")
+      rows.forEach((row: any) => {
+        console.log({
+          id: row.id,
+          email: row.email,
+          createdAt: row.createdAt,
+          createdAtFormatted: new Date(row.createdAt * 1000).toISOString(),
+        })
+      })
+    }
 
     const payments = rows.map((row: any) => ({
       id: row.id,
