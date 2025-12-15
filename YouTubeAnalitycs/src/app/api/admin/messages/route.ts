@@ -14,14 +14,27 @@ export async function GET(request: NextRequest) {
     const limit = 10
     const offset = (page - 1) * limit
     const emailFilter = searchParams.get("email") || ""
+    const readStatus = searchParams.get("readStatus") || "all"
 
     // Построение WHERE условия
     let whereClause = ""
     const params: any[] = []
 
+    const conditions = []
+
     if (emailFilter) {
-      whereClause = "WHERE email LIKE ?"
+      conditions.push("email LIKE ?")
       params.push(`%${emailFilter}%`)
+    }
+
+    if (readStatus === "unread") {
+      conditions.push("isRead = 0")
+    } else if (readStatus === "read") {
+      conditions.push("isRead = 1")
+    }
+
+    if (conditions.length > 0) {
+      whereClause = "WHERE " + conditions.join(" AND ")
     }
 
     // Получаем общее количество записей
