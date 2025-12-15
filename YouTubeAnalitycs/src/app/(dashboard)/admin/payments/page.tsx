@@ -80,7 +80,11 @@ export default function AdminPaymentsPage() {
   const handleFromDateSelect = (date: Date | undefined) => {
     setSelectedFromDate(date)
     if (date) {
-      setFilterFrom(date.toISOString().split("T")[0])
+      // Используем локальное форматирование вместо toISOString() чтобы избежать проблем с таймзоной
+      const year = date.getFullYear()
+      const month = String(date.getMonth() + 1).padStart(2, "0")
+      const day = String(date.getDate()).padStart(2, "0")
+      setFilterFrom(`${year}-${month}-${day}`)
     } else {
       setFilterFrom("")
     }
@@ -89,7 +93,11 @@ export default function AdminPaymentsPage() {
   const handleToDateSelect = (date: Date | undefined) => {
     setSelectedToDate(date)
     if (date) {
-      setFilterTo(date.toISOString().split("T")[0])
+      // Используем локальное форматирование вместо toISOString() чтобы избежать проблем с таймзоной
+      const year = date.getFullYear()
+      const month = String(date.getMonth() + 1).padStart(2, "0")
+      const day = String(date.getDate()).padStart(2, "0")
+      setFilterTo(`${year}-${month}-${day}`)
     } else {
       setFilterTo("")
     }
