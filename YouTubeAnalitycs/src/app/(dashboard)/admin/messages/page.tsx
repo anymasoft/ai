@@ -4,9 +4,10 @@ import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
-import { Loader2, RefreshCw, Mail, Trash2 } from "lucide-react"
+import { Loader2, RefreshCw, Mail, Trash2, ChevronLeft, ChevronRight } from "lucide-react"
 import { toast } from "sonner"
 import { format } from "date-fns"
 import { ru } from "date-fns/locale"
@@ -28,18 +29,29 @@ export default function AdminMessagesPage() {
   const [loading, setLoading] = useState(true)
   const [markingAsRead, setMarkingAsRead] = useState<string | null>(null)
   const [deleting, setDeleting] = useState<string | null>(null)
+  const [currentPage, setCurrentPage] = useState(1)
+  const [totalPages, setTotalPages] = useState(1)
+  const [emailFilter, setEmailFilter] = useState("")
+  const [searchEmail, setSearchEmail] = useState("")
 
   useEffect(() => {
     fetchMessages()
-  }, [])
+  }, [currentPage, emailFilter])
 
   async function fetchMessages() {
     try {
       setLoading(true)
-      const res = await fetch("/api/admin/messages")
+      const params = new URLSearchParams()
+      params.set("page", currentPage.toString())
+      if (emailFilter) {
+        params.set("email", emailFilter)
+      }
+
+      const res = await fetch(`/api/admin/messages?${params.toString()}`)
       if (!res.ok) throw new Error("Failed to fetch messages")
       const data = await res.json()
       setMessages(data.messages || [])
+      setTotalPages(data.pagination?.totalPages || 1)
     } catch (error) {
       console.error("Error:", error)
       toast.error("Ошибка при загрузке сообщений")
@@ -89,6 +101,17 @@ export default function AdminMessagesPage() {
     }
   }
 
+  function handleSearch() {
+    setCurrentPage(1)
+    setEmailFilter(searchEmail)
+  }
+
+  function handleClearFilter() {
+    setCurrentPage(1)
+    setEmailFilter("")
+    setSearchEmail("")
+  }
+
   const formatDate = (timestamp: number) => {
     return format(new Date(timestamp * 1000), "dd.MM.yyyy HH:mm", { locale: ru })
   }
@@ -132,7 +155,26 @@ export default function AdminMessagesPage() {
             Нажмите на сообщение для подробного просмотра
           </CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-4">
+          <div className="flex gap-2">
+            <Input
+              placeholder="Поиск по email..."
+              value={searchEmail}
+              onChange={(e) => setSearchEmail(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") handleSearch()
+              }}
+              className="flex-1"
+            />
+            <Button onClick={handleSearch} variant="default">
+              Поиск
+            </Button>
+            {emailFilter && (
+              <Button onClick={handleClearFilter} variant="outline">
+                Очистить
+              </Button>
+            )}
+          </div>
           {loading ? (
             <div className="flex justify-center py-8">
               <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
@@ -149,9 +191,9 @@ export default function AdminMessagesPage() {
                     <TableHead className="w-[15%]">От кого</TableHead>
                     <TableHead className="w-[15%]">Тема</TableHead>
                     <TableHead className="w-[45%]">Сообщение</TableHead>
-                    <TableHead className="w-[15%]">Дата</TableHead>
+                    <TableHead className="w-[10%]">Дата</TableHead>
                     <TableHead className="w-[8%]">Статус</TableHead>
-                    <TableHead className="w-[2%]"></TableHead>
+                    <TableHead className="w-[7%] text-right">Действия</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -205,6 +247,31 @@ export default function AdminMessagesPage() {
                   ))}
                 </TableBody>
               </Table>
+
+              {/* Пагинация */}
+              <div className="flex items-center justify-between px-4 py-4 border-t">
+                <div className="text-sm text-muted-foreground">
+                  Страница {currentPage} из {totalPages}
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                    disabled={currentPage === 1}
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                    disabled={currentPage === totalPages}
+                  >
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
             </div>
           )}
         </CardContent>
