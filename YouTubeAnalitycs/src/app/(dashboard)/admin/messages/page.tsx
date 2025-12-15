@@ -85,7 +85,7 @@ export default function AdminMessagesPage() {
   const unreadCount = messages.filter((m) => !m.isRead).length
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 max-w-7xl mx-auto px-4">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold">Сообщения обратной связи</h1>
@@ -123,7 +123,7 @@ export default function AdminMessagesPage() {
               Сообщений нет
             </div>
           ) : (
-            <div className="overflow-hidden">
+            <div className="overflow-x-auto -mx-6 px-6">
               <Table className="w-full" style={{ tableLayout: 'fixed' }}>
                 <TableHeader>
                   <TableRow>
