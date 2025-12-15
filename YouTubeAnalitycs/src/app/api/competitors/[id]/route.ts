@@ -29,8 +29,8 @@ export async function DELETE(
 
     if (result.rows.length === 0) {
       return NextResponse.json(
-        { error: "Competitor not found" },
-        { status: 404 }
+        { error: "Forbidden" },
+        { status: 403 }
       );
     }
 
