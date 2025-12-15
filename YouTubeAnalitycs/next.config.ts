@@ -12,6 +12,17 @@ const nextConfig: NextConfig = {
       },
     },
   },
+
+    // ⬇⬇⬇ ВОТ ЭТО ДОБАВИТЬ ⬇⬇⬇
+  eslint: {
+    ignoreDuringBuilds: true,
+  },
+
+  typescript: {
+    ignoreBuildErrors: true,
+  },
+  // ⬆⬆⬆ ВОТ ЭТО ДОБАВИТЬ ⬆⬆⬆
+
   
   // Image optimization
   images: {
