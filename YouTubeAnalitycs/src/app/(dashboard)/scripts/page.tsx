@@ -1,61 +1,130 @@
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
-import { redirect } from "next/navigation";
-import { db } from "@/lib/db";
+"use client";
+
+import { useState, useEffect } from "react";
+import { useRouter, notFound } from "next/navigation";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { FileText, Calendar, Video, Copy, Eye, CheckCircle, RefreshCcw } from "lucide-react";
+import { Loader2, RefreshCcw, FileText, Calendar, Video, Copy, Eye, CheckCircle } from "lucide-react";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import Link from "next/link";
 import type { SavedScript } from "@/types/scripts";
 
-async function getScripts(userId: string): Promise<SavedScript[]> {
-  try {
-    const result = await db.execute({
-      sql: `
-        SELECT id, userId, title, hook, outline, scriptText, whyItShouldWork, sourceVideos, createdAt
-        FROM generated_scripts
-        WHERE userId = ?
-        ORDER BY createdAt DESC
-      `,
-      args: [userId],
-    });
+export default function ScriptsHistoryPage() {
+  const router = useRouter();
+  const [scripts, setScripts] = useState<SavedScript[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<{ message: string; statusCode?: number } | null>(null);
+  const [copyingId, setCopyingId] = useState<string | null>(null);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
 
-    return (result.rows || []).map((row) => ({
-      id: row.id as string,
-      userId: row.userId as string,
-      title: row.title as string,
-      hook: row.hook as string,
-      outline: JSON.parse(row.outline as string),
-      scriptText: row.scriptText as string,
-      whyItShouldWork: row.whyItShouldWork as string,
-      sourceVideos: JSON.parse(row.sourceVideos as string),
-      createdAt: row.createdAt as number,
-    }));
-  } catch (error) {
-    console.error("Error fetching scripts:", error);
-    return [];
+  const fetchScripts = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      const response = await fetch("/api/scripts");
+      const data = await response.json();
+
+      if (!response.ok) {
+        setError({
+          message: data.error || "Failed to fetch scripts",
+          statusCode: response.status,
+        });
+        return;
+      }
+
+      setScripts(data.scripts || []);
+    } catch (err) {
+      console.error("Error fetching scripts:", err);
+      setError({
+        message: err instanceof Error ? err.message : "Unknown error",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchScripts();
+  }, []);
+
+  // Редиректим на страницу входа при 401 ошибке
+  useEffect(() => {
+    if (error === "Unauthorized") {
+      router.push("/login");
+    }
+  }, [error, router]);
+
+  const handleCopyScript = async (script: SavedScript) => {
+    try {
+      setCopyingId(script.id);
+
+      const scriptText = `Заголовок: ${script.title}\n\nХук: ${script.hook}\n\nСтруктура:\n${script.outline.map((item, i) => `${i + 1}. ${item}`).join('\n')}\n\nТекст сценария:\n${script.scriptText}\n\nПочему должно выстрелить:\n${script.whyItShouldWork}`;
+
+      await navigator.clipboard.writeText(scriptText);
+
+      setCopiedId(script.id);
+      setTimeout(() => setCopiedId(null), 2000);
+    } catch (err) {
+      console.error("Failed to copy:", err);
+      alert("Не удалось скопировать сценарий");
+    } finally {
+      setCopyingId(null);
+    }
+  };
+
+  const formatDate = (timestamp: number) => {
+    const date = new Date(timestamp * 1000);
+    return format(date, "dd.MM.yyyy HH:mm", { locale: ru });
+  };
+
+  if (loading && scripts.length === 0) {
+    return (
+      <div className="container mx-auto px-4 md:px-6">
+        <div className="mb-6">
+          <h1 className="text-3xl font-bold">История сценариев</h1>
+          <p className="text-muted-foreground">Просмотр всех сгенерированных сценариев YouTube</p>
+        </div>
+        <Card>
+          <CardContent className="flex items-center justify-center h-64">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+              <p className="text-muted-foreground">Загрузка сценариев...</p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
   }
-}
 
-const formatDate = (timestamp: number) => {
-  const date = new Date(timestamp * 1000);
-  return format(date, "dd.MM.yyyy HH:mm", { locale: ru });
-};
-
-export default async function ScriptsHistoryPage() {
-  // Проверка авторизации ДО загрузки данных
-  const session = await getServerSession(authOptions);
-  if (!session?.user?.id) {
-    redirect("/sign-in");
+  // Редиректим на 404 при неавторизованном доступе
+  if (error && scripts.length === 0 && error.statusCode === 401) {
+    notFound();
   }
 
-  const userId = session.user.id;
-  const scripts = await getScripts(userId);
+  if (error && scripts.length === 0) {
+    return (
+      <div className="container mx-auto px-4 md:px-6">
+        <div className="mb-6">
+          <h1 className="text-3xl font-bold">История сценариев</h1>
+          <p className="text-muted-foreground">Просмотр всех сгенерированных сценариев YouTube</p>
+        </div>
+        <Card>
+          <CardContent className="flex items-center justify-center h-64">
+            <div className="text-center">
+              <p className="text-red-600 mb-2">Ошибка загрузки сценариев</p>
+              <p className="text-muted-foreground text-sm mb-4">{error.message}</p>
+              <Button onClick={fetchScripts}>Попробовать снова</Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="container mx-auto px-4 md:px-6">
@@ -67,6 +136,23 @@ export default async function ScriptsHistoryPage() {
             <p className="text-muted-foreground mt-1">
               Просмотр всех сгенерированных сценариев YouTube
             </p>
+          </div>
+
+          {/* Кнопка обновления */}
+          <div className="flex justify-end">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={fetchScripts}
+                  disabled={loading}
+                >
+                  <RefreshCcw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Обновить список сценариев</TooltipContent>
+            </Tooltip>
           </div>
         </div>
       </div>
@@ -130,22 +216,25 @@ export default async function ScriptsHistoryPage() {
                         Видео
                       </div>
                     </TableHead>
+                    <TableHead className="text-right">Действия</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {scripts.map((script) => (
-                    <TableRow key={script.id} className="cursor-pointer hover:bg-muted/50">
+                    <TableRow
+                      key={script.id}
+                      className="cursor-pointer hover:bg-muted/50"
+                      onClick={() => router.push(`/scripts/${script.id}`)}
+                    >
                       <TableCell>
-                        <Link href={`/scripts/${script.id}`} className="block">
-                          <div className="space-y-1">
-                            <div className="font-medium line-clamp-2 max-w-[300px] truncate" title={script.title}>
-                              {script.title}
-                            </div>
-                            <div className="text-sm text-muted-foreground line-clamp-1 max-w-[300px] truncate" title={script.hook}>
-                              {script.hook}
-                            </div>
+                        <div className="space-y-1">
+                          <div className="font-medium line-clamp-2 max-w-[300px] truncate" title={script.title}>
+                            {script.title}
                           </div>
-                        </Link>
+                          <div className="text-sm text-muted-foreground line-clamp-1 max-w-[300px] truncate" title={script.hook}>
+                            {script.hook}
+                          </div>
+                        </div>
                       </TableCell>
                       <TableCell>
                         <div className="space-y-1">
@@ -168,6 +257,37 @@ export default async function ScriptsHistoryPage() {
                           <div className="text-xs text-muted-foreground">
                             исходных видео
                           </div>
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
+                        <div className="flex justify-end gap-2">
+                          <Link href={`/scripts/${script.id}`}>
+                            <Button variant="outline" size="sm" className="gap-1">
+                              <Eye className="h-3 w-3" />
+                              Открыть
+                            </Button>
+                          </Link>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="gap-1"
+                            onClick={() => handleCopyScript(script)}
+                            disabled={copyingId === script.id}
+                          >
+                            {copyingId === script.id ? (
+                              <Loader2 className="h-3 w-3 animate-spin" />
+                            ) : copiedId === script.id ? (
+                              <>
+                                <CheckCircle className="h-3 w-3" />
+                                Скопировано!
+                              </>
+                            ) : (
+                              <>
+                                <Copy className="h-3 w-3" />
+                                Копировать
+                              </>
+                            )}
+                          </Button>
                         </div>
                       </TableCell>
                     </TableRow>
