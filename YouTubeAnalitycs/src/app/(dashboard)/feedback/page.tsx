@@ -3,6 +3,7 @@
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
 import { z } from "zod"
+import { useState } from "react"
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
@@ -15,7 +16,8 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form"
-import { Mail } from 'lucide-react'
+import { Mail, Loader2, CheckCircle } from 'lucide-react'
+import { toast } from "sonner"
 
 const feedbackFormSchema = z.object({
   firstName: z.string().min(2, {
@@ -36,6 +38,9 @@ const feedbackFormSchema = z.object({
 })
 
 export default function FeedbackPage() {
+  const [loading, setLoading] = useState(false)
+  const [success, setSuccess] = useState(false)
+
   const form = useForm<z.infer<typeof feedbackFormSchema>>({
     resolver: zodResolver(feedbackFormSchema),
     defaultValues: {
@@ -47,11 +52,31 @@ export default function FeedbackPage() {
     },
   })
 
-  function onSubmit(values: z.infer<typeof feedbackFormSchema>) {
-    // Here you would typically send the form data to your backend
-    console.log(values)
-    // You could also show a success message or redirect
-    form.reset()
+  async function onSubmit(values: z.infer<typeof feedbackFormSchema>) {
+    try {
+      setLoading(true)
+      const response = await fetch("/api/feedback", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(values),
+      })
+
+      if (!response.ok) {
+        const data = await response.json()
+        throw new Error(data.error || "Ошибка отправки формы")
+      }
+
+      setSuccess(true)
+      form.reset()
+      toast.success("Ваше сообщение успешно отправлено!")
+
+      setTimeout(() => setSuccess(false), 5000)
+    } catch (error) {
+      console.error("Error:", error)
+      toast.error(error instanceof Error ? error.message : "Ошибка отправки формы")
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
@@ -75,6 +100,17 @@ export default function FeedbackPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
+          {success && (
+            <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg flex items-start gap-3">
+              <CheckCircle className="h-5 w-5 text-green-600 mt-0.5 flex-shrink-0" />
+              <div>
+                <h3 className="font-semibold text-green-900">Спасибо за вашу обратную связь!</h3>
+                <p className="text-sm text-green-700 mt-1">
+                  Мы получили ваше сообщение и ответим в ближайшее время
+                </p>
+              </div>
+            </div>
+          )}
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
               <div className="grid gap-4 sm:grid-cols-2">
@@ -149,8 +185,24 @@ export default function FeedbackPage() {
                   </FormItem>
                 )}
               />
-              <Button type="submit" className="w-full cursor-pointer">
-                Отправить сообщение
+              <Button
+                type="submit"
+                className="w-full cursor-pointer gap-2"
+                disabled={loading}
+              >
+                {loading ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Отправка...
+                  </>
+                ) : success ? (
+                  <>
+                    <CheckCircle className="h-4 w-4" />
+                    Отправлено
+                  </>
+                ) : (
+                  "Отправить сообщение"
+                )}
               </Button>
             </form>
           </Form>

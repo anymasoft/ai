@@ -51,8 +51,8 @@ export function LandingFooter() {
               Есть вопросы или предложения? Свяжитесь с нами по email.
             </p>
             <div className="text-center">
-              <a href="mailto:support@beemanalytics.com" className="text-lg font-medium text-primary hover:underline">
-                support@beemanalytics.com
+              <a href="mailto:support@beem.ink" className="text-lg font-medium text-primary hover:underline">
+                support@beem.ink
               </a>
             </div>
           </div>

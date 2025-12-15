@@ -171,7 +171,8 @@ export default function ScriptViewPage() {
               <Button
                 onClick={handleCopyScript}
                 disabled={copying}
-                className="gap-2"
+                size="icon"
+                title={copied ? "Скопировано!" : "Копировать сценарий"}
               >
                 {copying ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
@@ -180,7 +181,6 @@ export default function ScriptViewPage() {
                 ) : (
                   <Copy className="h-4 w-4" />
                 )}
-                {copied ? "Скопировано!" : "Копировать сценарий"}
               </Button>
             </div>
           </div>
@@ -294,28 +294,12 @@ export default function ScriptViewPage() {
               Назад к списку
             </Button>
           </Link>
-          <div className="flex gap-2">
-            <Button
-              onClick={handleCopyScript}
-              disabled={copying}
-              className="gap-2"
-            >
-              {copying ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : copied ? (
-                <CheckCircle className="h-4 w-4" />
-              ) : (
-                <Copy className="h-4 w-4" />
-              )}
-              {copied ? "Скопировано!" : "Копировать сценарий"}
+          <Link href="/trending">
+            <Button className="gap-2">
+              <Video className="h-4 w-4" />
+              Создать новый сценарий
             </Button>
-            <Link href="/trending">
-              <Button className="gap-2">
-                <Video className="h-4 w-4" />
-                Создать новый сценарий
-              </Button>
-            </Link>
-          </div>
+          </Link>
         </div>
       </div>
     </div>
