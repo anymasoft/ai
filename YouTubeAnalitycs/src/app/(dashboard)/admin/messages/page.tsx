@@ -1,19 +1,13 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { useRouter } from "next/navigation"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
 import { Loader2, RefreshCw, Mail } from "lucide-react"
 import { toast } from "sonner"
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog"
 import { format } from "date-fns"
 import { ru } from "date-fns/locale"
 
@@ -29,10 +23,9 @@ interface Message {
 }
 
 export default function AdminMessagesPage() {
+  const router = useRouter()
   const [messages, setMessages] = useState<Message[]>([])
   const [loading, setLoading] = useState(true)
-  const [selectedMessage, setSelectedMessage] = useState<Message | null>(null)
-  const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [markingAsRead, setMarkingAsRead] = useState<string | null>(null)
 
   useEffect(() => {
@@ -67,10 +60,6 @@ export default function AdminMessagesPage() {
           msg.id === messageId ? { ...msg, isRead: 1 } : msg
         )
       )
-
-      if (selectedMessage?.id === messageId) {
-        setSelectedMessage({ ...selectedMessage, isRead: 1 })
-      }
 
       toast.success("Отмечено как прочитано")
     } catch (error) {
@@ -121,7 +110,7 @@ export default function AdminMessagesPage() {
             Входящие сообщения
           </CardTitle>
           <CardDescription>
-            Клик по сообщению для просмотра полного текста
+            Нажмите на сообщение для подробного просмотра
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -135,7 +124,7 @@ export default function AdminMessagesPage() {
             </div>
           ) : (
             <div className="overflow-hidden">
-              <Table className="w-full table-fixed">
+              <Table className="w-full" style={{ tableLayout: 'fixed' }}>
                 <TableHeader>
                   <TableRow>
                     <TableHead className="w-[180px]">От кого</TableHead>
@@ -151,10 +140,7 @@ export default function AdminMessagesPage() {
                     <TableRow
                       key={message.id}
                       className="cursor-pointer hover:bg-muted/50"
-                      onClick={() => {
-                        setSelectedMessage(message)
-                        setIsDialogOpen(true)
-                      }}
+                      onClick={() => router.push(`/admin/messages/${message.id}`)}
                     >
                       <TableCell className="font-medium text-sm">
                         <div className="truncate">{message.firstName} {message.lastName}</div>
@@ -205,52 +191,6 @@ export default function AdminMessagesPage() {
           )}
         </CardContent>
       </Card>
-
-      {/* Dialog для полного просмотра сообщения */}
-      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>{selectedMessage?.subject}</DialogTitle>
-            <DialogDescription>
-              От: {selectedMessage?.firstName} {selectedMessage?.lastName} (
-              {selectedMessage?.email})
-            </DialogDescription>
-          </DialogHeader>
-
-          {selectedMessage && (
-            <div className="space-y-4">
-              <div className="bg-muted/30 p-4 rounded-lg text-sm">
-                <p className="font-medium mb-2">
-                  {formatDate(selectedMessage.createdAt)}
-                </p>
-                <p className="whitespace-pre-wrap text-foreground">
-                  {selectedMessage.message}
-                </p>
-              </div>
-
-              {!selectedMessage.isRead && (
-                <Button
-                  onClick={() => {
-                    markAsRead(selectedMessage.id)
-                    setIsDialogOpen(false)
-                  }}
-                  disabled={markingAsRead === selectedMessage.id}
-                  className="w-full gap-2"
-                >
-                  {markingAsRead === selectedMessage.id ? (
-                    <>
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                      Отмечается...
-                    </>
-                  ) : (
-                    "Отметить как прочитанное"
-                  )}
-                </Button>
-              )}
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
     </div>
   )
 }

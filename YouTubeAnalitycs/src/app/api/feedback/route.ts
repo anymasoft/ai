@@ -5,37 +5,47 @@ import { db } from "@/lib/db"
 import { randomUUID } from "crypto"
 
 interface FeedbackData {
-  firstName: string
-  lastName: string
-  email: string
-  subject: string
   message: string
 }
 
 export async function POST(request: NextRequest) {
   try {
     const body: FeedbackData = await request.json()
-    const { firstName, lastName, email, subject, message } = body
+    const { message } = body
 
     // Валидация
-    if (!firstName || !lastName || !email || !subject || !message) {
+    if (!message || message.trim().length === 0) {
       return NextResponse.json(
-        { error: "Все поля обязательны" },
+        { error: "Сообщение обязательно" },
         { status: 400 }
       )
     }
 
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-    if (!emailRegex.test(email)) {
-      return NextResponse.json(
-        { error: "Некорректный формат email" },
-        { status: 400 }
-      )
-    }
-
-    // Получаем текущего пользователя если он авторизован
+    // Получаем текущего пользователя
     const session = await getServerSession(authOptions)
-    const userId = session?.user?.email ? (await db.execute("SELECT id FROM users WHERE email = ?", [session.user.email])).rows[0]?.id : null
+
+    if (!session?.user?.email) {
+      return NextResponse.json(
+        { error: "Требуется авторизация" },
+        { status: 401 }
+      )
+    }
+
+    // Извлекаем данные пользователя из сессии
+    const email = session.user.email
+    const name = session.user.name || "Unknown User"
+    const [firstName, ...lastNameParts] = name.split(" ")
+    const lastName = lastNameParts.join(" ") || ""
+
+    // Генерируем тему из первых 50 символов сообщения
+    const subject = message.substring(0, 50) + (message.length > 50 ? "..." : "")
+
+    // Получаем ID пользователя если он авторизован
+    const userResult = await db.execute(
+      "SELECT id FROM users WHERE email = ?",
+      [email]
+    )
+    const userId = userResult.rows?.[0]?.id || null
 
     // Сохраняем в БД
     const id = randomUUID()
