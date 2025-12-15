@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
-import { Loader2, RefreshCw, Mail, Trash2, ChevronLeft, ChevronRight } from "lucide-react"
+import { Loader2, RefreshCw, Mail, Trash2, ChevronLeft, ChevronRight, X } from "lucide-react"
 import { toast } from "sonner"
 import { format } from "date-fns"
 import { ru } from "date-fns/locale"
@@ -210,8 +210,14 @@ export default function AdminMessagesPage() {
                 Поиск
               </Button>
               {emailFilter && (
-                <Button onClick={handleClearFilter} variant="outline" size="sm">
-                  Очистить
+                <Button
+                  onClick={handleClearFilter}
+                  variant="ghost"
+                  size="icon"
+                  className="h-9 w-9"
+                  title="Очистить фильтр"
+                >
+                  <X className="h-4 w-4" />
                 </Button>
               )}
             </div>
