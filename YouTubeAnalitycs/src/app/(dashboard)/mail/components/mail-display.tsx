@@ -25,6 +25,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { type Mail } from "../data";
 import { useState } from "react";
 
@@ -39,26 +40,46 @@ export function MailDisplay({ mail }: MailDisplayProps) {
     <div className="flex h-full flex-col">
       <div className="flex items-center p-2">
         <div className="flex items-center gap-2">
-          <Button variant="ghost" size="icon" disabled={!mail} title="Archive" className="cursor-pointer disabled:cursor-not-allowed">
-            <Archive className="size-4" />
-            <span className="sr-only">Archive</span>
-          </Button>
-          <Button variant="ghost" size="icon" disabled={!mail} title="Move to junk" className="cursor-pointer disabled:cursor-not-allowed">
-            <ArchiveX className="size-4" />
-            <span className="sr-only">Move to junk</span>
-          </Button>
-          <Button variant="ghost" size="icon" disabled={!mail} title="Move to trash" className="cursor-pointer disabled:cursor-not-allowed">
-            <Trash2 className="size-4" />
-            <span className="sr-only">Move to trash</span>
-          </Button>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button variant="ghost" size="icon" disabled={!mail} className="cursor-pointer disabled:cursor-not-allowed">
+                <Archive className="size-4" />
+                <span className="sr-only">Archive</span>
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Archive</TooltipContent>
+          </Tooltip>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button variant="ghost" size="icon" disabled={!mail} className="cursor-pointer disabled:cursor-not-allowed">
+                <ArchiveX className="size-4" />
+                <span className="sr-only">Move to junk</span>
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Move to junk</TooltipContent>
+          </Tooltip>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button variant="ghost" size="icon" disabled={!mail} className="cursor-pointer disabled:cursor-not-allowed">
+                <Trash2 className="size-4" />
+                <span className="sr-only">Move to trash</span>
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Move to trash</TooltipContent>
+          </Tooltip>
           <Separator orientation="vertical" className="mx-1 h-6" />
           <Popover>
-            <PopoverTrigger asChild>
-              <Button variant="ghost" size="icon" disabled={!mail} title="Snooze" className="cursor-pointer disabled:cursor-not-allowed">
-                <Clock className="size-4" />
-                <span className="sr-only">Snooze</span>
-              </Button>
-            </PopoverTrigger>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <PopoverTrigger asChild>
+                  <Button variant="ghost" size="icon" disabled={!mail} className="cursor-pointer disabled:cursor-not-allowed">
+                    <Clock className="size-4" />
+                    <span className="sr-only">Snooze</span>
+                  </Button>
+                </PopoverTrigger>
+              </TooltipTrigger>
+              <TooltipContent>Snooze</TooltipContent>
+            </Tooltip>
             <PopoverContent className="flex w-auto p-0">
               <div className="flex flex-col gap-2 border-r px-2 py-4">
                 <div className="px-4 text-sm font-medium">Snooze until</div>
@@ -107,18 +128,33 @@ export function MailDisplay({ mail }: MailDisplayProps) {
           </Popover>
         </div>
         <div className="ml-auto flex items-center gap-2">
-          <Button variant="ghost" size="icon" disabled={!mail} title="Reply" className="cursor-pointer disabled:cursor-not-allowed">
-            <Reply className="size-4" />
-            <span className="sr-only">Reply</span>
-          </Button>
-          <Button variant="ghost" size="icon" disabled={!mail} title="Reply all" className="cursor-pointer disabled:cursor-not-allowed">
-            <ReplyAll className="size-4" />
-            <span className="sr-only">Reply all</span>
-          </Button>
-          <Button variant="ghost" size="icon" disabled={!mail} title="Forward" className="cursor-pointer disabled:cursor-not-allowed">
-            <Forward className="size-4" />
-            <span className="sr-only">Forward</span>
-          </Button>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button variant="ghost" size="icon" disabled={!mail} className="cursor-pointer disabled:cursor-not-allowed">
+                <Reply className="size-4" />
+                <span className="sr-only">Reply</span>
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Reply</TooltipContent>
+          </Tooltip>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button variant="ghost" size="icon" disabled={!mail} className="cursor-pointer disabled:cursor-not-allowed">
+                <ReplyAll className="size-4" />
+                <span className="sr-only">Reply all</span>
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Reply all</TooltipContent>
+          </Tooltip>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button variant="ghost" size="icon" disabled={!mail} className="cursor-pointer disabled:cursor-not-allowed">
+                <Forward className="size-4" />
+                <span className="sr-only">Forward</span>
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Forward</TooltipContent>
+          </Tooltip>
         </div>
         <Separator orientation="vertical" className="mx-2 h-6" />
         <DropdownMenu>

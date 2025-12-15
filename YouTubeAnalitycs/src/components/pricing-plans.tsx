@@ -12,8 +12,7 @@ export interface PricingPlan {
   id: string
   name: string
   description: string
-  price: string
-  frequency: string
+  price: number
   features: string[]
   popular?: boolean
   current?: boolean
@@ -31,16 +30,14 @@ const defaultPlans: PricingPlan[] = [
     id: 'basic',
     name: 'Basic',
     description: 'Для начинающих авторов',
-    price: '990 ₽',
-    frequency: '/ месяц',
+    price: 990,
     features: ['До 30 AI-сценариев в месяц', 'Генерация сценариев по любым YouTube-видео', 'Готовая структура сценария: захват внимания → развитие → финал', 'История всех сгенерированных сценариев', 'Подходит для личных каналов и первых запусков'],
   },
   {
     id: 'professional',
     name: 'Professional',
     description: 'Для растущих каналов',
-    price: '2 490 ₽',
-    frequency: '/ месяц',
+    price: 2490,
     features: [
       'До 100 AI-сценариев в месяц',
       'Подходит для регулярного выпуска контента',
@@ -53,8 +50,7 @@ const defaultPlans: PricingPlan[] = [
     id: 'enterprise',
     name: 'Enterprise',
     description: 'Для студий и команд',
-    price: '5 990 ₽',
-    frequency: '/ месяц',
+    price: 5990,
     features: [
       'До 300 AI-сценариев в месяц',
       'Подходит для агентств и продакшн-команд',
@@ -148,12 +144,13 @@ export function PricingPlans({
   }
 
   return (
-    <div className='space-y-4'>
+    <div className='space-y-8'>
       {error && (
         <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-red-700 text-sm">
           {error}
         </div>
       )}
+
       <div className='grid gap-8 lg:grid-cols-3'>
         {plans.map(tier => (
         <Card
@@ -185,8 +182,12 @@ export function PricingPlans({
           </CardHeader>
           <CardContent className='flex flex-1 flex-col space-y-6'>
             <div className='flex items-baseline justify-center'>
-              <span className='text-4xl font-bold'>{tier.price}</span>
-              <span className='text-muted-foreground text-sm'>{tier.frequency}</span>
+              <span className='text-4xl font-bold'>
+                {tier.price} ₽
+              </span>
+              <span className='text-muted-foreground text-sm'>
+                {' / месяц'}
+              </span>
             </div>
             <div className='space-y-2'>
               {tier.features.map(feature => (

@@ -33,6 +33,11 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import {
@@ -47,6 +52,7 @@ import {
   ArrowRight,
   Video,
   RefreshCw,
+  ChevronDown,
 } from "lucide-react"
 import { formatDistanceToNow } from "date-fns"
 import { ru } from "date-fns/locale"
@@ -599,21 +605,222 @@ export default function TrendingPage() {
 
   return (
     <div className="container mx-auto px-4 md:px-6">
-      {/* AI Insights Block */}
-      <TrendingInsights videos={videos} />
-
+      {/* Заголовок */}
       <div className="mb-8">
-        <div className="flex flex-col gap-6">
-          {/* Заголовок */}
-          <div>
-            <h1 className="text-3xl font-bold">Тренды конкурентов</h1>
-            <p className="text-muted-foreground mt-1">
-              Самые быстрорастущие видео среди ваших конкурентов
-            </p>
+        <h1 className="text-3xl font-bold">Создайте сценарий для YouTube, который набирает просмотры</h1>
+        <p className="text-muted-foreground mt-1">
+          На основе трендов конкурентов или любого видео по ссылке
+        </p>
+      </div>
+
+      {/* Блок генерации сценария */}
+      <Card className="mb-8">
+        <CardHeader>
+          <CardTitle>Сгенерировать сценарий</CardTitle>
+          <CardDescription>Основной инструмент для создания скриптов</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          {/* Источник для генерации сценария */}
+          <div className="pb-6 border-b">
+            <h4 className="font-medium mb-3">Источник для генерации сценария</h4>
+            <div className="space-y-3">
+              <div className="flex items-start gap-3">
+                <div className="flex items-center h-5">
+                  <input
+                    type="radio"
+                    id="scriptSourceTrending"
+                    name="scriptSource"
+                    value="trending"
+                    checked={scriptSourceMode === "trending"}
+                    onChange={() => {
+                      setScriptSourceMode("trending")
+                    }}
+                    disabled={false}
+                    className="h-4 w-4"
+                  />
+                </div>
+                <Label
+                  htmlFor="scriptSourceTrending"
+                  className="flex-1 cursor-pointer"
+                >
+                  Использовать выбранные трендовые видео
+                </Label>
+              </div>
+              <div className="flex items-start gap-3">
+                <div className="flex items-center h-5">
+                  <input
+                    type="radio"
+                    id="scriptSourceSpecific"
+                    name="scriptSource"
+                    value="specific"
+                    checked={scriptSourceMode === "specific"}
+                    onChange={() => {
+                      setScriptSourceMode("specific")
+                    }}
+                    disabled={false}
+                    className="h-4 w-4"
+                  />
+                </div>
+                <Label
+                  htmlFor="scriptSourceSpecific"
+                  className="flex-1 cursor-pointer"
+                >
+                  Использовать конкретное YouTube-видео
+                </Label>
+              </div>
+            </div>
+            <div className="mt-3 ml-7">
+              <Input
+                type="text"
+                placeholder="Вставьте ссылку на YouTube-видео"
+                disabled={scriptSourceMode === "trending"}
+                value={specificVideoUrl}
+                onChange={(e) => setSpecificVideoUrl(e.target.value)}
+                className="w-full"
+              />
+              <p className="text-xs text-muted-foreground mt-2">
+                Мы проанализируем структуру видео, хуки и подачу,
+                <br />
+                чтобы создать оригинальный сценарий в похожем стиле.
+              </p>
+            </div>
           </div>
 
-          {/* Фильтры и контролы */}
-          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+          {/* Селектор креативности */}
+          <div>
+            <h4 className="font-medium mb-1">Креативность сценария</h4>
+            <p className="text-sm text-muted-foreground mb-3">
+              Настройте баланс между строгой структурой и смелыми идеями.
+            </p>
+            <div className="flex flex-col md:flex-row gap-2">
+              {SCRIPT_TEMPERATURE_PRESETS.map((preset) => (
+                <label
+                  key={preset.key}
+                  className={`flex-1 flex items-start gap-2 p-3 rounded-md border transition-colors cursor-pointer ${
+                    selectedTemperatureKey === preset.key
+                      ? "border-primary bg-primary/5"
+                      : "border-border hover:border-primary/50"
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    name="scriptTemperature"
+                    value={preset.key}
+                    checked={selectedTemperatureKey === preset.key}
+                    onChange={() => {
+                      setSelectedTemperatureKey(preset.key)
+                    }}
+                    disabled={false}
+                    className="mt-1"
+                  />
+                  <div>
+                    <span className="font-medium text-sm">{preset.label}</span>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      {preset.description}
+                    </p>
+                  </div>
+                </label>
+              ))}
+            </div>
+          </div>
+
+          {/* Кнопка генерации */}
+          <div className="flex justify-end">
+            {monthlyRemaining === 0 ? (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => router.push("/settings/billing")}
+                    className="gap-2 cursor-pointer"
+                  >
+                    <FileText className="h-4 w-4" />
+                    {userPlan === "free" ? "Выбрать тариф" : "Увеличить лимит"}
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  Лимит сценариев исчерпан. Выберите тариф, чтобы продолжить.
+                </TooltipContent>
+              </Tooltip>
+            ) : (
+              <Button
+                onClick={generateScripts}
+                variant="default"
+                disabled={
+                  !isScriptGenHydrated ||
+                  (scriptSourceMode === "trending" &&
+                    selectedVideos.size === 0) ||
+                  (scriptSourceMode === "specific" && !specificVideoUrl.trim()) ||
+                  generatingScripts
+                }
+                className="gap-2 cursor-pointer"
+              >
+                {generatingScripts ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Генерация...
+                  </>
+                ) : (
+                  <>
+                    <FileText className="h-4 w-4" />
+                    {scriptSourceMode === "trending"
+                      ? `Сгенерировать сценарий (${selectedVideos.size})`
+                      : "Сгенерировать сценарий"}
+                  </>
+                )}
+              </Button>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Отображение сгенерированных сценариев сразу после генерации */}
+      {generatedScripts && generatedScripts.length > 0 && !savedScript && (
+        <div className="mt-8 mb-8">
+          <h3 className="text-xl font-bold mb-4">Сгенерированные сценарии</h3>
+          <div className="space-y-6">
+            {generatedScripts.map((script, index) => (
+              <Card key={index} className="border border-gray-200">
+                <CardHeader>
+                  <CardTitle className="text-lg">{script.title}</CardTitle>
+                  <CardDescription className="text-sm text-gray-600">
+                    {script.hook}
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div>
+                    <h4 className="font-medium mb-2">Структура сценария:</h4>
+                    <ul className="list-disc pl-5 space-y-1">
+                      {script.outline.map((item, i) => (
+                        <li key={i} className="text-sm">
+                          {item}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                  <div>
+                    <h4 className="font-medium mb-2">Текст сценария:</h4>
+                    <div className="bg-gray-50 p-4 rounded-md text-sm whitespace-pre-wrap">
+                      {script.scriptText}
+                    </div>
+                  </div>
+                  <div>
+                    <h4 className="font-medium mb-2">
+                      Почему это должно выстрелить:
+                    </h4>
+                    <p className="text-sm">{script.whyItShouldWork}</p>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Фильтры и контролы */}
+      <div className="mb-8">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
             {/* Группа фильтров */}
             <div className="flex flex-col sm:flex-row flex-wrap items-start sm:items-center gap-4">
               {/* Фильтр по каналу */}
@@ -709,7 +916,6 @@ export default function TrendingPage() {
             </div>
           </div>
         </div>
-      </div>
 
       {videos.length === 0 ? (
         <Card>
@@ -768,17 +974,21 @@ export default function TrendingPage() {
                 <TableHeader>
                   <TableRow>
                     <TableHead className="w-[40px]">
-                      <input
-                        type="checkbox"
-                        checked={
-                          selectedVideos.size === filteredVideos.length &&
-                          filteredVideos.length > 0
-                        }
-                        onChange={toggleSelectAll}
-                        disabled={scriptSourceMode === "specific"}
-                        className={`h-4 w-4 rounded border-gray-300 ${scriptSourceMode === "specific" ? "opacity-50 cursor-not-allowed" : ""}`}
-                        title="Выбрать все"
-                      />
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <input
+                            type="checkbox"
+                            checked={
+                              selectedVideos.size === filteredVideos.length &&
+                              filteredVideos.length > 0
+                            }
+                            onChange={toggleSelectAll}
+                            disabled={scriptSourceMode === "specific"}
+                            className={`h-4 w-4 rounded border-gray-300 cursor-pointer ${scriptSourceMode === "specific" ? "opacity-50 cursor-not-allowed" : ""}`}
+                          />
+                        </TooltipTrigger>
+                        <TooltipContent>Выбрать все</TooltipContent>
+                      </Tooltip>
                     </TableHead>
                     <TableHead className="w-[300px]">
                       <Button
@@ -935,16 +1145,20 @@ export default function TrendingPage() {
                             </div>
                           </div>
                         ) : (
-                          <button
-                            onClick={() => refreshDate(video.videoId)}
-                            disabled={refreshingId === video.videoId}
-                            title="Обновить дату"
-                            className="text-muted-foreground hover:text-foreground disabled:opacity-50"
-                          >
-                            <RefreshCw
-                              className={`h-4 w-4 ${refreshingId === video.videoId ? "animate-spin" : ""}`}
-                            />
-                          </button>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <button
+                                onClick={() => refreshDate(video.videoId)}
+                                disabled={refreshingId === video.videoId}
+                                className="text-muted-foreground hover:text-foreground disabled:opacity-50 cursor-pointer"
+                              >
+                                <RefreshCw
+                                  className={`h-4 w-4 ${refreshingId === video.videoId ? "animate-spin" : ""}`}
+                                />
+                              </button>
+                            </TooltipTrigger>
+                            <TooltipContent>Обновить дату</TooltipContent>
+                          </Tooltip>
                         )}
                       </TableCell>
                       <TableCell>
@@ -968,15 +1182,19 @@ export default function TrendingPage() {
                             </div>
                           ) : (
                             <div className="text-xs text-muted-foreground">
-                              <a
-                                href={`https://www.youtube.com/channel/${video.channelId}`}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="hover:text-foreground"
-                                title="Открыть канал"
-                              >
-                                <ExternalLink className="h-3 w-3 inline" />
-                              </a>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <a
+                                    href={`https://www.youtube.com/channel/${video.channelId}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="hover:text-foreground cursor-pointer"
+                                  >
+                                    <ExternalLink className="h-3 w-3 inline" />
+                                  </a>
+                                </TooltipTrigger>
+                                <TooltipContent>Открыть канал</TooltipContent>
+                              </Tooltip>
                             </div>
                           )}
                         </div>
@@ -1004,162 +1222,6 @@ export default function TrendingPage() {
           </CardContent>
         </Card>
       )}
-      {/* Блок генерации сценария */}
-      <div className="mt-6 p-4 border rounded-lg bg-muted/30">
-        {/* Источник для генерации сценария */}
-        <div className="mb-6 pb-6 border-b">
-          <h4 className="font-medium mb-3">Источник для генерации сценария</h4>
-          <div className="space-y-3">
-            <div className="flex items-start gap-3">
-              <div className="flex items-center h-5">
-                <input
-                  type="radio"
-                  id="scriptSourceTrending"
-                  name="scriptSource"
-                  value="trending"
-                  checked={scriptSourceMode === "trending"}
-                  onChange={() => {
-                    setScriptSourceMode("trending")
-                  }}
-                  disabled={false}
-                  className="h-4 w-4"
-                />
-              </div>
-              <Label
-                htmlFor="scriptSourceTrending"
-                className="flex-1 cursor-pointer"
-              >
-                Использовать выбранные трендовые видео
-              </Label>
-            </div>
-            <div className="flex items-start gap-3">
-              <div className="flex items-center h-5">
-                <input
-                  type="radio"
-                  id="scriptSourceSpecific"
-                  name="scriptSource"
-                  value="specific"
-                  checked={scriptSourceMode === "specific"}
-                  onChange={() => {
-                    setScriptSourceMode("specific")
-                  }}
-                  disabled={false}
-                  className="h-4 w-4"
-                />
-              </div>
-              <Label
-                htmlFor="scriptSourceSpecific"
-                className="flex-1 cursor-pointer"
-              >
-                Использовать конкретное YouTube-видео
-              </Label>
-            </div>
-          </div>
-          <div className="mt-3 ml-7">
-            <Input
-              type="text"
-              placeholder="Вставьте ссылку на YouTube-видео"
-              disabled={scriptSourceMode === "trending"}
-              value={specificVideoUrl}
-              onChange={(e) => setSpecificVideoUrl(e.target.value)}
-              className="w-full"
-            />
-            <p className="text-xs text-muted-foreground mt-2">
-              Мы проанализируем структуру видео, хуки и подачу,
-              <br />
-              чтобы создать оригинальный сценарий в похожем стиле.
-            </p>
-          </div>
-        </div>
-
-        {/* Селектор креативности */}
-        <div className="mb-4">
-          <h4 className="font-medium mb-1">Креативность сценария</h4>
-          <p className="text-sm text-muted-foreground mb-3">
-            Настройте баланс между строгой структурой и смелыми идеями.
-          </p>
-          <div className="flex flex-col md:flex-row gap-2">
-            {SCRIPT_TEMPERATURE_PRESETS.map((preset) => (
-              <label
-                key={preset.key}
-                className={`flex-1 flex items-start gap-2 p-3 rounded-md border transition-colors cursor-pointer ${
-                  selectedTemperatureKey === preset.key
-                    ? "border-primary bg-primary/5"
-                    : "border-border hover:border-primary/50"
-                }`}
-              >
-                <input
-                  type="radio"
-                  name="scriptTemperature"
-                  value={preset.key}
-                  checked={selectedTemperatureKey === preset.key}
-                  onChange={() => {
-                    setSelectedTemperatureKey(preset.key)
-                  }}
-                  disabled={false}
-                  className="mt-1"
-                />
-                <div>
-                  <span className="font-medium text-sm">{preset.label}</span>
-                  <p className="text-xs text-muted-foreground mt-0.5">
-                    {preset.description}
-                  </p>
-                </div>
-              </label>
-            ))}
-          </div>
-        </div>
-
-        {/* Кнопка генерации */}
-        <div className="flex justify-end">
-          {monthlyRemaining === 0 ? (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => router.push("/settings/billing")}
-                  className="gap-2 cursor-pointer"
-                >
-                  <FileText className="h-4 w-4" />
-                  {userPlan === "free" ? "Выбрать тариф" : "Увеличить лимит"}
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>
-                Лимит сценариев исчерпан. Выберите тариф, чтобы продолжить.
-              </TooltipContent>
-            </Tooltip>
-          ) : (
-            <Button
-              onClick={generateScripts}
-              variant="default"
-              disabled={
-                !isScriptGenHydrated ||
-                (scriptSourceMode === "trending" &&
-                  selectedVideos.size === 0) ||
-                (scriptSourceMode === "specific" && !specificVideoUrl.trim()) ||
-                generatingScripts
-              }
-              className="gap-2 cursor-pointer"
-            >
-              {generatingScripts ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  Генерация...
-                </>
-              ) : (
-                <>
-                  <FileText className="h-4 w-4" />
-                  {scriptSourceMode === "trending"
-                    ? `Сгенерировать сценарий (${selectedVideos.size})`
-                    : "Сгенерировать сценарий"}
-                </>
-              )}
-            </Button>
-          )}
-        </div>
-      </div>
-
       {/* Отображение ошибок генерации */}
       {generationError && (
         <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-md">
@@ -1237,48 +1299,20 @@ export default function TrendingPage() {
         </div>
       )}
 
-      {/* Отображение сгенерированных сценариев (старый формат для обратной совместимости) */}
-      {generatedScripts && generatedScripts.length > 0 && !savedScript && (
-        <div className="mt-8">
-          <h3 className="text-xl font-bold mb-4">Сгенерированные сценарии</h3>
-          <div className="space-y-6">
-            {generatedScripts.map((script, index) => (
-              <Card key={index} className="border border-gray-200">
-                <CardHeader>
-                  <CardTitle className="text-lg">{script.title}</CardTitle>
-                  <CardDescription className="text-sm text-gray-600">
-                    {script.hook}
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div>
-                    <h4 className="font-medium mb-2">Структура сценария:</h4>
-                    <ul className="list-disc pl-5 space-y-1">
-                      {script.outline.map((item, i) => (
-                        <li key={i} className="text-sm">
-                          {item}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                  <div>
-                    <h4 className="font-medium mb-2">Текст сценария:</h4>
-                    <div className="bg-gray-50 p-4 rounded-md text-sm whitespace-pre-wrap">
-                      {script.scriptText}
-                    </div>
-                  </div>
-                  <div>
-                    <h4 className="font-medium mb-2">
-                      Почему это должно выстрелить:
-                    </h4>
-                    <p className="text-sm">{script.whyItShouldWork}</p>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </div>
-      )}
+      {/* AI Insights Block - Collapsible */}
+      <div className="mb-6">
+        <Collapsible defaultOpen={false}>
+          <CollapsibleTrigger className="w-full [&[data-state=open]>div>svg]:rotate-180">
+            <div className="flex items-center gap-2 hover:bg-muted/50 transition-colors p-2 -mx-2 rounded cursor-pointer">
+              <ChevronDown className="h-5 w-5 transition-transform duration-200" />
+              <h2 className="text-lg font-semibold">AI-анализ трендов</h2>
+            </div>
+          </CollapsibleTrigger>
+          <CollapsibleContent className="mt-4">
+            <TrendingInsights videos={videos} />
+          </CollapsibleContent>
+        </Collapsible>
+      </div>
 
       {/* Paywall для исчерпания лимита сценариев */}
       <ScriptLimitPaywall

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, notFound } from "next/navigation";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
@@ -17,7 +17,7 @@ export default function ScriptsHistoryPage() {
   const router = useRouter();
   const [scripts, setScripts] = useState<SavedScript[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<{ message: string; statusCode?: number } | null>(null);
   const [copyingId, setCopyingId] = useState<string | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
@@ -30,13 +30,19 @@ export default function ScriptsHistoryPage() {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || "Failed to fetch scripts");
+        setError({
+          message: data.error || "Failed to fetch scripts",
+          statusCode: response.status,
+        });
+        return;
       }
 
       setScripts(data.scripts || []);
     } catch (err) {
       console.error("Error fetching scripts:", err);
-      setError(err instanceof Error ? err.message : "Unknown error");
+      setError({
+        message: err instanceof Error ? err.message : "Unknown error",
+      });
     } finally {
       setLoading(false);
     }
@@ -95,6 +101,11 @@ export default function ScriptsHistoryPage() {
     );
   }
 
+  // Редиректим на 404 при неавторизованном доступе
+  if (error && scripts.length === 0 && error.statusCode === 401) {
+    notFound();
+  }
+
   if (error && scripts.length === 0) {
     return (
       <div className="container mx-auto px-4 md:px-6">
@@ -106,7 +117,7 @@ export default function ScriptsHistoryPage() {
           <CardContent className="flex items-center justify-center h-64">
             <div className="text-center">
               <p className="text-red-600 mb-2">Ошибка загрузки сценариев</p>
-              <p className="text-muted-foreground text-sm mb-4">{error}</p>
+              <p className="text-muted-foreground text-sm mb-4">{error.message}</p>
               <Button onClick={fetchScripts}>Попробовать снова</Button>
             </div>
           </CardContent>

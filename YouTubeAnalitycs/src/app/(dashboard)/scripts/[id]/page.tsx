@@ -1,6 +1,4 @@
-import { redirect } from "next/navigation";
-import { auth } from "@/auth";
-import { db } from "@/lib/db";
+
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -14,10 +12,7 @@ interface ScriptWithVideos extends SavedScript {
   sourceVideosData?: Array<{ id: string; title: string }>;
 }
 
-const formatDate = (timestamp: number) => {
-  const date = new Date(timestamp * 1000);
-  return format(date, "dd.MM.yyyy HH:mm", { locale: ru });
-};
+
 
 async function getScript(scriptId: string): Promise<ScriptWithVideos> {
   // ЧАСТЬ 1: Проверка авторизации ДО запроса в БД
@@ -87,17 +82,7 @@ async function getScript(scriptId: string): Promise<ScriptWithVideos> {
     sourceVideosData,
   };
 
-  return script;
-}
-
-export default async function ScriptViewPage({
-  params,
-}: {
-  params: Promise<{ id: string }>;
-}) {
-  const { id: scriptId } = await params;
-  const script = await getScript(scriptId);
-
+in
   return (
     <div className="container mx-auto px-4 md:px-6">
       <div className="mb-8">
@@ -119,10 +104,7 @@ export default async function ScriptViewPage({
               </p>
             </div>
 
-            <Button disabled className="gap-2" title="Копирование невозможно">
-              <Copy className="h-4 w-4" />
-              Копировать сценарий
-            </Button>
+
           </div>
 
           {/* Мета-информация */}

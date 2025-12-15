@@ -1,92 +1,67 @@
 import { NextRequest, NextResponse } from "next/server"
-import { z } from "zod"
 import { verifyAdminAccess } from "@/lib/admin-api"
 import { db } from "@/lib/db"
-
-// Схема валидации для PATCH запроса
-const updateLimitsSchema = z.object({
-  userId: z.string().min(1, "userId is required"),
-  analysesPerDay: z.number().int().min(0).max(10000).optional(),
-  scriptsPerDay: z.number().int().min(0).max(10000).optional(),
-  cooldownHours: z.number().int().min(0).max(168).optional(), // макс 7 дней
-})
+import { getMonthlyScriptLimit } from "@/config/plan-limits"
 
 export async function GET(request: NextRequest) {
   const { isAdmin, response } = await verifyAdminAccess(request)
   if (!isAdmin) return response
 
   try {
+    // Get all users and their current plans
     const result = await db.execute(`
       SELECT
         u.id as userId,
         u.email,
-        u.plan,
-        COALESCE(ul.analysesPerDay, 10) as analysesPerDay,
-        COALESCE(ul.scriptsPerDay, 5) as scriptsPerDay,
-        COALESCE(ul.cooldownHours, 0) as cooldownHours
+        u.plan
       FROM users u
-      LEFT JOIN user_limits ul ON u.id = ul.userId
       ORDER BY u.createdAt DESC
       LIMIT 500
     `)
 
     const rows = Array.isArray(result) ? result : result.rows || []
-    const limits = rows.map((row: any) => ({
-      userId: row.userId,
-      email: row.email,
-      plan: row.plan || "free",
-      analysesPerDay: row.analysesPerDay,
-      scriptsPerDay: row.scriptsPerDay,
-      cooldownHours: row.cooldownHours,
-    }))
 
-    return NextResponse.json({ limits })
-  } catch (error) {
-    console.error("Error fetching limits:", error)
-    return NextResponse.json(
-      { error: "Failed to fetch limits" },
-      { status: 500 }
+    // Get monthly usage for each user
+    const today = new Date()
+    const monthPrefix = today.toISOString().slice(0, 7) // YYYY-MM
+
+    const usages = await Promise.all(
+      rows.map(async (row: any) => {
+        const plan = row.plan || "free"
+        const monthlyLimit = getMonthlyScriptLimit(plan as any)
+
+        // Get usage for current month
+        const usageResult = await db.execute({
+          sql: `
+            SELECT COALESCE(SUM(scriptsUsed), 0) as totalUsed
+            FROM user_usage_daily
+            WHERE userId = ? AND day LIKE ?
+          `,
+          args: [row.userId, monthPrefix + '%'],
+        })
+
+        const usageRows = Array.isArray(usageResult) ? usageResult : usageResult.rows || []
+        const monthlyUsed = usageRows[0]?.totalUsed || 0
+        const monthlyRemaining = Math.max(0, monthlyLimit - monthlyUsed)
+        const percentageUsed = monthlyLimit > 0 ? Math.round((monthlyUsed / monthlyLimit) * 100) : 0
+
+        return {
+          userId: row.userId,
+          email: row.email,
+          plan,
+          monthlyLimit,
+          monthlyUsed,
+          monthlyRemaining,
+          percentageUsed,
+        }
+      })
     )
-  }
-}
 
-export async function PATCH(request: NextRequest) {
-  const { isAdmin, response } = await verifyAdminAccess(request)
-  if (!isAdmin) return response
-
-  try {
-    const body = await request.json()
-
-    // Валидируем данные
-    const validation = updateLimitsSchema.safeParse(body)
-    if (!validation.success) {
-      return NextResponse.json(
-        { error: `Validation error: ${validation.error.errors[0].message}` },
-        { status: 400 }
-      )
-    }
-
-    const { userId, analysesPerDay, scriptsPerDay, cooldownHours } = validation.data
-    const updatedAt = Math.floor(Date.now() / 1000)
-
-    // Insert or update user_limits
-    await db.execute(`
-      INSERT OR REPLACE INTO user_limits
-      (userId, analysesPerDay, scriptsPerDay, cooldownHours, updatedAt)
-      VALUES (?, ?, ?, ?, ?)
-    `, [
-      userId,
-      analysesPerDay ?? 10,
-      scriptsPerDay ?? 5,
-      cooldownHours ?? 0,
-      updatedAt
-    ])
-
-    return NextResponse.json({ success: true })
+    return NextResponse.json({ usages })
   } catch (error) {
-    console.error("Error updating limits:", error)
+    console.error("Error fetching usage:", error)
     return NextResponse.json(
-      { error: "Failed to update limits" },
+      { error: "Failed to fetch usage" },
       { status: 500 }
     )
   }

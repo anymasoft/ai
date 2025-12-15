@@ -4,54 +4,57 @@ import { useState, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Badge } from "@/components/ui/badge"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogTitle } from "@/components/ui/alert-dialog"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
-import { Loader2, MoreHorizontal, RefreshCcw, X } from "lucide-react"
+import { Badge } from "@/components/ui/badge"
+import { Loader2, RefreshCcw, X } from "lucide-react"
 import { toast } from "sonner"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 
 interface Payment {
+  id: number
   userId: string
   email: string
   plan: string
-  disabled: boolean
-  isPaid: boolean
   expiresAt: number | null
   provider: string
+  price: string
+  createdAt: number
 }
 
 export default function AdminPaymentsPage() {
   const [payments, setPayments] = useState<Payment[]>([])
   const [loading, setLoading] = useState(true)
-  const [selectedUser, setSelectedUser] = useState<string>("")
-  const [formData, setFormData] = useState({
-    plan: "professional",
-    expiresAt: "",
-  })
-  const [showMarkPaidDialog, setShowMarkPaidDialog] = useState(false)
-  const [showCancelDialog, setShowCancelDialog] = useState(false)
-  const [showExtendDialog, setShowExtendDialog] = useState(false)
   const [filterEmail, setFilterEmail] = useState("")
-  const [filterPlan, setFilterPlan] = useState("")
-  const [filterStatus, setFilterStatus] = useState("")
+  const [filterFrom, setFilterFrom] = useState("")
+  const [filterTo, setFilterTo] = useState("")
   const [pageSize, setPageSize] = useState(20)
   const [currentPage, setCurrentPage] = useState(1)
+  const [totalSum, setTotalSum] = useState(0)
+  const [deletingId, setDeletingId] = useState<number | null>(null)
 
   useEffect(() => {
     fetchPayments()
-  }, [])
+  }, [filterEmail, filterFrom, filterTo])
 
   async function fetchPayments() {
     try {
       setLoading(true)
-      const res = await fetch("/api/admin/payments")
+      const params = new URLSearchParams()
+      if (filterEmail) params.append("email", filterEmail)
+      if (filterFrom) params.append("from", filterFrom)
+      if (filterTo) params.append("to", filterTo)
+
+      const res = await fetch(`/api/admin/payments?${params}`)
       if (!res.ok) throw new Error("Failed to fetch payments")
       const data = await res.json()
       setPayments(data.payments || [])
+      setTotalSum(data.totalSum || 0)
     } catch (error) {
       console.error("Error:", error)
       toast.error("Failed to load payments")
@@ -60,99 +63,37 @@ export default function AdminPaymentsPage() {
     }
   }
 
-  function openMarkPaidDialog(payment: Payment) {
-    setSelectedUser(payment.userId)
-    setFormData({
-      plan: payment.plan,
-      expiresAt: payment.expiresAt
-        ? new Date(payment.expiresAt).toISOString().split("T")[0]
-        : "",
-    })
-    setShowMarkPaidDialog(true)
-  }
-
-  async function markPaid() {
-    if (!formData.expiresAt) {
-      toast.error("Please select expiration date")
-      return
-    }
-
-    try {
-      const res = await fetch("/api/admin/payments", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          userId: selectedUser,
-          plan: formData.plan,
-          isPaid: true,
-          expiresAt: new Date(formData.expiresAt).getTime(),
-          provider: "manual",
-        }),
-      })
-      if (!res.ok) throw new Error("Failed to mark paid")
-      toast.success("Marked as paid")
-      setShowMarkPaidDialog(false)
-      fetchPayments()
-    } catch (error) {
-      console.error("Error:", error)
-      toast.error("Failed to mark as paid")
-    }
-  }
-
-  async function extendPayment(userId: string) {
-    try {
-      const res = await fetch("/api/admin/payments/extend", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userId, days: 30 }),
-      })
-      if (!res.ok) throw new Error("Failed to extend")
-      toast.success("Extended for 30 days")
-      setShowExtendDialog(false)
-      fetchPayments()
-    } catch (error) {
-      console.error("Error:", error)
-      toast.error("Failed to extend")
-    }
-  }
-
-  async function cancelPayment(userId: string) {
-    try {
-      const res = await fetch("/api/admin/payments", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          userId,
-          isPaid: false,
-          expiresAt: new Date().getTime(),
-        }),
-      })
-      if (!res.ok) throw new Error("Failed to cancel")
-      toast.success("Payment cancelled")
-      setShowCancelDialog(false)
-      fetchPayments()
-    } catch (error) {
-      console.error("Error:", error)
-      toast.error("Failed to cancel")
-    }
-  }
-
   const formatDate = (timestamp: number | null) => {
     if (!timestamp) return "—"
-    return new Date(timestamp).toLocaleDateString()
+    return new Date(timestamp * 1000).toLocaleDateString()
   }
 
-  // Фильтруем платежи
+  const formatPrice = (price: string) => {
+    return price.replace(/\s/g, " ")
+  }
+
+  async function deletePayment(paymentId: number) {
+    try {
+      setDeletingId(paymentId)
+      const res = await fetch(`/api/admin/payments/${paymentId}`, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+      })
+      if (!res.ok) throw new Error("Failed to delete payment")
+      toast.success("Payment deleted")
+      fetchPayments()
+    } catch (error) {
+      console.error("Error:", error)
+      toast.error("Failed to delete payment")
+    } finally {
+      setDeletingId(null)
+    }
+  }
+
+  // Фильтруем платежи по датам (если нужно дополнительная фильтрация на фронте)
   const filteredPayments = payments.filter((payment) => {
     const matchEmail = payment.email.toLowerCase().includes(filterEmail.toLowerCase())
-    const matchPlan = filterPlan === "all" || !filterPlan || payment.plan === filterPlan
-    const matchStatus =
-      filterStatus === "all" ||
-      !filterStatus ||
-      (filterStatus === "active" ? (payment.isPaid && !payment.disabled) :
-       filterStatus === "pending" ? (!payment.isPaid && !payment.disabled) :
-       filterStatus === "disabled" ? payment.disabled : true)
-    return matchEmail && matchPlan && matchStatus
+    return matchEmail
   })
 
   // Пагинация
@@ -161,17 +102,22 @@ export default function AdminPaymentsPage() {
   const endIndex = startIndex + pageSize
   const paginatedPayments = filteredPayments.slice(startIndex, endIndex)
 
-  // Сброс на первую страницу при изменении фильтров
+  // Сброс на первую страницу при изменении фильтров или размера страницы
   useEffect(() => {
     setCurrentPage(1)
-  }, [filterEmail, filterPlan, filterStatus])
+  }, [filterEmail, filterFrom, filterTo, pageSize])
+
+  // Сброс на первую страницу при изменении размера страницы
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [pageSize])
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold">Payments</h1>
-          <p className="text-muted-foreground">Manage subscriptions and payment status</p>
+          <h1 className="text-3xl font-bold">YooKassa Payments</h1>
+          <p className="text-muted-foreground">Real payments from YooKassa gateway</p>
         </div>
         <Button
           variant="outline"
@@ -185,81 +131,53 @@ export default function AdminPaymentsPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Subscriptions</CardTitle>
+          <CardTitle>Payment Transactions</CardTitle>
           <CardDescription>
-            {filteredPayments.length} of {payments.length} payments
-            {filteredPayments.length > 0 && ` • Page ${currentPage} of ${totalPages}`}
+            {filteredPayments.length} payments found
+            {filteredPayments.length > 0 && ` • Total: ${totalSum} ₽ • Page ${currentPage} of ${totalPages}`}
           </CardDescription>
         </CardHeader>
-        <CardContent>
-          <div className="mb-6 space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-              <div>
-                <label className="text-sm font-medium">Email</label>
-                <div className="flex gap-2 mt-1">
-                  <Input
-                    placeholder="Filter by email..."
-                    value={filterEmail}
-                    onChange={(e) => setFilterEmail(e.target.value)}
-                  />
-                  {filterEmail && (
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => setFilterEmail("")}
-                    >
-                      <X className="h-4 w-4" />
-                    </Button>
-                  )}
-                </div>
-              </div>
-              <div>
-                <label className="text-sm font-medium">Plan</label>
-                <Select value={filterPlan || "all"} onValueChange={setFilterPlan}>
-                  <SelectTrigger className="mt-1">
-                    <SelectValue placeholder="All plans" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All plans</SelectItem>
-                    <SelectItem value="free">Free</SelectItem>
-                    <SelectItem value="pro">Pro</SelectItem>
-                    <SelectItem value="business">Business</SelectItem>
-                    <SelectItem value="enterprise">Enterprise</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <label className="text-sm font-medium">Status</label>
-                <Select value={filterStatus || "all"} onValueChange={setFilterStatus}>
-                  <SelectTrigger className="mt-1">
-                    <SelectValue placeholder="Все статусы" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All statuses</SelectItem>
-                    <SelectItem value="active">Active</SelectItem>
-                    <SelectItem value="pending">Pending</SelectItem>
-                    <SelectItem value="disabled">Disabled</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <label className="text-sm font-medium">Per page</label>
-                <Select value={String(pageSize)} onValueChange={(v) => {
-                  setPageSize(Number(v))
-                  setCurrentPage(1)
-                }}>
-                  <SelectTrigger className="mt-1">
-                    <SelectValue placeholder="Rows per page" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="10">10 rows</SelectItem>
-                    <SelectItem value="20">20 rows</SelectItem>
-                    <SelectItem value="50">50 rows</SelectItem>
-                  </SelectContent>
-                </Select>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+              <label className="text-sm font-medium text-muted-foreground">Email</label>
+              <div className="flex gap-2 mt-1">
+                <Input
+                  placeholder="Filter by email..."
+                  value={filterEmail}
+                  onChange={(e) => setFilterEmail(e.target.value)}
+                />
+                {filterEmail && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => setFilterEmail("")}
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                )}
               </div>
             </div>
+            <div>
+              <label className="text-sm font-medium text-muted-foreground">From</label>
+              <Input
+                type="date"
+                value={filterFrom}
+                onChange={(e) => setFilterFrom(e.target.value)}
+                className="mt-1"
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium text-muted-foreground">To</label>
+              <Input
+                type="date"
+                value={filterTo}
+                onChange={(e) => setFilterTo(e.target.value)}
+                className="mt-1"
+              />
+            </div>
           </div>
+
           {loading ? (
             <div className="flex justify-center py-8">
               <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
@@ -276,143 +194,32 @@ export default function AdminPaymentsPage() {
                   <TableRow>
                     <TableHead>Email</TableHead>
                     <TableHead>Plan</TableHead>
-                    <TableHead>Status</TableHead>
+                    <TableHead>Price</TableHead>
                     <TableHead>Expires</TableHead>
-                    <TableHead>Provider</TableHead>
+                    <TableHead>Paid Date</TableHead>
                     <TableHead className="w-[50px]"></TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {paginatedPayments.map((payment) => (
-                    <TableRow key={payment.userId}>
+                    <TableRow key={payment.id}>
                       <TableCell className="font-mono text-sm">{payment.email}</TableCell>
                       <TableCell>
                         <Badge variant="outline">{payment.plan}</Badge>
                       </TableCell>
-                      <TableCell>
-                        <Badge variant={payment.isPaid ? "default" : "secondary"}>
-                          {payment.disabled ? "Disabled" : payment.isPaid ? "Active" : "Pending"}
-                        </Badge>
-                      </TableCell>
+                      <TableCell className="font-medium">{formatPrice(payment.price)}</TableCell>
                       <TableCell>{formatDate(payment.expiresAt)}</TableCell>
-                      <TableCell className="text-sm">{payment.provider}</TableCell>
+                      <TableCell>{formatDate(payment.createdAt)}</TableCell>
                       <TableCell>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon">
-                              <MoreHorizontal className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <Dialog open={showMarkPaidDialog && selectedUser === payment.userId} onOpenChange={setShowMarkPaidDialog}>
-                              <DialogTrigger asChild>
-                                <DropdownMenuItem
-                                  onSelect={(e) => {
-                                    e.preventDefault()
-                                    openMarkPaidDialog(payment)
-                                  }}
-                                >
-                                  Mark as Paid
-                                </DropdownMenuItem>
-                              </DialogTrigger>
-                              <DialogContent>
-                                <DialogHeader>
-                                  <DialogTitle>Mark as Paid</DialogTitle>
-                                </DialogHeader>
-                                <div className="space-y-4">
-                                  <div>
-                                    <Label htmlFor="plan">Plan</Label>
-                                    <Select value={formData.plan} onValueChange={(value) =>
-                                      setFormData({ ...formData, plan: value })
-                                    }>
-                                      <SelectTrigger>
-                                        <SelectValue />
-                                      </SelectTrigger>
-                                      <SelectContent>
-                                        <SelectItem value="basic">Basic</SelectItem>
-                                        <SelectItem value="professional">Professional</SelectItem>
-                                        <SelectItem value="enterprise">Enterprise</SelectItem>
-                                      </SelectContent>
-                                    </Select>
-                                  </div>
-                                  <div>
-                                    <Label htmlFor="expires">Expires At</Label>
-                                    <Input
-                                      id="expires"
-                                      type="date"
-                                      value={formData.expiresAt}
-                                      onChange={(e) =>
-                                        setFormData({ ...formData, expiresAt: e.target.value })
-                                      }
-                                    />
-                                  </div>
-                                  <div className="flex gap-2">
-                                    <Button onClick={markPaid}>Save</Button>
-                                    <Button
-                                      variant="outline"
-                                      onClick={() => setShowMarkPaidDialog(false)}
-                                    >
-                                      Cancel
-                                    </Button>
-                                  </div>
-                                </div>
-                              </DialogContent>
-                            </Dialog>
-
-                            <AlertDialog open={showExtendDialog && selectedUser === payment.userId} onOpenChange={setShowExtendDialog}>
-                              <DropdownMenuItem
-                                onSelect={(e) => {
-                                  e.preventDefault()
-                                  setSelectedUser(payment.userId)
-                                  setShowExtendDialog(true)
-                                }}
-                              >
-                                Extend 30 Days
-                              </DropdownMenuItem>
-                              <AlertDialogContent>
-                                <AlertDialogTitle>Extend Payment</AlertDialogTitle>
-                                <AlertDialogDescription>
-                                  Extend this subscription for 30 more days?
-                                </AlertDialogDescription>
-                                <div className="flex gap-2 justify-end">
-                                  <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                  <AlertDialogAction
-                                    onClick={() => extendPayment(payment.userId)}
-                                  >
-                                    Extend
-                                  </AlertDialogAction>
-                                </div>
-                              </AlertDialogContent>
-                            </AlertDialog>
-
-                            <AlertDialog open={showCancelDialog && selectedUser === payment.userId} onOpenChange={setShowCancelDialog}>
-                              <DropdownMenuItem
-                                onSelect={(e) => {
-                                  e.preventDefault()
-                                  setSelectedUser(payment.userId)
-                                  setShowCancelDialog(true)
-                                }}
-                              >
-                                Cancel
-                              </DropdownMenuItem>
-                              <AlertDialogContent>
-                                <AlertDialogTitle>Cancel Payment</AlertDialogTitle>
-                                <AlertDialogDescription>
-                                  Cancel this subscription? The user will revert to free plan immediately.
-                                </AlertDialogDescription>
-                                <div className="flex gap-2 justify-end">
-                                  <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                  <AlertDialogAction
-                                    onClick={() => cancelPayment(payment.userId)}
-                                    className="bg-destructive hover:bg-destructive/90"
-                                  >
-                                    Cancel Payment
-                                  </AlertDialogAction>
-                                </div>
-                              </AlertDialogContent>
-                            </AlertDialog>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => deletePayment(payment.id)}
+                          disabled={deletingId === payment.id}
+                          className="text-destructive hover:text-destructive"
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -421,9 +228,32 @@ export default function AdminPaymentsPage() {
             </div>
 
             {filteredPayments.length > 0 && (
-              <div className="flex items-center justify-between border-t pt-4 mt-4">
-                <div className="text-sm text-muted-foreground">
-                  Showing {startIndex + 1} to {Math.min(endIndex, filteredPayments.length)} of {filteredPayments.length} results
+              <>
+              <div className="border-t pt-4 mt-4">
+                <div className="flex justify-between items-center">
+                  <div className="text-sm text-muted-foreground">
+                    Showing {startIndex + 1} to {Math.min(endIndex, filteredPayments.length)} of {filteredPayments.length} results
+                  </div>
+                  <div className="text-lg font-semibold">
+                    Total: {totalSum.toLocaleString("ru-RU")} ₽
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <label className="text-sm font-medium text-muted-foreground">Records per page:</label>
+                  <Select value={pageSize.toString()} onValueChange={(value) => setPageSize(parseInt(value))}>
+                    <SelectTrigger className="w-[120px]">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="10">10</SelectItem>
+                      <SelectItem value="20">20</SelectItem>
+                      <SelectItem value="50">50</SelectItem>
+                      <SelectItem value="100">100</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div className="flex gap-2">
                   <Button
@@ -457,6 +287,7 @@ export default function AdminPaymentsPage() {
                   </Button>
                 </div>
               </div>
+              </>
             )}
             </>
           )}

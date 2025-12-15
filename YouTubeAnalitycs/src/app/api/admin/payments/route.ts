@@ -2,17 +2,16 @@ import { NextRequest, NextResponse } from "next/server"
 import { z } from "zod"
 import { verifyAdminAccess } from "@/lib/admin-api"
 import { db } from "@/lib/db"
+import { updateUserPlan } from "@/lib/payments"
 
-// Валидные тарифные планы
-const VALID_PLANS = ["free", "basic", "professional", "enterprise", "pro", "business"]
+// Валидные тарифные планы (ТОЛЬКО из PLAN_LIMITS)
+const VALID_PLANS = ["basic", "professional", "enterprise"]
 
 // Схема валидации для PATCH запроса
 const updatePaymentSchema = z.object({
   userId: z.string().min(1, "userId is required"),
-  plan: z.enum([...VALID_PLANS] as [string, ...string[]]).optional(),
-  isPaid: z.boolean().optional(),
-  expiresAt: z.number().int().positive().optional().nullable(),
-  provider: z.string().optional(),
+  plan: z.enum([...VALID_PLANS] as [string, ...string[]]),
+  expiresAt: z.number().int().positive(),
 })
 
 export async function GET(request: NextRequest) {
@@ -20,33 +19,75 @@ export async function GET(request: NextRequest) {
   if (!isAdmin) return response
 
   try {
-    const result = await db.execute(`
+    const { searchParams } = new URL(request.url)
+    const emailFilter = searchParams.get("email") || ""
+    const fromDate = searchParams.get("from") ? Math.floor(new Date(searchParams.get("from")!).getTime() / 1000) : null
+    const toDate = searchParams.get("to") ? Math.floor(new Date(searchParams.get("to")!).getTime() / 1000) : null
+
+    // Get only real YooKassa payments from payments table
+    let query = `
       SELECT
-        u.id as userId,
+        p.id,
+        p.userId,
         u.email,
-        u.plan,
-        COALESCE(u.disabled, 0) as disabled,
-        COALESCE(s.isPaid, 0) as isPaid,
-        s.expiresAt,
-        COALESCE(s.provider, 'manual') as provider
-      FROM users u
-      LEFT JOIN admin_subscriptions s ON u.id = s.userId
-      ORDER BY u.createdAt DESC
-      LIMIT 500
-    `)
+        p.plan,
+        p.amount,
+        p.expiresAt,
+        p.provider,
+        p.createdAt
+      FROM payments p
+      JOIN users u ON p.userId = u.id
+      WHERE p.provider = 'yookassa'
+    `
+
+    const params: any[] = []
+
+    if (emailFilter) {
+      query += ` AND u.email LIKE ?`
+      params.push(`%${emailFilter}%`)
+    }
+
+    if (fromDate) {
+      query += ` AND p.createdAt >= ?`
+      params.push(fromDate)
+    }
+
+    if (toDate) {
+      query += ` AND p.createdAt <= ?`
+      params.push(toDate)
+    }
+
+    query += ` ORDER BY p.createdAt DESC LIMIT 500`
+
+    const result = params.length > 0
+      ? await db.execute({ sql: query, args: params })
+      : await db.execute(query)
 
     const rows = Array.isArray(result) ? result : result.rows || []
+
     const payments = rows.map((row: any) => ({
+      id: row.id,
       userId: row.userId,
       email: row.email,
-      plan: row.plan || "free",
-      disabled: row.disabled === 1,
-      isPaid: row.isPaid === 1,
+      plan: row.plan,
       expiresAt: row.expiresAt,
       provider: row.provider,
+      price: row.amount,
+      createdAt: row.createdAt,
     }))
 
-    return NextResponse.json({ payments })
+    // Calculate total sum
+    const totalSum = payments.reduce((sum, payment) => {
+      const priceStr = payment.price.replace(/[^\d]/g, "")
+      const priceNum = parseInt(priceStr) || 0
+      return sum + priceNum
+    }, 0)
+
+    return NextResponse.json({
+      payments,
+      total: payments.length,
+      totalSum,
+    })
   } catch (error) {
     console.error("Error fetching payments:", error)
     return NextResponse.json(
@@ -72,22 +113,16 @@ export async function PATCH(request: NextRequest) {
       )
     }
 
-    const { userId, plan, isPaid, expiresAt, provider } = validation.data
-    const updatedAt = Math.floor(Date.now() / 1000)
+    const { userId, plan, expiresAt } = validation.data
 
-    // Insert or update admin_subscriptions
-    await db.execute(`
-      INSERT OR REPLACE INTO admin_subscriptions
-      (userId, plan, isPaid, expiresAt, provider, updatedAt)
-      VALUES (?, ?, ?, ?, ?, ?)
-    `, [
+    // Используем ту же функцию, что и для платежей через YooKassa
+    // Это сбрасывает месячное использование и обновляет план
+    await updateUserPlan({
       userId,
-      plan || "free",
-      isPaid ? 1 : 0,
-      expiresAt || null,
-      provider || "manual",
-      updatedAt
-    ])
+      plan: plan as "basic" | "professional" | "enterprise",
+      expiresAt,
+      paymentProvider: "manual",
+    })
 
     return NextResponse.json({ success: true })
   } catch (error) {

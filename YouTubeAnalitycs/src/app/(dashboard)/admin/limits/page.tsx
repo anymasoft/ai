@@ -5,150 +5,84 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogTitle } from "@/components/ui/alert-dialog"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Loader2, RefreshCcw, X } from "lucide-react"
 import { toast } from "sonner"
 
-interface UserLimit {
+interface UserUsage {
   userId: string
   email: string
   plan: string
-  analysesPerDay: number
-  scriptsPerDay: number
-  cooldownHours: number
-  analysesUsed?: number
-  scriptsUsed?: number
+  monthlyLimit: number
+  monthlyUsed: number
+  monthlyRemaining: number
+  percentageUsed: number
 }
 
 export default function AdminLimitsPage() {
-  const [limits, setLimits] = useState<UserLimit[]>([])
+  const [usages, setUsages] = useState<UserUsage[]>([])
   const [loading, setLoading] = useState(true)
-  const [editingUser, setEditingUser] = useState<string>("")
-  const [formData, setFormData] = useState({
-    plan: "free",
-    analysesPerDay: 0,
-    scriptsPerDay: 0,
-    cooldownHours: 0,
-  })
-  const [showEditDialog, setShowEditDialog] = useState(false)
-  const [showResetDialog, setShowResetDialog] = useState(false)
   const [filterEmail, setFilterEmail] = useState("")
   const [filterPlan, setFilterPlan] = useState("")
   const [pageSize, setPageSize] = useState(20)
   const [currentPage, setCurrentPage] = useState(1)
 
   useEffect(() => {
-    fetchLimits()
+    fetchUsages()
   }, [])
 
-  async function fetchLimits() {
+  async function fetchUsages() {
     try {
       setLoading(true)
       const res = await fetch("/api/admin/limits")
-      if (!res.ok) throw new Error("Failed to fetch limits")
+      if (!res.ok) throw new Error("Failed to fetch usages")
       const data = await res.json()
-      setLimits(data.limits || [])
+      setUsages(data.usages || [])
     } catch (error) {
       console.error("Error:", error)
-      toast.error("Failed to load limits")
+      toast.error("Failed to load usage information")
     } finally {
       setLoading(false)
     }
   }
 
-  function openEditDialog(limit: UserLimit) {
-    setEditingUser(limit.userId)
-    setFormData({
-      plan: limit.plan,
-      analysesPerDay: limit.analysesPerDay,
-      scriptsPerDay: limit.scriptsPerDay,
-      cooldownHours: limit.cooldownHours,
-    })
-    setShowEditDialog(true)
-  }
-
-  async function saveLimits() {
-    try {
-      const res = await fetch("/api/admin/users", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          userId: editingUser,
-          plan: formData.plan,
-        }),
-      })
-      
-      // Также обновляем лимиты
-      const res2 = await fetch("/api/admin/limits", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          userId: editingUser,
-          analysesPerDay: formData.analysesPerDay,
-          scriptsPerDay: formData.scriptsPerDay,
-          cooldownHours: formData.cooldownHours,
-        }),
-      })
-      if (!res.ok || !res2.ok) throw new Error("Failed to update limits")
-      toast.success("Limits updated")
-      setShowEditDialog(false)
-      fetchLimits()
-    } catch (error) {
-      console.error("Error:", error)
-      toast.error("Failed to update limits")
-    }
-  }
-
-  async function resetUsageToday(userId: string) {
-    try {
-      const res = await fetch("/api/admin/limits/reset-today", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userId }),
-      })
-      if (!res.ok) throw new Error("Failed to reset usage")
-      toast.success("Usage reset for today")
-      setShowResetDialog(false)
-      fetchLimits()
-    } catch (error) {
-      console.error("Error:", error)
-      toast.error("Failed to reset usage")
-    }
-  }
-
-  // Фильтруем лимиты
-  const filteredLimits = limits.filter((limit) => {
-    const matchEmail = limit.email.toLowerCase().includes(filterEmail.toLowerCase())
-    const matchPlan = filterPlan === "all" || !filterPlan || limit.plan === filterPlan
+  // Фильтруем использование
+  const filteredUsages = usages.filter((usage) => {
+    const matchEmail = usage.email.toLowerCase().includes(filterEmail.toLowerCase())
+    const matchPlan = filterPlan === "all" || !filterPlan || usage.plan === filterPlan
     return matchEmail && matchPlan
   })
 
   // Пагинация
-  const totalPages = Math.ceil(filteredLimits.length / pageSize)
+  const totalPages = Math.ceil(filteredUsages.length / pageSize)
   const startIndex = (currentPage - 1) * pageSize
   const endIndex = startIndex + pageSize
-  const paginatedLimits = filteredLimits.slice(startIndex, endIndex)
+  const paginatedUsages = filteredUsages.slice(startIndex, endIndex)
 
   // Сброс на первую страницу при изменении фильтров
   useEffect(() => {
     setCurrentPage(1)
   }, [filterEmail, filterPlan])
 
+  const getProgressColor = (percentage: number) => {
+    if (percentage < 50) return "bg-green-500"
+    if (percentage < 80) return "bg-yellow-500"
+    return "bg-red-500"
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold">Usage Limits</h1>
-          <p className="text-muted-foreground">Configure daily limits per user</p>
+          <h1 className="text-3xl font-bold">Script Usage</h1>
+          <p className="text-muted-foreground">Monitor monthly script generation limits</p>
         </div>
         <Button
           variant="outline"
           size="icon"
-          onClick={fetchLimits}
+          onClick={fetchUsages}
           disabled={loading}
         >
           <RefreshCcw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
@@ -157,74 +91,73 @@ export default function AdminLimitsPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>User Limits</CardTitle>
+          <CardTitle>Monthly Script Usage</CardTitle>
           <CardDescription>
-            {filteredLimits.length} of {limits.length} users
-            {filteredLimits.length > 0 && ` • Page ${currentPage} of ${totalPages}`}
+            {filteredUsages.length} of {usages.length} users
+            {filteredUsages.length > 0 && ` • Page ${currentPage} of ${totalPages}`}
           </CardDescription>
         </CardHeader>
-        <CardContent>
-          <div className="mb-6 space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div>
-                <label className="text-sm font-medium">Email</label>
-                <div className="flex gap-2 mt-1">
-                  <Input
-                    placeholder="Фильтровать по электронной почте..."
-                    value={filterEmail}
-                    onChange={(e) => setFilterEmail(e.target.value)}
-                  />
-                  {filterEmail && (
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => setFilterEmail("")}
-                    >
-                      <X className="h-4 w-4" />
-                    </Button>
-                  )}
-                </div>
-              </div>
-              <div>
-                <label className="text-sm font-medium">Plan</label>
-                <Select value={filterPlan || "all"} onValueChange={setFilterPlan}>
-                  <SelectTrigger className="mt-1">
-                    <SelectValue placeholder="Все тарифы" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All plans</SelectItem>
-                    <SelectItem value="free">Free</SelectItem>
-                    <SelectItem value="pro">Pro</SelectItem>
-                    <SelectItem value="business">Business</SelectItem>
-                    <SelectItem value="enterprise">Enterprise</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <label className="text-sm font-medium">Per page</label>
-                <Select value={String(pageSize)} onValueChange={(v) => {
-                  setPageSize(Number(v))
-                  setCurrentPage(1)
-                }}>
-                  <SelectTrigger className="mt-1">
-                    <SelectValue placeholder="Строк на странице" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="10">10 rows</SelectItem>
-                    <SelectItem value="20">20 rows</SelectItem>
-                    <SelectItem value="50">50 rows</SelectItem>
-                  </SelectContent>
-                </Select>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+              <label className="text-sm font-medium">Email</label>
+              <div className="flex gap-2 mt-1">
+                <Input
+                  placeholder="Filter by email..."
+                  value={filterEmail}
+                  onChange={(e) => setFilterEmail(e.target.value)}
+                />
+                {filterEmail && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => setFilterEmail("")}
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                )}
               </div>
             </div>
+            <div>
+              <label className="text-sm font-medium">Plan</label>
+              <Select value={filterPlan || "all"} onValueChange={setFilterPlan}>
+                <SelectTrigger className="mt-1">
+                  <SelectValue placeholder="All plans" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All plans</SelectItem>
+                  <SelectItem value="free">Free</SelectItem>
+                  <SelectItem value="basic">Basic</SelectItem>
+                  <SelectItem value="professional">Professional</SelectItem>
+                  <SelectItem value="enterprise">Enterprise</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <label className="text-sm font-medium">Per page</label>
+              <Select value={String(pageSize)} onValueChange={(v) => {
+                setPageSize(Number(v))
+                setCurrentPage(1)
+              }}>
+                <SelectTrigger className="mt-1">
+                  <SelectValue placeholder="Rows per page" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="10">10 rows</SelectItem>
+                  <SelectItem value="20">20 rows</SelectItem>
+                  <SelectItem value="50">50 rows</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
+
           {loading ? (
             <div className="flex justify-center py-8">
               <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
             </div>
-          ) : filteredLimits.length === 0 ? (
+          ) : filteredUsages.length === 0 ? (
             <div className="py-8 text-center text-muted-foreground">
-              No limits configured
+              No users found
             </div>
           ) : (
             <>
@@ -234,140 +167,34 @@ export default function AdminLimitsPage() {
                   <TableRow>
                     <TableHead>Email</TableHead>
                     <TableHead>Plan</TableHead>
-                    <TableHead className="text-right">Analyses/Day</TableHead>
-                    <TableHead className="text-right">Scripts/Day</TableHead>
-                    <TableHead className="text-right">Used Today</TableHead>
-                    <TableHead className="text-right">Cooldown (h)</TableHead>
-                    <TableHead>Actions</TableHead>
+                    <TableHead>Monthly Limit</TableHead>
+                    <TableHead>Usage</TableHead>
+                    <TableHead>Progress</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {paginatedLimits.map((limit) => (
-                    <TableRow key={limit.userId}>
-                      <TableCell className="font-mono text-sm">{limit.email}</TableCell>
+                  {paginatedUsages.map((usage) => (
+                    <TableRow key={usage.userId}>
+                      <TableCell className="font-mono text-sm">{usage.email}</TableCell>
                       <TableCell>
-                        <Badge variant="outline">{limit.plan}</Badge>
+                        <Badge variant="outline">{usage.plan}</Badge>
                       </TableCell>
-                      <TableCell className="text-right">{limit.analysesPerDay}</TableCell>
-                      <TableCell className="text-right">{limit.scriptsPerDay}</TableCell>
-                      <TableCell className="text-right">
-                        {limit.analysesUsed || 0} / {limit.scriptsUsed || 0}
-                      </TableCell>
-                      <TableCell className="text-right">{limit.cooldownHours}</TableCell>
+                      <TableCell className="text-right">{usage.monthlyLimit} scripts</TableCell>
                       <TableCell>
-                        <div className="flex gap-2">
-                          <Dialog open={showEditDialog && editingUser === limit.userId} onOpenChange={setShowEditDialog}>
-                            <DialogTrigger asChild>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => openEditDialog(limit)}
-                              >
-                                Edit
-                              </Button>
-                            </DialogTrigger>
-                            <DialogContent>
-                              <DialogHeader>
-                                <DialogTitle>Edit Limits - {limit.email}</DialogTitle>
-                              </DialogHeader>
-                              <div className="space-y-4">
-                                <div>
-                                  <Label htmlFor="plan">Plan</Label>
-                                  <Select value={formData.plan} onValueChange={(value) =>
-                                    setFormData({ ...formData, plan: value })
-                                  }>
-                                    <SelectTrigger id="plan">
-                                      <SelectValue />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                      <SelectItem value="free">Free</SelectItem>
-                                      <SelectItem value="pro">Pro</SelectItem>
-                                      <SelectItem value="business">Business</SelectItem>
-                                      <SelectItem value="enterprise">Enterprise</SelectItem>
-                                    </SelectContent>
-                                  </Select>
-                                </div>
-                                <div>
-                                  <Label htmlFor="analyses">Analyses per Day</Label>
-                                  <Input
-                                    id="analyses"
-                                    type="number"
-                                    value={formData.analysesPerDay}
-                                    onChange={(e) =>
-                                      setFormData({
-                                        ...formData,
-                                        analysesPerDay: parseInt(e.target.value) || 0,
-                                      })
-                                    }
-                                  />
-                                </div>
-                                <div>
-                                  <Label htmlFor="scripts">Scripts per Day</Label>
-                                  <Input
-                                    id="scripts"
-                                    type="number"
-                                    value={formData.scriptsPerDay}
-                                    onChange={(e) =>
-                                      setFormData({
-                                        ...formData,
-                                        scriptsPerDay: parseInt(e.target.value) || 0,
-                                      })
-                                    }
-                                  />
-                                </div>
-                                <div>
-                                  <Label htmlFor="cooldown">Cooldown Hours</Label>
-                                  <Input
-                                    id="cooldown"
-                                    type="number"
-                                    value={formData.cooldownHours}
-                                    onChange={(e) =>
-                                      setFormData({
-                                        ...formData,
-                                        cooldownHours: parseInt(e.target.value) || 0,
-                                      })
-                                    }
-                                  />
-                                </div>
-                                <div className="flex gap-2">
-                                  <Button onClick={saveLimits}>Save</Button>
-                                  <Button
-                                    variant="outline"
-                                    onClick={() => setShowEditDialog(false)}
-                                  >
-                                    Cancel
-                                  </Button>
-                                </div>
-                              </div>
-                            </DialogContent>
-                          </Dialog>
-
-                          <AlertDialog open={showResetDialog && editingUser === limit.userId} onOpenChange={setShowResetDialog}>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => {
-                                setEditingUser(limit.userId)
-                                setShowResetDialog(true)
-                              }}
-                            >
-                              Reset
-                            </Button>
-                            <AlertDialogContent>
-                              <AlertDialogTitle>Reset Usage</AlertDialogTitle>
-                              <AlertDialogDescription>
-                                Reset daily usage counter for {limit.email}? This will clear today's usage.
-                              </AlertDialogDescription>
-                              <div className="flex gap-2 justify-end">
-                                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                <AlertDialogAction
-                                  onClick={() => resetUsageToday(limit.userId)}
-                                >
-                                  Reset
-                                </AlertDialogAction>
-                              </div>
-                            </AlertDialogContent>
-                          </AlertDialog>
+                        <div className="text-sm">
+                          <span className="font-semibold">{usage.monthlyUsed}</span>
+                          <span className="text-muted-foreground"> / {usage.monthlyLimit}</span>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          <div className="w-32 h-2 bg-gray-200 rounded-full overflow-hidden">
+                            <div
+                              className={`h-full ${getProgressColor(usage.percentageUsed)}`}
+                              style={{ width: `${Math.min(usage.percentageUsed, 100)}%` }}
+                            />
+                          </div>
+                          <span className="text-sm font-medium w-10 text-right">{usage.percentageUsed}%</span>
                         </div>
                       </TableCell>
                     </TableRow>
@@ -376,10 +203,10 @@ export default function AdminLimitsPage() {
               </Table>
             </div>
 
-            {filteredLimits.length > 0 && (
+            {filteredUsages.length > 0 && (
               <div className="flex items-center justify-between border-t pt-4 mt-4">
                 <div className="text-sm text-muted-foreground">
-                  Showing {startIndex + 1} to {Math.min(endIndex, filteredLimits.length)} of {filteredLimits.length} results
+                  Showing {startIndex + 1} to {Math.min(endIndex, filteredUsages.length)} of {filteredUsages.length} results
                 </div>
                 <div className="flex gap-2">
                   <Button

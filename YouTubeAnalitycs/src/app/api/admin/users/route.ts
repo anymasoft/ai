@@ -24,6 +24,7 @@ export async function GET(request: NextRequest) {
         u.email,
         u.name,
         u.plan,
+        u.expiresAt,
         u.createdAt,
         COALESCE(u.disabled, 0) as disabled
       FROM users u
@@ -37,6 +38,7 @@ export async function GET(request: NextRequest) {
       email: row.email,
       name: row.name,
       plan: row.plan || "free",
+      expiresAt: row.expiresAt || null,
       createdAt: row.createdAt || 0,
       disabled: row.disabled === 1,
       lastActive: null,

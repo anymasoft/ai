@@ -234,15 +234,13 @@ export default function BillingSettings() {
       )}
 
       <div className="grid gap-6 grid-cols-1 lg:grid-cols-2">
-        {scriptUsage && (
-          <CurrentPlanCard
-            planId={userPlan}
-            monthlyUsed={scriptUsage.monthlyUsed}
-            monthlyLimit={scriptUsage.monthlyLimit}
-            percentageUsed={scriptUsage.percentageUsed}
-          />
-        )}
-        <BillingHistoryCard isEmpty={true} />
+        <CurrentPlanCard
+          planId={userPlan}
+          monthlyUsed={scriptUsage?.monthlyUsed || 0}
+          monthlyLimit={scriptUsage?.monthlyLimit || 0}
+          percentageUsed={scriptUsage?.percentageUsed || 0}
+        />
+        <BillingHistoryCard />
       </div>
 
       {/* Информация о бесплатном доступе */}

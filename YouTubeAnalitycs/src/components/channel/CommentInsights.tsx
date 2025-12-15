@@ -114,7 +114,7 @@ export function CommentInsights({
   if (loading) {
     return (
       <AnalysisLoadingState
-        title="Анализирование комментариев...""
+        title="Анализирование комментариев..."
         subtitle="Это может занять 15-25 секунд"
       />
     );

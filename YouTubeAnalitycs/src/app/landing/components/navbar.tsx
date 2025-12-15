@@ -41,7 +41,6 @@ const navigationItems = [
   { name: "Главная", href: "#" },
   { name: "Возможности", href: "#features" },
   { name: "Тарифы", href: "#pricing" },
-  { name: "FAQ", href: "#faq" },
   { name: "Контакты", href: "#contact" },
 ] as const
 

@@ -90,10 +90,6 @@ const navGroups = [
         icon: Settings,
         items: [
           {
-            title: "Аккаунт",
-            url: "/settings/account",
-          },
-          {
             title: "Биллинг",
             url: "/settings/billing",
           },
@@ -151,16 +147,12 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                     url: "/admin/users",
                   },
                   {
-                    title: "Лимиты",
+                    title: "Использование",
                     url: "/admin/limits",
                   },
                   {
                     title: "Платежи",
                     url: "/admin/payments",
-                  },
-                  {
-                    title: "Система",
-                    url: "/admin/system",
                   },
                 ],
               },

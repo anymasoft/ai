@@ -576,6 +576,25 @@ async function getClient() {
         await addColumnIfNotExists(_client, 'user_channel_content_state', 'lastShownAt', 'INTEGER');
 
         // ============ ADMIN PANEL TABLES ============
+        // Таблица истории платежей (каждый платеж - отдельная запись)
+        await _client.execute(`CREATE TABLE IF NOT EXISTS payments (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          userId TEXT NOT NULL,
+          plan TEXT NOT NULL,
+          amount TEXT NOT NULL,
+          provider TEXT NOT NULL,
+          status TEXT DEFAULT 'succeeded',
+          expiresAt INTEGER,
+          createdAt INTEGER NOT NULL,
+          FOREIGN KEY (userId) REFERENCES users(id) ON DELETE CASCADE
+        );`);
+
+        await _client.execute(`CREATE INDEX IF NOT EXISTS idx_payments_userId_createdAt
+          ON payments(userId, createdAt DESC);`);
+
+        await _client.execute(`CREATE INDEX IF NOT EXISTS idx_payments_createdAt
+          ON payments(createdAt DESC);`);
+
         // Таблица для переопределения подписок (ручное управление платежами)
         await _client.execute(`CREATE TABLE IF NOT EXISTS admin_subscriptions (
           userId TEXT PRIMARY KEY,
@@ -583,15 +602,6 @@ async function getClient() {
           isPaid INTEGER DEFAULT 0,
           expiresAt INTEGER,
           provider TEXT DEFAULT 'manual',
-          updatedAt INTEGER DEFAULT (cast(strftime('%s','now') as integer))
-        );`);
-
-        // Таблица для пользовательских лимитов
-        await _client.execute(`CREATE TABLE IF NOT EXISTS user_limits (
-          userId TEXT PRIMARY KEY,
-          analysesPerDay INTEGER DEFAULT 10,
-          scriptsPerDay INTEGER DEFAULT 5,
-          cooldownHours INTEGER DEFAULT 0,
           updatedAt INTEGER DEFAULT (cast(strftime('%s','now') as integer))
         );`);
 
@@ -611,6 +621,27 @@ async function getClient() {
           value TEXT DEFAULT 'false',
           updatedAt INTEGER DEFAULT (cast(strftime('%s','now') as integer))
         );`);
+
+        // Таблица для сообщений обратной связи
+        await _client.execute(`CREATE TABLE IF NOT EXISTS admin_messages (
+          id TEXT PRIMARY KEY,
+          email TEXT,
+          firstName TEXT,
+          lastName TEXT,
+          subject TEXT NOT NULL,
+          message TEXT NOT NULL,
+          page TEXT DEFAULT 'feedback',
+          userId TEXT,
+          createdAt INTEGER NOT NULL,
+          isRead INTEGER DEFAULT 0,
+          FOREIGN KEY (userId) REFERENCES users(id) ON DELETE SET NULL
+        );`);
+
+        await _client.execute(`CREATE INDEX IF NOT EXISTS idx_admin_messages_createdAt
+          ON admin_messages(createdAt DESC);`);
+
+        await _client.execute(`CREATE INDEX IF NOT EXISTS idx_admin_messages_isRead
+          ON admin_messages(isRead, createdAt DESC);`);
 
         // Инициализация системных флагов по умолчанию
         await _client.execute(`INSERT OR IGNORE INTO system_flags (key, value) VALUES ('enableTrending', 'true');`);

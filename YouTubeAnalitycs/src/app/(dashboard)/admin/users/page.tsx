@@ -11,6 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Loader2, MoreHorizontal, RefreshCcw, X } from "lucide-react"
 import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
 import { toast } from "sonner"
 
 interface User {
@@ -18,10 +19,13 @@ interface User {
   email: string
   name: string | null
   plan: string
+  expiresAt: number | null
   createdAt: number
   lastActive: number | null
   disabled: boolean
 }
+
+const PAID_PLANS = ["basic", "professional", "enterprise"]
 
 export default function AdminUsersPage() {
   const [users, setUsers] = useState<User[]>([])
@@ -32,6 +36,13 @@ export default function AdminUsersPage() {
   const [showResetDialog, setShowResetDialog] = useState(false)
   const [showDisableDialog, setShowDisableDialog] = useState(false)
   const [disableAction, setDisableAction] = useState<"disable" | "enable">("disable")
+  const [showMarkPaidDialog, setShowMarkPaidDialog] = useState(false)
+  const [showExtendDialog, setShowExtendDialog] = useState(false)
+  const [showCancelDialog, setShowCancelDialog] = useState(false)
+  const [paymentFormData, setPaymentFormData] = useState({
+    plan: "basic",
+    expiresAt: "",
+  })
   const [filterEmail, setFilterEmail] = useState("")
   const [filterPlan, setFilterPlan] = useState("")
   const [filterStatus, setFilterStatus] = useState("")
@@ -59,8 +70,8 @@ export default function AdminUsersPage() {
 
   async function changePlan(userId: string, newPlan: string) {
     try {
-      const res = await fetch("/api/admin/users", {
-        method: "PATCH",
+      const res = await fetch("/api/admin/users/change-plan", {
+        method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ userId, plan: newPlan }),
       })
@@ -110,8 +121,99 @@ export default function AdminUsersPage() {
     }
   }
 
-  const formatDate = (timestamp: number) => {
-    return new Date(timestamp).toLocaleDateString()
+  function openMarkPaidDialog(user: User) {
+    setSelectedUser(user.id)
+    const defaultExpires = new Date()
+    defaultExpires.setDate(defaultExpires.getDate() + 30)
+
+    const planToUse = PAID_PLANS.includes(user.plan) ? user.plan : "basic"
+
+    setPaymentFormData({
+      plan: planToUse,
+      expiresAt: user.expiresAt
+        ? new Date(user.expiresAt * 1000).toISOString().split("T")[0]
+        : defaultExpires.toISOString().split("T")[0],
+    })
+    setShowMarkPaidDialog(true)
+  }
+
+  async function markPaid() {
+    if (!paymentFormData.plan) {
+      toast.error("Please select a plan")
+      return
+    }
+    if (!paymentFormData.expiresAt) {
+      toast.error("Please select expiration date")
+      return
+    }
+
+    try {
+      const expiresAtSeconds = Math.floor(new Date(paymentFormData.expiresAt).getTime() / 1000)
+
+      const res = await fetch("/api/admin/payments", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userId: selectedUser,
+          plan: paymentFormData.plan,
+          expiresAt: expiresAtSeconds,
+        }),
+      })
+
+      if (!res.ok) {
+        const error = await res.json()
+        throw new Error(error.error || "Failed to mark paid")
+      }
+
+      toast.success("Marked as paid")
+      setShowMarkPaidDialog(false)
+      fetchUsers()
+    } catch (error) {
+      console.error("Error:", error)
+      toast.error(error instanceof Error ? error.message : "Failed to mark as paid")
+    }
+  }
+
+  async function extendPayment(userId: string) {
+    try {
+      const res = await fetch("/api/admin/payments/extend", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId, days: 30 }),
+      })
+      if (!res.ok) throw new Error("Failed to extend")
+      toast.success("Extended for 30 days")
+      setShowExtendDialog(false)
+      fetchUsers()
+    } catch (error) {
+      console.error("Error:", error)
+      toast.error("Failed to extend")
+    }
+  }
+
+  async function cancelPayment(userId: string) {
+    try {
+      const res = await fetch("/api/admin/users", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userId,
+          plan: "free",
+        }),
+      })
+      if (!res.ok) throw new Error("Failed to cancel")
+      toast.success("Payment cancelled")
+      setShowCancelDialog(false)
+      fetchUsers()
+    } catch (error) {
+      console.error("Error:", error)
+      toast.error("Failed to cancel")
+    }
+  }
+
+  const formatDate = (timestamp: number | null) => {
+    if (!timestamp) return "—"
+    return new Date(timestamp * 1000).toLocaleDateString()
   }
 
   const getPlanColor = (plan: string) => {
@@ -191,8 +293,6 @@ export default function AdminUsersPage() {
                   <SelectItem value="basic">Basic</SelectItem>
                   <SelectItem value="professional">Professional</SelectItem>
                   <SelectItem value="enterprise">Enterprise</SelectItem>
-                  <SelectItem value="pro">Pro</SelectItem>
-                  <SelectItem value="business">Business</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -262,6 +362,7 @@ export default function AdminUsersPage() {
                     <TableHead>Email</TableHead>
                     <TableHead>Name</TableHead>
                     <TableHead>Plan</TableHead>
+                    <TableHead>Expires</TableHead>
                     <TableHead>Created</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead className="w-[50px]"></TableHead>
@@ -277,6 +378,7 @@ export default function AdminUsersPage() {
                           {user.plan}
                         </Badge>
                       </TableCell>
+                      <TableCell>{formatDate(user.expiresAt)}</TableCell>
                       <TableCell>{formatDate(user.createdAt)}</TableCell>
                       <TableCell>
                         <Badge variant={user.disabled ? "destructive" : "outline"}>
@@ -291,7 +393,7 @@ export default function AdminUsersPage() {
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
-                            <Dialog open={showPlanDialog} onOpenChange={setShowPlanDialog}>
+                            <Dialog open={showPlanDialog && selectedUser === user.id} onOpenChange={setShowPlanDialog}>
                               <DialogTrigger asChild>
                                 <DropdownMenuItem
                                   onSelect={(e) => {
@@ -337,7 +439,115 @@ export default function AdminUsersPage() {
                               </DialogContent>
                             </Dialog>
 
-                            <AlertDialog open={showDisableDialog} onOpenChange={setShowDisableDialog}>
+                            <Dialog open={showMarkPaidDialog && selectedUser === user.id} onOpenChange={setShowMarkPaidDialog}>
+                              <DialogTrigger asChild>
+                                <DropdownMenuItem
+                                  onSelect={(e) => {
+                                    e.preventDefault()
+                                    openMarkPaidDialog(user)
+                                  }}
+                                >
+                                  Mark as Paid
+                                </DropdownMenuItem>
+                              </DialogTrigger>
+                              <DialogContent>
+                                <DialogHeader>
+                                  <DialogTitle>Mark as Paid</DialogTitle>
+                                </DialogHeader>
+                                <div className="space-y-4">
+                                  <div>
+                                    <Label htmlFor="plan">Plan</Label>
+                                    <Select value={paymentFormData.plan} onValueChange={(value) =>
+                                      setPaymentFormData({ ...paymentFormData, plan: value })
+                                    }>
+                                      <SelectTrigger>
+                                        <SelectValue />
+                                      </SelectTrigger>
+                                      <SelectContent>
+                                        <SelectItem value="basic">Basic</SelectItem>
+                                        <SelectItem value="professional">Professional</SelectItem>
+                                        <SelectItem value="enterprise">Enterprise</SelectItem>
+                                      </SelectContent>
+                                    </Select>
+                                  </div>
+                                  <div>
+                                    <Label htmlFor="expires">Expires At</Label>
+                                    <Input
+                                      id="expires"
+                                      type="date"
+                                      value={paymentFormData.expiresAt}
+                                      onChange={(e) =>
+                                        setPaymentFormData({ ...paymentFormData, expiresAt: e.target.value })
+                                      }
+                                    />
+                                  </div>
+                                  <div className="flex gap-2">
+                                    <Button onClick={markPaid}>Save</Button>
+                                    <Button
+                                      variant="outline"
+                                      onClick={() => setShowMarkPaidDialog(false)}
+                                    >
+                                      Cancel
+                                    </Button>
+                                  </div>
+                                </div>
+                              </DialogContent>
+                            </Dialog>
+
+                            <AlertDialog open={showExtendDialog && selectedUser === user.id} onOpenChange={setShowExtendDialog}>
+                              <DropdownMenuItem
+                                onSelect={(e) => {
+                                  e.preventDefault()
+                                  setSelectedUser(user.id)
+                                  setShowExtendDialog(true)
+                                }}
+                              >
+                                Extend 30 Days
+                              </DropdownMenuItem>
+                              <AlertDialogContent>
+                                <AlertDialogTitle>Extend Payment</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  Extend this subscription for 30 more days?
+                                </AlertDialogDescription>
+                                <div className="flex gap-2 justify-end">
+                                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                  <AlertDialogAction
+                                    onClick={() => extendPayment(user.id)}
+                                  >
+                                    Extend
+                                  </AlertDialogAction>
+                                </div>
+                              </AlertDialogContent>
+                            </AlertDialog>
+
+                            <AlertDialog open={showCancelDialog && selectedUser === user.id} onOpenChange={setShowCancelDialog}>
+                              <DropdownMenuItem
+                                onSelect={(e) => {
+                                  e.preventDefault()
+                                  setSelectedUser(user.id)
+                                  setShowCancelDialog(true)
+                                }}
+                              >
+                                Cancel Payment
+                              </DropdownMenuItem>
+                              <AlertDialogContent>
+                                <AlertDialogTitle>Cancel Payment</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  Cancel this subscription? The user will revert to free plan immediately.
+                                </AlertDialogDescription>
+                                <div className="flex gap-2 justify-end">
+                                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                  <AlertDialogAction
+                                    onClick={() => cancelPayment(user.id)}
+                                    className="bg-destructive hover:bg-destructive/90"
+                                  >
+                                    Cancel Payment
+                                  </AlertDialogAction>
+                                </div>
+                              </AlertDialogContent>
+                            </AlertDialog>
+
+                            <AlertDialog open={showDisableDialog && selectedUser === user.id} onOpenChange={setShowDisableDialog}>
                               <DropdownMenuItem
                                 onSelect={(e) => {
                                   e.preventDefault()
@@ -366,7 +576,7 @@ export default function AdminUsersPage() {
                               </AlertDialogContent>
                             </AlertDialog>
 
-                            <AlertDialog open={showResetDialog} onOpenChange={setShowResetDialog}>
+                            <AlertDialog open={showResetDialog && selectedUser === user.id} onOpenChange={setShowResetDialog}>
                               <DropdownMenuItem
                                 onSelect={(e) => {
                                   e.preventDefault()
