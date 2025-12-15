@@ -20,20 +20,8 @@ import { Mail, Loader2, CheckCircle } from 'lucide-react'
 import { toast } from "sonner"
 
 const feedbackFormSchema = z.object({
-  firstName: z.string().min(2, {
-    message: "First name must be at least 2 characters.",
-  }),
-  lastName: z.string().min(2, {
-    message: "Last name must be at least 2 characters.",
-  }),
-  email: z.string().email({
-    message: "Please enter a valid email address.",
-  }),
-  subject: z.string().min(5, {
-    message: "Subject must be at least 5 characters.",
-  }),
   message: z.string().min(10, {
-    message: "Message must be at least 10 characters.",
+    message: "Сообщение должно быть не менее 10 символов.",
   }),
 })
 
@@ -44,10 +32,6 @@ export default function FeedbackPage() {
   const form = useForm<z.infer<typeof feedbackFormSchema>>({
     resolver: zodResolver(feedbackFormSchema),
     defaultValues: {
-      firstName: "",
-      lastName: "",
-      email: "",
-      subject: "",
       message: "",
     },
   })
@@ -113,66 +97,12 @@ export default function FeedbackPage() {
           )}
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-              <div className="grid gap-4 sm:grid-cols-2">
-                <FormField
-                  control={form.control}
-                  name="firstName"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Имя</FormLabel>
-                      <FormControl>
-                        <Input placeholder="Иван" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="lastName"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Фамилия</FormLabel>
-                      <FormControl>
-                        <Input placeholder="Иванов" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-              <FormField
-                control={form.control}
-                name="email"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Email</FormLabel>
-                    <FormControl>
-                      <Input type="email" placeholder="ivan@example.com" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="subject"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Тема</FormLabel>
-                    <FormControl>
-                      <Input placeholder="Вопрос, предложение, баг-репорт..." {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
               <FormField
                 control={form.control}
                 name="message"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Сообщение</FormLabel>
+                    <FormLabel>Ваше сообщение</FormLabel>
                     <FormControl>
                       <Textarea
                         placeholder="Расскажите подробнее о вашем вопросе или предложении..."
