@@ -170,6 +170,17 @@ export async function GET(request: NextRequest) {
         paymentProvider: "yookassa",
       });
 
+      // Логируем платеж в таблицу истории платежей
+      const { PLAN_LIMITS } = await import("@/config/plan-limits");
+      const planPrice = PLAN_LIMITS[planId as "basic" | "professional" | "enterprise"]?.price || "0 ₽";
+
+      const { db } = await import("@/lib/db");
+      await db.execute(
+        `INSERT INTO payments (userId, plan, amount, provider, status, expiresAt, createdAt)
+         VALUES (?, ?, ?, 'yookassa', 'succeeded', ?, ?)`,
+        [session.user.id, planId, planPrice, expiresAt, now]
+      );
+
       console.log(
         `[YooKassa Confirm] Successfully confirmed payment for user ${session.user.id}, plan ${planId}, billing cycle: ${billingCycle}`
       );
