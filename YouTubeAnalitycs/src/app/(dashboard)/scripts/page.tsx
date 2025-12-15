@@ -135,54 +135,46 @@ export default async function ScriptsHistoryPage() {
                 </TableHeader>
                 <TableBody>
                   {scripts.map((script) => (
-                    <TableRow
-                      key={script.id}
-                      className="cursor-pointer hover:bg-muted/50"
-                    >
-                      <TableCell>
-                        <div className="space-y-1">
-                          <div className="font-medium line-clamp-2 max-w-[300px] truncate" title={script.title}>
-                            {script.title}
+                    <Link key={script.id} href={`/scripts/${script.id}`} className="contents">
+                      <TableRow className="cursor-pointer hover:bg-muted/50">
+                        <TableCell>
+                          <div className="space-y-1">
+                            <div className="font-medium line-clamp-2 max-w-[300px] truncate" title={script.title}>
+                              {script.title}
+                            </div>
+                            <div className="text-sm text-muted-foreground line-clamp-1 max-w-[300px] truncate" title={script.hook}>
+                              {script.hook}
+                            </div>
                           </div>
-                          <div className="text-sm text-muted-foreground line-clamp-1 max-w-[300px] truncate" title={script.hook}>
-                            {script.hook}
+                        </TableCell>
+                        <TableCell>
+                          <div className="space-y-1">
+                            <div className="font-medium">
+                              {formatDate(script.createdAt)}
+                            </div>
+                            <div className="text-xs text-muted-foreground">
+                              {format(new Date(script.createdAt * 1000), "dd MMMM yyyy", { locale: ru })}
+                            </div>
                           </div>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="space-y-1">
-                          <div className="font-medium">
-                            {formatDate(script.createdAt)}
+                        </TableCell>
+                        <TableCell>
+                          <div className="space-y-1">
+                            <div className="font-medium">
+                              <Badge variant="outline" className="gap-1">
+                                <Video className="h-3 w-3" />
+                                {script.sourceVideos.length}
+                              </Badge>
+                            </div>
+                            <div className="text-xs text-muted-foreground">
+                              исходных видео
+                            </div>
                           </div>
-                          <div className="text-xs text-muted-foreground">
-                            {format(new Date(script.createdAt * 1000), "dd MMMM yyyy", { locale: ru })}
-                          </div>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="space-y-1">
-                          <div className="font-medium">
-                            <Badge variant="outline" className="gap-1">
-                              <Video className="h-3 w-3" />
-                              {script.sourceVideos.length}
-                            </Badge>
-                          </div>
-                          <div className="text-xs text-muted-foreground">
-                            исходных видео
-                          </div>
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex justify-end gap-2">
-                          <Link href={`/scripts/${script.id}`}>
-                            <Button variant="outline" size="sm" className="gap-1">
-                              <Eye className="h-3 w-3" />
-                              Открыть
-                            </Button>
-                          </Link>
-                        </div>
-                      </TableCell>
-                    </TableRow>
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <Eye className="h-4 w-4 text-muted-foreground" />
+                        </TableCell>
+                      </TableRow>
+                    </Link>
                   ))}
                 </TableBody>
               </Table>
