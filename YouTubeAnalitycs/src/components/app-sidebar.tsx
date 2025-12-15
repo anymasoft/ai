@@ -20,6 +20,7 @@ import { ADMIN_EMAIL } from "@/lib/admin-config"
 
 import { NavMain } from "@/components/nav-main"
 import { NavUser } from "@/components/nav-user"
+import { AdminMessagesMenuButton } from "@/components/admin-messages-menu-button"
 import {
   Sidebar,
   SidebarContent,
@@ -134,34 +135,12 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           <NavMain key={group.label} label={group.label} items={group.items} />
         ))}
         {session?.user?.email === ADMIN_EMAIL && (
-          <NavMain
-            label="Администрирование"
-            items={[
-              {
-                title: "Панель",
-                url: "#",
-                icon: BarChart3,
-                items: [
-                  {
-                    title: "Пользователи",
-                    url: "/admin/users",
-                  },
-                  {
-                    title: "Использование",
-                    url: "/admin/limits",
-                  },
-                  {
-                    title: "Платежи",
-                    url: "/admin/payments",
-                  },
-                  {
-                    title: "Сообщения",
-                    url: "/admin/messages",
-                  },
-                ],
-              },
-            ]}
-          />
+          <div>
+            <div className="px-2 py-2 text-sm font-medium text-sidebar-foreground/70">Администрирование</div>
+            <SidebarMenu>
+              <AdminMessagesMenuButton />
+            </SidebarMenu>
+          </div>
         )}
       </SidebarContent>
       <SidebarFooter>
