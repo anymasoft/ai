@@ -24,6 +24,10 @@ interface Payment {
   provider: string
 }
 
+// Валидные планы (source of truth)
+const VALID_PLANS = ["free", "basic", "professional", "enterprise"]
+const PAID_PLANS = ["basic", "professional", "enterprise"]
+
 export default function AdminPaymentsPage() {
   const [payments, setPayments] = useState<Payment[]>([])
   const [loading, setLoading] = useState(true)
@@ -64,8 +68,12 @@ export default function AdminPaymentsPage() {
     setSelectedUser(payment.userId)
     const defaultExpires = new Date()
     defaultExpires.setDate(defaultExpires.getDate() + 30)
+
+    // Используем текущий план, если он платный, иначе basic
+    const planToUse = PAID_PLANS.includes(payment.plan) ? payment.plan : "basic"
+
     setFormData({
-      plan: payment.plan || "basic",
+      plan: planToUse,
       expiresAt: payment.expiresAt
         ? new Date(payment.expiresAt * 1000).toISOString().split("T")[0]
         : defaultExpires.toISOString().split("T")[0],
@@ -74,28 +82,39 @@ export default function AdminPaymentsPage() {
   }
 
   async function markPaid() {
+    if (!formData.plan) {
+      toast.error("Please select a plan")
+      return
+    }
     if (!formData.expiresAt) {
       toast.error("Please select expiration date")
       return
     }
 
     try {
+      const expiresAtSeconds = Math.floor(new Date(formData.expiresAt).getTime() / 1000)
+
       const res = await fetch("/api/admin/payments", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           userId: selectedUser,
           plan: formData.plan,
-          expiresAt: Math.floor(new Date(formData.expiresAt).getTime() / 1000),
+          expiresAt: expiresAtSeconds,
         }),
       })
-      if (!res.ok) throw new Error("Failed to mark paid")
+
+      if (!res.ok) {
+        const error = await res.json()
+        throw new Error(error.error || "Failed to mark paid")
+      }
+
       toast.success("Marked as paid")
       setShowMarkPaidDialog(false)
       fetchPayments()
     } catch (error) {
       console.error("Error:", error)
-      toast.error("Failed to mark as paid")
+      toast.error(error instanceof Error ? error.message : "Failed to mark as paid")
     }
   }
 
