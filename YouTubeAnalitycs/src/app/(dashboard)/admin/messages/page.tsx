@@ -85,8 +85,8 @@ export default function AdminMessagesPage() {
   const unreadCount = messages.filter((m) => !m.isRead).length
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto px-4">
-      <div className="flex items-center justify-between">
+    <div className="container mx-auto px-4">
+      <div className="flex items-center justify-between mb-8">
         <div>
           <h1 className="text-3xl font-bold">Сообщения обратной связи</h1>
           <p className="text-muted-foreground">
@@ -123,16 +123,16 @@ export default function AdminMessagesPage() {
               Сообщений нет
             </div>
           ) : (
-            <div className="overflow-x-auto -mx-6 px-6">
-              <Table className="w-full" style={{ tableLayout: 'fixed' }}>
+            <div className="rounded-md border">
+              <Table style={{ tableLayout: 'fixed' }}>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="w-[180px]">От кого</TableHead>
-                    <TableHead className="w-[150px]">Тема</TableHead>
+                    <TableHead>От кого</TableHead>
+                    <TableHead>Тема</TableHead>
                     <TableHead>Сообщение</TableHead>
-                    <TableHead className="w-[120px]">Дата</TableHead>
-                    <TableHead className="w-[80px]">Статус</TableHead>
-                    <TableHead className="w-[50px]"></TableHead>
+                    <TableHead>Дата</TableHead>
+                    <TableHead>Статус</TableHead>
+                    <TableHead></TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -143,18 +143,18 @@ export default function AdminMessagesPage() {
                       onClick={() => router.push(`/admin/messages/${message.id}`)}
                     >
                       <TableCell className="font-medium text-sm">
-                        <div className="truncate">{message.firstName} {message.lastName}</div>
-                        <div className="text-xs text-muted-foreground truncate" title={message.email}>
+                        <div className="truncate min-w-0">{message.firstName} {message.lastName}</div>
+                        <div className="text-xs text-muted-foreground truncate min-w-0" title={message.email}>
                           {message.email}
                         </div>
                       </TableCell>
-                      <TableCell className="text-sm font-medium truncate overflow-hidden text-ellipsis" title={message.subject}>
+                      <TableCell className="text-sm font-medium truncate overflow-hidden text-ellipsis min-w-0" title={message.subject}>
                         {message.subject}
                       </TableCell>
-                      <TableCell className="text-sm text-muted-foreground truncate overflow-hidden text-ellipsis">
+                      <TableCell className="text-sm text-muted-foreground truncate overflow-hidden text-ellipsis min-w-0">
                         {truncateMessage(message.message)}
                       </TableCell>
-                      <TableCell className="text-sm">
+                      <TableCell className="text-sm whitespace-nowrap">
                         {formatDate(message.createdAt)}
                       </TableCell>
                       <TableCell>
