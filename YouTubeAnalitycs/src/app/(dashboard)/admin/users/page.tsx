@@ -11,7 +11,6 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Loader2, MoreHorizontal, RefreshCcw, X } from "lucide-react"
 import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
 import { toast } from "sonner"
 
 interface User {
@@ -36,13 +35,8 @@ export default function AdminUsersPage() {
   const [showResetDialog, setShowResetDialog] = useState(false)
   const [showDisableDialog, setShowDisableDialog] = useState(false)
   const [disableAction, setDisableAction] = useState<"disable" | "enable">("disable")
-  const [showMarkPaidDialog, setShowMarkPaidDialog] = useState(false)
   const [showExtendDialog, setShowExtendDialog] = useState(false)
   const [showCancelDialog, setShowCancelDialog] = useState(false)
-  const [paymentFormData, setPaymentFormData] = useState({
-    plan: "basic",
-    expiresAt: "",
-  })
   const [filterEmail, setFilterEmail] = useState("")
   const [filterPlan, setFilterPlan] = useState("")
   const [filterStatus, setFilterStatus] = useState("")
@@ -118,59 +112,6 @@ export default function AdminUsersPage() {
     } catch (error) {
       console.error("Error:", error)
       toast.error("Failed to reset limits")
-    }
-  }
-
-  function openMarkPaidDialog(user: User) {
-    setSelectedUser(user.id)
-    const defaultExpires = new Date()
-    defaultExpires.setDate(defaultExpires.getDate() + 30)
-
-    const planToUse = PAID_PLANS.includes(user.plan) ? user.plan : "basic"
-
-    setPaymentFormData({
-      plan: planToUse,
-      expiresAt: user.expiresAt
-        ? new Date(user.expiresAt * 1000).toISOString().split("T")[0]
-        : defaultExpires.toISOString().split("T")[0],
-    })
-    setShowMarkPaidDialog(true)
-  }
-
-  async function markPaid() {
-    if (!paymentFormData.plan) {
-      toast.error("Please select a plan")
-      return
-    }
-    if (!paymentFormData.expiresAt) {
-      toast.error("Please select expiration date")
-      return
-    }
-
-    try {
-      const expiresAtSeconds = Math.floor(new Date(paymentFormData.expiresAt).getTime() / 1000)
-
-      const res = await fetch("/api/admin/payments", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          userId: selectedUser,
-          plan: paymentFormData.plan,
-          expiresAt: expiresAtSeconds,
-        }),
-      })
-
-      if (!res.ok) {
-        const error = await res.json()
-        throw new Error(error.error || "Failed to mark paid")
-      }
-
-      toast.success("Marked as paid")
-      setShowMarkPaidDialog(false)
-      fetchUsers()
-    } catch (error) {
-      console.error("Error:", error)
-      toast.error(error instanceof Error ? error.message : "Failed to mark as paid")
     }
   }
 
@@ -431,61 +372,6 @@ export default function AdminUsersPage() {
                                     <Button
                                       variant="outline"
                                       onClick={() => setShowPlanDialog(false)}
-                                    >
-                                      Cancel
-                                    </Button>
-                                  </div>
-                                </div>
-                              </DialogContent>
-                            </Dialog>
-
-                            <Dialog open={showMarkPaidDialog && selectedUser === user.id} onOpenChange={setShowMarkPaidDialog}>
-                              <DialogTrigger asChild>
-                                <DropdownMenuItem
-                                  onSelect={(e) => {
-                                    e.preventDefault()
-                                    openMarkPaidDialog(user)
-                                  }}
-                                >
-                                  Mark as Paid
-                                </DropdownMenuItem>
-                              </DialogTrigger>
-                              <DialogContent>
-                                <DialogHeader>
-                                  <DialogTitle>Mark as Paid</DialogTitle>
-                                </DialogHeader>
-                                <div className="space-y-4">
-                                  <div>
-                                    <Label htmlFor="plan">Plan</Label>
-                                    <Select value={paymentFormData.plan} onValueChange={(value) =>
-                                      setPaymentFormData({ ...paymentFormData, plan: value })
-                                    }>
-                                      <SelectTrigger>
-                                        <SelectValue />
-                                      </SelectTrigger>
-                                      <SelectContent>
-                                        <SelectItem value="basic">Basic</SelectItem>
-                                        <SelectItem value="professional">Professional</SelectItem>
-                                        <SelectItem value="enterprise">Enterprise</SelectItem>
-                                      </SelectContent>
-                                    </Select>
-                                  </div>
-                                  <div>
-                                    <Label htmlFor="expires">Expires At</Label>
-                                    <Input
-                                      id="expires"
-                                      type="date"
-                                      value={paymentFormData.expiresAt}
-                                      onChange={(e) =>
-                                        setPaymentFormData({ ...paymentFormData, expiresAt: e.target.value })
-                                      }
-                                    />
-                                  </div>
-                                  <div className="flex gap-2">
-                                    <Button onClick={markPaid}>Save</Button>
-                                    <Button
-                                      variant="outline"
-                                      onClick={() => setShowMarkPaidDialog(false)}
                                     >
                                       Cancel
                                     </Button>
