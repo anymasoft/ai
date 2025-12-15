@@ -83,11 +83,14 @@ export async function GET(request: NextRequest) {
     }
 
     if (fromDate !== null) {
+      // >= включает начало дня (00:00:00) - платежи с этого дня включаются
       query += ` AND p.createdAt >= ?`
       params.push(fromDate)
     }
 
     if (toDate !== null) {
+      // <= включает конец дня (23:59:59) - платежи до конца этого дня включаются
+      // parseLocalDateEnd() уже установит время на 23:59:59
       query += ` AND p.createdAt <= ?`
       params.push(toDate)
     }
