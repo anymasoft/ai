@@ -20,7 +20,7 @@ export default function ScriptViewPage() {
   const router = useRouter();
   const [script, setScript] = useState<ScriptWithVideos | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<{ message: string; statusCode?: number } | null>(null);
   const [copying, setCopying] = useState(false);
   const [copied, setCopied] = useState(false);
 
@@ -35,13 +35,19 @@ export default function ScriptViewPage() {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || "Failed to fetch script");
+        setError({
+          message: data.error || "Failed to fetch script",
+          statusCode: response.status,
+        });
+        return;
       }
 
       setScript(data);
     } catch (err) {
       console.error("Error fetching script:", err);
-      setError(err instanceof Error ? err.message : "Unknown error");
+      setError({
+        message: err instanceof Error ? err.message : "Unknown error",
+      });
     } finally {
       setLoading(false);
     }
@@ -97,32 +103,8 @@ export default function ScriptViewPage() {
     );
   }
 
-  if (error && !script) {
-    return (
-      <div className="container mx-auto px-4 md:px-6">
-        <div className="mb-6">
-          <h1 className="text-3xl font-bold">Просмотр сценария</h1>
-          <p className="text-muted-foreground">Ошибка загрузки сценария</p>
-        </div>
-        <Card>
-          <CardContent className="flex items-center justify-center h-64">
-            <div className="text-center">
-              <p className="text-red-600 mb-2">Ошибка загрузки сценария</p>
-              <p className="text-muted-foreground text-sm mb-4">{error}</p>
-              <div className="flex gap-2 justify-center">
-                <Button onClick={fetchScript}>Попробовать снова</Button>
-                <Link href="/scripts">
-                  <Button variant="outline">Назад к списку</Button>
-                </Link>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
-  if (!script) {
+  // Показываем 404 для неавторизованного доступа или когда сценарий не найден
+  if (error && !script && (error.statusCode === 401 || error.statusCode === 404)) {
     return (
       <div className="container mx-auto px-4 md:px-6">
         <div className="mb-6">
@@ -139,6 +121,32 @@ export default function ScriptViewPage() {
                   Назад к списку сценариев
                 </Button>
               </Link>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  // Показываем ошибку для других типов ошибок
+  if (error && !script) {
+    return (
+      <div className="container mx-auto px-4 md:px-6">
+        <div className="mb-6">
+          <h1 className="text-3xl font-bold">Ошибка загрузки сценария</h1>
+          <p className="text-muted-foreground">Произошла ошибка при загрузке сценария</p>
+        </div>
+        <Card>
+          <CardContent className="flex items-center justify-center h-64">
+            <div className="text-center">
+              <p className="text-red-600 mb-2">Ошибка загрузки сценария</p>
+              <p className="text-muted-foreground text-sm mb-4">{error.message}</p>
+              <div className="flex gap-2 justify-center">
+                <Button onClick={fetchScript}>Попробовать снова</Button>
+                <Link href="/scripts">
+                  <Button variant="outline">Назад к списку</Button>
+                </Link>
+              </div>
             </div>
           </CardContent>
         </Card>
