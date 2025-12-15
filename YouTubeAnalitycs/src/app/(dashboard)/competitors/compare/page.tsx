@@ -287,7 +287,7 @@ export default function ComparePage() {
               </Link>
             </div>
           ) : (
-            <div className="overflow-x-auto">
+            <div>
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -300,35 +300,10 @@ export default function ComparePage() {
                     </TableHead>
                     <TableHead
                       className="cursor-pointer hover:bg-muted/50"
-                      onClick={() => handleSort("viewsTotal")}
-                    >
-                      Всего просмотров {renderSortIcon("viewsTotal")}
-                    </TableHead>
-                    <TableHead
-                      className="cursor-pointer hover:bg-muted/50"
                       onClick={() => handleSort("videoCount")}
                     >
                       Видео {renderSortIcon("videoCount")}
                     </TableHead>
-                    <TableHead
-                      className="cursor-pointer hover:bg-muted/50"
-                      onClick={() => handleSort("avgViewsPerVideo")}
-                    >
-                      Среднее просмотров/видео {renderSortIcon("avgViewsPerVideo")}
-                    </TableHead>
-                    <TableHead
-                      className="cursor-pointer hover:bg-muted/50"
-                      onClick={() => handleSort("viewsPerDay")}
-                    >
-                      Просмотров/день {renderSortIcon("viewsPerDay")}
-                    </TableHead>
-                    <TableHead
-                      className="cursor-pointer hover:bg-muted/50"
-                      onClick={() => handleSort("growth7d")}
-                    >
-                      Рост за 7 дней {renderSortIcon("growth7d")}
-                    </TableHead>
-                    <TableHead>Последняя синхронизация</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -352,20 +327,7 @@ export default function ComparePage() {
                       <TableCell className="font-medium">
                         {formatNumber(competitor.subscribers)}
                       </TableCell>
-                      <TableCell>{formatNumber(competitor.viewsTotal)}</TableCell>
                       <TableCell>{formatNumber(competitor.videoCount)}</TableCell>
-                      <TableCell className="font-medium">
-                        {formatNumber(competitor.avgViewsPerVideo)}
-                      </TableCell>
-                      <TableCell className="font-medium">
-                        {formatViewsPerDay(competitor.viewsPerDay)}
-                      </TableCell>
-                      <TableCell className="font-medium">
-                        {formatGrowth7d(competitor.growth7d)}
-                      </TableCell>
-                      <TableCell className="text-sm text-muted-foreground">
-                        {formatDate(competitor.lastSyncedAt)}
-                      </TableCell>
                     </TableRow>
                   ))}
                 </TableBody>

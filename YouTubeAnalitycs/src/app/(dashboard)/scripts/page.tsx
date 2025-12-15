@@ -198,7 +198,7 @@ export default function ScriptsHistoryPage() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="w-[300px]">
+                    <TableHead>
                       <div className="flex items-center gap-2">
                         <FileText className="h-4 w-4" />
                         Сценарий
@@ -210,13 +210,6 @@ export default function ScriptsHistoryPage() {
                         Создан
                       </div>
                     </TableHead>
-                    <TableHead>
-                      <div className="flex items-center gap-2">
-                        <Video className="h-4 w-4" />
-                        Видео
-                      </div>
-                    </TableHead>
-                    <TableHead className="text-right">Действия</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -228,10 +221,10 @@ export default function ScriptsHistoryPage() {
                     >
                       <TableCell>
                         <div className="space-y-1">
-                          <div className="font-medium line-clamp-2 max-w-[300px] truncate" title={script.title}>
+                          <div className="font-medium" title={script.title}>
                             {script.title}
                           </div>
-                          <div className="text-sm text-muted-foreground line-clamp-1 max-w-[300px] truncate" title={script.hook}>
+                          <div className="text-sm text-muted-foreground line-clamp-1" title={script.hook}>
                             {script.hook}
                           </div>
                         </div>
@@ -244,50 +237,6 @@ export default function ScriptsHistoryPage() {
                           <div className="text-xs text-muted-foreground">
                             {format(new Date(script.createdAt * 1000), "dd MMMM yyyy", { locale: ru })}
                           </div>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="space-y-1">
-                          <div className="font-medium">
-                            <Badge variant="outline" className="gap-1">
-                              <Video className="h-3 w-3" />
-                              {script.sourceVideos.length}
-                            </Badge>
-                          </div>
-                          <div className="text-xs text-muted-foreground">
-                            исходных видео
-                          </div>
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
-                        <div className="flex justify-end gap-2">
-                          <Link href={`/scripts/${script.id}`}>
-                            <Button variant="outline" size="sm" className="gap-1">
-                              <Eye className="h-3 w-3" />
-                              Открыть
-                            </Button>
-                          </Link>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="gap-1"
-                            onClick={() => handleCopyScript(script)}
-                            disabled={copyingId === script.id}
-                          >
-                            {copyingId === script.id ? (
-                              <Loader2 className="h-3 w-3 animate-spin" />
-                            ) : copiedId === script.id ? (
-                              <>
-                                <CheckCircle className="h-3 w-3" />
-                                Скопировано!
-                              </>
-                            ) : (
-                              <>
-                                <Copy className="h-3 w-3" />
-                                Копировать
-                              </>
-                            )}
-                          </Button>
                         </div>
                       </TableCell>
                     </TableRow>
