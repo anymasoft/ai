@@ -64,7 +64,7 @@ export default function FeedbackPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 max-w-2xl mx-auto px-4">
       <div className="text-center">
         <h1 className="text-3xl font-bold tracking-tight">Feedback</h1>
         <p className="text-muted-foreground mt-2">
@@ -72,8 +72,8 @@ export default function FeedbackPage() {
         </p>
       </div>
 
-      <div className="flex justify-center">
-        <Card className="max-w-2xl">
+      <div>
+        <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Mail className="h-5 w-5" />

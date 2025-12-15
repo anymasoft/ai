@@ -109,11 +109,7 @@ export default function MessageDetailPage() {
         <CardHeader>
           <div className="flex items-start justify-between gap-4">
             <div>
-              <CardTitle className="flex items-center gap-2 text-2xl">
-                <Mail className="h-6 w-6" />
-                {message.subject}
-              </CardTitle>
-              <CardDescription className="mt-2 text-base">
+              <CardDescription className="text-base">
                 От: <span className="font-medium text-foreground">{message.firstName} {message.lastName}</span>
               </CardDescription>
               <CardDescription className="text-base">
