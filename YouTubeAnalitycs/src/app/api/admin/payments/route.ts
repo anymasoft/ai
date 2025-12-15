@@ -24,17 +24,20 @@ export async function GET(request: NextRequest) {
     const fromDate = searchParams.get("from") ? Math.floor(new Date(searchParams.get("from")!).getTime() / 1000) : null
     const toDate = searchParams.get("to") ? Math.floor(new Date(searchParams.get("to")!).getTime() / 1000) : null
 
-    // Get only real YooKassa payments
+    // Get only real YooKassa payments from payments table
     let query = `
       SELECT
-        u.id as userId,
+        p.id,
+        p.userId,
         u.email,
-        u.plan,
-        u.expiresAt,
-        u.updatedAt,
-        u.paymentProvider
-      FROM users u
-      WHERE u.paymentProvider = 'yookassa' AND u.plan != 'free'
+        p.plan,
+        p.amount,
+        p.expiresAt,
+        p.provider,
+        p.createdAt
+      FROM payments p
+      JOIN users u ON p.userId = u.id
+      WHERE p.provider = 'yookassa'
     `
 
     const params: any[] = []
@@ -45,16 +48,16 @@ export async function GET(request: NextRequest) {
     }
 
     if (fromDate) {
-      query += ` AND u.updatedAt >= ?`
+      query += ` AND p.createdAt >= ?`
       params.push(fromDate)
     }
 
     if (toDate) {
-      query += ` AND u.updatedAt <= ?`
+      query += ` AND p.createdAt <= ?`
       params.push(toDate)
     }
 
-    query += ` ORDER BY u.updatedAt DESC LIMIT 500`
+    query += ` ORDER BY p.createdAt DESC LIMIT 500`
 
     const result = params.length > 0
       ? await db.execute({ sql: query, args: params })
@@ -62,16 +65,15 @@ export async function GET(request: NextRequest) {
 
     const rows = Array.isArray(result) ? result : result.rows || []
 
-    const { PLAN_LIMITS } = await import("@/config/plan-limits")
-
     const payments = rows.map((row: any) => ({
+      id: row.id,
       userId: row.userId,
       email: row.email,
       plan: row.plan,
       expiresAt: row.expiresAt,
-      provider: row.paymentProvider,
-      price: PLAN_LIMITS[row.plan as keyof typeof PLAN_LIMITS]?.price || "—",
-      updatedAt: row.updatedAt,
+      provider: row.provider,
+      price: row.amount,
+      createdAt: row.createdAt,
     }))
 
     // Calculate total sum

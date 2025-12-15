@@ -576,6 +576,25 @@ async function getClient() {
         await addColumnIfNotExists(_client, 'user_channel_content_state', 'lastShownAt', 'INTEGER');
 
         // ============ ADMIN PANEL TABLES ============
+        // Таблица истории платежей (каждый платеж - отдельная запись)
+        await _client.execute(`CREATE TABLE IF NOT EXISTS payments (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          userId TEXT NOT NULL,
+          plan TEXT NOT NULL,
+          amount TEXT NOT NULL,
+          provider TEXT NOT NULL,
+          status TEXT DEFAULT 'succeeded',
+          expiresAt INTEGER,
+          createdAt INTEGER NOT NULL,
+          FOREIGN KEY (userId) REFERENCES users(id) ON DELETE CASCADE
+        );`);
+
+        await _client.execute(`CREATE INDEX IF NOT EXISTS idx_payments_userId_createdAt
+          ON payments(userId, createdAt DESC);`);
+
+        await _client.execute(`CREATE INDEX IF NOT EXISTS idx_payments_createdAt
+          ON payments(createdAt DESC);`);
+
         // Таблица для переопределения подписок (ручное управление платежами)
         await _client.execute(`CREATE TABLE IF NOT EXISTS admin_subscriptions (
           userId TEXT PRIMARY KEY,

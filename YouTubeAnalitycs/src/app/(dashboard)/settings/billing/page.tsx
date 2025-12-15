@@ -240,7 +240,7 @@ export default function BillingSettings() {
           monthlyLimit={scriptUsage?.monthlyLimit || 0}
           percentageUsed={scriptUsage?.percentageUsed || 0}
         />
-        <BillingHistoryCard isEmpty={true} />
+        <BillingHistoryCard />
       </div>
 
       {/* Информация о бесплатном доступе */}

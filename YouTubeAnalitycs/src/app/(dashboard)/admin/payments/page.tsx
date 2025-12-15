@@ -10,13 +10,14 @@ import { Loader2, RefreshCcw, X } from "lucide-react"
 import { toast } from "sonner"
 
 interface Payment {
+  id: number
   userId: string
   email: string
   plan: string
   expiresAt: number | null
   provider: string
   price: string
-  updatedAt: number
+  createdAt: number
 }
 
 export default function AdminPaymentsPage() {
@@ -28,6 +29,7 @@ export default function AdminPaymentsPage() {
   const [pageSize, setPageSize] = useState(20)
   const [currentPage, setCurrentPage] = useState(1)
   const [totalSum, setTotalSum] = useState(0)
+  const [deletingId, setDeletingId] = useState<number | null>(null)
 
   useEffect(() => {
     fetchPayments()
@@ -61,6 +63,24 @@ export default function AdminPaymentsPage() {
 
   const formatPrice = (price: string) => {
     return price.replace(/\s/g, " ")
+  }
+
+  async function deletePayment(paymentId: number) {
+    try {
+      setDeletingId(paymentId)
+      const res = await fetch(`/api/admin/payments/${paymentId}`, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+      })
+      if (!res.ok) throw new Error("Failed to delete payment")
+      toast.success("Payment deleted")
+      fetchPayments()
+    } catch (error) {
+      console.error("Error:", error)
+      toast.error("Failed to delete payment")
+    } finally {
+      setDeletingId(null)
+    }
   }
 
   // Фильтруем платежи по датам (если нужно дополнительная фильтрация на фронте)
@@ -165,18 +185,30 @@ export default function AdminPaymentsPage() {
                     <TableHead>Price</TableHead>
                     <TableHead>Expires</TableHead>
                     <TableHead>Paid Date</TableHead>
+                    <TableHead className="w-[50px]"></TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {paginatedPayments.map((payment) => (
-                    <TableRow key={payment.userId}>
+                    <TableRow key={payment.id}>
                       <TableCell className="font-mono text-sm">{payment.email}</TableCell>
                       <TableCell>
                         <Badge variant="outline">{payment.plan}</Badge>
                       </TableCell>
                       <TableCell className="font-medium">{formatPrice(payment.price)}</TableCell>
                       <TableCell>{formatDate(payment.expiresAt)}</TableCell>
-                      <TableCell>{formatDate(payment.updatedAt)}</TableCell>
+                      <TableCell>{formatDate(payment.createdAt)}</TableCell>
+                      <TableCell>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => deletePayment(payment.id)}
+                          disabled={deletingId === payment.id}
+                          className="text-destructive hover:text-destructive"
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
