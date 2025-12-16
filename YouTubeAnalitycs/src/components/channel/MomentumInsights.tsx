@@ -113,7 +113,7 @@ export function MomentumInsights({
     return (
       <AnalysisLoadingState
         title="Анализирование momentum..."
-        subtitle="This may take 15-25 seconds"
+        subtitle="Это может занять 15-25 секунд"
       />
     );
   }
@@ -125,24 +125,24 @@ export function MomentumInsights({
           {!hasRequiredData ? (
             <>
               <p className="text-muted-foreground mb-2 text-center">
-                Sync Top Videos first
+                Сначала синхронизируйте Топ видео
               </p>
               <p className="text-sm text-muted-foreground mb-4 text-center">
-                Click 'Sync Top Videos' above to load data.
+                Нажмите «Синхронизировать Топ видео» выше, чтобы загрузить данные.
               </p>
               <Button variant="default" onClick={handleGenerate} className="gap-2 cursor-pointer" disabled title="Sync Top Videos first">
                 <Flame className="h-4 w-4" />
-                Generate Momentum Analysis
+                Создать анализ Momentum
               </Button>
             </>
           ) : (
             <>
               <p className="text-muted-foreground mb-4">
-                Momentum analysis will show which topics and formats are trending right now.
+                Анализ Momentum покажет, какие темы и форматы растут прямо сейчас.
               </p>
               <Button variant="default" onClick={handleGenerate} className="gap-2 cursor-pointer">
                 <Flame className="h-4 w-4" />
-                Generate Momentum Analysis
+                Создать анализ Momentum
               </Button>
             </>
           )}
@@ -160,10 +160,10 @@ export function MomentumInsights({
         <div>
           <h2 className="text-2xl font-bold flex items-center gap-2">
             <Flame className="h-6 w-6 text-orange-600 dark:text-orange-400" />
-            Momentum Insights
+            Инсайты Momentum
           </h2>
           <p className="text-sm text-muted-foreground mt-1">
-            What's growing right now
+            Что растёт прямо сейчас
           </p>
         </div>
         <Tooltip>
@@ -179,8 +179,8 @@ export function MomentumInsights({
         </TooltipTrigger>
         <TooltipContent>
           {isCooldownActive && getCooldownTimeRemaining()
-            ? `Available in ${getCooldownTimeRemaining()!.hours}h ${getCooldownTimeRemaining()!.minutes}m`
-            : "Refresh Analysis"}
+            ? `Доступно через ${getCooldownTimeRemaining()!.hours}ч ${getCooldownTimeRemaining()!.minutes}м`
+            : "Обновить анализ"}
         </TooltipContent>
       </Tooltip>
       </div>
@@ -189,19 +189,19 @@ export function MomentumInsights({
       <div className="grid grid-cols-4 gap-4">
         <div className="bg-muted/50 rounded-lg p-4">
           <div className="text-2xl font-bold">{data.stats.totalAnalyzed}</div>
-          <div className="text-xs text-muted-foreground">Analyzed</div>
+          <div className="text-xs text-muted-foreground">Проанализировано</div>
         </div>
         <div className="bg-orange-500/10 rounded-lg p-4">
           <div className="text-2xl font-bold text-orange-600 dark:text-orange-400">{data.stats.highMomentum}</div>
-          <div className="text-xs text-muted-foreground">High Momentum</div>
+          <div className="text-xs text-muted-foreground">Высокий Momentum</div>
         </div>
         <div className="bg-blue-500/10 rounded-lg p-4">
           <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">{data.stats.rising}</div>
-          <div className="text-xs text-muted-foreground">Rising</div>
+          <div className="text-xs text-muted-foreground">Растущие</div>
         </div>
         <div className="bg-muted/50 rounded-lg p-4">
           <div className="text-2xl font-bold">{formatNumber(data.stats.medianViewsPerDay)}</div>
-          <div className="text-xs text-muted-foreground">Median views/day</div>
+          <div className="text-xs text-muted-foreground">Медиана просмотров/день</div>
         </div>
       </div>
 
@@ -210,7 +210,7 @@ export function MomentumInsights({
         <CardHeader>
           <CardTitle className="text-lg flex items-center gap-2">
             <Zap className="h-5 w-5 text-orange-600 dark:text-orange-400" />
-            Why these topics are growing
+            Почему эти темы растут
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -225,7 +225,7 @@ export function MomentumInsights({
           <CardHeader>
             <CardTitle className="text-lg flex items-center gap-2">
               <Flame className="h-5 w-5 text-red-600 dark:text-red-400" />
-              Hot Themes
+              Горячие темы
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -245,7 +245,7 @@ export function MomentumInsights({
           <CardHeader>
             <CardTitle className="text-lg flex items-center gap-2">
               <TrendingUp className="h-5 w-5 text-green-600 dark:text-green-400" />
-              Trending Formats
+              Трендовые форматы
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -265,7 +265,7 @@ export function MomentumInsights({
           <CardHeader>
             <CardTitle className="text-lg flex items-center gap-2">
               <Lightbulb className="h-5 w-5 text-yellow-600 dark:text-yellow-400" />
-              Content Ideas
+              Идеи контента
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -284,9 +284,9 @@ export function MomentumInsights({
       {/* High Momentum Videos */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg">🚀 High Momentum Videos</CardTitle>
+          <CardTitle className="text-lg">🚀 Видео с высоким Momentum</CardTitle>
           <CardDescription>
-            Videos with views 50%+ above median
+            Видео с просмотрами на 50%+ выше медианы
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -325,7 +325,7 @@ export function MomentumInsights({
 
       {data.generatedAt && (
         <p className="text-xs text-muted-foreground text-center">
-          Analysis generated: {new Date(data.generatedAt).toLocaleString("en-US")}
+          Анализ создан: {new Date(data.generatedAt).toLocaleString("ru-RU")}
         </p>
       )}
     </CardContent>
