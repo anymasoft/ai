@@ -29,25 +29,99 @@ interface YooKassaWebhookEvent {
 }
 
 /**
- * Проверяет подпись webhook от ЮKassa
- * Использует HTTP Digest Authentication
+ * Распаршивает заголовок HTTP Digest Authentication
+ */
+function parseDigestAuth(authHeader: string): Record<string, string> | null {
+  const digestMatch = authHeader.match(/Digest\s+(.+)/i);
+  if (!digestMatch) return null;
+
+  const params: Record<string, string> = {};
+  const paramStr = digestMatch[1];
+  const paramRegex = /(\w+)=(?:"([^"]*)"|([^\s,]*))/g;
+  let match;
+
+  while ((match = paramRegex.exec(paramStr)) !== null) {
+    params[match[1]] = match[2] || match[3];
+  }
+
+  return params;
+}
+
+/**
+ * Проверяет подпись webhook от ЮKassa через HTTP Digest Authentication
+ * Алгоритм:
+ * 1. Вычисляем HA1 = MD5(username:realm:password)
+ * 2. Вычисляем HA2 = MD5(method:uri)
+ * 3. Вычисляем response = MD5(HA1:nonce:HA2)
+ * 4. Сравниваем с полученной подписью
  */
 function verifyYooKassaWebhook(
   body: string,
-  authHeader: string | null
+  authHeader: string | null,
+  method: string,
+  uri: string
 ): boolean {
-  const yooKassaApiKey = process.env.YOOKASSA_API_KEY;
-  if (!yooKassaApiKey || !authHeader) return false;
+  const yooKassaShopId = process.env.YOOKASSA_SHOP_ID;
+  const yooKassaSecretKey = process.env.YOOKASSA_SECRET_KEY;
 
-  // ЮKassa использует HTTP Digest Authentication
-  // Формат: username:password (base64)
-  // Мы проверяем по API ключу
+  if (!yooKassaShopId || !yooKassaSecretKey || !authHeader) {
+    console.error("[YooKassa Webhook] Missing credentials or auth header");
+    return false;
+  }
+
   try {
-    // Для простоты используем простую проверку по ключу
-    // В продакшене рекомендуется более строгая верификация
+    // Парсим заголовок Digest Authentication
+    const digestParams = parseDigestAuth(authHeader);
+    if (!digestParams) {
+      console.error("[YooKassa Webhook] Invalid Digest format");
+      return false;
+    }
+
+    const { username, realm, nonce, response: clientResponse, algorithm } = digestParams;
+
+    // Проверяем, что это правильный username
+    if (username !== yooKassaShopId) {
+      console.warn(`[YooKassa Webhook] Username mismatch: expected ${yooKassaShopId}, got ${username}`);
+      return false;
+    }
+
+    // Используем алгоритм MD5 (стандартный для ЮKassa)
+    const algo = algorithm?.toUpperCase() || "MD5";
+    if (algo !== "MD5") {
+      console.warn(`[YooKassa Webhook] Unsupported algorithm: ${algo}`);
+      return false;
+    }
+
+    // Вычисляем HA1 = MD5(username:realm:password)
+    const ha1 = crypto
+      .createHash("md5")
+      .update(`${username}:${realm}:${yooKassaSecretKey}`)
+      .digest("hex");
+
+    // Вычисляем HA2 = MD5(method:uri)
+    const ha2 = crypto
+      .createHash("md5")
+      .update(`${method}:${uri}`)
+      .digest("hex");
+
+    // Вычисляем ожидаемый response = MD5(HA1:nonce:HA2)
+    const expectedResponse = crypto
+      .createHash("md5")
+      .update(`${ha1}:${nonce}:${ha2}`)
+      .digest("hex");
+
+    // Сравниваем подписи
+    if (clientResponse !== expectedResponse) {
+      console.warn(
+        `[YooKassa Webhook] Signature mismatch: expected ${expectedResponse}, got ${clientResponse}`
+      );
+      return false;
+    }
+
+    console.log("[YooKassa Webhook] Signature verified successfully");
     return true;
   } catch (error) {
-    console.error("[YooKassa Webhook] Verification failed:", error);
+    console.error("[YooKassa Webhook] Verification error:", error);
     return false;
   }
 }
@@ -57,12 +131,17 @@ export async function POST(request: NextRequest) {
     // Получаем тело запроса
     const body = await request.text();
 
-    // Проверяем подпись (в упрощённом виде для MVP)
+    // Проверяем подпись через HTTP Digest Authentication
     const authHeader = request.headers.get("authorization");
-    if (!verifyYooKassaWebhook(body, authHeader)) {
-      console.warn("[YooKassa Webhook] Invalid signature");
-      // Всё равно возвращаем 200 OK, чтобы ЮKassa не пытался переотправить
-      return NextResponse.json({ success: true });
+    const method = request.method;
+    const uri = new URL(request.url).pathname;
+
+    if (!verifyYooKassaWebhook(body, authHeader, method, uri)) {
+      console.error("[YooKassa Webhook] Invalid signature - rejecting webhook");
+      return NextResponse.json(
+        { error: "Invalid signature" },
+        { status: 401 }
+      );
     }
 
     const event = JSON.parse(body) as YooKassaWebhookEvent;
