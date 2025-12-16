@@ -615,8 +615,8 @@ export default function TrendingPage() {
 
       {/* Баннер успеха */}
       {savedScript && (
-        <div className="mb-6 p-3 bg-green-50 border border-green-200 rounded-md flex items-center gap-2">
-          <span className="text-green-800 text-sm">Сценарий создан. Нажмите «Открыть сценарий».</span>
+        <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-md">
+          <span className="text-green-800 text-sm">Сценарий успешно создан</span>
         </div>
       )}
 
