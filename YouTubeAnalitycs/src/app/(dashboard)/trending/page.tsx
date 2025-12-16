@@ -613,6 +613,13 @@ export default function TrendingPage() {
         </p>
       </div>
 
+      {/* Баннер успеха */}
+      {savedScript && (
+        <div className="mb-6 p-3 bg-green-50 border border-green-200 rounded-md flex items-center gap-2">
+          <span className="text-green-800 text-sm">✅ Сценарий создан. Нажмите «Открыть сценарий».</span>
+        </div>
+      )}
+
       {/* Блок генерации сценария */}
       <Card className="mb-8">
         <CardHeader>
@@ -774,6 +781,73 @@ export default function TrendingPage() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Отображение сохранённого сценария */}
+      {savedScript && (
+        <div className="mb-8">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-xl font-bold">
+              Сценарий успешно создан и сохранён!
+            </h3>
+            <Link href={`/scripts/${savedScript.id}`}>
+              <Button className="gap-2">
+                <FileText className="h-4 w-4" />
+                Открыть сценарий
+                <ArrowRight className="h-4 w-4" />
+              </Button>
+            </Link>
+          </div>
+          <Card className="border border-green-200 bg-green-50/50">
+            <CardHeader>
+              <CardTitle className="text-lg">{savedScript.title}</CardTitle>
+              <CardDescription className="text-sm text-gray-600">
+                {savedScript.hook}
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex items-center gap-4 text-sm">
+                <Badge variant="outline" className="gap-1">
+                  <FileText className="h-3 w-3" />
+                  ID: {savedScript.id.substring(0, 8)}...
+                </Badge>
+                <Badge variant="outline" className="gap-1">
+                  <Calendar className="h-3 w-3" />
+                  Создан:{" "}
+                  {new Date(savedScript.createdAt * 1000).toLocaleDateString(
+                    "ru-RU"
+                  )}
+                </Badge>
+                <Badge variant="outline" className="gap-1">
+                  <Video className="h-3 w-3" />
+                  Видео: {savedScript.sourceVideos.length}
+                </Badge>
+              </div>
+              <div>
+                <h4 className="font-medium mb-2">Структура сценария:</h4>
+                <ul className="list-disc pl-5 space-y-1">
+                  {savedScript.outline.slice(0, 3).map((item, i) => (
+                    <li key={i} className="text-sm">
+                      {item}
+                    </li>
+                  ))}
+                  {savedScript.outline.length > 3 && (
+                    <li className="text-sm text-muted-foreground">
+                      ... и ещё {savedScript.outline.length - 3} пунктов
+                    </li>
+                  )}
+                </ul>
+              </div>
+              <div className="text-sm text-muted-foreground">
+                <p>
+                  Сценарий сохранён в вашу историю. Вы можете открыть его для
+                  просмотра полного текста, копирования или создания новых
+                  сценариев.
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
 
       {/* Отображение сгенерированных сценариев сразу после генерации */}
       {generatedScripts && generatedScripts.length > 0 && !savedScript && (
@@ -1229,73 +1303,6 @@ export default function TrendingPage() {
             Ошибка генерации сценариев:
           </p>
           <p className="text-red-600 text-sm mt-1">{generationError}</p>
-        </div>
-      )}
-
-      {/* Отображение сохранённого сценария */}
-      {savedScript && (
-        <div className="mt-8">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-xl font-bold">
-              Сценарий успешно создан и сохранён!
-            </h3>
-            <Link href={`/scripts/${savedScript.id}`}>
-              <Button className="gap-2">
-                <FileText className="h-4 w-4" />
-                Открыть сценарий
-                <ArrowRight className="h-4 w-4" />
-              </Button>
-            </Link>
-          </div>
-          <Card className="border border-green-200 bg-green-50/50">
-            <CardHeader>
-              <CardTitle className="text-lg">{savedScript.title}</CardTitle>
-              <CardDescription className="text-sm text-gray-600">
-                {savedScript.hook}
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex items-center gap-4 text-sm">
-                <Badge variant="outline" className="gap-1">
-                  <FileText className="h-3 w-3" />
-                  ID: {savedScript.id.substring(0, 8)}...
-                </Badge>
-                <Badge variant="outline" className="gap-1">
-                  <Calendar className="h-3 w-3" />
-                  Создан:{" "}
-                  {new Date(savedScript.createdAt * 1000).toLocaleDateString(
-                    "ru-RU"
-                  )}
-                </Badge>
-                <Badge variant="outline" className="gap-1">
-                  <Video className="h-3 w-3" />
-                  Видео: {savedScript.sourceVideos.length}
-                </Badge>
-              </div>
-              <div>
-                <h4 className="font-medium mb-2">Структура сценария:</h4>
-                <ul className="list-disc pl-5 space-y-1">
-                  {savedScript.outline.slice(0, 3).map((item, i) => (
-                    <li key={i} className="text-sm">
-                      {item}
-                    </li>
-                  ))}
-                  {savedScript.outline.length > 3 && (
-                    <li className="text-sm text-muted-foreground">
-                      ... и ещё {savedScript.outline.length - 3} пунктов
-                    </li>
-                  )}
-                </ul>
-              </div>
-              <div className="text-sm text-muted-foreground">
-                <p>
-                  Сценарий сохранён в вашу историю. Вы можете открыть его для
-                  просмотра полного текста, копирования или создания новых
-                  сценариев.
-                </p>
-              </div>
-            </CardContent>
-          </Card>
         </div>
       )}
 
