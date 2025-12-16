@@ -71,6 +71,7 @@ export async function updateUserPlan({
 
 /**
  * Получает информацию о пользователе из БД для проверки подписки
+ * ВКЛЮЧАЕТ проверку истечения: если expiresAt < now, возвращает plan="free"
  */
 export async function getUserPaymentInfo(userId: string): Promise<{
   plan: string;
@@ -86,9 +87,22 @@ export async function getUserPaymentInfo(userId: string): Promise<{
     if (rows.length === 0) return null;
 
     const user = rows[0];
+    const now = Math.floor(Date.now() / 1000);
+    let plan = user.plan || "free";
+    let expiresAt = user.expiresAt || null;
+
+    // АВТОМАТИЧЕСКИЙ DOWNGRADE: если подписка истекла
+    if (expiresAt && expiresAt < now && plan !== "free") {
+      console.log(
+        `[Payments] Auto-downgrading user ${userId} from ${plan} to free (expired at ${expiresAt})`
+      );
+      plan = "free";
+      expiresAt = null;
+    }
+
     return {
-      plan: user.plan || "free",
-      expiresAt: user.expiresAt || null,
+      plan,
+      expiresAt,
       paymentProvider: user.paymentProvider || "free",
     };
   } catch (error) {

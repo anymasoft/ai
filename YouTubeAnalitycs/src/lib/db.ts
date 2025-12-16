@@ -596,7 +596,7 @@ async function getClient() {
         await _client.execute(`CREATE INDEX IF NOT EXISTS idx_payments_createdAt
           ON payments(createdAt DESC);`);
 
-        await _client.execute(`CREATE INDEX IF NOT EXISTS idx_payments_externalPaymentId
+        await _client.execute(`CREATE UNIQUE INDEX IF NOT EXISTS idx_payments_externalPaymentId
           ON payments(externalPaymentId);`);
 
         // Миграция: добавляем колонку externalPaymentId для отслеживания платежей YooKassa
