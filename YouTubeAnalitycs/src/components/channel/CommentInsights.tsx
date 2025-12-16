@@ -120,7 +120,7 @@ export function CommentInsights({
     );
   }
 
-  if (!data) {
+  if (!data || !data.stats) {
     return (
       <CardContent className="space-y-4 pt-6">
         <div className="flex flex-col items-center justify-center py-12">
