@@ -74,8 +74,8 @@ export const authOptions: NextAuthOptions = {
             token.expiresAt = paymentInfo.expiresAt;
 
             // АВТОМАТИЧЕСКИЙ DOWNGRADE В БД: если план стал 'free' (истекла подписка)
-            // и в БД у пользователя ещё стоит платный план
-            if (paymentInfo.plan === "free" && user?.plan !== "free") {
+            // Проверяем: был платный (token.plan !== "free"), стал бесплатный (paymentInfo.plan === "free")
+            if (paymentInfo.plan === "free" && token.plan !== "free") {
               console.log(
                 `[AUTH jwt] Auto-downgrading user ${token.sub} to free in DB (subscription expired)`
               );
