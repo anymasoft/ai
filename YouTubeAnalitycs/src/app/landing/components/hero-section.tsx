@@ -29,25 +29,24 @@ export function HeroSection() {
 
           {/* Main Headline */}
           <h1 className="mb-6 text-4xl font-bold tracking-tight sm:text-6xl lg:text-7xl">
-            AI-сценарист для YouTube: анализирует конкурентов и
-            <span className="bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
-              {" "}
-              подсказывает, что снимать дальше{" "}
-            </span>
+            AI-сценарист для YouTube: получи топовый сценарий одним нажатием кнопки
           </h1>
 
           {/* Subheading */}
           <p className="mx-auto mb-10 max-w-2xl text-lg text-muted-foreground sm:text-xl">
-            Добавьте конкурентов → сервис сам соберёт данные,
-            выявит успешные паттерны и выдаст готовые сценарные идеи, основанные
-            на том, что работает в вашей нише прямо сейчас.
+            Мы автоматизируем самый сложный этап YouTube-заработка — превращение трендов и успешных видео конкурентов в готовые сценарии, которые удерживают внимание и проходят монетизацию.
+          </p>
+
+          {/* Additional descriptive line */}
+          <p className="mx-auto mb-10 max-w-2xl text-base text-muted-foreground">
+            Без догадок. Без «а вдруг зайдёт». Только то, что уже работает в вашей нише.
           </p>
 
           {/* CTA Buttons */}
           <div className="flex flex-col gap-4 sm:flex-row sm:justify-center">
             <Button size="lg" className="text-base cursor-pointer" asChild>
               <Link href="/sign-in">
-                Войти
+                Сгенерировать сценарий бесплатно
                 <ArrowRight className="ml-2 h-4 w-4" />
               </Link>
             </Button>
