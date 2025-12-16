@@ -4,14 +4,14 @@ import { verifyAdminAccess } from "@/lib/admin-api"
 import { db } from "@/lib/db"
 import { updateUserPlan } from "@/lib/payments"
 
-// Валидные тарифные планы (ТОЛЬКО из PLAN_LIMITS)
-const VALID_PLANS = ["basic", "professional", "enterprise"]
+// Валидные тарифные планы (ТОЛЬКО из PLAN_LIMITS + free)
+const VALID_PLANS = ["basic", "professional", "enterprise", "free"]
 
 // Схема валидации для PATCH запроса
 const updatePaymentSchema = z.object({
   userId: z.string().min(1, "userId is required"),
   plan: z.enum([...VALID_PLANS] as [string, ...string[]]),
-  expiresAt: z.number().int().positive(),
+  expiresAt: z.number().int().positive().nullable().optional(),
 })
 
 // Начало дня (00:00:00)
@@ -161,8 +161,8 @@ export async function PATCH(request: NextRequest) {
     // Это сбрасывает месячное использование и обновляет план
     await updateUserPlan({
       userId,
-      plan: plan as "basic" | "professional" | "enterprise",
-      expiresAt,
+      plan: plan as "basic" | "professional" | "enterprise" | "free",
+      expiresAt: expiresAt || null,
       paymentProvider: "manual",
     })
 
