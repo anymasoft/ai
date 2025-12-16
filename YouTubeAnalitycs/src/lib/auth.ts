@@ -63,13 +63,39 @@ export const authOptions: NextAuthOptions = {
 
       // КРИТИЧЕСКОЕ: ВСЕГДА синхронизируем plan с БД если есть userId
       // Это гарантирует что JWT всегда содержит актуальный план
+      // ВКЛЮЧАЕТ: автоматический downgrade если подписка истекла
       if (token.sub) {
         try {
           const paymentInfo = await getUserPaymentInfo(token.sub);
           if (paymentInfo) {
             // @ts-ignore
             token.plan = paymentInfo.plan;
-            console.log(`[AUTH jwt] Synced plan from DB for user ${token.sub}: ${paymentInfo.plan}`);
+            // @ts-ignore
+            token.expiresAt = paymentInfo.expiresAt;
+
+            // АВТОМАТИЧЕСКИЙ DOWNGRADE В БД: если план стал 'free' (истекла подписка)
+            // и в БД у пользователя ещё стоит платный план
+            if (paymentInfo.plan === "free" && user?.plan !== "free") {
+              console.log(
+                `[AUTH jwt] Auto-downgrading user ${token.sub} to free in DB (subscription expired)`
+              );
+              // Обновляем БД, чтобы в следующий раз план уже был free
+              const now = Math.floor(Date.now() / 1000);
+              try {
+                await db.execute(
+                  `UPDATE users SET plan = ?, expiresAt = ?, updatedAt = ? WHERE id = ?`,
+                  ["free", null, now, token.sub]
+                );
+                console.log(`[AUTH jwt] Successfully updated user ${token.sub} to free in DB`);
+              } catch (dbError) {
+                console.error(`[AUTH jwt] Error updating user to free in DB:`, dbError);
+                // Не критично, JWT всё равно вернёт plan=free
+              }
+            }
+
+            console.log(
+              `[AUTH jwt] Synced plan from DB for user ${token.sub}: ${paymentInfo.plan}`
+            );
           } else {
             // Если информация не найдена, ставим дефолтный plan
             // @ts-ignore
@@ -94,6 +120,8 @@ export const authOptions: NextAuthOptions = {
         session.user.role = token.role || "user";
         // @ts-ignore
         session.user.plan = token.plan || "free";
+        // @ts-ignore
+        session.user.expiresAt = token.expiresAt || null;
       }
       return session;
     },

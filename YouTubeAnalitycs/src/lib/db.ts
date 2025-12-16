@@ -579,6 +579,7 @@ async function getClient() {
         // Таблица истории платежей (каждый платеж - отдельная запись)
         await _client.execute(`CREATE TABLE IF NOT EXISTS payments (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
+          externalPaymentId TEXT,
           userId TEXT NOT NULL,
           plan TEXT NOT NULL,
           amount TEXT NOT NULL,
@@ -594,6 +595,12 @@ async function getClient() {
 
         await _client.execute(`CREATE INDEX IF NOT EXISTS idx_payments_createdAt
           ON payments(createdAt DESC);`);
+
+        await _client.execute(`CREATE UNIQUE INDEX IF NOT EXISTS idx_payments_externalPaymentId
+          ON payments(externalPaymentId);`);
+
+        // Миграция: добавляем колонку externalPaymentId для отслеживания платежей YooKassa
+        await addColumnIfNotExists(_client, 'payments', 'externalPaymentId', 'TEXT');
 
         // Таблица для переопределения подписок (ручное управление платежами)
         await _client.execute(`CREATE TABLE IF NOT EXISTS admin_subscriptions (

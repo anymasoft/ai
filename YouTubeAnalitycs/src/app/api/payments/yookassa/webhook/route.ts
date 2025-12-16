@@ -3,11 +3,11 @@
  * POST /api/payments/yookassa/webhook
  *
  * Получает уведомление о платеже от ЮKassa и обновляет план пользователя в БД
+ * Верификация платежа происходит через запрос к API ЮKassa
  */
 
 import { NextRequest, NextResponse } from "next/server";
 import { updateUserPlan } from "@/lib/payments";
-import crypto from "crypto";
 
 interface YooKassaWebhookEvent {
   type: string;
@@ -16,156 +16,134 @@ interface YooKassaWebhookEvent {
     object: {
       id: string;
       status: string;
+      paid: boolean;
       amount: {
         value: string;
         currency: string;
       };
-      metadata: {
-        userId: string;
-        planId: string;
+      metadata?: {
+        userId?: string;
+        planId?: string;
       };
     };
   };
 }
 
-/**
- * Распаршивает заголовок HTTP Digest Authentication
- */
-function parseDigestAuth(authHeader: string): Record<string, string> | null {
-  const digestMatch = authHeader.match(/Digest\s+(.+)/i);
-  if (!digestMatch) return null;
-
-  const params: Record<string, string> = {};
-  const paramStr = digestMatch[1];
-  const paramRegex = /(\w+)=(?:"([^"]*)"|([^\s,]*))/g;
-  let match;
-
-  while ((match = paramRegex.exec(paramStr)) !== null) {
-    params[match[1]] = match[2] || match[3];
-  }
-
-  return params;
+interface YooKassaPayment {
+  id: string;
+  status: string;
+  paid: boolean;
+  amount: {
+    value: string;
+    currency: string;
+  };
+  metadata?: {
+    userId?: string;
+    planId?: string;
+  };
 }
 
 /**
- * Проверяет подпись webhook от ЮKassa через HTTP Digest Authentication
- * Алгоритм:
- * 1. Вычисляем HA1 = MD5(username:realm:password)
- * 2. Вычисляем HA2 = MD5(method:uri)
- * 3. Вычисляем response = MD5(HA1:nonce:HA2)
- * 4. Сравниваем с полученной подписью
+ * Проверяет платеж через API ЮKassa
+ * Использует Basic Auth с YOOKASSA_SHOP_ID и YOOKASSA_SECRET_KEY
  */
-function verifyYooKassaWebhook(
-  body: string,
-  authHeader: string | null,
-  method: string,
-  uri: string
-): boolean {
-  const yooKassaShopId = process.env.YOOKASSA_SHOP_ID;
-  const yooKassaSecretKey = process.env.YOOKASSA_SECRET_KEY;
+async function verifyPaymentWithAPI(paymentId: string): Promise<YooKassaPayment | null> {
+  const shopId = process.env.YOOKASSA_SHOP_ID;
+  const secretKey = process.env.YOOKASSA_SECRET_KEY;
 
-  if (!yooKassaShopId || !yooKassaSecretKey || !authHeader) {
-    console.error("[YooKassa Webhook] Missing credentials or auth header");
-    return false;
+  if (!shopId || !secretKey) {
+    console.error("[YooKassa Webhook] Missing YOOKASSA_SHOP_ID or YOOKASSA_SECRET_KEY");
+    return null;
   }
 
   try {
-    // Парсим заголовок Digest Authentication
-    const digestParams = parseDigestAuth(authHeader);
-    if (!digestParams) {
-      console.error("[YooKassa Webhook] Invalid Digest format");
-      return false;
+    const auth = Buffer.from(`${shopId}:${secretKey}`).toString("base64");
+
+    const response = await fetch(`https://api.yookassa.ru/v3/payments/${paymentId}`, {
+      method: "GET",
+      headers: {
+        "Authorization": `Basic ${auth}`,
+        "Content-Type": "application/json",
+        "Idempotency-Key": paymentId,
+      },
+    });
+
+    if (!response.ok) {
+      console.error(`[YooKassa Webhook] API verification failed: ${response.status} ${response.statusText}`);
+      return null;
     }
 
-    const { username, realm, nonce, response: clientResponse, algorithm } = digestParams;
-
-    // Проверяем, что это правильный username
-    if (username !== yooKassaShopId) {
-      console.warn(`[YooKassa Webhook] Username mismatch: expected ${yooKassaShopId}, got ${username}`);
-      return false;
-    }
-
-    // Используем алгоритм MD5 (стандартный для ЮKassa)
-    const algo = algorithm?.toUpperCase() || "MD5";
-    if (algo !== "MD5") {
-      console.warn(`[YooKassa Webhook] Unsupported algorithm: ${algo}`);
-      return false;
-    }
-
-    // Вычисляем HA1 = MD5(username:realm:password)
-    const ha1 = crypto
-      .createHash("md5")
-      .update(`${username}:${realm}:${yooKassaSecretKey}`)
-      .digest("hex");
-
-    // Вычисляем HA2 = MD5(method:uri)
-    const ha2 = crypto
-      .createHash("md5")
-      .update(`${method}:${uri}`)
-      .digest("hex");
-
-    // Вычисляем ожидаемый response = MD5(HA1:nonce:HA2)
-    const expectedResponse = crypto
-      .createHash("md5")
-      .update(`${ha1}:${nonce}:${ha2}`)
-      .digest("hex");
-
-    // Сравниваем подписи
-    if (clientResponse !== expectedResponse) {
-      console.warn(
-        `[YooKassa Webhook] Signature mismatch: expected ${expectedResponse}, got ${clientResponse}`
-      );
-      return false;
-    }
-
-    console.log("[YooKassa Webhook] Signature verified successfully");
-    return true;
+    const payment = (await response.json()) as YooKassaPayment;
+    return payment;
   } catch (error) {
-    console.error("[YooKassa Webhook] Verification error:", error);
+    console.error("[YooKassa Webhook] Error verifying payment with API:", error);
+    return null;
+  }
+}
+
+/**
+ * Проверяет, был ли платеж уже обработан (для идемпотентности)
+ */
+async function isPaymentProcessed(paymentId: string): Promise<boolean> {
+  try {
+    const { db } = await import("@/lib/db");
+    const result = await db.query(
+      "SELECT id FROM payments WHERE externalPaymentId = ?",
+      [paymentId]
+    );
+    return result.length > 0;
+  } catch (error) {
+    console.error("[YooKassa Webhook] Error checking if payment processed:", error);
+    // В случае ошибки БД, считаем что платеж новый
     return false;
   }
 }
 
 export async function POST(request: NextRequest) {
   try {
-    // Получаем тело запроса
-    const body = await request.text();
-
-    // Проверяем подпись через HTTP Digest Authentication
-    const authHeader = request.headers.get("authorization");
-    const method = request.method;
-    const uri = new URL(request.url).pathname;
-
-    if (!verifyYooKassaWebhook(body, authHeader, method, uri)) {
-      console.error("[YooKassa Webhook] Invalid signature - rejecting webhook");
-      return NextResponse.json(
-        { error: "Invalid signature" },
-        { status: 401 }
-      );
-    }
-
-    const event = JSON.parse(body) as YooKassaWebhookEvent;
+    const body = await request.json() as YooKassaWebhookEvent;
 
     // Проверяем тип события - нас интересуют успешные платежи
-    if (event.type !== "notification" || event.event !== "payment.succeeded") {
-      console.log(`[YooKassa Webhook] Skipping event type: ${event.type}`);
+    if (body.type !== "notification" || body.event !== "payment.succeeded") {
+      console.log(`[YooKassa Webhook] Skipping event type: ${body.type}, event: ${body.event}`);
       return NextResponse.json({ success: true });
     }
 
-    const paymentData = event.data.object;
-    const { userId, planId } = paymentData.metadata;
+    const paymentId = body.data.object.id;
+
+    // Проверяем идемпотентность - если платеж уже обработан, возвращаем успех
+    if (await isPaymentProcessed(paymentId)) {
+      console.log(`[YooKassa Webhook] Payment ${paymentId} already processed`);
+      return NextResponse.json({ success: true });
+    }
+
+    // Проверяем платеж через API ЮKassa
+    const payment = await verifyPaymentWithAPI(paymentId);
+    if (!payment) {
+      console.error(`[YooKassa Webhook] Failed to verify payment ${paymentId} via API`);
+      return NextResponse.json({ success: true });
+    }
 
     // Проверяем статус платежа
-    if (paymentData.status !== "succeeded") {
+    if (payment.status !== "succeeded" || !payment.paid) {
       console.log(
-        `[YooKassa Webhook] Payment status is ${paymentData.status}, skipping`
+        `[YooKassa Webhook] Payment ${paymentId} status is ${payment.status}, paid: ${payment.paid}, skipping`
+      );
+      return NextResponse.json({ success: true });
+    }
+
+    // Проверяем метаданные
+    const { userId, planId } = payment.metadata || {};
+    if (!userId || !planId) {
+      console.error(
+        `[YooKassa Webhook] Payment ${paymentId} missing metadata: userId=${userId}, planId=${planId}`
       );
       return NextResponse.json({ success: true });
     }
 
     // Валидируем planId
     if (!["basic", "professional", "enterprise"].includes(planId)) {
-      console.error(`[YooKassa Webhook] Invalid planId: ${planId}`);
+      console.error(`[YooKassa Webhook] Payment ${paymentId} invalid planId: ${planId}`);
       return NextResponse.json({ success: true });
     }
 
@@ -188,13 +166,13 @@ export async function POST(request: NextRequest) {
 
     const { db } = await import("@/lib/db");
     await db.execute(
-      `INSERT INTO payments (userId, plan, amount, provider, status, expiresAt, createdAt)
-       VALUES (?, ?, ?, 'yookassa', 'succeeded', ?, ?)`,
-      [userId, planId, planPrice, expiresAt, now]
+      `INSERT INTO payments (externalPaymentId, userId, plan, amount, provider, status, expiresAt, createdAt)
+       VALUES (?, ?, ?, ?, 'yookassa', 'succeeded', ?, ?)`,
+      [paymentId, userId, planId, planPrice, expiresAt, now]
     );
 
     console.log(
-      `[YooKassa Webhook] Successfully processed payment for user ${userId}, plan ${planId}`
+      `[YooKassa Webhook] Successfully processed payment ${paymentId} for user ${userId}, plan ${planId}`
     );
 
     return NextResponse.json({ success: true });
