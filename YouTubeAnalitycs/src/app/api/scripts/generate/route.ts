@@ -5,6 +5,7 @@ import { db } from "@/lib/db";
 import OpenAI from "openai";
 import { randomUUID } from "crypto";
 import type { GeneratedScript, SavedScript } from "@/types/scripts";
+import { getBillingScriptUsageInfo } from "@/lib/script-usage";
 
 // ============================================================================
 // УТИЛИТЫ
@@ -939,6 +940,18 @@ export async function POST(req: NextRequest) {
 
     const userId = session.user.id;
     console.log("[GENERATOR] userId =", userId, "type:", typeof userId);
+
+    // 1.5. ПРОВЕРКА ЛИМИТА - ДО генерации!
+    const usageInfo = await getBillingScriptUsageInfo(userId, session.user.plan || "free");
+    if (usageInfo.monthlyUsed >= usageInfo.monthlyLimit) {
+      console.log(
+        `[ScriptGenerate] User ${userId} hit limit: ${usageInfo.monthlyUsed}/${usageInfo.monthlyLimit}`
+      );
+      return NextResponse.json(
+        { error: "Monthly limit exhausted" },
+        { status: 429 }
+      );
+    }
 
     // 2. Парсим тело запроса
     const body = await req.json();
