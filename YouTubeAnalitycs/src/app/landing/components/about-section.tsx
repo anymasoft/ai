@@ -64,7 +64,7 @@ export function AboutSection() {
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Button size="lg" className="cursor-pointer" asChild>
               <a href="/sign-in">
-                Войти
+                Получи сценарий мечты за 1 клик
               </a>
             </Button>
           </div>
