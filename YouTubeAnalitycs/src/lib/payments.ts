@@ -6,8 +6,8 @@ import { db } from "./db";
 
 interface UpdateUserPlanParams {
   userId: string;
-  plan: "basic" | "professional" | "enterprise";
-  expiresAt: number;
+  plan: "basic" | "professional" | "enterprise" | "free";
+  expiresAt: number | null;
   paymentProvider?: string;
 }
 
