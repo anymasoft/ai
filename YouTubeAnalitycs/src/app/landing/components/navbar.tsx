@@ -138,7 +138,7 @@ export function LandingNavbar() {
         {/* Desktop CTA */}
         <div className="hidden xl:flex items-center space-x-2">
           <ModeToggle variant="ghost" />
-          <Button asChild className="cursor-pointer">
+          <Button asChild className="cursor-pointer bg-red-600 hover:bg-red-700 text-white">
             <Link href="/sign-in">Твой сценарий ждет!</Link>
           </Button>
         </div>

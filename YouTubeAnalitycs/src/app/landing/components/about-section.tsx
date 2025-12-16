@@ -62,7 +62,7 @@ export function AboutSection() {
         {/* Call to Action */}
         <div className="mt-16 text-center">
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Button size="lg" className="cursor-pointer" asChild>
+            <Button size="lg" className="cursor-pointer bg-red-600 hover:bg-red-700 text-white" asChild>
               <a href="/sign-in">
                 Получи сценарий мечты за 1 клик
               </a>
