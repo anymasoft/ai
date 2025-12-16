@@ -11,12 +11,14 @@ import {
   FileText,
   MessageSquare,
   BarChart3,
+  Sparkles,
 } from "lucide-react"
 import Link from "next/link"
 import { useSession } from "next-auth/react"
 import { Logo } from "@/components/logo"
 import { SidebarNotification } from "@/components/sidebar-notification"
 import { ADMIN_EMAIL } from "@/lib/admin-config"
+import { Button } from "@/components/ui/button"
 
 import { NavMain } from "@/components/nav-main"
 import { NavUser } from "@/components/nav-user"
@@ -49,12 +51,6 @@ const navGroups = [
         title: "Сравнение",
         url: "/competitors/compare",
         icon: GitCompare,
-      },
-      {
-        title: "Сценарии",
-        url: "/trending",
-        icon: TrendingUp,
-        isFeatured: true,
       },
       {
         title: "История сценариев",
@@ -131,6 +127,14 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         </SidebarMenu>
       </SidebarHeader>
       <SidebarContent>
+        <div className="px-2 py-2">
+          <Button asChild className="w-full" size="sm">
+            <Link href="/trending" className="gap-2">
+              <Sparkles className="size-4" />
+              + Создать сценарий
+            </Link>
+          </Button>
+        </div>
         {navGroups.map((group) => (
           <NavMain key={group.label} label={group.label} items={group.items} />
         ))}
