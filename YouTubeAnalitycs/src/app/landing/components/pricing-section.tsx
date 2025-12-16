@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge'
 const plans = [
   {
     name: 'Basic',
-    description: 'Для начинающих авторов',
+    description: 'Подходит, чтобы попробовать сервис и понять, как выглядят сценарии, основанные на реальных данных.',
     monthlyPrice: 990,
     features: [
       'До 30 AI-сценариев в месяц',
@@ -22,7 +22,7 @@ const plans = [
   },
   {
     name: 'Professional',
-    description: 'Для растущих каналов',
+    description: 'Хватает, чтобы начать регулярно выпускать видео без выгорания.',
     monthlyPrice: 2490,
     features: [
       'До 100 AI-сценариев в месяц',
@@ -36,7 +36,7 @@ const plans = [
   },
   {
     name: 'Enterprise',
-    description: 'Для студий и команд',
+    description: 'Подходит, если YouTube — источник дохода, а не просто хобби.',
     monthlyPrice: 5990,
     features: [
       'До 300 AI-сценариев в месяц',

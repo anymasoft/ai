@@ -69,10 +69,10 @@ export function FeaturesSection() {
         <div className="mx-auto max-w-2xl text-center mb-16">
           <Badge variant="outline" className="mb-4">Возможности платформы</Badge>
           <h2 className="text-3xl font-bold tracking-tight sm:text-4xl mb-4">
-            Все инструменты для анализа и создания контента
+            Один сервис вместо десятков вкладок и догадок
           </h2>
           <p className="text-lg text-muted-foreground">
-            Анализируйте конкурентов на YouTube, получайте AI-сценарии и инсайты для создания успешного контента на основе реальных данных.
+            От анализа конкурентов до готового сценария — в одном интерфейсе.
           </p>
         </div>
 

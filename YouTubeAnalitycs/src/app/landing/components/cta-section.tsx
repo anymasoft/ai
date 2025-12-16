@@ -34,35 +34,26 @@ export function CTASection() {
               {/* Main Content */}
               <div className='space-y-6'>
                 <h1 className='text-4xl font-bold tracking-tight text-balance sm:text-5xl lg:text-6xl'>
-                  Повысьте производительность команды прямо
-                  <span className='flex sm:inline-flex justify-center'>
-                    <span className='relative mx-2'>
-                      <span className='bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent'>
-                        сейчас
-                      </span>
-                      <div className='absolute start-0 -bottom-2 h-1 w-full bg-gradient-to-r from-primary/30 to-secondary/30' />
-                    </span>
-                  </span>
+                  Перестаньте угадывать. Начните снимать то, что уже работает.
                 </h1>
 
                 <p className='text-muted-foreground mx-auto max-w-2xl text-balance lg:text-xl'>
-                  Перестаньте писать код с нуля. Получите готовые компоненты, шаблоны и дашборды,
-                  которые идеально интегрируются с вашими проектами на shadcn/ui.
+                  Не нужно ждать результатов месяцы. Используйте готовые сценарии на основе реальных данных и начните зарабатывать с первого видео.
                 </p>
               </div>
 
               {/* CTA Buttons */}
               <div className='flex flex-col justify-center gap-4 sm:flex-row sm:gap-6'>
                 <Button size='lg' className='cursor-pointer px-8 py-6 text-lg font-medium' asChild>
-                  <a href='https://shadcnstore.com/blocks' target='_blank' rel='noopener noreferrer'>
+                  <a href='/sign-in'>
                     <Package className='me-2 size-5' />
-                    Просмотреть компоненты
+                    Попробовать бесплатно
                   </a>
                 </Button>
                 <Button variant='outline' size='lg' className='cursor-pointer px-8 py-6 text-lg font-medium group' asChild>
-                  <a href='https://github.com/silicondeck/shadcn-dashboard-landing-template' target='_blank' rel='noopener noreferrer'>
+                  <a href='#pricing'>
                     <Github className='me-2 size-5' />
-                    Смотреть на GitHub
+                    Выбрать план
                     <ArrowRight className='ms-2 size-4 transition-transform group-hover:translate-x-1' />
                   </a>
                 </Button>
