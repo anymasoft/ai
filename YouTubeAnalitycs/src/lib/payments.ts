@@ -71,7 +71,9 @@ export async function updateUserPlan({
 
 /**
  * Получает информацию о пользователе из БД для проверки подписки
- * ВКЛЮЧАЕТ проверку истечения: если expiresAt < now, возвращает plan="free"
+ * ВКЛЮЧАЕТ две проверки downgrade:
+ * 1) если expiresAt < now → план истёк по времени
+ * 2) если used >= limit → лимит сценариев исчерпан
  */
 export async function getUserPaymentInfo(userId: string): Promise<{
   plan: string;
@@ -91,10 +93,36 @@ export async function getUserPaymentInfo(userId: string): Promise<{
     let plan = user.plan || "free";
     let expiresAt = user.expiresAt || null;
 
-    // АВТОМАТИЧЕСКИЙ DOWNGRADE: если подписка истекла
-    if (expiresAt && expiresAt < now && plan !== "free") {
+    // Проверка 1: АВТОМАТИЧЕСКИЙ DOWNGRADE по времени (если подписка истекла)
+    const expiredByTime = expiresAt && expiresAt < now;
+
+    // Проверка 2: АВТОМАТИЧЕСКИЙ DOWNGRADE по лимиту (если сценарии исчерпаны)
+    let expiredByUsage = false;
+    if (plan !== "free") {
+      try {
+        const { getMonthlyScriptLimit } = await import("@/config/plan-limits");
+        const { getMonthlyScriptsUsed } = await import("@/lib/script-usage");
+
+        const monthlyLimit = getMonthlyScriptLimit(plan as any);
+        const monthlyUsed = await getMonthlyScriptsUsed(userId);
+
+        if (monthlyLimit > 0 && monthlyUsed >= monthlyLimit) {
+          console.log(
+            `[Payments] User ${userId} exhausted monthly limit: ${monthlyUsed}/${monthlyLimit}`
+          );
+          expiredByUsage = true;
+        }
+      } catch (usageError) {
+        console.error(`[Payments] Error checking usage limit:`, usageError);
+        // Если ошибка при проверке лимита, не даунгрейдим
+      }
+    }
+
+    // Если тариф истёк ПО ВРЕМЕНИ ИЛИ ПО ЛИМИТУ → downgrade на free
+    if ((expiredByTime || expiredByUsage) && plan !== "free") {
+      const reason = expiredByTime ? "subscription expired" : "usage limit exhausted";
       console.log(
-        `[Payments] Auto-downgrading user ${userId} from ${plan} to free (expired at ${expiresAt})`
+        `[Payments] Auto-downgrading user ${userId} from ${plan} to free (${reason})`
       );
       plan = "free";
       expiresAt = null;
