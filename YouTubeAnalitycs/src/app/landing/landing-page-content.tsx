@@ -18,6 +18,8 @@ import { LandingFooter } from './components/footer'
 import { AboutSection } from './components/about-section'
 
 export function LandingPageContent() {
+  const [themeCustomizerOpen, setThemeCustomizerOpen] = React.useState(false)
+
   return (
     <div className="min-h-screen bg-background">
       {/* Navigation */}
@@ -41,6 +43,10 @@ export function LandingPageContent() {
 
       {/* Footer */}
       <LandingFooter />
+
+      {/* Theme Customizer */}
+//       <LandingThemeCustomizerTrigger onClick={() => setThemeCustomizerOpen(true)} />
+//       <LandingThemeCustomizer open={themeCustomizerOpen} onOpenChange={setThemeCustomizerOpen} />
     </div>
   )
 }
