@@ -45,9 +45,6 @@ async function addColumnIfNotExists(
   const exists = await columnExists(client, tableName, columnName);
 
   if (exists) {
-    console.log(
-      `✔️ Column ${columnName} already exists in ${tableName}, skipping`
-    );
     return;
   }
 
@@ -55,7 +52,6 @@ async function addColumnIfNotExists(
     await client.execute(
       `ALTER TABLE ${tableName} ADD COLUMN ${columnName} ${columnDef};`
     );
-    console.log(`✔️ Added column ${columnName} to ${tableName}`);
   } catch (error: any) {
     // Если всё же произошла ошибка, выводим её (не скрываем)
     // Это поможет выявить реальные проблемы с БД структурой
