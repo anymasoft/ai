@@ -2,9 +2,11 @@
  * Webhook обработчик для ЮKassa
  * POST /api/payments/yookassa/webhook
  *
- * Получает уведомление о платеже от ЮKassa и логирует его для аудита
- * Верификация платежа происходит через запрос к API ЮKassa
- * ВАЖНО: Webhook НЕ изменяет тариф пользователя (это делает confirm endpoint)
+ * ЕДИНСТВЕННАЯ ТОЧКА АКТИВАЦИИ ТАРИФА
+ * Получает уведомление о платеже от ЮKassa и:
+ * 1. Проверяет идемпотентность
+ * 2. Активирует тариф пользователя (UPDATE users)
+ * 3. Логирует платеж в историю
  */
 
 import { NextRequest, NextResponse } from "next/server";
@@ -123,11 +125,10 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: true });
     }
 
-    // Webhook НЕ вызывает updateUserPlan (это делает confirm)
-    // Webhook только логирует платеж в историю для аудита
-
-    // ИДЕМПОТЕНТНОСТЬ: проверяем, нет ли уже записи о платеже
     const { db } = await import("@/lib/db");
+
+    // ШАГ 1: ИДЕМПОТЕНТНОСТЬ - проверяем ДО любых действий
+    console.log(`[YooKassa Webhook] Checking idempotency for payment ${paymentId}`);
     const checkResult = await db.execute(
       `SELECT 1 FROM payments WHERE provider = 'yookassa' AND externalPaymentId = ? LIMIT 1`,
       [paymentId]
@@ -136,14 +137,25 @@ export async function POST(request: NextRequest) {
 
     if (existingPayment) {
       console.log(
-        `[YooKassa Webhook] Payment ${paymentId} already logged, skipping duplicate insert`
+        `[YooKassa Webhook] Payment ${paymentId} already processed, returning success`
       );
       return NextResponse.json({ success: true });
     }
 
-    // Записываем платеж в историю
+    // ШАГ 2: АКТИВАЦИЯ ТАРИФА (обновляем users)
     const now = Date.now();
-    const expiresAt = now + 30 * 24 * 60 * 60 * 1000; // для логирования
+    const expiresAt = now + 30 * 24 * 60 * 60 * 1000; // ровно 30 дней
+
+    console.log(`[YooKassa Webhook] Activating plan ${planId} for user ${userId}, expires at ${expiresAt}`);
+
+    await db.execute(
+      `UPDATE users SET plan = ?, expiresAt = ?, paymentProvider = 'yookassa', updatedAt = ? WHERE id = ?`,
+      [planId, expiresAt, now, userId]
+    );
+
+    console.log(`[YooKassa Webhook] Successfully updated user ${userId} plan to ${planId}`);
+
+    // ШАГ 3: ЛОГ ПЛАТЕЖА (записываем в историю)
     const { PLAN_LIMITS } = await import("@/config/plan-limits");
     const planPrice = PLAN_LIMITS[planId as "basic" | "professional" | "enterprise"]?.price || "0 ₽";
 
@@ -154,7 +166,7 @@ export async function POST(request: NextRequest) {
     );
 
     console.log(
-      `[YooKassa Webhook] Successfully logged payment ${paymentId} for user ${userId}, plan ${planId}`
+      `[YooKassa Webhook] Successfully processed payment ${paymentId} for user ${userId}, plan ${planId}`
     );
 
     return NextResponse.json({ success: true });

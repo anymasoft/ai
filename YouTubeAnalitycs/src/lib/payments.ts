@@ -14,7 +14,6 @@ interface UpdateUserPlanParams {
 /**
  * Обновляет план пользователя и срок действия подписки в БД
  * expiresAt ОБЯЗАТЕЛЬНО передается явно от вызывающей стороны
- * Также сбрасывает использованные сценарии за текущий месяц
  */
 export async function updateUserPlan({
   userId,
@@ -30,41 +29,16 @@ export async function updateUserPlan({
     const now = Date.now();
 
     // Обновляем план пользователя
-    const result = await db.execute(
+    await db.execute(
       `UPDATE users SET plan = ?, expiresAt = ?, paymentProvider = ?, updatedAt = ? WHERE id = ?`,
       [plan, expiresAt, paymentProvider, now, userId]
     );
 
     console.log(
-      `[updateUserPlan] SQL execute completed for user ${userId}`
-    );
-
-    // Сбрасываем использованные сценарии за текущий месяц
-    // Это необходимо, чтобы пользователь получил чистый лимит при смене тарифа
-    try {
-      const today = new Date();
-      const monthPrefix = today.toISOString().slice(0, 7); // YYYY-MM
-
-      const deleteResult = await db.execute(
-        `DELETE FROM user_usage_daily WHERE userId = ? AND day LIKE ?`,
-        [userId, monthPrefix + '%']
-      );
-
-      console.log(
-        `[updateUserPlan] Reset usage for user ${userId} for month ${monthPrefix}`
-      );
-    } catch (deleteError) {
-      console.error(`[updateUserPlan] Error resetting usage:`, deleteError);
-      // Не прерываем процесс если сброс usage не сработал
-      // План всё равно обновлён
-    }
-
-    console.log(
-      `[updateUserPlan] success - user ${userId} updated to plan ${plan}, expires at ${expiresAt}`
+      `[updateUserPlan] Success - user ${userId} updated to plan ${plan}, expires at ${expiresAt}`
     );
   } catch (error) {
     console.error(`[updateUserPlan] Error updating user plan:`, error);
-    console.error(`[updateUserPlan] Error details:`, JSON.stringify(error));
     throw error;
   }
 }
