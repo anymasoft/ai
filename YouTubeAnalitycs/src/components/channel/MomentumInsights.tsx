@@ -24,7 +24,7 @@ interface MomentumData {
   stats: {
     totalAnalyzed: number;
     highMomentum: number;
-    растёт: number;
+    rising: number;
     medianViewsPerDay: number;
   };
   hotThemes: string[];
@@ -196,7 +196,7 @@ export function MomentumInsights({
           <div className="text-xs text-muted-foreground">Быстрый рост</div>
         </div>
         <div className="bg-blue-500/10 rounded-lg p-4">
-          <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">{data.stats.растёт}</div>
+          <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">{data.stats.rising}</div>
           <div className="text-xs text-muted-foreground">Растущие</div>
         </div>
         <div className="bg-muted/50 rounded-lg p-4">
