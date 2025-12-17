@@ -341,7 +341,7 @@ export function ChannelInsightsTabs() {
 
           {/* Engagement Tab - Bar Chart */}
           <TabsContent value="engagement" className="space-y-4">
-            <h3 className="text-sm font-medium text-muted-foreground">Average Views per Video</h3>
+            <h3 className="text-sm font-medium text-muted-foreground">Среднее число просмотров на видео</h3>
             <ChartContainer config={engagementChartConfig} className="h-[350px] w-full">
               <BarChart data={engagementChartData} margin={{ top: 20, right: 20, bottom: 60, left: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" className="stroke-muted/30" />
@@ -382,7 +382,7 @@ export function ChannelInsightsTabs() {
 
           {/* Upload Frequency Tab - Bar Chart */}
           <TabsContent value="upload" className="space-y-4">
-            <h3 className="text-sm font-medium text-muted-foreground">Upload Frequency (videos per month)</h3>
+            <h3 className="text-sm font-medium text-muted-foreground">Частота публикаций (видео в месяц)</h3>
             <ChartContainer config={uploadChartConfig} className="h-[350px] w-full">
               <BarChart data={uploadChartData} margin={{ top: 20, right: 20, bottom: 60, left: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" className="stroke-muted/30" />
@@ -405,7 +405,7 @@ export function ChannelInsightsTabs() {
                   content={
                     <ChartTooltipContent
                       formatter={(value, name, item) => [
-                        `${value} videos/month`,
+                        `${value} видео в месяц`,
                         item.payload.fullName
                       ]}
                     />
@@ -422,10 +422,11 @@ export function ChannelInsightsTabs() {
             {/* Summary */}
             <div className="pt-4 border-t border-border/50">
               <p className="text-sm text-muted-foreground">
-                Average upload frequency across all channels:{" "}
+                В среднем по всем каналам публикуется{" "}
                 <span className="font-semibold text-foreground tabular-nums">
-                  {data.summary.avgUploadFrequency} videos/month
+                  {data.summary.avgUploadFrequency}
                 </span>
+                {" "}видео в месяц
               </p>
             </div>
           </TabsContent>
