@@ -163,34 +163,36 @@ export function DeepCommentAnalysis({
     );
   }
 
+  if (!hasRequiredData) {
+    return (
+      <CardContent className="space-y-4 pt-6">
+        <div className="flex flex-col items-center justify-center py-12">
+          <div className="rounded-lg border border-amber-200 bg-amber-50/50 dark:border-amber-900 dark:bg-amber-950/20 p-6 max-w-sm text-center">
+            <p className="text-sm text-amber-900 dark:text-amber-100 mb-2">
+              На этом канале нет комментариев
+            </p>
+            <p className="text-xs text-amber-700 dark:text-amber-300">
+              Глубокий анализ требует наличия комментариев на видео
+            </p>
+          </div>
+        </div>
+      </CardContent>
+    );
+  }
+
   if (!data) {
     return (
       <CardContent className="space-y-4 pt-6">
         <div className="flex flex-col items-center justify-center py-6">
-          {!hasRequiredData ? (
-            <>
-              <p className="text-muted-foreground mb-2 text-center">
-                Сначала синхронизируйте комментарии
-              </p>
-              <p className="text-sm text-muted-foreground mb-4 text-center">
-                Нажмите кнопку 'Синхронизировать комментарии' выше, чтобы загрузить данные.
-              </p>
-              <Button variant="default" onClick={handleGenerate} disabled title="Сначала синхронизируйте комментарии" className="gap-2">
-                <Brain className="h-4 w-4" />
-                Генерировать глубокий анализ
-              </Button>
-            </>
-          ) : (
-            <>
-              <p className="text-muted-foreground mb-4">
-                Глубокий анализ ИИ комментариев аудитории.
-              </p>
-              <Button variant="default" onClick={handleGenerate} className="gap-2">
-                <Brain className="h-4 w-4" />
-                Генерировать глубокий анализ
-              </Button>
-            </>
-          )}
+          <>
+            <p className="text-muted-foreground mb-4">
+              Глубокий анализ ИИ комментариев аудитории.
+            </p>
+            <Button variant="default" onClick={handleGenerate} className="gap-2">
+              <Brain className="h-4 w-4" />
+              Генерировать глубокий анализ
+            </Button>
+          </>
           {error && <p className="text-red-600 text-sm mt-3">{error}</p>}
         </div>
       </CardContent>
