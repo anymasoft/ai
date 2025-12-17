@@ -39,19 +39,16 @@ export async function updateUserPlan({
       `[updateUserPlan] SQL execute completed for user ${userId}`
     );
 
-    // Сбрасываем использованные сценарии за текущий месяц
+    // ЖЕСТКИЙ RESET: удаляем ВСЕ usage при смене плана
     // Это необходимо, чтобы пользователь получил чистый лимит при смене тарифа
     try {
-      const today = new Date();
-      const monthPrefix = today.toISOString().slice(0, 7); // YYYY-MM
-
       const deleteResult = await db.execute(
-        `DELETE FROM user_usage_daily WHERE userId = ? AND day LIKE ?`,
-        [userId, monthPrefix + '%']
+        `DELETE FROM user_usage_daily WHERE userId = ?`,
+        [userId]
       );
 
       console.log(
-        `[updateUserPlan] Reset usage for user ${userId} for month ${monthPrefix}`
+        `[updateUserPlan] Reset ALL usage for user ${userId}`
       );
     } catch (deleteError) {
       console.error(`[updateUserPlan] Error resetting usage:`, deleteError);
