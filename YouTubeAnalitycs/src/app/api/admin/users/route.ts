@@ -18,6 +18,8 @@ export async function GET(request: NextRequest) {
   if (!isAdmin) return response
 
   try {
+    const today = new Date().toISOString().split("T")[0]
+
     const result = await db.execute(`
       SELECT
         u.id,
@@ -26,11 +28,14 @@ export async function GET(request: NextRequest) {
         u.plan,
         u.expiresAt,
         u.createdAt,
-        COALESCE(u.disabled, 0) as disabled
+        COALESCE(u.disabled, 0) as disabled,
+        COALESCE(uud.analysesUsed, 0) as analysesUsed,
+        COALESCE(uud.scriptsUsed, 0) as scriptsUsed
       FROM users u
+      LEFT JOIN user_usage_daily uud ON u.id = uud.userId AND uud.day = ?
       ORDER BY u.createdAt DESC
       LIMIT 500
-    `)
+    `, [today])
 
     const rows = Array.isArray(result) ? result : result.rows || []
     const users = rows.map((row: any) => ({
@@ -41,6 +46,8 @@ export async function GET(request: NextRequest) {
       expiresAt: row.expiresAt || null,
       createdAt: row.createdAt || 0,
       disabled: row.disabled === 1,
+      analysesUsed: row.analysesUsed || 0,
+      scriptsUsed: row.scriptsUsed || 0,
       lastActive: null,
     }))
 
