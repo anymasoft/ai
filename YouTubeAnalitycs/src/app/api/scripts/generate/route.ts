@@ -942,7 +942,7 @@ export async function POST(req: NextRequest) {
     console.log("[GENERATOR] userId =", userId, "type:", typeof userId);
 
     // 1.5. Получаем текущий тариф из БД
-    const userResult = await db.query(
+    const userResult = await db.execute(
       "SELECT plan FROM users WHERE id = ?",
       [userId]
     );

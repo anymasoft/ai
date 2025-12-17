@@ -79,7 +79,7 @@ export async function shouldDowngradeUser(userId: string): Promise<{
   reason?: "expired" | "limit_exhausted";
 }> {
   try {
-    const result = await db.query(
+    const result = await db.execute(
       `SELECT plan, expiresAt FROM users WHERE id = ?`,
       [userId]
     );
@@ -133,7 +133,7 @@ export async function downgradeExpiredSubscriptions(): Promise<{
     const now = Math.floor(Date.now() / 1000);
 
     // Ищем всех пользователей с истёкшей подпиской
-    const result = await db.query(
+    const result = await db.execute(
       `SELECT id, email FROM users WHERE plan != 'free' AND expiresAt > 0 AND expiresAt < ?`,
       [now]
     );
