@@ -71,7 +71,7 @@ export function CommentInsights({
       });
       setData(initialData);
     }
-  }, [initialData?.generatedAt]); // Зависимость только от generatedAt чтобы избежать лишних обновлений
+  }, [initialData]); // Зависимость от всего initialData объекта для корректного обновления
 
   async function handleGenerate() {
     setStatus(generationKey, "loading");
