@@ -5,7 +5,7 @@ import { AppSidebar } from "@/components/app-sidebar";
 import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
-import { ThemeCustomizer, ThemeCustomizerTrigger } from "@/components/theme-customizer";
+// import { ThemeCustomizer, ThemeCustomizerTrigger } from "@/components/theme-customizer";
 import { UpgradeToProButton } from "@/components/upgrade-to-pro-button";
 import { useSidebarConfig } from "@/hooks/use-sidebar-config";
 import { Suspense } from "react";
@@ -77,8 +77,8 @@ export function DashboardClientWrapper({ children }: DashboardClientWrapperProps
         )}
 
         {/* Theme Customizer */}
-        <ThemeCustomizerTrigger onClick={() => setThemeCustomizerOpen(true)} />
-        <ThemeCustomizer
+//         <ThemeCustomizerTrigger onClick={() => setThemeCustomizerOpen(true)} />
+//         <ThemeCustomizer
           open={themeCustomizerOpen}
           onOpenChange={setThemeCustomizerOpen}
         />
