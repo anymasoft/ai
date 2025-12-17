@@ -149,12 +149,28 @@ export async function POST(request: NextRequest) {
 
     // Webhook НЕ вызывает updateUserPlan (это делает confirm)
     // Webhook только логирует платеж в историю для аудита
+
+    // ИДЕМПОТЕНТНОСТЬ: проверяем, нет ли уже записи о платеже
+    const { db } = await import("@/lib/db");
+    const checkResult = await db.execute(
+      `SELECT 1 FROM payments WHERE provider = 'yookassa' AND externalPaymentId = ? LIMIT 1`,
+      [paymentId]
+    );
+    const existingPayment = Array.isArray(checkResult) ? checkResult.length > 0 : (checkResult.rows || []).length > 0;
+
+    if (existingPayment) {
+      console.log(
+        `[YooKassa Webhook] Payment ${paymentId} already logged, skipping duplicate insert`
+      );
+      return NextResponse.json({ success: true });
+    }
+
+    // Записываем платеж в историю
     const now = Date.now();
     const expiresAt = now + 30 * 24 * 60 * 60 * 1000; // для логирования
     const { PLAN_LIMITS } = await import("@/config/plan-limits");
     const planPrice = PLAN_LIMITS[planId as "basic" | "professional" | "enterprise"]?.price || "0 ₽";
 
-    const { db } = await import("@/lib/db");
     await db.execute(
       `INSERT INTO payments (externalPaymentId, userId, plan, amount, provider, status, expiresAt, createdAt)
        VALUES (?, ?, ?, ?, 'yookassa', 'succeeded', ?, ?)`,
@@ -162,7 +178,7 @@ export async function POST(request: NextRequest) {
     );
 
     console.log(
-      `[YooKassa Webhook] Successfully processed payment ${paymentId} for user ${userId}, plan ${planId}`
+      `[YooKassa Webhook] Successfully logged payment ${paymentId} for user ${userId}, plan ${planId}`
     );
 
     return NextResponse.json({ success: true });

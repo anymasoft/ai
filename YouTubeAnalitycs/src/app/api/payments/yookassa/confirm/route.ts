@@ -123,7 +123,7 @@ export async function GET(request: NextRequest) {
 
     // Получаем planId и billingCycle из metadata
     const planId = paymentData.metadata?.planId;
-    const billingCycle = paymentData.metadata?.billingCycle || 'monthly';
+    const billingCycle = paymentData.metadata?.billingCycle;
     console.log(`[YooKassa Confirm] Extracted planId: ${planId}, billingCycle: ${billingCycle}`);
 
     if (!planId || !["basic", "professional", "enterprise"].includes(planId)) {
@@ -136,17 +136,26 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    // Валидируем billingCycle строго: должен быть "monthly" или "yearly"
+    if (!billingCycle || !["monthly", "yearly"].includes(billingCycle)) {
+      console.error(
+        `[YooKassa Confirm] Invalid billingCycle in metadata: ${billingCycle}`
+      );
+      return NextResponse.json(
+        { ok: false, error: "Невалидный цикл биллинга в платеже" },
+        { status: 400 }
+      );
+    }
+
     // Обновляем план пользователя в БД
     try {
       const now = Date.now();
 
       // Вычисляем срок подписки в зависимости от billingCycle
-      let subscriptionDaysInMs: number;
-      if (billingCycle === 'yearly') {
-        subscriptionDaysInMs = 365 * 24 * 60 * 60 * 1000;
-      } else {
-        subscriptionDaysInMs = 30 * 24 * 60 * 60 * 1000;
-      }
+      const subscriptionDaysInMs = billingCycle === "yearly"
+        ? 365 * 24 * 60 * 60 * 1000
+        : 30 * 24 * 60 * 60 * 1000;
+
       const expiresAt = now + subscriptionDaysInMs;
 
       console.log(
