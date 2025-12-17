@@ -81,24 +81,6 @@ async function verifyPaymentWithAPI(paymentId: string): Promise<YooKassaPayment 
   }
 }
 
-/**
- * Проверяет, был ли платеж уже обработан (для идемпотентности)
- */
-async function isPaymentProcessed(paymentId: string): Promise<boolean> {
-  try {
-    const { db } = await import("@/lib/db");
-    const result = await db.query(
-      "SELECT id FROM payments WHERE externalPaymentId = ?",
-      [paymentId]
-    );
-    return result.length > 0;
-  } catch (error) {
-    console.error("[YooKassa Webhook] Error checking if payment processed:", error);
-    // В случае ошибки БД, считаем что платеж новый
-    return false;
-  }
-}
-
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json() as YooKassaWebhookEvent;
@@ -110,12 +92,6 @@ export async function POST(request: NextRequest) {
     }
 
     const paymentId = body.data.object.id;
-
-    // Проверяем идемпотентность - если платеж уже обработан, возвращаем успех
-    if (await isPaymentProcessed(paymentId)) {
-      console.log(`[YooKassa Webhook] Payment ${paymentId} already processed`);
-      return NextResponse.json({ success: true });
-    }
 
     // Проверяем платеж через API ЮKassa
     const payment = await verifyPaymentWithAPI(paymentId);
