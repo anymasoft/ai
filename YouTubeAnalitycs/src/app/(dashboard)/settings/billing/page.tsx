@@ -8,6 +8,7 @@ import { PricingPlans } from "@/components/pricing-plans"
 import { CurrentPlanCard } from "./components/current-plan-card"
 import { BillingHistoryCard } from "./components/billing-history-card"
 import { useUser } from "@/hooks/useUser"
+import { useCheckPaymentStatus } from "@/hooks/useCheckPaymentStatus"
 import type { PlanType } from "@/config/plan-limits"
 
 interface ScriptUsageInfo {
@@ -19,6 +20,7 @@ interface ScriptUsageInfo {
 export default function BillingSettings() {
   const { data: session, status } = useSession();
   const { user, loading: userLoading } = useUser();
+  const checkResult = useCheckPaymentStatus(); // Check payment status on return from YooKassa
   const [scriptUsage, setScriptUsage] = useState<ScriptUsageInfo | null>(null);
   const [isLoadingUsage, setIsLoadingUsage] = useState(true);
 
