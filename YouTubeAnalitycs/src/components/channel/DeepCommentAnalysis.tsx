@@ -154,15 +154,6 @@ export function DeepCommentAnalysis({
     intervalRef.current = setInterval(fetchProgress, 1500);
   }
 
-  if (loading) {
-    return (
-      <AnalysisLoadingState
-        title="Анализирование комментариев..."
-        subtitle="Это может занять 15-25 секунд"
-      />
-    );
-  }
-
   if (!hasRequiredData) {
     return (
       <CardContent className="space-y-4 pt-6">
@@ -177,6 +168,15 @@ export function DeepCommentAnalysis({
           </div>
         </div>
       </CardContent>
+    );
+  }
+
+  if (loading) {
+    return (
+      <AnalysisLoadingState
+        title="Анализирование комментариев..."
+        subtitle="Это может занять 15-25 секунд"
+      />
     );
   }
 
