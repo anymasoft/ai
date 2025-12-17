@@ -3,18 +3,18 @@ import { LandingPageContent } from './landing-page-content'
 
 // Metadata for the landing page
 export const metadata: Metadata = {
-  title: 'Beem Analytics - YouTube Competitors Analytics Platform',
-  description: 'Powerful YouTube analytics platform for tracking competitors, analyzing content strategies, and gaining actionable insights with AI-powered analysis.',
-  keywords: ['youtube analytics', 'competitor analysis', 'youtube insights', 'content strategy', 'ai analysis'],
+  title: 'Сценарии для YouTube — идеи видео, которые набирают просмотры',
+  description: 'Генератор идей и сценариев для YouTube на основе анализа конкурентов и трендовых видео. Создавайте видео, которые реально набирают просмотры.',
+  keywords: ['сценарии для youtube', 'идеи для youtube', 'что снимать на youtube', 'анализ конкурентов youtube', 'рост просмотров youtube', 'youtube сценарии', 'youtube идеи видео'],
   openGraph: {
-    title: 'Beem Analytics - YouTube Competitors Analytics Platform',
-    description: 'Powerful YouTube analytics platform for tracking competitors, analyzing content strategies, and gaining actionable insights with AI-powered analysis.',
+    title: 'Сценарии для YouTube — идеи видео, которые набирают просмотры',
+    description: 'Генератор идей и сценариев для YouTube на основе анализа конкурентов и трендовых видео. Создавайте видео, которые реально набирают просмотры.',
     type: 'website',
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Beem Analytics - YouTube Competitors Analytics Platform',
-    description: 'Powerful YouTube analytics platform for tracking competitors, analyzing content strategies, and gaining actionable insights with AI-powered analysis.',
+    title: 'Сценарии для YouTube — идеи видео, которые набирают просмотры',
+    description: 'Генератор идей и сценариев для YouTube на основе анализа конкурентов и трендовых видео. Создавайте видео, которые реально набирают просмотры.',
   },
 }
 
