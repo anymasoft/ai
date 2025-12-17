@@ -7,10 +7,10 @@ import { MessageSquare } from "lucide-react";
 import { toast } from "sonner";
 
 interface SyncCommentsButtonProps {
-  channelId: number;
+  competitorId: number;
 }
 
-export function SyncCommentsButton({ channelId }: SyncCommentsButtonProps) {
+export function SyncCommentsButton({ competitorId }: SyncCommentsButtonProps) {
   const [syncing, setSyncing] = useState(false);
   const router = useRouter();
 
@@ -18,7 +18,7 @@ export function SyncCommentsButton({ channelId }: SyncCommentsButtonProps) {
     setSyncing(true);
 
     try {
-      const response = await fetch(`/api/channel/${channelId}/comments/sync`, {
+      const response = await fetch(`/api/channel/${competitorId}/comments/sync`, {
         method: "POST",
       });
 

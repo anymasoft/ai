@@ -7,12 +7,12 @@ import { RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 
 interface SyncAllDataButtonProps {
-  channelId: number;
+  competitorId: number;
 }
 
 type SyncStep = "metrics" | "videos" | "comments" | "idle";
 
-export function SyncAllDataButton({ channelId }: SyncAllDataButtonProps) {
+export function SyncAllDataButton({ competitorId }: SyncAllDataButtonProps) {
   const [syncing, setSyncing] = useState(false);
   const [currentStep, setCurrentStep] = useState<SyncStep>("idle");
   const router = useRouter();
@@ -23,7 +23,7 @@ export function SyncAllDataButton({ channelId }: SyncAllDataButtonProps) {
     try {
       // Step 1: Sync Metrics
       setCurrentStep("metrics");
-      const metricsResponse = await fetch(`/api/channel/${channelId}/sync`, {
+      const metricsResponse = await fetch(`/api/channel/${competitorId}/sync`, {
         method: "POST",
       });
 
@@ -43,7 +43,7 @@ export function SyncAllDataButton({ channelId }: SyncAllDataButtonProps) {
 
       // Step 2: Sync Videos
       setCurrentStep("videos");
-      const videosResponse = await fetch(`/api/channel/${channelId}/videos/sync`, {
+      const videosResponse = await fetch(`/api/channel/${competitorId}/videos/sync`, {
         method: "POST",
       });
 
@@ -61,7 +61,7 @@ export function SyncAllDataButton({ channelId }: SyncAllDataButtonProps) {
 
       // Step 3: Sync Comments
       setCurrentStep("comments");
-      const commentsResponse = await fetch(`/api/channel/${channelId}/comments/sync`, {
+      const commentsResponse = await fetch(`/api/channel/${competitorId}/comments/sync`, {
         method: "POST",
       });
 

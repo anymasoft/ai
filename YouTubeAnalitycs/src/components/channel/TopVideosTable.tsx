@@ -84,7 +84,7 @@ export function TopVideosTable({ videos, userPlan = "free", channelId }: TopVide
 
     setIsLoadingMore(true);
     try {
-      const res = await fetch(`/api/channel/${channelId}/videos/page?page=${page + 1}`);
+      const res = await fetch(`/api/channel/${competitorId}/videos/page?page=${page + 1}`);
       const data = await res.json();
 
       if (!data.ok) {
