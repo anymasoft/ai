@@ -185,7 +185,7 @@ export function AudienceInsights({
     return (
       <AnalysisLoadingState
         title="Создание анализа аудитории..."
-        subtitle="This may take 20-30 seconds"
+        subtitle="Это может занять 20-30 секунд"
       />
     );
   }
@@ -197,24 +197,24 @@ export function AudienceInsights({
           {!hasRequiredData ? (
             <>
               <p className="text-muted-foreground mb-2 text-center">
-                Sync Top Videos first
+                Сначала синхронизируйте Топ видео
               </p>
               <p className="text-sm text-muted-foreground mb-4 text-center">
-                Click 'Sync Top Videos' above to load data.
+                Нажмите «Синхронизировать Топ видео» выше, чтобы загрузить данные.
               </p>
               <Button variant="default" onClick={handleGenerate} className="gap-2 cursor-pointer" disabled title="Sync Top Videos first">
                 <Users className="h-4 w-4" />
-                Generate Audience Analysis
+                Создать анализ аудитории
               </Button>
             </>
           ) : (
             <>
               <p className="text-muted-foreground mb-4">
-                Audience analysis will show which topics get maximum audience reactions.
+                Анализ аудитории покажет, какие темы получают максимальную реакцию зрителей.
               </p>
               <Button variant="default" onClick={handleGenerate} className="gap-2 cursor-pointer">
                 <Users className="h-4 w-4" />
-                Generate Audience Analysis
+                Создать анализ аудитории
               </Button>
             </>
           )}
@@ -238,10 +238,10 @@ export function AudienceInsights({
           <div>
             <h2 className="text-2xl font-bold flex items-center gap-2">
               <Brain className="h-6 w-6 text-purple-600 dark:text-purple-400" />
-              Audience Insights (v2.0)
+              Инсайты аудитории (v2.0)
             </h2>
             <p className="text-sm text-muted-foreground mt-1">
-              Deep audience analysis powered by AI
+              Глубокий анализ аудитории на основе ИИ
             </p>
           </div>
           <Tooltip>
@@ -257,8 +257,8 @@ export function AudienceInsights({
             </TooltipTrigger>
             <TooltipContent>
               {isCooldownActive && getCooldownTimeRemaining()
-                ? `Available in ${getCooldownTimeRemaining()!.hours}h ${getCooldownTimeRemaining()!.minutes}m`
-                : "Refresh Analysis"}
+                ? `Доступно через ${getCooldownTimeRemaining()!.hours}ч ${getCooldownTimeRemaining()!.minutes}м`
+                : "Обновить анализ"}
             </TooltipContent>
           </Tooltip>
         </div>
@@ -271,10 +271,10 @@ export function AudienceInsights({
                 <AlertTriangle className="h-5 w-5 text-amber-600 dark:text-amber-400 mt-0.5 flex-shrink-0" />
                 <div className="flex-1">
                   <p className="text-sm font-medium text-amber-900 dark:text-amber-100">
-                    Likes/comments data unavailable
+                    Данные о лайках и комментариях недоступны
                   </p>
                   <p className="text-sm text-amber-700 dark:text-amber-300 mt-1 mb-3">
-                    Using behavioral engagement profile based on views, growth rate, format and topic.
+                    Используется профиль поведенческого взаимодействия на основе просмотров, темпа роста, формата и тематики.
                   </p>
                   <Button
                     onClick={handleEnrich}
@@ -286,12 +286,12 @@ export function AudienceInsights({
                     {isEnrichingAudience ? (
                       <>
                         <Loader2 className="h-4 w-4 animate-spin" />
-                        Enriching data...
+                        Обогащение данных...
                       </>
                     ) : (
                       <>
                         <Sparkles className="h-4 w-4" />
-                        Get real likes/comments
+                        Получить реальные лайки и комментарии
                       </>
                     )}
                   </Button>
@@ -307,7 +307,7 @@ export function AudienceInsights({
             <CardHeader>
               <CardTitle className="text-lg flex items-center gap-2">
                 <Users2 className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-                Audience Profile
+                Профиль аудитории
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -322,7 +322,7 @@ export function AudienceInsights({
             <CardHeader>
               <CardTitle className="text-lg flex items-center gap-2">
                 <Heart className="h-5 w-5 text-pink-600 dark:text-pink-400" />
-                Motivations & Needs ({data.motivations.length})
+                Мотивы и потребности ({data.motivations.length})
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -344,7 +344,7 @@ export function AudienceInsights({
             <CardHeader>
               <CardTitle className="text-lg flex items-center gap-2">
                 <Users2 className="h-5 w-5 text-green-600 dark:text-green-400" />
-                Audience Segments ({data.segments.length})
+                Сегменты аудитории ({data.segments.length})
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -366,7 +366,7 @@ export function AudienceInsights({
             <CardHeader>
               <CardTitle className="text-lg flex items-center gap-2">
                 <Sparkles className="h-5 w-5 text-purple-600 dark:text-purple-400" />
-                Content Patterns ({data.contentPatterns.length})
+                Паттерны контента ({data.contentPatterns.length})
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -388,7 +388,7 @@ export function AudienceInsights({
             <CardHeader>
               <CardTitle className="text-lg flex items-center gap-2">
                 <TrendingDown className="h-5 w-5 text-red-600 dark:text-red-400" />
-                What Doesn't Work ({data.antiPatterns.length})
+                Что не работает ({data.antiPatterns.length})
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -410,7 +410,7 @@ export function AudienceInsights({
             <CardHeader>
               <CardTitle className="text-lg flex items-center gap-2">
                 <Zap className="h-5 w-5 text-yellow-600 dark:text-yellow-400" />
-                Behavioral Analytics ({data.behavioralAnalytics.length})
+                Поведенческая аналитика ({data.behavioralAnalytics.length})
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -432,7 +432,7 @@ export function AudienceInsights({
             <CardHeader>
               <CardTitle className="text-lg flex items-center gap-2">
                 <Lightbulb className="h-5 w-5 text-green-600 dark:text-green-400" />
-                Growth Opportunities ({data.growthOpportunities.length})
+                Возможности роста ({data.growthOpportunities.length})
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -454,7 +454,7 @@ export function AudienceInsights({
             <CardHeader>
               <CardTitle className="text-lg flex items-center gap-2">
                 <Lightbulb className="h-5 w-5 text-cyan-600 dark:text-cyan-400" />
-                What to Do Now ({data.actionableRecommendations.length})
+                Что делать прямо сейчас ({data.actionableRecommendations.length})
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -472,7 +472,7 @@ export function AudienceInsights({
 
         {data.generatedAt && (
           <p className="text-xs text-muted-foreground text-center">
-            Analysis generated: {new Date(data.generatedAt).toLocaleString("en-US")}
+            Анализ создан: {new Date(data.generatedAt).toLocaleString("ru-RU")}
           </p>
         )}
       </CardContent>
@@ -487,10 +487,10 @@ export function AudienceInsights({
           <div>
             <h2 className="text-2xl font-bold flex items-center gap-2">
               <Users className="h-6 w-6 text-purple-600 dark:text-purple-400" />
-              Audience & Engagement
+              Аудитория и взаимодействие
             </h2>
             <p className="text-sm text-muted-foreground mt-1">
-              Audience engagement and content reactions analysis
+              Анализ взаимодействия аудитории и реакций на контент
             </p>
           </div>
           <Tooltip>
@@ -506,8 +506,8 @@ export function AudienceInsights({
             </TooltipTrigger>
             <TooltipContent>
               {isCooldownActive && getCooldownTimeRemaining()
-                ? `Available in ${getCooldownTimeRemaining()!.hours}h ${getCooldownTimeRemaining()!.minutes}m`
-                : "Refresh Analysis"}
+                ? `Доступно через ${getCooldownTimeRemaining()!.hours}ч ${getCooldownTimeRemaining()!.minutes}м`
+                : "Обновить анализ"}
             </TooltipContent>
           </Tooltip>
         </div>
@@ -517,19 +517,19 @@ export function AudienceInsights({
           <div className="grid grid-cols-4 gap-4">
             <div className="bg-muted/50 rounded-lg p-4">
               <div className="text-2xl font-bold">{data.stats.totalAnalyzed ?? 0}</div>
-              <div className="text-xs text-muted-foreground">Analyzed</div>
+              <div className="text-xs text-muted-foreground">Проанализировано</div>
             </div>
             <div className="bg-purple-500/10 rounded-lg p-4">
               <div className="text-2xl font-bold text-purple-600 dark:text-purple-400">{data.stats.highEngagement ?? 0}</div>
-              <div className="text-xs text-muted-foreground">High Engagement</div>
+              <div className="text-xs text-muted-foreground">Высокое взаимодействие</div>
             </div>
             <div className="bg-blue-500/10 rounded-lg p-4">
               <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">{data.stats.rising ?? 0}</div>
-              <div className="text-xs text-muted-foreground">Rising</div>
+              <div className="text-xs text-muted-foreground">Растущие</div>
             </div>
             <div className="bg-red-500/10 rounded-lg p-4">
               <div className="text-2xl font-bold text-red-600 dark:text-red-400">{data.stats.weak ?? 0}</div>
-              <div className="text-xs text-muted-foreground">Weak</div>
+              <div className="text-xs text-muted-foreground">Слабые</div>
             </div>
           </div>
         )}
@@ -542,10 +542,10 @@ export function AudienceInsights({
                 <AlertTriangle className="h-5 w-5 text-amber-600 dark:text-amber-400 mt-0.5 flex-shrink-0" />
                 <div className="flex-1">
                   <p className="text-sm font-medium text-amber-900 dark:text-amber-100">
-                    Likes/comments data unavailable
+                    Данные о лайках и комментариях недоступны
                   </p>
                   <p className="text-sm text-amber-700 dark:text-amber-300 mt-1 mb-3">
-                    Using behavioral engagement profile based on views, growth rate, format and topic.
+                    Используется профиль поведенческого взаимодействия на основе просмотров, темпа роста, формата и тематики.
                   </p>
                   <Button
                     onClick={handleEnrich}
@@ -557,12 +557,12 @@ export function AudienceInsights({
                     {isEnrichingAudience ? (
                       <>
                         <Loader2 className="h-4 w-4 animate-spin" />
-                        Enriching data...
+                        Обогащение данных...
                       </>
                     ) : (
                       <>
                         <Sparkles className="h-4 w-4" />
-                        Get real likes/comments
+                        Получить реальные лайки и комментарии
                       </>
                     )}
                   </Button>
@@ -578,7 +578,7 @@ export function AudienceInsights({
             <CardHeader>
               <CardTitle className="text-lg flex items-center gap-2">
                 <Sparkles className="h-5 w-5 text-purple-600 dark:text-purple-400" />
-                Why these topics get high engagement
+                Почему эти темы получают высокое взаимодействие
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -595,7 +595,7 @@ export function AudienceInsights({
               <CardHeader>
                 <CardTitle className="text-lg flex items-center gap-2">
                   <Heart className="h-5 w-5 text-pink-600 dark:text-pink-400" />
-                  High Engagement Themes
+                  Темы с высоким взаимодействием
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -617,7 +617,7 @@ export function AudienceInsights({
               <CardHeader>
                 <CardTitle className="text-lg flex items-center gap-2">
                   <MessageCircle className="h-5 w-5 text-green-600 dark:text-green-400" />
-                  Engaging Formats
+                  Привлекающие форматы
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -639,7 +639,7 @@ export function AudienceInsights({
               <CardHeader>
                 <CardTitle className="text-lg flex items-center gap-2">
                   <Users className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-                  Audience Patterns
+                  Паттерны аудитории
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -662,10 +662,10 @@ export function AudienceInsights({
             <CardHeader>
               <CardTitle className="text-lg flex items-center gap-2">
                 <TrendingDown className="h-5 w-5 text-red-600 dark:text-red-400" />
-                Weak Points
+                Слабые стороны
               </CardTitle>
               <CardDescription>
-                Topics and formats that get few reactions
+                Темы и форматы, которые получают мало реакций
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -687,7 +687,7 @@ export function AudienceInsights({
             <CardHeader>
               <CardTitle className="text-lg flex items-center gap-2">
                 <Lightbulb className="h-5 w-5 text-yellow-600 dark:text-yellow-400" />
-                How to increase engagement
+                Как увеличить взаимодействие
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -707,9 +707,9 @@ export function AudienceInsights({
         {data.highEngagementVideos && data.highEngagementVideos.length > 0 && (
           <Card>
             <CardHeader>
-              <CardTitle className="text-lg">High Engagement Videos</CardTitle>
+              <CardTitle className="text-lg">Видео с высоким взаимодействием</CardTitle>
               <CardDescription>
-                Videos with engagement 50%+ above median
+                Видео со взаимодействием на 50%+ выше медианы
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -746,7 +746,7 @@ export function AudienceInsights({
 
         {data.generatedAt && (
           <p className="text-xs text-muted-foreground text-center">
-            Analysis generated: {new Date(data.generatedAt).toLocaleString("en-US")}
+            Анализ создан: {new Date(data.generatedAt).toLocaleString("ru-RU")}
           </p>
         )}
       </CardContent>
@@ -758,13 +758,13 @@ export function AudienceInsights({
     <CardContent className="space-y-4 pt-6">
       <div className="flex flex-col items-center justify-center py-12">
         <AlertTriangle className="h-12 w-12 text-yellow-600 mb-4" />
-        <h3 className="text-lg font-semibold mb-2">Data format error</h3>
+        <h3 className="text-lg font-semibold mb-2">Ошибка формата данных</h3>
         <p className="text-sm text-muted-foreground mb-6 text-center max-w-md">
-          The analysis data has an unexpected format. Try generating a fresh analysis.
+          Данные анализа имеют неожиданный формат. Попробуйте создать свежий анализ.
         </p>
         <Button onClick={handleGenerate} className="gap-2 cursor-pointer">
           <Users className="h-4 w-4" />
-          Regenerate Analysis
+          Создать анализ заново
         </Button>
         {error && (
           <p className="text-sm text-destructive mt-4">{error}</p>
