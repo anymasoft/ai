@@ -28,7 +28,7 @@ interface MomentumTrendData {
 
 const chartConfig = {
   avgMomentum: {
-    label: "Avg Momentum",
+    label: "Среднее Momentum",
     color: "hsl(var(--primary))",
   },
 }
@@ -114,14 +114,14 @@ export function MomentumTrendChart() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-lg">
             <Zap className="h-5 w-5" />
-            Momentum Trend
+            Тренд Momentum
           </CardTitle>
-          <CardDescription>No momentum data available yet</CardDescription>
+          <CardDescription>Данные о momentum еще не доступны</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="flex flex-col items-center justify-center h-[280px] text-muted-foreground">
             <Zap className="h-12 w-12 mb-4 opacity-20" />
-            <p className="text-sm text-center">Add competitors and sync videos to see trends</p>
+            <p className="text-sm text-center">Добавьте конкурентов и синхронизируйте видео для просмотра трендов</p>
           </div>
         </CardContent>
       </Card>
@@ -152,13 +152,13 @@ export function MomentumTrendChart() {
         <div className="space-y-1">
           <CardTitle className="flex items-center gap-2 text-lg font-semibold">
             <Zap className="h-5 w-5 text-primary" />
-            Momentum Trend
+            Тренд Momentum
           </CardTitle>
           <CardDescription className="flex items-center gap-2 text-sm">
-            <span>Video performance dynamics</span>
+            <span>Динамика производительности видео</span>
             <Badge variant="outline" className={`gap-1 text-xs ${trendColor}`}>
               <TrendIcon className="h-3 w-3" />
-              {data.summary.highMomentumVideosTrend}
+              {data.summary.highMomentumVideosTrend === "up" ? "растет" : data.summary.highMomentumVideosTrend === "down" ? "падает" : "стабильно"}
             </Badge>
           </CardDescription>
         </div>
@@ -167,9 +167,9 @@ export function MomentumTrendChart() {
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="7">Last 7 days</SelectItem>
-            <SelectItem value="30">Last 30 days</SelectItem>
-            <SelectItem value="90">Last 90 days</SelectItem>
+            <SelectItem value="7">Последние 7 дней</SelectItem>
+            <SelectItem value="30">Последние 30 дней</SelectItem>
+            <SelectItem value="90">Последние 90 дней</SelectItem>
           </SelectContent>
         </Select>
       </CardHeader>
@@ -177,11 +177,11 @@ export function MomentumTrendChart() {
         {/* Stats Row */}
         <div className="flex flex-wrap gap-6 sm:gap-10 mb-5">
           <div className="space-y-0.5">
-            <p className="text-muted-foreground text-xs uppercase tracking-wider">High Momentum</p>
+            <p className="text-muted-foreground text-xs uppercase tracking-wider">Высокий Momentum</p>
             <p className="text-2xl font-semibold tabular-nums">{data.summary.totalHighMomentumVideos}</p>
           </div>
           <div className="space-y-0.5">
-            <p className="text-muted-foreground text-xs uppercase tracking-wider">Median Views/Day</p>
+            <p className="text-muted-foreground text-xs uppercase tracking-wider">Медиана просмотров/день</p>
             <p className="text-2xl font-semibold tabular-nums">{data.summary.medianViewsPerDay.toLocaleString()}</p>
           </div>
         </div>

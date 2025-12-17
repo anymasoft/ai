@@ -31,7 +31,7 @@ export function MetricsOverview({ data }: MetricsOverviewProps) {
     return (
       <Card className="p-6 bg-card/50 backdrop-blur-sm border-border/50">
         <div className="flex items-center justify-center text-muted-foreground">
-          <p>Failed to load metrics</p>
+          <p>Не удалось загрузить метрики</p>
         </div>
       </Card>
     )
@@ -39,31 +39,31 @@ export function MetricsOverview({ data }: MetricsOverviewProps) {
 
   const metrics = [
     {
-      title: "Tracked Channels",
+      title: "Отслеживаемые каналы",
       value: data.totalCompetitors.toString(),
       icon: Tv,
       trend: data.totalCompetitors > 0 ? "up" : "neutral",
-      badge: data.totalCompetitors > 0 ? "Active" : "None",
-      footer: data.totalCompetitors > 0 ? "Monitoring competitors" : "Add channels to track",
-      subfooter: `${data.totalScriptsGenerated} scripts generated`
+      badge: data.totalCompetitors > 0 ? "Активно" : "Нет",
+      footer: data.totalCompetitors > 0 ? "Мониторинг конкурентов" : "Добавьте каналы для отслеживания",
+      subfooter: `${data.totalScriptsGenerated} сгенерировано сценариев`
     },
     {
-      title: "Total Subscribers",
+      title: "Всего подписчиков",
       value: formatNumber(data.totalSubscribers),
       icon: Users,
       trend: "up",
       badge: formatNumber(data.totalSubscribers),
-      footer: "Combined audience reach",
-      subfooter: "Across all channels"
+      footer: "Общий охват аудитории",
+      subfooter: "По всем каналам"
     },
     {
-      title: "Total Views",
+      title: "Всего просмотров",
       value: formatNumber(data.totalViews),
       icon: Eye,
       trend: "up",
       badge: formatNumber(data.totalViews),
-      footer: "Cumulative view count",
-      subfooter: `${formatNumber(data.totalVideos)} videos tracked`
+      footer: "Совокупное количество просмотров",
+      subfooter: `${formatNumber(data.totalVideos)} отслеживается видео`
     },
     {
       title: "Лучший Momentum",
