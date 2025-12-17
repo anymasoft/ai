@@ -2,12 +2,12 @@
  * Webhook обработчик для ЮKassa
  * POST /api/payments/yookassa/webhook
  *
- * Получает уведомление о платеже от ЮKassa и обновляет план пользователя в БД
+ * Получает уведомление о платеже от ЮKassa и логирует его для аудита
  * Верификация платежа происходит через запрос к API ЮKassa
+ * ВАЖНО: Webhook НЕ изменяет тариф пользователя (это делает confirm endpoint)
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { updateUserPlan } from "@/lib/payments";
 
 interface YooKassaWebhookEvent {
   type: string;
@@ -81,24 +81,6 @@ async function verifyPaymentWithAPI(paymentId: string): Promise<YooKassaPayment 
   }
 }
 
-/**
- * Проверяет, был ли платеж уже обработан (для идемпотентности)
- */
-async function isPaymentProcessed(paymentId: string): Promise<boolean> {
-  try {
-    const { db } = await import("@/lib/db");
-    const result = await db.query(
-      "SELECT id FROM payments WHERE externalPaymentId = ?",
-      [paymentId]
-    );
-    return result.length > 0;
-  } catch (error) {
-    console.error("[YooKassa Webhook] Error checking if payment processed:", error);
-    // В случае ошибки БД, считаем что платеж новый
-    return false;
-  }
-}
-
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json() as YooKassaWebhookEvent;
@@ -110,12 +92,6 @@ export async function POST(request: NextRequest) {
     }
 
     const paymentId = body.data.object.id;
-
-    // Проверяем идемпотентность - если платеж уже обработан, возвращаем успех
-    if (await isPaymentProcessed(paymentId)) {
-      console.log(`[YooKassa Webhook] Payment ${paymentId} already processed`);
-      return NextResponse.json({ success: true });
-    }
 
     // Проверяем платеж через API ЮKassa
     const payment = await verifyPaymentWithAPI(paymentId);
@@ -147,24 +123,30 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: true });
     }
 
-    // Вычисляем дату истечения подписки (текущая дата + 30 дней)
-    const now = Math.floor(Date.now() / 1000);
-    const thirtyDaysInSeconds = 30 * 24 * 60 * 60;
-    const expiresAt = now + thirtyDaysInSeconds;
+    // Webhook НЕ вызывает updateUserPlan (это делает confirm)
+    // Webhook только логирует платеж в историю для аудита
 
-    // Обновляем план пользователя в БД
-    await updateUserPlan({
-      userId,
-      plan: planId as "basic" | "professional" | "enterprise",
-      expiresAt,
-      paymentProvider: "yookassa",
-    });
+    // ИДЕМПОТЕНТНОСТЬ: проверяем, нет ли уже записи о платеже
+    const { db } = await import("@/lib/db");
+    const checkResult = await db.execute(
+      `SELECT 1 FROM payments WHERE provider = 'yookassa' AND externalPaymentId = ? LIMIT 1`,
+      [paymentId]
+    );
+    const existingPayment = Array.isArray(checkResult) ? checkResult.length > 0 : (checkResult.rows || []).length > 0;
 
-    // Логируем платеж в таблицу истории платежей
+    if (existingPayment) {
+      console.log(
+        `[YooKassa Webhook] Payment ${paymentId} already logged, skipping duplicate insert`
+      );
+      return NextResponse.json({ success: true });
+    }
+
+    // Записываем платеж в историю
+    const now = Date.now();
+    const expiresAt = now + 30 * 24 * 60 * 60 * 1000; // для логирования
     const { PLAN_LIMITS } = await import("@/config/plan-limits");
     const planPrice = PLAN_LIMITS[planId as "basic" | "professional" | "enterprise"]?.price || "0 ₽";
 
-    const { db } = await import("@/lib/db");
     await db.execute(
       `INSERT INTO payments (externalPaymentId, userId, plan, amount, provider, status, expiresAt, createdAt)
        VALUES (?, ?, ?, ?, 'yookassa', 'succeeded', ?, ?)`,
@@ -172,7 +154,7 @@ export async function POST(request: NextRequest) {
     );
 
     console.log(
-      `[YooKassa Webhook] Successfully processed payment ${paymentId} for user ${userId}, plan ${planId}`
+      `[YooKassa Webhook] Successfully logged payment ${paymentId} for user ${userId}, plan ${planId}`
     );
 
     return NextResponse.json({ success: true });

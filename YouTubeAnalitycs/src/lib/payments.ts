@@ -13,7 +13,7 @@ interface UpdateUserPlanParams {
 
 /**
  * Обновляет план пользователя и срок действия подписки в БД
- * После успешной оплаты ЮKassa вызывает эту функцию
+ * expiresAt ОБЯЗАТЕЛЬНО передается явно от вызывающей стороны
  * Также сбрасывает использованные сценарии за текущий месяц
  */
 export async function updateUserPlan({
@@ -27,7 +27,7 @@ export async function updateUserPlan({
       `[updateUserPlan] Starting update for user ${userId}, new plan: ${plan}, provider: ${paymentProvider}`
     );
 
-    const now = Math.floor(Date.now() / 1000);
+    const now = Date.now();
 
     // Обновляем план пользователя
     const result = await db.execute(
@@ -89,9 +89,17 @@ export async function getUserPaymentInfo(userId: string): Promise<{
     if (rows.length === 0) return null;
 
     const user = rows[0];
-    const now = Math.floor(Date.now() / 1000);
+    const now = Date.now();
     let plan = user.plan || "free";
     let expiresAt = user.expiresAt || null;
+
+    // Защита от старых значений в БД: если expiresAt в секундах (< 10^12), конвертируем
+    if (expiresAt && expiresAt < 1_000_000_000_000) {
+      console.log(
+        `[Payments] Converting expiresAt from seconds to milliseconds for user ${userId}: ${expiresAt} -> ${expiresAt * 1000}`
+      );
+      expiresAt = expiresAt * 1000;
+    }
 
     // Проверка 1: АВТОМАТИЧЕСКИЙ DOWNGRADE по времени (если подписка истекла)
     const expiredByTime = expiresAt && expiresAt < now;
@@ -122,7 +130,7 @@ export async function getUserPaymentInfo(userId: string): Promise<{
     if ((expiredByTime || expiredByUsage) && plan !== "free") {
       const reason = expiredByTime ? "subscription expired" : "usage limit exhausted";
       console.log(
-        `[Payments] Auto-downgrading user ${userId} from ${plan} to free (${reason})`
+        `[Payments] Auto-downgrading user ${userId} from ${plan} to free (${reason}). expiresAt: ${expiresAt}, now: ${now}`
       );
       plan = "free";
       expiresAt = null;
@@ -144,7 +152,7 @@ export async function getUserPaymentInfo(userId: string): Promise<{
  */
 export function isSubscriptionActive(expiresAt: number | null): boolean {
   if (!expiresAt) return false;
-  const now = Math.floor(Date.now() / 1000);
+  const now = Date.now();
   return expiresAt > now;
 }
 

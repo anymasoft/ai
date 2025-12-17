@@ -1,9 +1,9 @@
 /**
- * DEV-ONLY Endpoint для подтверждения платежа локально
+ * Endpoint для подтверждения платежа через YooKassa API
  * GET /api/payments/yookassa/confirm?paymentId=XXX
  *
- * Используется для локального тестирования без webhook
- * Работает только в development (NODE_ENV !== "production")
+ * Проверяет статус платежа и активирует подписку пользователя
+ * Работает на любом окружении (dev/prod) — режим определяется ключами в .env
  *
  * Response:
  * {
@@ -29,14 +29,6 @@ interface YooKassaPayment {
 
 export async function GET(request: NextRequest) {
   try {
-    // Проверяем что это development mode
-    if (process.env.NODE_ENV === "production") {
-      return NextResponse.json(
-        { ok: false, error: "Not available in production" },
-        { status: 404 }
-      );
-    }
-
     // Получаем paymentId из параметров
     const paymentId = request.nextUrl.searchParams.get("paymentId");
 
@@ -131,7 +123,7 @@ export async function GET(request: NextRequest) {
 
     // Получаем planId и billingCycle из metadata
     const planId = paymentData.metadata?.planId;
-    const billingCycle = paymentData.metadata?.billingCycle || 'monthly';
+    const billingCycle = paymentData.metadata?.billingCycle;
     console.log(`[YooKassa Confirm] Extracted planId: ${planId}, billingCycle: ${billingCycle}`);
 
     if (!planId || !["basic", "professional", "enterprise"].includes(planId)) {
@@ -144,25 +136,33 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    // Валидируем billingCycle строго: должен быть "monthly" или "yearly"
+    if (!billingCycle || !["monthly", "yearly"].includes(billingCycle)) {
+      console.error(
+        `[YooKassa Confirm] Invalid billingCycle in metadata: ${billingCycle}`
+      );
+      return NextResponse.json(
+        { ok: false, error: "Невалидный цикл биллинга в платеже" },
+        { status: 400 }
+      );
+    }
+
     // Обновляем план пользователя в БД
     try {
-      const now = Math.floor(Date.now() / 1000);
+      const now = Date.now();
 
-      // Рассчитываем срок действия подписки в зависимости от billingCycle
-      let subscriptionDaysInSeconds: number;
-      if (billingCycle === 'yearly') {
-        // 365 дней для годовой подписки
-        subscriptionDaysInSeconds = 365 * 24 * 60 * 60;
-      } else {
-        // 30 дней для месячной подписки (по умолчанию)
-        subscriptionDaysInSeconds = 30 * 24 * 60 * 60;
-      }
-      const expiresAt = now + subscriptionDaysInSeconds;
+      // Вычисляем срок подписки в зависимости от billingCycle
+      const subscriptionDaysInMs = billingCycle === "yearly"
+        ? 365 * 24 * 60 * 60 * 1000
+        : 30 * 24 * 60 * 60 * 1000;
+
+      const expiresAt = now + subscriptionDaysInMs;
 
       console.log(
-        `[YooKassa Confirm] Updating plan for user ${session.user.id} to ${planId} with ${billingCycle} billing (expires at ${expiresAt})`
+        `[YooKassa Confirm] Updating plan for user ${session.user.id} to ${planId}, expires at ${expiresAt}`
       );
 
+      // ОДИН вызов updateUserPlan с явным expiresAt
       await updateUserPlan({
         userId: session.user.id,
         plan: planId as "basic" | "professional" | "enterprise",
@@ -170,7 +170,7 @@ export async function GET(request: NextRequest) {
         paymentProvider: "yookassa",
       });
 
-      // Логируем платеж в таблицу истории платежей
+      // Логируем платеж в таблицу истории платежей (только логирование, без сайд-эффектов)
       const { PLAN_LIMITS } = await import("@/config/plan-limits");
       const planPrice = PLAN_LIMITS[planId as "basic" | "professional" | "enterprise"]?.price || "0 ₽";
 
@@ -182,7 +182,7 @@ export async function GET(request: NextRequest) {
       );
 
       console.log(
-        `[YooKassa Confirm] Successfully confirmed payment for user ${session.user.id}, plan ${planId}, billing cycle: ${billingCycle}`
+        `[YooKassa Confirm] Successfully confirmed payment for user ${session.user.id}, plan ${planId}`
       );
 
       return NextResponse.json({ ok: true });
