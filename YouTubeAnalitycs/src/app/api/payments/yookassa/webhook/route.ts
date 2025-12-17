@@ -147,20 +147,19 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: true });
     }
 
-    // Вычисляем дату истечения подписки (текущая дата + 30 дней)
-    const now = Math.floor(Date.now() / 1000);
-    const thirtyDaysInSeconds = 30 * 24 * 60 * 60;
-    const expiresAt = now + thirtyDaysInSeconds;
-
     // Обновляем план пользователя в БД
+    // updateUserPlan() сама вычислит срок (30 дней по умолчанию)
+    const now = Date.now();
+
     await updateUserPlan({
       userId,
       plan: planId as "basic" | "professional" | "enterprise",
-      expiresAt,
       paymentProvider: "yookassa",
     });
 
     // Логируем платеж в таблицу истории платежей
+    // expiresAt для платежа = now + 30 дней (совпадает с updateUserPlan логикой)
+    const expiresAt = now + 30 * 24 * 60 * 60 * 1000;
     const { PLAN_LIMITS } = await import("@/config/plan-limits");
     const planPrice = PLAN_LIMITS[planId as "basic" | "professional" | "enterprise"]?.price || "0 ₽";
 

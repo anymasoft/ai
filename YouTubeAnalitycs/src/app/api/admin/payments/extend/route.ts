@@ -24,12 +24,17 @@ export async function POST(request: NextRequest) {
     )
 
     const row = Array.isArray(result) ? result[0] : (result.rows || [])[0]
-    const currentExpiresAt = row?.expiresAt || 0
+    let currentExpiresAt = row?.expiresAt || 0
+
+    // Защита от старых значений в БД: если expiresAt в секундах (< 10^12), конвертируем
+    if (currentExpiresAt && currentExpiresAt < 1_000_000_000_000) {
+      currentExpiresAt = currentExpiresAt * 1000
+    }
 
     // Calculate new expiration date (в миллисекундах)
-    const baseTime = Math.max(currentExpiresAt * 1000, Date.now())
-    const newExpiresAt = Math.floor((baseTime + (days * 24 * 60 * 60 * 1000)) / 1000)
-    const updatedAt = Math.floor(Date.now() / 1000)
+    const baseTime = Math.max(currentExpiresAt, Date.now())
+    const newExpiresAt = baseTime + (days * 24 * 60 * 60 * 1000)
+    const updatedAt = Date.now()
 
     // Update users table (ONLY source of truth)
     await db.execute(

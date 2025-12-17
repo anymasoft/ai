@@ -29,14 +29,6 @@ interface YooKassaPayment {
 
 export async function GET(request: NextRequest) {
   try {
-    // Проверяем что это development mode
-    if (process.env.NODE_ENV === "production") {
-      return NextResponse.json(
-        { ok: false, error: "Not available in production" },
-        { status: 404 }
-      );
-    }
-
     // Получаем paymentId из параметров
     const paymentId = request.nextUrl.searchParams.get("paymentId");
 
@@ -146,31 +138,21 @@ export async function GET(request: NextRequest) {
 
     // Обновляем план пользователя в БД
     try {
-      const now = Math.floor(Date.now() / 1000);
-
-      // Рассчитываем срок действия подписки в зависимости от billingCycle
-      let subscriptionDaysInSeconds: number;
-      if (billingCycle === 'yearly') {
-        // 365 дней для годовой подписки
-        subscriptionDaysInSeconds = 365 * 24 * 60 * 60;
-      } else {
-        // 30 дней для месячной подписки (по умолчанию)
-        subscriptionDaysInSeconds = 30 * 24 * 60 * 60;
-      }
-      const expiresAt = now + subscriptionDaysInSeconds;
+      const now = Date.now();
 
       console.log(
-        `[YooKassa Confirm] Updating plan for user ${session.user.id} to ${planId} with ${billingCycle} billing (expires at ${expiresAt})`
+        `[YooKassa Confirm] Updating plan for user ${session.user.id} to ${planId}`
       );
 
       await updateUserPlan({
         userId: session.user.id,
         plan: planId as "basic" | "professional" | "enterprise",
-        expiresAt,
         paymentProvider: "yookassa",
       });
 
       // Логируем платеж в таблицу истории платежей
+      // expiresAt для платежа = now + 30 дней (совпадает с updateUserPlan логикой)
+      const expiresAt = now + 30 * 24 * 60 * 60 * 1000;
       const { PLAN_LIMITS } = await import("@/config/plan-limits");
       const planPrice = PLAN_LIMITS[planId as "basic" | "professional" | "enterprise"]?.price || "0 ₽";
 
