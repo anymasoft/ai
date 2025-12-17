@@ -262,9 +262,9 @@ export default async function ChannelPage({ params }: PageProps) {
     // Парсим JSON данные из channel_ai_comment_insights
     const deepAnalysisData = deepAnalysis ? JSON.parse(deepAnalysis.resultJson as string) : null;
 
-    // Определяем наличие комментариев по наличию проанализированных данных
-    // Если есть comment insights или deep analysis - значит комментарии были синхронизированы
-    const hasComments = !!commentsData || !!deepAnalysisData;
+    // НОВОЕ (ИТЕРАЦИЯ 9): hasComments также всегда false при SSR
+    // Комментарии проверяются на клиенте после загрузки видео
+    const hasComments = false;
 
     // Debug: проверка channelId и количества метрик
     console.log("[ChannelPage] Загруженные данные для канала:", competitor.channelId);

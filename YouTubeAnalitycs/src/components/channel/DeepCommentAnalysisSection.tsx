@@ -69,19 +69,7 @@ export function DeepCommentAnalysisSection({
   return (
     <CardContent className="p-6">
       <>
-        {!hasRequiredData ? (
-          /* Нет комментариев - показываем оповещение */
-          <div className="flex flex-col items-center justify-center py-12">
-            <div className="rounded-lg border border-amber-200 bg-amber-50/50 dark:border-amber-900 dark:bg-amber-950/20 p-6 max-w-sm text-center">
-              <p className="text-sm text-amber-900 dark:text-amber-100 mb-2">
-                На этом канале нет комментариев
-              </p>
-              <p className="text-xs text-amber-700 dark:text-amber-300">
-                Глубокий анализ требует наличия комментариев на видео
-              </p>
-            </div>
-          </div>
-        ) : isGeneratingDeep ? (
+        {isGeneratingDeep ? (
           /* Идёт генерация - показываем Loading State */
           <AnalysisLoadingState
             title="Анализ комментариев..."
