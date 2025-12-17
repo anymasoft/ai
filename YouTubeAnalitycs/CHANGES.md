@@ -5,6 +5,110 @@ All changes are tracked in git history.
 
 ---
 
+## 2025-12-17 - Упрощение платежной системы YooKassa (ФИНАЛЬНАЯ АРХИТЕКТУРА)
+
+### СУПЕР-МАКСИМАЛЬНО ПРОСТАЯ СХЕМА
+
+Платежная система переделана на максимально простую архитектуру. Никаких подписок, никаких режимов.
+
+```
+Создали платёж → Сохранили в БД (status='pending')
+→ YooKassa webhook payment.succeeded
+→ Находим платеж в БД → Активируем тариф на 30 дней → Всё
+```
+
+#### 1. СОЗДАНИЕ ПЛАТЕЖА (`/api/payments/yookassa/create`)
+
+Когда клиент нажимает "купить":
+1. Создаём платёж в YooKassa API
+2. **СРАЗУ сохраняем в НАШЕЙ БД:**
+   ```sql
+   INSERT INTO payments (externalPaymentId, userId, plan, amount, provider, status, createdAt)
+   VALUES (paymentId, userId, planId, price, 'yookassa', 'pending', now)
+   ```
+3. YooKassa только для платежа — НЕ знает про userId/plan
+4. Отправляем пользователя на payment_url от YooKassa
+
+**Источник правды:** наша БД, а не YooKassa.
+
+#### 2. WEBHOOK (`/api/payments/yookassa/webhook`) — ЕДИНСТВЕННАЯ АКТИВАЦИЯ
+
+YooKassa присылает `payment.succeeded`:
+
+1. Берём `paymentId`
+2. **НАХОДИМ платеж в БД:**
+   ```sql
+   SELECT userId, plan, status FROM payments
+   WHERE provider='yookassa' AND externalPaymentId=paymentId
+   ```
+3. **Если НЕ найден:** return 500 (YooKassa ретраит)
+4. **Если найден и status='succeeded':** return 200 (идемпотентность)
+5. **Если найден и status='pending':**
+   - Активируем тариф (30 дней жёстко):
+     ```sql
+     UPDATE users SET plan=planId, expiresAt=now+30дней, paymentProvider='yookassa'
+     ```
+   - Завершаем платеж:
+     ```sql
+     UPDATE payments SET status='succeeded', expiresAt=now+30дней
+     ```
+6. Return 200
+
+**Логика:** платеж создан в БД, webhook его находит и активирует тариф.
+
+#### 3. CONFIRM ENDPOINT (`/api/payments/yookassa/confirm`)
+
+Просто:
+```ts
+return { ok: true }
+```
+
+Ничего не трогает. Ничего не вычисляет. Вся логика в webhook.
+
+#### 4. DOWNGRADE (АВТОМАТИЧЕСКИЙ)
+
+В `getUserPaymentInfo()`:
+- По времени: `expiresAt < now` → downgrade на free
+- По лимиту: используны все сценарии в месяц → downgrade на free
+
+#### ЧТО УДАЛЕНО
+
+- ❌ billingCycle (полностью из кода)
+- ❌ metadata.userId, metadata.planId (только для лога)
+- ❌ yearly/monthly логика (ВСЕГДА 30 дней)
+- ❌ Сброс usage (лишняя логика)
+- ❌ NODE_ENV проверки (тест/прод = только ключи)
+- ❌ Режимы (test/prod)
+- ❌ Архитектурные паттерны
+- ❌ "На будущее" код
+
+#### АРХИТЕКТУРНЫЕ ПРАВИЛА (ЖЁСТКО)
+
+1. **НА НАШЕЙ СТОРОНЕ — ПОЛНАЯ ПРАВДА О ПЛАТЕЖАХ**
+   - Создали платёж → сохранили в БД
+   - Webhook → находит и активирует
+   - YooKassa = тупой шлюз
+
+2. **WEBHOOK — ЕДИНСТВЕННАЯ ТОЧКА АКТИВАЦИИ**
+   - Других мест активации нет
+   - Даже confirm НЕ трогает тариф
+
+3. **ИДЕМПОТЕНТНОСТЬ ПО СТАТУСУ**
+   - Если status='succeeded' → 200 (ничего не делаем)
+   - Если платеж не найден → 500 (ретраит)
+   - Прерывистый интернет НЕ ломает систему
+
+4. **30 ДНЕЙ ХАРДКОД**
+   - `expiresAt = Date.now() + 30 * 24 * 60 * 60 * 1000`
+   - Никаких вычислений, никаких условий
+
+5. **ТЕСТ/ПРОД ТОЛЬКО ПО КЛЮЧАМ**
+   - Тестовый ShopID → тестовые платежи
+   - Боевой ShopID → реальные платежи
+   - Никаких флагов, NODE_ENV, режимов
+
+---
+
 ## 2025-12-13 - Обновление страницы /settings/billing с реальными тарифами и лимитами сценариев
 
 ### Основные изменения архитектуры
