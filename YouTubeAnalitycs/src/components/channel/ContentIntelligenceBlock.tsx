@@ -403,7 +403,7 @@ export function ContentIntelligenceBlock({
         <div>
           <h2 className="text-2xl font-bold flex items-center gap-2">
             <Sparkles className="h-6 w-6 text-purple-600 dark:text-purple-400" />
-            Content Intelligence
+            Анализ контента
           </h2>
           <p className="text-sm text-muted-foreground mt-1">
             Аналитический отчёт об особенностях контент-стратегии
