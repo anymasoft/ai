@@ -87,7 +87,7 @@ export function DeepCommentAnalysisSection({
                 variant="default"
                 size="sm"
               >
-                Получить Deep Analysis
+                Глубокий анализ комментариев
               </Button>
             </div>
           </div>
