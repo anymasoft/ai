@@ -187,7 +187,7 @@ export function TopVideosByMomentum() {
               <div className="flex items-center gap-2 text-xs text-muted-foreground">
                 <span>{video.channelTitle}</span>
                 <span>-</span>
-                <span>{formatNumber(video.viewsPerDay)}/day</span>
+                <span>{formatNumber(video.viewsPerDay)}/день</span>
               </div>
               <div className="flex items-center gap-2 mt-2">
                 <Progress
@@ -207,7 +207,7 @@ export function TopVideosByMomentum() {
                 {formatMomentumPercent(video.momentumScore)}
               </Badge>
               <p className="text-xs text-muted-foreground mt-1">
-                {formatNumber(video.viewCount)} views
+                {formatNumber(video.viewCount)} просмотров
               </p>
             </div>
           </a>
@@ -218,14 +218,14 @@ export function TopVideosByMomentum() {
           <div className="flex items-center gap-4">
             <span className="flex items-center gap-1">
               <Zap className="h-3 w-3 text-orange-500" />
-              {data.stats.highMomentum} high momentum
+              {data.stats.highMomentum} быстрый рост
             </span>
             <span className="flex items-center gap-1">
               <TrendingUp className="h-3 w-3 text-green-500" />
-              {data.stats.rising} rising
+              {data.stats.rising} растёт
             </span>
           </div>
-          <span>{data.total} total videos</span>
+          <span>{data.total} всего видео</span>
         </div>
       </CardContent>
     </Card>

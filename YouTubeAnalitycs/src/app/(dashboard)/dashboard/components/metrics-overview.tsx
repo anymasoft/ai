@@ -66,19 +66,19 @@ export function MetricsOverview({ data }: MetricsOverviewProps) {
       subfooter: `${formatNumber(data.totalVideos)} отслеживается видео`
     },
     {
-      title: "Лучший Momentum",
+      title: "Лучший темп роста",
       value: data.topMomentumVideo
         ? formatMomentumPercent(data.topMomentumVideo.momentumScore)
         : "—",
       icon: Zap,
       trend: data.topMomentumVideo && data.topMomentumVideo.momentumScore > 0.5 ? "up" : "neutral",
       badge: data.topMomentumVideo
-        ? `${formatNumber(data.topMomentumVideo.viewsPerDay)}/day`
-        : "No data",
+        ? `${formatNumber(data.topMomentumVideo.viewsPerDay)}/день`
+        : "Нет данных",
       footer: data.topMomentumVideo
         ? data.topMomentumVideo.title.slice(0, 40) + (data.topMomentumVideo.title.length > 40 ? "..." : "")
-        : "No high momentum videos",
-      subfooter: data.topMomentumVideo?.channelTitle || "Sync videos first",
+        : "Нет видео с быстрым ростом",
+      subfooter: data.topMomentumVideo?.channelTitle || "Синхронизируйте видео",
       link: data.topMomentumVideo?.url
     },
   ]

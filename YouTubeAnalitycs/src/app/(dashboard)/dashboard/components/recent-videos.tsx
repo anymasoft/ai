@@ -54,12 +54,12 @@ function formatTimeAgo(dateString: string): string {
   const diffMs = now.getTime() - date.getTime()
   const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24))
 
-  if (diffDays === 0) return "Today"
-  if (diffDays === 1) return "Yesterday"
-  if (diffDays < 7) return `${diffDays} days ago`
-  if (diffDays < 30) return `${Math.floor(diffDays / 7)} weeks ago`
-  if (diffDays < 365) return `${Math.floor(diffDays / 30)} months ago`
-  return `${Math.floor(diffDays / 365)} years ago`
+  if (diffDays === 0) return "Сегодня"
+  if (diffDays === 1) return "Вчера"
+  if (diffDays < 7) return `${diffDays} дней назад`
+  if (diffDays < 30) return `${Math.floor(diffDays / 7)} недель назад`
+  if (diffDays < 365) return `${Math.floor(diffDays / 30)} месяцев назад`
+  return `${Math.floor(diffDays / 365)} лет назад`
 }
 
 function VideoCardSkeleton() {
@@ -183,7 +183,7 @@ export function RecentVideos() {
         </CardHeader>
         <CardContent>
           <div className="flex items-center justify-center h-[200px] text-muted-foreground">
-            Sync competitor videos to see recent content
+            Синхронизируйте видео конкурентов, чтобы увидеть недавние видео
           </div>
         </CardContent>
       </Card>
@@ -249,7 +249,7 @@ export function RecentVideos() {
                   {video.category === "High Momentum" ? formatMomentumPercent(video.momentumScore) : video.category}
                 </Badge>
                 <span className="text-xs text-muted-foreground">
-                  {formatNumber(video.viewsPerDay)}/day
+                  {formatNumber(video.viewsPerDay)}/день
                 </span>
                 {video.publishDate ? (
                   <span className="text-xs text-muted-foreground">

@@ -123,7 +123,7 @@ export function ChannelAnalytics({
         />
       </CollapsibleSection>
 
-      {/* Momentum Insights */}
+      {/* Анализ роста */}
       <CollapsibleSection
         title="Аналитика Momentum"
         isOpen={expanded.momentum}
@@ -137,7 +137,7 @@ export function ChannelAnalytics({
         />
       </CollapsibleSection>
 
-      {/* Audience Insights */}
+      {/* Анализ аудитории */}
       <CollapsibleSection
         title="Аудитория и взаимодействие"
         isOpen={expanded.audience}
@@ -151,7 +151,7 @@ export function ChannelAnalytics({
         />
       </CollapsibleSection>
 
-      {/* Comment Intelligence */}
+      {/* Анализ комментариев */}
       <CollapsibleSection
         title="Интеллект комментариев"
         isOpen={expanded.comments}
