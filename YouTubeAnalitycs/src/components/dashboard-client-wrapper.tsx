@@ -79,9 +79,9 @@ export function DashboardClientWrapper({ children }: DashboardClientWrapperProps
         {/* Theme Customizer */}
 //         <ThemeCustomizerTrigger onClick={() => setThemeCustomizerOpen(true)} />
 //         <ThemeCustomizer
-          open={themeCustomizerOpen}
-          onOpenChange={setThemeCustomizerOpen}
-        />
+//           open={themeCustomizerOpen}
+//           onOpenChange={setThemeCustomizerOpen}
+//         />
         <UpgradeToProButton />
       </SidebarProvider>
     </Suspense>
