@@ -29,30 +29,22 @@ export function useCheckPaymentStatus() {
 
     const params = new URLSearchParams(window.location.search);
     const success = params.get("success");
-    const paymentId = params.get("paymentId");
 
-    console.log("[useCheckPaymentStatus] URL params - success:", success, "paymentId:", paymentId);
+    console.log("[useCheckPaymentStatus] URL success param:", success, "checked:", checked);
 
     // ЕСЛИ нет success=1 ИЛИ уже проверили → ничего не делаем
     if (!success || checked) {
-      console.log("[useCheckPaymentStatus] Skipping: success=", success, "checked=", checked);
+      console.log("[useCheckPaymentStatus] Skipping - no success param or already checked");
       return;
     }
 
-    // ЕСЛИ нет paymentId → нечего проверять
-    if (!paymentId) {
-      console.error("[useCheckPaymentStatus] ❌ NO paymentId in URL! Cannot check payment!");
-      console.error("[useCheckPaymentStatus] URL should be: ?success=1&paymentId=XXX");
-      setChecked(true);
-      return;
-    }
-
-    console.log(`[useCheckPaymentStatus] ✓ Checking payment: ${paymentId}`);
+    console.log(`[useCheckPaymentStatus] ✓ Checking latest payment status`);
 
     // ОДНА проверка
     (async () => {
       try {
-        const url = `/api/payments/yookassa/check?paymentId=${paymentId}`;
+        // Check endpoint найдёт latest pending payment по userId
+        const url = `/api/payments/yookassa/check`;
         console.log(`[useCheckPaymentStatus] Fetching: ${url}`);
 
         const response = await fetch(url);

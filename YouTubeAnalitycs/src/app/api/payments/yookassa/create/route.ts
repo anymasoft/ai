@@ -105,6 +105,8 @@ export async function POST(request: NextRequest) {
     console.log("[YooKassa]   - webhookUrl =", webhookUrl);
     console.log("[YooKassa]   - Shop ID =", yooKassaShopId ? "✓ SET" : "❌ MISSING");
 
+    // ВАЖНО: return_url БЕЗ paymentId (так как paymentData ещё не получен)
+    // Check endpoint получит paymentId по userId и createdAt DESC
     const paymentRequest: YooKassaPaymentRequest = {
       amount: {
         value: amountRubles,
@@ -112,7 +114,7 @@ export async function POST(request: NextRequest) {
       },
       confirmation: {
         type: "redirect",
-        return_url: `${process.env.NEXTAUTH_URL}/settings/billing?success=1&paymentId=${paymentData.id}`,
+        return_url: `${process.env.NEXTAUTH_URL}/settings/billing?success=1`,
       },
       capture: true,
       description: `Подписка на тариф ${getPlanName(

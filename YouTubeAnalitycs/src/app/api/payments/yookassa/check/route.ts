@@ -1,5 +1,6 @@
 /**
  * Check Payment Status Endpoint
+ * GET /api/payments/yookassa/check
  * GET /api/payments/yookassa/check?paymentId=XXX
  *
  * FALLBACK для localhost (когда webhook недоступен)
@@ -7,11 +8,11 @@
  * LOCAL: UI вызывает этот endpoint после возврата из YooKassa
  *
  * ЛОГИКА:
- * 1. Проверяет payments.status в БД
- * 2. ЕСЛИ уже succeeded → успех
- * 3. ЕСЛИ pending → запрашивает YooKassa API
- * 4. ЕСЛИ YooKassa говорит succeeded → применяет платёж
- * 5. ЕСЛИ нет → возвращает pending
+ * 1. Если paymentId → проверяет конкретный платёж
+ * 2. Если БЕЗ paymentId → ищет latest pending платёж по userId
+ * 3. Проверяет payments.status в БД
+ * 4. ЕСЛИ pending → запрашивает YooKassa API
+ * 5. ЕСЛИ YooKassa говорит succeeded → применяет платёж
  */
 
 import { NextRequest, NextResponse } from "next/server";
@@ -36,21 +37,36 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Получаем paymentId из query параметров
     const { searchParams } = new URL(request.url);
-    const paymentId = searchParams.get("paymentId");
+    let paymentId = searchParams.get("paymentId");
 
+    console.log(`[CHECK] Checking payment (userId: ${session.user.id})`);
+
+    const { db } = await import("@/lib/db");
+
+    // ШАГ 1: Если paymentId не передан, ищем latest pending платёж по userId
     if (!paymentId) {
-      return NextResponse.json(
-        { error: "paymentId is required" },
-        { status: 400 }
+      console.log(`[CHECK] No paymentId provided, searching for latest pending payment`);
+
+      const latestResult = await db.execute(
+        "SELECT externalPaymentId, status FROM payments WHERE userId = ? AND status = 'pending' ORDER BY createdAt DESC LIMIT 1",
+        [session.user.id]
       );
+      const latestRows = Array.isArray(latestResult) ? latestResult : latestResult.rows || [];
+
+      if (latestRows.length === 0) {
+        console.log(`[CHECK] No pending payments found for user`);
+        return NextResponse.json({
+          success: false,
+          error: "No pending payment found",
+        });
+      }
+
+      paymentId = latestRows[0].externalPaymentId;
+      console.log(`[CHECK] Found latest pending payment: ${paymentId}`);
     }
 
-    console.log(`[CHECK] Checking payment status: ${paymentId}`);
-
-    // ШАГ 1: Проверяем статус в БД
-    const { db } = await import("@/lib/db");
+    // ШАГ 2: Проверяем статус в БД
     const dbResult = await db.execute(
       "SELECT status, userId FROM payments WHERE externalPaymentId = ?",
       [paymentId]
@@ -82,13 +98,13 @@ export async function GET(request: NextRequest) {
       `[CHECK] Found payment in DB: status=${dbStatus}, userId=${userId}`
     );
 
-    // ШАГ 2: ЕСЛИ уже succeeded в БД → готово
+    // ШАГ 3: ЕСЛИ уже succeeded в БД → готово
     if (dbStatus === "succeeded") {
       console.log(`[CHECK] Payment already succeeded in DB`);
       return NextResponse.json({ success: true, status: "succeeded" });
     }
 
-    // ШАГ 3: ЕСЛИ не pending → ошибка
+    // ШАГ 4: ЕСЛИ не pending → ошибка
     if (dbStatus !== "pending") {
       console.log(`[CHECK] Payment has status: ${dbStatus}`);
       return NextResponse.json({
@@ -98,7 +114,7 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    // ШАГ 4: PULL из YooKassa API (только если pending)
+    // ШАГ 5: PULL из YooKassa API (только если pending)
     console.log(`[CHECK] Payment is pending, checking YooKassa API...`);
 
     const yooKassaShopId = process.env.YOOKASSA_SHOP_ID;
@@ -140,7 +156,7 @@ export async function GET(request: NextRequest) {
       `[CHECK] YooKassa response: status=${yooKassaPayment.status}, paid=${yooKassaPayment.paid}`
     );
 
-    // ШАГ 5: ЕСЛИ YooKassa говорит succeeded → применяем платёж
+    // ШАГ 6: ЕСЛИ YooKassa говорит succeeded → применяем платёж
     if (
       yooKassaPayment.status === "succeeded" &&
       yooKassaPayment.paid === true
@@ -161,7 +177,7 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // ШАГ 6: ЕСЛИ ещё pending → возвращаем pending
+    // ШАГ 7: ЕСЛИ ещё pending → возвращаем pending
     console.log(
       `[CHECK] Payment still pending in YooKassa: ${yooKassaPayment.status}`
     );
