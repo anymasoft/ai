@@ -1,5 +1,6 @@
 "use client"
 import { useSession } from "next-auth/react"
+import { useUser } from "@/hooks/useUser"
 
 import { useState, useEffect, useCallback } from "react"
 import { useRouter } from "next/navigation"
@@ -100,7 +101,8 @@ interface ChannelInfo {
 
 export default function TrendingPage() {
   const { data: session } = useSession()
-  const userPlan = (session?.user?.plan || "free") as UserPlan
+  const { user } = useUser()
+  const userPlan = (user?.plan || "free") as UserPlan
   const [videos, setVideos] = useState<MomentumVideo[]>([])
   const [channels, setChannels] = useState<ChannelInfo[]>([])
   const [loading, setLoading] = useState(true)

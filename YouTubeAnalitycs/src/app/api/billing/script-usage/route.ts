@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { getBillingScriptUsageInfo } from "@/lib/script-usage";
+import { db } from "@/lib/db";
 import type { PlanType } from "@/config/plan-limits";
 
 /**
@@ -26,7 +27,15 @@ export async function GET(req: NextRequest) {
     }
 
     const userId = session.user.id;
-    const plan = (session.user.plan || "free") as PlanType;
+
+    // Получаем текущий тариф НАПРЯМУЮ ИЗ БД
+    const userResult = await db.query(
+      "SELECT plan FROM users WHERE id = ?",
+      [userId]
+    );
+    const userRows = Array.isArray(userResult) ? userResult : userResult.rows || [];
+    const plan = (userRows[0]?.plan || "free") as PlanType;
+
     console.log("[BILLING] userId =", userId, "type:", typeof userId, "plan =", plan);
 
     // Получаем информацию об использовании

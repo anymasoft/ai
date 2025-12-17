@@ -3,7 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { createClient } from "@libsql/client";
 import { syncChannelTopVideos } from "@/lib/sync-channel-videos";
-import { getUserPlan } from "@/lib/user-plan";
+import { db } from "@/lib/db";
 
 /**
  * POST /api/channel/[id]/videos/sync
@@ -104,6 +104,14 @@ export async function POST(
 
     console.log(`[Sync] Возвращаем ${totalCount} видео для channelId: ${channelId}`);
 
+    // Получаем текущий тариф из БД
+    const userResult = await db.query(
+      "SELECT plan FROM users WHERE id = ?",
+      [session.user.id]
+    );
+    const userRows = Array.isArray(userResult) ? userResult : userResult.rows || [];
+    const userPlan = userRows[0]?.plan || "free";
+
     client.close();
 
     return NextResponse.json({
@@ -111,7 +119,7 @@ export async function POST(
       videos,
       totalVideos: totalCount,
       source: syncResult.source,
-      plan: getUserPlan(session),
+      plan: userPlan,
       videoLimit: 12,
     });
   } catch (error) {

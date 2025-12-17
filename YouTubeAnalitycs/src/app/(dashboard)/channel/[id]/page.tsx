@@ -3,6 +3,7 @@ import Link from "next/link";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { createClient } from "@libsql/client";
+import { db } from "@/lib/db";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Separator } from "@/components/ui/separator";
@@ -13,7 +14,6 @@ import { ChannelAvatar } from "@/components/channel-avatar";
 import { GenerateSwotButton } from "@/components/channel/GenerateSwotButton";
 import { SWOTAnalysisBlock } from "@/components/channel/SWOTAnalysisBlock";
 import type { SwotPoint, VideoIdea } from "@/lib/ai/analyzeChannel";
-import { getUserPlan } from "@/lib/user-plan";
 
 /**
  * Отключаем кеширование страницы канала.
@@ -99,6 +99,14 @@ export default async function ChannelPage({ params }: PageProps) {
   if (!Number.isFinite(competitorId) || competitorId <= 0) {
     redirect("/competitors");
   }
+
+  // Получаем текущий тариф из БД
+  const userResult = await db.query(
+    "SELECT plan FROM users WHERE id = ?",
+    [session.user.id]
+  );
+  const userRows = Array.isArray(userResult) ? userResult : userResult.rows || [];
+  const userPlan = (userRows[0]?.plan || "free") as "free" | "basic" | "professional" | "enterprise";
 
   const dbPath = process.env.DATABASE_URL || "file:sqlite.db";
   const client = createClient({
@@ -401,7 +409,7 @@ export default async function ChannelPage({ params }: PageProps) {
           deepAnalysisData={deepAnalysisData && deepAnalysis ? { ...deepAnalysisData, createdAt: deepAnalysis.createdAt } : null}
           hasVideos={hasVideos}
           hasComments={hasComments}
-          userPlan={getUserPlan(session)}
+          userPlan={userPlan}
         />
       </div>
     );

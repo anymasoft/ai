@@ -2,12 +2,12 @@
 
 import { useSession } from "next-auth/react"
 import { useEffect, useState } from "react"
-import { useSearchParams } from "next/navigation"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { PricingPlans } from "@/components/pricing-plans"
 import { CurrentPlanCard } from "./components/current-plan-card"
 import { BillingHistoryCard } from "./components/billing-history-card"
+import { useUser } from "@/hooks/useUser"
 import type { PlanType } from "@/config/plan-limits"
 
 interface ScriptUsageInfo {
@@ -18,71 +18,50 @@ interface ScriptUsageInfo {
 
 export default function BillingSettings() {
   const { data: session, status } = useSession();
-  const searchParams = useSearchParams();
+  const { user, loading: userLoading } = useUser();
   const [scriptUsage, setScriptUsage] = useState<ScriptUsageInfo | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  
-  const userPlan = (session?.user?.plan || "free") as PlanType;
+  const [isLoadingUsage, setIsLoadingUsage] = useState(true);
 
-  // Webhook обновляет БД. После возврата с YooKassa просто reload страницу
-  useEffect(() => {
-    const isSuccess = searchParams.get('success') === '1';
-    if (isSuccess) {
-      console.log('[BillingPage] Возврат с YooKassa, перезагружаю страницу');
-      setTimeout(() => {
-        window.location.href = '/settings/billing';
-      }, 1000);
-    }
-  }, [searchParams]);
+  const userPlan = (user?.plan || "free") as PlanType;
 
   // Получаем информацию об использовании сценариев
-  const fetchUsage = async () => {
-    try {
-      const response = await fetch("/api/billing/script-usage", {
-        cache: "no-store",
-      });
-      if (response.ok) {
-        const data = await response.json();
-        setScriptUsage(data);
-      } else {
-        // При ошибке используем нулевые значения
+  useEffect(() => {
+    if (!session?.user?.id) {
+      setIsLoadingUsage(false);
+      return;
+    }
+
+    const fetchUsage = async () => {
+      try {
+        const response = await fetch("/api/billing/script-usage", {
+          cache: "no-store",
+        });
+        if (response.ok) {
+          const data = await response.json();
+          setScriptUsage(data);
+        } else {
+          setScriptUsage({
+            monthlyLimit: 0,
+            monthlyUsed: 0,
+            percentageUsed: 0,
+          });
+        }
+      } catch (error) {
+        console.error("[BillingPage] Ошибка при получении usage:", error);
         setScriptUsage({
           monthlyLimit: 0,
           monthlyUsed: 0,
           percentageUsed: 0,
         });
+      } finally {
+        setIsLoadingUsage(false);
       }
-    } catch (error) {
-      console.error("[BillingPage] Ошибка при получении usage:", error);
-      // При ошибке сети используем нулевые значения
-      setScriptUsage({
-        monthlyLimit: 0,
-        monthlyUsed: 0,
-        percentageUsed: 0,
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  // Инициальная загрузка usage при маунте
-  useEffect(() => {
-    if (!session?.user?.id) {
-      setIsLoading(false);
-      return;
-    }
-
-    // Fetch при маунте
-    fetchUsage();
-
-    // Fetch при возврате в активное окно (получение фокуса)
-    window.addEventListener("focus", fetchUsage);
-
-    // Cleanup: удалить listener при размонтировании
-    return () => {
-      window.removeEventListener("focus", fetchUsage);
     };
+
+    fetchUsage();
   }, [session?.user?.id]);
+
+  const isLoading = userLoading || isLoadingUsage;
 
   // Если данные ещё загружаются, показываем прогресс
   if (isLoading) {

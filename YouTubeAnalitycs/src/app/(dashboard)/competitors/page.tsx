@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { useSession } from "next-auth/react"
+import { useUser } from "@/hooks/useUser"
 import { useRouter } from "next/navigation"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -49,6 +50,7 @@ interface Competitor {
 export default function CompetitorsPage() {
   const { data: session } = useSession()
   const router = useRouter()
+  const { user } = useUser()
   const [competitors, setCompetitors] = useState<Competitor[]>([])
   const [handle, setHandle] = useState("")
   const [loading, setLoading] = useState(false)
@@ -58,7 +60,7 @@ export default function CompetitorsPage() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [competitorToDelete, setCompetitorToDelete] = useState<number | null>(null)
 
-  const userPlan = session?.user?.plan || "free"
+  const userPlan = user?.plan || "free"
   const limit = PLAN_LIMITS[userPlan as keyof typeof PLAN_LIMITS] ?? 3
 
   useEffect(() => {
