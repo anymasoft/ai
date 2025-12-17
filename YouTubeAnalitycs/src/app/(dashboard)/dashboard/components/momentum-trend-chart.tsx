@@ -28,7 +28,7 @@ interface MomentumTrendData {
 
 const chartConfig = {
   avgMomentum: {
-    label: "Среднее Momentum",
+    label: "Средний темп роста",
     color: "hsl(var(--primary))",
   },
 }

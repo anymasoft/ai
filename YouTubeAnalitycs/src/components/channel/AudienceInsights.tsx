@@ -184,7 +184,7 @@ export function AudienceInsights({
   if (loading) {
     return (
       <AnalysisLoadingState
-        title="Создание анализа аудитории..."
+        title="Анализируем аудиторию..."
         subtitle="Это может занять 20-30 секунд"
       />
     );

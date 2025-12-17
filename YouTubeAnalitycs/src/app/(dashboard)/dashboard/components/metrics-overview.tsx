@@ -43,8 +43,8 @@ export function MetricsOverview({ data }: MetricsOverviewProps) {
       value: data.totalCompetitors.toString(),
       icon: Tv,
       trend: data.totalCompetitors > 0 ? "up" : "neutral",
-      badge: data.totalCompetitors > 0 ? "Активно" : "Нет",
-      footer: data.totalCompetitors > 0 ? "Мониторинг конкурентов" : "Добавьте каналы для отслеживания",
+      badge: data.totalCompetitors > 0 ? "Активные" : "Нет",
+      footer: data.totalCompetitors > 0 ? "Отслеживание конкурентов" : "Добавьте каналы для отслеживания",
       subfooter: `${data.totalScriptsGenerated} сгенерировано сценариев`
     },
     {

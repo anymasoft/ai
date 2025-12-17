@@ -136,7 +136,7 @@ export function MomentumInsightsSection({
         {isGeneratingMomentum ? (
           /* Генерация в процессе - показываем лоадер */
           <AnalysisLoadingState
-            title="Создание анализа momentum..."
+            title="Анализируем рост видео..."
             subtitle="Это может занять 15-25 секунд"
           />
         ) : emptyReason ? (
