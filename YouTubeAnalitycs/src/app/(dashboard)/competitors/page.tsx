@@ -86,7 +86,7 @@ export default function CompetitorsPage() {
     setSuccess("")
 
     if (!handle.trim()) {
-      setError("Введите ручку канала или URL")
+      setError("Введите название канала или ссылку на YouTube-канал")
       return
     }
 
@@ -202,7 +202,7 @@ export default function CompetitorsPage() {
           <form onSubmit={handleAddCompetitor} className="flex gap-2">
             <Input
               type="text"
-              placeholder="Введите ручку канала или URL (например, @channelname)"
+              placeholder="Введите название канала или ссылку на YouTube-канал"
               value={handle}
               onChange={(e) => setHandle(e.target.value)}
               disabled={loading || isAtLimit}

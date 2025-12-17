@@ -164,14 +164,14 @@ export function MomentumInsightsSection({
           <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
             <div className="flex flex-col items-center justify-center gap-4">
               <p className="text-center">
-                Нажмите кнопку ниже, чтобы получить анализ momentum.
+                Нажмите кнопку ниже, чтобы получить анализ роста.
               </p>
               <Button
                 onClick={() => handleGetMomentum()}
                 variant="default"
                 size="sm"
               >
-                Получить Momentum
+                Анализ роста
               </Button>
             </div>
           </div>
