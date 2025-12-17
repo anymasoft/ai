@@ -7,14 +7,13 @@ import { db } from "./db";
 interface UpdateUserPlanParams {
   userId: string;
   plan: "basic" | "professional" | "enterprise" | "free";
-  expiresAt?: number | null;
+  expiresAt: number | null;
   paymentProvider?: string;
 }
 
 /**
  * Обновляет план пользователя и срок действия подписки в БД
- * Single Source of Truth для расчёта срока подписки
- * Если expiresAt не передан - вычисляет 30 дней от текущего момента
+ * expiresAt ОБЯЗАТЕЛЬНО передается явно от вызывающей стороны
  * Также сбрасывает использованные сценарии за текущий месяц
  */
 export async function updateUserPlan({
@@ -30,13 +29,10 @@ export async function updateUserPlan({
 
     const now = Date.now();
 
-    // Вычисляем срок подписки если не передан (30 дней по умолчанию)
-    const calculatedExpiresAt = expiresAt !== undefined ? expiresAt : (plan === "free" ? null : now + 30 * 24 * 60 * 60 * 1000);
-
     // Обновляем план пользователя
     const result = await db.execute(
       `UPDATE users SET plan = ?, expiresAt = ?, paymentProvider = ?, updatedAt = ? WHERE id = ?`,
-      [plan, calculatedExpiresAt, paymentProvider, now, userId]
+      [plan, expiresAt, paymentProvider, now, userId]
     );
 
     console.log(
@@ -64,7 +60,7 @@ export async function updateUserPlan({
     }
 
     console.log(
-      `[updateUserPlan] success - user ${userId} updated to plan ${plan}, expires at ${calculatedExpiresAt}`
+      `[updateUserPlan] success - user ${userId} updated to plan ${plan}, expires at ${expiresAt}`
     );
   } catch (error) {
     console.error(`[updateUserPlan] Error updating user plan:`, error);

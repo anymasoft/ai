@@ -2,12 +2,12 @@
  * Webhook обработчик для ЮKassa
  * POST /api/payments/yookassa/webhook
  *
- * Получает уведомление о платеже от ЮKassa и обновляет план пользователя в БД
+ * Получает уведомление о платеже от ЮKassa и логирует его для аудита
  * Верификация платежа происходит через запрос к API ЮKassa
+ * ВАЖНО: Webhook НЕ изменяет тариф пользователя (это делает confirm endpoint)
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { updateUserPlan } from "@/lib/payments";
 
 interface YooKassaWebhookEvent {
   type: string;
@@ -147,19 +147,10 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: true });
     }
 
-    // Обновляем план пользователя в БД
-    // updateUserPlan() сама вычислит срок (30 дней по умолчанию)
+    // Webhook НЕ вызывает updateUserPlan (это делает confirm)
+    // Webhook только логирует платеж в историю для аудита
     const now = Date.now();
-
-    await updateUserPlan({
-      userId,
-      plan: planId as "basic" | "professional" | "enterprise",
-      paymentProvider: "yookassa",
-    });
-
-    // Логируем платеж в таблицу истории платежей
-    // expiresAt для платежа = now + 30 дней (совпадает с updateUserPlan логикой)
-    const expiresAt = now + 30 * 24 * 60 * 60 * 1000;
+    const expiresAt = now + 30 * 24 * 60 * 60 * 1000; // для логирования
     const { PLAN_LIMITS } = await import("@/config/plan-limits");
     const planPrice = PLAN_LIMITS[planId as "basic" | "professional" | "enterprise"]?.price || "0 ₽";
 
