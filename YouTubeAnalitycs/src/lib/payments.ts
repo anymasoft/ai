@@ -139,3 +139,90 @@ export function getPlanName(
   };
   return names[plan] || "Unknown";
 }
+
+/**
+ * ОБЩАЯ ЛОГИКА АКТИВАЦИИ УСПЕШНОГО ПЛАТЕЖА
+ *
+ * Вызывается ИЗ:
+ * - webhook при payment.succeeded
+ * - check endpoint при проверке статуса YooKassa
+ *
+ * ИДЕМПОТЕНТНА: повторный вызов = ничего не ломает
+ * Защита: проверяет payments.status ПЕРЕД UPDATE
+ */
+export async function applySuccessfulPayment(
+  paymentId: string
+): Promise<{ success: boolean; reason?: string }> {
+  try {
+    console.log(`[applySuccessfulPayment] Processing payment: ${paymentId}`);
+
+    // ШАГ 1: Найти платёж в БД
+    const paymentResult = await db.execute(
+      "SELECT id, userId, plan, status FROM payments WHERE externalPaymentId = ?",
+      [paymentId]
+    );
+    const paymentRows = Array.isArray(paymentResult)
+      ? paymentResult
+      : paymentResult.rows || [];
+
+    if (paymentRows.length === 0) {
+      console.error(
+        `[applySuccessfulPayment] ❌ Payment not found: ${paymentId}`
+      );
+      return { success: false, reason: "Payment not found in DB" };
+    }
+
+    const payment = paymentRows[0];
+    const { userId, plan: planId, status: currentStatus } = payment;
+
+    console.log(
+      `[applySuccessfulPayment] Found payment: userId=${userId}, plan=${planId}, status=${currentStatus}`
+    );
+
+    // ШАГ 2: ЗАЩИТА от дублирования — если уже succeeded, ничего не делаем
+    if (currentStatus === "succeeded") {
+      console.log(
+        `[applySuccessfulPayment] ℹ️ Payment already processed (status=succeeded), skipping`
+      );
+      return { success: true, reason: "Already processed" };
+    }
+
+    // ШАГ 3: ЗАЩИТА от незавершённых платежей
+    if (currentStatus !== "pending") {
+      console.log(
+        `[applySuccessfulPayment] ℹ️ Payment has status=${currentStatus}, skipping`
+      );
+      return { success: false, reason: `Payment status is ${currentStatus}` };
+    }
+
+    // ШАГ 4: Активируем тариф на 30 дней
+    const now = Math.floor(Date.now() / 1000);
+    const thirtyDaysInSeconds = 30 * 24 * 60 * 60;
+    const expiresAt = now + thirtyDaysInSeconds;
+
+    console.log(`[applySuccessfulPayment] Activating plan for user ${userId}`);
+
+    // ШАГ 5: Обновляем users (через updateUserPlan)
+    await updateUserPlan({
+      userId,
+      plan: planId as "basic" | "professional" | "enterprise" | "free",
+      expiresAt,
+      paymentProvider: "yookassa",
+    });
+
+    // ШАГ 6: Обновляем payments.status = 'succeeded'
+    await db.execute(
+      "UPDATE payments SET status = 'succeeded', expiresAt = ? WHERE externalPaymentId = ?",
+      [expiresAt, paymentId]
+    );
+
+    console.log(
+      `[applySuccessfulPayment] ✅ Success! Payment ${paymentId} activated for user ${userId}`
+    );
+
+    return { success: true };
+  } catch (error) {
+    console.error(`[applySuccessfulPayment] Error:`, error);
+    return { success: false, reason: "Internal error" };
+  }
+}
