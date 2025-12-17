@@ -125,7 +125,7 @@ export function ChannelAnalytics({
 
       {/* Анализ роста */}
       <CollapsibleSection
-        title="Аналитика Momentum"
+        title="Анализ роста"
         isOpen={expanded.momentum}
         onToggle={() => toggle("momentum")}
       >
