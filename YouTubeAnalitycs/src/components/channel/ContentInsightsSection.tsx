@@ -71,8 +71,8 @@ export function ContentInsightsSection({
         {isGeneratingContent ? (
           /* Генерация в процессе - показываем лоадер */
           <AnalysisLoadingState
-            title="Generating content analysis..."
-            subtitle="This may take 15-25 seconds"
+            title="Создание анализа контента..."
+            subtitle="Это может занять 15-25 секунд"
           />
         ) : !contentData ? (
           /* Данные не загружены - показываем кнопку */

@@ -120,12 +120,29 @@ export function CommentInsights({
     );
   }
 
+  if (!hasRequiredData) {
+    return (
+      <CardContent className="space-y-4 pt-6">
+        <div className="flex flex-col items-center justify-center py-12">
+          <div className="rounded-lg border border-amber-200 bg-amber-50/50 dark:border-amber-900 dark:bg-amber-950/20 p-6 max-w-sm text-center">
+            <p className="text-sm text-amber-900 dark:text-amber-100 mb-2">
+              На этом канале нет комментариев
+            </p>
+            <p className="text-xs text-amber-700 dark:text-amber-300">
+              Анализ комментариев требует наличия комментариев на видео
+            </p>
+          </div>
+        </div>
+      </CardContent>
+    );
+  }
+
   if (!data || !data.stats) {
     return (
       <CardContent className="space-y-4 pt-6">
         <div className="flex flex-col items-center justify-center py-12">
           <p className="text-muted-foreground mb-4">
-            Comment Intelligence will show interests, pain points, and requests from audience comments.
+            Интеллект комментариев покажет интересы, проблемы и запросы из комментариев аудитории.
           </p>
           <Button variant="default" onClick={handleGenerate} className="gap-2 cursor-pointer" disabled={loading}>
             <MessageSquare className="h-4 w-4" />
@@ -145,10 +162,10 @@ export function CommentInsights({
         <div>
           <h2 className="text-2xl font-bold flex items-center gap-2">
             <MessageSquare className="h-6 w-6 text-teal-600 dark:text-teal-400" />
-            Comment Intelligence
+            Интеллект комментариев
           </h2>
           <p className="text-sm text-muted-foreground mt-1">
-            Interests, pain points and requests from audience comments
+            Интересы, проблемы и запросы из комментариев аудитории
           </p>
         </div>
         <Tooltip>
@@ -178,15 +195,15 @@ export function CommentInsights({
       <div className="grid grid-cols-3 gap-4">
         <div className="bg-muted/50 rounded-lg p-4">
           <div className="text-2xl font-bold">{data.stats.totalComments}</div>
-          <div className="text-xs text-muted-foreground">Total comments</div>
+          <div className="text-xs text-muted-foreground">Всего комментариев</div>
         </div>
         <div className="bg-teal-500/10 rounded-lg p-4">
           <div className="text-2xl font-bold text-teal-600 dark:text-teal-400">{data.stats.analyzedComments}</div>
-          <div className="text-xs text-muted-foreground">Analyzed</div>
+          <div className="text-xs text-muted-foreground">Проанализировано</div>
         </div>
         <div className="bg-muted/50 rounded-lg p-4">
           <div className="text-2xl font-bold">{data.stats.totalVideos}</div>
-          <div className="text-xs text-muted-foreground">Videos</div>
+          <div className="text-xs text-muted-foreground">Видео</div>
         </div>
       </div>
 
@@ -195,7 +212,7 @@ export function CommentInsights({
         <CardHeader>
           <CardTitle className="text-lg flex items-center gap-2">
             <Sparkles className="h-5 w-5 text-teal-600 dark:text-teal-400" />
-            Overall Audience Mood
+            Общее настроение аудитории
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -210,7 +227,7 @@ export function CommentInsights({
           <CardHeader>
             <CardTitle className="text-lg flex items-center gap-2">
               <Heart className="h-5 w-5 text-pink-600 dark:text-pink-400" />
-              Audience Interests
+              Интересы аудитории
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -230,7 +247,7 @@ export function CommentInsights({
           <CardHeader>
             <CardTitle className="text-lg flex items-center gap-2">
               <AlertCircle className="h-5 w-5 text-orange-600 dark:text-orange-400" />
-              Audience Pain Points
+              Проблемы аудитории
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -250,7 +267,7 @@ export function CommentInsights({
           <CardHeader>
             <CardTitle className="text-lg flex items-center gap-2">
               <MessageSquare className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-              Topic Requests
+              Просьбы о темах
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -271,10 +288,10 @@ export function CommentInsights({
         <CardHeader>
           <CardTitle className="text-lg flex items-center gap-2">
             <AlertCircle className="h-5 w-5 text-red-600 dark:text-red-400" />
-            Complaints & Frustrations
+            Жалобы и разочарования
           </CardTitle>
           <CardDescription>
-            What audience doesn't like
+            Что не нравится аудитории
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -294,10 +311,10 @@ export function CommentInsights({
         <CardHeader>
           <CardTitle className="text-lg flex items-center gap-2">
             <ThumbsUp className="h-5 w-5 text-green-600 dark:text-green-400" />
-            Praises & What Works
+            Похвалы и то, что работает
           </CardTitle>
           <CardDescription>
-            What they praise and what works
+            Что хвалят и что работает
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -317,10 +334,10 @@ export function CommentInsights({
         <CardHeader>
           <CardTitle className="text-lg flex items-center gap-2">
             <Lightbulb className="h-5 w-5 text-yellow-600 dark:text-yellow-400" />
-            Next Video Ideas
+            Идеи для следующих видео
           </CardTitle>
           <CardDescription>
-            Based on audience requests from comments
+            На основе просьб из комментариев
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -337,7 +354,7 @@ export function CommentInsights({
 
       {data.generatedAt && (
         <p className="text-xs text-muted-foreground text-center">
-          Analysis generated: {new Date(data.generatedAt).toLocaleString("en-US")}
+          Анализ создан: {new Date(data.generatedAt).toLocaleString("ru-RU")}
         </p>
       )}
     </CardContent>
