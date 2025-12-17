@@ -89,9 +89,9 @@ export function DashboardHeader({ onPeriodChange, currentPeriod = "30" }: Dashbo
             <SelectValue placeholder="Период" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="7">Последние 7 дней</SelectItem>
-            <SelectItem value="30">Последние 30 дней</SelectItem>
-            <SelectItem value="90">Последние 90 дней</SelectItem>
+            <SelectItem value="7">7 дней</SelectItem>
+            <SelectItem value="30">30 дней</SelectItem>
+            <SelectItem value="90">90 дней</SelectItem>
           </SelectContent>
         </Select>
 
