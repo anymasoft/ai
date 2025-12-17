@@ -33,10 +33,6 @@ interface YooKassaPaymentRequest {
   };
   capture: boolean;
   description: string;
-  metadata: {
-    userId: string;
-    planId: string;
-  };
 }
 
 interface YooKassaPaymentResponse {
@@ -115,10 +111,6 @@ export async function POST(request: NextRequest) {
       description: `Подписка на тариф ${getPlanName(
         planId as "basic" | "professional" | "enterprise"
       )} - ${session.user.email}`,
-      metadata: {
-        userId: session.user.id,
-        planId: planId,
-      },
     };
 
     // Отправляем запрос в ЮKassa
