@@ -120,23 +120,6 @@ export function CommentInsights({
     );
   }
 
-  if (!hasRequiredData) {
-    return (
-      <CardContent className="space-y-4 pt-6">
-        <div className="flex flex-col items-center justify-center py-12">
-          <div className="rounded-lg border border-amber-200 bg-amber-50/50 dark:border-amber-900 dark:bg-amber-950/20 p-6 max-w-sm text-center">
-            <p className="text-sm text-amber-900 dark:text-amber-100 mb-2">
-              На этом канале нет комментариев
-            </p>
-            <p className="text-xs text-amber-700 dark:text-amber-300">
-              Анализ комментариев требует наличия комментариев на видео
-            </p>
-          </div>
-        </div>
-      </CardContent>
-    );
-  }
-
   if (!data || !data.stats) {
     return (
       <CardContent className="space-y-4 pt-6">
