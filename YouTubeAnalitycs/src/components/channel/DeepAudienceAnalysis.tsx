@@ -59,7 +59,7 @@ export function DeepAudienceAnalysis({
     setError(null);
 
     try {
-      const res = await fetch(`/api/channel/${channelId}/deep`, {
+      const res = await fetch(`/api/channel/${competitorId}/deep`, {
         method: "POST",
       });
 

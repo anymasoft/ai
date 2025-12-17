@@ -130,7 +130,7 @@ export function AudienceInsights({
     setError(null);
 
     try {
-      const res = await fetch(`/api/channel/${channelId}/audience`, {
+      const res = await fetch(`/api/channel/${competitorId}/audience`, {
         method: "POST",
       });
 
@@ -159,7 +159,7 @@ export function AudienceInsights({
     setError(null);
 
     try {
-      const res = await fetch(`/api/channel/${channelId}/videos/enrich`, {
+      const res = await fetch(`/api/channel/${competitorId}/videos/enrich`, {
         method: "POST",
       });
 

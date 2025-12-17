@@ -113,7 +113,7 @@ export function TopVideosGrid({ videos, channelId, userPlan = "free" }: TopVideo
     setIsRefreshing(true);
 
     try {
-      const res = await fetch(`/api/channel/${channelId}/videos/sync`, {
+      const res = await fetch(`/api/channel/${competitorId}/videos/sync`, {
         method: "POST",
         cache: "no-store",
       });

@@ -305,7 +305,7 @@ export function ContentIntelligenceBlock({
     setError(null);
 
     try {
-      const res = await fetch(`/api/channel/${channelId}/content-intelligence`, {
+      const res = await fetch(`/api/channel/${competitorId}/content-intelligence`, {
         method: "POST",
       });
 

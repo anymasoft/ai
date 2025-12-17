@@ -7,10 +7,10 @@ import { Video } from "lucide-react";
 import { toast } from "sonner";
 
 interface SyncVideosButtonProps {
-  channelId: number;
+  competitorId: number;
 }
 
-export function SyncVideosButton({ channelId }: SyncVideosButtonProps) {
+export function SyncVideosButton({ competitorId }: SyncVideosButtonProps) {
   const [syncing, setSyncing] = useState(false);
   const router = useRouter();
 
@@ -18,7 +18,7 @@ export function SyncVideosButton({ channelId }: SyncVideosButtonProps) {
     setSyncing(true);
 
     try {
-      const response = await fetch(`/api/channel/${channelId}/videos/sync`, {
+      const response = await fetch(`/api/channel/${competitorId}/videos/sync`, {
         method: "POST",
       });
 

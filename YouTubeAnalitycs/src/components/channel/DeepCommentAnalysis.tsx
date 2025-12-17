@@ -94,7 +94,7 @@ export function DeepCommentAnalysis({
 
     try {
       // Запускаем анализ
-      const res = await fetch(`/api/channel/${channelId}/comments/ai`, {
+      const res = await fetch(`/api/channel/${competitorId}/comments/ai`, {
         method: "POST",
         credentials: "include",
       });
@@ -118,7 +118,7 @@ export function DeepCommentAnalysis({
 
     const fetchProgress = async () => {
       try {
-        const res = await fetch(`/api/channel/${channelId}/comments/ai/progress`, {
+        const res = await fetch(`/api/channel/${competitorId}/comments/ai/progress`, {
           credentials: "include",
         });
         if (!res.ok) {
