@@ -72,8 +72,8 @@ export function DeepCommentAnalysisSection({
         {isGeneratingDeep ? (
           /* Идёт генерация - показываем Loading State */
           <AnalysisLoadingState
-            title="Analyzing comments..."
-            subtitle="This may take 15-25 seconds"
+            title="Анализ комментариев..."
+            subtitle="Это может занять 15-25 секунд"
           />
         ) : !deepAnalysisData ? (
           /* Данные не загружены - показываем кнопку */

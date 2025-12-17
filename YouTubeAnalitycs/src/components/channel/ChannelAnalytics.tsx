@@ -94,15 +94,15 @@ export function ChannelAnalytics({
     <div className="space-y-6">
       {/* Header */}
       <div>
-        <h2 className="text-xl font-semibold">AI Analytics</h2>
+        <h2 className="text-xl font-semibold">ИИ аналитика</h2>
         <p className="text-sm text-muted-foreground">
-          Deep insights powered by artificial intelligence
+          Глубокие инсайты на основе искусственного интеллекта
         </p>
       </div>
 
       {/* Top Videos */}
       <CollapsibleSection
-        title="Top Videos"
+        title="Топ видео"
         isOpen={expanded.videos}
         onToggle={() => toggle("videos")}
       >
@@ -153,7 +153,7 @@ export function ChannelAnalytics({
 
       {/* Comment Intelligence */}
       <CollapsibleSection
-        title="Comment Intelligence"
+        title="Интеллект комментариев"
         isOpen={expanded.comments}
         onToggle={() => toggle("comments")}
       >
