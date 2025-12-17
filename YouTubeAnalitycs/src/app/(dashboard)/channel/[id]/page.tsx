@@ -292,7 +292,7 @@ export default async function ChannelPage({ params }: PageProps) {
             className="inline-flex items-center text-sm text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
           >
             <ArrowLeft className="w-4 h-4 mr-1" />
-            Back to Competitors
+            Вернуться к конкурентам
           </Link>
         </div>
 
@@ -330,7 +330,7 @@ export default async function ChannelPage({ params }: PageProps) {
               rel="noopener noreferrer"
               className="inline-flex items-center gap-1 text-blue-600 text-sm hover:underline dark:text-blue-400"
             >
-              View on YouTube
+              Смотреть на YouTube
               <ExternalLink className="w-3 h-3" />
             </a>
           </div>
@@ -341,42 +341,42 @@ export default async function ChannelPage({ params }: PageProps) {
           <div className="flex items-center gap-2">
             <Users className="h-4 w-4 text-muted-foreground" />
             <span className="font-semibold">{formatNumber(competitor.subscriberCount as number)}</span>
-            <span className="text-muted-foreground">subscribers</span>
+            <span className="text-muted-foreground">подписчиков</span>
           </div>
           <div className="flex items-center gap-2">
             <Video className="h-4 w-4 text-muted-foreground" />
             <span className="font-semibold">{formatNumber(competitor.videoCount as number)}</span>
-            <span className="text-muted-foreground">videos</span>
+            <span className="text-muted-foreground">видео</span>
           </div>
           <div className="flex items-center gap-2">
             <Eye className="h-4 w-4 text-muted-foreground" />
             <span className="font-semibold">{formatNumber(competitor.viewCount as number)}</span>
-            <span className="text-muted-foreground">views</span>
+            <span className="text-muted-foreground">просмотров</span>
           </div>
           <div className="flex items-center gap-2">
             <Calendar className="h-4 w-4 text-muted-foreground" />
-            <span className="text-muted-foreground">Updated: {formatDate(competitor.lastSyncedAt as number)}</span>
+            <span className="text-muted-foreground">Обновлено: {formatDate(competitor.lastSyncedAt as number)}</span>
           </div>
         </div>
 
         <Separator />
 
-        {/* Overview - Ключевые метрики */}
+        {/* Обзор - Ключевые метрики */}
         <div>
-          <h2 className="text-2xl font-bold mb-4">Overview</h2>
+          <h2 className="text-2xl font-bold mb-4">Обзор</h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="border rounded-lg p-4 bg-muted/40">
-              <div className="text-sm text-muted-foreground mb-2">Subscribers</div>
+              <div className="text-sm text-muted-foreground mb-2">Подписчики</div>
               <div className="text-3xl font-bold">{formatNumber(competitor.subscriberCount as number)}</div>
             </div>
 
             <div className="border rounded-lg p-4 bg-muted/40">
-              <div className="text-sm text-muted-foreground mb-2">Total Views</div>
+              <div className="text-sm text-muted-foreground mb-2">Всего просмотров</div>
               <div className="text-3xl font-bold">{formatNumber(competitor.viewCount as number)}</div>
             </div>
 
             <div className="border rounded-lg p-4 bg-muted/40">
-              <div className="text-sm text-muted-foreground mb-2">Avg. Views per Video</div>
+              <div className="text-sm text-muted-foreground mb-2">Среднее просмотров на видео</div>
               <div className="text-3xl font-bold">{formatNumber(avgViews)}</div>
             </div>
           </div>
