@@ -137,7 +137,7 @@ export default async function ScriptViewPage({
             </Badge>
             <Badge variant="outline" className="gap-1 min-w-fit max-w-none whitespace-nowrap">
               <FileText className="h-3 w-3" />
-              ID: {script.id.substring(0, 8)}...
+              ID: {script.id}
             </Badge>
           </div>
         </div>
