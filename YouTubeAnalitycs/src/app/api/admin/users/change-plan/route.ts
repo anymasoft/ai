@@ -29,16 +29,17 @@ export async function POST(request: NextRequest) {
     const { userId, plan } = validation.data
     const now = Math.floor(Date.now() / 1000)
 
+    // ЖЕСТКОЕ ПРАВИЛО: ВСЕГДА сбрасываем usage при смене плана
     if (plan === "free") {
-      // For free plan, just update the plan
-      const { db } = await import("@/lib/db")
-      await db.execute(
-        "UPDATE users SET plan = ?, updatedAt = ? WHERE id = ?",
-        [plan, now, userId]
-      )
+      // For free plan: reset usage and clear expiration
+      await updateUserPlan({
+        userId,
+        plan: "free",
+        expiresAt: null,
+        paymentProvider: "manual",
+      })
     } else {
-      // For paid plans, use updateUserPlan to reset usage
-      // Set expiration to 30 days from now
+      // For paid plans: reset usage and set expiration to 30 days from now
       const expiresAt = now + (30 * 24 * 60 * 60)
       await updateUserPlan({
         userId,
