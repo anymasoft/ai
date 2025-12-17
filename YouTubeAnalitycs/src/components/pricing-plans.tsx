@@ -16,6 +16,7 @@ export interface PricingPlan {
   features: string[]
   popular?: boolean
   current?: boolean
+  billingCycle: "monthly" | "yearly"
 }
 
 interface PricingPlansProps {
@@ -32,6 +33,7 @@ const defaultPlans: PricingPlan[] = [
     description: 'Для начинающих авторов',
     price: 990,
     features: ['До 30 AI-сценариев в месяц', 'Генерация сценариев по любым YouTube-видео', 'Готовая структура сценария: захват внимания → развитие → финал', 'История всех сгенерированных сценариев', 'Подходит для личных каналов и первых запусков'],
+    billingCycle: 'monthly',
   },
   {
     id: 'professional',
@@ -45,6 +47,7 @@ const defaultPlans: PricingPlan[] = [
       'Один инструмент для всех сценариев канала',
     ],
     popular: true,
+    billingCycle: 'monthly',
   },
   {
     id: 'enterprise',
@@ -57,6 +60,7 @@ const defaultPlans: PricingPlan[] = [
       'Коммерческое использование сценариев',
       'Большие объёмы контента в одном аккаунте',
     ],
+    billingCycle: 'monthly',
   },
 ]
 
@@ -74,13 +78,24 @@ export function PricingPlans({
       setError(null);
       setLoadingPlanId(planId);
 
+      // Находим план для получения billingCycle
+      const selectedPlan = plans.find(p => p.id === planId);
+      if (!selectedPlan) {
+        setError('Выбранный тариф не найден');
+        setLoadingPlanId(null);
+        return;
+      }
+
       // Отправляем запрос на создание платежа
       const response = await fetch('/api/payments/yookassa/create', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ planId }),
+        body: JSON.stringify({
+          planId,
+          billingCycle: selectedPlan.billingCycle,
+        }),
       });
 
       const data = await response.json();
