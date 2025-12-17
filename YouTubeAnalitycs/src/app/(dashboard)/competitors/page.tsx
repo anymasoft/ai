@@ -57,12 +57,17 @@ export default function CompetitorsPage() {
   const [fetching, setFetching] = useState(true)
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [competitorToDelete, setCompetitorToDelete] = useState<number | null>(null)
+  const [userPlan, setUserPlan] = useState("free")
 
-  const userPlan = session?.user?.plan || "free"
   const limit = PLAN_LIMITS[userPlan as keyof typeof PLAN_LIMITS] ?? 3
 
   useEffect(() => {
     fetchCompetitors()
+    // Получаем текущий тариф из БД
+    fetch("/api/user")
+      .then(r => r.ok ? r.json() : null)
+      .then(user => user && setUserPlan(user.plan || "free"))
+      .catch(() => setUserPlan("free"))
   }, [])
 
   async function fetchCompetitors() {

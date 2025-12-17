@@ -941,8 +941,16 @@ export async function POST(req: NextRequest) {
     const userId = session.user.id;
     console.log("[GENERATOR] userId =", userId, "type:", typeof userId);
 
-    // 1.5. ПРОВЕРКА ЛИМИТА - ДО генерации!
-    const usageInfo = await getBillingScriptUsageInfo(userId, session.user.plan || "free");
+    // 1.5. Получаем текущий тариф из БД
+    const userResult = await db.query(
+      "SELECT plan FROM users WHERE id = ?",
+      [userId]
+    );
+    const userRows = Array.isArray(userResult) ? userResult : userResult.rows || [];
+    const userPlan = (userRows[0]?.plan || "free") as "free" | "basic" | "professional" | "enterprise";
+
+    // 1.6. ПРОВЕРКА ЛИМИТА - ДО генерации!
+    const usageInfo = await getBillingScriptUsageInfo(userId, userPlan);
     if (usageInfo.monthlyUsed >= usageInfo.monthlyLimit) {
       console.log(
         `[ScriptGenerate] User ${userId} hit limit: ${usageInfo.monthlyUsed}/${usageInfo.monthlyLimit}`

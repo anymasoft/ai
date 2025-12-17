@@ -20,9 +20,8 @@ export default function BillingSettings() {
   const { data: session, status } = useSession();
   const searchParams = useSearchParams();
   const [scriptUsage, setScriptUsage] = useState<ScriptUsageInfo | null>(null);
+  const [userPlan, setUserPlan] = useState<PlanType>("free");
   const [isLoading, setIsLoading] = useState(true);
-  
-  const userPlan = (session?.user?.plan || "free") as PlanType;
 
   // Webhook обновляет БД. После возврата с YooKassa просто reload страницу
   useEffect(() => {
@@ -34,6 +33,20 @@ export default function BillingSettings() {
       }, 1000);
     }
   }, [searchParams]);
+
+  // Получаем текущий тариф из БД
+  const fetchUserPlan = async () => {
+    try {
+      const response = await fetch("/api/user");
+      if (response.ok) {
+        const user = await response.json();
+        setUserPlan(user.plan || "free");
+      }
+    } catch (error) {
+      console.error("[BillingPage] Ошибка при получении плана:", error);
+      setUserPlan("free");
+    }
+  };
 
   // Получаем информацию об использовании сценариев
   const fetchUsage = async () => {
@@ -65,7 +78,7 @@ export default function BillingSettings() {
     }
   };
 
-  // Инициальная загрузка usage при маунте
+  // Инициальная загрузка при маунте
   useEffect(() => {
     if (!session?.user?.id) {
       setIsLoading(false);
@@ -73,14 +86,19 @@ export default function BillingSettings() {
     }
 
     // Fetch при маунте
+    fetchUserPlan();
     fetchUsage();
 
     // Fetch при возврате в активное окно (получение фокуса)
-    window.addEventListener("focus", fetchUsage);
+    const handleFocus = () => {
+      fetchUserPlan();
+      fetchUsage();
+    };
+    window.addEventListener("focus", handleFocus);
 
     // Cleanup: удалить listener при размонтировании
     return () => {
-      window.removeEventListener("focus", fetchUsage);
+      window.removeEventListener("focus", handleFocus);
     };
   }, [session?.user?.id]);
 
