@@ -90,15 +90,6 @@ export function PricingPlans({
         return;
       }
 
-      // Используем paymentId из response API для правильного redirect URL
-      // НЕ берём из confirmation_url (там может быть заглушка {payment_id})
-      const billingUrl = `/settings/billing?success=1&paymentId=${data.paymentId}`;
-
-      // Сохраняем paymentId в sessionStorage для последующего использования на billing странице
-      if (typeof window !== 'undefined') {
-        sessionStorage.setItem('pendingPaymentId', data.paymentId);
-      }
-
       // Перенаправляем пользователя на страницу оплаты ЮKassa
       window.location.href = data.paymentUrl;
     } catch (err) {

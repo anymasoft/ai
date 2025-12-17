@@ -33,10 +33,6 @@ interface YooKassaPaymentRequest {
   };
   capture: boolean;
   description: string;
-  metadata: {
-    userId: string;
-    planId: string;
-  };
 }
 
 interface YooKassaPaymentResponse {
@@ -115,10 +111,6 @@ export async function POST(request: NextRequest) {
       description: `Подписка на тариф ${getPlanName(
         planId as "basic" | "professional" | "enterprise"
       )} - ${session.user.email}`,
-      metadata: {
-        userId: session.user.id,
-        planId: planId,
-      },
     };
 
     // Отправляем запрос в ЮKassa
@@ -163,6 +155,22 @@ export async function POST(request: NextRequest) {
 
     console.log(
       `[YooKassa] Payment created: ${paymentData.id} for user ${session.user.id}`
+    );
+
+    // Сохраняем платёж в БД с status='pending'
+    const { db } = await import("@/lib/db");
+    const { PLAN_LIMITS } = await import("@/config/plan-limits");
+    const planPrice = PLAN_LIMITS[planId as "basic" | "professional" | "enterprise"]?.price || "0 ₽";
+    const now = Math.floor(Date.now() / 1000);
+
+    await db.execute(
+      `INSERT INTO payments (externalPaymentId, userId, plan, amount, provider, status, createdAt)
+       VALUES (?, ?, ?, ?, 'yookassa', 'pending', ?)`,
+      [paymentData.id, session.user.id, planId, planPrice, now]
+    );
+
+    console.log(
+      `[YooKassa] Payment saved to DB: ${paymentData.id}, status='pending'`
     );
 
     return NextResponse.json({

@@ -2,12 +2,11 @@
  * Webhook обработчик для ЮKassa
  * POST /api/payments/yookassa/webhook
  *
- * Получает уведомление о платеже от ЮKassa и обновляет план пользователя в БД
- * Верификация платежа происходит через запрос к API ЮKassa
+ * ЕДИНСТВЕННАЯ ТОЧКА АКТИВАЦИИ ТАРИФА
+ * Получает уведомление о платеже от ЮKassa и обновляет тариф пользователя в БД
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { updateUserPlan } from "@/lib/payments";
 
 interface YooKassaWebhookEvent {
   type: string;
@@ -17,168 +16,86 @@ interface YooKassaWebhookEvent {
       id: string;
       status: string;
       paid: boolean;
-      amount: {
-        value: string;
-        currency: string;
-      };
-      metadata?: {
-        userId?: string;
-        planId?: string;
-      };
     };
   };
-}
-
-interface YooKassaPayment {
-  id: string;
-  status: string;
-  paid: boolean;
-  amount: {
-    value: string;
-    currency: string;
-  };
-  metadata?: {
-    userId?: string;
-    planId?: string;
-  };
-}
-
-/**
- * Проверяет платеж через API ЮKassa
- * Использует Basic Auth с YOOKASSA_SHOP_ID и YOOKASSA_SECRET_KEY
- */
-async function verifyPaymentWithAPI(paymentId: string): Promise<YooKassaPayment | null> {
-  const shopId = process.env.YOOKASSA_SHOP_ID;
-  const secretKey = process.env.YOOKASSA_SECRET_KEY;
-
-  if (!shopId || !secretKey) {
-    console.error("[YooKassa Webhook] Missing YOOKASSA_SHOP_ID or YOOKASSA_SECRET_KEY");
-    return null;
-  }
-
-  try {
-    const auth = Buffer.from(`${shopId}:${secretKey}`).toString("base64");
-
-    const response = await fetch(`https://api.yookassa.ru/v3/payments/${paymentId}`, {
-      method: "GET",
-      headers: {
-        "Authorization": `Basic ${auth}`,
-        "Content-Type": "application/json",
-        "Idempotency-Key": paymentId,
-      },
-    });
-
-    if (!response.ok) {
-      console.error(`[YooKassa Webhook] API verification failed: ${response.status} ${response.statusText}`);
-      return null;
-    }
-
-    const payment = (await response.json()) as YooKassaPayment;
-    return payment;
-  } catch (error) {
-    console.error("[YooKassa Webhook] Error verifying payment with API:", error);
-    return null;
-  }
-}
-
-/**
- * Проверяет, был ли платеж уже обработан (для идемпотентности)
- */
-async function isPaymentProcessed(paymentId: string): Promise<boolean> {
-  try {
-    const { db } = await import("@/lib/db");
-    const result = await db.query(
-      "SELECT id FROM payments WHERE externalPaymentId = ?",
-      [paymentId]
-    );
-    return result.length > 0;
-  } catch (error) {
-    console.error("[YooKassa Webhook] Error checking if payment processed:", error);
-    // В случае ошибки БД, считаем что платеж новый
-    return false;
-  }
 }
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json() as YooKassaWebhookEvent;
 
-    // Проверяем тип события - нас интересуют успешные платежи
+    // Обрабатываем ТОЛЬКО payment.succeeded
     if (body.type !== "notification" || body.event !== "payment.succeeded") {
-      console.log(`[YooKassa Webhook] Skipping event type: ${body.type}, event: ${body.event}`);
+      console.log(`[YooKassa Webhook] Пропускаем событие: ${body.event}`);
       return NextResponse.json({ success: true });
     }
 
     const paymentId = body.data.object.id;
+    console.log(`[YooKassa Webhook] Обработка платежа: ${paymentId}`);
 
-    // Проверяем идемпотентность - если платеж уже обработан, возвращаем успех
-    if (await isPaymentProcessed(paymentId)) {
-      console.log(`[YooKassa Webhook] Payment ${paymentId} already processed`);
-      return NextResponse.json({ success: true });
-    }
+    // Импортируем БД
+    const { db } = await import("@/lib/db");
 
-    // Проверяем платеж через API ЮKassa
-    const payment = await verifyPaymentWithAPI(paymentId);
-    if (!payment) {
-      console.error(`[YooKassa Webhook] Failed to verify payment ${paymentId} via API`);
-      return NextResponse.json({ success: true });
-    }
+    // ШАГ 1: Ищем платёж в БД по externalPaymentId
+    const result = await db.query(
+      "SELECT id, userId, plan, status FROM payments WHERE externalPaymentId = ?",
+      [paymentId]
+    );
+    const rows = Array.isArray(result) ? result : result.rows || [];
 
-    // Проверяем статус платежа
-    if (payment.status !== "succeeded" || !payment.paid) {
-      console.log(
-        `[YooKassa Webhook] Payment ${paymentId} status is ${payment.status}, paid: ${payment.paid}, skipping`
+    if (rows.length === 0) {
+      console.error(`[YooKassa Webhook] Платёж ${paymentId} не найден в БД`);
+      // Возвращаем 500 чтобы YooKassa повторил попытку
+      return NextResponse.json(
+        { success: false, error: "Payment not found" },
+        { status: 500 }
       );
+    }
+
+    const payment = rows[0];
+    const { userId, plan: planId, status: currentStatus } = payment;
+
+    // ШАГ 2: Проверяем статус (идемпотентность)
+    if (currentStatus === "succeeded") {
+      console.log(`[YooKassa Webhook] Платёж ${paymentId} уже обработан (идемпотентность)`);
       return NextResponse.json({ success: true });
     }
 
-    // Проверяем метаданные
-    const { userId, planId } = payment.metadata || {};
-    if (!userId || !planId) {
-      console.error(
-        `[YooKassa Webhook] Payment ${paymentId} missing metadata: userId=${userId}, planId=${planId}`
-      );
+    if (currentStatus !== "pending") {
+      console.log(`[YooKassa Webhook] Платёж ${paymentId} имеет статус ${currentStatus}, пропускаем`);
       return NextResponse.json({ success: true });
     }
 
-    // Валидируем planId
-    if (!["basic", "professional", "enterprise"].includes(planId)) {
-      console.error(`[YooKassa Webhook] Payment ${paymentId} invalid planId: ${planId}`);
-      return NextResponse.json({ success: true });
-    }
-
-    // Вычисляем дату истечения подписки (текущая дата + 30 дней)
+    // ШАГ 3: Активируем тариф на 30 дней
     const now = Math.floor(Date.now() / 1000);
     const thirtyDaysInSeconds = 30 * 24 * 60 * 60;
     const expiresAt = now + thirtyDaysInSeconds;
 
-    // Обновляем план пользователя в БД
-    await updateUserPlan({
-      userId,
-      plan: planId as "basic" | "professional" | "enterprise",
-      expiresAt,
-      paymentProvider: "yookassa",
-    });
-
-    // Логируем платеж в таблицу истории платежей
-    const { PLAN_LIMITS } = await import("@/config/plan-limits");
-    const planPrice = PLAN_LIMITS[planId as "basic" | "professional" | "enterprise"]?.price || "0 ₽";
-
-    const { db } = await import("@/lib/db");
+    // ШАГ 4: Обновляем users (активация тарифа)
     await db.execute(
-      `INSERT INTO payments (externalPaymentId, userId, plan, amount, provider, status, expiresAt, createdAt)
-       VALUES (?, ?, ?, ?, 'yookassa', 'succeeded', ?, ?)`,
-      [paymentId, userId, planId, planPrice, expiresAt, now]
+      `UPDATE users SET plan = ?, expiresAt = ?, paymentProvider = 'yookassa', updatedAt = ? WHERE id = ?`,
+      [planId, expiresAt, now, userId]
     );
 
     console.log(
-      `[YooKassa Webhook] Successfully processed payment ${paymentId} for user ${userId}, plan ${planId}`
+      `[YooKassa Webhook] Обновлен план для пользователя ${userId}: ${planId}, истекает в ${expiresAt}`
+    );
+
+    // ШАГ 5: Обновляем payments (статус + дата)
+    await db.execute(
+      `UPDATE payments SET status = 'succeeded', expiresAt = ? WHERE externalPaymentId = ?`,
+      [expiresAt, paymentId]
+    );
+
+    console.log(
+      `[YooKassa Webhook] Платёж ${paymentId} успешно обработан для пользователя ${userId}`
     );
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error("[YooKassa Webhook] Error processing webhook:", error);
-    // Возвращаем 200 OK, чтобы ЮKassa не пытался переотправить
+    console.error("[YooKassa Webhook] Ошибка обработки webhook:", error);
+    // Возвращаем 200 OK (но логируем ошибку)
+    // YooKassa уже отправит повторно если нужно
     return NextResponse.json({ success: true });
   }
 }

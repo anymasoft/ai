@@ -97,6 +97,7 @@ export async function getUserPaymentInfo(userId: string): Promise<{
     const expiredByTime = expiresAt && expiresAt < now;
 
     // Проверка 2: АВТОМАТИЧЕСКИЙ DOWNGRADE по лимиту (если сценарии исчерпаны)
+    // ВАЖНО: Free никогда не downgrade по лимитам, только по времени
     let expiredByUsage = false;
     if (plan !== "free") {
       try {
@@ -118,11 +119,29 @@ export async function getUserPaymentInfo(userId: string): Promise<{
       }
     }
 
-    // Если тариф истёк ПО ВРЕМЕНИ ИЛИ ПО ЛИМИТУ → downgrade на free
-    if ((expiredByTime || expiredByUsage) && plan !== "free") {
-      const reason = expiredByTime ? "subscription expired" : "usage limit exhausted";
+    // DOWNGRADE логика:
+    // - Если plan === 'free': downgrade ТОЛЬКО по времени
+    // - Если plan !== 'free': downgrade если истекло по времени ИЛИ по лимитам
+    let shouldDowngrade = false;
+    let downgradeReason = "";
+
+    if (plan === "free") {
+      // Free: downgrade ТОЛЬКО если подписка истекла по времени
+      if (expiredByTime) {
+        shouldDowngrade = true;
+        downgradeReason = "free subscription expired";
+      }
+    } else {
+      // Paid: downgrade если истекло ПО ВРЕМЕНИ ИЛИ ПО ЛИМИТАМ
+      if (expiredByTime || expiredByUsage) {
+        shouldDowngrade = true;
+        downgradeReason = expiredByTime ? "subscription expired" : "usage limit exhausted";
+      }
+    }
+
+    if (shouldDowngrade) {
       console.log(
-        `[Payments] Auto-downgrading user ${userId} from ${plan} to free (${reason})`
+        `[Payments] Auto-downgrading user ${userId} from ${plan} to free (${downgradeReason})`
       );
       plan = "free";
       expiresAt = null;
