@@ -151,7 +151,7 @@ export function RecentVideos() {
     return (
       <Card>
         <CardHeader>
-          <CardTitle>Recent Videos</CardTitle>
+          <CardTitle>Недавние видео</CardTitle>
           <CardDescription className="text-destructive">{error}</CardDescription>
         </CardHeader>
       </Card>
@@ -177,9 +177,9 @@ export function RecentVideos() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Clock className="h-5 w-5" />
-            Recent Videos
+            Недавние видео
           </CardTitle>
-          <CardDescription>No videos available</CardDescription>
+          <CardDescription>Видео недоступны</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="flex items-center justify-center h-[200px] text-muted-foreground">
@@ -196,9 +196,9 @@ export function RecentVideos() {
         <div>
           <CardTitle className="flex items-center gap-2">
             <Clock className="h-5 w-5" />
-            Recent Videos
+            Недавние видео
           </CardTitle>
-          <CardDescription>Latest competitor uploads</CardDescription>
+          <CardDescription>Последние загрузки конкурентов</CardDescription>
         </div>
         <Button
           variant="outline"
@@ -206,7 +206,7 @@ export function RecentVideos() {
           onClick={() => window.open("/trending", "_self")}
         >
           <Eye className="h-4 w-4 mr-2" />
-          View All
+          Показать все
         </Button>
       </CardHeader>
       <CardContent className="space-y-3">

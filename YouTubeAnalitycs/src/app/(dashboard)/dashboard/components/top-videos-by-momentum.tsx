@@ -114,7 +114,7 @@ export function TopVideosByMomentum() {
     return (
       <Card>
         <CardHeader>
-          <CardTitle>Top by Momentum</CardTitle>
+          <CardTitle>Видео с самым быстрым ростом</CardTitle>
           <CardDescription className="text-destructive">{error}</CardDescription>
         </CardHeader>
       </Card>
@@ -127,13 +127,13 @@ export function TopVideosByMomentum() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Flame className="h-5 w-5" />
-            Top by Momentum
+            Видео с самым быстрым ростом
           </CardTitle>
-          <CardDescription>No videos with momentum data</CardDescription>
+          <CardDescription>Нет видео с данными о темпе роста</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="flex items-center justify-center h-[200px] text-muted-foreground">
-            Sync competitor videos to see momentum rankings
+            Синхронизируйте видео конкурентов, чтобы увидеть рейтинг темпов роста
           </div>
         </CardContent>
       </Card>
@@ -149,10 +149,10 @@ export function TopVideosByMomentum() {
         <div>
           <CardTitle className="flex items-center gap-2">
             <Flame className="h-5 w-5 text-orange-500" />
-            Top by Momentum
+            Видео с самым быстрым ростом
           </CardTitle>
           <CardDescription>
-            Best performing videos right now
+            Видео, которые сейчас набирают больше всего просмотров
           </CardDescription>
         </div>
         <Button
@@ -161,7 +161,7 @@ export function TopVideosByMomentum() {
           onClick={() => window.open("/trending", "_self")}
         >
           <Eye className="h-4 w-4 mr-2" />
-          View All
+          Показать все
         </Button>
       </CardHeader>
       <CardContent className="space-y-3">
