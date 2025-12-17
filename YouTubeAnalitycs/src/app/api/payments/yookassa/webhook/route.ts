@@ -37,7 +37,7 @@ export async function POST(request: NextRequest) {
     const { db } = await import("@/lib/db");
 
     // ШАГ 1: Ищем платёж в БД по externalPaymentId
-    const result = await db.query(
+    const result = await db.execute(
       "SELECT id, userId, plan, status FROM payments WHERE externalPaymentId = ?",
       [paymentId]
     );

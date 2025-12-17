@@ -105,7 +105,7 @@ export async function POST(
     console.log(`[Sync] Возвращаем ${totalCount} видео для channelId: ${channelId}`);
 
     // Получаем текущий тариф из БД
-    const userResult = await db.query(
+    const userResult = await db.execute(
       "SELECT plan FROM users WHERE id = ?",
       [session.user.id]
     );

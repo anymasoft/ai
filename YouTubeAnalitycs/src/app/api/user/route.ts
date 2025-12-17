@@ -36,7 +36,7 @@ export async function GET(request: NextRequest) {
     const { db } = await import("@/lib/db");
 
     // КРИТИЧЕСКОЕ: Читаем НАПРЯМУЮ ИЗ БД, БЕЗ кэширования
-    const result = await db.query(
+    const result = await db.execute(
       `SELECT id, email, name, plan, expiresAt, paymentProvider, disabled
        FROM users WHERE id = ?`,
       [session.user.id]

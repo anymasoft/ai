@@ -101,7 +101,7 @@ export default async function ChannelPage({ params }: PageProps) {
   }
 
   // Получаем текущий тариф из БД
-  const userResult = await db.query(
+  const userResult = await db.execute(
     "SELECT plan FROM users WHERE id = ?",
     [session.user.id]
   );

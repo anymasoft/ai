@@ -29,7 +29,7 @@ export async function GET(req: NextRequest) {
     const userId = session.user.id;
 
     // Получаем текущий тариф НАПРЯМУЮ ИЗ БД
-    const userResult = await db.query(
+    const userResult = await db.execute(
       "SELECT plan FROM users WHERE id = ?",
       [userId]
     );
