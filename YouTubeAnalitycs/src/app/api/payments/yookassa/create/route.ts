@@ -5,7 +5,6 @@
  * Body:
  * {
  *   planId: "basic" | "professional" | "enterprise"
- *   billingCycle: "monthly" | "yearly"
  * }
  *
  * Response:
@@ -34,11 +33,6 @@ interface YooKassaPaymentRequest {
   };
   capture: boolean;
   description: string;
-  metadata: {
-    userId: string;
-    planId: string;
-    billingCycle: string;
-  };
 }
 
 interface YooKassaPaymentResponse {
@@ -67,20 +61,12 @@ export async function POST(request: NextRequest) {
 
     // Парсим тело запроса
     const body = await request.json();
-    const { planId, billingCycle } = body;
+    const { planId } = body;
 
     // Валидируем planId
     if (!planId || !["basic", "professional", "enterprise"].includes(planId)) {
       return NextResponse.json(
         { success: false, error: "Неверный ID тариф" },
-        { status: 400 }
-      );
-    }
-
-    // Валидируем billingCycle
-    if (!billingCycle || !["monthly", "yearly"].includes(billingCycle)) {
-      return NextResponse.json(
-        { success: false, error: "Неверный цикл биллинга" },
         { status: 400 }
       );
     }
@@ -125,11 +111,6 @@ export async function POST(request: NextRequest) {
       description: `Подписка на тариф ${getPlanName(
         planId as "basic" | "professional" | "enterprise"
       )} - ${session.user.email}`,
-      metadata: {
-        userId: session.user.id,
-        planId: planId,
-        billingCycle: billingCycle,
-      },
     };
 
     // Отправляем запрос в ЮKassa
@@ -176,11 +157,11 @@ export async function POST(request: NextRequest) {
       `[YooKassa] Payment created: ${paymentData.id} for user ${session.user.id}`
     );
 
-    // СОХРАНЯЕМ ПЛАТЕЖ В НАШЕЙ БД С СТАТУСОМ 'pending'
+    // Сохраняем платёж в БД с status='pending'
     const { db } = await import("@/lib/db");
-    const now = Date.now();
     const { PLAN_LIMITS } = await import("@/config/plan-limits");
     const planPrice = PLAN_LIMITS[planId as "basic" | "professional" | "enterprise"]?.price || "0 ₽";
+    const now = Math.floor(Date.now() / 1000);
 
     await db.execute(
       `INSERT INTO payments (externalPaymentId, userId, plan, amount, provider, status, createdAt)
@@ -189,7 +170,7 @@ export async function POST(request: NextRequest) {
     );
 
     console.log(
-      `[YooKassa] Payment record saved in DB: ${paymentData.id}, status='pending'`
+      `[YooKassa] Payment saved to DB: ${paymentData.id}, status='pending'`
     );
 
     return NextResponse.json({
