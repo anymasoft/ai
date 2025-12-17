@@ -5,6 +5,7 @@
  * Body:
  * {
  *   planId: "basic" | "professional" | "enterprise"
+ *   billingCycle: "monthly" | "yearly"
  * }
  *
  * Response:
@@ -36,6 +37,7 @@ interface YooKassaPaymentRequest {
   metadata: {
     userId: string;
     planId: string;
+    billingCycle: string;
   };
 }
 
@@ -65,12 +67,20 @@ export async function POST(request: NextRequest) {
 
     // Парсим тело запроса
     const body = await request.json();
-    const { planId } = body;
+    const { planId, billingCycle } = body;
 
     // Валидируем planId
     if (!planId || !["basic", "professional", "enterprise"].includes(planId)) {
       return NextResponse.json(
         { success: false, error: "Неверный ID тариф" },
+        { status: 400 }
+      );
+    }
+
+    // Валидируем billingCycle
+    if (!billingCycle || !["monthly", "yearly"].includes(billingCycle)) {
+      return NextResponse.json(
+        { success: false, error: "Неверный цикл биллинга" },
         { status: 400 }
       );
     }
@@ -118,6 +128,7 @@ export async function POST(request: NextRequest) {
       metadata: {
         userId: session.user.id,
         planId: planId,
+        billingCycle: billingCycle,
       },
     };
 
