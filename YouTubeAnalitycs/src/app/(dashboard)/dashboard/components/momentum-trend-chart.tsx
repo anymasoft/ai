@@ -155,7 +155,7 @@ export function MomentumTrendChart() {
             Динамика роста
           </CardTitle>
           <CardDescription className="flex items-center gap-2 text-sm">
-            <span>Динамика производительности видео</span>
+            <span>Динамика просмотров видео</span>
             <Badge variant="outline" className={`gap-1 text-xs ${trendColor}`}>
               <TrendIcon className="h-3 w-3" />
               {data.summary.highMomentumVideosTrend === "up" ? "растет" : data.summary.highMomentumVideosTrend === "down" ? "падает" : "стабильно"}
