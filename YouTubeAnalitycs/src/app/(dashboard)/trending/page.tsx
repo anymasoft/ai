@@ -1,5 +1,6 @@
 "use client"
 import { useSession } from "next-auth/react"
+import { useUser } from "@/hooks/useUser"
 
 import { useState, useEffect, useCallback } from "react"
 import { useRouter } from "next/navigation"
@@ -100,7 +101,8 @@ interface ChannelInfo {
 
 export default function TrendingPage() {
   const { data: session } = useSession()
-  const [userPlan, setUserPlan] = useState<UserPlan>("free")
+  const { user } = useUser()
+  const userPlan = (user?.plan || "free") as UserPlan
   const [videos, setVideos] = useState<MomentumVideo[]>([])
   const [channels, setChannels] = useState<ChannelInfo[]>([])
   const [loading, setLoading] = useState(true)
@@ -167,30 +169,6 @@ export default function TrendingPage() {
       return
     }
   }, [])
-
-  // Получаем текущий тариф из БД
-  useEffect(() => {
-    const fetchUserPlan = async () => {
-      try {
-        const response = await fetch("/api/user")
-        if (response.ok) {
-          const user = await response.json()
-          setUserPlan(user.plan || "free")
-        }
-      } catch (error) {
-        console.error("[TrendingPage] Ошибка при получении плана:", error)
-        setUserPlan("free")
-      }
-    }
-
-    if (session?.user?.id) {
-      fetchUserPlan()
-    }
-
-    // Получаем план при возврате в активное окно
-    window.addEventListener("focus", fetchUserPlan)
-    return () => window.removeEventListener("focus", fetchUserPlan)
-  }, [session?.user?.id])
 
   const [generationError, setGenerationError] = useState<string | null>(null)
   const [selectedTemperatureKey, setSelectedTemperatureKey] =
