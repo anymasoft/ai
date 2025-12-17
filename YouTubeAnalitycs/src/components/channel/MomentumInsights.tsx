@@ -86,7 +86,7 @@ export function MomentumInsights({
     setError(null);
 
     try {
-      const res = await fetch(`/api/channel/${channelId}/momentum`, {
+      const res = await fetch(`/api/channel/${competitorId}/momentum`, {
         method: "POST",
       });
 
