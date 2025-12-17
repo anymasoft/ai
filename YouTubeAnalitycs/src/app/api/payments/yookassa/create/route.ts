@@ -98,6 +98,13 @@ export async function POST(request: NextRequest) {
     }
 
     // Создаём платёж через ЮKassa API
+    const webhookUrl = `${process.env.NEXTAUTH_URL}/api/payments/yookassa/webhook`;
+
+    console.log("[YooKassa] КОНФИГУРАЦИЯ:");
+    console.log("[YooKassa]   - NEXTAUTH_URL =", process.env.NEXTAUTH_URL);
+    console.log("[YooKassa]   - webhookUrl =", webhookUrl);
+    console.log("[YooKassa]   - Shop ID =", yooKassaShopId ? "✓ SET" : "❌ MISSING");
+
     const paymentRequest: YooKassaPaymentRequest = {
       amount: {
         value: amountRubles,
