@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { useAdminUsers } from "@/hooks/useAdminUsers"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -27,8 +28,7 @@ interface User {
 const PAID_PLANS = ["basic", "professional", "enterprise"]
 
 export default function AdminUsersPage() {
-  const [users, setUsers] = useState<User[]>([])
-  const [loading, setLoading] = useState(true)
+  const { users, loading, refresh } = useAdminUsers()
   const [selectedPlan, setSelectedPlan] = useState<string>("")
   const [selectedUser, setSelectedUser] = useState<string>("")
   const [showPlanDialog, setShowPlanDialog] = useState(false)
@@ -43,25 +43,6 @@ export default function AdminUsersPage() {
   const [pageSize, setPageSize] = useState(20)
   const [currentPage, setCurrentPage] = useState(1)
 
-  useEffect(() => {
-    fetchUsers()
-  }, [])
-
-  async function fetchUsers() {
-    try {
-      setLoading(true)
-      const res = await fetch("/api/admin/users")
-      if (!res.ok) throw new Error("Failed to fetch users")
-      const data = await res.json()
-      setUsers(data.users || [])
-    } catch (error) {
-      console.error("Error:", error)
-      toast.error("Failed to load users")
-    } finally {
-      setLoading(false)
-    }
-  }
-
   async function changePlan(userId: string, newPlan: string) {
     try {
       const res = await fetch("/api/admin/users/change-plan", {
@@ -74,7 +55,7 @@ export default function AdminUsersPage() {
       setShowPlanDialog(false)
       setSelectedPlan("")
       setSelectedUser("")
-      fetchUsers()
+      refresh()
     } catch (error) {
       console.error("Error:", error)
       toast.error("Failed to update plan")
@@ -91,7 +72,7 @@ export default function AdminUsersPage() {
       if (!res.ok) throw new Error("Failed to update user")
       toast.success(shouldDisable ? "User disabled" : "User enabled")
       setShowDisableDialog(false)
-      fetchUsers()
+      refresh()
     } catch (error) {
       console.error("Error:", error)
       toast.error("Failed to update user")
@@ -108,7 +89,7 @@ export default function AdminUsersPage() {
       if (!res.ok) throw new Error("Failed to reset limits")
       toast.success("Limits reset")
       setShowResetDialog(false)
-      fetchUsers()
+      refresh()
     } catch (error) {
       console.error("Error:", error)
       toast.error("Failed to reset limits")
@@ -125,7 +106,7 @@ export default function AdminUsersPage() {
       if (!res.ok) throw new Error("Failed to extend")
       toast.success("Extended for 30 days")
       setShowExtendDialog(false)
-      fetchUsers()
+      refresh()
     } catch (error) {
       console.error("Error:", error)
       toast.error("Failed to extend")
@@ -145,7 +126,7 @@ export default function AdminUsersPage() {
       if (!res.ok) throw new Error("Failed to cancel")
       toast.success("Payment cancelled")
       setShowCancelDialog(false)
-      fetchUsers()
+      refresh()
     } catch (error) {
       console.error("Error:", error)
       toast.error("Failed to cancel")
