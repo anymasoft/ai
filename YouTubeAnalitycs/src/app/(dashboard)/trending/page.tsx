@@ -1020,11 +1020,9 @@ export default function TrendingPage() {
       ) : (
         <Card>
           <CardHeader>
-            <CardTitle>Топ видео по momentum</CardTitle>
+            <CardTitle>Видео с самым быстрым ростом</CardTitle>
             <CardDescription>
-              Показано {sortedVideos.length} из {filteredVideos.length} видео
-              (всего {videos.length}). Сортировка по {sortField} (
-              {sortDirection})
+              Показано {sortedVideos.length} из {filteredVideos.length} видео · Отсортировано по скорости роста
               {channelFilter !== "all" &&
                 ` • Фильтр: ${channelFilter.split("|")[0]}`}
               {momentumFilter !== "all" && ` • Тип: ${momentumFilter}`}
