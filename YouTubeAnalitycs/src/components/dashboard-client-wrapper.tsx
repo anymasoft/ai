@@ -19,7 +19,6 @@ interface DashboardClientWrapperProps {
  * Содержит всю client логику: useState, hooks, интерактивность
  */
 export function DashboardClientWrapper({ children }: DashboardClientWrapperProps) {
-  const [themeCustomizerOpen, setThemeCustomizerOpen] = React.useState(false);
   const { config } = useSidebarConfig();
 
   return (
@@ -76,12 +75,6 @@ export function DashboardClientWrapper({ children }: DashboardClientWrapperProps
           </>
         )}
 
-        {/* Theme Customizer */}
-//         <ThemeCustomizerTrigger onClick={() => setThemeCustomizerOpen(true)} />
-//         <ThemeCustomizer
-//           open={themeCustomizerOpen}
-//           onOpenChange={setThemeCustomizerOpen}
-//         />
         <UpgradeToProButton />
       </SidebarProvider>
     </Suspense>
