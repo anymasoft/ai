@@ -153,7 +153,7 @@ export function ChannelAnalytics({
 
       {/* Анализ комментариев */}
       <CollapsibleSection
-        title="Интеллект комментариев"
+        title="Анализ комментариев"
         isOpen={expanded.comments}
         onToggle={() => toggle("comments")}
       >

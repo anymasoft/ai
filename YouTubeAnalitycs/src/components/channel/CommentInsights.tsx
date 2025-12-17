@@ -125,7 +125,7 @@ export function CommentInsights({
       <CardContent className="space-y-4 pt-6">
         <div className="flex flex-col items-center justify-center py-12">
           <p className="text-muted-foreground mb-4">
-            Интеллект комментариев покажет интересы, проблемы и запросы из комментариев аудитории.
+            Анализ комментариев покажет, что зрители хотят, что их волнует и о чём просят в комментариях.
           </p>
           <Button variant="default" onClick={handleGenerate} className="gap-2 cursor-pointer" disabled={loading}>
             <MessageSquare className="h-4 w-4" />
@@ -145,10 +145,10 @@ export function CommentInsights({
         <div>
           <h2 className="text-2xl font-bold flex items-center gap-2">
             <MessageSquare className="h-6 w-6 text-teal-600 dark:text-teal-400" />
-            Интеллект комментариев
+            Анализ комментариев
           </h2>
           <p className="text-sm text-muted-foreground mt-1">
-            Интересы, проблемы и запросы из комментариев аудитории
+            Что зрители хотят, что их волнует и о чём просят в комментариях
           </p>
         </div>
         <Tooltip>
@@ -195,7 +195,7 @@ export function CommentInsights({
         <CardHeader>
           <CardTitle className="text-lg flex items-center gap-2">
             <Sparkles className="h-5 w-5 text-teal-600 dark:text-teal-400" />
-            Общее настроение аудитории
+            Общее настроение зрителей
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -210,7 +210,7 @@ export function CommentInsights({
           <CardHeader>
             <CardTitle className="text-lg flex items-center gap-2">
               <Heart className="h-5 w-5 text-pink-600 dark:text-pink-400" />
-              Интересы аудитории
+              Интересы зрителей
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -230,7 +230,7 @@ export function CommentInsights({
           <CardHeader>
             <CardTitle className="text-lg flex items-center gap-2">
               <AlertCircle className="h-5 w-5 text-orange-600 dark:text-orange-400" />
-              Проблемы аудитории
+              Боли и проблемы зрителей
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -250,7 +250,7 @@ export function CommentInsights({
           <CardHeader>
             <CardTitle className="text-lg flex items-center gap-2">
               <MessageSquare className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-              Просьбы о темах
+              Запросы на темы
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -271,10 +271,10 @@ export function CommentInsights({
         <CardHeader>
           <CardTitle className="text-lg flex items-center gap-2">
             <AlertCircle className="h-5 w-5 text-red-600 dark:text-red-400" />
-            Жалобы и разочарования
+            Негатив и недовольство
           </CardTitle>
           <CardDescription>
-            Что не нравится аудитории
+            Что зрителям не нравится
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -294,10 +294,10 @@ export function CommentInsights({
         <CardHeader>
           <CardTitle className="text-lg flex items-center gap-2">
             <ThumbsUp className="h-5 w-5 text-green-600 dark:text-green-400" />
-            Похвалы и то, что работает
+            Что зрителям нравится и что заходит
           </CardTitle>
           <CardDescription>
-            Что хвалят и что работает
+            Что зрителям нравится и что заходит
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -320,7 +320,7 @@ export function CommentInsights({
             Идеи для следующих видео
           </CardTitle>
           <CardDescription>
-            На основе просьб из комментариев
+            На основе запросов зрителей из комментариев
           </CardDescription>
         </CardHeader>
         <CardContent>
