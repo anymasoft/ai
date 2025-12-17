@@ -177,7 +177,7 @@ export default function AdminUsersPage() {
         <Button
           variant="outline"
           size="icon"
-          onClick={fetchUsers}
+          onClick={refresh}
           disabled={loading}
         >
           <RefreshCcw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
