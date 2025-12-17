@@ -387,10 +387,10 @@ export default function TrendingPage() {
     if (momentumFilter !== "all") {
       switch (momentumFilter) {
         case "high":
-          if (!video.category || video.category !== "High Momentum")
+          if (!video.category || video.category !== "Быстрый рост")
             return false
           break
-        case "rising":
+        case "растёт":
           if (!video.category || video.category !== "Rising") return false
           break
         case "normal":
@@ -432,7 +432,7 @@ export default function TrendingPage() {
 
   const getCategoryBadge = (category?: string) => {
     switch (category) {
-      case "High Momentum":
+      case "Быстрый рост":
         return (
           <Badge className="bg-green-100 text-green-800 hover:bg-green-100">
             🔥 Высокий рост
@@ -935,7 +935,7 @@ export default function TrendingPage() {
                   <SelectContent>
                     <SelectItem value="all">Все типы</SelectItem>
                     <SelectItem value="high">Высокий рост</SelectItem>
-                    <SelectItem value="rising">Растёт</SelectItem>
+                    <SelectItem value="растёт">Растёт</SelectItem>
                     <SelectItem value="normal">Обычный</SelectItem>
                     <SelectItem value="underperforming">Проседает</SelectItem>
                   </SelectContent>

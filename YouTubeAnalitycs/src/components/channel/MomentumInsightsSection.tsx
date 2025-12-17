@@ -92,7 +92,7 @@ export function MomentumInsightsSection({
         const errorMsg = await readApiError(syncRes);
 
         // Обработка empty-state кейсов как нормального результата, не ошибки
-        if (errorMsg.includes("No high momentum videos found") ||
+        if (errorMsg.includes("No быстрый рост videos found") ||
             errorMsg.includes("No videos with valid publication dates") ||
             errorMsg.includes("Sync Top Videos first")) {
           console.info(`[MomentumInsightsSection] Empty state: ${errorMsg}`);
@@ -146,7 +146,7 @@ export function MomentumInsightsSection({
               <p className="text-center text-sm">
                 {emptyReason === "Sync Top Videos first"
                   ? "Сначала синхронизируйте видео"
-                  : emptyReason.includes("No high momentum")
+                  : emptyReason.includes("No быстрый рост")
                     ? "На этом канале нет видео с высоким momentum"
                     : "Недостаточно данных для анализа momentum"}
               </p>

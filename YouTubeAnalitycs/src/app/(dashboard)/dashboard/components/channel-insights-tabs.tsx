@@ -113,7 +113,7 @@ export function ChannelInsightsTabs() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-lg">
             <BarChart3 className="h-5 w-5" />
-            Channel Insights
+            Аналитика канала
           </CardTitle>
           <CardDescription className="text-destructive">{error}</CardDescription>
         </CardHeader>
@@ -127,14 +127,14 @@ export function ChannelInsightsTabs() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-lg">
             <BarChart3 className="h-5 w-5" />
-            Channel Insights
+            Аналитика канала
           </CardTitle>
-          <CardDescription>No channel data available</CardDescription>
+          <CardDescription>Данных о каналах нет</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="flex flex-col items-center justify-center h-[300px] text-muted-foreground">
             <BarChart3 className="h-12 w-12 mb-4 opacity-20" />
-            <p className="text-sm text-center">Add competitors to see channel insights</p>
+            <p className="text-sm text-center">Добавьте конкурентов для просмотра аналитики</p>
           </div>
         </CardContent>
       </Card>
@@ -182,7 +182,7 @@ export function ChannelInsightsTabs() {
 
   const engagementChartConfig = {
     avgViews: {
-      label: "Avg Views/Video",
+      label: "Среднее кол-во просмотров/видео",
       color: "hsl(var(--primary))",
     },
   }
@@ -196,7 +196,7 @@ export function ChannelInsightsTabs() {
 
   const uploadChartConfig = {
     frequency: {
-      label: "Videos/Month",
+      label: "Видео в месяц",
       color: "hsl(var(--chart-2))",
     },
   }
@@ -207,10 +207,10 @@ export function ChannelInsightsTabs() {
         <div className="space-y-1">
           <CardTitle className="flex items-center gap-2 text-lg font-semibold">
             <BarChart3 className="h-5 w-5 text-primary" />
-            Channel Insights
+            Аналитика канала
           </CardTitle>
           <CardDescription className="text-sm">
-            Competitor performance and growth analysis
+            Анализ роста и эффективности конкурентов
           </CardDescription>
         </div>
         <Select value={period} onValueChange={setPeriod}>
@@ -218,9 +218,9 @@ export function ChannelInsightsTabs() {
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="7">Last 7 days</SelectItem>
-            <SelectItem value="30">Last 30 days</SelectItem>
-            <SelectItem value="90">Last 90 days</SelectItem>
+            <SelectItem value="7">7 дней</SelectItem>
+            <SelectItem value="30">30 дней</SelectItem>
+            <SelectItem value="90">90 дней</SelectItem>
           </SelectContent>
         </Select>
       </CardHeader>
@@ -232,21 +232,21 @@ export function ChannelInsightsTabs() {
               className="flex items-center gap-2 rounded-md px-4 py-2 text-sm font-medium transition-all data-[state=active]:bg-background data-[state=active]:shadow-sm"
             >
               <TrendingUp className="h-4 w-4" />
-              <span className="hidden sm:inline">Growth</span>
+              <span className="hidden sm:inline">Рост</span>
             </TabsTrigger>
             <TabsTrigger
               value="engagement"
               className="flex items-center gap-2 rounded-md px-4 py-2 text-sm font-medium transition-all data-[state=active]:bg-background data-[state=active]:shadow-sm"
             >
               <Users className="h-4 w-4" />
-              <span className="hidden sm:inline">Engagement</span>
+              <span className="hidden sm:inline">Вовлечённость</span>
             </TabsTrigger>
             <TabsTrigger
               value="upload"
               className="flex items-center gap-2 rounded-md px-4 py-2 text-sm font-medium transition-all data-[state=active]:bg-background data-[state=active]:shadow-sm"
             >
               <Upload className="h-4 w-4" />
-              <span className="hidden sm:inline">Uploads</span>
+              <span className="hidden sm:inline">Загрузки</span>
             </TabsTrigger>
           </TabsList>
 
@@ -255,7 +255,7 @@ export function ChannelInsightsTabs() {
             <div className="grid grid-cols-10 gap-6">
               {/* Chart Area */}
               <div className="col-span-10 xl:col-span-7">
-                <h3 className="text-sm font-medium text-muted-foreground mb-4">Subscriber Growth</h3>
+                <h3 className="text-sm font-medium text-muted-foreground mb-4">Рост подписчиков</h3>
                 {growthChartData.length > 0 ? (
                   <ChartContainer config={growthChartConfig} className="h-[350px] w-full">
                     <LineChart data={growthChartData} margin={{ top: 20, right: 20, bottom: 20, left: 0 }}>
@@ -292,7 +292,7 @@ export function ChannelInsightsTabs() {
                   </ChartContainer>
                 ) : (
                   <div className="h-[350px] flex items-center justify-center text-muted-foreground">
-                    No historical data available for this period
+                    Нет исторических данных за этот период
                   </div>
                 )}
               </div>

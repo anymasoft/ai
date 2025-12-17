@@ -97,7 +97,7 @@ export default async function Dashboard() {
           </Suspense>
         </section>
 
-        {/* Fourth Row - Channel Insights */}
+        {/* Fourth Row - Аналитика канала */}
         <section>
           <ChannelInsightsTabs />
         </section>

@@ -27,7 +27,7 @@ interface AudienceData {
   stats?: {
     totalAnalyzed: number;
     highEngagement: number;
-    rising: number;
+    растёт: number;
     weak: number;
     medianEngagement: number;
   };
@@ -524,7 +524,7 @@ export function AudienceInsights({
               <div className="text-xs text-muted-foreground">Высокое взаимодействие</div>
             </div>
             <div className="bg-blue-500/10 rounded-lg p-4">
-              <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">{data.stats.rising ?? 0}</div>
+              <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">{data.stats.растёт ?? 0}</div>
               <div className="text-xs text-muted-foreground">Растущие</div>
             </div>
             <div className="bg-red-500/10 rounded-lg p-4">

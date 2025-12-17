@@ -113,7 +113,7 @@ export function PerformanceBreakdown() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-lg">
             <Lightbulb className="h-5 w-5" />
-            Content Themes
+            Темы контента
           </CardTitle>
           <CardDescription className="text-destructive">{error}</CardDescription>
         </CardHeader>
@@ -127,15 +127,15 @@ export function PerformanceBreakdown() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-lg">
             <Lightbulb className="h-5 w-5" />
-            Content Themes
+            Темы контента
           </CardTitle>
-          <CardDescription>No theme data available yet</CardDescription>
+          <CardDescription>Данных о темах контента ещё нет</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="flex flex-col items-center justify-center h-[300px] text-muted-foreground text-center">
             <Lightbulb className="h-12 w-12 mb-4 opacity-20" />
-            <p className="text-sm">Generate trend analysis to see content themes</p>
-            <p className="text-xs mt-2 text-muted-foreground/70">Go to Trending page and analyze videos</p>
+            <p className="text-sm">Проанализируйте видео для просмотра тренды контента</p>
+            <p className="text-xs mt-2 text-muted-foreground/70">Перейдите на страницу «Тренды» и проанализируйте видео</p>
           </div>
         </CardContent>
       </Card>
@@ -165,12 +165,12 @@ export function PerformanceBreakdown() {
       <CardHeader className="pb-2">
         <CardTitle className="flex items-center gap-2 text-lg font-semibold">
           <Lightbulb className="h-5 w-5 text-primary" />
-          Content Themes
+          Темы контента
         </CardTitle>
         <CardDescription className="flex items-center gap-2 text-sm">
-          <span>Top performing content topics</span>
+          <span>Самые эффективные темы</span>
           <Badge variant="outline" className="text-xs bg-background/50">
-            {data.aggregated.sources.trendingInsights + data.aggregated.sources.momentumInsights} analyses
+            {data.aggregated.sources.trendingInsights + data.aggregated.sources.momentumInsights} анализов
           </Badge>
         </CardDescription>
       </CardHeader>
@@ -234,7 +234,7 @@ export function PerformanceBreakdown() {
                               y={(viewBox.cy || 0) + 20}
                               className="fill-muted-foreground text-xs"
                             >
-                              mentions
+                              упоминаний
                             </tspan>
                           </text>
                         )

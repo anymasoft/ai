@@ -203,7 +203,7 @@ export default async function ChannelPage({ params }: PageProps) {
     // Парсим JSON данные из content_intelligence
     const contentData = intelligence ? JSON.parse(intelligence.data as string) : null;
 
-    // Получаем Momentum Insights анализ
+    // Получаем Анализ роста анализ
     const momentumResult = await client.execute({
       sql: "SELECT * FROM momentum_insights WHERE channelId = ? ORDER BY generatedAt DESC LIMIT 1",
       args: [competitor.channelId],
@@ -214,7 +214,7 @@ export default async function ChannelPage({ params }: PageProps) {
     // Парсим JSON данные из momentum_insights
     const momentumData = momentum ? JSON.parse(momentum.data as string) : null;
 
-    // Получаем Audience Insights анализ
+    // Получаем Анализ аудитории анализ
     const audienceResult = await client.execute({
       sql: "SELECT * FROM audience_insights WHERE channelId = ? ORDER BY generatedAt DESC LIMIT 1",
       args: [competitor.channelId],
@@ -275,8 +275,8 @@ export default async function ChannelPage({ params }: PageProps) {
       console.log("[ChannelPage] ContentData format:", contentData.format || "json (old format)");
       console.log("[ChannelPage] ContentData has report:", !!contentData.report);
     }
-    console.log("[ChannelPage] Momentum Insights:", momentumData ? "exists" : "not found");
-    console.log("[ChannelPage] Audience Insights:", audienceData ? "exists" : "not found");
+    console.log("[ChannelPage] Анализ роста:", momentumData ? "exists" : "not found");
+    console.log("[ChannelPage] Анализ аудитории:", audienceData ? "exists" : "not found");
     console.log("[ChannelPage] Comment Insights:", commentsData ? "exists" : "not found", {
       hasStats: !!commentsData?.stats,
       interestsCount: commentsData?.audienceInterests?.length || 0,

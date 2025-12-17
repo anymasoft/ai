@@ -100,7 +100,7 @@ export function MomentumTrendChart() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-lg">
             <Zap className="h-5 w-5" />
-            Momentum Trend
+            Динамика роста
           </CardTitle>
           <CardDescription className="text-destructive">{error}</CardDescription>
         </CardHeader>
@@ -152,7 +152,7 @@ export function MomentumTrendChart() {
         <div className="space-y-1">
           <CardTitle className="flex items-center gap-2 text-lg font-semibold">
             <Zap className="h-5 w-5 text-primary" />
-            Тренд Momentum
+            Динамика роста
           </CardTitle>
           <CardDescription className="flex items-center gap-2 text-sm">
             <span>Динамика производительности видео</span>
@@ -167,9 +167,9 @@ export function MomentumTrendChart() {
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="7">Последние 7 дней</SelectItem>
-            <SelectItem value="30">Последние 30 дней</SelectItem>
-            <SelectItem value="90">Последние 90 дней</SelectItem>
+            <SelectItem value="7">7 дней</SelectItem>
+            <SelectItem value="30">30 дней</SelectItem>
+            <SelectItem value="90">90 дней</SelectItem>
           </SelectContent>
         </Select>
       </CardHeader>
@@ -177,7 +177,7 @@ export function MomentumTrendChart() {
         {/* Stats Row */}
         <div className="flex flex-wrap gap-6 sm:gap-10 mb-5">
           <div className="space-y-0.5">
-            <p className="text-muted-foreground text-xs uppercase tracking-wider">Высокий Momentum</p>
+            <p className="text-muted-foreground text-xs uppercase tracking-wider">Быстрый рост</p>
             <p className="text-2xl font-semibold tabular-nums">{data.summary.totalHighMomentumVideos}</p>
           </div>
           <div className="space-y-0.5">
@@ -222,7 +222,7 @@ export function MomentumTrendChart() {
                   <ChartTooltipContent
                     formatter={(value, name) => {
                       if (name === "avgMomentum") {
-                        return [`${((value as number) * 100).toFixed(1)}%`, "Avg Momentum"]
+                        return [`${((value as number) * 100).toFixed(1)}%`, "Средний темп роста"]
                       }
                       return [value, name]
                     }}

@@ -24,7 +24,7 @@ interface MomentumData {
   stats: {
     totalAnalyzed: number;
     highMomentum: number;
-    rising: number;
+    растёт: number;
     medianViewsPerDay: number;
   };
   hotThemes: string[];
@@ -112,7 +112,7 @@ export function MomentumInsights({
   if (loading) {
     return (
       <AnalysisLoadingState
-        title="Анализирование momentum..."
+        title="Анализируем рост видео..."
         subtitle="Это может занять 15-25 секунд"
       />
     );
@@ -132,17 +132,17 @@ export function MomentumInsights({
               </p>
               <Button variant="default" onClick={handleGenerate} className="gap-2 cursor-pointer" disabled title="Sync Top Videos first">
                 <Flame className="h-4 w-4" />
-                Создать анализ Momentum
+                Анализ роста
               </Button>
             </>
           ) : (
             <>
               <p className="text-muted-foreground mb-4">
-                Анализ Momentum покажет, какие темы и форматы растут прямо сейчас.
+                Анализ роста покажет, какие темы и форматы растут прямо сейчас.
               </p>
               <Button variant="default" onClick={handleGenerate} className="gap-2 cursor-pointer">
                 <Flame className="h-4 w-4" />
-                Создать анализ Momentum
+                Анализ роста
               </Button>
             </>
           )}
@@ -160,7 +160,7 @@ export function MomentumInsights({
         <div>
           <h2 className="text-2xl font-bold flex items-center gap-2">
             <Flame className="h-6 w-6 text-orange-600 dark:text-orange-400" />
-            Инсайты Momentum
+            Анализ роста
           </h2>
           <p className="text-sm text-muted-foreground mt-1">
             Что растёт прямо сейчас
@@ -193,10 +193,10 @@ export function MomentumInsights({
         </div>
         <div className="bg-orange-500/10 rounded-lg p-4">
           <div className="text-2xl font-bold text-orange-600 dark:text-orange-400">{data.stats.highMomentum}</div>
-          <div className="text-xs text-muted-foreground">Высокий Momentum</div>
+          <div className="text-xs text-muted-foreground">Быстрый рост</div>
         </div>
         <div className="bg-blue-500/10 rounded-lg p-4">
-          <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">{data.stats.rising}</div>
+          <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">{data.stats.растёт}</div>
           <div className="text-xs text-muted-foreground">Растущие</div>
         </div>
         <div className="bg-muted/50 rounded-lg p-4">
@@ -220,7 +220,7 @@ export function MomentumInsights({
 
       {/* Main Grid */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {/* Hot Themes */}
+        {/* Темы, которые заходят */}
         <Card>
           <CardHeader>
             <CardTitle className="text-lg flex items-center gap-2">
@@ -281,10 +281,10 @@ export function MomentumInsights({
         </Card>
       </div>
 
-      {/* High Momentum Videos */}
+      {/* Быстрый рост Videos */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg">🚀 Видео с высоким Momentum</CardTitle>
+          <CardTitle className="text-lg">🚀 Видео с быстрым ростом</CardTitle>
           <CardDescription>
             Видео с просмотрами на 50%+ выше медианы
           </CardDescription>
