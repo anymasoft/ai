@@ -192,9 +192,9 @@ export default async function ChannelPage({ params }: PageProps) {
     // Видео загружаются на клиенте после sync/show, поэтому проверку нельзя делать на сервере
     const hasVideos = false;
 
-    // НОВОЕ (ИТЕРАЦИЯ 9): hasComments также всегда false при SSR
-    // Комментарии проверяются на клиенте после загрузки видео
-    const hasComments = false;
+    // Определяем наличие комментариев по наличию проанализированных данных
+    // Если есть comment insights или deep analysis - значит комментарии были синхронизированы
+    const hasComments = !!commentsData || !!deepAnalysisData;
 
     // Получаем Content Intelligence анализ
     const intelligenceResult = await client.execute({
