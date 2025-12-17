@@ -31,32 +31,43 @@ export function useCheckPaymentStatus() {
     const success = params.get("success");
     const paymentId = params.get("paymentId");
 
+    console.log("[useCheckPaymentStatus] URL params - success:", success, "paymentId:", paymentId);
+
     // ЕСЛИ нет success=1 ИЛИ уже проверили → ничего не делаем
-    if (!success || checked) return;
+    if (!success || checked) {
+      console.log("[useCheckPaymentStatus] Skipping: success=", success, "checked=", checked);
+      return;
+    }
 
     // ЕСЛИ нет paymentId → нечего проверять
     if (!paymentId) {
-      console.log("[useCheckPaymentStatus] No paymentId in URL");
+      console.error("[useCheckPaymentStatus] ❌ NO paymentId in URL! Cannot check payment!");
+      console.error("[useCheckPaymentStatus] URL should be: ?success=1&paymentId=XXX");
       setChecked(true);
       return;
     }
 
-    console.log(
-      `[useCheckPaymentStatus] Checking payment: ${paymentId}`
-    );
+    console.log(`[useCheckPaymentStatus] ✓ Checking payment: ${paymentId}`);
 
     // ОДНА проверка
     (async () => {
       try {
-        const response = await fetch(
-          `/api/payments/yookassa/check?paymentId=${paymentId}`
-        );
+        const url = `/api/payments/yookassa/check?paymentId=${paymentId}`;
+        console.log(`[useCheckPaymentStatus] Fetching: ${url}`);
+
+        const response = await fetch(url);
         const data = await response.json();
 
-        console.log(`[useCheckPaymentStatus] Result:`, data);
+        console.log(`[useCheckPaymentStatus] ✓ Response:`, data);
         setResult(data);
+
+        if (data.success) {
+          console.log(`[useCheckPaymentStatus] ✅ Payment succeeded!`);
+        } else {
+          console.warn(`[useCheckPaymentStatus] ⚠️ Payment check returned:`, data);
+        }
       } catch (error) {
-        console.error(`[useCheckPaymentStatus] Error:`, error);
+        console.error(`[useCheckPaymentStatus] ❌ Error:`, error);
         setResult({ success: false, error: "Check failed" });
       } finally {
         setChecked(true);
