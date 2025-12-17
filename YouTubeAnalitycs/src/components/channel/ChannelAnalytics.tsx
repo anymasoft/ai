@@ -161,7 +161,7 @@ export function ChannelAnalytics({
           competitorId={competitorId}
           channelId={channelId}
           initialData={commentsData}
-          hasRequiredData={hasComments}
+          hasRequiredData={hasVideos && hasComments}
         />
       </CollapsibleSection>
 
@@ -175,7 +175,7 @@ export function ChannelAnalytics({
           competitorId={competitorId}
           channelId={channelId}
           deepAnalysisData={deepAnalysisData}
-          hasRequiredData={hasComments}
+          hasRequiredData={hasVideos && hasComments}
         />
       </CollapsibleSection>
     </div>
