@@ -71,7 +71,7 @@ export function AudienceInsightsSection({
         {isGeneratingAudience ? (
           /* Идёт генерация - показываем Loading State */
           <AnalysisLoadingState
-            title="Создание анализа аудитории..."
+            title="Анализируем аудиторию..."
             subtitle="Это может занять 20-30 секунд"
           />
         ) : !audienceData ? (
