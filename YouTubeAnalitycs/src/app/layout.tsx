@@ -8,8 +8,8 @@ import { Toaster } from "@/components/ui/sonner";
 import { inter } from "@/lib/fonts";
 
 export const metadata: Metadata = {
-  title: "Сценарии и идеи для YouTube — рост просмотров канала",
-  description: "Сервис подбора идей и сценариев для YouTube на основе успешных видео конкурентов и трендов.",
+  title: "AI-сценарист для YouTube",
+  description: "Подбираем темы и сценарии для YouTube-видео, которые уже доказали рост просмотров у конкурентов",
 };
 
 export default function RootLayout({
