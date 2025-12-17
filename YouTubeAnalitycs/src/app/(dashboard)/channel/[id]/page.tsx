@@ -192,10 +192,6 @@ export default async function ChannelPage({ params }: PageProps) {
     // Видео загружаются на клиенте после sync/show, поэтому проверку нельзя делать на сервере
     const hasVideos = false;
 
-    // Определяем наличие комментариев по наличию проанализированных данных
-    // Если есть comment insights или deep analysis - значит комментарии были синхронизированы
-    const hasComments = !!commentsData || !!deepAnalysisData;
-
     // Получаем Content Intelligence анализ
     const intelligenceResult = await client.execute({
       sql: "SELECT * FROM content_intelligence WHERE channelId = ? ORDER BY generatedAt DESC LIMIT 1",
@@ -265,6 +261,10 @@ export default async function ChannelPage({ params }: PageProps) {
 
     // Парсим JSON данные из channel_ai_comment_insights
     const deepAnalysisData = deepAnalysis ? JSON.parse(deepAnalysis.resultJson as string) : null;
+
+    // Определяем наличие комментариев по наличию проанализированных данных
+    // Если есть comment insights или deep analysis - значит комментарии были синхронизированы
+    const hasComments = !!commentsData || !!deepAnalysisData;
 
     // Debug: проверка channelId и количества метрик
     console.log("[ChannelPage] Загруженные данные для канала:", competitor.channelId);
