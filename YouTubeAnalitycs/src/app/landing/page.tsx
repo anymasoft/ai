@@ -3,20 +3,27 @@ import { LandingPageContent } from './landing-page-content'
 
 // Metadata for the landing page
 export const metadata: Metadata = {
-  title: 'Сценарии для YouTube — идеи видео, которые набирают просмотры',
-  description: 'Генератор идей и сценариев для YouTube на основе анализа конкурентов и трендовых видео. Создавайте видео, которые реально набирают просмотры.',
-  keywords: ['сценарии для youtube', 'идеи для youtube', 'что снимать на youtube', 'анализ конкурентов youtube', 'рост просмотров youtube', 'youtube сценарии', 'youtube идеи видео'],
+  title: 'Beem Analytics — AI-сервис для создания сценариев YouTube и анализа конкурентов',
+  description: 'Создавайте сильные YouTube-сценарии и находите идеи для роста канала с помощью AI: анализ конкурентов, контента и работающих форматов — всё в одном сервисе.',
+  keywords: [
+    'youtube сценарии',
+    'идеи для youtube',
+    'анализ конкурентов youtube',
+    'ai сценарии видео',
+    'продвижение youtube канала',
+  ],
   openGraph: {
-    title: 'Сценарии для YouTube — идеи видео, которые набирают просмотры',
-    description: 'Генератор идей и сценариев для YouTube на основе анализа конкурентов и трендовых видео. Создавайте видео, которые реально набирают просмотры.',
+    title: 'Beem Analytics — AI-сценарии и рост YouTube-каналов',
+    description: 'AI-платформа для создания сценариев YouTube и поиска идей через анализ конкурентов и контента. Помогает быстрее расти и снимать видео, которые заходят.',
     type: 'website',
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Сценарии для YouTube — идеи видео, которые набирают просмотры',
-    description: 'Генератор идей и сценариев для YouTube на основе анализа конкурентов и трендовых видео. Создавайте видео, которые реально набирают просмотры.',
+    title: 'Beem Analytics — AI-сценарии для YouTube',
+    description: 'Создавайте сценарии YouTube и находите выигрышные идеи с помощью AI-анализа конкурентов и контента.',
   },
 }
+
 
 export default function LandingPage() {
   return <LandingPageContent />
