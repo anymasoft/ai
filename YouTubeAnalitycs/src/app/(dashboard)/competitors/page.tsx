@@ -28,7 +28,6 @@ import {
 } from "@/components/ui/table"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { Trash2, Loader2, AlertCircle, Scale } from "lucide-react"
-import { PLAN_LIMITS } from "@/lib/plan-limits"
 import Link from "next/link"
 import { ChannelAvatar } from "@/components/channel-avatar"
 
@@ -59,9 +58,6 @@ export default function CompetitorsPage() {
   const [fetching, setFetching] = useState(true)
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [competitorToDelete, setCompetitorToDelete] = useState<number | null>(null)
-
-  const userPlan = user?.plan || "free"
-  const limit = PLAN_LIMITS[userPlan as keyof typeof PLAN_LIMITS] ?? 3
 
   useEffect(() => {
     fetchCompetitors()
@@ -161,8 +157,6 @@ export default function CompetitorsPage() {
     return new Date(timestamp).toLocaleDateString()
   }
 
-  const isAtLimit = competitors.length >= limit
-
   return (
     <div className="container mx-auto px-4 md:px-6 space-y-6">
       <div className="flex items-center justify-between mb-6">
@@ -197,7 +191,7 @@ export default function CompetitorsPage() {
         <CardHeader>
           <CardTitle>Добавить конкурента</CardTitle>
           <CardDescription>
-            Добавьте YouTube канал для отслеживания ({competitors.length}/{limit} используется)
+            Добавьте YouTube канал для отслеживания
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -207,19 +201,14 @@ export default function CompetitorsPage() {
               placeholder="Введите название канала или ссылку на YouTube-канал"
               value={handle}
               onChange={(e) => setHandle(e.target.value)}
-              disabled={loading || isAtLimit}
+              disabled={loading}
               className="flex-1"
             />
-            <Button type="submit" disabled={loading || isAtLimit} className="cursor-pointer">
+            <Button type="submit" disabled={loading} className="cursor-pointer">
               {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Добавить
             </Button>
           </form>
-          {isAtLimit && (
-            <p className="text-sm text-muted-foreground mt-2">
-              Вы достигли лимита для этого плана. Обновитесь, чтобы добавить больше конкурентов.
-            </p>
-          )}
         </CardContent>
       </Card>
 
