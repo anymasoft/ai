@@ -5,7 +5,6 @@ import { db } from "@/lib/db";
 import { getYoutubeChannelByHandle } from "@/lib/scrapecreators";
 import { syncChannelTopVideos } from "@/lib/sync-channel-videos";
 import { syncChannelComments } from "@/lib/sync-channel-comments";
-import { PLAN_LIMITS } from "@/lib/plan-limits";
 import { normalizeYoutubeInput } from "@/lib/youtube/normalize";
 
 export async function GET(req: NextRequest) {
@@ -73,14 +72,6 @@ export async function POST(req: NextRequest) {
 
     const handleToFetch = normalized.normalizedHandle || normalized.channelId || handle.trim();
 
-    // Check current competitor count
-    const currentResult = await db.execute({
-      sql: "SELECT COUNT(*) as count FROM competitors WHERE userId = ?",
-      args: [session.user.id],
-    });
-
-    const currentCount = (currentResult.rows[0].count as number) || 0;
-
     // Ensure user exists
     const userResult = await db.execute({
       sql: "SELECT * FROM users WHERE id = ?",
@@ -102,23 +93,6 @@ export async function POST(req: NextRequest) {
           Date.now(),
         ],
       });
-    }
-
-    const userRefresh = await db.execute({
-      sql: "SELECT plan FROM users WHERE id = ?",
-      args: [session.user.id],
-    });
-
-    const plan = (userRefresh.rows[0]?.plan as string) || (session.user as any).plan || "free";
-    const limit = PLAN_LIMITS[plan as keyof typeof PLAN_LIMITS] ?? 3;
-
-    if (currentCount >= limit) {
-      return NextResponse.json(
-        {
-          error: `Competitor limit reached for your plan (${limit} max). Upgrade to add more.`,
-        },
-        { status: 402 }
-      );
     }
 
     // Fetch channel data
