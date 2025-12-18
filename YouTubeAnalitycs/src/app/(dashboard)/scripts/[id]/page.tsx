@@ -62,14 +62,22 @@ async function getScript(scriptId: string): Promise<ScriptWithVideos> {
     });
 
     const videoTitlesMap = new Map<string, string>();
-    videosResult.rows.forEach((vRow) => {
+    console.log("[DEBUG] videosResult.rows structure:", JSON.stringify(videosResult.rows, null, 2));
+    console.log("[DEBUG] First row keys:", Object.keys(videosResult.rows[0] || {}));
+
+    videosResult.rows.forEach((vRow, idx) => {
+      console.log(`[DEBUG] Row ${idx}:`, { videoId: vRow.videoId, title: vRow.title, raw: vRow });
       videoTitlesMap.set(vRow.videoId as string, vRow.title as string);
     });
+
+    console.log("[DEBUG] videoTitlesMap:", Array.from(videoTitlesMap.entries()));
 
     sourceVideosData = sourceVideoIds.map((id) => ({
       id,
       title: videoTitlesMap.get(id) || id,
     }));
+
+    console.log("[DEBUG] final sourceVideosData:", JSON.stringify(sourceVideosData, null, 2));
   }
 
   const script: ScriptWithVideos = {
