@@ -1,0 +1,46 @@
+{
+  "manifest_version": 3,
+  "name": "VPN Proxy Manager",
+  "version": "1.0.0",
+  "description": "Защищённое VPN расширение с управлением прокси локациями",
+  "permissions": [
+    "proxy",
+    "tabs",
+    "webRequest",
+    "storage",
+    "activeTab"
+  ],
+  "host_permissions": [
+    "<all_urls>"
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "VPN Manager",
+    "default_icon": {
+      "16": "assets/icons/icon-16.png",
+      "48": "assets/icons/icon-48.png",
+      "128": "assets/icons/icon-128.png"
+    }
+  },
+  "background": {
+    "service_worker": "background.js"
+  },
+  "icons": {
+    "16": "assets/icons/icon-16.png",
+    "48": "assets/icons/icon-48.png",
+    "128": "assets/icons/icon-128.png"
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.js"],
+      "run_at": "document_start"
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": ["assets/logo.png"],
+      "matches": ["<all_urls>"]
+    }
+  ]
+}
