@@ -162,35 +162,20 @@ export async function POST(req: NextRequest) {
 
     const newCompetitor = newResult.rows[0] as any;
 
-    // НОВОЕ (ЭТАП 3): Автоматическая синхронизация TOP-12 видео после добавления конкурента
-    // Это гарантирует, что при переходе на /channel/[id] видео уже будут в БД
+    // Автоматическая синхронизация видео и комментариев после добавления конкурента
     if (newCompetitor && newCompetitor.channelId) {
-      console.log("[Competitors POST] НОВОЕ: Начинаем автоматическую синхронизацию видео для channelId:", newCompetitor.channelId);
       try {
         const syncResult = await syncChannelTopVideos(
           newCompetitor.channelId as string,
           newCompetitor.handle as string
         );
-        console.log("[Competitors POST] Синхронизация видео завершена:", {
-          success: syncResult.success,
-          source: syncResult.source,
-          totalVideos: syncResult.totalVideos,
-        });
 
-        // ⚠️ ВАЖНО: если видео не получены - оставляем конкурента, видео загрузятся позже
         if (!syncResult.success || syncResult.totalVideos === 0) {
-          console.warn("[Competitors POST] ⚠️ Видео не получены при синхронизации, но конкурент остаётся в БД для позже загрузки");
-          // Не удаляем конкурента - он уже добавлен и будет полезен пользователю
-          // Видео загрузятся автоматически позже через механизм retry
+          console.warn("[Competitors POST] Видео не получены, конкурент остается в БД");
         } else {
           // Синхронизировать комментарии только если видео успешно получены
-          console.log("[Competitors POST] Начинаем автоматическую синхронизацию комментариев для channelId:", newCompetitor.channelId);
           try {
-            const commentsResult = await syncChannelComments(newCompetitor.channelId as string);
-            console.log("[Competitors POST] Синхронизация комментариев завершена:", {
-              success: commentsResult.success,
-              totalComments: commentsResult.totalComments,
-            });
+            await syncChannelComments(newCompetitor.channelId as string);
           } catch (commentsError) {
             console.warn("[Competitors POST] Ошибка синхронизации комментариев (non-critical):", commentsError);
             // Не прерываем процесс добавления конкурента если синхронизация комментариев упала
