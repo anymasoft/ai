@@ -186,8 +186,10 @@ export default async function ScriptViewPage({
             <CardDescription>Полный текст для создания видео</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="bg-muted/30 p-4 rounded-md whitespace-pre-wrap font-mono text-sm">
-              {script.scriptText}
+            <div className="bg-muted/30 p-4 rounded-md whitespace-pre-wrap font-mono text-sm space-y-3">
+              {script.scriptText.split("\n").map((paragraph, index) => (
+                <p key={index}>{paragraph || "\u00A0"}</p>
+              ))}
             </div>
           </CardContent>
         </Card>
@@ -199,8 +201,12 @@ export default async function ScriptViewPage({
             <CardDescription>Анализ потенциала сценария</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="bg-primary/5 p-4 rounded-md border border-primary/20">
-              <p className="text-foreground">{script.whyItShouldWork}</p>
+            <div className="bg-primary/5 p-4 rounded-md border border-primary/20 space-y-3">
+              {script.whyItShouldWork.split("\n").map((paragraph, index) => (
+                <p key={index} className="text-foreground">
+                  {paragraph || "\u00A0"}
+                </p>
+              ))}
             </div>
           </CardContent>
         </Card>
