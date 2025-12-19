@@ -182,19 +182,19 @@ export async function POST(req: NextRequest) {
           console.warn("[Competitors POST] ⚠️ Видео не получены при синхронизации, но конкурент остаётся в БД для позже загрузки");
           // Не удаляем конкурента - он уже добавлен и будет полезен пользователю
           // Видео загрузятся автоматически позже через механизм retry
-        }
-
-        // Автоматическая синхронизация комментариев (только если видео успешно получены)
-        console.log("[Competitors POST] Начинаем автоматическую синхронизацию комментариев для channelId:", newCompetitor.channelId);
-        try {
-          const commentsResult = await syncChannelComments(newCompetitor.channelId as string);
-          console.log("[Competitors POST] Синхронизация комментариев завершена:", {
-            success: commentsResult.success,
-            totalComments: commentsResult.totalComments,
-          });
-        } catch (commentsError) {
-          console.warn("[Competitors POST] Ошибка синхронизации комментариев (non-critical):", commentsError);
-          // Не прерываем процесс добавления конкурента если синхронизация комментариев упала
+        } else {
+          // Синхронизировать комментарии только если видео успешно получены
+          console.log("[Competitors POST] Начинаем автоматическую синхронизацию комментариев для channelId:", newCompetitor.channelId);
+          try {
+            const commentsResult = await syncChannelComments(newCompetitor.channelId as string);
+            console.log("[Competitors POST] Синхронизация комментариев завершена:", {
+              success: commentsResult.success,
+              totalComments: commentsResult.totalComments,
+            });
+          } catch (commentsError) {
+            console.warn("[Competitors POST] Ошибка синхронизации комментариев (non-critical):", commentsError);
+            // Не прерываем процесс добавления конкурента если синхронизация комментариев упала
+          }
         }
       } catch (syncError) {
         console.error("[Competitors POST] ⚠️ Ошибка синхронизации видео:", syncError);

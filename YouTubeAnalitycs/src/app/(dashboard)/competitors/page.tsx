@@ -98,18 +98,17 @@ export default function CompetitorsPage() {
       })
 
       if (!res.ok) {
-        const contentType = res.headers.get("content-type")
+        // Обработка ошибки: пытаемся получить сообщение из JSON
         let errorMessage = "Ошибка добавления конкурента"
 
-        if (contentType?.includes("application/json")) {
-          try {
+        try {
+          const contentType = res.headers.get("content-type")
+          if (contentType?.includes("application/json")) {
             const errorData = await res.json()
             errorMessage = errorData.error || errorMessage
-          } catch (parseErr) {
-            console.error("[handleAddCompetitor] Ошибка парсинга JSON ошибки:", parseErr)
-            errorMessage = `Ошибка сервера: ${res.statusText}`
           }
-        } else {
+        } catch (parseErr) {
+          // Если JSON не получилось парсить, используем statusText
           errorMessage = `Ошибка сервера: ${res.statusText}`
         }
 
@@ -117,13 +116,15 @@ export default function CompetitorsPage() {
         return
       }
 
+      // Успешный ответ (res.ok === true)
       const data = await res.json()
 
       setSuccess("Конкурент успешно добавлен!")
       setHandle("")
       await fetchCompetitors()
     } catch (err) {
-      console.error("[handleAddCompetitor] Необработанная ошибка:", err)
+      // Ловит любые исключения, которые не были обработаны выше
+      console.error("[handleAddCompetitor] Ошибка:", err)
       const errorMessage = err instanceof Error ? err.message : "Неизвестная ошибка"
       setError(`Произошла ошибка при добавлении конкурента: ${errorMessage}`)
     } finally {
