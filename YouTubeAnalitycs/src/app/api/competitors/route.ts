@@ -162,70 +162,29 @@ export async function POST(req: NextRequest) {
 
     const newCompetitor = newResult.rows[0] as any;
 
-    // НОВОЕ (ЭТАП 3): Автоматическая синхронизация TOP-12 видео после добавления конкурента
-    // Это гарантирует, что при переходе на /channel/[id] видео уже будут в БД
+    // Автоматическая синхронизация видео и комментариев после добавления конкурента
     if (newCompetitor && newCompetitor.channelId) {
-      console.log("[Competitors POST] НОВОЕ: Начинаем автоматическую синхронизацию видео для channelId:", newCompetitor.channelId);
       try {
         const syncResult = await syncChannelTopVideos(
           newCompetitor.channelId as string,
           newCompetitor.handle as string
         );
-        console.log("[Competitors POST] Синхронизация видео завершена:", {
-          success: syncResult.success,
-          source: syncResult.source,
-          totalVideos: syncResult.totalVideos,
-        });
 
-        // ❌ КРИТИЧЕСКИ ВАЖНО: если видео не получены - удаляем конкурента и отказываем добавление
         if (!syncResult.success || syncResult.totalVideos === 0) {
-          console.error("[Competitors POST] ❌ Видео не получены! Отказываем добавление канала");
-
-          // Удаляем только что добавленного конкурента из БД
-          await db.execute({
-            sql: "DELETE FROM competitors WHERE id = ?",
-            args: [(newCompetitor as any).id],
-          });
-          console.log("[Competitors POST] Конкурент удален из БД");
-
-          return NextResponse.json(
-            {
-              error: "Невозможно получить видео канала. Попробуйте позже — возможно, YouTube временно ограничил доступ к данным.",
-              code: "NO_VIDEOS_AVAILABLE"
-            },
-            { status: 400 }
-          );
-        }
-
-        // Автоматическая синхронизация комментариев (только если видео успешно получены)
-        console.log("[Competitors POST] Начинаем автоматическую синхронизацию комментариев для channelId:", newCompetitor.channelId);
-        try {
-          const commentsResult = await syncChannelComments(newCompetitor.channelId as string);
-          console.log("[Competitors POST] Синхронизация комментариев завершена:", {
-            success: commentsResult.success,
-            totalComments: commentsResult.totalComments,
-          });
-        } catch (commentsError) {
-          console.warn("[Competitors POST] Ошибка синхронизации комментариев (non-critical):", commentsError);
-          // Не прерываем процесс добавления конкурента если синхронизация комментариев упала
+          console.warn("[Competitors POST] Видео не получены, конкурент остается в БД");
+        } else {
+          // Синхронизировать комментарии только если видео успешно получены
+          try {
+            await syncChannelComments(newCompetitor.channelId as string);
+          } catch (commentsError) {
+            console.warn("[Competitors POST] Ошибка синхронизации комментариев (non-critical):", commentsError);
+            // Не прерываем процесс добавления конкурента если синхронизация комментариев упала
+          }
         }
       } catch (syncError) {
         console.error("[Competitors POST] Ошибка синхронизации видео:", syncError);
-
-        // Удаляем конкурента при критической ошибке синхронизации
-        await db.execute({
-          sql: "DELETE FROM competitors WHERE id = ?",
-          args: [(newCompetitor as any).id],
-        });
-        console.log("[Competitors POST] Конкурент удален из БД после ошибки");
-
-        return NextResponse.json(
-          {
-            error: "Ошибка при получении видео канала. Пожалуйста, попробуйте снова.",
-            code: "SYNC_ERROR"
-          },
-          { status: 400 }
-        );
+        // Не удаляем конкурента - он уже добавлен
+        // Ошибка синхронизации не критична, видео загрузятся позже через retry
       }
     }
 

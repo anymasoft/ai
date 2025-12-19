@@ -78,6 +78,20 @@ export default function CompetitorsPage() {
     }
   }
 
+  async function getErrorMessage(res: Response): Promise<string> {
+    const contentType = res.headers.get("content-type")
+    if (contentType?.includes("application/json")) {
+      try {
+        const errorData = await res.json()
+        return errorData.error || "Ошибка добавления конкурента"
+      } catch (parseErr) {
+        // JSON не получилось парсить, используем statusText
+        return `Ошибка сервера: ${res.statusText}`
+      }
+    }
+    return `Ошибка сервера: ${res.statusText}`
+  }
+
   async function handleAddCompetitor(e: React.FormEvent) {
     e.preventDefault()
     setError("")
@@ -97,18 +111,21 @@ export default function CompetitorsPage() {
         body: JSON.stringify({ handle: handle.trim() }),
       })
 
-      const data = await res.json()
-
       if (!res.ok) {
-        setError(data.error || "Ошибка добавления конкурента")
+        const errorMessage = await getErrorMessage(res)
+        setError(errorMessage)
         return
       }
 
+      const data = await res.json()
+
       setSuccess("Конкурент успешно добавлен!")
       setHandle("")
-      fetchCompetitors()
+      await fetchCompetitors()
     } catch (err) {
-      setError("Произошла ошибка при добавлении конкурента")
+      console.error("[handleAddCompetitor] Ошибка:", err)
+      const errorMessage = err instanceof Error ? err.message : "Неизвестная ошибка"
+      setError(`Произошла ошибка при добавлении конкурента: ${errorMessage}`)
     } finally {
       setLoading(false)
     }
