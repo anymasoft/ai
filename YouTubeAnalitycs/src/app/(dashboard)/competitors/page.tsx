@@ -78,6 +78,20 @@ export default function CompetitorsPage() {
     }
   }
 
+  async function getErrorMessage(res: Response): Promise<string> {
+    const contentType = res.headers.get("content-type")
+    if (contentType?.includes("application/json")) {
+      try {
+        const errorData = await res.json()
+        return errorData.error || "Ошибка добавления конкурента"
+      } catch (parseErr) {
+        // JSON не получилось парсить, используем statusText
+        return `Ошибка сервера: ${res.statusText}`
+      }
+    }
+    return `Ошибка сервера: ${res.statusText}`
+  }
+
   async function handleAddCompetitor(e: React.FormEvent) {
     e.preventDefault()
     setError("")
@@ -98,32 +112,17 @@ export default function CompetitorsPage() {
       })
 
       if (!res.ok) {
-        // Обработка ошибки: пытаемся получить сообщение из JSON
-        let errorMessage = "Ошибка добавления конкурента"
-
-        try {
-          const contentType = res.headers.get("content-type")
-          if (contentType?.includes("application/json")) {
-            const errorData = await res.json()
-            errorMessage = errorData.error || errorMessage
-          }
-        } catch (parseErr) {
-          // Если JSON не получилось парсить, используем statusText
-          errorMessage = `Ошибка сервера: ${res.statusText}`
-        }
-
+        const errorMessage = await getErrorMessage(res)
         setError(errorMessage)
         return
       }
 
-      // Успешный ответ (res.ok === true)
       const data = await res.json()
 
       setSuccess("Конкурент успешно добавлен!")
       setHandle("")
       await fetchCompetitors()
     } catch (err) {
-      // Ловит любые исключения, которые не были обработаны выше
       console.error("[handleAddCompetitor] Ошибка:", err)
       const errorMessage = err instanceof Error ? err.message : "Неизвестная ошибка"
       setError(`Произошла ошибка при добавлении конкурента: ${errorMessage}`)
