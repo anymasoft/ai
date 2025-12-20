@@ -63,22 +63,27 @@ export async function POST(request: NextRequest) {
     // Start installation in background
     (async (providerInstance) => {
       try {
-        await sendProgress({ 
-          type: 'start', 
+        const isLocalProvider = providerInstance.constructor.name === 'LocalProvider';
+
+        await sendProgress({
+          type: 'start',
           message: `Installing ${validPackages.length} package${validPackages.length > 1 ? 's' : ''}...`,
-          packages: validPackages 
+          packages: validPackages
         });
-        
-        // Stop any existing development server first
-        await sendProgress({ type: 'status', message: 'Stopping development server...' });
-        
-        try {
-          // Try to kill any running dev server processes
-          await providerInstance.runCommand('pkill -f vite');
-          await new Promise(resolve => setTimeout(resolve, 1000)); // Wait a bit
-        } catch (killError) {
-          // It's OK if no process is found
-          console.debug('[install-packages] No existing dev server found:', killError);
+
+        // For non-local providers, stop the dev server first
+        // LocalProvider uses HMR and doesn't need server restart
+        if (!isLocalProvider) {
+          await sendProgress({ type: 'status', message: 'Stopping development server...' });
+
+          try {
+            // Try to kill any running dev server processes
+            await providerInstance.runCommand('pkill -f vite');
+            await new Promise(resolve => setTimeout(resolve, 1000)); // Wait a bit
+          } catch (killError) {
+            // It's OK if no process is found
+            console.debug('[install-packages] No existing dev server found:', killError);
+          }
         }
         
         // Check which packages are already installed
@@ -134,24 +139,33 @@ export async function POST(request: NextRequest) {
         }
         
         if (packagesToInstall.length === 0) {
-          await sendProgress({ 
-            type: 'success', 
+          await sendProgress({
+            type: 'success',
             message: 'All packages are already installed',
             installedPackages: [],
             alreadyInstalled: validPackages
           });
-          
-          // Restart dev server
-          await sendProgress({ type: 'status', message: 'Restarting development server...' });
-          
-          await providerInstance.restartViteServer();
-          
-          await sendProgress({ 
-            type: 'complete', 
-            message: 'Dev server restarted!',
-            installedPackages: []
-          });
-          
+
+          // Only restart for non-local providers
+          if (!isLocalProvider) {
+            await sendProgress({ type: 'status', message: 'Restarting development server...' });
+
+            await providerInstance.restartViteServer();
+
+            await sendProgress({
+              type: 'complete',
+              message: 'Dev server restarted!',
+              installedPackages: []
+            });
+          } else {
+            // LocalProvider uses HMR - no restart needed
+            await sendProgress({
+              type: 'complete',
+              message: 'Package check complete. HMR will handle updates automatically!',
+              installedPackages: []
+            });
+          }
+
           return;
         }
         
@@ -206,24 +220,33 @@ export async function POST(request: NextRequest) {
           });
         }
         
-        // Restart development server
-        await sendProgress({ type: 'status', message: 'Restarting development server...' });
-        
-        try {
-          await providerInstance.restartViteServer();
-          
-          // Wait a bit for the server to start
-          await new Promise(resolve => setTimeout(resolve, 3000));
-          
-          await sendProgress({ 
-            type: 'complete', 
-            message: 'Package installation complete and dev server restarted!',
+        // Restart development server (only for non-local providers)
+        if (!isLocalProvider) {
+          await sendProgress({ type: 'status', message: 'Restarting development server...' });
+
+          try {
+            await providerInstance.restartViteServer();
+
+            // Wait a bit for the server to start
+            await new Promise(resolve => setTimeout(resolve, 3000));
+
+            await sendProgress({
+              type: 'complete',
+              message: 'Package installation complete and dev server restarted!',
+              installedPackages: packagesToInstall
+            });
+          } catch (error) {
+            await sendProgress({
+              type: 'error',
+              message: `Failed to restart dev server: ${(error as Error).message}`
+            });
+          }
+        } else {
+          // LocalProvider uses HMR - packages are available immediately after install
+          await sendProgress({
+            type: 'complete',
+            message: 'Package installation complete! HMR will automatically make packages available.',
             installedPackages: packagesToInstall
-          });
-        } catch (error) {
-          await sendProgress({ 
-            type: 'error', 
-            message: `Failed to restart dev server: ${(error as Error).message}` 
           });
         }
         
