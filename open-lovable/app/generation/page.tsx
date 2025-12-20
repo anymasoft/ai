@@ -2766,15 +2766,84 @@ Tip: I automatically detect and install npm packages from your code imports (lik
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ url })
           });
-          
+
           if (!scrapeResponse.ok) {
-            throw new Error('Failed to scrape website');
-          }
-          
-          scrapeData = await scrapeResponse.json() as ScrapeData;
-          
-          if (!scrapeData.success) {
-            throw new Error(scrapeData.error || 'Failed to scrape website');
+            console.warn('[cloneSite] Scrape API returned error status, proceeding with fallback');
+            // Even if HTTP fails, try to continue with basic data
+            const fallbackTitle = new URL(url).hostname || 'Website';
+            scrapeData = {
+              success: false,
+              content: '',
+              title: fallbackTitle,
+              source: 'fallback-error',
+              structured: {
+                title: fallbackTitle,
+                description: '',
+                content: '',
+                url,
+                screenshot: null
+              }
+            };
+          } else {
+            const responseData = await scrapeResponse.json() as any;
+
+            // Check if scraping succeeded
+            if (responseData.enhancedScrape?.success === true) {
+              // Full success - use scraped data
+              scrapeData = {
+                success: true,
+                content: responseData.content || '',
+                title: responseData.structured?.title || new URL(url).hostname,
+                screenshot: responseData.screenshot,
+                source: 'scrape-enhanced',
+                structured: responseData.structured || {
+                  title: responseData.structured?.title || new URL(url).hostname,
+                  description: responseData.structured?.description || '',
+                  content: responseData.content || '',
+                  url,
+                  screenshot: responseData.screenshot
+                }
+              };
+            } else if (responseData.enhancedScrape?.fallback === true) {
+              // Fallback mode - scrape failed but we can continue
+              console.warn('[cloneSite] Scrape fallback mode, continuing with basic data:', responseData.enhancedScrape?.reason);
+              addChatMessage(
+                `Website scrape encountered issues (${responseData.enhancedScrape?.reason}), proceeding with basic information...`,
+                'system'
+              );
+
+              scrapeData = {
+                success: false,
+                content: responseData.content || '',
+                title: responseData.structured?.title || new URL(url).hostname,
+                screenshot: responseData.screenshot,
+                source: 'scrape-fallback',
+                structured: responseData.structured || {
+                  title: responseData.structured?.title || new URL(url).hostname,
+                  description: responseData.structured?.description || '',
+                  content: '',
+                  url,
+                  screenshot: responseData.screenshot
+                }
+              };
+            } else {
+              // Unknown error response
+              console.error('[cloneSite] Unexpected scrape response:', responseData);
+              const fallbackTitle = new URL(url).hostname || 'Website';
+              scrapeData = {
+                success: false,
+                content: '',
+                title: fallbackTitle,
+                source: 'fallback-unknown',
+                structured: {
+                  title: fallbackTitle,
+                  description: '',
+                  content: '',
+                  url,
+                  screenshot: responseData.screenshot || null
+                }
+              };
+            }
           }
         }
         }
