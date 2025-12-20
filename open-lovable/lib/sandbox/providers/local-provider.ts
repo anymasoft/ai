@@ -2,6 +2,7 @@ import { spawn, ChildProcess } from 'child_process';
 import fs from 'fs';
 import { promises as fsAsync } from 'fs';
 import path from 'path';
+import os from 'os';
 import { SandboxProvider, SandboxInfo, CommandResult } from '../types';
 import { localSandboxManager } from '../local-sandbox-manager';
 
@@ -247,7 +248,8 @@ export class LocalProvider extends SandboxProvider {
 
   private async startViteServer(sandboxId: string, sandboxDir: string, port: number): Promise<void> {
     return new Promise((resolve, reject) => {
-      const process = spawn('npm', ['run', 'dev', '--', '--port', port.toString(), '--host', '0.0.0.0'], {
+      const npmCommand = os.platform() === 'win32' ? 'npm.cmd' : 'npm';
+      const process = spawn(npmCommand, ['run', 'dev', '--', '--port', port.toString(), '--host', '0.0.0.0'], {
         cwd: sandboxDir,
         stdio: ['ignore', 'pipe', 'pipe']
       });
@@ -289,7 +291,8 @@ export class LocalProvider extends SandboxProvider {
 
   private async runInstall(sandboxDir: string): Promise<void> {
     return new Promise((resolve, reject) => {
-      const process = spawn('npm', ['install', '--legacy-peer-deps'], {
+      const npmCommand = os.platform() === 'win32' ? 'npm.cmd' : 'npm';
+      const process = spawn(npmCommand, ['install', '--legacy-peer-deps'], {
         cwd: sandboxDir,
         stdio: 'inherit'
       });
