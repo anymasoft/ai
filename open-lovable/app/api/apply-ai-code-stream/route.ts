@@ -409,6 +409,8 @@ export async function POST(request: NextRequest) {
         errors: [] as string[]
       };
 
+      let writerClosed = false;
+
       try {
         await sendProgress({
           type: 'start',
@@ -427,7 +429,18 @@ export async function POST(request: NextRequest) {
           const edits = parseEditResponse(response);
           console.log(`[EDIT_REWRITE] Found ${edits.length} edits to apply`);
 
-          if (edits.length === 0) {
+          // FALLBACK: If no <edit> blocks but <file> blocks exist, use them as full file rewrites
+          let editList = edits;
+          if (edits.length === 0 && parsed.files.length > 0) {
+            console.log('[EDIT_REWRITE] No <edit> blocks found, using <file> blocks as fallback for edit mode');
+            editList = parsed.files.map(file => ({
+              targetFile: file.path,
+              fullContent: file.content
+            }));
+            console.log(`[EDIT_REWRITE] Converted ${editList.length} file blocks to edit blocks`);
+          }
+
+          if (editList.length === 0) {
             await sendProgress({
               type: 'warning',
               message: 'No valid edits found in response'
@@ -446,12 +459,12 @@ export async function POST(request: NextRequest) {
               const path = require('path');
 
               // Process each edit atomically
-              for (const [idx, edit] of edits.entries()) {
+              for (const [idx, edit] of editList.entries()) {
                 try {
                   await sendProgress({
                     type: 'file-progress',
                     current: idx + 1,
-                    total: edits.length,
+                    total: editList.length,
                     fileName: edit.targetFile,
                     action: 'editing'
                   });
@@ -515,12 +528,12 @@ export async function POST(request: NextRequest) {
 
           // Verification for edits: read back and confirm
           const sandboxDirForVerify = localSandboxManager.getSandbox(sandboxId)?.dir;
-          if (sandboxDirForVerify && edits.length > 0) {
+          if (sandboxDirForVerify && editList.length > 0) {
             const fs = require('fs');
             const path = require('path');
             console.log('[EDIT_REWRITE] VERIFICATION - reading back edited files');
 
-            for (const edit of edits) {
+            for (const edit of editList) {
               try {
                 let filePath = edit.targetFile;
                 if (filePath.startsWith('/')) filePath = filePath.substring(1);
@@ -555,7 +568,10 @@ export async function POST(request: NextRequest) {
           });
 
           // Close the stream
-          await writer.close();
+          if (!writerClosed) {
+            await writer.close();
+            writerClosed = true;
+          }
           return;
         }
 
@@ -924,7 +940,10 @@ export async function POST(request: NextRequest) {
           error: (error as Error).message
         });
       } finally {
-        await writer.close();
+        if (!writerClosed) {
+          await writer.close();
+          writerClosed = true;
+        }
       }
     })(provider, request);
 
