@@ -39,6 +39,3 @@ YouTubeAnalitycs/sqlite.db
 *.db
 YouTubeAnalitycs/package-lock.json
 YouTubeAnalitycs/package.json
-
-# Cloned external repositories
-open-lovable/
