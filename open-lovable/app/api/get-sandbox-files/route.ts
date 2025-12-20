@@ -1,19 +1,39 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { parseJavaScriptFile, buildComponentTree } from '@/lib/file-parser';
 import { FileManifest, FileInfo, RouteInfo } from '@/types/file-manifest';
 // SandboxState type used implicitly through global.activeSandbox
 
 declare global {
   var activeSandbox: any;
+  var sandboxData: any;
 }
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
+    // Get sandboxId from query params if provided
+    const sandboxId = request.nextUrl.searchParams.get('sandboxId');
+
+    // Check if we have an active sandbox
     if (!global.activeSandbox) {
       return NextResponse.json({
         success: false,
-        error: 'No active sandbox'
+        error: 'No active sandbox',
+        currentSandboxId: global.sandboxData?.sandboxId
       }, { status: 404 });
+    }
+
+    // If sandboxId was provided, check if it matches current sandbox
+    if (sandboxId && global.sandboxData?.sandboxId && sandboxId !== global.sandboxData.sandboxId) {
+      console.warn('[get-sandbox-files] Stale sandboxId:', {
+        requested: sandboxId,
+        current: global.sandboxData.sandboxId
+      });
+      return NextResponse.json({
+        success: false,
+        error: 'STALE_SANDBOX_ID',
+        message: 'Requested sandbox is no longer active',
+        currentSandboxId: global.sandboxData.sandboxId
+      }, { status: 410 });
     }
 
     console.log('[get-sandbox-files] Fetching and analyzing file structure...');
@@ -160,6 +180,8 @@ export async function GET() {
       structure,
       fileCount: Object.keys(filesContent).length,
       manifest: fileManifest,
+      sandboxId: global.sandboxData?.sandboxId,
+      sandboxUrl: global.sandboxData?.url
     });
 
   } catch (error) {
