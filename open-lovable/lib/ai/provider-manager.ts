@@ -18,18 +18,10 @@ export interface ProviderResolution {
   actualModel: string;
 }
 
-const aiGatewayApiKey = process.env.AI_GATEWAY_API_KEY;
-const aiGatewayBaseURL = 'https://ai-gateway.vercel.sh/v1';
-const isUsingAIGateway = !!aiGatewayApiKey;
-
 // Cache provider clients by a stable key to avoid recreating
 const clientCache = new Map<string, ProviderClient>();
 
 function getEnvDefaults(provider: ProviderName): { apiKey?: string; baseURL?: string } {
-  if (isUsingAIGateway) {
-    return { apiKey: aiGatewayApiKey, baseURL: aiGatewayBaseURL };
-  }
-
   switch (provider) {
     case 'openai':
       return { apiKey: process.env.OPENAI_API_KEY, baseURL: process.env.OPENAI_BASE_URL };
@@ -46,9 +38,7 @@ function getEnvDefaults(provider: ProviderName): { apiKey?: string; baseURL?: st
 }
 
 function getOrCreateClient(provider: ProviderName, apiKey?: string, baseURL?: string): ProviderClient {
-  const effective = isUsingAIGateway
-    ? { apiKey: aiGatewayApiKey, baseURL: aiGatewayBaseURL }
-    : { apiKey, baseURL };
+  const effective = { apiKey, baseURL };
 
   const cacheKey = `${provider}:${effective.apiKey || ''}:${effective.baseURL || ''}`;
   const cached = clientCache.get(cacheKey);
