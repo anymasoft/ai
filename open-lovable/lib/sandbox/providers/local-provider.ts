@@ -269,35 +269,14 @@ export class LocalProvider extends SandboxProvider {
     return localSandboxManager.isProcessAlive(this.sandboxInfo.sandboxId);
   }
 
+  /**
+   * @deprecated Vite dev-server runs continuously with HMR.
+   * No restart required - changes are automatically picked up via Hot Module Replacement.
+   * This method should NOT be called in production.
+   */
   async restartViteServer(): Promise<void> {
-    if (!this.sandboxInfo) {
-      throw new Error('No active sandbox');
-    }
-
-    const sandbox = localSandboxManager.getSandbox(this.sandboxInfo.sandboxId);
-    if (!sandbox) {
-      throw new Error('Sandbox not found');
-    }
-
-    const oldPort = sandbox.port;
-    console.log(`[LocalProvider] Restarting Vite for ${this.sandboxInfo.sandboxId} on port ${oldPort}`);
-
-    // Kill existing process
-    if (sandbox.process && !sandbox.process.killed) {
-      sandbox.process.kill();
-      await new Promise(resolve => setTimeout(resolve, 1000));
-    }
-
-    // Start new Vite process
-    await this.startViteServer(this.sandboxInfo.sandboxId, sandbox.dir, oldPort);
-
-    // ОБНОВИТЬ URL если порт изменился
-    const updatedSandbox = localSandboxManager.getSandbox(this.sandboxInfo.sandboxId);
-    const newPort = updatedSandbox?.port || oldPort;
-    if (newPort !== oldPort) {
-      this.sandboxInfo.url = `http://localhost:${newPort}`;
-      console.log(`[RESTART-SANDBOX-URL-UPDATED]`, { sandboxId: this.sandboxInfo.sandboxId, oldPort, newPort });
-    }
+    console.warn('[LocalProvider.restartViteServer] DEPRECATED: Vite uses HMR, no restart needed');
+    // No-op: Vite continues running
   }
 
   // Private helpers

@@ -794,41 +794,9 @@ export async function POST(request: NextRequest) {
           }
         }
 
-        // CRITICAL: Restart Vite after applying code
-        // Without restart, Vite serves stale code from memory instead of reading updated files from disk
-        console.log('[TRACE] files written, before restart-vite');
-        if (filteredFiles.length > 0) {
-          console.log('[TRACE] calling restart-vite');
-          console.log('[apply-ai-code-stream] Files written, restarting Vite to ensure iframe sees updated code...');
-          try {
-            const protocol = process.env.NODE_ENV === 'production' ? 'https' : 'http';
-            const host = request.headers.get('host') || 'localhost:3000';
-            const restartUrl = `${protocol}://${host}/api/restart-vite`;
-
-            const restartResponse = await fetch(restartUrl, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' }
-            });
-
-            console.log('[TRACE] restart-vite response received');
-
-            if (!restartResponse.ok) {
-              console.error('[apply-ai-code-stream] Vite restart failed:', await restartResponse.text());
-              await sendProgress({
-                type: 'warning',
-                message: `Vite restart warning (code may not update immediately): ${restartResponse.statusText}`
-              });
-            } else {
-              console.log('[apply-ai-code-stream] Vite restarted successfully');
-            }
-          } catch (restartError) {
-            console.error('[apply-ai-code-stream] Error calling restart-vite:', restartError);
-            await sendProgress({
-              type: 'warning',
-              message: `Could not restart Vite: ${(restartError as Error).message}`
-            });
-          }
-        }
+        // Vite dev-server uses HMR (Hot Module Replacement)
+        // No restart required - changes are automatically picked up
+        console.log('[apply-ai-code-stream] Files written, HMR will update iframe automatically');
 
         // Send final results
         console.log('[TRACE] before sendProgress complete');

@@ -773,14 +773,8 @@ Tip: I automatically detect and install npm packages from your code imports (lik
 
                   // Update iframe with current sandbox URL to ensure UI shows updated code
                   if (effectiveSandboxData?.url) {
-                    setTimeout(() => {
-                      if (iframeRef.current) {
-                        // Add timestamp to force iframe reload and show updated code
-                        const urlWithTimestamp = `${effectiveSandboxData.url}?t=${Date.now()}&applied=true`;
-                        iframeRef.current.src = urlWithTimestamp;
-                        console.log('[applyGeneratedCode] Updated iframe URL after code application:', urlWithTimestamp);
-                      }
-                    }, 500);
+                    // Vite HMR will automatically update the iframe
+                    console.log('[applyGeneratedCode] Code applied, HMR will update iframe automatically');
                   }
 
                   // Clear the state after a delay
@@ -847,12 +841,7 @@ Tip: I automatically detect and install npm packages from your code imports (lik
           // Verify files were actually created by refreshing the sandbox if needed
           if (sandboxData?.sandboxId && results.filesCreated.length > 0) {
             // Small delay to ensure files are written
-            setTimeout(() => {
-              // Force refresh the iframe to show new files
-              if (iframeRef.current) {
-                iframeRef.current.src = iframeRef.current.src;
-              }
-            }, 1000);
+            // HMR will automatically update the iframe
           }
         }
         
@@ -974,112 +963,10 @@ Tip: I automatically detect and install npm packages from your code imports (lik
           // but that's only available in the backend API routes
           console.log('[build-test] Skipping build test - would need API endpoint');
           
-          // Force iframe refresh after applying code
-          const refreshDelay = appConfig.codeApplication.defaultRefreshDelay; // Allow Vite to process changes
-          
-          setTimeout(() => {
-            const currentSandboxData = effectiveSandboxData;
-            if (iframeRef.current && currentSandboxData?.url) {
-              console.log('[home] Refreshing iframe after code application...');
-              
-              // Method 1: Change src with timestamp
-              const urlWithTimestamp = `${currentSandboxData.url}?t=${Date.now()}&applied=true`;
-              iframeRef.current.src = urlWithTimestamp;
-              
-              // Method 2: Force reload after a short delay
-              setTimeout(() => {
-                try {
-                  if (iframeRef.current?.contentWindow) {
-                    iframeRef.current.contentWindow.location.reload();
-                    console.log('[home] Force reloaded iframe content');
-                  }
-                } catch (e) {
-                  console.log('[home] Could not reload iframe (cross-origin):', e);
-                }
-                // Reload completed
-              }, 1000);
-            }
-          }, refreshDelay);
-          
-          // Vite error checking removed - handled by template setup
+          // Vite HMR will automatically update the iframe
         }
         
-          // Give Vite HMR a moment to detect changes, then ensure refresh
-          const currentSandboxData = effectiveSandboxData;
-          if (iframeRef.current && currentSandboxData?.url) {
-            // Wait for Vite to process the file changes
-            // If packages were installed, wait longer for Vite to restart
-            const packagesInstalled = results?.packagesInstalled?.length > 0 || data.results?.packagesInstalled?.length > 0;
-            const refreshDelay = packagesInstalled ? appConfig.codeApplication.packageInstallRefreshDelay : appConfig.codeApplication.defaultRefreshDelay;
-            console.log(`[applyGeneratedCode] Packages installed: ${packagesInstalled}, refresh delay: ${refreshDelay}ms`);
-            
-            setTimeout(async () => {
-            if (iframeRef.current && currentSandboxData?.url) {
-              console.log('[applyGeneratedCode] Starting iframe refresh sequence...');
-              console.log('[applyGeneratedCode] Current iframe src:', iframeRef.current.src);
-              console.log('[applyGeneratedCode] Sandbox URL:', currentSandboxData.url);
-              
-              // Method 1: Try direct navigation first
-              try {
-                const urlWithTimestamp = `${currentSandboxData.url}?t=${Date.now()}&force=true`;
-                console.log('[applyGeneratedCode] Attempting direct navigation to:', urlWithTimestamp);
-                
-                // Remove any existing onload handler
-                iframeRef.current.onload = null;
-                
-                // Navigate directly
-                iframeRef.current.src = urlWithTimestamp;
-                
-                // Wait a bit and check if it loaded
-                await new Promise(resolve => setTimeout(resolve, 2000));
-                
-                // Try to access the iframe content to verify it loaded
-                try {
-                  const iframeDoc = iframeRef.current.contentDocument || iframeRef.current.contentWindow?.document;
-                  if (iframeDoc && iframeDoc.readyState === 'complete') {
-                    console.log('[applyGeneratedCode] Iframe loaded successfully');
-                    return;
-                  }
-                } catch {
-                  console.log('[applyGeneratedCode] Cannot access iframe content (CORS), assuming loaded');
-                  return;
-                }
-              } catch (e) {
-                console.error('[applyGeneratedCode] Direct navigation failed:', e);
-              }
-              
-              // Method 2: Force complete iframe recreation if direct navigation failed
-              console.log('[applyGeneratedCode] Falling back to iframe recreation...');
-              const parent = iframeRef.current.parentElement;
-              const newIframe = document.createElement('iframe');
-              
-              // Copy attributes
-              newIframe.className = iframeRef.current.className;
-              newIframe.title = iframeRef.current.title;
-              newIframe.allow = iframeRef.current.allow;
-              // Copy sandbox attributes
-              const sandboxValue = iframeRef.current.getAttribute('sandbox');
-              if (sandboxValue) {
-                newIframe.setAttribute('sandbox', sandboxValue);
-              }
-              
-              // Remove old iframe
-              iframeRef.current.remove();
-              
-              // Add new iframe
-              newIframe.src = `${currentSandboxData.url}?t=${Date.now()}&recreated=true`;
-              parent?.appendChild(newIframe);
-              
-              // Update ref
-              (iframeRef as any).current = newIframe;
-              
-              console.log('[applyGeneratedCode] Iframe recreated with new content');
-            } else {
-              console.error('[applyGeneratedCode] No iframe or sandbox URL available for refresh');
-            }
-          }, refreshDelay); // Dynamic delay based on whether packages were installed
-        }
-        
+
         } else {
           throw new Error(finalData?.error || 'Failed to apply code');
         }
