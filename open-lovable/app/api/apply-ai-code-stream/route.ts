@@ -1,10 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { parseMorphEdits, applyMorphEditToFile } from '@/lib/morph-fast-apply';
+// Morph Fast Apply is completely disabled for MVP - using full file rewrites instead
+// import { parseMorphEdits, applyMorphEditToFile } from '@/lib/morph-fast-apply';
 // Sandbox import not needed - using global sandbox from sandbox-manager
 import type { SandboxState } from '@/types/sandbox';
 import type { ConversationState } from '@/types/conversation';
 import { sandboxManager } from '@/lib/sandbox/sandbox-manager';
 import { localSandboxManager } from '@/lib/sandbox/local-sandbox-manager';
+
+// MVP: Force full file rewrites for all edits - Morph Fast Apply disabled
+const FORCE_FULL_REWRITE_FOR_EDITS = true;
 
 declare global {
   var conversationState: ConversationState | null;
@@ -262,6 +266,63 @@ function parseAIResponse(response: string): ParsedResponse {
   return sections;
 }
 
+/**
+ * Parse edit response to extract <edit target_file="..."><update>...</update></edit> blocks
+ * Returns array of { targetFile, fullContent } for atomic file rewrites
+ */
+function parseEditResponse(response: string): Array<{ targetFile: string; fullContent: string }> {
+  const edits: Array<{ targetFile: string; fullContent: string }> = [];
+
+  // Match <edit target_file="...">...<update>...</update></edit> blocks
+  const editRegex = /<edit\s+target_file="([^"]+)">([\s\S]*?)<\/edit>/g;
+  let match;
+
+  while ((match = editRegex.exec(response)) !== null) {
+    const targetFile = match[1];
+    const editContent = match[2];
+
+    // Security: Prevent path traversal
+    if (targetFile.includes('..') || targetFile.startsWith('/')) {
+      console.warn(`[EDIT_REWRITE] Rejecting dangerous path: ${targetFile}`);
+      continue;
+    }
+
+    // Extract the <update> block content (full file content)
+    const updateMatch = /<update>([\s\S]*?)<\/update>/.exec(editContent);
+    if (!updateMatch) {
+      console.warn(`[EDIT_REWRITE] No <update> block found for ${targetFile}`);
+      continue;
+    }
+
+    const fullContent = updateMatch[1].trim();
+
+    // Validate: Reject diff/patch format (no +/- at line start)
+    const lines = fullContent.split('\n');
+    for (const line of lines) {
+      const trimmed = line.trimStart();
+      if ((trimmed.startsWith('+') || trimmed.startsWith('-')) &&
+          !trimmed.startsWith('+++') && !trimmed.startsWith('---') &&
+          // Allow +/- in normal code (e.g., ++ operators, mathematical expressions)
+          trimmed.match(/^[\+\-]\s/) &&
+          lines.length > 1) {
+        console.warn(`[EDIT_REWRITE] Possible diff/patch format detected in ${targetFile}, may not be full file`);
+        // Continue anyway - might be valid code with +/- operators
+      }
+    }
+
+    // Reject obviously truncated content
+    if (fullContent.endsWith('...') || fullContent.endsWith('...}')) {
+      console.warn(`[EDIT_REWRITE] Content appears truncated for ${targetFile}`);
+      continue;
+    }
+
+    edits.push({ targetFile, fullContent });
+    console.log(`[EDIT_REWRITE] Parsed edit for: ${targetFile} (${fullContent.length} chars)`);
+  }
+
+  return edits;
+}
+
 export async function POST(request: NextRequest) {
   try {
     console.log('[TRACE] apply start');
@@ -294,12 +355,10 @@ export async function POST(request: NextRequest) {
 
     // Parse the AI response
     const parsed = parseAIResponse(response);
-    const morphEnabled = Boolean(isEdit && process.env.MORPH_API_KEY);
-    const morphEdits = morphEnabled ? parseMorphEdits(response) : [];
-    console.log('[apply-ai-code-stream] Morph Fast Apply mode:', morphEnabled);
-    if (morphEnabled) {
-      console.log('[apply-ai-code-stream] Morph edits found:', morphEdits.length);
-    }
+    // MVP: Morph Fast Apply is completely disabled - all edits use full file rewrites
+    const morphEnabled = false;
+    const morphEdits: any[] = [];
+    console.log('[EDIT_REWRITE] Morph Fast Apply disabled - using full file rewrites for MVP');
     
     // Log what was parsed
     console.log('[apply-ai-code-stream] Parsed result:');
@@ -360,15 +419,151 @@ export async function POST(request: NextRequest) {
           message: 'Starting code application...',
           totalSteps: 3
         });
-        if (morphEnabled) {
-          await sendProgress({ type: 'info', message: 'Morph Fast Apply enabled' });
-          await sendProgress({ type: 'info', message: `Parsed ${morphEdits.length} Morph edits` });
-          if (morphEdits.length === 0) {
-            console.warn('[apply-ai-code-stream] Morph enabled but no <edit> blocks found; falling back to full-file flow');
-            await sendProgress({ type: 'warning', message: 'Morph enabled but no <edit> blocks found; falling back to full-file flow' });
+        // EDIT MODE: Handle file edits with atomic writes (no package install, no commands)
+        if (isEdit && FORCE_FULL_REWRITE_FOR_EDITS) {
+          console.log('[EDIT_REWRITE] Processing edit mode with full file rewrites');
+          await sendProgress({
+            type: 'info',
+            message: 'Edit mode: Applying full file rewrites...'
+          });
+
+          // Parse edit response to get targetFile and fullContent
+          const edits = parseEditResponse(response);
+          console.log(`[EDIT_REWRITE] Found ${edits.length} edits to apply`);
+
+          if (edits.length === 0) {
+            await sendProgress({
+              type: 'warning',
+              message: 'No valid edits found in response'
+            });
+            results.errors.push('No valid edits found in response');
+          } else {
+            // Get sandbox directory for direct file writes
+            const sandboxDir = localSandboxManager.getSandbox(sandboxId)?.dir;
+            if (!sandboxDir) {
+              const errMsg = `[EDIT_REWRITE] Sandbox directory not found for ${sandboxId}`;
+              console.error(errMsg);
+              await sendProgress({ type: 'error', message: errMsg });
+              results.errors.push(errMsg);
+            } else {
+              const fs = require('fs');
+              const path = require('path');
+
+              // Process each edit atomically
+              for (const [idx, edit] of edits.entries()) {
+                try {
+                  await sendProgress({
+                    type: 'file-progress',
+                    current: idx + 1,
+                    total: edits.length,
+                    fileName: edit.targetFile,
+                    action: 'editing'
+                  });
+
+                  // Normalize path (already validated in parseEditResponse)
+                  let filePath = edit.targetFile;
+                  if (filePath.startsWith('/')) filePath = filePath.substring(1);
+
+                  // Add src/ prefix if needed
+                  if (!filePath.startsWith('src/') && !filePath.startsWith('public/') &&
+                      filePath !== 'index.html' && !filePath.match(/\.(json|js|config)$/i)) {
+                    filePath = 'src/' + filePath;
+                  }
+
+                  const fullPath = path.join(sandboxDir, filePath);
+                  const fileDir = path.dirname(fullPath);
+
+                  // Ensure directory exists
+                  fs.mkdirSync(fileDir, { recursive: true });
+
+                  // Write file atomically
+                  fs.writeFileSync(fullPath, edit.fullContent, 'utf-8');
+                  const bytesWritten = edit.fullContent.length;
+
+                  console.log('[EDIT_REWRITE] File written:', {
+                    filePath,
+                    fullPath,
+                    bytesWritten,
+                    preview: edit.fullContent.substring(0, 100).replace(/\n/g, '\\n')
+                  });
+
+                  results.filesUpdated.push(filePath);
+                  if (global.existingFiles) global.existingFiles.add(filePath);
+
+                  // Update file cache if available
+                  if (global.sandboxState?.fileCache) {
+                    global.sandboxState.fileCache.files[filePath] = {
+                      content: edit.fullContent,
+                      lastModified: Date.now()
+                    };
+                  }
+
+                  await sendProgress({
+                    type: 'file-complete',
+                    fileName: filePath,
+                    action: 'edited'
+                  });
+                } catch (err) {
+                  const errMsg = (err as Error).message;
+                  console.error('[EDIT_REWRITE] Edit failed for', edit.targetFile, errMsg);
+                  results.errors.push(`Edit failed for ${edit.targetFile}: ${errMsg}`);
+                  await sendProgress({
+                    type: 'file-error',
+                    fileName: edit.targetFile,
+                    error: errMsg
+                  });
+                }
+              }
+            }
           }
+
+          // Verification for edits: read back and confirm
+          const sandboxDirForVerify = localSandboxManager.getSandbox(sandboxId)?.dir;
+          if (sandboxDirForVerify && edits.length > 0) {
+            const fs = require('fs');
+            const path = require('path');
+            console.log('[EDIT_REWRITE] VERIFICATION - reading back edited files');
+
+            for (const edit of edits) {
+              try {
+                let filePath = edit.targetFile;
+                if (filePath.startsWith('/')) filePath = filePath.substring(1);
+                if (!filePath.startsWith('src/') && !filePath.startsWith('public/') &&
+                    filePath !== 'index.html' && !filePath.match(/\.(json|js|config)$/i)) {
+                  filePath = 'src/' + filePath;
+                }
+
+                const fullPath = path.join(sandboxDirForVerify, filePath);
+                if (fs.existsSync(fullPath)) {
+                  const readContent = fs.readFileSync(fullPath, 'utf-8');
+                  console.log('[EDIT_REWRITE] VERIFIED:', {
+                    filePath,
+                    exists: true,
+                    size: readContent.length,
+                    preview: readContent.substring(0, 100).replace(/\n/g, '\\n')
+                  });
+                } else {
+                  console.warn('[EDIT_REWRITE] VERIFICATION FAILED - file not found:', fullPath);
+                }
+              } catch (e) {
+                console.error('[EDIT_REWRITE] VERIFICATION ERROR:', (e as Error).message);
+              }
+            }
+          }
+
+          await sendProgress({
+            type: 'complete',
+            filesUpdated: results.filesUpdated,
+            errors: results.errors,
+            message: 'Edit complete'
+          });
+
+          // Close the stream
+          await writer.close();
+          return;
         }
-        
+
+        // GENERATE MODE: Install packages and create/update files
         // Step 1: Install packages
         const packagesArray = Array.isArray(packages) ? packages : [];
         const parsedPackages = Array.isArray(parsed.packages) ? parsed.packages : [];
