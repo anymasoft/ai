@@ -631,11 +631,11 @@ Tip: I automatically detect and install npm packages from your code imports (lik
   const applyGeneratedCode = async (code: string, isEdit: boolean = false, overrideSandboxData?: SandboxData) => {
     setLoading(true);
     log('Applying AI-generated code...');
-    
+
     try {
       // Show progress component instead of individual messages
       setCodeApplicationState({ stage: 'analyzing' });
-      
+
       // Get pending packages from tool calls
       const pendingPackages = ((window as any).pendingPackages || []).filter((pkg: any) => pkg && typeof pkg === 'string');
       if (pendingPackages.length > 0) {
@@ -645,13 +645,22 @@ Tip: I automatically detect and install npm packages from your code imports (lik
       }
 
       // Use streaming endpoint for real-time feedback
-      const effectiveSandboxData = overrideSandboxData || sandboxData;
+      let effectiveSandboxData = overrideSandboxData || sandboxData;
 
-      // CRITICAL: Enforce sandboxId contract - required for ALL apply calls
+      // CRITICAL: Create sandbox if it doesn't exist
       if (!effectiveSandboxData?.sandboxId) {
-        const errorMsg = '[applyGeneratedCode] ERROR: No sandbox ID. Please create a sandbox first.';
-        console.error(errorMsg);
-        throw new Error('Sandbox not initialized. Please create a sandbox first by clicking "Create Sandbox".');
+        console.log('[applyGeneratedCode] No sandbox found. Creating one now...');
+        try {
+          effectiveSandboxData = await createSandbox(true);
+          if (!effectiveSandboxData?.sandboxId) {
+            throw new Error('Failed to create sandbox');
+          }
+          console.log('[applyGeneratedCode] Sandbox created successfully:', effectiveSandboxData.sandboxId);
+        } catch (createError) {
+          const errorMsg = '[applyGeneratedCode] ERROR: Failed to create sandbox. Cannot apply code.';
+          console.error(errorMsg, createError);
+          throw new Error('Failed to create sandbox. Please try again.');
+        }
       }
 
       console.log('[applyGeneratedCode] Calling apply-ai-code-stream with sandboxId:', effectiveSandboxData.sandboxId);
@@ -1661,9 +1670,9 @@ Tip: I automatically detect and install npm packages from your code imports (lik
     }
     
     // Start sandbox creation in parallel if needed
-    let sandboxPromise: Promise<void> | null = null;
+    let sandboxPromise: Promise<SandboxData | null> | null = null;
     let sandboxCreating = false;
-    
+
     if (!sandboxData) {
       sandboxCreating = true;
       addChatMessage('Creating sandbox while I plan your app...', 'system');
