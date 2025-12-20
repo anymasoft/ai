@@ -249,17 +249,26 @@ export class LocalProvider extends SandboxProvider {
   private async startViteServer(sandboxId: string, sandboxDir: string, port: number): Promise<void> {
     return new Promise((resolve, reject) => {
       const npmCommand = os.platform() === 'win32' ? 'npm.cmd' : 'npm';
-      const process = spawn(npmCommand, ['run', 'dev', '--', '--port', port.toString(), '--host', '0.0.0.0'], {
+
+      // DIAGNOSTIC LOG
+      console.log('[LocalProvider.startViteServer] VITE STARTUP DEBUG:');
+      console.log('[LocalProvider.startViteServer]   - sandboxId:', sandboxId);
+      console.log('[LocalProvider.startViteServer]   - sandboxDir:', sandboxDir);
+      console.log('[LocalProvider.startViteServer]   - port:', port);
+      console.log('[LocalProvider.startViteServer]   - npmCommand:', npmCommand);
+      console.log('[LocalProvider.startViteServer]   - process.cwd():', process.cwd());
+
+      const spawnedProcess = spawn(npmCommand, ['run', 'dev', '--', '--port', port.toString(), '--host', '0.0.0.0'], {
         cwd: sandboxDir,
         stdio: ['ignore', 'pipe', 'pipe']
       });
 
-      this.process = process;
-      localSandboxManager.setProcess(sandboxId, process);
+      this.process = spawnedProcess;
+      localSandboxManager.setProcess(sandboxId, spawnedProcess);
 
       let viteReady = false;
 
-      process.stdout?.on('data', (data) => {
+      spawnedProcess.stdout?.on('data', (data) => {
         const line = data.toString();
         localSandboxManager.addLog(sandboxId, line);
 
@@ -268,17 +277,17 @@ export class LocalProvider extends SandboxProvider {
         }
       });
 
-      process.stderr?.on('data', (data) => {
+      spawnedProcess.stderr?.on('data', (data) => {
         const line = data.toString();
         localSandboxManager.addLog(sandboxId, line);
       });
 
-      process.on('error', (error) => {
+      spawnedProcess.on('error', (error) => {
         console.error(`[LocalProvider] Process error: ${error}`);
         reject(error);
       });
 
-      process.on('close', (code) => {
+      spawnedProcess.on('close', (code) => {
         console.log(`[LocalProvider] Vite process closed with code ${code}`);
       });
 

@@ -81,7 +81,10 @@ export async function POST() {
     }
 
     // Create new sandbox using factory
+    console.log('[create-ai-sandbox-v2] SANDBOX PROVIDER DEBUG:');
+    console.log('[create-ai-sandbox-v2]   - Calling SandboxFactory.create()');
     const provider = SandboxFactory.create();
+    console.log('[create-ai-sandbox-v2]   - Provider created, class:', provider.constructor.name);
     const sandboxInfo = await provider.createSandbox();
     
     console.log('[create-ai-sandbox-v2] Setting up Vite React app...');
