@@ -1,12 +1,13 @@
 import { spawn, ChildProcess } from 'child_process';
-import { promises as fs } from 'fs';
+import fs from 'fs';
+import { promises as fsAsync } from 'fs';
 import path from 'path';
 import { SandboxProvider, SandboxInfo, CommandResult } from '../types';
 import { localSandboxManager } from '../local-sandbox-manager';
 
 export class LocalProvider extends SandboxProvider {
   private process: ChildProcess | null = null;
-  private templateDir: string = path.join(process.cwd(), 'open-lovable', 'templates', 'vite-react');
+  private templateDir: string = path.join(process.cwd(), 'templates', 'vite-react');
   private sandboxesDir: string = path.join(process.cwd(), 'sandboxes');
 
   async createSandbox(): Promise<SandboxInfo> {
@@ -18,8 +19,13 @@ export class LocalProvider extends SandboxProvider {
 
       console.log(`[LocalProvider] Creating sandbox ${sandboxId} on port ${port}`);
 
+      // Verify template exists
+      if (!fs.existsSync(this.templateDir)) {
+        throw new Error(`Vite template not found at: ${this.templateDir}`);
+      }
+
       // Create sandboxes directory if not exists
-      await fs.mkdir(this.sandboxesDir, { recursive: true });
+      await fsAsync.mkdir(this.sandboxesDir, { recursive: true });
 
       // Copy template to sandbox directory
       console.log(`[LocalProvider] Copying template from ${this.templateDir} to ${sandboxDir}`);
@@ -118,10 +124,10 @@ export class LocalProvider extends SandboxProvider {
 
     // Ensure directory exists
     const dir = path.dirname(fullPath);
-    await fs.mkdir(dir, { recursive: true });
+    await fsAsync.mkdir(dir, { recursive: true });
 
     // Write file
-    await fs.writeFile(fullPath, content, 'utf-8');
+    await fsAsync.writeFile(fullPath, content, 'utf-8');
   }
 
   async readFile(filePath: string): Promise<string> {
@@ -135,7 +141,7 @@ export class LocalProvider extends SandboxProvider {
     }
 
     const fullPath = path.join(sandboxDir, filePath.startsWith('/') ? filePath.slice(1) : filePath);
-    return fs.readFile(fullPath, 'utf-8');
+    return fsAsync.readFile(fullPath, 'utf-8');
   }
 
   async listFiles(directory?: string): Promise<string[]> {
@@ -149,7 +155,7 @@ export class LocalProvider extends SandboxProvider {
     }
 
     const dir = directory ? path.join(sandboxDir, directory) : sandboxDir;
-    const files = await fs.readdir(dir, { recursive: true });
+    const files = await fsAsync.readdir(dir, { recursive: true });
     return files.map(f => typeof f === 'string' ? f : f);
   }
 
@@ -304,13 +310,13 @@ export class LocalProvider extends SandboxProvider {
   }
 
   private async copyDir(src: string, dest: string): Promise<void> {
-    await fs.mkdir(dest, { recursive: true });
-    const files = await fs.readdir(src);
+    await fsAsync.mkdir(dest, { recursive: true });
+    const files = await fsAsync.readdir(src);
 
     for (const file of files) {
       const srcPath = path.join(src, file);
       const destPath = path.join(dest, file);
-      const stat = await fs.stat(srcPath);
+      const stat = await fsAsync.stat(srcPath);
 
       if (stat.isDirectory()) {
         // Skip node_modules and .git directories
@@ -320,7 +326,7 @@ export class LocalProvider extends SandboxProvider {
         }
         await this.copyDir(srcPath, destPath);
       } else {
-        await fs.copyFile(srcPath, destPath);
+        await fsAsync.copyFile(srcPath, destPath);
       }
     }
   }
