@@ -50,17 +50,17 @@ export const appConfig = {
   
   // AI Model Configuration
   ai: {
-    // Default AI model - GPT-5 mini for Clone mode
-    defaultModel: 'openai/gpt-5-mini',
+    // Default AI model - GPT-4.1 mini for Clone mode
+    defaultModel: 'openai/gpt-4.1-mini',
 
-    // Available models - only gpt-5-mini for Clone mode
+    // Available models - only gpt-4.1-mini for Clone mode
     availableModels: [
-      'openai/gpt-5-mini'
+      'openai/gpt-4.1-mini'
     ],
 
     // Model display names
     modelDisplayNames: {
-      'openai/gpt-5-mini': 'GPT-5 Mini'
+      'openai/gpt-4.1-mini': 'GPT-4.1 Mini'
     } as Record<string, string>,
 
     // Model API configuration

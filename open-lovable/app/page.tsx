@@ -525,7 +525,7 @@ export default function HomePage() {
                       <div className={`flex items-center gap-3 mt-2 pb-4 transition-all duration-300 transform ${
                         isValidUrl ? 'translate-y-0 opacity-100' : '-translate-y-2 opacity-0'
                       }`} style={{ transitionDelay: '400ms' }}>
-                        {/* Model Dropdown - Hidden (always uses gpt-5-mini in Clone mode) */}
+                        {/* Model Dropdown - Hidden (always uses gpt-4.1-mini in Clone mode) */}
                         <select
                           value={selectedModel}
                           onChange={(e) => setSelectedModel(e.target.value)}
