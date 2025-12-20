@@ -202,7 +202,7 @@ function AISandboxPage() {
           // Only apply stored style if no screenshot URL is provided
           // This prevents unwanted style inheritance when using screenshot search
           const styleNames: Record<string, string> = {
-            '1': 'Glassmorphism',
+            '1': 'Clone',
             '2': 'Neumorphism',
             '3': 'Brutalism',
             '4': 'Minimalist',
@@ -216,14 +216,18 @@ function AISandboxPage() {
             'artistic': 'Creative artistic and unique'
           };
           const styleName = styleNames[storedStyle] || storedStyle;
-          let contextString = `${styleName} style design`;
-          
+
+          // In Clone mode, don't add style directives - focus on accurate reproduction
+          let contextString = storedStyle === '1' ? '' : `${styleName} style design`;
+
           // Add additional instructions if provided
           if (storedInstructions) {
-            contextString += `. ${storedInstructions}`;
+            contextString = contextString ? `${contextString}. ${storedInstructions}` : storedInstructions;
           }
-          
-          setHomeContextInput(contextString);
+
+          if (contextString) {
+            setHomeContextInput(contextString);
+          }
         } else if (storedInstructions && !urlParam) {
           // Apply only instructions if no style but instructions are provided
           // and no screenshot URL is provided
@@ -3017,8 +3021,8 @@ Focus on building something NEW, minimal, and functional that perfectly matches 
           let filteredContext = homeContextInput;
           if (homeUrlInput && homeContextInput) {
             // Check if the context contains default style names that shouldn't be inherited
+            // Clone mode is not filtered since it's the default cloning mode
             const stylePatterns = [
-              'Glassmorphism style design',
               'Neumorphism style design',
               'Brutalism style design',
               'Minimalist style design',

@@ -50,39 +50,28 @@ export const appConfig = {
   
   // AI Model Configuration
   ai: {
-    // Default AI model
-    defaultModel: 'google/gemini-3-pro-preview',
-    
-    // Available models
+    // Default AI model - GPT-5 mini for Clone mode
+    defaultModel: 'openai/gpt-5-mini',
+
+    // Available models - only gpt-5-mini for Clone mode
     availableModels: [
-      'openai/gpt-5',
-      'moonshotai/kimi-k2-instruct-0905',
-      'anthropic/claude-sonnet-4-20250514',
-      'google/gemini-3-pro-preview'
+      'openai/gpt-5-mini'
     ],
-    
+
     // Model display names
     modelDisplayNames: {
-      'openai/gpt-5': 'GPT-5',
-      'moonshotai/kimi-k2-instruct-0905': 'Kimi K2 (Groq)',
-      'anthropic/claude-sonnet-4-20250514': 'Sonnet 4',
-      'google/gemini-3-pro-preview': 'Gemini 3 Pro (Preview)'
+      'openai/gpt-5-mini': 'GPT-5 Mini'
     } as Record<string, string>,
-    
+
     // Model API configuration
-    modelApiConfig: {
-      'moonshotai/kimi-k2-instruct-0905': {
-        provider: 'groq',
-        model: 'moonshotai/kimi-k2-instruct-0905'
-      }
-    },
-    
+    modelApiConfig: {},
+
     // Temperature settings for non-reasoning models
     defaultTemperature: 0.7,
-    
+
     // Max tokens for code generation
     maxTokens: 8000,
-    
+
     // Max tokens for truncation recovery
     truncationRecoveryMaxTokens: 4000,
   },

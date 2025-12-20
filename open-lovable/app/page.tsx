@@ -68,7 +68,7 @@ export default function HomePage() {
   };
 
   const styles = [
-    { id: "1", name: "Glassmorphism", description: "Frosted glass effect" },
+    { id: "1", name: "Clone", description: "Accurate website clone" },
     { id: "2", name: "Neumorphism", description: "Soft 3D shadows" },
     { id: "3", name: "Brutalism", description: "Bold and raw" },
     { id: "4", name: "Minimalist", description: "Clean and simple" },
@@ -525,11 +525,11 @@ export default function HomePage() {
                       <div className={`flex items-center gap-3 mt-2 pb-4 transition-all duration-300 transform ${
                         isValidUrl ? 'translate-y-0 opacity-100' : '-translate-y-2 opacity-0'
                       }`} style={{ transitionDelay: '400ms' }}>
-                        {/* Model Dropdown */}
+                        {/* Model Dropdown - Hidden (always uses gpt-5-mini in Clone mode) */}
                         <select
                           value={selectedModel}
                           onChange={(e) => setSelectedModel(e.target.value)}
-                          className={`px-3 py-2.5 text-xs font-medium text-gray-700 bg-white rounded border border-gray-200 focus:border-orange-500 focus:outline-none focus:ring-1 focus:ring-orange-500 ${extendBrandStyles ? 'flex-1' : ''}`}
+                          className={`hidden px-3 py-2.5 text-xs font-medium text-gray-700 bg-white rounded border border-gray-200 focus:border-orange-500 focus:outline-none focus:ring-1 focus:ring-orange-500 ${extendBrandStyles ? 'flex-1' : ''}`}
                         >
                           {models.map((model) => (
                             <option key={model.id} value={model.id}>

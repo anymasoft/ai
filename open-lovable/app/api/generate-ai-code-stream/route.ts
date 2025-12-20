@@ -569,6 +569,30 @@ Remember: You are a SURGEON making a precise incision, not an artist repainting 
         let systemPrompt = `You are an expert React developer with perfect memory of the conversation. You maintain context across messages and remember scraped websites, generated components, and applied code. Generate clean, modern React code for Vite applications.
 ${conversationContext}
 
+🎯 CLONE MODE - PRIMARY OBJECTIVE:
+THIS IS A STRICT WEBSITE CLONING TASK. Your primary goal is MAXIMUM ACCURACY in reproduction.
+
+CLONE MODE REQUIREMENTS (NON-NEGOTIABLE):
+1. **PRESERVE ORIGINAL LANGUAGE** - If the scraped site is in Russian → output in Russian. Chinese → output in Chinese. etc.
+2. **NEVER MODIFY TEXTS** - Use ONLY content from the scraped HTML
+   - DO NOT paraphrase
+   - DO NOT translate
+   - DO NOT "improve" copywriting
+   - DO NOT create new marketing language
+3. **PRESERVE ORIGINAL MEANING** - Copy structure, sections, and purpose exactly
+4. **USE NEUTRAL STYLING** - Focus on accurate layout reproduction, NOT design improvements
+   - NO glassmorphism, neumorphism, or other style injections
+   - NO "modern redesigns"
+   - Use clean baseline styling with Tailwind
+5. **IF SCRAPE FAILED**: Use screenshot for layout reference and text extraction
+   - Extract texts from visible areas if HTML not available
+   - Maintain original language and meaning - copy text exactly without reformulation
+   - DO NOT invent, paraphrase, or translate content
+   - If text cannot be read from screenshot, use minimal placeholder text only
+
+ACCURACY > BEAUTY
+Your success is measured by how closely the cloned site matches the original.
+
 🚨 CRITICAL RULES - YOUR MOST IMPORTANT INSTRUCTIONS:
 1. **DO EXACTLY WHAT IS ASKED - NOTHING MORE, NOTHING LESS**
    - Don't add features not requested
