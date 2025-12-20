@@ -7,12 +7,7 @@ export class VercelProvider extends SandboxProvider {
 
   async createSandbox(): Promise<SandboxInfo> {
     try {
-      // Guard: Sandbox should be disabled at API level, not here
-      // This is a safety check to prevent accidental sandbox creation
-      if (process.env.DISABLE_SANDBOX === "true") {
-        throw new Error("Sandbox disabled by configuration (DISABLE_SANDBOX=true)");
-      }
-
+      
       // Kill existing sandbox if any
       if (this.sandbox) {
         try {
