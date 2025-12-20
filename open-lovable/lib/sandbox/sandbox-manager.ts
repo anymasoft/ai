@@ -28,8 +28,8 @@ class SandboxManager {
     try {
       const provider = SandboxFactory.create();
 
-      // For E2B or LocalProvider, try to reconnect
-      if (provider.constructor.name === 'E2BProvider' || provider.constructor.name === 'LocalProvider') {
+      // LocalProvider supports reconnection
+      if (provider.constructor.name === 'LocalProvider') {
         // Try to reconnect to existing sandbox
         const reconnected = await (provider as any).reconnect(sandboxId);
         if (reconnected) {
@@ -44,8 +44,7 @@ class SandboxManager {
         }
       }
 
-      // For Vercel or if reconnection failed, return the new provider
-      // The caller will need to handle creating a new sandbox
+      // Return the provider - the caller will need to handle creating a new sandbox
       return provider;
     } catch (error) {
       console.error(`[SandboxManager] Error reconnecting to sandbox ${sandboxId}:`, error);
