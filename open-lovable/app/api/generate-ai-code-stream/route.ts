@@ -584,10 +584,11 @@ CLONE MODE REQUIREMENTS (NON-NEGOTIABLE):
    - NO glassmorphism, neumorphism, or other style injections
    - NO "modern redesigns"
    - Use clean baseline styling with Tailwind
-5. **IF SCRAPE FAILED**: Use screenshot for layout reference only
+5. **IF SCRAPE FAILED**: Use screenshot for layout reference and text extraction
    - Extract texts from visible areas if HTML not available
-   - Maintain original language and meaning
-   - DO NOT invent content
+   - Maintain original language and meaning - copy text exactly without reformulation
+   - DO NOT invent, paraphrase, or translate content
+   - If text cannot be read from screenshot, use minimal placeholder text only
 
 ACCURACY > BEAUTY
 Your success is measured by how closely the cloned site matches the original.
