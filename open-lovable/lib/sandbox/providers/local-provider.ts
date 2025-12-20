@@ -3,8 +3,30 @@ import fs from 'fs';
 import { promises as fsAsync } from 'fs';
 import path from 'path';
 import os from 'os';
+import net from 'net';
 import { SandboxProvider, SandboxInfo, CommandResult } from '../types';
 import { localSandboxManager } from '../local-sandbox-manager';
+
+/**
+ * Найти свободный порт начиная с requestedPort
+ * Используется когда запрошенный порт может быть занят
+ */
+async function findFreePort(startPort: number): Promise<number> {
+  return new Promise((resolve) => {
+    const server = net.createServer();
+    server.unref();
+
+    server.on('error', () => {
+      // Порт занят, пробуем следующий
+      resolve(findFreePort(startPort + 1));
+    });
+
+    server.listen(startPort, '127.0.0.1', () => {
+      const actualPort = (server.address() as any).port;
+      server.close(() => resolve(actualPort));
+    });
+  });
+}
 
 export class LocalProvider extends SandboxProvider {
   private process: ChildProcess | null = null;
@@ -67,7 +89,11 @@ export class LocalProvider extends SandboxProvider {
       console.log(`[LocalProvider] Starting Vite on port ${port}`);
       await this.startViteServer(sandboxId, sandboxDir, port);
 
-      const url = `http://localhost:${port}`;
+      // ПОЛУЧИТЬ РЕАЛЬНЫЙ ПОРТ (может отличаться если исходный был занят)
+      const sandbox = localSandboxManager.getSandbox(sandboxId);
+      const actualPort = sandbox?.port || port;
+
+      const url = `http://localhost:${actualPort}`;
 
       this.sandboxInfo = {
         sandboxId,
@@ -75,6 +101,8 @@ export class LocalProvider extends SandboxProvider {
         provider: 'vercel', // Keep as 'vercel' for backward compatibility with types
         createdAt: new Date()
       };
+
+      console.log(`[CREATE-SANDBOX-URL]`, { sandboxId, requestedPort: port, actualPort, url });
 
       return this.sandboxInfo;
     } catch (error) {
@@ -251,7 +279,8 @@ export class LocalProvider extends SandboxProvider {
       throw new Error('Sandbox not found');
     }
 
-    console.log(`[LocalProvider] Restarting Vite for ${this.sandboxInfo.sandboxId}`);
+    const oldPort = sandbox.port;
+    console.log(`[LocalProvider] Restarting Vite for ${this.sandboxInfo.sandboxId} on port ${oldPort}`);
 
     // Kill existing process
     if (sandbox.process && !sandbox.process.killed) {
@@ -260,43 +289,66 @@ export class LocalProvider extends SandboxProvider {
     }
 
     // Start new Vite process
-    await this.startViteServer(this.sandboxInfo.sandboxId, sandbox.dir, sandbox.port);
+    await this.startViteServer(this.sandboxInfo.sandboxId, sandbox.dir, oldPort);
+
+    // ОБНОВИТЬ URL если порт изменился
+    const updatedSandbox = localSandboxManager.getSandbox(this.sandboxInfo.sandboxId);
+    const newPort = updatedSandbox?.port || oldPort;
+    if (newPort !== oldPort) {
+      this.sandboxInfo.url = `http://localhost:${newPort}`;
+      console.log(`[RESTART-SANDBOX-URL-UPDATED]`, { sandboxId: this.sandboxInfo.sandboxId, oldPort, newPort });
+    }
   }
 
   // Private helpers
 
   private async startViteServer(sandboxId: string, sandboxDir: string, port: number): Promise<void> {
+    const npmCommand = os.platform() === 'win32' ? 'npm.cmd' : 'npm';
+
+    // HARD-GUARD: sandboxDir MUST exist and have package.json
+    if (!fs.existsSync(sandboxDir)) {
+      throw new Error(`[FATAL] sandboxDir does not exist: ${sandboxDir}`);
+    }
+    const packageJsonPath = path.join(sandboxDir, 'package.json');
+    if (!fs.existsSync(packageJsonPath)) {
+      throw new Error(`[FATAL] sandboxDir missing package.json: ${sandboxDir}`);
+    }
+
+    // НАЙТИ СВОБОДНЫЙ ПОРТ (важно для множественных sandbox на одной машине)
+    const actualPort = await findFreePort(port);
+    const portChanged = actualPort !== port;
+
+    // DIAGNOSTIC LOG: VITE-LAUNCH (с информацией о смене порта)
+    console.log('[VITE-LAUNCH]', JSON.stringify({
+      sandboxId,
+      sandboxDir,
+      nodeCwd: process.cwd(),
+      spawnCwd: sandboxDir,
+      requestedPort: port,
+      actualPort: actualPort,
+      portChanged: portChanged,
+      cmd: npmCommand,
+      args: ['run', 'dev', '--', '--port', String(actualPort), '--host', '0.0.0.0', '--strictPort'],
+      timestamp: new Date().toISOString()
+    }, null, 2));
+
+    // Обновить порт в LocalSandboxManager если он изменился
+    if (portChanged) {
+      const sandbox = localSandboxManager.getSandbox(sandboxId);
+      if (sandbox) {
+        sandbox.port = actualPort;
+        console.log('[PORT-CHANGED]', { sandboxId, from: port, to: actualPort });
+      }
+    }
+
     return new Promise((resolve, reject) => {
-      const npmCommand = os.platform() === 'win32' ? 'npm.cmd' : 'npm';
-
-      // HARD-GUARD: sandboxDir MUST exist and have package.json
-      if (!fs.existsSync(sandboxDir)) {
-        throw new Error(`[FATAL] sandboxDir does not exist: ${sandboxDir}`);
-      }
-      const packageJsonPath = path.join(sandboxDir, 'package.json');
-      if (!fs.existsSync(packageJsonPath)) {
-        throw new Error(`[FATAL] sandboxDir missing package.json: ${sandboxDir}`);
-      }
-
-      // DIAGNOSTIC LOG: VITE-LAUNCH
-      console.log('[VITE-LAUNCH]', JSON.stringify({
-        sandboxId,
-        sandboxDir,
-        nodeCwd: process.cwd(),
-        spawnCwd: sandboxDir,
-        port,
-        cmd: npmCommand,
-        args: ['run', 'dev', '--', '--port', String(port), '--host', '0.0.0.0', '--strictPort'],
-        timestamp: new Date().toISOString()
-      }, null, 2));
-
-      const child = spawn(npmCommand, ['run', 'dev', '--', '--port', port.toString(), '--host', '0.0.0.0', '--strictPort'], {
+      const child = spawn(npmCommand, ['run', 'dev', '--', '--port', actualPort.toString(), '--host', '0.0.0.0', '--strictPort'], {
         cwd: sandboxDir,
         stdio: ['ignore', 'pipe', 'pipe']
       });
 
       // DIAGNOSTIC LOG: VITE-PID
-      console.log('[VITE-PID]', { sandboxId, pid: child.pid, port, timestamp: new Date().toISOString() });
+      console.log('[VITE-PID]', { sandboxId, pid: child.pid, actualPort, timestamp: new Date().toISOString() });
 
       // Store references EXACTLY once
       this.process = child;
