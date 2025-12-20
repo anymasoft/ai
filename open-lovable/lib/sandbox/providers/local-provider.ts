@@ -32,6 +32,25 @@ export class LocalProvider extends SandboxProvider {
       console.log(`[LocalProvider] Copying template from ${this.templateDir} to ${sandboxDir}`);
       await this.copyDir(this.templateDir, sandboxDir);
 
+      // HARD-GUARD: Verify package.json was copied correctly
+      const packageJsonPath = path.join(sandboxDir, 'package.json');
+      if (!fs.existsSync(packageJsonPath)) {
+        throw new Error(`[FATAL] Invalid sandboxDir - no package.json found after template copy at: ${packageJsonPath}`);
+      }
+      console.log(`[LocalProvider.DEBUG] package.json verified at: ${packageJsonPath}`);
+
+      // Add sandbox ID marker to index.html for verification
+      const indexHtmlPath = path.join(sandboxDir, 'index.html');
+      if (fs.existsSync(indexHtmlPath)) {
+        let htmlContent = fs.readFileSync(indexHtmlPath, 'utf-8');
+        const marker = `<!-- SANDBOX_ID: ${sandboxId} -->`;
+        if (!htmlContent.includes('SANDBOX_ID')) {
+          htmlContent = htmlContent.replace('<head>', `<head>\n    ${marker}`);
+          fs.writeFileSync(indexHtmlPath, htmlContent, 'utf-8');
+          console.log(`[LocalProvider.DEBUG] Added sandbox marker to index.html`);
+        }
+      }
+
       // Register sandbox
       localSandboxManager.registerSandbox(sandboxId, sandboxDir, port);
 
@@ -250,49 +269,83 @@ export class LocalProvider extends SandboxProvider {
     return new Promise((resolve, reject) => {
       const npmCommand = os.platform() === 'win32' ? 'npm.cmd' : 'npm';
 
-      // DIAGNOSTIC LOG
-      console.log('[LocalProvider.startViteServer] VITE STARTUP DEBUG:');
-      console.log('[LocalProvider.startViteServer]   - sandboxId:', sandboxId);
-      console.log('[LocalProvider.startViteServer]   - sandboxDir:', sandboxDir);
-      console.log('[LocalProvider.startViteServer]   - port:', port);
-      console.log('[LocalProvider.startViteServer]   - npmCommand:', npmCommand);
-      console.log('[LocalProvider.startViteServer]   - process.cwd():', process.cwd());
+      // HARD-GUARD: sandboxDir MUST exist and have package.json
+      if (!fs.existsSync(sandboxDir)) {
+        throw new Error(`[FATAL] sandboxDir does not exist: ${sandboxDir}`);
+      }
+      const packageJsonPath = path.join(sandboxDir, 'package.json');
+      if (!fs.existsSync(packageJsonPath)) {
+        throw new Error(`[FATAL] sandboxDir missing package.json: ${sandboxDir}`);
+      }
 
-      const spawnedProcess = spawn(npmCommand, ['run', 'dev', '--', '--port', port.toString(), '--host', '0.0.0.0'], {
+      // DIAGNOSTIC LOG: VITE-LAUNCH
+      console.log('[VITE-LAUNCH]', JSON.stringify({
+        sandboxId,
+        sandboxDir,
+        nodeCwd: process.cwd(),
+        spawnCwd: sandboxDir,
+        port,
+        cmd: npmCommand,
+        args: ['run', 'dev', '--', '--port', String(port), '--host', '0.0.0.0'],
+        timestamp: new Date().toISOString()
+      }, null, 2));
+
+      const child = spawn(npmCommand, ['run', 'dev', '--', '--port', port.toString(), '--host', '0.0.0.0'], {
         cwd: sandboxDir,
         stdio: ['ignore', 'pipe', 'pipe']
       });
 
-      this.process = spawnedProcess;
-      localSandboxManager.setProcess(sandboxId, spawnedProcess);
+      // DIAGNOSTIC LOG: VITE-PID
+      console.log('[VITE-PID]', { sandboxId, pid: child.pid, port, timestamp: new Date().toISOString() });
+
+      // Store references EXACTLY once
+      this.process = child;
+      localSandboxManager.setProcess(sandboxId, child);
 
       let viteReady = false;
+      const stdout_lines: string[] = [];
+      const stderr_lines: string[] = [];
 
-      spawnedProcess.stdout?.on('data', (data) => {
+      child.stdout?.on('data', (data) => {
         const line = data.toString();
+        stdout_lines.push(line);
         localSandboxManager.addLog(sandboxId, line);
 
+        // Check for Vite readiness markers
         if (line.includes('Local:') || line.includes('ready')) {
           viteReady = true;
+          console.log('[VITE-READY-DETECTED]', { sandboxId, marker: line.substring(0, 50), pid: child.pid });
+        }
+
+        // Log first few Vite startup messages for debugging
+        if (stdout_lines.length <= 5) {
+          console.log(`[VITE-STDOUT] ${line.substring(0, 100)}`);
         }
       });
 
-      spawnedProcess.stderr?.on('data', (data) => {
+      child.stderr?.on('data', (data) => {
         const line = data.toString();
+        stderr_lines.push(line);
         localSandboxManager.addLog(sandboxId, line);
+
+        // Log errors but don't fail on warnings
+        if (stderr_lines.length <= 5) {
+          console.log(`[VITE-STDERR] ${line.substring(0, 100)}`);
+        }
       });
 
-      spawnedProcess.on('error', (error) => {
-        console.error(`[LocalProvider] Process error: ${error}`);
+      child.on('error', (error) => {
+        console.error(`[VITE-PROCESS-ERROR]`, { sandboxId, error: error.message, pid: child.pid });
         reject(error);
       });
 
-      spawnedProcess.on('close', (code) => {
-        console.log(`[LocalProvider] Vite process closed with code ${code}`);
+      child.on('close', (code) => {
+        console.log(`[VITE-CLOSE]`, { sandboxId, exitCode: code, pid: child.pid, stdout_lines: stdout_lines.length, stderr_lines: stderr_lines.length });
       });
 
-      // Wait a bit for process to start
+      // Wait for process to start and get ready
       setTimeout(() => {
+        console.log('[VITE-STARTUP-COMPLETE]', { sandboxId, viteReady, pid: child.pid, port });
         resolve();
       }, 2000);
     });
@@ -301,12 +354,12 @@ export class LocalProvider extends SandboxProvider {
   private async runInstall(sandboxDir: string): Promise<void> {
     return new Promise((resolve, reject) => {
       const npmCommand = os.platform() === 'win32' ? 'npm.cmd' : 'npm';
-      const process = spawn(npmCommand, ['install', '--legacy-peer-deps'], {
+      const installProcess = spawn(npmCommand, ['install', '--legacy-peer-deps'], {
         cwd: sandboxDir,
         stdio: 'inherit'
       });
 
-      process.on('close', (code) => {
+      installProcess.on('close', (code) => {
         if (code === 0) {
           console.log('[LocalProvider] npm install completed successfully');
           resolve();
@@ -315,7 +368,7 @@ export class LocalProvider extends SandboxProvider {
         }
       });
 
-      process.on('error', (error) => {
+      installProcess.on('error', (error) => {
         reject(error);
       });
     });
