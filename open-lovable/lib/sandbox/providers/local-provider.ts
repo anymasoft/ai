@@ -30,7 +30,6 @@ async function findFreePort(startPort: number): Promise<number> {
 
 export class LocalProvider extends SandboxProvider {
   private process: ChildProcess | null = null;
-  private templateDir: string = path.join(process.cwd(), 'templates', 'vite-react');
   private sandboxesDir: string = path.join(process.cwd(), 'sandboxes');
 
   async createSandbox(): Promise<SandboxInfo> {
@@ -42,36 +41,19 @@ export class LocalProvider extends SandboxProvider {
 
       console.log(`[LocalProvider] Creating sandbox ${sandboxId} on port ${port}`);
 
-      // Verify template exists
-      if (!fs.existsSync(this.templateDir)) {
-        throw new Error(`Vite template not found at: ${this.templateDir}`);
-      }
-
       // Create sandboxes directory if not exists
       await fsAsync.mkdir(this.sandboxesDir, { recursive: true });
 
-      // Copy template to sandbox directory
-      console.log(`[LocalProvider] Copying template from ${this.templateDir} to ${sandboxDir}`);
-      await this.copyDir(this.templateDir, sandboxDir);
+      // Create sandbox scaffold (no template needed)
+      console.log(`[LocalProvider] Creating sandbox scaffold in ${sandboxDir}`);
+      await this.createSandboxScaffold(sandboxDir, sandboxId);
 
-      // HARD-GUARD: Verify package.json was copied correctly
+      // HARD-GUARD: Verify package.json was created correctly
       const packageJsonPath = path.join(sandboxDir, 'package.json');
       if (!fs.existsSync(packageJsonPath)) {
-        throw new Error(`[FATAL] Invalid sandboxDir - no package.json found after template copy at: ${packageJsonPath}`);
+        throw new Error(`[FATAL] Invalid sandboxDir - no package.json found at: ${packageJsonPath}`);
       }
-      console.log(`[LocalProvider.DEBUG] package.json verified at: ${packageJsonPath}`);
-
-      // Add sandbox ID marker to index.html for verification
-      const indexHtmlPath = path.join(sandboxDir, 'index.html');
-      if (fs.existsSync(indexHtmlPath)) {
-        let htmlContent = fs.readFileSync(indexHtmlPath, 'utf-8');
-        const marker = `<!-- SANDBOX_ID: ${sandboxId} -->`;
-        if (!htmlContent.includes('SANDBOX_ID')) {
-          htmlContent = htmlContent.replace('<head>', `<head>\n    ${marker}`);
-          fs.writeFileSync(indexHtmlPath, htmlContent, 'utf-8');
-          console.log(`[LocalProvider.DEBUG] Added sandbox marker to index.html`);
-        }
-      }
+      console.log(`[LocalProvider.DEBUG] package.json created at: ${packageJsonPath}`);
 
       // Register sandbox
       localSandboxManager.registerSandbox(sandboxId, sandboxDir, port);
@@ -249,7 +231,7 @@ export class LocalProvider extends SandboxProvider {
     this.sandboxInfo = {
       sandboxId,
       url: `http://localhost:${sandbox.port}`,
-      provider: 'vercel',
+      provider: 'local',
       createdAt: new Date()
     };
     this.process = sandbox.process;
@@ -280,6 +262,120 @@ export class LocalProvider extends SandboxProvider {
   }
 
   // Private helpers
+
+  private async createSandboxScaffold(sandboxDir: string, sandboxId: string): Promise<void> {
+    // Создать директорию sandbox
+    await fsAsync.mkdir(sandboxDir, { recursive: true });
+
+    // Создать папку src
+    const srcDir = path.join(sandboxDir, 'src');
+    await fsAsync.mkdir(srcDir, { recursive: true });
+
+    // Создать package.json с зависимостями
+    const packageJson = {
+      name: 'vite-react-app',
+      private: true,
+      version: '0.0.1',
+      type: 'module',
+      scripts: {
+        dev: 'vite',
+        build: 'vite build',
+        preview: 'vite preview'
+      },
+      dependencies: {
+        react: '^18.2.0',
+        'react-dom': '^18.2.0'
+      },
+      devDependencies: {
+        '@types/react': '^18.2.0',
+        '@types/react-dom': '^18.2.0',
+        '@vitejs/plugin-react': '^4.0.0',
+        autoprefixer: '^10.4.14',
+        postcss: '^8.4.31',
+        tailwindcss: '^3.3.0',
+        vite: '^4.4.0'
+      }
+    };
+
+    const packageJsonPath = path.join(sandboxDir, 'package.json');
+    await fsAsync.writeFile(packageJsonPath, JSON.stringify(packageJson, null, 2));
+    console.log(`[LocalProvider.DEBUG] Created package.json`);
+
+    // Создать index.html
+    const indexHtml = `<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <!-- SANDBOX_ID: ${sandboxId} -->
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Vite + React</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
+</html>`;
+
+    const indexPath = path.join(sandboxDir, 'index.html');
+    await fsAsync.writeFile(indexPath, indexHtml);
+    console.log(`[LocalProvider.DEBUG] Created index.html`);
+
+    // Создать src/App.jsx
+    const appJsx = `export default function App() {
+  return (
+    <div style={{ padding: '20px', fontFamily: 'sans-serif' }}>
+      <h1>React App</h1>
+      <p>Ready for generated code...</p>
+    </div>
+  )
+}`;
+
+    const appJsxPath = path.join(srcDir, 'App.jsx');
+    await fsAsync.writeFile(appJsxPath, appJsx);
+    console.log(`[LocalProvider.DEBUG] Created src/App.jsx`);
+
+    // Создать src/main.jsx
+    const mainJsx = `import React from 'react'
+import ReactDOM from 'react-dom/client'
+import App from './App.jsx'
+
+ReactDOM.createRoot(document.getElementById('root')).render(
+  <React.StrictMode>
+    <App />
+  </React.StrictMode>,
+)`;
+
+    const mainJsxPath = path.join(srcDir, 'main.jsx');
+    await fsAsync.writeFile(mainJsxPath, mainJsx);
+    console.log(`[LocalProvider.DEBUG] Created src/main.jsx`);
+
+    // Создать vite.config.js
+    const viteConfig = `import { defineConfig } from 'vite'
+import react from '@vitejs/plugin-react'
+
+export default defineConfig({
+  plugins: [react()],
+  server: {
+    host: '0.0.0.0',
+    port: 5173,
+    strictPort: true
+  }
+})`;
+
+    const viteConfigPath = path.join(sandboxDir, 'vite.config.js');
+    await fsAsync.writeFile(viteConfigPath, viteConfig);
+    console.log(`[LocalProvider.DEBUG] Created vite.config.js`);
+
+    // Создать .gitignore
+    const gitignore = `node_modules
+dist
+.env.local
+.env.*.local`;
+
+    const gitignorePath = path.join(sandboxDir, '.gitignore');
+    await fsAsync.writeFile(gitignorePath, gitignore);
+    console.log(`[LocalProvider.DEBUG] Created .gitignore`);
+  }
 
   private async startViteServer(sandboxId: string, sandboxDir: string, port: number): Promise<void> {
     const npmCommand = os.platform() === 'win32' ? 'npm.cmd' : 'npm';
