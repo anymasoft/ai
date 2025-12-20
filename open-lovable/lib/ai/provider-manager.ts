@@ -20,15 +20,7 @@ export interface ProviderResolution {
 
 const aiGatewayApiKey = process.env.AI_GATEWAY_API_KEY;
 const aiGatewayBaseURL = 'https://ai-gateway.vercel.sh/v1';
-
-// Force disable AI Gateway in no-sandbox mode
-const isSandboxDisabled = process.env.DISABLE_SANDBOX === "true";
-const isUsingAIGateway = !!aiGatewayApiKey && !isSandboxDisabled;
-
-// Log when AI Gateway is disabled due to sandbox mode
-if (isSandboxDisabled && aiGatewayApiKey) {
-  console.log('[AI] Sandbox disabled → forcing direct API (AI Gateway bypassed)');
-}
+const isUsingAIGateway = !!aiGatewayApiKey;
 
 // Cache provider clients by a stable key to avoid recreating
 const clientCache = new Map<string, ProviderClient>();

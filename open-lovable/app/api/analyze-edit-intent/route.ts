@@ -8,15 +8,8 @@ import { z } from 'zod';
 // import type { FileManifest } from '@/types/file-manifest'; // Type is used implicitly through manifest parameter
 
 // Check if we're using Vercel AI Gateway
-// Force disable in no-sandbox mode
-const isSandboxDisabled = process.env.DISABLE_SANDBOX === "true";
-const isUsingAIGateway = !!process.env.AI_GATEWAY_API_KEY && !isSandboxDisabled;
+const isUsingAIGateway = !!process.env.AI_GATEWAY_API_KEY;
 const aiGatewayBaseURL = 'https://ai-gateway.vercel.sh/v1';
-
-// Log when AI Gateway is disabled due to sandbox mode
-if (isSandboxDisabled && process.env.AI_GATEWAY_API_KEY) {
-  console.log('[analyze-edit-intent] Sandbox disabled → forcing direct API (AI Gateway bypassed)');
-}
 
 const groq = createGroq({
   apiKey: process.env.AI_GATEWAY_API_KEY ?? process.env.GROQ_API_KEY,
