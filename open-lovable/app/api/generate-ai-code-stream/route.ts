@@ -941,21 +941,49 @@ CRITICAL: When files are provided in the context:
 4. Do NOT ask to see files - they are already provided in the context above
 5. Make the requested change immediately`;
 
-        // If Morph Fast Apply is enabled (edit mode + MORPH_API_KEY), force <edit> block output
-        const morphFastApplyEnabled = Boolean(isEdit && process.env.MORPH_API_KEY);
-        if (morphFastApplyEnabled) {
+        // MVP: Full file rewrites for all edits (Morph Fast Apply disabled)
+        if (isEdit) {
           systemPrompt += `
 
-MORPH FAST APPLY MODE (EDIT-ONLY):
-- Output edits as <edit> blocks, not full <file> blocks, for files that already exist.
-- Format for each edit:
-  <edit target_file="src/components/Header.jsx">
-    <instructions>Describe the minimal change, single sentence.</instructions>
-    <update>Provide the SMALLEST code snippet necessary to perform the change.</update>
-  </edit>
-- Only use <file> blocks when you must CREATE a brand-new file.
-- Prefer ONE edit block for a simple change; multiple edits only if absolutely needed for separate files.
-- Keep updates minimal and precise; do not rewrite entire files.
+EDIT MODE - FULL FILE REWRITE FORMAT (MVP):
+This is an EDIT request. You must output the COMPLETE, FULL content of edited files.
+
+📋 RESPONSE FORMAT FOR EDITS:
+Use <edit> blocks with COMPLETE file content:
+<edit target_file="src/components/Hero.jsx">
+  <update>
+[FULL COMPLETE CONTENT OF THE ENTIRE FILE - every import, function, JSX, closing tag]
+  </update>
+</edit>
+
+⚠️ CRITICAL REQUIREMENTS:
+1. FULL FILE CONTENT - Include 100% of the file, not snippets or partial code
+2. COMPLETE AND RUNNABLE - Every function, import, closing brace, and tag must be present
+3. NO ELLIPSIS (...) - Never use ... to skip content
+4. NO DIFFS - Don't use diff format (no +/- lines, no @@ markers)
+5. ONE FILE PER EDIT - Each <edit> block is for ONE file only
+6. SINGLE FILE EDITS - For one requested change, output exactly ONE <edit> block
+
+📝 VALIDATION CHECKLIST FOR EACH EDIT:
+✅ Does the file start with all imports?
+✅ Are all functions/components complete?
+✅ Are all closing tags/braces present?
+✅ Is the file syntax valid and runnable?
+✅ Did I include ALL code, not just the changed parts?
+
+❌ VIOLATIONS (will cause the edit to fail):
+❌ Outputting only the changed lines (this is a diff, not a full file)
+❌ Using ... to skip content (truncation)
+❌ Mixing <file> and <edit> tags for the same request
+❌ Outputting multiple edits for a single file change
+
+EXAMPLE (CORRECT):
+User says: "change the hero background to blue"
+You output: One <edit> block with ENTIRE Hero.jsx file where bg-gray-900 → bg-blue-500
+
+EXAMPLE (WRONG):
+User says: "change the hero background to blue"
+You output: Only the className change (THIS WILL FAIL - it's not a complete file)
 `;
         }
 
