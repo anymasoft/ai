@@ -53,7 +53,7 @@ export async function POST() {
     return NextResponse.json({
       success: true,
       dataUrl,
-      fileName: 'vercel-sandbox-project.zip',
+      fileName: 'sandbox-project.zip',
       message: 'Zip file created successfully'
     });
     

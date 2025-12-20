@@ -98,7 +98,7 @@ export class LocalProvider extends SandboxProvider {
       this.sandboxInfo = {
         sandboxId,
         url,
-        provider: 'vercel', // Keep as 'vercel' for backward compatibility with types
+        provider: 'local',
         createdAt: new Date()
       };
 

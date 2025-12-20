@@ -587,7 +587,7 @@ function AISandboxPage() {
         // Fetch sandbox files after creation
         setTimeout(fetchSandboxFiles, 1000);
         
-        // For Vercel sandboxes, Vite is already started during setupViteApp
+        // Vite is already started during sandbox creation
         // No need to restart it immediately after creation
         // Only restart if there's an actual issue later
         console.log('[createSandbox] Sandbox ready with Vite server running');
@@ -2030,7 +2030,7 @@ Tip: I automatically detect and install npm packages from your code imports (lik
         }
         
         if (activeSandboxData && generatedCode) {
-          // For new sandbox creations (especially Vercel), add a delay to ensure Vite is ready
+          // For new sandbox creations, add a delay to ensure Vite is ready
           if (sandboxCreating) {
             console.log('[startGeneration] New sandbox created, waiting for services to be ready...');
             await new Promise(resolve => setTimeout(resolve, 2000));
@@ -2106,7 +2106,7 @@ Tip: I automatically detect and install npm packages from your code imports (lik
         
         const link = document.createElement('a');
         link.href = data.dataUrl;
-        link.download = data.fileName || 'e2b-project.zip';
+        link.download = data.fileName || 'sandbox-project.zip';
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);

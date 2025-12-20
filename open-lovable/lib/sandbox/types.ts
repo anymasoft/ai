@@ -7,7 +7,7 @@ export interface SandboxFile {
 export interface SandboxInfo {
   sandboxId: string;
   url: string;
-  provider: 'e2b' | 'vercel' | 'local';
+  provider: 'local';
   createdAt: Date;
 }
 
@@ -19,17 +19,7 @@ export interface CommandResult {
 }
 
 export interface SandboxProviderConfig {
-  e2b?: {
-    apiKey: string;
-    timeoutMs?: number;
-    template?: string;
-  };
-  vercel?: {
-    teamId?: string;
-    projectId?: string;
-    token?: string;
-    authMethod?: 'oidc' | 'pat';
-  };
+  // LocalProvider doesn't require specific configuration
 }
 
 export abstract class SandboxProvider {

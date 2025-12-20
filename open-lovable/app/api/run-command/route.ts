@@ -30,7 +30,7 @@ export async function POST(request: NextRequest) {
     const cmd = commandParts[0];
     const args = commandParts.slice(1);
     
-    // Execute command using Vercel Sandbox
+    // Execute command using Local Sandbox
     const result = await global.activeSandbox.runCommand({
       cmd,
       args
