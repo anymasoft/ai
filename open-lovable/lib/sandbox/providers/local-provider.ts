@@ -286,11 +286,11 @@ export class LocalProvider extends SandboxProvider {
         spawnCwd: sandboxDir,
         port,
         cmd: npmCommand,
-        args: ['run', 'dev', '--', '--port', String(port), '--host', '0.0.0.0'],
+        args: ['run', 'dev', '--', '--port', String(port), '--host', '0.0.0.0', '--strictPort'],
         timestamp: new Date().toISOString()
       }, null, 2));
 
-      const child = spawn(npmCommand, ['run', 'dev', '--', '--port', port.toString(), '--host', '0.0.0.0'], {
+      const child = spawn(npmCommand, ['run', 'dev', '--', '--port', port.toString(), '--host', '0.0.0.0', '--strictPort'], {
         cwd: sandboxDir,
         stdio: ['ignore', 'pipe', 'pipe']
       });
