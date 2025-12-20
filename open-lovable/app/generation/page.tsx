@@ -647,14 +647,14 @@ Tip: I automatically detect and install npm packages from your code imports (lik
       // Use streaming endpoint for real-time feedback
       const effectiveSandboxData = overrideSandboxData || sandboxData;
 
-      // CRITICAL: Enforce sandboxId contract on UI side
-      if (isEdit && !effectiveSandboxData?.sandboxId) {
-        const errorMsg = '[applyGeneratedCode] ERROR: Cannot edit - no active sandbox. Sandbox was lost or not created.';
+      // CRITICAL: Enforce sandboxId contract - required for ALL apply calls
+      if (!effectiveSandboxData?.sandboxId) {
+        const errorMsg = '[applyGeneratedCode] ERROR: No sandbox ID. Please create a sandbox first.';
         console.error(errorMsg);
-        throw new Error('Sandbox not initialized. Please create a new sandbox first.');
+        throw new Error('Sandbox not initialized. Please create a sandbox first by clicking "Create Sandbox".');
       }
 
-      console.log('[applyGeneratedCode] Calling apply-ai-code-stream with sandboxId:', effectiveSandboxData?.sandboxId);
+      console.log('[applyGeneratedCode] Calling apply-ai-code-stream with sandboxId:', effectiveSandboxData.sandboxId);
       console.log('[applyGeneratedCode] isEdit:', isEdit);
 
       const response = await fetch('/api/apply-ai-code-stream', {
@@ -664,7 +664,7 @@ Tip: I automatically detect and install npm packages from your code imports (lik
           response: code,
           isEdit: isEdit,
           packages: pendingPackages,
-          sandboxId: effectiveSandboxData?.sandboxId // Pass the sandbox ID to ensure proper connection
+          sandboxId: effectiveSandboxData.sandboxId // sandboxId is guaranteed to exist (checked above)
         })
       });
       
