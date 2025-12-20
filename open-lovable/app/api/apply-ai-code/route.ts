@@ -305,31 +305,6 @@ export async function POST(request: NextRequest) {
           console.error(`[apply-ai-code] Failed to install packages: ${packageResult.packagesFailed.join(', ')}`);
           results.errors.push(`Failed to install packages: ${packageResult.packagesFailed.join(', ')}`);
         }
-        
-        // Force Vite restart after package installation
-        if (results.packagesInstalled.length > 0) {
-          console.log('[apply-ai-code] Packages were installed, forcing Vite restart...');
-          
-          try {
-            // Call the restart-vite endpoint
-            const restartResponse = await fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/restart-vite`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' }
-            });
-            
-            if (restartResponse.ok) {
-              const restartResult = await restartResponse.json();
-              console.log('[apply-ai-code] Vite restart result:', restartResult.message);
-            } else {
-              console.error('[apply-ai-code] Failed to restart Vite:', await restartResponse.text());
-            }
-          } catch (e) {
-            console.error('[apply-ai-code] Error calling restart-vite:', e);
-          }
-          
-          // Additional delay to ensure files can be written after restart
-          await new Promise(resolve => setTimeout(resolve, 1000));
-        }
         } else {
           console.error('[apply-ai-code] Package detection/installation failed:', await packageResponse.text());
         }
@@ -480,7 +455,27 @@ export async function POST(request: NextRequest) {
         results.errors.push(`Failed to create ${file.path}: ${(error as Error).message}`);
       }
     }
-    
+
+    // Restart Vite after files are written to ensure CSS is regenerated
+    if (filteredFiles.length > 0) {
+      console.log('[apply-ai-code] Files were written, restarting Vite to regenerate CSS...');
+      try {
+        const restartResponse = await fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/restart-vite`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' }
+        });
+
+        if (restartResponse.ok) {
+          const restartResult = await restartResponse.json();
+          console.log('[apply-ai-code] Vite restarted after file write:', restartResult.message);
+        } else {
+          console.error('[apply-ai-code] Failed to restart Vite after file write:', await restartResponse.text());
+        }
+      } catch (e) {
+        console.error('[apply-ai-code] Error restarting Vite after file write:', e);
+      }
+    }
+
     // Only create App.jsx if it's not an edit and doesn't exist
     const appFileInParsed = parsed.files.some(f => {
       const normalized = f.path.replace(/^\//, '').replace(/^src\//, '');

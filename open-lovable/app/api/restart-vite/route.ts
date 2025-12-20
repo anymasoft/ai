@@ -7,7 +7,7 @@ declare global {
   var viteRestartInProgress: boolean;
 }
 
-const RESTART_COOLDOWN_MS = 5000; // 5 second cooldown between restarts
+const RESTART_COOLDOWN_MS = 2000; // 2 second cooldown between restarts
 
 export async function POST() {
   try {
