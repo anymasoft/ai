@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { parseMorphEdits, applyMorphEditToFile } from '@/lib/morph-fast-apply';
+// Morph Fast Apply disabled - using full file rewrites for MVP
+// import { parseMorphEdits, applyMorphEditToFile } from '@/lib/morph-fast-apply';
 import type { SandboxState } from '@/types/sandbox';
 import type { ConversationState } from '@/types/conversation';
 
@@ -146,13 +147,7 @@ export async function POST(request: NextRequest) {
     
     // Parse the AI response
     const parsed = parseAIResponse(response);
-    const morphEnabled = Boolean(isEdit && process.env.MORPH_API_KEY);
-    const morphEdits = morphEnabled ? parseMorphEdits(response) : [];
-    console.log('[apply-ai-code] Morph Fast Apply mode:', morphEnabled);
-    if (morphEnabled) {
-      console.log('[apply-ai-code] Morph edits found:', morphEdits.length);
-    }
-    
+
     // Initialize existingFiles if not already
     if (!global.existingFiles) {
       global.existingFiles = new Set<string>();
@@ -186,15 +181,7 @@ export async function POST(request: NextRequest) {
     console.log('[apply-ai-code] Is edit mode:', isEdit);
     console.log('[apply-ai-code] Files to write:', parsed.files.map(f => f.path));
     console.log('[apply-ai-code] Existing files:', Array.from(global.existingFiles));
-    if (morphEnabled) {
-      console.log('[apply-ai-code] Morph Fast Apply enabled');
-      if (morphEdits.length > 0) {
-        console.log('[apply-ai-code] Parsed Morph edits:', morphEdits.map(e => e.targetFile));
-      } else {
-        console.log('[apply-ai-code] No <edit> blocks found in response');
-      }
-    }
-    
+
     const results = {
       filesCreated: [] as string[],
       filesUpdated: [] as string[],
@@ -292,43 +279,6 @@ export async function POST(request: NextRequest) {
         // Continue with file writing even if package installation fails
       }
     }
-    
-    // Attempt Morph Fast Apply for edits before file creation
-    const morphUpdatedPaths = new Set<string>();
-
-    if (morphEnabled && morphEdits.length > 0) {
-      if (!global.activeSandbox) {
-        console.warn('[apply-ai-code] Morph edits found but no active sandbox; skipping Morph application');
-      } else {
-        console.log(`[apply-ai-code] Applying ${morphEdits.length} fast edits via Morph...`);
-        for (const edit of morphEdits) {
-          try {
-            const result = await applyMorphEditToFile({
-              sandbox: global.activeSandbox,
-              targetPath: edit.targetFile,
-              instructions: edit.instructions,
-              updateSnippet: edit.update
-            });
-
-            if (result.success && result.normalizedPath) {
-              morphUpdatedPaths.add(result.normalizedPath);
-              results.filesUpdated.push(result.normalizedPath);
-              console.log('[apply-ai-code] Morph applied to', result.normalizedPath);
-            } else {
-              const msg = result.error || 'Unknown Morph error';
-              console.error('[apply-ai-code] Morph apply failed:', msg);
-              results.errors.push(`Morph apply failed for ${edit.targetFile}: ${msg}`);
-            }
-          } catch (e) {
-            console.error('[apply-ai-code] Morph apply exception:', e);
-            results.errors.push(`Morph apply exception for ${edit.targetFile}: ${(e as Error).message}`);
-          }
-        }
-      }
-    }
-    if (morphEnabled && morphEdits.length === 0) {
-      console.warn('[apply-ai-code] Morph enabled but no <edit> blocks found; falling back to full-file flow');
-    }
 
     // Filter out config files that shouldn't be created
     const configFiles = ['tailwind.config.js', 'vite.config.js', 'package.json', 'package-lock.json', 'tsconfig.json', 'postcss.config.js'];
@@ -341,21 +291,6 @@ export async function POST(request: NextRequest) {
       return true;
     });
 
-    // Avoid overwriting files already updated by Morph
-    if (morphUpdatedPaths.size > 0) {
-      filteredFiles = filteredFiles.filter(file => {
-        let normalizedPath = file.path.startsWith('/') ? file.path.slice(1) : file.path;
-        const fileName = normalizedPath.split('/').pop() || '';
-        if (!normalizedPath.startsWith('src/') &&
-            !normalizedPath.startsWith('public/') &&
-            normalizedPath !== 'index.html' &&
-            !configFiles.includes(fileName)) {
-          normalizedPath = 'src/' + normalizedPath;
-        }
-        return !morphUpdatedPaths.has(normalizedPath);
-      });
-    }
-    
     // Create or update files AFTER package installation
     for (const file of filteredFiles) {
       try {

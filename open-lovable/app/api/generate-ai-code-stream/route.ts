@@ -1232,17 +1232,6 @@ You output: Only the className change (THIS WILL FAIL - it's not a complete file
           }
           
           if (contextParts.length > 0) {
-            if (morphFastApplyEnabled) {
-              contextParts.push('\nOUTPUT FORMAT (REQUIRED IN MORPH MODE):');
-              contextParts.push('<edit target_file="src/components/Component.jsx">');
-              contextParts.push('<instructions>Minimal, precise instruction.</instructions>');
-              contextParts.push('<update>// Smallest necessary snippet</update>');
-              contextParts.push('</edit>');
-              contextParts.push('\nIf you need to create a NEW file, then and only then output a full file:');
-              contextParts.push('<file path="src/components/NewComponent.jsx">');
-              contextParts.push('// Full file content when creating new files');
-              contextParts.push('</file>');
-            }
             fullPrompt = `CONTEXT:\n${contextParts.join('\n')}\n\nUSER REQUEST:\n${prompt}`;
           }
         }
