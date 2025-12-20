@@ -28,6 +28,15 @@ export class LocalProvider extends SandboxProvider {
       // Register sandbox
       localSandboxManager.registerSandbox(sandboxId, sandboxDir, port);
 
+      // Install dependencies
+      console.log(`[LocalProvider] Installing dependencies via npm install...`);
+      try {
+        await this.runInstall(sandboxDir);
+      } catch (error) {
+        console.error(`[LocalProvider] npm install failed:`, error);
+        throw new Error(`Failed to install dependencies: ${(error as Error).message}`);
+      }
+
       // Start Vite dev server
       console.log(`[LocalProvider] Starting Vite on port ${port}`);
       await this.startViteServer(sandboxId, sandboxDir, port);
@@ -272,6 +281,28 @@ export class LocalProvider extends SandboxProvider {
     });
   }
 
+  private async runInstall(sandboxDir: string): Promise<void> {
+    return new Promise((resolve, reject) => {
+      const process = spawn('npm', ['install', '--legacy-peer-deps'], {
+        cwd: sandboxDir,
+        stdio: 'inherit'
+      });
+
+      process.on('close', (code) => {
+        if (code === 0) {
+          console.log('[LocalProvider] npm install completed successfully');
+          resolve();
+        } else {
+          reject(new Error(`npm install failed with exit code ${code}`));
+        }
+      });
+
+      process.on('error', (error) => {
+        reject(error);
+      });
+    });
+  }
+
   private async copyDir(src: string, dest: string): Promise<void> {
     await fs.mkdir(dest, { recursive: true });
     const files = await fs.readdir(src);
@@ -282,6 +313,11 @@ export class LocalProvider extends SandboxProvider {
       const stat = await fs.stat(srcPath);
 
       if (stat.isDirectory()) {
+        // Skip node_modules and .git directories
+        if (file === 'node_modules' || file === '.git') {
+          console.log(`[LocalProvider] Skipping directory: ${file}`);
+          continue;
+        }
         await this.copyDir(srcPath, destPath);
       } else {
         await fs.copyFile(srcPath, destPath);
