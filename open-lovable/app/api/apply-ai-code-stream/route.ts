@@ -277,6 +277,7 @@ export async function POST(request: NextRequest) {
     console.log('[apply-ai-code-stream] Response preview:', response.substring(0, 500));
     console.log('[apply-ai-code-stream] isEdit:', isEdit);
     console.log('[apply-ai-code-stream] packages:', packages);
+    console.log('[apply-ai-code-stream] sandboxId:', sandboxId);
 
     // Parse the AI response
     const parsed = parseAIResponse(response);
@@ -302,6 +303,11 @@ export async function POST(request: NextRequest) {
       global.existingFiles = new Set<string>();
     }
 
+    // Track if a new sandbox was created (for reporting to UI via streaming)
+    let newSandboxId: string | null = null;
+    let newSandboxUrl: string | null = null;
+    let sandboxWasReplaced = false;
+
     // Try to get provider from sandbox manager first
     let provider = sandboxId ? sandboxManager.getProvider(sandboxId) : sandboxManager.getActiveProvider();
 
@@ -322,11 +328,30 @@ export async function POST(request: NextRequest) {
           console.log(`[apply-ai-code-stream] Creating new sandbox since reconnection failed for ${sandboxId}`);
           await provider.createSandbox();
           await provider.setupViteApp();
-          sandboxManager.registerSandbox(sandboxId, provider);
+
+          // Get REAL sandbox ID from provider (not the old request ID)
+          const realSandboxInfo = provider.getSandboxInfo();
+          const realSandboxId = realSandboxInfo.sandboxId;
+          newSandboxId = realSandboxId;
+          newSandboxUrl = realSandboxInfo.url;
+          sandboxWasReplaced = true;
+
+          // Register with REAL ID, not the old one
+          sandboxManager.registerSandbox(realSandboxId, provider);
+
+          // Update legacy global state with real ID
+          global.activeSandboxProvider = provider;
+          global.sandboxData = {
+            sandboxId: realSandboxId,
+            url: realSandboxInfo.url
+          };
+
+          console.log(`[apply-ai-code-stream] Sandbox replaced: old=${sandboxId}, new=${realSandboxId}`);
+        } else {
+          // Reconnection succeeded, update global state
+          global.activeSandboxProvider = provider;
         }
 
-        // Update legacy global state
-        global.activeSandboxProvider = provider;
         console.log(`[apply-ai-code-stream] Successfully got provider for sandbox ${sandboxId}`);
       } catch (providerError) {
         console.error(`[apply-ai-code-stream] Failed to get or create provider for sandbox ${sandboxId}:`, providerError);
@@ -356,6 +381,10 @@ export async function POST(request: NextRequest) {
         const sandboxInfo = await provider.createSandbox();
         await provider.setupViteApp();
 
+        newSandboxId = sandboxInfo.sandboxId;
+        newSandboxUrl = sandboxInfo.url;
+        sandboxWasReplaced = true;
+
         // Register with sandbox manager
         sandboxManager.registerSandbox(sandboxInfo.sandboxId, provider);
 
@@ -366,7 +395,7 @@ export async function POST(request: NextRequest) {
           url: sandboxInfo.url
         };
 
-        console.log(`[apply-ai-code-stream] Created new sandbox successfully`);
+        console.log(`[apply-ai-code-stream] Created new sandbox ${sandboxInfo.sandboxId}`);
       } catch (createError) {
         console.error(`[apply-ai-code-stream] Failed to create new sandbox:`, createError);
         return NextResponse.json({
@@ -397,8 +426,20 @@ export async function POST(request: NextRequest) {
       await writer.write(encoder.encode(message));
     };
 
-    // Start processing in background (pass provider and request to the async function)
-    (async (providerInstance, req) => {
+    // Start processing in background (pass provider, request, and sandbox info to the async function)
+    (async (providerInstance, req, newSandboxIdInfo, newSandboxUrlInfo, wasReplaced) => {
+      // If sandbox was replaced, notify UI immediately
+      if (wasReplaced && newSandboxIdInfo) {
+        await sendProgress({
+          type: 'sandbox-replaced',
+          oldSandboxId: sandboxId,
+          newSandboxId: newSandboxIdInfo,
+          newSandboxUrl: newSandboxUrlInfo,
+          message: 'Sandbox session was replaced with a new one'
+        });
+        console.log(`[apply-ai-code-stream] Notified UI of sandbox replacement: ${newSandboxIdInfo}`);
+      }
+
       const results = {
         filesCreated: [] as string[],
         filesUpdated: [] as string[],
@@ -778,7 +819,7 @@ export async function POST(request: NextRequest) {
       } finally {
         await writer.close();
       }
-    })(provider, request);
+    })(provider, request, newSandboxId, newSandboxUrl, sandboxWasReplaced);
 
     // Return the stream
     return new Response(stream.readable, {
