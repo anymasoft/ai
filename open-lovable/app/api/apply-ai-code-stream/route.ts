@@ -280,6 +280,20 @@ export async function POST(request: NextRequest) {
     console.log('[apply-ai-code-stream] packages:', packages);
     console.log('[apply-ai-code-stream] sandboxId:', sandboxId);
 
+    // CRITICAL: Enforce sandboxId contract
+    if (isEdit && !sandboxId) {
+      console.error('[apply-ai-code-stream] ERROR: isEdit=true but sandboxId is missing');
+      return NextResponse.json({
+        error: 'sandboxId is required for edits. UI lost sandbox state.'
+      }, { status: 400 });
+    }
+
+    if (!sandboxId) {
+      console.log('[apply-ai-code-stream] New sandbox will be created (isEdit=false, sandboxId=undefined)');
+    } else {
+      console.log('[apply-ai-code-stream] Using existing sandbox:', sandboxId);
+    }
+
     // Parse the AI response
     const parsed = parseAIResponse(response);
     const morphEnabled = Boolean(isEdit && process.env.MORPH_API_KEY);
@@ -320,6 +334,14 @@ export async function POST(request: NextRequest) {
     // If we have a sandboxId but no provider, try to get or create one
     if (!provider && sandboxId) {
       console.log(`[apply-ai-code-stream] No provider found for sandbox ${sandboxId}, attempting to get or create...`);
+
+      // CRITICAL: For edits, sandbox MUST exist. Never auto-create.
+      if (isEdit) {
+        console.error(`[apply-ai-code-stream] ERROR: Cannot create new sandbox for edit. Sandbox ${sandboxId} expired or lost.`);
+        return NextResponse.json({
+          error: `Sandbox not found or expired. Please create a new sandbox.`
+        }, { status: 400 });
+      }
 
       try {
         provider = await sandboxManager.getOrCreateProvider(sandboxId);
