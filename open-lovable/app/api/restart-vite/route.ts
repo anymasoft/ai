@@ -55,6 +55,7 @@ async function waitForViteReady(sandboxUrl: string, maxAttempts = 20): Promise<b
 
 export async function POST() {
   try {
+    console.log('[TRACE] restart-vite: start');
     // Check both v1 and v2 global references
     const provider = global.activeSandbox || global.activeSandboxProvider;
     
@@ -92,7 +93,9 @@ export async function POST() {
 
     // Use the provider's restartViteServer method if available
     if (typeof provider.restartViteServer === 'function') {
+      console.log('[TRACE] restart-vite: killing process');
       await provider.restartViteServer();
+      console.log('[TRACE] restart-vite: starting new Vite');
       console.log('[restart-vite] Vite restarted via provider method');
     } else {
       // Fallback to manual restart using provider's runCommand
@@ -100,6 +103,7 @@ export async function POST() {
 
       // Kill existing Vite processes
       try {
+        console.log('[TRACE] restart-vite: killing process');
         await provider.runCommand('pkill -f vite');
         console.log('[restart-vite] Killed existing Vite processes');
 
@@ -126,8 +130,11 @@ export async function POST() {
 
     // Wait for Vite to actually be ready before returning success
     if (global.sandboxData?.url) {
+      console.log('[TRACE] restart-vite: waiting for readiness');
       console.log('[restart-vite] Waiting for Vite to become ready...');
       const isReady = await waitForViteReady(global.sandboxData.url);
+
+      console.log('[TRACE] restart-vite: READY (200 OK)');
 
       if (!isReady) {
         console.error('[restart-vite] Vite failed to become ready after restart');
@@ -148,6 +155,7 @@ export async function POST() {
     global.lastViteRestartTime = Date.now();
     global.viteRestartInProgress = false;
 
+    console.log('[TRACE] restart-vite: returning response');
     return NextResponse.json({
       success: true,
       message: 'Vite restarted successfully and is ready'
