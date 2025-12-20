@@ -14,36 +14,8 @@ declare global {
 
 export async function POST() {
   try {
-    // Check if sandbox is disabled via environment variable
-    const disableSandbox = process.env.DISABLE_SANDBOX === "true";
-
-    if (disableSandbox) {
-      console.log('[create-ai-sandbox-v2] Sandbox disabled by configuration (DISABLE_SANDBOX=true)');
-
-      // Return a valid response indicating no-sandbox mode
-      // Clear existing state but don't fail
-      await sandboxManager.terminateAll().catch(() => {});
-      if (global.activeSandboxProvider) {
-        global.activeSandboxProvider = null;
-      }
-      if (global.existingFiles) {
-        global.existingFiles.clear();
-      } else {
-        global.existingFiles = new Set<string>();
-      }
-
-      return NextResponse.json({
-        success: true,
-        sandboxId: null,
-        url: null,
-        provider: "none",
-        mode: "no-sandbox",
-        message: 'Sandbox disabled - running in no-sandbox mode'
-      });
-    }
-
     console.log('[create-ai-sandbox-v2] Creating sandbox...');
-
+    
     // Clean up all existing sandboxes
     console.log('[create-ai-sandbox-v2] Cleaning up existing sandboxes...');
     await sandboxManager.terminateAll();

@@ -62,7 +62,6 @@ interface ScrapeData {
 
 function AISandboxPage() {
   const [sandboxData, setSandboxData] = useState<SandboxData | null>(null);
-  const [sandboxDisabled, setSandboxDisabled] = useState(false);
   const [loading, setLoading] = useState(false);
   const [status, setStatus] = useState({ text: 'Not connected', active: false });
   const [responseArea, setResponseArea] = useState<string[]>([]);
@@ -558,72 +557,48 @@ function AISandboxPage() {
       if (data.success) {
         sandboxCreationRef.current = false; // Reset the ref on success
         console.log('[createSandbox] Setting sandboxData from creation:', data);
-
-        // Check if sandbox is disabled (no-sandbox mode)
-        if (data.mode === 'no-sandbox') {
-          console.log('[createSandbox] Running in no-sandbox mode');
-          setSandboxDisabled(true);
-          setSandboxData(data);
-          updateStatus('No-sandbox mode', true);
-          log('Running in no-sandbox mode');
-          log('Sandbox disabled by configuration');
-
-          // Fade out loading background immediately
-          setTimeout(() => {
-            setShowLoadingBackground(false);
-          }, 1000);
-
-          // Add notification message
-          addChatMessage('Running in no-sandbox mode. I can help you generate code, but preview and live execution are disabled.', 'system');
-
-          // Return the sandbox data
-          return data;
-        }
-
-        // Normal sandbox mode
         setSandboxData(data);
-        setSandboxDisabled(false);
         updateStatus('Sandbox active', true);
         log('Sandbox created successfully!');
         log(`Sandbox ID: ${data.sandboxId}`);
         log(`URL: ${data.url}`);
-
+        
         // Update URL with sandbox ID
         const newParams = new URLSearchParams(searchParams.toString());
         newParams.set('sandbox', data.sandboxId);
         newParams.set('model', aiModel);
         router.push(`/generation?${newParams.toString()}`, { scroll: false });
-
+        
         // Fade out loading background after sandbox loads
         setTimeout(() => {
           setShowLoadingBackground(false);
         }, 3000);
-
+        
         if (data.structure) {
           displayStructure(data.structure);
         }
-
+        
         // Fetch sandbox files after creation
         setTimeout(fetchSandboxFiles, 1000);
-
+        
         // For Vercel sandboxes, Vite is already started during setupViteApp
         // No need to restart it immediately after creation
         // Only restart if there's an actual issue later
         console.log('[createSandbox] Sandbox ready with Vite server running');
-
+        
         // Only add welcome message if not coming from home screen
         if (!fromHomeScreen) {
           addChatMessage(`Sandbox created! ID: ${data.sandboxId}. I now have context of your sandbox and can help you build your app. Just ask me to create components and I'll automatically apply them!
 
 Tip: I automatically detect and install npm packages from your code imports (like react-router-dom, axios, etc.)`, 'system');
         }
-
+        
         setTimeout(() => {
           if (iframeRef.current) {
             iframeRef.current.src = data.url;
           }
         }, 100);
-
+        
         // Return the sandbox data so it can be used immediately
         return data;
       } else {
