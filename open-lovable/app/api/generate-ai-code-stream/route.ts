@@ -15,11 +15,19 @@ import { appConfig } from '@/config/app.config';
 export const dynamic = 'force-dynamic';
 
 // Check if we're using Vercel AI Gateway
-const isUsingAIGateway = !!process.env.AI_GATEWAY_API_KEY;
+// Force disable in no-sandbox mode
+const isSandboxDisabled = process.env.DISABLE_SANDBOX === "true";
+const isUsingAIGateway = !!process.env.AI_GATEWAY_API_KEY && !isSandboxDisabled;
 const aiGatewayBaseURL = 'https://ai-gateway.vercel.sh/v1';
+
+// Log when AI Gateway is disabled due to sandbox mode
+if (isSandboxDisabled && process.env.AI_GATEWAY_API_KEY) {
+  console.log('[generate-ai-code-stream] Sandbox disabled → forcing direct API (AI Gateway bypassed)');
+}
 
 console.log('[generate-ai-code-stream] AI Gateway config:', {
   isUsingAIGateway,
+  isSandboxDisabled,
   hasGroqKey: !!process.env.GROQ_API_KEY,
   hasAIGatewayKey: !!process.env.AI_GATEWAY_API_KEY
 });
