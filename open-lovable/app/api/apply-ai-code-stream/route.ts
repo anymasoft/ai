@@ -4,6 +4,7 @@ import { parseMorphEdits, applyMorphEditToFile } from '@/lib/morph-fast-apply';
 import type { SandboxState } from '@/types/sandbox';
 import type { ConversationState } from '@/types/conversation';
 import { sandboxManager } from '@/lib/sandbox/sandbox-manager';
+import { localSandboxManager } from '@/lib/sandbox/local-sandbox-manager';
 
 declare global {
   var conversationState: ConversationState | null;
@@ -574,6 +575,17 @@ export async function POST(request: NextRequest) {
 
             // Write the file using provider
             await providerInstance.writeFile(normalizedPath, fileContent);
+
+            // DIAGNOSTIC: Log what was written
+            const sandboxDirForDiag = localSandboxManager.getSandbox(sandboxId)?.dir;
+            console.log(`[apply-ai-code-stream] File written:`, {
+              normalizedPath,
+              sandboxId,
+              sandboxDir: sandboxDirForDiag,
+              fileSize: fileContent.length,
+              isUpdate,
+              isFirstChars: fileContent.substring(0, 80).replace(/\n/g, '\\n')
+            });
 
             // Update file cache
             if (global.sandboxState?.fileCache) {

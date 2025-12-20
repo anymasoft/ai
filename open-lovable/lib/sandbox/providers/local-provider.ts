@@ -57,6 +57,12 @@ export class LocalProvider extends SandboxProvider {
 
       // Register sandbox
       localSandboxManager.registerSandbox(sandboxId, sandboxDir, port);
+      console.log(`[LocalProvider] Registered sandbox:`, {
+        sandboxId,
+        sandboxDir,
+        requestedPort: port,
+        managerSandbox: localSandboxManager.getSandbox(sandboxId)
+      });
 
       // Install dependencies
       console.log(`[LocalProvider] Installing dependencies via npm install...`);
@@ -158,6 +164,15 @@ export class LocalProvider extends SandboxProvider {
 
     // Write file
     await fsAsync.writeFile(fullPath, content, 'utf-8');
+
+    // DIAGNOSTIC: Log file write
+    console.log(`[LocalProvider.writeFile] File written:`, {
+      sandboxId: this.sandboxInfo.sandboxId,
+      relativePath: filePath,
+      fullPath: fullPath,
+      contentSize: content.length,
+      firstChars: content.substring(0, 60).replace(/\n/g, '\\n')
+    });
   }
 
   async readFile(filePath: string): Promise<string> {
