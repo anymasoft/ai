@@ -643,13 +643,24 @@ Tip: I automatically detect and install npm packages from your code imports (lik
         // Clear pending packages after use
         (window as any).pendingPackages = [];
       }
-      
+
       // Use streaming endpoint for real-time feedback
       const effectiveSandboxData = overrideSandboxData || sandboxData;
+
+      // CRITICAL: Enforce sandboxId contract on UI side
+      if (isEdit && !effectiveSandboxData?.sandboxId) {
+        const errorMsg = '[applyGeneratedCode] ERROR: Cannot edit - no active sandbox. Sandbox was lost or not created.';
+        console.error(errorMsg);
+        throw new Error('Sandbox not initialized. Please create a new sandbox first.');
+      }
+
+      console.log('[applyGeneratedCode] Calling apply-ai-code-stream with sandboxId:', effectiveSandboxData?.sandboxId);
+      console.log('[applyGeneratedCode] isEdit:', isEdit);
+
       const response = await fetch('/api/apply-ai-code-stream', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
+        body: JSON.stringify({
           response: code,
           isEdit: isEdit,
           packages: pendingPackages,
