@@ -17,74 +17,208 @@ function sanitizeQuotes(text: string): string {
 }
 
 export async function POST(request: NextRequest) {
+  let url = '';
+
   try {
-    const { url } = await request.json();
-    
+    const body = await request.json();
+    url = body.url;
+
     if (!url) {
       return NextResponse.json({
         success: false,
         error: 'URL is required'
       }, { status: 400 });
     }
-    
+
     console.log('[scrape-url-enhanced] Scraping with Firecrawl:', url);
-    
+
     const FIRECRAWL_API_KEY = process.env.FIRECRAWL_API_KEY;
     if (!FIRECRAWL_API_KEY) {
-      throw new Error('FIRECRAWL_API_KEY environment variable is not set');
+      console.warn('[scrape-url-enhanced] FIRECRAWL_API_KEY not set, using fallback');
+      return NextResponse.json({
+        ok: true,
+        enhancedScrape: {
+          success: false,
+          fallback: true,
+          reason: 'FIRECRAWL_API_KEY_NOT_SET'
+        },
+        structured: {
+          title: new URL(url).hostname || 'Website',
+          description: '',
+          content: '',
+          url,
+          screenshot: null
+        },
+        metadata: {
+          scraper: 'firecrawl-enhanced',
+          timestamp: new Date().toISOString(),
+          cached: false
+        }
+      });
     }
-    
+
     // Make request to Firecrawl API with maxAge for 500% faster scraping
-    const firecrawlResponse = await fetch('https://api.firecrawl.dev/v1/scrape', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${FIRECRAWL_API_KEY}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        url,
-        formats: ['markdown', 'html', 'screenshot'],
-        waitFor: 3000,
-        timeout: 30000,
-        blockAds: true,
-        maxAge: 3600000, // Use cached data if less than 1 hour old (500% faster!)
-        actions: [
-          {
-            type: 'wait',
-            milliseconds: 2000
-          },
-          {
-            type: 'screenshot',
-            fullPage: false // Just visible viewport for performance
-          }
-        ]
-      })
-    });
-    
+    let firecrawlResponse: Response;
+    try {
+      firecrawlResponse = await fetch('https://api.firecrawl.dev/v1/scrape', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${FIRECRAWL_API_KEY}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          url,
+          formats: ['markdown', 'html', 'screenshot'],
+          waitFor: 3000,
+          timeout: 30000,
+          blockAds: true,
+          maxAge: 3600000, // Use cached data if less than 1 hour old (500% faster!)
+          actions: [
+            {
+              type: 'wait',
+              milliseconds: 2000
+            },
+            {
+              type: 'screenshot',
+              fullPage: false // Just visible viewport for performance
+            }
+          ]
+        })
+      });
+    } catch (fetchError) {
+      // Network error or timeout
+      console.warn('[scrape-url-enhanced] Fetch failed, using fallback:', fetchError);
+      return NextResponse.json({
+        ok: true,
+        enhancedScrape: {
+          success: false,
+          fallback: true,
+          reason: 'FETCH_ERROR'
+        },
+        structured: {
+          title: new URL(url).hostname || 'Website',
+          description: '',
+          content: '',
+          url,
+          screenshot: null
+        },
+        metadata: {
+          scraper: 'firecrawl-enhanced',
+          timestamp: new Date().toISOString(),
+          cached: false
+        }
+      });
+    }
+
+    // Check Firecrawl API response
     if (!firecrawlResponse.ok) {
-      const error = await firecrawlResponse.text();
-      throw new Error(`Firecrawl API error: ${error}`);
+      const errorText = await firecrawlResponse.text();
+      console.warn(
+        '[scrape-url-enhanced] Firecrawl API error:',
+        firecrawlResponse.status,
+        errorText.substring(0, 200)
+      );
+
+      // Determine error reason from status code
+      let errorReason = 'FIRECRAWL_ERROR';
+      if (firecrawlResponse.status === 408) {
+        errorReason = 'SCRAPE_TIMEOUT';
+      } else if (firecrawlResponse.status === 403) {
+        errorReason = 'FORBIDDEN';
+      } else if (firecrawlResponse.status >= 500) {
+        errorReason = 'FIRECRAWL_SERVER_ERROR';
+      }
+
+      // Return fallback response (always 200)
+      return NextResponse.json({
+        ok: true,
+        enhancedScrape: {
+          success: false,
+          fallback: true,
+          reason: errorReason,
+          statusCode: firecrawlResponse.status
+        },
+        structured: {
+          title: new URL(url).hostname || 'Website',
+          description: '',
+          content: '',
+          url,
+          screenshot: null
+        },
+        metadata: {
+          scraper: 'firecrawl-enhanced',
+          timestamp: new Date().toISOString(),
+          cached: false
+        }
+      });
     }
-    
-    const data = await firecrawlResponse.json();
-    
+
+    // Parse response
+    let data;
+    try {
+      data = await firecrawlResponse.json();
+    } catch (parseError) {
+      console.warn('[scrape-url-enhanced] Failed to parse Firecrawl response:', parseError);
+      return NextResponse.json({
+        ok: true,
+        enhancedScrape: {
+          success: false,
+          fallback: true,
+          reason: 'PARSE_ERROR'
+        },
+        structured: {
+          title: new URL(url).hostname || 'Website',
+          description: '',
+          content: '',
+          url,
+          screenshot: null
+        },
+        metadata: {
+          scraper: 'firecrawl-enhanced',
+          timestamp: new Date().toISOString(),
+          cached: false
+        }
+      });
+    }
+
+    // Check if Firecrawl reported success
     if (!data.success || !data.data) {
-      throw new Error('Failed to scrape content');
+      console.warn('[scrape-url-enhanced] Firecrawl reported failure:', data);
+      return NextResponse.json({
+        ok: true,
+        enhancedScrape: {
+          success: false,
+          fallback: true,
+          reason: 'FIRECRAWL_NO_DATA'
+        },
+        structured: {
+          title: new URL(url).hostname || 'Website',
+          description: '',
+          content: '',
+          url,
+          screenshot: null
+        },
+        metadata: {
+          scraper: 'firecrawl-enhanced',
+          timestamp: new Date().toISOString(),
+          cached: false
+        }
+      });
     }
-    
+
     const { markdown, metadata, screenshot, actions } = data.data;
     // html available but not used in current implementation
-    
+
     // Get screenshot from either direct field or actions result
     const screenshotUrl = screenshot || actions?.screenshots?.[0] || null;
-    
+
     // Sanitize the markdown content
     const sanitizedMarkdown = sanitizeQuotes(markdown || '');
-    
+
     // Extract structured data from the response
     const title = metadata?.title || '';
     const description = metadata?.description || '';
-    
+
     // Format content for AI
     const formattedContent = `
 Title: ${sanitizeQuotes(title)}
@@ -94,9 +228,13 @@ URL: ${url}
 Main Content:
 ${sanitizedMarkdown}
     `.trim();
-    
+
     return NextResponse.json({
-      success: true,
+      ok: true,
+      enhancedScrape: {
+        success: true,
+        fallback: false
+      },
       url,
       content: formattedContent,
       screenshot: screenshotUrl,
@@ -116,12 +254,30 @@ ${sanitizedMarkdown}
       },
       message: 'URL scraped successfully with Firecrawl (with caching for 500% faster performance)'
     });
-    
+
   } catch (error) {
-    console.error('[scrape-url-enhanced] Error:', error);
+    // Fallback for any unexpected errors
+    console.error('[scrape-url-enhanced] Unexpected error:', error);
+    const fallbackTitle = url ? new URL(url).hostname || 'Website' : 'Website';
     return NextResponse.json({
-      success: false,
-      error: (error as Error).message
-    }, { status: 500 });
+      ok: true,
+      enhancedScrape: {
+        success: false,
+        fallback: true,
+        reason: 'UNEXPECTED_ERROR'
+      },
+      structured: {
+        title: fallbackTitle,
+        description: '',
+        content: '',
+        url: url || '',
+        screenshot: null
+      },
+      metadata: {
+        scraper: 'firecrawl-enhanced',
+        timestamp: new Date().toISOString(),
+        cached: false
+      }
+    });
   }
 }
