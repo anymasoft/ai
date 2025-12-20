@@ -500,6 +500,7 @@ function AISandboxPage() {
       
       if (data.active && data.healthy && data.sandboxData) {
         console.log('[checkSandboxStatus] Setting sandboxData from API:', data.sandboxData);
+        console.log('[checkSandboxStatus] URL:', data.sandboxData.url, 'sandboxId:', data.sandboxData.sandboxId);
         setSandboxData(data.sandboxData);
         updateStatus('Sandbox active', true);
       } else if (data.active && !data.healthy) {
@@ -557,7 +558,8 @@ function AISandboxPage() {
       
       const data = await response.json();
       console.log('[createSandbox] Response data:', data);
-      
+      console.log('[createSandbox] Response URL:', data.url, 'sandboxId:', data.sandboxId);
+
       if (data.success) {
         sandboxCreationRef.current = false; // Reset the ref on success
         console.log('[createSandbox] Setting sandboxData from creation:', data);
@@ -596,13 +598,7 @@ function AISandboxPage() {
 
 Tip: I automatically detect and install npm packages from your code imports (like react-router-dom, axios, etc.)`, 'system');
         }
-        
-        setTimeout(() => {
-          if (iframeRef.current) {
-            iframeRef.current.src = data.url;
-          }
-        }, 100);
-        
+
         // Return the sandbox data so it can be used immediately
         return data;
       } else {
@@ -1521,6 +1517,14 @@ Tip: I automatically detect and install npm packages from your code imports (lik
       
       // Show sandbox iframe - keep showing during edits, only hide during initial loading
       if (sandboxData?.url) {
+        // CRITICAL: iframe MUST always use sandboxData.url from createSandbox, NEVER fallback
+        // Verify this is a sandbox Vite, not template Vite
+        const isSandboxUrl = sandboxData.url && sandboxData.url.includes('localhost:') && sandboxData.sandboxId;
+        if (!isSandboxUrl) {
+          console.warn('[renderPreview] ⚠️ WARNING: iframe URL doesn\'t look like sandbox URL:', sandboxData.url);
+        }
+        console.log('[renderPreview] Rendering iframe:', { url: sandboxData.url, sandboxId: sandboxData.sandboxId, isSandboxUrl });
+
         return (
           <div className="relative w-full h-full">
             <iframe
