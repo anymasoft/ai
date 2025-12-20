@@ -263,6 +263,7 @@ function parseAIResponse(response: string): ParsedResponse {
 
 export async function POST(request: NextRequest) {
   try {
+    console.log('[TRACE] apply start');
     const { response, isEdit = false, packages = [], sandboxId } = await request.json();
 
     if (!response) {
@@ -773,7 +774,9 @@ export async function POST(request: NextRequest) {
 
         // CRITICAL: Restart Vite after applying code
         // Without restart, Vite serves stale code from memory instead of reading updated files from disk
+        console.log('[TRACE] files written, before restart-vite');
         if (filteredFiles.length > 0) {
+          console.log('[TRACE] calling restart-vite');
           console.log('[apply-ai-code-stream] Files written, restarting Vite to ensure iframe sees updated code...');
           try {
             const protocol = process.env.NODE_ENV === 'production' ? 'https' : 'http';
@@ -784,6 +787,8 @@ export async function POST(request: NextRequest) {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' }
             });
+
+            console.log('[TRACE] restart-vite response received');
 
             if (!restartResponse.ok) {
               console.error('[apply-ai-code-stream] Vite restart failed:', await restartResponse.text());
@@ -804,6 +809,7 @@ export async function POST(request: NextRequest) {
         }
 
         // Send final results
+        console.log('[TRACE] before sendProgress complete');
         await sendProgress({
           type: 'complete',
           results,
@@ -811,6 +817,7 @@ export async function POST(request: NextRequest) {
           structure: parsed.structure,
           message: `Successfully applied ${results.filesCreated.length} files`
         });
+        console.log('[TRACE] after sendProgress complete');
 
         // Track applied files in conversation state
         if (global.conversationState && results.filesCreated.length > 0) {
