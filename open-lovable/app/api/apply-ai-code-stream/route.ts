@@ -355,11 +355,7 @@ export async function POST(request: NextRequest) {
 
     // Parse the AI response
     const parsed = parseAIResponse(response);
-    // MVP: Morph Fast Apply is completely disabled - all edits use full file rewrites
-    const morphEnabled = false;
-    const morphEdits: any[] = [];
-    console.log('[EDIT_REWRITE] Morph Fast Apply disabled - using full file rewrites for MVP');
-    
+
     // Log what was parsed
     console.log('[apply-ai-code-stream] Parsed result:');
     console.log('[apply-ai-code-stream] Files found:', parsed.files.length);
@@ -673,61 +669,7 @@ export async function POST(request: NextRequest) {
           return !configFiles.includes(fileName);
         });
 
-        // If Morph is enabled and we have edits, apply them before file writes
-        const morphUpdatedPaths = new Set<string>();
-        if (morphEnabled && morphEdits.length > 0) {
-          const morphSandbox = (global as any).activeSandbox || providerInstance;
-          if (!morphSandbox) {
-            console.warn('[apply-ai-code-stream] No sandbox available to apply Morph edits');
-            await sendProgress({ type: 'warning', message: 'No sandbox available to apply Morph edits' });
-          } else {
-            await sendProgress({ type: 'info', message: `Applying ${morphEdits.length} fast edits via Morph...` });
-            for (const [idx, edit] of morphEdits.entries()) {
-              try {
-                await sendProgress({ type: 'file-progress', current: idx + 1, total: morphEdits.length, fileName: edit.targetFile, action: 'morph-applying' });
-                const result = await applyMorphEditToFile({
-                  sandbox: morphSandbox,
-                  targetPath: edit.targetFile,
-                  instructions: edit.instructions,
-                  updateSnippet: edit.update
-                });
-                if (result.success && result.normalizedPath) {
-                  console.log('[apply-ai-code-stream] Morph updated', result.normalizedPath);
-                  morphUpdatedPaths.add(result.normalizedPath);
-                  if (results.filesUpdated) results.filesUpdated.push(result.normalizedPath);
-                  await sendProgress({ type: 'file-complete', fileName: result.normalizedPath, action: 'morph-updated' });
-                } else {
-                  const msg = result.error || 'Unknown Morph error';
-                  console.error('[apply-ai-code-stream] Morph apply failed for', edit.targetFile, msg);
-                  if (results.errors) results.errors.push(`Morph apply failed for ${edit.targetFile}: ${msg}`);
-                  await sendProgress({ type: 'file-error', fileName: edit.targetFile, error: msg });
-                }
-              } catch (err) {
-                const msg = (err as Error).message;
-                console.error('[apply-ai-code-stream] Morph apply exception for', edit.targetFile, msg);
-                if (results.errors) results.errors.push(`Morph apply exception for ${edit.targetFile}: ${msg}`);
-                await sendProgress({ type: 'file-error', fileName: edit.targetFile, error: msg });
-              }
-            }
-          }
-        }
-
-        // Avoid overwriting Morph-updated files in the file write loop
-        if (morphUpdatedPaths.size > 0) {
-          filteredFiles = filteredFiles.filter(file => {
-            if (!file?.path) return true;
-            let normalizedPath = file.path.startsWith('/') ? file.path.slice(1) : file.path;
-            const fileName = normalizedPath.split('/').pop() || '';
-            if (!normalizedPath.startsWith('src/') &&
-                !normalizedPath.startsWith('public/') &&
-                normalizedPath !== 'index.html' &&
-                !configFiles.includes(fileName)) {
-              normalizedPath = 'src/' + normalizedPath;
-            }
-            return !morphUpdatedPaths.has(normalizedPath);
-          });
-        }
-        
+        // GENERATE MODE: Process files (edit mode has already returned above)
         for (const [index, file] of filteredFiles.entries()) {
           try {
             // Send progress for each file
