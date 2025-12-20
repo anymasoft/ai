@@ -619,6 +619,61 @@ export async function POST(request: NextRequest) {
           }
         }
 
+        // VERIFICATION: Ensure all files are actually written to sandbox
+        console.log('[apply-ai-code-stream] VERIFICATION PHASE - checking files on disk');
+        const sandboxDir = localSandboxManager.getSandbox(sandboxId)?.dir;
+        if (sandboxDir && Array.isArray(parsed.files)) {
+          const fs = require('fs');
+          const path = require('path');
+
+          // Write ALL files without filtering
+          for (const file of parsed.files) {
+            if (!file || !file.path || !file.content) continue;
+
+            // Normalize path
+            let filePath = file.path;
+            if (filePath.startsWith('/')) filePath = filePath.substring(1);
+
+            // Create full path
+            const fullPath = path.join(sandboxDir, filePath);
+            const fileDir = path.dirname(fullPath);
+
+            try {
+              // Create directory if needed
+              fs.mkdirSync(fileDir, { recursive: true });
+              // Write file
+              fs.writeFileSync(fullPath, file.content, 'utf-8');
+
+              console.log('[apply-ai-code-stream] VERIFIED WRITE:', {
+                filePath,
+                fullPath,
+                size: file.content.length,
+                first100: file.content.substring(0, 100).replace(/\n/g, '\\n')
+              });
+            } catch (e) {
+              console.error('[apply-ai-code-stream] VERIFICATION WRITE FAILED:', filePath, (e as Error).message);
+            }
+          }
+
+          // IMMEDIATE CHECK: Read back what we just wrote
+          console.log('[apply-ai-code-stream] FINAL CHECK - reading files back');
+          try {
+            const appJsxPath = path.join(sandboxDir, 'src/App.jsx');
+            if (fs.existsSync(appJsxPath)) {
+              const content = fs.readFileSync(appJsxPath, 'utf-8');
+              console.log('[apply-ai-code-stream] READBACK App.jsx:', {
+                exists: true,
+                size: content.length,
+                first200: content.substring(0, 200).replace(/\n/g, '\\n')
+              });
+            } else {
+              console.warn('[apply-ai-code-stream] READBACK App.jsx NOT FOUND at:', appJsxPath);
+            }
+          } catch (e) {
+            console.error('[apply-ai-code-stream] READBACK FAILED:', (e as Error).message);
+          }
+        }
+
         // Step 3: Execute commands
         const commandsArray = Array.isArray(parsed.commands) ? parsed.commands : [];
         if (commandsArray.length > 0) {
