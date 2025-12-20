@@ -1525,6 +1525,11 @@ Tip: I automatically detect and install npm packages from your code imports (lik
         }
         console.log('[renderPreview] Rendering iframe:', { url: sandboxData.url, sandboxId: sandboxData.sandboxId, isSandboxUrl });
 
+        // Extract port for diagnostic
+        const portMatch = sandboxData.url.match(/:(\d+)/);
+        const port = portMatch ? portMatch[1] : 'unknown';
+        console.log('[renderPreview] Sandbox URL port:', port, 'sandboxId:', sandboxData.sandboxId);
+
         return (
           <div className="relative w-full h-full">
             <iframe
