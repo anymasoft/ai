@@ -27,6 +27,9 @@ dist/
 build/
 *.log
 
+# Local sandboxes (runtime, not part of repo)
+sandboxes/
+
 # ignore all environment files
 .env
 .env.*
