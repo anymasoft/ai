@@ -754,6 +754,24 @@ Tip: I automatically detect and install npm packages from your code imports (lik
                 case 'complete':
                   finalData = data;
                   setCodeApplicationState({ stage: 'complete' });
+
+                  // CRITICAL:
+                  // Backend sends { type: 'complete' } when sandbox is fully ready.
+                  // UI MUST stop loading and update iframe on this event.
+                  // Do not wait for additional signals.
+
+                  // Update iframe with current sandbox URL to ensure UI shows updated code
+                  if (effectiveSandboxData?.url) {
+                    setTimeout(() => {
+                      if (iframeRef.current) {
+                        // Add timestamp to force iframe reload and show updated code
+                        const urlWithTimestamp = `${effectiveSandboxData.url}?t=${Date.now()}&applied=true`;
+                        iframeRef.current.src = urlWithTimestamp;
+                        console.log('[applyGeneratedCode] Updated iframe URL after code application:', urlWithTimestamp);
+                      }
+                    }, 500);
+                  }
+
                   // Clear the state after a delay
                   setTimeout(() => {
                     setCodeApplicationState({ stage: null });
