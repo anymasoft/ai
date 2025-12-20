@@ -81,9 +81,20 @@ export async function POST() {
     }
 
     // Create new sandbox using factory
+    console.log('[create-ai-sandbox-v2] SANDBOX PROVIDER DEBUG:');
+    console.log('[create-ai-sandbox-v2]   - Calling SandboxFactory.create()');
     const provider = SandboxFactory.create();
+    console.log('[create-ai-sandbox-v2]   - Provider created, class:', provider.constructor.name);
     const sandboxInfo = await provider.createSandbox();
-    
+
+    // DIAGNOSTIC LOG: Verify sandbox was created with correct info
+    console.log('[CREATE-SANDBOX-INFO]', JSON.stringify({
+      sandboxId: sandboxInfo.sandboxId,
+      url: sandboxInfo.url,
+      provider: sandboxInfo.provider,
+      timestamp: new Date().toISOString()
+    }, null, 2));
+
     console.log('[create-ai-sandbox-v2] Setting up Vite React app...');
     await provider.setupViteApp();
 
