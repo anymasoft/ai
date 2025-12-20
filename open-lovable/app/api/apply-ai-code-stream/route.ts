@@ -280,19 +280,16 @@ export async function POST(request: NextRequest) {
     console.log('[apply-ai-code-stream] packages:', packages);
     console.log('[apply-ai-code-stream] sandboxId:', sandboxId);
 
-    // CRITICAL: Enforce sandboxId contract
-    if (isEdit && !sandboxId) {
-      console.error('[apply-ai-code-stream] ERROR: isEdit=true but sandboxId is missing');
+    // CRITICAL: sandboxId MUST be provided
+    // Do NOT create a new sandbox - apply code to existing sandbox only
+    if (!sandboxId) {
+      console.error('[apply-ai-code-stream] ERROR: sandboxId is required. Call /api/create-ai-sandbox-v2 first.');
       return NextResponse.json({
-        error: 'sandboxId is required for edits. UI lost sandbox state.'
+        error: 'sandboxId is required. Please create a sandbox first by calling /api/create-ai-sandbox-v2'
       }, { status: 400 });
     }
 
-    if (!sandboxId) {
-      console.log('[apply-ai-code-stream] New sandbox will be created (isEdit=false, sandboxId=undefined)');
-    } else {
-      console.log('[apply-ai-code-stream] Using existing sandbox:', sandboxId);
-    }
+    console.log('[apply-ai-code-stream] Using sandbox:', sandboxId);
 
     // Parse the AI response
     const parsed = parseAIResponse(response);
@@ -318,125 +315,18 @@ export async function POST(request: NextRequest) {
       global.existingFiles = new Set<string>();
     }
 
-    // Track if a new sandbox was created (for reporting to UI via streaming)
-    let newSandboxId: string | null = null;
-    let newSandboxUrl: string | null = null;
-    let sandboxWasReplaced = false;
+    // Get provider for the sandbox
+    // sandboxId is guaranteed to exist at this point (checked above)
+    const provider = sandboxManager.getProvider(sandboxId);
 
-    // Try to get provider from sandbox manager first
-    let provider = sandboxId ? sandboxManager.getProvider(sandboxId) : sandboxManager.getActiveProvider();
-
-    // Fall back to global state if not found in manager
     if (!provider) {
-      provider = global.activeSandboxProvider;
+      console.error(`[apply-ai-code-stream] ERROR: Sandbox not found: ${sandboxId}. Session may have expired.`);
+      return NextResponse.json({
+        error: `Sandbox not found: ${sandboxId}. Please create a new sandbox by calling /api/create-ai-sandbox-v2`
+      }, { status: 404 });
     }
 
-    // If we have a sandboxId but no provider, try to get or create one
-    if (!provider && sandboxId) {
-      console.log(`[apply-ai-code-stream] No provider found for sandbox ${sandboxId}, attempting to get or create...`);
-
-      // CRITICAL: For edits, sandbox MUST exist. Never auto-create.
-      if (isEdit) {
-        console.error(`[apply-ai-code-stream] ERROR: Cannot create new sandbox for edit. Sandbox ${sandboxId} expired or lost.`);
-        return NextResponse.json({
-          error: `Sandbox not found or expired. Please create a new sandbox.`
-        }, { status: 400 });
-      }
-
-      try {
-        provider = await sandboxManager.getOrCreateProvider(sandboxId);
-
-        // If we got a new provider (not reconnected), we need to create a new sandbox
-        if (!provider.getSandboxInfo()) {
-          console.log(`[apply-ai-code-stream] Creating new sandbox since reconnection failed for ${sandboxId}`);
-          await provider.createSandbox();
-          await provider.setupViteApp();
-
-          // Get REAL sandbox ID from provider (not the old request ID)
-          const realSandboxInfo = provider.getSandboxInfo();
-          const realSandboxId = realSandboxInfo.sandboxId;
-          newSandboxId = realSandboxId;
-          newSandboxUrl = realSandboxInfo.url;
-          sandboxWasReplaced = true;
-
-          // Register with REAL ID, not the old one
-          sandboxManager.registerSandbox(realSandboxId, provider);
-
-          // Update legacy global state with real ID
-          global.activeSandboxProvider = provider;
-          global.sandboxData = {
-            sandboxId: realSandboxId,
-            url: realSandboxInfo.url
-          };
-
-          console.log(`[apply-ai-code-stream] Sandbox replaced: old=${sandboxId}, new=${realSandboxId}`);
-        } else {
-          // Reconnection succeeded, update global state
-          global.activeSandboxProvider = provider;
-        }
-
-        console.log(`[apply-ai-code-stream] Successfully got provider for sandbox ${sandboxId}`);
-      } catch (providerError) {
-        console.error(`[apply-ai-code-stream] Failed to get or create provider for sandbox ${sandboxId}:`, providerError);
-        return NextResponse.json({
-          success: false,
-          error: `Failed to create sandbox provider for ${sandboxId}. The sandbox may have expired.`,
-          results: {
-            filesCreated: [],
-            packagesInstalled: [],
-            commandsExecuted: [],
-            errors: [`Sandbox provider creation failed: ${(providerError as Error).message}`]
-          },
-          explanation: parsed.explanation,
-          structure: parsed.structure,
-          parsedFiles: parsed.files,
-          message: `Parsed ${parsed.files.length} files but couldn't apply them - sandbox reconnection failed.`
-        }, { status: 500 });
-      }
-    }
-
-    // If we still don't have a provider, create a new one
-    if (!provider) {
-      console.log(`[apply-ai-code-stream] No active provider found, creating new sandbox...`);
-      try {
-        const { SandboxFactory } = await import('@/lib/sandbox/factory');
-        provider = SandboxFactory.create();
-        const sandboxInfo = await provider.createSandbox();
-        await provider.setupViteApp();
-
-        newSandboxId = sandboxInfo.sandboxId;
-        newSandboxUrl = sandboxInfo.url;
-        sandboxWasReplaced = true;
-
-        // Register with sandbox manager
-        sandboxManager.registerSandbox(sandboxInfo.sandboxId, provider);
-
-        // Store in legacy global state
-        global.activeSandboxProvider = provider;
-        global.sandboxData = {
-          sandboxId: sandboxInfo.sandboxId,
-          url: sandboxInfo.url
-        };
-
-        console.log(`[apply-ai-code-stream] Created new sandbox ${sandboxInfo.sandboxId}`);
-      } catch (createError) {
-        console.error(`[apply-ai-code-stream] Failed to create new sandbox:`, createError);
-        return NextResponse.json({
-          success: false,
-          error: `Failed to create new sandbox: ${createError instanceof Error ? createError.message : 'Unknown error'}`,
-          results: {
-            filesCreated: [],
-            packagesInstalled: [],
-            commandsExecuted: [],
-            errors: [`Sandbox creation failed: ${createError instanceof Error ? createError.message : 'Unknown error'}`]
-          },
-          explanation: parsed.explanation,
-          structure: parsed.structure,
-          parsedFiles: parsed.files,
-          message: `Parsed ${parsed.files.length} files but couldn't apply them - sandbox creation failed.`
-        }, { status: 500 });
-      }
-    }
+    console.log(`[apply-ai-code-stream] Found provider for sandbox: ${sandboxId}`);
 
     // Create a response stream for real-time updates
     const encoder = new TextEncoder();
@@ -449,19 +339,9 @@ export async function POST(request: NextRequest) {
       await writer.write(encoder.encode(message));
     };
 
-    // Start processing in background (pass provider, request, and sandbox info to the async function)
-    (async (providerInstance, req, newSandboxIdInfo, newSandboxUrlInfo, wasReplaced) => {
-      // If sandbox was replaced, notify UI immediately
-      if (wasReplaced && newSandboxIdInfo) {
-        await sendProgress({
-          type: 'sandbox-replaced',
-          oldSandboxId: sandboxId,
-          newSandboxId: newSandboxIdInfo,
-          newSandboxUrl: newSandboxUrlInfo,
-          message: 'Sandbox session was replaced with a new one'
-        });
-        console.log(`[apply-ai-code-stream] Notified UI of sandbox replacement: ${newSandboxIdInfo}`);
-      }
+    // Start processing in background
+    (async (providerInstance, req) => {
+      // No sandbox replacement logic needed - apply always uses existing sandbox
 
       const results = {
         filesCreated: [] as string[],
@@ -842,7 +722,7 @@ export async function POST(request: NextRequest) {
       } finally {
         await writer.close();
       }
-    })(provider, request, newSandboxId, newSandboxUrl, sandboxWasReplaced);
+    })(provider, request);
 
     // Return the stream
     return new Response(stream.readable, {
