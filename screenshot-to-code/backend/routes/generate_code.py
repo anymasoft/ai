@@ -727,8 +727,6 @@ Update instructions:
         ]
 
         # Use gpt-4.1-mini for fast single-element edits
-        from llm import GPT_4_1_MINI
-
         client = openai.AsyncOpenAI(
             api_key=context.extracted_params.openai_api_key,
             base_url=context.extracted_params.openai_base_url,
@@ -736,7 +734,7 @@ Update instructions:
 
         # Single LLM call for element edit (no streaming, no variants)
         response = await client.chat.completions.create(
-            model=GPT_4_1_MINI,
+            model=Llm.GPT_4_1_MINI.value,
             messages=messages,
             temperature=0.7,
             max_tokens=2000,
