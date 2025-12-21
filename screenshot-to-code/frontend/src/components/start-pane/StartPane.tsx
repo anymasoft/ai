@@ -15,9 +15,9 @@ const StartPane: React.FC<Props> = ({ doCreate, importFromCode, settings }) => {
   return (
     <div className="flex flex-col justify-center items-center gap-y-10">
       <ImageUpload setReferenceImages={doCreate} />
+      {/* 🔒 SECURITY: screenshotOneApiKey удален - используется только на backend */}
       <UrlInputSection
         doCreate={doCreate}
-        screenshotOneApiKey={settings.screenshotOneApiKey}
       />
       <ImportCodeSection importFromCode={importFromCode} />
     </div>

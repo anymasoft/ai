@@ -63,12 +63,11 @@ function App() {
   } = useAppStore();
 
   // Settings
+  // 🔒 SECURITY: API ключи удалены - используются только env vars на backend
   const [settings, setSettings] = usePersistedState<Settings>(
     {
-      openAiApiKey: null,
+      // ❌ openAiApiKey, anthropicApiKey, screenshotOneApiKey - УДАЛЕНЫ
       openAiBaseURL: null,
-      anthropicApiKey: null,
-      screenshotOneApiKey: null,
       isImageGenerationEnabled: true,
       editorTheme: EditorTheme.COBALT,
       generatedCodeConfig: Stack.HTML_TAILWIND,
@@ -174,8 +173,15 @@ function App() {
     // Set the app state to coding during generation
     setAppState(AppState.CODING);
 
-    // Merge settings with params
-    const updatedParams = { ...params, ...settings };
+    // 🔒 SECURITY: Only merge safe settings, NO API keys sent to backend
+    // API ключи теперь используются только на backend через env vars
+    const updatedParams = {
+      ...params,
+      // Только безопасные settings:
+      generatedCodeConfig: settings.generatedCodeConfig,
+      isImageGenerationEnabled: settings.isImageGenerationEnabled,
+      openAiBaseURL: settings.openAiBaseURL,
+    };
 
     // Create variants dynamically - start with 4 to handle most cases
     // Backend will use however many it needs (typically 3)
@@ -387,7 +393,8 @@ function App() {
           {/* Show tip link until coding is complete */}
           {/* {appState !== AppState.CODE_READY && <TipLink />} */}
 
-          {IS_RUNNING_ON_CLOUD && !settings.openAiApiKey && <OnboardingNote />}
+          {/* 🔒 SECURITY: Проверка openAiApiKey удалена - API ключи теперь только на backend */}
+          {/* OnboardingNote может быть показан только если backend не настроен */}
 
           {appState === AppState.INITIAL && (
             <GenerateFromText doCreateFromText={doCreateFromText} />

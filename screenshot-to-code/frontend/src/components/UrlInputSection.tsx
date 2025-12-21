@@ -5,22 +5,15 @@ import { Input } from "./ui/input";
 import { toast } from "react-hot-toast";
 
 interface Props {
-  screenshotOneApiKey: string | null;
   doCreate: (urls: string[], inputMode: "image" | "video") => void;
 }
 
-export function UrlInputSection({ doCreate, screenshotOneApiKey }: Props) {
+export function UrlInputSection({ doCreate }: Props) {
   const [isLoading, setIsLoading] = useState(false);
   const [referenceUrl, setReferenceUrl] = useState("");
 
   async function takeScreenshot() {
-    if (!screenshotOneApiKey) {
-      toast.error(
-        "Please add a ScreenshotOne API key in the Settings dialog. This is optional - you can also drag/drop and upload images directly.",
-        { duration: 8000 }
-      );
-      return;
-    }
+    // 🔒 SECURITY: screenshotOneApiKey теперь управляется только на backend через env vars
 
     if (!referenceUrl) {
       toast.error("Please enter a URL");
@@ -30,11 +23,12 @@ export function UrlInputSection({ doCreate, screenshotOneApiKey }: Props) {
     if (referenceUrl) {
       try {
         setIsLoading(true);
+        // API ключ больше не отправляется из фронтенда - backend использует env var
         const response = await fetch(`${HTTP_BACKEND_URL}/api/screenshot`, {
           method: "POST",
           body: JSON.stringify({
             url: referenceUrl,
-            apiKey: screenshotOneApiKey,
+            // ❌ apiKey больше НЕ отправляется
           }),
           headers: {
             "Content-Type": "application/json",
