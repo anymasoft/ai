@@ -58,6 +58,8 @@ export function generateCode(
   let receivedGenerationComplete = false;
   // 🔧 PARTIAL UPDATE: Store partial element HTML from backend
   let partialElementHtml = "";
+  // 🔧 PARTIAL UPDATE: Check if this is a partial update
+  const isPartialUpdate = (params as any).updateMode === "partial";
 
   ws.addEventListener("open", () => {
     ws.send(JSON.stringify(params));
@@ -65,6 +67,30 @@ export function generateCode(
 
   ws.addEventListener("message", async (event: MessageEvent) => {
     const response = JSON.parse(event.data) as WebSocketResponse;
+
+    // 🔧 PARTIAL UPDATE: Separate protocol for element mutations
+    if (isPartialUpdate) {
+      // In partial mode, ONLY handle partial-specific messages
+      if (response.type === "partial_element_html") {
+        console.log("Received partial element HTML");
+        partialElementHtml = response.value || "";
+      } else if (response.type === "partial_success") {
+        console.log("Partial update succeeded, applying element to DOM");
+        callbacks.onPartialSuccess(partialElementHtml);
+        receivedGenerationComplete = true;
+      } else if (response.type === "partial_failed") {
+        console.log("Partial update failed, falling back to full regenerate");
+        callbacks.onPartialFailed();
+        receivedGenerationComplete = true;
+      } else if (response.type === "error") {
+        console.error("Error in partial update", response.value);
+        toast.error(response.value!);
+      }
+      // Ignore: chunk, status, setCode, variantComplete, variantError, variantCount, generation_complete
+      return;
+    }
+
+    // Standard full-document generation protocol
     if (response.type === "chunk") {
       callbacks.onChange(response.value!, response.variantIndex!);
     } else if (response.type === "status") {
@@ -80,18 +106,6 @@ export function generateCode(
     } else if (response.type === "error") {
       console.error("Error generating code", response.value);
       toast.error(response.value!);
-    } else if (response.type === "partial_element_html") {
-      // 🔧 PARTIAL UPDATE: Received element HTML from backend
-      console.log("Received partial element HTML");
-      partialElementHtml = response.value || "";
-    } else if (response.type === "partial_success") {
-      // 🔧 PARTIAL UPDATE: Update succeeded for single element
-      console.log("Partial update succeeded, applying element to DOM");
-      callbacks.onPartialSuccess(partialElementHtml);
-    } else if (response.type === "partial_failed") {
-      // 🔧 PARTIAL UPDATE: Failed, will fallback to full regenerate
-      console.log("Partial update failed, falling back to full regenerate");
-      callbacks.onPartialFailed();
     } else if (response.type === "generation_complete") {
       // 🔧 Mark that we received the final signal from backend
       console.log("Received generation_complete signal from backend");

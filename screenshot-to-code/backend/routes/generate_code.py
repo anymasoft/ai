@@ -56,6 +56,7 @@ MessageType = Literal[
     "variantError",
     "variantCount",
     "generation_complete",
+    "partial_element_html",
     "partial_success",
     "partial_failed",
 ]
@@ -220,6 +221,7 @@ class ExtractedParams:
     history: List[Dict[str, Any]]
     is_imported_from_code: bool
     update_mode: str = "full"  # 🔧 PARTIAL UPDATE: "full" or "partial"
+    selected_element: str = ""  # 🔧 PARTIAL UPDATE: outerHTML of selected element
 
 
 class ParameterExtractionStage:
@@ -284,6 +286,9 @@ class ParameterExtractionStage:
         # Extract update mode for partial updates (Select & Edit)
         update_mode = params.get("updateMode", "full")
 
+        # 🔧 PARTIAL UPDATE: Extract selected element for partial mutations
+        selected_element = params.get("selectedElement", "")
+
         return ExtractedParams(
             stack=validated_stack,
             input_mode=validated_input_mode,
@@ -296,6 +301,7 @@ class ParameterExtractionStage:
             history=history,
             is_imported_from_code=is_imported_from_code,
             update_mode=update_mode,
+            selected_element=selected_element,
         )
 
     # 🔒 SECURITY: Удалена функция _get_from_settings_dialog_or_env
@@ -437,14 +443,12 @@ class ParallelGenerationStage:
         openai_base_url: str | None,
         anthropic_api_key: str | None,
         should_generate_images: bool,
-        update_mode: str = "full",  # 🔧 PARTIAL UPDATE: Pass update mode
     ):
         self.send_message = send_message
         self.openai_api_key = openai_api_key
         self.openai_base_url = openai_base_url
         self.anthropic_api_key = anthropic_api_key
         self.should_generate_images = should_generate_images
-        self.update_mode = update_mode  # Store for use in _process_chunk
 
     async def process_variants(
         self,
@@ -532,9 +536,6 @@ class ParallelGenerationStage:
 
     async def _process_chunk(self, content: str, variant_index: int):
         """Process streaming chunks"""
-        # 🔧 PARTIAL UPDATE: Don't send chunks in partial mode, they will be sent as partial_element_html
-        if self.update_mode == "partial":
-            return
         await self.send_message("chunk", content, variant_index)
 
     async def _stream_openai_with_error_handling(
@@ -693,6 +694,85 @@ class WebSocketSetupMiddleware(Middleware):
             await context.ws_comm.close()
 
 
+async def run_partial_update(context: PipelineContext) -> None:
+    """
+    🔧 PARTIAL UPDATE: Handle atomic element mutation without variant pipeline.
+    This is a separate execution path from full document generation.
+    """
+    try:
+        assert context.extracted_params is not None
+        assert context.ws_comm is not None
+
+        # Get the selected element HTML to edit
+        selected_element = context.extracted_params.selected_element
+        if not selected_element:
+            raise ValueError("selectedElement is required for partial updates")
+
+        # Prepare the prompt for element editing
+        messages: List[ChatCompletionMessageParam] = [
+            {
+                "role": "user",
+                "content": f"""You are editing a SINGLE HTML element.
+Return ONLY the updated HTML of this element.
+Do NOT return the entire document.
+Do NOT add explanations or markdown.
+Return valid HTML only.
+
+Current element:
+{selected_element}
+
+Update instructions:
+{context.extracted_params.prompt.get('text', '')}"""
+            }
+        ]
+
+        # Use gpt-4.1-mini for fast single-element edits
+        from llm import GPT_4_1_MINI
+
+        client = openai.AsyncOpenAI(
+            api_key=context.extracted_params.openai_api_key,
+            base_url=context.extracted_params.openai_base_url,
+        )
+
+        # Single LLM call for element edit (no streaming, no variants)
+        response = await client.chat.completions.create(
+            model=GPT_4_1_MINI,
+            messages=messages,
+            temperature=0.7,
+            max_tokens=2000,
+        )
+
+        # Extract the updated element HTML
+        element_html = response.choices[0].message.content or ""
+
+        print(f"Partial update generated {len(element_html)} chars")
+
+        # Send the element HTML via dedicated message type
+        await context.websocket.send_json({
+            "type": "partial_element_html",
+            "value": element_html
+        })
+        print("Sent partial_element_html for element update")
+
+        # Send success signal (no HTML in this message)
+        await context.websocket.send_json({
+            "type": "partial_success"
+        })
+        print("Partial update succeeded")
+
+        # Close the connection
+        await context.ws_comm.close()
+        context.ws_comm.is_closed = True
+
+    except ValueError as e:
+        print(f"Partial update validation error: {e}")
+        await context.throw_error(str(e))
+    except Exception as e:
+        print(f"Partial update error: {e}")
+        traceback.print_exc()
+        await context.throw_error(f"Partial update failed: {str(e)}")
+
+
 class ParameterExtractionMiddleware(Middleware):
     """Handles parameter extraction and validation"""
 
@@ -714,6 +794,26 @@ class ParameterExtractionMiddleware(Middleware):
             f"Generating {context.extracted_params.stack} code in {context.extracted_params.input_mode} mode"
         )
 
+        await next_func()
+
+
+class PartialUpdateMiddleware(Middleware):
+    """🔧 PARTIAL UPDATE: Separate execution path for atomic element mutations"""
+
+    async def process(
+        self, context: PipelineContext, next_func: Callable[[], Awaitable[None]]
+    ) -> None:
+        # Check if this is a partial update request
+        assert context.extracted_params is not None
+
+        if context.extracted_params.update_mode == "partial":
+            # Handle partial update separately, skip rest of pipeline
+            print("🔧 PARTIAL UPDATE: Bypassing variant pipeline for element mutation")
+            await run_partial_update(context)
+            # Don't call next_func() - this is a separate execution path
+            return
+
+        # Otherwise continue with normal pipeline
         await next_func()
 
 
@@ -783,7 +883,6 @@ class CodeGenerationMiddleware(Middleware):
                     openai_base_url=context.extracted_params.openai_base_url,
                     anthropic_api_key=context.extracted_params.anthropic_api_key,
                     should_generate_images=context.extracted_params.should_generate_images,
-                    update_mode=context.extracted_params.update_mode,  # 🔧 PARTIAL UPDATE
                 )
 
                 context.variant_completions = (
@@ -829,54 +928,6 @@ class PostProcessingMiddleware(Middleware):
             context.completions, context.prompt_messages, context.websocket
         )
 
-        # 🔧 PARTIAL UPDATE: Send element HTML separately for partial updates
-        if (context.extracted_params and
-            context.extracted_params.update_mode == "partial" and
-            context.ws_comm and not context.ws_comm.is_closed):
-            try:
-                # Get the partial element HTML (no chunks were sent during generation)
-                element_html = context.completions[0] if context.completions else ""
-
-                if element_html.strip():
-                    # Check if it's a single element (no html/body tags)
-                    is_single_element = (
-                        not element_html.count("</html>") and
-                        not element_html.count("</body>") and
-                        (element_html.count("<") == element_html.count(">"))
-                    )
-
-                    if is_single_element:
-                        # Send element HTML so frontend can apply it to DOM
-                        await context.websocket.send_json({
-                            "type": "partial_element_html",
-                            "value": element_html
-                        })
-                        print("Sent partial_element_html for element update")
-
-                        # Send success signal
-                        await context.websocket.send_json({
-                            "type": "partial_success"
-                        })
-                        print("Sent partial_success")
-                    else:
-                        # Full document returned instead of element
-                        await context.websocket.send_json({
-                            "type": "partial_failed"
-                        })
-                        print("Partial update returned full document, sending partial_failed")
-                else:
-                    # Empty response
-                    await context.websocket.send_json({
-                        "type": "partial_failed"
-                    })
-                    print("Partial update returned empty response")
-            except Exception as e:
-                print(f"Warning: Error handling partial update: {e}")
-                try:
-                    await context.websocket.send_json({"type": "partial_failed"})
-                except:
-                    pass
-
         # 🔧 Send final signal before closing WebSocket
         # This ensures frontend knows generation is complete and isn't left waiting
         try:
@@ -897,6 +948,7 @@ async def stream_code(websocket: WebSocket):
     # Configure the pipeline
     pipeline.use(WebSocketSetupMiddleware())
     pipeline.use(ParameterExtractionMiddleware())
+    pipeline.use(PartialUpdateMiddleware())  # 🔧 PARTIAL UPDATE: Check if partial update and bypass variant pipeline
     pipeline.use(StatusBroadcastMiddleware())
     pipeline.use(PromptCreationMiddleware())
     pipeline.use(CodeGenerationMiddleware())
