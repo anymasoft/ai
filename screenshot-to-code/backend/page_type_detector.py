@@ -5,10 +5,9 @@ Uses Vision LLM for fast, cheap classification.
 """
 
 import json
-import asyncio
 from typing import Literal
-from models import stream_gemini_response, stream_openai_response, stream_claude_response
-from config import ANTHROPIC_API_KEY, GEMINI_API_KEY, OPENAI_API_KEY, OPENAI_BASE_URL
+from models import stream_openai_response
+from config import OPENAI_API_KEY, OPENAI_BASE_URL
 from llm import Llm
 from openai.types.chat import ChatCompletionMessageParam, ChatCompletionContentPartParam
 
@@ -32,14 +31,14 @@ Rules:
 
 async def detect_page_type(
     image_data_url: str,
-    model: Llm = Llm.CLAUDE_3_5_SONNET,
+    model: Llm = Llm.GPT_4_1_MINI,
 ) -> tuple[PageType, float]:
     """
     Detect page type from screenshot using Vision LLM.
 
     Args:
         image_data_url: Base64 or URL of the screenshot
-        model: LLM model to use for detection
+        model: LLM model to use for detection (default: GPT_4_1_MINI)
 
     Returns:
         (page_type, confidence) tuple
@@ -73,39 +72,17 @@ async def detect_page_type(
         async def noop_callback(x: str) -> None:
             pass
 
-        # Call appropriate LLM provider with minimal tokens
-        response_text = ""
-
-        if model in [Llm.CLAUDE_3_5_SONNET, Llm.CLAUDE_OPUS_2025_05_14]:
-            # Use Claude
-            result = await stream_claude_response(
-                messages=messages,
-                api_key=ANTHROPIC_API_KEY,
-                callback=noop_callback,
-                model_name=model.value,
-            )
-            response_text = result["code"]
-
-        elif model in [Llm.GPT_4_OMNI, Llm.GPT_4_OMNI_MINI]:
-            # Use OpenAI
-            result = await stream_openai_response(
-                messages=messages,
-                api_key=OPENAI_API_KEY,
-                base_url=OPENAI_BASE_URL,
-                callback=noop_callback,
-                model=model.value,
-            )
-            response_text = result["code"]
-
-        elif model in [Llm.GEMINI_2_0_FLASH]:
-            # Use Gemini
-            result = await stream_gemini_response(
-                messages=messages,
-                api_key=GEMINI_API_KEY,
-                callback=noop_callback,
-                model=model.value,
-            )
-            response_text = result["code"]
+        # Use OpenAI GPT-4.1-mini with temperature=0 for deterministic classification
+        result = await stream_openai_response(
+            messages=messages,
+            api_key=OPENAI_API_KEY,
+            base_url=OPENAI_BASE_URL,
+            callback=noop_callback,
+            model=Llm.GPT_4_1_MINI.value,
+            temperature=0.0,
+            max_tokens=100,
+        )
+        response_text = result["code"]
 
         # Parse JSON response
         try:
