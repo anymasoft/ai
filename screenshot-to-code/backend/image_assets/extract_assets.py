@@ -12,14 +12,18 @@ from typing import Optional
 from PIL import Image
 import numpy as np
 from pathlib import Path
+import cv2
 
 ASSETS_DIR = Path(__file__).parent.parent.parent / "public" / "generated-assets"
 ASSETS_DIR.mkdir(parents=True, exist_ok=True)
 
 # Configuration
 MAX_ASSETS_PER_REQUEST = 8
+MAX_SHAPES_PER_REQUEST = 6
 MIN_ASSET_DIMENSION = 32  # Skip very small regions
 MIN_ASSET_AREA = 64 * 64  # 4096 pixels minimum
+MIN_SHAPE_DIMENSION = 40  # Shapes should be at least 40px
+MIN_SHAPE_AREA = 40 * 40  # 1600 pixels minimum
 
 
 @dataclass
@@ -45,6 +49,7 @@ class ImageAsset:
     bbox: BBox
     mime_type: str = "image/png"
     entropy: float = 0.0  # How "image-like" is this region
+    asset_type: str = "image"  # "image" or "shape"
 
     def to_dict(self) -> dict:
         return {
@@ -52,6 +57,7 @@ class ImageAsset:
             "src": f"/generated-assets/{self.filename}",
             "bbox": self.bbox.to_dict(),
             "mime": self.mime_type,
+            "type": self.asset_type,
         }
 
 
@@ -154,10 +160,112 @@ def _calculate_overlap(bbox1: BBox, bbox2: BBox) -> float:
     return inter_area / bbox1_area if bbox1_area > 0 else 0.0
 
 
+def _is_shape_like(region: np.ndarray) -> float:
+    """
+    Determine if a region looks like a decorative shape (circle, ellipse, curve).
+
+    Heuristics:
+    - Smooth edges (low edge complexity)
+    - Significant contrast with background
+    - Aspect ratio not too extreme (not a thin line)
+
+    Returns: score from 0 to 1, where 1 = definitely a shape
+    """
+    # Convert to grayscale if needed
+    if len(region.shape) == 3:
+        gray = cv2.cvtColor(region.astype(np.uint8), cv2.COLOR_RGB2GRAY)
+    else:
+        gray = region.astype(np.uint8)
+
+    # Detect edges
+    edges = cv2.Canny(gray, 50, 150)
+
+    # Count edge pixels
+    edge_pixels = np.count_nonzero(edges)
+    total_pixels = region.shape[0] * region.shape[1]
+    edge_ratio = edge_pixels / total_pixels if total_pixels > 0 else 0
+
+    # Shapes typically have moderate edge ratio (not too sparse, not too dense)
+    # Too sparse = empty/gradient region, too dense = complex UI
+    shape_score = 0.0
+
+    if 0.01 < edge_ratio < 0.3:
+        shape_score = 0.5
+
+    # Check for circular/elliptical contours
+    contours, _ = cv2.findContours(edges, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+
+    if contours:
+        # Get largest contour
+        largest = max(contours, key=cv2.contourArea)
+        contour_area = cv2.contourArea(largest)
+
+        if contour_area > (total_pixels * 0.05):  # At least 5% of region
+            # Try to fit ellipse
+            if len(largest) >= 5:
+                ellipse = cv2.fitEllipse(largest)
+                # Calculate how well the contour fits an ellipse
+                # by comparing contour area to ellipse area
+                ellipse_area = (ellipse[1][0] / 2) * (ellipse[1][1] / 2) * np.pi
+                fit_ratio = contour_area / ellipse_area if ellipse_area > 0 else 0
+
+                # Good fit = 0.7-1.0 ratio
+                if 0.6 < fit_ratio <= 1.0:
+                    shape_score = max(shape_score, 0.8)
+
+    return min(1.0, shape_score)
+
+
+def _find_candidate_shapes(img_array: np.ndarray, step: int = 80) -> list[tuple[BBox, float]]:
+    """
+    Find potential decorative shapes (circles, ellipses, curves).
+    Look for smooth regions with clean edges.
+    """
+    candidates = []
+    height, width = img_array.shape[:2]
+
+    # Scan with sliding window (shapes are typically medium-sized)
+    for y in range(0, height - MIN_SHAPE_DIMENSION, step):
+        for x in range(0, width - MIN_SHAPE_DIMENSION, step):
+            # Try multiple window sizes for shapes
+            for window_size in [64, 96, 128, 160]:
+                if x + window_size > width or y + window_size > height:
+                    continue
+
+                # Extract region
+                region = img_array[y : y + window_size, x : x + window_size]
+
+                # Calculate shape likelihood
+                shape_score = _is_shape_like(region)
+
+                if shape_score > 0.5:  # Threshold for "shape-like"
+                    bbox = BBox(x=x, y=y, w=window_size, h=window_size)
+                    candidates.append((bbox, shape_score))
+
+    # Sort by shape score (highest first)
+    candidates.sort(key=lambda x: x[1], reverse=True)
+
+    # Remove duplicates (overlapping regions)
+    filtered = []
+    for bbox, score in candidates:
+        overlaps = False
+        for existing_bbox, _ in filtered:
+            overlap_ratio = _calculate_overlap(bbox, existing_bbox)
+            if overlap_ratio > 0.6:
+                overlaps = True
+                break
+
+        if not overlaps and len(filtered) < MAX_SHAPES_PER_REQUEST:
+            filtered.append((bbox, score))
+
+    return filtered
+
+
 def _save_asset(
     img: Image.Image,
     region: BBox,
     asset_id: str,
+    asset_type: str = "image",
 ) -> tuple[str, int]:
     """
     Save a cropped region as an image file.
@@ -167,8 +275,9 @@ def _save_asset(
     crop_box = (region.x, region.y, region.x + region.w, region.y + region.h)
     cropped = img.crop(crop_box)
 
-    # Generate filename
-    filename = f"asset_{asset_id}_{region.x}_{region.y}.png"
+    # Generate filename based on asset type
+    prefix = "shape" if asset_type == "shape" else "asset"
+    filename = f"{prefix}_{asset_id}_{region.x}_{region.y}.png"
     filepath = ASSETS_DIR / filename
 
     # Save as PNG
@@ -177,7 +286,8 @@ def _save_asset(
     # Get file size
     file_size = filepath.stat().st_size
 
-    print(f"[ASSETS] Saved {filename} ({file_size} bytes, {region.w}x{region.h}px)")
+    asset_type_label = "shape" if asset_type == "shape" else "image"
+    print(f"[ASSETS] Saved {asset_type_label} {filename} ({file_size} bytes, {region.w}x{region.h}px)")
 
     return filename, file_size
 
@@ -238,7 +348,7 @@ async def extract_image_assets(
         asset_id = asset_hash
 
         # Save asset
-        filename, file_size = _save_asset(img, bbox, asset_id)
+        filename, file_size = _save_asset(img, bbox, asset_id, asset_type="image")
         total_bytes += file_size
 
         # Create asset record
@@ -247,6 +357,7 @@ async def extract_image_assets(
             filename=filename,
             bbox=bbox,
             mime_type="image/png",
+            asset_type="image",
         )
         assets.append(asset)
 
@@ -254,17 +365,56 @@ async def extract_image_assets(
             print(f"[ASSETS] Reached max assets limit ({MAX_ASSETS_PER_REQUEST})")
             break
 
+    # Extract decorative shapes
+    print(f"[ASSETS] Analyzing screenshot for decorative shapes...")
+    shape_candidates = _find_candidate_shapes(img_array)
+
+    if shape_candidates:
+        print(f"[ASSETS] Found {len(shape_candidates)} candidate shapes")
+
+        for idx, (bbox, score) in enumerate(shape_candidates):
+            if bbox.area() < MIN_SHAPE_AREA:
+                continue
+
+            # Generate shape ID
+            shape_hash = hashlib.md5(f"shape_{bbox.x}_{bbox.y}_{bbox.w}_{bbox.h}".encode()).hexdigest()[:8]
+            shape_id = shape_hash
+
+            # Save shape asset
+            filename, file_size = _save_asset(img, bbox, shape_id, asset_type="shape")
+            total_bytes += file_size
+
+            # Create shape asset record
+            shape_asset = ImageAsset(
+                asset_id=shape_id,
+                filename=filename,
+                bbox=bbox,
+                mime_type="image/png",
+                entropy=score,
+                asset_type="shape",
+            )
+            assets.append(shape_asset)
+
+            if len([a for a in assets if a.asset_type == "shape"]) >= MAX_SHAPES_PER_REQUEST:
+                print(f"[ASSETS] Reached max shapes limit ({MAX_SHAPES_PER_REQUEST})")
+                break
+    else:
+        print("[ASSETS] No candidate shapes found")
+
     # Build asset manifest for LLM
     asset_manifest = [asset.to_dict() for asset in assets]
 
-    print(f"[ASSETS] Extracted {len(assets)} assets ({total_bytes} bytes total)")
+    total_images = len([a for a in assets if a.asset_type == "image"])
+    total_shapes = len([a for a in assets if a.asset_type == "shape"])
+    print(f"[ASSETS] Extracted {total_images} images + {total_shapes} shapes ({total_bytes} bytes total)")
 
     return AssetExtractionResult(
         assets=assets,
         asset_manifest=asset_manifest,
         total_bytes=total_bytes,
         debug_info={
-            "candidate_count": len(candidates),
-            "extracted_count": len(assets),
+            "image_count": total_images,
+            "shape_count": total_shapes,
+            "total_candidates": len(candidates) + len(shape_candidates),
         },
     )
