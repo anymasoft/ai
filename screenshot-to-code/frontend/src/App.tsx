@@ -235,14 +235,80 @@ function App() {
         }
       },
       onPartialSuccess: (html: string) => {
-        // 🔧 PARTIAL UPDATE: Element was successfully updated
-        // Update the code in the current variant
-        console.log("Partial update successful, updating element");
-        const currentCommit = commits[commit.hash];
-        if (currentCommit) {
-          // Update code with the new HTML element
-          setCommitCode(commit.hash, currentCommit.selectedVariantIndex, html);
-          updateVariantStatus(commit.hash, currentCommit.selectedVariantIndex, "complete");
+        // 🔧 PARTIAL UPDATE: Apply element change to iframe and extract full HTML
+        console.log("Partial update successful, applying element to preview");
+        try {
+          // Get iframe from DOM (try desktop first, fallback to mobile)
+          const desktopIframe = document.getElementById(
+            "preview-desktop"
+          ) as HTMLIFrameElement | null;
+          const mobileIframe = document.getElementById(
+            "preview-mobile"
+          ) as HTMLIFrameElement | null;
+          const iframe = desktopIframe || mobileIframe;
+
+          if (!iframe || !iframe.contentDocument) {
+            console.error("Could not access iframe for partial update");
+            throw new Error("Iframe not accessible");
+          }
+
+          const iframeDoc = iframe.contentDocument;
+
+          // Parse the updated HTML element from backend
+          const parser = new DOMParser();
+          const parsed = parser.parseFromString(html, "text/html");
+          const updatedElement = parsed.body.firstElementChild;
+
+          if (!updatedElement) {
+            throw new Error("Could not parse updated element");
+          }
+
+          // Find and replace element by tag name in iframe
+          // This is a simplified heuristic - finds first matching tag
+          const tagName = updatedElement.tagName.toLowerCase();
+          const matchingElements =
+            iframeDoc.querySelectorAll(tagName);
+
+          if (matchingElements.length === 0) {
+            console.warn(
+              `No matching ${tagName} element found in iframe, using first element`
+            );
+            // Fallback: try to replace first child of body
+            const bodyFirstChild = iframeDoc.body.firstElementChild;
+            if (bodyFirstChild) {
+              bodyFirstChild.replaceWith(updatedElement);
+            } else {
+              throw new Error(
+                "Could not find element to replace in iframe"
+              );
+            }
+          } else {
+            // Replace first matching element
+            matchingElements[0].replaceWith(updatedElement);
+          }
+
+          // Extract full HTML from updated iframe
+          const fullUpdatedHTML =
+            iframeDoc.documentElement.outerHTML;
+
+          // Update code with full HTML
+          const currentCommit = commits[commit.hash];
+          if (currentCommit) {
+            setCommitCode(
+              commit.hash,
+              currentCommit.selectedVariantIndex,
+              fullUpdatedHTML
+            );
+            updateVariantStatus(
+              commit.hash,
+              currentCommit.selectedVariantIndex,
+              "complete"
+            );
+          }
+        } catch (error) {
+          console.error("Error applying partial update:", error);
+          // Fallback to full regenerate on any error
+          onPartialFailed();
         }
       },
       onPartialFailed: () => {
