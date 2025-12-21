@@ -5,7 +5,7 @@ import traceback
 from typing import Callable, Awaitable
 from fastapi import APIRouter, WebSocket
 import openai
-from codegen.utils import extract_html_content
+from codegen.utils import extract_html_content, sanitize_html_output
 from config import (
     ANTHROPIC_API_KEY,
     GEMINI_API_KEY,
@@ -681,6 +681,9 @@ class ParallelGenerationStage:
 
                 # Extract HTML content
                 processed_html = extract_html_content(processed_html)
+
+                # 🔥 Sanitize HTML output: fix nested tags, close unclosed blocks, deduplicate CSS
+                processed_html = sanitize_html_output(processed_html)
 
                 # Send the complete variant back to the client
                 await self.send_message("setCode", processed_html, index)
