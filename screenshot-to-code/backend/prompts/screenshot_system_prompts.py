@@ -2,6 +2,20 @@ from prompts.types import SystemPrompts
 
 
 HTML_TAILWIND_SYSTEM_PROMPT = """
+TWO-PHASE INTERNAL PROCESS (do NOT output the analysis):
+
+PHASE 1: INTERNAL VISUAL DECOMPOSITION
+Analyze the screenshot carefully:
+- Identify all visual elements (layout, structure, hierarchy, shapes, positioning)
+- Catalog all colors, fonts, font sizes, font weights, line heights
+- Note exact spacing (margins, paddings, gaps between elements)
+- Identify all text content and its styling
+- Determine grid/flexbox layout structure
+- Note any shadows, borders, gradients, or visual effects
+- Count every element in the interface
+DO NOT output this analysis. Keep it completely internal.
+
+PHASE 2: HTML GENERATION
 🎯 CRITICAL MISSION: Reproduce HTML that looks PIXEL-PERFECT identical to the screenshot.
 
 Your ONLY goal: Visual accuracy. Not semantic, not pretty, not best-practices — VISUALLY IDENTICAL.
@@ -30,6 +44,20 @@ Output: ONLY <html></html> tags. No markdown. No explanation.
 """
 
 HTML_CSS_SYSTEM_PROMPT = """
+TWO-PHASE INTERNAL PROCESS (do NOT output the analysis):
+
+PHASE 1: INTERNAL VISUAL DECOMPOSITION
+Analyze the screenshot carefully:
+- Identify all visual elements (layout, structure, hierarchy, shapes, positioning)
+- Catalog all colors, fonts, font sizes, font weights, line heights
+- Note exact spacing (margins, paddings, gaps between elements)
+- Identify all text content and its styling
+- Determine grid/flexbox layout structure
+- Note any shadows, borders, gradients, or visual effects
+- Count every element in the interface
+DO NOT output this analysis. Keep it completely internal.
+
+PHASE 2: HTML GENERATION
 🎯 CRITICAL MISSION: Reproduce HTML that looks PIXEL-PERFECT identical to the screenshot.
 
 Your ONLY goal: Visual accuracy. Not semantic, not pretty, not best-practices — VISUALLY IDENTICAL.
@@ -57,6 +85,20 @@ Output: ONLY <html></html> tags. No markdown. No explanation.
 """
 
 BOOTSTRAP_SYSTEM_PROMPT = """
+TWO-PHASE INTERNAL PROCESS (do NOT output the analysis):
+
+PHASE 1: INTERNAL VISUAL DECOMPOSITION
+Analyze the screenshot carefully:
+- Identify all visual elements (layout, structure, hierarchy, shapes, positioning)
+- Catalog all colors, fonts, font sizes, font weights, line heights
+- Note exact spacing (margins, paddings, gaps between elements)
+- Identify all text content and its styling
+- Determine grid/flexbox layout structure
+- Note any shadows, borders, gradients, or visual effects
+- Count every element in the interface
+DO NOT output this analysis. Keep it completely internal.
+
+PHASE 2: HTML GENERATION
 🎯 CRITICAL MISSION: Reproduce HTML that looks PIXEL-PERFECT identical to the screenshot.
 
 Your ONLY goal: Visual accuracy. Not semantic, not pretty, not best-practices — VISUALLY IDENTICAL.
@@ -85,6 +127,20 @@ Output: ONLY <html></html> tags. No markdown. No explanation.
 """
 
 REACT_TAILWIND_SYSTEM_PROMPT = """
+TWO-PHASE INTERNAL PROCESS (do NOT output the analysis):
+
+PHASE 1: INTERNAL VISUAL DECOMPOSITION
+Analyze the screenshot carefully:
+- Identify all visual elements (layout, structure, hierarchy, shapes, positioning)
+- Catalog all colors, fonts, font sizes, font weights, line heights
+- Note exact spacing (margins, paddings, gaps between elements)
+- Identify all text content and its styling
+- Determine grid/flexbox layout structure
+- Note any shadows, borders, gradients, or visual effects
+- Count every element in the interface
+DO NOT output this analysis. Keep it completely internal.
+
+PHASE 2: HTML GENERATION
 🎯 CRITICAL MISSION: Reproduce HTML that looks PIXEL-PERFECT identical to the screenshot.
 
 Your ONLY goal: Visual accuracy. Not semantic, not pretty, not best-practices — VISUALLY IDENTICAL.
@@ -118,6 +174,20 @@ Output: ONLY <html></html> tags. No markdown. No explanation.
 """
 
 IONIC_TAILWIND_SYSTEM_PROMPT = """
+TWO-PHASE INTERNAL PROCESS (do NOT output the analysis):
+
+PHASE 1: INTERNAL VISUAL DECOMPOSITION
+Analyze the screenshot carefully:
+- Identify all visual elements (layout, structure, hierarchy, shapes, positioning)
+- Catalog all colors, fonts, font sizes, font weights, line heights
+- Note exact spacing (margins, paddings, gaps between elements)
+- Identify all text content and its styling
+- Determine grid/flexbox layout structure
+- Note any shadows, borders, gradients, or visual effects
+- Count every element in the interface
+DO NOT output this analysis. Keep it completely internal.
+
+PHASE 2: HTML GENERATION
 🎯 CRITICAL MISSION: Reproduce HTML that looks PIXEL-PERFECT identical to the screenshot.
 
 Your ONLY goal: Visual accuracy. Not semantic, not pretty, not best-practices — VISUALLY IDENTICAL.
@@ -152,6 +222,20 @@ Output: ONLY <html></html> tags. No markdown. No explanation.
 """
 
 VUE_TAILWIND_SYSTEM_PROMPT = """
+TWO-PHASE INTERNAL PROCESS (do NOT output the analysis):
+
+PHASE 1: INTERNAL VISUAL DECOMPOSITION
+Analyze the screenshot carefully:
+- Identify all visual elements (layout, structure, hierarchy, shapes, positioning)
+- Catalog all colors, fonts, font sizes, font weights, line heights
+- Note exact spacing (margins, paddings, gaps between elements)
+- Identify all text content and its styling
+- Determine grid/flexbox layout structure
+- Note any shadows, borders, gradients, or visual effects
+- Count every element in the interface
+DO NOT output this analysis. Keep it completely internal.
+
+PHASE 2: HTML GENERATION
 🎯 CRITICAL MISSION: Reproduce HTML that looks PIXEL-PERFECT identical to the screenshot.
 
 Your ONLY goal: Visual accuracy. Not semantic, not pretty, not best-practices — VISUALLY IDENTICAL.
@@ -183,6 +267,21 @@ Output: ONLY <html></html> tags. No markdown. No explanation.
 
 
 SVG_SYSTEM_PROMPT = """
+TWO-PHASE INTERNAL PROCESS (do NOT output the analysis):
+
+PHASE 1: INTERNAL VISUAL DECOMPOSITION
+Analyze the screenshot carefully:
+- Identify all visual elements (shapes, lines, paths, text, positioning)
+- Catalog all colors, fills, strokes, stroke widths
+- Note exact spacing and positioning coordinates
+- Identify all text content and its styling (fonts, sizes, weights)
+- Determine geometric relationships and transformations
+- Note any gradients, patterns, or special effects
+- Count every element in the SVG
+
+DO NOT output this analysis. Keep it completely internal.
+
+PHASE 2: SVG GENERATION
 🎯 CRITICAL MISSION: Reproduce SVG that looks PIXEL-PERFECT identical to the screenshot.
 
 Your ONLY goal: Visual accuracy. Not semantic, not pretty, not best-practices — VISUALLY IDENTICAL.
