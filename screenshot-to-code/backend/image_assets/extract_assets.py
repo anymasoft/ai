@@ -1,9 +1,10 @@
 """
-Screenshot image asset extraction module.
-Identifies and extracts embedded images (logos, hero images, illustrations)
-from screenshots to reduce LLM workload and improve visual fidelity.
+Asset-dominant image extraction module.
+Extracts ALL non-rectilinear visual elements (icons, logos, photos, decorations)
+as base64-encoded PNG assets for use in HTML generation.
 
-Uses LLM-only detection (no cv2 dependency).
+Philosophy: Anything that requires curves, diagonals, or complex graphics = <img>.
+Layout and text only in CSS/HTML.
 """
 
 import hashlib
@@ -20,12 +21,9 @@ from config import OPENAI_API_KEY, OPENAI_BASE_URL
 from llm import Llm
 from openai.types.chat import ChatCompletionMessageParam, ChatCompletionContentPartParam
 
-ASSETS_DIR = Path(__file__).parent.parent.parent / "public" / "generated-assets"
-ASSETS_DIR.mkdir(parents=True, exist_ok=True)
-
 # Configuration
-MAX_ASSETS_PER_REQUEST = 8
-MIN_ASSET_DIMENSION = 40
+MAX_ASSETS_PER_REQUEST = 40  # Aggressive extraction
+MIN_ASSET_DIMENSION = 8  # Even 8px icons are assets
 
 
 @dataclass
@@ -45,70 +43,87 @@ class BBox:
 
 @dataclass
 class ImageAsset:
-    """Extracted image asset"""
+    """Extracted visual asset"""
     asset_id: str
-    filename: str
     bbox: BBox
+    base64_data: str  # data:image/png;base64,...
+    role: str  # "icon", "logo", "photo", "decorative", "ui-symbol"
     mime_type: str = "image/png"
-    asset_type: str = "image"  # "image" or "logo" or "illustration"
 
     def to_dict(self) -> dict:
         return {
             "id": self.asset_id,
-            "src": f"/generated-assets/{self.filename}",
+            "src": self.base64_data,
             "bbox": self.bbox.to_dict(),
+            "role": self.role,
             "mime": self.mime_type,
-            "type": self.asset_type,
         }
 
 
 @dataclass
 class AssetExtractionResult:
-    """Result of image asset extraction"""
+    """Result of asset extraction"""
     assets: list[ImageAsset]
     asset_manifest: list[dict]  # For passing to LLM
-    total_bytes: int = 0
     debug_info: Optional[dict] = None
 
 
-# LLM-based image detection prompt
-DETECTOR_SYSTEM_PROMPT = """You analyze a website screenshot and detect embedded image elements such as logos, photos, or illustrations.
+# LLM detection prompt for asset-dominant mode
+DETECTOR_SYSTEM_PROMPT = """You analyze a website screenshot and detect ALL visual elements that are NOT simple rectangular layout blocks.
 
-Return ONLY valid JSON array with detected images:
+This includes:
+- icons (ANY size, including 8-24px)
+- logos
+- photos
+- avatars
+- SVG symbols
+- decorative shapes
+- curves, waves, blobs, gradients
+- UI symbols (arrows, stars, checkmarks, badges, badges, etc.)
+- brand marks
+- illustrations
+
+IGNORE:
+- simple rectangular containers (divs, buttons without decorations)
+- pure text areas
+- solid color blocks
+
+Return ONLY valid JSON array:
 [
-  {"id":"img1","x":100,"y":50,"w":200,"h":150,"type":"image"},
-  {"id":"img2","x":400,"y":200,"w":300,"h":250,"type":"logo"}
+  {"id":"a1","x":100,"y":50,"w":24,"h":24,"role":"icon"},
+  {"id":"a2","x":400,"y":200,"w":300,"h":250,"role":"photo"}
 ]
 
 Rules:
 - x, y, w, h are pixel coordinates and dimensions
-- Max 8 items total
-- Ignore very small elements (< 40px)
-- type can be: "image" (photos, illustrations), "logo" (brand marks), "illustration" (decorative graphics)
-- If no images detected, return []
+- MAX 40 items
+- Size does NOT matter (include 8px icons)
+- If unsure about element type, INCLUDE it
+- Roles: icon, logo, photo, decorative, ui-symbol
 - Return ONLY the JSON array, no explanations"""
 
 
-async def _detect_images_with_llm(image_data_url: str) -> list[dict]:
+async def _detect_all_assets_with_llm(image_data_url: str) -> list[dict]:
     """
-    Detect images in screenshot using GPT-4.1-mini vision.
+    Detect ALL visual assets (not just images) using GPT-4.1-mini vision.
+    Aggressive extraction: include anything that's not a simple rectangle.
 
     Args:
         image_data_url: Base64-encoded image data URL
 
     Returns:
-        List of detected image bboxes: [{"id", "x", "y", "w", "h", "type"}]
+        List of detected asset bboxes: [{"id", "x", "y", "w", "h", "role"}]
     """
     try:
         # Prepare vision message
         user_content: list[ChatCompletionContentPartParam] = [
             {
                 "type": "image_url",
-                "image_url": {"url": image_data_url, "detail": "low"},
+                "image_url": {"url": image_data_url, "detail": "high"},  # high detail for small icons
             },
             {
                 "type": "text",
-                "text": "Detect all embedded images and logos in this screenshot.",
+                "text": "Detect ALL visual elements that are not simple rectangular layout blocks. Include icons of any size, logos, photos, decorative elements, UI symbols.",
             },
         ]
 
@@ -123,11 +138,11 @@ async def _detect_images_with_llm(image_data_url: str) -> list[dict]:
             },
         ]
 
-        # No-op callback (we don't need streaming)
+        # No-op callback
         async def noop_callback(x: str) -> None:
             pass
 
-        # Call GPT-4.1-mini for image detection
+        # Call GPT-4.1-mini with high detail for asset detection
         result = await stream_openai_response(
             messages=messages,
             api_key=OPENAI_API_KEY,
@@ -135,90 +150,87 @@ async def _detect_images_with_llm(image_data_url: str) -> list[dict]:
             callback=noop_callback,
             model=Llm.GPT_4_1_MINI.value,
             temperature=0.0,
-            max_tokens=500,
+            max_tokens=2000,  # More space for 40 assets
         )
 
         response_text = result["code"].strip()
 
-        # Try to extract JSON
+        # Extract JSON from response
         if response_text.startswith("["):
-            # Already JSON
             data = json.loads(response_text)
         elif "```json" in response_text:
-            # JSON in code block
             start = response_text.find("```json") + 7
             end = response_text.find("```", start)
             json_str = response_text[start:end].strip()
             data = json.loads(json_str)
         elif "```" in response_text:
-            # Generic code block
             start = response_text.find("```") + 3
             end = response_text.find("```", start)
             json_str = response_text[start:end].strip()
             data = json.loads(json_str)
         else:
-            # Try direct parse
             data = json.loads(response_text)
 
         # Validate response
         if not isinstance(data, list):
-            print(f"[ASSETS] Invalid response type (expected list), got: {type(data)}")
+            print(f"[ASSETS] Invalid response type, got: {type(data)}")
             return []
 
         # Filter valid entries
-        valid_images = []
+        valid_assets = []
         for item in data:
             if not isinstance(item, dict):
                 continue
             if "x" not in item or "y" not in item or "w" not in item or "h" not in item:
                 continue
 
-            # Skip too small
+            # Skip only really tiny (1-2px noise)
             if item["w"] < MIN_ASSET_DIMENSION or item["h"] < MIN_ASSET_DIMENSION:
                 continue
 
-            valid_images.append(item)
+            valid_assets.append(item)
 
-        return valid_images[:MAX_ASSETS_PER_REQUEST]
+        return valid_assets[:MAX_ASSETS_PER_REQUEST]
 
     except json.JSONDecodeError as e:
-        print(f"[ASSETS] JSON parse error during LLM detection: {e}")
+        print(f"[ASSETS] JSON parse error: {e}")
         return []
     except Exception as e:
-        print(f"[ASSETS] Error during LLM image detection: {e}")
+        print(f"[ASSETS] Error during asset detection: {e}")
         return []
 
 
-def _save_asset(
+def _crop_to_base64(
     img: Image.Image,
     bbox: BBox,
-    asset_id: str,
-    asset_type: str = "image",
-) -> tuple[str, int]:
+) -> str:
     """
-    Save a cropped region as an image file.
-    Returns (filename, file_size_bytes)
+    Crop image region and convert to base64 data URL.
+
+    Args:
+        img: PIL Image
+        bbox: Bounding box to crop
+
+    Returns:
+        data:image/png;base64,... string
     """
     try:
-        # Crop the image
+        # Crop region
         crop_box = (bbox.x, bbox.y, bbox.x + bbox.w, bbox.y + bbox.h)
         cropped = img.crop(crop_box)
 
-        # Generate filename
-        filename = f"asset_{asset_id}_{bbox.x}_{bbox.y}.png"
-        filepath = ASSETS_DIR / filename
+        # Convert to PNG in memory
+        buffer = io.BytesIO()
+        cropped.save(buffer, format="PNG", optimize=True)
+        png_bytes = buffer.getvalue()
 
-        # Save as PNG
-        cropped.save(filepath, format="PNG", optimize=True)
+        # Encode to base64
+        b64_str = base64.b64encode(png_bytes).decode("utf-8")
+        data_url = f"data:image/png;base64,{b64_str}"
 
-        # Get file size
-        file_size = filepath.stat().st_size
-
-        print(f"[ASSETS] Saved {asset_type} {filename} ({file_size} bytes, {bbox.w}x{bbox.h}px)")
-
-        return filename, file_size
+        return data_url
     except Exception as e:
-        print(f"[ASSETS] Error saving asset: {e}")
+        print(f"[ASSETS] Error converting to base64: {e}")
         raise
 
 
@@ -226,7 +238,8 @@ async def extract_image_assets(
     image_data_url: str,
 ) -> AssetExtractionResult:
     """
-    Extract image assets from a screenshot using LLM-based detection.
+    Extract all visual assets from screenshot in ASSET-DOMINANT mode.
+    Converts assets to base64 inline data URLs instead of files.
 
     Args:
         image_data_url: Base64-encoded image data URL
@@ -249,73 +262,73 @@ async def extract_image_assets(
         print(f"[ASSETS] Failed to decode image: {e}")
         return AssetExtractionResult(assets=[], asset_manifest=[])
 
-    # Detect images using LLM
-    print(f"[ASSETS] Analyzing {img_width}x{img_height} screenshot for images (LLM-based)...")
-    detected_images = await _detect_images_with_llm(image_data_url)
+    # Detect all assets using LLM
+    print(f"[ASSETS] Analyzing {img_width}x{img_height} screenshot for visual assets (ASSET-DOMINANT mode)...")
+    detected_assets = await _detect_all_assets_with_llm(image_data_url)
 
-    if not detected_images:
-        print("[ASSETS] No images detected by LLM")
+    if not detected_assets:
+        print("[ASSETS] No visual assets detected")
         return AssetExtractionResult(assets=[], asset_manifest=[])
 
-    print(f"[ASSETS] LLM detected {len(detected_images)} images")
+    print(f"[ASSETS] LLM detected {len(detected_assets)} visual assets")
 
-    # Extract and save assets
+    # Extract and convert to base64
     assets = []
-    total_bytes = 0
 
-    for detected_img in detected_images:
+    for detected_asset in detected_assets:
         try:
             # Validate bbox
-            x, y, w, h = detected_img["x"], detected_img["y"], detected_img["w"], detected_img["h"]
+            x, y, w, h = int(detected_asset["x"]), int(detected_asset["y"]), int(detected_asset["w"]), int(detected_asset["h"])
 
-            # Skip if out of bounds or too small
+            # Skip if out of bounds
             if x < 0 or y < 0 or w < MIN_ASSET_DIMENSION or h < MIN_ASSET_DIMENSION:
                 continue
             if x + w > img_width or y + h > img_height:
                 continue
 
-            bbox = BBox(x=int(x), y=int(y), w=int(w), h=int(h))
+            bbox = BBox(x=x, y=y, w=w, h=h)
 
             # Generate asset ID
-            asset_hash = hashlib.md5(f"{x}{y}{w}{h}".encode()).hexdigest()[:8]
+            asset_hash = hashlib.md5(f"{x}_{y}_{w}_{h}".encode()).hexdigest()[:12]
             asset_id = asset_hash
 
-            # Determine asset type
-            asset_type = detected_img.get("type", "image")
+            # Get role from detection
+            role = detected_asset.get("role", "decorative")
 
-            # Save asset
-            filename, file_size = _save_asset(img, bbox, asset_id, asset_type=asset_type)
-            total_bytes += file_size
+            # Convert to base64
+            base64_data = _crop_to_base64(img, bbox)
 
             # Create asset record
             asset = ImageAsset(
                 asset_id=asset_id,
-                filename=filename,
                 bbox=bbox,
+                base64_data=base64_data,
+                role=role,
                 mime_type="image/png",
-                asset_type=asset_type,
             )
             assets.append(asset)
+
+            print(f"[ASSETS] Extracted {role} {asset_id[:8]} ({w}x{h}px)")
 
             if len(assets) >= MAX_ASSETS_PER_REQUEST:
                 print(f"[ASSETS] Reached max assets limit ({MAX_ASSETS_PER_REQUEST})")
                 break
 
         except Exception as e:
-            print(f"[ASSETS] Error processing detected image: {e}")
+            print(f"[ASSETS] Error processing detected asset: {e}")
             continue
 
     # Build asset manifest for LLM
     asset_manifest = [asset.to_dict() for asset in assets]
 
-    print(f"[ASSETS] Extracted {len(assets)} assets ({total_bytes} bytes total)")
+    print(f"[ASSETS] Extracted {len(assets)} visual assets (ASSET-DOMINANT mode)")
 
     return AssetExtractionResult(
         assets=assets,
         asset_manifest=asset_manifest,
-        total_bytes=total_bytes,
         debug_info={
-            "detected_count": len(detected_images),
+            "detected_count": len(detected_assets),
             "extracted_count": len(assets),
+            "mode": "asset-dominant",
         },
     )
