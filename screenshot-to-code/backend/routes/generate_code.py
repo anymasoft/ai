@@ -370,6 +370,17 @@ class PromptCreationStage:
 
             print_prompt_summary(prompt_messages, truncate=False)
 
+            # 🔧 DIAGNOSTICS: Log image details for quality debugging
+            if extracted_params.input_mode == "image" and len(extracted_params.prompt["images"]) > 0:
+                image_url = extracted_params.prompt["images"][0]
+                # Check if it's data URL and estimate size
+                if image_url.startswith("data:"):
+                    # Rough estimate of data URL size
+                    size_bytes = len(image_url) * 0.75 / 1024  # Convert base64 to bytes
+                    print(f"📸 IMAGE DIAGNOSTICS: Data URL size ~{size_bytes:.1f} KB (base64)")
+                else:
+                    print(f"📸 IMAGE DIAGNOSTICS: Image URL: {image_url[:100]}...")
+
             return prompt_messages, image_cache
         except Exception:
             await self.throw_error(
@@ -547,13 +558,32 @@ class ParallelGenerationStage:
         """Wrap OpenAI streaming with specific error handling"""
         try:
             assert self.openai_api_key is not None
-            return await stream_openai_response(
+
+            # 🔧 DIAGNOSTICS: Log model parameters
+            print(f"🤖 MODEL DIAGNOSTICS [Variant {index + 1}]:")
+            print(f"   Model: {model_name}")
+            print(f"   Temperature: 0 (deterministic)")
+            if model_name in ["gpt-4.1-2025-04-14", "gpt-4.1-mini", "gpt-4.1-mini-2025-04-14"]:
+                print(f"   Max Tokens: 20000")
+            print(f"   Stream: True (chunk-by-chunk)")
+
+            completion = await stream_openai_response(
                 prompt_messages,
                 api_key=self.openai_api_key,
                 base_url=self.openai_base_url,
                 callback=lambda x: self._process_chunk(x, index),
                 model_name=model_name,
             )
+
+            # 🔧 DIAGNOSTICS: Log completion stats
+            html_content = extract_html_content(completion["code"])
+            print(f"✅ COMPLETION STATS [Variant {index + 1}]:")
+            print(f"   Raw length: {len(completion['code'])} chars")
+            print(f"   HTML content length: {len(html_content)} chars")
+            print(f"   Duration: {completion['duration']:.1f}s")
+            print(f"   Has <html> tags: {'<html' in completion['code'].lower()}")
+
+            return completion
         except openai.AuthenticationError as e:
             print(f"[VARIANT {index + 1}] OpenAI Authentication failed", e)
             error_message = (
