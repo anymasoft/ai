@@ -55,6 +55,8 @@ class ImageAsset:
     bbox: BBox
     role: str  # "icon", "logo", "photo", "decorative", "ui-symbol"
     mime_type: str = "image/png"
+    layout_lock: bool = False  # If True, position is ABSOLUTE and must match bbox exactly
+    element_type: str = "image"  # "button", "input", "badge", "progress", "rating", "icon", "image", etc.
 
     def to_dict(self) -> dict:
         """Return asset metadata for LLM (NO base64)"""
@@ -64,6 +66,8 @@ class ImageAsset:
             "bbox": self.bbox.to_dict(),
             "role": self.role,
             "mime": self.mime_type,
+            "layout_lock": self.layout_lock,  # LLM must use position: absolute
+            "element_type": self.element_type,  # UI element type
         }
 
 
@@ -207,6 +211,156 @@ async def _detect_all_assets_with_llm(image_data_url: str) -> list[dict]:
         return []
 
 
+async def _classify_ui_elements(
+    image_data_url: str,
+    detected_assets: list[dict],
+) -> dict[str, tuple[str, bool]]:
+    """
+    Classify detected assets into UI element types (button, input, badge, etc.)
+    and mark which ones need strict position locking.
+
+    Args:
+        image_data_url: Original screenshot data URL
+        detected_assets: List of detected asset bboxes with coordinates
+
+    Returns:
+        Dict mapping asset_id → (element_type, layout_lock_bool)
+        Examples:
+          "a1" → ("button", True)  # layout_lock=True means position: absolute required
+          "a2" → ("badge", True)
+          "a3" → ("icon", False)   # layout_lock=False means decorative/icon
+    """
+    if not detected_assets:
+        return {}
+
+    try:
+        # Build asset location list for classification
+        assets_description = "\n".join([
+            f"  id={item.get('id')}: x={item.get('x')}, y={item.get('y')}, "
+            f"w={item.get('w')}, h={item.get('h')}, role={item.get('role')}"
+            for item in detected_assets[:20]  # Limit to first 20 for token budget
+        ])
+
+        classifier_prompt = f"""You are a UI element classifier.
+
+Given a screenshot and detected element locations, classify each element as one of:
+- button: clickable button (may have text, icon, or both)
+- input: text input field, search box, or form input
+- badge: small label, tag, or status badge
+- progress: progress bar, slider, or rating
+- rating: star rating, review score, or percentage
+- pagination: pagination controls, page numbers
+- tabs: tab navigation
+- icon: icon without functional purpose
+- decorative: decorative shape or illustration
+- image: photo or image
+
+CRITICAL: Elements that are UI CONTROLS (button, input, badge, progress, rating, pagination, tabs) MUST have:
+  layout_lock = true
+
+These elements must be positioned at EXACT coordinates from the screenshot. Do NOT allow them to shift.
+
+Elements that are DECORATIVE (icon, decorative, image) can have:
+  layout_lock = false (visual/decorative, flexible positioning allowed)
+
+Detected elements:
+{assets_description}
+
+Return ONLY valid JSON:
+{{
+  "a1": {{"element_type": "button", "layout_lock": true}},
+  "a2": {{"element_type": "icon", "layout_lock": false}},
+  ...
+}}"""
+
+        # No-op callback
+        async def noop_callback(x: str) -> None:
+            pass
+
+        # Call GPT-4.1-mini for classification
+        result = await stream_openai_response(
+            messages=[
+                {
+                    "role": "system",
+                    "content": "You are a UI element classifier. Return only valid JSON.",
+                },
+                {
+                    "role": "user",
+                    "content": [
+                        {
+                            "type": "image_url",
+                            "image_url": {"url": image_data_url, "detail": "high"},
+                        },
+                        {
+                            "type": "text",
+                            "text": classifier_prompt,
+                        },
+                    ],
+                },
+            ],
+            api_key=OPENAI_API_KEY,
+            base_url=OPENAI_BASE_URL,
+            callback=noop_callback,
+            model=Llm.GPT_4_1_MINI.value,
+            temperature=0.0,
+            max_tokens=2000,
+        )
+
+        response_text = result["code"].strip()
+
+        # Extract JSON from response
+        if response_text.startswith("{"):
+            data = json.loads(response_text)
+        elif "```json" in response_text:
+            start = response_text.find("```json") + 7
+            end = response_text.find("```", start)
+            json_str = response_text[start:end].strip()
+            data = json.loads(json_str)
+        elif "```" in response_text:
+            start = response_text.find("```") + 3
+            end = response_text.find("```", start)
+            json_str = response_text[start:end].strip()
+            data = json.loads(json_str)
+        else:
+            data = json.loads(response_text)
+
+        if not isinstance(data, dict):
+            print(f"[ASSETS] Invalid classification response, got: {type(data)}")
+            # Return default classification
+            return {
+                item.get("id"): ("decorative", False)
+                for item in detected_assets
+                if item.get("id")
+            }
+
+        # Process classification results
+        classification_map = {}
+        for asset_id, classification in data.items():
+            if isinstance(classification, dict):
+                element_type = classification.get("element_type", "decorative")
+                layout_lock = classification.get("layout_lock", False)
+                classification_map[asset_id] = (element_type, layout_lock)
+            else:
+                # Fallback: assume decorative
+                classification_map[asset_id] = ("decorative", False)
+
+        print(
+            f"[ASSETS] Classified {len(classification_map)} elements "
+            f"({sum(1 for _, (_, lock) in classification_map.items() if lock)} with layout_lock)"
+        )
+
+        return classification_map
+
+    except Exception as e:
+        print(f"[ASSETS] Error during UI classification: {e}")
+        # Return default classification (all decorative, no layout_lock)
+        return {
+            item.get("id"): ("decorative", False)
+            for item in detected_assets
+            if item.get("id")
+        }
+
+
 def _save_asset_file(
     img: Image.Image,
     bbox: BBox,
@@ -284,6 +438,10 @@ async def extract_image_assets(
 
     print(f"[ASSETS] LLM detected {len(detected_assets)} visual assets")
 
+    # Classify UI elements (button, input, badge, etc.) to determine layout locking
+    print("[ASSETS] Classifying UI elements for strict positioning...")
+    classification_map = await _classify_ui_elements(image_data_url, detected_assets)
+
     # Extract and save assets
     assets = []
     total_bytes = 0
@@ -308,17 +466,22 @@ async def extract_image_assets(
             # Get role from detection
             role = detected_asset.get("role", "decorative")
 
+            # Get classification (element_type and layout_lock status)
+            element_type, layout_lock = classification_map.get(detected_asset.get("id"), ("decorative", False))
+
             # Save as PNG file (NOT base64)
             filename, file_size = _save_asset_file(img, bbox, asset_id)
             total_bytes += file_size
 
-            # Create asset record
+            # Create asset record with layout_lock flag
             asset = ImageAsset(
                 asset_id=asset_id,
                 filename=filename,
                 bbox=bbox,
                 role=role,
                 mime_type="image/png",
+                layout_lock=layout_lock,  # UI controls get layout_lock=True
+                element_type=element_type,  # button, input, badge, etc.
             )
             assets.append(asset)
 
