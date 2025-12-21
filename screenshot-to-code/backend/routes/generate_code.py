@@ -5,7 +5,7 @@ import traceback
 from typing import Callable, Awaitable
 from fastapi import APIRouter, WebSocket
 import openai
-from codegen.utils import extract_html_content, sanitize_html_output
+from codegen.utils import extract_html_content, sanitize_html_output, is_html_valid
 from config import (
     ANTHROPIC_API_KEY,
     GEMINI_API_KEY,
@@ -685,13 +685,29 @@ class ParallelGenerationStage:
                 # 🔥 Sanitize HTML output: fix nested tags, close unclosed blocks, deduplicate CSS
                 processed_html = sanitize_html_output(processed_html)
 
-                # Send the complete variant back to the client
-                await self.send_message("setCode", processed_html, index)
-                await self.send_message(
-                    "variantComplete",
-                    "Variant generation complete",
-                    index,
-                )
+                # 🔍 Validate HTML before sending to client
+                is_valid, validation_msg = is_html_valid(processed_html)
+                if not is_valid:
+                    error_msg = f"Generated HTML failed validation: {validation_msg}"
+                    print(f"[VALIDATE] {error_msg}")
+                    await self.send_message(
+                        "error",
+                        error_msg,
+                        index,
+                    )
+                    await self.send_message(
+                        "variantComplete",
+                        f"Variant generation FAILED: {validation_msg}",
+                        index,
+                    )
+                else:
+                    # Send the complete variant back to the client
+                    await self.send_message("setCode", processed_html, index)
+                    await self.send_message(
+                        "variantComplete",
+                        "Variant generation complete",
+                        index,
+                    )
             except Exception as inner_e:
                 # If websocket is closed or other error during post-processing
                 print(f"Post-processing error for variant {index + 1}: {inner_e}")
