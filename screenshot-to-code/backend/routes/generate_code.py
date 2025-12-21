@@ -55,6 +55,7 @@ MessageType = Literal[
     "variantComplete",
     "variantError",
     "variantCount",
+    "generation_complete",
 ]
 from image_generation.core import generate_images
 from prompts import create_prompt
@@ -309,7 +310,7 @@ class ModelSelectionStage:
         anthropic_api_key: str | None,
         gemini_api_key: str | None = None,
     ) -> List[Llm]:
-        """🔧 SIMPLIFICATION: Use fixed model gpt-4.1-mini, no variants"""
+        """🔧 SIMPLIFICATION: Use fixed model gpt-4.1-mini (stable alias), no variants"""
         try:
             if not openai_api_key:
                 await self.throw_error(
@@ -317,8 +318,8 @@ class ModelSelectionStage:
                 )
                 raise Exception("No OpenAI API key")
 
-            # 🔧 Fixed model: gpt-4.1-mini
-            model = Llm.GPT_4_1_MINI_2025_04_14
+            # 🔧 Fixed model: gpt-4.1-mini (stable alias - always latest compatible version)
+            model = Llm.GPT_4_1_MINI
             print(f"Using model: {model.value}")
 
             # Return as list for backward compatibility with pipeline
@@ -804,7 +805,7 @@ class CodeGenerationMiddleware(Middleware):
 
 
 class PostProcessingMiddleware(Middleware):
-    """Handles post-processing and logging"""
+    """Handles post-processing, logging, and sends final generation_complete signal"""
 
     async def process(
         self, context: PipelineContext, next_func: Callable[[], Awaitable[None]]
@@ -813,6 +814,15 @@ class PostProcessingMiddleware(Middleware):
         await post_processor.process_completions(
             context.completions, context.prompt_messages, context.websocket
         )
+
+        # 🔧 Send final signal before closing WebSocket
+        # This ensures frontend knows generation is complete and isn't left waiting
+        try:
+            if context.ws_comm and not context.ws_comm.is_closed:
+                await context.websocket.send_json({"type": "generation_complete"})
+                print("Sent generation_complete signal to frontend")
+        except Exception as e:
+            print(f"Warning: Could not send generation_complete signal: {e}")
 
         await next_func()
 

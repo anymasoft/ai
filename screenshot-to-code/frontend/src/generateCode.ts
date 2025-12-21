@@ -19,9 +19,10 @@ type WebSocketResponse = {
     | "error"
     | "variantComplete"
     | "variantError"
-    | "variantCount";
-  value: string;
-  variantIndex: number;
+    | "variantCount"
+    | "generation_complete";
+  value?: string;
+  variantIndex?: number;
 };
 
 interface CodeGenerationCallbacks {
@@ -46,6 +47,9 @@ export function generateCode(
   const ws = new WebSocket(wsUrl);
   wsRef.current = ws;
 
+  // 🔧 Track if we received generation_complete signal
+  let receivedGenerationComplete = false;
+
   ws.addEventListener("open", () => {
     ws.send(JSON.stringify(params));
   });
@@ -53,20 +57,24 @@ export function generateCode(
   ws.addEventListener("message", async (event: MessageEvent) => {
     const response = JSON.parse(event.data) as WebSocketResponse;
     if (response.type === "chunk") {
-      callbacks.onChange(response.value, response.variantIndex);
+      callbacks.onChange(response.value!, response.variantIndex!);
     } else if (response.type === "status") {
-      callbacks.onStatusUpdate(response.value, response.variantIndex);
+      callbacks.onStatusUpdate(response.value!, response.variantIndex!);
     } else if (response.type === "setCode") {
-      callbacks.onSetCode(response.value, response.variantIndex);
+      callbacks.onSetCode(response.value!, response.variantIndex!);
     } else if (response.type === "variantComplete") {
-      callbacks.onVariantComplete(response.variantIndex);
+      callbacks.onVariantComplete(response.variantIndex!);
     } else if (response.type === "variantError") {
-      callbacks.onVariantError(response.variantIndex, response.value);
+      callbacks.onVariantError(response.variantIndex!, response.value!);
     } else if (response.type === "variantCount") {
-      callbacks.onVariantCount(parseInt(response.value));
+      callbacks.onVariantCount(parseInt(response.value!));
     } else if (response.type === "error") {
       console.error("Error generating code", response.value);
-      toast.error(response.value);
+      toast.error(response.value!);
+    } else if (response.type === "generation_complete") {
+      // 🔧 Mark that we received the final signal from backend
+      console.log("Received generation_complete signal from backend");
+      receivedGenerationComplete = true;
     }
   });
 
@@ -82,7 +90,15 @@ export function generateCode(
       console.error("Unknown server or connection error", event);
       toast.error(ERROR_MESSAGE);
       callbacks.onCancel();
+    } else if (!receivedGenerationComplete) {
+      // 🔧 Connection closed cleanly (1000) but without generation_complete signal
+      console.warn(
+        "WebSocket closed without generation_complete signal - generation may have failed silently"
+      );
+      toast.error("Generation completed but confirmation signal was not received");
+      callbacks.onCancel();
     } else {
+      // 🔧 Normal completion with generation_complete signal received
       callbacks.onComplete();
     }
   });
