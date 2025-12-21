@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { simpleFetch, htmlToText } from '@/lib/scrape/simple-fetch';
 
 // Function to sanitize smart quotes and other problematic characters
 function sanitizeQuotes(text: string): string {
@@ -30,7 +31,37 @@ export async function POST(request: NextRequest) {
       }, { status: 400 });
     }
 
-    console.log('[scrape-url-enhanced] Scraping with Firecrawl:', url);
+    console.log('[scrape-url-enhanced] Starting scrape for:', url);
+
+    // Try simple HTTP fetch first (fast, free, no JS needed)
+    const simpleFetchResult = await simpleFetch(url);
+    if (simpleFetchResult.success && simpleFetchResult.html) {
+      console.log('[scrape] simple fetch success');
+      const textContent = htmlToText(simpleFetchResult.html || '');
+
+      return NextResponse.json({
+        ok: true,
+        enhancedScrape: {
+          success: true,
+          method: 'simple-fetch'
+        },
+        structured: {
+          title: new URL(url).hostname || 'Website',
+          description: textContent.substring(0, 200),
+          content: textContent,
+          url,
+          screenshot: null
+        },
+        markdown: textContent,
+        metadata: {
+          scraper: 'simple-fetch',
+          timestamp: new Date().toISOString(),
+          cached: false
+        }
+      });
+    }
+
+    console.log('[scrape] simple fetch failed, fallback to firecrawl');
 
     const FIRECRAWL_API_KEY = process.env.FIRECRAWL_API_KEY;
     if (!FIRECRAWL_API_KEY) {
