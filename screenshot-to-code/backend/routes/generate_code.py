@@ -6,8 +6,6 @@ from typing import Callable, Awaitable
 from fastapi import APIRouter, WebSocket
 import openai
 from codegen.utils import extract_html_content, sanitize_html_output, is_html_valid
-from page_type_detector import detect_page_type, PageType
-from image_assets.extract_assets import extract_image_assets
 from config import (
     IS_PROD,
     NUM_VARIANTS,
@@ -53,11 +51,9 @@ MessageType = Literal[
     "partial_success",
     "partial_failed",
 ]
-# Image generation removed - single LLM model only (GPT_4_1_MINI)
 from prompts import create_prompt
 from prompts.types import Stack, PromptContent
 
-# from utils import pprint_prompt
 from ws.constants import APP_ERROR_WEB_SOCKET_CODE  # type: ignore
 
 
@@ -820,64 +816,6 @@ class StatusBroadcastMiddleware(Middleware):
         await next_func()
 
 
-class PageTypeDetectionMiddleware(Middleware):
-    """Detects page type (landing/dashboard/content) and extracts image assets from screenshot"""
-
-    async def process(
-        self, context: PipelineContext, next_func: Callable[[], Awaitable[None]]
-    ) -> None:
-        # Only run detection for image input mode
-        if context.extracted_params is None:
-            await next_func()
-            return
-
-        if context.extracted_params.input_mode != "image":
-            # For text or video input, default to landing and no assets
-            context.metadata["page_type"] = "landing"
-            context.metadata["page_type_confidence"] = 0.0
-            context.metadata["asset_manifest"] = []
-            await next_func()
-            return
-
-        # Get image URL for detection and asset extraction
-        if not context.extracted_params.prompt.get("images"):
-            context.metadata["page_type"] = "landing"
-            context.metadata["page_type_confidence"] = 0.0
-            context.metadata["asset_manifest"] = []
-            await next_func()
-            return
-
-        try:
-            image_url = context.extracted_params.prompt["images"][0]
-
-            # Run page type detection (fast, low-cost)
-            page_type, confidence = await detect_page_type(image_url)
-
-            context.metadata["page_type"] = page_type
-            context.metadata["page_type_confidence"] = confidence
-
-            print(f"🔍 PAGE TYPE: {page_type} (confidence: {confidence:.2f})")
-
-            # Extract image assets from screenshot
-            asset_result = await extract_image_assets(image_url)
-            context.metadata["asset_manifest"] = asset_result.asset_manifest
-            context.metadata["asset_count"] = len(asset_result.assets)
-            context.metadata["asset_bytes"] = asset_result.total_bytes
-
-            if asset_result.assets:
-                print(f"📦 ASSETS: Extracted {len(asset_result.assets)} images ({asset_result.total_bytes} bytes)")
-
-        except Exception as e:
-            # If detection/extraction fails, default to landing and no assets
-            print(f"⚠️ PAGE TYPE DETECTION/EXTRACTION FAILED: {e}, defaulting to 'landing'")
-            context.metadata["page_type"] = "landing"
-            context.metadata["page_type_confidence"] = 0.0
-            context.metadata["asset_manifest"] = []
-
-        await next_func()
-
-
-
 class PromptCreationMiddleware(Middleware):
     """Handles prompt creation"""
 
@@ -886,14 +824,8 @@ class PromptCreationMiddleware(Middleware):
     ) -> None:
         prompt_creator = PromptCreationStage(context.throw_error)
         assert context.extracted_params is not None
-        page_type = context.metadata.get("page_type", "landing")
-        asset_manifest = context.metadata.get("asset_manifest", [])
         context.prompt_messages, context.image_cache = (
-            await prompt_creator.create_prompt(
-                context.extracted_params,
-                page_type=page_type,
-                asset_manifest=asset_manifest,
-            )
+            await prompt_creator.create_prompt(context.extracted_params)
         )
 
         await next_func()
@@ -997,7 +929,6 @@ async def stream_code(websocket: WebSocket):
     pipeline.use(ParameterExtractionMiddleware())
     pipeline.use(PartialUpdateMiddleware())  # 🔧 PARTIAL UPDATE: Check if partial update and bypass variant pipeline
     pipeline.use(StatusBroadcastMiddleware())
-    pipeline.use(PageTypeDetectionMiddleware())  # 🔍 PAGE TYPE DETECTION: Classify landing/dashboard/content
     pipeline.use(PromptCreationMiddleware())
     pipeline.use(CodeGenerationMiddleware())
     pipeline.use(PostProcessingMiddleware())
