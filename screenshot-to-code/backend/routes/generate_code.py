@@ -7,6 +7,7 @@ from fastapi import APIRouter, WebSocket
 import openai
 from codegen.utils import extract_html_content, sanitize_html_output, is_html_valid
 from page_type_detector import detect_page_type, PageType
+from image_assets.extract_assets import extract_image_assets
 from config import (
     ANTHROPIC_API_KEY,
     GEMINI_API_KEY,
@@ -357,8 +358,12 @@ class PromptCreationStage:
         self,
         extracted_params: ExtractedParams,
         page_type: str = "landing",
+        asset_manifest: list[dict] = None,
     ) -> tuple[List[ChatCompletionMessageParam], Dict[str, str]]:
         """Create prompt messages and return image cache"""
+        if asset_manifest is None:
+            asset_manifest = []
+
         try:
             prompt_messages, image_cache = await create_prompt(
                 stack=extracted_params.stack,
@@ -369,6 +374,7 @@ class PromptCreationStage:
                 is_imported_from_code=extracted_params.is_imported_from_code,
                 update_mode=extracted_params.update_mode,
                 page_type=page_type,
+                asset_manifest=asset_manifest,
             )
 
             print_prompt_summary(prompt_messages, truncate=False)
@@ -883,7 +889,7 @@ class StatusBroadcastMiddleware(Middleware):
 
 
 class PageTypeDetectionMiddleware(Middleware):
-    """Detects page type (landing/dashboard/content) from screenshot"""
+    """Detects page type (landing/dashboard/content) and extracts image assets from screenshot"""
 
     async def process(
         self, context: PipelineContext, next_func: Callable[[], Awaitable[None]]
@@ -894,16 +900,18 @@ class PageTypeDetectionMiddleware(Middleware):
             return
 
         if context.extracted_params.input_mode != "image":
-            # For text or video input, default to landing
+            # For text or video input, default to landing and no assets
             context.metadata["page_type"] = "landing"
             context.metadata["page_type_confidence"] = 0.0
+            context.metadata["asset_manifest"] = []
             await next_func()
             return
 
-        # Get image URL for detection
+        # Get image URL for detection and asset extraction
         if not context.extracted_params.prompt.get("images"):
             context.metadata["page_type"] = "landing"
             context.metadata["page_type_confidence"] = 0.0
+            context.metadata["asset_manifest"] = []
             await next_func()
             return
 
@@ -918,11 +926,21 @@ class PageTypeDetectionMiddleware(Middleware):
 
             print(f"🔍 PAGE TYPE: {page_type} (confidence: {confidence:.2f})")
 
+            # Extract image assets from screenshot
+            asset_result = await extract_image_assets(image_url)
+            context.metadata["asset_manifest"] = asset_result.asset_manifest
+            context.metadata["asset_count"] = len(asset_result.assets)
+            context.metadata["asset_bytes"] = asset_result.total_bytes
+
+            if asset_result.assets:
+                print(f"📦 ASSETS: Extracted {len(asset_result.assets)} images ({asset_result.total_bytes} bytes)")
+
         except Exception as e:
-            # If detection fails, default to landing
-            print(f"⚠️ PAGE TYPE DETECTION FAILED: {e}, defaulting to 'landing'")
+            # If detection/extraction fails, default to landing and no assets
+            print(f"⚠️ PAGE TYPE DETECTION/EXTRACTION FAILED: {e}, defaulting to 'landing'")
             context.metadata["page_type"] = "landing"
             context.metadata["page_type_confidence"] = 0.0
+            context.metadata["asset_manifest"] = []
 
         await next_func()
 
@@ -937,10 +955,12 @@ class PromptCreationMiddleware(Middleware):
         prompt_creator = PromptCreationStage(context.throw_error)
         assert context.extracted_params is not None
         page_type = context.metadata.get("page_type", "landing")
+        asset_manifest = context.metadata.get("asset_manifest", [])
         context.prompt_messages, context.image_cache = (
             await prompt_creator.create_prompt(
                 context.extracted_params,
                 page_type=page_type,
+                asset_manifest=asset_manifest,
             )
         )
 
