@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { generateCode } from "./generateCode";
 import SettingsDialog from "./components/settings/SettingsDialog";
 import { AppState, CodeGenerationParams, EditorTheme, Settings, FullGenerationSettings } from "./types";
@@ -88,11 +88,15 @@ function App() {
     }
   }, [settings.generatedCodeConfig, setSettings]);
 
+  // Track if we're currently doing a partial update (for UI hiding)
+  const [isCurrentlyDoingPartialUpdate, setIsCurrentlyDoingPartialUpdate] = useState(false);
+
   // Functions
   const reset = () => {
     setAppState(AppState.INITIAL);
     disableInSelectAndEditMode();
     resetExecutionConsoles();
+    setIsCurrentlyDoingPartialUpdate(false);
 
     resetCommits();
     resetHead();
@@ -167,10 +171,15 @@ function App() {
       isTermOfServiceAccepted: settings.isTermOfServiceAccepted,
     };
 
-    // Create variants dynamically - start with 4 to handle most cases
-    // Backend will use however many it needs (typically 3)
+    // 🔧 PARTIAL UPDATE: Create only 1 variant for element mutations, 4 for full generation
+    const isPartialUpdate = params.generationType === "update" && (params as any).updateMode === "partial";
+    const variantCount = isPartialUpdate ? 1 : 4;
+
+    // Set flag to hide variant UI during partial update
+    setIsCurrentlyDoingPartialUpdate(isPartialUpdate);
+
     const baseCommitObject = {
-      variants: Array(4)
+      variants: Array(variantCount)
         .fill(null)
         .map(() => ({ code: "" })),
     };
@@ -481,6 +490,7 @@ function App() {
               showSelectAndEditFeature={showSelectAndEditFeature}
               regenerate={regenerate}
               cancelCodeGeneration={cancelCodeGeneration}
+              hideVariants={isCurrentlyDoingPartialUpdate}
             />
           )}
         </div>

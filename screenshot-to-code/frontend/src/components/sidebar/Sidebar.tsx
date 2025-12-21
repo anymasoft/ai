@@ -15,12 +15,14 @@ interface SidebarProps {
   showSelectAndEditFeature: boolean;
   regenerate: () => void;
   cancelCodeGeneration: () => void;
+  hideVariants?: boolean;  // 🔧 PARTIAL UPDATE: Hide variant UI during element mutations
 }
 
 function Sidebar({
   showSelectAndEditFeature,
   regenerate,
   cancelCodeGeneration,
+  hideVariants = false,
 }: SidebarProps) {
   const [isErrorExpanded, setIsErrorExpanded] = useState(false);
 
@@ -60,7 +62,7 @@ function Sidebar({
 
   return (
     <>
-      <Variants />
+      {!hideVariants && <Variants />}
 
       {/* Show code preview when coding and the selected variant is not complete */}
       {appState === AppState.CODING && !isSelectedVariantComplete && (
