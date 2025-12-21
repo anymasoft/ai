@@ -509,10 +509,8 @@ dist
         stderr_lines.push(line);
         localSandboxManager.addLog(sandboxId, line);
 
-        // Log errors but don't fail on warnings
-        if (stderr_lines.length <= 5) {
-          console.log(`[VITE-STDERR] ${line.substring(0, 100)}`);
-        }
+        // Log EVERY stderr line for debugging
+        console.log(`[VITE-STDERR] ${line.substring(0, 150)}`);
       });
 
       child.on('error', (error) => {
@@ -522,6 +520,15 @@ dist
 
       child.on('close', (code) => {
         console.log(`[VITE-CLOSE]`, { sandboxId, exitCode: code, pid: child.pid, stdout_lines: stdout_lines.length, stderr_lines: stderr_lines.length });
+
+        // If Vite crashed - show last 30 stderr lines to diagnose
+        if (code !== 0 && stderr_lines.length > 0) {
+          console.log(`[VITE-ERROR-DETAILS] Last stderr lines for ${sandboxId}:`);
+          const lastLines = stderr_lines.slice(-30);
+          lastLines.forEach((line, idx) => {
+            console.log(`[VITE-ERROR-${idx}] ${line}`);
+          });
+        }
       });
 
       // Wait for process to start and get ready
