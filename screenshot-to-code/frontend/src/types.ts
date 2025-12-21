@@ -7,16 +7,16 @@ export enum EditorTheme {
 }
 
 export interface Settings {
-  openAiApiKey: string | null;
+  // 🔒 SECURITY: API ключи теперь ТОЛЬКО на backend через env vars
+  // openAiApiKey, anthropicApiKey, screenshotOneApiKey - УДАЛЕНЫ для защиты от XSS/localStorage leak
+
   openAiBaseURL: string | null;
-  screenshotOneApiKey: string | null;
   isImageGenerationEnabled: boolean;
   editorTheme: EditorTheme;
   generatedCodeConfig: Stack;
   codeGenerationModel: CodeGenerationModel;
   // Only relevant for hosted version
   isTermOfServiceAccepted: boolean;
-  anthropicApiKey: string | null; // Added property for anthropic API key
 }
 
 export enum AppState {
