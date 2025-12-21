@@ -127,6 +127,7 @@ function AISandboxPage() {
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const chatMessagesRef = useRef<HTMLDivElement>(null);
   const codeDisplayRef = useRef<HTMLDivElement>(null);
+  const isAutoStartingRef = useRef(false);
   
   const [codeApplicationState, setCodeApplicationState] = useState<CodeApplicationState>({
     stage: null
@@ -354,6 +355,15 @@ function AISandboxPage() {
       chatMessagesRef.current.scrollTop = chatMessagesRef.current.scrollHeight;
     }
   }, [chatMessages]);
+
+  // Auto-start clone from sessionStorage after sandbox is ready
+  useEffect(() => {
+    if (sandboxData?.sandboxId && homeUrlInput && !isAutoStartingRef.current) {
+      isAutoStartingRef.current = true;
+      console.log('[generation] auto-start clone from sessionStorage');
+      startGeneration();
+    }
+  }, [sandboxData?.sandboxId, homeUrlInput]);
 
   // Auto-trigger generation when flag is set (from home page navigation)
   useEffect(() => {
