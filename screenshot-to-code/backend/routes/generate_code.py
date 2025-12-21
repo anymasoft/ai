@@ -5,7 +5,7 @@ import traceback
 from typing import Callable, Awaitable
 from fastapi import APIRouter, WebSocket
 import openai
-from codegen.utils import extract_html_content, sanitize_html_output, is_html_valid
+from codegen.utils import extract_html_content, sanitize_html_output, is_html_valid, fix_broken_img_icons
 from config import (
     IS_PROD,
     NUM_VARIANTS,
@@ -422,6 +422,11 @@ class PostProcessingStage:
         if valid_completions:
             # Strip the completion of everything except the HTML content
             html_content = extract_html_content(valid_completions[0])
+
+            # 🖼️ FIX BROKEN ICONS: Ensure all <img> tags have valid src attributes
+            # This prevents broken image placeholders in the UI
+            html_content = fix_broken_img_icons(html_content)
+
             write_logs(prompt_messages, html_content)
 
         # Note: WebSocket closing is handled by the caller

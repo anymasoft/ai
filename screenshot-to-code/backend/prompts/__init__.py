@@ -24,12 +24,14 @@ Return ONLY a complete, valid HTML document.
 - No explanations, no markdown, no comments about what you're doing.
 - Output starts with <html and ends with </html>.
 
-IMPORTANT: If an ASSET_MANIFEST is provided below, use those image assets in the HTML.
-- Place extracted images using <img src="..."> with the provided src URLs.
-- Use the bbox (bounding box) coordinates to position assets correctly.
-- DO NOT try to recreate these images using CSS or gradients.
-- Preserve aspect ratio and use object-fit if needed.
+IMPORTANT: For images and icons in the screenshot:
+- Use <img src="..." alt="..."> with descriptive src attribute names or relative paths
+- For small icons (< 64x64px): use data:image/svg+xml or data:image/png inline if small
+- For larger images: reference them by descriptive names
+- NEVER leave src empty or undefined
+- ALWAYS ensure <img> elements have valid src attributes
 """
+
 
 SVG_USER_PROMPT = """
 Do an internal visual decomposition of the screenshot first (do NOT output the analysis).
