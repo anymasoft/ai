@@ -25,14 +25,10 @@ import { createCommit } from "./components/commits/utils";
 function App() {
   const {
     // Inputs
-    inputMode,
-    setInputMode,
     isImportedFromCode,
     setIsImportedFromCode,
     referenceImages,
     setReferenceImages,
-    initialPrompt,
-    setInitialPrompt,
 
     head,
     commits,
@@ -102,7 +98,6 @@ function App() {
     resetHead();
 
     // Inputs
-    setInputMode("image");
     setReferenceImages([]);
     setIsImportedFromCode(false);
   };
@@ -123,9 +118,7 @@ function App() {
     }
 
     // 🔧 MVP: Only image mode supported
-    if (inputMode === "image") {
-      doCreate(referenceImages, inputMode);
-    }
+    doCreate(referenceImages);
   };
 
   // Used when the user cancels the code generation
@@ -236,19 +229,18 @@ function App() {
 
   // Initial version creation
   // 🔧 SIMPLIFICATION: Only image mode supported (video mode removed)
-  function doCreate(referenceImages: string[], inputMode: "image") {
+  function doCreate(referenceImages: string[]) {
     // Reset any existing state
     reset();
 
     // Set the input states
     setReferenceImages(referenceImages);
-    setInputMode(inputMode);
 
     // Kick off the code generation
     if (referenceImages.length > 0) {
       doGenerateCode({
         generationType: "create",
-        inputMode,
+        inputMode: "image",
         prompt: { text: "", images: [referenceImages[0]] },
       });
     }
@@ -377,7 +369,6 @@ function App() {
             appState === AppState.CODE_READY) && (
             <Sidebar
               showSelectAndEditFeature={showSelectAndEditFeature}
-              doUpdate={doUpdate}
               regenerate={regenerate}
               cancelCodeGeneration={cancelCodeGeneration}
             />

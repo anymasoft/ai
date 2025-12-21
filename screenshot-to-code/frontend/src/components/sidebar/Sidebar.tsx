@@ -13,14 +13,12 @@ import Variants from "../variants/Variants";
 
 interface SidebarProps {
   showSelectAndEditFeature: boolean;
-  doUpdate: (instruction: string) => void;
   regenerate: () => void;
   cancelCodeGeneration: () => void;
 }
 
 function Sidebar({
   showSelectAndEditFeature,
-  doUpdate,
   regenerate,
   cancelCodeGeneration,
 }: SidebarProps) {
