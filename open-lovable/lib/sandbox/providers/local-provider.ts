@@ -408,7 +408,7 @@ module.exports = {
     await fsAsync.writeFile(tailwindConfigPath, tailwindConfig);
     console.log(`[LocalProvider.DEBUG] Created tailwind.config.js`);
 
-    // Создать postcss.config.js
+    // Создать postcss.config.cjs (CommonJS for ESM compatibility)
     const postcssConfig = `module.exports = {
   plugins: {
     tailwindcss: {},
@@ -416,9 +416,9 @@ module.exports = {
   },
 };`;
 
-    const postcssConfigPath = path.join(sandboxDir, 'postcss.config.js');
+    const postcssConfigPath = path.join(sandboxDir, 'postcss.config.cjs');
     await fsAsync.writeFile(postcssConfigPath, postcssConfig);
-    console.log(`[LocalProvider.DEBUG] Created postcss.config.js`);
+    console.log(`[LocalProvider.DEBUG] Created postcss.config.cjs`);
 
     // Создать .gitignore
     const gitignore = `node_modules
