@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import classNames from "classnames";
 import useThrottle from "../../hooks/useThrottle";
 import EditPopup from "../select-and-edit/EditPopup";
@@ -23,6 +23,31 @@ function PreviewComponent({ code, device, doUpdate }: Props) {
   // Select and edit functionality
   const [clickEvent, setClickEvent] = useState<MouseEvent | null>(null);
   const [scale, setScale] = useState(1);
+
+  // 🔧 CRITICAL: Explicit function to set iframe content
+  // This is the ONLY place where iframe.srcdoc can be modified
+  const setIframeContent = useCallback((html: string) => {
+    if (isPartialUpdateInProgress) {
+      console.error(
+        "❌ VIOLATION: Attempted to set iframe.srcdoc during partial update! This would break DOM mutations."
+      );
+      return;
+    }
+
+    const iframe = iframeRef.current;
+    if (!iframe) return;
+
+    console.warn("🔧 SET IFRAME CONTENT (full document generation)");
+    iframe.srcdoc = html;
+
+    // Set up click handler for select and edit functionality
+    iframe.addEventListener("load", function () {
+      iframe.contentWindow?.document.body.addEventListener(
+        "click",
+        setClickEvent
+      );
+    });
+  }, [isPartialUpdateInProgress]);
 
   // Add scaling logic
   useEffect(() => {
@@ -50,25 +75,11 @@ function PreviewComponent({ code, device, doUpdate }: Props) {
     return () => window.removeEventListener("resize", updateScale);
   }, [device]);
 
+  // 🔧 CRITICAL: useEffect that triggers setIframeContent for full document generation
+  // This is the ONLY place where iframe content is updated
   useEffect(() => {
-    const iframe = iframeRef.current;
-    if (iframe) {
-      // 🔧 PARTIAL UPDATE: Don't update srcdoc if partial update is in progress
-      // During partial update, DOM mutations are applied directly via contentDocument
-      // We only want to update srcdoc for full document generation
-      if (!isPartialUpdateInProgress) {
-        iframe.srcdoc = throttledCode;
-
-        // Set up click handler for select and edit funtionality
-        iframe.addEventListener("load", function () {
-          iframe.contentWindow?.document.body.addEventListener(
-            "click",
-            setClickEvent
-          );
-        });
-      }
-    }
-  }, [throttledCode, isPartialUpdateInProgress]);
+    setIframeContent(throttledCode);
+  }, [throttledCode, setIframeContent]);
 
   return (
     <div className="flex justify-center mr-4">
