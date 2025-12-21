@@ -94,3 +94,135 @@ def _ensure_valid_structure(html: str) -> str:
         )
 
     return html
+
+
+def sanitize_html_output(html: str) -> str:
+    """
+    🔥 CRITICAL: Post-process HTML output to fix common model errors.
+
+    Fixes:
+    1. Remove nested <html> tags inside <body>
+    2. Close unclosed <style> blocks
+    3. Deduplicate exact duplicate CSS rules
+    4. Remove incomplete CSS rules (e.g. "color: #" at end of file)
+    5. Ensure single <html> and <body>
+
+    Returns: Clean, valid HTML
+    """
+
+    # FIX #1: Remove nested <html> tags inside <body>
+    # Pattern: <body...>...(<html...>...)...</body>
+    # Keep only the innermost content
+    html = re.sub(
+        r"(<body[^>]*>.*?)(<html[^>]*>|<!DOCTYPE)",
+        r"\1",
+        html,
+        flags=re.DOTALL | re.IGNORECASE
+    )
+
+    # FIX #2: Close unclosed <style> blocks
+    # Simple approach: count opens/closes and add missing closes before </html>
+    style_open_count = len(re.findall(r"<style[^>]*>", html, re.IGNORECASE))
+    style_close_count = len(re.findall(r"</style>", html, re.IGNORECASE))
+
+    if style_open_count > style_close_count:
+        missing = style_open_count - style_close_count
+        # Add missing </style> tags before </html>
+        html = re.sub(
+            r"(</html>)",
+            r"</style>\n" * missing + r"\1",
+            html,
+            count=1,
+            flags=re.IGNORECASE
+        )
+        print(f"[SANITIZE] Added {missing} missing </style> tag(s)")
+
+    # FIX #3 & #4: Fix CSS block content - close incomplete rules & deduplicate
+    # Find <style> blocks and process them
+    def fix_style_block(match):
+        style_tag = match.group(1)  # <style...>
+        css_content = match.group(2)  # content between tags
+        closing_tag = match.group(3)  # </style>
+
+        # Remove incomplete CSS at the end (rules that end without "}")
+        # Look for pattern: selector { ...properties... but no closing }
+        css_content = re.sub(
+            r"([{]\s*[^}]*?)(\s*)$",
+            lambda m: m.group(1) + " }" if "{" in m.group(1) else m.group(0),
+            css_content,
+            flags=re.DOTALL
+        )
+
+        # Deduplicate entire CSS rule blocks (selector + all properties)
+        # Strategy: parse rules as complete blocks, keep only unique ones
+        seen_rules = {}
+        unique_blocks = []
+
+        # Split by "}" to get individual rule blocks
+        blocks = re.split(r"(})", css_content)
+
+        current_block = ""
+        for block in blocks:
+            if block.strip():
+                current_block += block
+
+                # If we just added a "}", we have a complete rule
+                if block == "}":
+                    block_normalized = re.sub(r"\s+", " ", current_block.strip())
+                    if block_normalized not in seen_rules:
+                        seen_rules[block_normalized] = True
+                        unique_blocks.append(current_block)
+                    current_block = ""
+
+        # If there's leftover content (incomplete rule), add it
+        if current_block.strip():
+            block_normalized = re.sub(r"\s+", " ", current_block.strip())
+            if block_normalized not in seen_rules:
+                unique_blocks.append(current_block)
+
+        dedup_content = "\n".join(unique_blocks)
+
+        return f"{style_tag}\n{dedup_content}\n{closing_tag}"
+
+    # Apply fix to all style blocks
+    html = re.sub(
+        r"(<style[^>]*>)(.*?)(</style>)",
+        fix_style_block,
+        html,
+        flags=re.DOTALL | re.IGNORECASE
+    )
+
+    print("[SANITIZE] Fixed CSS blocks and deduplicated rules")
+
+    # FIX #5: Ensure exactly one <html> and one <body>
+    # Count tags
+    html_open_count = len(re.findall(r"<html[^>]*>", html, re.IGNORECASE))
+    body_open_count = len(re.findall(r"<body[^>]*>", html, re.IGNORECASE))
+
+    if html_open_count > 1:
+        # Keep only first <html>
+        first_html = re.search(r"<html[^>]*>", html, re.IGNORECASE)
+        if first_html:
+            # Remove all other <html> tags
+            html = html[:first_html.end()] + re.sub(
+                r"<html[^>]*>",
+                "",
+                html[first_html.end():],
+                flags=re.IGNORECASE
+            )
+        print(f"[SANITIZE] Removed {html_open_count - 1} duplicate <html> tag(s)")
+
+    if body_open_count > 1:
+        # Keep only first <body>
+        first_body = re.search(r"<body[^>]*>", html, re.IGNORECASE)
+        if first_body:
+            # Remove all other <body> tags
+            html = html[:first_body.end()] + re.sub(
+                r"<body[^>]*>",
+                "",
+                html[first_body.end():],
+                flags=re.IGNORECASE
+            )
+        print(f"[SANITIZE] Removed {body_open_count - 1} duplicate <body> tag(s)")
+
+    return html

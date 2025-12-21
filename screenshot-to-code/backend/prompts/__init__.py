@@ -10,12 +10,30 @@ from prompts.types import Stack, PromptContent
 from video.utils import assemble_claude_prompt_video
 
 
+# 🎯 CRITICAL: Explicit task, NO "confirm instructions" escape route
 USER_PROMPT = """
-Generate code for a web page that looks exactly like this.
+Do an internal visual decomposition of the screenshot first (do NOT output the analysis).
+
+Then, GENERATE THE HTML NOW.
+
+Return ONLY a complete, valid HTML document.
+- EXACTLY ONE <html> tag (opening).
+- EXACTLY ONE <body> tag.
+- All tags properly closed.
+- <style> block fully formed and closed.
+- No explanations, no markdown, no comments about what you're doing.
+- Output starts with <html and ends with </html>.
 """
 
 SVG_USER_PROMPT = """
-Generate code for a SVG that looks exactly like this.
+Do an internal visual decomposition of the screenshot first (do NOT output the analysis).
+
+Then, GENERATE THE SVG NOW.
+
+Return ONLY a complete, valid SVG document.
+- Starts with <svg and ends with </svg>.
+- All tags properly closed.
+- No explanations, no markdown, no comments about what you're doing.
 """
 
 PARTIAL_UPDATE_PROMPT = """
