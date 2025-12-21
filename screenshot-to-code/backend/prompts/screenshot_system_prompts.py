@@ -46,12 +46,26 @@ CSS RULES (CRITICAL):
 8. Excessive CSS size is a FAILURE.
    - Thousands of duplicated rules are forbidden.
 
+SHAPE RULES (CRITICAL):
+
+9. If decorative shapes (circles, ellipses, curves) are provided in ASSET_MANIFEST with type:"shape":
+   - MUST use them as <img> elements instead of trying to recreate them with CSS
+   - DO NOT attempt to recreate shapes using border-radius, gradients, or other CSS tricks
+   - DO NOT generate box-shadows or filters to simulate shapes
+   - Place shapes exactly as specified in the manifest
+   - Preserve aspect ratio with object-fit: contain
+
+10. If no shape assets are provided:
+    - Recreate decorative shapes ONLY if absolutely necessary for visual accuracy
+    - Prefer CSS for simple shapes only (single borders, basic gradients)
+    - Avoid complex shape recreation
+
 PROCESS (INTERNAL):
 
-9. Internally analyze the screenshot and decompose the layout visually.
-   - This analysis MUST NOT be output.
+11. Internally analyze the screenshot and decompose the layout visually.
+    - This analysis MUST NOT be output.
 
-10. Then generate the final HTML in ONE PASS.
+12. Then generate the final HTML in ONE PASS.
 
 FRAMEWORK-SPECIFIC:
 Use Tailwind CSS. Load via CDN: <script src="https://cdn.tailwindcss.com"></script>
@@ -109,12 +123,26 @@ CSS RULES (CRITICAL):
 8. Excessive CSS size is a FAILURE.
    - Thousands of duplicated rules are forbidden.
 
+SHAPE RULES (CRITICAL):
+
+9. If decorative shapes (circles, ellipses, curves) are provided in ASSET_MANIFEST with type:"shape":
+   - MUST use them as <img> elements instead of trying to recreate them with CSS
+   - DO NOT attempt to recreate shapes using border-radius, gradients, or other CSS tricks
+   - DO NOT generate box-shadows or filters to simulate shapes
+   - Place shapes exactly as specified in the manifest
+   - Preserve aspect ratio with object-fit: contain
+
+10. If no shape assets are provided:
+    - Recreate decorative shapes ONLY if absolutely necessary for visual accuracy
+    - Prefer CSS for simple shapes only (single borders, basic gradients)
+    - Avoid complex shape recreation
+
 PROCESS (INTERNAL):
 
-9. Internally analyze the screenshot and decompose the layout visually.
-   - This analysis MUST NOT be output.
+11. Internally analyze the screenshot and decompose the layout visually.
+    - This analysis MUST NOT be output.
 
-10. Then generate the final HTML in ONE PASS.
+12. Then generate the final HTML in ONE PASS.
 
 FRAMEWORK-SPECIFIC:
 Use plain CSS with <style> blocks for precise pixel-level control.
@@ -172,12 +200,26 @@ CSS RULES (CRITICAL):
 8. Excessive CSS size is a FAILURE.
    - Thousands of duplicated rules are forbidden.
 
+SHAPE RULES (CRITICAL):
+
+9. If decorative shapes (circles, ellipses, curves) are provided in ASSET_MANIFEST with type:"shape":
+   - MUST use them as <img> elements instead of trying to recreate them with CSS
+   - DO NOT attempt to recreate shapes using border-radius, gradients, or other CSS tricks
+   - DO NOT generate box-shadows or filters to simulate shapes
+   - Place shapes exactly as specified in the manifest
+   - Preserve aspect ratio with object-fit: contain
+
+10. If no shape assets are provided:
+    - Recreate decorative shapes ONLY if absolutely necessary for visual accuracy
+    - Prefer CSS for simple shapes only (single borders, basic gradients)
+    - Avoid complex shape recreation
+
 PROCESS (INTERNAL):
 
-9. Internally analyze the screenshot and decompose the layout visually.
-   - This analysis MUST NOT be output.
+11. Internally analyze the screenshot and decompose the layout visually.
+    - This analysis MUST NOT be output.
 
-10. Then generate the final HTML in ONE PASS.
+12. Then generate the final HTML in ONE PASS.
 
 FRAMEWORK-SPECIFIC:
 Use Bootstrap 5. Load via CDN: <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-T3c6CoIi6uLrA9TneNEoa7RxnatzjcDSCmG1MXxSR1GAsXEV/Dwwykc2MPK8M2HN" crossorigin="anonymous">
@@ -235,12 +277,26 @@ CSS RULES (CRITICAL):
 8. Excessive CSS size is a FAILURE.
    - Thousands of duplicated rules are forbidden.
 
+SHAPE RULES (CRITICAL):
+
+9. If decorative shapes (circles, ellipses, curves) are provided in ASSET_MANIFEST with type:"shape":
+   - MUST use them as <img> elements instead of trying to recreate them with CSS
+   - DO NOT attempt to recreate shapes using border-radius, gradients, or other CSS tricks
+   - DO NOT generate box-shadows or filters to simulate shapes
+   - Place shapes exactly as specified in the manifest
+   - Preserve aspect ratio with object-fit: contain
+
+10. If no shape assets are provided:
+    - Recreate decorative shapes ONLY if absolutely necessary for visual accuracy
+    - Prefer CSS for simple shapes only (single borders, basic gradients)
+    - Avoid complex shape recreation
+
 PROCESS (INTERNAL):
 
-9. Internally analyze the screenshot and decompose the layout visually.
-   - This analysis MUST NOT be output.
+11. Internally analyze the screenshot and decompose the layout visually.
+    - This analysis MUST NOT be output.
 
-10. Then generate the final HTML in ONE PASS.
+12. Then generate the final HTML in ONE PASS.
 
 FRAMEWORK-SPECIFIC:
 Use React with Tailwind CSS. Load via CDN: React 18, ReactDOM, Babel, and Tailwind.
@@ -298,12 +354,26 @@ CSS RULES (CRITICAL):
 8. Excessive CSS size is a FAILURE.
    - Thousands of duplicated rules are forbidden.
 
+SHAPE RULES (CRITICAL):
+
+9. If decorative shapes (circles, ellipses, curves) are provided in ASSET_MANIFEST with type:"shape":
+   - MUST use them as <img> elements instead of trying to recreate them with CSS
+   - DO NOT attempt to recreate shapes using border-radius, gradients, or other CSS tricks
+   - DO NOT generate box-shadows or filters to simulate shapes
+   - Place shapes exactly as specified in the manifest
+   - Preserve aspect ratio with object-fit: contain
+
+10. If no shape assets are provided:
+    - Recreate decorative shapes ONLY if absolutely necessary for visual accuracy
+    - Prefer CSS for simple shapes only (single borders, basic gradients)
+    - Avoid complex shape recreation
+
 PROCESS (INTERNAL):
 
-9. Internally analyze the screenshot and decompose the layout visually.
-   - This analysis MUST NOT be output.
+11. Internally analyze the screenshot and decompose the layout visually.
+    - This analysis MUST NOT be output.
 
-10. Then generate the final HTML in ONE PASS.
+12. Then generate the final HTML in ONE PASS.
 
 FRAMEWORK-SPECIFIC:
 Use Ionic with Tailwind CSS. Load via CDN: Ionic Core and Tailwind.
@@ -361,12 +431,26 @@ CSS RULES (CRITICAL):
 8. Excessive CSS size is a FAILURE.
    - Thousands of duplicated rules are forbidden.
 
+SHAPE RULES (CRITICAL):
+
+9. If decorative shapes (circles, ellipses, curves) are provided in ASSET_MANIFEST with type:"shape":
+   - MUST use them as <img> elements instead of trying to recreate them with CSS
+   - DO NOT attempt to recreate shapes using border-radius, gradients, or other CSS tricks
+   - DO NOT generate box-shadows or filters to simulate shapes
+   - Place shapes exactly as specified in the manifest
+   - Preserve aspect ratio with object-fit: contain
+
+10. If no shape assets are provided:
+    - Recreate decorative shapes ONLY if absolutely necessary for visual accuracy
+    - Prefer CSS for simple shapes only (single borders, basic gradients)
+    - Avoid complex shape recreation
+
 PROCESS (INTERNAL):
 
-9. Internally analyze the screenshot and decompose the layout visually.
-   - This analysis MUST NOT be output.
+11. Internally analyze the screenshot and decompose the layout visually.
+    - This analysis MUST NOT be output.
 
-10. Then generate the final HTML in ONE PASS.
+12. Then generate the final HTML in ONE PASS.
 
 FRAMEWORK-SPECIFIC:
 Use Vue 3 with Tailwind CSS. Load via CDN: Vue 3 global build and Tailwind.
@@ -419,12 +503,24 @@ CSS/STYLE RULES (CRITICAL):
 7. Excessive SVG size is a FAILURE.
    - Thousands of duplicated rules are forbidden.
 
+SHAPE RULES (CRITICAL):
+
+8. If decorative shapes (circles, ellipses, curves) are provided in ASSET_MANIFEST with type:"shape":
+   - MUST use them as <image> elements (SVG image tags) instead of trying to recreate them with SVG primitives
+   - DO NOT attempt to recreate complex shapes using <path>, <circle>, <ellipse>, or other SVG elements
+   - Place shape assets exactly as specified in the manifest
+   - Use proper SVG image referencing with xlink:href
+
+9. If no shape assets are provided:
+   - Use SVG primitives (<circle>, <ellipse>, <path>) for decorative shapes
+   - Keep shape definitions simple and reusable
+
 PROCESS (INTERNAL):
 
-8. Internally analyze the screenshot and decompose the visual structure.
-   - This analysis MUST NOT be output.
+10. Internally analyze the screenshot and decompose the visual structure.
+    - This analysis MUST NOT be output.
 
-9. Then generate the final SVG in ONE PASS.
+11. Then generate the final SVG in ONE PASS.
 
 REMEMBER:
 Ugly SVG is acceptable.
@@ -490,12 +586,26 @@ CSS RULES (CRITICAL):
 8. Excessive CSS size is a FAILURE.
    - Thousands of duplicated rules are forbidden.
 
+SHAPE RULES (CRITICAL):
+
+9. If decorative shapes (circles, ellipses, curves) are provided in ASSET_MANIFEST with type:"shape":
+   - MUST use them as <img> elements instead of trying to recreate them with CSS
+   - DO NOT attempt to recreate shapes using border-radius, gradients, or other CSS tricks
+   - DO NOT generate box-shadows or filters to simulate shapes
+   - Place shapes exactly as specified in the manifest
+   - Preserve aspect ratio with object-fit: contain
+
+10. If no shape assets are provided:
+    - Recreate decorative shapes ONLY if absolutely necessary for visual accuracy
+    - Prefer CSS for simple shapes only (single borders, basic gradients)
+    - Avoid complex shape recreation
+
 PROCESS (INTERNAL):
 
-9. Internally analyze the screenshot and decompose the layout visually.
-   - This analysis MUST NOT be output.
+11. Internally analyze the screenshot and decompose the layout visually.
+    - This analysis MUST NOT be output.
 
-10. Then generate the final HTML in ONE PASS.
+12. Then generate the final HTML in ONE PASS.
 
 REMEMBER:
 Ugly HTML is acceptable.
@@ -566,15 +676,29 @@ CSS RULES (CRITICAL):
    - Thousands of duplicated rules are forbidden.
    - Every row/card should NOT have unique classes.
 
+SHAPE RULES (CRITICAL):
+
+9. If decorative shapes (circles, ellipses, curves) are provided in ASSET_MANIFEST with type:"shape":
+   - MUST use them as <img> elements instead of trying to recreate them with CSS
+   - DO NOT attempt to recreate shapes using border-radius, gradients, or other CSS tricks
+   - DO NOT generate box-shadows or filters to simulate shapes
+   - Place shapes exactly as specified in the manifest
+   - Preserve aspect ratio with object-fit: contain
+
+10. If no shape assets are provided:
+    - Recreate decorative shapes ONLY if absolutely necessary for visual accuracy
+    - Prefer CSS for simple shapes only (single borders, basic gradients)
+    - Avoid complex shape recreation
+
 PROCESS (INTERNAL):
 
-9. Internally analyze the screenshot and decompose the layout visually.
-   - Identify sidebar/header structure
-   - Identify table/grid structure
-   - Identify repeating card/row patterns
-   - This analysis MUST NOT be output.
+11. Internally analyze the screenshot and decompose the layout visually.
+    - Identify sidebar/header structure
+    - Identify table/grid structure
+    - Identify repeating card/row patterns
+    - This analysis MUST NOT be output.
 
-10. Then generate the final HTML in ONE PASS.
+12. Then generate the final HTML in ONE PASS.
 
 REMEMBER:
 Ugly HTML is acceptable.
@@ -643,15 +767,29 @@ CSS RULES (CRITICAL):
 8. Excessive CSS size is a FAILURE.
    - Thousands of duplicated rules are forbidden.
 
+SHAPE RULES (CRITICAL):
+
+9. If decorative shapes (circles, ellipses, curves) are provided in ASSET_MANIFEST with type:"shape":
+   - MUST use them as <img> elements instead of trying to recreate them with CSS
+   - DO NOT attempt to recreate shapes using border-radius, gradients, or other CSS tricks
+   - DO NOT generate box-shadows or filters to simulate shapes
+   - Place shapes exactly as specified in the manifest
+   - Preserve aspect ratio with object-fit: contain
+
+10. If no shape assets are provided:
+    - Recreate decorative shapes ONLY if absolutely necessary for visual accuracy
+    - Prefer CSS for simple shapes only (single borders, basic gradients)
+    - Avoid complex shape recreation
+
 PROCESS (INTERNAL):
 
-9. Internally analyze the screenshot and decompose the layout visually.
-   - Identify typography hierarchy (headings, paragraphs)
-   - Identify content structure (sections, columns)
-   - Identify special elements (code blocks, quotes, etc.)
-   - This analysis MUST NOT be output.
+11. Internally analyze the screenshot and decompose the layout visually.
+    - Identify typography hierarchy (headings, paragraphs)
+    - Identify content structure (sections, columns)
+    - Identify special elements (code blocks, quotes, etc.)
+    - This analysis MUST NOT be output.
 
-10. Then generate the final HTML in ONE PASS.
+12. Then generate the final HTML in ONE PASS.
 
 REMEMBER:
 Ugly HTML is acceptable.
