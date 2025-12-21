@@ -6,6 +6,7 @@ from typing import Callable, Awaitable
 from fastapi import APIRouter, WebSocket
 import openai
 from codegen.utils import extract_html_content, sanitize_html_output, is_html_valid
+from page_type_detector import detect_page_type, PageType
 from config import (
     ANTHROPIC_API_KEY,
     GEMINI_API_KEY,
@@ -355,6 +356,7 @@ class PromptCreationStage:
     async def create_prompt(
         self,
         extracted_params: ExtractedParams,
+        page_type: str = "landing",
     ) -> tuple[List[ChatCompletionMessageParam], Dict[str, str]]:
         """Create prompt messages and return image cache"""
         try:
@@ -366,6 +368,7 @@ class PromptCreationStage:
                 history=extracted_params.history,
                 is_imported_from_code=extracted_params.is_imported_from_code,
                 update_mode=extracted_params.update_mode,
+                page_type=page_type,
             )
 
             print_prompt_summary(prompt_messages, truncate=False)
@@ -879,6 +882,52 @@ class StatusBroadcastMiddleware(Middleware):
         await next_func()
 
 
+class PageTypeDetectionMiddleware(Middleware):
+    """Detects page type (landing/dashboard/content) from screenshot"""
+
+    async def process(
+        self, context: PipelineContext, next_func: Callable[[], Awaitable[None]]
+    ) -> None:
+        # Only run detection for image input mode
+        if context.extracted_params is None:
+            await next_func()
+            return
+
+        if context.extracted_params.input_mode != "image":
+            # For text or video input, default to landing
+            context.metadata["page_type"] = "landing"
+            context.metadata["page_type_confidence"] = 0.0
+            await next_func()
+            return
+
+        # Get image URL for detection
+        if not context.extracted_params.prompt.get("images"):
+            context.metadata["page_type"] = "landing"
+            context.metadata["page_type_confidence"] = 0.0
+            await next_func()
+            return
+
+        try:
+            image_url = context.extracted_params.prompt["images"][0]
+
+            # Run page type detection (fast, low-cost)
+            page_type, confidence = await detect_page_type(image_url)
+
+            context.metadata["page_type"] = page_type
+            context.metadata["page_type_confidence"] = confidence
+
+            print(f"🔍 PAGE TYPE: {page_type} (confidence: {confidence:.2f})")
+
+        except Exception as e:
+            # If detection fails, default to landing
+            print(f"⚠️ PAGE TYPE DETECTION FAILED: {e}, defaulting to 'landing'")
+            context.metadata["page_type"] = "landing"
+            context.metadata["page_type_confidence"] = 0.0
+
+        await next_func()
+
+
+
 class PromptCreationMiddleware(Middleware):
     """Handles prompt creation"""
 
@@ -887,9 +936,11 @@ class PromptCreationMiddleware(Middleware):
     ) -> None:
         prompt_creator = PromptCreationStage(context.throw_error)
         assert context.extracted_params is not None
+        page_type = context.metadata.get("page_type", "landing")
         context.prompt_messages, context.image_cache = (
             await prompt_creator.create_prompt(
                 context.extracted_params,
+                page_type=page_type,
             )
         )
 
@@ -997,6 +1048,7 @@ async def stream_code(websocket: WebSocket):
     pipeline.use(ParameterExtractionMiddleware())
     pipeline.use(PartialUpdateMiddleware())  # 🔧 PARTIAL UPDATE: Check if partial update and bypass variant pipeline
     pipeline.use(StatusBroadcastMiddleware())
+    pipeline.use(PageTypeDetectionMiddleware())  # 🔍 PAGE TYPE DETECTION: Classify landing/dashboard/content
     pipeline.use(PromptCreationMiddleware())
     pipeline.use(CodeGenerationMiddleware())
     pipeline.use(PostProcessingMiddleware())
