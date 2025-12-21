@@ -20,7 +20,9 @@ type WebSocketResponse = {
     | "variantComplete"
     | "variantError"
     | "variantCount"
-    | "generation_complete";
+    | "generation_complete"
+    | "partial_success"
+    | "partial_failed";
   value?: string;
   variantIndex?: number;
 };
@@ -33,6 +35,9 @@ interface CodeGenerationCallbacks {
   onVariantError: (variantIndex: number, error: string) => void;
   onVariantCount: (count: number) => void;
   onGenerationComplete: () => void;
+  // 🔧 PARTIAL UPDATE: Callbacks for element-level updates
+  onPartialSuccess: (html: string) => void;
+  onPartialFailed: () => void;
   onCancel: () => void;
   onComplete: () => void;
 }
@@ -72,6 +77,14 @@ export function generateCode(
     } else if (response.type === "error") {
       console.error("Error generating code", response.value);
       toast.error(response.value!);
+    } else if (response.type === "partial_success") {
+      // 🔧 PARTIAL UPDATE: Update succeeded for single element
+      console.log("Partial update succeeded");
+      callbacks.onPartialSuccess(response.value!);
+    } else if (response.type === "partial_failed") {
+      // 🔧 PARTIAL UPDATE: Failed, will fallback to full regenerate
+      console.log("Partial update failed, falling back to full regenerate");
+      callbacks.onPartialFailed();
     } else if (response.type === "generation_complete") {
       // 🔧 Mark that we received the final signal from backend
       console.log("Received generation_complete signal from backend");

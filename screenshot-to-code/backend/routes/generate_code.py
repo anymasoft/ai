@@ -56,6 +56,8 @@ MessageType = Literal[
     "variantError",
     "variantCount",
     "generation_complete",
+    "partial_success",
+    "partial_failed",
 ]
 from image_generation.core import generate_images
 from prompts import create_prompt
@@ -217,6 +219,7 @@ class ExtractedParams:
     prompt: PromptContent
     history: List[Dict[str, Any]]
     is_imported_from_code: bool
+    update_mode: str = "full"  # 🔧 PARTIAL UPDATE: "full" or "partial"
 
 
 class ParameterExtractionStage:
@@ -278,6 +281,9 @@ class ParameterExtractionStage:
         # Extract imported code flag
         is_imported_from_code = params.get("isImportedFromCode", False)
 
+        # Extract update mode for partial updates (Select & Edit)
+        update_mode = params.get("updateMode", "full")
+
         return ExtractedParams(
             stack=validated_stack,
             input_mode=validated_input_mode,
@@ -289,6 +295,7 @@ class ParameterExtractionStage:
             prompt=prompt,
             history=history,
             is_imported_from_code=is_imported_from_code,
+            update_mode=update_mode,
         )
 
     # 🔒 SECURITY: Удалена функция _get_from_settings_dialog_or_env
@@ -352,6 +359,7 @@ class PromptCreationStage:
                 prompt=extracted_params.prompt,
                 history=extracted_params.history,
                 is_imported_from_code=extracted_params.is_imported_from_code,
+                update_mode=extracted_params.update_mode,
             )
 
             print_prompt_summary(prompt_messages, truncate=False)
@@ -814,6 +822,38 @@ class PostProcessingMiddleware(Middleware):
         await post_processor.process_completions(
             context.completions, context.prompt_messages, context.websocket
         )
+
+        # 🔧 PARTIAL UPDATE: Send status for partial updates
+        if (context.extracted_params and
+            context.extracted_params.update_mode == "partial" and
+            context.ws_comm and not context.ws_comm.is_closed):
+            try:
+                # Check if first completion looks like a single element (basic heuristic)
+                completion = context.completions[0] if context.completions else ""
+                is_likely_single_element = (
+                    completion.strip() and
+                    not completion.count("</html>") and
+                    not completion.count("</body>") and
+                    (completion.count("<") == completion.count(">"))
+                )
+
+                if is_likely_single_element:
+                    await context.websocket.send_json({
+                        "type": "partial_success",
+                        "value": completion
+                    })
+                    print("Sent partial_success for element update")
+                else:
+                    await context.websocket.send_json({
+                        "type": "partial_failed"
+                    })
+                    print("Partial update returned full document, sending partial_failed")
+            except Exception as e:
+                print(f"Warning: Error handling partial update: {e}")
+                try:
+                    await context.websocket.send_json({"type": "partial_failed"})
+                except:
+                    pass
 
         # 🔧 Send final signal before closing WebSocket
         # This ensures frontend knows generation is complete and isn't left waiting
