@@ -1,7 +1,7 @@
 import { useEffect, useRef } from "react";
 import { generateCode } from "./generateCode";
 import SettingsDialog from "./components/settings/SettingsDialog";
-import { AppState, CodeGenerationParams, EditorTheme, Settings } from "./types";
+import { AppState, CodeGenerationParams, EditorTheme, Settings, FullGenerationSettings } from "./types";
 import { IS_RUNNING_ON_CLOUD } from "./config";
 import { PicoBadge } from "./components/messages/PicoBadge";
 import { OnboardingNote } from "./components/messages/OnboardingNote";
@@ -175,12 +175,15 @@ function App() {
 
     // 🔒 SECURITY: Only merge safe settings, NO API keys sent to backend
     // API ключи теперь используются только на backend через env vars
-    const updatedParams = {
+    const updatedParams: FullGenerationSettings = {
       ...params,
-      // Только безопасные settings:
+      // Все безопасные settings (API ключи исключены):
       generatedCodeConfig: settings.generatedCodeConfig,
       isImageGenerationEnabled: settings.isImageGenerationEnabled,
       openAiBaseURL: settings.openAiBaseURL,
+      editorTheme: settings.editorTheme,
+      codeGenerationModel: settings.codeGenerationModel,
+      isTermOfServiceAccepted: settings.isTermOfServiceAccepted,
     };
 
     // Create variants dynamically - start with 4 to handle most cases
@@ -418,7 +421,6 @@ function App() {
           <StartPane
             doCreate={doCreate}
             importFromCode={importFromCode}
-            settings={settings}
           />
         )}
 
