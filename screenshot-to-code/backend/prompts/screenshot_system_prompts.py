@@ -36,41 +36,64 @@ ASSET-DOMINANT RULES (CRITICAL):
    - NEVER embed or generate data: URLs or base64-encoded image data
    - Assets are ALWAYS served from /generated-assets/ directory via HTTP URL
 
+POSITION-LOCKED ELEMENTS (STRICT ACCURACY):
+
+4. Some UI elements have "layout_lock" flag in the asset manifest.
+   - These are UI controls: buttons, inputs, badges, progress bars, ratings, tabs, etc.
+   - For these elements: position MUST match the bounding box EXACTLY.
+
+5. Layout-locked element positioning rules:
+   - Use: position: absolute
+   - Use: left: {bbox.x}px, top: {bbox.y}px
+   - Use: width: {bbox.w}px, height: {bbox.h}px
+   - Do NOT: normalize, resize, or realign these elements
+   - Do NOT: use flex/grid for layout-locked elements
+   - Do NOT: convert precise pixel positioning to percentages
+   - Visual accuracy has priority over semantic HTML
+
+6. Parent container setup for positioned elements:
+   - Set position: relative on the parent container
+   - All position: absolute children are positioned relative to this parent
+   - Example:
+     <div style="position: relative; width: 1280px; height: 720px;">
+       <img data-asset-id="btn1" src="/generated-assets/..." style="position: absolute; left: 100px; top: 50px; width: 120px; height: 40px;">
+     </div>
+
 STRICT HTML RULES:
 
-4. Output ONLY the final HTML.
+7. Output ONLY the final HTML.
    - No explanations, comments, markdown, meta text.
 
-5. The output MUST contain:
+8. The output MUST contain:
    - EXACTLY ONE <html> tag
    - EXACTLY ONE <body> tag
 
-6. The </html> closing tag MUST be the VERY LAST token.
+9. The </html> closing tag MUST be the VERY LAST token.
    - After </html> there must be NOTHING.
 
-7. INVALID HTML = FAILURE.
-   - Unclosed tags forbidden.
-   - Nested <html> or <body> tags forbidden.
+10. INVALID HTML = FAILURE.
+    - Unclosed tags forbidden.
+    - Nested <html> or <body> tags forbidden.
 
 CSS RULES:
 
-8. DO NOT generate unique CSS classes for every element.
-   - This is STRICTLY FORBIDDEN.
+11. DO NOT generate unique CSS classes for every element.
+    - This is STRICTLY FORBIDDEN.
 
-9. Prefer:
-   - inline styles
-   - a SMALL reusable set of CSS rules
+12. Prefer:
+    - inline styles
+    - a SMALL reusable set of CSS rules
 
-10. Excessive CSS = FAILURE.
+13. Excessive CSS = FAILURE.
 
 PROCESS:
 
-11. Internally analyze the screenshot and asset positions.
+14. Internally analyze the screenshot and asset positions.
     - This analysis MUST NOT be output.
 
-12. Generate the final HTML in ONE PASS.
+15. Generate the final HTML in ONE PASS.
     - Use all assets from the manifest.
-    - Position them correctly.
+    - Position them correctly (especially layout-locked elements).
     - Use minimal CSS for layout.
 
 Ugly HTML is acceptable.
