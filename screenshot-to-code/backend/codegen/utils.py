@@ -226,3 +226,47 @@ def sanitize_html_output(html: str) -> str:
         print(f"[SANITIZE] Removed {body_open_count - 1} duplicate <body> tag(s)")
 
     return html
+
+
+def is_html_valid(html: str) -> tuple[bool, str]:
+    """
+    🔍 CRITICAL: Validate HTML output before sending to client.
+
+    Checks:
+    1. </html> must be the VERY LAST tag in response
+    2. Exactly ONE <html> tag must exist
+    3. Exactly ONE <body> tag must exist
+    4. HTML must not be empty or just whitespace
+
+    Returns: (is_valid, error_message)
+    """
+
+    if not html or not html.strip():
+        return False, "HTML is empty"
+
+    # Check 1: </html> must be last non-whitespace token
+    html_stripped = html.rstrip()
+    if not html_stripped.endswith("</html>"):
+        return False, "HTML does not end with </html>"
+
+    # Check 2: Exactly ONE <html> tag
+    html_open_count = len(re.findall(r"<html[^>]*>", html, re.IGNORECASE))
+    if html_open_count != 1:
+        return False, f"Expected 1 <html> tag, found {html_open_count}"
+
+    # Check 3: Exactly ONE <body> tag
+    body_open_count = len(re.findall(r"<body[^>]*>", html, re.IGNORECASE))
+    if body_open_count != 1:
+        return False, f"Expected 1 <body> tag, found {body_open_count}"
+
+    # Check 4: Match </html> count
+    html_close_count = len(re.findall(r"</html>", html, re.IGNORECASE))
+    if html_close_count != 1:
+        return False, f"Expected 1 </html> tag, found {html_close_count}"
+
+    # Check 5: Match </body> count
+    body_close_count = len(re.findall(r"</body>", html, re.IGNORECASE))
+    if body_close_count != 1:
+        return False, f"Expected 1 </body> tag, found {body_close_count}"
+
+    return True, "Valid HTML"
