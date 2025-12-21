@@ -273,22 +273,25 @@ function AISandboxPage() {
       setLoading(true);
       try {
         if (sandboxIdParam) {
+          console.log('[generation] initializePage start');
           console.log('[home] Attempting to restore sandbox:', sandboxIdParam);
           // For now, just create a new sandbox - you could enhance this to actually restore
           // the specific sandbox if your backend supports it
           sandboxCreated = true;
           await createSandbox(true);
         } else {
+          console.log('[generation] initializePage start');
           console.log('[home] No sandbox in URL, creating new sandbox automatically...');
           sandboxCreated = true;
           await createSandbox(true);
         }
-        
-        // If we have a URL from the home page, mark for automatic start
+
+        // If we have a URL from the home page, trigger generation after sandbox is ready
         if (storedUrl && isMounted) {
-          // We'll trigger the generation after the component is fully mounted
-          // and the startGeneration function is defined
-          sessionStorage.setItem('autoStart', 'true');
+          console.log('[generation] sandbox ready, starting generation');
+          sessionStorage.removeItem('autoStart');
+          // startGeneration is defined by then, so we can call it directly
+          startGeneration();
         }
       } catch (error) {
         console.error('[ai-sandbox] Failed to create or restore sandbox:', error);
@@ -336,20 +339,6 @@ function AISandboxPage() {
       captureUrlScreenshot(screenshotUrl);
     }
   }, [showHomeScreen, homeUrlInput]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  // Auto-start generation if flagged
-  useEffect(() => {
-    const autoStart = sessionStorage.getItem('autoStart');
-    if (autoStart === 'true' && !showHomeScreen && homeUrlInput) {
-      sessionStorage.removeItem('autoStart');
-      // Small delay to ensure everything is ready
-      setTimeout(() => {
-        console.log('[generation] Auto-starting generation for URL:', homeUrlInput);
-        startGeneration();
-      }, 1000);
-    }
-  }, [showHomeScreen, homeUrlInput]); // eslint-disable-line react-hooks/exhaustive-deps
-
 
   useEffect(() => {
     // Only check sandbox status on mount if we don't already have sandboxData
@@ -1721,9 +1710,9 @@ Tip: I automatically detect and install npm packages from your code imports (lik
       // Backend now manages file state - no need to fetch from frontend
       console.log('[chat] Using backend file cache for context');
       
-      // CRITICAL: Block generation if sandbox is not ready
-      if (!sandboxReady || !sandboxData?.sandboxId) {
-        throw new Error('Sandbox is still starting. Please wait...');
+      // Verify sandbox exists
+      if (!sandboxData?.sandboxId) {
+        throw new Error('Sandbox not found. Please create one first.');
       }
 
       const fullContext = {
@@ -2578,8 +2567,9 @@ Tip: I automatically detect and install npm packages from your code imports (lik
   };
 
   const startGeneration = async () => {
+    console.log('[generation] startGeneration called');
     if (!homeUrlInput.trim()) return;
-    
+
     setHomeScreenFading(true);
     
     // Set immediate loading state for better UX
@@ -2611,33 +2601,37 @@ Tip: I automatically detect and install npm packages from your code imports (lik
       'system'
     );
     
-    // Start creating sandbox and capturing screenshot immediately in parallel
-    const sandboxPromise = !sandboxData ? createSandbox(true) : Promise.resolve(null);
-    
+    // If sandbox doesn't exist, create it
+    if (!sandboxData) {
+      try {
+        await createSandbox(true);
+      } catch (error) {
+        console.error('[generation] Failed to create sandbox:', error);
+        throw error;
+      }
+    }
+
     // Set loading stage immediately before hiding home screen
     setLoadingStage('gathering');
     // Also ensure we're on preview tab to show the loading overlay
     setActiveTab('preview');
-    
+
     // Always capture screenshot for new URLs, even if sandbox exists
     // This ensures the loading screen shows properly
     captureUrlScreenshot(displayUrl);
-    
+
     setTimeout(async () => {
       setShowHomeScreen(false);
       setHomeScreenFading(false);
-      
+
       // Clear the starting flag after transition
       setTimeout(() => {
         setIsStartingNewGeneration(false);
       }, 1000);
-      
-      // Wait for sandbox to be ready (if it's still creating)
-      const createdSandbox = await sandboxPromise;
 
-      // CRITICAL: Verify sandbox is actually ready before proceeding
-      if (!sandboxReady || !sandboxData?.sandboxId) {
-        throw new Error('Sandbox failed to become ready. Please try again.');
+      // Verify sandbox is ready (should be at this point if createSandbox succeeded)
+      if (!sandboxData?.sandboxId) {
+        throw new Error('Sandbox creation failed. Please try again.');
       }
 
       // Now start the clone process which will stream the generation
