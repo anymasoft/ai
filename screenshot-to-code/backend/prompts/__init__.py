@@ -4,7 +4,7 @@ from openai.types.chat import ChatCompletionMessageParam, ChatCompletionContentP
 from custom_types import InputMode
 from image_generation.core import create_alt_url_mapping
 from prompts.imported_code_prompts import IMPORTED_CODE_SYSTEM_PROMPTS
-from prompts.screenshot_system_prompts import SYSTEM_PROMPTS
+from prompts.screenshot_system_prompts import SYSTEM_PROMPTS, get_system_prompt_for_page_type
 from prompts.text_prompts import SYSTEM_PROMPTS as TEXT_SYSTEM_PROMPTS
 from prompts.types import Stack, PromptContent
 from video.utils import assemble_claude_prompt_video
@@ -52,6 +52,7 @@ async def create_prompt(
     history: list[dict[str, Any]],
     is_imported_from_code: bool,
     update_mode: str = "full",
+    page_type: str = "landing",
 ) -> tuple[list[ChatCompletionMessageParam], dict[str, str]]:
 
     image_cache: dict[str, str] = {}
@@ -68,13 +69,13 @@ async def create_prompt(
         # Assemble the prompt for non-imported code
         if input_mode == "image":
             image_url = prompt["images"][0]
-            prompt_messages = assemble_prompt(image_url, stack)
+            prompt_messages = assemble_prompt(image_url, stack, page_type=page_type)
         elif input_mode == "text":
             prompt_messages = assemble_text_prompt(prompt["text"], stack)
         else:
             # Default to image mode for backward compatibility
             image_url = prompt["images"][0]
-            prompt_messages = assemble_prompt(image_url, stack)
+            prompt_messages = assemble_prompt(image_url, stack, page_type=page_type)
 
         if generation_type == "update":
             # Transform the history tree into message format
@@ -168,8 +169,18 @@ def assemble_imported_code_prompt(
 def assemble_prompt(
     image_data_url: str,
     stack: Stack,
+    page_type: str = "landing",
 ) -> list[ChatCompletionMessageParam]:
-    system_content = SYSTEM_PROMPTS[stack]
+    # 🔍 PAGE TYPE AWARE: Use specialized prompt based on detected page type
+    # For HTML/CSS stacks, use page-type-specific prompts
+    # For other stacks (React, Vue, etc.), use default framework prompts
+    if stack in ["html_css", "html_tailwind"] and page_type in ["landing", "dashboard", "content"]:
+        system_content = get_system_prompt_for_page_type(page_type)
+        print(f"📋 Using {page_type.upper()} page system prompt")
+    else:
+        # Fall back to standard framework prompts for other stacks
+        system_content = SYSTEM_PROMPTS[stack]
+
     user_prompt = USER_PROMPT if stack != "svg" else SVG_USER_PROMPT
 
     user_content: list[ChatCompletionContentPartParam] = [
