@@ -349,10 +349,20 @@ export class LocalProvider extends SandboxProvider {
     await fsAsync.writeFile(appJsxPath, appJsx);
     console.log(`[LocalProvider.DEBUG] Created src/App.jsx`);
 
-    // Создать src/main.jsx
+    // Создать src/index.css с @tailwind директивами
+    const indexCss = `@tailwind base;
+@tailwind components;
+@tailwind utilities;`;
+
+    const indexCssPath = path.join(srcDir, 'index.css');
+    await fsAsync.writeFile(indexCssPath, indexCss);
+    console.log(`[LocalProvider.DEBUG] Created src/index.css`);
+
+    // Создать src/main.jsx (с импортом CSS)
     const mainJsx = `import React from 'react'
 import ReactDOM from 'react-dom/client'
 import App from './App.jsx'
+import './index.css'
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
@@ -380,6 +390,35 @@ export default defineConfig({
     const viteConfigPath = path.join(sandboxDir, 'vite.config.js');
     await fsAsync.writeFile(viteConfigPath, viteConfig);
     console.log(`[LocalProvider.DEBUG] Created vite.config.js`);
+
+    // Создать tailwind.config.js
+    const tailwindConfig = `/** @type {import('tailwindcss').Config} */
+module.exports = {
+  content: [
+    "./index.html",
+    "./src/**/*.{js,jsx,ts,tsx}",
+  ],
+  theme: {
+    extend: {},
+  },
+  plugins: [],
+};`;
+
+    const tailwindConfigPath = path.join(sandboxDir, 'tailwind.config.js');
+    await fsAsync.writeFile(tailwindConfigPath, tailwindConfig);
+    console.log(`[LocalProvider.DEBUG] Created tailwind.config.js`);
+
+    // Создать postcss.config.js
+    const postcssConfig = `module.exports = {
+  plugins: {
+    tailwindcss: {},
+    autoprefixer: {},
+  },
+};`;
+
+    const postcssConfigPath = path.join(sandboxDir, 'postcss.config.js');
+    await fsAsync.writeFile(postcssConfigPath, postcssConfig);
+    console.log(`[LocalProvider.DEBUG] Created postcss.config.js`);
 
     // Создать .gitignore
     const gitignore = `node_modules
