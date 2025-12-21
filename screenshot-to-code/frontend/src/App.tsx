@@ -20,7 +20,7 @@ import { GenerationSettings } from "./components/settings/GenerationSettings";
 import StartPane from "./components/start-pane/StartPane";
 import { Commit } from "./components/commits/types";
 import { createCommit } from "./components/commits/utils";
-import GenerateFromText from "./components/generate-from-text/GenerateFromText";
+// 🔧 ARCHIVED: GenerateFromText removed for MVP (text-to-code in /archived/text-edit-mode/)
 
 function App() {
   const {
@@ -53,9 +53,6 @@ function App() {
 
   const {
     disableInSelectAndEditMode,
-    setUpdateInstruction,
-    updateImages,
-    setUpdateImages,
     appState,
     setAppState,
   } = useAppStore();
@@ -98,8 +95,6 @@ function App() {
   // Functions
   const reset = () => {
     setAppState(AppState.INITIAL);
-    setUpdateInstruction("");
-    setUpdateImages([]);
     disableInSelectAndEditMode();
     resetExecutionConsoles();
 
@@ -127,12 +122,9 @@ function App() {
       return;
     }
 
-    // Re-run the create
+    // 🔧 MVP: Only image mode supported
     if (inputMode === "image") {
       doCreate(referenceImages, inputMode);
-    } else {
-      // TODO: Fix this
-      doCreateFromText(initialPrompt);
     }
   };
 
@@ -262,20 +254,7 @@ function App() {
     }
   }
 
-  function doCreateFromText(text: string) {
-    // Reset any existing state
-    reset();
-
-    setInputMode("text");
-    setInitialPrompt(text);
-    doGenerateCode({
-      generationType: "create",
-      inputMode: "text",
-      prompt: { text, images: [] },
-    });
-  }
-
-  // Subsequent updates
+  // Subsequent updates (visual-edit mode only)
   async function doUpdate(
     updateInstruction: string,
     selectedElement?: HTMLElement
@@ -314,22 +293,17 @@ function App() {
 
     const updatedHistory = [
       ...historyTree,
-      { text: modifiedUpdateInstruction, images: updateImages },
+      { text: modifiedUpdateInstruction, images: [] },
     ];
 
+    // 🎨 MVP: Visual-edit mode only (image-based code updates)
     doGenerateCode({
       generationType: "update",
-      inputMode,
-      prompt:
-        inputMode === "text"
-          ? { text: initialPrompt, images: [] }
-          : { text: "", images: [referenceImages[0]] },
+      inputMode: "image",
+      prompt: { text: "", images: [referenceImages[0]] },
       history: updatedHistory,
       isImportedFromCode,
     });
-
-    setUpdateInstruction("");
-    setUpdateImages([]);
   }
 
   const handleTermDialogOpenChange = (open: boolean) => {
@@ -396,9 +370,7 @@ function App() {
           {/* 🔒 SECURITY: Проверка openAiApiKey удалена - API ключи теперь только на backend */}
           {/* OnboardingNote может быть показан только если backend не настроен */}
 
-          {appState === AppState.INITIAL && (
-            <GenerateFromText doCreateFromText={doCreateFromText} />
-          )}
+          {/* 🔧 ARCHIVED: GenerateFromText (text-to-code) removed for MVP */}
 
           {/* Rest of the sidebar when we're not in the initial state */}
           {(appState === AppState.CODING ||

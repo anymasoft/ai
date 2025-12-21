@@ -3,15 +3,13 @@ import { useAppStore } from "../../store/app-store";
 import { useProjectStore } from "../../store/project-store";
 import { AppState } from "../../types";
 import CodePreview from "../preview/CodePreview";
-import KeyboardShortcutBadge from "../core/KeyboardShortcutBadge";
 // import TipLink from "../messages/TipLink";
 import SelectAndEditModeToggleButton from "../select-and-edit/SelectAndEditModeToggleButton";
 import { Button } from "../ui/button";
-import { Textarea } from "../ui/textarea";
-import { useEffect, useRef, useState, useCallback } from "react";
+import { useEffect, useState } from "react";
 import HistoryDisplay from "../history/HistoryDisplay";
 import Variants from "../variants/Variants";
-import UpdateImageUpload, { UpdateImagePreview } from "../UpdateImageUpload";
+// 🔧 ARCHIVED: UpdateImageUpload, UpdateImagePreview, Textarea removed for text-edit mode
 
 interface SidebarProps {
   showSelectAndEditFeature: boolean;
@@ -26,42 +24,11 @@ function Sidebar({
   regenerate,
   cancelCodeGeneration,
 }: SidebarProps) {
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [isErrorExpanded, setIsErrorExpanded] = useState(false);
-  const [isDragging, setIsDragging] = useState(false);
 
-  const { appState, updateInstruction, setUpdateInstruction, updateImages, setUpdateImages } = useAppStore();
+  const { appState } = useAppStore();
 
-  // Helper function to convert file to data URL
-  const fileToDataURL = (file: File): Promise<string> => {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve(reader.result as string);
-      reader.onerror = (error) => reject(error);
-      reader.readAsDataURL(file);
-    });
-  };
-
-  const handleDrop = useCallback(async (e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragging(false);
-    
-    const files = Array.from(e.dataTransfer.files).filter(file => 
-      file.type === 'image/png' || file.type === 'image/jpeg'
-    );
-    
-    if (files.length > 0) {
-      try {
-        const newImagePromises = files.map(file => fileToDataURL(file));
-        const newImages = await Promise.all(newImagePromises);
-        setUpdateImages([...updateImages, ...newImages]);
-      } catch (error) {
-        console.error('Error reading files:', error);
-      }
-    }
-  }, [updateImages, setUpdateImages]);
-
-  const { inputMode, referenceImages, head, commits } = useProjectStore();
+  const { referenceImages, head, commits } = useProjectStore();
 
   const viewedCode =
     head && commits[head]
@@ -87,16 +54,6 @@ function Sidebar({
     head &&
     commits[head] &&
     commits[head].variants[commits[head].selectedVariantIndex].errorMessage;
-
-  // Focus on the update instruction textarea when a variant is complete
-  useEffect(() => {
-    if (
-      (appState === AppState.CODE_READY || isSelectedVariantComplete) &&
-      textareaRef.current
-    ) {
-      textareaRef.current.focus();
-    }
-  }, [appState, isSelectedVariantComplete]);
 
   // Reset error expanded state when variant changes
   useEffect(() => {
@@ -152,68 +109,17 @@ function Sidebar({
         </div>
       )}
 
-      {/* Show update UI when app state is ready OR the selected variant is complete (but not errored) */}
+      {/* 🎨 Visual-Edit Mode: Select & Edit + Regenerate */}
       {(appState === AppState.CODE_READY || isSelectedVariantComplete) &&
         !isSelectedVariantError && (
-          <div
-            onDragEnter={() => setIsDragging(true)}
-            onDragLeave={(e) => {
-              // Only set to false if we're leaving the container entirely
-              if (!e.currentTarget.contains(e.relatedTarget as Node)) {
-                setIsDragging(false);
-              }
-            }}
-            onDragOver={(e) => e.preventDefault()}
-            onDrop={handleDrop}
-          >
-            <div className="grid w-full gap-2 relative">
-              <UpdateImagePreview 
-                updateImages={updateImages} 
-                setUpdateImages={setUpdateImages} 
-              />
-              <Textarea
-                ref={textareaRef}
-                placeholder="Tell the AI what to change..."
-                onChange={(e) => setUpdateInstruction(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && !e.shiftKey) {
-                    doUpdate(updateInstruction);
-                  }
-                }}
-                value={updateInstruction}
-              />
-              <div className="flex gap-2">
-                <Button
-                  onClick={() => doUpdate(updateInstruction)}
-                  className="dark:text-white dark:bg-gray-700 update-btn flex-1"
-                >
-                  Update <KeyboardShortcutBadge letter="enter" />
-                </Button>
-                <UpdateImageUpload 
-                  updateImages={updateImages} 
-                  setUpdateImages={setUpdateImages} 
-                />
-              </div>
-              
-              {/* Drag overlay that covers the entire update area */}
-              {isDragging && (
-                <div className="absolute inset-0 bg-blue-50/90 dark:bg-gray-800/90 border-2 border-dashed border-blue-400 dark:border-blue-600 rounded-md flex items-center justify-center pointer-events-none z-10">
-                  <p className="text-blue-600 dark:text-blue-400 font-medium">Drop images here</p>
-                </div>
-              )}
-            </div>
-            <div className="flex items-center justify-end gap-x-2 mt-2">
-              <Button
-                onClick={regenerate}
-                className="flex items-center gap-x-2 dark:text-white dark:bg-gray-700 regenerate-btn"
-              >
-                🔄 Regenerate
-              </Button>
-              {showSelectAndEditFeature && <SelectAndEditModeToggleButton />}
-            </div>
-            {/* <div className="flex justify-end items-center mt-2">
-            <TipLink />
-          </div> */}
+          <div className="flex items-center justify-end gap-x-2 mt-4">
+            <Button
+              onClick={regenerate}
+              className="flex items-center gap-x-2 dark:text-white dark:bg-gray-700 regenerate-btn"
+            >
+              🔄 Regenerate
+            </Button>
+            {showSelectAndEditFeature && <SelectAndEditModeToggleButton />}
           </div>
         )}
 
