@@ -21,6 +21,7 @@ type WebSocketResponse = {
     | "variantError"
     | "variantCount"
     | "generation_complete"
+    | "partial_element_html"
     | "partial_success"
     | "partial_failed";
   value?: string;
@@ -55,6 +56,8 @@ export function generateCode(
 
   // 🔧 Track if we received generation_complete signal
   let receivedGenerationComplete = false;
+  // 🔧 PARTIAL UPDATE: Store partial element HTML from backend
+  let partialElementHtml = "";
 
   ws.addEventListener("open", () => {
     ws.send(JSON.stringify(params));
@@ -77,10 +80,14 @@ export function generateCode(
     } else if (response.type === "error") {
       console.error("Error generating code", response.value);
       toast.error(response.value!);
+    } else if (response.type === "partial_element_html") {
+      // 🔧 PARTIAL UPDATE: Received element HTML from backend
+      console.log("Received partial element HTML");
+      partialElementHtml = response.value || "";
     } else if (response.type === "partial_success") {
       // 🔧 PARTIAL UPDATE: Update succeeded for single element
-      console.log("Partial update succeeded");
-      callbacks.onPartialSuccess(response.value!);
+      console.log("Partial update succeeded, applying element to DOM");
+      callbacks.onPartialSuccess(partialElementHtml);
     } else if (response.type === "partial_failed") {
       // 🔧 PARTIAL UPDATE: Failed, will fallback to full regenerate
       console.log("Partial update failed, falling back to full regenerate");

@@ -437,12 +437,14 @@ class ParallelGenerationStage:
         openai_base_url: str | None,
         anthropic_api_key: str | None,
         should_generate_images: bool,
+        update_mode: str = "full",  # 🔧 PARTIAL UPDATE: Pass update mode
     ):
         self.send_message = send_message
         self.openai_api_key = openai_api_key
         self.openai_base_url = openai_base_url
         self.anthropic_api_key = anthropic_api_key
         self.should_generate_images = should_generate_images
+        self.update_mode = update_mode  # Store for use in _process_chunk
 
     async def process_variants(
         self,
@@ -530,6 +532,9 @@ class ParallelGenerationStage:
 
     async def _process_chunk(self, content: str, variant_index: int):
         """Process streaming chunks"""
+        # 🔧 PARTIAL UPDATE: Don't send chunks in partial mode, they will be sent as partial_element_html
+        if self.update_mode == "partial":
+            return
         await self.send_message("chunk", content, variant_index)
 
     async def _stream_openai_with_error_handling(
@@ -778,6 +783,7 @@ class CodeGenerationMiddleware(Middleware):
                     openai_base_url=context.extracted_params.openai_base_url,
                     anthropic_api_key=context.extracted_params.anthropic_api_key,
                     should_generate_images=context.extracted_params.should_generate_images,
+                    update_mode=context.extracted_params.update_mode,  # 🔧 PARTIAL UPDATE
                 )
 
                 context.variant_completions = (
@@ -823,31 +829,47 @@ class PostProcessingMiddleware(Middleware):
             context.completions, context.prompt_messages, context.websocket
         )
 
-        # 🔧 PARTIAL UPDATE: Send status for partial updates
+        # 🔧 PARTIAL UPDATE: Send element HTML separately for partial updates
         if (context.extracted_params and
             context.extracted_params.update_mode == "partial" and
             context.ws_comm and not context.ws_comm.is_closed):
             try:
-                # Check if first completion looks like a single element (basic heuristic)
-                completion = context.completions[0] if context.completions else ""
-                is_likely_single_element = (
-                    completion.strip() and
-                    not completion.count("</html>") and
-                    not completion.count("</body>") and
-                    (completion.count("<") == completion.count(">"))
-                )
+                # Get the partial element HTML (no chunks were sent during generation)
+                element_html = context.completions[0] if context.completions else ""
 
-                if is_likely_single_element:
-                    await context.websocket.send_json({
-                        "type": "partial_success",
-                        "value": completion
-                    })
-                    print("Sent partial_success for element update")
+                if element_html.strip():
+                    # Check if it's a single element (no html/body tags)
+                    is_single_element = (
+                        not element_html.count("</html>") and
+                        not element_html.count("</body>") and
+                        (element_html.count("<") == element_html.count(">"))
+                    )
+
+                    if is_single_element:
+                        # Send element HTML so frontend can apply it to DOM
+                        await context.websocket.send_json({
+                            "type": "partial_element_html",
+                            "value": element_html
+                        })
+                        print("Sent partial_element_html for element update")
+
+                        # Send success signal
+                        await context.websocket.send_json({
+                            "type": "partial_success"
+                        })
+                        print("Sent partial_success")
+                    else:
+                        # Full document returned instead of element
+                        await context.websocket.send_json({
+                            "type": "partial_failed"
+                        })
+                        print("Partial update returned full document, sending partial_failed")
                 else:
+                    # Empty response
                     await context.websocket.send_json({
                         "type": "partial_failed"
                     })
-                    print("Partial update returned full document, sending partial_failed")
+                    print("Partial update returned empty response")
             except Exception as e:
                 print(f"Warning: Error handling partial update: {e}")
                 try:
