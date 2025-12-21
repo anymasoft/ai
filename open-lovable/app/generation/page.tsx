@@ -26,6 +26,41 @@ import {
 import { motion } from 'framer-motion';
 import CodeApplicationProgress, { type CodeApplicationState } from '@/components/CodeApplicationProgress';
 
+// Detect language from text content (Cyrillic detection for Russian)
+function detectLanguageFromText(text: string): 'ru' | 'en' | 'unknown' {
+  if (!text || text.length === 0) return 'unknown';
+
+  // Count Cyrillic characters
+  const cyrillicRegex = /[\u0400-\u04FF]/g;
+  const cyrillicMatches = text.match(cyrillicRegex);
+  const cyrillicCount = cyrillicMatches ? cyrillicMatches.length : 0;
+
+  // Calculate percentage of Cyrillic characters
+  const cyrillicPercentage = (cyrillicCount / text.length) * 100;
+
+  // If more than 5% Cyrillic, consider it Russian
+  if (cyrillicPercentage > 5) {
+    return 'ru';
+  }
+
+  return 'en';
+}
+
+// Validate if generated code contains expected language content
+function validateLanguageInCode(code: string, targetLanguage: 'ru' | 'en' | 'unknown'): boolean {
+  if (targetLanguage === 'unknown') return true; // Skip validation if language was unknown
+
+  if (targetLanguage === 'ru') {
+    // Check if code contains Cyrillic characters in UI text areas
+    const cyrillicRegex = /[\u0400-\u04FF]/g;
+    const cyrillicMatches = code.match(cyrillicRegex);
+    const cyrillicCount = cyrillicMatches ? cyrillicMatches.length : 0;
+    return cyrillicCount > 20; // Must have at least 20 Cyrillic chars
+  }
+
+  return true; // For English, assume all is fine
+}
+
 interface SandboxData {
   sandboxId: string;
   url: string;
@@ -2803,6 +2838,14 @@ Tip: I automatically detect and install npm packages from your code imports (lik
         }
         }
 
+        // Detect language from scraped content
+        let targetLanguage: 'ru' | 'en' | 'unknown' = 'unknown';
+        if (!brandExtensionMode && scrapeData) {
+          const contentForLangDetect = scrapeData.content || scrapeData.structured?.content || '';
+          targetLanguage = detectLanguageFromText(contentForLangDetect);
+          console.log('[generation] Detected language:', targetLanguage);
+        }
+
         setUrlStatus(brandExtensionMode ? ['Brand styles extracted!', 'Building your component...'] : ['Website scraped successfully!', 'Generating React app...']);
 
         // Clear preparing design state and switch to generation tab
@@ -3001,6 +3044,10 @@ Focus on building something NEW, minimal, and functional that perfectly matches 
 
           prompt = `I want to recreate the ${url} website as a complete React application based on the scraped content below.
 
+LANGUAGE REQUIREMENT: DETECTED LANGUAGE = ${targetLanguage}
+${targetLanguage === 'ru' ? 'ALL UI TEXT (headings, buttons, labels, paragraphs) MUST BE IN RUSSIAN.' : 'ALL UI TEXT MUST BE IN ENGLISH.'}
+If generated code uses wrong language, it will be rejected.
+
 ${JSON.stringify(scrapeData, null, 2)}
 
 ${filteredContext ? `ADDITIONAL CONTEXT/REQUIREMENTS FROM USER:
@@ -3018,6 +3065,11 @@ IMPORTANT INSTRUCTIONS:
 - Make sure the app actually renders visible content
 - Create ALL components that you reference in imports
 ${filteredContext ? '- Apply the user\'s context/theme requirements throughout the application' : ''}
+
+STRUCTURE & VISUAL GUIDANCE:
+- Reproduce structure: keep same section order from scraped content
+- Do NOT invent extra sections unless missing from original
+- Style: keep typography simple, use Tailwind, maintain clean layout matching source
 
 Focus on the key sections and content, making it clean and modern.`;
         }
@@ -3041,13 +3093,14 @@ Focus on the key sections and content, making it clean and modern.`;
         const aiResponse = await fetch('/api/generate-ai-code-stream', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ 
+          body: JSON.stringify({
             prompt,
             model: aiModel,
             context: {
               sandboxId: sandboxData?.sandboxId,
               structure: structureContent,
-              conversationContext: conversationContext
+              conversationContext: conversationContext,
+              targetLanguage: targetLanguage
             }
           })
         });
@@ -3230,8 +3283,75 @@ Focus on the key sections and content, making it clean and modern.`;
           
           setPromptInput(generatedCode);
 
+          // Validate language in generated code
+          let finalCode = generatedCode;
+          if (targetLanguage !== 'unknown' && !validateLanguageInCode(generatedCode, targetLanguage)) {
+            console.log('[generation] Language validation failed for language:', targetLanguage);
+            console.log('[generation] Requesting code translation to', targetLanguage);
+
+            // Request translation (one-time retry only)
+            const translationPrompt = targetLanguage === 'ru'
+              ? `Please translate ALL UI text in the following React code to Russian. Keep ALL code structure, component names, imports, and logic EXACTLY the same. Only translate strings that are user-visible text.\n\n${generatedCode}`
+              : generatedCode;
+
+            try {
+              const translationResponse = await fetch('/api/generate-ai-code-stream', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  prompt: translationPrompt,
+                  model: aiModel,
+                  context: {
+                    sandboxId: sandboxData?.sandboxId,
+                    structure: structureContent,
+                    conversationContext: conversationContext,
+                    targetLanguage: targetLanguage,
+                    isTranslation: true
+                  }
+                })
+              });
+
+              if (translationResponse.ok && translationResponse.body) {
+                let translatedCode = '';
+                const reader = translationResponse.body.getReader();
+                const decoder = new TextDecoder();
+
+                while (true) {
+                  const { done, value } = await reader.read();
+                  if (done) break;
+
+                  const chunk = decoder.decode(value);
+                  const lines = chunk.split('\n');
+
+                  for (const line of lines) {
+                    if (line.startsWith('data: ')) {
+                      try {
+                        const data = JSON.parse(line.slice(6));
+                        if (data.type === 'complete') {
+                          translatedCode = data.generatedCode || translatedCode;
+                        } else if (data.type === 'stream' && data.raw) {
+                          translatedCode += data.text;
+                        }
+                      } catch (e) {
+                        // Ignore parse errors
+                      }
+                    }
+                  }
+                }
+
+                if (translatedCode && translatedCode.includes('export')) {
+                  finalCode = translatedCode;
+                  addChatMessage('[lang] Applied language correction', 'system');
+                }
+              }
+            } catch (translationError) {
+              console.error('[generation] Translation retry failed, using original code');
+              // Continue with original code if translation fails
+            }
+          }
+
           // Apply the code (first time is not edit mode)
-          await applyGeneratedCode(generatedCode, false);
+          await applyGeneratedCode(finalCode, false);
 
           addChatMessage(
             brandExtensionMode
