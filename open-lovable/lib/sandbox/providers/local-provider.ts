@@ -521,13 +521,16 @@ dist
       child.on('close', (code) => {
         console.log(`[VITE-CLOSE]`, { sandboxId, exitCode: code, pid: child.pid, stdout_lines: stdout_lines.length, stderr_lines: stderr_lines.length });
 
-        // If Vite crashed - show last 30 stderr lines to diagnose
+        // If Vite crashed - show full stderr to diagnose
         if (code !== 0 && stderr_lines.length > 0) {
-          console.log(`[VITE-ERROR-DETAILS] Last stderr lines for ${sandboxId}:`);
-          const lastLines = stderr_lines.slice(-30);
+          console.log(`[VITE-ERROR-DETAILS] ====== VITE CRASH DIAGNOSTICS for ${sandboxId} ======`);
+          console.log(`[VITE-ERROR-DETAILS] Total stderr lines: ${stderr_lines.length}`);
+          console.log(`[VITE-ERROR-DETAILS] Showing last 50 lines:`);
+          const lastLines = stderr_lines.slice(-50);
           lastLines.forEach((line, idx) => {
             console.log(`[VITE-ERROR-${idx}] ${line}`);
           });
+          console.log(`[VITE-ERROR-DETAILS] ====== END DIAGNOSTICS ======`);
         }
       });
 
@@ -542,6 +545,10 @@ dist
   private async runInstall(sandboxDir: string): Promise<void> {
     return new Promise((resolve, reject) => {
       const npmCommand = os.platform() === 'win32' ? 'npm.cmd' : 'npm';
+
+      console.log(`[npm-install] Starting npm install in ${sandboxDir}`);
+      console.log(`[npm-install] Command: ${npmCommand} install --legacy-peer-deps`);
+
       const installProcess = spawn(npmCommand, ['install', '--legacy-peer-deps'], {
         cwd: sandboxDir,
         stdio: 'inherit'
@@ -549,14 +556,17 @@ dist
 
       installProcess.on('close', (code) => {
         if (code === 0) {
-          console.log('[LocalProvider] npm install completed successfully');
+          console.log('[npm-install] SUCCESS: npm install completed successfully');
           resolve();
         } else {
-          reject(new Error(`npm install failed with exit code ${code}`));
+          const errorMsg = `npm install failed with exit code ${code}`;
+          console.error(`[npm-install] ERROR: ${errorMsg}`);
+          reject(new Error(errorMsg));
         }
       });
 
       installProcess.on('error', (error) => {
+        console.error(`[npm-install] ERROR: spawn error: ${error.message}`);
         reject(error);
       });
     });
