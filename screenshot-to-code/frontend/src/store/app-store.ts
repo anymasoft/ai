@@ -10,6 +10,10 @@ interface AppStore {
   inSelectAndEditMode: boolean;
   toggleInSelectAndEditMode: () => void;
   disableInSelectAndEditMode: () => void;
+
+  // 🔧 PARTIAL UPDATE: Flag to prevent iframe re-render during element mutations
+  isPartialUpdateInProgress: boolean;
+  setIsPartialUpdateInProgress: (inProgress: boolean) => void;
 }
 
 export const useAppStore = create<AppStore>((set) => ({
@@ -21,4 +25,9 @@ export const useAppStore = create<AppStore>((set) => ({
   toggleInSelectAndEditMode: () =>
     set((state) => ({ inSelectAndEditMode: !state.inSelectAndEditMode })),
   disableInSelectAndEditMode: () => set({ inSelectAndEditMode: false }),
+
+  // 🔧 PARTIAL UPDATE: Prevent iframe srcdoc update during element mutations
+  isPartialUpdateInProgress: false,
+  setIsPartialUpdateInProgress: (inProgress) =>
+    set({ isPartialUpdateInProgress: inProgress }),
 }));

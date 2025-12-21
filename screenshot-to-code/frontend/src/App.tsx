@@ -51,6 +51,7 @@ function App() {
     disableInSelectAndEditMode,
     appState,
     setAppState,
+    setIsPartialUpdateInProgress,
   } = useAppStore();
 
   // Settings
@@ -246,6 +247,11 @@ function App() {
       onPartialSuccess: (html: string) => {
         // 🔧 PARTIAL UPDATE: Apply element change to iframe and extract full HTML
         console.log("Partial update successful, applying element to preview");
+
+        // 🔧 PREVENT IFRAME SRCDOC UPDATE: Set flag BEFORE updating commitCode
+        // This prevents PreviewComponent from re-rendering iframe
+        setIsPartialUpdateInProgress(true);
+
         try {
           // Get iframe from DOM (try desktop first, fallback to mobile)
           const desktopIframe = document.getElementById(
@@ -322,11 +328,19 @@ function App() {
             updateMode: "full",
             selectedElement: undefined,
           });
+        } finally {
+          // 🔧 ALLOW IFRAME SRCDOC UPDATE: Clear flag after partial update completes
+          // This allows future full generates to update iframe normally
+          setIsPartialUpdateInProgress(false);
         }
       },
       onPartialFailed: () => {
         // 🔧 PARTIAL UPDATE: Failed, trigger full regenerate as fallback
         console.log("Partial update failed, falling back to full regenerate");
+
+        // 🔧 Clear partial update flag if it was still set
+        setIsPartialUpdateInProgress(false);
+
         // Re-run full code generation with same parameters but in full mode
         doGenerateCode({
           ...generationParams,

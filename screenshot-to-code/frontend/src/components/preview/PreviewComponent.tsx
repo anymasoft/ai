@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import classNames from "classnames";
 import useThrottle from "../../hooks/useThrottle";
 import EditPopup from "../select-and-edit/EditPopup";
+import { useAppStore } from "../../store/app-store";
 
 interface Props {
   code: string;
@@ -12,6 +13,9 @@ interface Props {
 function PreviewComponent({ code, device, doUpdate }: Props) {
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
   const wrapperRef = useRef<HTMLDivElement | null>(null);
+
+  // 🔧 PARTIAL UPDATE: Check if partial update is in progress
+  const { isPartialUpdateInProgress } = useAppStore();
 
   // Don't update code more often than every 200ms.
   const throttledCode = useThrottle(code, 200);
@@ -49,17 +53,22 @@ function PreviewComponent({ code, device, doUpdate }: Props) {
   useEffect(() => {
     const iframe = iframeRef.current;
     if (iframe) {
-      iframe.srcdoc = throttledCode;
+      // 🔧 PARTIAL UPDATE: Don't update srcdoc if partial update is in progress
+      // During partial update, DOM mutations are applied directly via contentDocument
+      // We only want to update srcdoc for full document generation
+      if (!isPartialUpdateInProgress) {
+        iframe.srcdoc = throttledCode;
 
-      // Set up click handler for select and edit funtionality
-      iframe.addEventListener("load", function () {
-        iframe.contentWindow?.document.body.addEventListener(
-          "click",
-          setClickEvent
-        );
-      });
+        // Set up click handler for select and edit funtionality
+        iframe.addEventListener("load", function () {
+          iframe.contentWindow?.document.body.addEventListener(
+            "click",
+            setClickEvent
+          );
+        });
+      }
     }
-  }, [throttledCode]);
+  }, [throttledCode, isPartialUpdateInProgress]);
 
   return (
     <div className="flex justify-center mr-4">
