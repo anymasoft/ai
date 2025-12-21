@@ -1,5 +1,4 @@
 import { Stack } from "./lib/stacks";
-import { CodeGenerationModel } from "./lib/models";
 
 export enum EditorTheme {
   ESPRESSO = "espresso",
@@ -8,13 +7,12 @@ export enum EditorTheme {
 
 export interface Settings {
   // 🔒 SECURITY: API ключи теперь ТОЛЬКО на backend через env vars
-  // openAiApiKey, anthropicApiKey, screenshotOneApiKey - УДАЛЕНЫ для защиты от XSS/localStorage leak
+  // 🔧 SIMPLIFICATION: Model is fixed on backend (gpt-4.1-mini), user cannot select
 
   openAiBaseURL: string | null;
   isImageGenerationEnabled: boolean;
   editorTheme: EditorTheme;
   generatedCodeConfig: Stack;
-  codeGenerationModel: CodeGenerationModel;
   // Only relevant for hosted version
   isTermOfServiceAccepted: boolean;
 }
@@ -38,7 +36,7 @@ export interface PromptContent {
 
 export interface CodeGenerationParams {
   generationType: "create" | "update";
-  inputMode: "image" | "video" | "text";
+  inputMode: "image" | "text";  // 🔧 Video mode removed for MVP simplification
   prompt: PromptContent;
   history?: PromptContent[];
   isImportedFromCode?: boolean;

@@ -1,9 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { useDropzone } from "react-dropzone";
 import { toast } from "react-hot-toast";
-import { URLS } from "../urls";
-import ScreenRecorder from "./recording/ScreenRecorder";
-import { ScreenRecorderState } from "../types";
 
 const baseStyle = {
   flex: 1,
@@ -52,31 +49,21 @@ type FileWithPreview = {
 } & File;
 
 interface Props {
-  setReferenceImages: (
-    referenceImages: string[],
-    inputMode: "image" | "video"
-  ) => void;
+  setReferenceImages: (referenceImages: string[], inputMode: "image") => void;
 }
 
 function ImageUpload({ setReferenceImages }: Props) {
   const [files, setFiles] = useState<FileWithPreview[]>([]);
-  // TODO: Switch to Zustand
-  const [screenRecorderState, setScreenRecorderState] =
-    useState<ScreenRecorderState>(ScreenRecorderState.INITIAL);
 
   const { getRootProps, getInputProps, isFocused, isDragAccept, isDragReject } =
     useDropzone({
       maxFiles: 1,
       maxSize: 1024 * 1024 * 20, // 20 MB
       accept: {
-        // Image formats
+        // 🔧 SIMPLIFICATION: Only image formats supported (video mode removed)
         "image/png": [".png"],
         "image/jpeg": [".jpeg"],
         "image/jpg": [".jpg"],
-        // Video formats
-        "video/quicktime": [".mov"],
-        "video/mp4": [".mp4"],
-        "video/webm": [".webm"],
       },
       onDrop: (acceptedFiles) => {
         // Set up the preview thumbnail images
@@ -94,9 +81,7 @@ function ImageUpload({ setReferenceImages }: Props) {
             if (dataUrls.length > 0) {
               setReferenceImages(
                 dataUrls.map((dataUrl) => dataUrl as string),
-                (dataUrls[0] as string).startsWith("data:video")
-                  ? "video"
-                  : "image"
+                "image"
               );
             }
           })
@@ -160,34 +145,14 @@ function ImageUpload({ setReferenceImages }: Props) {
 
   return (
     <section className="container">
-      {screenRecorderState === ScreenRecorderState.INITIAL && (
-        /* eslint-disable-next-line @typescript-eslint/no-explicit-any */
-        <div {...getRootProps({ style: style as any })}>
-          <input {...getInputProps()} className="file-input" />
-          <p className="text-slate-700 text-lg">
-            Drag & drop a screenshot here, <br />
-            or click to upload
-          </p>
-        </div>
-      )}
-      {screenRecorderState === ScreenRecorderState.INITIAL && (
-        <div className="text-center text-sm text-slate-800 mt-4">
-          Upload a screen recording (.mp4, .mov) or record your screen to clone
-          a whole app (experimental).{" "}
-          <a
-            className="underline"
-            href={URLS["intro-to-video"]}
-            target="_blank"
-          >
-            Learn more.
-          </a>
-        </div>
-      )}
-      <ScreenRecorder
-        screenRecorderState={screenRecorderState}
-        setScreenRecorderState={setScreenRecorderState}
-        generateCode={setReferenceImages}
-      />
+      {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+      <div {...getRootProps({ style: style as any })}>
+        <input {...getInputProps()} className="file-input" />
+        <p className="text-slate-700 text-lg">
+          Drag & drop a screenshot here, <br />
+          or click to upload
+        </p>
+      </div>
     </section>
   );
 }
