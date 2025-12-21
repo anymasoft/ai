@@ -308,7 +308,11 @@ function App() {
         } catch (error) {
           console.error("Error applying partial update:", error);
           // Fallback to full regenerate on any error
-          onPartialFailed();
+          doGenerateCode({
+            ...generationParams,
+            updateMode: "full",
+            selectedElement: undefined,
+          });
         }
       },
       onPartialFailed: () => {
