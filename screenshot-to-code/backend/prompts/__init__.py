@@ -23,6 +23,12 @@ Return ONLY a complete, valid HTML document.
 - <style> block fully formed and closed.
 - No explanations, no markdown, no comments about what you're doing.
 - Output starts with <html and ends with </html>.
+
+IMPORTANT: If an ASSET_MANIFEST is provided below, use those image assets in the HTML.
+- Place extracted images using <img src="..."> with the provided src URLs.
+- Use the bbox (bounding box) coordinates to position assets correctly.
+- DO NOT try to recreate these images using CSS or gradients.
+- Preserve aspect ratio and use object-fit if needed.
 """
 
 SVG_USER_PROMPT = """
@@ -53,7 +59,11 @@ async def create_prompt(
     is_imported_from_code: bool,
     update_mode: str = "full",
     page_type: str = "landing",
+    asset_manifest: list[dict] = None,
 ) -> tuple[list[ChatCompletionMessageParam], dict[str, str]]:
+
+    if asset_manifest is None:
+        asset_manifest = []
 
     image_cache: dict[str, str] = {}
 
@@ -69,13 +79,13 @@ async def create_prompt(
         # Assemble the prompt for non-imported code
         if input_mode == "image":
             image_url = prompt["images"][0]
-            prompt_messages = assemble_prompt(image_url, stack, page_type=page_type)
+            prompt_messages = assemble_prompt(image_url, stack, page_type=page_type, asset_manifest=asset_manifest)
         elif input_mode == "text":
             prompt_messages = assemble_text_prompt(prompt["text"], stack)
         else:
             # Default to image mode for backward compatibility
             image_url = prompt["images"][0]
-            prompt_messages = assemble_prompt(image_url, stack, page_type=page_type)
+            prompt_messages = assemble_prompt(image_url, stack, page_type=page_type, asset_manifest=asset_manifest)
 
         if generation_type == "update":
             # Transform the history tree into message format
@@ -170,7 +180,13 @@ def assemble_prompt(
     image_data_url: str,
     stack: Stack,
     page_type: str = "landing",
+    asset_manifest: list[dict] = None,
 ) -> list[ChatCompletionMessageParam]:
+    import json
+
+    if asset_manifest is None:
+        asset_manifest = []
+
     # 🔍 PAGE TYPE AWARE: Use specialized prompt based on detected page type
     # For HTML/CSS stacks, use page-type-specific prompts
     # For other stacks (React, Vue, etc.), use default framework prompts
@@ -182,6 +198,11 @@ def assemble_prompt(
         system_content = SYSTEM_PROMPTS[stack]
 
     user_prompt = USER_PROMPT if stack != "svg" else SVG_USER_PROMPT
+
+    # Add asset manifest to user prompt if available
+    if asset_manifest:
+        asset_text = f"\n\nASSET_MANIFEST:\n{json.dumps(asset_manifest, indent=2)}\n"
+        user_prompt = user_prompt + asset_text
 
     user_content: list[ChatCompletionContentPartParam] = [
         {
