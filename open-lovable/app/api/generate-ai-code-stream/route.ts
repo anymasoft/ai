@@ -82,10 +82,12 @@ declare global {
 export async function POST(request: NextRequest) {
   try {
     const { prompt, model = 'openai/gpt-oss-20b', context, isEdit = false } = await request.json();
-    
+    const targetLanguage = context?.targetLanguage || 'unknown';
+
     console.log('[generate-ai-code-stream] Received request:');
-    console.log('[generate-ai-code-stream] - prompt:', prompt);
+    console.log('[generate-ai-code-stream] - prompt:', prompt.substring(0, 100));
     console.log('[generate-ai-code-stream] - isEdit:', isEdit);
+    console.log('[generate-ai-code-stream] - targetLanguage:', targetLanguage);
     console.log('[generate-ai-code-stream] - context.sandboxId:', context?.sandboxId);
     console.log('[generate-ai-code-stream] - context.currentFiles:', context?.currentFiles ? Object.keys(context.currentFiles) : 'none');
     console.log('[generate-ai-code-stream] - currentFiles count:', context?.currentFiles ? Object.keys(context.currentFiles).length : 0);
@@ -607,6 +609,9 @@ THIS IS A STRICT WEBSITE CLONING TASK. Your primary goal is MAXIMUM ACCURACY in 
 
 CLONE MODE REQUIREMENTS (NON-NEGOTIABLE):
 1. **PRESERVE ORIGINAL LANGUAGE** - If the scraped site is in Russian → output in Russian. Chinese → output in Chinese. etc.
+${targetLanguage !== 'unknown' ? `   ⚠️ DETECTED LANGUAGE: ${targetLanguage.toUpperCase()}
+   ALL UI TEXT (headings, buttons, labels, paragraphs, descriptions) MUST be generated in ${targetLanguage === 'ru' ? 'RUSSIAN' : 'ENGLISH'}.
+   If you generate UI text in a different language, this will be REJECTED.` : ''}
 2. **NEVER MODIFY TEXTS** - Use ONLY content from the scraped HTML
    - DO NOT paraphrase
    - DO NOT translate
