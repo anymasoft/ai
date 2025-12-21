@@ -197,6 +197,9 @@ function App() {
     addCommit(commit);
     setHead(commit.hash);
 
+    // Store generation params for fallback handling
+    const generationParams = updatedParams;
+
     generateCode(wsRef, updatedParams, {
       onChange: (token, variantIndex) => {
         appendCommitCode(commit.hash, variantIndex, token);
@@ -230,6 +233,27 @@ function App() {
             }
           });
         }
+      },
+      onPartialSuccess: (html: string) => {
+        // 🔧 PARTIAL UPDATE: Element was successfully updated
+        // Update the code in the current variant
+        console.log("Partial update successful, updating element");
+        const currentCommit = commits[commit.hash];
+        if (currentCommit) {
+          // Update code with the new HTML element
+          setCommitCode(commit.hash, currentCommit.selectedVariantIndex, html);
+          updateVariantStatus(commit.hash, currentCommit.selectedVariantIndex, "complete");
+        }
+      },
+      onPartialFailed: () => {
+        // 🔧 PARTIAL UPDATE: Failed, trigger full regenerate as fallback
+        console.log("Partial update failed, falling back to full regenerate");
+        // Re-run full code generation with same parameters but in full mode
+        doGenerateCode({
+          ...generationParams,
+          updateMode: "full",
+          selectedElement: undefined,
+        });
       },
       onCancel: () => {
         cancelCodeGenerationAndReset(commit);
@@ -302,12 +326,15 @@ function App() {
     ];
 
     // 🎨 MVP: Visual-edit mode only (image-based code updates)
+    // 🔧 PARTIAL UPDATE: Use partial mode if element is selected
     doGenerateCode({
       generationType: "update",
       inputMode: "image",
       prompt: { text: "", images: [referenceImages[0]] },
       history: updatedHistory,
       isImportedFromCode,
+      updateMode: selectedElement ? "partial" : "full",
+      selectedElement: selectedElement ? selectedElement.outerHTML : undefined,
     });
   }
 

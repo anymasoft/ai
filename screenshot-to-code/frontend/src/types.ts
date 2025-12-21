@@ -40,6 +40,9 @@ export interface CodeGenerationParams {
   prompt: PromptContent;
   history?: PromptContent[];
   isImportedFromCode?: boolean;
+  // 🔧 PARTIAL UPDATE: For Select & Edit element updates
+  updateMode?: "full" | "partial";
+  selectedElement?: string; // outerHTML of selected element
 }
 
 export type FullGenerationSettings = CodeGenerationParams & Settings;

@@ -18,6 +18,13 @@ SVG_USER_PROMPT = """
 Generate code for a SVG that looks exactly like this.
 """
 
+PARTIAL_UPDATE_PROMPT = """
+You are editing a SINGLE HTML element.
+Return ONLY the updated HTML of this element.
+Do NOT return the entire document.
+Do NOT add explanations or markdown.
+Return valid HTML only."""
+
 
 async def create_prompt(
     stack: Stack,
@@ -26,6 +33,7 @@ async def create_prompt(
     prompt: PromptContent,
     history: list[dict[str, Any]],
     is_imported_from_code: bool,
+    update_mode: str = "full",
 ) -> tuple[list[ChatCompletionMessageParam], dict[str, str]]:
 
     image_cache: dict[str, str] = {}
@@ -56,6 +64,13 @@ async def create_prompt(
                 role = "assistant" if index % 2 == 0 else "user"
                 message = create_message_from_history_item(item, role)
                 prompt_messages.append(message)
+
+            # 🔧 PARTIAL UPDATE: Add special prompt if updating single element
+            if update_mode == "partial":
+                prompt_messages.append({
+                    "role": "user",
+                    "content": PARTIAL_UPDATE_PROMPT,
+                })
 
             image_cache = create_alt_url_mapping(history[-2]["text"])
 
