@@ -218,6 +218,19 @@ function App() {
         console.log(`Backend is using ${count} variants`);
         resizeVariants(commit.hash, count);
       },
+      onGenerationComplete: () => {
+        // 🔧 Backend signaled generation is complete
+        // Complete all variants that are still in "generating" state
+        const currentCommit = commits[commit.hash];
+        if (currentCommit) {
+          currentCommit.variants.forEach((variant, index) => {
+            if (variant.status === "generating") {
+              console.log(`Completing pending variant ${index} at generation_complete signal`);
+              updateVariantStatus(commit.hash, index, "complete");
+            }
+          });
+        }
+      },
       onCancel: () => {
         cancelCodeGenerationAndReset(commit);
       },

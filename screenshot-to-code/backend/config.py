@@ -3,7 +3,8 @@
 # TODO: Should only be set to true when value is 'True', not any abitrary truthy value
 import os
 
-NUM_VARIANTS = 4
+# 🔧 SIMPLIFICATION: Single variant generation (only gpt-4.1-mini, no multi-variant)
+NUM_VARIANTS = 1
 
 # LLM-related
 OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY", None)

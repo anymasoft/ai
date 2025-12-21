@@ -78,6 +78,20 @@ function Sidebar({
         </div>
       )}
 
+      {/* Show completion status when generation is done */}
+      {appState === AppState.CODING && isSelectedVariantComplete && (
+        <div className="bg-green-50 border border-green-200 rounded-md p-3 mb-2">
+          <div className="text-green-800 text-sm">
+            <div className="font-medium flex items-center">
+              ✓ Generation complete
+            </div>
+            <div className="text-xs text-green-700 mt-1">
+              Your code is ready. Use Select & Edit to make updates.
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Show error message when selected option has an error */}
       {isSelectedVariantError && (
         <div className="bg-red-50 border border-red-200 rounded-md p-3 mb-2">
