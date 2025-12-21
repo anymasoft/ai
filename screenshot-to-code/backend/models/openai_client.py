@@ -27,10 +27,12 @@ async def stream_openai_response(
         params["temperature"] = 0
         params["stream"] = True
 
-    # 4.1 series
+    # 4.1 series (both stable aliases and versioned models)
     if model_name in [
         "gpt-4.1-2025-04-14",
+        "gpt-4.1-mini",
         "gpt-4.1-mini-2025-04-14",
+        "gpt-4.1-nano",
         "gpt-4.1-nano-2025-04-14",
     ]:
         params["temperature"] = 0
