@@ -32,6 +32,7 @@ interface CodeGenerationCallbacks {
   onVariantComplete: (variantIndex: number) => void;
   onVariantError: (variantIndex: number, error: string) => void;
   onVariantCount: (count: number) => void;
+  onGenerationComplete: () => void;
   onCancel: () => void;
   onComplete: () => void;
 }
@@ -75,6 +76,8 @@ export function generateCode(
       // 🔧 Mark that we received the final signal from backend
       console.log("Received generation_complete signal from backend");
       receivedGenerationComplete = true;
+      // Notify app that generation is complete (complete all pending variants)
+      callbacks.onGenerationComplete();
     }
   });
 
