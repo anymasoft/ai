@@ -10,7 +10,6 @@ import { USER_CLOSE_WEB_SOCKET_CODE } from "./constants";
 import { extractHistory } from "./components/history/utils";
 import toast from "react-hot-toast";
 import { Stack } from "./lib/stacks";
-import { CodeGenerationModel } from "./lib/models";
 import useBrowserTabIndicator from "./hooks/useBrowserTabIndicator";
 // import TipLink from "./components/messages/TipLink";
 import { useAppStore } from "./store/app-store";
@@ -62,15 +61,13 @@ function App() {
   } = useAppStore();
 
   // Settings
-  // 🔒 SECURITY: API ключи удалены - используются только env vars на backend
+  // 🔒 SECURITY & 🔧 SIMPLIFICATION: API ключи удалены, модель зафиксирована на backend
   const [settings, setSettings] = usePersistedState<Settings>(
     {
-      // ❌ openAiApiKey, anthropicApiKey, screenshotOneApiKey - УДАЛЕНЫ
       openAiBaseURL: null,
       isImageGenerationEnabled: true,
       editorTheme: EditorTheme.COBALT,
       generatedCodeConfig: Stack.HTML_TAILWIND,
-      codeGenerationModel: CodeGenerationModel.CLAUDE_4_5_SONNET_2025_09_29,
       // Only relevant for hosted version
       isTermOfServiceAccepted: false,
     },
@@ -131,7 +128,7 @@ function App() {
     }
 
     // Re-run the create
-    if (inputMode === "image" || inputMode === "video") {
+    if (inputMode === "image") {
       doCreate(referenceImages, inputMode);
     } else {
       // TODO: Fix this
@@ -181,7 +178,7 @@ function App() {
       isImageGenerationEnabled: settings.isImageGenerationEnabled,
       openAiBaseURL: settings.openAiBaseURL,
       editorTheme: settings.editorTheme,
-      codeGenerationModel: settings.codeGenerationModel,
+      // 🔧 SIMPLIFICATION: Model fixed to gpt-4.1-mini on backend (no selection UI)
       isTermOfServiceAccepted: settings.isTermOfServiceAccepted,
     };
 
@@ -246,7 +243,8 @@ function App() {
   }
 
   // Initial version creation
-  function doCreate(referenceImages: string[], inputMode: "image" | "video") {
+  // 🔧 SIMPLIFICATION: Only image mode supported (video mode removed)
+  function doCreate(referenceImages: string[], inputMode: "image") {
     // Reset any existing state
     reset();
 

@@ -11,7 +11,6 @@ import CodeTab from "./CodeTab";
 import { Button } from "../ui/button";
 import { useAppStore } from "../../store/app-store";
 import { useProjectStore } from "../../store/project-store";
-import { extractHtml } from "./extractHtml";
 import PreviewComponent from "./PreviewComponent";
 import { downloadCode } from "./download";
 
@@ -30,10 +29,8 @@ function PreviewPane({ doUpdate, reset, settings }: Props) {
     ? currentCommit.variants[currentCommit.selectedVariantIndex].code
     : "";
 
-  const previewCode =
-    inputMode === "video" && appState === AppState.CODING
-      ? extractHtml(currentCode)
-      : currentCode;
+  // 🔧 SIMPLIFICATION: Video mode removed, always use currentCode directly
+  const previewCode = currentCode;
 
   return (
     <div className="ml-4">

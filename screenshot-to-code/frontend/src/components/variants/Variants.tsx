@@ -3,7 +3,7 @@ import Spinner from "../core/Spinner";
 import { useEffect } from "react";
 
 function Variants() {
-  const { inputMode, head, commits, updateSelectedVariantIndex } =
+  const { head, commits, updateSelectedVariantIndex } =
     useProjectStore();
 
   // Get commit data safely
@@ -54,7 +54,8 @@ function Variants() {
   }
 
   // If there is only one variant or the commit is already committed, don't show the variants
-  if (variants.length <= 1 || commit.isCommitted || inputMode === "video") {
+  // 🔧 SIMPLIFICATION: Video mode check removed (video mode no longer supported)
+  if (variants.length <= 1 || commit.isCommitted) {
     return <div className="mt-2"></div>;
   }
 
