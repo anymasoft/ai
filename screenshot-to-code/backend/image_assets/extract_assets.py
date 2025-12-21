@@ -1,10 +1,13 @@
 """
 Asset-dominant image extraction module.
 Extracts ALL non-rectilinear visual elements (icons, logos, photos, decorations)
-as base64-encoded PNG assets for use in HTML generation.
+as PNG files for use in HTML generation.
 
 Philosophy: Anything that requires curves, diagonals, or complex graphics = <img>.
 Layout and text only in CSS/HTML.
+
+CRITICAL: Assets are saved as PNG files with URL references, NOT base64 inline.
+This prevents LLM from streaming gigabytes of base64 data.
 """
 
 import hashlib
@@ -20,6 +23,9 @@ from models import stream_openai_response
 from config import OPENAI_API_KEY, OPENAI_BASE_URL
 from llm import Llm
 from openai.types.chat import ChatCompletionMessageParam, ChatCompletionContentPartParam
+
+ASSETS_DIR = Path(__file__).parent.parent.parent / "public" / "generated-assets"
+ASSETS_DIR.mkdir(parents=True, exist_ok=True)
 
 # Configuration
 MAX_ASSETS_PER_REQUEST = 40  # Aggressive extraction
@@ -43,17 +49,18 @@ class BBox:
 
 @dataclass
 class ImageAsset:
-    """Extracted visual asset"""
+    """Extracted visual asset (saved as PNG file, NOT base64)"""
     asset_id: str
+    filename: str  # PNG filename in /public/generated-assets/
     bbox: BBox
-    base64_data: str  # data:image/png;base64,...
     role: str  # "icon", "logo", "photo", "decorative", "ui-symbol"
     mime_type: str = "image/png"
 
     def to_dict(self) -> dict:
+        """Return asset metadata for LLM (NO base64)"""
         return {
             "id": self.asset_id,
-            "src": self.base64_data,
+            "src": f"/generated-assets/{self.filename}",  # URL, NOT base64
             "bbox": self.bbox.to_dict(),
             "role": self.role,
             "mime": self.mime_type,
@@ -64,7 +71,7 @@ class ImageAsset:
 class AssetExtractionResult:
     """Result of asset extraction"""
     assets: list[ImageAsset]
-    asset_manifest: list[dict]  # For passing to LLM
+    asset_manifest: list[dict]  # For passing to LLM (NO base64)
     debug_info: Optional[dict] = None
 
 
@@ -79,7 +86,7 @@ This includes:
 - SVG symbols
 - decorative shapes
 - curves, waves, blobs, gradients
-- UI symbols (arrows, stars, checkmarks, badges, badges, etc.)
+- UI symbols (arrows, stars, checkmarks, badges, etc.)
 - brand marks
 - illustrations
 
@@ -200,37 +207,42 @@ async def _detect_all_assets_with_llm(image_data_url: str) -> list[dict]:
         return []
 
 
-def _crop_to_base64(
+def _save_asset_file(
     img: Image.Image,
     bbox: BBox,
-) -> str:
+    asset_id: str,
+) -> tuple[str, int]:
     """
-    Crop image region and convert to base64 data URL.
+    Save asset as PNG file to disk.
 
     Args:
         img: PIL Image
         bbox: Bounding box to crop
+        asset_id: Asset ID for filename
 
     Returns:
-        data:image/png;base64,... string
+        (filename, file_size_bytes)
     """
     try:
         # Crop region
         crop_box = (bbox.x, bbox.y, bbox.x + bbox.w, bbox.y + bbox.h)
         cropped = img.crop(crop_box)
 
-        # Convert to PNG in memory
-        buffer = io.BytesIO()
-        cropped.save(buffer, format="PNG", optimize=True)
-        png_bytes = buffer.getvalue()
+        # Generate filename
+        filename = f"asset_{asset_id}_{bbox.x}_{bbox.y}.png"
+        filepath = ASSETS_DIR / filename
 
-        # Encode to base64
-        b64_str = base64.b64encode(png_bytes).decode("utf-8")
-        data_url = f"data:image/png;base64,{b64_str}"
+        # Save as PNG
+        cropped.save(filepath, format="PNG", optimize=True)
 
-        return data_url
+        # Get file size
+        file_size = filepath.stat().st_size
+
+        print(f"[ASSETS] Saved {filename} ({file_size} bytes, {bbox.w}x{bbox.h}px)")
+
+        return filename, file_size
     except Exception as e:
-        print(f"[ASSETS] Error converting to base64: {e}")
+        print(f"[ASSETS] Error saving asset: {e}")
         raise
 
 
@@ -239,7 +251,7 @@ async def extract_image_assets(
 ) -> AssetExtractionResult:
     """
     Extract all visual assets from screenshot in ASSET-DOMINANT mode.
-    Converts assets to base64 inline data URLs instead of files.
+    Saves assets as PNG files with URL references (NOT base64 inline).
 
     Args:
         image_data_url: Base64-encoded image data URL
@@ -272,8 +284,9 @@ async def extract_image_assets(
 
     print(f"[ASSETS] LLM detected {len(detected_assets)} visual assets")
 
-    # Extract and convert to base64
+    # Extract and save assets
     assets = []
+    total_bytes = 0
 
     for detected_asset in detected_assets:
         try:
@@ -295,20 +308,19 @@ async def extract_image_assets(
             # Get role from detection
             role = detected_asset.get("role", "decorative")
 
-            # Convert to base64
-            base64_data = _crop_to_base64(img, bbox)
+            # Save as PNG file (NOT base64)
+            filename, file_size = _save_asset_file(img, bbox, asset_id)
+            total_bytes += file_size
 
             # Create asset record
             asset = ImageAsset(
                 asset_id=asset_id,
+                filename=filename,
                 bbox=bbox,
-                base64_data=base64_data,
                 role=role,
                 mime_type="image/png",
             )
             assets.append(asset)
-
-            print(f"[ASSETS] Extracted {role} {asset_id[:8]} ({w}x{h}px)")
 
             if len(assets) >= MAX_ASSETS_PER_REQUEST:
                 print(f"[ASSETS] Reached max assets limit ({MAX_ASSETS_PER_REQUEST})")
@@ -318,10 +330,10 @@ async def extract_image_assets(
             print(f"[ASSETS] Error processing detected asset: {e}")
             continue
 
-    # Build asset manifest for LLM
+    # Build asset manifest for LLM (NO base64 - only URLs)
     asset_manifest = [asset.to_dict() for asset in assets]
 
-    print(f"[ASSETS] Extracted {len(assets)} visual assets (ASSET-DOMINANT mode)")
+    print(f"[ASSETS] Extracted {len(assets)} visual assets ({total_bytes} bytes total)")
 
     return AssetExtractionResult(
         assets=assets,
