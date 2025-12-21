@@ -10,6 +10,7 @@ import { executeSearchPlan, formatSearchResultsForAI, selectTargetFile } from '@
 import { FileManifest } from '@/types/file-manifest';
 import type { ConversationState, ConversationMessage, ConversationEdit } from '@/types/conversation';
 import { appConfig } from '@/config/app.config';
+import { localSandboxManager } from '@/lib/sandbox/local-sandbox-manager';
 
 // Force dynamic route to enable streaming
 export const dynamic = 'force-dynamic';
@@ -137,11 +138,43 @@ export async function POST(request: NextRequest) {
     }
     
     if (!prompt) {
-      return NextResponse.json({ 
-        success: false, 
-        error: 'Prompt is required' 
+      return NextResponse.json({
+        success: false,
+        error: 'Prompt is required'
       }, { status: 400 });
     }
+
+    // CRITICAL: Check sandbox readiness BEFORE starting generation
+    const sandboxId = context?.sandboxId;
+    console.log('[generate-ai-code-stream] Sandbox readiness check:', { sandboxId, isEdit });
+
+    if (!sandboxId || sandboxId === 'pending') {
+      console.log('[generate-ai-code-stream] Sandbox readiness check failed: SANDBOX_NOT_READY', { sandboxId });
+      return NextResponse.json({
+        error: 'SANDBOX_NOT_READY',
+        message: 'Sandbox is still starting. Please wait.'
+      }, { status: 409 });
+    }
+
+    // Check if sandbox is registered and process is alive
+    const sandbox = localSandboxManager.getSandbox(sandboxId);
+    if (!sandbox) {
+      console.log('[generate-ai-code-stream] Sandbox readiness check failed: SANDBOX_NOT_FOUND', { sandboxId });
+      return NextResponse.json({
+        error: 'SANDBOX_NOT_FOUND',
+        message: 'Sandbox not found or expired.'
+      }, { status: 409 });
+    }
+
+    if (!localSandboxManager.isProcessAlive(sandboxId)) {
+      console.log('[generate-ai-code-stream] Sandbox readiness check failed: PROCESS_NOT_ALIVE', { sandboxId });
+      return NextResponse.json({
+        error: 'SANDBOX_PROCESS_DEAD',
+        message: 'Sandbox process is not running.'
+      }, { status: 409 });
+    }
+
+    console.log('[generate-ai-code-stream] Sandbox readiness check PASSED', { sandboxId });
     
     // Create a stream for real-time updates
     const encoder = new TextEncoder();

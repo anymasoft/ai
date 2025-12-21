@@ -62,6 +62,7 @@ interface ScrapeData {
 
 function AISandboxPage() {
   const [sandboxData, setSandboxData] = useState<SandboxData | null>(null);
+  const [sandboxReady, setSandboxReady] = useState(false);
   const [loading, setLoading] = useState(false);
   const [status, setStatus] = useState({ text: 'Not connected', active: false });
   const [responseArea, setResponseArea] = useState<string[]>([]);
@@ -564,6 +565,8 @@ function AISandboxPage() {
         sandboxCreationRef.current = false; // Reset the ref on success
         console.log('[createSandbox] Setting sandboxData from creation:', data);
         setSandboxData(data);
+        setSandboxReady(true);
+        console.log('[sandbox] Ready → allowing generation');
         updateStatus('Sandbox active', true);
         log('Sandbox created successfully!');
         log(`Sandbox ID: ${data.sandboxId}`);
@@ -1718,16 +1721,21 @@ Tip: I automatically detect and install npm packages from your code imports (lik
       // Backend now manages file state - no need to fetch from frontend
       console.log('[chat] Using backend file cache for context');
       
+      // CRITICAL: Block generation if sandbox is not ready
+      if (!sandboxReady || !sandboxData?.sandboxId) {
+        throw new Error('Sandbox is still starting. Please wait...');
+      }
+
       const fullContext = {
-        sandboxId: sandboxData?.sandboxId || (sandboxCreating ? 'pending' : null),
+        sandboxId: sandboxData.sandboxId,
         structure: structureContent,
         recentMessages: chatMessages.slice(-20),
         conversationContext: conversationContext,
         currentCode: promptInput,
-        sandboxUrl: sandboxData?.url,
-        sandboxCreating: sandboxCreating
+        sandboxUrl: sandboxData.url,
+        sandboxCreating: false
       };
-      
+
       // Debug what we're sending
       console.log('[chat] Sending context to AI:');
       console.log('[chat] - sandboxId:', fullContext.sandboxId);
@@ -2626,7 +2634,12 @@ Tip: I automatically detect and install npm packages from your code imports (lik
       
       // Wait for sandbox to be ready (if it's still creating)
       const createdSandbox = await sandboxPromise;
-      
+
+      // CRITICAL: Verify sandbox is actually ready before proceeding
+      if (!sandboxReady || !sandboxData?.sandboxId) {
+        throw new Error('Sandbox failed to become ready. Please try again.');
+      }
+
       // Now start the clone process which will stream the generation
       setUrlInput(homeUrlInput);
       setUrlOverlayVisible(false); // Make sure overlay is closed
