@@ -337,12 +337,8 @@ class PromptCreationStage:
     async def create_prompt(
         self,
         extracted_params: ExtractedParams,
-        page_type: str = "landing",
-        asset_manifest: list[dict] = None,
     ) -> tuple[List[ChatCompletionMessageParam], Dict[str, str]]:
         """Create prompt messages and return image cache"""
-        if asset_manifest is None:
-            asset_manifest = []
 
         try:
             prompt_messages, image_cache = await create_prompt(
@@ -353,8 +349,6 @@ class PromptCreationStage:
                 history=extracted_params.history,
                 is_imported_from_code=extracted_params.is_imported_from_code,
                 update_mode=extracted_params.update_mode,
-                page_type=page_type,
-                asset_manifest=asset_manifest,
             )
 
             print_prompt_summary(prompt_messages, truncate=False)
