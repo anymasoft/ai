@@ -513,7 +513,16 @@ class ParallelGenerationStage:
         return tasks
 
     async def _process_chunk(self, content: str, variant_index: int):
-        """Process streaming chunks"""
+        """Process streaming chunks with safety checks"""
+        # 🔒 SAFETY: Detect and block base64 streaming blocker
+        if "data:image" in content or "base64," in content:
+            print(f"❌ CRITICAL: LLM attempted to stream base64 data!")
+            print(f"   Chunk: {content[:200]}...")
+            raise Exception(
+                "LLM generated base64 data. This indicates a prompt/instruction issue. "
+                "Expected: <img src=\"/generated-assets/...\"> format only."
+            )
+
         await self.send_message("chunk", content, variant_index)
 
     async def _stream_openai_with_error_handling(
