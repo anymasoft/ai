@@ -5,7 +5,8 @@ import ImportCodeSection from "../ImportCodeSection";
 import { Stack } from "../../lib/stacks";
 
 interface Props {
-  doCreate: (images: string[], inputMode: "image" | "video") => void;
+  // 🔧 SIMPLIFICATION: Only image mode supported (video mode removed)
+  doCreate: (images: string[]) => void;
   importFromCode: (code: string, stack: Stack) => void;
 }
 

@@ -5,7 +5,8 @@ import { Input } from "./ui/input";
 import { toast } from "react-hot-toast";
 
 interface Props {
-  doCreate: (urls: string[], inputMode: "image" | "video") => void;
+  // 🔧 SIMPLIFICATION: Only image mode supported (video mode removed)
+  doCreate: (urls: string[]) => void;
 }
 
 export function UrlInputSection({ doCreate }: Props) {
@@ -40,7 +41,7 @@ export function UrlInputSection({ doCreate }: Props) {
         }
 
         const res = await response.json();
-        doCreate([res.url], "image");
+        doCreate([res.url]);
       } catch (error) {
         console.error(error);
         toast.error(

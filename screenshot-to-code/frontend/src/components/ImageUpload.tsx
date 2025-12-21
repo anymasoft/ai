@@ -49,7 +49,8 @@ type FileWithPreview = {
 } & File;
 
 interface Props {
-  setReferenceImages: (referenceImages: string[], inputMode: "image") => void;
+  // 🔧 SIMPLIFICATION: Only image mode supported (inputMode fixed to "image")
+  setReferenceImages: (referenceImages: string[]) => void;
 }
 
 function ImageUpload({ setReferenceImages }: Props) {
@@ -80,8 +81,7 @@ function ImageUpload({ setReferenceImages }: Props) {
           .then((dataUrls) => {
             if (dataUrls.length > 0) {
               setReferenceImages(
-                dataUrls.map((dataUrl) => dataUrl as string),
-                "image"
+                dataUrls.map((dataUrl) => dataUrl as string)
               );
             }
           })

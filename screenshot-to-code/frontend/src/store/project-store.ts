@@ -4,14 +4,11 @@ import { Commit, CommitHash, VariantStatus } from "../components/commits/types";
 // Store for app-wide state
 interface ProjectStore {
   // Inputs
-  inputMode: "image" | "video" | "text";
-  setInputMode: (mode: "image" | "video" | "text") => void;
+  // 🔧 SIMPLIFICATION: inputMode fixed to "image", initialPrompt removed (text-edit archived)
   isImportedFromCode: boolean;
   setIsImportedFromCode: (imported: boolean) => void;
   referenceImages: string[];
   setReferenceImages: (images: string[]) => void;
-  initialPrompt: string;
-  setInitialPrompt: (prompt: string) => void;
 
   // Outputs
   commits: Record<string, Commit>;
@@ -46,14 +43,11 @@ interface ProjectStore {
 
 export const useProjectStore = create<ProjectStore>((set) => ({
   // Inputs and their setters
-  inputMode: "image",
-  setInputMode: (mode) => set({ inputMode: mode }),
+  // 🔧 SIMPLIFICATION: inputMode="image" only, initialPrompt removed
   isImportedFromCode: false,
   setIsImportedFromCode: (imported) => set({ isImportedFromCode: imported }),
   referenceImages: [],
   setReferenceImages: (images) => set({ referenceImages: images }),
-  initialPrompt: "",
-  setInitialPrompt: (prompt) => set({ initialPrompt: prompt }),
 
   // Outputs
   commits: {},

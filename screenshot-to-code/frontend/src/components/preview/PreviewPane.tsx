@@ -22,7 +22,7 @@ interface Props {
 
 function PreviewPane({ doUpdate, reset, settings }: Props) {
   const { appState } = useAppStore();
-  const { inputMode, head, commits } = useProjectStore();
+  const { head, commits } = useProjectStore();
 
   const currentCommit = head && commits[head] ? commits[head] : "";
   const currentCode = currentCommit
