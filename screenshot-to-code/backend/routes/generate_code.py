@@ -9,28 +9,19 @@ from codegen.utils import extract_html_content, sanitize_html_output, is_html_va
 from page_type_detector import detect_page_type, PageType
 from image_assets.extract_assets import extract_image_assets
 from config import (
-    ANTHROPIC_API_KEY,
-    GEMINI_API_KEY,
     IS_PROD,
     NUM_VARIANTS,
     OPENAI_API_KEY,
     OPENAI_BASE_URL,
-    REPLICATE_API_KEY,
     SHOULD_MOCK_AI_RESPONSE,
 )
 from custom_types import InputMode
 from llm import (
     Completion,
     Llm,
-    OPENAI_MODELS,
-    ANTHROPIC_MODELS,
-    GEMINI_MODELS,
 )
 from models import (
-    stream_claude_response,
-    stream_claude_response_native,
     stream_openai_response,
-    stream_gemini_response,
 )
 from fs_logging.core import write_logs
 from mock_llm import mock_completion
@@ -62,7 +53,7 @@ MessageType = Literal[
     "partial_success",
     "partial_failed",
 ]
-from image_generation.core import generate_images
+# Image generation removed - single LLM model only (GPT_4_1_MINI)
 from prompts import create_prompt
 from prompts.types import Stack, PromptContent
 
@@ -216,7 +207,6 @@ class ExtractedParams:
     input_mode: InputMode
     should_generate_images: bool
     openai_api_key: str | None
-    anthropic_api_key: str | None
     openai_base_url: str | None
     generation_type: Literal["create", "update"]
     prompt: PromptContent
@@ -254,9 +244,6 @@ class ParameterExtractionStage:
         # Это предотвращает утечку ключей в логах и WebSocket sniffing
         openai_api_key = OPENAI_API_KEY
 
-        # Anthropic key также только из env
-        anthropic_api_key = ANTHROPIC_API_KEY
-
         # Base URL for OpenAI API - ТОЛЬКО из env, не от клиента в prod
         openai_base_url: str | None = None
         # Disable user-specified OpenAI Base URL in prod
@@ -266,8 +253,8 @@ class ParameterExtractionStage:
         if not openai_base_url:
             print("Using official OpenAI URL")
 
-        # Get the image generation flag from the request. Fall back to True if not provided.
-        should_generate_images = bool(params.get("isImageGenerationEnabled", True))
+        # Image generation disabled - single LLM model only (GPT_4_1_MINI)
+        should_generate_images = False
 
         # Extract and validate generation type
         generation_type = params.get("generationType", "create")
@@ -296,7 +283,6 @@ class ParameterExtractionStage:
             input_mode=validated_input_mode,
             should_generate_images=should_generate_images,
             openai_api_key=openai_api_key,
-            anthropic_api_key=anthropic_api_key,
             openai_base_url=openai_base_url,
             generation_type=generation_type,
             prompt=prompt,
@@ -322,8 +308,6 @@ class ModelSelectionStage:
         generation_type: Literal["create", "update"],
         input_mode: InputMode,
         openai_api_key: str | None,
-        anthropic_api_key: str | None,
-        gemini_api_key: str | None = None,
     ) -> List[Llm]:
         """🔧 SIMPLIFICATION: Use fixed model gpt-4.1-mini (stable alias), no variants"""
         try:
@@ -454,20 +438,18 @@ class PostProcessingStage:
 
 
 class ParallelGenerationStage:
-    """Handles parallel variant generation with independent processing for each variant"""
+    """Handles parallel variant generation with OpenAI GPT_4_1_MINI only"""
 
     def __init__(
         self,
         send_message: Callable[[MessageType, str, int], Coroutine[Any, Any, None]],
         openai_api_key: str | None,
         openai_base_url: str | None,
-        anthropic_api_key: str | None,
         should_generate_images: bool,
     ):
         self.send_message = send_message
         self.openai_api_key = openai_api_key
         self.openai_base_url = openai_base_url
-        self.anthropic_api_key = anthropic_api_key
         self.should_generate_images = should_generate_images
 
     async def process_variants(
@@ -508,49 +490,25 @@ class ParallelGenerationStage:
         prompt_messages: List[ChatCompletionMessageParam],
         params: Dict[str, str],
     ) -> List[Coroutine[Any, Any, Completion]]:
-        """Create generation tasks for each variant model"""
+        """Create generation tasks - uses only GPT_4_1_MINI"""
         tasks: List[Coroutine[Any, Any, Completion]] = []
 
         for index, model in enumerate(variant_models):
-            if model in OPENAI_MODELS:
-                if self.openai_api_key is None:
-                    raise Exception("OpenAI API key is missing.")
+            # Only GPT_4_1_MINI is supported
+            if model != Llm.GPT_4_1_MINI:
+                print(f"⚠️ [WARN] Model {model.value} not supported, using GPT_4_1_MINI instead")
+                model = Llm.GPT_4_1_MINI
 
-                tasks.append(
-                    self._stream_openai_with_error_handling(
-                        prompt_messages,
-                        model_name=model.value,
-                        index=index,
-                    )
-                )
-            elif GEMINI_API_KEY and model in GEMINI_MODELS:
-                tasks.append(
-                    stream_gemini_response(
-                        prompt_messages,
-                        api_key=GEMINI_API_KEY,
-                        callback=lambda x, i=index: self._process_chunk(x, i),
-                        model_name=model.value,
-                    )
-                )
-            elif model in ANTHROPIC_MODELS:
-                if self.anthropic_api_key is None:
-                    raise Exception("Anthropic API key is missing.")
+            if self.openai_api_key is None:
+                raise Exception("OpenAI API key is missing.")
 
-                # For creation, use Claude Sonnet 3.7
-                # For updates, we use Claude Sonnet 4.5 until we have tested Claude Sonnet 3.7
-                if params["generationType"] == "create":
-                    claude_model = Llm.CLAUDE_3_7_SONNET_2025_02_19
-                else:
-                    claude_model = Llm.CLAUDE_4_5_SONNET_2025_09_29
-
-                tasks.append(
-                    stream_claude_response(
-                        prompt_messages,
-                        api_key=self.anthropic_api_key,
-                        callback=lambda x, i=index: self._process_chunk(x, i),
-                        model_name=claude_model.value,
-                    )
+            tasks.append(
+                self._stream_openai_with_error_handling(
+                    prompt_messages,
+                    model_name=model.value,
+                    index=index,
                 )
+            )
 
         return tasks
 
@@ -634,38 +592,6 @@ class ParallelGenerationStage:
             await self.send_message("variantError", error_message, index)
             raise VariantErrorAlreadySent(e)
 
-    async def _perform_image_generation(
-        self,
-        completion: str,
-        image_cache: dict[str, str],
-    ):
-        """Generate images for the completion if needed"""
-        if not self.should_generate_images:
-            return completion
-
-        replicate_api_key = REPLICATE_API_KEY
-        if replicate_api_key:
-            image_generation_model = "flux"
-            api_key = replicate_api_key
-        else:
-            if not self.openai_api_key:
-                print(
-                    "No OpenAI API key and Replicate key found. Skipping image generation."
-                )
-                return completion
-            image_generation_model = "dalle3"
-            api_key = self.openai_api_key
-
-        print("Generating images with model: ", image_generation_model)
-
-        return await generate_images(
-            completion,
-            api_key=api_key,
-            base_url=self.openai_base_url,
-            image_cache=image_cache,
-            model=image_generation_model,
-        )
-
     async def _process_variant_completion(
         self,
         index: int,
@@ -682,11 +608,8 @@ class ParallelGenerationStage:
             variant_completions[index] = completion["code"]
 
             try:
-                # Process images for this variant
-                processed_html = await self._perform_image_generation(
-                    completion["code"],
-                    image_cache,
-                )
+                # Image generation disabled - single LLM model only (GPT_4_1_MINI)
+                processed_html = completion["code"]
 
                 # Extract HTML content
                 processed_html = extract_html_content(processed_html)
@@ -984,14 +907,12 @@ class CodeGenerationMiddleware(Middleware):
             try:
                 assert context.extracted_params is not None
                 # 🔧 SIMPLIFICATION: Video mode removed - only image and text modes supported
-                # Select models
+                # Select models (GPT_4_1_MINI only)
                 model_selector = ModelSelectionStage(context.throw_error)
                 context.variant_models = await model_selector.select_models(
                     generation_type=context.extracted_params.generation_type,
                     input_mode=context.extracted_params.input_mode,
                     openai_api_key=context.extracted_params.openai_api_key,
-                    anthropic_api_key=context.extracted_params.anthropic_api_key,
-                    gemini_api_key=GEMINI_API_KEY,
                 )
 
                 # Generate code for all variants
@@ -999,7 +920,6 @@ class CodeGenerationMiddleware(Middleware):
                     send_message=context.send_message,
                     openai_api_key=context.extracted_params.openai_api_key,
                     openai_base_url=context.extracted_params.openai_base_url,
-                    anthropic_api_key=context.extracted_params.anthropic_api_key,
                     should_generate_images=context.extracted_params.should_generate_images,
                 )
 
