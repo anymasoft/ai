@@ -3,6 +3,7 @@ import { SandboxFactory } from '@/lib/sandbox/factory';
 // SandboxProvider type is used through SandboxFactory
 import type { SandboxState } from '@/types/sandbox';
 import { sandboxManager } from '@/lib/sandbox/sandbox-manager';
+import { localSandboxManager } from '@/lib/sandbox/local-sandbox-manager';
 
 // Store active sandbox globally
 declare global {
@@ -13,10 +14,23 @@ declare global {
 }
 
 /**
- * Poll sandbox dev-server until it's ready to serve
- * Checks HTTP connectivity to verify dev-server is listening
+ * Check sandbox readiness
+ * For LocalProvider: check if Vite process is alive
+ * For other providers: poll HTTP until ready
  */
-async function waitForSandboxReady(sandboxUrl: string, maxAttempts = 30): Promise<boolean> {
+async function waitForSandboxReady(sandboxId: string, sandboxUrl: string, isLocalProvider: boolean, maxAttempts = 30): Promise<boolean> {
+  // For LocalProvider: check if process is alive
+  if (isLocalProvider) {
+    const sandbox = localSandboxManager.getSandbox(sandboxId);
+    if (sandbox && localSandboxManager.isProcessAlive(sandboxId)) {
+      console.log(`[create-ai-sandbox-v2] Sandbox marked READY after Vite ready event`);
+      return true;
+    }
+    console.error(`[waitForSandboxReady] LocalProvider: process not alive for ${sandboxId}`);
+    return false;
+  }
+
+  // For other providers: HTTP polling
   const POLL_INTERVAL_MS = 300; // Check every 300ms
   let attempt = 0;
 
@@ -103,7 +117,8 @@ export async function POST() {
 
     // Wait for dev-server to actually be ready before returning URL
     console.log('[create-ai-sandbox-v2] Waiting for dev-server to become ready...');
-    const isReady = await waitForSandboxReady(sandboxInfo.url);
+    const isLocalProvider = provider.constructor.name === 'LocalProvider';
+    const isReady = await waitForSandboxReady(sandboxInfo.sandboxId, sandboxInfo.url, isLocalProvider);
 
     if (!isReady) {
       console.error('[create-ai-sandbox-v2] Sandbox dev-server failed to become ready');
