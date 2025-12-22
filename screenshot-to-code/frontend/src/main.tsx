@@ -1,6 +1,7 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
 import "./index.css";
+import "./i18n";
 import { Toaster } from "react-hot-toast";
 import EvalsPage from "./components/evals/EvalsPage.tsx";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
