@@ -66,7 +66,9 @@ async def stream_openai_response(
         full_response = ""
         try:
             async for chunk in stream:  # type: ignore
-                assert isinstance(chunk, ChatCompletionChunk)
+                if not isinstance(chunk, ChatCompletionChunk):
+                    # Skip non-chunk items in stream (e.g., debug info)
+                    continue
                 if (
                     chunk.choices
                     and len(chunk.choices) > 0
