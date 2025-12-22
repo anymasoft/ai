@@ -51,6 +51,10 @@ async def stream_openai_response(
         params["stream"] = True
         params["reasoning_effort"] = "high"
 
+    # GPT-5 models don't support temperature=0, remove it to use default
+    if model_name.startswith("gpt-5"):
+        params.pop("temperature", None)
+
     # O1 doesn't support streaming
     if model_name == "o1-2024-12-17":
         response = await client.chat.completions.create(**params)  # type: ignore
