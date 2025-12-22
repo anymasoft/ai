@@ -599,16 +599,16 @@ class ParallelGenerationStage:
         for local_index, task in enumerate(tasks):
             real_variant_index = ACTIVE_VARIANT_INDEX
             variant_task = asyncio.create_task(task)
-            variant_tasks[real_variant_index] = variant_task
+            variant_tasks[local_index] = (real_variant_index, variant_task)
 
         # Process each variant independently
         variant_processors = []
-        for real_index, task in variant_tasks.items():
+        for local_index, (real_index, task) in variant_tasks.items():
             # Find corresponding model (should be only 1)
             model_idx = real_index if real_index < len(variant_models) else 0
             variant_processors.append(
                 self._process_variant_completion(
-                    real_index, task, variant_models[0], image_cache, variant_completions  # Always index 0 since we have only 1 model
+                    local_index, real_index, task, variant_models[0], image_cache, variant_completions  # Pass both indices: local_index for UI, real_index for DB
                 )
             )
 
@@ -777,19 +777,25 @@ class ParallelGenerationStage:
 
     async def _process_variant_completion(
         self,
-        index: int,
+        local_index: int,
+        real_index: int,
         task: asyncio.Task[Completion],
         model: Llm,
         image_cache: Dict[str, str],
         variant_completions: Dict[int, str],
     ):
-        """Process a single variant completion including image generation"""
+        """Process a single variant completion including image generation
+
+        Args:
+            local_index: Index in active variants array (0-based for UI/WebSocket)
+            real_index: Real historical variant index (ACTIVE_VARIANT_INDEX for DB)
+        """
         try:
             completion = await task
 
             print(f"{model.value} completion took {completion['duration']:.2f} seconds")
             html_result = completion["code"]
-            variant_completions[index] = html_result
+            variant_completions[local_index] = html_result
 
             # 🔧 FIXED: Save variant immediately to generation_variants table
             # This captures individual variant results independent of WebSocket
@@ -797,13 +803,13 @@ class ParallelGenerationStage:
                 extracted_html = extract_html_content(html_result)
                 save_generation_variant(
                     generation_id=self.generation_id,
-                    variant_index=index,
+                    variant_index=real_index,
                     status="done",
                     html=extracted_html,
                 )
-                print(f"[SAVED] Variant {index + 1} for generation {self.generation_id}")
+                print(f"[SAVED] Variant {real_index + 1} for generation {self.generation_id}")
             except Exception as variant_save_error:
-                print(f"[WARNING] Failed to save variant {index} to DB: {variant_save_error}")
+                print(f"[WARNING] Failed to save variant {real_index} to DB: {variant_save_error}")
                 # Continue anyway - result is in memory in variant_completions
 
             # CRITICAL: Save to database immediately to prevent data loss
@@ -817,7 +823,7 @@ class ParallelGenerationStage:
                     html=extracted_html,
                     duration_ms=int(completion['duration'] * 1000),
                 )
-                print(f"[SAVED] Generation {self.generation_id} variant {index + 1}: {model.value}")
+                print(f"[SAVED] Generation {self.generation_id} variant {real_index + 1}: {model.value}")
             except Exception as db_error:
                 print(f"[ERROR] Failed to save generation {self.generation_id}: {db_error}")
                 # Log the error but continue with post-processing
@@ -833,29 +839,29 @@ class ParallelGenerationStage:
                 # Extract HTML content
                 processed_html = extract_html_content(processed_html)
 
-                # Send the complete variant back to the client
-                await self.send_message("setCode", processed_html, index)
+                # Send the complete variant back to the client using LOCAL_INDEX (0 for single variant)
+                await self.send_message("setCode", processed_html, local_index)
                 await self.send_message(
                     "variantComplete",
                     "Variant generation complete",
-                    index,
+                    local_index,
                 )
             except Exception as inner_e:
                 # If websocket is closed or other error during post-processing
-                print(f"Post-processing error for variant {index + 1}: {inner_e}")
+                print(f"Post-processing error for variant {real_index + 1}: {inner_e}")
                 # We still keep the completion in variant_completions
                 # AND the HTML is already saved in the database
 
         except Exception as e:
             # Handle any errors that occurred during generation
-            print(f"Error in variant {index + 1}: {e}")
+            print(f"Error in variant {real_index + 1}: {e}")
             traceback.print_exception(type(e), e, e.__traceback__)
 
             # 🔧 FIXED: Save error to generation_variants so it's persisted
             try:
                 save_generation_variant(
                     generation_id=self.generation_id,
-                    variant_index=index,
+                    variant_index=real_index,
                     status="failed",
                     error_message=str(e),
                 )
@@ -864,7 +870,7 @@ class ParallelGenerationStage:
 
             # Only send error message if it hasn't been sent already
             if not isinstance(e, VariantErrorAlreadySent):
-                await self.send_message("variantError", str(e), index)
+                await self.send_message("variantError", str(e), local_index)
 
 
 # Pipeline Middleware Implementations
@@ -937,8 +943,8 @@ class StatusBroadcastMiddleware(Middleware):
         await context.send_message("variantCount", str(num_active_variants), 0)
 
         # Send status only for the active variant
-        # Map active variant to its display index (0-indexed)
-        await context.send_message("status", "Generating code...", ACTIVE_VARIANT_INDEX)
+        # Use local_index 0 (not ACTIVE_VARIANT_INDEX) because frontend expects 0-based index for active variants
+        await context.send_message("status", "Generating code...", 0)
 
         await next_func()
 
