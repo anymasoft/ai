@@ -56,6 +56,7 @@ MessageType = Literal[
     "variantComplete",
     "variantError",
     "variantCount",
+    "generation_complete",
 ]
 from image_generation.core import generate_images
 from prompts import create_prompt
@@ -64,7 +65,7 @@ from prompts.types import Stack, PromptContent
 
 # from utils import pprint_prompt
 from ws.constants import APP_ERROR_WEB_SOCKET_CODE  # type: ignore
-from db import save_generation, update_generation
+from db import save_generation, update_generation, save_generation_variant
 
 
 router = APIRouter()
@@ -765,6 +766,21 @@ class ParallelGenerationStage:
             html_result = completion["code"]
             variant_completions[index] = html_result
 
+            # 🔧 FIXED: Save variant immediately to generation_variants table
+            # This captures individual variant results independent of WebSocket
+            try:
+                extracted_html = extract_html_content(html_result)
+                save_generation_variant(
+                    generation_id=self.generation_id,
+                    variant_index=index,
+                    status="done",
+                    html=extracted_html,
+                )
+                print(f"[SAVED] Variant {index + 1} for generation {self.generation_id}")
+            except Exception as variant_save_error:
+                print(f"[WARNING] Failed to save variant {index} to DB: {variant_save_error}")
+                # Continue anyway - result is in memory in variant_completions
+
             # CRITICAL: Save to database immediately to prevent data loss
             # This must happen BEFORE any post-processing or image generation
             # so that the result is guaranteed to be persisted even if WebSocket closes
@@ -809,6 +825,17 @@ class ParallelGenerationStage:
             # Handle any errors that occurred during generation
             print(f"Error in variant {index + 1}: {e}")
             traceback.print_exception(type(e), e, e.__traceback__)
+
+            # 🔧 FIXED: Save error to generation_variants so it's persisted
+            try:
+                save_generation_variant(
+                    generation_id=self.generation_id,
+                    variant_index=index,
+                    status="failed",
+                    error_message=str(e),
+                )
+            except Exception as db_error:
+                print(f"[WARNING] Failed to save error variant to DB: {db_error}")
 
             # Only send error message if it hasn't been sent already
             if not isinstance(e, VariantErrorAlreadySent):
@@ -984,7 +1011,7 @@ class CodeGenerationMiddleware(Middleware):
 
 
 class PostProcessingMiddleware(Middleware):
-    """Handles post-processing and logging"""
+    """Handles post-processing, logging, and sends final generation_complete signal"""
 
     async def process(
         self, context: PipelineContext, next_func: Callable[[], Awaitable[None]]
@@ -993,6 +1020,15 @@ class PostProcessingMiddleware(Middleware):
         await post_processor.process_completions(
             context.completions, context.prompt_messages, context.websocket
         )
+
+        # 🔧 FIXED: Send final signal before closing WebSocket
+        # This ensures frontend knows generation is complete and isn't left waiting
+        try:
+            if context.ws_comm and not context.ws_comm.is_closed:
+                await context.websocket.send_json({"type": "generation_complete"})
+                print("Sent generation_complete signal to frontend")
+        except Exception as e:
+            print(f"Warning: Could not send generation_complete signal: {e}")
 
         await next_func()
 

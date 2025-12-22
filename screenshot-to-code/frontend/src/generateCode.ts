@@ -126,16 +126,17 @@ export function generateCode(
     } else if (event.code !== 1000) {
       console.error("Unknown server or connection error", event);
       toast.error(ERROR_MESSAGE);
-      // 🔧 Still call onCancel - it will check for completed variants first
-      callbacks.onCancel();
+      // 🔧 FIXED: Don't call onCancel() for network errors
+      // Ready variants should be preserved - this is infrastructure failure, not generation failure
     } else if (!receivedGenerationComplete) {
       // 🔧 Connection closed cleanly (1000) but without generation_complete signal
       console.warn(
         "WebSocket closed without generation_complete signal - generation may have failed silently"
       );
-      // 🔧 Show warning but don't kill the UI - onCancel will preserve ready variants
-      toast.error("Generation incomplete - check variants for results");
-      callbacks.onCancel();
+      // 🔧 FIXED: Show warning but DON'T call onCancel()
+      // Ready variants should remain on screen even if confirmation is missing
+      // This is NOT a user action - don't reset state
+      toast.error("Generation incomplete - but completed variants are saved");
     } else {
       // 🔧 Normal completion with generation_complete signal received
       callbacks.onComplete();
