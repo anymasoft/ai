@@ -42,7 +42,11 @@ async def lifespan(app: FastAPI):
         try:
             await worker_task
         except asyncio.CancelledError:
+            # Expected - task was cancelled
             pass
+        except Exception as e:
+            # Worker exited with error - log but don't crash shutdown
+            print(f"[APP] Worker error during shutdown: {e}")
     print("[APP] Generation worker stopped")
 
 
