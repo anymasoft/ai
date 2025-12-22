@@ -7,28 +7,22 @@ from fastapi import APIRouter, WebSocket
 import openai
 from codegen.utils import extract_html_content
 from config import (
-    ANTHROPIC_API_KEY,
-    GEMINI_API_KEY,
     IS_PROD,
     NUM_VARIANTS,
     OPENAI_API_KEY,
     OPENAI_BASE_URL,
     REPLICATE_API_KEY,
     SHOULD_MOCK_AI_RESPONSE,
+    CODEGEN_MODEL,
 )
 from custom_types import InputMode
 from llm import (
     Completion,
     Llm,
     OPENAI_MODELS,
-    ANTHROPIC_MODELS,
-    GEMINI_MODELS,
 )
 from models import (
-    stream_claude_response,
-    stream_claude_response_native,
     stream_openai_response,
-    stream_gemini_response,
 )
 from fs_logging.core import write_logs
 from mock_llm import mock_completion
@@ -58,8 +52,10 @@ MessageType = Literal[
 ]
 from image_generation.core import generate_images
 from prompts import create_prompt
-from prompts.claude_prompts import VIDEO_PROMPT
 from prompts.types import Stack, PromptContent
+from db import save_generation, update_generation
+import hashlib
+import time
 
 # from utils import pprint_prompt
 from ws.constants import APP_ERROR_WEB_SOCKET_CODE  # type: ignore
@@ -311,7 +307,7 @@ class ParameterExtractionStage:
 
 
 class ModelSelectionStage:
-    """Handles selection of variant models based on available API keys and generation type"""
+    """Handles selection of variant models - now fixed to Variant 1 only with configurable model"""
 
     def __init__(self, throw_error: Callable[[str], Coroutine[Any, Any, None]]):
         self.throw_error = throw_error
@@ -324,81 +320,41 @@ class ModelSelectionStage:
         anthropic_api_key: str | None,
         gemini_api_key: str | None = None,
     ) -> List[Llm]:
-        """Select appropriate models based on available API keys"""
+        """Select model - fixed to Variant 1 only using CODEGEN_MODEL setting"""
         try:
-            variant_models = self._get_variant_models(
-                generation_type,
-                input_mode,
-                NUM_VARIANTS,
-                openai_api_key,
-                anthropic_api_key,
-                gemini_api_key,
-            )
+            # Map CODEGEN_MODEL string to Llm enum
+            model = self._get_model_from_codegen_setting(CODEGEN_MODEL)
 
-            # Print the variant models (one per line)
-            print("Variant models:")
-            for index, model in enumerate(variant_models):
-                print(f"Variant {index + 1}: {model.value}")
+            # Validate we have the required API key for this model
+            if model in OPENAI_MODELS and not openai_api_key:
+                raise Exception(f"Model {CODEGEN_MODEL} requires OpenAI API key")
+            if model in ANTHROPIC_MODELS and not anthropic_api_key:
+                raise Exception(f"Model {CODEGEN_MODEL} requires Anthropic API key")
+            if model in GEMINI_MODELS and not gemini_api_key:
+                raise Exception(f"Model {CODEGEN_MODEL} requires Gemini API key")
 
-            return variant_models
-        except Exception:
+            print(f"[GEN] Using Variant 1 only with model: {model.value}")
+            return [model]  # Always return list with single model
+
+        except Exception as e:
             await self.throw_error(
-                "No OpenAI or Anthropic API key found. Please add the environment variable "
-                "OPENAI_API_KEY or ANTHROPIC_API_KEY to backend/.env or in the settings dialog. "
-                "If you add it to .env, make sure to restart the backend server."
+                f"Model selection error: {str(e)}. Please check CODEGEN_MODEL setting and API keys."
             )
-            raise Exception("No OpenAI or Anthropic key")
+            raise
 
-    def _get_variant_models(
-        self,
-        generation_type: Literal["create", "update"],
-        input_mode: InputMode,
-        num_variants: int,
-        openai_api_key: str | None,
-        anthropic_api_key: str | None,
-        gemini_api_key: str | None,
-    ) -> List[Llm]:
-        """Simple model cycling that scales with num_variants"""
+    def _get_model_from_codegen_setting(self, codegen_model: str) -> Llm:
+        """Convert CODEGEN_MODEL string to Llm enum"""
+        model_mapping = {
+            "gpt-4.1-mini": Llm.GPT_4_1_MINI,
+            "gpt-5.1-mini": Llm.GPT_5_1_MINI,
+        }
 
-        claude_model = Llm.CLAUDE_3_7_SONNET_2025_02_19
+        model = model_mapping.get(codegen_model)
+        if not model:
+            print(f"[GEN] WARNING: unknown model '{codegen_model}', using default gpt-4.1-mini")
+            model = Llm.GPT_4_1_MINI
 
-        # For text input mode, use Claude 4 Sonnet as third option
-        # For other input modes (image/video), use Gemini as third option
-        if input_mode == "text":
-            third_model = Llm.CLAUDE_4_SONNET_2025_05_14
-        else:
-            # Gemini only works for create right now
-            if generation_type == "create":
-                third_model = Llm.GEMINI_2_0_FLASH
-            else:
-                third_model = claude_model
-
-        # Define models based on available API keys
-        if (
-            openai_api_key
-            and anthropic_api_key
-            and (gemini_api_key or input_mode == "text")
-        ):
-            models = [
-                Llm.GPT_4_1_2025_04_14,
-                claude_model,
-                third_model,
-            ]
-        elif openai_api_key and anthropic_api_key:
-            models = [claude_model, Llm.GPT_4_1_2025_04_14]
-        elif anthropic_api_key:
-            models = [claude_model, Llm.CLAUDE_4_5_SONNET_2025_09_29]
-        elif openai_api_key:
-            models = [Llm.GPT_4_1_2025_04_14, Llm.GPT_4O_2024_11_20]
-        else:
-            raise Exception("No OpenAI or Anthropic key")
-
-        # Cycle through models: [A, B] with num=5 becomes [A, B, A, B, A]
-        selected_models: List[Llm] = []
-        for i in range(num_variants):
-            selected_models.append(models[i % len(models)])
-
-        return selected_models
+        return model
 
 
 class PromptCreationStage:
@@ -544,12 +500,15 @@ class ParallelGenerationStage:
         openai_base_url: str | None,
         anthropic_api_key: str | None,
         should_generate_images: bool,
+        start_time: float | None = None,
     ):
         self.send_message = send_message
         self.openai_api_key = openai_api_key
         self.openai_base_url = openai_base_url
         self.anthropic_api_key = anthropic_api_key
         self.should_generate_images = should_generate_images
+        self.start_time = start_time or time.time()
+        self.generation_id: str | None = None  # Will be set during processing
 
     async def process_variants(
         self,
@@ -736,11 +695,13 @@ class ParallelGenerationStage:
         image_cache: Dict[str, str],
         variant_completions: Dict[int, str],
     ):
-        """Process a single variant completion including image generation"""
+        """Process a single variant completion including image generation and DB persistence"""
+        generation_id = None
         try:
             completion = await task
 
-            print(f"{model.value} completion took {completion['duration']:.2f} seconds")
+            duration_ms = int((completion['duration'] * 1000))
+            print(f"[GEN] {model.value} completion took {completion['duration']:.2f}s (variant {index + 1})")
             variant_completions[index] = completion["code"]
 
             try:
@@ -753,22 +714,66 @@ class ParallelGenerationStage:
                 # Extract HTML content
                 processed_html = extract_html_content(processed_html)
 
-                # Send the complete variant back to the client
+                # **SAVE TO DB IMMEDIATELY** (before sending to client)
+                # This ensures data is persisted even if WebSocket closes
+                try:
+                    generation_id = save_generation(
+                        model=model.value,
+                        status="completed",
+                        html=processed_html,
+                        duration_ms=duration_ms,
+                    )
+                    self.generation_id = generation_id
+                    print(f"[DB] saved generation id={generation_id}")
+                except Exception as db_e:
+                    print(f"[DB] error saving: {db_e}")
+                    # Don't fail the whole process, but log it
+
+                # Send the complete variant back to the client with generation_id
                 await self.send_message("setCode", processed_html, index)
                 await self.send_message(
                     "variantComplete",
-                    "Variant generation complete",
+                    f"Variant generation complete (id={generation_id})",
                     index,
                 )
             except Exception as inner_e:
                 # If websocket is closed or other error during post-processing
-                print(f"Post-processing error for variant {index + 1}: {inner_e}")
+                print(f"[GEN] post-processing error for variant {index + 1}: {inner_e}")
+
+                # Still save to DB even if post-processing failed
+                if not generation_id:
+                    try:
+                        generation_id = save_generation(
+                            model=model.value,
+                            status="completed_with_error",
+                            html=completion["code"],  # Raw code
+                            error_message=f"Post-processing: {str(inner_e)}",
+                            duration_ms=duration_ms,
+                        )
+                        print(f"[DB] saved generation with error id={generation_id}")
+                    except Exception as db_e:
+                        print(f"[DB] error saving error case: {db_e}")
+
                 # We still keep the completion in variant_completions
 
         except Exception as e:
             # Handle any errors that occurred during generation
-            print(f"Error in variant {index + 1}: {e}")
+            print(f"[GEN] Error in variant {index + 1}: {e}")
             traceback.print_exception(type(e), e, e.__traceback__)
+
+            # Save error to DB
+            try:
+                if not generation_id:
+                    duration_ms = int((time.time() - self.start_time) * 1000)
+                    generation_id = save_generation(
+                        model=CODEGEN_MODEL,
+                        status="failed",
+                        error_message=str(e),
+                        duration_ms=duration_ms,
+                    )
+                    print(f"[DB] saved failed generation id={generation_id}")
+            except Exception as db_e:
+                print(f"[DB] error saving failed generation: {db_e}")
 
             # Only send error message if it hasn't been sent already
             if not isinstance(e, VariantErrorAlreadySent):
@@ -894,6 +899,7 @@ class CodeGenerationMiddleware(Middleware):
                         openai_base_url=context.extracted_params.openai_base_url,
                         anthropic_api_key=context.extracted_params.anthropic_api_key,
                         should_generate_images=context.extracted_params.should_generate_images,
+                        start_time=time.time(),
                     )
 
                     context.variant_completions = (
