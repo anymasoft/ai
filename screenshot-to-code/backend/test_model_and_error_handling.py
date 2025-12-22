@@ -19,7 +19,7 @@ def test_model_selection():
     selected_models = [
         Llm.GPT_4O_MINI,                 # Variant 1
         Llm.GPT_4_1_MINI,                # Variant 2
-        Llm.GPT_4_1_2025_04_14,          # Variant 3
+        Llm.GPT_4_1,                     # Variant 3
         Llm.GPT_5_1_MINI,                # Variant 4
     ]
 

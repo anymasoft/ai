@@ -373,7 +373,7 @@ class ModelSelectionStage:
         models = [
             Llm.GPT_4O_MINI,                 # Variant 1: gpt-4o-mini (cheap)
             Llm.GPT_4_1_MINI,                # Variant 2: gpt-4.1-mini (cheap)
-            Llm.GPT_4_1_2025_04_14,          # Variant 3: gpt-4.1 (full)
+            Llm.GPT_4_1,                     # Variant 3: gpt-4.1 (full)
             Llm.GPT_5_1_MINI,                # Variant 4: gpt-5.1-mini (newest, cheaper)
         ]
 
