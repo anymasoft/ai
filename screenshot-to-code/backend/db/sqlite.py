@@ -31,6 +31,10 @@ def init_db() -> None:
     cursor = conn.cursor()
 
     try:
+        # Set pragmas for performance and reliability
+        cursor.execute("PRAGMA journal_mode=WAL;")
+        cursor.execute("PRAGMA synchronous=NORMAL;")
+
         # Create users table
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS users (
@@ -67,30 +71,29 @@ def init_db() -> None:
             )
         """)
 
-        # Create generations table
+        # Create generations table (metadata only - NO html/model/duration stored here)
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS generations (
                 id TEXT PRIMARY KEY,
                 user_id TEXT,
                 created_at TEXT NOT NULL,
-                model TEXT NOT NULL,
                 status TEXT NOT NULL,
                 input_image_sha256 TEXT,
-                html TEXT,
                 error_message TEXT,
-                duration_ms INTEGER,
                 FOREIGN KEY (user_id) REFERENCES users(id)
             )
         """)
 
-        # Create generation_variants table (for tracking individual variants)
+        # Create generation_variants table (stores individual variant results with model info)
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS generation_variants (
                 generation_id TEXT,
                 variant_index INTEGER,
+                model TEXT NOT NULL,
                 status TEXT NOT NULL,
                 html TEXT,
                 error_message TEXT,
+                duration_ms INTEGER,
                 created_at TEXT NOT NULL,
                 PRIMARY KEY (generation_id, variant_index),
                 FOREIGN KEY (generation_id) REFERENCES generations(id)
@@ -133,6 +136,11 @@ def init_db() -> None:
             ON generations(created_at)
         """)
 
+        cursor.execute("""
+            CREATE INDEX IF NOT EXISTS idx_generation_variants_generation
+            ON generation_variants(generation_id)
+        """)
+
         conn.commit()
         print(f"[DB] initialized successfully at {DB_PATH}")
 
@@ -145,19 +153,18 @@ def init_db() -> None:
 
 
 def save_generation(
-    model: str,
     status: str,
-    html: Optional[str] = None,
-    error_message: Optional[str] = None,
-    duration_ms: Optional[int] = None,
     input_image_sha256: Optional[str] = None,
+    error_message: Optional[str] = None,
     user_id: Optional[str] = None,
     generation_id: Optional[str] = None,
 ) -> str:
     """
-    Save a generation record to the database.
+    Save a generation record to the database (metadata only).
     Returns the generation_id.
     If generation_id is not provided, a new UUID will be generated.
+
+    Note: Individual variant data (html, model, duration) is stored in generation_variants.
     """
     conn = get_conn()
     cursor = conn.cursor()
@@ -169,18 +176,15 @@ def save_generation(
     try:
         cursor.execute("""
             INSERT INTO generations
-            (id, user_id, created_at, model, status, html, error_message, duration_ms, input_image_sha256)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            (id, user_id, created_at, status, input_image_sha256, error_message)
+            VALUES (?, ?, ?, ?, ?, ?)
         """, (
             generation_id,
             user_id,
             now,
-            model,
             status,
-            html,
-            error_message,
-            duration_ms,
             input_image_sha256,
+            error_message,
         ))
         conn.commit()
         print(f"[DB] saved generation id={generation_id} status={status}")
@@ -197,11 +201,12 @@ def save_generation(
 def update_generation(
     generation_id: str,
     status: Optional[str] = None,
-    html: Optional[str] = None,
     error_message: Optional[str] = None,
-    duration_ms: Optional[int] = None,
 ) -> None:
-    """Update a generation record."""
+    """Update a generation record (metadata only).
+
+    Note: Individual variant html/duration is stored in generation_variants.
+    """
     conn = get_conn()
     cursor = conn.cursor()
 
@@ -212,15 +217,9 @@ def update_generation(
         if status is not None:
             updates.append("status = ?")
             params.append(status)
-        if html is not None:
-            updates.append("html = ?")
-            params.append(html)
         if error_message is not None:
             updates.append("error_message = ?")
             params.append(error_message)
-        if duration_ms is not None:
-            updates.append("duration_ms = ?")
-            params.append(duration_ms)
 
         if not updates:
             return
@@ -261,7 +260,7 @@ def list_generations(limit: int = 20, user_id: Optional[str] = None) -> list:
     try:
         if user_id:
             cursor.execute("""
-                SELECT id, user_id, created_at, model, status
+                SELECT id, user_id, created_at, status
                 FROM generations
                 WHERE user_id = ?
                 ORDER BY created_at DESC
@@ -269,7 +268,7 @@ def list_generations(limit: int = 20, user_id: Optional[str] = None) -> list:
             """, (user_id, limit))
         else:
             cursor.execute("""
-                SELECT id, user_id, created_at, model, status
+                SELECT id, user_id, created_at, status
                 FROM generations
                 ORDER BY created_at DESC
                 LIMIT ?
@@ -285,9 +284,11 @@ def list_generations(limit: int = 20, user_id: Optional[str] = None) -> list:
 def save_generation_variant(
     generation_id: str,
     variant_index: int,
+    model: str,
     status: str,
     html: Optional[str] = None,
     error_message: Optional[str] = None,
+    duration_ms: Optional[int] = None,
 ) -> None:
     """
     Save a generation variant record (individual model output).
@@ -301,14 +302,16 @@ def save_generation_variant(
         # Try INSERT first
         cursor.execute("""
             INSERT INTO generation_variants
-            (generation_id, variant_index, status, html, error_message, created_at)
-            VALUES (?, ?, ?, ?, ?, ?)
+            (generation_id, variant_index, model, status, html, error_message, duration_ms, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
         """, (
             generation_id,
             variant_index,
+            model,
             status,
             html,
             error_message,
+            duration_ms,
             now,
         ))
         conn.commit()
@@ -319,12 +322,14 @@ def save_generation_variant(
         try:
             cursor.execute("""
                 UPDATE generation_variants
-                SET status = ?, html = ?, error_message = ?
+                SET model = ?, status = ?, html = ?, error_message = ?, duration_ms = ?
                 WHERE generation_id = ? AND variant_index = ?
             """, (
+                model,
                 status,
                 html,
                 error_message,
+                duration_ms,
                 generation_id,
                 variant_index,
             ))
@@ -350,7 +355,7 @@ def get_generation_variants(generation_id: str) -> list:
 
     try:
         cursor.execute("""
-            SELECT generation_id, variant_index, status, html, error_message, created_at
+            SELECT generation_id, variant_index, model, status, html, error_message, duration_ms, created_at
             FROM generation_variants
             WHERE generation_id = ?
             ORDER BY variant_index
