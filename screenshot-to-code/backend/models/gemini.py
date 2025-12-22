@@ -1,3 +1,4 @@
+import asyncio
 import base64
 import time
 from typing import Awaitable, Callable, Dict, List
@@ -66,29 +67,34 @@ async def stream_gemini_response(
             max_output_tokens=8000,
         )
 
-    async for chunk in await client.aio.models.generate_content_stream(
-        model=model_name,
-        contents={
-            "parts": [
-                {"text": messages[0]["content"]},  # type: ignore
-                types.Part.from_bytes(
-                    data=base64.b64decode(image_data["data"]),
-                    mime_type=image_data["mime_type"],
-                ),
-            ]
-        },
-        config=config,
-    ):
-        if chunk.candidates and len(chunk.candidates) > 0:
-            for part in chunk.candidates[0].content.parts:
-                if not part.text:
-                    continue
-                elif part.thought:
-                    print("Thought summary:")
-                    print(part.text)
-                else:
-                    full_response += part.text
-                    await callback(part.text)
+    try:
+        async for chunk in await client.aio.models.generate_content_stream(
+            model=model_name,
+            contents={
+                "parts": [
+                    {"text": messages[0]["content"]},  # type: ignore
+                    types.Part.from_bytes(
+                        data=base64.b64decode(image_data["data"]),
+                        mime_type=image_data["mime_type"],
+                    ),
+                ]
+            },
+            config=config,
+        ):
+            if chunk.candidates and len(chunk.candidates) > 0:
+                for part in chunk.candidates[0].content.parts:
+                    if not part.text:
+                        continue
+                    elif part.thought:
+                        print("Thought summary:")
+                        print(part.text)
+                    else:
+                        full_response += part.text
+                        await callback(part.text)
+    except asyncio.CancelledError:
+        # Client disconnected - return partial response
+        print(f"[GEMINI] Streaming cancelled - returning partial response ({len(full_response)} chars)")
+        pass
 
     completion_time = time.time() - start_time
     return {"duration": completion_time, "code": full_response}

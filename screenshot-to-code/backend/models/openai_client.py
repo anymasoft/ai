@@ -1,8 +1,10 @@
 import time
+import asyncio
 from typing import Awaitable, Callable, List
 from openai import AsyncOpenAI
 from openai.types.chat import ChatCompletionMessageParam, ChatCompletionChunk
 from llm import Completion
+
 
 
 async def stream_openai_response(
@@ -62,17 +64,22 @@ async def stream_openai_response(
     else:
         stream = await client.chat.completions.create(**params)  # type: ignore
         full_response = ""
-        async for chunk in stream:  # type: ignore
-            assert isinstance(chunk, ChatCompletionChunk)
-            if (
-                chunk.choices
-                and len(chunk.choices) > 0
-                and chunk.choices[0].delta
-                and chunk.choices[0].delta.content
-            ):
-                content = chunk.choices[0].delta.content or ""
-                full_response += content
-                await callback(content)
+        try:
+            async for chunk in stream:  # type: ignore
+                assert isinstance(chunk, ChatCompletionChunk)
+                if (
+                    chunk.choices
+                    and len(chunk.choices) > 0
+                    and chunk.choices[0].delta
+                    and chunk.choices[0].delta.content
+                ):
+                    content = chunk.choices[0].delta.content or ""
+                    full_response += content
+                    await callback(content)
+        except asyncio.CancelledError:
+            # Client disconnected - return partial response
+            print(f"[OPENAI] Streaming cancelled - returning partial response ({len(full_response)} chars)")
+            pass
 
     await client.close()
 
