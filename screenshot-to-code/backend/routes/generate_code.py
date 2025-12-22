@@ -16,6 +16,8 @@ from config import (
     OPENAI_BASE_URL,
     REPLICATE_API_KEY,
     SHOULD_MOCK_AI_RESPONSE,
+    ACTIVE_VARIANT_INDEX,
+    VARIANT_3_MODEL,
 )
 from custom_types import InputMode
 from llm import (
@@ -391,24 +393,36 @@ class ModelSelectionStage:
         anthropic_api_key: str | None,
         gemini_api_key: str | None,
     ) -> List[Llm]:
-        """Fixed OpenAI-only model selection with accessible models (no 403 errors)"""
+        """🔧 OPTIMIZED: Return ONLY the active variant model to save tokens"""
 
-        # Fixed 4 OpenAI variants: only ACCESSIBLE and CHEAP models
-        # gpt-4o-2024-08-06 was causing 403, so using newer models instead
-        models = [
-            Llm.GPT_4O_MINI,                 # Variant 1: gpt-4o-mini (cheap)
-            Llm.GPT_4_1_MINI,                # Variant 2: gpt-4.1-mini (cheap)
-            Llm.GPT_4_1,                     # Variant 3: gpt-4.1 (full)
-            Llm.GPT_5_MINI,                  # Variant 4: gpt-5-mini (newest, cheaper)
+        # All available models (for reference, but only one is active)
+        # Variant 1 (index 0): gpt-4o-mini - DISABLED
+        # Variant 2 (index 1): gpt-4.1-mini - DISABLED
+        # Variant 3 (index 2): gpt-4.1 (prod) or gpt-4.1-mini (dev) - ACTIVE
+        # Variant 4 (index 3): gpt-5-mini - DISABLED
+        all_models = [
+            Llm.GPT_4O_MINI,                 # Variant 1: DISABLED
+            Llm.GPT_4_1_MINI,                # Variant 2: DISABLED
+            Llm.GPT_4_1,                     # Variant 3: ACTIVE
+            Llm.GPT_5_MINI,                  # Variant 4: DISABLED
         ]
 
         if not openai_api_key:
             raise Exception("OpenAI API key is required. Please set OPENAI_API_KEY environment variable.")
 
-        # Cycle through models to match num_variants
+        # 🔧 OPTIMIZATION: Only generate the ACTIVE variant
+        # This reduces token consumption from 4x to 1x
+        # Return only the active variant model
         selected_models: List[Llm] = []
-        for i in range(num_variants):
-            selected_models.append(models[i % len(models)])
+
+        # Variant 3 is at index 2
+        # Choose model based on environment
+        if IS_PROD:
+            active_model = Llm.GPT_4_1
+        else:
+            active_model = Llm.GPT_4_1_MINI
+
+        selected_models.append(active_model)
 
         return selected_models
 
@@ -901,16 +915,19 @@ class ParameterExtractionMiddleware(Middleware):
 
 
 class StatusBroadcastMiddleware(Middleware):
-    """Sends initial status messages to all variants"""
+    """Sends initial status messages to ACTIVE variants only"""
 
     async def process(
         self, context: PipelineContext, next_func: Callable[[], Awaitable[None]]
     ) -> None:
-        # Tell frontend how many variants we're using
-        await context.send_message("variantCount", str(NUM_VARIANTS), 0)
+        # 🔧 OPTIMIZATION: Tell frontend only about ACTIVE variants
+        # Only 1 variant is active to save tokens
+        num_active_variants = 1
+        await context.send_message("variantCount", str(num_active_variants), 0)
 
-        for i in range(NUM_VARIANTS):
-            await context.send_message("status", "Generating code...", i)
+        # Send status only for the active variant
+        # Map active variant to its display index (0-indexed)
+        await context.send_message("status", "Generating code...", ACTIVE_VARIANT_INDEX)
 
         await next_func()
 
