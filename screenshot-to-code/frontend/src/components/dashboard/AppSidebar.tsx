@@ -13,6 +13,17 @@ import {
   Sparkles
 } from "lucide-react";
 
+interface NavItem {
+  title: string;
+  url: string;
+  icon: React.ComponentType<{ className?: string }>;
+}
+
+interface NavGroup {
+  label: string;
+  items: NavItem[];
+}
+
 export function AppSidebar() {
   const location = useLocation();
 
@@ -20,71 +31,90 @@ export function AppSidebar() {
     return location.pathname === path;
   };
 
-  const navItems = [
-    { icon: Palette, label: "Playground", path: "/playground" },
-    { icon: History, label: "History", path: "/history" },
-    { icon: CreditCard, label: "Billing", path: "/settings/billing" },
-    { icon: Settings, label: "Settings", path: "/settings" },
+  const navGroups: NavGroup[] = [
+    {
+      label: "Инструменты",
+      items: [
+        { title: "Playground", url: "/playground", icon: Palette },
+        { title: "История", url: "/history", icon: History },
+      ],
+    },
+    {
+      label: "Аккаунт",
+      items: [
+        { title: "Биллинг", url: "/settings/billing", icon: CreditCard },
+        { title: "Настройки", url: "/settings", icon: Settings },
+      ],
+    },
   ];
 
   return (
-    <div className="flex flex-col h-screen w-64 bg-white border-r border-gray-200 dark:bg-zinc-950 dark:border-zinc-800">
-      {/* Logo Section */}
-      <div className="p-6 border-b border-gray-200 dark:border-zinc-800">
+    <div className="flex flex-col h-screen w-64 border-r border-border bg-background">
+      {/* Header */}
+      <div className="px-6 py-6 border-b border-border">
         <div className="flex flex-col gap-1">
-          <h1 className="text-xl font-bold text-gray-900 dark:text-white">
+          <h1 className="text-lg font-bold">
             screenshot-to-code
           </h1>
-          <p className="text-xs text-gray-500 dark:text-gray-400">
+          <p className="text-xs text-muted-foreground">
             AI Conversion Tool
           </p>
         </div>
       </div>
 
       {/* Primary Action Button */}
-      <div className="p-4 border-b border-gray-200 dark:border-zinc-800">
-        <Link to="/playground" className="w-full block">
+      <div className="px-6 py-4 border-b border-border">
+        <Link to="/playground" className="block w-full">
           <Button
             className="w-full bg-blue-600 hover:bg-blue-700 text-white"
             size="sm"
           >
             <Sparkles className="w-4 h-4 mr-2" />
-            New Generation
+            Новая генерация
           </Button>
         </Link>
       </div>
 
       {/* Navigation */}
       <ScrollArea className="flex-1">
-        <nav className="flex flex-col gap-1 p-4">
-          {navItems.map((item) => {
-            const Icon = item.icon;
-            return (
-              <Link key={item.path} to={item.path}>
-                <Button
-                  variant={isActive(item.path) ? "default" : "ghost"}
-                  className={cn(
-                    "w-full justify-start",
-                    isActive(item.path) && "bg-blue-100 text-blue-900 dark:bg-blue-900 dark:text-blue-100"
-                  )}
-                  size="sm"
-                >
-                  <Icon className="w-4 h-4 mr-3" />
-                  {item.label}
-                </Button>
-              </Link>
-            );
-          })}
+        <nav className="flex flex-col gap-6 px-4 py-4">
+          {navGroups.map((group) => (
+            <div key={group.label} className="flex flex-col gap-2">
+              <p className="text-xs font-semibold text-muted-foreground px-2">
+                {group.label}
+              </p>
+              <div className="flex flex-col gap-1">
+                {group.items.map((item) => {
+                  const Icon = item.icon;
+                  return (
+                    <Link key={item.url} to={item.url}>
+                      <Button
+                        variant={isActive(item.url) ? "default" : "ghost"}
+                        className={cn(
+                          "w-full justify-start text-sm",
+                          isActive(item.url) && "bg-accent text-accent-foreground"
+                        )}
+                        size="sm"
+                      >
+                        <Icon className="w-4 h-4 mr-2" />
+                        {item.title}
+                      </Button>
+                    </Link>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
         </nav>
       </ScrollArea>
 
       {/* User Section */}
-      <div className="p-4 border-t border-gray-200 dark:border-zinc-800">
+      <div className="p-4 border-t border-border">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button
               variant="ghost"
-              className="w-full justify-start hover:bg-gray-100 dark:hover:bg-zinc-800"
+              className="w-full justify-start hover:bg-accent"
               size="sm"
             >
               <Avatar className="w-8 h-8 mr-3">
@@ -92,24 +122,24 @@ export function AppSidebar() {
                 <AvatarFallback>U</AvatarFallback>
               </Avatar>
               <div className="flex-1 text-left">
-                <div className="text-xs font-medium text-gray-900 dark:text-white">User</div>
-                <div className="text-xs text-gray-500 dark:text-gray-400">user@example.com</div>
+                <div className="text-xs font-medium">User</div>
+                <div className="text-xs text-muted-foreground">user@example.com</div>
               </div>
-              <ChevronDown className="w-4 h-4 ml-auto text-gray-400" />
+              <ChevronDown className="w-4 h-4 ml-auto text-muted-foreground" />
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-48">
+          <DropdownMenuContent align="end" className="w-56">
             <DropdownMenuItem disabled>
-              <span className="text-xs text-gray-500">user@example.com</span>
+              <span className="text-xs text-muted-foreground">user@example.com</span>
             </DropdownMenuItem>
             <DropdownMenuItem asChild>
-              <Link to="/settings">Settings</Link>
+              <Link to="/settings" className="cursor-pointer">Настройки</Link>
             </DropdownMenuItem>
             <DropdownMenuItem asChild>
-              <Link to="/settings/billing">Billing</Link>
+              <Link to="/settings/billing" className="cursor-pointer">Биллинг</Link>
             </DropdownMenuItem>
             <DropdownMenuItem onClick={() => console.log("Sign out")}>
-              Sign out
+              Выход
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
