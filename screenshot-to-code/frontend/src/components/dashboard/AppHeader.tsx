@@ -20,7 +20,7 @@ export function AppHeader() {
   };
 
   return (
-    <header className="h-16 border-b border-gray-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 flex items-center px-6 gap-4">
+    <header className="h-16 border-b border-border bg-background flex items-center px-6 gap-4 shadow-xs">
       {/* Left side - Menu toggle (for mobile) */}
       <Button
         variant="ghost"
@@ -38,7 +38,7 @@ export function AppHeader() {
         variant="ghost"
         size="sm"
         onClick={toggleTheme}
-        className="text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-200"
+        className="text-muted-foreground hover:text-foreground"
       >
         {isDark ? (
           <Sun className="w-5 h-5" />

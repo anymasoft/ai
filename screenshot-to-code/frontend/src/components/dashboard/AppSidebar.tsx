@@ -49,13 +49,13 @@ export function AppSidebar() {
   ];
 
   return (
-    <div className="flex flex-col h-screen w-64 border-r border-border bg-background">
+    <div className="flex flex-col h-screen w-64 bg-background border-r border-border shadow-xs">
       {/* Header */}
-      <div className="px-6 py-6 border-b border-border">
+      <div className="px-6 py-5 border-b border-border">
         <div className="flex flex-col gap-1">
-          <h1 className="text-lg font-bold">
+          <h2 className="text-sm font-semibold leading-none">
             screenshot-to-code
-          </h1>
+          </h2>
           <p className="text-xs text-muted-foreground">
             AI Conversion Tool
           </p>
@@ -63,10 +63,10 @@ export function AppSidebar() {
       </div>
 
       {/* Primary Action Button */}
-      <div className="px-6 py-4 border-b border-border">
+      <div className="px-4 py-3">
         <Link to="/playground" className="block w-full">
           <Button
-            className="w-full bg-blue-600 hover:bg-blue-700 text-white"
+            className="w-full bg-primary hover:bg-primary/90 text-primary-foreground shadow-sm"
             size="sm"
           >
             <Sparkles className="w-4 h-4 mr-2" />
@@ -77,13 +77,13 @@ export function AppSidebar() {
 
       {/* Navigation */}
       <ScrollArea className="flex-1">
-        <nav className="flex flex-col gap-6 px-4 py-4">
+        <nav className="flex flex-col gap-6 px-2 py-4">
           {navGroups.map((group) => (
             <div key={group.label} className="flex flex-col gap-2">
-              <p className="text-xs font-semibold text-muted-foreground px-2">
+              <p className="text-xs font-semibold text-muted-foreground px-2 leading-none">
                 {group.label}
               </p>
-              <div className="flex flex-col gap-1">
+              <div className="flex flex-col gap-0.5">
                 {group.items.map((item) => {
                   const Icon = item.icon;
                   return (
@@ -91,8 +91,8 @@ export function AppSidebar() {
                       <Button
                         variant={isActive(item.url) ? "default" : "ghost"}
                         className={cn(
-                          "w-full justify-start text-sm",
-                          isActive(item.url) && "bg-accent text-accent-foreground"
+                          "w-full justify-start text-sm font-normal h-9",
+                          isActive(item.url) ? "bg-accent text-accent-foreground" : "hover:bg-accent/50"
                         )}
                         size="sm"
                       >
@@ -109,23 +109,23 @@ export function AppSidebar() {
       </ScrollArea>
 
       {/* User Section */}
-      <div className="p-4 border-t border-border">
+      <div className="p-3 border-t border-border">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button
               variant="ghost"
-              className="w-full justify-start hover:bg-accent"
+              className="w-full justify-start hover:bg-accent/50 h-10"
               size="sm"
             >
-              <Avatar className="w-8 h-8 mr-3">
+              <Avatar className="w-8 h-8 mr-2 flex-shrink-0">
                 <AvatarImage src="https://api.dicebear.com/7.x/avataaars/svg?seed=user" />
                 <AvatarFallback>U</AvatarFallback>
               </Avatar>
-              <div className="flex-1 text-left">
-                <div className="text-xs font-medium">User</div>
-                <div className="text-xs text-muted-foreground">user@example.com</div>
+              <div className="flex-1 text-left min-w-0">
+                <div className="text-xs font-medium truncate">User</div>
+                <div className="text-xs text-muted-foreground truncate">user@example.com</div>
               </div>
-              <ChevronDown className="w-4 h-4 ml-auto text-muted-foreground" />
+              <ChevronDown className="w-4 h-4 flex-shrink-0 text-muted-foreground ml-1" />
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-56">

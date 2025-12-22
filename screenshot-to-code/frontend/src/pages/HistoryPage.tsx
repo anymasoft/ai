@@ -5,12 +5,11 @@ import { Eye, Copy, Trash2, Search } from "lucide-react";
 
 export function HistoryPage() {
   return (
-    <div className="max-w-7xl mx-auto">
-        <div className="mb-6">
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
-            History
-          </h1>
-          <p className="text-gray-600 dark:text-gray-400">
+    <div className="px-4 py-4 md:py-6 lg:px-6">
+      <div className="mx-auto w-full max-w-5xl space-y-6">
+        <div className="flex flex-col gap-2">
+          <h2 className="font-semibold leading-none">History</h2>
+          <p className="text-muted-foreground text-sm">
             View and manage your previous generations
           </p>
         </div>
@@ -87,5 +86,6 @@ export function HistoryPage() {
           ))}
         </div>
       </div>
+    </div>
   );
 }
