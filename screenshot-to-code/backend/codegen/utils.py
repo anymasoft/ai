@@ -1,4 +1,6 @@
 import re
+import traceback
+from typing import Dict
 
 
 def extract_html_content(text: str) -> str:
@@ -400,5 +402,91 @@ def fix_broken_img_icons(html: str) -> str:
         return html
     except Exception as e:
         print(f"[IMG FIX] Error fixing broken img tags: {e}")
+        return html
+
+
+def inject_asset_src(html: str, asset_manifest: Dict[str, str] | None = None) -> str:
+    """
+    CRITICAL: Inject base64 src into <img data-asset-id="X"> tags.
+
+    This is the FINAL STEP before streaming HTML to frontend.
+
+    Rules:
+    1. Find all <img data-asset-id="asset_X"> tags
+    2. If asset_X is in asset_manifest → use base64 from manifest
+    3. If asset_X not found → use placeholder PNG
+    4. Convert: <img data-asset-id="X"> → <img src="data:image/png;base64,..." data-asset-id="X">
+    5. ALL <img> tags MUST have src before going to frontend
+
+    This prevents broken images in the browser.
+    """
+
+    if asset_manifest is None:
+        asset_manifest = {}
+
+    PLACEHOLDER_PNG = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII="
+
+    try:
+        # Pattern: Find all <img> tags with data-asset-id
+        img_pattern = r'<img\s+([^>]*)>'
+
+        def inject_src_to_img(match):
+            tag_content = match.group(1)
+
+            # Check if it already has a src attribute
+            if 'src=' in tag_content.lower():
+                # Already has src, skip
+                return match.group(0)
+
+            # Extract data-asset-id attribute
+            asset_id_pattern = r'data-asset-id=["\']?([^"\'>\s]+)["\']?'
+            asset_id_match = re.search(asset_id_pattern, tag_content)
+
+            if not asset_id_match:
+                # No data-asset-id found, add placeholder
+                return match.group(0).replace('>', f' src="{PLACEHOLDER_PNG}">', 1)
+
+            # Extract asset ID
+            asset_id = asset_id_match.group(1)
+
+            # Look for base64 in manifest
+            if asset_id in asset_manifest:
+                base64_data = asset_manifest[asset_id]
+            else:
+                # Use placeholder if not found
+                base64_data = PLACEHOLDER_PNG
+
+            # Inject src into <img> tag
+            # Find position to insert src (after <img )
+            img_start = '<img '
+            if tag_content.startswith(' '):
+                # First attribute has leading space
+                new_tag_content = f'src="{base64_data}" {tag_content.lstrip()}'
+            else:
+                new_tag_content = f'src="{base64_data}" {tag_content}'
+
+            return f'<img {new_tag_content}>'
+
+        html = re.sub(img_pattern, inject_src_to_img, html, flags=re.IGNORECASE)
+
+        # Security check: ensure no <img> without src exist
+        # This is protection against pipeline errors
+        remaining_img_pattern = r'<img\s+([^>]*)>'
+        remaining_matches = re.findall(remaining_img_pattern, html, re.IGNORECASE)
+
+        img_without_src_count = 0
+        for match in remaining_matches:
+            if 'src=' not in match.lower():
+                img_without_src_count += 1
+
+        if img_without_src_count > 0:
+            print(f"⚠️  [ASSET INJECTION] WARNING: {img_without_src_count} <img> tag(s) still missing src after injection!")
+            # This should not happen, but if it does, apply emergency placeholder
+            html = fix_broken_img_icons(html)
+
+        return html
+    except Exception as e:
+        print(f"[ASSET INJECTION] Error injecting asset src: {e}")
+        traceback.print_exc()
         return html
 

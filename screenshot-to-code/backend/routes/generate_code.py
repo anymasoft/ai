@@ -6,7 +6,7 @@ from typing import Callable, Awaitable
 from fastapi import APIRouter, WebSocket
 import openai
 import re
-from codegen.utils import extract_html_content, sanitize_html_output, is_html_valid, fix_broken_img_icons
+from codegen.utils import extract_html_content, sanitize_html_output, is_html_valid, fix_broken_img_icons, inject_asset_src
 from config import (
     IS_PROD,
     NUM_VARIANTS,
@@ -685,6 +685,11 @@ class ParallelGenerationStage:
                 # 🔥 Sanitize HTML output: fix nested tags, close unclosed blocks, deduplicate CSS
                 processed_html = sanitize_html_output(processed_html)
 
+                # 🖼️ CRITICAL: Inject asset base64 src into <img> tags BEFORE sending to frontend
+                # This is the FINAL STEP to ensure all <img> have src attributes
+                print(f"[ASSET INJECTION] Injecting base64 src into <img> tags (image_cache={len(image_cache)} items)")
+                processed_html = inject_asset_src(processed_html, asset_manifest=image_cache)
+
                 # 🔍 Validate HTML before sending to client
                 is_valid, validation_msg = is_html_valid(processed_html)
                 if not is_valid:
@@ -701,6 +706,18 @@ class ParallelGenerationStage:
                         index,
                     )
                 else:
+                    # 🔒 SAFETY CHECK: Ensure ALL <img> have src before streaming
+                    # This is critical protection against broken images
+                    img_pattern = r'<img\s+([^>]*)>'
+                    img_matches = re.findall(img_pattern, processed_html, re.IGNORECASE)
+                    img_without_src = [m for m in img_matches if 'src=' not in m.lower()]
+
+                    if img_without_src:
+                        print(f"⚠️  [CRITICAL] Found {len(img_without_src)} <img> tag(s) WITHOUT src before streaming!")
+                        print(f"   This indicates a pipeline error. Emergency fallback: applying fix_broken_img_icons")
+                        processed_html = fix_broken_img_icons(processed_html)
+                        print(f"   Applied emergency fix")
+
                     # Send the complete variant back to the client
                     await self.send_message("setCode", processed_html, index)
                     await self.send_message(
