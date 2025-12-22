@@ -10,12 +10,13 @@ from codegen.utils import extract_html_content
 from config import (
     ANTHROPIC_API_KEY,
     GEMINI_API_KEY,
-    IS_PROD,
+    NODE_ENV,
     NUM_VARIANTS,
     OPENAI_API_KEY,
     OPENAI_BASE_URL,
     REPLICATE_API_KEY,
     SHOULD_MOCK_AI_RESPONSE,
+    ACTIVE_VARIANT_INDEX,
 )
 from custom_types import InputMode
 from llm import (
@@ -391,24 +392,36 @@ class ModelSelectionStage:
         anthropic_api_key: str | None,
         gemini_api_key: str | None,
     ) -> List[Llm]:
-        """Fixed OpenAI-only model selection with accessible models (no 403 errors)"""
+        """🔧 OPTIMIZED: Return ONLY the active variant model to save tokens"""
 
-        # Fixed 4 OpenAI variants: only ACCESSIBLE and CHEAP models
-        # gpt-4o-2024-08-06 was causing 403, so using newer models instead
-        models = [
-            Llm.GPT_4O_MINI,                 # Variant 1: gpt-4o-mini (cheap)
-            Llm.GPT_4_1_MINI,                # Variant 2: gpt-4.1-mini (cheap)
-            Llm.GPT_4_1,                     # Variant 3: gpt-4.1 (full)
-            Llm.GPT_5_MINI,                  # Variant 4: gpt-5-mini (newest, cheaper)
+        # All available models (for reference, but only one is active)
+        # Variant 1 (index 0): gpt-4o-mini - DISABLED
+        # Variant 2 (index 1): gpt-4.1-mini - DISABLED
+        # Variant 3 (index 2): gpt-4.1 (prod) or gpt-4.1-mini (dev) - ACTIVE
+        # Variant 4 (index 3): gpt-5-mini - DISABLED
+        all_models = [
+            Llm.GPT_4O_MINI,                 # Variant 1: DISABLED
+            Llm.GPT_4_1_MINI,                # Variant 2: DISABLED
+            Llm.GPT_4_1,                     # Variant 3: ACTIVE
+            Llm.GPT_5_MINI,                  # Variant 4: DISABLED
         ]
 
         if not openai_api_key:
             raise Exception("OpenAI API key is required. Please set OPENAI_API_KEY environment variable.")
 
-        # Cycle through models to match num_variants
+        # 🔧 OPTIMIZATION: Only generate the ACTIVE variant
+        # This reduces token consumption from 4x to 1x
+        # Return only the active variant model
         selected_models: List[Llm] = []
-        for i in range(num_variants):
-            selected_models.append(models[i % len(models)])
+
+        # Variant 3 is at index 2
+        # Choose model based on NODE_ENV environment variable
+        if NODE_ENV == "production":
+            active_model = Llm.GPT_4_1  # Production: full model
+        else:
+            active_model = Llm.GPT_4_1_MINI  # Development: cheaper model
+
+        selected_models.append(active_model)
 
         return selected_models
 
@@ -572,7 +585,7 @@ class ParallelGenerationStage:
         image_cache: Dict[str, str],
         params: Dict[str, str],
     ) -> Dict[int, str]:
-        """Process all variants in parallel and return completions"""
+        """Process only ACTIVE variants and return completions"""
         tasks = self._create_generation_tasks(variant_models, prompt_messages, params)
 
         # Dictionary to track variant tasks and their status
@@ -580,17 +593,23 @@ class ParallelGenerationStage:
         variant_completions: Dict[int, str] = {}
 
         # Create tasks for each variant
-        for index, task in enumerate(tasks):
+        # Since _create_generation_tasks uses ACTIVE_VARIANT_INDEX as the real index,
+        # we map accordingly
+        for local_index, task in enumerate(tasks):
+            real_variant_index = ACTIVE_VARIANT_INDEX
             variant_task = asyncio.create_task(task)
-            variant_tasks[index] = variant_task
+            variant_tasks[real_variant_index] = variant_task
 
         # Process each variant independently
-        variant_processors = [
-            self._process_variant_completion(
-                index, task, variant_models[index], image_cache, variant_completions
+        variant_processors = []
+        for real_index, task in variant_tasks.items():
+            # Find corresponding model (should be only 1)
+            model_idx = real_index if real_index < len(variant_models) else 0
+            variant_processors.append(
+                self._process_variant_completion(
+                    real_index, task, variant_models[0], image_cache, variant_completions  # Always index 0 since we have only 1 model
+                )
             )
-            for index, task in variant_tasks.items()
-        ]
 
         # Wait for all variants to complete
         await asyncio.gather(*variant_processors, return_exceptions=True)
@@ -603,10 +622,15 @@ class ParallelGenerationStage:
         prompt_messages: List[ChatCompletionMessageParam],
         params: Dict[str, str],
     ) -> List[Coroutine[Any, Any, Completion]]:
-        """Create generation tasks for each variant model"""
+        """🔧 Create generation tasks only for ACTIVE variants"""
         tasks: List[Coroutine[Any, Any, Completion]] = []
 
-        for index, model in enumerate(variant_models):
+        # Map enumerate index to real variant index
+        # Since we only have active variants, index 0 in variant_models = ACTIVE_VARIANT_INDEX in reality
+        for local_index, model in enumerate(variant_models):
+            # Use ACTIVE_VARIANT_INDEX as the real index for events/UI
+            real_variant_index = ACTIVE_VARIANT_INDEX
+
             if model in OPENAI_MODELS:
                 if self.openai_api_key is None:
                     raise Exception("OpenAI API key is missing.")
@@ -615,7 +639,7 @@ class ParallelGenerationStage:
                     self._stream_openai_with_error_handling(
                         prompt_messages,
                         model_name=model.value,
-                        index=index,
+                        index=real_variant_index,  # Use real index, not local_index
                     )
                 )
             elif GEMINI_API_KEY and model in GEMINI_MODELS:
@@ -901,16 +925,19 @@ class ParameterExtractionMiddleware(Middleware):
 
 
 class StatusBroadcastMiddleware(Middleware):
-    """Sends initial status messages to all variants"""
+    """Sends initial status messages to ACTIVE variants only"""
 
     async def process(
         self, context: PipelineContext, next_func: Callable[[], Awaitable[None]]
     ) -> None:
-        # Tell frontend how many variants we're using
-        await context.send_message("variantCount", str(NUM_VARIANTS), 0)
+        # 🔧 OPTIMIZATION: Tell frontend only about ACTIVE variants
+        # Only 1 variant is active to save tokens
+        num_active_variants = 1
+        await context.send_message("variantCount", str(num_active_variants), 0)
 
-        for i in range(NUM_VARIANTS):
-            await context.send_message("status", "Generating code...", i)
+        # Send status only for the active variant
+        # Map active variant to its display index (0-indexed)
+        await context.send_message("status", "Generating code...", ACTIVE_VARIANT_INDEX)
 
         await next_func()
 
@@ -994,13 +1021,14 @@ class CodeGenerationMiddleware(Middleware):
                         )
                         return  # Don't continue the pipeline
 
-                    # Convert to list format
+                    # 🔧 OPTIMIZATION: Convert completions to list format
+                    # variant_completions has {ACTIVE_VARIANT_INDEX: html}
+                    # We need to map it properly
                     context.completions = []
-                    for i in range(len(context.variant_models)):
-                        if i in context.variant_completions:
-                            context.completions.append(context.variant_completions[i])
-                        else:
-                            context.completions.append("")
+                    if ACTIVE_VARIANT_INDEX in context.variant_completions:
+                        context.completions.append(context.variant_completions[ACTIVE_VARIANT_INDEX])
+                    else:
+                        context.completions.append("")
 
             except Exception as e:
                 print(f"[GENERATE_CODE] Unexpected error: {e}")
