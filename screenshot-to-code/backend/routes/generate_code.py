@@ -86,7 +86,7 @@ class PipelineContext:
     """Context object that carries state through the pipeline"""
 
     websocket: WebSocket
-    generation_id: str = field(default_factory=lambda: str(uuid.uuid4()))
+    generation_id: str
     ws_comm: "WebSocketCommunicator | None" = None
     params: Dict[str, str] = field(default_factory=dict)
     extracted_params: "ExtractedParams | None" = None
@@ -146,16 +146,25 @@ class Pipeline:
         self.middlewares.append(middleware)
         return self
 
-    async def execute(self, websocket: WebSocket, params: Dict[str, str] = None, websocket_already_accepted: bool = False) -> None:
+    async def execute(self, websocket: WebSocket, params: Dict[str, str] = None, websocket_already_accepted: bool = False, generation_id: str = None) -> None:
         """Execute the pipeline with the given WebSocket
 
         Args:
             websocket: FastAPI WebSocket connection
             params: Optional pre-provided parameters (from queue worker)
             websocket_already_accepted: Flag if WebSocket was already accepted by handler
+            generation_id: Generation ID from handler (if not provided, generate new one)
         """
         try:
-            context = PipelineContext(websocket=websocket, websocket_already_accepted=websocket_already_accepted)
+            # If generation_id not provided, create new one (for backwards compatibility)
+            if generation_id is None:
+                generation_id = str(uuid.uuid4())
+                print(f"[PIPELINE] Generated new generation_id={generation_id}")
+            else:
+                print(f"[PIPELINE] Using provided generation_id={generation_id}")
+
+            context = PipelineContext(websocket=websocket, generation_id=generation_id, websocket_already_accepted=websocket_already_accepted)
+            print(f"[DEBUG] PipelineContext created with generation_id={context.generation_id}")
             # If params are provided (from queue), skip parameter extraction
             if params:
                 context.params = params
@@ -1013,6 +1022,7 @@ class ParameterExtractionMiddleware(Middleware):
         self, context: PipelineContext, next_func: Callable[[], Awaitable[None]]
     ) -> None:
         try:
+            print(f"[DEBUG] ParameterExtractionMiddleware: generation_id={context.generation_id}")
             # Check if parameters are already provided (from queue worker)
             if not hasattr(context, 'params') or context.params is None:
                 # Receive parameters from WebSocket
@@ -1073,6 +1083,7 @@ class PromptCreationMiddleware(Middleware):
         self, context: PipelineContext, next_func: Callable[[], Awaitable[None]]
     ) -> None:
         try:
+            print(f"[DEBUG] PromptCreationMiddleware: generation_id={context.generation_id}, extracted_params={'OK' if context.extracted_params else 'None'}")
             # Check extracted_params without throwing
             if context.extracted_params is None:
                 print("[ERROR] extracted_params is None in PromptCreationMiddleware")
@@ -1098,6 +1109,7 @@ class CodeGenerationMiddleware(Middleware):
     async def process(
         self, context: PipelineContext, next_func: Callable[[], Awaitable[None]]
     ) -> None:
+        print(f"[DEBUG] CodeGenerationMiddleware: generation_id={context.generation_id}")
         # Check extracted_params early without throwing
         if context.extracted_params is None:
             print("[ERROR] extracted_params is None in CodeGenerationMiddleware")
@@ -1224,6 +1236,7 @@ async def stream_code(websocket: WebSocket):
 
         # Create generation record with queued status
         generation_id = str(uuid.uuid4().hex[:16])
+        print(f"[DEBUG] Handler: created generation_id={generation_id}")
         try:
             save_generation(
                 status="queued",

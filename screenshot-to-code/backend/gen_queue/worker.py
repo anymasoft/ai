@@ -24,6 +24,7 @@ class GenerationWorker:
                 self.current_job = job
 
                 print(f"[WORKER] Processing {job}")
+                print(f"[DEBUG] Worker: received job with generation_id={job.generation_id}")
 
                 # Update status to processing
                 try:
@@ -41,17 +42,19 @@ class GenerationWorker:
 
                     pipeline = Pipeline()
                     pipeline.use(WebSocketSetupMiddleware())
-                    # Skip ParameterExtractionMiddleware - we already have params in job
+                    pipeline.use(ParameterExtractionMiddleware())
                     pipeline.use(StatusBroadcastMiddleware())
                     pipeline.use(PromptCreationMiddleware())
                     pipeline.use(CodeGenerationMiddleware())
                     pipeline.use(PostProcessingMiddleware())
 
                     # Execute pipeline with job websocket and pre-provided parameters
+                    print(f"[DEBUG] Worker: passing generation_id={job.generation_id} to pipeline")
                     await pipeline.execute(
                         job.websocket,
                         params=job.params,
-                        websocket_already_accepted=job.websocket_already_accepted
+                        websocket_already_accepted=job.websocket_already_accepted,
+                        generation_id=job.generation_id
                     )
 
                     # Pipeline handles status updates and failures internally via mark_failed()
