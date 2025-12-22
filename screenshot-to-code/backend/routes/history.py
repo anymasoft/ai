@@ -1,6 +1,6 @@
 """History endpoints for accessing generation records."""
 from fastapi import APIRouter, HTTPException
-from db import list_generations, get_generation
+from db import list_generations, get_generation, get_generation_variants
 
 router = APIRouter(prefix="/api", tags=["history"])
 
@@ -22,15 +22,21 @@ async def get_generations_list(limit: int = 20):
 
 @router.get("/generations/{generation_id}")
 async def get_generation_detail(generation_id: str):
-    """Get details of a specific generation."""
+    """Get details of a specific generation including all variants."""
     try:
         generation = get_generation(generation_id)
         if not generation:
             raise HTTPException(status_code=404, detail="Generation not found")
 
+        # 🔧 FIXED: Include all variants in response
+        variants = get_generation_variants(generation_id)
+
         return {
             "success": True,
-            "data": generation,
+            "data": {
+                **generation,
+                "variants": variants,
+            },
         }
     except HTTPException:
         raise
