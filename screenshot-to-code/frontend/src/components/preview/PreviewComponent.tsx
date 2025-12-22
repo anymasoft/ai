@@ -11,7 +11,7 @@ interface Props {
 }
 
 function PreviewComponent({ code, device, doUpdate }: Props) {
-  const iframeRef = useRef<HTMLIFrameElement | null>(null);
+  const iframeRef = useRef<HTMLIFrameElement>(null!);
   const wrapperRef = useRef<HTMLDivElement | null>(null);
 
   // 🔧 PARTIAL UPDATE: Check if partial update is in progress
