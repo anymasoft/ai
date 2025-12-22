@@ -32,10 +32,10 @@ REPLICATE_API_KEY = os.environ.get("REPLICATE_API_KEY", None)
 
 # Debugging-related
 
-SHOULD_MOCK_AI_RESPONSE = bool(os.environ.get("MOCK", False))
-IS_DEBUG_ENABLED = bool(os.environ.get("IS_DEBUG_ENABLED", False))
+SHOULD_MOCK_AI_RESPONSE = os.environ.get("MOCK", "").lower() in ("true", "1", "yes")
+IS_DEBUG_ENABLED = os.environ.get("IS_DEBUG_ENABLED", "").lower() in ("true", "1", "yes")
 DEBUG_DIR = os.environ.get("DEBUG_DIR", "")
 
 # Set to True when running in production (on the hosted version)
 # Used as a feature flag to enable or disable certain features
-IS_PROD = os.environ.get("IS_PROD", False)
+IS_PROD = os.environ.get("IS_PROD", "").lower() in ("true", "1", "yes")
