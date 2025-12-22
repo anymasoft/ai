@@ -49,7 +49,11 @@ class GenerationWorker:
                     pipeline.use(PostProcessingMiddleware())
 
                     # Execute pipeline with job websocket and pre-provided parameters
-                    await pipeline.execute(job.websocket, params=job.params)
+                    await pipeline.execute(
+                        job.websocket,
+                        params=job.params,
+                        websocket_already_accepted=job.websocket_already_accepted
+                    )
 
                     # Mark job as done
                     mark_job_done(job)

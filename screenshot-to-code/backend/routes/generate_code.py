@@ -96,6 +96,7 @@ class PipelineContext:
     completions: List[str] = field(default_factory=list)
     variant_completions: Dict[int, str] = field(default_factory=dict)
     metadata: Dict[str, Any] = field(default_factory=dict)
+    websocket_already_accepted: bool = False  # Flag if WebSocket was already accepted by handler
 
     @property
     def send_message(self):
@@ -130,15 +131,16 @@ class Pipeline:
         self.middlewares.append(middleware)
         return self
 
-    async def execute(self, websocket: WebSocket, params: Dict[str, str] = None) -> None:
+    async def execute(self, websocket: WebSocket, params: Dict[str, str] = None, websocket_already_accepted: bool = False) -> None:
         """Execute the pipeline with the given WebSocket
 
         Args:
             websocket: FastAPI WebSocket connection
             params: Optional pre-provided parameters (from queue worker)
+            websocket_already_accepted: Flag if WebSocket was already accepted by handler
         """
         try:
-            context = PipelineContext(websocket=websocket)
+            context = PipelineContext(websocket=websocket, websocket_already_accepted=websocket_already_accepted)
             # If params are provided (from queue), skip parameter extraction
             if params:
                 context.params = params
@@ -176,11 +178,18 @@ class WebSocketCommunicator:
     def __init__(self, websocket: WebSocket):
         self.websocket = websocket
         self.is_closed = False
+        self.is_accepted = False  # Track if WebSocket is already accepted
 
     async def accept(self) -> None:
         """Accept the WebSocket connection"""
+        # Skip if already accepted (e.g., by handler before worker processes it)
+        if self.is_accepted:
+            print("WebSocket already accepted, skipping...")
+            return
+
         try:
             await self.websocket.accept()
+            self.is_accepted = True
             print("Incoming websocket connection...")
         except asyncio.CancelledError:
             # Shutdown during accept - normal
@@ -944,21 +953,24 @@ class WebSocketSetupMiddleware(Middleware):
     ) -> None:
         # Create and setup WebSocket communicator
         context.ws_comm = WebSocketCommunicator(context.websocket)
+        # If WebSocket was already accepted by handler, mark it as such
+        if context.websocket_already_accepted:
+            context.ws_comm.is_accepted = True
         await context.ws_comm.accept()
 
-        # Initialize generation record in database
+        # Initialize generation record in database (if not already created by handler)
         # This ensures that even if the generation fails or WebSocket closes,
         # we have a record with the generation_id for tracking purposes
-        try:
-            save_generation(
-                model="",  # Will be updated as variants complete
-                status="started",
-                generation_id=context.generation_id,
-            )
-            print(f"[INIT] Generation started with id={context.generation_id}")
-        except Exception as e:
-            print(f"[WARNING] Failed to initialize generation record: {e}")
-            # Continue anyway - the generation_id is still valid for future saves
+        if not context.websocket_already_accepted:
+            try:
+                save_generation(
+                    status="started",
+                    generation_id=context.generation_id,
+                )
+                print(f"[INIT] Generation started with id={context.generation_id}")
+            except Exception as e:
+                print(f"[WARNING] Failed to initialize generation record: {e}")
+                # Continue anyway - the generation_id is still valid for future saves
 
         try:
             await next_func()
@@ -1199,6 +1211,7 @@ async def stream_code(websocket: WebSocket):
             generation_id=generation_id,
             websocket=websocket,
             params=params,
+            websocket_already_accepted=True,  # We already accepted the WebSocket above
         )
 
         print(f"[WS] Enqueuing generation job: {generation_id}")
