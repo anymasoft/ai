@@ -37,12 +37,28 @@ export default function LoadSavedGeneration({ onLoadGeneration, isLoading = fals
     try {
       toast.loading("Loading saved generation...");
       const detail = await fetchGenerationDetail(generationId);
+      console.log(`[LoadSavedGeneration] Loaded generation ${generationId}:`, detail);
+
+      // 🔧 DIAGNOSTICS: Check if generation has variants with HTML
+      if (!detail.variants || detail.variants.length === 0) {
+        toast.error("Generation has no saved variants");
+        console.warn(`[LoadSavedGeneration] Generation ${generationId} has no variants`);
+        return;
+      }
+
+      const validVariants = detail.variants.filter((v: any) => v.html && v.html.trim().length > 0);
+      if (validVariants.length === 0) {
+        toast.error("Generation has no valid HTML content");
+        console.warn(`[LoadSavedGeneration] Generation ${generationId} has no HTML content:`, detail.variants);
+        return;
+      }
+
       toast.dismiss();
       onLoadGeneration(detail);
       setIsOpen(false);
     } catch (error) {
       toast.error("Failed to load generation details");
-      console.error(error);
+      console.error("[LoadSavedGeneration] Error loading generation:", error);
     }
   };
 

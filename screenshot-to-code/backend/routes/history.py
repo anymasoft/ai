@@ -49,6 +49,12 @@ async def get_generation_detail(generation_id: str):
         # 🔧 FIXED: Include all variants in response
         variants = get_generation_variants(generation_id)
 
+        # 🔧 DIAGNOSTICS: Log what we're returning
+        print(f"[API] GET /generations/{generation_id}: found {len(variants)} variants")
+        for i, v in enumerate(variants):
+            html_len = len(v.get("html", "") or "") if v.get("html") else 0
+            print(f"  - Variant {i}: status={v.get('status')}, html_length={html_len}")
+
         return {
             "success": True,
             "data": {
