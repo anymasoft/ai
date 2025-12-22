@@ -97,6 +97,7 @@ class PipelineContext:
     variant_completions: Dict[int, str] = field(default_factory=dict)
     metadata: Dict[str, Any] = field(default_factory=dict)
     websocket_already_accepted: bool = False  # Flag if WebSocket was already accepted by handler
+    cancelled: bool = False  # Flag if generation was cancelled (Ctrl+C / client disconnect)
 
     @property
     def send_message(self):
@@ -237,6 +238,10 @@ class WebSocketCommunicator:
         variantIndex: int,
     ) -> None:
         """Send a message to the client with debug logging"""
+        # CRITICAL: Check if WebSocket is closed FIRST
+        if self.is_closed:
+            return
+
         # Print for debugging on the backend
         if type == "error":
             print(f"Error (variant {variantIndex + 1}): {value}")
@@ -256,33 +261,36 @@ class WebSocketCommunicator:
             self.is_closed = True
             return
         except Exception as e:
-            # WebSocket is closed or connection lost - log but don't fail
-            print(f"[WARNING] Failed to send {type} message to client: {e}")
-            # Don't re-raise: the generation result is already saved in DB
+            # WebSocket is closed - silent (already checked at start)
+            self.is_closed = True
 
     async def throw_error(self, message: str) -> None:
         """Send an error message and close the connection"""
+        # CRITICAL: Check if already closed FIRST
+        if self.is_closed:
+            return
+
         print(message)
-        if not self.is_closed:
-            try:
-                await self.websocket.send_json({"type": "error", "value": message})
-            except asyncio.CancelledError:
-                self.is_closed = True
-                return
-            except Exception as e:
-                # WebSocket might be already closed
-                print(f"[WARNING] Failed to send error message to client: {e}")
-
-            try:
-                await self.websocket.close(APP_ERROR_WEB_SOCKET_CODE)
-            except asyncio.CancelledError:
-                self.is_closed = True
-                return
-            except Exception as e:
-                # WebSocket might be already closed
-                print(f"[WARNING] Failed to close websocket: {e}")
-
+        try:
+            await self.websocket.send_json({"type": "error", "value": message})
+        except asyncio.CancelledError:
             self.is_closed = True
+            return
+        except Exception:
+            # WebSocket is closed - silent
+            self.is_closed = True
+            return
+
+        try:
+            await self.websocket.close(APP_ERROR_WEB_SOCKET_CODE)
+        except asyncio.CancelledError:
+            self.is_closed = True
+            return
+        except Exception:
+            # WebSocket is closed - silent
+            pass
+
+        self.is_closed = True
 
     async def receive_params(self) -> Dict[str, str]:
         """Receive parameters from the client"""
@@ -305,9 +313,9 @@ class WebSocketCommunicator:
             except asyncio.CancelledError:
                 # Client disconnected - silent
                 pass
-            except Exception as e:
-                # WebSocket might already be closed
-                print(f"[WARNING] Failed to close websocket: {e}")
+            except Exception:
+                # WebSocket might already be closed - silent
+                pass
             finally:
                 self.is_closed = True
 
@@ -907,8 +915,8 @@ class ParallelGenerationStage:
                 )
                 print(f"[SAVED] Variant {real_index + 1} for generation {self.generation_id}")
             except Exception as variant_save_error:
-                print(f"[WARNING] Failed to save variant {real_index} to DB: {variant_save_error}")
-                # Continue anyway - result is in memory in variant_completions
+                # Silent - result is in memory in variant_completions
+                pass
 
             # Variant data is already saved in generation_variants table
             # Update the main generation metadata to mark completion
@@ -966,8 +974,9 @@ class ParallelGenerationStage:
                     status="failed",
                     error_message=str(e),
                 )
-            except Exception as db_error:
-                print(f"[WARNING] Failed to save error variant to DB: {db_error}")
+            except Exception:
+                # Silent - error is already sent to client
+                pass
 
             # Only send error message if it hasn't been sent already
             if not isinstance(e, VariantErrorAlreadySent):
@@ -1000,15 +1009,17 @@ class WebSocketSetupMiddleware(Middleware):
                     generation_id=context.generation_id,
                 )
                 print(f"[INIT] Generation started with id={context.generation_id}")
-            except Exception as e:
-                print(f"[WARNING] Failed to initialize generation record: {e}")
-                # Continue anyway - the generation_id is still valid for future saves
+            except Exception:
+                # Silent - generation_id is still valid for future saves
+                pass
 
         try:
             await next_func()
         except asyncio.CancelledError:
             # Request cancelled - client disconnect or reload
             print("[DEBUG] WebSocket setup middleware cancelled")
+            context.cancelled = True
+            context.ws_comm.is_closed = True
             raise
         finally:
             # Always close the WebSocket
@@ -1021,6 +1032,10 @@ class ParameterExtractionMiddleware(Middleware):
     async def process(
         self, context: PipelineContext, next_func: Callable[[], Awaitable[None]]
     ) -> None:
+        # CRITICAL: Exit immediately if cancelled
+        if context.cancelled or (context.ws_comm and context.ws_comm.is_closed):
+            return
+
         try:
             print(f"[DEBUG] ParameterExtractionMiddleware: generation_id={context.generation_id}")
             # Check if parameters are already provided (from queue worker)
@@ -1061,6 +1076,10 @@ class StatusBroadcastMiddleware(Middleware):
     async def process(
         self, context: PipelineContext, next_func: Callable[[], Awaitable[None]]
     ) -> None:
+        # CRITICAL: Exit immediately if cancelled
+        if context.cancelled or (context.ws_comm and context.ws_comm.is_closed):
+            return
+
         try:
             # 🔧 OPTIMIZATION: Tell frontend only about ACTIVE variants
             # Only 1 variant is active to save tokens
@@ -1082,6 +1101,10 @@ class PromptCreationMiddleware(Middleware):
     async def process(
         self, context: PipelineContext, next_func: Callable[[], Awaitable[None]]
     ) -> None:
+        # CRITICAL: Exit immediately if cancelled
+        if context.cancelled or (context.ws_comm and context.ws_comm.is_closed):
+            return
+
         try:
             print(f"[DEBUG] PromptCreationMiddleware: generation_id={context.generation_id}, extracted_params={'OK' if context.extracted_params else 'None'}")
             # Check extracted_params without throwing
@@ -1109,6 +1132,10 @@ class CodeGenerationMiddleware(Middleware):
     async def process(
         self, context: PipelineContext, next_func: Callable[[], Awaitable[None]]
     ) -> None:
+        # CRITICAL: Exit immediately if cancelled
+        if context.cancelled or (context.ws_comm and context.ws_comm.is_closed):
+            return
+
         print(f"[DEBUG] CodeGenerationMiddleware: generation_id={context.generation_id}")
         # Check extracted_params early without throwing
         if context.extracted_params is None:
@@ -1196,6 +1223,10 @@ class PostProcessingMiddleware(Middleware):
     async def process(
         self, context: PipelineContext, next_func: Callable[[], Awaitable[None]]
     ) -> None:
+        # CRITICAL: Exit immediately if cancelled - don't send anything
+        if context.cancelled or (context.ws_comm and context.ws_comm.is_closed):
+            return
+
         try:
             post_processor = PostProcessingStage()
             await post_processor.process_completions(
@@ -1211,8 +1242,9 @@ class PostProcessingMiddleware(Middleware):
             except asyncio.CancelledError:
                 # Client disconnected - silent
                 raise
-            except Exception as e:
-                print(f"Warning: Could not send generation_complete signal: {e}")
+            except Exception:
+                # WebSocket is closed - silent
+                pass
 
             await next_func()
         except asyncio.CancelledError:
