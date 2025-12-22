@@ -58,11 +58,12 @@ export function BillingPage() {
   const currentPlan = "free";
 
   return (
-    <div className="space-y-8 w-full">
+    <div className="px-4 py-4 md:py-6 lg:px-6">
+      <div className="mx-auto w-full max-w-5xl space-y-6">
       {/* Header */}
-      <div>
-        <h1 className="text-3xl font-bold">Тарифы и биллинг</h1>
-        <p className="text-muted-foreground mt-2">
+      <div className="flex flex-col gap-2">
+        <h2 className="font-semibold leading-none">Тарифы и биллинг</h2>
+        <p className="text-muted-foreground text-sm">
           Выберите тариф, который подходит вам лучше всего
         </p>
       </div>
@@ -180,6 +181,7 @@ export function BillingPage() {
           </p>
         </CardContent>
       </Card>
+      </div>
     </div>
   );
 }

@@ -4,7 +4,7 @@ import { Outlet } from "react-router-dom";
 
 export function DashboardLayout() {
   return (
-    <div className="flex h-screen bg-gray-50 dark:bg-black">
+    <div className="flex h-screen bg-background">
       {/* Sidebar */}
       <aside className="hidden lg:flex lg:flex-shrink-0">
         <AppSidebar />
@@ -17,9 +17,7 @@ export function DashboardLayout() {
 
         {/* Content */}
         <main className="flex-1 overflow-auto">
-          <div className="p-6">
-            <Outlet />
-          </div>
+          <Outlet />
         </main>
       </div>
     </div>

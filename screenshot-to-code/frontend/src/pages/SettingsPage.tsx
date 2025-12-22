@@ -7,12 +7,11 @@ import { ChevronRight } from "lucide-react";
 
 export function SettingsPage() {
   return (
-    <div className="max-w-2xl mx-auto">
-        <div className="mb-6">
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
-            Settings
-          </h1>
-          <p className="text-gray-600 dark:text-gray-400">
+    <div className="px-4 py-4 md:py-6 lg:px-6">
+      <div className="mx-auto w-full max-w-5xl space-y-6">
+        <div className="flex flex-col gap-2">
+          <h2 className="font-semibold leading-none">Settings</h2>
+          <p className="text-muted-foreground text-sm">
             Manage your account and preferences
           </p>
         </div>
@@ -99,5 +98,6 @@ export function SettingsPage() {
           </div>
         </div>
       </div>
+    </div>
   );
 }
