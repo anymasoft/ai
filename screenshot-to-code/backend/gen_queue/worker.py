@@ -1,5 +1,4 @@
 import asyncio
-import traceback
 from typing import Optional
 
 from gen_queue.generation_queue import wait_for_generation, mark_job_done, GenerationJob
@@ -59,7 +58,7 @@ class GenerationWorker:
                     mark_job_done(job)
 
                 except asyncio.CancelledError:
-                    # Job was cancelled by client
+                    # Job was cancelled by client - handle gracefully
                     print(f"[WORKER] Job cancelled: {job}")
                     try:
                         update_generation(
@@ -69,13 +68,15 @@ class GenerationWorker:
                         )
                     except Exception as e:
                         print(f"[WORKER] Failed to update cancelled status: {e}")
-                    mark_job_done(job)
+                    try:
+                        mark_job_done(job)
+                    except:
+                        pass
 
                 except Exception as e:
-                    # Job failed
+                    # Job failed - log but don't print traceback
                     print(f"[WORKER] Job failed: {job}")
                     print(f"[WORKER] Error: {e}")
-                    traceback.print_exc()
 
                     try:
                         update_generation(
@@ -86,18 +87,22 @@ class GenerationWorker:
                     except Exception as db_error:
                         print(f"[WORKER] Failed to update error status: {db_error}")
 
-                    mark_job_done(job)
+                    try:
+                        mark_job_done(job)
+                    except:
+                        pass
 
                 finally:
                     self.current_job = None
 
             except asyncio.CancelledError:
+                # Worker cancelled - exit gracefully
                 print("[WORKER] Worker cancelled")
                 self.is_running = False
                 break
             except Exception as e:
-                print(f"[WORKER] Unexpected error: {e}")
-                traceback.print_exc()
+                # Unexpected error in main loop - log without traceback
+                print(f"[WORKER] Unexpected error in main loop: {e}")
                 await asyncio.sleep(1)  # Brief pause before retrying
 
     async def stop(self) -> None:

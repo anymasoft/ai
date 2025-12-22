@@ -1,7 +1,6 @@
 import asyncio
 from dataclasses import dataclass, field
 from abc import ABC, abstractmethod
-import traceback
 from typing import Callable, Awaitable
 from fastapi import APIRouter, WebSocket
 import openai
@@ -923,7 +922,6 @@ class ParallelGenerationStage:
         except Exception as e:
             # Handle any OTHER errors that occurred during generation
             print(f"Error in variant {real_index + 1}: {e}")
-            traceback.print_exception(type(e), e, e.__traceback__)
 
             # 🔧 FIXED: Save error to generation_variants so it's persisted
             try:
@@ -1233,7 +1231,6 @@ async def stream_code(websocket: WebSocket):
         return
     except Exception as e:
         print(f"[WS] Unexpected error: {e}")
-        traceback.print_exception(type(e), e, e.__traceback__)
         try:
             await websocket.send_json({"type": "error", "value": str(e)})
             await websocket.close()
