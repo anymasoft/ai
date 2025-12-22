@@ -6,6 +6,7 @@ from fastapi import APIRouter, WebSocket
 import openai
 import uuid
 from codegen.utils import extract_html_content
+from db import update_generation
 from config import (
     ANTHROPIC_API_KEY,
     GEMINI_API_KEY,
@@ -109,6 +110,19 @@ class PipelineContext:
             raise RuntimeError("WebSocket communicator not initialized - cannot throw error")
         return self.ws_comm.throw_error
 
+    def mark_failed(self, error_message: str) -> None:
+        """Mark generation as failed without crashing - graceful error handling"""
+        print(f"[PIPELINE] Generation {self.generation_id} marked as failed: {error_message}")
+        try:
+            update_generation(
+                generation_id=self.generation_id,
+                status="failed",
+                error_message=error_message,
+            )
+        except Exception as e:
+            # Log DB error but don't crash
+            print(f"[PIPELINE] Failed to update DB status: {e}")
+
 
 class Middleware(ABC):
     """Base class for all pipeline middleware"""
@@ -158,6 +172,12 @@ class Pipeline:
         except asyncio.CancelledError:
             # Request cancelled - client disconnect or reload
             print("[DEBUG] Pipeline cancelled (expected during reload)")
+            return
+        except Exception as e:
+            # Catch any unhandled exceptions from middleware/stages
+            # Mark generation as failed and log error
+            print(f"[PIPELINE] Unhandled exception: {e}")
+            context.mark_failed(f"pipeline_error: {str(e)}")
             return
 
     def _wrap_middleware(
@@ -998,7 +1018,7 @@ class ParameterExtractionMiddleware(Middleware):
                 # Receive parameters from WebSocket
                 if context.ws_comm is None:
                     print("[ERROR] WebSocket communicator not available for parameter extraction")
-                    await context.throw_error("Internal error: WebSocket not available")
+                    context.mark_failed("websocket_not_available")
                     return
                 context.params = await context.ws_comm.receive_params()
 
@@ -1007,6 +1027,12 @@ class ParameterExtractionMiddleware(Middleware):
             context.extracted_params = await param_extractor.extract_and_validate(
                 context.params
             )
+
+            # Check if extraction succeeded
+            if context.extracted_params is None:
+                print("[ERROR] Failed to extract parameters")
+                context.mark_failed("parameter_extraction_failed")
+                return
 
             # Log what we're generating
             print(
@@ -1047,11 +1073,13 @@ class PromptCreationMiddleware(Middleware):
         self, context: PipelineContext, next_func: Callable[[], Awaitable[None]]
     ) -> None:
         try:
-            prompt_creator = PromptCreationStage(context.throw_error)
+            # Check extracted_params without throwing
             if context.extracted_params is None:
                 print("[ERROR] extracted_params is None in PromptCreationMiddleware")
-                await context.throw_error("Internal error: parameters not extracted")
+                context.mark_failed("parameters_not_extracted")
                 return
+
+            prompt_creator = PromptCreationStage(context.throw_error)
             context.prompt_messages, context.image_cache = (
                 await prompt_creator.create_prompt(
                     context.extracted_params,
@@ -1070,22 +1098,20 @@ class CodeGenerationMiddleware(Middleware):
     async def process(
         self, context: PipelineContext, next_func: Callable[[], Awaitable[None]]
     ) -> None:
+        # Check extracted_params early without throwing
+        if context.extracted_params is None:
+            print("[ERROR] extracted_params is None in CodeGenerationMiddleware")
+            context.mark_failed("parameters_not_extracted")
+            return
+
         if SHOULD_MOCK_AI_RESPONSE:
             # Use mock response for testing
             mock_stage = MockResponseStage(context.send_message)
-            if context.extracted_params is None:
-                print("[ERROR] extracted_params is None in CodeGenerationMiddleware (mock mode)")
-                await context.throw_error("Internal error: parameters not extracted")
-                return
             context.completions = await mock_stage.generate_mock_response(
                 context.extracted_params.input_mode
             )
         else:
             try:
-                if context.extracted_params is None:
-                    print("[ERROR] extracted_params is None in CodeGenerationMiddleware (real generation)")
-                    await context.throw_error("Internal error: parameters not extracted")
-                    return
                 if context.extracted_params.input_mode == "video":
                     # Use video generation for video mode
                     video_stage = VideoGenerationStage(
@@ -1127,9 +1153,8 @@ class CodeGenerationMiddleware(Middleware):
 
                     # Check if all variants failed
                     if len(context.variant_completions) == 0:
-                        await context.throw_error(
-                            "Error generating code. Please contact support."
-                        )
+                        print("[ERROR] All variants failed to generate code")
+                        context.mark_failed("all_variants_failed")
                         return  # Don't continue the pipeline
 
                     # 🔧 OPTIMIZATION: Convert completions to list format
@@ -1147,7 +1172,7 @@ class CodeGenerationMiddleware(Middleware):
                 raise
             except Exception as e:
                 print(f"[GENERATE_CODE] Unexpected error: {e}")
-                await context.throw_error(f"An unexpected error occurred: {str(e)}")
+                context.mark_failed(f"code_generation_error: {str(e)}")
                 return  # Don't continue the pipeline
 
         await next_func()
