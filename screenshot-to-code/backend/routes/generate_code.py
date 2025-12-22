@@ -825,30 +825,28 @@ class ParallelGenerationStage:
                 save_generation_variant(
                     generation_id=self.generation_id,
                     variant_index=real_index,
+                    model=model.value,
                     status="done",
                     html=extracted_html,
+                    duration_ms=int(completion['duration'] * 1000),
                 )
                 print(f"[SAVED] Variant {real_index + 1} for generation {self.generation_id}")
             except Exception as variant_save_error:
                 print(f"[WARNING] Failed to save variant {real_index} to DB: {variant_save_error}")
                 # Continue anyway - result is in memory in variant_completions
 
-            # CRITICAL: Save to database immediately to prevent data loss
-            # This must happen BEFORE any post-processing or image generation
-            # so that the result is guaranteed to be persisted even if WebSocket closes
+            # Variant data is already saved in generation_variants table
+            # Update the main generation metadata to mark completion
             try:
-                extracted_html = extract_html_content(html_result)
                 update_generation(
                     generation_id=self.generation_id,
                     status="completed",
-                    html=extracted_html,
-                    duration_ms=int(completion['duration'] * 1000),
                 )
                 print(f"[SAVED] Generation {self.generation_id} variant {real_index + 1}: {model.value}")
             except Exception as db_error:
-                print(f"[ERROR] Failed to save generation {self.generation_id}: {db_error}")
+                print(f"[ERROR] Failed to update generation {self.generation_id}: {db_error}")
                 # Log the error but continue with post-processing
-                # The result is at least in memory in variant_completions
+                # The variant data is already saved in generation_variants
 
             try:
                 # Process images for this variant
@@ -883,6 +881,7 @@ class ParallelGenerationStage:
                 save_generation_variant(
                     generation_id=self.generation_id,
                     variant_index=real_index,
+                    model=model.value,
                     status="failed",
                     error_message=str(e),
                 )
