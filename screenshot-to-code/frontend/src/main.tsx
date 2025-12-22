@@ -1,7 +1,7 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
-import App from "./App.tsx";
 import "./index.css";
+import "./i18n";
 import { Toaster } from "react-hot-toast";
 import EvalsPage from "./components/evals/EvalsPage.tsx";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
@@ -14,12 +14,13 @@ import { HistoryPage } from "./pages/HistoryPage.tsx";
 import { SettingsPage } from "./pages/SettingsPage.tsx";
 import { BillingPage } from "./pages/BillingPage.tsx";
 import { DashboardLayout } from "./components/dashboard/DashboardLayout.tsx";
+import { LandingPage } from "./pages/landing/landing-page.tsx";
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
     <Router>
       <Routes>
-        <Route path="/" element={<App />} />
+        <Route path="/" element={<LandingPage />} />
 
         {/* Dashboard routes with SaaS UI layout */}
         <Route element={<DashboardLayout />}>
