@@ -163,8 +163,13 @@ class WebSocketCommunicator:
 
     async def accept(self) -> None:
         """Accept the WebSocket connection"""
-        await self.websocket.accept()
-        print("Incoming websocket connection...")
+        try:
+            await self.websocket.accept()
+            print("Incoming websocket connection...")
+        except Exception as e:
+            print(f"[ERROR] Failed to accept websocket connection: {e}")
+            self.is_closed = True
+            raise
 
     async def send_message(
         self,
@@ -196,21 +201,40 @@ class WebSocketCommunicator:
         """Send an error message and close the connection"""
         print(message)
         if not self.is_closed:
-            await self.websocket.send_json({"type": "error", "value": message})
-            await self.websocket.close(APP_ERROR_WEB_SOCKET_CODE)
+            try:
+                await self.websocket.send_json({"type": "error", "value": message})
+            except Exception as e:
+                # WebSocket might be already closed
+                print(f"[WARNING] Failed to send error message to client: {e}")
+
+            try:
+                await self.websocket.close(APP_ERROR_WEB_SOCKET_CODE)
+            except Exception as e:
+                # WebSocket might be already closed
+                print(f"[WARNING] Failed to close websocket: {e}")
+
             self.is_closed = True
 
     async def receive_params(self) -> Dict[str, str]:
         """Receive parameters from the client"""
-        params: Dict[str, str] = await self.websocket.receive_json()
-        print("Received params")
-        return params
+        try:
+            params: Dict[str, str] = await self.websocket.receive_json()
+            print("Received params")
+            return params
+        except Exception as e:
+            print(f"[ERROR] Failed to receive params from client: {e}")
+            raise
 
     async def close(self) -> None:
         """Close the WebSocket connection"""
         if not self.is_closed:
-            await self.websocket.close()
-            self.is_closed = True
+            try:
+                await self.websocket.close()
+            except Exception as e:
+                # WebSocket might already be closed
+                print(f"[WARNING] Failed to close websocket: {e}")
+            finally:
+                self.is_closed = True
 
 
 @dataclass
