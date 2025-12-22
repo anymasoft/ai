@@ -108,8 +108,7 @@ async def stream_claude_response(
                             response += event.delta.text
                             await callback(event.delta.text)
         except asyncio.CancelledError:
-            # Client disconnected - return partial response
-            print(f"[CLAUDE] Streaming cancelled - returning partial response ({len(response)} chars)")
+            # Client disconnected - silent exit with partial response
             pass
 
     else:
@@ -130,8 +129,7 @@ async def stream_claude_response(
                     response += text
                     await callback(text)
         except asyncio.CancelledError:
-            # Client disconnected - return partial response
-            print(f"[CLAUDE] Streaming cancelled - returning partial response ({len(response)} chars)")
+            # Client disconnected - silent exit with partial response
             pass
 
     # Close the Anthropic client
@@ -203,9 +201,7 @@ async def stream_claude_response_native(
 
             response = await stream.get_final_message()
         except asyncio.CancelledError:
-            # Client disconnected - return partial response
-            print(f"\n[CLAUDE-NATIVE] Streaming cancelled - returning partial response ({len(full_stream)} chars)")
-            # Return what we have so far
+            # Client disconnected - silent exit with partial response
             await client.close()
             completion_time = time.time() - start_time
             return {"duration": completion_time, "code": full_stream}

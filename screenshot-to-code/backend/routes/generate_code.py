@@ -183,8 +183,7 @@ class Pipeline:
 
             await chain(context)
         except asyncio.CancelledError:
-            # Request cancelled - client disconnect or reload
-            print("[DEBUG] Pipeline cancelled (expected during reload)")
+            # Request cancelled - silent exit
             return
         except Exception as e:
             # Catch any unhandled exceptions from middleware/stages
@@ -302,10 +301,10 @@ class WebSocketCommunicator:
             print("Received params")
             return params
         except asyncio.CancelledError:
-            # Client disconnected or reload
+            # Client disconnected or reload - silent exit
             raise
         except Exception as e:
-            print(f"[ERROR] Failed to receive params from client: {e}")
+            # WebSocket error - silent
             raise
 
     async def close(self) -> None:
@@ -958,10 +957,7 @@ class ParallelGenerationStage:
                 # AND the HTML is already saved in the database
 
         except asyncio.CancelledError:
-            # Client disconnected during generation (e.g., F5 refresh)
-            # This is EXPECTED behavior, NOT an error
-            print(f"[INFO] Variant {real_index + 1} cancelled - client disconnected")
-            # Don't log traceback, don't save as failed, just exit gracefully
+            # Client disconnected - silent exit
             return
 
         except Exception as e:
@@ -1025,14 +1021,15 @@ class WebSocketSetupMiddleware(Middleware):
         try:
             await next_func()
         except asyncio.CancelledError:
-            # Request cancelled - client disconnect or reload
-            print("[DEBUG] WebSocket setup middleware cancelled")
+            # Request cancelled - silent exit
             context.cancelled = True
             context.ws_comm.is_closed = True
-            raise
         finally:
             # Always close the WebSocket
-            await context.ws_comm.close()
+            try:
+                await context.ws_comm.close()
+            except:
+                pass
 
 
 class ParameterExtractionMiddleware(Middleware):
@@ -1075,8 +1072,8 @@ class ParameterExtractionMiddleware(Middleware):
 
             await next_func()
         except asyncio.CancelledError:
-            # Request cancelled during parameter extraction
-            raise
+            # Request cancelled - silent exit
+            pass
 
 
 class StatusBroadcastMiddleware(Middleware):
@@ -1101,7 +1098,7 @@ class StatusBroadcastMiddleware(Middleware):
 
             await next_func()
         except asyncio.CancelledError:
-            raise
+            pass
 
 
 class PromptCreationMiddleware(Middleware):
@@ -1131,8 +1128,7 @@ class PromptCreationMiddleware(Middleware):
 
             await next_func()
         except asyncio.CancelledError:
-            # Request cancelled during prompt creation
-            raise
+            pass
 
 
 class CodeGenerationMiddleware(Middleware):
@@ -1215,9 +1211,8 @@ class CodeGenerationMiddleware(Middleware):
                         context.completions.append("")
 
             except asyncio.CancelledError:
-                # Request cancelled - client disconnect or reload
-                print("[DEBUG] Code generation cancelled")
-                raise
+                # Request cancelled - silent exit
+                pass
             except Exception as e:
                 print(f"[GENERATE_CODE] Unexpected error: {e}")
                 context.mark_failed(f"code_generation_error: {str(e)}")
@@ -1250,15 +1245,15 @@ class PostProcessingMiddleware(Middleware):
                     print("Sent generation_complete signal to frontend")
             except asyncio.CancelledError:
                 # Client disconnected - silent
-                raise
+                pass
             except Exception:
                 # WebSocket is closed - silent
                 pass
 
             await next_func()
         except asyncio.CancelledError:
-            # Request cancelled during post-processing
-            raise
+            # Request cancelled - silent exit
+            pass
 
 
 @router.websocket("/generate-code")
@@ -1322,8 +1317,7 @@ async def stream_code(websocket: WebSocket):
             print(f"[WS] Connection lost: {e}")
 
     except asyncio.CancelledError:
-        # Client disconnected or server reload
-        print("[INFO] WebSocket closed (client disconnect or reload)")
+        # Client disconnected - silent exit
         return
     except Exception as e:
         print(f"[WS] Unexpected error: {e}")
