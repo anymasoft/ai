@@ -12,12 +12,11 @@ import subprocess
 import os
 import asyncio
 from datetime import datetime
-from prompts.claude_prompts import VIDEO_PROMPT
 from utils import pprint_prompt
-from config import ANTHROPIC_API_KEY
+from config import OPENAI_API_KEY
 from video.utils import extract_tag_content, assemble_claude_prompt_video
 from llm import Llm
-from models import stream_claude_response_native
+from models import stream_openai_response
 
 STACK = "html_tailwind"
 
@@ -30,8 +29,8 @@ async def main():
     video_filename = "shortest.mov"
     is_followup = False
 
-    if not ANTHROPIC_API_KEY:
-        raise ValueError("ANTHROPIC_API_KEY is not set")
+    if not OPENAI_API_KEY:
+        raise ValueError("OPENAI_API_KEY is not set")
 
     # Get previous HTML
     previous_html = ""
@@ -73,29 +72,26 @@ async def main():
     async def process_chunk(content: str):
         print(content, end="", flush=True)
 
-    response_prefix = "<thinking>"
-
     pprint_prompt(prompt_messages)  # type: ignore
 
     start_time = time.time()
 
-    completion = await stream_claude_response_native(
-        system_prompt=VIDEO_PROMPT,
+    completion = await stream_openai_response(
         messages=prompt_messages,
-        api_key=ANTHROPIC_API_KEY,
+        api_key=OPENAI_API_KEY,
+        base_url=None,
         callback=lambda x: process_chunk(x),
-        model_name=Llm.CLAUDE_3_OPUS.value,
-        include_thinking=True,
+        model_name=Llm.GPT_4_1_MINI.value,
     )
 
     end_time = time.time()
 
-    # Prepend the response prefix to the completion
-    completion = response_prefix + completion
+    # Get the code from completion response
+    completion_code = completion["code"]
 
-    # Extract the outputs
-    html_content = extract_tag_content("html", completion)
-    thinking = extract_tag_content("thinking", completion)
+    # Extract the outputs (OpenAI models don't support thinking tag like Claude)
+    html_content = extract_tag_content("html", completion_code)
+    thinking = "Video processing with OpenAI model"
 
     print(thinking)
     print(f"Operation took {end_time - start_time} seconds")
