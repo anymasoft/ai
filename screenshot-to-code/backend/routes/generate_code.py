@@ -5,6 +5,7 @@ import traceback
 from typing import Callable, Awaitable
 from fastapi import APIRouter, WebSocket
 import openai
+import uuid
 from codegen.utils import extract_html_content
 from config import (
     ANTHROPIC_API_KEY,
@@ -63,6 +64,7 @@ from prompts.types import Stack, PromptContent
 
 # from utils import pprint_prompt
 from ws.constants import APP_ERROR_WEB_SOCKET_CODE  # type: ignore
+from db import save_generation, update_generation
 
 
 router = APIRouter()
@@ -81,6 +83,7 @@ class PipelineContext:
     """Context object that carries state through the pipeline"""
 
     websocket: WebSocket
+    generation_id: str = field(default_factory=lambda: str(uuid.uuid4()))
     ws_comm: "WebSocketCommunicator | None" = None
     params: Dict[str, str] = field(default_factory=dict)
     extracted_params: "ExtractedParams | None" = None
@@ -358,42 +361,20 @@ class ModelSelectionStage:
         anthropic_api_key: str | None,
         gemini_api_key: str | None,
     ) -> List[Llm]:
-        """Simple model cycling that scales with num_variants"""
+        """Fixed OpenAI-only model selection for variant comparison"""
 
-        claude_model = Llm.CLAUDE_3_7_SONNET_2025_02_19
+        # Fixed 4 OpenAI variants for honest model comparison
+        models = [
+            Llm.GPT_4O_2024_11_20,           # Variant 1: gpt-4o
+            Llm.GPT_4_1_2025_04_14,          # Variant 2: gpt-4.1 (turbo)
+            Llm.GPT_4_1_MINI_2025_04_14,     # Variant 3: gpt-4.1-mini
+            Llm.GPT_4O_2024_08_06,           # Variant 4: gpt-4o-2024-08-06 (stable, cheaper)
+        ]
 
-        # For text input mode, use Claude 4 Sonnet as third option
-        # For other input modes (image/video), use Gemini as third option
-        if input_mode == "text":
-            third_model = Llm.CLAUDE_4_SONNET_2025_05_14
-        else:
-            # Gemini only works for create right now
-            if generation_type == "create":
-                third_model = Llm.GEMINI_2_0_FLASH
-            else:
-                third_model = claude_model
+        if not openai_api_key:
+            raise Exception("OpenAI API key is required. Please set OPENAI_API_KEY environment variable.")
 
-        # Define models based on available API keys
-        if (
-            openai_api_key
-            and anthropic_api_key
-            and (gemini_api_key or input_mode == "text")
-        ):
-            models = [
-                Llm.GPT_4_1_2025_04_14,
-                claude_model,
-                third_model,
-            ]
-        elif openai_api_key and anthropic_api_key:
-            models = [claude_model, Llm.GPT_4_1_2025_04_14]
-        elif anthropic_api_key:
-            models = [claude_model, Llm.CLAUDE_4_5_SONNET_2025_09_29]
-        elif openai_api_key:
-            models = [Llm.GPT_4_1_2025_04_14, Llm.GPT_4O_2024_11_20]
-        else:
-            raise Exception("No OpenAI or Anthropic key")
-
-        # Cycle through models: [A, B] with num=5 becomes [A, B, A, B, A]
+        # Cycle through models to match num_variants
         selected_models: List[Llm] = []
         for i in range(num_variants):
             selected_models.append(models[i % len(models)])
@@ -544,12 +525,14 @@ class ParallelGenerationStage:
         openai_base_url: str | None,
         anthropic_api_key: str | None,
         should_generate_images: bool,
+        generation_id: str,
     ):
         self.send_message = send_message
         self.openai_api_key = openai_api_key
         self.openai_base_url = openai_base_url
         self.anthropic_api_key = anthropic_api_key
         self.should_generate_images = should_generate_images
+        self.generation_id = generation_id
 
     async def process_variants(
         self,
@@ -741,12 +724,30 @@ class ParallelGenerationStage:
             completion = await task
 
             print(f"{model.value} completion took {completion['duration']:.2f} seconds")
-            variant_completions[index] = completion["code"]
+            html_result = completion["code"]
+            variant_completions[index] = html_result
+
+            # CRITICAL: Save to database immediately to prevent data loss
+            # This must happen BEFORE any post-processing or image generation
+            # so that the result is guaranteed to be persisted even if WebSocket closes
+            try:
+                extracted_html = extract_html_content(html_result)
+                update_generation(
+                    generation_id=self.generation_id,
+                    status="completed",
+                    html=extracted_html,
+                    duration_ms=int(completion['duration'] * 1000),
+                )
+                print(f"[SAVED] Generation {self.generation_id} variant {index + 1}: {model.value}")
+            except Exception as db_error:
+                print(f"[ERROR] Failed to save generation {self.generation_id}: {db_error}")
+                # Log the error but continue with post-processing
+                # The result is at least in memory in variant_completions
 
             try:
                 # Process images for this variant
                 processed_html = await self._perform_image_generation(
-                    completion["code"],
+                    html_result,
                     image_cache,
                 )
 
@@ -764,6 +765,7 @@ class ParallelGenerationStage:
                 # If websocket is closed or other error during post-processing
                 print(f"Post-processing error for variant {index + 1}: {inner_e}")
                 # We still keep the completion in variant_completions
+                # AND the HTML is already saved in the database
 
         except Exception as e:
             # Handle any errors that occurred during generation
@@ -787,6 +789,20 @@ class WebSocketSetupMiddleware(Middleware):
         # Create and setup WebSocket communicator
         context.ws_comm = WebSocketCommunicator(context.websocket)
         await context.ws_comm.accept()
+
+        # Initialize generation record in database
+        # This ensures that even if the generation fails or WebSocket closes,
+        # we have a record with the generation_id for tracking purposes
+        try:
+            save_generation(
+                model="",  # Will be updated as variants complete
+                status="started",
+                generation_id=context.generation_id,
+            )
+            print(f"[INIT] Generation started with id={context.generation_id}")
+        except Exception as e:
+            print(f"[WARNING] Failed to initialize generation record: {e}")
+            # Continue anyway - the generation_id is still valid for future saves
 
         try:
             await next_func()
@@ -894,6 +910,7 @@ class CodeGenerationMiddleware(Middleware):
                         openai_base_url=context.extracted_params.openai_base_url,
                         anthropic_api_key=context.extracted_params.anthropic_api_key,
                         should_generate_images=context.extracted_params.should_generate_images,
+                        generation_id=context.generation_id,
                     )
 
                     context.variant_completions = (
