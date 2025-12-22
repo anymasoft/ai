@@ -62,16 +62,14 @@ class GenerationWorker:
                     mark_job_done(job)
 
                 except asyncio.CancelledError:
-                    # Job was cancelled by client - handle gracefully (no error log)
-                    print(f"[WORKER] Job cancelled by user: {job.generation_id}")
+                    # Job was cancelled - silent exit
                     try:
                         update_generation(
                             generation_id=job.generation_id,
                             status="cancelled",
-                            error_message="Generation cancelled by user",
                         )
-                    except Exception as e:
-                        print(f"[WORKER] Failed to update cancelled status: {e}")
+                    except:
+                        pass
                     try:
                         mark_job_done(job)
                     except:
@@ -99,8 +97,7 @@ class GenerationWorker:
                     self.current_job = None
 
             except asyncio.CancelledError:
-                # Worker cancelled - exit gracefully
-                print("[WORKER] Worker cancelled")
+                # Worker cancelled - exit gracefully (silent)
                 self.is_running = False
                 break
             except Exception as e:

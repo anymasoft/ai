@@ -83,8 +83,7 @@ async def stream_openai_response(
                     full_response += content
                     await callback(content)
         except asyncio.CancelledError:
-            # Client disconnected - return partial response
-            print(f"[OPENAI] Streaming cancelled - returning partial response ({len(full_response)} chars)")
+            # Client disconnected - silent exit with partial response
             pass
 
     await client.close()

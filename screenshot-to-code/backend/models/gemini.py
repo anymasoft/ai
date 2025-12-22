@@ -96,8 +96,7 @@ async def stream_gemini_response(
                         full_response += part.text
                         await callback(part.text)
     except asyncio.CancelledError:
-        # Client disconnected - return partial response
-        print(f"[GEMINI] Streaming cancelled - returning partial response ({len(full_response)} chars)")
+        # Client disconnected - silent exit with partial response
         pass
 
     completion_time = time.time() - start_time
