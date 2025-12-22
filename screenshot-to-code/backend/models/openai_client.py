@@ -24,22 +24,16 @@ async def stream_openai_response(
 
     # O1 doesn't support streaming or temperature
     if model_name not in ["o1-2024-12-17", "o4-mini-2025-04-16", "o3-2025-04-16"]:
-        # 🎯 VISUAL FIDELITY: Use temperature=0.2 instead of 0
-        # Temperature 0 is too rigid for visual interpretation; 0.2 allows reasonable flexibility
-        # while remaining deterministic for reproducible visual matching
-        params["temperature"] = 0.2
+        params["temperature"] = 0
         params["stream"] = True
 
-    # 4.1 series (both stable aliases and versioned models)
+    # 4.1 series
     if model_name in [
         "gpt-4.1-2025-04-14",
-        "gpt-4.1-mini",
         "gpt-4.1-mini-2025-04-14",
-        "gpt-4.1-nano",
         "gpt-4.1-nano-2025-04-14",
     ]:
-        # 🎯 VISUAL FIDELITY: Use temperature=0.2 instead of 0
-        params["temperature"] = 0.2
+        params["temperature"] = 0
         params["stream"] = True
         params["max_tokens"] = 20000
 

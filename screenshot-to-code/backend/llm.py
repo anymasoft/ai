@@ -10,9 +10,7 @@ class Llm(Enum):
     GPT_4O_2024_08_06 = "gpt-4o-2024-08-06"
     GPT_4O_2024_11_20 = "gpt-4o-2024-11-20"
     GPT_4_1_2025_04_14 = "gpt-4.1-2025-04-14"
-    # 🔧 STABLE: Use alias instead of versioned model to get latest compatible version
-    GPT_4_1_MINI = "gpt-4.1-mini"
-    GPT_4_1_MINI_2025_04_14 = "gpt-4.1-mini-2025-04-14"  # Deprecated, use GPT_4_1_MINI
+    GPT_4_1_MINI_2025_04_14 = "gpt-4.1-mini-2025-04-14"
     GPT_4_1_NANO_2025_04_14 = "gpt-4.1-nano-2025-04-14"
     CLAUDE_3_SONNET = "claude-3-sonnet-20240229"
     CLAUDE_3_OPUS = "claude-3-opus-20240229"
@@ -46,7 +44,6 @@ MODEL_PROVIDER: dict[Llm, str] = {
     Llm.GPT_4O_2024_08_06: "openai",
     Llm.GPT_4O_2024_11_20: "openai",
     Llm.GPT_4_1_2025_04_14: "openai",
-    Llm.GPT_4_1_MINI: "openai",
     Llm.GPT_4_1_MINI_2025_04_14: "openai",
     Llm.GPT_4_1_NANO_2025_04_14: "openai",
     Llm.O1_2024_12_17: "openai",

@@ -5,23 +5,30 @@ import traceback
 from typing import Callable, Awaitable
 from fastapi import APIRouter, WebSocket
 import openai
-import re
-from codegen.utils import extract_html_content, sanitize_html_output, is_html_valid, fix_broken_img_icons, inject_asset_src, replace_broken_img_src
-from image_assets.extractor import extract_image_assets
+from codegen.utils import extract_html_content
 from config import (
+    ANTHROPIC_API_KEY,
+    GEMINI_API_KEY,
     IS_PROD,
     NUM_VARIANTS,
     OPENAI_API_KEY,
     OPENAI_BASE_URL,
+    REPLICATE_API_KEY,
     SHOULD_MOCK_AI_RESPONSE,
 )
 from custom_types import InputMode
 from llm import (
     Completion,
     Llm,
+    OPENAI_MODELS,
+    ANTHROPIC_MODELS,
+    GEMINI_MODELS,
 )
 from models import (
+    stream_claude_response,
+    stream_claude_response_native,
     stream_openai_response,
+    stream_gemini_response,
 )
 from fs_logging.core import write_logs
 from mock_llm import mock_completion
@@ -48,55 +55,17 @@ MessageType = Literal[
     "variantComplete",
     "variantError",
     "variantCount",
-    "generation_complete",
-    "partial_element_html",
-    "partial_success",
-    "partial_failed",
 ]
+from image_generation.core import generate_images
 from prompts import create_prompt
+from prompts.claude_prompts import VIDEO_PROMPT
 from prompts.types import Stack, PromptContent
 
+# from utils import pprint_prompt
 from ws.constants import APP_ERROR_WEB_SOCKET_CODE  # type: ignore
 
 
 router = APIRouter()
-
-
-def _diagnose_html_images(html: str, context: str = "") -> None:
-    """
-    Diagnose <img> tags in HTML and log their status.
-
-    Args:
-        html: HTML string to analyze
-        context: Label for where this HTML is in the pipeline
-    """
-    # Find all <img> tags
-    img_pattern = r'<img\s+([^>]*)>'
-    matches = re.findall(img_pattern, html, re.IGNORECASE)
-
-    if not matches:
-        print(f"[DIAGNOSTICS] {context}: NO <img> tags found")
-        return
-
-    print(f"[DIAGNOSTICS] {context}: Found {len(matches)} <img> tag(s)")
-
-    for i, match in enumerate(matches[:5]):  # Log first 5 img tags
-        # Extract src attribute
-        src_pattern = r'src=["\']?([^"\'>\s]+)["\']?'
-        src_match = re.search(src_pattern, match)
-
-        if src_match:
-            src_value = src_match.group(1)
-            src_preview = src_value[:50] if len(src_value) <= 50 else src_value[:47] + "..."
-            print(f"  <img {i+1}> src={src_preview}")
-        else:
-            print(f"  ⚠️  <img {i+1}> MISSING SRC attribute")
-            # Check for data-asset-id attribute
-            asset_id_pattern = r'data-asset-id=["\']?([^"\'>\s]+)["\']?'
-            asset_match = re.search(asset_id_pattern, match)
-            if asset_match:
-                print(f"       (has data-asset-id={asset_match.group(1)})")
-
 
 
 class VariantErrorAlreadySent(Exception):
@@ -242,13 +211,12 @@ class ExtractedParams:
     input_mode: InputMode
     should_generate_images: bool
     openai_api_key: str | None
+    anthropic_api_key: str | None
     openai_base_url: str | None
     generation_type: Literal["create", "update"]
     prompt: PromptContent
     history: List[Dict[str, Any]]
     is_imported_from_code: bool
-    update_mode: str = "full"  # 🔧 PARTIAL UPDATE: "full" or "partial"
-    selected_element: str = ""  # 🔧 PARTIAL UPDATE: outerHTML of selected element
 
 
 class ParameterExtractionStage:
@@ -275,21 +243,27 @@ class ParameterExtractionStage:
             raise ValueError(f"Invalid input mode: {input_mode}")
         validated_input_mode = cast(InputMode, input_mode)
 
-        # 🔒 SECURITY: API ключи ТОЛЬКО из env vars, НЕ из WebSocket params
-        # Это предотвращает утечку ключей в логах и WebSocket sniffing
-        openai_api_key = OPENAI_API_KEY
+        openai_api_key = self._get_from_settings_dialog_or_env(
+            params, "openAiApiKey", OPENAI_API_KEY
+        )
 
-        # Base URL for OpenAI API - ТОЛЬКО из env, не от клиента в prod
+        # If neither is provided, we throw an error later only if Claude is used.
+        anthropic_api_key = self._get_from_settings_dialog_or_env(
+            params, "anthropicApiKey", ANTHROPIC_API_KEY
+        )
+
+        # Base URL for OpenAI API
         openai_base_url: str | None = None
         # Disable user-specified OpenAI Base URL in prod
         if not IS_PROD:
-            # Даже в dev mode: получаем из env, не от клиента
-            openai_base_url = OPENAI_BASE_URL
+            openai_base_url = self._get_from_settings_dialog_or_env(
+                params, "openAiBaseURL", OPENAI_BASE_URL
+            )
         if not openai_base_url:
             print("Using official OpenAI URL")
 
-        # Image generation disabled - single LLM model only (GPT_4_1_MINI)
-        should_generate_images = False
+        # Get the image generation flag from the request. Fall back to True if not provided.
+        should_generate_images = bool(params.get("isImageGenerationEnabled", True))
 
         # Extract and validate generation type
         generation_type = params.get("generationType", "create")
@@ -307,33 +281,37 @@ class ParameterExtractionStage:
         # Extract imported code flag
         is_imported_from_code = params.get("isImportedFromCode", False)
 
-        # Extract update mode for partial updates (Select & Edit)
-        update_mode = params.get("updateMode", "full")
-
-        # 🔧 PARTIAL UPDATE: Extract selected element for partial mutations
-        selected_element = params.get("selectedElement", "")
-
         return ExtractedParams(
             stack=validated_stack,
             input_mode=validated_input_mode,
             should_generate_images=should_generate_images,
             openai_api_key=openai_api_key,
+            anthropic_api_key=anthropic_api_key,
             openai_base_url=openai_base_url,
             generation_type=generation_type,
             prompt=prompt,
             history=history,
             is_imported_from_code=is_imported_from_code,
-            update_mode=update_mode,
-            selected_element=selected_element,
         )
 
-    # 🔒 SECURITY: Удалена функция _get_from_settings_dialog_or_env
-    # Теперь API ключи ТОЛЬКО из env vars, не от клиента
-    # Это предотвращает отправку ключей через WebSocket
+    def _get_from_settings_dialog_or_env(
+        self, params: dict[str, str], key: str, env_var: str | None
+    ) -> str | None:
+        """Get value from client settings or environment variable"""
+        value = params.get(key)
+        if value:
+            print(f"Using {key} from client-side settings dialog")
+            return value
+
+        if env_var:
+            print(f"Using {key} from environment variable")
+            return env_var
+
+        return None
 
 
 class ModelSelectionStage:
-    """Handles model validation for code generation"""
+    """Handles selection of variant models based on available API keys and generation type"""
 
     def __init__(self, throw_error: Callable[[str], Coroutine[Any, Any, None]]):
         self.throw_error = throw_error
@@ -343,28 +321,84 @@ class ModelSelectionStage:
         generation_type: Literal["create", "update"],
         input_mode: InputMode,
         openai_api_key: str | None,
+        anthropic_api_key: str | None,
+        gemini_api_key: str | None = None,
     ) -> List[Llm]:
-        """🔧 SIMPLIFICATION: Use fixed model gpt-4.1-mini (stable alias), no variants"""
+        """Select appropriate models based on available API keys"""
         try:
-            if not openai_api_key:
-                await self.throw_error(
-                    "OpenAI API key not found. Please add OPENAI_API_KEY to backend/.env"
-                )
-                raise Exception("No OpenAI API key")
+            variant_models = self._get_variant_models(
+                generation_type,
+                input_mode,
+                NUM_VARIANTS,
+                openai_api_key,
+                anthropic_api_key,
+                gemini_api_key,
+            )
 
-            # 🔧 Fixed model: gpt-4.1-mini (stable alias - always latest compatible version)
-            model = Llm.GPT_4_1_MINI
-            print(f"Using model: {model.value}")
+            # Print the variant models (one per line)
+            print("Variant models:")
+            for index, model in enumerate(variant_models):
+                print(f"Variant {index + 1}: {model.value}")
 
-            # Return as list for backward compatibility with pipeline
-            # But only one model (no variants)
-            return [model]
+            return variant_models
         except Exception:
-            if "OpenAI API key not found" not in str(Exception):
-                await self.throw_error(
-                    "OpenAI API key not found. Please add OPENAI_API_KEY to backend/.env"
-                )
-            raise
+            await self.throw_error(
+                "No OpenAI or Anthropic API key found. Please add the environment variable "
+                "OPENAI_API_KEY or ANTHROPIC_API_KEY to backend/.env or in the settings dialog. "
+                "If you add it to .env, make sure to restart the backend server."
+            )
+            raise Exception("No OpenAI or Anthropic key")
+
+    def _get_variant_models(
+        self,
+        generation_type: Literal["create", "update"],
+        input_mode: InputMode,
+        num_variants: int,
+        openai_api_key: str | None,
+        anthropic_api_key: str | None,
+        gemini_api_key: str | None,
+    ) -> List[Llm]:
+        """Simple model cycling that scales with num_variants"""
+
+        claude_model = Llm.CLAUDE_3_7_SONNET_2025_02_19
+
+        # For text input mode, use Claude 4 Sonnet as third option
+        # For other input modes (image/video), use Gemini as third option
+        if input_mode == "text":
+            third_model = Llm.CLAUDE_4_SONNET_2025_05_14
+        else:
+            # Gemini only works for create right now
+            if generation_type == "create":
+                third_model = Llm.GEMINI_2_0_FLASH
+            else:
+                third_model = claude_model
+
+        # Define models based on available API keys
+        if (
+            openai_api_key
+            and anthropic_api_key
+            and (gemini_api_key or input_mode == "text")
+        ):
+            models = [
+                Llm.GPT_4_1_2025_04_14,
+                claude_model,
+                third_model,
+            ]
+        elif openai_api_key and anthropic_api_key:
+            models = [claude_model, Llm.GPT_4_1_2025_04_14]
+        elif anthropic_api_key:
+            models = [claude_model, Llm.CLAUDE_4_5_SONNET_2025_09_29]
+        elif openai_api_key:
+            models = [Llm.GPT_4_1_2025_04_14, Llm.GPT_4O_2024_11_20]
+        else:
+            raise Exception("No OpenAI or Anthropic key")
+
+        # Cycle through models: [A, B] with num=5 becomes [A, B, A, B, A]
+        selected_models: List[Llm] = []
+        for i in range(num_variants):
+            selected_models.append(models[i % len(models)])
+
+        return selected_models
 
 
 class PromptCreationStage:
@@ -378,7 +412,6 @@ class PromptCreationStage:
         extracted_params: ExtractedParams,
     ) -> tuple[List[ChatCompletionMessageParam], Dict[str, str]]:
         """Create prompt messages and return image cache"""
-
         try:
             prompt_messages, image_cache = await create_prompt(
                 stack=extracted_params.stack,
@@ -387,21 +420,9 @@ class PromptCreationStage:
                 prompt=extracted_params.prompt,
                 history=extracted_params.history,
                 is_imported_from_code=extracted_params.is_imported_from_code,
-                update_mode=extracted_params.update_mode,
             )
 
             print_prompt_summary(prompt_messages, truncate=False)
-
-            # 🔧 DIAGNOSTICS: Log image details for quality debugging
-            if extracted_params.input_mode == "image" and len(extracted_params.prompt["images"]) > 0:
-                image_url = extracted_params.prompt["images"][0]
-                # Check if it's data URL and estimate size
-                if image_url.startswith("data:"):
-                    # Rough estimate of data URL size
-                    size_bytes = len(image_url) * 0.75 / 1024  # Convert base64 to bytes
-                    print(f"📸 IMAGE DIAGNOSTICS: Data URL size ~{size_bytes:.1f} KB (base64)")
-                else:
-                    print(f"📸 IMAGE DIAGNOSTICS: Image URL: {image_url[:100]}...")
 
             return prompt_messages, image_cache
         except Exception:
@@ -441,6 +462,53 @@ class MockResponseStage:
         return completions
 
 
+class VideoGenerationStage:
+    """Handles video mode code generation using Claude 3 Opus"""
+
+    def __init__(
+        self,
+        send_message: Callable[[MessageType, str, int], Coroutine[Any, Any, None]],
+        throw_error: Callable[[str], Coroutine[Any, Any, None]],
+    ):
+        self.send_message = send_message
+        self.throw_error = throw_error
+
+    async def generate_video_code(
+        self,
+        prompt_messages: List[ChatCompletionMessageParam],
+        anthropic_api_key: str | None,
+    ) -> List[str]:
+        """Generate code for video input mode"""
+        if not anthropic_api_key:
+            await self.throw_error(
+                "Video only works with Anthropic models. No Anthropic API key found. "
+                "Please add the environment variable ANTHROPIC_API_KEY to backend/.env "
+                "or in the settings dialog"
+            )
+            raise Exception("No Anthropic key")
+
+        async def process_chunk(content: str, variantIndex: int):
+            await self.send_message("chunk", content, variantIndex)
+
+        completion_results = [
+            await stream_claude_response_native(
+                system_prompt=VIDEO_PROMPT,
+                messages=prompt_messages,  # type: ignore
+                api_key=anthropic_api_key,
+                callback=lambda x: process_chunk(x, 0),
+                model_name=Llm.CLAUDE_3_OPUS.value,
+                include_thinking=True,
+            )
+        ]
+        completions = [result["code"] for result in completion_results]
+
+        # Send the complete variant back to the client
+        await self.send_message("setCode", completions[0], 0)
+        await self.send_message("variantComplete", "Variant generation complete", 0)
+
+        return completions
+
+
 class PostProcessingStage:
     """Handles post-processing after code generation completes"""
 
@@ -461,37 +529,26 @@ class PostProcessingStage:
         if valid_completions:
             # Strip the completion of everything except the HTML content
             html_content = extract_html_content(valid_completions[0])
-
-            # 🔍 DIAGNOSTICS: Log HTML after extraction but BEFORE fix_broken_img_icons
-            print(f"[DIAGNOSTICS-2a] After extract_html_content (in PostProcessing):")
-            _diagnose_html_images(html_content, "PostProcessing - before fix_broken_img_icons")
-
-            # 🖼️ FIX BROKEN ICONS: Ensure all <img> tags have valid src attributes
-            # This prevents broken image placeholders in the UI
-            html_content = fix_broken_img_icons(html_content)
-
-            # 🔍 DIAGNOSTICS: Log HTML AFTER fix_broken_img_icons
-            print(f"[DIAGNOSTICS-2b] After fix_broken_img_icons (in PostProcessing):")
-            _diagnose_html_images(html_content, "PostProcessing - after fix_broken_img_icons")
-
             write_logs(prompt_messages, html_content)
 
         # Note: WebSocket closing is handled by the caller
 
 
 class ParallelGenerationStage:
-    """Handles parallel variant generation with OpenAI GPT_4_1_MINI only"""
+    """Handles parallel variant generation with independent processing for each variant"""
 
     def __init__(
         self,
         send_message: Callable[[MessageType, str, int], Coroutine[Any, Any, None]],
         openai_api_key: str | None,
         openai_base_url: str | None,
+        anthropic_api_key: str | None,
         should_generate_images: bool,
     ):
         self.send_message = send_message
         self.openai_api_key = openai_api_key
         self.openai_base_url = openai_base_url
+        self.anthropic_api_key = anthropic_api_key
         self.should_generate_images = should_generate_images
 
     async def process_variants(
@@ -500,7 +557,6 @@ class ParallelGenerationStage:
         prompt_messages: List[ChatCompletionMessageParam],
         image_cache: Dict[str, str],
         params: Dict[str, str],
-        asset_manifest: Dict[str, Dict[str, str]] | None = None,
     ) -> Dict[int, str]:
         """Process all variants in parallel and return completions"""
         tasks = self._create_generation_tasks(variant_models, prompt_messages, params)
@@ -508,9 +564,6 @@ class ParallelGenerationStage:
         # Dictionary to track variant tasks and their status
         variant_tasks: Dict[int, asyncio.Task[Completion]] = {}
         variant_completions: Dict[int, str] = {}
-
-        if asset_manifest is None:
-            asset_manifest = {}
 
         # Create tasks for each variant
         for index, task in enumerate(tasks):
@@ -520,7 +573,7 @@ class ParallelGenerationStage:
         # Process each variant independently
         variant_processors = [
             self._process_variant_completion(
-                index, task, variant_models[index], image_cache, variant_completions, asset_manifest
+                index, task, variant_models[index], image_cache, variant_completions
             )
             for index, task in variant_tasks.items()
         ]
@@ -536,47 +589,54 @@ class ParallelGenerationStage:
         prompt_messages: List[ChatCompletionMessageParam],
         params: Dict[str, str],
     ) -> List[Coroutine[Any, Any, Completion]]:
-        """Create generation tasks - uses only GPT_4_1_MINI"""
+        """Create generation tasks for each variant model"""
         tasks: List[Coroutine[Any, Any, Completion]] = []
 
         for index, model in enumerate(variant_models):
-            # Only GPT_4_1_MINI is supported
-            if model != Llm.GPT_4_1_MINI:
-                print(f"⚠️ [WARN] Model {model.value} not supported, using GPT_4_1_MINI instead")
-                model = Llm.GPT_4_1_MINI
+            if model in OPENAI_MODELS:
+                if self.openai_api_key is None:
+                    raise Exception("OpenAI API key is missing.")
 
-            if self.openai_api_key is None:
-                raise Exception("OpenAI API key is missing.")
-
-            tasks.append(
-                self._stream_openai_with_error_handling(
-                    prompt_messages,
-                    model_name=model.value,
-                    index=index,
+                tasks.append(
+                    self._stream_openai_with_error_handling(
+                        prompt_messages,
+                        model_name=model.value,
+                        index=index,
+                    )
                 )
-            )
+            elif GEMINI_API_KEY and model in GEMINI_MODELS:
+                tasks.append(
+                    stream_gemini_response(
+                        prompt_messages,
+                        api_key=GEMINI_API_KEY,
+                        callback=lambda x, i=index: self._process_chunk(x, i),
+                        model_name=model.value,
+                    )
+                )
+            elif model in ANTHROPIC_MODELS:
+                if self.anthropic_api_key is None:
+                    raise Exception("Anthropic API key is missing.")
+
+                # For creation, use Claude Sonnet 3.7
+                # For updates, we use Claude Sonnet 4.5 until we have tested Claude Sonnet 3.7
+                if params["generationType"] == "create":
+                    claude_model = Llm.CLAUDE_3_7_SONNET_2025_02_19
+                else:
+                    claude_model = Llm.CLAUDE_4_5_SONNET_2025_09_29
+
+                tasks.append(
+                    stream_claude_response(
+                        prompt_messages,
+                        api_key=self.anthropic_api_key,
+                        callback=lambda x, i=index: self._process_chunk(x, i),
+                        model_name=claude_model.value,
+                    )
+                )
 
         return tasks
 
     async def _process_chunk(self, content: str, variant_index: int):
-        """Process streaming chunks with safety checks"""
-        # 🔒 SAFETY: Detect and block base64 streaming blocker
-        if "data:image" in content or "base64," in content:
-            print(f"❌ CRITICAL: LLM attempted to stream base64 data!")
-            print(f"   Chunk: {content[:200]}...")
-            raise Exception(
-                "LLM generated base64 data. This indicates a prompt/instruction issue. "
-                "Expected: <img src=\"/generated-assets/...\"> format only."
-            )
-
-        # 🔍 DIAGNOSTICS 3: Log streaming chunks (first <html> or <img> occurrence)
-        if "<html" in content.lower() or "<img" in content.lower():
-            chunk_preview = content[:150] if len(content) <= 150 else content[:147] + "..."
-            print(f"[DIAGNOSTICS-3] First meaningful stream chunk [variant {variant_index}]:")
-            print(f"   Content: {chunk_preview}")
-            if "<img" in content.lower():
-                _diagnose_html_images(content, f"Stream chunk [variant {variant_index}]")
-
+        """Process streaming chunks"""
         await self.send_message("chunk", content, variant_index)
 
     async def _stream_openai_with_error_handling(
@@ -588,42 +648,13 @@ class ParallelGenerationStage:
         """Wrap OpenAI streaming with specific error handling"""
         try:
             assert self.openai_api_key is not None
-
-            # 🔧 DIAGNOSTICS: Log model parameters
-            print(f"🤖 MODEL DIAGNOSTICS [Variant {index + 1}]:")
-            print(f"   Model: {model_name}")
-            print(f"   Temperature: 0 (deterministic)")
-            if model_name in ["gpt-4.1-2025-04-14", "gpt-4.1-mini", "gpt-4.1-mini-2025-04-14"]:
-                print(f"   Max Tokens: 20000")
-            print(f"   Stream: True (chunk-by-chunk)")
-
-            completion = await stream_openai_response(
+            return await stream_openai_response(
                 prompt_messages,
                 api_key=self.openai_api_key,
                 base_url=self.openai_base_url,
                 callback=lambda x: self._process_chunk(x, index),
                 model_name=model_name,
             )
-
-            # 🔍 DIAGNOSTICS 1: Log HTML right after LLM response (BEFORE post-processing)
-            raw_code = completion["code"]
-            print(f"[DIAGNOSTICS-1] LLM Response [Variant {index + 1}] (BEFORE post-processing):")
-            print(f"   Length: {len(raw_code)} chars")
-            _diagnose_html_images(raw_code, f"LLM response [variant {index + 1}]")
-
-            # 🔧 DIAGNOSTICS: Log completion stats
-            html_content = extract_html_content(completion["code"])
-            print(f"✅ COMPLETION STATS [Variant {index + 1}]:")
-            print(f"   Raw length: {len(completion['code'])} chars")
-            print(f"   HTML content length: {len(html_content)} chars")
-            print(f"   Duration: {completion['duration']:.1f}s")
-            print(f"   Has <html> tags: {'<html' in completion['code'].lower()}")
-
-            # 🔍 DIAGNOSTICS 2: Log HTML after extraction (AFTER extract_html_content)
-            print(f"[DIAGNOSTICS-2] After extract_html_content [Variant {index + 1}]:")
-            _diagnose_html_images(html_content, f"After extract_html_content [variant {index + 1}]")
-
-            return completion
         except openai.AuthenticationError as e:
             print(f"[VARIANT {index + 1}] OpenAI Authentication failed", e)
             error_message = (
@@ -665,6 +696,38 @@ class ParallelGenerationStage:
             await self.send_message("variantError", error_message, index)
             raise VariantErrorAlreadySent(e)
 
+    async def _perform_image_generation(
+        self,
+        completion: str,
+        image_cache: dict[str, str],
+    ):
+        """Generate images for the completion if needed"""
+        if not self.should_generate_images:
+            return completion
+
+        replicate_api_key = REPLICATE_API_KEY
+        if replicate_api_key:
+            image_generation_model = "flux"
+            api_key = replicate_api_key
+        else:
+            if not self.openai_api_key:
+                print(
+                    "No OpenAI API key and Replicate key found. Skipping image generation."
+                )
+                return completion
+            image_generation_model = "dalle3"
+            api_key = self.openai_api_key
+
+        print("Generating images with model: ", image_generation_model)
+
+        return await generate_images(
+            completion,
+            api_key=api_key,
+            base_url=self.openai_base_url,
+            image_cache=image_cache,
+            model=image_generation_model,
+        )
+
     async def _process_variant_completion(
         self,
         index: int,
@@ -672,11 +735,8 @@ class ParallelGenerationStage:
         model: Llm,
         image_cache: Dict[str, str],
         variant_completions: Dict[int, str],
-        asset_manifest: Dict[str, Dict[str, str]] | None = None,
     ):
         """Process a single variant completion including image generation"""
-        if asset_manifest is None:
-            asset_manifest = {}
         try:
             completion = await task
 
@@ -684,63 +744,22 @@ class ParallelGenerationStage:
             variant_completions[index] = completion["code"]
 
             try:
-                # Image generation disabled - single LLM model only (GPT_4_1_MINI)
-                processed_html = completion["code"]
+                # Process images for this variant
+                processed_html = await self._perform_image_generation(
+                    completion["code"],
+                    image_cache,
+                )
 
                 # Extract HTML content
                 processed_html = extract_html_content(processed_html)
 
-                # 🔥 Sanitize HTML output: fix nested tags, close unclosed blocks, deduplicate CSS
-                processed_html = sanitize_html_output(processed_html)
-
-                # 🖼️ STEP 1: Replace broken img src with real extracted assets
-                # This is the primary fix for missing/broken images
-                if asset_manifest:
-                    print(f"[IMG REPLACEMENT] Replacing broken img src with {len(asset_manifest)} extracted assets")
-                    processed_html = replace_broken_img_src(processed_html, asset_manifest=asset_manifest)
-                else:
-                    print("[IMG REPLACEMENT] No extracted assets available, skipping src replacement")
-
-                # 🖼️ STEP 2: Inject asset base64 src (fallback for data-asset-id tags)
-                # This is the final safety layer to ensure all <img> have src
-                print(f"[ASSET INJECTION] Injecting base64 src into <img> tags (image_cache={len(image_cache)} items)")
-                processed_html = inject_asset_src(processed_html, asset_manifest=image_cache)
-
-                # 🔍 Validate HTML before sending to client
-                is_valid, validation_msg = is_html_valid(processed_html)
-                if not is_valid:
-                    error_msg = f"Generated HTML failed validation: {validation_msg}"
-                    print(f"[VALIDATE] {error_msg}")
-                    await self.send_message(
-                        "error",
-                        error_msg,
-                        index,
-                    )
-                    await self.send_message(
-                        "variantComplete",
-                        f"Variant generation FAILED: {validation_msg}",
-                        index,
-                    )
-                else:
-                    # 🔒 SAFETY CHECK: Ensure ALL <img> have src before streaming
-                    # This is critical protection against broken images
-                    img_pattern = r'<img\s+([^>]*)>'
-                    img_matches = re.findall(img_pattern, processed_html, re.IGNORECASE)
-                    img_without_src = [m for m in img_matches if 'src=' not in m.lower()]
-
-                    if img_without_src:
-                        print(f"⚠️  [CRITICAL] Found {len(img_without_src)} <img> tag(s) WITHOUT src before streaming!")
-                        print(f"   This indicates a pipeline error. Emergency fallback: applying fix_broken_img_icons")
-                        processed_html = fix_broken_img_icons(processed_html)
-                        print(f"   Applied emergency fix")
-
-                    # Send the complete variant back to the client
-                    await self.send_message("setCode", processed_html, index)
-                    await self.send_message(
-                        "variantComplete",
-                        "Variant generation complete",
-                        index,
-                    )
+                # Send the complete variant back to the client
+                await self.send_message("setCode", processed_html, index)
+                await self.send_message(
+                    "variantComplete",
+                    "Variant generation complete",
+                    index,
+                )
             except Exception as inner_e:
                 # If websocket is closed or other error during post-processing
                 print(f"Post-processing error for variant {index + 1}: {inner_e}")
@@ -776,83 +795,6 @@ class WebSocketSetupMiddleware(Middleware):
             await context.ws_comm.close()
 
 
-async def run_partial_update(context: PipelineContext) -> None:
-    """
-    🔧 PARTIAL UPDATE: Handle atomic element mutation without variant pipeline.
-    This is a separate execution path from full document generation.
-    """
-    try:
-        assert context.extracted_params is not None
-        assert context.ws_comm is not None
-
-        # Get the selected element HTML to edit
-        selected_element = context.extracted_params.selected_element
-        if not selected_element:
-            raise ValueError("selectedElement is required for partial updates")
-
-        # Prepare the prompt for element editing
-        messages: List[ChatCompletionMessageParam] = [
-            {
-                "role": "user",
-                "content": f"""You are editing a SINGLE HTML element.
-Return ONLY the updated HTML of this element.
-Do NOT return the entire document.
-Do NOT add explanations or markdown.
-Return valid HTML only.
-
-Current element:
-{selected_element}
-
-Update instructions:
-{context.extracted_params.prompt.get('text', '')}"""
-            }
-        ]
-
-        # Use gpt-4.1-mini for fast single-element edits
-        client = openai.AsyncOpenAI(
-            api_key=context.extracted_params.openai_api_key,
-            base_url=context.extracted_params.openai_base_url,
-        )
-
-        # Single LLM call for element edit (no streaming, no variants)
-        response = await client.chat.completions.create(
-            model=Llm.GPT_4_1_MINI.value,
-            messages=messages,
-            temperature=0.7,
-            max_tokens=2000,
-        )
-
-        # Extract the updated element HTML
-        element_html = response.choices[0].message.content or ""
-
-        print(f"Partial update generated {len(element_html)} chars")
-
-        # Send the element HTML via dedicated message type
-        await context.websocket.send_json({
-            "type": "partial_element_html",
-            "value": element_html
-        })
-        print("Sent partial_element_html for element update")
-
-        # Send success signal (no HTML in this message)
-        await context.websocket.send_json({
-            "type": "partial_success"
-        })
-        print("Partial update succeeded")
-
-        # Close the connection
-        await context.ws_comm.close()
-        context.ws_comm.is_closed = True
-
-    except ValueError as e:
-        print(f"Partial update validation error: {e}")
-        await context.throw_error(str(e))
-    except Exception as e:
-        print(f"Partial update error: {e}")
-        traceback.print_exc()
-        await context.throw_error(f"Partial update failed: {str(e)}")
-
-
 class ParameterExtractionMiddleware(Middleware):
     """Handles parameter extraction and validation"""
 
@@ -877,26 +819,6 @@ class ParameterExtractionMiddleware(Middleware):
         await next_func()
 
 
-class PartialUpdateMiddleware(Middleware):
-    """🔧 PARTIAL UPDATE: Separate execution path for atomic element mutations"""
-
-    async def process(
-        self, context: PipelineContext, next_func: Callable[[], Awaitable[None]]
-    ) -> None:
-        # Check if this is a partial update request
-        assert context.extracted_params is not None
-
-        if context.extracted_params.update_mode == "partial":
-            # Handle partial update separately, skip rest of pipeline
-            print("🔧 PARTIAL UPDATE: Bypassing variant pipeline for element mutation")
-            await run_partial_update(context)
-            # Don't call next_func() - this is a separate execution path
-            return
-
-        # Otherwise continue with normal pipeline
-        await next_func()
-
-
 class StatusBroadcastMiddleware(Middleware):
     """Sends initial status messages to all variants"""
 
@@ -913,7 +835,7 @@ class StatusBroadcastMiddleware(Middleware):
 
 
 class PromptCreationMiddleware(Middleware):
-    """Handles prompt creation and image asset extraction"""
+    """Handles prompt creation"""
 
     async def process(
         self, context: PipelineContext, next_func: Callable[[], Awaitable[None]]
@@ -921,34 +843,10 @@ class PromptCreationMiddleware(Middleware):
         prompt_creator = PromptCreationStage(context.throw_error)
         assert context.extracted_params is not None
         context.prompt_messages, context.image_cache = (
-            await prompt_creator.create_prompt(context.extracted_params)
+            await prompt_creator.create_prompt(
+                context.extracted_params,
+            )
         )
-
-        # 🖼️ CRITICAL: Extract real image assets from screenshot
-        # This enables deterministic img src replacement later
-        if context.extracted_params.input_mode == "image":
-            if len(context.extracted_params.prompt.get("images", [])) > 0:
-                screenshot_b64 = context.extracted_params.prompt["images"][0]
-                print("[IMAGE EXTRACTION] Starting asset extraction from screenshot...")
-
-                try:
-                    asset_manifest = extract_image_assets(screenshot_b64)
-                    if asset_manifest:
-                        print(f"[IMAGE EXTRACTION] Extracted {len(asset_manifest)} image assets")
-                        # Store in context metadata for later use
-                        context.metadata["asset_manifest"] = asset_manifest
-                    else:
-                        print("[IMAGE EXTRACTION] No assets extracted (empty or no significant regions)")
-                        context.metadata["asset_manifest"] = {}
-                except Exception as e:
-                    print(f"[IMAGE EXTRACTION] Error extracting assets: {e}")
-                    context.metadata["asset_manifest"] = {}
-            else:
-                print("[IMAGE EXTRACTION] No input images available")
-                context.metadata["asset_manifest"] = {}
-        else:
-            print(f"[IMAGE EXTRACTION] Skipped for input mode: {context.extracted_params.input_mode}")
-            context.metadata["asset_manifest"] = {}
 
         await next_func()
 
@@ -969,52 +867,58 @@ class CodeGenerationMiddleware(Middleware):
         else:
             try:
                 assert context.extracted_params is not None
-                # 🔧 SIMPLIFICATION: Video mode removed - only image and text modes supported
-                # Select models (GPT_4_1_MINI only)
-                model_selector = ModelSelectionStage(context.throw_error)
-                context.variant_models = await model_selector.select_models(
-                    generation_type=context.extracted_params.generation_type,
-                    input_mode=context.extracted_params.input_mode,
-                    openai_api_key=context.extracted_params.openai_api_key,
-                )
-
-                # Generate code for all variants
-                generation_stage = ParallelGenerationStage(
-                    send_message=context.send_message,
-                    openai_api_key=context.extracted_params.openai_api_key,
-                    openai_base_url=context.extracted_params.openai_base_url,
-                    should_generate_images=context.extracted_params.should_generate_images,
-                )
-
-                # Get extracted assets from metadata (populated by PromptCreationMiddleware)
-                asset_manifest = context.metadata.get("asset_manifest", {})
-                if asset_manifest:
-                    print(f"[CODEGEN] Using extracted assets: {len(asset_manifest)} items")
-
-                context.variant_completions = (
-                    await generation_stage.process_variants(
-                        variant_models=context.variant_models,
-                        prompt_messages=context.prompt_messages,
-                        image_cache=context.image_cache,
-                        params=context.params,
-                        asset_manifest=asset_manifest,
+                if context.extracted_params.input_mode == "video":
+                    # Use video generation for video mode
+                    video_stage = VideoGenerationStage(
+                        context.send_message, context.throw_error
                     )
-                )
-
-                # Check if all variants failed
-                if len(context.variant_completions) == 0:
-                    await context.throw_error(
-                        "Error generating code. Please contact support."
+                    context.completions = await video_stage.generate_video_code(
+                        context.prompt_messages,
+                        context.extracted_params.anthropic_api_key,
                     )
-                    return  # Don't continue the pipeline
+                else:
+                    # Select models
+                    model_selector = ModelSelectionStage(context.throw_error)
+                    context.variant_models = await model_selector.select_models(
+                        generation_type=context.extracted_params.generation_type,
+                        input_mode=context.extracted_params.input_mode,
+                        openai_api_key=context.extracted_params.openai_api_key,
+                        anthropic_api_key=context.extracted_params.anthropic_api_key,
+                        gemini_api_key=GEMINI_API_KEY,
+                    )
 
-                # Convert to list format
-                context.completions = []
-                for i in range(len(context.variant_models)):
-                    if i in context.variant_completions:
-                        context.completions.append(context.variant_completions[i])
-                    else:
-                        context.completions.append("")
+                    # Generate code for all variants
+                    generation_stage = ParallelGenerationStage(
+                        send_message=context.send_message,
+                        openai_api_key=context.extracted_params.openai_api_key,
+                        openai_base_url=context.extracted_params.openai_base_url,
+                        anthropic_api_key=context.extracted_params.anthropic_api_key,
+                        should_generate_images=context.extracted_params.should_generate_images,
+                    )
+
+                    context.variant_completions = (
+                        await generation_stage.process_variants(
+                            variant_models=context.variant_models,
+                            prompt_messages=context.prompt_messages,
+                            image_cache=context.image_cache,
+                            params=context.params,
+                        )
+                    )
+
+                    # Check if all variants failed
+                    if len(context.variant_completions) == 0:
+                        await context.throw_error(
+                            "Error generating code. Please contact support."
+                        )
+                        return  # Don't continue the pipeline
+
+                    # Convert to list format
+                    context.completions = []
+                    for i in range(len(context.variant_models)):
+                        if i in context.variant_completions:
+                            context.completions.append(context.variant_completions[i])
+                        else:
+                            context.completions.append("")
 
             except Exception as e:
                 print(f"[GENERATE_CODE] Unexpected error: {e}")
@@ -1025,7 +929,7 @@ class CodeGenerationMiddleware(Middleware):
 
 
 class PostProcessingMiddleware(Middleware):
-    """Handles post-processing, logging, and sends final generation_complete signal"""
+    """Handles post-processing and logging"""
 
     async def process(
         self, context: PipelineContext, next_func: Callable[[], Awaitable[None]]
@@ -1034,15 +938,6 @@ class PostProcessingMiddleware(Middleware):
         await post_processor.process_completions(
             context.completions, context.prompt_messages, context.websocket
         )
-
-        # 🔧 Send final signal before closing WebSocket
-        # This ensures frontend knows generation is complete and isn't left waiting
-        try:
-            if context.ws_comm and not context.ws_comm.is_closed:
-                await context.websocket.send_json({"type": "generation_complete"})
-                print("Sent generation_complete signal to frontend")
-        except Exception as e:
-            print(f"Warning: Could not send generation_complete signal: {e}")
 
         await next_func()
 
@@ -1055,7 +950,6 @@ async def stream_code(websocket: WebSocket):
     # Configure the pipeline
     pipeline.use(WebSocketSetupMiddleware())
     pipeline.use(ParameterExtractionMiddleware())
-    pipeline.use(PartialUpdateMiddleware())  # 🔧 PARTIAL UPDATE: Check if partial update and bypass variant pipeline
     pipeline.use(StatusBroadcastMiddleware())
     pipeline.use(PromptCreationMiddleware())
     pipeline.use(CodeGenerationMiddleware())

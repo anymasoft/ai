@@ -10,46 +10,13 @@ from prompts.types import Stack, PromptContent
 from video.utils import assemble_claude_prompt_video
 
 
-# 🎯 CRITICAL: Explicit task, NO "confirm instructions" escape route
 USER_PROMPT = """
-Do an internal visual decomposition of the screenshot first (do NOT output the analysis).
-
-Then, GENERATE THE HTML NOW.
-
-Return ONLY a complete, valid HTML document.
-- EXACTLY ONE <html> tag (opening).
-- EXACTLY ONE <body> tag.
-- All tags properly closed.
-- <style> block fully formed and closed.
-- No explanations, no markdown, no comments about what you're doing.
-- Output starts with <html and ends with </html>.
-
-IMPORTANT: For images and icons in the screenshot:
-- Use <img src="..." alt="..."> with descriptive src attribute names or relative paths
-- For small icons (< 64x64px): use data:image/svg+xml or data:image/png inline if small
-- For larger images: reference them by descriptive names
-- NEVER leave src empty or undefined
-- ALWAYS ensure <img> elements have valid src attributes
+Generate code for a web page that looks exactly like this.
 """
-
 
 SVG_USER_PROMPT = """
-Do an internal visual decomposition of the screenshot first (do NOT output the analysis).
-
-Then, GENERATE THE SVG NOW.
-
-Return ONLY a complete, valid SVG document.
-- Starts with <svg and ends with </svg>.
-- All tags properly closed.
-- No explanations, no markdown, no comments about what you're doing.
+Generate code for a SVG that looks exactly like this.
 """
-
-PARTIAL_UPDATE_PROMPT = """
-You are editing a SINGLE HTML element.
-Return ONLY the updated HTML of this element.
-Do NOT return the entire document.
-Do NOT add explanations or markdown.
-Return valid HTML only."""
 
 
 async def create_prompt(
@@ -59,7 +26,6 @@ async def create_prompt(
     prompt: PromptContent,
     history: list[dict[str, Any]],
     is_imported_from_code: bool,
-    update_mode: str = "full",
 ) -> tuple[list[ChatCompletionMessageParam], dict[str, str]]:
 
     image_cache: dict[str, str] = {}
@@ -90,13 +56,6 @@ async def create_prompt(
                 role = "assistant" if index % 2 == 0 else "user"
                 message = create_message_from_history_item(item, role)
                 prompt_messages.append(message)
-
-            # 🔧 PARTIAL UPDATE: Add special prompt if updating single element
-            if update_mode == "partial":
-                prompt_messages.append({
-                    "role": "user",
-                    "content": PARTIAL_UPDATE_PROMPT,
-                })
 
             image_cache = create_alt_url_mapping(history[-2]["text"])
 
@@ -177,9 +136,6 @@ def assemble_prompt(
     image_data_url: str,
     stack: Stack,
 ) -> list[ChatCompletionMessageParam]:
-    """Assemble simple, stable prompt for image-to-code generation."""
-
-    # Use standard framework prompts
     system_content = SYSTEM_PROMPTS[stack]
     user_prompt = USER_PROMPT if stack != "svg" else SVG_USER_PROMPT
 
