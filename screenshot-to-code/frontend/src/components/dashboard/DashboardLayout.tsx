@@ -1,12 +1,8 @@
 import { AppSidebar } from "./AppSidebar";
 import { AppHeader } from "./AppHeader";
-import { ReactNode } from "react";
+import { Outlet } from "react-router-dom";
 
-interface DashboardLayoutProps {
-  children: ReactNode;
-}
-
-export function DashboardLayout({ children }: DashboardLayoutProps) {
+export function DashboardLayout() {
   return (
     <div className="flex h-screen bg-gray-50 dark:bg-black">
       {/* Sidebar */}
@@ -22,7 +18,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
         {/* Content */}
         <main className="flex-1 overflow-auto">
           <div className="p-6">
-            {children}
+            <Outlet />
           </div>
         </main>
       </div>

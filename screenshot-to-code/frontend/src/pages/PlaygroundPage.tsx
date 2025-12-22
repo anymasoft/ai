@@ -1,19 +1,16 @@
-import { DashboardLayout } from "@/components/dashboard/DashboardLayout";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Upload } from "lucide-react";
 
 export function PlaygroundPage() {
-
   const handleUpload = () => {
     console.log("Upload handler");
     // Trigger the existing generation flow
   };
 
   return (
-    <DashboardLayout>
-      <div className="max-w-7xl mx-auto">
+    <div className="max-w-7xl mx-auto">
         <div className="mb-6">
           <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
             Playground
@@ -138,6 +135,5 @@ export function PlaygroundPage() {
           </Card>
         </div>
       </div>
-    </DashboardLayout>
   );
 }
