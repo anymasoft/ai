@@ -8,6 +8,8 @@ from .sqlite import (
     get_generation,
     list_generations,
     record_usage_event,
+    save_generation_variant,
+    get_generation_variants,
 )
 
 __all__ = [
@@ -19,4 +21,6 @@ __all__ = [
     "get_generation",
     "list_generations",
     "record_usage_event",
+    "save_generation_variant",
+    "get_generation_variants",
 ]

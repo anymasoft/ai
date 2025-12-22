@@ -83,6 +83,20 @@ def init_db() -> None:
             )
         """)
 
+        # Create generation_variants table (for tracking individual variants)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS generation_variants (
+                generation_id TEXT,
+                variant_index INTEGER,
+                status TEXT NOT NULL,
+                html TEXT,
+                error_message TEXT,
+                created_at TEXT NOT NULL,
+                PRIMARY KEY (generation_id, variant_index),
+                FOREIGN KEY (generation_id) REFERENCES generations(id)
+            )
+        """)
+
         # Create usage_events table
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS usage_events (
@@ -261,6 +275,86 @@ def list_generations(limit: int = 20, user_id: Optional[str] = None) -> list:
                 LIMIT ?
             """, (limit,))
 
+        rows = cursor.fetchall()
+        return [dict(row) for row in rows]
+
+    finally:
+        conn.close()
+
+
+def save_generation_variant(
+    generation_id: str,
+    variant_index: int,
+    status: str,
+    html: Optional[str] = None,
+    error_message: Optional[str] = None,
+) -> None:
+    """
+    Save a generation variant record (individual model output).
+    This captures results immediately when variant completes.
+    """
+    conn = get_conn()
+    cursor = conn.cursor()
+    now = datetime.utcnow().isoformat()
+
+    try:
+        # Try INSERT first
+        cursor.execute("""
+            INSERT INTO generation_variants
+            (generation_id, variant_index, status, html, error_message, created_at)
+            VALUES (?, ?, ?, ?, ?, ?)
+        """, (
+            generation_id,
+            variant_index,
+            status,
+            html,
+            error_message,
+            now,
+        ))
+        conn.commit()
+        print(f"[DB] saved variant {variant_index} for generation {generation_id}")
+
+    except sqlite3.IntegrityError:
+        # If variant already exists, update it
+        try:
+            cursor.execute("""
+                UPDATE generation_variants
+                SET status = ?, html = ?, error_message = ?
+                WHERE generation_id = ? AND variant_index = ?
+            """, (
+                status,
+                html,
+                error_message,
+                generation_id,
+                variant_index,
+            ))
+            conn.commit()
+            print(f"[DB] updated variant {variant_index} for generation {generation_id}")
+        except Exception as e:
+            conn.rollback()
+            print(f"[DB] error updating variant: {e}")
+            raise
+
+    except Exception as e:
+        conn.rollback()
+        print(f"[DB] error saving variant: {e}")
+        raise
+    finally:
+        conn.close()
+
+
+def get_generation_variants(generation_id: str) -> list:
+    """Get all variants for a generation."""
+    conn = get_conn()
+    cursor = conn.cursor()
+
+    try:
+        cursor.execute("""
+            SELECT generation_id, variant_index, status, html, error_message, created_at
+            FROM generation_variants
+            WHERE generation_id = ?
+            ORDER BY variant_index
+        """, (generation_id,))
         rows = cursor.fetchall()
         return [dict(row) for row in rows]
 
