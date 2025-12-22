@@ -5,6 +5,7 @@ import traceback
 from typing import Callable, Awaitable
 from fastapi import APIRouter, WebSocket
 import openai
+import re
 from codegen.utils import extract_html_content, sanitize_html_output, is_html_valid, fix_broken_img_icons
 from config import (
     IS_PROD,
@@ -58,6 +59,43 @@ from ws.constants import APP_ERROR_WEB_SOCKET_CODE  # type: ignore
 
 
 router = APIRouter()
+
+
+def _diagnose_html_images(html: str, context: str = "") -> None:
+    """
+    Diagnose <img> tags in HTML and log their status.
+
+    Args:
+        html: HTML string to analyze
+        context: Label for where this HTML is in the pipeline
+    """
+    # Find all <img> tags
+    img_pattern = r'<img\s+([^>]*)>'
+    matches = re.findall(img_pattern, html, re.IGNORECASE)
+
+    if not matches:
+        print(f"[DIAGNOSTICS] {context}: NO <img> tags found")
+        return
+
+    print(f"[DIAGNOSTICS] {context}: Found {len(matches)} <img> tag(s)")
+
+    for i, match in enumerate(matches[:5]):  # Log first 5 img tags
+        # Extract src attribute
+        src_pattern = r'src=["\']?([^"\'>\s]+)["\']?'
+        src_match = re.search(src_pattern, match)
+
+        if src_match:
+            src_value = src_match.group(1)
+            src_preview = src_value[:50] if len(src_value) <= 50 else src_value[:47] + "..."
+            print(f"  <img {i+1}> src={src_preview}")
+        else:
+            print(f"  ⚠️  <img {i+1}> MISSING SRC attribute")
+            # Check for data-asset-id attribute
+            asset_id_pattern = r'data-asset-id=["\']?([^"\'>\s]+)["\']?'
+            asset_match = re.search(asset_id_pattern, match)
+            if asset_match:
+                print(f"       (has data-asset-id={asset_match.group(1)})")
+
 
 
 class VariantErrorAlreadySent(Exception):
@@ -423,9 +461,17 @@ class PostProcessingStage:
             # Strip the completion of everything except the HTML content
             html_content = extract_html_content(valid_completions[0])
 
+            # 🔍 DIAGNOSTICS: Log HTML after extraction but BEFORE fix_broken_img_icons
+            print(f"[DIAGNOSTICS-2a] After extract_html_content (in PostProcessing):")
+            _diagnose_html_images(html_content, "PostProcessing - before fix_broken_img_icons")
+
             # 🖼️ FIX BROKEN ICONS: Ensure all <img> tags have valid src attributes
             # This prevents broken image placeholders in the UI
             html_content = fix_broken_img_icons(html_content)
+
+            # 🔍 DIAGNOSTICS: Log HTML AFTER fix_broken_img_icons
+            print(f"[DIAGNOSTICS-2b] After fix_broken_img_icons (in PostProcessing):")
+            _diagnose_html_images(html_content, "PostProcessing - after fix_broken_img_icons")
 
             write_logs(prompt_messages, html_content)
 
@@ -518,6 +564,14 @@ class ParallelGenerationStage:
                 "Expected: <img src=\"/generated-assets/...\"> format only."
             )
 
+        # 🔍 DIAGNOSTICS 3: Log streaming chunks (first <html> or <img> occurrence)
+        if "<html" in content.lower() or "<img" in content.lower():
+            chunk_preview = content[:150] if len(content) <= 150 else content[:147] + "..."
+            print(f"[DIAGNOSTICS-3] First meaningful stream chunk [variant {variant_index}]:")
+            print(f"   Content: {chunk_preview}")
+            if "<img" in content.lower():
+                _diagnose_html_images(content, f"Stream chunk [variant {variant_index}]")
+
         await self.send_message("chunk", content, variant_index)
 
     async def _stream_openai_with_error_handling(
@@ -546,6 +600,12 @@ class ParallelGenerationStage:
                 model_name=model_name,
             )
 
+            # 🔍 DIAGNOSTICS 1: Log HTML right after LLM response (BEFORE post-processing)
+            raw_code = completion["code"]
+            print(f"[DIAGNOSTICS-1] LLM Response [Variant {index + 1}] (BEFORE post-processing):")
+            print(f"   Length: {len(raw_code)} chars")
+            _diagnose_html_images(raw_code, f"LLM response [variant {index + 1}]")
+
             # 🔧 DIAGNOSTICS: Log completion stats
             html_content = extract_html_content(completion["code"])
             print(f"✅ COMPLETION STATS [Variant {index + 1}]:")
@@ -553,6 +613,10 @@ class ParallelGenerationStage:
             print(f"   HTML content length: {len(html_content)} chars")
             print(f"   Duration: {completion['duration']:.1f}s")
             print(f"   Has <html> tags: {'<html' in completion['code'].lower()}")
+
+            # 🔍 DIAGNOSTICS 2: Log HTML after extraction (AFTER extract_html_content)
+            print(f"[DIAGNOSTICS-2] After extract_html_content [Variant {index + 1}]:")
+            _diagnose_html_images(html_content, f"After extract_html_content [variant {index + 1}]")
 
             return completion
         except openai.AuthenticationError as e:
