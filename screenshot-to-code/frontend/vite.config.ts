@@ -3,6 +3,7 @@ import { defineConfig, loadEnv } from "vite";
 import checker from "vite-plugin-checker";
 import react from "@vitejs/plugin-react";
 import { createHtmlPlugin } from "vite-plugin-html";
+import tailwindcss from "@tailwindcss/vite";
 
 // https://vitejs.dev/config/
 export default ({ mode }) => {
@@ -10,8 +11,9 @@ export default ({ mode }) => {
   return defineConfig({
     base: "",
     plugins: [
+      tailwindcss(),
       react(),
-      checker({ 
+      checker({
         typescript: true
       }),
       createHtmlPlugin({
