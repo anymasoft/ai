@@ -2,7 +2,7 @@ import asyncio
 import traceback
 from typing import Optional
 
-from queue.generation_queue import wait_for_generation, mark_job_done, GenerationJob
+from gen_queue.generation_queue import wait_for_generation, mark_job_done, GenerationJob
 from db import update_generation
 
 

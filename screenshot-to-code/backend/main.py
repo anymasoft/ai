@@ -10,8 +10,8 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from routes import screenshot, generate_code, home, evals, history
 from db import init_db
-from queue.generation_queue import init_queue
-from queue.worker import start_worker
+from gen_queue.generation_queue import init_queue
+from gen_queue.worker import start_worker
 
 # Initialize database
 init_db()
