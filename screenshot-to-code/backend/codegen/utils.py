@@ -272,14 +272,70 @@ def is_html_valid(html: str) -> tuple[bool, str]:
     return True, "Valid HTML"
 
 
-def fix_broken_img_icons(html: str) -> str:
+def strip_img_src_attributes(html: str) -> str:
     """
-    Fix broken or missing <img> src attributes.
+    SAFETY: Remove all non-data: src attributes from <img> tags.
 
     Rules:
-    1. If <img> has empty or missing src → use placeholder 1x1 PNG
-    2. If <img src=""> → replace with valid data:image/png placeholder
-    3. Ensure all <img> tags have valid src attributes
+    1. If <img src="logo.png"> → <img data-asset-id="...">
+    2. If <img src="http://..."> → <img data-asset-id="...">
+    3. If <img src="/path/..."> → <img data-asset-id="...">
+    4. Keep data:image src values (for placeholders)
+    5. Keep data-asset-id attributes
+
+    This prevents LLM from generating broken relative/absolute image paths.
+    """
+
+    try:
+        # Pattern: Remove any src that is NOT data:image
+        # Match: src="something" where something doesn't start with "data:"
+
+        # First, collect all <img> tags
+        img_pattern = r'<img\s+([^>]*)>'
+
+        def process_img_tag(match):
+            tag_content = match.group(1)
+
+            # Extract src attribute (if any)
+            src_pattern = r'src=["\']?([^"\'>\s]+)["\']?'
+            src_match = re.search(src_pattern, tag_content)
+
+            if src_match:
+                src_value = src_match.group(1)
+
+                # Check if it's a data: URL (placeholder) - keep it
+                if src_value.startswith("data:"):
+                    return match.group(0)  # Keep as is
+
+                # Remove this src (it's a relative/absolute path)
+                # Replace the src attribute completely
+                new_tag_content = re.sub(src_pattern, '', tag_content)
+
+                # If there's no data-asset-id, add a placeholder one
+                if 'data-asset-id' not in new_tag_content.lower():
+                    # Generate asset ID from position or hash
+                    asset_id = f"asset_{hash(new_tag_content) % 10000}"
+                    new_tag_content = f'data-asset-id="{asset_id}" {new_tag_content}'
+
+                return f'<img {new_tag_content.strip()}>'
+
+            return match.group(0)  # Keep if no src
+
+        html = re.sub(img_pattern, process_img_tag, html, flags=re.IGNORECASE)
+        return html
+    except Exception as e:
+        print(f"[SAFETY] Error stripping img src: {e}")
+        return html
+
+
+def fix_broken_img_icons(html: str) -> str:
+    """
+    Fix broken or missing <img> attributes after LLM processing.
+
+    Rules:
+    1. Remove non-data: src attributes (SAFETY CHECK) ← CRITICAL FIX
+    2. If <img> has empty or missing src → use placeholder 1x1 PNG
+    3. Ensure all <img> tags have either data:image src OR data-asset-id
 
     This prevents broken image icons in the UI.
     """
@@ -288,7 +344,10 @@ def fix_broken_img_icons(html: str) -> str:
     PLACEHOLDER_PNG = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII="
 
     try:
-        # Fix <img> tags with empty src
+        # STEP 1: Strip any non-data: src attributes (safety) ← ENFORCES LLM RULES
+        html = strip_img_src_attributes(html)
+
+        # STEP 2: Fix <img> tags with empty src
         # Match: <img ... src="" ... > or <img ... src='' ... > or <img without src>
 
         # Pattern 1: src="" (empty double quotes)
@@ -315,18 +374,25 @@ def fix_broken_img_icons(html: str) -> str:
             flags=re.IGNORECASE
         )
 
-        # Pattern 4: <img without src attribute at all
-        # This is more complex - need to find img tags without src and add it
-        def add_missing_src(match):
+        # Pattern 4: <img without src attribute but WITHOUT data-asset-id either
+        # This case needs placeholder
+        def ensure_img_has_src_or_asset_id(match):
             tag = match.group(0)
-            if 'src=' not in tag.lower():
-                # Insert src before the closing >
-                return tag.replace('>', f' src="{PLACEHOLDER_PNG}">', 1)
-            return tag
+
+            # If it has src, skip
+            if 'src=' in tag.lower():
+                return tag
+
+            # If it has data-asset-id, skip
+            if 'data-asset-id' in tag.lower():
+                return tag
+
+            # Otherwise, add placeholder src
+            return tag.replace('>', f' src="{PLACEHOLDER_PNG}">', 1)
 
         html = re.sub(
             r'<img\s+[^>]*?>',
-            add_missing_src,
+            ensure_img_has_src_or_asset_id,
             html,
             flags=re.IGNORECASE
         )
