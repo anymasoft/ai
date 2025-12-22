@@ -20,7 +20,7 @@ def test_model_selection():
         Llm.GPT_4O_MINI,                 # Variant 1
         Llm.GPT_4_1_MINI_2025_04_14,     # Variant 2
         Llm.GPT_4_1_2025_04_14,          # Variant 3
-        Llm.GPT_4O_MINI,                 # Variant 4
+        Llm.GPT_5_1_MINI,                # Variant 4
     ]
 
     print("\n[1] Checking selected models are OpenAI...")
@@ -52,7 +52,7 @@ def test_model_selection():
     print("✓ ALL MODEL TESTS PASSED")
     print("=" * 70)
     print("\nSummary:")
-    print(f"  - Selected 4 models: gpt-4o-mini, gpt-4.1-mini, gpt-4.1, gpt-4o-mini")
+    print(f"  - Selected 4 models: gpt-4o-mini, gpt-4.1-mini, gpt-4.1, gpt-5.1-mini")
     print(f"  - All are OpenAI providers")
     print(f"  - No problematic models (403 errors)")
     print(f"  - Model variant cycling works correctly")
