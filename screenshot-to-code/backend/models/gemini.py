@@ -6,6 +6,7 @@ from openai.types.chat import ChatCompletionMessageParam
 from google import genai
 from google.genai import types
 from llm import Completion, Llm
+import main as main_module
 
 
 def extract_image_from_messages(
@@ -81,6 +82,9 @@ async def stream_gemini_response(
             },
             config=config,
         ):
+            # KILL SWITCH: Exit immediately if app shutting down
+            if main_module.app_shutting_down:
+                break
             if chunk.candidates and len(chunk.candidates) > 0:
                 for part in chunk.candidates[0].content.parts:
                     if not part.text:
