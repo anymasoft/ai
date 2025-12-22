@@ -586,7 +586,7 @@ class ParallelGenerationStage:
         image_cache: Dict[str, str],
         params: Dict[str, str],
     ) -> Dict[int, str]:
-        """Process all variants in parallel and return completions"""
+        """Process only ACTIVE variants and return completions"""
         tasks = self._create_generation_tasks(variant_models, prompt_messages, params)
 
         # Dictionary to track variant tasks and their status
@@ -594,17 +594,23 @@ class ParallelGenerationStage:
         variant_completions: Dict[int, str] = {}
 
         # Create tasks for each variant
-        for index, task in enumerate(tasks):
+        # Since _create_generation_tasks uses ACTIVE_VARIANT_INDEX as the real index,
+        # we map accordingly
+        for local_index, task in enumerate(tasks):
+            real_variant_index = ACTIVE_VARIANT_INDEX
             variant_task = asyncio.create_task(task)
-            variant_tasks[index] = variant_task
+            variant_tasks[real_variant_index] = variant_task
 
         # Process each variant independently
-        variant_processors = [
-            self._process_variant_completion(
-                index, task, variant_models[index], image_cache, variant_completions
+        variant_processors = []
+        for real_index, task in variant_tasks.items():
+            # Find corresponding model (should be only 1)
+            model_idx = real_index if real_index < len(variant_models) else 0
+            variant_processors.append(
+                self._process_variant_completion(
+                    real_index, task, variant_models[0], image_cache, variant_completions  # Always index 0 since we have only 1 model
+                )
             )
-            for index, task in variant_tasks.items()
-        ]
 
         # Wait for all variants to complete
         await asyncio.gather(*variant_processors, return_exceptions=True)
@@ -617,10 +623,15 @@ class ParallelGenerationStage:
         prompt_messages: List[ChatCompletionMessageParam],
         params: Dict[str, str],
     ) -> List[Coroutine[Any, Any, Completion]]:
-        """Create generation tasks for each variant model"""
+        """🔧 Create generation tasks only for ACTIVE variants"""
         tasks: List[Coroutine[Any, Any, Completion]] = []
 
-        for index, model in enumerate(variant_models):
+        # Map enumerate index to real variant index
+        # Since we only have active variants, index 0 in variant_models = ACTIVE_VARIANT_INDEX in reality
+        for local_index, model in enumerate(variant_models):
+            # Use ACTIVE_VARIANT_INDEX as the real index for events/UI
+            real_variant_index = ACTIVE_VARIANT_INDEX
+
             if model in OPENAI_MODELS:
                 if self.openai_api_key is None:
                     raise Exception("OpenAI API key is missing.")
@@ -629,7 +640,7 @@ class ParallelGenerationStage:
                     self._stream_openai_with_error_handling(
                         prompt_messages,
                         model_name=model.value,
-                        index=index,
+                        index=real_variant_index,  # Use real index, not local_index
                     )
                 )
             elif GEMINI_API_KEY and model in GEMINI_MODELS:
@@ -1011,13 +1022,14 @@ class CodeGenerationMiddleware(Middleware):
                         )
                         return  # Don't continue the pipeline
 
-                    # Convert to list format
+                    # 🔧 OPTIMIZATION: Convert completions to list format
+                    # variant_completions has {ACTIVE_VARIANT_INDEX: html}
+                    # We need to map it properly
                     context.completions = []
-                    for i in range(len(context.variant_models)):
-                        if i in context.variant_completions:
-                            context.completions.append(context.variant_completions[i])
-                        else:
-                            context.completions.append("")
+                    if ACTIVE_VARIANT_INDEX in context.variant_completions:
+                        context.completions.append(context.variant_completions[ACTIVE_VARIANT_INDEX])
+                    else:
+                        context.completions.append("")
 
             except Exception as e:
                 print(f"[GENERATE_CODE] Unexpected error: {e}")
