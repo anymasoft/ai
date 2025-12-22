@@ -1,6 +1,6 @@
 """History endpoints for accessing generation records."""
 from fastapi import APIRouter, HTTPException
-from db import list_generations, get_generation, get_generation_variants
+from db import list_generations, get_generation, get_generation_variants, delete_generation
 from datetime import datetime
 
 router = APIRouter(prefix="/api", tags=["history"])
@@ -49,6 +49,12 @@ async def get_generation_detail(generation_id: str):
         # 🔧 FIXED: Include all variants in response
         variants = get_generation_variants(generation_id)
 
+        # 🔧 DIAGNOSTICS: Log what we're returning
+        print(f"[API] GET /generations/{generation_id}: found {len(variants)} variants")
+        for i, v in enumerate(variants):
+            html_len = len(v.get("html", "") or "") if v.get("html") else 0
+            print(f"  - Variant {i}: status={v.get('status')}, html_length={html_len}")
+
         return {
             "success": True,
             "data": {
@@ -61,3 +67,18 @@ async def get_generation_detail(generation_id: str):
     except Exception as e:
         print(f"[API] error getting generation {generation_id}: {e}")
         raise HTTPException(status_code=500, detail="Error retrieving generation")
+
+
+@router.delete("/generations/{generation_id}")
+async def delete_generation_endpoint(generation_id: str):
+    """Delete a generation and all its variants."""
+    try:
+        delete_generation(generation_id)
+        print(f"[API] DELETE /generations/{generation_id}: deleted")
+        return {
+            "success": True,
+            "data": {"generation_id": generation_id},
+        }
+    except Exception as e:
+        print(f"[API] error deleting generation {generation_id}: {e}")
+        raise HTTPException(status_code=500, detail="Error deleting generation")

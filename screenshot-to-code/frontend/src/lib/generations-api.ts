@@ -55,3 +55,21 @@ export async function fetchGenerationDetail(generationId: string): Promise<Gener
     throw error;
   }
 }
+
+/**
+ * Delete a generation from the database
+ */
+export async function deleteGeneration(generationId: string): Promise<void> {
+  try {
+    const response = await fetch(`${HTTP_BACKEND_URL}/api/generations/${generationId}`, {
+      method: "DELETE",
+    });
+    if (!response.ok) {
+      throw new Error(`Failed to delete generation: ${response.status}`);
+    }
+    console.log(`Generation ${generationId} deleted`);
+  } catch (error) {
+    console.error(`Error deleting generation ${generationId}:`, error);
+    throw error;
+  }
+}

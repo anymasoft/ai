@@ -362,6 +362,31 @@ def get_generation_variants(generation_id: str) -> list:
         conn.close()
 
 
+def delete_generation(generation_id: str) -> None:
+    """Delete a generation and all its variants."""
+    conn = get_conn()
+    cursor = conn.cursor()
+
+    try:
+        # Delete all variants for this generation first
+        cursor.execute("""
+            DELETE FROM generation_variants
+            WHERE generation_id = ?
+        """, (generation_id,))
+
+        # Delete the generation itself
+        cursor.execute("""
+            DELETE FROM generations
+            WHERE id = ?
+        """, (generation_id,))
+
+        conn.commit()
+        print(f"[DB] Deleted generation {generation_id}")
+
+    finally:
+        conn.close()
+
+
 def record_usage_event(
     generation_id: Optional[str] = None,
     tokens_prompt: Optional[int] = None,
