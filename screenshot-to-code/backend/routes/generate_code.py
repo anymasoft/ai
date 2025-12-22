@@ -10,14 +10,13 @@ from codegen.utils import extract_html_content
 from config import (
     ANTHROPIC_API_KEY,
     GEMINI_API_KEY,
-    IS_PROD,
+    NODE_ENV,
     NUM_VARIANTS,
     OPENAI_API_KEY,
     OPENAI_BASE_URL,
     REPLICATE_API_KEY,
     SHOULD_MOCK_AI_RESPONSE,
     ACTIVE_VARIANT_INDEX,
-    VARIANT_3_MODEL,
 )
 from custom_types import InputMode
 from llm import (
@@ -416,11 +415,11 @@ class ModelSelectionStage:
         selected_models: List[Llm] = []
 
         # Variant 3 is at index 2
-        # Choose model based on environment
-        if IS_PROD:
-            active_model = Llm.GPT_4_1
+        # Choose model based on NODE_ENV environment variable
+        if NODE_ENV == "production":
+            active_model = Llm.GPT_4_1  # Production: full model
         else:
-            active_model = Llm.GPT_4_1_MINI
+            active_model = Llm.GPT_4_1_MINI  # Development: cheaper model
 
         selected_models.append(active_model)
 
