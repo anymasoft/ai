@@ -10,7 +10,7 @@ class Llm(Enum):
     GPT_4O_2024_08_06 = "gpt-4o-2024-08-06"
     GPT_4O_2024_11_20 = "gpt-4o-2024-11-20"
     GPT_4O_MINI = "gpt-4o-mini"
-    GPT_5_1_MINI = "gpt-5.1-mini"
+    GPT_5_MINI = "gpt-5-mini"
     GPT_4_1 = "gpt-4.1"
     GPT_4_1_MINI = "gpt-4.1-mini"
     GPT_4_1_NANO_2025_04_14 = "gpt-4.1-nano-2025-04-14"
@@ -46,7 +46,7 @@ MODEL_PROVIDER: dict[Llm, str] = {
     Llm.GPT_4O_2024_08_06: "openai",
     Llm.GPT_4O_2024_11_20: "openai",
     Llm.GPT_4O_MINI: "openai",
-    Llm.GPT_5_1_MINI: "openai",
+    Llm.GPT_5_MINI: "openai",
     Llm.GPT_4_1: "openai",
     Llm.GPT_4_1_MINI: "openai",
     Llm.GPT_4_1_NANO_2025_04_14: "openai",
