@@ -7,6 +7,9 @@ import openai
 import uuid
 from codegen.utils import extract_html_content
 from db import update_generation
+
+# Import shutdown flag from main
+import main as main_module
 from config import (
     ANTHROPIC_API_KEY,
     GEMINI_API_KEY,
@@ -238,8 +241,8 @@ class WebSocketCommunicator:
         variantIndex: int,
     ) -> None:
         """Send a message to the client with debug logging"""
-        # CRITICAL: Check if WebSocket is closed FIRST
-        if self.is_closed:
+        # KILL SWITCH: Check if app is shutting down FIRST
+        if main_module.app_shutting_down or self.is_closed:
             return
 
         # Print for debugging on the backend
@@ -266,8 +269,8 @@ class WebSocketCommunicator:
 
     async def throw_error(self, message: str) -> None:
         """Send an error message and close the connection"""
-        # CRITICAL: Check if already closed FIRST
-        if self.is_closed:
+        # KILL SWITCH: Check if app is shutting down FIRST
+        if main_module.app_shutting_down or self.is_closed:
             return
 
         print(message)
@@ -999,6 +1002,12 @@ class WebSocketSetupMiddleware(Middleware):
             context.ws_comm.is_accepted = True
         await context.ws_comm.accept()
 
+        # KILL SWITCH: Exit immediately if shutdown started during accept
+        if main_module.app_shutting_down:
+            context.cancelled = True
+            context.ws_comm.is_closed = True
+            return
+
         # Initialize generation record in database (if not already created by handler)
         # This ensures that even if the generation fails or WebSocket closes,
         # we have a record with the generation_id for tracking purposes
@@ -1032,8 +1041,8 @@ class ParameterExtractionMiddleware(Middleware):
     async def process(
         self, context: PipelineContext, next_func: Callable[[], Awaitable[None]]
     ) -> None:
-        # CRITICAL: Exit immediately if cancelled
-        if context.cancelled or (context.ws_comm and context.ws_comm.is_closed):
+        # KILL SWITCH: Exit if app shutting down or cancelled
+        if main_module.app_shutting_down or context.cancelled or (context.ws_comm and context.ws_comm.is_closed):
             return
 
         try:
@@ -1076,8 +1085,8 @@ class StatusBroadcastMiddleware(Middleware):
     async def process(
         self, context: PipelineContext, next_func: Callable[[], Awaitable[None]]
     ) -> None:
-        # CRITICAL: Exit immediately if cancelled
-        if context.cancelled or (context.ws_comm and context.ws_comm.is_closed):
+        # KILL SWITCH: Exit if app shutting down or cancelled
+        if main_module.app_shutting_down or context.cancelled or (context.ws_comm and context.ws_comm.is_closed):
             return
 
         try:
@@ -1101,8 +1110,8 @@ class PromptCreationMiddleware(Middleware):
     async def process(
         self, context: PipelineContext, next_func: Callable[[], Awaitable[None]]
     ) -> None:
-        # CRITICAL: Exit immediately if cancelled
-        if context.cancelled or (context.ws_comm and context.ws_comm.is_closed):
+        # KILL SWITCH: Exit if app shutting down or cancelled
+        if main_module.app_shutting_down or context.cancelled or (context.ws_comm and context.ws_comm.is_closed):
             return
 
         try:
@@ -1132,8 +1141,8 @@ class CodeGenerationMiddleware(Middleware):
     async def process(
         self, context: PipelineContext, next_func: Callable[[], Awaitable[None]]
     ) -> None:
-        # CRITICAL: Exit immediately if cancelled
-        if context.cancelled or (context.ws_comm and context.ws_comm.is_closed):
+        # KILL SWITCH: Exit if app shutting down or cancelled
+        if main_module.app_shutting_down or context.cancelled or (context.ws_comm and context.ws_comm.is_closed):
             return
 
         print(f"[DEBUG] CodeGenerationMiddleware: generation_id={context.generation_id}")
@@ -1223,8 +1232,8 @@ class PostProcessingMiddleware(Middleware):
     async def process(
         self, context: PipelineContext, next_func: Callable[[], Awaitable[None]]
     ) -> None:
-        # CRITICAL: Exit immediately if cancelled - don't send anything
-        if context.cancelled or (context.ws_comm and context.ws_comm.is_closed):
+        # KILL SWITCH: Exit immediately if app shutting down or cancelled
+        if main_module.app_shutting_down or context.cancelled or (context.ws_comm and context.ws_comm.is_closed):
             return
 
         try:

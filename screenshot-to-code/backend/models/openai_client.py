@@ -4,6 +4,7 @@ from typing import Awaitable, Callable, List
 from openai import AsyncOpenAI
 from openai.types.chat import ChatCompletionMessageParam, ChatCompletionChunk
 from llm import Completion
+import main as main_module
 
 
 
@@ -66,6 +67,9 @@ async def stream_openai_response(
         full_response = ""
         try:
             async for chunk in stream:  # type: ignore
+                # KILL SWITCH: Exit immediately if app shutting down
+                if main_module.app_shutting_down:
+                    break
                 if not isinstance(chunk, ChatCompletionChunk):
                     # Skip non-chunk items in stream (e.g., debug info)
                     continue

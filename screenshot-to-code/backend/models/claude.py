@@ -9,6 +9,7 @@ from debug.DebugFileWriter import DebugFileWriter
 from image_processing.utils import process_image
 from utils import pprint_prompt
 from llm import Completion, Llm
+import main as main_module
 
 
 def convert_openai_messages_to_claude(
@@ -96,6 +97,9 @@ async def stream_claude_response(
                 messages=claude_messages,  # type: ignore
             ) as stream:
                 async for event in stream:
+                    # KILL SWITCH: Exit immediately if app shutting down
+                    if main_module.app_shutting_down:
+                        break
                     if event.type == "content_block_delta":
                         if event.delta.type == "thinking_delta":
                             pass
@@ -120,6 +124,9 @@ async def stream_claude_response(
                 betas=["output-128k-2025-02-19"],
             ) as stream:
                 async for text in stream.text_stream:
+                    # KILL SWITCH: Exit immediately if app shutting down
+                    if main_module.app_shutting_down:
+                        break
                     response += text
                     await callback(text)
         except asyncio.CancelledError:
@@ -181,9 +188,18 @@ async def stream_claude_response_native(
                 messages=messages_to_send,  # type: ignore
             ) as stream:
                 async for text in stream.text_stream:
+                    # KILL SWITCH: Exit immediately if app shutting down
+                    if main_module.app_shutting_down:
+                        break
                     print(text, end="", flush=True)
                     full_stream += text
                     await callback(text)
+
+                # KILL SWITCH: If exiting early, return partial response
+                if main_module.app_shutting_down:
+                    await client.close()
+                    completion_time = time.time() - start_time
+                    return {"duration": completion_time, "code": full_stream}
 
             response = await stream.get_final_message()
         except asyncio.CancelledError:
