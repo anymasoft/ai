@@ -183,9 +183,14 @@ class WebSocketCommunicator:
         elif type == "variantError":
             print(f"Variant {variantIndex + 1} error: {value}")
 
-        await self.websocket.send_json(
-            {"type": type, "value": value, "variantIndex": variantIndex}
-        )
+        try:
+            await self.websocket.send_json(
+                {"type": type, "value": value, "variantIndex": variantIndex}
+            )
+        except Exception as e:
+            # WebSocket is closed or connection lost - log but don't fail
+            print(f"[WARNING] Failed to send {type} message to client: {e}")
+            # Don't re-raise: the generation result is already saved in DB
 
     async def throw_error(self, message: str) -> None:
         """Send an error message and close the connection"""
@@ -361,14 +366,15 @@ class ModelSelectionStage:
         anthropic_api_key: str | None,
         gemini_api_key: str | None,
     ) -> List[Llm]:
-        """Fixed OpenAI-only model selection for variant comparison"""
+        """Fixed OpenAI-only model selection with accessible models (no 403 errors)"""
 
-        # Fixed 4 OpenAI variants for honest model comparison
+        # Fixed 4 OpenAI variants: only ACCESSIBLE and CHEAP models
+        # gpt-4o-2024-08-06 was causing 403, so using gpt-4o-mini instead
         models = [
-            Llm.GPT_4O_2024_11_20,           # Variant 1: gpt-4o
-            Llm.GPT_4_1_2025_04_14,          # Variant 2: gpt-4.1 (turbo)
-            Llm.GPT_4_1_MINI_2025_04_14,     # Variant 3: gpt-4.1-mini
-            Llm.GPT_4O_2024_08_06,           # Variant 4: gpt-4o-2024-08-06 (stable, cheaper)
+            Llm.GPT_4O_MINI,                 # Variant 1: gpt-4o-mini (cheap)
+            Llm.GPT_4_1_MINI_2025_04_14,     # Variant 2: gpt-4.1-mini (cheap)
+            Llm.GPT_4_1_2025_04_14,          # Variant 3: gpt-4.1 (full)
+            Llm.GPT_4O_MINI,                 # Variant 4: gpt-4o-mini (duplicate allowed)
         ]
 
         if not openai_api_key:
@@ -675,6 +681,14 @@ class ParallelGenerationStage:
                     if IS_PROD
                     else ""
                 )
+            )
+            await self.send_message("variantError", error_message, index)
+            raise VariantErrorAlreadySent(e)
+        except openai.PermissionError as e:
+            # Model not available (403) - variant fails but doesn't break pipeline
+            print(f"[VARIANT {index + 1}] Model not available (403 Permission Denied)", e)
+            error_message = (
+                "Model not available for this account. Please check your OpenAI plan."
             )
             await self.send_message("variantError", error_message, index)
             raise VariantErrorAlreadySent(e)
