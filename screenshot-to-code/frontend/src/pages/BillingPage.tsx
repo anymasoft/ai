@@ -1,12 +1,10 @@
-import { DashboardLayout } from "@/components/dashboard/DashboardLayout";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Check } from "lucide-react";
 
 export function BillingPage() {
   return (
-    <DashboardLayout>
-      <div className="max-w-5xl mx-auto">
+    <div className="max-w-5xl mx-auto">
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
             Billing
@@ -161,6 +159,5 @@ export function BillingPage() {
           </div>
         </Card>
       </div>
-    </DashboardLayout>
   );
 }

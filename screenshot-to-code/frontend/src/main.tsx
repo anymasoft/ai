@@ -13,16 +13,23 @@ import { PlaygroundPage } from "./pages/PlaygroundPage.tsx";
 import { HistoryPage } from "./pages/HistoryPage.tsx";
 import { SettingsPage } from "./pages/SettingsPage.tsx";
 import { BillingPage } from "./pages/BillingPage.tsx";
+import { DashboardLayout } from "./components/dashboard/DashboardLayout.tsx";
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
     <Router>
       <Routes>
         <Route path="/" element={<App />} />
-        <Route path="/playground" element={<PlaygroundPage />} />
-        <Route path="/history" element={<HistoryPage />} />
-        <Route path="/settings" element={<SettingsPage />} />
-        <Route path="/settings/billing" element={<BillingPage />} />
+
+        {/* Dashboard routes with SaaS UI layout */}
+        <Route element={<DashboardLayout />}>
+          <Route path="/playground" element={<PlaygroundPage />} />
+          <Route path="/history" element={<HistoryPage />} />
+          <Route path="/settings" element={<SettingsPage />} />
+          <Route path="/settings/billing" element={<BillingPage />} />
+        </Route>
+
+        {/* Evals routes (old UI) */}
         <Route path="/evals" element={<AllEvalsPage />} />
         <Route path="/evals/single" element={<EvalsPage />} />
         <Route path="/evals/pairwise" element={<PairwiseEvalsPage />} />

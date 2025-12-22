@@ -1,4 +1,3 @@
-import { DashboardLayout } from "@/components/dashboard/DashboardLayout";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,8 +7,7 @@ import { ChevronRight } from "lucide-react";
 
 export function SettingsPage() {
   return (
-    <DashboardLayout>
-      <div className="max-w-2xl mx-auto">
+    <div className="max-w-2xl mx-auto">
         <div className="mb-6">
           <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
             Settings
@@ -101,6 +99,5 @@ export function SettingsPage() {
           </div>
         </div>
       </div>
-    </DashboardLayout>
   );
 }

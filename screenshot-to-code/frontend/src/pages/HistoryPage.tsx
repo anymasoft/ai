@@ -1,4 +1,3 @@
-import { DashboardLayout } from "@/components/dashboard/DashboardLayout";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -6,8 +5,7 @@ import { Eye, Copy, Trash2, Search } from "lucide-react";
 
 export function HistoryPage() {
   return (
-    <DashboardLayout>
-      <div className="max-w-7xl mx-auto">
+    <div className="max-w-7xl mx-auto">
         <div className="mb-6">
           <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
             History
@@ -89,6 +87,5 @@ export function HistoryPage() {
           ))}
         </div>
       </div>
-    </DashboardLayout>
   );
 }
