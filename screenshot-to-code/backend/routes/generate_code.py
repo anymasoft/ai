@@ -708,9 +708,9 @@ class ParallelGenerationStage:
             )
             await self.send_message("variantError", error_message, index)
             raise VariantErrorAlreadySent(e)
-        except openai.PermissionError as e:
+        except openai.BadRequestError as e:
             # Model not available (403) - variant fails but doesn't break pipeline
-            print(f"[VARIANT {index + 1}] Model not available (403 Permission Denied)", e)
+            print(f"[VARIANT {index + 1}] Model not available (400 Bad Request)", e)
             error_message = (
                 "Model not available for this account. Please check your OpenAI plan."
             )
