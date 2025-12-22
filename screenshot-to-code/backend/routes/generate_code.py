@@ -871,8 +871,15 @@ class ParallelGenerationStage:
                 # We still keep the completion in variant_completions
                 # AND the HTML is already saved in the database
 
+        except asyncio.CancelledError:
+            # Client disconnected during generation (e.g., F5 refresh)
+            # This is EXPECTED behavior, NOT an error
+            print(f"[INFO] Variant {real_index + 1} cancelled - client disconnected")
+            # Don't log traceback, don't save as failed, just exit gracefully
+            return
+
         except Exception as e:
-            # Handle any errors that occurred during generation
+            # Handle any OTHER errors that occurred during generation
             print(f"Error in variant {real_index + 1}: {e}")
             traceback.print_exception(type(e), e, e.__traceback__)
 

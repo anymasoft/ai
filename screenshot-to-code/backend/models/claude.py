@@ -1,3 +1,4 @@
+import asyncio
 import copy
 import time
 from typing import Any, Awaitable, Callable, Dict, List, Tuple, cast
@@ -86,35 +87,45 @@ async def stream_claude_response(
     ):
         print(f"Using {model_name} with thinking")
         # Thinking is not compatible with temperature
-        async with client.messages.stream(
-            model=model_name,
-            thinking={"type": "enabled", "budget_tokens": 10000},
-            max_tokens=30000,
-            system=system_prompt,
-            messages=claude_messages,  # type: ignore
-        ) as stream:
-            async for event in stream:
-                if event.type == "content_block_delta":
-                    if event.delta.type == "thinking_delta":
-                        pass
-                        # print(event.delta.thinking, end="")
-                    elif event.delta.type == "text_delta":
-                        response += event.delta.text
-                        await callback(event.delta.text)
+        try:
+            async with client.messages.stream(
+                model=model_name,
+                thinking={"type": "enabled", "budget_tokens": 10000},
+                max_tokens=30000,
+                system=system_prompt,
+                messages=claude_messages,  # type: ignore
+            ) as stream:
+                async for event in stream:
+                    if event.type == "content_block_delta":
+                        if event.delta.type == "thinking_delta":
+                            pass
+                            # print(event.delta.thinking, end="")
+                        elif event.delta.type == "text_delta":
+                            response += event.delta.text
+                            await callback(event.delta.text)
+        except asyncio.CancelledError:
+            # Client disconnected - return partial response
+            print(f"[CLAUDE] Streaming cancelled - returning partial response ({len(response)} chars)")
+            pass
 
     else:
         # Stream Claude response
-        async with client.beta.messages.stream(
-            model=model_name,
-            max_tokens=max_tokens,
-            temperature=temperature,
-            system=system_prompt,
-            messages=claude_messages,  # type: ignore
-            betas=["output-128k-2025-02-19"],
-        ) as stream:
-            async for text in stream.text_stream:
-                response += text
-                await callback(text)
+        try:
+            async with client.beta.messages.stream(
+                model=model_name,
+                max_tokens=max_tokens,
+                temperature=temperature,
+                system=system_prompt,
+                messages=claude_messages,  # type: ignore
+                betas=["output-128k-2025-02-19"],
+            ) as stream:
+                async for text in stream.text_stream:
+                    response += text
+                    await callback(text)
+        except asyncio.CancelledError:
+            # Client disconnected - return partial response
+            print(f"[CLAUDE] Streaming cancelled - returning partial response ({len(response)} chars)")
+            pass
 
     # Close the Anthropic client
     await client.close()
@@ -161,19 +172,27 @@ async def stream_claude_response_native(
 
         pprint_prompt(messages_to_send)
 
-        async with client.messages.stream(
-            model=model_name,
-            max_tokens=max_tokens,
-            temperature=temperature,
-            system=system_prompt,
-            messages=messages_to_send,  # type: ignore
-        ) as stream:
-            async for text in stream.text_stream:
-                print(text, end="", flush=True)
-                full_stream += text
-                await callback(text)
+        try:
+            async with client.messages.stream(
+                model=model_name,
+                max_tokens=max_tokens,
+                temperature=temperature,
+                system=system_prompt,
+                messages=messages_to_send,  # type: ignore
+            ) as stream:
+                async for text in stream.text_stream:
+                    print(text, end="", flush=True)
+                    full_stream += text
+                    await callback(text)
 
-        response = await stream.get_final_message()
+            response = await stream.get_final_message()
+        except asyncio.CancelledError:
+            # Client disconnected - return partial response
+            print(f"\n[CLAUDE-NATIVE] Streaming cancelled - returning partial response ({len(full_stream)} chars)")
+            # Return what we have so far
+            await client.close()
+            completion_time = time.time() - start_time
+            return {"duration": completion_time, "code": full_stream}
         response_text = response.content[0].text
 
         # Write each pass's code to .html file and thinking to .txt file
