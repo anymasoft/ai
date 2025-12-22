@@ -99,12 +99,14 @@ class PipelineContext:
 
     @property
     def send_message(self):
-        assert self.ws_comm is not None
+        if self.ws_comm is None:
+            raise RuntimeError("WebSocket communicator not initialized - cannot send message")
         return self.ws_comm.send_message
 
     @property
     def throw_error(self):
-        assert self.ws_comm is not None
+        if self.ws_comm is None:
+            raise RuntimeError("WebSocket communicator not initialized - cannot throw error")
         return self.ws_comm.throw_error
 
 
@@ -748,7 +750,10 @@ class ParallelGenerationStage:
             real_index: Real historical variant index (for logging and DB)
         """
         try:
-            assert self.openai_api_key is not None
+            if self.openai_api_key is None:
+                raise VariantErrorAlreadySent(
+                    Exception("OpenAI API key is not configured. Please provide a valid OpenAI API key.")
+                )
             return await stream_openai_response(
                 prompt_messages,
                 api_key=self.openai_api_key,
@@ -991,7 +996,10 @@ class ParameterExtractionMiddleware(Middleware):
             # Check if parameters are already provided (from queue worker)
             if not hasattr(context, 'params') or context.params is None:
                 # Receive parameters from WebSocket
-                assert context.ws_comm is not None
+                if context.ws_comm is None:
+                    print("[ERROR] WebSocket communicator not available for parameter extraction")
+                    await context.throw_error("Internal error: WebSocket not available")
+                    return
                 context.params = await context.ws_comm.receive_params()
 
             # Extract and validate
@@ -1040,7 +1048,10 @@ class PromptCreationMiddleware(Middleware):
     ) -> None:
         try:
             prompt_creator = PromptCreationStage(context.throw_error)
-            assert context.extracted_params is not None
+            if context.extracted_params is None:
+                print("[ERROR] extracted_params is None in PromptCreationMiddleware")
+                await context.throw_error("Internal error: parameters not extracted")
+                return
             context.prompt_messages, context.image_cache = (
                 await prompt_creator.create_prompt(
                     context.extracted_params,
@@ -1062,13 +1073,19 @@ class CodeGenerationMiddleware(Middleware):
         if SHOULD_MOCK_AI_RESPONSE:
             # Use mock response for testing
             mock_stage = MockResponseStage(context.send_message)
-            assert context.extracted_params is not None
+            if context.extracted_params is None:
+                print("[ERROR] extracted_params is None in CodeGenerationMiddleware (mock mode)")
+                await context.throw_error("Internal error: parameters not extracted")
+                return
             context.completions = await mock_stage.generate_mock_response(
                 context.extracted_params.input_mode
             )
         else:
             try:
-                assert context.extracted_params is not None
+                if context.extracted_params is None:
+                    print("[ERROR] extracted_params is None in CodeGenerationMiddleware (real generation)")
+                    await context.throw_error("Internal error: parameters not extracted")
+                    return
                 if context.extracted_params.input_mode == "video":
                     # Use video generation for video mode
                     video_stage = VideoGenerationStage(
