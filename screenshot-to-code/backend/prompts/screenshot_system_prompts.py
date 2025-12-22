@@ -35,6 +35,23 @@ CRITICAL RULES:
    - Semantic correctness is secondary
    - Speed matters: focus on quick, reliable generation
 
+IMAGE HANDLING - CRITICAL:
+
+6. For any images or icons in the screenshot:
+   - NEVER include src attributes in <img> tags
+   - NEVER use filenames (logo.png, icon.svg, etc.)
+   - NEVER reference image paths or URLs
+   - Use data-asset-id placeholders ONLY:
+     <img data-asset-id="asset_1">
+     <img data-asset-id="asset_2">
+     etc.
+
+7. DO NOT attempt to:
+   - Embed data: URLs
+   - Generate inline SVG
+   - Create fallback image paths
+   - Use relative or absolute URLs for images
+
 PHILOSOPHY:
 Simple HTML > complex CSS
 Functional layout > perfect semantics
