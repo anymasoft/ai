@@ -22,11 +22,14 @@ init_queue()
 # Global worker task
 worker_task: asyncio.Task = None
 
+# Global shutdown flag - KILL SWITCH для Ctrl+C
+app_shutting_down = False
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Lifespan context manager for startup/shutdown"""
-    global worker_task
+    global worker_task, app_shutting_down
 
     # Startup
     print("[APP] Starting application...")
@@ -35,7 +38,8 @@ async def lifespan(app: FastAPI):
 
     yield
 
-    # Shutdown
+    # Shutdown - SET KILL SWITCH FIRST
+    app_shutting_down = True
     print("[APP] Shutting down application...")
     if worker_task:
         worker_task.cancel()
