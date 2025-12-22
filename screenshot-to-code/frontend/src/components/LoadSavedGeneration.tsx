@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { fetchGenerationsList, fetchGenerationDetail, GenerationMetadata, GenerationDetail } from "../lib/generations-api";
 import toast from "react-hot-toast";
 import "./LoadSavedGeneration.css";
