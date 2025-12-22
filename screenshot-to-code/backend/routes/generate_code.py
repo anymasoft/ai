@@ -130,10 +130,18 @@ class Pipeline:
         self.middlewares.append(middleware)
         return self
 
-    async def execute(self, websocket: WebSocket) -> None:
-        """Execute the pipeline with the given WebSocket"""
+    async def execute(self, websocket: WebSocket, params: Dict[str, str] = None) -> None:
+        """Execute the pipeline with the given WebSocket
+
+        Args:
+            websocket: FastAPI WebSocket connection
+            params: Optional pre-provided parameters (from queue worker)
+        """
         try:
             context = PipelineContext(websocket=websocket)
+            # If params are provided (from queue), skip parameter extraction
+            if params:
+                context.params = params
 
             # Build the middleware chain
             async def start(ctx: PipelineContext):
@@ -970,9 +978,11 @@ class ParameterExtractionMiddleware(Middleware):
         self, context: PipelineContext, next_func: Callable[[], Awaitable[None]]
     ) -> None:
         try:
-            # Receive parameters
-            assert context.ws_comm is not None
-            context.params = await context.ws_comm.receive_params()
+            # Check if parameters are already provided (from queue worker)
+            if not hasattr(context, 'params') or context.params is None:
+                # Receive parameters from WebSocket
+                assert context.ws_comm is not None
+                context.params = await context.ws_comm.receive_params()
 
             # Extract and validate
             param_extractor = ParameterExtractionStage(context.throw_error)
@@ -1148,21 +1158,71 @@ class PostProcessingMiddleware(Middleware):
 
 @router.websocket("/generate-code")
 async def stream_code(websocket: WebSocket):
-    """Handle WebSocket code generation requests using a pipeline pattern"""
+    """Handle WebSocket code generation requests using a queue"""
+    from queue.generation_queue import enqueue_generation, GenerationJob
+    from db import save_generation
+    import uuid
+
     try:
-        pipeline = Pipeline()
+        await websocket.accept()
 
-        # Configure the pipeline
-        pipeline.use(WebSocketSetupMiddleware())
-        pipeline.use(ParameterExtractionMiddleware())
-        pipeline.use(StatusBroadcastMiddleware())
-        pipeline.use(PromptCreationMiddleware())
-        pipeline.use(CodeGenerationMiddleware())
-        pipeline.use(PostProcessingMiddleware())
+        # Read parameters from client
+        params: Dict[str, str] = await websocket.receive_json()
+        print("[WS] Received generation parameters")
 
-        # Execute the pipeline
-        await pipeline.execute(websocket)
+        # Create generation record with queued status
+        generation_id = str(uuid.uuid4().hex[:16])
+        try:
+            save_generation(
+                status="queued",
+                generation_id=generation_id,
+            )
+            print(f"[WS] Created generation record: {generation_id}")
+        except Exception as e:
+            print(f"[WS] Failed to create generation record: {e}")
+            await websocket.send_json({
+                "type": "error",
+                "value": "Failed to create generation record"
+            })
+            await websocket.close()
+            return
+
+        # Send queued status to client
+        await websocket.send_json({
+            "type": "status",
+            "value": "Queued for processing...",
+            "variantIndex": 0
+        })
+
+        # Enqueue generation job
+        job = GenerationJob(
+            generation_id=generation_id,
+            websocket=websocket,
+            params=params,
+        )
+
+        print(f"[WS] Enqueuing generation job: {generation_id}")
+        await enqueue_generation(job)
+
+        # WebSocket will be processed by worker
+        # Keep connection alive - worker will send updates through it
+        # Just wait for close signal or cancellation
+        try:
+            while True:
+                # Keep connection alive
+                await asyncio.sleep(0.1)
+        except Exception as e:
+            print(f"[WS] Connection lost: {e}")
+
     except asyncio.CancelledError:
-        # Client disconnected or server reload - this is normal
+        # Client disconnected or server reload
         print("[INFO] WebSocket closed (client disconnect or reload)")
         return
+    except Exception as e:
+        print(f"[WS] Unexpected error: {e}")
+        traceback.print_exception(type(e), e, e.__traceback__)
+        try:
+            await websocket.send_json({"type": "error", "value": str(e)})
+            await websocket.close()
+        except:
+            pass
