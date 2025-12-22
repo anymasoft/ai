@@ -19,7 +19,5 @@ MODEL_PROVIDER: dict[Llm, str] = {
     Llm.GPT_5_1_MINI: "openai",
 }
 
-# Convenience sets for membership checks
+# Convenience set for membership checks
 OPENAI_MODELS = {m for m, p in MODEL_PROVIDER.items() if p == "openai"}
-ANTHROPIC_MODELS = {m for m, p in MODEL_PROVIDER.items() if p == "anthropic"}
-GEMINI_MODELS = {m for m, p in MODEL_PROVIDER.items() if p == "gemini"}

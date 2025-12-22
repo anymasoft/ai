@@ -207,7 +207,6 @@ class ExtractedParams:
     input_mode: InputMode
     should_generate_images: bool
     openai_api_key: str | None
-    anthropic_api_key: str | None
     openai_base_url: str | None
     generation_type: Literal["create", "update"]
     prompt: PromptContent
@@ -241,11 +240,6 @@ class ParameterExtractionStage:
 
         openai_api_key = self._get_from_settings_dialog_or_env(
             params, "openAiApiKey", OPENAI_API_KEY
-        )
-
-        # If neither is provided, we throw an error later only if Claude is used.
-        anthropic_api_key = self._get_from_settings_dialog_or_env(
-            params, "anthropicApiKey", ANTHROPIC_API_KEY
         )
 
         # Base URL for OpenAI API
@@ -282,7 +276,6 @@ class ParameterExtractionStage:
             input_mode=validated_input_mode,
             should_generate_images=should_generate_images,
             openai_api_key=openai_api_key,
-            anthropic_api_key=anthropic_api_key,
             openai_base_url=openai_base_url,
             generation_type=generation_type,
             prompt=prompt,
@@ -317,21 +310,15 @@ class ModelSelectionStage:
         generation_type: Literal["create", "update"],
         input_mode: InputMode,
         openai_api_key: str | None,
-        anthropic_api_key: str | None,
-        gemini_api_key: str | None = None,
     ) -> List[Llm]:
         """Select model - fixed to Variant 1 only using CODEGEN_MODEL setting"""
         try:
             # Map CODEGEN_MODEL string to Llm enum
             model = self._get_model_from_codegen_setting(CODEGEN_MODEL)
 
-            # Validate we have the required API key for this model
-            if model in OPENAI_MODELS and not openai_api_key:
+            # Validate we have the required API key for this model (all models are OpenAI)
+            if not openai_api_key:
                 raise Exception(f"Model {CODEGEN_MODEL} requires OpenAI API key")
-            if model in ANTHROPIC_MODELS and not anthropic_api_key:
-                raise Exception(f"Model {CODEGEN_MODEL} requires Anthropic API key")
-            if model in GEMINI_MODELS and not gemini_api_key:
-                raise Exception(f"Model {CODEGEN_MODEL} requires Gemini API key")
 
             print(f"[GEN] Using Variant 1 only with model: {model.value}")
             return [model]  # Always return list with single model
@@ -418,53 +405,6 @@ class MockResponseStage:
         return completions
 
 
-class VideoGenerationStage:
-    """Handles video mode code generation using Claude 3 Opus"""
-
-    def __init__(
-        self,
-        send_message: Callable[[MessageType, str, int], Coroutine[Any, Any, None]],
-        throw_error: Callable[[str], Coroutine[Any, Any, None]],
-    ):
-        self.send_message = send_message
-        self.throw_error = throw_error
-
-    async def generate_video_code(
-        self,
-        prompt_messages: List[ChatCompletionMessageParam],
-        anthropic_api_key: str | None,
-    ) -> List[str]:
-        """Generate code for video input mode"""
-        if not anthropic_api_key:
-            await self.throw_error(
-                "Video only works with Anthropic models. No Anthropic API key found. "
-                "Please add the environment variable ANTHROPIC_API_KEY to backend/.env "
-                "or in the settings dialog"
-            )
-            raise Exception("No Anthropic key")
-
-        async def process_chunk(content: str, variantIndex: int):
-            await self.send_message("chunk", content, variantIndex)
-
-        completion_results = [
-            await stream_claude_response_native(
-                system_prompt=VIDEO_PROMPT,
-                messages=prompt_messages,  # type: ignore
-                api_key=anthropic_api_key,
-                callback=lambda x: process_chunk(x, 0),
-                model_name=Llm.CLAUDE_3_OPUS.value,
-                include_thinking=True,
-            )
-        ]
-        completions = [result["code"] for result in completion_results]
-
-        # Send the complete variant back to the client
-        await self.send_message("setCode", completions[0], 0)
-        await self.send_message("variantComplete", "Variant generation complete", 0)
-
-        return completions
-
-
 class PostProcessingStage:
     """Handles post-processing after code generation completes"""
 
@@ -498,14 +438,13 @@ class ParallelGenerationStage:
         send_message: Callable[[MessageType, str, int], Coroutine[Any, Any, None]],
         openai_api_key: str | None,
         openai_base_url: str | None,
-        anthropic_api_key: str | None,
-        should_generate_images: bool,
+        anthropic_api_key: str | None = None,  # Deprecated, ignored
+        should_generate_images: bool = False,
         start_time: float | None = None,
     ):
         self.send_message = send_message
         self.openai_api_key = openai_api_key
         self.openai_base_url = openai_base_url
-        self.anthropic_api_key = anthropic_api_key
         self.should_generate_images = should_generate_images
         self.start_time = start_time or time.time()
         self.generation_id: str | None = None  # Will be set during processing
@@ -548,49 +487,21 @@ class ParallelGenerationStage:
         prompt_messages: List[ChatCompletionMessageParam],
         params: Dict[str, str],
     ) -> List[Coroutine[Any, Any, Completion]]:
-        """Create generation tasks for each variant model"""
+        """Create generation tasks for each variant model (OpenAI only)"""
         tasks: List[Coroutine[Any, Any, Completion]] = []
 
         for index, model in enumerate(variant_models):
-            if model in OPENAI_MODELS:
-                if self.openai_api_key is None:
-                    raise Exception("OpenAI API key is missing.")
+            # All models should be OpenAI models (GPT_4_1_MINI or GPT_5_1_MINI)
+            if self.openai_api_key is None:
+                raise Exception("OpenAI API key is missing.")
 
-                tasks.append(
-                    self._stream_openai_with_error_handling(
-                        prompt_messages,
-                        model_name=model.value,
-                        index=index,
-                    )
+            tasks.append(
+                self._stream_openai_with_error_handling(
+                    prompt_messages,
+                    model_name=model.value,
+                    index=index,
                 )
-            elif GEMINI_API_KEY and model in GEMINI_MODELS:
-                tasks.append(
-                    stream_gemini_response(
-                        prompt_messages,
-                        api_key=GEMINI_API_KEY,
-                        callback=lambda x, i=index: self._process_chunk(x, i),
-                        model_name=model.value,
-                    )
-                )
-            elif model in ANTHROPIC_MODELS:
-                if self.anthropic_api_key is None:
-                    raise Exception("Anthropic API key is missing.")
-
-                # For creation, use Claude Sonnet 3.7
-                # For updates, we use Claude Sonnet 4.5 until we have tested Claude Sonnet 3.7
-                if params["generationType"] == "create":
-                    claude_model = Llm.CLAUDE_3_7_SONNET_2025_02_19
-                else:
-                    claude_model = Llm.CLAUDE_4_5_SONNET_2025_09_29
-
-                tasks.append(
-                    stream_claude_response(
-                        prompt_messages,
-                        api_key=self.anthropic_api_key,
-                        callback=lambda x, i=index: self._process_chunk(x, i),
-                        model_name=claude_model.value,
-                    )
-                )
+            )
 
         return tasks
 
@@ -872,59 +783,47 @@ class CodeGenerationMiddleware(Middleware):
         else:
             try:
                 assert context.extracted_params is not None
-                if context.extracted_params.input_mode == "video":
-                    # Use video generation for video mode
-                    video_stage = VideoGenerationStage(
-                        context.send_message, context.throw_error
-                    )
-                    context.completions = await video_stage.generate_video_code(
-                        context.prompt_messages,
-                        context.extracted_params.anthropic_api_key,
-                    )
-                else:
-                    # Select models
-                    model_selector = ModelSelectionStage(context.throw_error)
-                    context.variant_models = await model_selector.select_models(
-                        generation_type=context.extracted_params.generation_type,
-                        input_mode=context.extracted_params.input_mode,
-                        openai_api_key=context.extracted_params.openai_api_key,
-                        anthropic_api_key=context.extracted_params.anthropic_api_key,
-                        gemini_api_key=GEMINI_API_KEY,
-                    )
+                # Select models (will return single GPT model based on CODEGEN_MODEL)
+                model_selector = ModelSelectionStage(context.throw_error)
+                context.variant_models = await model_selector.select_models(
+                    generation_type=context.extracted_params.generation_type,
+                    input_mode=context.extracted_params.input_mode,
+                    openai_api_key=context.extracted_params.openai_api_key,
+                )
 
-                    # Generate code for all variants
-                    generation_stage = ParallelGenerationStage(
-                        send_message=context.send_message,
-                        openai_api_key=context.extracted_params.openai_api_key,
-                        openai_base_url=context.extracted_params.openai_base_url,
-                        anthropic_api_key=context.extracted_params.anthropic_api_key,
-                        should_generate_images=context.extracted_params.should_generate_images,
-                        start_time=time.time(),
+                # Generate code for all variants
+                generation_stage = ParallelGenerationStage(
+                    send_message=context.send_message,
+                    openai_api_key=context.extracted_params.openai_api_key,
+                    openai_base_url=context.extracted_params.openai_base_url,
+                    anthropic_api_key=None,  # Only OpenAI supported
+                    should_generate_images=context.extracted_params.should_generate_images,
+                    start_time=time.time(),
+                )
+
+                context.variant_completions = (
+                    await generation_stage.process_variants(
+                        variant_models=context.variant_models,
+                        prompt_messages=context.prompt_messages,
+                        image_cache=context.image_cache,
+                        params=context.params,
                     )
+                )
 
-                    context.variant_completions = (
-                        await generation_stage.process_variants(
-                            variant_models=context.variant_models,
-                            prompt_messages=context.prompt_messages,
-                            image_cache=context.image_cache,
-                            params=context.params,
-                        )
+                # Check if all variants failed
+                if len(context.variant_completions) == 0:
+                    await context.throw_error(
+                        "Error generating code. Please contact support."
                     )
+                    return  # Don't continue the pipeline
 
-                    # Check if all variants failed
-                    if len(context.variant_completions) == 0:
-                        await context.throw_error(
-                            "Error generating code. Please contact support."
-                        )
-                        return  # Don't continue the pipeline
-
-                    # Convert to list format
-                    context.completions = []
-                    for i in range(len(context.variant_models)):
-                        if i in context.variant_completions:
-                            context.completions.append(context.variant_completions[i])
-                        else:
-                            context.completions.append("")
+                # Convert to list format
+                context.completions = []
+                for i in range(len(context.variant_models)):
+                    if i in context.variant_completions:
+                        context.completions.append(context.variant_completions[i])
+                    else:
+                        context.completions.append("")
 
             except Exception as e:
                 print(f"[GENERATE_CODE] Unexpected error: {e}")
