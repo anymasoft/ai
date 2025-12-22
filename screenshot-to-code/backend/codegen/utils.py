@@ -270,3 +270,69 @@ def is_html_valid(html: str) -> tuple[bool, str]:
         return False, f"Expected 1 </body> tag, found {body_close_count}"
 
     return True, "Valid HTML"
+
+
+def fix_broken_img_icons(html: str) -> str:
+    """
+    Fix broken or missing <img> src attributes.
+
+    Rules:
+    1. If <img> has empty or missing src → use placeholder 1x1 PNG
+    2. If <img src=""> → replace with valid data:image/png placeholder
+    3. Ensure all <img> tags have valid src attributes
+
+    This prevents broken image icons in the UI.
+    """
+
+    # Placeholder 1x1 transparent PNG (minimal, valid)
+    PLACEHOLDER_PNG = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII="
+
+    try:
+        # Fix <img> tags with empty src
+        # Match: <img ... src="" ... > or <img ... src='' ... > or <img without src>
+
+        # Pattern 1: src="" (empty double quotes)
+        html = re.sub(
+            r'<img\s+([^>]*?)src=""([^>]*)>',
+            rf'<img \1src="{PLACEHOLDER_PNG}"\2>',
+            html,
+            flags=re.IGNORECASE
+        )
+
+        # Pattern 2: src='' (empty single quotes)
+        html = re.sub(
+            r"<img\s+([^>]*?)src=''([^>]*)>",
+            rf'<img \1src="{PLACEHOLDER_PNG}"\2>',
+            html,
+            flags=re.IGNORECASE
+        )
+
+        # Pattern 3: src="/" or src="." (invalid paths)
+        html = re.sub(
+            r'<img\s+([^>]*?)src="[./]*"([^>]*)>',
+            rf'<img \1src="{PLACEHOLDER_PNG}"\2>',
+            html,
+            flags=re.IGNORECASE
+        )
+
+        # Pattern 4: <img without src attribute at all
+        # This is more complex - need to find img tags without src and add it
+        def add_missing_src(match):
+            tag = match.group(0)
+            if 'src=' not in tag.lower():
+                # Insert src before the closing >
+                return tag.replace('>', f' src="{PLACEHOLDER_PNG}">', 1)
+            return tag
+
+        html = re.sub(
+            r'<img\s+[^>]*?>',
+            add_missing_src,
+            html,
+            flags=re.IGNORECASE
+        )
+
+        return html
+    except Exception as e:
+        print(f"[IMG FIX] Error fixing broken img tags: {e}")
+        return html
+
