@@ -1,163 +1,185 @@
-import { Card } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Check } from "lucide-react";
+import { Check, Loader2 } from "lucide-react";
+import { useState } from "react";
+
+const plans = [
+  {
+    id: "free",
+    name: "Free",
+    description: "Для знакомства с сервисом",
+    price: 0,
+    features: [
+      "10 генераций в месяц",
+      "Базовые AI модели",
+      "История всех генераций",
+      "Поддержка по email",
+    ],
+    current: true,
+  },
+  {
+    id: "pro",
+    name: "Pro",
+    description: "Для активных разработчиков",
+    price: 2990,
+    features: [
+      "100 генераций в месяц",
+      "Все AI модели",
+      "Приоритетная поддержка",
+      "API доступ",
+    ],
+    popular: true,
+  },
+  {
+    id: "enterprise",
+    name: "Enterprise",
+    description: "Для команд и студий",
+    price: 9990,
+    features: [
+      "Неограниченные генерации",
+      "Все AI модели",
+      "Выделенная поддержка",
+      "Team management",
+    ],
+  },
+];
 
 export function BillingPage() {
+  const [loadingPlanId, setLoadingPlanId] = useState<string | null>(null);
+
+  const handleSelectPlan = async (planId: string) => {
+    setLoadingPlanId(planId);
+    // Simulate payment processing
+    setTimeout(() => {
+      setLoadingPlanId(null);
+    }, 1000);
+  };
+
+  const currentPlan = "free";
+
   return (
-    <div className="max-w-5xl mx-auto">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
-            Billing
-          </h1>
-          <p className="text-gray-600 dark:text-gray-400">
-            Manage your subscription and billing information
-          </p>
-        </div>
-
-        {/* Current Plan */}
-        <Card className="p-6 border border-gray-200 dark:border-zinc-800 mb-8">
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-            Current Plan
-          </h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <p className="text-sm text-gray-600 dark:text-gray-400">Plan Name</p>
-              <p className="text-2xl font-bold text-gray-900 dark:text-white mt-1">
-                Free
-              </p>
-            </div>
-            <div>
-              <p className="text-sm text-gray-600 dark:text-gray-400">Billing Cycle</p>
-              <p className="text-2xl font-bold text-gray-900 dark:text-white mt-1">
-                Always Free
-              </p>
-            </div>
-          </div>
-          <div className="mt-6 pt-6 border-t border-gray-200 dark:border-zinc-800">
-            <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
-              Usage this month
-            </p>
-            <div className="w-full bg-gray-200 dark:bg-zinc-800 rounded-full h-2">
-              <div className="bg-blue-600 h-2 rounded-full" style={{ width: "0%" }} />
-            </div>
-            <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">
-              0 / 10 generations
-            </p>
-          </div>
-        </Card>
-
-        {/* Pricing Plans */}
-        <div className="mb-8">
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-            Upgrade Your Plan
-          </h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {/* Free Plan */}
-            <Card className="p-6 border border-gray-200 dark:border-zinc-800 relative">
-              <h3 className="text-lg font-bold text-gray-900 dark:text-white">Free</h3>
-              <p className="text-3xl font-bold text-gray-900 dark:text-white mt-2">
-                $0<span className="text-lg text-gray-600 dark:text-gray-400">/mo</span>
-              </p>
-              <Button
-                disabled
-                className="w-full mt-4 bg-blue-100 text-blue-900 dark:bg-blue-900 dark:text-blue-100 cursor-not-allowed"
-              >
-                Current Plan
-              </Button>
-              <ul className="space-y-3 mt-6 text-sm">
-                <li className="flex gap-3">
-                  <Check className="w-5 h-5 text-green-600 flex-shrink-0" />
-                  <span className="text-gray-700 dark:text-gray-300">10 generations/month</span>
-                </li>
-                <li className="flex gap-3">
-                  <Check className="w-5 h-5 text-green-600 flex-shrink-0" />
-                  <span className="text-gray-700 dark:text-gray-300">Basic AI models</span>
-                </li>
-                <li className="flex gap-3">
-                  <Check className="w-5 h-5 text-green-600 flex-shrink-0" />
-                  <span className="text-gray-700 dark:text-gray-300">Community support</span>
-                </li>
-              </ul>
-            </Card>
-
-            {/* Pro Plan */}
-            <Card className="p-6 border-2 border-blue-600 dark:border-blue-500 relative">
-              <div className="absolute -top-3 left-4 bg-blue-600 text-white px-3 py-1 rounded text-xs font-semibold">
-                Most Popular
-              </div>
-              <h3 className="text-lg font-bold text-gray-900 dark:text-white">Pro</h3>
-              <p className="text-3xl font-bold text-gray-900 dark:text-white mt-2">
-                $29<span className="text-lg text-gray-600 dark:text-gray-400">/mo</span>
-              </p>
-              <Button className="w-full mt-4 bg-blue-600 hover:bg-blue-700 text-white">
-                Upgrade to Pro
-              </Button>
-              <ul className="space-y-3 mt-6 text-sm">
-                <li className="flex gap-3">
-                  <Check className="w-5 h-5 text-green-600 flex-shrink-0" />
-                  <span className="text-gray-700 dark:text-gray-300">Unlimited generations</span>
-                </li>
-                <li className="flex gap-3">
-                  <Check className="w-5 h-5 text-green-600 flex-shrink-0" />
-                  <span className="text-gray-700 dark:text-gray-300">All AI models</span>
-                </li>
-                <li className="flex gap-3">
-                  <Check className="w-5 h-5 text-green-600 flex-shrink-0" />
-                  <span className="text-gray-700 dark:text-gray-300">Priority support</span>
-                </li>
-                <li className="flex gap-3">
-                  <Check className="w-5 h-5 text-green-600 flex-shrink-0" />
-                  <span className="text-gray-700 dark:text-gray-300">API access</span>
-                </li>
-              </ul>
-            </Card>
-
-            {/* Enterprise Plan */}
-            <Card className="p-6 border border-gray-200 dark:border-zinc-800">
-              <h3 className="text-lg font-bold text-gray-900 dark:text-white">Enterprise</h3>
-              <p className="text-3xl font-bold text-gray-900 dark:text-white mt-2">
-                Custom<span className="text-lg text-gray-600 dark:text-gray-400">/mo</span>
-              </p>
-              <Button variant="outline" className="w-full mt-4">
-                Contact Sales
-              </Button>
-              <ul className="space-y-3 mt-6 text-sm">
-                <li className="flex gap-3">
-                  <Check className="w-5 h-5 text-green-600 flex-shrink-0" />
-                  <span className="text-gray-700 dark:text-gray-300">Everything in Pro</span>
-                </li>
-                <li className="flex gap-3">
-                  <Check className="w-5 h-5 text-green-600 flex-shrink-0" />
-                  <span className="text-gray-700 dark:text-gray-300">Team management</span>
-                </li>
-                <li className="flex gap-3">
-                  <Check className="w-5 h-5 text-green-600 flex-shrink-0" />
-                  <span className="text-gray-700 dark:text-gray-300">SSO & advanced security</span>
-                </li>
-                <li className="flex gap-3">
-                  <Check className="w-5 h-5 text-green-600 flex-shrink-0" />
-                  <span className="text-gray-700 dark:text-gray-300">Dedicated support</span>
-                </li>
-              </ul>
-            </Card>
-          </div>
-        </div>
-
-        {/* Payment History */}
-        <Card className="p-6 border border-gray-200 dark:border-zinc-800">
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-            Payment History
-          </h2>
-          <div className="space-y-3">
-            <div className="flex items-center justify-between py-3 border-b border-gray-200 dark:border-zinc-800">
-              <div>
-                <p className="font-medium text-gray-900 dark:text-white">Free Plan - Active</p>
-                <p className="text-sm text-gray-600 dark:text-gray-400">Started Dec 22, 2024</p>
-              </div>
-              <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">$0.00</span>
-            </div>
-          </div>
-        </Card>
+    <div className="space-y-8 w-full">
+      {/* Header */}
+      <div>
+        <h1 className="text-3xl font-bold">Тарифы и биллинг</h1>
+        <p className="text-muted-foreground mt-2">
+          Выберите тариф, который подходит вам лучше всего
+        </p>
       </div>
+
+      {/* Current Plan Info */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Текущий тариф</CardTitle>
+          <CardDescription>Ваша текущая подписка</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="font-semibold">Free</p>
+              <p className="text-sm text-muted-foreground">10 генераций в месяц</p>
+            </div>
+            <span className="text-xl font-bold">Бесплатно</span>
+          </div>
+          <div className="space-y-2">
+            <div className="flex items-center justify-between text-sm">
+              <span>Использовано этот месяц</span>
+              <span className="font-medium">0 / 10</span>
+            </div>
+            <div className="w-full bg-secondary rounded-full h-2">
+              <div
+                className="bg-primary h-2 rounded-full"
+                style={{ width: "0%" }}
+              />
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Pricing Plans */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Доступные тарифы</CardTitle>
+          <CardDescription>
+            Выберите тариф, который вам подойдёт
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid gap-6 grid-cols-1 lg:grid-cols-3">
+            {plans.map((plan) => (
+              <Card
+                key={plan.id}
+                className={`flex flex-col ${
+                  plan.popular ? "border-primary relative lg:scale-105" : ""
+                }`}
+              >
+                {plan.popular && (
+                  <div className="absolute -top-3 left-0 right-0 flex justify-center">
+                    <span className="bg-primary text-primary-foreground text-xs font-semibold px-3 py-1 rounded-full">
+                      Самый популярный
+                    </span>
+                  </div>
+                )}
+                <CardHeader className={plan.popular ? "pt-6" : ""}>
+                  <CardTitle className="text-xl">{plan.name}</CardTitle>
+                  <CardDescription>{plan.description}</CardDescription>
+                </CardHeader>
+                <CardContent className="flex-1 flex flex-col justify-between space-y-6">
+                  <div className="space-y-4">
+                    <div className="flex items-baseline gap-1">
+                      <span className="text-3xl font-bold">
+                        {plan.price === 0 ? "Бесплатно" : `${(plan.price / 100).toLocaleString("ru-RU")} ₽`}
+                      </span>
+                      {plan.price > 0 && (
+                        <span className="text-muted-foreground">/месяц</span>
+                      )}
+                    </div>
+
+                    <ul className="space-y-2">
+                      {plan.features.map((feature, idx) => (
+                        <li key={idx} className="flex gap-2 text-sm">
+                          <Check className="w-4 h-4 text-primary flex-shrink-0 mt-0.5" />
+                          <span className="text-muted-foreground">{feature}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+
+                  <Button
+                    disabled={currentPlan === plan.id}
+                    onClick={() => handleSelectPlan(plan.id)}
+                    variant={currentPlan === plan.id ? "outline" : plan.popular ? "default" : "outline"}
+                    className="w-full"
+                  >
+                    {loadingPlanId === plan.id && (
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    )}
+                    {currentPlan === plan.id
+                      ? "Текущий тариф"
+                      : plan.id === "free"
+                      ? "Использовать"
+                      : "Выбрать"}
+                  </Button>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* FAQ or Info */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Нужна помощь?</CardTitle>
+          <CardDescription>Свяжитесь с нами по любым вопросам</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <p className="text-sm text-muted-foreground">
+            Если у вас есть вопросы о тарифах или нужна дополнительная информация,
+            пожалуйста, свяжитесь с нашей командой поддержки.
+          </p>
+        </CardContent>
+      </Card>
+    </div>
   );
 }
