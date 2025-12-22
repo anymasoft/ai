@@ -54,12 +54,13 @@ class GenerationWorker:
                         websocket_already_accepted=job.websocket_already_accepted
                     )
 
-                    # Mark job as done
+                    # Pipeline handles status updates and failures internally via mark_failed()
+                    # Just mark job as done in queue
                     mark_job_done(job)
 
                 except asyncio.CancelledError:
-                    # Job was cancelled by client - handle gracefully
-                    print(f"[WORKER] Job cancelled: {job}")
+                    # Job was cancelled by client - handle gracefully (no error log)
+                    print(f"[WORKER] Job cancelled by user: {job.generation_id}")
                     try:
                         update_generation(
                             generation_id=job.generation_id,
@@ -74,15 +75,14 @@ class GenerationWorker:
                         pass
 
                 except Exception as e:
-                    # Job failed - log but don't print traceback
-                    print(f"[WORKER] Job failed: {job}")
-                    print(f"[WORKER] Error: {e}")
+                    # Job failed - log error message without traceback
+                    print(f"[WORKER] Unexpected error in job {job.generation_id}: {e}")
 
                     try:
                         update_generation(
                             generation_id=job.generation_id,
                             status="failed",
-                            error_message=str(e),
+                            error_message=f"Unexpected error: {str(e)}",
                         )
                     except Exception as db_error:
                         print(f"[WORKER] Failed to update error status: {db_error}")
