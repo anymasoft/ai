@@ -10,6 +10,7 @@ from codegen.utils import extract_html_content
 from config import (
     ANTHROPIC_API_KEY,
     GEMINI_API_KEY,
+    IS_PROD,
     NODE_ENV,
     NUM_VARIANTS,
     OPENAI_API_KEY,
