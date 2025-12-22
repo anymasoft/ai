@@ -132,7 +132,14 @@ function Variants() {
                   <span className="text-gray-500">Cancelled</span>
                 )}
                 {variant.status === "error" && (
-                  <span className="text-red-500">Error</span>
+                  <div className="flex flex-col w-full">
+                    <span className="text-red-500">Error</span>
+                    {variant.errorMessage && (
+                      <span className="text-red-400 text-xs mt-1 truncate" title={variant.errorMessage}>
+                        {variant.errorMessage}
+                      </span>
+                    )}
+                  </div>
                 )}
               </div>
             </div>
