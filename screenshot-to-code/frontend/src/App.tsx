@@ -133,6 +133,21 @@ function App() {
 
   // Used for code generation failure as well
   const cancelCodeGenerationAndReset = (commit: Commit) => {
+    // 🔧 CHECK: Are there any completed variants? If yes, DON'T reset state
+    const hasCompletedVariants = commit.variants.some(
+      (variant) => variant.status === "complete"
+    );
+
+    // If there are completed variants, keep them on screen with error status for the failed ones
+    if (hasCompletedVariants) {
+      console.log(
+        "Generation failed but some variants are complete - keeping them on screen"
+      );
+      setAppState(AppState.CODE_READY);
+      return;
+    }
+
+    // Only reset if ALL variants failed or never started
     // When the current commit is the first version, reset the entire app state
     if (commit.type === "ai_create") {
       reset();
