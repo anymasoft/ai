@@ -20,6 +20,7 @@ import { GenerationSettings } from "./components/settings/GenerationSettings";
 import StartPane from "./components/start-pane/StartPane";
 import { Commit } from "./components/commits/types";
 import { createCommit } from "./components/commits/utils";
+import LoadSavedGeneration from "./components/LoadSavedGeneration";
 // 🔧 ARCHIVED: GenerateFromText removed for MVP (text-to-code in /archived/text-edit-mode/)
 
 function App() {
@@ -484,6 +485,41 @@ function App() {
     setAppState(AppState.CODE_READY);
   }
 
+  function loadSavedGenerationDetail(generationDetail: any) {
+    // 🔧 NEW: Load a previously saved generation from database
+    // Do NOT reset state - load in addition to existing content
+
+    // Create a new commit with saved variants
+    const variants = generationDetail.variants.map((variant: any) => ({
+      code: variant.html || "",
+    }));
+
+    const commit = createCommit({
+      type: "ai_create" as const,
+      parentHash: null,
+      variants,
+      inputs: null, // No inputs available for saved generation
+    });
+
+    addCommit(commit);
+    setHead(commit.hash);
+
+    // Update variant statuses based on saved data
+    for (let i = 0; i < variants.length; i++) {
+      const variant = generationDetail.variants[i];
+      if (variant.status === "done") {
+        updateVariantStatus(commit.hash, i, "complete");
+      } else if (variant.status === "failed") {
+        updateVariantStatus(commit.hash, i, "error", variant.error_message);
+      }
+    }
+
+    // Set the app state to show the code
+    setAppState(AppState.CODE_READY);
+
+    toast.success("Generation loaded from database");
+  }
+
   return (
     <div className="mt-2 dark:bg-black dark:text-white">
       {IS_RUNNING_ON_CLOUD && <PicoBadge />}
@@ -503,6 +539,12 @@ function App() {
 
           {/* Generation settings like stack and model */}
           <GenerationSettings settings={settings} setSettings={setSettings} />
+
+          {/* 🔧 NEW: Load previously saved generation from database */}
+          <LoadSavedGeneration
+            onLoadGeneration={loadSavedGenerationDetail}
+            isLoading={appState === AppState.CODING}
+          />
 
           {/* Show tip link until coding is complete */}
           {/* {appState !== AppState.CODE_READY && <TipLink />} */}

@@ -1,19 +1,37 @@
 """History endpoints for accessing generation records."""
 from fastapi import APIRouter, HTTPException
 from db import list_generations, get_generation, get_generation_variants
+from datetime import datetime
 
 router = APIRouter(prefix="/api", tags=["history"])
 
 
 @router.get("/generations")
 async def get_generations_list(limit: int = 20):
-    """Get list of recent generations."""
+    """Get list of recent generations with metadata."""
     try:
         generations = list_generations(limit=limit)
+
+        # Enhance each generation with variants_count and display_name
+        enhanced = []
+        for gen in generations:
+            variants = get_generation_variants(gen["id"])
+
+            # Create display_name from created_at
+            created_at = datetime.fromisoformat(gen["created_at"])
+            display_name = f"Generation — {created_at.strftime('%Y-%m-%d %H:%M')}"
+
+            enhanced.append({
+                "generation_id": gen["id"],
+                "created_at": gen["created_at"],
+                "display_name": display_name,
+                "variants_count": len(variants),
+            })
+
         return {
             "success": True,
-            "data": generations,
-            "count": len(generations),
+            "data": enhanced,
+            "count": len(enhanced),
         }
     except Exception as e:
         print(f"[API] error listing generations: {e}")
