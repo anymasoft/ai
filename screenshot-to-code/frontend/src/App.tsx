@@ -498,7 +498,7 @@ function App() {
       type: "ai_create" as const,
       parentHash: null,
       variants,
-      inputs: null, // No inputs available for saved generation
+      inputs: { text: "", images: [] }, // No inputs available for saved generation
     });
 
     addCommit(commit);
