@@ -138,15 +138,18 @@ def save_generation(
     duration_ms: Optional[int] = None,
     input_image_sha256: Optional[str] = None,
     user_id: Optional[str] = None,
+    generation_id: Optional[str] = None,
 ) -> str:
     """
     Save a generation record to the database.
     Returns the generation_id.
+    If generation_id is not provided, a new UUID will be generated.
     """
     conn = get_conn()
     cursor = conn.cursor()
 
-    generation_id = str(uuid.uuid4())
+    if generation_id is None:
+        generation_id = str(uuid.uuid4())
     now = datetime.utcnow().isoformat()
 
     try:
