@@ -28,6 +28,7 @@ class GenerationJob:
     generation_id: str
     websocket: Any  # FastAPI WebSocket
     params: Dict[str, str]
+    websocket_already_accepted: bool = False  # Flag if WebSocket was already accepted by handler
 
     def __repr__(self) -> str:
         return f"GenerationJob(id={self.generation_id[:8]}...)"
