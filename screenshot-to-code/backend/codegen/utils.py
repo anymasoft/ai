@@ -490,3 +490,121 @@ def inject_asset_src(html: str, asset_manifest: Dict[str, str] | None = None) ->
         traceback.print_exc()
         return html
 
+
+def replace_broken_img_src(
+    html: str,
+    asset_manifest: Dict[str, Dict[str, str]] | None = None,
+) -> str:
+    """
+    Replace broken img src with real assets from manifest.
+
+    Algorithm:
+    1. Find all <img> tags with broken src (relative paths, missing src)
+    2. Extract desired size from class/style attributes
+    3. Find best matching asset from manifest
+    4. Replace src with base64 from asset
+
+    Broken src patterns:
+    - src="logo.png" (relative path)
+    - src="/logo.png" (absolute path)
+    - src="icon.svg" (extension-based)
+    - src="" (empty)
+    - no src attribute
+
+    Real src patterns (leave as-is):
+    - src="http..." (external URL)
+    - src="data:image..." (base64)
+    """
+
+    if asset_manifest is None:
+        asset_manifest = {}
+
+    if not asset_manifest:
+        print("[IMG REPLACEMENT] No assets available, skipping src replacement")
+        return html
+
+    from image_assets.matcher import find_best_asset, extract_size_from_img_tag
+
+    try:
+        img_pattern = r'<img\s+([^>]*)>'
+
+        def replace_broken_src(match):
+            tag_content = match.group(1)
+            src_pattern = r'src=["\']?([^"\'>\s]+)["\']?'
+            src_match = re.search(src_pattern, tag_content)
+
+            # Check if src is valid
+            src_value = src_match.group(1) if src_match else None
+
+            is_broken = False
+            if not src_value:
+                # No src at all
+                is_broken = True
+            elif src_value.startswith("http://") or src_value.startswith("https://"):
+                # External URL, keep as-is
+                return match.group(0)
+            elif src_value.startswith("data:image"):
+                # Already base64, keep as-is
+                return match.group(0)
+            else:
+                # Relative path (logo.png, /logo.png, icon.svg, etc.) - broken
+                is_broken = True
+
+            if not is_broken:
+                return match.group(0)
+
+            # Extract target dimensions from img tag
+            target_w, target_h = extract_size_from_img_tag(tag_content)
+            target_ar = None
+            if target_w and target_h:
+                target_ar = target_w / target_h if target_h > 0 else None
+
+            # Find best matching asset
+            best_asset_id = find_best_asset(
+                asset_manifest,
+                target_w=target_w,
+                target_h=target_h,
+                target_aspect_ratio=target_ar,
+            )
+
+            if not best_asset_id:
+                # No suitable asset found, keep original
+                return match.group(0)
+
+            # Get asset data
+            asset_data = asset_manifest[best_asset_id]
+            base64_data = asset_data.get("base64", "")
+
+            if not base64_data:
+                return match.group(0)
+
+            # Create src with base64
+            if base64_data.startswith("data:"):
+                # Already formatted as data: URL
+                asset_src = base64_data
+            else:
+                # Format as data: URL
+                asset_src = f"data:image/png;base64,{base64_data}"
+
+            # Replace src in tag
+            if src_match:
+                # Remove old src
+                new_tag_content = re.sub(src_pattern, "", tag_content, flags=re.IGNORECASE)
+            else:
+                new_tag_content = tag_content
+
+            # Add new src
+            new_tag_content = f'src="{asset_src}" {new_tag_content}'.strip()
+
+            return f'<img {new_tag_content}>'
+
+        html = re.sub(img_pattern, replace_broken_src, html, flags=re.IGNORECASE)
+
+        print(f"[IMG REPLACEMENT] Replaced broken img src with {len(asset_manifest)} available assets")
+        return html
+
+    except Exception as e:
+        print(f"[IMG REPLACEMENT] Error replacing broken img src: {e}")
+        traceback.print_exc()
+        return html
+

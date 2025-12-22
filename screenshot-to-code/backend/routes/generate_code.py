@@ -6,7 +6,8 @@ from typing import Callable, Awaitable
 from fastapi import APIRouter, WebSocket
 import openai
 import re
-from codegen.utils import extract_html_content, sanitize_html_output, is_html_valid, fix_broken_img_icons, inject_asset_src
+from codegen.utils import extract_html_content, sanitize_html_output, is_html_valid, fix_broken_img_icons, inject_asset_src, replace_broken_img_src
+from image_assets.extractor import extract_image_assets
 from config import (
     IS_PROD,
     NUM_VARIANTS,
@@ -499,6 +500,7 @@ class ParallelGenerationStage:
         prompt_messages: List[ChatCompletionMessageParam],
         image_cache: Dict[str, str],
         params: Dict[str, str],
+        asset_manifest: Dict[str, Dict[str, str]] | None = None,
     ) -> Dict[int, str]:
         """Process all variants in parallel and return completions"""
         tasks = self._create_generation_tasks(variant_models, prompt_messages, params)
@@ -506,6 +508,9 @@ class ParallelGenerationStage:
         # Dictionary to track variant tasks and their status
         variant_tasks: Dict[int, asyncio.Task[Completion]] = {}
         variant_completions: Dict[int, str] = {}
+
+        if asset_manifest is None:
+            asset_manifest = {}
 
         # Create tasks for each variant
         for index, task in enumerate(tasks):
@@ -515,7 +520,7 @@ class ParallelGenerationStage:
         # Process each variant independently
         variant_processors = [
             self._process_variant_completion(
-                index, task, variant_models[index], image_cache, variant_completions
+                index, task, variant_models[index], image_cache, variant_completions, asset_manifest
             )
             for index, task in variant_tasks.items()
         ]
@@ -667,8 +672,11 @@ class ParallelGenerationStage:
         model: Llm,
         image_cache: Dict[str, str],
         variant_completions: Dict[int, str],
+        asset_manifest: Dict[str, Dict[str, str]] | None = None,
     ):
         """Process a single variant completion including image generation"""
+        if asset_manifest is None:
+            asset_manifest = {}
         try:
             completion = await task
 
@@ -685,8 +693,16 @@ class ParallelGenerationStage:
                 # 🔥 Sanitize HTML output: fix nested tags, close unclosed blocks, deduplicate CSS
                 processed_html = sanitize_html_output(processed_html)
 
-                # 🖼️ CRITICAL: Inject asset base64 src into <img> tags BEFORE sending to frontend
-                # This is the FINAL STEP to ensure all <img> have src attributes
+                # 🖼️ STEP 1: Replace broken img src with real extracted assets
+                # This is the primary fix for missing/broken images
+                if asset_manifest:
+                    print(f"[IMG REPLACEMENT] Replacing broken img src with {len(asset_manifest)} extracted assets")
+                    processed_html = replace_broken_img_src(processed_html, asset_manifest=asset_manifest)
+                else:
+                    print("[IMG REPLACEMENT] No extracted assets available, skipping src replacement")
+
+                # 🖼️ STEP 2: Inject asset base64 src (fallback for data-asset-id tags)
+                # This is the final safety layer to ensure all <img> have src
                 print(f"[ASSET INJECTION] Injecting base64 src into <img> tags (image_cache={len(image_cache)} items)")
                 processed_html = inject_asset_src(processed_html, asset_manifest=image_cache)
 
@@ -897,7 +913,7 @@ class StatusBroadcastMiddleware(Middleware):
 
 
 class PromptCreationMiddleware(Middleware):
-    """Handles prompt creation"""
+    """Handles prompt creation and image asset extraction"""
 
     async def process(
         self, context: PipelineContext, next_func: Callable[[], Awaitable[None]]
@@ -907,6 +923,32 @@ class PromptCreationMiddleware(Middleware):
         context.prompt_messages, context.image_cache = (
             await prompt_creator.create_prompt(context.extracted_params)
         )
+
+        # 🖼️ CRITICAL: Extract real image assets from screenshot
+        # This enables deterministic img src replacement later
+        if context.extracted_params.input_mode == "image":
+            if len(context.extracted_params.prompt.get("images", [])) > 0:
+                screenshot_b64 = context.extracted_params.prompt["images"][0]
+                print("[IMAGE EXTRACTION] Starting asset extraction from screenshot...")
+
+                try:
+                    asset_manifest = extract_image_assets(screenshot_b64)
+                    if asset_manifest:
+                        print(f"[IMAGE EXTRACTION] Extracted {len(asset_manifest)} image assets")
+                        # Store in context metadata for later use
+                        context.metadata["asset_manifest"] = asset_manifest
+                    else:
+                        print("[IMAGE EXTRACTION] No assets extracted (empty or no significant regions)")
+                        context.metadata["asset_manifest"] = {}
+                except Exception as e:
+                    print(f"[IMAGE EXTRACTION] Error extracting assets: {e}")
+                    context.metadata["asset_manifest"] = {}
+            else:
+                print("[IMAGE EXTRACTION] No input images available")
+                context.metadata["asset_manifest"] = {}
+        else:
+            print(f"[IMAGE EXTRACTION] Skipped for input mode: {context.extracted_params.input_mode}")
+            context.metadata["asset_manifest"] = {}
 
         await next_func()
 
@@ -944,12 +986,18 @@ class CodeGenerationMiddleware(Middleware):
                     should_generate_images=context.extracted_params.should_generate_images,
                 )
 
+                # Get extracted assets from metadata (populated by PromptCreationMiddleware)
+                asset_manifest = context.metadata.get("asset_manifest", {})
+                if asset_manifest:
+                    print(f"[CODEGEN] Using extracted assets: {len(asset_manifest)} items")
+
                 context.variant_completions = (
                     await generation_stage.process_variants(
                         variant_models=context.variant_models,
                         prompt_messages=context.prompt_messages,
                         image_cache=context.image_cache,
                         params=context.params,
+                        asset_manifest=asset_manifest,
                     )
                 )
 
