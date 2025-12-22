@@ -9,12 +9,20 @@ import PairwiseEvalsPage from "./components/evals/PairwiseEvalsPage";
 import RunEvalsPage from "./components/evals/RunEvalsPage.tsx";
 import BestOfNEvalsPage from "./components/evals/BestOfNEvalsPage.tsx";
 import AllEvalsPage from "./components/evals/AllEvalsPage.tsx";
+import { PlaygroundPage } from "./pages/PlaygroundPage.tsx";
+import { HistoryPage } from "./pages/HistoryPage.tsx";
+import { SettingsPage } from "./pages/SettingsPage.tsx";
+import { BillingPage } from "./pages/BillingPage.tsx";
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
     <Router>
       <Routes>
         <Route path="/" element={<App />} />
+        <Route path="/playground" element={<PlaygroundPage />} />
+        <Route path="/history" element={<HistoryPage />} />
+        <Route path="/settings" element={<SettingsPage />} />
+        <Route path="/settings/billing" element={<BillingPage />} />
         <Route path="/evals" element={<AllEvalsPage />} />
         <Route path="/evals/single" element={<EvalsPage />} />
         <Route path="/evals/pairwise" element={<PairwiseEvalsPage />} />
