@@ -11,6 +11,7 @@ const Chat = lazy(() => import('@/app/chat/page'))
 const Calendar = lazy(() => import('@/app/calendar/page'))
 const Users = lazy(() => import('@/app/users/page'))
 const Playground = lazy(() => import('@/app/playground/page'))
+const History = lazy(() => import('@/app/history/page'))
 const FAQs = lazy(() => import('@/app/faqs/page'))
 const Pricing = lazy(() => import('@/app/pricing/page'))
 
@@ -96,6 +97,10 @@ export const routes: RouteConfig[] = [
   {
     path: "/playground",
     element: <Playground />
+  },
+  {
+    path: "/history",
+    element: <History />
   },
   {
     path: "/faqs",
