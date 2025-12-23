@@ -183,6 +183,8 @@ export default function PlaygroundPage() {
                 accept="image/png,image/jpeg,image/webp"
                 onChange={handleImageChange}
                 disabled={isStreaming || !!url}
+                title="Choose an image file (PNG, JPEG, or WebP)"
+                className="file:text-muted-foreground/60"
               />
               {url && (
                 <p className="text-xs text-muted-foreground/70">URL is used as source</p>
