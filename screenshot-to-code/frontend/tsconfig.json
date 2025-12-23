@@ -1,37 +1,17 @@
 {
-  "$schema": "https://json.schemastore.org/tsconfig",
-  "compilerOptions": {
-    "allowJs": true,
-    "baseUrl": ".",
-    "checkJs": true,
-    "esModuleInterop": true,
-    "forceConsistentCasingInFileNames": true,
-    "incremental": true,
-    "isolatedModules": true,
-    "jsx": "react-jsx",
-    "lib": ["DOM", "DOM.Iterable", "ES2023"],
-    "module": "esnext",
-    "moduleResolution": "bundler",
-    "noEmit": true,
-    "noUncheckedIndexedAccess": true,
-    "paths": {
-      "~/*": ["./app/*"]
+  "files": [],
+  "references": [
+    {
+      "path": "./tsconfig.app.json"
     },
-    "resolveJsonModule": true,
-    "rootDirs": [".", "./.react-router/types"],
-    "skipLibCheck": true,
-    "strict": true,
-    "target": "ES2023",
-    "types": ["node", "vite/client"],
-    "verbatimModuleSyntax": true
-  },
-  "include": [
-    "**/*.ts",
-    "**/*.d.ts",
-    "**/*.tsx",
-    "**/.server/**/*",
-    "**/.client/**/*",
-    ".react-router/types/**/*",
-    "commitlint.config.mjs"
-  ]
+    {
+      "path": "./tsconfig.node.json"
+    }
+  ],
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["./src/*"]
+    }
+  }
 }

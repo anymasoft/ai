@@ -1,30 +1,88 @@
+# Dependencies
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Build outputs
+dist/
+build/
+.next/
+out/
+.turbo/
+dist-ssr/
+
+# Environment variables
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS generated files
 .DS_Store
-/node_modules/
-todo.md
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
 
-# React Router
-/.react-router/
-/build/
+# Logs
+logs/
+*.log
 
-*.env
+# Runtime data
+pids
+*.pid
+*.seed
+*.pid.lock
 
-# TypeScript
+# Coverage directory used by tools like istanbul
+coverage/
+*.lcov
+
+# Temporary folders
+tmp/
+temp/
+
+# ESLint cache
+.eslintcache
+
+# TypeScript cache
 *.tsbuildinfo
 
-# Playwright
-node_modules/
-/test-results/
-/playwright-report/
-/blob-report/
-/playwright/.cache/
+# Optional npm cache directory
+.npm
 
-# Random
-count-lines.sh
-stripe-events.txt
+# Optional eslint cache
+.eslintcache
 
-# Test fixtures
-/tests/fixtures/
-/app/tests/mocks/fixtures/
+# Storybook build outputs
+storybook-static
 
-# Prisma - allow mock generated files for development
-# /app/generated/
+# Vercel
+.vercel
+
+# Turborepo
+.turbo
+
+# Local files
+*.local
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Deployment scripts (contain server-specific paths)
+*.env.production
