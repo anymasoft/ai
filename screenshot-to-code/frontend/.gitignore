@@ -26,5 +26,5 @@ stripe-events.txt
 /tests/fixtures/
 /app/tests/mocks/fixtures/
 
-# Prisma
-/app/generated/
+# Prisma - allow mock generated files for development
+# /app/generated/
