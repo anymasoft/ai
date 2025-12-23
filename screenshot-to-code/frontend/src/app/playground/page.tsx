@@ -1,7 +1,7 @@
 "use client"
 
 import { useRef, useState, useEffect } from "react"
-import { X } from "lucide-react"
+import { X, Copy, Download, FileArchive, Check } from "lucide-react"
 import { BaseLayout } from "@/components/layouts/base-layout"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -16,6 +16,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
+import { toast } from "sonner"
 import { addHistoryItem, extractDomain, type HistoryItem } from "@/lib/history"
 import {
   generateCode,
@@ -35,6 +36,7 @@ export default function PlaygroundPage() {
   const [chunks, setChunks] = useState<string[]>([])
   const [error, setError] = useState<string | null>(null)
   const [validationError, setValidationError] = useState<string | null>(null)
+  const [copied, setCopied] = useState(false)
 
   // Input state
   const [imageFile, setImageFile] = useState<File | null>(null)
@@ -190,6 +192,132 @@ export default function PlaygroundPage() {
 
   const handleClearUrl = () => {
     setUrl("")
+  }
+
+  const handleCopyCode = async () => {
+    const code = chunks.join("")
+    if (!code) return
+
+    try {
+      await navigator.clipboard.writeText(code)
+      setCopied(true)
+      toast.success("Code copied to clipboard")
+      setTimeout(() => setCopied(false), 2000)
+    } catch (err) {
+      toast.error("Failed to copy code")
+    }
+  }
+
+  const handleDownloadHTML = () => {
+    const code = chunks.join("")
+    if (!code) return
+
+    const blob = new Blob([code], { type: "text/html" })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement("a")
+    a.href = url
+    a.download = "index.html"
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
+    toast.success("HTML file downloaded")
+  }
+
+  const handleDownloadZIP = () => {
+    const code = chunks.join("")
+    if (!code) return
+
+    // Create a simple ZIP file with index.html
+    // Using basic ZIP structure without external library
+    const filename = "index.html"
+    const content = new TextEncoder().encode(code)
+
+    // ZIP file structure (simplified for single file)
+    const createZipBlob = () => {
+      // Local file header
+      const header = new Uint8Array([
+        0x50, 0x4b, 0x03, 0x04, // Signature
+        0x14, 0x00, // Version
+        0x00, 0x00, // Flags
+        0x00, 0x00, // Compression (0 = none)
+        0x00, 0x00, // Time
+        0x00, 0x00, // Date
+        0x00, 0x00, 0x00, 0x00, // CRC32 (placeholder)
+        ...new Uint8Array(new Uint32Array([content.length]).buffer), // Compressed size
+        ...new Uint8Array(new Uint32Array([content.length]).buffer), // Uncompressed size
+        ...new Uint8Array(new Uint16Array([filename.length]).buffer), // Filename length
+        0x00, 0x00, // Extra field length
+      ])
+
+      const filenameBytes = new TextEncoder().encode(filename)
+
+      // Central directory header
+      const centralHeader = new Uint8Array([
+        0x50, 0x4b, 0x01, 0x02, // Signature
+        0x14, 0x00, // Version made by
+        0x14, 0x00, // Version needed
+        0x00, 0x00, // Flags
+        0x00, 0x00, // Compression
+        0x00, 0x00, // Time
+        0x00, 0x00, // Date
+        0x00, 0x00, 0x00, 0x00, // CRC32
+        ...new Uint8Array(new Uint32Array([content.length]).buffer), // Compressed size
+        ...new Uint8Array(new Uint32Array([content.length]).buffer), // Uncompressed size
+        ...new Uint8Array(new Uint16Array([filename.length]).buffer), // Filename length
+        0x00, 0x00, // Extra field length
+        0x00, 0x00, // Comment length
+        0x00, 0x00, // Disk number
+        0x00, 0x00, // Internal attributes
+        0x00, 0x00, 0x00, 0x00, // External attributes
+        0x00, 0x00, 0x00, 0x00, // Offset of local header
+      ])
+
+      // End of central directory
+      const endRecord = new Uint8Array([
+        0x50, 0x4b, 0x05, 0x06, // Signature
+        0x00, 0x00, // Disk number
+        0x00, 0x00, // Start disk
+        0x01, 0x00, // Entries on disk
+        0x01, 0x00, // Total entries
+        ...new Uint8Array(new Uint32Array([centralHeader.length + filenameBytes.length]).buffer), // Central dir size
+        ...new Uint8Array(new Uint32Array([header.length + filenameBytes.length + content.length]).buffer), // Offset
+        0x00, 0x00, // Comment length
+      ])
+
+      // Combine all parts
+      const zipData = new Uint8Array(
+        header.length + filenameBytes.length + content.length +
+        centralHeader.length + filenameBytes.length +
+        endRecord.length
+      )
+
+      let offset = 0
+      zipData.set(header, offset)
+      offset += header.length
+      zipData.set(filenameBytes, offset)
+      offset += filenameBytes.length
+      zipData.set(content, offset)
+      offset += content.length
+      zipData.set(centralHeader, offset)
+      offset += centralHeader.length
+      zipData.set(filenameBytes, offset)
+      offset += filenameBytes.length
+      zipData.set(endRecord, offset)
+
+      return new Blob([zipData], { type: "application/zip" })
+    }
+
+    const blob = createZipBlob()
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement("a")
+    a.href = url
+    a.download = "project.zip"
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
+    toast.success("ZIP file downloaded")
   }
 
   return (
@@ -365,9 +493,45 @@ export default function PlaygroundPage() {
 
                 {/* Code Tab */}
                 <TabsContent value="code" className="mt-4">
-                  <pre className="bg-muted p-4 rounded text-sm overflow-auto max-h-96">
-                    <code>{chunks.join("")}</code>
-                  </pre>
+                  <div className="space-y-3">
+                    {/* Export buttons */}
+                    <div className="flex items-center justify-end gap-2">
+                      <Button
+                        onClick={handleCopyCode}
+                        variant="ghost"
+                        size="sm"
+                        disabled={!chunks.length || isStreaming}
+                        className="gap-2"
+                      >
+                        {copied ? <Check size={16} /> : <Copy size={16} />}
+                        {copied ? "Copied" : "Copy"}
+                      </Button>
+                      <Button
+                        onClick={handleDownloadHTML}
+                        variant="ghost"
+                        size="sm"
+                        disabled={!chunks.length || isStreaming}
+                        className="gap-2"
+                      >
+                        <Download size={16} />
+                        Download HTML
+                      </Button>
+                      <Button
+                        onClick={handleDownloadZIP}
+                        variant="ghost"
+                        size="sm"
+                        disabled={!chunks.length || isStreaming}
+                        className="gap-2"
+                      >
+                        <FileArchive size={16} />
+                        Download ZIP
+                      </Button>
+                    </div>
+                    {/* Code block */}
+                    <pre className="bg-muted p-4 rounded text-sm overflow-auto max-h-96">
+                      <code>{chunks.join("")}</code>
+                    </pre>
+                  </div>
                 </TabsContent>
               </div>
             </Tabs>
