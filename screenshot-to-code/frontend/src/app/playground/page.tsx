@@ -42,6 +42,16 @@ export default function PlaygroundPage() {
     }
   }
 
+  const handleRemoveImage = () => {
+    setImageFile(null)
+    setImagePreview(null)
+    // Clear file input
+    const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement
+    if (fileInput) {
+      fileInput.value = ""
+    }
+  }
+
   const handleGenerate = async () => {
     // Validation
     if (!imageFile && !url) {
@@ -118,6 +128,10 @@ export default function PlaygroundPage() {
     }
   }
 
+  const handleClearUrl = () => {
+    setUrl("")
+  }
+
   return (
     <BaseLayout
       title="Playground"
@@ -136,11 +150,22 @@ export default function PlaygroundPage() {
                 type="file"
                 accept="image/png,image/jpeg,image/webp"
                 onChange={handleImageChange}
-                disabled={isStreaming}
+                disabled={isStreaming || !!url}
               />
+              {url && (
+                <p className="text-xs text-muted-foreground">URL is used as source</p>
+              )}
               {imagePreview && (
-                <div className="mt-2">
+                <div className="mt-2 space-y-2">
                   <img src={imagePreview} alt="Preview" className="max-h-32 rounded border" />
+                  <Button
+                    onClick={handleRemoveImage}
+                    variant="outline"
+                    size="sm"
+                    disabled={isStreaming}
+                  >
+                    Remove image
+                  </Button>
                 </div>
               )}
             </div>
@@ -148,25 +173,43 @@ export default function PlaygroundPage() {
             {/* URL Input */}
             <div className="space-y-2">
               <label className="text-sm font-medium">Or Enter URL</label>
-              <Input
-                type="url"
-                placeholder="https://example.com"
-                value={url}
-                onChange={(e) => setUrl(e.target.value)}
-                disabled={isStreaming}
-              />
+              <div className="flex gap-2">
+                <Input
+                  type="url"
+                  placeholder="https://example.com"
+                  value={url}
+                  onChange={(e) => setUrl(e.target.value)}
+                  disabled={isStreaming || !!imageFile}
+                />
+                {url && (
+                  <Button
+                    onClick={handleClearUrl}
+                    variant="outline"
+                    size="sm"
+                    disabled={isStreaming}
+                  >
+                    Clear
+                  </Button>
+                )}
+              </div>
+              {imageFile && (
+                <p className="text-xs text-muted-foreground">Image is used as source</p>
+              )}
             </div>
 
             {/* Instructions */}
             <div className="space-y-2">
-              <label className="text-sm font-medium">Instructions (optional)</label>
+              <label className="text-sm font-medium">Generation instructions</label>
               <Textarea
-                placeholder="Describe what you want to generate…"
+                placeholder="E.g. focus on layout accuracy, keep Tailwind classes, avoid inline styles…"
                 value={instructions}
                 onChange={(e) => setInstructions(e.target.value)}
                 disabled={isStreaming}
                 rows={4}
               />
+              <p className="text-xs text-muted-foreground">
+                Optional: describe what should be changed or emphasized in the generated code.
+              </p>
             </div>
 
             {/* Validation Error */}
