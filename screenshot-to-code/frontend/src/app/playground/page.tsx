@@ -11,6 +11,7 @@ import {
   EditorTheme,
   Stack,
   CodeGenerationModel,
+  USER_CLOSE_WEB_SOCKET_CODE,
 } from "@/logic/generation"
 
 export default function PlaygroundPage() {
@@ -76,6 +77,12 @@ export default function PlaygroundPage() {
     generateCode(wsRef, mockParams, callbacks)
   }
 
+  const handleCancel = () => {
+    if (wsRef.current) {
+      wsRef.current.close(USER_CLOSE_WEB_SOCKET_CODE)
+    }
+  }
+
   return (
     <BaseLayout
       title="Playground"
@@ -87,13 +94,23 @@ export default function PlaygroundPage() {
             <p className="text-sm text-muted-foreground">
               Click the button to test code generation streaming. Results will appear below.
             </p>
-            <Button
-              onClick={handleGenerate}
-              disabled={isStreaming}
-              variant="default"
-            >
-              {isStreaming ? "Generating..." : "Generate"}
-            </Button>
+            <div className="flex gap-2">
+              <Button
+                onClick={handleGenerate}
+                disabled={isStreaming}
+                variant="default"
+              >
+                {isStreaming ? "Generating..." : "Generate"}
+              </Button>
+              {isStreaming && (
+                <Button
+                  onClick={handleCancel}
+                  variant="destructive"
+                >
+                  Cancel
+                </Button>
+              )}
+            </div>
           </div>
         </Card>
 
