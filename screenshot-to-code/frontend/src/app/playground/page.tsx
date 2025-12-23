@@ -1,6 +1,7 @@
 "use client"
 
 import { useRef, useState } from "react"
+import { X } from "lucide-react"
 import { BaseLayout } from "@/components/layouts/base-layout"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -153,19 +154,19 @@ export default function PlaygroundPage() {
                 disabled={isStreaming || !!url}
               />
               {url && (
-                <p className="text-xs text-muted-foreground">URL is used as source</p>
+                <p className="text-xs text-muted-foreground/70">URL is used as source</p>
               )}
               {imagePreview && (
-                <div className="mt-2 space-y-2">
+                <div className="mt-2 relative inline-block">
                   <img src={imagePreview} alt="Preview" className="max-h-32 rounded border" />
-                  <Button
+                  <button
                     onClick={handleRemoveImage}
-                    variant="outline"
-                    size="sm"
                     disabled={isStreaming}
+                    className="absolute top-1 right-1 bg-black/50 hover:bg-black/70 text-white rounded-full p-1 transition-colors disabled:opacity-50"
+                    aria-label="Remove image"
                   >
-                    Remove image
-                  </Button>
+                    <X size={16} />
+                  </button>
                 </div>
               )}
             </div>
@@ -180,6 +181,7 @@ export default function PlaygroundPage() {
                   value={url}
                   onChange={(e) => setUrl(e.target.value)}
                   disabled={isStreaming || !!imageFile}
+                  className="placeholder:text-muted-foreground/60"
                 />
                 {url && (
                   <Button
@@ -193,7 +195,7 @@ export default function PlaygroundPage() {
                 )}
               </div>
               {imageFile && (
-                <p className="text-xs text-muted-foreground">Image is used as source</p>
+                <p className="text-xs text-muted-foreground/70">Image is used as source</p>
               )}
             </div>
 
@@ -206,8 +208,9 @@ export default function PlaygroundPage() {
                 onChange={(e) => setInstructions(e.target.value)}
                 disabled={isStreaming}
                 rows={4}
+                className="placeholder:text-muted-foreground/60"
               />
-              <p className="text-xs text-muted-foreground">
+              <p className="text-xs text-muted-foreground/80">
                 Optional: describe what should be changed or emphasized in the generated code.
               </p>
             </div>
