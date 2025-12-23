@@ -12,7 +12,10 @@ export default function HistoryPage() {
   const [history, setHistory] = useState<HistoryItem[]>([])
 
   useEffect(() => {
-    setHistory(getHistory())
+    console.log("History page mounted - loading history")
+    const loaded = getHistory()
+    console.log("Loaded history items:", loaded.length)
+    setHistory(loaded)
   }, [])
 
   const handleOpen = (item: HistoryItem) => {

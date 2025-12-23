@@ -7,6 +7,7 @@ import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { addHistoryItem, extractDomain, type HistoryItem } from "@/lib/history"
 import {
   generateCode,
@@ -21,6 +22,7 @@ import {
 export default function PlaygroundPage() {
   const wsRef = useRef<WebSocket | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const chunksRef = useRef<string[]>([])
   const [isStreaming, setIsStreaming] = useState(false)
   const [chunks, setChunks] = useState<string[]>([])
   const [error, setError] = useState<string | null>(null)
@@ -46,6 +48,11 @@ export default function PlaygroundPage() {
       }
     }
   }, [])
+
+  // Sync chunks state with ref for use in callbacks
+  useEffect(() => {
+    chunksRef.current = chunks
+  }, [chunks])
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -110,9 +117,11 @@ export default function PlaygroundPage() {
 
     const callbacks: CodeGenerationCallbacks = {
       onChange: (chunk, variantIndex) => {
+        console.log("Chunk received:", chunk.slice(0, 50) + "...")
         setChunks((prev) => [...prev, chunk])
       },
       onSetCode: (code, variantIndex) => {
+        console.log("Code set:", code.slice(0, 50) + "...")
         setChunks([code])
       },
       onStatusUpdate: (status, variantIndex) => {
@@ -122,6 +131,7 @@ export default function PlaygroundPage() {
         console.log("Variant complete")
       },
       onVariantError: (variantIndex, error) => {
+        console.error("Variant error:", error)
         setError(error)
         setIsStreaming(false)
       },
@@ -129,13 +139,16 @@ export default function PlaygroundPage() {
         console.log("Variant count:", count)
       },
       onCancel: () => {
+        console.log("Generation cancelled")
         setIsStreaming(false)
       },
       onComplete: () => {
+        console.log("Generation complete. Chunks ref length:", chunksRef.current.length)
         setIsStreaming(false)
-        // Save to history
-        if (chunks.length > 0) {
-          const result = chunks.join("")
+        // Save to history - use chunksRef to avoid stale closure
+        if (chunksRef.current.length > 0) {
+          const result = chunksRef.current.join("")
+          console.log("Saving to history. Result length:", result.length)
           const sourceLabel = imageFile
             ? imageFile.name
             : url
@@ -147,6 +160,9 @@ export default function PlaygroundPage() {
             instructions,
             result,
           })
+          console.log("History item added successfully")
+        } else {
+          console.warn("No chunks to save - chunksRef.current is empty")
         }
       },
     }
@@ -274,17 +290,40 @@ export default function PlaygroundPage() {
           </div>
         </Card>
 
-        {/* Generated Code Card */}
+        {/* Preview / Code Tabs */}
         {chunks.length > 0 && (
           <Card className="p-6">
-            <div className="space-y-2">
-              <h3 className="font-semibold">
-                Generated Code {isStreaming && <span className="text-muted-foreground">(streaming...)</span>}
-              </h3>
-              <pre className="bg-muted p-4 rounded text-sm overflow-auto max-h-96">
-                <code>{chunks.join("")}</code>
-              </pre>
-            </div>
+            <Tabs defaultValue="preview" className="w-full">
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="font-semibold">
+                    Result {isStreaming && <span className="text-muted-foreground">(streaming...)</span>}
+                  </h3>
+                  <TabsList>
+                    <TabsTrigger value="preview">Preview</TabsTrigger>
+                    <TabsTrigger value="code">Code</TabsTrigger>
+                  </TabsList>
+                </div>
+
+                {/* Preview Tab */}
+                <TabsContent value="preview" className="mt-4">
+                  <iframe
+                    srcDoc={chunks.join("")}
+                    className="w-full border rounded bg-white"
+                    style={{ minHeight: "600px" }}
+                    title="Preview"
+                    sandbox="allow-same-origin allow-scripts"
+                  />
+                </TabsContent>
+
+                {/* Code Tab */}
+                <TabsContent value="code" className="mt-4">
+                  <pre className="bg-muted p-4 rounded text-sm overflow-auto max-h-96">
+                    <code>{chunks.join("")}</code>
+                  </pre>
+                </TabsContent>
+              </div>
+            </Tabs>
           </Card>
         )}
 
