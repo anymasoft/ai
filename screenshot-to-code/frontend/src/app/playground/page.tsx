@@ -15,13 +15,13 @@ import {
 
 export default function PlaygroundPage() {
   const wsRef = useRef<WebSocket | null>(null)
-  const [isLoading, setIsLoading] = useState(false)
-  const [result, setResult] = useState<string | null>(null)
+  const [isStreaming, setIsStreaming] = useState(false)
+  const [chunks, setChunks] = useState<string[]>([])
   const [error, setError] = useState<string | null>(null)
 
   const handleGenerate = () => {
-    setIsLoading(true)
-    setResult(null)
+    setIsStreaming(true)
+    setChunks([])
     setError(null)
 
     // Minimal mock data
@@ -47,10 +47,10 @@ export default function PlaygroundPage() {
 
     const callbacks: CodeGenerationCallbacks = {
       onChange: (chunk, variantIndex) => {
-        setResult((prev) => (prev || "") + chunk)
+        setChunks((prev) => [...prev, chunk])
       },
       onSetCode: (code, variantIndex) => {
-        setResult(code)
+        setChunks([code])
       },
       onStatusUpdate: (status, variantIndex) => {
         console.log("Status:", status)
@@ -60,16 +60,16 @@ export default function PlaygroundPage() {
       },
       onVariantError: (variantIndex, error) => {
         setError(error)
-        setIsLoading(false)
+        setIsStreaming(false)
       },
       onVariantCount: (count) => {
         console.log("Variant count:", count)
       },
       onCancel: () => {
-        setIsLoading(false)
+        setIsStreaming(false)
       },
       onComplete: () => {
-        setIsLoading(false)
+        setIsStreaming(false)
       },
     }
 
@@ -85,24 +85,26 @@ export default function PlaygroundPage() {
         <Card className="p-6">
           <div className="space-y-4">
             <p className="text-sm text-muted-foreground">
-              Click the button to test code generation logic. Results will appear below.
+              Click the button to test code generation streaming. Results will appear below.
             </p>
             <Button
               onClick={handleGenerate}
-              disabled={isLoading}
+              disabled={isStreaming}
               variant="default"
             >
-              {isLoading ? "Generating..." : "Generate"}
+              {isStreaming ? "Generating..." : "Generate"}
             </Button>
           </div>
         </Card>
 
-        {result && (
+        {chunks.length > 0 && (
           <Card className="p-6">
             <div className="space-y-2">
-              <h3 className="font-semibold">Generated Code</h3>
+              <h3 className="font-semibold">
+                Generated Code {isStreaming && <span className="text-muted-foreground">(streaming...)</span>}
+              </h3>
               <pre className="bg-muted p-4 rounded text-sm overflow-auto max-h-96">
-                <code>{result}</code>
+                <code>{chunks.join("")}</code>
               </pre>
             </div>
           </Card>
