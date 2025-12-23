@@ -6,11 +6,15 @@ import { BaseLayout } from "@/components/layouts/base-layout"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
+import { ChevronLeft, ChevronRight } from "lucide-react"
 import { getHistory, formatDate, getFormatDisplay, type HistoryItem } from "@/lib/history"
+
+const ITEMS_PER_PAGE = 10
 
 export default function HistoryPage() {
   const navigate = useNavigate()
   const [history, setHistory] = useState<HistoryItem[]>([])
+  const [currentPage, setCurrentPage] = useState(1)
 
   useEffect(() => {
     console.log("History page mounted - loading history")
@@ -23,6 +27,16 @@ export default function HistoryPage() {
     // Store the item in sessionStorage to pass to playground
     sessionStorage.setItem("playground_load", JSON.stringify(item))
     navigate("/playground")
+  }
+
+  // Pagination logic
+  const totalPages = Math.ceil(history.length / ITEMS_PER_PAGE)
+  const startIndex = (currentPage - 1) * ITEMS_PER_PAGE
+  const endIndex = startIndex + ITEMS_PER_PAGE
+  const currentItems = history.slice(startIndex, endIndex)
+
+  const goToPage = (page: number) => {
+    setCurrentPage(Math.max(1, Math.min(page, totalPages)))
   }
 
   return (
@@ -45,42 +59,98 @@ export default function HistoryPage() {
             </div>
           </Card>
         ) : (
-          <div className="grid gap-4">
-            {history.map((item) => (
-              <Card key={item.id} className="p-4">
-                <div className="space-y-3">
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-1">
-                        <p className="text-sm font-medium">
+          <>
+            <div className="grid gap-3">
+              {currentItems.map((item) => (
+                <Card
+                  key={item.id}
+                  className="p-3 cursor-pointer hover:bg-accent/50 transition-colors"
+                  onClick={() => handleOpen(item)}
+                >
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between gap-4">
+                      <div className="flex-1 min-w-0 flex items-center gap-2">
+                        <p className="text-sm font-medium truncate">
                           {item.sourceType === "image" ? "📷" : "🌐"} {item.sourceLabel}
                         </p>
-                        <Badge variant="outline" className="text-xs">
+                        <Badge variant="outline" className="text-xs shrink-0">
                           {getFormatDisplay(item.format)}
                         </Badge>
+                        <p className="text-xs text-muted-foreground shrink-0">
+                          {formatDate(item.createdAt)}
+                        </p>
                       </div>
-                      <p className="text-xs text-muted-foreground">{formatDate(item.createdAt)}</p>
                     </div>
-                    <Button
-                      onClick={() => handleOpen(item)}
-                      variant="default"
-                      size="sm"
-                    >
-                      Open
-                    </Button>
+                    {item.instructions && (
+                      <p className="text-xs text-muted-foreground line-clamp-1">
+                        {item.instructions}
+                      </p>
+                    )}
+                    <div className="bg-muted/50 px-2 py-1 rounded text-xs overflow-hidden">
+                      <code className="line-clamp-1 text-muted-foreground/80">
+                        {item.result.slice(0, 120)}...
+                      </code>
+                    </div>
                   </div>
-                  {item.instructions && (
-                    <p className="text-sm text-muted-foreground line-clamp-1">
-                      {item.instructions}
-                    </p>
-                  )}
-                  <div className="bg-muted p-3 rounded text-xs overflow-hidden max-h-20">
-                    <code className="line-clamp-3">{item.result.slice(0, 200)}</code>
-                  </div>
+                </Card>
+              ))}
+            </div>
+
+            {/* Pagination */}
+            {totalPages > 1 && (
+              <div className="flex items-center justify-center gap-2 pt-2">
+                <Button
+                  onClick={() => goToPage(currentPage - 1)}
+                  disabled={currentPage === 1}
+                  variant="outline"
+                  size="sm"
+                  className="gap-1"
+                >
+                  <ChevronLeft size={16} />
+                  Previous
+                </Button>
+                <div className="flex items-center gap-1">
+                  {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => {
+                    // Show first, last, current, and adjacent pages
+                    if (
+                      page === 1 ||
+                      page === totalPages ||
+                      (page >= currentPage - 1 && page <= currentPage + 1)
+                    ) {
+                      return (
+                        <Button
+                          key={page}
+                          onClick={() => goToPage(page)}
+                          variant={currentPage === page ? "default" : "outline"}
+                          size="sm"
+                          className="w-9 h-9 p-0"
+                        >
+                          {page}
+                        </Button>
+                      )
+                    } else if (page === currentPage - 2 || page === currentPage + 2) {
+                      return (
+                        <span key={page} className="px-1 text-muted-foreground">
+                          ...
+                        </span>
+                      )
+                    }
+                    return null
+                  })}
                 </div>
-              </Card>
-            ))}
-          </div>
+                <Button
+                  onClick={() => goToPage(currentPage + 1)}
+                  disabled={currentPage === totalPages}
+                  variant="outline"
+                  size="sm"
+                  className="gap-1"
+                >
+                  Next
+                  <ChevronRight size={16} />
+                </Button>
+              </div>
+            )}
+          </>
         )}
       </div>
     </BaseLayout>
