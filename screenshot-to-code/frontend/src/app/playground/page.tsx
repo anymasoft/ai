@@ -96,20 +96,11 @@ export default function PlaygroundPage() {
             </p>
             <div className="flex gap-2">
               <Button
-                onClick={handleGenerate}
-                disabled={isStreaming}
-                variant="default"
+                onClick={isStreaming ? handleCancel : handleGenerate}
+                variant={isStreaming ? "destructive" : "default"}
               >
-                {isStreaming ? "Generating..." : "Generate"}
+                {isStreaming ? "Cancel" : "Generate"}
               </Button>
-              {isStreaming && (
-                <Button
-                  onClick={handleCancel}
-                  variant="destructive"
-                >
-                  Cancel
-                </Button>
-              )}
             </div>
           </div>
         </Card>
