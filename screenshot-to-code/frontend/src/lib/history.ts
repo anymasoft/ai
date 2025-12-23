@@ -13,9 +13,15 @@ const MAX_HISTORY_ITEMS = 20
 export function getHistory(): HistoryItem[] {
   try {
     const stored = localStorage.getItem(HISTORY_KEY)
-    if (!stored) return []
-    return JSON.parse(stored) as HistoryItem[]
-  } catch {
+    if (!stored) {
+      console.log("No history found in localStorage")
+      return []
+    }
+    const parsed = JSON.parse(stored) as HistoryItem[]
+    console.log("History retrieved from localStorage. Items:", parsed.length)
+    return parsed
+  } catch (error) {
+    console.error("Error retrieving history:", error)
     return []
   }
 }
@@ -31,6 +37,8 @@ export function addHistoryItem(item: Omit<HistoryItem, "id" | "createdAt">): His
   // Add to beginning of history
   const updated = [newItem, ...history].slice(0, MAX_HISTORY_ITEMS)
   localStorage.setItem(HISTORY_KEY, JSON.stringify(updated))
+  console.log("History item saved. Total items:", updated.length)
+  console.log("Saved item:", { sourceLabel: newItem.sourceLabel, id: newItem.id })
   return newItem
 }
 

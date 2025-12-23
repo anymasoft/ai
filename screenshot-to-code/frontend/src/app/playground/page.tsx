@@ -21,6 +21,7 @@ import {
 export default function PlaygroundPage() {
   const wsRef = useRef<WebSocket | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const chunksRef = useRef<string[]>([])
   const [isStreaming, setIsStreaming] = useState(false)
   const [chunks, setChunks] = useState<string[]>([])
   const [error, setError] = useState<string | null>(null)
@@ -46,6 +47,11 @@ export default function PlaygroundPage() {
       }
     }
   }, [])
+
+  // Sync chunks state with ref for use in callbacks
+  useEffect(() => {
+    chunksRef.current = chunks
+  }, [chunks])
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -110,9 +116,11 @@ export default function PlaygroundPage() {
 
     const callbacks: CodeGenerationCallbacks = {
       onChange: (chunk, variantIndex) => {
+        console.log("Chunk received:", chunk.slice(0, 50) + "...")
         setChunks((prev) => [...prev, chunk])
       },
       onSetCode: (code, variantIndex) => {
+        console.log("Code set:", code.slice(0, 50) + "...")
         setChunks([code])
       },
       onStatusUpdate: (status, variantIndex) => {
@@ -122,6 +130,7 @@ export default function PlaygroundPage() {
         console.log("Variant complete")
       },
       onVariantError: (variantIndex, error) => {
+        console.error("Variant error:", error)
         setError(error)
         setIsStreaming(false)
       },
@@ -129,13 +138,16 @@ export default function PlaygroundPage() {
         console.log("Variant count:", count)
       },
       onCancel: () => {
+        console.log("Generation cancelled")
         setIsStreaming(false)
       },
       onComplete: () => {
+        console.log("Generation complete. Chunks ref length:", chunksRef.current.length)
         setIsStreaming(false)
-        // Save to history
-        if (chunks.length > 0) {
-          const result = chunks.join("")
+        // Save to history - use chunksRef to avoid stale closure
+        if (chunksRef.current.length > 0) {
+          const result = chunksRef.current.join("")
+          console.log("Saving to history. Result length:", result.length)
           const sourceLabel = imageFile
             ? imageFile.name
             : url
@@ -147,6 +159,9 @@ export default function PlaygroundPage() {
             instructions,
             result,
           })
+          console.log("History item added successfully")
+        } else {
+          console.warn("No chunks to save - chunksRef.current is empty")
         }
       },
     }
