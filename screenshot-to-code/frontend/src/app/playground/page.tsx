@@ -1,12 +1,13 @@
 "use client"
 
-import { useRef, useState } from "react"
+import { useRef, useState, useEffect } from "react"
 import { X } from "lucide-react"
 import { BaseLayout } from "@/components/layouts/base-layout"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
+import { addHistoryItem, extractDomain, type HistoryItem } from "@/lib/history"
 import {
   generateCode,
   type FullGenerationSettings,
@@ -29,6 +30,21 @@ export default function PlaygroundPage() {
   const [imagePreview, setImagePreview] = useState<string | null>(null)
   const [url, setUrl] = useState("")
   const [instructions, setInstructions] = useState("")
+
+  // Load from history if available
+  useEffect(() => {
+    const loadedItem = sessionStorage.getItem("playground_load")
+    if (loadedItem) {
+      try {
+        const item: HistoryItem = JSON.parse(loadedItem)
+        setInstructions(item.instructions || "")
+        setChunks([item.result])
+        sessionStorage.removeItem("playground_load")
+      } catch (e) {
+        console.error("Failed to load history item:", e)
+      }
+    }
+  }, [])
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -117,6 +133,21 @@ export default function PlaygroundPage() {
       },
       onComplete: () => {
         setIsStreaming(false)
+        // Save to history
+        if (chunks.length > 0) {
+          const result = chunks.join("")
+          const sourceLabel = imageFile
+            ? imageFile.name
+            : url
+              ? extractDomain(url)
+              : "Unknown"
+          addHistoryItem({
+            sourceType: imageFile ? "image" : "url",
+            sourceLabel,
+            instructions,
+            result,
+          })
+        }
       },
     }
 

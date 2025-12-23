@@ -16,6 +16,7 @@ import {
   LayoutTemplate,
   Users,
   Code2,
+  Clock,
 } from "lucide-react"
 import { Link } from "react-router-dom"
 import { Logo } from "@/components/logo"
@@ -87,6 +88,11 @@ const data = {
           title: "Playground",
           url: "/playground",
           icon: Code2,
+        },
+        {
+          title: "History",
+          url: "/history",
+          icon: Clock,
         },
       ],
     },
