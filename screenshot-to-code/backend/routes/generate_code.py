@@ -5,7 +5,7 @@ from typing import Callable, Awaitable
 from fastapi import APIRouter, WebSocket
 import openai
 import uuid
-from codegen.utils import extract_html_content
+from codegen.utils import extract_html_content, validate_react_output, validate_vue_output
 from db import update_generation
 
 # Import shutdown flag from main
@@ -657,6 +657,7 @@ class ParallelGenerationStage:
         anthropic_api_key: str | None,
         should_generate_images: bool,
         generation_id: str,
+        stack: Stack,
     ):
         self.send_message = send_message
         self.openai_api_key = openai_api_key
@@ -664,6 +665,7 @@ class ParallelGenerationStage:
         self.anthropic_api_key = anthropic_api_key
         self.should_generate_images = should_generate_images
         self.generation_id = generation_id
+        self.stack = stack
 
     async def process_variants(
         self,
@@ -673,6 +675,10 @@ class ParallelGenerationStage:
         params: Dict[str, str],
     ) -> Dict[int, str]:
         """Process only ACTIVE variants and return completions"""
+        # Store prompt_messages for potential retry
+        self.prompt_messages = prompt_messages
+        self.params = params
+
         # Create tasks with indices
         # Since we have only ACTIVE_VARIANT_INDEX (2) active, it becomes local_index 0 in UI
         tasks = self._create_generation_tasks(
@@ -778,6 +784,63 @@ class ParallelGenerationStage:
     async def _process_chunk(self, content: str, variant_index: int):
         """Process streaming chunks"""
         await self.send_message("chunk", content, variant_index)
+
+    async def _retry_with_repair_instruction(
+        self,
+        model: Llm,
+        local_index: int,
+        repair_instruction: str,
+    ) -> Completion | None:
+        """
+        Retry generation with repair instruction.
+        Returns Completion if successful, None if failed.
+        """
+        try:
+            print(f"[VALIDATION] Retrying with repair instruction for {self.stack}")
+
+            # Create repair prompt by appending user message
+            repair_prompt = list(self.prompt_messages)  # Copy
+            repair_prompt.append({
+                "role": "user",
+                "content": repair_instruction,
+            })
+
+            # Call model again with repair prompt
+            if model in OPENAI_MODELS:
+                if self.openai_api_key is None:
+                    return None
+
+                completion = await stream_openai_response(
+                    repair_prompt,
+                    api_key=self.openai_api_key,
+                    base_url=self.openai_base_url,
+                    callback=lambda x: self._process_chunk(x, local_index),
+                    model_name=model.value,
+                )
+                return completion
+            elif model in ANTHROPIC_MODELS:
+                if self.anthropic_api_key is None:
+                    return None
+
+                # Determine Claude model based on generation type
+                if self.params.get("generationType") == "create":
+                    claude_model = Llm.CLAUDE_3_7_SONNET_2025_02_19
+                else:
+                    claude_model = Llm.CLAUDE_4_5_SONNET_2025_09_29
+
+                completion = await stream_claude_response(
+                    repair_prompt,
+                    api_key=self.anthropic_api_key,
+                    callback=lambda x: self._process_chunk(x, local_index),
+                    model_name=claude_model.value,
+                )
+                return completion
+            else:
+                # Other models not supported for retry
+                return None
+        except Exception as e:
+            print(f"[VALIDATION] Retry failed: {e}")
+            return None
 
     async def _stream_openai_with_error_handling(
         self,
@@ -905,6 +968,58 @@ class ParallelGenerationStage:
 
             print(f"{model.value} completion took {completion['duration']:.2f} seconds")
             html_result = completion["code"]
+
+            # ✅ VALIDATION AND RETRY FOR REACT/VUE
+            # Only validate for react_tailwind and vue_tailwind stacks
+            needs_validation = self.stack in ["react_tailwind", "vue_tailwind"]
+
+            if needs_validation:
+                # Validate the output
+                is_valid = False
+                if self.stack == "react_tailwind":
+                    is_valid = validate_react_output(html_result)
+                elif self.stack == "vue_tailwind":
+                    is_valid = validate_vue_output(html_result)
+
+                # If validation failed, try ONE retry with repair instruction
+                if not is_valid:
+                    print(f"[VALIDATION] Failed for {self.stack}. Attempting repair retry...")
+
+                    # Prepare repair instruction
+                    repair_instruction = (
+                        "Your previous output was INVALID because it did not include REQUIRED FRAMEWORK MARKERS. "
+                        "Fix it and output the full corrected <html>...</html> code with all required elements."
+                    )
+
+                    # Attempt retry
+                    retry_completion = await self._retry_with_repair_instruction(
+                        model=model,
+                        local_index=local_index,
+                        repair_instruction=repair_instruction,
+                    )
+
+                    if retry_completion:
+                        retry_html = retry_completion["code"]
+
+                        # Validate retry result
+                        retry_valid = False
+                        if self.stack == "react_tailwind":
+                            retry_valid = validate_react_output(retry_html)
+                        elif self.stack == "vue_tailwind":
+                            retry_valid = validate_vue_output(retry_html)
+
+                        if retry_valid:
+                            print(f"[VALIDATION] Retry succeeded for {self.stack}")
+                            html_result = retry_html  # Use retry result
+                        else:
+                            print(f"[VALIDATION] Retry also failed. Using original result as fallback.")
+                            # Keep original html_result (don't crash, preserve UX)
+                    else:
+                        print(f"[VALIDATION] Retry failed to execute. Using original result as fallback.")
+                        # Keep original html_result
+                else:
+                    print(f"[VALIDATION] Passed for {self.stack}")
+
             variant_completions[local_index] = html_result
 
             # 🔧 FIXED: Save variant immediately to generation_variants table
@@ -1188,6 +1303,7 @@ class CodeGenerationMiddleware(Middleware):
                         anthropic_api_key=context.extracted_params.anthropic_api_key,
                         should_generate_images=context.extracted_params.should_generate_images,
                         generation_id=context.generation_id,
+                        stack=context.extracted_params.stack,
                     )
 
                     context.variant_completions = (
