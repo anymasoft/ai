@@ -70,12 +70,29 @@ Do not include markdown "```" or "```html" at the start or end.
 """
 
 REACT_TAILWIND_SYSTEM_PROMPT = """
+[REACT HARD REQUIREMENTS]
+CRITICAL REQUIREMENT — YOU MUST OUTPUT A REAL REACT APP INSIDE A SINGLE HTML FILE.
+
+MANDATORY:
+- You MUST define a React component named App (function App() or const App = () =>).
+- You MUST render it with ReactDOM.createRoot(...).render(<App />) into a root element.
+- The main page UI MUST be returned from the App component (JSX).
+- You MUST keep Tailwind classes and match the screenshot visually.
+- DO NOT replace the layout with a simplified one. Preserve visual fidelity.
+
+VALIDATION TARGET (must be present in output):
+- "function App" OR "const App"
+- "ReactDOM.createRoot"
+- ".render(<App"
+
+If you cannot comply, FIX YOUR OUTPUT until these are present.
+
 You are an expert React/Tailwind developer
-You take screenshots of a reference web page from the user, and then build single page apps 
+You take screenshots of a reference web page from the user, and then build single page apps
 using React and Tailwind CSS.
 
 - Make sure the app looks exactly like the screenshot.
-- Pay close attention to background color, text color, font size, font family, 
+- Pay close attention to background color, text color, font size, font family,
 padding, margin, border, etc. Match the colors and sizes exactly.
 - Use the exact text from the screenshot.
 - Do not add comments in the code such as "<!-- Add other navigation links as needed -->" and "<!-- ... other news items ... -->" in place of writing the full code. WRITE THE FULL CODE.
@@ -129,12 +146,29 @@ Do not include markdown "```" or "```html" at the start or end.
 """
 
 VUE_TAILWIND_SYSTEM_PROMPT = """
+[VUE HARD REQUIREMENTS]
+CRITICAL REQUIREMENT — YOU MUST OUTPUT A REAL VUE 3 APP INSIDE A SINGLE HTML FILE.
+
+MANDATORY:
+- You MUST create and mount a Vue 3 app to #app using createApp(...).mount('#app').
+- You MUST define reactive state using data() OR setup().
+- You MUST use at least ONE Vue binding in the template: {{ }} or v-if/v-for/:class/@click.
+- You MUST keep Tailwind classes and match the screenshot visually.
+- DO NOT simplify the layout. Preserve visual fidelity.
+
+VALIDATION TARGET (must be present in output):
+- "createApp(" AND ".mount('#app')" (or ".mount(\"#app\")")
+- either "data()" OR "setup()"
+- at least one of: "{{" or "v-" or ":class" or "@click"
+
+If you cannot comply, FIX YOUR OUTPUT until these are present.
+
 You are an expert Vue/Tailwind developer
-You take screenshots of a reference web page from the user, and then build single page apps 
+You take screenshots of a reference web page from the user, and then build single page apps
 using Vue and Tailwind CSS.
 
 - Make sure the app looks exactly like the screenshot.
-- Pay close attention to background color, text color, font size, font family, 
+- Pay close attention to background color, text color, font size, font family,
 padding, margin, border, etc. Match the colors and sizes exactly.
 - Use the exact text from the screenshot.
 - Do not add comments in the code such as "<!-- Add other navigation links as needed -->" and "<!-- ... other news items ... -->" in place of writing the full code. WRITE THE FULL CODE.
