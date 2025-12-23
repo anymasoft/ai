@@ -7,6 +7,7 @@ import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { addHistoryItem, extractDomain, type HistoryItem } from "@/lib/history"
 import {
   generateCode,
@@ -289,17 +290,40 @@ export default function PlaygroundPage() {
           </div>
         </Card>
 
-        {/* Generated Code Card */}
+        {/* Preview / Code Tabs */}
         {chunks.length > 0 && (
           <Card className="p-6">
-            <div className="space-y-2">
-              <h3 className="font-semibold">
-                Generated Code {isStreaming && <span className="text-muted-foreground">(streaming...)</span>}
-              </h3>
-              <pre className="bg-muted p-4 rounded text-sm overflow-auto max-h-96">
-                <code>{chunks.join("")}</code>
-              </pre>
-            </div>
+            <Tabs defaultValue="preview" className="w-full">
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="font-semibold">
+                    Result {isStreaming && <span className="text-muted-foreground">(streaming...)</span>}
+                  </h3>
+                  <TabsList>
+                    <TabsTrigger value="preview">Preview</TabsTrigger>
+                    <TabsTrigger value="code">Code</TabsTrigger>
+                  </TabsList>
+                </div>
+
+                {/* Preview Tab */}
+                <TabsContent value="preview" className="mt-4">
+                  <iframe
+                    srcDoc={chunks.join("")}
+                    className="w-full border rounded bg-white"
+                    style={{ minHeight: "600px" }}
+                    title="Preview"
+                    sandbox="allow-same-origin allow-scripts"
+                  />
+                </TabsContent>
+
+                {/* Code Tab */}
+                <TabsContent value="code" className="mt-4">
+                  <pre className="bg-muted p-4 rounded text-sm overflow-auto max-h-96">
+                    <code>{chunks.join("")}</code>
+                  </pre>
+                </TabsContent>
+              </div>
+            </Tabs>
           </Card>
         )}
 
