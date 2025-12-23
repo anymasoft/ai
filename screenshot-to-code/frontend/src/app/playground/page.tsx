@@ -4,6 +4,8 @@ import { useRef, useState } from "react"
 import { BaseLayout } from "@/components/layouts/base-layout"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Textarea } from "@/components/ui/textarea"
 import {
   generateCode,
   type FullGenerationSettings,
@@ -19,20 +21,53 @@ export default function PlaygroundPage() {
   const [isStreaming, setIsStreaming] = useState(false)
   const [chunks, setChunks] = useState<string[]>([])
   const [error, setError] = useState<string | null>(null)
+  const [validationError, setValidationError] = useState<string | null>(null)
 
-  const handleGenerate = () => {
+  // Input state
+  const [imageFile, setImageFile] = useState<File | null>(null)
+  const [imagePreview, setImagePreview] = useState<string | null>(null)
+  const [url, setUrl] = useState("")
+  const [instructions, setInstructions] = useState("")
+
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (file) {
+      setImageFile(file)
+      // Create preview
+      const reader = new FileReader()
+      reader.onload = (event) => {
+        setImagePreview(event.target?.result as string)
+      }
+      reader.readAsDataURL(file)
+    }
+  }
+
+  const handleGenerate = async () => {
+    // Validation
+    if (!imageFile && !url) {
+      setValidationError("Please provide either an image or a URL")
+      return
+    }
+
+    setValidationError(null)
     setIsStreaming(true)
     setChunks([])
     setError(null)
 
-    // Minimal mock data
-    const mockParams: FullGenerationSettings = {
+    // Prepare images array (convert file to data URL if present)
+    let images: string[] = []
+    if (imageFile && imagePreview) {
+      images = [imagePreview]
+    }
+
+    // Build params with real data
+    const params: FullGenerationSettings = {
       // CodeGenerationParams
       generationType: "create",
-      inputMode: "text",
+      inputMode: imageFile ? "image" : url ? "text" : "text",
       prompt: {
-        text: "Generate a simple HTML page with a button and form",
-        images: [],
+        text: instructions || (url ? `Generate code based on this URL: ${url}` : "Generate code from the provided image"),
+        images: images,
       },
       // Settings
       openAiApiKey: null,
@@ -74,7 +109,7 @@ export default function PlaygroundPage() {
       },
     }
 
-    generateCode(wsRef, mockParams, callbacks)
+    generateCode(wsRef, params, callbacks)
   }
 
   const handleCancel = () => {
@@ -89,11 +124,59 @@ export default function PlaygroundPage() {
       description="Code generation workspace"
     >
       <div className="@container/main px-4 lg:px-6 space-y-6">
+        {/* Input Form Card */}
         <Card className="p-6">
           <div className="space-y-4">
-            <p className="text-sm text-muted-foreground">
-              Click the button to test code generation streaming. Results will appear below.
-            </p>
+            <h3 className="font-semibold">Generate Code</h3>
+
+            {/* Image Upload */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Upload Image</label>
+              <Input
+                type="file"
+                accept="image/png,image/jpeg,image/webp"
+                onChange={handleImageChange}
+                disabled={isStreaming}
+              />
+              {imagePreview && (
+                <div className="mt-2">
+                  <img src={imagePreview} alt="Preview" className="max-h-32 rounded border" />
+                </div>
+              )}
+            </div>
+
+            {/* URL Input */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Or Enter URL</label>
+              <Input
+                type="url"
+                placeholder="https://example.com"
+                value={url}
+                onChange={(e) => setUrl(e.target.value)}
+                disabled={isStreaming}
+              />
+            </div>
+
+            {/* Instructions */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Instructions (optional)</label>
+              <Textarea
+                placeholder="Describe what you want to generate…"
+                value={instructions}
+                onChange={(e) => setInstructions(e.target.value)}
+                disabled={isStreaming}
+                rows={4}
+              />
+            </div>
+
+            {/* Validation Error */}
+            {validationError && (
+              <div className="p-3 bg-destructive/10 text-destructive text-sm rounded">
+                {validationError}
+              </div>
+            )}
+
+            {/* Generate/Cancel Button */}
             <div className="flex gap-2">
               <Button
                 onClick={isStreaming ? handleCancel : handleGenerate}
@@ -105,6 +188,7 @@ export default function PlaygroundPage() {
           </div>
         </Card>
 
+        {/* Generated Code Card */}
         {chunks.length > 0 && (
           <Card className="p-6">
             <div className="space-y-2">
@@ -118,6 +202,7 @@ export default function PlaygroundPage() {
           </Card>
         )}
 
+        {/* Error Card */}
         {error && (
           <Card className="p-6 border-destructive">
             <div className="space-y-2">
