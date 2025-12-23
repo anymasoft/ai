@@ -20,6 +20,7 @@ import {
 
 export default function PlaygroundPage() {
   const wsRef = useRef<WebSocket | null>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
   const [isStreaming, setIsStreaming] = useState(false)
   const [chunks, setChunks] = useState<string[]>([])
   const [error, setError] = useState<string | null>(null)
@@ -63,9 +64,8 @@ export default function PlaygroundPage() {
     setImageFile(null)
     setImagePreview(null)
     // Clear file input
-    const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement
-    if (fileInput) {
-      fileInput.value = ""
+    if (fileInputRef.current) {
+      fileInputRef.current.value = ""
     }
   }
 
@@ -178,14 +178,21 @@ export default function PlaygroundPage() {
             {/* Image Upload */}
             <div className="space-y-2">
               <label className="text-sm font-medium">Upload Image</label>
-              <Input
+              <input
+                ref={fileInputRef}
                 type="file"
                 accept="image/png,image/jpeg,image/webp"
                 onChange={handleImageChange}
-                disabled={isStreaming || !!url}
-                title="Choose an image file (PNG, JPEG, or WebP)"
-                className="file:text-muted-foreground/60"
+                className="hidden"
               />
+              <Button
+                onClick={() => !isStreaming && !url && fileInputRef.current?.click()}
+                variant="outline"
+                disabled={isStreaming || !!url}
+                className="w-full justify-start text-muted-foreground"
+              >
+                {imageFile ? imageFile.name : "Choose image file"}
+              </Button>
               {url && (
                 <p className="text-xs text-muted-foreground/70">URL is used as source</p>
               )}
