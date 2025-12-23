@@ -5,7 +5,8 @@ import { useNavigate } from "react-router-dom"
 import { BaseLayout } from "@/components/layouts/base-layout"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { getHistory, formatDate, type HistoryItem } from "@/lib/history"
+import { Badge } from "@/components/ui/badge"
+import { getHistory, formatDate, getFormatDisplay, type HistoryItem } from "@/lib/history"
 
 export default function HistoryPage() {
   const navigate = useNavigate()
@@ -54,6 +55,9 @@ export default function HistoryPage() {
                         <p className="text-sm font-medium">
                           {item.sourceType === "image" ? "📷" : "🌐"} {item.sourceLabel}
                         </p>
+                        <Badge variant="outline" className="text-xs">
+                          {getFormatDisplay(item.format)}
+                        </Badge>
                       </div>
                       <p className="text-xs text-muted-foreground">{formatDate(item.createdAt)}</p>
                     </div>

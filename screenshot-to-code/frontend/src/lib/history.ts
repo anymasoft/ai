@@ -5,6 +5,7 @@ export interface HistoryItem {
   sourceLabel: string
   instructions?: string
   result: string
+  format?: "html_tailwind" | "html_css" | "react_tailwind" | "vue_tailwind"
 }
 
 const HISTORY_KEY = "generation_history"
@@ -66,5 +67,20 @@ export function extractDomain(url: string): string {
     return parsed.hostname || url
   } catch {
     return url
+  }
+}
+
+export function getFormatDisplay(format?: string): string {
+  switch (format) {
+    case "html_tailwind":
+      return "HTML"
+    case "html_css":
+      return "CSS"
+    case "react_tailwind":
+      return "React"
+    case "vue_tailwind":
+      return "Vue"
+    default:
+      return "Code"
   }
 }

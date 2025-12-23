@@ -8,6 +8,14 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import { Badge } from "@/components/ui/badge"
 import { addHistoryItem, extractDomain, type HistoryItem } from "@/lib/history"
 import {
   generateCode,
@@ -33,6 +41,9 @@ export default function PlaygroundPage() {
   const [imagePreview, setImagePreview] = useState<string | null>(null)
   const [url, setUrl] = useState("")
   const [instructions, setInstructions] = useState("")
+  const [selectedFormat, setSelectedFormat] = useState<"html_tailwind" | "html_css" | "react_tailwind" | "vue_tailwind">(
+    "html_tailwind"
+  )
 
   // Load from history if available
   useEffect(() => {
@@ -109,7 +120,7 @@ export default function PlaygroundPage() {
       screenshotOneApiKey: null,
       isImageGenerationEnabled: false,
       editorTheme: EditorTheme.COBALT,
-      generatedCodeConfig: Stack.HTML_TAILWIND,
+      generatedCodeConfig: selectedFormat,
       codeGenerationModel: CodeGenerationModel.CLAUDE_4_5_SONNET_2025_09_29,
       isTermOfServiceAccepted: true,
       anthropicApiKey: null,
@@ -159,6 +170,7 @@ export default function PlaygroundPage() {
             sourceLabel,
             instructions,
             result,
+            format: selectedFormat,
           })
           console.log("History item added successfully")
         } else {
@@ -269,6 +281,41 @@ export default function PlaygroundPage() {
               <p className="text-xs text-muted-foreground/80">
                 Optional: describe what should be changed or emphasized in the generated code.
               </p>
+            </div>
+
+            {/* Format Selector */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Output format</label>
+              <Select value={selectedFormat} onValueChange={(value: any) => setSelectedFormat(value)}>
+                <SelectTrigger disabled={isStreaming}>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="html_tailwind">
+                    <div className="flex items-center gap-2">
+                      Static HTML (Tailwind)
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="html_css">
+                    <div className="flex items-center gap-2">
+                      Static HTML (CSS)
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="react_tailwind">
+                    <div className="flex items-center gap-2">
+                      React + Tailwind
+                      <Badge variant="secondary" className="ml-1">Pro</Badge>
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="vue_tailwind">
+                    <div className="flex items-center gap-2">
+                      Vue + Tailwind
+                      <Badge variant="secondary" className="ml-1">Pro</Badge>
+                      <Badge variant="outline" className="ml-1 text-xs">Beta</Badge>
+                    </div>
+                  </SelectItem>
+                </SelectContent>
+              </Select>
             </div>
 
             {/* Validation Error */}
