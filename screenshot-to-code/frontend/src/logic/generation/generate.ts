@@ -46,6 +46,7 @@ export function generateCode(
   wsRef.current = ws
 
   ws.addEventListener("open", () => {
+    console.log("[DIAG] WS Payload generatedCodeConfig:", (params as any).generatedCodeConfig)
     ws.send(JSON.stringify(params))
   })
 
