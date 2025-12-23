@@ -346,12 +346,15 @@ class ParameterExtractionStage:
         """Extract and validate all parameters from the request"""
         # Read the code config settings (stack) from the request.
         generated_code_config = params.get("generatedCodeConfig", "")
+        print(f"[DIAG:EXTRACT] extracted generatedCodeConfig='{generated_code_config}'")
+        print(f"[DIAG:EXTRACT] valid Stack values: {get_args(Stack)}")
         if generated_code_config not in get_args(Stack):
             await self.throw_error(
                 f"Invalid generated code config: {generated_code_config}"
             )
             raise ValueError(f"Invalid generated code config: {generated_code_config}")
         validated_stack = cast(Stack, generated_code_config)
+        print(f"[DIAG:EXTRACT] validated_stack='{validated_stack}'")
 
         # Validate the input mode
         input_mode = params.get("inputMode")
@@ -521,6 +524,7 @@ class PromptCreationStage:
     ) -> tuple[List[ChatCompletionMessageParam], Dict[str, str]]:
         """Create prompt messages and return image cache"""
         try:
+            print(f"[DIAG:PROMPT] About to create_prompt with stack='{extracted_params.stack}'")
             prompt_messages, image_cache = await create_prompt(
                 stack=extracted_params.stack,
                 input_mode=extracted_params.input_mode,
@@ -1269,6 +1273,8 @@ async def stream_code(websocket: WebSocket):
         # Read parameters from client
         params: Dict[str, str] = await websocket.receive_json()
         print("[WS] Received generation parameters")
+        print("[DIAG:BACKEND:RECV] Full params=", params)
+        print("[DIAG:BACKEND:RECV] generatedCodeConfig=", params.get("generatedCodeConfig", "NOT_FOUND"))
 
         # Create generation record with queued status
         generation_id = str(uuid.uuid4().hex[:16])
