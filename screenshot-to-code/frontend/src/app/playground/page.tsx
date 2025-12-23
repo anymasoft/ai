@@ -1,7 +1,7 @@
 "use client"
 
 import { useRef, useState, useEffect } from "react"
-import { X, Copy, Download, FileArchive, Check } from "lucide-react"
+import { X, Copy, Download, FileArchive, Check, Loader2 } from "lucide-react"
 import { BaseLayout } from "@/components/layouts/base-layout"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -458,12 +458,27 @@ export default function PlaygroundPage() {
               <Button
                 onClick={isStreaming ? handleCancel : handleGenerate}
                 variant={isStreaming ? "destructive" : "default"}
+                className="gap-2"
               >
+                {isStreaming && <Loader2 size={16} className="animate-spin" />}
                 {isStreaming ? "Cancel" : "Generate"}
               </Button>
             </div>
           </div>
         </Card>
+
+        {/* Generating Indicator */}
+        {isStreaming && chunks.length === 0 && (
+          <Card className="p-6">
+            <div className="flex items-center gap-3 text-muted-foreground">
+              <Loader2 size={20} className="animate-spin" />
+              <div>
+                <p className="font-medium">Generating code...</p>
+                <p className="text-sm">This may take a few moments</p>
+              </div>
+            </div>
+          </Card>
+        )}
 
         {/* Preview / Code Tabs */}
         {chunks.length > 0 && (
@@ -471,8 +486,14 @@ export default function PlaygroundPage() {
             <Tabs defaultValue="preview" className="w-full">
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
-                  <h3 className="font-semibold">
-                    Result {isStreaming && <span className="text-muted-foreground">(streaming...)</span>}
+                  <h3 className="font-semibold flex items-center gap-2">
+                    Result
+                    {isStreaming && (
+                      <span className="text-muted-foreground flex items-center gap-1.5 text-sm font-normal">
+                        <Loader2 size={14} className="animate-spin" />
+                        generating...
+                      </span>
+                    )}
                   </h3>
                   <TabsList>
                     <TabsTrigger value="preview">Preview</TabsTrigger>
