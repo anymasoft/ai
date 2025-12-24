@@ -67,6 +67,7 @@ def init_db() -> None:
                 disabled INTEGER DEFAULT 0,
                 used_generations INTEGER DEFAULT 0,
                 expiresAt INTEGER,
+                credits INTEGER DEFAULT 0,
                 created_at TEXT NOT NULL,
                 updated_at TEXT NOT NULL,
                 FOREIGN KEY (plan_id) REFERENCES plans(id)
@@ -90,6 +91,8 @@ def init_db() -> None:
                 cursor.execute("ALTER TABLE users ADD COLUMN expiresAt INTEGER")
             if 'updated_at' not in columns:
                 cursor.execute("ALTER TABLE users ADD COLUMN updated_at TEXT")
+            if 'credits' not in columns:
+                cursor.execute("ALTER TABLE users ADD COLUMN credits INTEGER DEFAULT 0")
 
             # Migrate no_plan / NULL plan to 'free'
             cursor.execute("UPDATE users SET plan = 'free' WHERE plan IS NULL OR plan = '' OR plan = 'no_plan'")
@@ -234,6 +237,28 @@ def init_db() -> None:
         """)
 
         # ====================
+        # BILLING TABLES
+        # ====================
+
+        # Create payments table (for YooKassa billing)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS payments (
+                id TEXT PRIMARY KEY,
+                user_id TEXT NOT NULL,
+                payment_id TEXT UNIQUE NOT NULL,
+                package TEXT NOT NULL,
+                credits_amount INTEGER NOT NULL,
+                amount_cents INTEGER NOT NULL,
+                currency TEXT DEFAULT 'RUB',
+                status TEXT NOT NULL DEFAULT 'pending',
+                idempotency_key TEXT UNIQUE,
+                created_at TEXT NOT NULL,
+                completed_at TEXT,
+                FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+            )
+        """)
+
+        # ====================
         # INDEXES
         # ====================
 
@@ -304,6 +329,22 @@ def init_db() -> None:
         cursor.execute("""
             CREATE INDEX IF NOT EXISTS idx_admin_messages_isRead
             ON admin_messages(isRead, createdAt DESC)
+        """)
+
+        # Billing indexes
+        cursor.execute("""
+            CREATE INDEX IF NOT EXISTS idx_payments_user_id
+            ON payments(user_id, created_at DESC)
+        """)
+
+        cursor.execute("""
+            CREATE INDEX IF NOT EXISTS idx_payments_payment_id
+            ON payments(payment_id)
+        """)
+
+        cursor.execute("""
+            CREATE INDEX IF NOT EXISTS idx_payments_status
+            ON payments(status)
         """)
 
         # ====================
