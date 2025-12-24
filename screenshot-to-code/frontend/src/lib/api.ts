@@ -21,20 +21,16 @@ export async function fetchJSON<T = any>(
   options: FetchOptions = {}
 ): Promise<T> {
   const url = `${API_BASE_URL}${path}`
-  const email = useAuthStore.getState().email
 
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
     ...options.headers,
   }
 
-  if (email) {
-    headers["X-User-Email"] = email
-  }
-
   const response = await fetch(url, {
     ...options,
     headers,
+    credentials: 'include',  // ← КРИТИЧНО: передаём session cookie
   })
 
   if (!response.ok) {
