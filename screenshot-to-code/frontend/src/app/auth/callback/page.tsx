@@ -10,38 +10,43 @@ export function AuthCallbackPage() {
   const { checkAuth } = useAuthStore()
 
   useEffect(() => {
-    if (error) {
-      if (window.opener) {
-        window.opener.postMessage(
-          {
-            type: 'auth-error',
-            error: error,
-          },
-          window.location.origin
-        )
-        window.close()
-      } else {
-        window.location.href = '/auth/sign-in'
+    const handleCallback = async () => {
+      if (error) {
+        if (window.opener) {
+          window.opener.postMessage(
+            {
+              type: 'auth-error',
+              error: error,
+            },
+            window.location.origin
+          )
+          window.close()
+        } else {
+          window.location.href = '/auth/sign-in'
+        }
+        return
       }
-      return
+
+      if (success === 'true') {
+        if (window.opener) {
+          // Ждём завершения checkAuth перед отправкой сообщения
+          await checkAuth()
+          window.opener.postMessage(
+            {
+              type: 'auth-success',
+              redirectTo: redirectTo,
+            },
+            window.location.origin
+          )
+          window.close()
+        } else {
+          await checkAuth()
+          window.location.href = redirectTo
+        }
+      }
     }
 
-    if (success === 'true') {
-      if (window.opener) {
-        checkAuth()
-        window.opener.postMessage(
-          {
-            type: 'auth-success',
-            redirectTo: redirectTo,
-          },
-          window.location.origin
-        )
-        window.close()
-      } else {
-        checkAuth()
-        window.location.href = redirectTo
-      }
-    }
+    handleCallback()
   }, [success, error, redirectTo, checkAuth])
 
   return (
