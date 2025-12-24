@@ -673,7 +673,7 @@ def get_session(session_id: str) -> Optional[dict]:
 
         # Get user data
         cursor.execute("""
-            SELECT id, email, name, role, plan, disabled
+            SELECT id, email, name, role, plan, disabled, expiresAt
             FROM users
             WHERE id = ?
         """, (session_dict["user_id"],))
@@ -683,6 +683,7 @@ def get_session(session_id: str) -> Optional[dict]:
             return None
 
         # Combine session + user data
+        expires_at = user[6]
         session_dict["user"] = {
             "id": user[0],
             "email": user[1],
@@ -690,6 +691,7 @@ def get_session(session_id: str) -> Optional[dict]:
             "role": user[3],
             "plan": user[4],
             "disabled": bool(user[5]),
+            "expiresAt": int(expires_at) if expires_at else None,
         }
 
         return session_dict
