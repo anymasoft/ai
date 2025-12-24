@@ -6,7 +6,9 @@ from fastapi import APIRouter, WebSocket
 import openai
 import uuid
 from codegen.utils import extract_html_content, validate_react_output, validate_vue_output
-from db import update_generation
+from db import update_generation, get_conn
+from api.config.plans import get_plan_limit, is_format_allowed
+from datetime import datetime
 
 # Import shutdown flag from main
 import main as main_module
@@ -1333,6 +1335,9 @@ class PostProcessingMiddleware(Middleware):
             # This ensures frontend knows generation is complete and isn't left waiting
             try:
                 if context.ws_comm and not context.ws_comm.is_closed:
+                    # Increment user generations count on success
+                    await increment_user_generations(context.websocket)
+
                     await context.websocket.send_json({"type": "generation_complete"})
                     print("Sent generation_complete signal to frontend")
             except asyncio.CancelledError:
@@ -1346,6 +1351,97 @@ class PostProcessingMiddleware(Middleware):
         except asyncio.CancelledError:
             # Request cancelled - silent exit
             pass
+
+
+def get_user_from_session(websocket: WebSocket) -> dict | None:
+    """Get user info from session cookie in WebSocket connection."""
+    try:
+        session_id = websocket.cookies.get("session_id")
+        if not session_id:
+            return None
+
+        conn = get_conn()
+        cursor = conn.cursor()
+
+        # Get session and user data
+        now = datetime.utcnow().isoformat()
+        cursor.execute("""
+            SELECT u.id, u.email, u.plan, u.used_generations, u.disabled
+            FROM sessions s
+            JOIN users u ON s.user_id = u.id
+            WHERE s.id = ? AND s.expires_at > ?
+        """, (session_id, now))
+
+        row = cursor.fetchone()
+        conn.close()
+
+        if not row:
+            return None
+
+        return {
+            "id": row[0],
+            "email": row[1],
+            "plan": row[2],
+            "used_generations": row[3],
+            "disabled": bool(row[4]),
+        }
+    except Exception as e:
+        print(f"[WS] Error getting user from session: {e}")
+        return None
+
+
+async def check_generation_limits(
+    websocket: WebSocket, params: dict
+) -> tuple[bool, str | None]:
+    """
+    Check if user can generate code based on plan limits.
+    Returns (is_allowed, error_message)
+    """
+    user = get_user_from_session(websocket)
+
+    if not user:
+        # No user/session = can't check limits, but allow for demo
+        return True, None
+
+    if user.get("disabled"):
+        return False, "Your account has been disabled"
+
+    plan = user.get("plan", "free")
+    used = user.get("used_generations", 0)
+    limit = get_plan_limit(plan)
+
+    # Check usage limit
+    if used >= limit:
+        return False, f"You have reached your {plan} plan limit ({limit} generations/month)"
+
+    # Check format availability (if specified in params)
+    format_name = params.get("generatedCodeConfig", "html_tailwind")
+    if not is_format_allowed(plan, format_name):
+        return False, f"Format '{format_name}' is not available in your {plan} plan"
+
+    return True, None
+
+
+async def increment_user_generations(websocket: WebSocket) -> None:
+    """Increment used_generations for user after successful generation."""
+    try:
+        user = get_user_from_session(websocket)
+        if not user:
+            return
+
+        conn = get_conn()
+        cursor = conn.cursor()
+
+        cursor.execute(
+            "UPDATE users SET used_generations = used_generations + 1 WHERE id = ?",
+            (user["id"],),
+        )
+
+        conn.commit()
+        conn.close()
+        print(f"[WS] Incremented generations for user {user['id']}")
+    except Exception as e:
+        print(f"[WS] Error incrementing generations: {e}")
 
 
 @router.websocket("/generate-code")
@@ -1368,8 +1464,18 @@ async def stream_code(websocket: WebSocket):
     params: Dict[str, str] = await websocket.receive_json()
     print("[WS:2] DONE receive_json")
 
-    print("[WS:3] params check")
-    print("[WS:3] DONE params check")
+    print("[WS:3] check generation limits")
+    is_allowed, error_message = await check_generation_limits(websocket, params)
+    if not is_allowed:
+        print(f"[WS:3] LIMIT CHECK FAILED: {error_message}")
+        await websocket.send_json({
+            "type": "error",
+            "value": error_message or "Generation limit reached",
+            "variantIndex": 0
+        })
+        await websocket.close(code=4029, reason="Limit exceeded")
+        return
+    print("[WS:3] DONE params check - limits OK")
 
     print("[WS:4] create generation_id")
     generation_id = str(uuid.uuid4().hex[:16])

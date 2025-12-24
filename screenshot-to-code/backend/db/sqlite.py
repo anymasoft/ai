@@ -65,6 +65,7 @@ def init_db() -> None:
                 plan TEXT DEFAULT 'free',
                 role TEXT DEFAULT 'user',
                 disabled INTEGER DEFAULT 0,
+                used_generations INTEGER DEFAULT 0,
                 expiresAt INTEGER,
                 created_at TEXT NOT NULL,
                 updated_at TEXT NOT NULL,
@@ -83,10 +84,17 @@ def init_db() -> None:
                 cursor.execute("ALTER TABLE users ADD COLUMN plan TEXT DEFAULT 'free'")
             if 'disabled' not in columns:
                 cursor.execute("ALTER TABLE users ADD COLUMN disabled INTEGER DEFAULT 0")
+            if 'used_generations' not in columns:
+                cursor.execute("ALTER TABLE users ADD COLUMN used_generations INTEGER DEFAULT 0")
             if 'expiresAt' not in columns:
                 cursor.execute("ALTER TABLE users ADD COLUMN expiresAt INTEGER")
             if 'updated_at' not in columns:
                 cursor.execute("ALTER TABLE users ADD COLUMN updated_at TEXT")
+
+            # Migrate no_plan / NULL plan to 'free'
+            cursor.execute("UPDATE users SET plan = 'free' WHERE plan IS NULL OR plan = '' OR plan = 'no_plan'")
+
+            conn.commit()
         except Exception as e:
             print(f"[DB] Migration warning (non-critical): {e}")
 
@@ -673,7 +681,7 @@ def get_session(session_id: str) -> Optional[dict]:
 
         # Get user data
         cursor.execute("""
-            SELECT id, email, name, role, plan, disabled, expiresAt
+            SELECT id, email, name, role, plan, disabled, used_generations, expiresAt
             FROM users
             WHERE id = ?
         """, (session_dict["user_id"],))
@@ -683,7 +691,7 @@ def get_session(session_id: str) -> Optional[dict]:
             return None
 
         # Combine session + user data
-        expires_at = user[6]
+        expires_at = user[7]
         session_dict["user"] = {
             "id": user[0],
             "email": user[1],
@@ -691,6 +699,7 @@ def get_session(session_id: str) -> Optional[dict]:
             "role": user[3],
             "plan": user[4],
             "disabled": bool(user[5]),
+            "used_generations": user[6],
             "expiresAt": int(expires_at) if expires_at else None,
         }
 
