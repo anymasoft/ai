@@ -21,6 +21,7 @@ import {
   FormMessage,
 } from "@/components/ui/form"
 import { useAuthStore } from "@/store/auth"
+import { fetchJSON } from "@/lib/api"
 import { toast } from "sonner"
 
 const loginFormSchema = z.object({
@@ -46,9 +47,16 @@ export function LoginForm1({
     },
   })
 
-  const onSubmit = (values: LoginFormValues) => {
+  const onSubmit = async (values: LoginFormValues) => {
     setEmail(values.email)
-    setRole("user")
+
+    try {
+      const roleData = await fetchJSON<{ role: string }>("/api/user/role")
+      setRole(roleData.role)
+    } catch (error) {
+      setRole("user")
+    }
+
     toast.success(`Signed in as ${values.email}`)
     navigate("/app/playground")
   }
