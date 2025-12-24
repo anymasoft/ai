@@ -30,13 +30,8 @@ export default function AdminUsersPage() {
   async function fetchUsers() {
     try {
       setLoading(true)
-      const adminEmail = localStorage.getItem("dev_admin_email") || "admin@screen2code.com"
 
-      const data = await fetchJSON<{ users: User[] }>("/api/admin/users", {
-        headers: {
-          "X-Admin-Email": adminEmail,
-        },
-      })
+      const data = await fetchJSON<{ users: User[] }>("/api/admin/users")
 
       setUsers(data.users || [])
     } catch (error) {

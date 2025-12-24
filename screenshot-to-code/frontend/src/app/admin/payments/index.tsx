@@ -41,15 +41,8 @@ export default function AdminPaymentsPage() {
         params.set("email", emailFilter)
       }
 
-      const adminEmail = localStorage.getItem("dev_admin_email") || "admin@screen2code.com"
-
       const data = await fetchJSON<{ payments: Payment[]; totalSum: number; message?: string; error?: string }>(
-        `/api/admin/payments?${params.toString()}`,
-        {
-          headers: {
-            "X-Admin-Email": adminEmail,
-          },
-        }
+        `/api/admin/payments?${params.toString()}`
       )
 
       setPayments(data.payments || [])

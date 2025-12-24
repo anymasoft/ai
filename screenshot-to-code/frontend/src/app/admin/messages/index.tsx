@@ -47,15 +47,8 @@ export default function AdminMessagesPage() {
         params.set("readStatus", readStatus)
       }
 
-      const adminEmail = localStorage.getItem("dev_admin_email") || "admin@screen2code.com"
-
       const data = await fetchJSON<{ messages: Message[]; pagination: { totalPages: number } }>(
-        `/api/admin/messages?${params.toString()}`,
-        {
-          headers: {
-            "X-Admin-Email": adminEmail,
-          },
-        }
+        `/api/admin/messages?${params.toString()}`
       )
 
       setMessages(data.messages || [])
@@ -76,13 +69,9 @@ export default function AdminMessagesPage() {
   async function deleteMessage(messageId: string) {
     try {
       setDeleting(messageId)
-      const adminEmail = localStorage.getItem("dev_admin_email") || "admin@screen2code.com"
 
       await fetchJSON(`/api/admin/messages/${messageId}`, {
         method: "DELETE",
-        headers: {
-          "X-Admin-Email": adminEmail,
-        },
       })
 
       setMessages((prev) => prev.filter((msg) => msg.id !== messageId))
