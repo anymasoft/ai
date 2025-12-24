@@ -131,8 +131,8 @@ def init_api_tables():
     conn.commit()
     conn.close()
 
-    print("✅ API tables initialized")
-    print(f"✅ Development API key: {dev_key}")
+    print("[OK] API tables initialized")
+    print(f"[OK] Development API key: {dev_key}")
 
 
 if __name__ == "__main__":
