@@ -1406,4 +1406,3 @@ async def stream_code(websocket: WebSocket):
     print("[WS:9] start keep-alive loop")
     while True:
         await asyncio.sleep(0.1)
-        print("[WS:9] keep-alive tick")
