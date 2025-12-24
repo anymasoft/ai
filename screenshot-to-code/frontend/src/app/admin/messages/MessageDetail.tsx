@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
 import { Loader2, ArrowLeft, Trash2, Mail, User, Calendar } from "lucide-react"
 import { toast } from "sonner"
+import { fetchJSON, ApiError } from "@/lib/api"
 
 interface Message {
   id: string
@@ -18,8 +19,6 @@ interface Message {
   createdAt: number
   isRead: number
 }
-
-const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:7001"
 
 export default function MessageDetail() {
   const navigate = useNavigate()
@@ -38,24 +37,8 @@ export default function MessageDetail() {
   async function fetchMessage() {
     try {
       setLoading(true)
-      const adminEmail = localStorage.getItem("dev_admin_email") || "admin@screen2code.com"
 
-      const res = await fetch(`${BACKEND_URL}/api/admin/messages/${messageId}`, {
-        headers: {
-          "X-Admin-Email": adminEmail,
-        },
-      })
-
-      if (!res.ok) {
-        if (res.status === 404) {
-          toast.error("Сообщение не найдено")
-          navigate("/admin/messages")
-          return
-        }
-        throw new Error("Failed to fetch message")
-      }
-
-      const data = await res.json()
+      const data = await fetchJSON<Message>(`/api/admin/messages/${messageId}`)
       setMessage(data)
 
       // Mark as read if not already
@@ -64,7 +47,12 @@ export default function MessageDetail() {
       }
     } catch (error) {
       console.error("Error:", error)
-      toast.error("Ошибка при загрузке сообщения")
+      if (error instanceof ApiError && error.status === 404) {
+        toast.error("Сообщение не найдено")
+        navigate("/admin/messages")
+      } else {
+        toast.error("Ошибка при загрузке сообщения")
+      }
     } finally {
       setLoading(false)
     }
@@ -72,13 +60,8 @@ export default function MessageDetail() {
 
   async function markAsRead() {
     try {
-      const adminEmail = localStorage.getItem("dev_admin_email") || "admin@screen2code.com"
-
-      await fetch(`${BACKEND_URL}/api/admin/messages/${messageId}/read`, {
+      await fetchJSON(`/api/admin/messages/${messageId}/read`, {
         method: "PATCH",
-        headers: {
-          "X-Admin-Email": adminEmail,
-        },
       })
 
       // Update local state
@@ -93,16 +76,10 @@ export default function MessageDetail() {
 
     try {
       setDeleting(true)
-      const adminEmail = localStorage.getItem("dev_admin_email") || "admin@screen2code.com"
 
-      const res = await fetch(`${BACKEND_URL}/api/admin/messages/${messageId}`, {
+      await fetchJSON(`/api/admin/messages/${messageId}`, {
         method: "DELETE",
-        headers: {
-          "X-Admin-Email": adminEmail,
-        },
       })
-
-      if (!res.ok) throw new Error("Failed to delete message")
 
       toast.success("Сообщение удалено")
       navigate("/admin/messages")
