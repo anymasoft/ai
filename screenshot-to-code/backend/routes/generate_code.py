@@ -1383,8 +1383,12 @@ async def stream_code(websocket: WebSocket):
     from db import save_generation
     import uuid
 
+    print(f"[WS] WebSocket handler called! Client: {websocket.client}")
+
     try:
+        print("[WS] Accepting WebSocket connection...")
         await websocket.accept()
+        print("[WS] WebSocket accepted successfully!")
 
         # Read parameters from client
         params: Dict[str, str] = await websocket.receive_json()
@@ -1440,11 +1444,14 @@ async def stream_code(websocket: WebSocket):
 
     except asyncio.CancelledError:
         # Client disconnected - silent exit
+        print("[WS] Client disconnected (CancelledError)")
         return
     except Exception as e:
-        print(f"[WS] Unexpected error: {e}")
+        import traceback
+        print(f"[WS] UNEXPECTED ERROR: {e}")
+        print(f"[WS] Traceback: {traceback.format_exc()}")
         try:
             await websocket.send_json({"type": "error", "value": str(e)})
             await websocket.close()
-        except:
-            pass
+        except Exception as close_error:
+            print(f"[WS] Failed to send error or close: {close_error}")
