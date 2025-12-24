@@ -1369,8 +1369,6 @@ async def stream_code(websocket: WebSocket):
     print("[WS:2] DONE receive_json")
 
     print("[WS:3] params check")
-    print(f"[WS:3] Full params={params}")
-    print(f"[WS:3] generatedCodeConfig={params.get('generatedCodeConfig', 'NOT_FOUND')}")
     print("[WS:3] DONE params check")
 
     print("[WS:4] create generation_id")
