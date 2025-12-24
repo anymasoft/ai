@@ -10,6 +10,7 @@ from backend.api.billing.yookassa import (
     create_payment,
     check_payment_status,
     add_credits_to_user,
+    deduct_credits,
     get_user_credits,
     get_payment_by_db_id,
     update_payment_status,
@@ -302,6 +303,65 @@ async def get_balance(user: dict = Depends(get_current_user)):
         "user_id": user_id,
         "credits": credits,
         "message": f"У вас {credits} генераций" if credits > 0 else "У вас нет генераций",
+    }
+
+
+@router.post("/api/billing/deduct-credits")
+async def deduct_credits_endpoint(request: dict, user: dict = Depends(get_current_user)):
+    """
+    Deduct credits after successful generation.
+
+    Requires authentication. Called by frontend after generation completes.
+
+    Args:
+        request: { format: "html_tailwind" | "html_css" | "react_tailwind" | "vue_tailwind" }
+        user: Current user from session
+
+    Returns:
+        New credits balance or error if insufficient credits
+    """
+
+    user_id = user.get("id")
+    if not user_id:
+        raise HTTPException(status_code=401, detail="Не авторизирован")
+
+    # Get format from request
+    format_type = request.get("format", "html_tailwind")
+
+    # Calculate cost based on format
+    format_costs = {
+        "html_tailwind": 1,
+        "html_css": 1,
+        "react_tailwind": 2,
+        "vue_tailwind": 2,
+    }
+
+    cost = format_costs.get(format_type, 1)
+
+    # Deduct credits
+    success = deduct_credits(user_id, cost)
+
+    if not success:
+        # Check current balance to provide better error message
+        current_credits = get_user_credits(user_id)
+        raise HTTPException(
+            status_code=402,
+            detail={
+                "error": "insufficient_credits",
+                "message": f"Недостаточно кредитов. У вас {current_credits}, требуется {cost}.",
+                "current_credits": current_credits,
+                "required_credits": cost,
+            },
+        )
+
+    # Get new balance
+    new_credits = get_user_credits(user_id)
+
+    return {
+        "success": True,
+        "credits_deducted": cost,
+        "remaining_credits": new_credits,
+        "message": f"Списано {cost} кредит(ов). Осталось: {new_credits}",
     }
 
 

@@ -196,9 +196,10 @@ export default function PlaygroundPage() {
         console.log("Generation cancelled")
         setIsStreaming(false)
       },
-      onComplete: () => {
+      onComplete: async () => {
         console.log("Generation complete. Chunks ref length:", chunksRef.current.length)
         setIsStreaming(false)
+
         // Save to history - use chunksRef to avoid stale closure
         if (chunksRef.current.length > 0) {
           const result = chunksRef.current.join("")
@@ -218,6 +219,34 @@ export default function PlaygroundPage() {
           console.log("History item added successfully")
         } else {
           console.warn("No chunks to save - chunksRef.current is empty")
+        }
+
+        // Deduct credits for successful generation
+        try {
+          const response = await fetchJSON<{
+            success: boolean
+            remaining_credits: number
+            message: string
+          }>("/api/billing/deduct-credits", {
+            method: "POST",
+            body: JSON.stringify({ format: selectedFormat }),
+          })
+
+          if (response.success) {
+            setCredits(response.remaining_credits)
+            toast.success(response.message)
+
+            // Show paywall if no more credits
+            if (response.remaining_credits === 0) {
+              setTimeout(() => {
+                setShowPaywall(true)
+              }, 1000)
+            }
+          }
+        } catch (err) {
+          console.error("[BILLING] Error deducting credits:", err)
+          // Don't fail the generation, just log the error
+          // The credits will be deducted, but UI might not update immediately
         }
       },
     }

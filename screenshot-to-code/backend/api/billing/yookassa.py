@@ -412,3 +412,64 @@ def get_payments_list(user_id: Optional[str] = None, limit: int = 50) -> list:
         ]
     finally:
         conn.close()
+
+
+def deduct_credits(user_id: str, credits: int) -> bool:
+    """
+    Deduct credits from user account (idempotent).
+
+    Args:
+        user_id: User ID
+        credits: Number of credits to deduct
+
+    Returns:
+        True if successful, False if insufficient credits or user not found
+    """
+
+    conn = get_conn()
+    cursor = conn.cursor()
+
+    try:
+        # Check if user exists and has enough credits
+        cursor.execute(
+            "SELECT credits FROM users WHERE id = ?",
+            (user_id,),
+        )
+        row = cursor.fetchone()
+        if not row:
+            print(f"[BILLING] User not found: {user_id}")
+            return False
+
+        current_credits = row[0] or 0
+
+        # Check if user has enough credits
+        if current_credits < credits:
+            print(
+                f"[BILLING] Insufficient credits for user {user_id}: "
+                f"need {credits}, have {current_credits}"
+            )
+            return False
+
+        # Deduct credits
+        new_credits = current_credits - credits
+
+        cursor.execute(
+            """
+            UPDATE users SET credits = ?, updated_at = datetime('now')
+            WHERE id = ?
+            """,
+            (new_credits, user_id),
+        )
+        conn.commit()
+
+        print(
+            f"[BILLING] Deducted {credits} credits from user {user_id} "
+            f"({current_credits} → {new_credits})"
+        )
+        return True
+
+    except Exception as e:
+        print(f"[BILLING] Error deducting credits: {e}")
+        return False
+    finally:
+        conn.close()
