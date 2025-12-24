@@ -1,4 +1,6 @@
-"use client"
+/**
+ * Admin Users Page - Vite + React version
+ */
 
 import { useState, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -17,7 +19,7 @@ interface User {
   created_at: string
 }
 
-const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:7001"
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:7001"
 
 export default function AdminUsersPage() {
   const [users, setUsers] = useState<User[]>([])

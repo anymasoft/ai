@@ -1,8 +1,14 @@
-"use client"
+/**
+ * Message Detail Page - Vite + React version
+ *
+ * ✅ Правильно:
+ * - useParams() из react-router-dom
+ * - useNavigate() из react-router-dom
+ */
 
 import { useState, useEffect } from "react"
-import { useRouter, useParams } from "next/navigation"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { useNavigate, useParams } from "react-router-dom" // ✅ Правильно
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
@@ -21,12 +27,11 @@ interface Message {
   isRead: number
 }
 
-const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:7001"
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:7001"
 
-export default function MessageDetailPage() {
-  const router = useRouter()
-  const params = useParams()
-  const messageId = params.id as string
+export default function MessageDetail() {
+  const navigate = useNavigate() // ✅ Правильно для Vite
+  const { id: messageId } = useParams<{ id: string }>() // ✅ Правильно для Vite
 
   const [message, setMessage] = useState<Message | null>(null)
   const [loading, setLoading] = useState(true)
@@ -52,7 +57,7 @@ export default function MessageDetailPage() {
       if (!res.ok) {
         if (res.status === 404) {
           toast.error("Сообщение не найдено")
-          router.push("/admin/messages")
+          navigate("/admin/messages")
           return
         }
         throw new Error("Failed to fetch message")
@@ -108,7 +113,7 @@ export default function MessageDetailPage() {
       if (!res.ok) throw new Error("Failed to delete message")
 
       toast.success("Сообщение удалено")
-      router.push("/admin/messages")
+      navigate("/admin/messages") // ✅ Правильно
     } catch (error) {
       console.error("Error:", error)
       toast.error("Ошибка при удалении сообщения")
@@ -143,7 +148,7 @@ export default function MessageDetailPage() {
           <p className="text-muted-foreground">Сообщение не найдено</p>
           <Button
             variant="outline"
-            onClick={() => router.push("/admin/messages")}
+            onClick={() => navigate("/admin/messages")} // ✅ Правильно
             className="mt-4"
           >
             <ArrowLeft className="h-4 w-4 mr-2" />
@@ -160,7 +165,7 @@ export default function MessageDetailPage() {
       <div className="flex items-center justify-between mb-6">
         <Button
           variant="ghost"
-          onClick={() => router.push("/admin/messages")}
+          onClick={() => navigate("/admin/messages")} // ✅ Правильно
         >
           <ArrowLeft className="h-4 w-4 mr-2" />
           Назад к списку
@@ -185,13 +190,13 @@ export default function MessageDetailPage() {
           <div className="flex items-start justify-between">
             <div className="space-y-2">
               <CardTitle className="text-2xl">{message.subject}</CardTitle>
-              <CardDescription className="flex items-center gap-2">
+              <div className="flex items-center gap-2">
                 {message.isRead ? (
                   <Badge variant="secondary">Прочитано</Badge>
                 ) : (
                   <Badge variant="default">Новое</Badge>
                 )}
-              </CardDescription>
+              </div>
             </div>
           </div>
         </CardHeader>
