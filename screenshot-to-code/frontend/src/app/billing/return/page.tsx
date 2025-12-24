@@ -1,7 +1,5 @@
-"use client"
-
 import { useEffect, useState } from "react"
-import { useSearchParams, useRouter } from "next/navigation"
+import { useNavigate, useLocation } from "react-router-dom"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Loader2, CheckCircle2, XCircle, AlertCircle } from "lucide-react"
@@ -14,8 +12,9 @@ interface PaymentStatusResponse {
 }
 
 export default function BillingReturn() {
-  const searchParams = useSearchParams()
-  const router = useRouter()
+  const navigate = useNavigate()
+  const location = useLocation()
+  const searchParams = new URLSearchParams(location.search)
   const paymentId = searchParams.get("payment_id")
 
   const [status, setStatus] = useState<"pending" | "succeeded" | "canceled" | "error">("pending")
@@ -82,7 +81,7 @@ export default function BillingReturn() {
   }, [paymentId, polling])
 
   const handleContinue = () => {
-    router.push("/playground")
+    navigate("/playground")
   }
 
   return (
@@ -148,7 +147,7 @@ export default function BillingReturn() {
                   Перейти к генерации
                 </Button>
                 <Button
-                  onClick={() => router.push("/settings/billing")}
+                  onClick={() => navigate("/settings/billing")}
                   variant="outline"
                   className="w-full"
                 >
@@ -159,7 +158,7 @@ export default function BillingReturn() {
 
             {status === "canceled" && (
               <Button
-                onClick={() => router.push("/settings/billing")}
+                onClick={() => navigate("/settings/billing")}
                 variant="outline"
                 className="w-full"
               >
