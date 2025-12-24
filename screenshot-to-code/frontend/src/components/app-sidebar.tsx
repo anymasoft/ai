@@ -7,6 +7,9 @@ import {
   Clock,
   Terminal,
   BookOpen,
+  Mail,
+  Users,
+  DollarSign,
   CreditCard,
   Settings,
 } from "lucide-react"
@@ -64,6 +67,26 @@ const data = {
           title: "Docs",
           url: "/docs",
           icon: BookOpen,
+        },
+      ],
+    },
+    {
+      label: "Admin",
+      items: [
+        {
+          title: "Messages",
+          url: "/admin/messages",
+          icon: Mail,
+        },
+        {
+          title: "Users",
+          url: "/admin/users",
+          icon: Users,
+        },
+        {
+          title: "Payments",
+          url: "/admin/payments",
+          icon: DollarSign,
         },
       ],
     },
