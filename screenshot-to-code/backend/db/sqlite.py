@@ -198,6 +198,17 @@ def init_db() -> None:
         # ADMIN/FEEDBACK TABLES
         # ====================
 
+        # Create sessions table (for server-side session management)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS sessions (
+                id TEXT PRIMARY KEY,
+                user_id TEXT NOT NULL,
+                created_at TEXT NOT NULL,
+                expires_at TEXT NOT NULL,
+                FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+            )
+        """)
+
         # Create admin_messages table (for feedback system)
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS admin_messages (
@@ -263,6 +274,17 @@ def init_db() -> None:
         cursor.execute("""
             CREATE INDEX IF NOT EXISTS idx_generation_variants_generation
             ON generation_variants(generation_id)
+        """)
+
+        # Session indexes
+        cursor.execute("""
+            CREATE INDEX IF NOT EXISTS idx_sessions_user_id
+            ON sessions(user_id)
+        """)
+
+        cursor.execute("""
+            CREATE INDEX IF NOT EXISTS idx_sessions_expires_at
+            ON sessions(expires_at)
         """)
 
         # Admin indexes
@@ -580,6 +602,136 @@ def record_usage_event(
     except Exception as e:
         conn.rollback()
         print(f"[DB] Error recording usage event: {e}")
+        raise
+    finally:
+        conn.close()
+
+
+# ====================
+# SESSION MANAGEMENT
+# ====================
+
+
+def create_session(user_id: str, expiration_days: int = 30) -> str:
+    """
+    Create a new session for a user.
+
+    Returns:
+        session_id (str): The session ID to be stored in HttpOnly cookie
+    """
+    conn = get_conn()
+    cursor = conn.cursor()
+
+    session_id = str(uuid.uuid4())
+    now = datetime.utcnow().isoformat()
+    expires_at = (datetime.utcnow() + timedelta(days=expiration_days)).isoformat()
+
+    try:
+        cursor.execute("""
+            INSERT INTO sessions (id, user_id, created_at, expires_at)
+            VALUES (?, ?, ?, ?)
+        """, (session_id, user_id, now, expires_at))
+        conn.commit()
+        print(f"[DB] Created session {session_id} for user {user_id}")
+        return session_id
+
+    except Exception as e:
+        conn.rollback()
+        print(f"[DB] Error creating session: {e}")
+        raise
+    finally:
+        conn.close()
+
+
+def get_session(session_id: str) -> Optional[dict]:
+    """
+    Get session data and user info by session ID.
+    Returns None if session not found or expired.
+
+    Returns:
+        dict: {id, user_id, created_at, expires_at} + user data from users table
+        None: if session not found or expired
+    """
+    conn = get_conn()
+    cursor = conn.cursor()
+
+    try:
+        now = datetime.utcnow().isoformat()
+
+        # Get session data
+        cursor.execute("""
+            SELECT id, user_id, created_at, expires_at
+            FROM sessions
+            WHERE id = ? AND expires_at > ?
+        """, (session_id, now))
+
+        session = cursor.fetchone()
+        if not session:
+            return None
+
+        session_dict = dict(session)
+
+        # Get user data
+        cursor.execute("""
+            SELECT id, email, name, role, plan, disabled
+            FROM users
+            WHERE id = ?
+        """, (session_dict["user_id"],))
+
+        user = cursor.fetchone()
+        if not user:
+            return None
+
+        # Combine session + user data
+        session_dict["user"] = {
+            "id": user[0],
+            "email": user[1],
+            "name": user[2],
+            "role": user[3],
+            "plan": user[4],
+            "disabled": bool(user[5]),
+        }
+
+        return session_dict
+
+    finally:
+        conn.close()
+
+
+def delete_session(session_id: str) -> None:
+    """Delete a session (for logout)."""
+    conn = get_conn()
+    cursor = conn.cursor()
+
+    try:
+        cursor.execute("DELETE FROM sessions WHERE id = ?", (session_id,))
+        conn.commit()
+        print(f"[DB] Deleted session {session_id}")
+
+    except Exception as e:
+        conn.rollback()
+        print(f"[DB] Error deleting session: {e}")
+        raise
+    finally:
+        conn.close()
+
+
+def cleanup_expired_sessions() -> int:
+    """Delete all expired sessions. Returns count of deleted sessions."""
+    conn = get_conn()
+    cursor = conn.cursor()
+
+    try:
+        now = datetime.utcnow().isoformat()
+        cursor.execute("DELETE FROM sessions WHERE expires_at <= ?", (now,))
+        conn.commit()
+        count = cursor.rowcount
+        print(f"[DB] Cleaned up {count} expired sessions")
+        return count
+
+    except Exception as e:
+        conn.rollback()
+        print(f"[DB] Error cleaning up sessions: {e}")
         raise
     finally:
         conn.close()

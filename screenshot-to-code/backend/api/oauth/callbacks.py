@@ -1,5 +1,5 @@
 from datetime import datetime
-from db.app import get_conn
+from db.sqlite import get_conn
 from api.oauth.config import ADMIN_EMAIL
 
 
@@ -37,7 +37,7 @@ async def handle_oauth_signin(user_id: str, email: str, name: str):
 
         if existing_user is None:
             # ЛОГИКА ИЗ YouTubeAnalytics: Создаём нового пользователя
-            now_timestamp = int(datetime.now().timestamp())
+            now_iso = datetime.utcnow().isoformat()
             display_name = name or email.split("@")[0]
 
             cursor.execute(
@@ -52,8 +52,8 @@ async def handle_oauth_signin(user_id: str, email: str, name: str):
                     "user",  # role default
                     "free",  # plan default
                     0,  # disabled=0 (active)
-                    now_timestamp,
-                    now_timestamp,
+                    now_iso,
+                    now_iso,
                 ),
             )
             conn.commit()
