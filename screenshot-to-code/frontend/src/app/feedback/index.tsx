@@ -1,19 +1,27 @@
 import { useState } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
-import { Loader2, Send, MessageSquare } from "lucide-react"
+import { Loader2, Send, MessageSquare, CheckCircle } from "lucide-react"
 import { toast } from "sonner"
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:7001"
 
 export default function FeedbackPage() {
   const [loading, setLoading] = useState(false)
+  const [success, setSuccess] = useState(false)
+  const [email, setEmail] = useState("")
   const [message, setMessage] = useState("")
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
+
+    if (!email.trim()) {
+      toast.error("Введите email")
+      return
+    }
 
     if (!message.trim()) {
       toast.error("Введите сообщение")
@@ -28,16 +36,14 @@ export default function FeedbackPage() {
     try {
       setLoading(true)
 
-      const userEmail = localStorage.getItem("user_email") || "user@screen2code.com"
-
       const res = await fetch(`${BACKEND_URL}/api/feedback`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
+          email: email.trim(),
           message: message.trim(),
-          email: userEmail,
         }),
       })
 
@@ -46,8 +52,10 @@ export default function FeedbackPage() {
         throw new Error(error.detail?.message || "Не удалось отправить сообщение")
       }
 
-      toast.success("Сообщение отправлено!")
+      setSuccess(true)
+      setEmail("")
       setMessage("")
+      toast.success("Сообщение отправлено!")
     } catch (error) {
       console.error("Error:", error)
       toast.error(error instanceof Error ? error.message : "Ошибка при отправке сообщения")
@@ -68,44 +76,75 @@ export default function FeedbackPage() {
         </p>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Отправить сообщение</CardTitle>
-          <CardDescription>
-            Мы ответим вам в ближайшее время
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-6">
-            <div className="space-y-2">
-              <Label htmlFor="message">
-                Сообщение <span className="text-red-500">*</span>
-              </Label>
-              <Textarea
-                id="message"
-                placeholder="Опишите ваш вопрос или проблему..."
-                value={message}
-                onChange={(e) => setMessage(e.target.value)}
-                required
-                rows={10}
-                className="resize-none"
-              />
-              <p className="text-xs text-muted-foreground">
-                Минимум 10 символов
+      {success ? (
+        <Card>
+          <CardContent className="pt-6">
+            <div className="text-center space-y-4 py-8">
+              <CheckCircle className="h-16 w-16 text-green-500 mx-auto" />
+              <h3 className="text-xl font-semibold">Сообщение отправлено!</h3>
+              <p className="text-muted-foreground">
+                Спасибо за обратную связь. Мы свяжемся с вами в ближайшее время.
               </p>
+              <Button onClick={() => setSuccess(false)} variant="outline">
+                Отправить ещё
+              </Button>
             </div>
+          </CardContent>
+        </Card>
+      ) : (
+        <Card>
+          <CardHeader>
+            <CardTitle>Отправить сообщение</CardTitle>
+            <CardDescription>
+              Мы ответим вам в ближайшее время
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleSubmit} className="space-y-6">
+              <div className="space-y-2">
+                <Label htmlFor="email">
+                  Email <span className="text-red-500">*</span>
+                </Label>
+                <Input
+                  id="email"
+                  type="email"
+                  placeholder="your@email.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                />
+              </div>
 
-            <Button type="submit" disabled={loading} className="w-full">
-              {loading ? (
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-              ) : (
-                <Send className="h-4 w-4 mr-2" />
-              )}
-              Отправить
-            </Button>
-          </form>
-        </CardContent>
-      </Card>
+              <div className="space-y-2">
+                <Label htmlFor="message">
+                  Сообщение <span className="text-red-500">*</span>
+                </Label>
+                <Textarea
+                  id="message"
+                  placeholder="Опишите ваш вопрос или проблему..."
+                  value={message}
+                  onChange={(e) => setMessage(e.target.value)}
+                  required
+                  rows={10}
+                  className="resize-none"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Минимум 10 символов
+                </p>
+              </div>
+
+              <Button type="submit" disabled={loading} className="w-full">
+                {loading ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <Send className="h-4 w-4 mr-2" />
+                )}
+                Отправить
+              </Button>
+            </form>
+          </CardContent>
+        </Card>
+      )}
     </div>
   )
 }

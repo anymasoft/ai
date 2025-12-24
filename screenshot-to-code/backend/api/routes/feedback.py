@@ -14,29 +14,14 @@ DB_PATH = Path(__file__).parent.parent.parent / "data" / "app.db"
 
 class FeedbackRequest(BaseModel):
     """Feedback message from user."""
-
-    message: str
     email: str
-    firstName: str | None = None
-    lastName: str | None = None
+    message: str
 
 
 @router.post("/feedback")
 async def send_feedback(feedback: FeedbackRequest):
-    """
-    Send feedback message from user to admin.
+    """Send feedback message from user to admin."""
 
-    Request body:
-    {
-        "message": "Text of feedback",
-        "email": "user@example.com"
-    }
-
-    Returns:
-    {
-        "success": true
-    }
-    """
     if not feedback.message or not feedback.message.strip():
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -59,18 +44,27 @@ async def send_feedback(feedback: FeedbackRequest):
         conn = sqlite3.connect(str(DB_PATH))
         cursor = conn.cursor()
 
+        cursor.execute("SELECT id FROM users WHERE email = ?", (feedback.email,))
+        row = cursor.fetchone()
+
+        if row:
+            user_id = row[0]
+        else:
+            user_id = str(uuid.uuid4())
+            created_at = time.strftime("%Y-%m-%d %H:%M:%S")
+            cursor.execute(
+                "INSERT INTO users (id, email, role, created_at) VALUES (?, ?, ?, ?)",
+                (user_id, feedback.email, "user", created_at)
+            )
+
         subject = (
             feedback.message.strip()[:50] + "..."
             if len(feedback.message.strip()) > 50
             else feedback.message.strip()
         )
 
-        cursor.execute("SELECT id FROM users WHERE email = ?", (feedback.email,))
-        row = cursor.fetchone()
-        user_id = row[0] if row else None
-
         message_id = str(uuid.uuid4())
-        created_at = int(time.time())
+        created_at_ts = int(time.time())
 
         cursor.execute(
             """
@@ -81,12 +75,12 @@ async def send_feedback(feedback: FeedbackRequest):
             (
                 message_id,
                 feedback.email,
-                feedback.firstName or "",
-                feedback.lastName or "",
+                "",
+                "",
                 subject,
                 feedback.message.strip(),
                 user_id,
-                created_at,
+                created_at_ts,
             ),
         )
 
@@ -94,13 +88,13 @@ async def send_feedback(feedback: FeedbackRequest):
         conn.close()
 
         print(f"[FEEDBACK] Message saved: {message_id} from {feedback.email}")
-        return {"success": True}
+        return {"ok": True}
 
     except sqlite3.OperationalError as e:
         print(f"[FEEDBACK] Database error: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail={"error": "database_error", "message": "Ошибка базы данных. Возможно, таблица admin_messages не создана."},
+            detail={"error": "database_error", "message": "Ошибка базы данных"},
         )
     except Exception as e:
         print(f"[FEEDBACK] Error saving message: {e}")
