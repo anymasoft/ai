@@ -6,6 +6,8 @@ import { Input } from "@/components/ui/input"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Loader2, RefreshCcw } from "lucide-react"
 import { toast } from "sonner"
+import { fetchJSON, ApiError } from "@/lib/api"
+import { useNavigate } from "react-router-dom"
 
 interface User {
   id: string
@@ -15,9 +17,8 @@ interface User {
   created_at: string
 }
 
-const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:7001"
-
 export default function AdminUsersPage() {
+  const navigate = useNavigate()
   const [users, setUsers] = useState<User[]>([])
   const [loading, setLoading] = useState(true)
   const [emailFilter, setEmailFilter] = useState("")
@@ -31,19 +32,21 @@ export default function AdminUsersPage() {
       setLoading(true)
       const adminEmail = localStorage.getItem("dev_admin_email") || "admin@screen2code.com"
 
-      const res = await fetch(`${BACKEND_URL}/api/admin/users`, {
+      const data = await fetchJSON<{ users: User[] }>("/api/admin/users", {
         headers: {
           "X-Admin-Email": adminEmail,
         },
       })
 
-      if (!res.ok) throw new Error("Failed to fetch users")
-
-      const data = await res.json()
       setUsers(data.users || [])
     } catch (error) {
       console.error("Error:", error)
-      toast.error("Ошибка при загрузке пользователей")
+      if (error instanceof ApiError && error.status === 403) {
+        toast.error("Доступ запрещен")
+        navigate("/playground")
+      } else {
+        toast.error("Ошибка при загрузке пользователей")
+      }
     } finally {
       setLoading(false)
     }

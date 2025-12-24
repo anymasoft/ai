@@ -6,6 +6,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge"
 import { Loader2, RefreshCcw, X } from "lucide-react"
 import { toast } from "sonner"
+import { fetchJSON, ApiError } from "@/lib/api"
+import { useNavigate } from "react-router-dom"
 
 interface Payment {
   id: string
@@ -18,9 +20,8 @@ interface Payment {
   created_at: string
 }
 
-const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:7001"
-
 export default function AdminPaymentsPage() {
+  const navigate = useNavigate()
   const [payments, setPayments] = useState<Payment[]>([])
   const [loading, setLoading] = useState(true)
   const [totalSum, setTotalSum] = useState(0)
@@ -42,15 +43,15 @@ export default function AdminPaymentsPage() {
 
       const adminEmail = localStorage.getItem("dev_admin_email") || "admin@screen2code.com"
 
-      const res = await fetch(`${BACKEND_URL}/api/admin/payments?${params.toString()}`, {
-        headers: {
-          "X-Admin-Email": adminEmail,
-        },
-      })
+      const data = await fetchJSON<{ payments: Payment[]; totalSum: number; message?: string; error?: string }>(
+        `/api/admin/payments?${params.toString()}`,
+        {
+          headers: {
+            "X-Admin-Email": adminEmail,
+          },
+        }
+      )
 
-      if (!res.ok) throw new Error("Failed to fetch payments")
-
-      const data = await res.json()
       setPayments(data.payments || [])
       setTotalSum(data.totalSum || 0)
 
@@ -61,7 +62,12 @@ export default function AdminPaymentsPage() {
       }
     } catch (error) {
       console.error("Error:", error)
-      toast.error("Ошибка при загрузке платежей")
+      if (error instanceof ApiError && error.status === 403) {
+        toast.error("Доступ запрещен")
+        navigate("/playground")
+      } else {
+        toast.error("Ошибка при загрузке платежей")
+      }
     } finally {
       setLoading(false)
     }

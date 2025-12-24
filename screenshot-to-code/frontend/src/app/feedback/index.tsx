@@ -6,8 +6,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
 import { Loader2, Send, MessageSquare, CheckCircle } from "lucide-react"
 import { toast } from "sonner"
-
-const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:7001"
+import { fetchJSON, ApiError } from "@/lib/api"
 
 export default function FeedbackPage() {
   const [loading, setLoading] = useState(false)
@@ -36,21 +35,13 @@ export default function FeedbackPage() {
     try {
       setLoading(true)
 
-      const res = await fetch(`${BACKEND_URL}/api/feedback`, {
+      await fetchJSON("/api/feedback", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
         body: JSON.stringify({
           email: email.trim(),
           message: message.trim(),
         }),
       })
-
-      if (!res.ok) {
-        const error = await res.json()
-        throw new Error(error.detail?.message || "Не удалось отправить сообщение")
-      }
 
       setSuccess(true)
       setEmail("")
@@ -58,7 +49,11 @@ export default function FeedbackPage() {
       toast.success("Сообщение отправлено!")
     } catch (error) {
       console.error("Error:", error)
-      toast.error(error instanceof Error ? error.message : "Ошибка при отправке сообщения")
+      if (error instanceof ApiError) {
+        toast.error(error.data?.detail?.message || error.data?.message || "Ошибка при отправке сообщения")
+      } else {
+        toast.error("Ошибка при отправке сообщения")
+      }
     } finally {
       setLoading(false)
     }
