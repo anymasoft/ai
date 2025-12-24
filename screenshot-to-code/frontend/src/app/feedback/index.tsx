@@ -109,8 +109,8 @@ export default function FeedbackPage() {
                   value={message}
                   onChange={(e) => setMessage(e.target.value)}
                   required
-                  rows={15}
-                  className="resize-vertical min-h-[300px]"
+                  rows={5}
+                  className="resize-vertical min-h-[120px]"
                 />
                 <p className="text-xs text-muted-foreground">
                   Минимум 10 символов
