@@ -5,7 +5,7 @@ from pydantic import BaseModel
 import sqlite3
 import uuid
 import time
-from db_config import DB_PATH
+from config import DB_PATH
 from db import get_db
 
 router = APIRouter()

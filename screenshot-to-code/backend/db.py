@@ -2,7 +2,7 @@
 
 import sqlite3
 from pathlib import Path
-from db_config import DB_PATH
+from config import DB_PATH
 
 
 def get_db():

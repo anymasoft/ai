@@ -3,7 +3,7 @@
 import sqlite3
 from fastapi import Header, HTTPException, status, Depends
 from typing import Annotated, Optional
-from db_config import DB_PATH
+from config import DB_PATH
 from db import get_db
 
 

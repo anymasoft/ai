@@ -28,7 +28,7 @@ from api.routes import (
     admin_payments_router,
 )
 from api.init_db import init_api_tables
-from db_config import ALLOWED_ORIGINS
+from config import ALLOWED_ORIGINS
 
 # Initialize databases
 init_db()
