@@ -1,15 +1,14 @@
 import { useState, useEffect } from "react"
-import { fetchJSON } from "@/lib/api"
+import { fetchJSON, ApiError } from "@/lib/api"
 import { useAuthStore } from "@/store/auth"
 
 export function useUnreadCount() {
   const [unreadCount, setUnreadCount] = useState(0)
   const email = useAuthStore((state) => state.email)
-  const role = useAuthStore((state) => state.role)
 
   useEffect(() => {
-    // Only poll if user is authenticated and is an admin
-    if (!email || role !== "admin") {
+    // Only poll if user is authenticated
+    if (!email) {
       setUnreadCount(0)
       return
     }
@@ -17,14 +16,17 @@ export function useUnreadCount() {
     fetchUnreadCount()
     const interval = setInterval(fetchUnreadCount, 10000) // Poll every 10 seconds
     return () => clearInterval(interval)
-  }, [email, role])
+  }, [email])
 
   async function fetchUnreadCount() {
     try {
       const data = await fetchJSON<{ count: number }>("/api/admin/messages/unread-count")
       setUnreadCount(data.count || 0)
     } catch (error) {
-      console.error("Error fetching unread count:", error)
+      // If 403, user is not admin - silently set count to 0
+      if (error instanceof ApiError && error.status === 403) {
+        setUnreadCount(0)
+      }
     }
   }
 

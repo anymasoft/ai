@@ -29,7 +29,7 @@ import {
   SidebarMenuItem,
 } from "@/components/ui/sidebar"
 
-const getNavData = (unreadCount: number, email: string | null, role: string | null) => {
+const getNavData = (unreadCount: number, email: string | null) => {
   const navGroups = [
     {
       label: "Main",
@@ -71,11 +71,7 @@ const getNavData = (unreadCount: number, email: string | null, role: string | nu
         },
       ],
     },
-  ]
-
-  // Only add Admin section if user is admin
-  if (role === "admin") {
-    navGroups.push({
+    {
       label: "Admin",
       items: [
         {
@@ -95,24 +91,23 @@ const getNavData = (unreadCount: number, email: string | null, role: string | nu
           icon: DollarSign,
         },
       ],
-    })
-  }
-
-  navGroups.push({
-    label: "Account",
-    items: [
-      {
-        title: "Billing",
-        url: "/settings/billing",
-        icon: CreditCard,
-      },
-      {
-        title: "Settings",
-        url: "/settings/account",
-        icon: Settings,
-      },
-    ],
-  })
+    },
+    {
+      label: "Account",
+      items: [
+        {
+          title: "Billing",
+          url: "/settings/billing",
+          icon: CreditCard,
+        },
+        {
+          title: "Settings",
+          url: "/settings/account",
+          icon: Settings,
+        },
+      ],
+    },
+  ]
 
   return {
     user: {
@@ -127,8 +122,7 @@ const getNavData = (unreadCount: number, email: string | null, role: string | nu
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const unreadCount = useUnreadCount()
   const email = useAuthStore((state) => state.email)
-  const role = useAuthStore((state) => state.role)
-  const data = React.useMemo(() => getNavData(unreadCount, email, role), [unreadCount, email, role])
+  const data = React.useMemo(() => getNavData(unreadCount, email), [unreadCount, email])
 
   return (
     <Sidebar {...props}>
