@@ -10,6 +10,8 @@ from api.routes import (
     generations_router,
     limits_router,
     stream_router,
+    feedback_router,
+    admin_messages_router,
 )
 
 # Initialize database on import
@@ -43,6 +45,8 @@ def create_api_app() -> FastAPI:
     app.include_router(generations_router)
     app.include_router(limits_router)
     app.include_router(stream_router)
+    app.include_router(feedback_router)
+    app.include_router(admin_messages_router)
 
     return app
 

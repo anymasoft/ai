@@ -6,6 +6,8 @@ from .generate import router as generate_router
 from .generations import router as generations_router
 from .limits import router as limits_router
 from .stream import router as stream_router
+from .feedback import router as feedback_router
+from .admin.messages import router as admin_messages_router
 
 __all__ = [
     "health_router",
@@ -14,4 +16,6 @@ __all__ = [
     "generations_router",
     "limits_router",
     "stream_router",
+    "feedback_router",
+    "admin_messages_router",
 ]
