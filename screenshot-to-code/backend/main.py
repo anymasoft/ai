@@ -13,8 +13,20 @@ from db import init_db
 from gen_queue.generation_queue import init_queue
 from gen_queue.worker import start_worker
 
-# Initialize database
+# Import API routes
+from api.routes import (
+    health_router,
+    formats_router,
+    generate_router,
+    generations_router,
+    limits_router,
+    stream_router,
+)
+from api.init_db import init_api_tables
+
+# Initialize databases
 init_db()
+init_api_tables()
 
 # Initialize queue
 init_queue()
@@ -65,9 +77,17 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Add routes
+# Add UI routes
 app.include_router(generate_code.router)
 app.include_router(screenshot.router)
 app.include_router(home.router)
 app.include_router(evals.router)
 app.include_router(history.router)
+
+# Add API routes
+app.include_router(health_router)
+app.include_router(formats_router)
+app.include_router(generate_router)
+app.include_router(generations_router)
+app.include_router(limits_router)
+app.include_router(stream_router)
