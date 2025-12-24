@@ -524,30 +524,24 @@ export default function PlaygroundPage() {
                         variant="ghost"
                         size="sm"
                         disabled={!chunks.length || isStreaming}
-                        className="gap-2"
                       >
                         {copied ? <Check size={16} /> : <Copy size={16} />}
-                        {copied ? "Copied" : "Copy"}
                       </Button>
                       <Button
                         onClick={handleDownloadHTML}
                         variant="ghost"
                         size="sm"
                         disabled={!chunks.length || isStreaming}
-                        className="gap-2"
                       >
                         <Download size={16} />
-                        Download HTML
                       </Button>
                       <Button
                         onClick={handleDownloadZIP}
                         variant="ghost"
                         size="sm"
                         disabled={!chunks.length || isStreaming}
-                        className="gap-2"
                       >
                         <FileArchive size={16} />
-                        Download ZIP
                       </Button>
                     </div>
                     {/* Code block */}
