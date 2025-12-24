@@ -1,6 +1,7 @@
 import { lazy } from 'react'
 import { Navigate } from 'react-router-dom'
 import { DashboardLayout } from '@/components/layouts/dashboard-layout'
+import { ProtectedRoute } from '@/components/router/protected-route'
 import { ProtectedAdminRoute } from '@/components/router/protected-admin-route'
 
 const Dashboard = lazy(() => import('@/app/dashboard/page'))
@@ -38,27 +39,27 @@ export const routes: RouteConfig[] = [
       },
       {
         path: "/dashboard",
-        element: <Dashboard />
+        element: <ProtectedRoute><Dashboard /></ProtectedRoute>
       },
       {
         path: "/playground",
-        element: <Playground />
+        element: <ProtectedRoute><Playground /></ProtectedRoute>
       },
       {
         path: "/history",
-        element: <History />
+        element: <ProtectedRoute><History /></ProtectedRoute>
       },
       {
         path: "/api",
-        element: <ApiPage />
+        element: <ProtectedRoute><ApiPage /></ProtectedRoute>
       },
       {
         path: "/docs",
-        element: <DocsPage />
+        element: <ProtectedRoute><DocsPage /></ProtectedRoute>
       },
       {
         path: "/feedback",
-        element: <FeedbackPage />
+        element: <ProtectedRoute><FeedbackPage /></ProtectedRoute>
       },
       {
         path: "/admin/messages",
@@ -78,11 +79,11 @@ export const routes: RouteConfig[] = [
       },
       {
         path: "/settings/account",
-        element: <AccountSettings />
+        element: <ProtectedRoute><AccountSettings /></ProtectedRoute>
       },
       {
         path: "/settings/billing",
-        element: <BillingSettings />
+        element: <ProtectedRoute><BillingSettings /></ProtectedRoute>
       },
     ]
   },

@@ -11,7 +11,8 @@ import { useAdminStore } from '@/store/admin'
 const basename = import.meta.env.VITE_BASENAME || ''
 
 function App() {
-  const email = useAuthStore((state) => state.email)
+  const user = useAuthStore((state) => state.user)
+  const checkAuth = useAuthStore((state) => state.checkAuth)
   const checkAdmin = useAdminStore((state) => state.checkAdmin)
 
   // Initialize GTM on app load
@@ -19,12 +20,17 @@ function App() {
     initGTM();
   }, []);
 
+  // Check authentication on app initialization
+  useEffect(() => {
+    checkAuth()
+  }, [checkAuth]);
+
   // Check admin status when user is authenticated
   useEffect(() => {
-    if (email) {
+    if (user) {
       checkAdmin()
     }
-  }, [email, checkAdmin])
+  }, [user, checkAdmin])
 
   return (
     <div className="font-sans antialiased" style={{ fontFamily: 'var(--font-inter)' }}>
