@@ -74,7 +74,7 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(openapi_url=None, docs_url=None, redoc_url=None, lifespan=lifespan)
 
-# Configure CORS settings from config
+# Configure CORS settings from db_config
 app.add_middleware(
     CORSMiddleware,
     allow_origins=ALLOWED_ORIGINS,
