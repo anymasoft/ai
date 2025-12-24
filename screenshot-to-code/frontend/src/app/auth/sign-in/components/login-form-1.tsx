@@ -1,9 +1,7 @@
-"use client"
-
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
 import { z } from "zod"
-import { useRouter } from "next/navigation"
+import { useNavigate } from "react-router-dom"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import {
@@ -36,7 +34,7 @@ export function LoginForm1({
   className,
   ...props
 }: React.ComponentProps<"div">) {
-  const router = useRouter()
+  const navigate = useNavigate()
   const setEmail = useAuthStore((state) => state.setEmail)
 
   const form = useForm<LoginFormValues>({
@@ -50,7 +48,7 @@ export function LoginForm1({
   const onSubmit = (values: LoginFormValues) => {
     setEmail(values.email)
     toast.success(`Signed in as ${values.email}`)
-    router.push("/app/playground")
+    navigate("/app/playground")
   }
 
   return (
