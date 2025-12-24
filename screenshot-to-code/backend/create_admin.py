@@ -19,12 +19,12 @@ row = cursor.fetchone()
 if row:
     user_id, role = row
     if role == "admin":
-        print(f"✅ Admin user already exists: {admin_email}")
+        print(f"[OK] Admin user already exists: {admin_email}")
     else:
         # Update to admin
         cursor.execute("UPDATE users SET role = 'admin' WHERE email = ?", (admin_email,))
         conn.commit()
-        print(f"✅ Updated user to admin: {admin_email}")
+        print(f"[OK] Updated user to admin: {admin_email}")
 else:
     # Create new admin user
     user_id = str(uuid.uuid4())
@@ -34,6 +34,6 @@ else:
         (user_id, admin_email, "admin", created_at)
     )
     conn.commit()
-    print(f"✅ Created admin user: {admin_email}")
+    print(f"[OK] Created admin user: {admin_email}")
 
 conn.close()
