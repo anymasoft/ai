@@ -92,11 +92,11 @@ export const routes: RouteConfig[] = [
     element: <SignIn />
   },
   {
-    path: "/auth-callback",
+    path: "/auth/callback",
     element: <AuthCallback />
   },
   {
     path: "*",
-    element: <Navigate to="/dashboard" replace />
+    element: <ProtectedRoute><Navigate to="/dashboard" replace /></ProtectedRoute>
   }
 ]

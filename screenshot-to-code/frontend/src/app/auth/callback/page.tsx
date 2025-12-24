@@ -11,12 +11,8 @@ export function AuthCallbackPage() {
 
   useEffect(() => {
     const handleCallback = async () => {
-      console.log('[AuthCallback] handleCallback called:', { success, error, redirectTo, hasOpener: !!window.opener })
-
       if (error) {
-        console.log('[AuthCallback] error detected:', error)
         if (window.opener) {
-          console.log('[AuthCallback] sending auth-error to opener')
           window.opener.postMessage(
             {
               type: 'auth-error',
@@ -32,11 +28,9 @@ export function AuthCallbackPage() {
       }
 
       if (success === 'true') {
-        console.log('[AuthCallback] success detected')
         if (window.opener) {
           // Popup: просто отправляем сообщение основному окну
           // Основное окно сделает checkAuth()
-          console.log('[AuthCallback] in popup, sending auth-success to opener with redirectTo:', redirectTo)
           window.opener.postMessage(
             {
               type: 'auth-success',
@@ -44,11 +38,9 @@ export function AuthCallbackPage() {
             },
             window.location.origin
           )
-          console.log('[AuthCallback] message sent, closing popup')
           window.close()
         } else {
           // Без popup: сами делаем checkAuth() и навигируем
-          console.log('[AuthCallback] not in popup, calling checkAuth()')
           await checkAuth()
           window.location.href = redirectTo
         }

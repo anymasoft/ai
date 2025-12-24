@@ -106,14 +106,14 @@ async def google_oauth_callback(
     # Проверяем, не была ли ошибка от Google
     if error:
         return RedirectResponse(
-            url=f"{FRONTEND_URL}/auth-callback?error={error}",
+            url=f"{FRONTEND_URL}/auth/callback?error={error}",
             status_code=302,
         )
 
     # PART 1: Проверяем state (CSRF protection)
     if state not in oauth_states:
         return RedirectResponse(
-            url=f"{FRONTEND_URL}/auth-callback?error=invalid_state",
+            url=f"{FRONTEND_URL}/auth/callback?error=invalid_state",
             status_code=302,
         )
 
@@ -149,7 +149,7 @@ async def google_oauth_callback(
 
     except Exception as e:
         return RedirectResponse(
-            url=f"{FRONTEND_URL}/auth-callback?error=token_exchange_failed",
+            url=f"{FRONTEND_URL}/auth/callback?error=token_exchange_failed",
             status_code=302,
         )
 
@@ -168,7 +168,7 @@ async def google_oauth_callback(
 
     except Exception as e:
         return RedirectResponse(
-            url=f"{FRONTEND_URL}/auth-callback?error=get_userinfo_failed",
+            url=f"{FRONTEND_URL}/auth/callback?error=get_userinfo_failed",
             status_code=302,
         )
 
@@ -182,7 +182,7 @@ async def google_oauth_callback(
     except Exception as e:
         # Пользователь отключен или другая ошибка
         return RedirectResponse(
-            url=f"{FRONTEND_URL}/auth-callback?error=access_denied",
+            url=f"{FRONTEND_URL}/auth/callback?error=access_denied",
             status_code=302,
         )
 
@@ -195,13 +195,13 @@ async def google_oauth_callback(
     except Exception as e:
         print(f"[Auth] Error creating session: {e}")
         return RedirectResponse(
-            url=f"{FRONTEND_URL}/auth-callback?error=session_creation_failed",
+            url=f"{FRONTEND_URL}/auth/callback?error=session_creation_failed",
             status_code=302,
         )
 
     # PART 6: Возвращаем redirect с HttpOnly session cookie
     response = RedirectResponse(
-        url=f"{FRONTEND_URL}/auth-callback?success=true&redirect_to={redirect_to}",
+        url=f"{FRONTEND_URL}/auth/callback?success=true&redirect_to={redirect_to}",
         status_code=302,
     )
 

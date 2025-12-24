@@ -21,10 +21,8 @@ export function SignInPage() {
       }
 
       if (event.data.type === 'auth-success') {
-        console.log('[SignIn] auth-success received, calling checkAuth()...')
         // Вызываем checkAuth() в основном окне
         await checkAuth()
-        console.log('[SignIn] checkAuth() completed')
 
         setIsLoading(false)
         setError(null)
@@ -34,11 +32,9 @@ export function SignInPage() {
           clearInterval(popupCheckInterval.current)
         }
 
-        console.log('[SignIn] navigating to', event.data.redirectTo)
         // Перейти на нужную страницу
         navigate(event.data.redirectTo)
       } else if (event.data.type === 'auth-error') {
-        console.log('[SignIn] auth-error received:', event.data.error)
         setIsLoading(false)
         setError(event.data.error)
 
