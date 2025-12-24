@@ -4,7 +4,7 @@ from fastapi import APIRouter, HTTPException, status, Depends
 from api.admin_auth import get_admin_user
 import sqlite3
 from pydantic import BaseModel
-from db import get_db
+from database import get_db
 
 router = APIRouter()
 

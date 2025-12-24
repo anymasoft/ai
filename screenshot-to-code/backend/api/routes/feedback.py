@@ -6,7 +6,7 @@ import sqlite3
 import uuid
 import time
 from config import DB_PATH
-from db import get_db
+from database import get_db
 
 router = APIRouter()
 

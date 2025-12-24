@@ -9,7 +9,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from routes import screenshot, generate_code, home, evals, history
-from db import init_db
+from database import init_db
 from gen_queue.generation_queue import init_queue
 from gen_queue.worker import start_worker
 import time

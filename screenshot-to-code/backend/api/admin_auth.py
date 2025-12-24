@@ -4,7 +4,7 @@ import sqlite3
 from fastapi import Header, HTTPException, status, Depends
 from typing import Annotated, Optional
 from config import DB_PATH
-from db import get_db
+from database import get_db
 
 
 def get_user_by_email(email: str) -> Optional[dict]:
