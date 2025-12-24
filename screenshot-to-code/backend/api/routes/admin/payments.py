@@ -6,10 +6,10 @@ import sqlite3
 from typing import Optional
 from db import get_conn as get_db
 
-router = APIRouter()
+router = APIRouter(prefix="/api/admin/payments", tags=["admin"])
 
 
-@router.get("/api/admin/payments")
+@router.get("")
 async def get_payments(
     admin: dict = Depends(get_admin_user),
     email: Optional[str] = Query(None),
