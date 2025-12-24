@@ -29,6 +29,7 @@ def get_current_user(request: Request) -> dict:
 
     Raises:
         HTTPException: 401 если session отсутствует, истек или невалиден
+        HTTPException: 403 если пользователь отключен (disabled=true)
     """
     session_id = request.cookies.get("session_id")
     if not session_id:
@@ -37,6 +38,11 @@ def get_current_user(request: Request) -> dict:
     session_data = get_session(session_id)
     if not session_data:
         raise HTTPException(status_code=401, detail="Invalid or expired session")
+
+    # Check if user is disabled
+    user = session_data.get("user")
+    if user and user.get("disabled"):
+        raise HTTPException(status_code=403, detail="Your account has been disabled")
 
     return session_data
 
