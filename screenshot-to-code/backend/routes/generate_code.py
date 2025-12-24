@@ -1393,6 +1393,7 @@ async def stream_code(websocket: WebSocket):
         # Read parameters from client
         params: Dict[str, str] = await websocket.receive_json()
         print("[WS] Received generation parameters")
+        print("[WS] Params parsed")
         print("[DIAG:BACKEND:RECV] Full params=", params)
         print("[DIAG:BACKEND:RECV] generatedCodeConfig=", params.get("generatedCodeConfig", "NOT_FOUND"))
 
@@ -1431,6 +1432,7 @@ async def stream_code(websocket: WebSocket):
 
         print(f"[WS] Enqueuing generation job: {generation_id}")
         await enqueue_generation(job)
+        print(f"[WS] Generation started with id={generation_id}")
 
         # WebSocket will be processed by worker
         # Keep connection alive - worker will send updates through it
