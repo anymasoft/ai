@@ -3,7 +3,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import JSONResponse
 
 from api.oauth.config import JWT_SECRET, JWT_ALGORITHM
-from db.app import get_conn
+from db.sqlite import get_conn
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 
