@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import Optional
 import hashlib
 import uuid
-from datetime import datetime
+from datetime import datetime, timedelta
 
 # Database configuration - SINGLE SOURCE OF TRUTH
 DB_DIR = Path(__file__).parent.parent / "data"
