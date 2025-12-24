@@ -7,7 +7,7 @@ import sqlite3
 from pydantic import BaseModel
 from db import get_conn as get_db
 
-router = APIRouter()
+router = APIRouter(prefix="/api/admin/users", tags=["admin"])
 
 
 class ChangePlanRequest(BaseModel):
@@ -37,7 +37,7 @@ class SetUsageRequest(BaseModel):
     used_generations: int
 
 
-@router.get("/api/admin/users")
+@router.get("")
 async def get_users(admin: dict = Depends(get_admin_user)):
     """
     Get all users with plan and usage info.
@@ -78,7 +78,7 @@ async def get_users(admin: dict = Depends(get_admin_user)):
         conn.close()
 
 
-@router.post("/api/admin/users/change-plan")
+@router.post("/change-plan")
 async def change_user_plan(
     request: ChangePlanRequest,
     admin: dict = Depends(get_admin_user),
@@ -146,7 +146,7 @@ async def change_user_plan(
         conn.close()
 
 
-@router.patch("/api/admin/users/disable")
+@router.patch("/disable")
 async def disable_user(
     request: DisableUserRequest,
     admin: dict = Depends(get_admin_user),
@@ -212,7 +212,7 @@ async def disable_user(
         conn.close()
 
 
-@router.post("/api/admin/users/{user_id}/reset-limits")
+@router.post("/{user_id}/reset-limits")
 async def reset_user_limits(
     user_id: str,
     admin: dict = Depends(get_admin_user),
@@ -262,7 +262,7 @@ async def reset_user_limits(
         conn.close()
 
 
-@router.post("/api/admin/users/{user_id}/set-usage")
+@router.post("/{user_id}/set-usage")
 async def set_user_usage(
     user_id: str,
     request: SetUsageRequest,

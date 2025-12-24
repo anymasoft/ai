@@ -25,6 +25,10 @@ export function ProtectedRoute({ children, requiredRole }: ProtectedRouteProps) 
     return <Navigate to="/auth/sign-in" replace />
   }
 
+  if (user.disabled) {
+    return <Navigate to="/access-denied" replace />
+  }
+
   if (requiredRole && user.role !== requiredRole) {
     return <Navigate to="/playground" replace />
   }

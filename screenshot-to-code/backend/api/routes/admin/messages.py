@@ -6,10 +6,10 @@ import sqlite3
 from typing import Optional
 from db import get_conn as get_db
 
-router = APIRouter()
+router = APIRouter(prefix="/api/admin/messages", tags=["admin"])
 
 
-@router.get("/api/admin/messages")
+@router.get("")
 async def get_messages(
     admin: dict = Depends(get_admin_user),
     page: int = Query(1, ge=1),
@@ -99,7 +99,7 @@ async def get_messages(
         conn.close()
 
 
-@router.get("/api/admin/messages/unread-count")
+@router.get("/unread-count")
 async def get_unread_count(admin: dict = Depends(get_admin_user)):
     """
     Get count of unread messages.
@@ -121,7 +121,7 @@ async def get_unread_count(admin: dict = Depends(get_admin_user)):
         conn.close()
 
 
-@router.get("/api/admin/messages/{message_id}")
+@router.get("/{message_id}")
 async def get_message(message_id: str, admin: dict = Depends(get_admin_user)):
     """
     Get single message by ID.
@@ -168,7 +168,7 @@ async def get_message(message_id: str, admin: dict = Depends(get_admin_user)):
         conn.close()
 
 
-@router.patch("/api/admin/messages/{message_id}/read")
+@router.patch("/{message_id}/read")
 async def mark_as_read(message_id: str, admin: dict = Depends(get_admin_user)):
     """
     Mark message as read.
@@ -210,7 +210,7 @@ async def mark_as_read(message_id: str, admin: dict = Depends(get_admin_user)):
         conn.close()
 
 
-@router.delete("/api/admin/messages/{message_id}")
+@router.delete("/{message_id}")
 async def delete_message(message_id: str, admin: dict = Depends(get_admin_user)):
     """
     Delete message by ID.

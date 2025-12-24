@@ -4,10 +4,10 @@ from fastapi import APIRouter, HTTPException, status, Depends
 from api.routes.auth import get_current_user
 from api.config.plans import get_plan_limit
 
-router = APIRouter()
+router = APIRouter(prefix="/api/billing", tags=["billing"])
 
 
-@router.get("/api/billing/usage")
+@router.get("/usage")
 async def get_billing_usage(current_user: dict = Depends(get_current_user)):
     """
     Get current user's billing and usage information.
