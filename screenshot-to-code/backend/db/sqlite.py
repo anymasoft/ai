@@ -60,12 +60,35 @@ def init_db() -> None:
             CREATE TABLE IF NOT EXISTS users (
                 id TEXT PRIMARY KEY,
                 email TEXT UNIQUE,
+                name TEXT,
                 plan_id TEXT,
+                plan TEXT DEFAULT 'free',
                 role TEXT DEFAULT 'user',
+                disabled INTEGER DEFAULT 0,
+                expiresAt INTEGER,
                 created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL,
                 FOREIGN KEY (plan_id) REFERENCES plans(id)
             )
         """)
+
+        # Add missing columns if they don't exist (for migration from old schema)
+        try:
+            cursor.execute("PRAGMA table_info(users)")
+            columns = [row[1] for row in cursor.fetchall()]
+
+            if 'name' not in columns:
+                cursor.execute("ALTER TABLE users ADD COLUMN name TEXT")
+            if 'plan' not in columns:
+                cursor.execute("ALTER TABLE users ADD COLUMN plan TEXT DEFAULT 'free'")
+            if 'disabled' not in columns:
+                cursor.execute("ALTER TABLE users ADD COLUMN disabled INTEGER DEFAULT 0")
+            if 'expiresAt' not in columns:
+                cursor.execute("ALTER TABLE users ADD COLUMN expiresAt INTEGER")
+            if 'updated_at' not in columns:
+                cursor.execute("ALTER TABLE users ADD COLUMN updated_at TEXT")
+        except Exception as e:
+            print(f"[DB] Migration warning (non-critical): {e}")
 
         # Create plans table
         cursor.execute("""
