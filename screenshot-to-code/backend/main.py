@@ -27,6 +27,8 @@ from api.routes import (
     admin_users_router,
     admin_payments_router,
 )
+from api.routes.oauth import router as oauth_router
+from api.routes.auth import router as auth_router
 from config import ALLOWED_ORIGINS
 
 # Initialize database - SINGLE DATABASE for UI + API + ADMIN
@@ -116,3 +118,7 @@ app.include_router(feedback_router)
 app.include_router(admin_messages_router)
 app.include_router(admin_users_router)
 app.include_router(admin_payments_router)
+
+# Add OAuth routes
+app.include_router(oauth_router)
+app.include_router(auth_router)
