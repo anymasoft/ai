@@ -1,7 +1,5 @@
-"use client"
-
 import { useRef, useState, useEffect } from "react"
-import { useRouter } from "next/navigation"
+import { useNavigate } from "react-router-dom"
 import { X, Copy, Download, FileArchive, Check, Loader2 } from "lucide-react"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -38,7 +36,7 @@ import {
 } from "@/logic/generation"
 
 export default function PlaygroundPage() {
-  const router = useRouter()
+  const navigate = useNavigate()
   const wsRef = useRef<WebSocket | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const chunksRef = useRef<string[]>([])
@@ -671,7 +669,7 @@ export default function PlaygroundPage() {
               <button
                 onClick={() => {
                   setShowPaywall(false)
-                  router.push("/settings/billing")
+                  navigate("/settings/billing")
                 }}
                 className="w-full px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition"
               >
