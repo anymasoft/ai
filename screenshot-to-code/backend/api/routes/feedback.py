@@ -1,24 +1,38 @@
 """Feedback endpoint - user sends message to admin."""
 
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException, status, Depends, Request
 from pydantic import BaseModel
 import sqlite3
 import uuid
 import time
 from db import get_conn as get_db
+from api.routes.auth import get_current_user
 
 router = APIRouter()
 
 
 class FeedbackRequest(BaseModel):
     """Feedback message from user."""
-    email: str
     message: str
 
 
 @router.post("/api/feedback")
-async def send_feedback(feedback: FeedbackRequest):
-    """Send feedback message from user to admin."""
+async def send_feedback(
+    feedback: FeedbackRequest,
+    current_user: dict = Depends(get_current_user),
+):
+    """Send feedback message from authenticated user to admin."""
+
+    user_data = current_user.get("user")
+    if not user_data:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="User not authenticated",
+        )
+
+    user_email = user_data.get("email")
+    user_name = user_data.get("name", "")
+    user_id = user_data.get("id")
 
     if not feedback.message or not feedback.message.strip():
         raise HTTPException(
@@ -32,28 +46,14 @@ async def send_feedback(feedback: FeedbackRequest):
             detail={"error": "invalid_input", "message": "Сообщение должно содержать минимум 10 символов"},
         )
 
-    if not feedback.email or not feedback.email.strip():
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail={"error": "invalid_input", "message": "Email обязателен"},
-        )
-
     try:
         conn = get_db()
         cursor = conn.cursor()
 
-        cursor.execute("SELECT id FROM users WHERE email = ?", (feedback.email,))
-        row = cursor.fetchone()
-
-        if row:
-            user_id = row[0]
-        else:
-            user_id = str(uuid.uuid4())
-            created_at = time.strftime("%Y-%m-%d %H:%M:%S")
-            cursor.execute(
-                "INSERT INTO users (id, email, role, plan_id, created_at) VALUES (?, ?, ?, ?, ?)",
-                (user_id, feedback.email, "user", "free", created_at)
-            )
+        # Parse firstName and lastName from user_name
+        name_parts = user_name.split(" ", 1) if user_name else ["", ""]
+        first_name = name_parts[0] if len(name_parts) > 0 else ""
+        last_name = name_parts[1] if len(name_parts) > 1 else ""
 
         subject = (
             feedback.message.strip()[:50] + "..."
@@ -72,9 +72,9 @@ async def send_feedback(feedback: FeedbackRequest):
             """,
             (
                 message_id,
-                feedback.email,
-                "",
-                "",
+                user_email,
+                first_name,
+                last_name,
                 subject,
                 feedback.message.strip(),
                 user_id,
@@ -85,7 +85,7 @@ async def send_feedback(feedback: FeedbackRequest):
         conn.commit()
         conn.close()
 
-        print(f"[FEEDBACK] Message saved: {message_id} from {feedback.email}")
+        print(f"[FEEDBACK] Message saved: {message_id} from {user_email}")
         return {"ok": True}
 
     except sqlite3.OperationalError as e:

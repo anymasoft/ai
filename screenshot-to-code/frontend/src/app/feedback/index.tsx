@@ -1,26 +1,21 @@
 import { useState } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
 import { Loader2, Send, MessageSquare, CheckCircle } from "lucide-react"
 import { toast } from "sonner"
 import { fetchJSON, ApiError } from "@/lib/api"
+import { useAuthStore } from "@/store/auth"
 
 export default function FeedbackPage() {
+  const { user } = useAuthStore()
   const [loading, setLoading] = useState(false)
   const [success, setSuccess] = useState(false)
-  const [email, setEmail] = useState("")
   const [message, setMessage] = useState("")
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-
-    if (!email.trim()) {
-      toast.error("Введите email")
-      return
-    }
 
     if (!message.trim()) {
       toast.error("Введите сообщение")
@@ -38,13 +33,11 @@ export default function FeedbackPage() {
       await fetchJSON("/api/feedback", {
         method: "POST",
         body: JSON.stringify({
-          email: email.trim(),
           message: message.trim(),
         }),
       })
 
       setSuccess(true)
-      setEmail("")
       setMessage("")
       toast.success("Сообщение отправлено!")
     } catch (error) {
@@ -97,17 +90,13 @@ export default function FeedbackPage() {
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-6">
               <div className="space-y-2">
-                <Label htmlFor="email">
-                  Email <span className="text-red-500">*</span>
-                </Label>
-                <Input
-                  id="email"
-                  type="email"
-                  placeholder="your@email.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  required
-                />
+                <Label>От кого</Label>
+                <div className="flex items-center gap-3 p-3 bg-muted rounded-md">
+                  <div>
+                    <p className="font-medium">{user?.name}</p>
+                    <p className="text-sm text-muted-foreground">{user?.email}</p>
+                  </div>
+                </div>
               </div>
 
               <div className="space-y-2">
