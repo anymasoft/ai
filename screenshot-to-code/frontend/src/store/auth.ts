@@ -1,5 +1,4 @@
 import { create } from 'zustand'
-import { persist } from 'zustand/middleware'
 
 export interface User {
   id: string
@@ -22,50 +21,45 @@ interface AuthStore {
 }
 
 export const useAuthStore = create<AuthStore>()(
-  persist(
-    (set) => ({
-      user: null,
-      isLoading: true,
-      error: null,
+  (set) => ({
+    user: null,
+    isLoading: true,
+    error: null,
 
-      setUser: (user) => set({ user, isLoading: false }),
+    setUser: (user) => set({ user, isLoading: false }),
 
-      checkAuth: async () => {
-        try {
-          set({ isLoading: true })
+    checkAuth: async () => {
+      try {
+        set({ isLoading: true })
 
-          const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:7001'
-          const response = await fetch(`${apiUrl}/api/auth/user`, {
-            credentials: 'include',
-          })
+        const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:7001'
+        const response = await fetch(`${apiUrl}/api/auth/user`, {
+          credentials: 'include',
+        })
 
-          if (response.ok) {
-            const user = await response.json()
-            set({ user, isLoading: false, error: null })
-          } else {
-            set({ user: null, isLoading: false, error: null })
-          }
-        } catch (error) {
-          set({ user: null, isLoading: false, error: String(error) })
+        if (response.ok) {
+          const user = await response.json()
+          set({ user, isLoading: false, error: null })
+        } else {
+          set({ user: null, isLoading: false, error: null })
         }
-      },
+      } catch (error) {
+        set({ user: null, isLoading: false, error: String(error) })
+      }
+    },
 
-      logout: async () => {
-        try {
-          const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:7001'
-          await fetch(`${apiUrl}/api/auth/logout`, {
-            method: 'POST',
-            credentials: 'include',
-          })
-        } catch (error) {
-          console.error('Logout failed:', error)
-        } finally {
-          set({ user: null })
-        }
-      },
-    }),
-    {
-      name: 'auth-store',
-    }
-  )
+    logout: async () => {
+      try {
+        const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:7001'
+        await fetch(`${apiUrl}/api/auth/logout`, {
+          method: 'POST',
+          credentials: 'include',
+        })
+      } catch (error) {
+        console.error('Logout failed:', error)
+      } finally {
+        set({ user: null })
+      }
+    },
+  })
 )
