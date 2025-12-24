@@ -1,5 +1,3 @@
-"use client"
-
 import * as React from "react"
 import {
   LayoutDashboard,
@@ -12,9 +10,11 @@ import {
   DollarSign,
   CreditCard,
   Settings,
+  MessageSquare,
 } from "lucide-react"
 import { Link } from "react-router-dom"
 import { Logo } from "@/components/logo"
+import { useUnreadCount } from "@/hooks/useUnreadCount"
 
 import { NavMain } from "@/components/nav-main"
 import { NavUser } from "@/components/nav-user"
@@ -28,7 +28,7 @@ import {
   SidebarMenuItem,
 } from "@/components/ui/sidebar"
 
-const data = {
+const getNavData = (unreadCount: number) => ({
   user: {
     name: "Screen2Code",
     email: "user@screen2code.com",
@@ -68,6 +68,11 @@ const data = {
           url: "/docs",
           icon: BookOpen,
         },
+        {
+          title: "Feedback",
+          url: "/feedback",
+          icon: MessageSquare,
+        },
       ],
     },
     {
@@ -77,6 +82,7 @@ const data = {
           title: "Messages",
           url: "/admin/messages",
           icon: Mail,
+          badge: unreadCount,
         },
         {
           title: "Users",
@@ -106,9 +112,12 @@ const data = {
       ],
     },
   ],
-}
+})
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
+  const unreadCount = useUnreadCount()
+  const data = React.useMemo(() => getNavData(unreadCount), [unreadCount])
+
   return (
     <Sidebar {...props}>
       <SidebarHeader>

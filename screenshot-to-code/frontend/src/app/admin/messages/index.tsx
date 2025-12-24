@@ -1,12 +1,3 @@
-/**
- * Admin Messages Page - Vite + React version
- *
- * Отличия от Next.js версии:
- * - useNavigate() вместо useRouter()
- * - react-router-dom вместо next/navigation
- * - fetch напрямую к FastAPI backend
- */
-
 import { useState, useEffect } from "react"
 import { useNavigate } from "react-router-dom"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -31,7 +22,7 @@ interface Message {
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:7001"
 
 export default function AdminMessagesPage() {
-  const navigate = useNavigate() // ✅ Правильно для Vite + React
+  const navigate = useNavigate()
   const [messages, setMessages] = useState<Message[]>([])
   const [loading, setLoading] = useState(true)
   const [deleting, setDeleting] = useState<string | null>(null)
@@ -241,7 +232,7 @@ export default function AdminMessagesPage() {
                     <TableRow
                       key={message.id}
                       className="cursor-pointer hover:bg-muted/50"
-                      onClick={() => navigate(`/admin/messages/${message.id}`)} {/* ✅ Правильно */}
+                      onClick={() => navigate(`/admin/messages/${message.id}`)}
                     >
                       <TableCell className="font-medium text-sm">
                         <div className="truncate">
