@@ -4,15 +4,40 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Loader2, RefreshCcw } from "lucide-react"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  DropdownMenuSeparator,
+  DropdownMenuLabel,
+} from "@/components/ui/dropdown-menu"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
+import { Loader2, RefreshCcw, MoreVertical } from "lucide-react"
 import { toast } from "sonner"
 import { fetchJSON, ApiError } from "@/lib/api"
 import { useNavigate } from "react-router-dom"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 
 interface User {
   id: string
   email: string
-  plan_id: string | null
+  name: string | null
+  plan: string
+  used_generations: number
+  disabled: boolean
   role: string
   created_at: string
 }
@@ -22,6 +47,14 @@ export default function AdminUsersPage() {
   const [users, setUsers] = useState<User[]>([])
   const [loading, setLoading] = useState(true)
   const [emailFilter, setEmailFilter] = useState("")
+  const [actionLoading, setActionLoading] = useState(false)
+
+  // Dialog states
+  const [selectedUser, setSelectedUser] = useState<User | null>(null)
+  const [changePlanOpen, setChangePlanOpen] = useState(false)
+  const [setUsageOpen, setSetUsageOpen] = useState(false)
+  const [newPlan, setNewPlan] = useState<"free" | "basic" | "professional">("free")
+  const [newUsage, setNewUsage] = useState(0)
 
   useEffect(() => {
     fetchUsers()
@@ -51,9 +84,9 @@ export default function AdminUsersPage() {
     return new Date(dateString).toLocaleDateString("ru-RU")
   }
 
-  const getPlanBadge = (planId: string | null) => {
-    if (!planId) return <Badge variant="secondary">No Plan</Badge>
-    return <Badge variant="outline">{planId}</Badge>
+  const getPlanBadge = (plan: string) => {
+    if (!plan) return <Badge variant="secondary">free</Badge>
+    return <Badge variant="outline">{plan}</Badge>
   }
 
   const getRoleBadge = (role: string) => {
@@ -66,6 +99,93 @@ export default function AdminUsersPage() {
   const filteredUsers = users.filter((user) =>
     user.email.toLowerCase().includes(emailFilter.toLowerCase())
   )
+
+  // Action handlers
+  async function handleDisableUser(user: User, disable: boolean) {
+    if (!confirm(`${disable ? "Disable" : "Enable"} ${user.email}?`)) return
+
+    setActionLoading(true)
+    try {
+      await fetchJSON("/api/admin/users/disable", {
+        method: "PATCH",
+        body: JSON.stringify({
+          userId: user.id,
+          disabled: disable,
+        }),
+      })
+      toast.success(`User ${disable ? "disabled" : "enabled"}`)
+      await fetchUsers()
+    } catch (error) {
+      console.error("Error:", error)
+      toast.error("Failed to update user status")
+    } finally {
+      setActionLoading(false)
+    }
+  }
+
+  async function handleChangePlan() {
+    if (!selectedUser) return
+
+    setActionLoading(true)
+    try {
+      await fetchJSON("/api/admin/users/change-plan", {
+        method: "POST",
+        body: JSON.stringify({
+          userId: selectedUser.id,
+          plan: newPlan,
+        }),
+      })
+      toast.success(`Plan changed to ${newPlan}`)
+      setChangePlanOpen(false)
+      await fetchUsers()
+    } catch (error) {
+      console.error("Error:", error)
+      toast.error("Failed to change plan")
+    } finally {
+      setActionLoading(false)
+    }
+  }
+
+  async function handleResetLimits(user: User) {
+    if (!confirm(`Reset limits for ${user.email}?`)) return
+
+    setActionLoading(true)
+    try {
+      await fetchJSON(`/api/admin/users/${user.id}/reset-limits`, {
+        method: "POST",
+      })
+      toast.success("Limits reset")
+      await fetchUsers()
+    } catch (error) {
+      console.error("Error:", error)
+      toast.error("Failed to reset limits")
+    } finally {
+      setActionLoading(false)
+    }
+  }
+
+  async function handleSetUsage() {
+    if (!selectedUser) return
+
+    setActionLoading(true)
+    try {
+      await fetchJSON(`/api/admin/users/${selectedUser.id}/set-usage`, {
+        method: "POST",
+        body: JSON.stringify({
+          userId: selectedUser.id,
+          used_generations: newUsage,
+        }),
+      })
+      toast.success(`Usage set to ${newUsage}`)
+      setSetUsageOpen(false)
+      await fetchUsers()
+    } catch (error) {
+      console.error("Error:", error)
+      toast.error("Failed to set usage")
+    } finally {
+      setActionLoading(false)
+    }
+  }
 
   return (
     <div className="container mx-auto px-4 py-6">
@@ -119,8 +239,10 @@ export default function AdminUsersPage() {
                   <TableRow>
                     <TableHead>Email</TableHead>
                     <TableHead>План</TableHead>
+                    <TableHead>Использовано</TableHead>
+                    <TableHead>Статус</TableHead>
                     <TableHead>Роль</TableHead>
-                    <TableHead>Создан</TableHead>
+                    <TableHead className="w-[50px]">Действия</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -130,13 +252,73 @@ export default function AdminUsersPage() {
                         {user.email}
                       </TableCell>
                       <TableCell>
-                        {getPlanBadge(user.plan_id)}
+                        {getPlanBadge(user.plan)}
+                      </TableCell>
+                      <TableCell className="text-sm">
+                        {user.used_generations}
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant={user.disabled ? "destructive" : "outline"}>
+                          {user.disabled ? "Disabled" : "Active"}
+                        </Badge>
                       </TableCell>
                       <TableCell>
                         {getRoleBadge(user.role)}
                       </TableCell>
-                      <TableCell className="text-sm text-muted-foreground">
-                        {formatDate(user.created_at)}
+                      <TableCell>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              disabled={actionLoading}
+                            >
+                              <MoreVertical className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuLabel>Действия</DropdownMenuLabel>
+                            <DropdownMenuSeparator />
+
+                            {/* Disable/Enable */}
+                            <DropdownMenuItem
+                              onClick={() =>
+                                handleDisableUser(user, !user.disabled)
+                              }
+                            >
+                              {user.disabled ? "Enable" : "Disable"}
+                            </DropdownMenuItem>
+
+                            {/* Change Plan */}
+                            <DropdownMenuItem
+                              onClick={() => {
+                                setSelectedUser(user)
+                                setNewPlan(user.plan as any)
+                                setChangePlanOpen(true)
+                              }}
+                            >
+                              Change Plan
+                            </DropdownMenuItem>
+
+                            {/* Reset Limits */}
+                            <DropdownMenuItem
+                              onClick={() => handleResetLimits(user)}
+                            >
+                              Reset Limits
+                            </DropdownMenuItem>
+
+                            {/* Set Usage */}
+                            <DropdownMenuItem
+                              onClick={() => {
+                                setSelectedUser(user)
+                                setNewUsage(user.used_generations)
+                                setSetUsageOpen(true)
+                              }}
+                            >
+                              Set Usage
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -146,6 +328,74 @@ export default function AdminUsersPage() {
           )}
         </CardContent>
       </Card>
+
+      {/* Change Plan Dialog */}
+      <Dialog open={changePlanOpen} onOpenChange={setChangePlanOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Change Plan</DialogTitle>
+            <DialogDescription>
+              Change {selectedUser?.email} plan
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <label className="text-sm font-medium">New Plan</label>
+              <Select value={newPlan} onValueChange={(value: any) => setNewPlan(value)}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="free">Free (30 generations)</SelectItem>
+                  <SelectItem value="basic">Basic (200 generations)</SelectItem>
+                  <SelectItem value="professional">Professional (1000 generations)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setChangePlanOpen(false)}>
+                Cancel
+              </Button>
+              <Button onClick={handleChangePlan} disabled={actionLoading}>
+                {actionLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                Change Plan
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Set Usage Dialog */}
+      <Dialog open={setUsageOpen} onOpenChange={setSetUsageOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Set Usage</DialogTitle>
+            <DialogDescription>
+              Set generations used for {selectedUser?.email}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <label className="text-sm font-medium">Used Generations</label>
+              <Input
+                type="number"
+                min="0"
+                value={newUsage}
+                onChange={(e) => setNewUsage(parseInt(e.target.value) || 0)}
+              />
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setSetUsageOpen(false)}>
+                Cancel
+              </Button>
+              <Button onClick={handleSetUsage} disabled={actionLoading}>
+                {actionLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                Set Usage
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

@@ -2,6 +2,7 @@
 
 from fastapi import APIRouter, HTTPException, status, Depends
 from api.admin_auth import get_admin_user
+from api.config.plans import get_plan_limit
 import sqlite3
 from pydantic import BaseModel
 from db import get_conn as get_db
@@ -23,10 +24,23 @@ class DisableUserRequest(BaseModel):
     disabled: bool
 
 
+class ResetLimitsRequest(BaseModel):
+    """Request to reset user limits."""
+
+    userId: str
+
+
+class SetUsageRequest(BaseModel):
+    """Request to set user usage (for testing)."""
+
+    userId: str
+    used_generations: int
+
+
 @router.get("/api/admin/users")
 async def get_users(admin: dict = Depends(get_admin_user)):
     """
-    Get all users.
+    Get all users with plan and usage info.
 
     Returns:
     {
@@ -34,7 +48,10 @@ async def get_users(admin: dict = Depends(get_admin_user)):
             {
                 "id": "...",
                 "email": "...",
-                "plan_id": "..." | null,
+                "name": "...",
+                "plan": "free|basic|professional",
+                "used_generations": 5,
+                "disabled": false,
                 "role": "user" | "admin",
                 "created_at": "2024-01-01T00:00:00"
             },
@@ -48,7 +65,7 @@ async def get_users(admin: dict = Depends(get_admin_user)):
 
     try:
         cursor.execute("""
-            SELECT id, email, plan_id, role, created_at
+            SELECT id, email, name, plan, used_generations, disabled, role, created_at
             FROM users
             ORDER BY created_at DESC
         """)
@@ -67,7 +84,7 @@ async def change_user_plan(
     admin: dict = Depends(get_admin_user),
 ):
     """
-    Change user's plan.
+    Change user's plan and reset their usage limits.
 
     Request body:
     {
@@ -80,10 +97,7 @@ async def change_user_plan(
         "success": true
     }
 
-    Note: This is simplified - in production you'd:
-    - Validate plan exists in plans table
-    - Update credits/limits accordingly
-    - Create audit log
+    Note: When plan changes, used_generations is reset to 0.
     """
     valid_plans = ["free", "basic", "professional"]
 
@@ -108,9 +122,9 @@ async def change_user_plan(
                 detail={"error": "not_found", "message": "User not found"},
             )
 
-        # Update plan
+        # Update plan and reset usage
         cursor.execute(
-            "UPDATE users SET plan_id = ? WHERE id = ?",
+            "UPDATE users SET plan = ?, used_generations = 0 WHERE id = ?",
             (request.plan, request.userId),
         )
 
@@ -192,6 +206,122 @@ async def disable_user(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail={"error": "internal_error", "message": "Failed to update user"},
+        )
+
+    finally:
+        conn.close()
+
+
+@router.post("/api/admin/users/{user_id}/reset-limits")
+async def reset_user_limits(
+    user_id: str,
+    admin: dict = Depends(get_admin_user),
+):
+    """
+    Reset user's generation limits (set used_generations to 0).
+
+    Returns:
+    {
+        "success": true
+    }
+    """
+    conn = get_db()
+    cursor = conn.cursor()
+
+    try:
+        # Check user exists
+        cursor.execute("SELECT plan FROM users WHERE id = ?", (user_id,))
+        row = cursor.fetchone()
+        if not row:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail={"error": "not_found", "message": "User not found"},
+            )
+
+        # Reset used_generations to 0
+        cursor.execute(
+            "UPDATE users SET used_generations = 0 WHERE id = ?",
+            (user_id,),
+        )
+
+        conn.commit()
+
+        return {"success": True}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        conn.rollback()
+        print(f"[ADMIN] Error resetting limits: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail={"error": "internal_error", "message": "Failed to reset limits"},
+        )
+
+    finally:
+        conn.close()
+
+
+@router.post("/api/admin/users/{user_id}/set-usage")
+async def set_user_usage(
+    user_id: str,
+    request: SetUsageRequest,
+    admin: dict = Depends(get_admin_user),
+):
+    """
+    Set user's used_generations count (for testing).
+
+    Request body:
+    {
+        "userId": "user-id",
+        "used_generations": 10
+    }
+
+    Returns:
+    {
+        "success": true
+    }
+    """
+    if request.used_generations < 0:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={
+                "error": "invalid_input",
+                "message": "used_generations must be >= 0",
+            },
+        )
+
+    conn = get_db()
+    cursor = conn.cursor()
+
+    try:
+        # Check user exists
+        cursor.execute("SELECT plan FROM users WHERE id = ?", (user_id,))
+        row = cursor.fetchone()
+        if not row:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail={"error": "not_found", "message": "User not found"},
+            )
+
+        # Set used_generations
+        cursor.execute(
+            "UPDATE users SET used_generations = ? WHERE id = ?",
+            (request.used_generations, user_id),
+        )
+
+        conn.commit()
+
+        return {"success": True}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        conn.rollback()
+        print(f"[ADMIN] Error setting usage: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail={"error": "internal_error", "message": "Failed to set usage"},
         )
 
     finally:
