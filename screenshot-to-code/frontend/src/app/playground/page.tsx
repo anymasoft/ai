@@ -1,6 +1,7 @@
 "use client"
 
 import { useRef, useState, useEffect } from "react"
+import { useRouter } from "next/navigation"
 import { X, Copy, Download, FileArchive, Check, Loader2 } from "lucide-react"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -16,7 +17,15 @@ import {
 } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip"
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog"
 import { toast } from "sonner"
+import { fetchJSON } from "@/lib/api"
 import { addHistoryItem, extractDomain, type HistoryItem } from "@/lib/history"
 import {
   generateCode,
@@ -29,6 +38,7 @@ import {
 } from "@/logic/generation"
 
 export default function PlaygroundPage() {
+  const router = useRouter()
   const wsRef = useRef<WebSocket | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const chunksRef = useRef<string[]>([])
@@ -38,6 +48,11 @@ export default function PlaygroundPage() {
   const [validationError, setValidationError] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
 
+  // Billing state
+  const [credits, setCredits] = useState<number | null>(null)
+  const [showPaywall, setShowPaywall] = useState(false)
+  const [loadingCredits, setLoadingCredits] = useState(true)
+
   // Input state
   const [imageFile, setImageFile] = useState<File | null>(null)
   const [imagePreview, setImagePreview] = useState<string | null>(null)
@@ -46,6 +61,26 @@ export default function PlaygroundPage() {
   const [selectedFormat, setSelectedFormat] = useState<"html_tailwind" | "html_css" | "react_tailwind" | "vue_tailwind">(
     "html_tailwind"
   )
+
+  // Load credits balance
+  useEffect(() => {
+    async function loadCredits() {
+      try {
+        const data = await fetchJSON<{ credits: number }>("/api/billing/balance")
+        setCredits(data.credits)
+        if (data.credits === 0) {
+          setShowPaywall(true)
+        }
+      } catch (err) {
+        console.error("[BILLING] Error loading credits:", err)
+        setCredits(0)
+      } finally {
+        setLoadingCredits(false)
+      }
+    }
+
+    loadCredits()
+  }, [])
 
   // Load from history if available
   useEffect(() => {
@@ -90,6 +125,12 @@ export default function PlaygroundPage() {
   }
 
   const handleGenerate = async () => {
+    // Check credits
+    if (credits === null || credits === 0) {
+      setShowPaywall(true)
+      return
+    }
+
     // Validation
     if (!imageFile && !url) {
       setValidationError("Please provide either an image or a URL")
@@ -155,9 +196,10 @@ export default function PlaygroundPage() {
         console.log("Generation cancelled")
         setIsStreaming(false)
       },
-      onComplete: () => {
+      onComplete: async () => {
         console.log("Generation complete. Chunks ref length:", chunksRef.current.length)
         setIsStreaming(false)
+
         // Save to history - use chunksRef to avoid stale closure
         if (chunksRef.current.length > 0) {
           const result = chunksRef.current.join("")
@@ -177,6 +219,34 @@ export default function PlaygroundPage() {
           console.log("History item added successfully")
         } else {
           console.warn("No chunks to save - chunksRef.current is empty")
+        }
+
+        // Deduct credits for successful generation
+        try {
+          const response = await fetchJSON<{
+            success: boolean
+            remaining_credits: number
+            message: string
+          }>("/api/billing/deduct-credits", {
+            method: "POST",
+            body: JSON.stringify({ format: selectedFormat }),
+          })
+
+          if (response.success) {
+            setCredits(response.remaining_credits)
+            toast.success(response.message)
+
+            // Show paywall if no more credits
+            if (response.remaining_credits === 0) {
+              setTimeout(() => {
+                setShowPaywall(true)
+              }, 1000)
+            }
+          }
+        } catch (err) {
+          console.error("[BILLING] Error deducting credits:", err)
+          // Don't fail the generation, just log the error
+          // The credits will be deducted, but UI might not update immediately
         }
       },
     }
@@ -581,6 +651,42 @@ export default function PlaygroundPage() {
           </Card>
         )}
       </div>
+
+      {/* Paywall Dialog */}
+      <Dialog open={showPaywall} onOpenChange={setShowPaywall}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>У вас закончились генерации</DialogTitle>
+            <DialogDescription>
+              Для продолжения работы необходимо купить пакет генераций.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-6">
+            <div className="space-y-2">
+              <p className="text-sm text-muted-foreground">
+                Каждая генерация требует 1 кредит. Выберите пакет, который вам нужен.
+              </p>
+            </div>
+            <div className="space-y-3">
+              <button
+                onClick={() => {
+                  setShowPaywall(false)
+                  router.push("/settings/billing")
+                }}
+                className="w-full px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition"
+              >
+                Перейти к покупке
+              </button>
+              <button
+                onClick={() => setShowPaywall(false)}
+                className="w-full px-4 py-2 bg-muted hover:bg-muted/80 text-foreground rounded-lg font-medium transition"
+              >
+                Позже
+              </button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </>
   )
 }
