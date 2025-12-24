@@ -15,6 +15,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
+import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip"
 import { toast } from "sonner"
 import { addHistoryItem, extractDomain, type HistoryItem } from "@/lib/history"
 import {
@@ -519,30 +520,45 @@ export default function PlaygroundPage() {
                   <div className="space-y-3">
                     {/* Export buttons */}
                     <div className="flex items-center justify-end gap-2">
-                      <Button
-                        onClick={handleCopyCode}
-                        variant="ghost"
-                        size="sm"
-                        disabled={!chunks.length || isStreaming}
-                      >
-                        {copied ? <Check size={16} /> : <Copy size={16} />}
-                      </Button>
-                      <Button
-                        onClick={handleDownloadHTML}
-                        variant="ghost"
-                        size="sm"
-                        disabled={!chunks.length || isStreaming}
-                      >
-                        <Download size={16} />
-                      </Button>
-                      <Button
-                        onClick={handleDownloadZIP}
-                        variant="ghost"
-                        size="sm"
-                        disabled={!chunks.length || isStreaming}
-                      >
-                        <FileArchive size={16} />
-                      </Button>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            onClick={handleCopyCode}
+                            variant="ghost"
+                            size="sm"
+                            disabled={!chunks.length || isStreaming}
+                          >
+                            {copied ? <Check size={16} /> : <Copy size={16} />}
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>{copied ? "Copied!" : "Copy"}</TooltipContent>
+                      </Tooltip>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            onClick={handleDownloadHTML}
+                            variant="ghost"
+                            size="sm"
+                            disabled={!chunks.length || isStreaming}
+                          >
+                            <Download size={16} />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>Download HTML</TooltipContent>
+                      </Tooltip>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            onClick={handleDownloadZIP}
+                            variant="ghost"
+                            size="sm"
+                            disabled={!chunks.length || isStreaming}
+                          >
+                            <FileArchive size={16} />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>Download ZIP</TooltipContent>
+                      </Tooltip>
                     </div>
                     {/* Code block */}
                     <pre className="bg-muted p-4 rounded text-sm overflow-auto max-h-96">
