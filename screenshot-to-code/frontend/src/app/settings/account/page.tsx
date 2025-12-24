@@ -3,7 +3,6 @@
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
 import { z } from "zod"
-import { BaseLayout } from "@/components/layouts/base-layout"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import {
@@ -49,7 +48,7 @@ export default function AccountSettings() {
   }
 
   return (
-    <BaseLayout>
+    <>
       <div className="space-y-6 px-4 lg:px-6">
         <div>
           <h1 className="text-3xl font-bold">Account Settings</h1>
@@ -205,6 +204,6 @@ export default function AccountSettings() {
           </form>
         </Form>
       </div>
-    </BaseLayout>
+    </>
   )
 }

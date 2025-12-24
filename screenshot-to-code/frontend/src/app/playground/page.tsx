@@ -2,7 +2,6 @@
 
 import { useRef, useState, useEffect } from "react"
 import { X, Copy, Download, FileArchive, Check, Loader2 } from "lucide-react"
-import { BaseLayout } from "@/components/layouts/base-layout"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -321,10 +320,13 @@ export default function PlaygroundPage() {
   }
 
   return (
-    <BaseLayout
-      title="Playground"
-      description="Code generation workspace"
-    >
+    <>
+      <div className="px-4 lg:px-6">
+        <div className="flex flex-col gap-2">
+          <h1 className="text-2xl font-bold tracking-tight">Playground</h1>
+          <p className="text-muted-foreground">Code generation workspace</p>
+        </div>
+      </div>
       <div className="@container/main px-4 lg:px-6 space-y-6">
         {/* Input Form Card */}
         <Card className="p-6">
@@ -569,6 +571,6 @@ export default function PlaygroundPage() {
           </Card>
         )}
       </div>
-    </BaseLayout>
+    </>
   )
 }
