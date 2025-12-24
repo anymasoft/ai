@@ -61,7 +61,7 @@ async def initiate_google_oauth(redirect_to: str = Query(default="/playground"))
     return RedirectResponse(url=auth_url)
 
 
-@router.get("/google/callback")
+@router.get("/auth/callback/google")
 async def google_oauth_callback(
     code: str = Query(...),
     state: str = Query(...),

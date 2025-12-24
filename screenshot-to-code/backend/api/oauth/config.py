@@ -7,7 +7,7 @@ GOOGLE_CLIENT_SECRET = os.getenv("GOOGLE_CLIENT_SECRET", "")
 BACKEND_URL = os.getenv("BACKEND_URL", "http://localhost:7001")
 FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:5173")
 
-GOOGLE_OAUTH_REDIRECT_URI = f"{BACKEND_URL}/api/oauth/google/callback"
+GOOGLE_OAUTH_REDIRECT_URI = f"{BACKEND_URL}/api/auth/callback/google"
 GOOGLE_OAUTH_AUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth"
 GOOGLE_OAUTH_TOKEN_URL = "https://www.googleapis.com/oauth2/v4/token"
 GOOGLE_OAUTH_USERINFO_URL = "https://www.googleapis.com/oauth2/v2/userinfo"
