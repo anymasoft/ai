@@ -76,7 +76,7 @@ export default function ApiPage() {
             </p>
           </div>
           <Button variant="outline" asChild>
-            <a href="/api-docs" target="_blank" className="flex items-center gap-2">
+            <a href="/docs" className="flex items-center gap-2">
               <ExternalLink size={16} />
               Full Documentation
             </a>
