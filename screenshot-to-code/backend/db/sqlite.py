@@ -41,6 +41,7 @@ def init_db() -> None:
                 id TEXT PRIMARY KEY,
                 email TEXT UNIQUE,
                 plan_id TEXT,
+                role TEXT DEFAULT 'user',
                 created_at TEXT NOT NULL,
                 FOREIGN KEY (plan_id) REFERENCES plans(id)
             )
@@ -115,6 +116,22 @@ def init_db() -> None:
             )
         """)
 
+        # Create admin_messages table (for feedback system)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS admin_messages (
+                id TEXT PRIMARY KEY,
+                email TEXT,
+                firstName TEXT,
+                lastName TEXT,
+                subject TEXT NOT NULL,
+                message TEXT NOT NULL,
+                userId TEXT,
+                createdAt INTEGER NOT NULL,
+                isRead INTEGER DEFAULT 0,
+                FOREIGN KEY (userId) REFERENCES users(id) ON DELETE SET NULL
+            )
+        """)
+
         # Create indexes
         cursor.execute("""
             CREATE INDEX IF NOT EXISTS idx_generations_user_created
@@ -139,6 +156,16 @@ def init_db() -> None:
         cursor.execute("""
             CREATE INDEX IF NOT EXISTS idx_generation_variants_generation
             ON generation_variants(generation_id)
+        """)
+
+        cursor.execute("""
+            CREATE INDEX IF NOT EXISTS idx_admin_messages_createdAt
+            ON admin_messages(createdAt DESC)
+        """)
+
+        cursor.execute("""
+            CREATE INDEX IF NOT EXISTS idx_admin_messages_isRead
+            ON admin_messages(isRead, createdAt DESC)
         """)
 
         conn.commit()

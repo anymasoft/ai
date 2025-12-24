@@ -8,6 +8,12 @@ const History = lazy(() => import('@/app/history/page'))
 const ApiPage = lazy(() => import('@/app/api/page'))
 const DocsPage = lazy(() => import('@/app/docs/page'))
 
+// Admin pages
+const AdminMessages = lazy(() => import('@/app/(dashboard)/admin/messages/page'))
+const AdminMessageDetail = lazy(() => import('@/app/(dashboard)/admin/messages/[id]/page'))
+const AdminUsers = lazy(() => import('@/app/(dashboard)/admin/users/page'))
+const AdminPayments = lazy(() => import('@/app/(dashboard)/admin/payments/page'))
+
 // Auth pages
 const SignIn = lazy(() => import('@/app/auth/sign-in/page'))
 
@@ -50,6 +56,24 @@ export const routes: RouteConfig[] = [
   {
     path: "/docs",
     element: <DocsPage />
+  },
+
+  // Admin Routes
+  {
+    path: "/admin/messages",
+    element: <AdminMessages />
+  },
+  {
+    path: "/admin/messages/:id",
+    element: <AdminMessageDetail />
+  },
+  {
+    path: "/admin/users",
+    element: <AdminUsers />
+  },
+  {
+    path: "/admin/payments",
+    element: <AdminPayments />
   },
 
   // Authentication Routes
