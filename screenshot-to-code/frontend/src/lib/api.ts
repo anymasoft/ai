@@ -1,3 +1,5 @@
+import { useAuthStore } from "@/store/auth"
+
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:7001"
 
 export class ApiError extends Error {
@@ -19,10 +21,15 @@ export async function fetchJSON<T = any>(
   options: FetchOptions = {}
 ): Promise<T> {
   const url = `${API_BASE_URL}${path}`
+  const email = useAuthStore.getState().email
 
-  const headers = {
+  const headers: Record<string, string> = {
     "Content-Type": "application/json",
     ...options.headers,
+  }
+
+  if (email) {
+    headers["X-User-Email"] = email
   }
 
   const response = await fetch(url, {
