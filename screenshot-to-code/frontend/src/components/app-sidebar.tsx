@@ -6,6 +6,7 @@ import {
   Code2,
   Clock,
   Terminal,
+  BookOpen,
   CreditCard,
   Settings,
 } from "lucide-react"
@@ -58,6 +59,11 @@ const data = {
           title: "API",
           url: "/api",
           icon: Terminal,
+        },
+        {
+          title: "Docs",
+          url: "/docs",
+          icon: BookOpen,
         },
       ],
     },

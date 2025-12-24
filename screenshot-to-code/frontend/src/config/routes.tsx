@@ -6,6 +6,7 @@ const Dashboard = lazy(() => import('@/app/dashboard/page'))
 const Playground = lazy(() => import('@/app/playground/page'))
 const History = lazy(() => import('@/app/history/page'))
 const ApiPage = lazy(() => import('@/app/api/page'))
+const DocsPage = lazy(() => import('@/app/docs/page'))
 
 // Auth pages
 const SignIn = lazy(() => import('@/app/auth/sign-in/page'))
@@ -45,6 +46,10 @@ export const routes: RouteConfig[] = [
   {
     path: "/api",
     element: <ApiPage />
+  },
+  {
+    path: "/docs",
+    element: <DocsPage />
   },
 
   // Authentication Routes
