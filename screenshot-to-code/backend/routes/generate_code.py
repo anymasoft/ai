@@ -363,27 +363,15 @@ class ParameterExtractionStage:
             raise ValueError(f"Invalid input mode: {input_mode}")
         validated_input_mode = cast(InputMode, input_mode)
 
-        openai_api_key = self._get_from_settings_dialog_or_env(
-            params, "openAiApiKey", OPENAI_API_KEY
-        )
+        # API keys ONLY from environment - never from frontend params
+        openai_api_key = OPENAI_API_KEY
+        anthropic_api_key = ANTHROPIC_API_KEY
 
-        # If neither is provided, we throw an error later only if Claude is used.
-        anthropic_api_key = self._get_from_settings_dialog_or_env(
-            params, "anthropicApiKey", ANTHROPIC_API_KEY
-        )
+        # Base URL for OpenAI API (from env only)
+        openai_base_url = OPENAI_BASE_URL
 
-        # Base URL for OpenAI API
-        openai_base_url: str | None = None
-        # Disable user-specified OpenAI Base URL in prod
-        if not IS_PROD:
-            openai_base_url = self._get_from_settings_dialog_or_env(
-                params, "openAiBaseURL", OPENAI_BASE_URL
-            )
-        if not openai_base_url:
-            print("Using official OpenAI URL")
-
-        # Get the image generation flag from the request. Fall back to True if not provided.
-        should_generate_images = bool(params.get("isImageGenerationEnabled", True))
+        # Image generation always enabled (legacy support)
+        should_generate_images = True
 
         # Extract and validate generation type
         generation_type = params.get("generationType", "create")
@@ -413,22 +401,6 @@ class ParameterExtractionStage:
             history=history,
             is_imported_from_code=is_imported_from_code,
         )
-
-    def _get_from_settings_dialog_or_env(
-        self, params: dict[str, str], key: str, env_var: str | None
-    ) -> str | None:
-        """Get value from client settings or environment variable"""
-        value = params.get(key)
-        if value:
-            print(f"Using {key} from client-side settings dialog")
-            return value
-
-        if env_var:
-            print(f"Using {key} from environment variable")
-            return env_var
-
-        return None
-
 
 class ModelSelectionStage:
     """Handles selection of variant models based on available API keys and generation type"""
@@ -493,7 +465,7 @@ class ModelSelectionStage:
         ]
 
         if not openai_api_key:
-            raise Exception("OpenAI API key is required. Please set OPENAI_API_KEY environment variable.")
+            raise RuntimeError("OpenAI API key is REQUIRED. Set OPENAI_API_KEY in backend/.env and restart backend.")
 
         # 🔧 OPTIMIZATION: Only generate the ACTIVE variant
         # This reduces token consumption from 4x to 1x
