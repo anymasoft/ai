@@ -2,17 +2,25 @@
 
 import sqlite3
 from pathlib import Path
+from config import DB_PATH
 
-DB_PATH = Path(__file__).parent / "data" / "app.db"
+
+def get_db():
+    """
+    Get database connection.
+    Always logs absolute DB path.
+    Single source of truth for DB connections.
+    """
+    print(f"[DB] Connecting to: {DB_PATH.absolute()}")
+    return sqlite3.connect(str(DB_PATH))
 
 
 def init_db():
-    """Initialize app database with correct schema."""
+    """Initialize app database with correct schema and auto-migrations."""
 
-    # Ensure data directory exists
-    DB_PATH.parent.mkdir(exist_ok=True)
+    print(f"[DB] Initializing database at: {DB_PATH.absolute()}")
 
-    conn = sqlite3.connect(str(DB_PATH))
+    conn = get_db()
     cursor = conn.cursor()
 
     # Create users table if not exists
@@ -25,6 +33,7 @@ def init_db():
             created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
         )
     """)
+    print("[DB] Table 'users' ready")
 
     # Create admin_messages table if not exists
     cursor.execute("""
@@ -41,6 +50,7 @@ def init_db():
             FOREIGN KEY (userId) REFERENCES users(id)
         )
     """)
+    print("[DB] Table 'admin_messages' ready")
 
     # Check if users table needs migration
     cursor.execute("PRAGMA table_info(users)")
@@ -50,18 +60,20 @@ def init_db():
 
     # Check role column
     if "role" not in columns:
-        print("[DB] Adding 'role' column to users table...")
+        print("[DB] MIGRATION: Adding 'role' column to users table...")
         cursor.execute("ALTER TABLE users ADD COLUMN role TEXT NOT NULL DEFAULT 'user'")
         needs_migration = True
 
     # Check plan_id column
     if "plan_id" not in columns:
-        print("[DB] Adding 'plan_id' column to users table...")
+        print("[DB] MIGRATION: Adding 'plan_id' column to users table...")
         cursor.execute("ALTER TABLE users ADD COLUMN plan_id TEXT DEFAULT 'free'")
         needs_migration = True
 
     if needs_migration:
         print("[DB] Schema migration completed")
+    else:
+        print("[DB] Schema up to date")
 
     # Create indexes
     cursor.execute("CREATE INDEX IF NOT EXISTS idx_users_email ON users(email)")
@@ -73,7 +85,7 @@ def init_db():
     conn.commit()
     conn.close()
 
-    print(f"[DB] initialized successfully at {DB_PATH}")
+    print(f"[DB] Initialization complete: {DB_PATH.absolute()}")
 
 
 if __name__ == "__main__":

@@ -6,12 +6,13 @@ load_dotenv()
 
 import asyncio
 from contextlib import asynccontextmanager
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from routes import screenshot, generate_code, home, evals, history
 from db import init_db
 from gen_queue.generation_queue import init_queue
 from gen_queue.worker import start_worker
+import time
 
 # Import API routes
 from api.routes import (
@@ -27,6 +28,7 @@ from api.routes import (
     admin_payments_router,
 )
 from api.init_db import init_api_tables
+from config import ALLOWED_ORIGINS
 
 # Initialize databases
 init_db()
@@ -72,14 +74,31 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(openapi_url=None, docs_url=None, redoc_url=None, lifespan=lifespan)
 
-# Configure CORS settings
+# Configure CORS settings from config
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=ALLOWED_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Request logging middleware
+@app.middleware("http")
+async def log_requests(request: Request, call_next):
+    """Log all HTTP requests with timing."""
+    start_time = time.time()
+
+    # Process request
+    response = await call_next(request)
+
+    # Calculate duration
+    duration = time.time() - start_time
+
+    # Log
+    print(f"[HTTP] {request.method} {request.url.path} -> {response.status_code} ({duration:.3f}s)")
+
+    return response
 
 # Add UI routes
 app.include_router(generate_code.router)

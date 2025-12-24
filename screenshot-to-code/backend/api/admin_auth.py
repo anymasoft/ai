@@ -3,26 +3,29 @@
 import sqlite3
 from fastapi import Header, HTTPException, status, Depends
 from typing import Annotated, Optional
-from pathlib import Path
-
-DB_PATH = Path(__file__).parent.parent / "data" / "app.db"
+from config import DB_PATH
+from db import get_db
 
 
 def get_user_by_email(email: str) -> Optional[dict]:
     """Get user by email from database."""
-    conn = sqlite3.connect(str(DB_PATH))
+    conn = get_db()
     conn.row_factory = sqlite3.Row
     cursor = conn.cursor()
 
-    cursor.execute(
-        "SELECT id, email, role, plan_id, created_at FROM users WHERE email = ?",
-        (email,),
-    )
+    try:
+        cursor.execute(
+            "SELECT id, email, role, plan_id, created_at FROM users WHERE email = ?",
+            (email,),
+        )
 
-    row = cursor.fetchone()
-    conn.close()
-
-    return dict(row) if row else None
+        row = cursor.fetchone()
+        return dict(row) if row else None
+    except Exception as e:
+        print(f"[ADMIN_AUTH] Error getting user by email: {e}")
+        return None
+    finally:
+        conn.close()
 
 
 def verify_admin(email: str) -> dict:
