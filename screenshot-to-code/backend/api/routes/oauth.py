@@ -1,6 +1,5 @@
 import json
 import secrets
-import jwt
 from datetime import datetime, timedelta
 from typing import Optional
 from urllib.parse import urlencode
@@ -16,12 +15,11 @@ from api.oauth.config import (
     GOOGLE_OAUTH_TOKEN_URL,
     GOOGLE_OAUTH_USERINFO_URL,
     GOOGLE_OAUTH_SCOPES,
-    JWT_SECRET,
-    JWT_ALGORITHM,
-    JWT_EXPIRATION_DAYS,
+    SESSION_EXPIRATION_DAYS,
     FRONTEND_URL,
 )
 from api.oauth.callbacks import handle_oauth_signin
+from db.sqlite import create_session
 
 router = APIRouter(prefix="/api/oauth", tags=["oauth"])
 
@@ -167,32 +165,32 @@ async def google_oauth_callback(
             status_code=302,
         )
 
-    # PART 5: Создаём JWT token (ЛОГИКА ИЗ JWT CALLBACK)
-    payload = {
-        "sub": user_data["id"],
-        "id": user_data["id"],
-        "email": user_data["email"],
-        "name": user_data["name"],
-        "role": user_data["role"],
-        "exp": datetime.utcnow() + timedelta(days=JWT_EXPIRATION_DAYS),
-        "iat": datetime.utcnow(),
-    }
+    # PART 5: Создаём server-side session (ВМЕСТО JWT)
+    try:
+        session_id = create_session(
+            user_id=user_data["id"],
+            expiration_days=SESSION_EXPIRATION_DAYS,
+        )
+    except Exception as e:
+        print(f"[OAuth] Error creating session: {e}")
+        return RedirectResponse(
+            url=f"{FRONTEND_URL}/auth-callback?error=session_creation_failed",
+            status_code=302,
+        )
 
-    access_token_jwt = jwt.encode(payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
-
-    # PART 6: Возвращаем redirect с HttpOnly cookie
+    # PART 6: Возвращаем redirect с HttpOnly session cookie
     response = RedirectResponse(
         url=f"{FRONTEND_URL}/auth-callback?success=true&redirect_to={redirect_to}",
         status_code=302,
     )
 
     response.set_cookie(
-        key="authorization",
-        value=f"Bearer {access_token_jwt}",
+        key="session_id",
+        value=session_id,
         httponly=True,
         secure=False,  # True в production с HTTPS
         samesite="lax",
-        max_age=JWT_EXPIRATION_DAYS * 24 * 60 * 60,
+        max_age=SESSION_EXPIRATION_DAYS * 24 * 60 * 60,
     )
 
     return response
