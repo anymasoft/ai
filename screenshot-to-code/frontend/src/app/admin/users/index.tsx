@@ -53,6 +53,10 @@ export default function AdminUsersPage() {
   const [selectedUser, setSelectedUser] = useState<User | null>(null)
   const [changePlanOpen, setChangePlanOpen] = useState(false)
   const [setUsageOpen, setSetUsageOpen] = useState(false)
+  const [disableConfirmOpen, setDisableConfirmOpen] = useState(false)
+  const [disableConfirmAction, setDisableConfirmAction] = useState<{user: User, disable: boolean} | null>(null)
+  const [resetLimitsConfirmOpen, setResetLimitsConfirmOpen] = useState(false)
+  const [resetLimitsUser, setResetLimitsUser] = useState<User | null>(null)
   const [newPlan, setNewPlan] = useState<"free" | "basic" | "professional">("free")
   const [newUsage, setNewUsage] = useState(0)
 
@@ -101,25 +105,32 @@ export default function AdminUsersPage() {
   )
 
   // Action handlers
-  async function handleDisableUser(user: User, disable: boolean) {
-    if (!confirm(`${disable ? "Disable" : "Enable"} ${user.email}?`)) return
+  function openDisableConfirm(user: User, disable: boolean) {
+    setDisableConfirmAction({ user, disable })
+    setDisableConfirmOpen(true)
+  }
+
+  async function confirmDisableUser() {
+    if (!disableConfirmAction) return
 
     setActionLoading(true)
     try {
       await fetchJSON("/api/admin/users/disable", {
         method: "PATCH",
         body: JSON.stringify({
-          userId: user.id,
-          disabled: disable,
+          userId: disableConfirmAction.user.id,
+          disabled: disableConfirmAction.disable,
         }),
       })
-      toast.success(`User ${disable ? "disabled" : "enabled"}`)
+      toast.success(`User ${disableConfirmAction.disable ? "disabled" : "enabled"}`)
       await fetchUsers()
     } catch (error) {
       console.error("Error:", error)
       toast.error("Failed to update user status")
     } finally {
       setActionLoading(false)
+      setDisableConfirmOpen(false)
+      setDisableConfirmAction(null)
     }
   }
 
@@ -146,12 +157,17 @@ export default function AdminUsersPage() {
     }
   }
 
-  async function handleResetLimits(user: User) {
-    if (!confirm(`Reset limits for ${user.email}?`)) return
+  function openResetLimitsConfirm(user: User) {
+    setResetLimitsUser(user)
+    setResetLimitsConfirmOpen(true)
+  }
+
+  async function confirmResetLimits() {
+    if (!resetLimitsUser) return
 
     setActionLoading(true)
     try {
-      await fetchJSON(`/api/admin/users/${user.id}/reset-limits`, {
+      await fetchJSON(`/api/admin/users/${resetLimitsUser.id}/reset-limits`, {
         method: "POST",
       })
       toast.success("Limits reset")
@@ -161,6 +177,8 @@ export default function AdminUsersPage() {
       toast.error("Failed to reset limits")
     } finally {
       setActionLoading(false)
+      setResetLimitsConfirmOpen(false)
+      setResetLimitsUser(null)
     }
   }
 
@@ -283,7 +301,7 @@ export default function AdminUsersPage() {
                             {/* Disable/Enable */}
                             <DropdownMenuItem
                               onClick={() =>
-                                handleDisableUser(user, !user.disabled)
+                                openDisableConfirm(user, !user.disabled)
                               }
                             >
                               {user.disabled ? "Enable" : "Disable"}
@@ -302,7 +320,7 @@ export default function AdminUsersPage() {
 
                             {/* Reset Limits */}
                             <DropdownMenuItem
-                              onClick={() => handleResetLimits(user)}
+                              onClick={() => openResetLimitsConfirm(user)}
                             >
                               Reset Limits
                             </DropdownMenuItem>
@@ -393,6 +411,67 @@ export default function AdminUsersPage() {
                 Set Usage
               </Button>
             </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Disable/Enable Confirmation Dialog */}
+      <Dialog open={disableConfirmOpen} onOpenChange={setDisableConfirmOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
+              {disableConfirmAction?.disable ? "Disable User" : "Enable User"}
+            </DialogTitle>
+            <DialogDescription>
+              {disableConfirmAction?.disable
+                ? `Are you sure you want to disable ${disableConfirmAction?.user?.email}?`
+                : `Are you sure you want to enable ${disableConfirmAction?.user?.email}?`}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex justify-end gap-2">
+            <Button
+              variant="outline"
+              onClick={() => setDisableConfirmOpen(false)}
+              disabled={actionLoading}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant={disableConfirmAction?.disable ? "destructive" : "default"}
+              onClick={confirmDisableUser}
+              disabled={actionLoading}
+            >
+              {actionLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              {disableConfirmAction?.disable ? "Disable" : "Enable"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Reset Limits Confirmation Dialog */}
+      <Dialog open={resetLimitsConfirmOpen} onOpenChange={setResetLimitsConfirmOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Reset Limits</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to reset limits for {resetLimitsUser?.email}? This will set their usage to 0.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex justify-end gap-2">
+            <Button
+              variant="outline"
+              onClick={() => setResetLimitsConfirmOpen(false)}
+              disabled={actionLoading}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={confirmResetLimits}
+              disabled={actionLoading}
+            >
+              {actionLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Reset Limits
+            </Button>
           </div>
         </DialogContent>
       </Dialog>

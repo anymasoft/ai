@@ -4,6 +4,13 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 import { Loader2, ArrowLeft, Trash2, Mail, User, Calendar } from "lucide-react"
 import { toast } from "sonner"
 import { fetchJSON, ApiError } from "@/lib/api"
@@ -27,6 +34,7 @@ export default function MessageDetail() {
   const [message, setMessage] = useState<Message | null>(null)
   const [loading, setLoading] = useState(true)
   const [deleting, setDeleting] = useState(false)
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false)
 
   useEffect(() => {
     if (messageId) {
@@ -71,9 +79,11 @@ export default function MessageDetail() {
     }
   }
 
-  async function deleteMessage() {
-    if (!confirm("Удалить это сообщение?")) return
+  function openDeleteConfirm() {
+    setDeleteConfirmOpen(true)
+  }
 
+  async function confirmDelete() {
     try {
       setDeleting(true)
 
@@ -87,6 +97,7 @@ export default function MessageDetail() {
       console.error("Error:", error)
       toast.error("Ошибка при удалении сообщения")
       setDeleting(false)
+      setDeleteConfirmOpen(false)
     }
   }
 
@@ -141,7 +152,7 @@ export default function MessageDetail() {
         </Button>
         <Button
           variant="destructive"
-          onClick={deleteMessage}
+          onClick={openDeleteConfirm}
           disabled={deleting}
         >
           {deleting ? (
@@ -219,6 +230,35 @@ export default function MessageDetail() {
           )}
         </CardContent>
       </Card>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Удалить сообщение</DialogTitle>
+            <DialogDescription>
+              Вы уверены, что хотите удалить это сообщение? Это действие невозможно отменить.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex justify-end gap-2">
+            <Button
+              variant="outline"
+              onClick={() => setDeleteConfirmOpen(false)}
+              disabled={deleting}
+            >
+              Отменить
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={confirmDelete}
+              disabled={deleting}
+            >
+              {deleting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Удалить
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
