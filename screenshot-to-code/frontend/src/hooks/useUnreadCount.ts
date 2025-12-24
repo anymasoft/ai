@@ -5,14 +5,19 @@ import { useAuthStore } from "@/store/auth"
 export function useUnreadCount() {
   const [unreadCount, setUnreadCount] = useState(0)
   const email = useAuthStore((state) => state.email)
+  const role = useAuthStore((state) => state.role)
 
   useEffect(() => {
-    if (!email) return
+    // Only poll if user is authenticated and is an admin
+    if (!email || role !== "admin") {
+      setUnreadCount(0)
+      return
+    }
 
     fetchUnreadCount()
     const interval = setInterval(fetchUnreadCount, 10000) // Poll every 10 seconds
     return () => clearInterval(interval)
-  }, [email])
+  }, [email, role])
 
   async function fetchUnreadCount() {
     try {

@@ -29,13 +29,8 @@ import {
   SidebarMenuItem,
 } from "@/components/ui/sidebar"
 
-const getNavData = (unreadCount: number, email: string | null) => ({
-  user: {
-    name: email ? email.split("@")[0] : "User",
-    email: email || "not signed in",
-    avatar: "",
-  },
-  navGroups: [
+const getNavData = (unreadCount: number, email: string | null, role: string | null) => {
+  const navGroups = [
     {
       label: "Main",
       items: [
@@ -76,7 +71,11 @@ const getNavData = (unreadCount: number, email: string | null) => ({
         },
       ],
     },
-    {
+  ]
+
+  // Only add Admin section if user is admin
+  if (role === "admin") {
+    navGroups.push({
       label: "Admin",
       items: [
         {
@@ -96,29 +95,40 @@ const getNavData = (unreadCount: number, email: string | null) => ({
           icon: DollarSign,
         },
       ],
+    })
+  }
+
+  navGroups.push({
+    label: "Account",
+    items: [
+      {
+        title: "Billing",
+        url: "/settings/billing",
+        icon: CreditCard,
+      },
+      {
+        title: "Settings",
+        url: "/settings/account",
+        icon: Settings,
+      },
+    ],
+  })
+
+  return {
+    user: {
+      name: email ? email.split("@")[0] : "User",
+      email: email || "not signed in",
+      avatar: "",
     },
-    {
-      label: "Account",
-      items: [
-        {
-          title: "Billing",
-          url: "/settings/billing",
-          icon: CreditCard,
-        },
-        {
-          title: "Settings",
-          url: "/settings/account",
-          icon: Settings,
-        },
-      ],
-    },
-  ],
-})
+    navGroups,
+  }
+}
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const unreadCount = useUnreadCount()
   const email = useAuthStore((state) => state.email)
-  const data = React.useMemo(() => getNavData(unreadCount, email), [unreadCount, email])
+  const role = useAuthStore((state) => state.role)
+  const data = React.useMemo(() => getNavData(unreadCount, email, role), [unreadCount, email, role])
 
   return (
     <Sidebar {...props}>
