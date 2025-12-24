@@ -8,11 +8,11 @@ const History = lazy(() => import('@/app/history/page'))
 const ApiPage = lazy(() => import('@/app/api/page'))
 const DocsPage = lazy(() => import('@/app/docs/page'))
 
-// Admin pages
-const AdminMessages = lazy(() => import('@/app/(dashboard)/admin/messages/page'))
-const AdminMessageDetail = lazy(() => import('@/app/(dashboard)/admin/messages/[id]/page'))
-const AdminUsers = lazy(() => import('@/app/(dashboard)/admin/users/page'))
-const AdminPayments = lazy(() => import('@/app/(dashboard)/admin/payments/page'))
+// Admin pages - Vite + React version
+const AdminMessages = lazy(() => import('@/app/admin/messages'))
+const AdminMessageDetail = lazy(() => import('@/app/admin/messages/MessageDetail'))
+const AdminUsers = lazy(() => import('@/app/admin/users'))
+const AdminPayments = lazy(() => import('@/app/admin/payments'))
 
 // Auth pages
 const SignIn = lazy(() => import('@/app/auth/sign-in/page'))

@@ -1,7 +1,14 @@
-"use client"
+/**
+ * Admin Messages Page - Vite + React version
+ *
+ * Отличия от Next.js версии:
+ * - useNavigate() вместо useRouter()
+ * - react-router-dom вместо next/navigation
+ * - fetch напрямую к FastAPI backend
+ */
 
 import { useState, useEffect } from "react"
-import { useRouter } from "next/navigation"
+import { useNavigate } from "react-router-dom"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -21,10 +28,10 @@ interface Message {
   isRead: number
 }
 
-const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:7001"
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:7001"
 
 export default function AdminMessagesPage() {
-  const router = useRouter()
+  const navigate = useNavigate() // ✅ Правильно для Vite + React
   const [messages, setMessages] = useState<Message[]>([])
   const [loading, setLoading] = useState(true)
   const [deleting, setDeleting] = useState<string | null>(null)
@@ -50,7 +57,6 @@ export default function AdminMessagesPage() {
         params.set("readStatus", readStatus)
       }
 
-      // TODO: Replace with real admin auth when implemented
       const adminEmail = localStorage.getItem("dev_admin_email") || "admin@screen2code.com"
 
       const res = await fetch(`${BACKEND_URL}/api/admin/messages?${params.toString()}`, {
@@ -235,7 +241,7 @@ export default function AdminMessagesPage() {
                     <TableRow
                       key={message.id}
                       className="cursor-pointer hover:bg-muted/50"
-                      onClick={() => router.push(`/admin/messages/${message.id}`)}
+                      onClick={() => navigate(`/admin/messages/${message.id}`)} {/* ✅ Правильно */}
                     >
                       <TableCell className="font-medium text-sm">
                         <div className="truncate">

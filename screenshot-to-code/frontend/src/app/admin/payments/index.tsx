@@ -1,4 +1,6 @@
-"use client"
+/**
+ * Admin Payments Page - Vite + React version
+ */
 
 import { useState, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -20,7 +22,7 @@ interface Payment {
   created_at: string
 }
 
-const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:7001"
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:7001"
 
 export default function AdminPaymentsPage() {
   const [payments, setPayments] = useState<Payment[]>([])
