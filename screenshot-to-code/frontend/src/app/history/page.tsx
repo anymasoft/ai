@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react"
 import { useNavigate } from "react-router-dom"
-import { BaseLayout } from "@/components/layouts/base-layout"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -40,7 +39,13 @@ export default function HistoryPage() {
   }
 
   return (
-    <BaseLayout title="History" description="Your generated code history">
+    <>
+      <div className="px-4 lg:px-6">
+        <div className="flex flex-col gap-2">
+          <h1 className="text-2xl font-bold tracking-tight">History</h1>
+          <p className="text-muted-foreground">Your generated code history</p>
+        </div>
+      </div>
       <div className="@container/main px-4 lg:px-6 space-y-6">
         {history.length === 0 ? (
           <Card className="p-12">
@@ -153,6 +158,6 @@ export default function HistoryPage() {
           </>
         )}
       </div>
-    </BaseLayout>
+    </>
   )
 }

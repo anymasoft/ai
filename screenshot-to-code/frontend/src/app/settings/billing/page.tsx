@@ -1,6 +1,5 @@
 "use client"
 
-import { BaseLayout } from "@/components/layouts/base-layout"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { PricingPlans } from "@/components/pricing-plans"
 import { CurrentPlanCard } from "./components/current-plan-card"
@@ -17,7 +16,7 @@ export default function BillingSettings() {
   }
 
   return (
-    <BaseLayout>
+    <>
       <div className="space-y-6 px-4 lg:px-6">
         <div>
           <h1 className="text-3xl font-bold">Plans & Billing</h1>
@@ -49,6 +48,6 @@ export default function BillingSettings() {
           </Card>
         </div>
       </div>
-    </BaseLayout>
+    </>
   )
 }

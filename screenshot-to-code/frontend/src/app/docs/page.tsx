@@ -1,6 +1,5 @@
 "use client"
 
-import { BaseLayout } from "@/components/layouts/base-layout"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
@@ -9,7 +8,7 @@ import { Shield, Zap, Clock, FileCode, AlertTriangle, CheckCircle2 } from "lucid
 
 export default function DocsPage() {
   return (
-    <BaseLayout>
+    <>
       <div className="flex flex-1 flex-col gap-6 p-4 md:p-6">
         {/* Header */}
         <div>
@@ -439,6 +438,6 @@ export default function DocsPage() {
           </CardContent>
         </Card>
       </div>
-    </BaseLayout>
+    </>
   )
 }

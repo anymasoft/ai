@@ -1,7 +1,6 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { BaseLayout } from "@/components/layouts/base-layout"
 import { Copy, Check, ExternalLink, Terminal, Key, Activity, Zap } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -65,7 +64,7 @@ export default function ApiPage() {
     : 0
 
   return (
-    <BaseLayout>
+    <>
       <div className="flex flex-1 flex-col gap-4 p-4 md:p-6">
         {/* Header */}
         <div className="flex items-center justify-between">
@@ -360,6 +359,6 @@ print(result.json()['result_code'])`}
           </CardContent>
         </Card>
       </div>
-    </BaseLayout>
+    </>
   )
 }
