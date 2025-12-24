@@ -81,24 +81,8 @@ export default function FeedbackPage() {
         </Card>
       ) : (
         <Card>
-          <CardHeader>
-            <CardTitle>Отправить сообщение</CardTitle>
-            <CardDescription>
-              Мы ответим вам в ближайшее время
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
+          <CardContent className="pt-6">
             <form onSubmit={handleSubmit} className="space-y-6">
-              <div className="space-y-2">
-                <Label>От кого</Label>
-                <div className="flex items-center gap-3 p-3 bg-muted rounded-md">
-                  <div>
-                    <p className="font-medium">{user?.name}</p>
-                    <p className="text-sm text-muted-foreground">{user?.email}</p>
-                  </div>
-                </div>
-              </div>
-
               <div className="space-y-2">
                 <Label htmlFor="message">
                   Сообщение <span className="text-red-500">*</span>
