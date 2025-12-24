@@ -16,6 +16,7 @@ import { Link } from "react-router-dom"
 import { Logo } from "@/components/logo"
 import { useUnreadCount } from "@/hooks/useUnreadCount"
 import { useAuthStore } from "@/store/auth"
+import { useAdminStore } from "@/store/admin"
 
 import { NavMain } from "@/components/nav-main"
 import { NavUser } from "@/components/nav-user"
@@ -29,7 +30,7 @@ import {
   SidebarMenuItem,
 } from "@/components/ui/sidebar"
 
-const getNavData = (unreadCount: number, email: string | null, role: string | null) => {
+const getNavData = (unreadCount: number, email: string | null, isAdmin: boolean) => {
   const navGroups = [
     {
       label: "Main",
@@ -74,7 +75,7 @@ const getNavData = (unreadCount: number, email: string | null, role: string | nu
   ]
 
   // Only add Admin section if user is admin
-  if (role === "admin") {
+  if (isAdmin) {
     navGroups.push({
       label: "Admin",
       items: [
@@ -127,8 +128,8 @@ const getNavData = (unreadCount: number, email: string | null, role: string | nu
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const unreadCount = useUnreadCount()
   const email = useAuthStore((state) => state.email)
-  const role = useAuthStore((state) => state.role)
-  const data = React.useMemo(() => getNavData(unreadCount, email, role), [unreadCount, email, role])
+  const isAdmin = useAdminStore((state) => state.isAdmin)
+  const data = React.useMemo(() => getNavData(unreadCount, email, isAdmin), [unreadCount, email, isAdmin])
 
   return (
     <Sidebar {...props}>
