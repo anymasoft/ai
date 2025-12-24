@@ -25,7 +25,7 @@ class DisableUserRequest(BaseModel):
     disabled: bool
 
 
-@router.get("/admin/users")
+@router.get("/api/admin/users")
 async def get_users(admin: dict = Depends(get_admin_user)):
     """
     Get all users.
@@ -63,7 +63,7 @@ async def get_users(admin: dict = Depends(get_admin_user)):
         conn.close()
 
 
-@router.post("/admin/users/change-plan")
+@router.post("/api/admin/users/change-plan")
 async def change_user_plan(
     request: ChangePlanRequest,
     admin: dict = Depends(get_admin_user),
@@ -134,7 +134,7 @@ async def change_user_plan(
         conn.close()
 
 
-@router.patch("/admin/users/disable")
+@router.patch("/api/admin/users/disable")
 async def disable_user(
     request: DisableUserRequest,
     admin: dict = Depends(get_admin_user),

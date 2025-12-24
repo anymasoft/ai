@@ -18,7 +18,7 @@ class FeedbackRequest(BaseModel):
     message: str
 
 
-@router.post("/feedback")
+@router.post("/api/feedback")
 async def send_feedback(feedback: FeedbackRequest):
     """Send feedback message from user to admin."""
 
