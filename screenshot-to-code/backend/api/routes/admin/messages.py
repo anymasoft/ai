@@ -11,7 +11,7 @@ router = APIRouter()
 DB_PATH = Path(__file__).parent.parent.parent.parent / "data" / "app.db"
 
 
-@router.get("/admin/messages")
+@router.get("/api/admin/messages")
 async def get_messages(
     admin: dict = Depends(get_admin_user),
     page: int = Query(1, ge=1),
@@ -101,7 +101,7 @@ async def get_messages(
         conn.close()
 
 
-@router.get("/admin/messages/unread-count")
+@router.get("/api/admin/messages/unread-count")
 async def get_unread_count(admin: dict = Depends(get_admin_user)):
     """
     Get count of unread messages.
@@ -123,7 +123,7 @@ async def get_unread_count(admin: dict = Depends(get_admin_user)):
         conn.close()
 
 
-@router.get("/admin/messages/{message_id}")
+@router.get("/api/admin/messages/{message_id}")
 async def get_message(message_id: str, admin: dict = Depends(get_admin_user)):
     """
     Get single message by ID.
@@ -170,7 +170,7 @@ async def get_message(message_id: str, admin: dict = Depends(get_admin_user)):
         conn.close()
 
 
-@router.patch("/admin/messages/{message_id}/read")
+@router.patch("/api/admin/messages/{message_id}/read")
 async def mark_as_read(message_id: str, admin: dict = Depends(get_admin_user)):
     """
     Mark message as read.
@@ -212,7 +212,7 @@ async def mark_as_read(message_id: str, admin: dict = Depends(get_admin_user)):
         conn.close()
 
 
-@router.delete("/admin/messages/{message_id}")
+@router.delete("/api/admin/messages/{message_id}")
 async def delete_message(message_id: str, admin: dict = Depends(get_admin_user)):
     """
     Delete message by ID.

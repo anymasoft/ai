@@ -11,7 +11,7 @@ router = APIRouter()
 DB_PATH = Path(__file__).parent.parent.parent.parent / "data" / "app.db"
 
 
-@router.get("/admin/payments")
+@router.get("/api/admin/payments")
 async def get_payments(
     admin: dict = Depends(get_admin_user),
     email: Optional[str] = Query(None),
