@@ -1,6 +1,7 @@
 import { lazy } from 'react'
 import { Navigate } from 'react-router-dom'
 import { DashboardLayout } from '@/components/layouts/dashboard-layout'
+import { ProtectedAdminRoute } from '@/components/router/protected-admin-route'
 
 const Dashboard = lazy(() => import('@/app/dashboard/page'))
 const Playground = lazy(() => import('@/app/playground/page'))
@@ -60,19 +61,19 @@ export const routes: RouteConfig[] = [
       },
       {
         path: "/admin/messages",
-        element: <AdminMessages />
+        element: <ProtectedAdminRoute><AdminMessages /></ProtectedAdminRoute>
       },
       {
         path: "/admin/messages/:id",
-        element: <AdminMessageDetail />
+        element: <ProtectedAdminRoute><AdminMessageDetail /></ProtectedAdminRoute>
       },
       {
         path: "/admin/users",
-        element: <AdminUsers />
+        element: <ProtectedAdminRoute><AdminUsers /></ProtectedAdminRoute>
       },
       {
         path: "/admin/payments",
-        element: <AdminPayments />
+        element: <ProtectedAdminRoute><AdminPayments /></ProtectedAdminRoute>
       },
       {
         path: "/settings/account",
