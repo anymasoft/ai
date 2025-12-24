@@ -4,8 +4,11 @@ from fastapi import APIRouter, HTTPException, status, Depends, Query
 from api.admin_auth import get_admin_user
 import sqlite3
 from typing import Optional
+from pathlib import Path
 
 router = APIRouter()
+
+DB_PATH = Path(__file__).parent.parent.parent.parent / "data" / "app.db"
 
 
 @router.get("/admin/messages")
@@ -55,7 +58,7 @@ async def get_messages(
     if conditions:
         where_clause = "WHERE " + " AND ".join(conditions)
 
-    conn = sqlite3.connect("data/app.db")
+    conn = sqlite3.connect(str(DB_PATH))
     conn.row_factory = sqlite3.Row
     cursor = conn.cursor()
 
@@ -108,7 +111,7 @@ async def get_unread_count(admin: dict = Depends(get_admin_user)):
         "count": 5
     }
     """
-    conn = sqlite3.connect("data/app.db")
+    conn = sqlite3.connect(str(DB_PATH))
     cursor = conn.cursor()
 
     try:
@@ -138,7 +141,7 @@ async def get_message(message_id: str, admin: dict = Depends(get_admin_user)):
         "isRead": 0 | 1
     }
     """
-    conn = sqlite3.connect("data/app.db")
+    conn = sqlite3.connect(str(DB_PATH))
     conn.row_factory = sqlite3.Row
     cursor = conn.cursor()
 
@@ -177,7 +180,7 @@ async def mark_as_read(message_id: str, admin: dict = Depends(get_admin_user)):
         "success": true
     }
     """
-    conn = sqlite3.connect("data/app.db")
+    conn = sqlite3.connect(str(DB_PATH))
     cursor = conn.cursor()
 
     try:
@@ -219,7 +222,7 @@ async def delete_message(message_id: str, admin: dict = Depends(get_admin_user))
         "success": true
     }
     """
-    conn = sqlite3.connect("data/app.db")
+    conn = sqlite3.connect(str(DB_PATH))
     cursor = conn.cursor()
 
     try:
