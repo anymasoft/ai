@@ -1,7 +1,7 @@
 """User information endpoints."""
 
 from fastapi import APIRouter, Depends
-from ..user_auth import get_current_user
+from api.user_auth import get_current_user
 
 router = APIRouter()
 
