@@ -46,6 +46,15 @@ class CheckoutResponse(BaseModel):
     amount_rubles: float
 
 
+class BillingUsageResponse(BaseModel):
+    """Billing usage response for authenticated users."""
+
+    plan: str  # free, basic, professional
+    used: int  # used generations
+    limit: int  # generation limit for this plan
+    remaining: int  # limit - used
+
+
 class PaymentStatusResponse(BaseModel):
     """Payment status response."""
 
@@ -279,6 +288,67 @@ async def admin_add_credits(
         "message": f"Добавлено {request.credits} кредитов пользователю {request.user_id}",
         "credits_added": request.credits,
     }
+
+
+@router.get("/api/billing/usage", response_model=BillingUsageResponse)
+async def get_billing_usage(user: dict = Depends(get_current_user)):
+    """
+    Get billing usage information for authenticated user.
+
+    Returns current plan, used generations, and limits.
+
+    Args:
+        user: Current user from session
+
+    Returns:
+        BillingUsageResponse with plan, used, limit, remaining
+    """
+
+    user_id = user.get("id")
+    if not user_id:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+
+    # Get user info from database
+    from backend.db.sqlite import get_conn
+
+    conn = get_conn()
+    cursor = conn.cursor()
+
+    try:
+        cursor.execute(
+            """
+            SELECT plan, used_generations
+            FROM users
+            WHERE id = ?
+            """,
+            (user_id,),
+        )
+        row = cursor.fetchone()
+        if not row:
+            raise HTTPException(status_code=404, detail="User not found")
+
+        plan = row[0] or "free"
+        used = row[1] or 0
+
+        # Define limits per plan
+        plan_limits = {
+            "free": 3,
+            "basic": 100,
+            "professional": 500,
+        }
+
+        limit = plan_limits.get(plan, 3)
+        remaining = max(0, limit - used)
+
+        return BillingUsageResponse(
+            plan=plan,
+            used=used,
+            limit=limit,
+            remaining=remaining,
+        )
+
+    finally:
+        conn.close()
 
 
 @router.get("/api/billing/balance")
