@@ -3,8 +3,7 @@
 import sqlite3
 import uuid
 import time
-from config import DB_PATH
-from database import get_db
+from db import get_conn as get_db
 
 admin_email = "admin@test.com"
 

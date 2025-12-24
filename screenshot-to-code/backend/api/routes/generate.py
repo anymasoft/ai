@@ -1,7 +1,7 @@
 """Generate code endpoint."""
 
 import uuid
-import sqlite3
+from db import get_api_conn, hash_api_key
 from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException, status
 from api.models.requests import GenerateRequest
@@ -24,7 +24,7 @@ def save_generation(
     credits_charged: int,
 ) -> None:
     """Save generation to database."""
-    conn = sqlite3.connect("data/api.db")
+    conn = get_api_conn()
     cursor = conn.cursor()
 
     # TODO: handle input_thumbnail generation for images
@@ -32,7 +32,7 @@ def save_generation(
 
     cursor.execute(
         """
-        INSERT INTO generations (
+        INSERT INTO api_generations (
             id, api_key_id, status, format, input_type, input_data,
             input_thumbnail, instructions, credits_charged, created_at
         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)

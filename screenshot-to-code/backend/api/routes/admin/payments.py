@@ -4,7 +4,7 @@ from fastapi import APIRouter, HTTPException, status, Depends, Query
 from api.admin_auth import get_admin_user
 import sqlite3
 from typing import Optional
-from database import get_db
+from db import get_conn as get_db
 
 router = APIRouter()
 

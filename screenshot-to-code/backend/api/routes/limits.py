@@ -1,6 +1,6 @@
 """Limits and usage endpoint."""
 
-import sqlite3
+from db import get_api_conn, hash_api_key
 from datetime import datetime, timedelta
 from fastapi import APIRouter, Depends
 from api.models.responses import (
@@ -21,13 +21,13 @@ def get_concurrent_generations(api_key_id: str, rate_limit: int) -> RateLimitInf
 
     Counts generations with status='processing' for this API key.
     """
-    conn = sqlite3.connect("data/api.db")
+    conn = get_api_conn()
     cursor = conn.cursor()
 
     try:
         cursor.execute("""
             SELECT COUNT(*)
-            FROM generations
+            FROM api_generations
             WHERE api_key_id = ? AND status = 'processing'
         """, (api_key_id,))
 
@@ -44,7 +44,7 @@ def get_hourly_generations(api_key_id: str, rate_limit: int) -> RateLimitInfo:
 
     Counts generations created in the last hour for this API key.
     """
-    conn = sqlite3.connect("data/api.db")
+    conn = get_api_conn()
     cursor = conn.cursor()
 
     # Calculate time 1 hour ago
@@ -53,7 +53,7 @@ def get_hourly_generations(api_key_id: str, rate_limit: int) -> RateLimitInfo:
     try:
         cursor.execute("""
             SELECT COUNT(*)
-            FROM generations
+            FROM api_generations
             WHERE api_key_id = ? AND created_at > ?
         """, (api_key_id, one_hour_ago.isoformat()))
 

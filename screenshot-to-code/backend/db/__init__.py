@@ -1,7 +1,8 @@
-"""Database module."""
+"""Database module - SINGLE DATABASE for UI + API."""
 from .sqlite import (
     init_db,
     get_conn,
+    get_api_conn,
     get_db_path,
     save_generation,
     update_generation,
@@ -11,11 +12,13 @@ from .sqlite import (
     record_usage_event,
     save_generation_variant,
     get_generation_variants,
+    hash_api_key,
 )
 
 __all__ = [
     "init_db",
     "get_conn",
+    "get_api_conn",
     "get_db_path",
     "save_generation",
     "update_generation",
@@ -25,4 +28,5 @@ __all__ = [
     "record_usage_event",
     "save_generation_variant",
     "get_generation_variants",
+    "hash_api_key",
 ]

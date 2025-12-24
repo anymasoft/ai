@@ -3,8 +3,7 @@
 import sqlite3
 from fastapi import Header, HTTPException, status, Depends
 from typing import Annotated, Optional
-from config import DB_PATH
-from database import get_db
+from db import get_conn as get_db
 
 
 def get_user_by_email(email: str) -> Optional[dict]:

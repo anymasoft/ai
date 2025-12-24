@@ -1,6 +1,7 @@
 """Background generation service for API."""
 
 import asyncio
+from db import get_api_conn, hash_api_key
 import sqlite3
 from datetime import datetime
 from typing import Dict, Any, Optional
@@ -101,7 +102,7 @@ class DatabaseWebSocket:
                 return
 
             params.append(self.generation_id)
-            query = f"UPDATE generations SET {', '.join(updates)} WHERE id = ?"
+            query = f"UPDATE api_generations SET {', '.join(updates)} WHERE id = ?"
             cursor.execute(query, params)
             conn.commit()
             print(f"[API_GEN] Updated generation {self.generation_id}: {status}")
@@ -124,13 +125,13 @@ async def trigger_generation(generation_id: str) -> None:
     from gen_queue.generation_queue import enqueue_generation, GenerationJob
 
     # 1. Read generation params from database
-    conn = sqlite3.connect("data/api.db")
+    conn = get_api_conn()
     cursor = conn.cursor()
 
     try:
         cursor.execute("""
             SELECT format, input_type, input_data, instructions
-            FROM generations
+            FROM api_generations
             WHERE id = ?
         """, (generation_id,))
 
