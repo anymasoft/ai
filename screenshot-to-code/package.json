@@ -4,6 +4,9 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
+    "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\"",
+    "dev:backend": "cd backend && poetry run uvicorn main:app --reload",
+    "dev:frontend": "cd frontend && npm run dev",
     "test": "npm run test:frontend && npm run test:backend",
     "test:frontend": "cd frontend && yarn test",
     "test:backend": "cd backend && poetry run pytest"
@@ -12,5 +15,8 @@
     "@radix-ui/react-avatar": "^1.1.11",
     "@radix-ui/react-dropdown-menu": "^2.1.16",
     "lucide-react": "^0.562.0"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
   }
 }
