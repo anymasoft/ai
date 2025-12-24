@@ -5,7 +5,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Shield, Zap, Clock, FileCode, AlertTriangle, CheckCircle2 } from "lucide-react"
 
 export default function DocsPage() {
@@ -116,12 +115,12 @@ export default function DocsPage() {
                 <Badge variant="default" className="font-mono">POST</Badge>
                 <code className="text-sm">/api/generate</code>
               </div>
-              <Alert>
-                <AlertTriangle className="h-4 w-4" />
-                <AlertDescription className="text-sm">
+              <div className="flex gap-3 rounded-lg border border-yellow-200 bg-yellow-50 dark:border-yellow-800 dark:bg-yellow-950 p-4">
+                <AlertTriangle className="h-4 w-4 text-yellow-600 dark:text-yellow-400 shrink-0 mt-0.5" />
+                <p className="text-sm text-yellow-800 dark:text-yellow-200">
                   <strong>Credits списываются немедленно</strong> при успешном старте генерации.
-                </AlertDescription>
-              </Alert>
+                </p>
+              </div>
               <p className="text-sm text-muted-foreground">Запуск генерации кода.</p>
 
               <div className="space-y-2">
@@ -199,12 +198,12 @@ export default function DocsPage() {
                 </ul>
               </div>
 
-              <Alert>
-                <Clock className="h-4 w-4" />
-                <AlertDescription className="text-sm">
+              <div className="flex gap-3 rounded-lg border border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-950 p-4">
+                <Clock className="h-4 w-4 text-blue-600 dark:text-blue-400 shrink-0 mt-0.5" />
+                <p className="text-sm text-blue-800 dark:text-blue-200">
                   Соединение закрывается после завершения генерации или через 10 минут таймаута.
-                </AlertDescription>
-              </Alert>
+                </p>
+              </div>
             </div>
 
             <Separator />
@@ -291,12 +290,12 @@ export default function DocsPage() {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <Alert>
-              <CheckCircle2 className="h-4 w-4" />
-              <AlertDescription>
+            <div className="flex gap-3 rounded-lg border border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-950 p-4">
+              <CheckCircle2 className="h-4 w-4 text-green-600 dark:text-green-400 shrink-0 mt-0.5" />
+              <p className="text-sm text-green-800 dark:text-green-200">
                 <strong>Credits списываются немедленно</strong> при успешном запуске генерации (до её завершения).
-              </AlertDescription>
-            </Alert>
+              </p>
+            </div>
 
             <div className="space-y-2">
               <p className="text-sm font-medium">Когда списываются credits:</p>
