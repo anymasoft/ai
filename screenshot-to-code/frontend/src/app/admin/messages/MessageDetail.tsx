@@ -1,13 +1,5 @@
-/**
- * Message Detail Page - Vite + React version
- *
- * ✅ Правильно:
- * - useParams() из react-router-dom
- * - useNavigate() из react-router-dom
- */
-
 import { useState, useEffect } from "react"
-import { useNavigate, useParams } from "react-router-dom" // ✅ Правильно
+import { useNavigate, useParams } from "react-router-dom"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -30,8 +22,8 @@ interface Message {
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:7001"
 
 export default function MessageDetail() {
-  const navigate = useNavigate() // ✅ Правильно для Vite
-  const { id: messageId } = useParams<{ id: string }>() // ✅ Правильно для Vite
+  const navigate = useNavigate()
+  const { id: messageId } = useParams<{ id: string }>()
 
   const [message, setMessage] = useState<Message | null>(null)
   const [loading, setLoading] = useState(true)
@@ -113,7 +105,7 @@ export default function MessageDetail() {
       if (!res.ok) throw new Error("Failed to delete message")
 
       toast.success("Сообщение удалено")
-      navigate("/admin/messages") // ✅ Правильно
+      navigate("/admin/messages")
     } catch (error) {
       console.error("Error:", error)
       toast.error("Ошибка при удалении сообщения")
@@ -148,7 +140,7 @@ export default function MessageDetail() {
           <p className="text-muted-foreground">Сообщение не найдено</p>
           <Button
             variant="outline"
-            onClick={() => navigate("/admin/messages")} // ✅ Правильно
+            onClick={() => navigate("/admin/messages")}
             className="mt-4"
           >
             <ArrowLeft className="h-4 w-4 mr-2" />
@@ -165,7 +157,7 @@ export default function MessageDetail() {
       <div className="flex items-center justify-between mb-6">
         <Button
           variant="ghost"
-          onClick={() => navigate("/admin/messages")} // ✅ Правильно
+          onClick={() => navigate("/admin/messages")}
         >
           <ArrowLeft className="h-4 w-4 mr-2" />
           Назад к списку

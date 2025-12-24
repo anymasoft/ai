@@ -1,7 +1,6 @@
-"use client"
-
 import { ChevronRight, type LucideIcon } from "lucide-react"
 import { Link, useLocation } from "react-router-dom"
+import { Badge } from "@/components/ui/badge"
 
 import {
   Collapsible,
@@ -29,6 +28,7 @@ export function NavMain({
     url: string
     icon?: LucideIcon
     isActive?: boolean
+    badge?: number
     items?: {
       title: string
       url: string
@@ -88,6 +88,11 @@ export function NavMain({
                   <Link to={item.url}>
                     {item.icon && <item.icon />}
                     <span>{item.title}</span>
+                    {item.badge !== undefined && item.badge > 0 && (
+                      <Badge variant="destructive" className="ml-auto h-5 min-w-5 px-1 text-xs">
+                        {item.badge > 99 ? "99+" : item.badge}
+                      </Badge>
+                    )}
                   </Link>
                 </SidebarMenuButton>
               )}

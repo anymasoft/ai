@@ -7,6 +7,7 @@ const Playground = lazy(() => import('@/app/playground/page'))
 const History = lazy(() => import('@/app/history/page'))
 const ApiPage = lazy(() => import('@/app/api/page'))
 const DocsPage = lazy(() => import('@/app/docs/page'))
+const FeedbackPage = lazy(() => import('@/app/feedback'))
 
 // Admin pages - Vite + React version
 const AdminMessages = lazy(() => import('@/app/admin/messages'))
@@ -56,6 +57,10 @@ export const routes: RouteConfig[] = [
   {
     path: "/docs",
     element: <DocsPage />
+  },
+  {
+    path: "/feedback",
+    element: <FeedbackPage />
   },
 
   // Admin Routes
