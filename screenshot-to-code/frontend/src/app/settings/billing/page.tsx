@@ -40,9 +40,9 @@ export default function BillingSettings() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <PricingPlans 
-                mode="billing" 
-                currentPlanId="professional"
+              <PricingPlans
+                mode="billing"
+                currentPlanId="basic"
                 onPlanSelect={handlePlanSelect}
               />
             </CardContent>

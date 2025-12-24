@@ -1,12 +1,15 @@
 {
-  "planName": "Professional Plan",
-  "price": "$79/month",
-  "nextBilling": "Aug 15, 2025",
-  "status": "Current",
+  "planName": "Basic Plan",
+  "price": "$29/month",
+  "nextBilling": "Jan 24, 2026",
+  "status": "Active",
+  "creditsTotal": 5000,
+  "creditsUsed": 2340,
+  "creditsRemaining": 2660,
+  "progressPercentage": 47,
   "daysUsed": 18,
   "totalDays": 30,
-  "progressPercentage": 60,
   "remainingDays": 12,
-  "needsAttention": true,
-  "attentionMessage": "Your plan requires update"
+  "needsAttention": false,
+  "attentionMessage": ""
 }
