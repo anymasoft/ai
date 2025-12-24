@@ -16,6 +16,7 @@ const AdminUsers = lazy(() => import('@/app/admin/users'))
 const AdminPayments = lazy(() => import('@/app/admin/payments'))
 
 const SignIn = lazy(() => import('@/app/auth/sign-in/page'))
+const AuthCallback = lazy(() => import('@/app/auth/callback/page'))
 
 const AccountSettings = lazy(() => import('@/app/settings/account/page'))
 const BillingSettings = lazy(() => import('@/app/settings/billing/page'))
@@ -88,6 +89,10 @@ export const routes: RouteConfig[] = [
   {
     path: "/auth/sign-in",
     element: <SignIn />
+  },
+  {
+    path: "/auth-callback",
+    element: <AuthCallback />
   },
   {
     path: "*",
