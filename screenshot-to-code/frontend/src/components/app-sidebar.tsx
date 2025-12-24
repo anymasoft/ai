@@ -127,7 +127,7 @@ const getNavData = (unreadCount: number, email: string | null, isAdmin: boolean)
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const unreadCount = useUnreadCount()
-  const email = useAuthStore((state) => state.email)
+  const email = useAuthStore((state) => state.user?.email ?? null)
   const isAdmin = useAdminStore((state) => state.isAdmin)
   const data = React.useMemo(() => getNavData(unreadCount, email, isAdmin), [unreadCount, email, isAdmin])
 
