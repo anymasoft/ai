@@ -11,7 +11,6 @@ from api.routes import (
     limits_router,
     stream_router,
     feedback_router,
-    auth_router,
     admin_messages_router,
     admin_users_router,
     admin_payments_router,
@@ -49,7 +48,6 @@ def create_api_app() -> FastAPI:
     app.include_router(limits_router)
     app.include_router(stream_router)
     app.include_router(feedback_router)
-    app.include_router(auth_router)
     app.include_router(admin_messages_router)
     app.include_router(admin_users_router)
     app.include_router(admin_payments_router)
