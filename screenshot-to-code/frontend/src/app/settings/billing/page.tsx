@@ -32,9 +32,7 @@ interface CurrentPlan {
 }
 
 // Mock billing history (no real data yet)
-const billingHistoryData = {
-  items: []
-}
+const billingHistoryData: Array<{id: number; month: string; plan: string; amount: string; status: string}> = []
 
 export default function BillingSettings() {
   const [billingUsage, setBillingUsage] = useState<BillingUsage | null>(null)
