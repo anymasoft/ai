@@ -2,9 +2,11 @@ import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { useAuthStore } from '@/store/auth'
 
 export function SignInPage() {
   const navigate = useNavigate()
+  const { checkAuth } = useAuthStore()
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const popupRef = useRef<Window | null>(null)
@@ -19,6 +21,9 @@ export function SignInPage() {
       }
 
       if (event.data.type === 'auth-success') {
+        // Вызываем checkAuth() в основном окне
+        await checkAuth()
+
         setIsLoading(false)
         setError(null)
 
@@ -44,7 +49,7 @@ export function SignInPage() {
     return () => {
       window.removeEventListener('message', handleMessage)
     }
-  }, [navigate])
+  }, [navigate, checkAuth])
 
   // Cleanup для polling при размонтировании компонента
   useEffect(() => {

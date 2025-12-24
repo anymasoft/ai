@@ -29,8 +29,8 @@ export function AuthCallbackPage() {
 
       if (success === 'true') {
         if (window.opener) {
-          // Ждём завершения checkAuth перед отправкой сообщения
-          await checkAuth()
+          // Popup: просто отправляем сообщение основному окну
+          // Основное окно сделает checkAuth()
           window.opener.postMessage(
             {
               type: 'auth-success',
@@ -40,6 +40,7 @@ export function AuthCallbackPage() {
           )
           window.close()
         } else {
+          // Без popup: сами делаем checkAuth() и навигируем
           await checkAuth()
           window.location.href = redirectTo
         }
