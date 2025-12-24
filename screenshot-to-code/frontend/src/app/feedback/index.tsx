@@ -1,8 +1,6 @@
 import { useState } from "react"
-import { useNavigate } from "react-router-dom"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
 import { Loader2, Send, MessageSquare } from "lucide-react"
@@ -11,49 +9,48 @@ import { toast } from "sonner"
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:7001"
 
 export default function FeedbackPage() {
-  const navigate = useNavigate()
   const [loading, setLoading] = useState(false)
-  const [formData, setFormData] = useState({
-    email: "",
-    firstName: "",
-    lastName: "",
-    message: "",
-  })
+  const [message, setMessage] = useState("")
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
 
-    if (!formData.email || !formData.message) {
-      toast.error("Email и сообщение обязательны")
+    if (!message.trim()) {
+      toast.error("Введите сообщение")
+      return
+    }
+
+    if (message.trim().length < 10) {
+      toast.error("Сообщение должно содержать минимум 10 символов")
       return
     }
 
     try {
       setLoading(true)
 
+      const userEmail = localStorage.getItem("user_email") || "user@screen2code.com"
+
       const res = await fetch(`${BACKEND_URL}/api/feedback`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(formData),
+        body: JSON.stringify({
+          message: message.trim(),
+          email: userEmail,
+        }),
       })
 
       if (!res.ok) {
         const error = await res.json()
-        throw new Error(error.detail?.error || "Failed to send feedback")
+        throw new Error(error.detail?.message || "Не удалось отправить сообщение")
       }
 
       toast.success("Сообщение отправлено!")
-      setFormData({
-        email: "",
-        firstName: "",
-        lastName: "",
-        message: "",
-      })
+      setMessage("")
     } catch (error) {
       console.error("Error:", error)
-      toast.error("Ошибка при отправке сообщения")
+      toast.error(error instanceof Error ? error.message : "Ошибка при отправке сообщения")
     } finally {
       setLoading(false)
     }
@@ -75,53 +72,11 @@ export default function FeedbackPage() {
         <CardHeader>
           <CardTitle>Отправить сообщение</CardTitle>
           <CardDescription>
-            Мы ответим вам на указанный email в ближайшее время
+            Мы ответим вам в ближайшее время
           </CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-6">
-            <div className="space-y-2">
-              <Label htmlFor="email">
-                Email <span className="text-red-500">*</span>
-              </Label>
-              <Input
-                id="email"
-                type="email"
-                placeholder="your@email.com"
-                value={formData.email}
-                onChange={(e) =>
-                  setFormData((prev) => ({ ...prev, email: e.target.value }))
-                }
-                required
-              />
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="firstName">Имя</Label>
-                <Input
-                  id="firstName"
-                  placeholder="Иван"
-                  value={formData.firstName}
-                  onChange={(e) =>
-                    setFormData((prev) => ({ ...prev, firstName: e.target.value }))
-                  }
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="lastName">Фамилия</Label>
-                <Input
-                  id="lastName"
-                  placeholder="Иванов"
-                  value={formData.lastName}
-                  onChange={(e) =>
-                    setFormData((prev) => ({ ...prev, lastName: e.target.value }))
-                  }
-                />
-              </div>
-            </div>
-
             <div className="space-y-2">
               <Label htmlFor="message">
                 Сообщение <span className="text-red-500">*</span>
@@ -129,12 +84,10 @@ export default function FeedbackPage() {
               <Textarea
                 id="message"
                 placeholder="Опишите ваш вопрос или проблему..."
-                value={formData.message}
-                onChange={(e) =>
-                  setFormData((prev) => ({ ...prev, message: e.target.value }))
-                }
+                value={message}
+                onChange={(e) => setMessage(e.target.value)}
                 required
-                rows={8}
+                rows={10}
                 className="resize-none"
               />
               <p className="text-xs text-muted-foreground">
@@ -142,23 +95,14 @@ export default function FeedbackPage() {
               </p>
             </div>
 
-            <div className="flex gap-3">
-              <Button type="submit" disabled={loading} className="flex-1">
-                {loading ? (
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                ) : (
-                  <Send className="h-4 w-4 mr-2" />
-                )}
-                Отправить
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => navigate("/dashboard")}
-              >
-                Отмена
-              </Button>
-            </div>
+            <Button type="submit" disabled={loading} className="w-full">
+              {loading ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <Send className="h-4 w-4 mr-2" />
+              )}
+              Отправить
+            </Button>
           </form>
         </CardContent>
       </Card>

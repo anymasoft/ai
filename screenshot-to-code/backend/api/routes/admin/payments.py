@@ -4,8 +4,11 @@ from fastapi import APIRouter, HTTPException, status, Depends, Query
 from api.admin_auth import get_admin_user
 import sqlite3
 from typing import Optional
+from pathlib import Path
 
 router = APIRouter()
+
+DB_PATH = Path(__file__).parent.parent.parent.parent / "data" / "app.db"
 
 
 @router.get("/admin/payments")
@@ -40,7 +43,7 @@ async def get_payments(
     Note: This is a placeholder - actual payments table doesn't exist yet.
     When YuKassa integration is implemented, this will show real payments.
     """
-    conn = sqlite3.connect("data/app.db")
+    conn = sqlite3.connect(str(DB_PATH))
     conn.row_factory = sqlite3.Row
     cursor = conn.cursor()
 

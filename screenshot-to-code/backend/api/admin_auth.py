@@ -3,11 +3,14 @@
 import sqlite3
 from fastapi import Header, HTTPException, status, Depends
 from typing import Annotated, Optional
+from pathlib import Path
+
+DB_PATH = Path(__file__).parent.parent / "data" / "app.db"
 
 
 def get_user_by_email(email: str) -> Optional[dict]:
     """Get user by email from database."""
-    conn = sqlite3.connect("data/app.db")
+    conn = sqlite3.connect(str(DB_PATH))
     conn.row_factory = sqlite3.Row
     cursor = conn.cursor()
 
