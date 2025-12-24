@@ -4,11 +4,9 @@ from fastapi import APIRouter, HTTPException, status, Depends
 from api.admin_auth import get_admin_user
 import sqlite3
 from pydantic import BaseModel
-from pathlib import Path
+from database import get_db
 
 router = APIRouter()
-
-DB_PATH = Path(__file__).parent.parent.parent.parent / "data" / "app.db"
 
 
 class ChangePlanRequest(BaseModel):
@@ -44,7 +42,7 @@ async def get_users(admin: dict = Depends(get_admin_user)):
         ]
     }
     """
-    conn = sqlite3.connect(str(DB_PATH))
+    conn = get_db()
     conn.row_factory = sqlite3.Row
     cursor = conn.cursor()
 
@@ -98,7 +96,7 @@ async def change_user_plan(
             },
         )
 
-    conn = sqlite3.connect(str(DB_PATH))
+    conn = get_db()
     cursor = conn.cursor()
 
     try:
@@ -156,7 +154,7 @@ async def disable_user(
     Note: This adds a 'disabled' column to users table.
     Run migration first if needed.
     """
-    conn = sqlite3.connect(str(DB_PATH))
+    conn = get_db()
     cursor = conn.cursor()
 
     try:

@@ -5,11 +5,10 @@ from pydantic import BaseModel
 import sqlite3
 import uuid
 import time
-from pathlib import Path
+from config import DB_PATH
+from database import get_db
 
 router = APIRouter()
-
-DB_PATH = Path(__file__).parent.parent.parent / "data" / "app.db"
 
 
 class FeedbackRequest(BaseModel):
@@ -41,7 +40,7 @@ async def send_feedback(feedback: FeedbackRequest):
         )
 
     try:
-        conn = sqlite3.connect(str(DB_PATH))
+        conn = get_db()
         cursor = conn.cursor()
 
         cursor.execute("SELECT id FROM users WHERE email = ?", (feedback.email,))
