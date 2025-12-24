@@ -1,6 +1,6 @@
 """Generations detail endpoint."""
 
-import sqlite3
+from db import get_api_conn, hash_api_key
 from fastapi import APIRouter, Depends, HTTPException, status
 from api.models.responses import GenerationDetail, InputInfo, ResultInfo
 from api.auth import get_api_key
@@ -16,14 +16,13 @@ router = APIRouter()
 async def get_generation(generation_id: str, api_key_info: dict = Depends(get_api_key)):
     """Get generation details and result."""
 
-    conn = sqlite3.connect("data/api.db")
-    conn.row_factory = sqlite3.Row
+    conn = get_api_conn()
     cursor = conn.cursor()
 
     cursor.execute(
         """
         SELECT *
-        FROM generations
+        FROM api_generations
         WHERE id = ? AND api_key_id = ?
         """,
         (generation_id, api_key_info["id"]),

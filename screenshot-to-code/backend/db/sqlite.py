@@ -1,4 +1,4 @@
-"""SQLite database module with idempotent schema initialization."""
+"""SQLite database module with idempotent schema initialization - SINGLE DATABASE."""
 import sqlite3
 import os
 from pathlib import Path
@@ -7,7 +7,7 @@ import hashlib
 import uuid
 from datetime import datetime
 
-# Database configuration
+# Database configuration - SINGLE SOURCE OF TRUTH
 DB_DIR = Path(__file__).parent.parent / "data"
 DB_PATH = DB_DIR / "app.db"
 
@@ -18,11 +18,27 @@ def get_db_path() -> Path:
 
 
 def get_conn() -> sqlite3.Connection:
-    """Get a connection to the SQLite database."""
+    """Get a connection to the SQLite database (for UI generations)."""
     DB_DIR.mkdir(exist_ok=True)
     conn = sqlite3.connect(str(DB_PATH))
     conn.row_factory = sqlite3.Row
     return conn
+
+
+def get_api_conn() -> sqlite3.Connection:
+    """Get a connection to the SQLite database (for API generations).
+
+    SAME DATABASE as get_conn(), just a semantic alias for API code.
+    """
+    DB_DIR.mkdir(exist_ok=True)
+    conn = sqlite3.connect(str(DB_PATH))
+    conn.row_factory = sqlite3.Row
+    return conn
+
+
+def hash_api_key(key: str) -> str:
+    """Hash API key for storage."""
+    return hashlib.sha256(key.encode()).hexdigest()
 
 
 def init_db() -> None:
@@ -34,6 +50,10 @@ def init_db() -> None:
         # Set pragmas for performance and reliability
         cursor.execute("PRAGMA journal_mode=WAL;")
         cursor.execute("PRAGMA synchronous=NORMAL;")
+
+        # ====================
+        # USER/AUTH TABLES
+        # ====================
 
         # Create users table
         cursor.execute("""
@@ -59,20 +79,55 @@ def init_db() -> None:
             )
         """)
 
-        # Create api_keys table
+        # ====================
+        # API SYSTEM TABLES (REST API)
+        # ====================
+
+        # Create api_keys table (for REST API authentication)
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS api_keys (
                 id TEXT PRIMARY KEY,
-                user_id TEXT,
-                key_hash TEXT UNIQUE NOT NULL,
-                key_prefix TEXT NOT NULL,
-                created_at TEXT NOT NULL,
-                revoked_at TEXT,
-                FOREIGN KEY (user_id) REFERENCES users(id)
+                key_hash TEXT NOT NULL UNIQUE,
+                name TEXT,
+                tier TEXT NOT NULL DEFAULT 'free',
+                credits_total INTEGER NOT NULL DEFAULT 0,
+                credits_used INTEGER NOT NULL DEFAULT 0,
+                rate_limit_concurrent INTEGER NOT NULL DEFAULT 10,
+                rate_limit_hourly INTEGER NOT NULL DEFAULT 100,
+                created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                last_used_at TIMESTAMP,
+                is_active BOOLEAN NOT NULL DEFAULT 1
             )
         """)
 
-        # Create generations table (metadata only - NO html/model/duration stored here)
+        # Create API generations table (for REST API)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS api_generations (
+                id TEXT PRIMARY KEY,
+                api_key_id TEXT NOT NULL,
+                status TEXT NOT NULL DEFAULT 'processing',
+                format TEXT NOT NULL,
+                input_type TEXT NOT NULL,
+                input_data TEXT NOT NULL,
+                input_thumbnail TEXT,
+                instructions TEXT,
+                result_code TEXT,
+                error_message TEXT,
+                credits_charged INTEGER NOT NULL,
+                model_used TEXT,
+                duration_ms INTEGER,
+                created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                started_at TIMESTAMP,
+                completed_at TIMESTAMP,
+                FOREIGN KEY (api_key_id) REFERENCES api_keys(id)
+            )
+        """)
+
+        # ====================
+        # UI SYSTEM TABLES (Web Interface)
+        # ====================
+
+        # Create UI generations table (for web interface)
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS generations (
                 id TEXT PRIMARY KEY,
@@ -116,6 +171,10 @@ def init_db() -> None:
             )
         """)
 
+        # ====================
+        # ADMIN/FEEDBACK TABLES
+        # ====================
+
         # Create admin_messages table (for feedback system)
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS admin_messages (
@@ -132,15 +191,40 @@ def init_db() -> None:
             )
         """)
 
-        # Create indexes
+        # ====================
+        # INDEXES
+        # ====================
+
+        # API indexes
         cursor.execute("""
-            CREATE INDEX IF NOT EXISTS idx_generations_user_created
-            ON generations(user_id, created_at)
+            CREATE INDEX IF NOT EXISTS idx_api_keys_hash
+            ON api_keys(key_hash)
         """)
 
         cursor.execute("""
-            CREATE INDEX IF NOT EXISTS idx_api_keys_user
-            ON api_keys(user_id)
+            CREATE INDEX IF NOT EXISTS idx_api_keys_active
+            ON api_keys(is_active)
+        """)
+
+        cursor.execute("""
+            CREATE INDEX IF NOT EXISTS idx_api_generations_api_key
+            ON api_generations(api_key_id, created_at DESC)
+        """)
+
+        cursor.execute("""
+            CREATE INDEX IF NOT EXISTS idx_api_generations_status
+            ON api_generations(status)
+        """)
+
+        cursor.execute("""
+            CREATE INDEX IF NOT EXISTS idx_api_generations_created
+            ON api_generations(created_at)
+        """)
+
+        # UI indexes
+        cursor.execute("""
+            CREATE INDEX IF NOT EXISTS idx_generations_user_created
+            ON generations(user_id, created_at)
         """)
 
         cursor.execute("""
@@ -158,6 +242,7 @@ def init_db() -> None:
             ON generation_variants(generation_id)
         """)
 
+        # Admin indexes
         cursor.execute("""
             CREATE INDEX IF NOT EXISTS idx_admin_messages_createdAt
             ON admin_messages(createdAt DESC)
@@ -168,16 +253,35 @@ def init_db() -> None:
             ON admin_messages(isRead, createdAt DESC)
         """)
 
+        # ====================
+        # DEFAULT DATA
+        # ====================
+
+        # Insert default development API key if not exists
+        dev_key = "sk_test_development_key_12345678"
+        dev_key_hash = hash_api_key(dev_key)
+
+        cursor.execute("""
+            INSERT OR IGNORE INTO api_keys (
+                id, key_hash, name, tier, credits_total, credits_used
+            ) VALUES (?, ?, ?, ?, ?, ?)
+        """, ("key_dev_default", dev_key_hash, "Development Key", "pro", 10000, 0))
+
         conn.commit()
-        print(f"[DB] initialized successfully at {DB_PATH}")
+        print(f"[DB] Initialized successfully at {DB_PATH}")
+        print(f"[DB] Development API key: {dev_key}")
 
     except Exception as e:
         conn.rollback()
-        print(f"[DB] error during initialization: {e}")
+        print(f"[DB] Error during initialization: {e}")
         raise
     finally:
         conn.close()
 
+
+# ====================
+# UI GENERATION FUNCTIONS
+# ====================
 
 def save_generation(
     status: str,
@@ -187,7 +291,7 @@ def save_generation(
     generation_id: Optional[str] = None,
 ) -> str:
     """
-    Save a generation record to the database (metadata only).
+    Save a UI generation record to the database (metadata only).
     Returns the generation_id.
     If generation_id is not provided, a new UUID will be generated.
 
@@ -214,12 +318,12 @@ def save_generation(
             error_message,
         ))
         conn.commit()
-        print(f"[DB] saved generation id={generation_id} status={status}")
+        print(f"[DB] Saved UI generation id={generation_id} status={status}")
         return generation_id
 
     except Exception as e:
         conn.rollback()
-        print(f"[DB] error saving generation: {e}")
+        print(f"[DB] Error saving UI generation: {e}")
         raise
     finally:
         conn.close()
@@ -230,7 +334,7 @@ def update_generation(
     status: Optional[str] = None,
     error_message: Optional[str] = None,
 ) -> None:
-    """Update a generation record (metadata only).
+    """Update a UI generation record (metadata only).
 
     Note: Individual variant html/duration is stored in generation_variants.
     """
@@ -255,18 +359,18 @@ def update_generation(
         query = f"UPDATE generations SET {', '.join(updates)} WHERE id = ?"
         cursor.execute(query, params)
         conn.commit()
-        print(f"[DB] updated generation id={generation_id}")
+        print(f"[DB] Updated UI generation id={generation_id}")
 
     except Exception as e:
         conn.rollback()
-        print(f"[DB] error updating generation: {e}")
+        print(f"[DB] Error updating UI generation: {e}")
         raise
     finally:
         conn.close()
 
 
 def get_generation(generation_id: str) -> Optional[dict]:
-    """Get a generation record by id."""
+    """Get a UI generation record by id."""
     conn = get_conn()
     cursor = conn.cursor()
 
@@ -280,7 +384,7 @@ def get_generation(generation_id: str) -> Optional[dict]:
 
 
 def list_generations(limit: int = 20, user_id: Optional[str] = None) -> list:
-    """List generations, optionally filtered by user_id."""
+    """List UI generations, optionally filtered by user_id."""
     conn = get_conn()
     cursor = conn.cursor()
 
@@ -342,7 +446,7 @@ def save_generation_variant(
             now,
         ))
         conn.commit()
-        print(f"[DB] saved variant {variant_index} for generation {generation_id}")
+        print(f"[DB] Saved variant {variant_index} for generation {generation_id}")
 
     except sqlite3.IntegrityError:
         # If variant already exists, update it
@@ -361,22 +465,22 @@ def save_generation_variant(
                 variant_index,
             ))
             conn.commit()
-            print(f"[DB] updated variant {variant_index} for generation {generation_id}")
+            print(f"[DB] Updated variant {variant_index} for generation {generation_id}")
         except Exception as e:
             conn.rollback()
-            print(f"[DB] error updating variant: {e}")
+            print(f"[DB] Error updating variant: {e}")
             raise
 
     except Exception as e:
         conn.rollback()
-        print(f"[DB] error saving variant: {e}")
+        print(f"[DB] Error saving variant: {e}")
         raise
     finally:
         conn.close()
 
 
 def get_generation_variants(generation_id: str) -> list:
-    """Get all variants for a generation."""
+    """Get all variants for a UI generation."""
     conn = get_conn()
     cursor = conn.cursor()
 
@@ -395,7 +499,7 @@ def get_generation_variants(generation_id: str) -> list:
 
 
 def delete_generation(generation_id: str) -> None:
-    """Delete a generation and all its variants."""
+    """Delete a UI generation and all its variants."""
     conn = get_conn()
     cursor = conn.cursor()
 
@@ -413,7 +517,7 @@ def delete_generation(generation_id: str) -> None:
         """, (generation_id,))
 
         conn.commit()
-        print(f"[DB] Deleted generation {generation_id}")
+        print(f"[DB] Deleted UI generation {generation_id}")
 
     finally:
         conn.close()
@@ -452,7 +556,7 @@ def record_usage_event(
 
     except Exception as e:
         conn.rollback()
-        print(f"[DB] error recording usage event: {e}")
+        print(f"[DB] Error recording usage event: {e}")
         raise
     finally:
         conn.close()

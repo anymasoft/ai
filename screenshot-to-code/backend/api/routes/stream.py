@@ -1,7 +1,7 @@
 """WebSocket streaming endpoint."""
 
 import asyncio
-import sqlite3
+from db import get_api_conn, hash_api_key
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Query
 from api.auth import verify_api_key
 
@@ -32,12 +32,12 @@ async def stream_generation(
         return
 
     # 2. Check generation exists and belongs to this API key
-    conn = sqlite3.connect("data/api.db")
+    conn = get_api_conn()
     cursor = conn.cursor()
 
     cursor.execute(
         """
-        SELECT id, status FROM generations
+        SELECT id, status FROM api_generations
         WHERE id = ? AND api_key_id = ?
         """,
         (generation_id, api_key_info["id"]),
@@ -65,12 +65,12 @@ async def stream_generation(
 
         # If already completed or failed, send result immediately
         if generation_status in ("completed", "failed"):
-            conn = sqlite3.connect("data/api.db")
+            conn = get_api_conn()
             cursor = conn.cursor()
 
             cursor.execute("""
                 SELECT result_code, error_message, status
-                FROM generations
+                FROM api_generations
                 WHERE id = ?
             """, (generation_id,))
 
@@ -117,12 +117,12 @@ async def stream_generation(
             poll_count += 1
 
             # Check database for updates
-            conn = sqlite3.connect("data/api.db")
+            conn = get_api_conn()
             cursor = conn.cursor()
 
             cursor.execute("""
                 SELECT result_code, error_message, status
-                FROM generations
+                FROM api_generations
                 WHERE id = ?
             """, (generation_id,))
 

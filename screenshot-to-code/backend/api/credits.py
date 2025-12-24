@@ -1,6 +1,6 @@
 """Credits management."""
 
-import sqlite3
+from db import get_api_conn, hash_api_key
 from fastapi import HTTPException, status
 
 
@@ -24,7 +24,7 @@ def check_credits(api_key_id: str, required: int) -> None:
 
     Raises HTTPException if insufficient.
     """
-    conn = sqlite3.connect("data/api.db")
+    conn = get_api_conn()
     cursor = conn.cursor()
 
     cursor.execute(
@@ -65,7 +65,7 @@ def deduct_credits(api_key_id: str, amount: int) -> None:
     This is called immediately when generation starts.
     No refunds if generation fails.
     """
-    conn = sqlite3.connect("data/api.db")
+    conn = get_api_conn()
     cursor = conn.cursor()
 
     cursor.execute(
@@ -83,7 +83,7 @@ def deduct_credits(api_key_id: str, amount: int) -> None:
 
 def get_credits_info(api_key_id: str) -> dict:
     """Get current credits status for API key."""
-    conn = sqlite3.connect("data/api.db")
+    conn = get_api_conn()
     cursor = conn.cursor()
 
     cursor.execute(

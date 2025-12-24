@@ -45,11 +45,10 @@ IS_PROD = os.environ.get("IS_PROD", "").lower() in ("true", "1", "yes")
 # ============================================
 from pathlib import Path
 
-# Database paths (absolute)
+# Database paths (absolute) - SINGLE DATABASE
 BASE_DIR = Path(__file__).parent
 DATA_DIR = BASE_DIR / "data"
 DB_PATH = DATA_DIR / "app.db"
-API_DB_PATH = DATA_DIR / "api.db"
 
 # Ensure data directory exists
 DATA_DIR.mkdir(exist_ok=True)

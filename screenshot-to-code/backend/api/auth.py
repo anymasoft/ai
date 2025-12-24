@@ -1,7 +1,7 @@
 """API Key authentication."""
 
 import hashlib
-import sqlite3
+from db import get_api_conn, hash_api_key
 from fastapi import Header, HTTPException, status
 from typing import Annotated
 
@@ -28,8 +28,7 @@ def verify_api_key(api_key: str) -> dict:
     key_hash = hash_api_key(api_key)
 
     # Query database
-    conn = sqlite3.connect("data/api.db")
-    conn.row_factory = sqlite3.Row
+    conn = get_api_conn()
     cursor = conn.cursor()
 
     cursor.execute(
