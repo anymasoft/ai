@@ -1383,77 +1383,55 @@ async def stream_code(websocket: WebSocket):
     from db import save_generation
     import uuid
 
-    print(f"[WS] WebSocket handler called! Client: {websocket.client}")
+    print("[WS:0] Handler start")
+    print(f"[WS:0] Client: {websocket.client}")
 
-    try:
-        print("[WS] Accepting WebSocket connection...")
-        await websocket.accept()
-        print("[WS] WebSocket accepted successfully!")
+    print("[WS:1] accept WebSocket")
+    await websocket.accept()
+    print("[WS:1] DONE accept")
 
-        # Read parameters from client
-        params: Dict[str, str] = await websocket.receive_json()
-        print("[WS] Received generation parameters")
-        print("[WS] Params parsed")
-        print("[DIAG:BACKEND:RECV] Full params=", params)
-        print("[DIAG:BACKEND:RECV] generatedCodeConfig=", params.get("generatedCodeConfig", "NOT_FOUND"))
+    print("[WS:2] receive_json from client")
+    params: Dict[str, str] = await websocket.receive_json()
+    print("[WS:2] DONE receive_json")
 
-        # Create generation record with queued status
-        generation_id = str(uuid.uuid4().hex[:16])
-        print(f"[DEBUG] Handler: created generation_id={generation_id}")
-        try:
-            save_generation(
-                status="queued",
-                generation_id=generation_id,
-            )
-            print(f"[WS] Created generation record: {generation_id}")
-        except Exception as e:
-            print(f"[WS] Failed to create generation record: {e}")
-            await websocket.send_json({
-                "type": "error",
-                "value": "Failed to create generation record"
-            })
-            await websocket.close()
-            return
+    print("[WS:3] params check")
+    print(f"[WS:3] Full params={params}")
+    print(f"[WS:3] generatedCodeConfig={params.get('generatedCodeConfig', 'NOT_FOUND')}")
+    print("[WS:3] DONE params check")
 
-        # Send queued status to client
-        await websocket.send_json({
-            "type": "status",
-            "value": "Queued for processing...",
-            "variantIndex": 0
-        })
+    print("[WS:4] create generation_id")
+    generation_id = str(uuid.uuid4().hex[:16])
+    print(f"[WS:4] DONE generation_id={generation_id}")
 
-        # Enqueue generation job
-        job = GenerationJob(
-            generation_id=generation_id,
-            websocket=websocket,
-            params=params,
-            websocket_already_accepted=True,  # We already accepted the WebSocket above
-        )
+    print("[WS:5] save_generation to DB")
+    save_generation(
+        status="queued",
+        generation_id=generation_id,
+    )
+    print(f"[WS:5] DONE save_generation record={generation_id}")
 
-        print(f"[WS] Enqueuing generation job: {generation_id}")
-        await enqueue_generation(job)
-        print(f"[WS] Generation started with id={generation_id}")
+    print("[WS:6] send status message")
+    await websocket.send_json({
+        "type": "status",
+        "value": "Queued for processing...",
+        "variantIndex": 0
+    })
+    print("[WS:6] DONE send status")
 
-        # WebSocket will be processed by worker
-        # Keep connection alive - worker will send updates through it
-        # Just wait for close signal or cancellation
-        try:
-            while True:
-                # Keep connection alive
-                await asyncio.sleep(0.1)
-        except Exception as e:
-            print(f"[WS] Connection lost: {e}")
+    print("[WS:7] create GenerationJob")
+    job = GenerationJob(
+        generation_id=generation_id,
+        websocket=websocket,
+        params=params,
+        websocket_already_accepted=True,
+    )
+    print(f"[WS:7] DONE GenerationJob created")
 
-    except asyncio.CancelledError:
-        # Client disconnected - silent exit
-        print("[WS] Client disconnected (CancelledError)")
-        return
-    except Exception as e:
-        import traceback
-        print(f"[WS] UNEXPECTED ERROR: {e}")
-        print(f"[WS] Traceback: {traceback.format_exc()}")
-        try:
-            await websocket.send_json({"type": "error", "value": str(e)})
-            await websocket.close()
-        except Exception as close_error:
-            print(f"[WS] Failed to send error or close: {close_error}")
+    print("[WS:8] enqueue_generation")
+    await enqueue_generation(job)
+    print(f"[WS:8] DONE enqueue_generation job_id={generation_id}")
+
+    print("[WS:9] start keep-alive loop")
+    while True:
+        await asyncio.sleep(0.1)
+        print("[WS:9] keep-alive tick")
