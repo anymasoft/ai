@@ -1,3 +1,5 @@
+"use client"
+
 import * as React from "react"
 import {
   LayoutDashboard,
@@ -15,6 +17,7 @@ import {
 import { Link } from "react-router-dom"
 import { Logo } from "@/components/logo"
 import { useUnreadCount } from "@/hooks/useUnreadCount"
+import { useAuthStore } from "@/store/auth"
 
 import { NavMain } from "@/components/nav-main"
 import { NavUser } from "@/components/nav-user"
@@ -28,10 +31,10 @@ import {
   SidebarMenuItem,
 } from "@/components/ui/sidebar"
 
-const getNavData = (unreadCount: number) => ({
+const getNavData = (unreadCount: number, email: string | null) => ({
   user: {
-    name: "Screen2Code",
-    email: "user@screen2code.com",
+    name: email ? email.split("@")[0] : "User",
+    email: email || "not signed in",
     avatar: "",
   },
   navGroups: [
@@ -116,7 +119,8 @@ const getNavData = (unreadCount: number) => ({
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const unreadCount = useUnreadCount()
-  const data = React.useMemo(() => getNavData(unreadCount), [unreadCount])
+  const email = useAuthStore((state) => state.email)
+  const data = React.useMemo(() => getNavData(unreadCount, email), [unreadCount, email])
 
   return (
     <Sidebar {...props}>

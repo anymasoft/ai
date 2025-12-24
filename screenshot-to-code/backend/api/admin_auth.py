@@ -1,84 +1,33 @@
 """Admin authentication and authorization."""
 
-import sqlite3
-from fastapi import Header, HTTPException, status, Depends
-from typing import Annotated, Optional
-from db import get_conn as get_db
+import os
+from fastapi import HTTPException, status, Depends
+from .user_auth import get_current_user
 
 
-def get_user_by_email(email: str) -> Optional[dict]:
-    """Get user by email from database."""
-    conn = get_db()
-    conn.row_factory = sqlite3.Row
-    cursor = conn.cursor()
-
-    try:
-        cursor.execute(
-            "SELECT id, email, role, plan_id, created_at FROM users WHERE email = ?",
-            (email,),
-        )
-
-        row = cursor.fetchone()
-        return dict(row) if row else None
-    except Exception as e:
-        print(f"[ADMIN_AUTH] Error getting user by email: {e}")
-        return None
-    finally:
-        conn.close()
-
-
-def verify_admin(email: str) -> dict:
-    """
-    Verify that user is an admin.
-
-    Raises HTTPException if not admin.
-    Returns user dict if admin.
-    """
-    if not email:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail={"error": "unauthorized", "message": "Missing email"},
-        )
-
-    user = get_user_by_email(email)
-
-    if not user:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail={"error": "forbidden", "message": "User not found"},
-        )
-
-    if user.get("role") != "admin":
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail={"error": "forbidden", "message": "Admin access required"},
-        )
-
-    return user
-
-
-async def get_admin_user(
-    x_admin_email: Annotated[str | None, Header()] = None
-) -> dict:
+async def get_admin_user(user: dict = Depends(get_current_user)) -> dict:
     """
     FastAPI dependency for admin-only endpoints.
+
+    Checks that user has role='admin'.
+    Uses get_current_user to get user from X-User-Email header.
 
     Usage:
         @router.get("/api/admin/users")
         async def get_users(admin: dict = Depends(get_admin_user)):
             # admin contains user dict with role='admin'
             pass
-
-    For now, we use X-Admin-Email header for simplicity.
-    TODO: Replace with proper session/JWT auth when auth system is implemented.
     """
-    if not x_admin_email:
+    db_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "data", "app.db"))
+    email = user.get("email")
+    role = user.get("role")
+
+    print(f"[ADMIN_AUTH] Checking admin access - db_path={db_path}, email={email}, role={role}")
+
+    if role != "admin":
         raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail={
-                "error": "unauthorized",
-                "message": "Missing X-Admin-Email header",
-            },
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail={"error": "forbidden", "message": "Admin access required"},
         )
 
-    return verify_admin(x_admin_email)
+    return user
