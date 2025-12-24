@@ -86,6 +86,7 @@ async def get_current_user(
             pass
     """
     if not x_user_email:
+        print("[USER_AUTH] Missing X-User-Email header - returning 401")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail={
@@ -94,4 +95,7 @@ async def get_current_user(
             },
         )
 
-    return create_user_if_not_exists(x_user_email)
+    print(f"[USER_AUTH] Authenticating: email={x_user_email}")
+    user = create_user_if_not_exists(x_user_email)
+    print(f"[USER_AUTH] User authenticated: email={user['email']}, role={user['role']}")
+    return user
