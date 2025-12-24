@@ -32,15 +32,15 @@ uvicorn api.app:app --reload --port 8000
 
 ```bash
 # Health check
-curl http://localhost:8000/api/health
+curl http://localhost:7001/api/health
 
 # Get formats (requires API key)
 curl -H "X-API-Key: sk_test_development_key_12345678" \
-  http://localhost:8000/api/formats
+  http://localhost:7001/api/formats
 
 # Check limits
 curl -H "X-API-Key: sk_test_development_key_12345678" \
-  http://localhost:8000/api/limits
+  http://localhost:7001/api/limits
 ```
 
 ---
@@ -172,7 +172,7 @@ WHERE api_key_id = ? AND created_at > ?
 
 ```bash
 # 1. Generate code
-curl -X POST http://localhost:8000/api/generate \
+curl -X POST http://localhost:7001/api/generate \
   -H "X-API-Key: sk_test_development_key_12345678" \
   -H "Content-Type: application/json" \
   -d '{
@@ -194,7 +194,7 @@ curl -X POST http://localhost:8000/api/generate \
 
 # 2. Get generation result
 curl -H "X-API-Key: sk_test_development_key_12345678" \
-  http://localhost:8000/api/generate/gen_abc123...
+  http://localhost:7001/api/generate/gen_abc123...
 ```
 
 ---

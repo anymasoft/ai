@@ -2,7 +2,7 @@
 
 import { PaymentRequest, PaymentResponse, PaymentStatus, Subscription } from './types'
 
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8000'
+const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:7001'
 
 // TODO: Получать токен из auth context
 function getAuthToken(): string {

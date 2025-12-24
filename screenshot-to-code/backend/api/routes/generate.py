@@ -104,8 +104,8 @@ async def generate_code(
     asyncio.create_task(trigger_generation(generation_id))
 
     # 8. Build stream URL
-    # TODO: get actual host from request or config
-    stream_url = f"ws://127.0.0.1:8000/api/stream/{generation_id}"
+    # Backend runs on port 7001
+    stream_url = f"ws://127.0.0.1:7001/api/stream/{generation_id}"
 
     return GenerateResponse(
         generation_id=generation_id,
