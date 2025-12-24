@@ -53,8 +53,8 @@ async def send_feedback(feedback: FeedbackRequest):
             user_id = str(uuid.uuid4())
             created_at = time.strftime("%Y-%m-%d %H:%M:%S")
             cursor.execute(
-                "INSERT INTO users (id, email, role, created_at) VALUES (?, ?, ?, ?)",
-                (user_id, feedback.email, "user", created_at)
+                "INSERT INTO users (id, email, role, plan_id, created_at) VALUES (?, ?, ?, ?, ?)",
+                (user_id, feedback.email, "user", "free", created_at)
             )
 
         subject = (
