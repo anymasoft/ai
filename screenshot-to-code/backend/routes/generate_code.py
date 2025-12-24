@@ -1379,6 +1379,8 @@ class PostProcessingMiddleware(Middleware):
 @router.websocket("/generate-code")
 async def stream_code(websocket: WebSocket):
     """Handle WebSocket code generation requests using a queue"""
+    print("[WS] HANDLER ENTERED - frontend connected to generation route")
+
     from gen_queue.generation_queue import enqueue_generation, GenerationJob
     from db import save_generation
     import uuid

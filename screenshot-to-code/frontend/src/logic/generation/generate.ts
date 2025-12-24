@@ -40,12 +40,13 @@ export function generateCode(
   callbacks: CodeGenerationCallbacks
 ) {
   const wsUrl = `${WS_BACKEND_URL}/generate-code`
-  console.log("Connecting to backend @ ", wsUrl)
+  console.log("[WS] Connecting to backend @ ", wsUrl)
 
   const ws = new WebSocket(wsUrl)
   wsRef.current = ws
 
   ws.addEventListener("open", () => {
+    console.log("[WS] ✓ CONNECTED to backend successfully")
     console.log("[DIAG] WS Payload generatedCodeConfig:", (params as any).generatedCodeConfig)
     console.log("[DIAG:WS:SEND] Full payload object=", params)
     console.log("[DIAG:WS:SEND:JSON]", JSON.stringify(params, null, 2))
@@ -73,7 +74,7 @@ export function generateCode(
   })
 
   ws.addEventListener("close", (event) => {
-    console.log("Connection closed", event.code, event.reason)
+    console.log("[WS] Connection closed", event.code, event.reason)
     if (event.code === USER_CLOSE_WEB_SOCKET_CODE) {
       console.log(CANCEL_MESSAGE)
       callbacks.onCancel()
@@ -81,7 +82,7 @@ export function generateCode(
       console.error("Known server error", event)
       callbacks.onCancel()
     } else if (event.code !== 1000) {
-      console.error("Unknown server or connection error", event)
+      console.error("[WS] ✗ Unknown server or connection error", event)
       console.error(ERROR_MESSAGE)
       callbacks.onCancel()
     } else {
@@ -90,7 +91,8 @@ export function generateCode(
   })
 
   ws.addEventListener("error", (error) => {
-    console.error("WebSocket error", error)
+    console.error("[WS] ✗ CONNECTION ERROR - backend unreachable at", wsUrl)
+    console.error("[WS] Error details:", error)
     console.error(ERROR_MESSAGE)
   })
 }
