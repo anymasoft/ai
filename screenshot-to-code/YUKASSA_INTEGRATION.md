@@ -434,7 +434,7 @@ CVC: 123
 ### Тестовый webhook
 
 ```bash
-curl -X POST http://localhost:8000/api/billing/webhook \
+curl -X POST http://localhost:7001/api/billing/webhook \
   -H "Content-Type: application/json" \
   -d '{
     "type": "notification",
