@@ -74,7 +74,23 @@ const getNavData = (unreadCount: number, email: string | null, isAdmin: boolean)
     },
   ]
 
-  // Only add Admin section if user is admin
+  navGroups.push({
+    label: "Account",
+    items: [
+      {
+        title: "Billing",
+        url: "/settings/billing",
+        icon: CreditCard,
+      },
+      {
+        title: "Settings",
+        url: "/settings/account",
+        icon: Settings,
+      },
+    ],
+  })
+
+  // Only add Admin section if user is admin (at the bottom)
   if (isAdmin) {
     navGroups.push({
       label: "Admin",
@@ -98,22 +114,6 @@ const getNavData = (unreadCount: number, email: string | null, isAdmin: boolean)
       ],
     })
   }
-
-  navGroups.push({
-    label: "Account",
-    items: [
-      {
-        title: "Billing",
-        url: "/settings/billing",
-        icon: CreditCard,
-      },
-      {
-        title: "Settings",
-        url: "/settings/account",
-        icon: Settings,
-      },
-    ],
-  })
 
   return {
     user: {
