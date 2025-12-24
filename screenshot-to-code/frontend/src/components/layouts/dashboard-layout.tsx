@@ -5,6 +5,7 @@ import { SiteFooter } from "@/components/site-footer"
 import { ThemeCustomizer, ThemeCustomizerTrigger } from "@/components/theme-customizer"
 import { UpgradeToProButton } from "@/components/upgrade-to-pro-button"
 import { Toaster } from "@/components/ui/sonner"
+import { BackendStatusBanner } from "@/components/backend-status-banner"
 import { useSidebarConfig } from "@/hooks/use-sidebar-config"
 import {
   SidebarInset,
@@ -73,6 +74,7 @@ export function DashboardLayout() {
         onOpenChange={setThemeCustomizerOpen}
       />
       <UpgradeToProButton />
+      <BackendStatusBanner />
       <Toaster />
     </SidebarProvider>
   )

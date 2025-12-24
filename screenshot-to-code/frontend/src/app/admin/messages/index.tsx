@@ -7,6 +7,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge"
 import { Loader2, RefreshCw, Mail, Trash2, ChevronLeft, ChevronRight, X } from "lucide-react"
 import { toast } from "sonner"
+import { fetchJSON, ApiError } from "@/lib/api"
 
 interface Message {
   id: string
@@ -18,8 +19,6 @@ interface Message {
   createdAt: number
   isRead: number
 }
-
-const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:7001"
 
 export default function AdminMessagesPage() {
   const navigate = useNavigate()
@@ -50,20 +49,25 @@ export default function AdminMessagesPage() {
 
       const adminEmail = localStorage.getItem("dev_admin_email") || "admin@screen2code.com"
 
-      const res = await fetch(`${BACKEND_URL}/api/admin/messages?${params.toString()}`, {
-        headers: {
-          "X-Admin-Email": adminEmail,
-        },
-      })
+      const data = await fetchJSON<{ messages: Message[]; pagination: { totalPages: number } }>(
+        `/api/admin/messages?${params.toString()}`,
+        {
+          headers: {
+            "X-Admin-Email": adminEmail,
+          },
+        }
+      )
 
-      if (!res.ok) throw new Error("Failed to fetch messages")
-
-      const data = await res.json()
       setMessages(data.messages || [])
       setTotalPages(data.pagination?.totalPages || 1)
     } catch (error) {
       console.error("Error:", error)
-      toast.error("Ошибка при загрузке сообщений")
+      if (error instanceof ApiError && error.status === 403) {
+        toast.error("Доступ запрещен")
+        navigate("/playground")
+      } else {
+        toast.error("Ошибка при загрузке сообщений")
+      }
     } finally {
       setLoading(false)
     }
@@ -74,14 +78,12 @@ export default function AdminMessagesPage() {
       setDeleting(messageId)
       const adminEmail = localStorage.getItem("dev_admin_email") || "admin@screen2code.com"
 
-      const res = await fetch(`${BACKEND_URL}/api/admin/messages/${messageId}`, {
+      await fetchJSON(`/api/admin/messages/${messageId}`, {
         method: "DELETE",
         headers: {
           "X-Admin-Email": adminEmail,
         },
       })
-
-      if (!res.ok) throw new Error("Failed to delete message")
 
       setMessages((prev) => prev.filter((msg) => msg.id !== messageId))
       toast.success("Сообщение удалено")
