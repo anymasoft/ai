@@ -1,16 +1,14 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { useLocation, useSearchParams } from "react-router-dom"
+import { useSearchParams } from "react-router-dom"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { PricingPlans } from "@/components/pricing-plans"
-import { CurrentPlanCard } from "./components/current-plan-card"
 import { BillingHistoryCard } from "./components/billing-history-card"
 import { Loader2 } from "lucide-react"
-import { fetchJSON, ApiError } from "@/lib/api"
+import { fetchJSON } from "@/lib/api"
 
 interface BillingUsage {
-  plan: string  // "free", "basic", или "professional"
   credits: number
 }
 
@@ -20,20 +18,8 @@ interface PaymentStatusResponse {
   message: string
 }
 
-interface CurrentPlan {
-  planName: string
-  price: string
-  nextBilling: string
-  status: string
+interface CreditsBalance {
   creditsTotal: number
-  creditsUsed: number
-  creditsRemaining: number
-  progressPercentage: number
-  daysUsed: number
-  totalDays: number
-  remainingDays: number
-  needsAttention: boolean
-  attentionMessage: string
 }
 
 // Mock billing history (no real data yet)
@@ -138,26 +124,18 @@ export default function BillingSettings() {
     }
   }
 
-  const handlePlanSelect = async (planId: string) => {
-    // Map planId to package name for API
-    const packageMap: Record<string, string> = {
-      basic: "basic",
-      professional: "professional",
-      free: "free",
-    }
-
-    const packageName = packageMap[planId]
-    if (!packageName || packageName === "free") {
-      console.log("Free plan selected - no action needed")
+  const handlePlanSelect = async (packageId: string) => {
+    if (packageId === "free") {
+      console.log("Free package - стартовый бонус уже активен")
       return
     }
 
     try {
-      setPurchasing(packageName)
+      setPurchasing(packageId)
 
       const response = await fetchJSON<{ confirmation_url: string }>("/api/billing/checkout", {
         method: "POST",
-        body: JSON.stringify({ package: packageName }),
+        body: JSON.stringify({ package: packageId }),
       })
 
       if (response.confirmation_url) {
@@ -172,43 +150,18 @@ export default function BillingSettings() {
     }
   }
 
-  // Map plan codes to display names
-  const planDisplayNames: Record<string, string> = {
-    free: "Free",
-    basic: "Basic",
-    professional: "Professional",
-  }
-
-  const planAttentionMessages: Record<string, string> = {
-    free: "Вы в Free плане. У вас 3 генерации. Купите пакет для большего количества.",
-    basic: `У вас ${billingUsage?.credits || 0} генераций (Basic). Купите еще пакет для большего количества.`,
-    professional: `У вас ${billingUsage?.credits || 0} генераций (Professional). Купите еще пакет для большего количества.`,
-  }
-
-  // Build current plan data from API response
-  const currentPlanData: CurrentPlan | null = billingUsage ? {
-    planName: planDisplayNames[billingUsage.plan] || "Free",
-    price: "$0",
-    nextBilling: "N/A",
-    status: "Active",
+  // Build credits balance data from API response
+  const creditsBalance: CreditsBalance | null = billingUsage ? {
     creditsTotal: billingUsage.credits,
-    creditsUsed: 0,
-    creditsRemaining: billingUsage.credits,
-    progressPercentage: 0,
-    daysUsed: 0,
-    totalDays: 30,
-    remainingDays: 30,
-    needsAttention: false,
-    attentionMessage: planAttentionMessages[billingUsage.plan] || planAttentionMessages.free,
   } : null
 
   return (
     <>
       <div className="space-y-6 px-4 lg:px-6">
         <div>
-          <h1 className="text-3xl font-bold">Тарифы и биллинг</h1>
+          <h1 className="text-3xl font-bold">Пакеты и баланс</h1>
           <p className="text-muted-foreground">
-            Управляйте вашей подпиской и информацией об оплате.
+            Просмотрите ваш баланс генераций и покупайте пакеты по мере необходимости.
           </p>
         </div>
 
@@ -222,25 +175,39 @@ export default function BillingSettings() {
               <p className="text-destructive">{error}</p>
             </CardContent>
           </Card>
-        ) : currentPlanData ? (
+        ) : creditsBalance ? (
           <>
             <div className="grid gap-6 grid-cols-1 lg:grid-cols-2">
-              <CurrentPlanCard plan={currentPlanData} />
+              <Card>
+                <CardHeader>
+                  <CardTitle>Ваш баланс</CardTitle>
+                  <CardDescription>
+                    Доступные генерации для использования.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="text-center">
+                    <div className="text-5xl font-bold text-primary">
+                      {creditsBalance.creditsTotal}
+                    </div>
+                    <div className="text-muted-foreground mt-2">генераций</div>
+                  </div>
+                </CardContent>
+              </Card>
               <BillingHistoryCard history={billingHistoryData} />
             </div>
 
             <div className="grid gap-6">
               <Card>
                 <CardHeader>
-                  <CardTitle>Доступные пакеты</CardTitle>
+                  <CardTitle>Пакеты пополнения</CardTitle>
                   <CardDescription>
-                    Выберите пакет, который вам подходит.
+                    Выберите пакет для пополнения баланса генераций.
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
                   <PricingPlans
                     mode="billing"
-                    currentPlanId={billingUsage?.plan || "free"}
                     onPlanSelect={handlePlanSelect}
                   />
                 </CardContent>

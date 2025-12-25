@@ -22,6 +22,7 @@ export interface PricingPlan {
   description: string
   price: string
   frequency: string
+  credits: number
   features: string[]
   popular?: boolean
   current?: boolean
@@ -34,19 +35,22 @@ interface PricingPlansProps {
   onPlanSelect?: (planId: string) => void
 }
 
-// Static features descriptions (NOT prices)
-const planFeatures: Record<string, { description: string; features: string[] }> = {
+// Пакеты пополнения credits
+const packages: Record<string, { name: string; description: string; buttonText: string; features: string[] }> = {
   free: {
-    description: 'Для знакомства с платформой',
+    name: 'Бесплатный старт',
+    description: 'Разовый стартовый бонус',
+    buttonText: 'Уже активно',
     features: [
       'HTML + Tailwind',
       'HTML + CSS',
       'Email поддержка',
-      'Бесплатно',
     ],
   },
   basic: {
-    description: 'Разовая покупка',
+    name: 'Пакет 100 генераций',
+    description: 'Подходит для небольших проектов',
+    buttonText: 'Купить 100 генераций',
     features: [
       'Все форматы (HTML, React, Vue)',
       'API доступ',
@@ -55,13 +59,14 @@ const planFeatures: Record<string, { description: string; features: string[] }> 
     ],
   },
   professional: {
-    description: 'Для активного использования',
+    name: 'Пакет 500 генераций',
+    description: 'Подходит для агентств и команд',
+    buttonText: 'Купить 500 генераций',
     features: [
       'Все форматы + приоритет',
       'Полный API доступ',
       'Приоритетная поддержка (24ч)',
       '1 генерация = 1 credit',
-      'Подходит для агентств и команд',
     ],
   },
 }
@@ -100,14 +105,15 @@ export function PricingPlans({
     )
   }
 
-  // Build plans from tariffs
+  // Построить пакеты из данных пополнения
   const plans: PricingPlan[] = tariffs.map(tariff => ({
     id: tariff.key,
-    name: tariff.name,
-    description: planFeatures[tariff.key]?.description || tariff.name,
+    name: packages[tariff.key]?.name || tariff.name,
+    description: packages[tariff.key]?.description || tariff.name,
     price: tariff.price_rub === 0 ? '0' : tariff.price_rub.toString(),
-    frequency: tariff.price_rub === 0 ? ' ₽' : ` ₽ (${tariff.credits} генераций)`,
-    features: planFeatures[tariff.key]?.features || [],
+    frequency: '₽',
+    credits: tariff.credits,
+    features: packages[tariff.key]?.features || [],
     popular: tariff.key === 'basic',
   }))
 
@@ -125,39 +131,15 @@ export function PricingPlans({
     )
   }
   const getButtonText = (plan: PricingPlan) => {
-    if (mode === 'billing') {
-      if (currentPlanId === plan.id) {
-        return 'Текущий тариф'
-      }
-      // Free plan is automatic, cannot be selected manually
-      if (plan.id === 'free') {
-        return 'Free (автоматически)'
-      }
-      const currentIndex = plans.findIndex(p => p.id === currentPlanId)
-      const planIndex = plans.findIndex(p => p.id === plan.id)
-
-      if (planIndex > currentIndex) {
-        return 'Обновить тариф'
-      }
-    }
-    return 'Начать'
+    return packages[plan.id]?.buttonText || 'Купить'
   }
 
   const getButtonVariant = (plan: PricingPlan) => {
-    if (mode === 'billing' && currentPlanId === plan.id) {
-      return 'outline' as const
-    }
     return plan.popular ? 'default' as const : 'outline' as const
   }
 
   const isButtonDisabled = (plan: PricingPlan) => {
-    if (mode === 'billing' && currentPlanId === plan.id) {
-      return true // Current plan is disabled
-    }
-    // Disable downgrade to Free plan
-    if (mode === 'billing' && plan.id === 'free' && currentPlanId !== 'free') {
-      return true
-    }
+    // Все пакеты можно активировать/купить (разовые платежи)
     return false
   }
 
@@ -195,6 +177,12 @@ export function PricingPlans({
             <div className='flex items-baseline justify-center'>
               <span className='text-4xl font-bold'>{tier.price}</span>
               <span className='text-muted-foreground text-sm'>{tier.frequency}</span>
+            </div>
+            <div className='text-center text-sm text-muted-foreground'>
+              {tier.id === 'free'
+                ? 'Включено: 3 генерации бесплатно для старта'
+                : `Включено: ${tier.credits} генераций`
+              }
             </div>
             <div className='space-y-2'>
               {tier.features.map(feature => (
