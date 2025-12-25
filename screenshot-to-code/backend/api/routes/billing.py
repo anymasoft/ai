@@ -55,6 +55,7 @@ class BillingUsageResponse(BaseModel):
     """Billing usage response for authenticated users."""
 
     credits: int  # current credits balance
+    used: int = 0  # used generations count
 
 
 class PaymentStatusResponse(BaseModel):
@@ -327,10 +328,10 @@ async def admin_add_credits(
 @router.get("/api/billing/usage", response_model=BillingUsageResponse)
 async def get_billing_usage(user: dict = Depends(get_current_user)):
     """
-    Получить баланс credits текущего пользователя.
+    Получить баланс credits текущего пользователя и информацию об использовании.
 
     Returns:
-        BillingUsageResponse с текущим балансом генераций
+        BillingUsageResponse с текущим балансом и использованными генерациями
     """
 
     # Получаем user_id из сессии
@@ -342,12 +343,23 @@ async def get_billing_usage(user: dict = Depends(get_current_user)):
     if not user_id:
         raise HTTPException(status_code=401, detail="User ID not found in session")
 
-    # Получаем текущий баланс credits из БД
-    current_credits = get_user_credits(user_id)
+    # Получаем текущий баланс credits и используемые генерации из БД
+    conn = get_conn()
+    cursor = conn.cursor()
+    try:
+        cursor.execute(
+            "SELECT credits, used_generations FROM users WHERE id = ?",
+            (user_id,),
+        )
+        result = cursor.fetchone()
+        current_credits = result[0] if result else 0
+        used_generations = result[1] if result else 0
+    finally:
+        conn.close()
 
-    print(f"[BILLING] GET /api/billing/usage user_id={user_id}, credits={current_credits}")
+    print(f"[BILLING] GET /api/billing/usage user_id={user_id}, credits={current_credits}, used={used_generations}")
 
-    response = BillingUsageResponse(credits=current_credits)
+    response = BillingUsageResponse(credits=current_credits, used=used_generations)
     return response
 
 

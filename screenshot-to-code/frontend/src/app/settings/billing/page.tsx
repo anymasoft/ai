@@ -5,11 +5,14 @@ import { useSearchParams } from "react-router-dom"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { PricingPlans } from "@/components/pricing-plans"
 import { BillingHistoryCard } from "./components/billing-history-card"
-import { Loader2 } from "lucide-react"
+import { Loader2, Coins } from "lucide-react"
 import { fetchJSON } from "@/lib/api"
+import { Progress } from "@/components/ui/progress"
+import { Button } from "@/components/ui/button"
 
 interface BillingUsage {
   credits: number
+  used?: number
 }
 
 interface PaymentStatusResponse {
@@ -20,6 +23,9 @@ interface PaymentStatusResponse {
 
 interface CreditsBalance {
   creditsTotal: number
+  creditsUsed: number
+  creditsRemaining: number
+  progressPercentage: number
 }
 
 // Mock billing history (no real data yet)
@@ -152,7 +158,12 @@ export default function BillingSettings() {
 
   // Build credits balance data from API response
   const creditsBalance: CreditsBalance | null = billingUsage ? {
-    creditsTotal: billingUsage.credits,
+    creditsTotal: billingUsage.credits + (billingUsage.used || 0),
+    creditsUsed: billingUsage.used || 0,
+    creditsRemaining: billingUsage.credits,
+    progressPercentage: billingUsage.credits + (billingUsage.used || 0) > 0
+      ? Math.round(((billingUsage.used || 0) / (billingUsage.credits + (billingUsage.used || 0))) * 100)
+      : 0,
   } : null
 
   return (
@@ -182,15 +193,47 @@ export default function BillingSettings() {
                 <CardHeader>
                   <CardTitle>Ваш баланс</CardTitle>
                   <CardDescription>
-                    Доступные генерации для использования.
+                    Генерации и их использование.
                   </CardDescription>
                 </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="text-center">
-                    <div className="text-5xl font-bold text-primary">
-                      {creditsBalance.creditsTotal}
+                <CardContent className="space-y-6">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-2">
+                      <Coins className="h-5 w-5 text-yellow-500" />
+                      <span className="font-semibold">Генерации</span>
                     </div>
-                    <div className="text-muted-foreground mt-2">генераций</div>
+                    <div className="text-right">
+                      <div className="text-2xl font-bold">{creditsBalance.creditsRemaining}</div>
+                      <div className="text-sm text-muted-foreground">осталось</div>
+                    </div>
+                  </div>
+
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Coins className="h-4 w-4 text-muted-foreground" />
+                        <span className="text-sm font-medium">Использование</span>
+                      </div>
+                      <Button variant="outline" size="sm" onClick={() => {
+                        document.querySelector('[href*="pricing"]')?.scrollIntoView({ behavior: 'smooth' })
+                      }}>
+                        Купить больше
+                      </Button>
+                    </div>
+
+                    <div className="space-y-2">
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">Использовано / Всего</span>
+                        <span className="font-medium">
+                          {creditsBalance.creditsUsed} / {creditsBalance.creditsTotal}
+                        </span>
+                      </div>
+                      <Progress value={creditsBalance.progressPercentage} className="h-2" />
+                      <div className="flex justify-between text-xs text-muted-foreground">
+                        <span>{creditsBalance.creditsRemaining} генераций осталось</span>
+                        <span>{creditsBalance.progressPercentage}% использовано</span>
+                      </div>
+                    </div>
                   </div>
                 </CardContent>
               </Card>
