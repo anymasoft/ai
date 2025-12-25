@@ -4,7 +4,7 @@ import { DashboardLayout } from '@/components/layouts/dashboard-layout'
 import { ProtectedRoute } from '@/components/router/protected-route'
 import { ProtectedAdminRoute } from '@/components/router/protected-admin-route'
 
-const Dashboard = lazy(() => import('@/app/dashboard/page'))
+// const Dashboard = lazy(() => import('@/app/dashboard/page')) // TODO: Отключено - Overview не используется
 const Playground = lazy(() => import('@/app/playground/page'))
 const History = lazy(() => import('@/app/history/page'))
 const ApiPage = lazy(() => import('@/app/api/page'))
@@ -36,12 +36,12 @@ export const routes: RouteConfig[] = [
     children: [
       {
         path: "/",
-        element: <Navigate to="/dashboard" replace />
+        element: <Navigate to="/playground" replace />
       },
-      {
-        path: "/dashboard",
-        element: <ProtectedRoute><Dashboard /></ProtectedRoute>
-      },
+      // {
+      //   path: "/dashboard",
+      //   element: <ProtectedRoute><Dashboard /></ProtectedRoute>
+      // },
       {
         path: "/playground",
         element: <ProtectedRoute><Playground /></ProtectedRoute>
@@ -102,6 +102,6 @@ export const routes: RouteConfig[] = [
   },
   {
     path: "*",
-    element: <ProtectedRoute><Navigate to="/dashboard" replace /></ProtectedRoute>
+    element: <ProtectedRoute><Navigate to="/playground" replace /></ProtectedRoute>
   }
 ]

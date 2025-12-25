@@ -131,7 +131,7 @@ export default function PlaygroundPage() {
 
     // Validation
     if (!imageFile && !url) {
-      setValidationError("Please provide either an image or a URL")
+      setValidationError("Пожалуйста, предоставьте либо изображение, либо URL")
       return
     }
 
@@ -269,10 +269,10 @@ export default function PlaygroundPage() {
     try {
       await navigator.clipboard.writeText(code)
       setCopied(true)
-      toast.success("Code copied to clipboard")
+      toast.success("Код скопирован в буфер обмена")
       setTimeout(() => setCopied(false), 2000)
     } catch (err) {
-      toast.error("Failed to copy code")
+      toast.error("Не удалось скопировать код")
     }
   }
 
@@ -289,7 +289,7 @@ export default function PlaygroundPage() {
     a.click()
     document.body.removeChild(a)
     URL.revokeObjectURL(url)
-    toast.success("HTML file downloaded")
+    toast.success("HTML файл загружен")
   }
 
   const handleDownloadZIP = () => {
@@ -385,26 +385,26 @@ export default function PlaygroundPage() {
     a.click()
     document.body.removeChild(a)
     URL.revokeObjectURL(url)
-    toast.success("ZIP file downloaded")
+    toast.success("ZIP архив загружен")
   }
 
   return (
     <>
       <div className="px-4 lg:px-6">
         <div className="flex flex-col gap-2">
-          <h1 className="text-2xl font-bold tracking-tight">Playground</h1>
-          <p className="text-muted-foreground">Code generation workspace</p>
+          <h1 className="text-2xl font-bold tracking-tight">Генератор</h1>
+          <p className="text-muted-foreground">Рабочее пространство для создания кода</p>
         </div>
       </div>
       <div className="@container/main px-4 lg:px-6 space-y-6">
         {/* Input Form Card */}
         <Card className="p-6">
           <div className="space-y-4">
-            <h3 className="font-semibold">Generate Code</h3>
+            <h3 className="font-semibold">Генерировать код</h3>
 
             {/* Image Upload */}
             <div className="space-y-2">
-              <label className="text-sm font-medium">Upload Image</label>
+              <label className="text-sm font-medium">Загрузить изображение</label>
               <input
                 ref={fileInputRef}
                 type="file"
@@ -418,10 +418,10 @@ export default function PlaygroundPage() {
                 disabled={isStreaming || !!url}
                 className="w-full justify-start text-muted-foreground"
               >
-                {imageFile ? imageFile.name : "Choose image file"}
+                {imageFile ? imageFile.name : "Выберите файл изображения"}
               </Button>
               {url && (
-                <p className="text-xs text-muted-foreground/70">URL is used as source</p>
+                <p className="text-xs text-muted-foreground/70">URL используется в качестве источника</p>
               )}
               {imagePreview && (
                 <div className="mt-2 relative inline-block">
@@ -440,7 +440,7 @@ export default function PlaygroundPage() {
 
             {/* URL Input */}
             <div className="space-y-2">
-              <label className="text-sm font-medium">Or Enter URL</label>
+              <label className="text-sm font-medium">Или введите URL</label>
               <div className="flex gap-2">
                 <Input
                   type="url"
@@ -457,20 +457,20 @@ export default function PlaygroundPage() {
                     size="sm"
                     disabled={isStreaming}
                   >
-                    Clear
+                    Очистить
                   </Button>
                 )}
               </div>
               {imageFile && (
-                <p className="text-xs text-muted-foreground/70">Image is used as source</p>
+                <p className="text-xs text-muted-foreground/70">Изображение используется в качестве источника</p>
               )}
             </div>
 
             {/* Instructions */}
             <div className="space-y-2">
-              <label className="text-sm font-medium">Generation instructions</label>
+              <label className="text-sm font-medium">Инструкции для генерации</label>
               <Textarea
-                placeholder="E.g. focus on layout accuracy, keep Tailwind classes, avoid inline styles…"
+                placeholder="Например, сосредоточьтесь на точности макета, сохраняйте классы Tailwind, избегайте встроенных стилей…"
                 value={instructions}
                 onChange={(e) => setInstructions(e.target.value)}
                 disabled={isStreaming}
@@ -478,13 +478,13 @@ export default function PlaygroundPage() {
                 className="placeholder:text-muted-foreground/60"
               />
               <p className="text-xs text-muted-foreground/80">
-                Optional: describe what should be changed or emphasized in the generated code.
+                Опционально: опишите, что должно быть изменено или выделено в сгенерированном коде.
               </p>
             </div>
 
             {/* Format Selector */}
             <div className="space-y-2">
-              <label className="text-sm font-medium">Output format</label>
+              <label className="text-sm font-medium">Формат вывода</label>
               <Select value={selectedFormat} onValueChange={(value: any) => setSelectedFormat(value)}>
                 <SelectTrigger disabled={isStreaming}>
                   <SelectValue />
@@ -492,12 +492,12 @@ export default function PlaygroundPage() {
                 <SelectContent>
                   <SelectItem value="html_tailwind">
                     <div className="flex items-center gap-2">
-                      Static HTML (Tailwind)
+                      Статический HTML (Tailwind)
                     </div>
                   </SelectItem>
                   <SelectItem value="html_css">
                     <div className="flex items-center gap-2">
-                      Static HTML (CSS)
+                      Статический HTML (CSS)
                     </div>
                   </SelectItem>
                   <SelectItem value="react_tailwind">
@@ -510,7 +510,7 @@ export default function PlaygroundPage() {
                     <div className="flex items-center gap-2">
                       Vue + Tailwind
                       <Badge variant="secondary" className="ml-1">Pro</Badge>
-                      <Badge variant="outline" className="ml-1 text-xs">Beta</Badge>
+                      <Badge variant="outline" className="ml-1 text-xs">Бета</Badge>
                     </div>
                   </SelectItem>
                 </SelectContent>
@@ -532,7 +532,7 @@ export default function PlaygroundPage() {
                 className="gap-2"
               >
                 {isStreaming && <Loader2 size={16} className="animate-spin" />}
-                {isStreaming ? "Cancel" : "Generate"}
+                {isStreaming ? "Отменить" : "Генерировать"}
               </Button>
             </div>
           </div>
@@ -544,8 +544,8 @@ export default function PlaygroundPage() {
             <div className="flex items-center gap-3 text-muted-foreground">
               <Loader2 size={20} className="animate-spin" />
               <div>
-                <p className="font-medium">Generating code...</p>
-                <p className="text-sm">This may take a few moments</p>
+                <p className="font-medium">Генерирование кода...</p>
+                <p className="text-sm">Это может занять несколько минут</p>
               </div>
             </div>
           </Card>
@@ -558,17 +558,17 @@ export default function PlaygroundPage() {
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
                   <h3 className="font-semibold flex items-center gap-2">
-                    Result
+                    Результат
                     {isStreaming && (
                       <span className="text-muted-foreground flex items-center gap-1.5 text-sm font-normal">
                         <Loader2 size={14} className="animate-spin" />
-                        generating...
+                        генерирование...
                       </span>
                     )}
                   </h3>
                   <TabsList>
-                    <TabsTrigger value="preview">Preview</TabsTrigger>
-                    <TabsTrigger value="code">Code</TabsTrigger>
+                    <TabsTrigger value="preview">Предпросмотр</TabsTrigger>
+                    <TabsTrigger value="code">Код</TabsTrigger>
                   </TabsList>
                 </div>
 
@@ -599,7 +599,7 @@ export default function PlaygroundPage() {
                             {copied ? <Check size={16} /> : <Copy size={16} />}
                           </Button>
                         </TooltipTrigger>
-                        <TooltipContent>{copied ? "Copied!" : "Copy"}</TooltipContent>
+                        <TooltipContent>{copied ? "Скопировано!" : "Копировать"}</TooltipContent>
                       </Tooltip>
                       <Tooltip>
                         <TooltipTrigger asChild>
@@ -612,7 +612,7 @@ export default function PlaygroundPage() {
                             <Download size={16} />
                           </Button>
                         </TooltipTrigger>
-                        <TooltipContent>Download HTML</TooltipContent>
+                        <TooltipContent>Загрузить HTML</TooltipContent>
                       </Tooltip>
                       <Tooltip>
                         <TooltipTrigger asChild>
@@ -625,7 +625,7 @@ export default function PlaygroundPage() {
                             <FileArchive size={16} />
                           </Button>
                         </TooltipTrigger>
-                        <TooltipContent>Download ZIP</TooltipContent>
+                        <TooltipContent>Загрузить ZIP</TooltipContent>
                       </Tooltip>
                     </div>
                     {/* Code block */}
@@ -643,7 +643,7 @@ export default function PlaygroundPage() {
         {error && (
           <Card className="p-6 border-destructive">
             <div className="space-y-2">
-              <h3 className="font-semibold text-destructive">Error</h3>
+              <h3 className="font-semibold text-destructive">Ошибка</h3>
               <p className="text-sm text-muted-foreground">{error}</p>
             </div>
           </Card>

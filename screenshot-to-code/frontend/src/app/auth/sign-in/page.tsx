@@ -88,7 +88,7 @@ export function SignInPage() {
     popupCheckInterval.current = setInterval(() => {
       if (popup.closed) {
         setIsLoading(false)
-        setError('Sign in window was closed')
+        setError('Окно входа было закрыто')
         if (popupCheckInterval.current) {
           clearInterval(popupCheckInterval.current)
         }
@@ -100,8 +100,8 @@ export function SignInPage() {
     <div className="flex items-center justify-center min-h-screen bg-background">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
-          <CardTitle>Sign In</CardTitle>
-          <CardDescription>Sign in with your Google account</CardDescription>
+          <CardTitle>Вход</CardTitle>
+          <CardDescription>Войдите через Google аккаунт</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           {error && (
@@ -118,7 +118,7 @@ export function SignInPage() {
             {isLoading ? (
               <>
                 <div className="w-5 h-5 mr-2 border-2 border-gray-300 border-t-gray-600 rounded-full animate-spin" />
-                Signing in...
+                Вход в систему...
               </>
             ) : (
               <>
@@ -132,7 +132,7 @@ export function SignInPage() {
                     fill="currentColor"
                   />
                 </svg>
-                Continue with Google
+                Продолжить с Google
               </>
             )}
           </Button>

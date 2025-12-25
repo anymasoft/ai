@@ -17,10 +17,10 @@ import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
 
 const accountFormSchema = z.object({
-  firstName: z.string().min(1, "First name is required"),
-  lastName: z.string().min(1, "Last name is required"),
-  email: z.string().email("Invalid email address"),
-  username: z.string().min(3, "Username must be at least 3 characters"),
+  firstName: z.string().min(1, "Имя обязательно"),
+  lastName: z.string().min(1, "Фамилия обязательна"),
+  email: z.string().email("Неправильный адрес электронной почты"),
+  username: z.string().min(3, "Имя пользователя должно содержать как минимум 3 символа"),
   currentPassword: z.string().optional(),
   newPassword: z.string().optional(),
   confirmPassword: z.string().optional(),
@@ -51,9 +51,9 @@ export default function AccountSettings() {
     <>
       <div className="space-y-6 px-4 lg:px-6">
         <div>
-          <h1 className="text-3xl font-bold">Account Settings</h1>
+          <h1 className="text-3xl font-bold">Настройки аккаунта</h1>
           <p className="text-muted-foreground">
-            Manage your account settings and preferences.
+            Управляйте параметрами и предпочтениями вашего аккаунта.
           </p>
         </div>
 
@@ -61,9 +61,9 @@ export default function AccountSettings() {
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
             <Card>
               <CardHeader>
-                <CardTitle>Personal Information</CardTitle>
+                <CardTitle>Личная информация</CardTitle>
                 <CardDescription>
-                  Update your personal information that will be displayed on your profile.
+                  Обновите вашу личную информацию, которая будет отображаться в вашем профиле.
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
@@ -73,9 +73,9 @@ export default function AccountSettings() {
                     name="firstName"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>First Name</FormLabel>
+                        <FormLabel>Имя</FormLabel>
                         <FormControl>
-                          <Input placeholder="Enter your first name" {...field} />
+                          <Input placeholder="Введите ваше имя" {...field} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -86,9 +86,9 @@ export default function AccountSettings() {
                     name="lastName"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Last Name</FormLabel>
+                        <FormLabel>Фамилия</FormLabel>
                         <FormControl>
-                          <Input placeholder="Enter your last name" {...field} />
+                          <Input placeholder="Введите вашу фамилию" {...field} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -100,9 +100,9 @@ export default function AccountSettings() {
                   name="email"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Email Address</FormLabel>
+                      <FormLabel>Адрес электронной почты</FormLabel>
                       <FormControl>
-                        <Input type="email" placeholder="Enter your email" {...field} />
+                        <Input type="email" placeholder="Введите вашу электронную почту" {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -113,9 +113,9 @@ export default function AccountSettings() {
                   name="username"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Username</FormLabel>
+                      <FormLabel>Имя пользователя</FormLabel>
                       <FormControl>
-                        <Input placeholder="Enter your username" {...field} />
+                        <Input placeholder="Введите имя пользователя" {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -126,9 +126,9 @@ export default function AccountSettings() {
 
             <Card>
               <CardHeader>
-                <CardTitle>Change Password</CardTitle>
+                <CardTitle>Изменить пароль</CardTitle>
                 <CardDescription>
-                  Update your password to keep your account secure.
+                  Обновите свой пароль, чтобы защитить свой аккаунт.
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
@@ -137,9 +137,9 @@ export default function AccountSettings() {
                   name="currentPassword"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Current Password</FormLabel>
+                      <FormLabel>Текущий пароль</FormLabel>
                       <FormControl>
-                        <Input type="password" placeholder="Enter current password" {...field} />
+                        <Input type="password" placeholder="Введите текущий пароль" {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -150,9 +150,9 @@ export default function AccountSettings() {
                   name="newPassword"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>New Password</FormLabel>
+                      <FormLabel>Новый пароль</FormLabel>
                       <FormControl>
-                        <Input type="password" placeholder="Enter new password" {...field} />
+                        <Input type="password" placeholder="Введите новый пароль" {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -163,9 +163,9 @@ export default function AccountSettings() {
                   name="confirmPassword"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Confirm New Password</FormLabel>
+                      <FormLabel>Подтвердите новый пароль</FormLabel>
                       <FormControl>
-                        <Input type="password" placeholder="Confirm new password" {...field} />
+                        <Input type="password" placeholder="Подтвердите новый пароль" {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -176,30 +176,30 @@ export default function AccountSettings() {
 
             <Card>
               <CardHeader>
-                <CardTitle>Danger Zone</CardTitle>
+                <CardTitle>Опасная зона</CardTitle>
                 <CardDescription>
-                  Irreversible and destructive actions.
+                  Необратимые и деструктивные действия.
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <Separator />
                 <div className="flex flex-wrap gap-2 items-center justify-between">
                   <div>
-                    <h4 className="font-semibold">Delete Account</h4>
+                    <h4 className="font-semibold">Удалить аккаунт</h4>
                     <p className="text-sm text-muted-foreground">
-                      Permanently delete your account and all associated data.
+                      Навсегда удалите свой аккаунт и все связанные данные.
                     </p>
                   </div>
                   <Button variant="destructive" type="button" className="cursor-pointer">
-                    Delete Account
+                    Удалить аккаунт
                   </Button>
                 </div>
               </CardContent>
             </Card>
 
             <div className="flex space-x-2">
-              <Button type="submit" className="cursor-pointer">Save Changes</Button>
-              <Button variant="outline" type="reset" className="cursor-pointer">Cancel</Button>
+              <Button type="submit" className="cursor-pointer">Сохранить изменения</Button>
+              <Button variant="outline" type="reset" className="cursor-pointer">Отменить</Button>
             </div>
           </form>
         </Form>

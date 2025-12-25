@@ -502,8 +502,44 @@ def update_user_plan(user_id: str, plan: str) -> bool:
         conn.close()
 
 
+def cleanup_old_pending_payments(user_id: Optional[str] = None) -> None:
+    """Автоматически отменяет платежи старше 24 часов со статусом 'pending'."""
+    from datetime import datetime, timedelta
+
+    conn = get_conn()
+    cursor = conn.cursor()
+
+    try:
+        cutoff_time = (datetime.utcnow() - timedelta(hours=24)).isoformat()
+
+        if user_id:
+            cursor.execute(
+                """
+                UPDATE payments
+                SET status = 'canceled'
+                WHERE user_id = ? AND status = 'pending' AND created_at < ?
+                """,
+                (user_id, cutoff_time),
+            )
+        else:
+            cursor.execute(
+                """
+                UPDATE payments
+                SET status = 'canceled'
+                WHERE status = 'pending' AND created_at < ?
+                """,
+                (cutoff_time,),
+            )
+        conn.commit()
+    finally:
+        conn.close()
+
+
 def get_payments_list(user_id: Optional[str] = None, limit: int = 50) -> list:
     """Get list of payments (admin view)."""
+
+    # Сначала очистим старые pending платежи
+    cleanup_old_pending_payments(user_id)
 
     conn = get_conn()
     cursor = conn.cursor()
