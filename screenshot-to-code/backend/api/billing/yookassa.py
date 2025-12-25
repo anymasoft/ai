@@ -39,9 +39,18 @@ PACKAGES = {
 }
 
 # Initialize YooKassa client (if available)
+print(f"[BILLING] YOOKASSA_AVAILABLE: {YOOKASSA_AVAILABLE}")
+print(f"[BILLING] YOOKASSA_SHOP_ID set: {bool(YOOKASSA_SHOP_ID)}")
+print(f"[BILLING] YOOKASSA_SECRET_KEY set: {bool(YOOKASSA_SECRET_KEY)}")
+
 if YOOKASSA_AVAILABLE and YOOKASSA_SHOP_ID and YOOKASSA_SECRET_KEY:
-    Client.auth(YOOKASSA_SHOP_ID, YOOKASSA_SECRET_KEY)
-    print(f"[BILLING] YooKassa initialized with shop_id: {YOOKASSA_SHOP_ID}")
+    try:
+        Client.auth(YOOKASSA_SHOP_ID, YOOKASSA_SECRET_KEY)
+        print(f"[BILLING] ✓ YooKassa initialized with shop_id: {YOOKASSA_SHOP_ID}")
+    except Exception as e:
+        print(f"[BILLING] ✗ Error initializing YooKassa: {e}")
+        import traceback
+        traceback.print_exc()
 else:
     print(
         "[BILLING] WARNING: YooKassa not configured. Set YOOKASSA_SHOP_ID and YOOKASSA_SECRET_KEY"
@@ -73,14 +82,17 @@ def create_payment(
         or None if failed
     """
 
+    print(f"[BILLING] create_payment called: user={user_id}, package={package}")
+
     if package not in PACKAGES:
-        print(f"[BILLING] Invalid package: {package}")
+        print(f"[BILLING] ✗ Invalid package: {package}")
         return None
 
     if not YOOKASSA_AVAILABLE:
-        print("[BILLING] YooKassa SDK not available")
+        print("[BILLING] ✗ YooKassa SDK not available")
         return None
 
+    print(f"[BILLING] ✓ YooKassa SDK available, creating payment...")
     package_info = PACKAGES[package]
 
     try:
@@ -134,6 +146,7 @@ def create_payment(
             status="pending",
         )
 
+        print(f"[BILLING] ✓ Payment created: payment_id={payment.id}, confirmation_url={payment.confirmation.confirmation_url}")
         return {
             "payment_id": payment.id,
             "confirmation_url": payment.confirmation.confirmation_url,
@@ -142,6 +155,8 @@ def create_payment(
 
     except Exception as e:
         print(f"[BILLING] Error creating payment: {e}")
+        import traceback
+        traceback.print_exc()
         return None
 
 
