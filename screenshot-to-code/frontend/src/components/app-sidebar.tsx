@@ -11,12 +11,14 @@ import {
   Settings,
   MessageSquare,
   Tag,
+  ArrowRight,
 } from "lucide-react"
 import { Link } from "react-router-dom"
 import { Logo } from "@/components/logo"
 import { useUnreadCount } from "@/hooks/useUnreadCount"
 import { useAuthStore } from "@/store/auth"
 import { useAdminStore } from "@/store/admin"
+import { Button } from "@/components/ui/button"
 
 import { NavMain } from "@/components/nav-main"
 import { NavUser } from "@/components/nav-user"
@@ -35,11 +37,6 @@ const getNavData = (unreadCount: number, email: string | null, isAdmin: boolean)
     {
       label: "Основное",
       items: [
-        {
-          title: "Сайт из скриншота",
-          url: "/playground",
-          icon: Code2,
-        },
         {
           title: "История",
           url: "/history",
@@ -116,6 +113,11 @@ const getNavData = (unreadCount: number, email: string | null, isAdmin: boolean)
   }
 
   return {
+    primaryAction: {
+      title: "Сайт из скриншота",
+      url: "/playground",
+      icon: Code2,
+    },
     user: {
       name: email ? email.split("@")[0] : "Пользователь",
       email: email || "не авторизирован",
@@ -149,6 +151,21 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>
+
+        {/* Primary Action - Сайт из скриншота */}
+        <div className="px-2 pt-2">
+          <Button
+            asChild
+            size="lg"
+            className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-semibold gap-2"
+          >
+            <Link to={data.primaryAction.url}>
+              <data.primaryAction.icon className="h-4 w-4" />
+              <span>{data.primaryAction.title}</span>
+              <ArrowRight className="h-4 w-4 ml-auto" />
+            </Link>
+          </Button>
+        </div>
       </SidebarHeader>
       <SidebarContent>
         {data.navGroups.map((group) => (
