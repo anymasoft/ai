@@ -8,7 +8,6 @@ import {
   Users,
   DollarSign,
   CreditCard,
-  Settings,
   MessageSquare,
   Tag,
   ArrowRight,
@@ -72,11 +71,6 @@ const getNavData = (unreadCount: number, email: string | null, isAdmin: boolean)
         title: "Тарифы",
         url: "/settings/billing",
         icon: CreditCard,
-      },
-      {
-        title: "Настройки",
-        url: "/settings/account",
-        icon: Settings,
       },
     ],
   })
