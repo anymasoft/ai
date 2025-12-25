@@ -2,7 +2,6 @@
 
 from fastapi import APIRouter, HTTPException, status, Depends
 from api.admin_auth import get_admin_user
-from api.config.plans import get_plan_limit
 from api.billing.yookassa import PACKAGES
 import sqlite3
 from pydantic import BaseModel
