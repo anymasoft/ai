@@ -306,7 +306,7 @@ async def get_billing_usage(user: dict = Depends(get_current_user)):
     """
     Get billing usage information for authenticated user.
 
-    Returns current plan, used generations, and limits.
+    Returns current plan based on credits balance.
 
     Args:
         user: Current session data from cookies
@@ -324,47 +324,52 @@ async def get_billing_usage(user: dict = Depends(get_current_user)):
     if not user_id:
         raise HTTPException(status_code=401, detail="User ID not found in session")
 
-    # Get user info from database
-    from db.sqlite import get_conn
+    # Get current credits balance
+    current_credits = get_user_credits(user_id)
 
-    conn = get_conn()
-    cursor = conn.cursor()
+    # Determine plan based on credits balance
+    # If user has any credits, they have purchased a plan
+    if current_credits > 0:
+        # Get the last successful payment to determine which plan
+        from db.sqlite import get_conn
 
-    try:
-        cursor.execute(
-            """
-            SELECT plan, used_generations
-            FROM users
-            WHERE id = ?
-            """,
-            (user_id,),
-        )
-        row = cursor.fetchone()
-        if not row:
-            raise HTTPException(status_code=404, detail="User not found")
+        conn = get_conn()
+        cursor = conn.cursor()
 
-        plan = row[0] or "free"
-        used = row[1] or 0
+        try:
+            cursor.execute(
+                """
+                SELECT package, credits_amount
+                FROM payments
+                WHERE user_id = ? AND status = 'succeeded'
+                ORDER BY completed_at DESC LIMIT 1
+                """,
+                (user_id,),
+            )
+            payment = cursor.fetchone()
 
-        # Define limits per plan
-        plan_limits = {
-            "free": 3,
-            "basic": 100,
-            "professional": 500,
-        }
+            if payment:
+                package = payment[0]  # basic or professional
+                plan = package  # Use package as plan
+            else:
+                # Shouldn't happen, but fallback to free
+                plan = "free"
+        finally:
+            conn.close()
+    else:
+        plan = "free"
 
-        limit = plan_limits.get(plan, 3)
-        remaining = max(0, limit - used)
+    # For credits-based system:
+    # - limit = current_credits (available generations)
+    # - used = 0 (we track by remaining credits, not usage)
+    # - remaining = current_credits
 
-        return BillingUsageResponse(
-            plan=plan,
-            used=used,
-            limit=limit,
-            remaining=remaining,
-        )
-
-    finally:
-        conn.close()
+    return BillingUsageResponse(
+        plan=plan,
+        used=0,
+        limit=current_credits if current_credits > 0 else 3,  # 3 is free plan limit
+        remaining=current_credits if current_credits > 0 else 3,
+    )
 
 
 @router.get("/api/billing/balance")

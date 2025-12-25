@@ -81,7 +81,7 @@ export default function BillingReturn() {
   }, [paymentId, polling])
 
   const handleContinue = () => {
-    navigate("/playground")
+    navigate("/settings/billing")
   }
 
   return (
