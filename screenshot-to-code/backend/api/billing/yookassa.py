@@ -4,14 +4,8 @@ import os
 import uuid
 from typing import Optional
 import json
-
-# Try to import yookassa, if not installed, will fail gracefully
-try:
-    from yookassa import Client, Payment
-    YOOKASSA_AVAILABLE = True
-except ImportError:
-    YOOKASSA_AVAILABLE = False
-    print("[BILLING] WARNING: yookassa not installed. Install with: pip install yookassa")
+import base64
+import httpx
 
 from db.sqlite import get_conn
 
@@ -20,7 +14,7 @@ from db.sqlite import get_conn
 # ===========================
 
 YOOKASSA_SHOP_ID = os.environ.get("YOOKASSA_SHOP_ID", "")
-YOOKASSA_SECRET_KEY = os.environ.get("YOOKASSA_SECRET_KEY", "")
+YOOKASSA_API_KEY = os.environ.get("YOOKASSA_API_KEY", "")
 
 # Pricing packages (in kopeks - 100 kopek = 1 ruble)
 PACKAGES = {
@@ -38,13 +32,15 @@ PACKAGES = {
     },
 }
 
-# Initialize YooKassa client (if available)
-if YOOKASSA_AVAILABLE and YOOKASSA_SHOP_ID and YOOKASSA_SECRET_KEY:
-    Client.auth(YOOKASSA_SHOP_ID, YOOKASSA_SECRET_KEY)
-    print(f"[BILLING] YooKassa initialized with shop_id: {YOOKASSA_SHOP_ID}")
+# Initialize YooKassa configuration
+print(f"[BILLING] YOOKASSA_SHOP_ID set: {bool(YOOKASSA_SHOP_ID)}")
+print(f"[BILLING] YOOKASSA_API_KEY set: {bool(YOOKASSA_API_KEY)}")
+
+if YOOKASSA_SHOP_ID and YOOKASSA_API_KEY:
+    print(f"[BILLING] ✓ YooKassa configured with shop_id: {YOOKASSA_SHOP_ID}")
 else:
     print(
-        "[BILLING] WARNING: YooKassa not configured. Set YOOKASSA_SHOP_ID and YOOKASSA_SECRET_KEY"
+        "[BILLING] WARNING: YooKassa not configured. Set YOOKASSA_SHOP_ID and YOOKASSA_API_KEY"
     )
 
 
@@ -57,7 +53,7 @@ def create_payment(
     user_id: str, package: str, return_url: str
 ) -> Optional[dict]:
     """
-    Create a payment in YooKassa for a credits package.
+    Create a payment in YooKassa for a credits package using HTTP API.
 
     Args:
         user_id: User ID
@@ -73,55 +69,71 @@ def create_payment(
         or None if failed
     """
 
+    print(f"[BILLING] create_payment called: user={user_id}, package={package}")
+
     if package not in PACKAGES:
-        print(f"[BILLING] Invalid package: {package}")
+        print(f"[BILLING] ✗ Invalid package: {package}")
         return None
 
-    if not YOOKASSA_AVAILABLE:
-        print("[BILLING] YooKassa SDK not available")
+    if not YOOKASSA_SHOP_ID or not YOOKASSA_API_KEY:
+        print("[BILLING] ✗ YooKassa not configured. Set YOOKASSA_SHOP_ID and YOOKASSA_API_KEY")
         return None
 
+    print(f"[BILLING] ✓ YooKassa configured, creating payment...")
     package_info = PACKAGES[package]
+    db_payment_id = str(uuid.uuid4())
 
     try:
-        # Generate unique IDs
-        payment_id = f"py_{uuid.uuid4().hex[:12]}"  # YooKassa internal
-        db_payment_id = str(uuid.uuid4())  # Our DB reference
+        # Prepare payment request
+        amount_rubles = f"{package_info['price_kopeks'] / 100:.2f}"
 
-        # Create payment
-        payment = Payment.create(
-            {
-                "amount": {
-                    "value": f"{package_info['price_kopeks'] / 100:.2f}",
-                    "currency": "RUB",
-                },
-                "confirmation": {
-                    "type": "redirect",
-                    "return_url": f"{return_url}?payment_id={db_payment_id}",
-                },
-                "receipt": {
-                    "customer": {"email": user_id},
-                    "items": [
-                        {
-                            "description": f"{package_info['description']} ({package_info['credits']} credits)",
-                            "quantity": 1,
-                            "amount": {
-                                "value": f"{package_info['price_kopeks'] / 100:.2f}",
-                                "currency": "RUB",
-                            },
-                            "vat_code": 1,  # No VAT
-                        }
-                    ],
-                },
-                "metadata": {
-                    "user_id": user_id,
-                    "package": package,
-                    "credits": str(package_info["credits"]),
-                },
-                "description": f"Покупка пакета {package_info['name']}: {package_info['credits']} генераций",
+        payment_request = {
+            "amount": {
+                "value": amount_rubles,
+                "currency": "RUB",
             },
-            uuid.uuid4()  # idempotency_key
-        )
+            "confirmation": {
+                "type": "redirect",
+                "return_url": f"{return_url}?payment_id={db_payment_id}",
+            },
+            "capture": True,
+            "description": f"Покупка пакета {package_info['name']}: {package_info['credits']} генераций - {user_id}",
+            "metadata": {
+                "user_id": user_id,
+                "package": package,
+                "credits": str(package_info["credits"]),
+            },
+        }
+
+        # Make HTTP request to YooKassa API
+        yookassa_url = "https://api.yookassa.ru/v3/payments"
+        auth_string = f"{YOOKASSA_SHOP_ID}:{YOOKASSA_API_KEY}"
+        auth_bytes = auth_string.encode('utf-8')
+        auth_base64 = base64.b64encode(auth_bytes).decode('utf-8')
+
+        headers = {
+            "Content-Type": "application/json",
+            "Authorization": f"Basic {auth_base64}",
+            "Idempotence-Key": f"{db_payment_id}",
+        }
+
+        print(f"[BILLING] Sending request to YooKassa: {yookassa_url}")
+        response = httpx.post(yookassa_url, json=payment_request, headers=headers, timeout=10.0)
+
+        if response.status_code != 200:
+            error_data = response.json()
+            print(f"[BILLING] ✗ YooKassa API error ({response.status_code}): {error_data}")
+            return None
+
+        payment_data = response.json()
+
+        # Validate response
+        if not payment_data.get("id") or not payment_data.get("confirmation", {}).get("confirmation_url"):
+            print(f"[BILLING] ✗ Invalid response from YooKassa: {payment_data}")
+            return None
+
+        payment_id = payment_data["id"]
+        confirmation_url = payment_data["confirmation"]["confirmation_url"]
 
         # Save payment to DB
         _save_payment_to_db(
@@ -130,18 +142,21 @@ def create_payment(
             package=package,
             credits_amount=package_info["credits"],
             amount_cents=package_info["price_kopeks"],
-            payment_id=payment.id,
+            payment_id=payment_id,
             status="pending",
         )
 
+        print(f"[BILLING] ✓ Payment created: {payment_id}, URL: {confirmation_url}")
         return {
-            "payment_id": payment.id,
-            "confirmation_url": payment.confirmation.confirmation_url,
+            "payment_id": payment_id,
+            "confirmation_url": confirmation_url,
             "db_payment_id": db_payment_id,
         }
 
     except Exception as e:
-        print(f"[BILLING] Error creating payment: {e}")
+        print(f"[BILLING] ✗ Error creating payment: {e}")
+        import traceback
+        traceback.print_exc()
         return None
 
 
@@ -152,7 +167,7 @@ def create_payment(
 
 def check_payment_status(payment_id: str) -> Optional[dict]:
     """
-    Check payment status in YooKassa.
+    Check payment status in YooKassa using HTTP API.
 
     Args:
         payment_id: YooKassa payment ID
@@ -160,29 +175,48 @@ def check_payment_status(payment_id: str) -> Optional[dict]:
     Returns:
         {
             'status': 'pending' | 'succeeded' | 'canceled',
-            'payment_id': str
+            'payment_id': str,
+            'amount': str,
+            'created_at': str
         }
         or None if not found
     """
 
-    if not YOOKASSA_AVAILABLE:
-        print("[BILLING] YooKassa SDK not available")
+    if not YOOKASSA_SHOP_ID or not YOOKASSA_API_KEY:
+        print("[BILLING] YooKassa not configured")
         return None
 
     try:
-        payment = Payment.find_one(payment_id)
-        if not payment:
+        # Make HTTP request to YooKassa API
+        yookassa_url = f"https://api.yookassa.ru/v3/payments/{payment_id}"
+        auth_string = f"{YOOKASSA_SHOP_ID}:{YOOKASSA_API_KEY}"
+        auth_bytes = auth_string.encode('utf-8')
+        auth_base64 = base64.b64encode(auth_bytes).decode('utf-8')
+
+        headers = {
+            "Authorization": f"Basic {auth_base64}",
+        }
+
+        print(f"[BILLING] Checking payment status: {payment_id}")
+        response = httpx.get(yookassa_url, headers=headers, timeout=10.0)
+
+        if response.status_code != 200:
+            print(f"[BILLING] Payment not found or error: {response.status_code}")
             return None
 
+        payment_data = response.json()
+
         return {
-            "status": payment.status,  # pending, succeeded, canceled
-            "payment_id": payment.id,
-            "amount": payment.amount.value,
-            "created_at": payment.created_at,
+            "status": payment_data.get("status"),  # pending, succeeded, canceled
+            "payment_id": payment_data.get("id"),
+            "amount": payment_data.get("amount", {}).get("value"),
+            "created_at": payment_data.get("created_at"),
         }
 
     except Exception as e:
-        print(f"[BILLING] Error checking payment: {e}")
+        print(f"[BILLING] ✗ Error checking payment: {e}")
+        import traceback
+        traceback.print_exc()
         return None
 
 
