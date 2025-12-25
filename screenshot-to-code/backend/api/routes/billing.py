@@ -14,6 +14,7 @@ from api.billing.yookassa import (
     deduct_credits,
     get_user_credits,
     get_user_plan,
+    update_user_plan,
     get_payment_by_db_id,
     update_payment_status,
     get_payments_list,
@@ -244,6 +245,8 @@ async def payment_status(
             if success:
                 print(f"[BILLING] credits added successfully, marking payment as succeeded")
                 update_payment_status(payment_id, "succeeded")
+                # Update user's plan in users table (SINGLE SOURCE OF TRUTH)
+                update_user_plan(user_id, payment["package"])
                 return PaymentStatusResponse(
                     status="succeeded",
                     credits=payment["credits_amount"],
@@ -324,7 +327,7 @@ async def get_billing_usage(user: dict = Depends(get_current_user)):
     Get billing usage information for authenticated user.
 
     Returns:
-    - plan: "free", "basic", или "professional" (determined by last successful payment)
+    - plan: "free", "basic", или "professional" (from users.plan in database - SINGLE SOURCE OF TRUTH)
     - credits: current credits balance from users table
 
     Args:
@@ -343,10 +346,8 @@ async def get_billing_usage(user: dict = Depends(get_current_user)):
     if not user_id:
         raise HTTPException(status_code=401, detail="User ID not found in session")
 
-    # Get current credits balance - ONLY SOURCE OF TRUTH
+    # Get current credits balance and plan from database - SINGLE SOURCE OF TRUTH
     current_credits = get_user_credits(user_id)
-
-    # Get plan from last successful payment
     user_plan = get_user_plan(user_id)
 
     print(f"[BILLING] GET /api/billing/usage user_id={user_id}, plan={user_plan}, credits={current_credits}")
