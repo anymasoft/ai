@@ -7,7 +7,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from api.models.requests import GenerateRequest
 from api.models.responses import GenerateResponse
 from api.auth import get_api_key
-from api.credits import get_format_cost, check_credits, deduct_credits
+from api.credits import get_format_cost, deduct_credits_atomic
 
 router = APIRouter()
 
@@ -85,25 +85,24 @@ async def generate_code(
     # 2. Calculate cost
     cost = get_format_cost(request.format)
 
-    # 3. Check credits availability
-    api_key_id = api_key_info["id"]
-    check_credits(api_key_id, cost)
-
-    # 4. Generate ID
+    # 3. Generate ID first (before deducting credits)
     generation_id = create_generation_id()
 
-    # 5. Deduct credits IMMEDIATELY
-    deduct_credits(api_key_id, cost)
+    # 4. Atomically check and deduct credits in ONE operation
+    # This prevents race conditions where multiple concurrent requests
+    # could bypass the credit check
+    api_key_id = api_key_info["id"]
+    deduct_credits_atomic(api_key_id, cost)
 
-    # 6. Save generation record
+    # 5. Save generation record
     save_generation(generation_id, api_key_id, request, cost)
 
-    # 7. Trigger actual generation in background
+    # 6. Trigger actual generation in background
     from api.generation_service import trigger_generation
     import asyncio
     asyncio.create_task(trigger_generation(generation_id))
 
-    # 8. Build stream URL
+    # 7. Build stream URL
     # Backend runs on port 7001
     stream_url = f"ws://127.0.0.1:7001/api/stream/{generation_id}"
 
