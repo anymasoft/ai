@@ -202,7 +202,7 @@ async def payment_status(
             },
         )
 
-    print(f"[BILLING] found payment in DB: {payment}")
+    print(f"[BILLING] found payment in DB: id={payment['id']}, user_id={payment['user_id']}, status={payment['status']}, package={payment['package']}")
 
     # Verify payment belongs to this user
     if payment["user_id"] != user_id:
@@ -246,7 +246,9 @@ async def payment_status(
                 print(f"[BILLING] credits added successfully, marking payment as succeeded")
                 update_payment_status(payment_id, "succeeded")
                 # Update user's plan in users table (SINGLE SOURCE OF TRUTH)
-                update_user_plan(user_id, payment["package"])
+                print(f"[BILLING] updating user {user_id} plan to {payment['package']}")
+                plan_updated = update_user_plan(user_id, payment["package"])
+                print(f"[BILLING] plan update result: {plan_updated}")
                 return PaymentStatusResponse(
                     status="succeeded",
                     credits=payment["credits_amount"],
@@ -350,12 +352,16 @@ async def get_billing_usage(user: dict = Depends(get_current_user)):
     current_credits = get_user_credits(user_id)
     user_plan = get_user_plan(user_id)
 
-    print(f"[BILLING] GET /api/billing/usage user_id={user_id}, plan={user_plan}, credits={current_credits}")
+    print(f"[BILLING] GET /api/billing/usage user_id={user_id}")
+    print(f"[BILLING]   - Reading plan from users.plan: {user_plan}")
+    print(f"[BILLING]   - Reading credits from users.credits: {current_credits}")
 
-    return BillingUsageResponse(
+    response = BillingUsageResponse(
         plan=user_plan,
         credits=current_credits,
     )
+    print(f"[BILLING]   - Returning response: plan={response.plan}, credits={response.credits}")
+    return response
 
 
 @router.get("/api/billing/balance")
