@@ -409,12 +409,9 @@ def get_user_credits(user_id: str) -> int:
 
 def get_user_plan(user_id: str) -> str:
     """
-    Определить тариф пользователя по последнему успешному платежу.
+    Get user's plan from users table (SINGLE SOURCE OF TRUTH).
 
-    Правило:
-    - Если нет успешных платежей → "free"
-    - Если последний успешный платёж package="basic" → "basic"
-    - Если последний успешный платёж package="professional" → "professional"
+    Plan is updated in users.plan whenever a successful payment is made.
 
     Args:
         user_id: User ID
@@ -427,22 +424,54 @@ def get_user_plan(user_id: str) -> str:
     cursor = conn.cursor()
 
     try:
-        # Получить последний успешный платёж
         cursor.execute(
-            """
-            SELECT package FROM payments
-            WHERE user_id = ? AND status = 'succeeded'
-            ORDER BY created_at DESC
-            LIMIT 1
-            """,
+            "SELECT plan FROM users WHERE id = ?",
             (user_id,),
         )
         row = cursor.fetchone()
 
-        if row:
-            return row[0]  # Возвращаем package ("basic" или "professional")
+        if row and row[0]:
+            return row[0]  # Возвращаем plan из users таблицы
         else:
-            return "free"  # Нет успешных платежей
+            return "free"  # Default is free
+    finally:
+        conn.close()
+
+
+def update_user_plan(user_id: str, plan: str) -> bool:
+    """
+    Update user's plan in users table.
+
+    This is the SINGLE SOURCE OF TRUTH for user plans.
+    Should be called whenever a successful payment is made.
+
+    Args:
+        user_id: User ID
+        plan: Plan name ("free", "basic", "professional")
+
+    Returns:
+        True if successful
+    """
+
+    conn = get_conn()
+    cursor = conn.cursor()
+
+    try:
+        cursor.execute(
+            """
+            UPDATE users SET plan = ?, updated_at = datetime('now')
+            WHERE id = ?
+            """,
+            (plan, user_id),
+        )
+        conn.commit()
+
+        print(f"[BILLING] Updated user {user_id} plan to {plan}")
+        return True
+
+    except Exception as e:
+        print(f"[BILLING] Error updating user plan: {e}")
+        return False
     finally:
         conn.close()
 
