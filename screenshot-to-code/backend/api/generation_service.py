@@ -64,7 +64,7 @@ class DatabaseWebSocket:
 
     def _store_chunk(self, chunk_data: str) -> None:
         """Store chunk with index in database."""
-        conn = sqlite3.connect(self.db_path)
+        conn = get_api_conn()
         cursor = conn.cursor()
 
         try:
@@ -92,7 +92,7 @@ class DatabaseWebSocket:
         model_used: Optional[str] = None,
     ) -> None:
         """Update generation in API database."""
-        conn = sqlite3.connect(self.db_path)
+        conn = get_api_conn()
         cursor = conn.cursor()
 
         try:
@@ -213,7 +213,7 @@ async def trigger_generation(generation_id: str) -> None:
 
         # Update generation record to "failed"
         try:
-            conn = sqlite3.connect(str(get_db_path()))
+            conn = get_api_conn()
             cursor = conn.cursor()
 
             error_message = f"Generation failed: {str(e)}"

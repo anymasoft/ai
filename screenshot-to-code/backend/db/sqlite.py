@@ -20,7 +20,7 @@ def get_db_path() -> Path:
 def get_conn() -> sqlite3.Connection:
     """Get a connection to the SQLite database (for UI generations)."""
     DB_DIR.mkdir(exist_ok=True)
-    conn = sqlite3.connect(str(DB_PATH))
+    conn = sqlite3.connect(str(DB_PATH), timeout=30.0, check_same_thread=False)
     conn.row_factory = sqlite3.Row
     return conn
 
@@ -31,7 +31,7 @@ def get_api_conn() -> sqlite3.Connection:
     SAME DATABASE as get_conn(), just a semantic alias for API code.
     """
     DB_DIR.mkdir(exist_ok=True)
-    conn = sqlite3.connect(str(DB_PATH))
+    conn = sqlite3.connect(str(DB_PATH), timeout=30.0, check_same_thread=False)
     conn.row_factory = sqlite3.Row
     return conn
 

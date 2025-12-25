@@ -20,7 +20,7 @@ def get_format_cost(format: str) -> int:
 
 def deduct_credits_atomic(user_id: str, required: int) -> None:
     """
-    Atomically check and deduct credits from users table.
+    Atomically check and deduct credits from users table with retry logic.
 
     This prevents race conditions where multiple concurrent requests could
     bypass the credit check.
@@ -34,54 +34,81 @@ def deduct_credits_atomic(user_id: str, required: int) -> None:
 
     Raises HTTPException if user not found (404) or insufficient credits (402).
     """
-    conn = get_api_conn()
-    cursor = conn.cursor()
+    import time
+    import sqlite3
 
-    # ATOMIC operation: UPDATE only if enough credits available
-    cursor.execute(
-        """
-        UPDATE users
-        SET credits = credits - ?
-        WHERE id = ? AND credits >= ?
-        """,
-        (required, user_id, required),
-    )
+    max_retries = 3
+    retry_delay = 0.1  # 100ms
 
-    conn.commit()
+    for attempt in range(max_retries):
+        try:
+            conn = get_api_conn()
+            cursor = conn.cursor()
 
-    # Check if the UPDATE was successful
-    if cursor.rowcount == 0:
-        # UPDATE failed - either user not found or insufficient credits
-        # Do a SELECT to provide detailed error message
-        cursor.execute(
-            """
-            SELECT credits
-            FROM users
-            WHERE id = ?
-            """,
-            (user_id,),
-        )
-
-        row = cursor.fetchone()
-        conn.close()
-
-        if not row:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail={"error": "not_found", "message": "User not found"},
+            # ATOMIC operation: UPDATE only if enough credits available
+            cursor.execute(
+                """
+                UPDATE users
+                SET credits = credits - ?
+                WHERE id = ? AND credits >= ?
+                """,
+                (required, user_id, required),
             )
 
-        available = row[0]
+            conn.commit()
 
-        raise HTTPException(
-            status_code=status.HTTP_402_PAYMENT_REQUIRED,
-            detail={
-                "error": "insufficient_credits",
-                "message": f"Required: {required}, Available: {available}",
-            },
-        )
+            # Check if the UPDATE was successful
+            if cursor.rowcount == 0:
+                # UPDATE failed - either user not found or insufficient credits
+                # Do a SELECT to provide detailed error message
+                cursor.execute(
+                    """
+                    SELECT credits
+                    FROM users
+                    WHERE id = ?
+                    """,
+                    (user_id,),
+                )
 
-    conn.close()
+                row = cursor.fetchone()
+                conn.close()
+
+                if not row:
+                    raise HTTPException(
+                        status_code=status.HTTP_404_NOT_FOUND,
+                        detail={"error": "not_found", "message": "User not found"},
+                    )
+
+                available = row[0]
+
+                raise HTTPException(
+                    status_code=status.HTTP_402_PAYMENT_REQUIRED,
+                    detail={
+                        "error": "insufficient_credits",
+                        "message": f"Required: {required}, Available: {available}",
+                    },
+                )
+
+            conn.close()
+            return
+
+        except sqlite3.OperationalError as e:
+            if "database is locked" in str(e) and attempt < max_retries - 1:
+                conn.rollback()
+                conn.close()
+                time.sleep(retry_delay * (attempt + 1))
+                continue
+            else:
+                conn.rollback()
+                conn.close()
+                raise
+        except HTTPException:
+            # Re-raise HTTP exceptions
+            raise
+        except Exception as e:
+            conn.rollback()
+            conn.close()
+            raise
 
 
 # Keep old functions for backwards compatibility (deprecated)

@@ -24,36 +24,58 @@ def save_generation(
     request: GenerateRequest,
     credits_charged: int,
 ) -> None:
-    """Save generation to database."""
-    conn = get_api_conn()
-    cursor = conn.cursor()
+    """Save generation to database with retry logic for database locks."""
+    import time
+    import sqlite3
 
     # TODO: handle input_thumbnail generation for images
     input_thumbnail = None
 
-    cursor.execute(
-        """
-        INSERT INTO api_generations (
-            id, user_id, status, format, input_type, input_data,
-            input_thumbnail, instructions, credits_charged, created_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        """,
-        (
-            generation_id,
-            user_id,
-            "processing",
-            request.format,
-            request.input.type,
-            request.input.data,
-            input_thumbnail,
-            request.instructions,
-            credits_charged,
-            datetime.utcnow(),
-        ),
-    )
+    max_retries = 3
+    retry_delay = 0.1  # 100ms
 
-    conn.commit()
-    conn.close()
+    for attempt in range(max_retries):
+        try:
+            conn = get_api_conn()
+            cursor = conn.cursor()
+
+            cursor.execute(
+                """
+                INSERT INTO api_generations (
+                    id, user_id, status, format, input_type, input_data,
+                    input_thumbnail, instructions, credits_charged, created_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    generation_id,
+                    user_id,
+                    "processing",
+                    request.format,
+                    request.input.type,
+                    request.input.data,
+                    input_thumbnail,
+                    request.instructions,
+                    credits_charged,
+                    datetime.utcnow(),
+                ),
+            )
+
+            conn.commit()
+            conn.close()
+            return
+
+        except sqlite3.OperationalError as e:
+            if "database is locked" in str(e) and attempt < max_retries - 1:
+                time.sleep(retry_delay * (attempt + 1))
+                continue
+            else:
+                conn.rollback()
+                conn.close()
+                raise
+        except Exception as e:
+            conn.rollback()
+            conn.close()
+            raise
 
 
 @router.post(
@@ -161,6 +183,15 @@ async def generate_code(
         )
 
     except Exception as e:
+        import sqlite3
+        # Database is locked - return 503 with JSON
+        if isinstance(e, sqlite3.OperationalError) and "database is locked" in str(e):
+            logger.warning(f"Database locked in /api/generate: {str(e)}")
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="Database busy, try again"
+            )
+
         # Catch all other exceptions (DB errors, generation service errors, etc.)
         logger.error(f"Unexpected error in /api/generate: {str(e)}", exc_info=True)
         raise HTTPException(
