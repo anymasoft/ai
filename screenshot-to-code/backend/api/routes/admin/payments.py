@@ -15,7 +15,7 @@ async def get_payments(
     email: Optional[str] = Query(None),
 ):
     """
-    Get all payments.
+    Get all payments (from YuKassa or other providers).
 
     Query params:
     - email: filter by user email (optional)
@@ -27,15 +27,19 @@ async def get_payments(
                 "id": "...",
                 "user_id": "...",
                 "email": "...",
-                "package": "basic",
-                "credits_amount": 100,
-                "amount_rubles": 2490.0,
-                "status": "succeeded",
+                "plan": "...",
+                "amount": 2490,
+                "currency": "RUB",
+                "provider": "yookassa",
                 "created_at": "2024-01-01T00:00:00"
             },
             ...
-        ]
+        ],
+        "totalSum": 12345
     }
+
+    Note: This is a placeholder - actual payments table doesn't exist yet.
+    When YuKassa integration is implemented, this will show real payments.
     """
     conn = get_db()
     conn.row_factory = sqlite3.Row
@@ -49,16 +53,21 @@ async def get_payments(
 
         if not cursor.fetchone():
             # Table doesn't exist yet - return empty
-            return {"payments": []}
+            return {
+                "payments": [],
+                "totalSum": 0,
+                "message": "Payments table not created yet. Will be available after YuKassa integration.",
+            }
 
-        # Build query - return correct field names for frontend
+        # Build query
+        where_clause = ""
         params = []
 
         if email:
             # Join with users to filter by email
             query = """
-                SELECT p.id, p.user_id, u.email, p.package, p.credits_amount,
-                       p.amount_cents, p.status, p.created_at
+                SELECT p.id, p.user_id, u.email, p.plan, p.amount, p.currency,
+                       p.provider, p.created_at
                 FROM payments p
                 LEFT JOIN users u ON p.user_id = u.id
                 WHERE u.email LIKE ?
@@ -67,33 +76,29 @@ async def get_payments(
             params = [f"%{email}%"]
         else:
             query = """
-                SELECT p.id, p.user_id, u.email, p.package, p.credits_amount,
-                       p.amount_cents, p.status, p.created_at
+                SELECT p.id, p.user_id, u.email, p.plan, p.amount, p.currency,
+                       p.provider, p.created_at
                 FROM payments p
                 LEFT JOIN users u ON p.user_id = u.id
                 ORDER BY p.created_at DESC
             """
 
         cursor.execute(query, params)
-        rows = cursor.fetchall()
+        payments = [dict(row) for row in cursor.fetchall()]
 
-        # Transform amount_cents to amount_rubles (divide by 100)
-        payments = []
-        for row in rows:
-            payment_dict = dict(row)
-            # Convert amount_cents to amount_rubles
-            amount_cents = payment_dict.get("amount_cents", 0) or 0
-            payment_dict["amount_rubles"] = amount_cents / 100 if amount_cents > 0 else 0
-            # Remove amount_cents from response
-            payment_dict.pop("amount_cents", None)
-            payments.append(payment_dict)
+        # Calculate total sum
+        total_sum = sum(p.get("amount", 0) for p in payments)
 
-        return {"payments": payments}
+        return {"payments": payments, "totalSum": total_sum}
 
     except Exception as e:
         print(f"[ADMIN] Error fetching payments: {e}")
         # Return empty if any error
-        return {"payments": []}
+        return {
+            "payments": [],
+            "totalSum": 0,
+            "error": "Error fetching payments. Table may not exist yet.",
+        }
 
     finally:
         conn.close()
