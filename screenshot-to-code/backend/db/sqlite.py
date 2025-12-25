@@ -157,6 +157,18 @@ def init_db() -> None:
             )
         """)
 
+        # Create API generation chunks table (for streaming without duplicates on reconnect)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS api_generation_chunks (
+                generation_id TEXT NOT NULL,
+                chunk_index INTEGER NOT NULL,
+                chunk_data TEXT NOT NULL,
+                created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                PRIMARY KEY (generation_id, chunk_index),
+                FOREIGN KEY (generation_id) REFERENCES api_generations(id)
+            )
+        """)
+
         # ====================
         # UI SYSTEM TABLES (Web Interface)
         # ====================

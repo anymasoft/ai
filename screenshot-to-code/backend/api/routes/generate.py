@@ -1,13 +1,14 @@
 """Generate code endpoint."""
 
 import uuid
+import os
 from db import get_api_conn, hash_api_key
 from datetime import datetime
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Request
 from api.models.requests import GenerateRequest
 from api.models.responses import GenerateResponse
 from api.auth import get_api_key
-from api.credits import get_format_cost, check_credits, deduct_credits
+from api.credits import get_format_cost, deduct_credits_atomic
 
 router = APIRouter()
 
@@ -62,7 +63,9 @@ def save_generation(
     tags=["Generation"],
 )
 async def generate_code(
-    request: GenerateRequest, api_key_info: dict = Depends(get_api_key)
+    http_request: Request,
+    request: GenerateRequest,
+    api_key_info: dict = Depends(get_api_key)
 ):
     """
     Start code generation from image or URL.
@@ -85,27 +88,68 @@ async def generate_code(
     # 2. Calculate cost
     cost = get_format_cost(request.format)
 
-    # 3. Check credits availability
-    api_key_id = api_key_info["id"]
-    check_credits(api_key_id, cost)
-
-    # 4. Generate ID
+    # 3. Generate ID first (before deducting credits)
     generation_id = create_generation_id()
 
-    # 5. Deduct credits IMMEDIATELY
-    deduct_credits(api_key_id, cost)
+    # 4. Atomically check and deduct credits in ONE operation
+    # This prevents race conditions where multiple concurrent requests
+    # could bypass the credit check
+    api_key_id = api_key_info["id"]
+    deduct_credits_atomic(api_key_id, cost)
 
-    # 6. Save generation record
+    # 5. Save generation record
     save_generation(generation_id, api_key_id, request, cost)
 
-    # 7. Trigger actual generation in background
+    # 6. Trigger actual generation in background
     from api.generation_service import trigger_generation
     import asyncio
-    asyncio.create_task(trigger_generation(generation_id))
+    import logging
 
-    # 8. Build stream URL
-    # Backend runs on port 7001
-    stream_url = f"ws://127.0.0.1:7001/api/stream/{generation_id}"
+    logger = logging.getLogger("api.generate")
+
+    # Create task for background generation
+    task = asyncio.create_task(trigger_generation(generation_id))
+
+    # Add callback to catch any unhandled exceptions
+    def handle_generation_error(task_obj):
+        try:
+            # If task failed, the exception will be here
+            task_obj.result()
+        except asyncio.CancelledError:
+            # Task was cancelled, ignore
+            pass
+        except Exception as e:
+            # Task raised an exception
+            # Note: trigger_generation already catches exceptions and updates DB,
+            # but this callback ensures we log any unexpected issues
+            logger.error(f"Unexpected error in generation task {generation_id}: {e}", exc_info=True)
+
+    task.add_done_callback(handle_generation_error)
+
+    # 7. Build stream URL dynamically
+    # Strategy:
+    # 1. Use API_PUBLIC_BASE_URL environment variable if set (for production behind reverse proxy)
+    # 2. Otherwise, construct from request URL (for local development)
+    # 3. Replace http/https with ws/wss accordingly
+
+    api_base_url = os.getenv("API_PUBLIC_BASE_URL")
+
+    if api_base_url:
+        # Production: use configured base URL
+        # Should be like: https://api.example.com or http://localhost:7001
+        stream_url = (
+            api_base_url.replace("https://", "wss://")
+            .replace("http://", "ws://")
+            .rstrip("/")
+        )
+        stream_url = f"{stream_url}/api/stream/{generation_id}"
+    else:
+        # Development: construct from request
+        # http://localhost:7001 -> ws://localhost:7001
+        # https://example.com -> wss://example.com
+        scheme = "wss" if http_request.url.scheme == "https" else "ws"
+        netloc = http_request.url.netloc  # host:port
+        stream_url = f"{scheme}://{netloc}/api/stream/{generation_id}"
 
     return GenerateResponse(
         generation_id=generation_id,

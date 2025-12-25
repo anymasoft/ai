@@ -126,6 +126,32 @@ Content-Type: application/json
 }
 ```
 
+**stream_url Configuration:**
+
+The `stream_url` is generated dynamically based on your setup:
+
+1. **Production (Behind reverse proxy):**
+   - Set environment variable: `API_PUBLIC_BASE_URL=https://api.example.com`
+   - Response will use: `wss://api.example.com/api/stream/{id}` (WebSocket Secure)
+   - Example: `export API_PUBLIC_BASE_URL=https://api.example.com`
+
+2. **Development (Local):**
+   - No environment variable needed
+   - API detects scheme from request: `http://localhost:7001` → `ws://localhost:7001/api/stream/{id}`
+   - If HTTPS: `https://localhost:7001` → `wss://localhost:7001/api/stream/{id}`
+
+3. **Behind Nginx/Apache reverse proxy:**
+   ```bash
+   export API_PUBLIC_BASE_URL=https://yourdomain.com
+   # Backend can be on http://localhost:7001 internally
+   # But clients will connect to wss://yourdomain.com/api/stream/{id}
+   ```
+
+**Security Note:**
+- In production, always use `wss://` (WebSocket Secure with TLS)
+- Never use `ws://` (unencrypted) with API keys on untrusted networks
+- Set `API_PUBLIC_BASE_URL` to HTTPS URL for automatic `wss://` conversion
+
 **Errors:**
 - `400 Bad Request` - invalid input
   ```json
@@ -160,18 +186,30 @@ WebSocket stream for real-time generation updates.
 ws://api.example.com/api/stream/gen_abc123def456?api_key=xxx
 ```
 
+**⚠️ SECURITY REQUIREMENTS:**
+
+1. **HTTPS/WSS Mandatory in Production**
+   - API key is passed in query parameter (visible in logs, browser history, proxies)
+   - **MUST use `wss://` (WebSocket Secure)** instead of `ws://` in production
+   - HTTP + Query parameter = **UNENCRYPTED API KEY** (security breach)
+   - Set `API_PUBLIC_BASE_URL` to HTTPS URL to get `wss://` URLs
+
+2. **Authentication**
+   - Requires `api_key` query parameter
+   - Invalid/missing key: connection closes with reason "Invalid API key" or "API key required"
+   - Returns WebSocket close code 1008 (Policy Violation)
+
+3. **Best Practices**
+   - Never use `ws://` with API keys on untrusted networks
+   - Rotate API keys regularly
+   - Use different keys for different applications
+   - Monitor usage in admin panel
+
 **Server → Client Messages:**
 
-1. **Chunk** (code fragment)
-```json
-{
-  "type": "chunk",
-  "data": "<html>...",
-  "variant_index": 0
-}
-```
+All WebSocket messages use snake_case for field names.
 
-2. **Status Update**
+1. **Status Update** (initial message when client connects)
 ```json
 {
   "type": "status",
@@ -180,16 +218,16 @@ ws://api.example.com/api/stream/gen_abc123def456?api_key=xxx
 }
 ```
 
-3. **Code Complete**
+2. **Code Chunk** (streamed as generation progresses)
 ```json
 {
-  "type": "code",
-  "data": "<html>...</html>",
+  "type": "chunk",
+  "data": "<div>...",
   "variant_index": 0
 }
 ```
 
-4. **Variant Complete**
+3. **Variant Complete** (sent when all chunks for a variant are done)
 ```json
 {
   "type": "variant_complete",
@@ -197,22 +235,23 @@ ws://api.example.com/api/stream/gen_abc123def456?api_key=xxx
 }
 ```
 
-5. **Error**
+4. **Error** (sent if generation fails)
 ```json
 {
   "type": "error",
   "error": "generation_failed",
-  "message": "Model rate limit exceeded"
+  "message": "Model rate limit exceeded",
+  "variant_index": 0
 }
 ```
 
-6. **Generation Complete**
-```json
-{
-  "type": "complete",
-  "generation_id": "gen_abc123def456"
-}
-```
+**Error types:**
+- `generation_failed` - LLM API error
+- `generation_timeout` - exceeded 10 minute timeout
+- `generation_not_found` - generation ID not found
+- `internal_error` - unexpected server error
+
+**Note:** No separate "complete" message is sent. Connection closes after `variant_complete`.
 
 **Client → Server:** (none, read-only stream)
 
