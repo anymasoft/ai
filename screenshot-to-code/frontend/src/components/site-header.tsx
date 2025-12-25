@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Coins } from "lucide-react"
 import { useEffect, useState } from "react"
 import { fetchJSON } from "@/lib/api"
-import { useNavigate } from "react-router-dom"
+import { useNavigate, Link } from "react-router-dom"
 
 export function SiteHeader() {
   const navigate = useNavigate()
@@ -43,6 +43,20 @@ export function SiteHeader() {
           orientation="vertical"
           className="mx-2 data-[orientation=vertical]:h-4"
         />
+        <Button
+          asChild
+          variant="ghost"
+          size="sm"
+          className="h-6 w-6 p-0"
+        >
+          <Link to="/dashboard">
+            <img
+              src="/logo/logo-navbar.webp"
+              alt="Screen2Code"
+              className="h-6 w-6"
+            />
+          </Link>
+        </Button>
         <div className="flex-1" />
         <div className="flex items-center gap-3">
           {balance !== null && !loadingBalance && (
