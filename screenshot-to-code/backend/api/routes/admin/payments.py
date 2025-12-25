@@ -65,8 +65,8 @@ async def get_payments(
         if email:
             # Join with users to filter by email
             query = """
-                SELECT p.id, p.user_id, u.email, p.plan, p.amount, p.currency,
-                       p.provider, p.created_at
+                SELECT p.id, p.user_id, u.email, p.package as plan, p.amount_cents as amount,
+                       p.currency, p.status as provider, p.created_at
                 FROM payments p
                 LEFT JOIN users u ON p.user_id = u.id
                 WHERE u.email LIKE ?
@@ -75,8 +75,8 @@ async def get_payments(
             params = [f"%{email}%"]
         else:
             query = """
-                SELECT p.id, p.user_id, u.email, p.plan, p.amount, p.currency,
-                       p.provider, p.created_at
+                SELECT p.id, p.user_id, u.email, p.package as plan, p.amount_cents as amount,
+                       p.currency, p.status as provider, p.created_at
                 FROM payments p
                 LEFT JOIN users u ON p.user_id = u.id
                 ORDER BY p.created_at DESC
