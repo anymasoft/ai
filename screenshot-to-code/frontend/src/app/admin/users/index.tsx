@@ -36,6 +36,7 @@ interface User {
   email: string
   name: string | null
   plan: string
+  credits: number
   used_generations: number
   disabled: boolean
   role: string
@@ -273,7 +274,7 @@ export default function AdminUsersPage() {
                         {getPlanBadge(user.plan)}
                       </TableCell>
                       <TableCell className="text-sm">
-                        {user.used_generations}
+                        {user.used_generations} / {user.credits}
                       </TableCell>
                       <TableCell>
                         <Badge variant={user.disabled ? "destructive" : "outline"}>

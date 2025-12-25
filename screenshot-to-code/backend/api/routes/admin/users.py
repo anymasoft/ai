@@ -50,6 +50,7 @@ async def get_users(admin: dict = Depends(get_admin_user)):
                 "email": "...",
                 "name": "...",
                 "plan": "free|basic|professional",
+                "credits": 100,
                 "used_generations": 5,
                 "disabled": false,
                 "role": "user" | "admin",
@@ -65,7 +66,7 @@ async def get_users(admin: dict = Depends(get_admin_user)):
 
     try:
         cursor.execute("""
-            SELECT id, email, name, plan, used_generations, disabled, role, created_at
+            SELECT id, email, name, plan, credits, used_generations, disabled, role, created_at
             FROM users
             ORDER BY created_at DESC
         """)
