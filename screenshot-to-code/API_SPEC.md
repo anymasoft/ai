@@ -126,6 +126,32 @@ Content-Type: application/json
 }
 ```
 
+**stream_url Configuration:**
+
+The `stream_url` is generated dynamically based on your setup:
+
+1. **Production (Behind reverse proxy):**
+   - Set environment variable: `API_PUBLIC_BASE_URL=https://api.example.com`
+   - Response will use: `wss://api.example.com/api/stream/{id}` (WebSocket Secure)
+   - Example: `export API_PUBLIC_BASE_URL=https://api.example.com`
+
+2. **Development (Local):**
+   - No environment variable needed
+   - API detects scheme from request: `http://localhost:7001` → `ws://localhost:7001/api/stream/{id}`
+   - If HTTPS: `https://localhost:7001` → `wss://localhost:7001/api/stream/{id}`
+
+3. **Behind Nginx/Apache reverse proxy:**
+   ```bash
+   export API_PUBLIC_BASE_URL=https://yourdomain.com
+   # Backend can be on http://localhost:7001 internally
+   # But clients will connect to wss://yourdomain.com/api/stream/{id}
+   ```
+
+**Security Note:**
+- In production, always use `wss://` (WebSocket Secure with TLS)
+- Never use `ws://` (unencrypted) with API keys on untrusted networks
+- Set `API_PUBLIC_BASE_URL` to HTTPS URL for automatic `wss://` conversion
+
 **Errors:**
 - `400 Bad Request` - invalid input
   ```json

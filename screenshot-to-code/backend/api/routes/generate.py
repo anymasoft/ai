@@ -1,9 +1,10 @@
 """Generate code endpoint."""
 
 import uuid
+import os
 from db import get_api_conn, hash_api_key
 from datetime import datetime
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Request
 from api.models.requests import GenerateRequest
 from api.models.responses import GenerateResponse
 from api.auth import get_api_key
@@ -62,7 +63,9 @@ def save_generation(
     tags=["Generation"],
 )
 async def generate_code(
-    request: GenerateRequest, api_key_info: dict = Depends(get_api_key)
+    http_request: Request,
+    request: GenerateRequest,
+    api_key_info: dict = Depends(get_api_key)
 ):
     """
     Start code generation from image or URL.
@@ -102,9 +105,30 @@ async def generate_code(
     import asyncio
     asyncio.create_task(trigger_generation(generation_id))
 
-    # 7. Build stream URL
-    # Backend runs on port 7001
-    stream_url = f"ws://127.0.0.1:7001/api/stream/{generation_id}"
+    # 7. Build stream URL dynamically
+    # Strategy:
+    # 1. Use API_PUBLIC_BASE_URL environment variable if set (for production behind reverse proxy)
+    # 2. Otherwise, construct from request URL (for local development)
+    # 3. Replace http/https with ws/wss accordingly
+
+    api_base_url = os.getenv("API_PUBLIC_BASE_URL")
+
+    if api_base_url:
+        # Production: use configured base URL
+        # Should be like: https://api.example.com or http://localhost:7001
+        stream_url = (
+            api_base_url.replace("https://", "wss://")
+            .replace("http://", "ws://")
+            .rstrip("/")
+        )
+        stream_url = f"{stream_url}/api/stream/{generation_id}"
+    else:
+        # Development: construct from request
+        # http://localhost:7001 -> ws://localhost:7001
+        # https://example.com -> wss://example.com
+        scheme = "wss" if http_request.url.scheme == "https" else "ws"
+        netloc = http_request.url.netloc  # host:port
+        stream_url = f"{scheme}://{netloc}/api/stream/{generation_id}"
 
     return GenerateResponse(
         generation_id=generation_id,
