@@ -36,7 +36,7 @@ const getNavData = (unreadCount: number, email: string | null, isAdmin: boolean)
       label: "Основное",
       items: [
         {
-          title: "Генератор",
+          title: "Сайт из скриншота",
           url: "/playground",
           icon: Code2,
         },
