@@ -42,8 +42,8 @@ async def handle_oauth_signin(user_id: str, email: str, name: str):
 
             cursor.execute(
                 """
-                INSERT INTO users (id, email, name, role, plan, disabled, created_at, updated_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                INSERT INTO users (id, email, name, role, plan, disabled, credits, created_at, updated_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     user_id,
@@ -52,6 +52,7 @@ async def handle_oauth_signin(user_id: str, email: str, name: str):
                     "user",  # role default
                     "free",  # plan default
                     0,  # disabled=0 (active)
+                    3,  # credits=3 (стартовый бонус)
                     now_iso,
                     now_iso,
                 ),

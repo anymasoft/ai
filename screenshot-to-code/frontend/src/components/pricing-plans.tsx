@@ -39,8 +39,8 @@ interface PricingPlansProps {
 const packages: Record<string, { name: string; description: string; buttonText: string; features: string[] }> = {
   free: {
     name: 'Бесплатный старт',
-    description: 'Для знакомства с платформой',
-    buttonText: 'Начать бесплатно',
+    description: 'Разовый стартовый бонус',
+    buttonText: 'Уже активно',
     features: [
       'HTML + Tailwind',
       'HTML + CSS',
@@ -179,7 +179,10 @@ export function PricingPlans({
               <span className='text-muted-foreground text-sm'>{tier.frequency}</span>
             </div>
             <div className='text-center text-sm text-muted-foreground'>
-              Включено: {tier.credits} генераций
+              {tier.id === 'free'
+                ? 'Включено: 3 генерации бесплатно для старта'
+                : `Включено: ${tier.credits} генераций`
+              }
             </div>
             <div className='space-y-2'>
               {tier.features.map(feature => (
