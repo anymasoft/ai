@@ -27,7 +27,6 @@ async def get_payments(
                 "id": "...",
                 "user_id": "...",
                 "email": "...",
-                "plan": "...",
                 "amount": 2490,
                 "currency": "RUB",
                 "provider": "yookassa",
