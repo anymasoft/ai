@@ -42,24 +42,24 @@ export default function HistoryPage() {
     <>
       <div className="px-4 lg:px-6">
         <div className="flex flex-col gap-2">
-          <h1 className="text-2xl font-bold tracking-tight">History</h1>
-          <p className="text-muted-foreground">Your generated code history</p>
+          <h1 className="text-2xl font-bold tracking-tight">История</h1>
+          <p className="text-muted-foreground">История вашего сгенерированного кода</p>
         </div>
       </div>
       <div className="@container/main px-4 lg:px-6 space-y-6">
         {history.length === 0 ? (
           <Card className="p-12">
             <div className="text-center space-y-2">
-              <p className="text-lg font-semibold">No generations yet</p>
+              <p className="text-lg font-semibold">Генерации отсутствуют</p>
               <p className="text-sm text-muted-foreground">
-                Your generated code will appear here.
+                Ваш сгенерированный код появится здесь.
               </p>
               <Button
                 onClick={() => navigate("/playground")}
                 variant="default"
                 className="mt-4"
               >
-                Start generating
+                Начать генерирование
               </Button>
             </div>
           </Card>
@@ -112,7 +112,7 @@ export default function HistoryPage() {
                   className="gap-1"
                 >
                   <ChevronLeft size={16} />
-                  Previous
+                  Назад
                 </Button>
                 <div className="flex items-center gap-1">
                   {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => {
@@ -150,7 +150,7 @@ export default function HistoryPage() {
                   size="sm"
                   className="gap-1"
                 >
-                  Next
+                  Далее
                   <ChevronRight size={16} />
                 </Button>
               </div>
