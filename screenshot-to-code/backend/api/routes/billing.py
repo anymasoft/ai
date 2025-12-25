@@ -23,7 +23,7 @@ router = APIRouter()
 
 # Get the frontend return URL from environment
 FRONTEND_URL = os.environ.get("FRONTEND_URL", "http://localhost:5173")
-RETURN_URL = f"{FRONTEND_URL}/billing/return"
+RETURN_URL = f"{FRONTEND_URL}/billing"
 
 
 # ===========================
