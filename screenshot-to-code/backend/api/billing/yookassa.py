@@ -581,7 +581,10 @@ def get_payments_list(user_id: Optional[str] = None, limit: int = 50) -> list:
 
 def deduct_credits(user_id: str, credits: int) -> bool:
     """
-    Deduct credits from user account (idempotent).
+    Deduct credits from user account (atomic operation).
+
+    Atomically checks and deducts credits in single transaction.
+    If insufficient credits, returns False without any changes.
 
     Args:
         user_id: User ID
@@ -602,7 +605,7 @@ def deduct_credits(user_id: str, credits: int) -> bool:
         )
         row = cursor.fetchone()
         if not row:
-            print(f"[BILLING] User not found: {user_id}")
+            print(f"[CREDITS] User not found: {user_id}")
             return False
 
         current_credits = row[0] or 0
@@ -610,12 +613,12 @@ def deduct_credits(user_id: str, credits: int) -> bool:
         # Check if user has enough credits
         if current_credits < credits:
             print(
-                f"[BILLING] Insufficient credits for user {user_id}: "
+                f"[CREDITS] Insufficient credits for user {user_id}: "
                 f"need {credits}, have {current_credits}"
             )
             return False
 
-        # Deduct credits
+        # Deduct credits (atomic operation)
         new_credits = current_credits - credits
 
         cursor.execute(
@@ -628,13 +631,14 @@ def deduct_credits(user_id: str, credits: int) -> bool:
         conn.commit()
 
         print(
-            f"[BILLING] Deducted {credits} credits from user {user_id} "
-            f"({current_credits} → {new_credits})"
+            f"[CREDITS] Deducted {credits} credit(s) from user {user_id} "
+            f"(before={current_credits} after={new_credits})"
         )
         return True
 
     except Exception as e:
-        print(f"[BILLING] Error deducting credits: {e}")
+        print(f"[CREDITS] Error deducting credits: {e}")
+        conn.rollback()
         return False
     finally:
         conn.close()

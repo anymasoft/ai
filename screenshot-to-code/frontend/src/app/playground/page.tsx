@@ -140,6 +140,40 @@ export default function PlaygroundPage() {
     setChunks([])
     setError(null)
 
+    // DEDUCT CREDITS IMMEDIATELY (atomically, before generation)
+    try {
+      console.log("[CREDITS] Deducting 1 credit before generation. Current:", credits)
+      const deductResponse = await fetchJSON<{
+        success: boolean
+        remaining_credits: number
+        message: string
+      }>("/api/billing/deduct-credits", {
+        method: "POST",
+        body: JSON.stringify({ format: selectedFormat }),
+      })
+
+      if (!deductResponse.success) {
+        throw new Error(deductResponse.message || "Не удалось списать кредиты")
+      }
+
+      const newCredits = deductResponse.remaining_credits
+      setCredits(newCredits)
+      console.log("[CREDITS] Successfully deducted. Remaining:", newCredits)
+      toast.success(`Списано 1 кредит. Осталось: ${newCredits}`)
+
+      // Show paywall if no more credits
+      if (newCredits === 0) {
+        setTimeout(() => {
+          setShowPaywall(true)
+        }, 1000)
+      }
+    } catch (err) {
+      console.error("[CREDITS] Error deducting credits:", err)
+      setIsStreaming(false)
+      toast.error(err instanceof Error ? err.message : "Ошибка при списании кредитов")
+      return
+    }
+
     // Prepare images array (convert file to data URL if present)
     let images: string[] = []
     if (imageFile && imagePreview) {
@@ -219,33 +253,8 @@ export default function PlaygroundPage() {
           console.warn("No chunks to save - chunksRef.current is empty")
         }
 
-        // Deduct credits for successful generation
-        try {
-          const response = await fetchJSON<{
-            success: boolean
-            remaining_credits: number
-            message: string
-          }>("/api/billing/deduct-credits", {
-            method: "POST",
-            body: JSON.stringify({ format: selectedFormat }),
-          })
-
-          if (response.success) {
-            setCredits(response.remaining_credits)
-            toast.success(response.message)
-
-            // Show paywall if no more credits
-            if (response.remaining_credits === 0) {
-              setTimeout(() => {
-                setShowPaywall(true)
-              }, 1000)
-            }
-          }
-        } catch (err) {
-          console.error("[BILLING] Error deducting credits:", err)
-          // Don't fail the generation, just log the error
-          // The credits will be deducted, but UI might not update immediately
-        }
+        // Credits already deducted before generation started
+        console.log("[CREDITS] Generation completed. Credits already deducted upfront.")
       },
     }
 
@@ -530,9 +539,10 @@ export default function PlaygroundPage() {
                 onClick={isStreaming ? handleCancel : handleGenerate}
                 variant={isStreaming ? "destructive" : "default"}
                 className="gap-2"
+                disabled={!isStreaming && (credits === null || credits === 0)}
               >
                 {isStreaming && <Loader2 size={16} className="animate-spin" />}
-                {isStreaming ? "Отменить" : "Генерировать"}
+                {isStreaming ? "Отменить" : (credits === 0 || credits === null) ? "Кредиты закончились" : "Генерировать"}
               </Button>
             </div>
           </div>
