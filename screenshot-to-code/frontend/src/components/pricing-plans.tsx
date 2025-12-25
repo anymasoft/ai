@@ -38,7 +38,7 @@ interface PricingPlansProps {
 // Пакеты пополнения credits
 const packages: Record<string, { name: string; description: string; buttonText: string; features: string[] }> = {
   free: {
-    name: 'Бесплатный старт',
+    name: 'Free',
     description: 'Разовый стартовый бонус',
     buttonText: 'Уже активно',
     features: [
@@ -48,7 +48,7 @@ const packages: Record<string, { name: string; description: string; buttonText: 
     ],
   },
   basic: {
-    name: 'Пакет 100 генераций',
+    name: 'Basic',
     description: 'Подходит для небольших проектов',
     buttonText: 'Купить 100 генераций',
     features: [
@@ -59,7 +59,7 @@ const packages: Record<string, { name: string; description: string; buttonText: 
     ],
   },
   professional: {
-    name: 'Пакет 500 генераций',
+    name: 'Professional',
     description: 'Подходит для агентств и команд',
     buttonText: 'Купить 500 генераций',
     features: [
