@@ -32,7 +32,7 @@ export function BillingHistoryCard({ history }: BillingHistoryCardProps) {
   const [payments, setPayments] = useState<Payment[]>([])
   const [loading, setLoading] = useState(true)
   const [currentPage, setCurrentPage] = useState(0)
-  const itemsPerPage = 5
+  const itemsPerPage = 2
 
   useEffect(() => {
     fetchPayments()
