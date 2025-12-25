@@ -35,19 +35,22 @@ interface PricingPlansProps {
   onPlanSelect?: (planId: string) => void
 }
 
-// Static features descriptions (NOT prices)
-const planFeatures: Record<string, { description: string; features: string[] }> = {
+// Пакеты пополнения credits
+const packages: Record<string, { name: string; description: string; buttonText: string; features: string[] }> = {
   free: {
+    name: 'Бесплатный старт',
     description: 'Для знакомства с платформой',
+    buttonText: 'Начать бесплатно',
     features: [
       'HTML + Tailwind',
       'HTML + CSS',
       'Email поддержка',
-      'Бесплатно',
     ],
   },
   basic: {
-    description: 'Разовая покупка',
+    name: 'Пакет 100 генераций',
+    description: 'Подходит для небольших проектов',
+    buttonText: 'Купить 100 генераций',
     features: [
       'Все форматы (HTML, React, Vue)',
       'API доступ',
@@ -56,13 +59,14 @@ const planFeatures: Record<string, { description: string; features: string[] }> 
     ],
   },
   professional: {
-    description: 'Для активного использования',
+    name: 'Пакет 500 генераций',
+    description: 'Подходит для агентств и команд',
+    buttonText: 'Купить 500 генераций',
     features: [
       'Все форматы + приоритет',
       'Полный API доступ',
       'Приоритетная поддержка (24ч)',
       '1 генерация = 1 credit',
-      'Подходит для агентств и команд',
     ],
   },
 }
@@ -101,15 +105,15 @@ export function PricingPlans({
     )
   }
 
-  // Build plans from tariffs
+  // Построить пакеты из данных пополнения
   const plans: PricingPlan[] = tariffs.map(tariff => ({
     id: tariff.key,
-    name: tariff.name,
-    description: planFeatures[tariff.key]?.description || tariff.name,
+    name: packages[tariff.key]?.name || tariff.name,
+    description: packages[tariff.key]?.description || tariff.name,
     price: tariff.price_rub === 0 ? '0' : tariff.price_rub.toString(),
     frequency: '₽',
     credits: tariff.credits,
-    features: planFeatures[tariff.key]?.features || [],
+    features: packages[tariff.key]?.features || [],
     popular: tariff.key === 'basic',
   }))
 
@@ -127,12 +131,7 @@ export function PricingPlans({
     )
   }
   const getButtonText = (plan: PricingPlan) => {
-    // Free - это дефолт, не покупается
-    if (plan.id === 'free') {
-      return 'Получить'
-    }
-    // Разовая покупка - каждый раз "Купить"
-    return 'Купить'
+    return packages[plan.id]?.buttonText || 'Купить'
   }
 
   const getButtonVariant = (plan: PricingPlan) => {
@@ -140,11 +139,7 @@ export function PricingPlans({
   }
 
   const isButtonDisabled = (plan: PricingPlan) => {
-    // Free - это дефолт, disabled (не покупается)
-    if (plan.id === 'free') {
-      return true
-    }
-    // Basic и Professional - всегда можно купить (разовая покупка)
+    // Все пакеты можно активировать/купить (разовые платежи)
     return false
   }
 

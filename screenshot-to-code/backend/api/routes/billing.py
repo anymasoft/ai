@@ -54,7 +54,6 @@ class CheckoutResponse(BaseModel):
 class BillingUsageResponse(BaseModel):
     """Billing usage response for authenticated users."""
 
-    plan: str  # "free", "basic", или "professional"
     credits: int  # current credits balance
 
 
@@ -328,20 +327,13 @@ async def admin_add_credits(
 @router.get("/api/billing/usage", response_model=BillingUsageResponse)
 async def get_billing_usage(user: dict = Depends(get_current_user)):
     """
-    Get billing usage information for authenticated user.
+    Получить баланс credits текущего пользователя.
 
     Returns:
-    - plan: "free", "basic", или "professional" (from users.plan in database - SINGLE SOURCE OF TRUTH)
-    - credits: current credits balance from users table
-
-    Args:
-        user: Current session data from cookies
-
-    Returns:
-        BillingUsageResponse with plan and credits
+        BillingUsageResponse с текущим балансом генераций
     """
 
-    # Extract user from session data
+    # Получаем user_id из сессии
     user_data = user.get("user")
     if not user_data:
         raise HTTPException(status_code=401, detail="User not found in session")
@@ -350,19 +342,12 @@ async def get_billing_usage(user: dict = Depends(get_current_user)):
     if not user_id:
         raise HTTPException(status_code=401, detail="User ID not found in session")
 
-    # Get current credits balance and plan from database - SINGLE SOURCE OF TRUTH
+    # Получаем текущий баланс credits из БД
     current_credits = get_user_credits(user_id)
-    user_plan = get_user_plan(user_id)
 
-    print(f"[BILLING] GET /api/billing/usage user_id={user_id}")
-    print(f"[BILLING]   - Reading plan from users.plan: {user_plan}")
-    print(f"[BILLING]   - Reading credits from users.credits: {current_credits}")
+    print(f"[BILLING] GET /api/billing/usage user_id={user_id}, credits={current_credits}")
 
-    response = BillingUsageResponse(
-        plan=user_plan,
-        credits=current_credits,
-    )
-    print(f"[BILLING]   - Returning response: plan={response.plan}, credits={response.credits}")
+    response = BillingUsageResponse(credits=current_credits)
     return response
 
 
