@@ -71,13 +71,13 @@ export default function ApiPage() {
           <div>
             <h1 className="text-3xl font-bold tracking-tight">API</h1>
             <p className="text-muted-foreground mt-1">
-              Integrate Screen2Code into your applications
+              Интегрируйте Screen2Code в ваши приложения
             </p>
           </div>
           <Button variant="outline" asChild>
             <a href="/docs" className="flex items-center gap-2">
               <ExternalLink size={16} />
-              Full Documentation
+              Полная документация
             </a>
           </Button>
         </div>
@@ -87,7 +87,7 @@ export default function ApiPage() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Terminal size={20} />
-              What is Screen2Code API?
+              Что такое Screen2Code API?
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
@@ -96,10 +96,10 @@ export default function ApiPage() {
               Поддержка HTML, CSS, Tailwind, React и Vue.
             </p>
             <div className="flex gap-2 flex-wrap">
-              <Badge variant="secondary">WebSocket Streaming</Badge>
-              <Badge variant="secondary">Credits-based Billing</Badge>
-              <Badge variant="secondary">Rate Limiting</Badge>
-              <Badge variant="secondary">Multiple Formats</Badge>
+              <Badge variant="secondary">WebSocket потоковая передача</Badge>
+              <Badge variant="secondary">Биллинг на основе кредитов</Badge>
+              <Badge variant="secondary">Ограничение скорости</Badge>
+              <Badge variant="secondary">Множество форматов</Badge>
             </div>
           </CardContent>
         </Card>
@@ -109,7 +109,7 @@ export default function ApiPage() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Key size={20} />
-              Your API Key
+              Ваш API ключ
             </CardTitle>
             <CardDescription>
               Используйте этот ключ для аутентификации в API запросах
@@ -146,13 +146,13 @@ export default function ApiPage() {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Activity size={20} />
-                  Credits Usage
+                  Использование кредитов
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div>
                   <div className="flex justify-between text-sm mb-2">
-                    <span className="text-muted-foreground">Used / Total</span>
+                    <span className="text-muted-foreground">Использовано / Всего</span>
                     <span className="font-medium">
                       {limits.credits.used.toLocaleString()} / {limits.credits.total.toLocaleString()}
                     </span>
@@ -160,11 +160,11 @@ export default function ApiPage() {
                   <Progress value={creditsProgress} className="h-2" />
                 </div>
                 <div className="text-sm">
-                  <span className="text-muted-foreground">Remaining: </span>
+                  <span className="text-muted-foreground">Осталось: </span>
                   <span className="font-semibold text-lg">
                     {limits.credits.remaining.toLocaleString()}
                   </span>
-                  <span className="text-muted-foreground ml-1">credits</span>
+                  <span className="text-muted-foreground ml-1">кредитов</span>
                 </div>
               </CardContent>
             </Card>
@@ -174,12 +174,12 @@ export default function ApiPage() {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Zap size={20} />
-                  Rate Limits
+                  Лимиты скорости
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
                 <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Concurrent generations</span>
+                  <span className="text-muted-foreground">Одновременные генерации</span>
                   <span className="font-medium">
                     {limits.rate_limits.concurrent_generations.current} /{" "}
                     {limits.rate_limits.concurrent_generations.limit}
@@ -187,16 +187,16 @@ export default function ApiPage() {
                 </div>
                 <Separator />
                 <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Generations per hour</span>
+                  <span className="text-muted-foreground">Генераций в час</span>
                   <span className="font-medium">
                     {limits.rate_limits.generations_per_hour.current} /{" "}
                     {limits.rate_limits.generations_per_hour.limit}
                   </span>
                 </div>
                 <div className="text-xs text-muted-foreground">
-                  Resets in{" "}
+                  Переустанавливается через{" "}
                   {Math.round((limits.rate_limits.generations_per_hour.reset_at - Date.now()) / 60000)}{" "}
-                  minutes
+                  минут
                 </div>
               </CardContent>
             </Card>
@@ -206,8 +206,8 @@ export default function ApiPage() {
         {/* Available Formats */}
         <Card>
           <CardHeader>
-            <CardTitle>Available Formats</CardTitle>
-            <CardDescription>Стоимость в credits за генерацию</CardDescription>
+            <CardTitle>Доступные форматы</CardTitle>
+            <CardDescription>Стоимость в кредитах за генерацию</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
@@ -227,7 +227,7 @@ export default function ApiPage() {
         {/* Code Examples */}
         <Card>
           <CardHeader>
-            <CardTitle>Quick Start Examples</CardTitle>
+            <CardTitle>Примеры быстрого старта</CardTitle>
             <CardDescription>
               Примеры использования API
             </CardDescription>
@@ -326,34 +326,34 @@ print(result.json()['result_code'])`}
         {/* Endpoints Reference */}
         <Card>
           <CardHeader>
-            <CardTitle>API Endpoints</CardTitle>
+            <CardTitle>Конечные точки API</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-2 text-sm">
               <div className="flex items-start gap-2">
                 <Badge variant="outline" className="font-mono">POST</Badge>
                 <code className="text-xs">/api/generate</code>
-                <span className="text-muted-foreground">- Start code generation</span>
+                <span className="text-muted-foreground">- Начать генерирование кода</span>
               </div>
               <div className="flex items-start gap-2">
                 <Badge variant="outline" className="font-mono">WS</Badge>
                 <code className="text-xs">/api/stream/:id</code>
-                <span className="text-muted-foreground">- Stream generation progress</span>
+                <span className="text-muted-foreground">- Потоковая передача прогресса генерирования</span>
               </div>
               <div className="flex items-start gap-2">
                 <Badge variant="outline" className="font-mono">GET</Badge>
                 <code className="text-xs">/api/generations/:id</code>
-                <span className="text-muted-foreground">- Get generation result</span>
+                <span className="text-muted-foreground">- Получить результат генерирования</span>
               </div>
               <div className="flex items-start gap-2">
                 <Badge variant="outline" className="font-mono">GET</Badge>
                 <code className="text-xs">/api/limits</code>
-                <span className="text-muted-foreground">- Check usage and limits</span>
+                <span className="text-muted-foreground">- Проверить использование и лимиты</span>
               </div>
               <div className="flex items-start gap-2">
                 <Badge variant="outline" className="font-mono">GET</Badge>
                 <code className="text-xs">/api/formats</code>
-                <span className="text-muted-foreground">- List available formats</span>
+                <span className="text-muted-foreground">- Список доступных форматов</span>
               </div>
             </div>
           </CardContent>
