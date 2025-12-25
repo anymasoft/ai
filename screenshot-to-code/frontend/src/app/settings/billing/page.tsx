@@ -10,8 +10,8 @@ import { Loader2 } from "lucide-react"
 import { fetchJSON, ApiError } from "@/lib/api"
 
 interface BillingUsage {
+  plan: string  // "free", "basic", или "professional"
   credits: number
-  is_free: boolean
 }
 
 interface CurrentPlan {
@@ -158,9 +158,22 @@ export default function BillingSettings() {
     }
   }
 
+  // Map plan codes to display names
+  const planDisplayNames: Record<string, string> = {
+    free: "Free",
+    basic: "Basic",
+    professional: "Professional",
+  }
+
+  const planAttentionMessages: Record<string, string> = {
+    free: "Вы в Free плане. У вас 3 генерации. Купите пакет для большего количества.",
+    basic: `У вас ${billingUsage?.credits || 0} генераций (Basic). Купите еще пакет для большего количества.`,
+    professional: `У вас ${billingUsage?.credits || 0} генераций (Professional). Купите еще пакет для большего количества.`,
+  }
+
   // Build current plan data from API response
   const currentPlanData: CurrentPlan | null = billingUsage ? {
-    planName: billingUsage.is_free ? "Free" : "Paid",
+    planName: planDisplayNames[billingUsage.plan] || "Free",
     price: "$0",
     nextBilling: "N/A",
     status: "Active",
@@ -172,9 +185,7 @@ export default function BillingSettings() {
     totalDays: 30,
     remainingDays: 30,
     needsAttention: false,
-    attentionMessage: billingUsage.is_free
-      ? "Вы в Free плане. У вас 3 генерации. Купите пакет для большего количества."
-      : `У вас ${billingUsage.credits} генераций. Купите еще пакет для большего количества.`,
+    attentionMessage: planAttentionMessages[billingUsage.plan] || planAttentionMessages.free,
   } : null
 
   return (
@@ -215,7 +226,7 @@ export default function BillingSettings() {
                 <CardContent>
                   <PricingPlans
                     mode="billing"
-                    currentPlanId={billingUsage?.is_free ? "free" : "paid"}
+                    currentPlanId={billingUsage?.plan || "free"}
                     onPlanSelect={handlePlanSelect}
                   />
                 </CardContent>

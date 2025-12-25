@@ -13,6 +13,7 @@ from api.billing.yookassa import (
     add_credits_to_user,
     deduct_credits,
     get_user_credits,
+    get_user_plan,
     get_payment_by_db_id,
     update_payment_status,
     get_payments_list,
@@ -50,8 +51,8 @@ class CheckoutResponse(BaseModel):
 class BillingUsageResponse(BaseModel):
     """Billing usage response for authenticated users."""
 
+    plan: str  # "free", "basic", или "professional"
     credits: int  # current credits balance
-    is_free: bool  # True if credits == 0
 
 
 class PaymentStatusResponse(BaseModel):
@@ -322,13 +323,15 @@ async def get_billing_usage(user: dict = Depends(get_current_user)):
     """
     Get billing usage information for authenticated user.
 
-    Returns ONLY the source of truth: credits from users table.
+    Returns:
+    - plan: "free", "basic", или "professional" (determined by last successful payment)
+    - credits: current credits balance from users table
 
     Args:
         user: Current session data from cookies
 
     Returns:
-        BillingUsageResponse with credits and is_free
+        BillingUsageResponse with plan and credits
     """
 
     # Extract user from session data
@@ -343,11 +346,14 @@ async def get_billing_usage(user: dict = Depends(get_current_user)):
     # Get current credits balance - ONLY SOURCE OF TRUTH
     current_credits = get_user_credits(user_id)
 
-    print(f"[BILLING] GET /api/billing/usage user_id={user_id}, credits={current_credits}")
+    # Get plan from last successful payment
+    user_plan = get_user_plan(user_id)
+
+    print(f"[BILLING] GET /api/billing/usage user_id={user_id}, plan={user_plan}, credits={current_credits}")
 
     return BillingUsageResponse(
+        plan=user_plan,
         credits=current_credits,
-        is_free=current_credits == 0,
     )
 
 
