@@ -31,7 +31,8 @@ interface BillingHistoryCardProps {
 export function BillingHistoryCard({ history }: BillingHistoryCardProps) {
   const [payments, setPayments] = useState<Payment[]>([])
   const [loading, setLoading] = useState(true)
-  const [showAll, setShowAll] = useState(false)
+  const [currentPage, setCurrentPage] = useState(0)
+  const itemsPerPage = 5
 
   useEffect(() => {
     fetchPayments()
@@ -73,8 +74,11 @@ export function BillingHistoryCard({ history }: BillingHistoryCardProps) {
   }
 
   const displayPayments = payments.length > 0 ? payments : history || []
-  const visiblePayments = showAll ? displayPayments : displayPayments.slice(0, 2)
-  const hasMorePayments = displayPayments.length > 2
+  const totalPages = Math.ceil(displayPayments.length / itemsPerPage)
+  const startIndex = currentPage * itemsPerPage
+  const visiblePayments = displayPayments.slice(startIndex, startIndex + itemsPerPage)
+  const hasPreviousPage = currentPage > 0
+  const hasNextPage = currentPage < totalPages - 1
 
   return (
     <Card>
@@ -118,14 +122,26 @@ export function BillingHistoryCard({ history }: BillingHistoryCardProps) {
                 {index < visiblePayments.length - 1 && <Separator />}
               </div>
             ))}
-            {hasMorePayments && (
-              <div className="pt-4">
+            {totalPages > 1 && (
+              <div className="pt-4 flex items-center justify-between gap-2">
                 <Button
                   variant="outline"
-                  className="w-full"
-                  onClick={() => setShowAll(!showAll)}
+                  size="sm"
+                  onClick={() => setCurrentPage(currentPage - 1)}
+                  disabled={!hasPreviousPage}
                 >
-                  {showAll ? "Скрыть" : `Показать ещё (${displayPayments.length - 2})`}
+                  ← Назад
+                </Button>
+                <span className="text-sm text-muted-foreground">
+                  {currentPage + 1} / {totalPages}
+                </span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage(currentPage + 1)}
+                  disabled={!hasNextPage}
+                >
+                  Вперёд →
                 </Button>
               </div>
             )}
