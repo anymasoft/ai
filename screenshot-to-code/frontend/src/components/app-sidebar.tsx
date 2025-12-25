@@ -14,7 +14,6 @@ import {
   ArrowRight,
 } from "lucide-react"
 import { Link } from "react-router-dom"
-import { Logo } from "@/components/logo"
 import { useUnreadCount } from "@/hooks/useUnreadCount"
 import { useAuthStore } from "@/store/auth"
 import { useAdminStore } from "@/store/admin"
@@ -140,9 +139,11 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           <SidebarMenuItem>
             <SidebarMenuButton size="lg" asChild>
               <Link to="/dashboard">
-                <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-                  <Logo size={24} className="text-current" />
-                </div>
+                <img
+                  src="/logo/logo-sidebar.webp"
+                  alt="Screen2Code"
+                  className="h-8 w-8"
+                />
                 <div className="grid flex-1 text-left text-sm leading-tight">
                   <span className="truncate font-medium">Screen2Code</span>
                   <span className="truncate text-xs">SaaS Platform</span>
