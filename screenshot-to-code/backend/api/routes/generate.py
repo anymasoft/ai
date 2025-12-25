@@ -20,7 +20,7 @@ def create_generation_id() -> str:
 
 def save_generation(
     generation_id: str,
-    api_key_id: str,
+    user_id: str,
     request: GenerateRequest,
     credits_charged: int,
 ) -> None:
@@ -34,13 +34,13 @@ def save_generation(
     cursor.execute(
         """
         INSERT INTO api_generations (
-            id, api_key_id, status, format, input_type, input_data,
+            id, user_id, status, format, input_type, input_data,
             input_thumbnail, instructions, credits_charged, created_at
         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """,
         (
             generation_id,
-            api_key_id,
+            user_id,
             "processing",
             request.format,
             request.input.type,
@@ -91,14 +91,14 @@ async def generate_code(
     # 3. Generate ID first (before deducting credits)
     generation_id = create_generation_id()
 
-    # 4. Atomically check and deduct credits in ONE operation
+    # 4. Atomically check and deduct credits from user account
     # This prevents race conditions where multiple concurrent requests
     # could bypass the credit check
-    api_key_id = api_key_info["id"]
-    deduct_credits_atomic(api_key_id, cost)
+    user_id = api_key_info["user_id"]
+    deduct_credits_atomic(user_id, cost)
 
     # 5. Save generation record
-    save_generation(generation_id, api_key_id, request, cost)
+    save_generation(generation_id, user_id, request, cost)
 
     # 6. Trigger actual generation in background
     from api.generation_service import trigger_generation

@@ -42,16 +42,16 @@ async def stream_generation(
         await websocket.close(code=1008, reason="Invalid API key")
         return
 
-    # 3. Check generation exists and belongs to this API key
+    # 3. Check generation exists and belongs to this user
     conn = get_api_conn()
     cursor = conn.cursor()
 
     cursor.execute(
         """
         SELECT id, status FROM api_generations
-        WHERE id = ? AND api_key_id = ?
+        WHERE id = ? AND user_id = ?
         """,
-        (generation_id, api_key_info["id"]),
+        (generation_id, api_key_info["user_id"]),
     )
 
     row = cursor.fetchone()
