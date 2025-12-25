@@ -142,11 +142,9 @@ export default function ApiPage() {
               </div>
               <div className="flex items-center gap-2 text-sm">
                 <Badge variant="secondary">React + Tailwind</Badge>
-                <span className="text-xs text-muted-foreground">(требует Pro)</span>
               </div>
               <div className="flex items-center gap-2 text-sm">
                 <Badge variant="secondary">Vue + Tailwind</Badge>
-                <span className="text-xs text-muted-foreground">(требует Pro)</span>
               </div>
             </div>
           </CardContent>
