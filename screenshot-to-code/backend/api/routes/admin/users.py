@@ -3,6 +3,7 @@
 from fastapi import APIRouter, HTTPException, status, Depends
 from api.admin_auth import get_admin_user
 from api.config.plans import get_plan_limit
+from api.billing.yookassa import PACKAGES
 import sqlite3
 from pydantic import BaseModel
 from db import get_conn as get_db
@@ -50,6 +51,7 @@ async def get_users(admin: dict = Depends(get_admin_user)):
                 "email": "...",
                 "name": "...",
                 "plan": "free|basic|professional",
+                "credits": 100,
                 "used_generations": 5,
                 "disabled": false,
                 "role": "user" | "admin",
@@ -65,7 +67,7 @@ async def get_users(admin: dict = Depends(get_admin_user)):
 
     try:
         cursor.execute("""
-            SELECT id, email, name, plan, used_generations, disabled, role, created_at
+            SELECT id, email, name, plan, credits, used_generations, disabled, role, created_at
             FROM users
             ORDER BY created_at DESC
         """)
@@ -218,7 +220,7 @@ async def reset_user_limits(
     admin: dict = Depends(get_admin_user),
 ):
     """
-    Reset user's generation limits (set used_generations to 0).
+    Reset user's credits to standard plan limits (set used_generations to 0 and credits to plan standard).
 
     Returns:
     {
@@ -229,7 +231,7 @@ async def reset_user_limits(
     cursor = conn.cursor()
 
     try:
-        # Check user exists
+        # Check user exists and get their plan
         cursor.execute("SELECT plan FROM users WHERE id = ?", (user_id,))
         row = cursor.fetchone()
         if not row:
@@ -238,10 +240,19 @@ async def reset_user_limits(
                 detail={"error": "not_found", "message": "User not found"},
             )
 
-        # Reset used_generations to 0
+        user_plan = row[0] if row[0] else "free"
+
+        # Get standard credits for this plan
+        standard_credits = 0  # default for free plan
+        if user_plan in PACKAGES:
+            standard_credits = PACKAGES[user_plan]["credits"]
+
+        print(f"[ADMIN] Resetting limits for user {user_id}: plan={user_plan}, setting credits to {standard_credits}")
+
+        # Reset used_generations to 0 and credits to standard value for plan
         cursor.execute(
-            "UPDATE users SET used_generations = 0 WHERE id = ?",
-            (user_id,),
+            "UPDATE users SET used_generations = 0, credits = ? WHERE id = ?",
+            (standard_credits, user_id),
         )
 
         conn.commit()

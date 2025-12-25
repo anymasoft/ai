@@ -16,6 +16,13 @@ import {
   DialogDescription,
   DialogClose,
 } from "@/components/ui/dialog"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 
 interface Payment {
   id: string
@@ -37,6 +44,8 @@ export default function AdminPaymentsPage() {
   const [addUserId, setAddUserId] = useState("")
   const [addCreditsAmount, setAddCreditsAmount] = useState("")
   const [addReason, setAddReason] = useState("support")
+  const [pageSize, setPageSize] = useState(20)
+  const [currentPage, setCurrentPage] = useState(1)
 
   useEffect(() => {
     fetchPayments()
@@ -114,11 +123,22 @@ export default function AdminPaymentsPage() {
 
   const getPackageName = (pkg: string): string => {
     const names: Record<string, string> = {
-      basic: "Basic (100 генераций)",
-      professional: "Professional (500 генераций)",
+      basic: "Basic",
+      professional: "Professional",
     }
     return names[pkg] || pkg
   }
+
+  // Пагинация
+  const totalPages = Math.ceil(payments.length / pageSize)
+  const startIndex = (currentPage - 1) * pageSize
+  const endIndex = startIndex + pageSize
+  const paginatedPayments = payments.slice(startIndex, endIndex)
+
+  // Сброс на первую страницу при изменении размера страницы
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [pageSize])
 
   return (
     <div className="space-y-6">
@@ -150,34 +170,89 @@ export default function AdminPaymentsPage() {
           ) : payments.length === 0 ? (
             <p className="text-center text-muted-foreground py-12">Платежи отсутствуют</p>
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>ID</TableHead>
-                  <TableHead>Пользователь</TableHead>
-                  <TableHead>Пакет</TableHead>
-                  <TableHead>Сумма</TableHead>
-                  <TableHead>Статус</TableHead>
-                  <TableHead>Дата</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {payments.map((p) => (
-                  <TableRow key={p.id}>
-                    <TableCell className="font-mono text-xs">{p.id.slice(0, 8)}</TableCell>
-                    <TableCell className="font-mono text-xs">{p.user_id.slice(0, 8)}</TableCell>
-                    <TableCell>{getPackageName(p.package)}</TableCell>
-                    <TableCell>{p.amount_rubles.toFixed(0)} ₽</TableCell>
-                    <TableCell>
-                      <Badge variant={p.status === "succeeded" ? "default" : "secondary"}>
-                        {p.status === "succeeded" ? "✓ Оплачено" : p.status === "pending" ? "⏳ Ожидание" : "✗ Отменено"}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-sm">{formatDate(p.created_at)}</TableCell>
+            <>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>ID</TableHead>
+                    <TableHead>Пользователь</TableHead>
+                    <TableHead>Пакет</TableHead>
+                    <TableHead>Сумма</TableHead>
+                    <TableHead>Статус</TableHead>
+                    <TableHead>Дата</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {paginatedPayments.map((p) => (
+                    <TableRow key={p.id}>
+                      <TableCell className="font-mono text-xs">{p.id.slice(0, 8)}</TableCell>
+                      <TableCell className="font-mono text-xs">{p.user_id.slice(0, 8)}</TableCell>
+                      <TableCell>{getPackageName(p.package)}</TableCell>
+                      <TableCell>{p.amount_rubles.toFixed(0)} ₽</TableCell>
+                      <TableCell>
+                        <Badge variant={p.status === "succeeded" ? "default" : "secondary"}>
+                          {p.status === "succeeded" ? "✓ Оплачено" : p.status === "pending" ? "⏳ Ожидание" : "✗ Отменено"}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-sm">{formatDate(p.created_at)}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+
+              {/* Pagination */}
+              {payments.length > 0 && (
+                <div className="border-t pt-4 mt-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <label className="text-sm font-medium text-muted-foreground">Строк на странице:</label>
+                      <Select value={pageSize.toString()} onValueChange={(value) => setPageSize(parseInt(value))}>
+                        <SelectTrigger className="w-[120px]">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="10">10</SelectItem>
+                          <SelectItem value="20">20</SelectItem>
+                          <SelectItem value="50">50</SelectItem>
+                          <SelectItem value="100">100</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="flex gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                        disabled={currentPage === 1}
+                      >
+                        Предыдущая
+                      </Button>
+                      <div className="flex items-center gap-1">
+                        {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                          <Button
+                            key={page}
+                            variant={currentPage === page ? "default" : "outline"}
+                            size="sm"
+                            onClick={() => setCurrentPage(page)}
+                            className="min-w-[40px]"
+                          >
+                            {page}
+                          </Button>
+                        ))}
+                      </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                        disabled={currentPage === totalPages}
+                      >
+                        Следующая
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </>
           )}
         </CardContent>
       </Card>

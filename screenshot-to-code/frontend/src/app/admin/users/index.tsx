@@ -36,6 +36,7 @@ interface User {
   email: string
   name: string | null
   plan: string
+  credits: number
   used_generations: number
   disabled: boolean
   role: string
@@ -170,7 +171,7 @@ export default function AdminUsersPage() {
       await fetchJSON(`/api/admin/users/${resetLimitsUser.id}/reset-limits`, {
         method: "POST",
       })
-      toast.success("Limits reset")
+      toast.success(`Limits reset to plan defaults`)
       await fetchUsers()
     } catch (error) {
       console.error("Error:", error)
@@ -273,7 +274,7 @@ export default function AdminUsersPage() {
                         {getPlanBadge(user.plan)}
                       </TableCell>
                       <TableCell className="text-sm">
-                        {user.used_generations}
+                        {user.used_generations} / {user.credits}
                       </TableCell>
                       <TableCell>
                         <Badge variant={user.disabled ? "destructive" : "outline"}>
@@ -364,9 +365,9 @@ export default function AdminUsersPage() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="free">Free (30 generations)</SelectItem>
-                  <SelectItem value="basic">Basic (200 generations)</SelectItem>
-                  <SelectItem value="professional">Professional (1000 generations)</SelectItem>
+                  <SelectItem value="free">Free</SelectItem>
+                  <SelectItem value="basic">Basic</SelectItem>
+                  <SelectItem value="professional">Professional</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -454,7 +455,7 @@ export default function AdminUsersPage() {
           <DialogHeader>
             <DialogTitle>Reset Limits</DialogTitle>
             <DialogDescription>
-              Are you sure you want to reset limits for {resetLimitsUser?.email}? This will set their usage to 0.
+              Reset {resetLimitsUser?.email} credits to plan defaults? This will set usage to 0 and credits to {resetLimitsUser?.plan === "basic" ? "100" : resetLimitsUser?.plan === "professional" ? "500" : "0"}.
             </DialogDescription>
           </DialogHeader>
           <div className="flex justify-end gap-2">
