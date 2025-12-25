@@ -220,7 +220,11 @@ async def reset_user_limits(
     admin: dict = Depends(get_admin_user),
 ):
     """
-    Reset user's credits to standard plan limits (set used_generations to 0 and credits to plan standard).
+    Reset user's usage counter (set used_generations to 0).
+
+    IMPORTANT: This ONLY resets the usage counter, NOT the credits balance.
+    If user had 100 credits and used 50, after reset they still have 100 credits
+    with used_generations = 0.
 
     Returns:
     {
@@ -231,8 +235,8 @@ async def reset_user_limits(
     cursor = conn.cursor()
 
     try:
-        # Check user exists and get their plan
-        cursor.execute("SELECT plan FROM users WHERE id = ?", (user_id,))
+        # Check user exists
+        cursor.execute("SELECT used_generations, credits FROM users WHERE id = ?", (user_id,))
         row = cursor.fetchone()
         if not row:
             raise HTTPException(
@@ -240,22 +244,20 @@ async def reset_user_limits(
                 detail={"error": "not_found", "message": "User not found"},
             )
 
-        user_plan = row[0] if row[0] else "free"
+        used_before = row[0] if row[0] else 0
+        credits = row[1] if row[1] else 0
 
-        # Get standard credits for this plan
-        standard_credits = 0  # default for free plan
-        if user_plan in PACKAGES:
-            standard_credits = PACKAGES[user_plan]["credits"]
+        print(f"[ADMIN] Resetting usage for user {user_id}: used_generations {used_before} → 0 (credits remains {credits})")
 
-        print(f"[ADMIN] Resetting limits for user {user_id}: plan={user_plan}, setting credits to {standard_credits}")
-
-        # Reset used_generations to 0 and credits to standard value for plan
+        # Reset ONLY used_generations to 0. Credits balance is NOT touched.
         cursor.execute(
-            "UPDATE users SET used_generations = 0, credits = ? WHERE id = ?",
-            (standard_credits, user_id),
+            "UPDATE users SET used_generations = 0, updated_at = datetime('now') WHERE id = ?",
+            (user_id,),
         )
 
         conn.commit()
+
+        print(f"[ADMIN] Successfully reset usage for user {user_id}")
 
         return {"success": True}
 
@@ -263,10 +265,10 @@ async def reset_user_limits(
         raise
     except Exception as e:
         conn.rollback()
-        print(f"[ADMIN] Error resetting limits: {e}")
+        print(f"[ADMIN] Error resetting usage: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail={"error": "internal_error", "message": "Failed to reset limits"},
+            detail={"error": "internal_error", "message": "Failed to reset usage"},
         )
 
     finally:
