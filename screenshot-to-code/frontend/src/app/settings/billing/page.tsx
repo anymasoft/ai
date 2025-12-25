@@ -9,10 +9,8 @@ import { Loader2 } from "lucide-react"
 import { fetchJSON, ApiError } from "@/lib/api"
 
 interface BillingUsage {
-  plan: string
-  used: number
-  limit: number
-  remaining: number
+  credits: number
+  is_free: boolean
 }
 
 interface CurrentPlan {
@@ -40,14 +38,19 @@ export default function BillingSettings() {
   const [error, setError] = useState<string | null>(null)
   const [purchasing, setPurchasing] = useState<string | null>(null)
 
+  console.error("[BILLING] BillingSettings component mounted")
+
   useEffect(() => {
+    console.error("[BILLING] BillingSettings useEffect - fetching billing data")
     fetchBillingData()
   }, [])
 
   async function fetchBillingData() {
     try {
+      console.error("[BILLING] fetching GET /api/billing/usage")
       setLoading(true)
       const data = await fetchJSON<BillingUsage>("/api/billing/usage")
+      console.error("[BILLING] GET /api/billing/usage response:", JSON.stringify(data))
       setBillingUsage(data)
       setError(null)
     } catch (err) {
@@ -93,31 +96,22 @@ export default function BillingSettings() {
   }
 
   // Build current plan data from API response
-  const getPlanName = (plan: string): string => {
-    const names: Record<string, string> = {
-      free: "Free",
-      basic: "Basic",
-      professional: "Professional",
-    }
-    return names[plan] || plan
-  }
-
   const currentPlanData: CurrentPlan | null = billingUsage ? {
-    planName: getPlanName(billingUsage.plan),
+    planName: billingUsage.is_free ? "Free" : "Paid",
     price: "$0",
     nextBilling: "N/A",
     status: "Active",
-    creditsTotal: billingUsage.limit,
-    creditsUsed: billingUsage.used,
-    creditsRemaining: billingUsage.remaining,
-    progressPercentage: (billingUsage.used / billingUsage.limit) * 100,
+    creditsTotal: billingUsage.credits,
+    creditsUsed: 0,
+    creditsRemaining: billingUsage.credits,
+    progressPercentage: 0,
     daysUsed: 0,
     totalDays: 30,
     remainingDays: 30,
-    needsAttention: billingUsage.used >= billingUsage.limit * 0.9,
-    attentionMessage: billingUsage.used >= billingUsage.limit
-      ? `You've reached your ${billingUsage.plan} plan limit (${billingUsage.limit} generations)`
-      : `You're using ${((billingUsage.used / billingUsage.limit) * 100).toFixed(0)}% of your limit`,
+    needsAttention: false,
+    attentionMessage: billingUsage.is_free
+      ? "Вы в Free плане. У вас 3 генерации. Купите пакет для большего количества."
+      : `У вас ${billingUsage.credits} генераций. Купите еще пакет для большего количества.`,
   } : null
 
   return (
@@ -158,7 +152,7 @@ export default function BillingSettings() {
                 <CardContent>
                   <PricingPlans
                     mode="billing"
-                    currentPlanId={billingUsage?.plan || "free"}
+                    currentPlanId={billingUsage?.is_free ? "free" : "paid"}
                     onPlanSelect={handlePlanSelect}
                   />
                 </CardContent>

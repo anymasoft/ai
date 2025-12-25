@@ -17,6 +17,8 @@ export default function BillingReturn() {
   const searchParams = new URLSearchParams(location.search)
   const paymentId = searchParams.get("payment_id")
 
+  console.error("[BILLING] /billing/return mounted. paymentId:", paymentId)
+
   const [status, setStatus] = useState<"pending" | "succeeded" | "canceled" | "error">("pending")
   const [message, setMessage] = useState("Проверяем статус платежа...")
   const [credits, setCredits] = useState<number | null>(null)
@@ -33,23 +35,35 @@ export default function BillingReturn() {
 
     const pollStatus = async () => {
       try {
+        console.error("[BILLING] polling GET /api/billing/status?payment_id=" + paymentId)
         const response = await fetchJSON<PaymentStatusResponse>(
           `/api/billing/status?payment_id=${paymentId}`
         )
 
+        console.error("[BILLING] response:", JSON.stringify(response))
         setMessage(response.message)
 
         if (response.status === "succeeded") {
+          console.error("[BILLING] payment succeeded! credits:", response.credits)
           setStatus("succeeded")
           setCredits(response.credits || null)
           setPolling(false)
+
+          // Auto-redirect after 2 seconds
+          console.error("[BILLING] scheduling redirect to /settings/billing")
+          setTimeout(() => {
+            console.error("[BILLING] redirect to /settings/billing")
+            navigate("/settings/billing")
+          }, 2000)
           return
         } else if (response.status === "canceled") {
+          console.error("[BILLING] payment canceled")
           setStatus("canceled")
           setPolling(false)
           return
         }
         // pending - continue polling
+        console.error("[BILLING] still pending, continue polling")
 
         setPollCount((c) => c + 1)
       } catch (err) {
