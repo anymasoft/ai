@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge"
 import { Loader2, RefreshCcw } from "lucide-react"
 import { toast } from "sonner"
 import { fetchJSON, ApiError } from "@/lib/api"
-import { useNavigate, useLocation } from "react-router-dom"
+import { useNavigate } from "react-router-dom"
 import {
   Select,
   SelectContent,
@@ -29,7 +29,6 @@ interface Payment {
 
 export default function AdminPaymentsPage() {
   const navigate = useNavigate()
-  const location = useLocation()
   const [payments, setPayments] = useState<Payment[]>([])
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
@@ -53,15 +52,7 @@ export default function AdminPaymentsPage() {
       setPayments(data.payments || [])
     } catch (error) {
       console.error("[ADMIN] Error loading payments:", error)
-      if (error instanceof ApiError && error.status === 403) {
-        toast.error("Доступ запрещен")
-        // Only redirect to playground if on root path
-        if (location.pathname === "/") {
-          navigate("/playground")
-        }
-      } else {
-        toast.error("Ошибка при загрузке платежей")
-      }
+      toast.error("Ошибка при загрузке платежей")
     } finally {
       setLoading(false)
     }

@@ -22,7 +22,7 @@ import {
 import { Loader2, RefreshCcw, MoreVertical } from "lucide-react"
 import { toast } from "sonner"
 import { fetchJSON, ApiError } from "@/lib/api"
-import { useNavigate, useLocation } from "react-router-dom"
+import { useNavigate } from "react-router-dom"
 interface User {
   id: string
   email: string
@@ -37,7 +37,6 @@ interface User {
 
 export default function AdminUsersPage() {
   const navigate = useNavigate()
-  const location = useLocation()
   const [users, setUsers] = useState<User[]>([])
   const [loading, setLoading] = useState(true)
   const [emailFilter, setEmailFilter] = useState("")
@@ -65,15 +64,7 @@ export default function AdminUsersPage() {
       setUsers(data.users || [])
     } catch (error) {
       console.error("Error:", error)
-      if (error instanceof ApiError && error.status === 403) {
-        toast.error("Доступ запрещен")
-        // Only redirect to playground if on root path
-        if (location.pathname === "/") {
-          navigate("/playground")
-        }
-      } else {
-        toast.error("Ошибка при загрузке пользователей")
-      }
+      toast.error("Ошибка при загрузке пользователей")
     } finally {
       setLoading(false)
     }

@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react"
-import { useNavigate, useLocation } from "react-router-dom"
+import { useNavigate } from "react-router-dom"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -22,7 +22,6 @@ interface Message {
 
 export default function AdminMessagesPage() {
   const navigate = useNavigate()
-  const location = useLocation()
   const [messages, setMessages] = useState<Message[]>([])
   const [loading, setLoading] = useState(true)
   const [deleting, setDeleting] = useState<string | null>(null)
@@ -56,15 +55,7 @@ export default function AdminMessagesPage() {
       setTotalPages(data.pagination?.totalPages || 1)
     } catch (error) {
       console.error("Error:", error)
-      if (error instanceof ApiError && error.status === 403) {
-        toast.error("Доступ запрещен")
-        // Only redirect to playground if on root path
-        if (location.pathname === "/") {
-          navigate("/playground")
-        }
-      } else {
-        toast.error("Ошибка при загрузке сообщений")
-      }
+      toast.error("Ошибка при загрузке сообщений")
     } finally {
       setLoading(false)
     }
