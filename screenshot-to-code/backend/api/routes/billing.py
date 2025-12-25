@@ -5,7 +5,8 @@ from pydantic import BaseModel
 from typing import Optional
 import os
 
-from api.auth import get_current_user, get_admin_user
+from api.routes.auth import get_current_user
+from api.admin_auth import get_admin_user
 from api.billing.yookassa import (
     create_payment,
     check_payment_status,
