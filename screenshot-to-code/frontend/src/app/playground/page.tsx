@@ -409,7 +409,7 @@ export default function PlaygroundPage() {
         {/* Input Form Card */}
         <Card className="p-6">
           <div className="space-y-4">
-            <h3 className="font-semibold">Генерировать код</h3>
+            <h3 className="font-semibold">Создать сайт</h3>
 
             {/* Image Upload */}
             <div className="space-y-2">
@@ -542,7 +542,7 @@ export default function PlaygroundPage() {
                 disabled={!isStreaming && (credits === null || credits === 0)}
               >
                 {isStreaming && <Loader2 size={16} className="animate-spin" />}
-                {isStreaming ? "Отменить" : (credits === 0 || credits === null) ? "Кредиты закончились" : "Генерировать"}
+                {isStreaming ? "Отменить" : (credits === 0 || credits === null) ? "Кредиты закончились" : "Создать сайт"}
               </Button>
             </div>
           </div>
