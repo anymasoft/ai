@@ -167,7 +167,13 @@ def get_credits_info(user_id: str) -> dict:
     conn.close()
 
     if not row:
-        return {"available": 0}
+        # User not found - return defaults
+        return {"available": 0, "total": 0, "used": 0}
 
-    credits = row[0]
-    return {"available": credits}
+    credits = row[0] if row[0] is not None else 0
+
+    return {
+        "available": credits,  # Current balance
+        "total": credits,      # No separate limit, total = available
+        "used": 0              # No tracking of "used" (balance is just balance)
+    }

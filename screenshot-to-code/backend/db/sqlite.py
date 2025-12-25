@@ -155,7 +155,7 @@ def init_db() -> None:
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS api_generations (
                 id TEXT PRIMARY KEY,
-                api_key_id TEXT NOT NULL,
+                user_id TEXT NOT NULL,
                 status TEXT NOT NULL DEFAULT 'processing',
                 format TEXT NOT NULL,
                 input_type TEXT NOT NULL,
@@ -170,9 +170,43 @@ def init_db() -> None:
                 created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
                 started_at TIMESTAMP,
                 completed_at TIMESTAMP,
-                FOREIGN KEY (api_key_id) REFERENCES api_keys(id)
+                FOREIGN KEY (user_id) REFERENCES users(id)
             )
         """)
+
+        # Migrate api_generations from api_key_id to user_id
+        try:
+            cursor.execute("PRAGMA table_info(api_generations)")
+            columns = [row[1] for row in cursor.fetchall()]
+
+            if 'api_key_id' in columns and 'user_id' not in columns:
+                # Add user_id column if it doesn't exist
+                cursor.execute("ALTER TABLE api_generations ADD COLUMN user_id TEXT")
+
+                # Migrate data: resolve api_key_id to user_id
+                cursor.execute("""
+                    UPDATE api_generations
+                    SET user_id = (
+                        SELECT user_id FROM api_keys WHERE id = api_generations.api_key_id
+                    )
+                    WHERE user_id IS NULL
+                """)
+
+                conn.commit()
+                print("[DB] Migrated api_generations: api_key_id -> user_id")
+            elif 'api_key_id' in columns and 'user_id' in columns:
+                # Both columns exist, just ensure user_id is filled
+                cursor.execute("""
+                    UPDATE api_generations
+                    SET user_id = (
+                        SELECT user_id FROM api_keys WHERE id = api_generations.api_key_id
+                    )
+                    WHERE user_id IS NULL AND api_key_id IS NOT NULL
+                """)
+                conn.commit()
+
+        except Exception as e:
+            print(f"[DB] API generations migration warning (non-critical): {e}")
 
         # Create API generation chunks table (for streaming without duplicates on reconnect)
         cursor.execute("""
@@ -316,8 +350,8 @@ def init_db() -> None:
         """)
 
         cursor.execute("""
-            CREATE INDEX IF NOT EXISTS idx_api_generations_api_key
-            ON api_generations(api_key_id, created_at DESC)
+            CREATE INDEX IF NOT EXISTS idx_api_generations_user
+            ON api_generations(user_id, created_at DESC)
         """)
 
         cursor.execute("""

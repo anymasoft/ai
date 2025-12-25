@@ -1,8 +1,9 @@
 """Limits and usage endpoint."""
 
+import logging
 from db import get_api_conn, hash_api_key
 from datetime import datetime, timedelta
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException, status
 from api.models.responses import (
     LimitsResponse,
     CreditsInfo,
@@ -15,11 +16,11 @@ from api.credits import get_credits_info
 router = APIRouter()
 
 
-def get_concurrent_generations(api_key_id: str, rate_limit: int) -> RateLimitInfo:
+def get_concurrent_generations(user_id: str, rate_limit: int) -> RateLimitInfo:
     """
     Get concurrent generations count.
 
-    Counts generations with status='processing' for this API key.
+    Counts generations with status='processing' for this user.
     """
     conn = get_api_conn()
     cursor = conn.cursor()
@@ -28,8 +29,8 @@ def get_concurrent_generations(api_key_id: str, rate_limit: int) -> RateLimitInf
         cursor.execute("""
             SELECT COUNT(*)
             FROM api_generations
-            WHERE api_key_id = ? AND status = 'processing'
-        """, (api_key_id,))
+            WHERE user_id = ? AND status = 'processing'
+        """, (user_id,))
 
         count = cursor.fetchone()[0]
         return RateLimitInfo(limit=rate_limit, current=count)
@@ -38,11 +39,11 @@ def get_concurrent_generations(api_key_id: str, rate_limit: int) -> RateLimitInf
         conn.close()
 
 
-def get_hourly_generations(api_key_id: str, rate_limit: int) -> RateLimitInfo:
+def get_hourly_generations(user_id: str, rate_limit: int) -> RateLimitInfo:
     """
     Get hourly generation count.
 
-    Counts generations created in the last hour for this API key.
+    Counts generations created in the last hour for this user.
     """
     conn = get_api_conn()
     cursor = conn.cursor()
@@ -54,8 +55,8 @@ def get_hourly_generations(api_key_id: str, rate_limit: int) -> RateLimitInfo:
         cursor.execute("""
             SELECT COUNT(*)
             FROM api_generations
-            WHERE api_key_id = ? AND created_at > ?
-        """, (api_key_id, one_hour_ago.isoformat()))
+            WHERE user_id = ? AND created_at > ?
+        """, (user_id, one_hour_ago.isoformat()))
 
         count = cursor.fetchone()[0]
 
@@ -70,21 +71,47 @@ def get_hourly_generations(api_key_id: str, rate_limit: int) -> RateLimitInfo:
 
 @router.get("/api/limits", response_model=LimitsResponse, tags=["Usage"])
 async def get_limits(api_key_info: dict = Depends(get_api_key)):
-    """Get current usage and limits for API key."""
+    """Get current usage and limits for user."""
 
-    api_key_id = api_key_info["id"]
-    tier = api_key_info["tier"]
+    user_id = api_key_info.get("user_id")
+    if not user_id:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail={"error": "unauthorized", "message": "User ID not found in API key"},
+        )
+
+    tier = api_key_info.get("tier", "free")
     rate_limit_concurrent = api_key_info.get("rate_limit_concurrent", 10)
     rate_limit_hourly = api_key_info.get("rate_limit_hourly", 100)
 
-    credits = get_credits_info(api_key_id)
-    concurrent = get_concurrent_generations(api_key_id, rate_limit_concurrent)
-    hourly = get_hourly_generations(api_key_id, rate_limit_hourly)
+    # Ensure limits are valid integers
+    if not isinstance(rate_limit_concurrent, int) or rate_limit_concurrent <= 0:
+        rate_limit_concurrent = 10
+    if not isinstance(rate_limit_hourly, int) or rate_limit_hourly <= 0:
+        rate_limit_hourly = 100
 
-    return LimitsResponse(
-        credits=CreditsInfo(**credits),
-        rate_limits=RateLimitsInfo(
-            concurrent_generations=concurrent, generations_per_hour=hourly
-        ),
-        tier=tier,
-    )
+    try:
+        credits = get_credits_info(user_id)
+        concurrent = get_concurrent_generations(user_id, rate_limit_concurrent)
+        hourly = get_hourly_generations(user_id, rate_limit_hourly)
+
+        return LimitsResponse(
+            credits=CreditsInfo(**credits),
+            rate_limits=RateLimitsInfo(
+                concurrent_generations=concurrent, generations_per_hour=hourly
+            ),
+            tier=tier,
+        )
+    except Exception as e:
+        # If anything fails, return default limits
+        logger = logging.getLogger("api.limits")
+        logger.error(f"Error getting limits for user {user_id}: {e}", exc_info=True)
+
+        return LimitsResponse(
+            credits=CreditsInfo(available=0, total=0, used=0),
+            rate_limits=RateLimitsInfo(
+                concurrent_generations=RateLimitInfo(limit=rate_limit_concurrent, current=0),
+                generations_per_hour=RateLimitInfo(limit=rate_limit_hourly, current=0),
+            ),
+            tier=tier,
+        )
