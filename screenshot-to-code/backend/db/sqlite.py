@@ -198,6 +198,67 @@ def init_db() -> None:
                 """)
                 conn.commit()
 
+            # Remove api_key_id column if it still exists (final cleanup)
+            if 'api_key_id' in columns:
+                # SQLite doesn't support DROP COLUMN directly, so we need to recreate the table
+                cursor.execute("PRAGMA table_info(api_generations)")
+                existing_columns = [row[1] for row in cursor.fetchall()]
+
+                if 'api_key_id' in existing_columns:
+                    # Create new table without api_key_id
+                    cursor.execute("""
+                        CREATE TABLE api_generations_new (
+                            id TEXT PRIMARY KEY,
+                            user_id TEXT NOT NULL,
+                            status TEXT NOT NULL DEFAULT 'processing',
+                            format TEXT NOT NULL,
+                            input_type TEXT NOT NULL,
+                            input_data TEXT NOT NULL,
+                            input_thumbnail TEXT,
+                            instructions TEXT,
+                            result_code TEXT,
+                            error_message TEXT,
+                            credits_charged INTEGER NOT NULL,
+                            model_used TEXT,
+                            duration_ms INTEGER,
+                            created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                            started_at TIMESTAMP,
+                            completed_at TIMESTAMP,
+                            FOREIGN KEY (user_id) REFERENCES users(id)
+                        )
+                    """)
+
+                    # Copy data from old table to new table
+                    cursor.execute("""
+                        INSERT INTO api_generations_new
+                        SELECT id, user_id, status, format, input_type, input_data,
+                               input_thumbnail, instructions, result_code, error_message,
+                               credits_charged, model_used, duration_ms, created_at,
+                               started_at, completed_at
+                        FROM api_generations
+                    """)
+
+                    # Drop old table and rename new table
+                    cursor.execute("DROP TABLE api_generations")
+                    cursor.execute("ALTER TABLE api_generations_new RENAME TO api_generations")
+
+                    # Recreate indexes
+                    cursor.execute("""
+                        CREATE INDEX IF NOT EXISTS idx_api_generations_user
+                        ON api_generations(user_id, created_at DESC)
+                    """)
+                    cursor.execute("""
+                        CREATE INDEX IF NOT EXISTS idx_api_generations_status
+                        ON api_generations(status)
+                    """)
+                    cursor.execute("""
+                        CREATE INDEX IF NOT EXISTS idx_api_generations_created
+                        ON api_generations(created_at)
+                    """)
+
+                    conn.commit()
+                    print("[DB] Removed api_key_id column from api_generations")
+
         except Exception as e:
             print(f"[DB] API generations migration warning (non-critical): {e}")
 
