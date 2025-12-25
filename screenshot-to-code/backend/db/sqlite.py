@@ -61,7 +61,6 @@ def init_db() -> None:
                 id TEXT PRIMARY KEY,
                 email TEXT UNIQUE,
                 name TEXT,
-                plan_id TEXT,
                 plan TEXT DEFAULT 'free',
                 role TEXT DEFAULT 'user',
                 disabled INTEGER DEFAULT 0,
@@ -69,8 +68,7 @@ def init_db() -> None:
                 expiresAt INTEGER,
                 credits INTEGER DEFAULT 0,
                 created_at TEXT NOT NULL,
-                updated_at TEXT NOT NULL,
-                FOREIGN KEY (plan_id) REFERENCES plans(id)
+                updated_at TEXT NOT NULL
             )
         """)
 
@@ -101,18 +99,6 @@ def init_db() -> None:
         except Exception as e:
             print(f"[DB] Migration warning (non-critical): {e}")
 
-        # Create plans table
-        cursor.execute("""
-            CREATE TABLE IF NOT EXISTS plans (
-                id TEXT PRIMARY KEY,
-                name TEXT NOT NULL,
-                monthly_price_cents INTEGER,
-                monthly_generation_limit INTEGER,
-                monthly_token_limit INTEGER,
-                created_at TEXT NOT NULL
-            )
-        """)
-
         # ====================
         # API SYSTEM TABLES (REST API)
         # ====================
@@ -125,7 +111,6 @@ def init_db() -> None:
                 key_hash TEXT NOT NULL UNIQUE,
                 key_plain TEXT,
                 name TEXT,
-                tier TEXT NOT NULL DEFAULT 'free',
                 credits_total INTEGER NOT NULL DEFAULT 0,
                 credits_used INTEGER NOT NULL DEFAULT 0,
                 rate_limit_concurrent INTEGER NOT NULL DEFAULT 10,
@@ -439,7 +424,7 @@ def init_db() -> None:
 
         cursor.execute("""
             INSERT OR IGNORE INTO api_keys (
-                id, key_hash, name, tier, credits_total, credits_used
+                id, key_hash, name, credits_total, credits_used
             ) VALUES (?, ?, ?, ?, ?, ?)
         """, ("key_dev_default", dev_key_hash, "Development Key", "pro", 10000, 0))
 
