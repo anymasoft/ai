@@ -61,7 +61,6 @@ def init_db() -> None:
                 id TEXT PRIMARY KEY,
                 email TEXT UNIQUE,
                 name TEXT,
-                plan_id TEXT,
                 plan TEXT DEFAULT 'free',
                 role TEXT DEFAULT 'user',
                 disabled INTEGER DEFAULT 0,
@@ -69,8 +68,7 @@ def init_db() -> None:
                 expiresAt INTEGER,
                 credits INTEGER DEFAULT 0,
                 created_at TEXT NOT NULL,
-                updated_at TEXT NOT NULL,
-                FOREIGN KEY (plan_id) REFERENCES plans(id)
+                updated_at TEXT NOT NULL
             )
         """)
 
@@ -100,9 +98,6 @@ def init_db() -> None:
             conn.commit()
         except Exception as e:
             print(f"[DB] Migration warning (non-critical): {e}")
-
-        # Create plans table
-        """)
 
         # ====================
         # API SYSTEM TABLES (REST API)
