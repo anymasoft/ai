@@ -396,16 +396,25 @@ async def get_balance(user: dict = Depends(get_current_user)):
 @router.post("/api/billing/deduct-credits")
 async def deduct_credits_endpoint(request: dict, user: dict = Depends(get_current_user)):
     """
-    Deduct credits after successful generation.
+    Deduct credits BEFORE generation starts (called by frontend immediately upon clicking Generate).
 
-    Requires authentication. Called by frontend after generation completes.
+    This is an atomic operation that checks and deducts credits in a single transaction.
+    Credits are deducted upfront to prevent fraud/abuse.
+
+    Requires authentication. Called by frontend BEFORE generation starts.
 
     Args:
         request: { format: "html_tailwind" | "html_css" | "react_tailwind" | "vue_tailwind" }
         user: Current session data
 
     Returns:
-        New credits balance or error if insufficient credits
+        {
+            "success": true,
+            "credits_deducted": 1,
+            "remaining_credits": 4,
+            "message": "Списано 1 кредит(ов). Осталось: 4"
+        }
+        OR HTTP 402 with error details if insufficient credits
     """
 
     # Extract user from session data
@@ -430,12 +439,15 @@ async def deduct_credits_endpoint(request: dict, user: dict = Depends(get_curren
 
     cost = format_costs.get(format_type, 1)
 
-    # Deduct credits
+    print(f"[CREDITS] Deducting {cost} credit(s) for format={format_type}, user={user_id}")
+
+    # Atomically deduct credits (checks if sufficient before deducting)
     success = deduct_credits(user_id, cost)
 
     if not success:
         # Check current balance to provide better error message
         current_credits = get_user_credits(user_id)
+        print(f"[CREDITS] Failed to deduct: insufficient credits. user={user_id}, have={current_credits}, need={cost}")
         raise HTTPException(
             status_code=402,
             detail={
@@ -448,6 +460,8 @@ async def deduct_credits_endpoint(request: dict, user: dict = Depends(get_curren
 
     # Get new balance
     new_credits = get_user_credits(user_id)
+
+    print(f"[CREDITS] Successfully deducted. user={user_id}, deducted={cost}, remaining={new_credits}")
 
     return {
         "success": True,
