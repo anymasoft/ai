@@ -15,11 +15,11 @@ from api.credits import get_credits_info
 router = APIRouter()
 
 
-def get_concurrent_generations(api_key_id: str, rate_limit: int) -> RateLimitInfo:
+def get_concurrent_generations(user_id: str, rate_limit: int) -> RateLimitInfo:
     """
     Get concurrent generations count.
 
-    Counts generations with status='processing' for this API key.
+    Counts generations with status='processing' for this user.
     """
     conn = get_api_conn()
     cursor = conn.cursor()
@@ -28,8 +28,8 @@ def get_concurrent_generations(api_key_id: str, rate_limit: int) -> RateLimitInf
         cursor.execute("""
             SELECT COUNT(*)
             FROM api_generations
-            WHERE api_key_id = ? AND status = 'processing'
-        """, (api_key_id,))
+            WHERE user_id = ? AND status = 'processing'
+        """, (user_id,))
 
         count = cursor.fetchone()[0]
         return RateLimitInfo(limit=rate_limit, current=count)
@@ -38,11 +38,11 @@ def get_concurrent_generations(api_key_id: str, rate_limit: int) -> RateLimitInf
         conn.close()
 
 
-def get_hourly_generations(api_key_id: str, rate_limit: int) -> RateLimitInfo:
+def get_hourly_generations(user_id: str, rate_limit: int) -> RateLimitInfo:
     """
     Get hourly generation count.
 
-    Counts generations created in the last hour for this API key.
+    Counts generations created in the last hour for this user.
     """
     conn = get_api_conn()
     cursor = conn.cursor()
@@ -54,8 +54,8 @@ def get_hourly_generations(api_key_id: str, rate_limit: int) -> RateLimitInfo:
         cursor.execute("""
             SELECT COUNT(*)
             FROM api_generations
-            WHERE api_key_id = ? AND created_at > ?
-        """, (api_key_id, one_hour_ago.isoformat()))
+            WHERE user_id = ? AND created_at > ?
+        """, (user_id, one_hour_ago.isoformat()))
 
         count = cursor.fetchone()[0]
 
@@ -70,16 +70,16 @@ def get_hourly_generations(api_key_id: str, rate_limit: int) -> RateLimitInfo:
 
 @router.get("/api/limits", response_model=LimitsResponse, tags=["Usage"])
 async def get_limits(api_key_info: dict = Depends(get_api_key)):
-    """Get current usage and limits for API key."""
+    """Get current usage and limits for user."""
 
-    api_key_id = api_key_info["id"]
+    user_id = api_key_info["user_id"]
     tier = api_key_info["tier"]
     rate_limit_concurrent = api_key_info.get("rate_limit_concurrent", 10)
     rate_limit_hourly = api_key_info.get("rate_limit_hourly", 100)
 
-    credits = get_credits_info(api_key_id)
-    concurrent = get_concurrent_generations(api_key_id, rate_limit_concurrent)
-    hourly = get_hourly_generations(api_key_id, rate_limit_hourly)
+    credits = get_credits_info(user_id)
+    concurrent = get_concurrent_generations(user_id, rate_limit_concurrent)
+    hourly = get_hourly_generations(user_id, rate_limit_hourly)
 
     return LimitsResponse(
         credits=CreditsInfo(**credits),

@@ -23,9 +23,9 @@ async def get_generation(generation_id: str, api_key_info: dict = Depends(get_ap
         """
         SELECT *
         FROM api_generations
-        WHERE id = ? AND api_key_id = ?
+        WHERE id = ? AND user_id = ?
         """,
-        (generation_id, api_key_info["id"]),
+        (generation_id, api_key_info["user_id"]),
     )
 
     row = cursor.fetchone()
