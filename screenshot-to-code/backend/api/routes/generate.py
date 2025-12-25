@@ -103,7 +103,28 @@ async def generate_code(
     # 6. Trigger actual generation in background
     from api.generation_service import trigger_generation
     import asyncio
-    asyncio.create_task(trigger_generation(generation_id))
+    import logging
+
+    logger = logging.getLogger("api.generate")
+
+    # Create task for background generation
+    task = asyncio.create_task(trigger_generation(generation_id))
+
+    # Add callback to catch any unhandled exceptions
+    def handle_generation_error(task_obj):
+        try:
+            # If task failed, the exception will be here
+            task_obj.result()
+        except asyncio.CancelledError:
+            # Task was cancelled, ignore
+            pass
+        except Exception as e:
+            # Task raised an exception
+            # Note: trigger_generation already catches exceptions and updates DB,
+            # but this callback ensures we log any unexpected issues
+            logger.error(f"Unexpected error in generation task {generation_id}: {e}", exc_info=True)
+
+    task.add_done_callback(handle_generation_error)
 
     # 7. Build stream URL dynamically
     # Strategy:

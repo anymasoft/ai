@@ -121,61 +121,95 @@ async def trigger_generation(generation_id: str) -> None:
 
     This is the main entry point for starting a generation from the API.
     It reads the generation params from database and enqueues a job.
+
+    IMPORTANT: All exceptions are caught and logged to the database.
+    The generation record is updated to "failed" if anything goes wrong.
     """
     from gen_queue.generation_queue import enqueue_generation, GenerationJob
+    import logging
+    import traceback
 
-    # 1. Read generation params from database
-    conn = get_api_conn()
-    cursor = conn.cursor()
+    logger = logging.getLogger("api.generation")
 
     try:
-        cursor.execute("""
-            SELECT format, input_type, input_data, instructions
-            FROM api_generations
-            WHERE id = ?
-        """, (generation_id,))
+        # 1. Read generation params from database
+        conn = get_api_conn()
+        cursor = conn.cursor()
 
-        row = cursor.fetchone()
-        if not row:
-            print(f"[API_GEN] Generation {generation_id} not found")
-            return
+        try:
+            cursor.execute("""
+                SELECT format, input_type, input_data, instructions
+                FROM api_generations
+                WHERE id = ?
+            """, (generation_id,))
 
-        format_type, input_type, input_data, instructions = row
+            row = cursor.fetchone()
+            if not row:
+                error_msg = f"Generation record {generation_id} not found in database"
+                logger.error(f"[API_GEN] {error_msg}")
+                # Can't update generation if it doesn't exist
+                return
 
-    finally:
-        conn.close()
+            format_type, input_type, input_data, instructions = row
 
-    print(f"[API_GEN] Triggering generation {generation_id}: format={format_type}, input_type={input_type}")
+        finally:
+            conn.close()
 
-    # 2. Convert API params to pipeline format
-    params = {
-        "generatedCodeConfig": format_type,
-        "inputMode": input_type,  # "image" or "url"
-        "openAiApiKey": None,  # API uses system keys
-        "anthropicApiKey": None,
-        "generationType": "create",
-    }
+        logger.info(f"[API_GEN] Triggering generation {generation_id}: format={format_type}, input_type={input_type}")
 
-    # Add input data based on type
-    if input_type == "image":
-        params["image"] = input_data  # base64 or URL
-    elif input_type == "url":
-        params["url"] = input_data
+        # 2. Convert API params to pipeline format
+        params = {
+            "generatedCodeConfig": format_type,
+            "inputMode": input_type,  # "image" or "url"
+            "openAiApiKey": None,  # API uses system keys
+            "anthropicApiKey": None,
+            "generationType": "create",
+        }
 
-    # Add instructions if provided
-    if instructions:
-        params["description"] = instructions
+        # Add input data based on type
+        if input_type == "image":
+            params["image"] = input_data  # base64 or URL
+        elif input_type == "url":
+            params["url"] = input_data
 
-    # 3. Create mock WebSocket that writes to database
-    mock_websocket = DatabaseWebSocket(generation_id)
+        # Add instructions if provided
+        if instructions:
+            params["description"] = instructions
 
-    # 4. Enqueue generation job (reuse existing queue system)
-    job = GenerationJob(
-        generation_id=generation_id,
-        websocket=mock_websocket,
-        params=params,
-        websocket_already_accepted=True  # Mock websocket doesn't need accept
-    )
+        # 3. Create mock WebSocket that writes to database
+        mock_websocket = DatabaseWebSocket(generation_id)
 
-    await enqueue_generation(job)
-    print(f"[API_GEN] Enqueued generation job {generation_id}")
+        # 4. Enqueue generation job (reuse existing queue system)
+        job = GenerationJob(
+            generation_id=generation_id,
+            websocket=mock_websocket,
+            params=params,
+            websocket_already_accepted=True  # Mock websocket doesn't need accept
+        )
+
+        await enqueue_generation(job)
+        logger.info(f"[API_GEN] Enqueued generation job {generation_id}")
+
+    except Exception as e:
+        # If ANYTHING fails, mark generation as failed
+        logger.error(f"[API_GEN] Error triggering generation {generation_id}: {e}", exc_info=True)
+
+        # Update generation record to "failed"
+        try:
+            conn = sqlite3.connect("data/api.db")
+            cursor = conn.cursor()
+
+            error_message = f"Generation failed: {str(e)}"
+            cursor.execute("""
+                UPDATE api_generations
+                SET status = 'failed', error_message = ?, completed_at = ?
+                WHERE id = ?
+            """, (error_message, datetime.utcnow().isoformat(), generation_id))
+
+            conn.commit()
+            conn.close()
+            logger.info(f"[API_GEN] Updated generation {generation_id} to failed status")
+
+        except Exception as db_error:
+            # Even updating DB failed, just log it
+            logger.error(f"[API_GEN] Failed to update generation {generation_id} status to failed: {db_error}", exc_info=True)
