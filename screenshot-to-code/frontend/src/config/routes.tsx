@@ -15,6 +15,7 @@ const AdminMessages = lazy(() => import('@/app/admin/messages'))
 const AdminMessageDetail = lazy(() => import('@/app/admin/messages/MessageDetail'))
 const AdminUsers = lazy(() => import('@/app/admin/users'))
 const AdminPayments = lazy(() => import('@/app/admin/payments'))
+const AdminTariffs = lazy(() => import('@/app/admin/tariffs'))
 
 const SignIn = lazy(() => import('@/app/auth/sign-in/page'))
 const AuthCallback = lazy(() => import('@/app/auth/callback/page'))
@@ -76,6 +77,10 @@ export const routes: RouteConfig[] = [
       {
         path: "/admin/payments",
         element: <ProtectedAdminRoute><AdminPayments /></ProtectedAdminRoute>
+      },
+      {
+        path: "/admin/tariffs",
+        element: <ProtectedAdminRoute><AdminTariffs /></ProtectedAdminRoute>
       },
       {
         path: "/settings/account",

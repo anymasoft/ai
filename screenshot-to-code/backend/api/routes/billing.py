@@ -588,7 +588,7 @@ async def list_user_payments(user: dict = Depends(get_current_user)):
 
     try:
         cursor.execute("""
-            SELECT id, user_id, package, credits_amount, amount_rubles, status, created_at
+            SELECT id, user_id, package, credits_amount, amount_cents / 100.0 as amount_rubles, status, created_at
             FROM payments
             WHERE user_id = ?
             ORDER BY created_at DESC
