@@ -18,6 +18,7 @@ export default function BillingReturn() {
   const paymentId = searchParams.get("payment_id")
 
   console.error("[BILLING] /billing/return mounted. paymentId:", paymentId)
+  alert("[BILLING] /billing/return mounted. paymentId: " + paymentId)
 
   const [status, setStatus] = useState<"pending" | "succeeded" | "canceled" | "error">("pending")
   const [message, setMessage] = useState("Проверяем статус платежа...")
@@ -36,9 +37,11 @@ export default function BillingReturn() {
     const pollStatus = async () => {
       try {
         console.error("[BILLING] polling GET /api/billing/status?payment_id=" + paymentId)
+        alert("[BILLING] About to fetch /api/billing/status?payment_id=" + paymentId)
         const response = await fetchJSON<PaymentStatusResponse>(
           `/api/billing/status?payment_id=${paymentId}`
         )
+        alert("[BILLING] fetchJSON returned successfully")
 
         console.error("[BILLING] response:", JSON.stringify(response))
         setMessage(response.message)
@@ -68,12 +71,14 @@ export default function BillingReturn() {
         setPollCount((c) => c + 1)
       } catch (err) {
         console.error("[BILLING] Error checking status:", err)
+        alert("[BILLING] ERROR: " + String(err))
         setMessage("Ошибка при проверке статуса. Попробуем снова...")
         setPollCount((c) => c + 1)
       }
     }
 
     // Poll immediately
+    alert("[BILLING] About to call pollStatus()")
     pollStatus()
 
     // Set interval for polling (every 2-3 seconds)
