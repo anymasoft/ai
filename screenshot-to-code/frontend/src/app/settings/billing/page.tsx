@@ -174,14 +174,13 @@ export default function BillingSettings() {
           <>
             <div className="grid gap-6 grid-cols-1 lg:grid-cols-2">
               <Card>
-                <CardContent className="p-8">
-                  <div className="flex items-center justify-center gap-4">
-                    <Coins className="h-12 w-12 text-yellow-500" />
-                    <div className="text-center">
-                      <div className="text-5xl font-bold">{balance}</div>
-                      <div className="text-sm text-muted-foreground">credits</div>
-                    </div>
+                <CardContent className="flex flex-col items-center justify-center gap-0 py-12 px-8">
+                  <Coins className="h-14 w-14 text-yellow-500 opacity-50 mb-6" />
+                  <div className="text-8xl font-extrabold leading-none text-center">
+                    {balance}
                   </div>
+                  <div className="text-sm text-muted-foreground mt-2">credits</div>
+                  <div className="text-xs text-muted-foreground">Ваш текущий баланс</div>
                 </CardContent>
               </Card>
               <BillingHistoryCard history={billingHistoryData} />
