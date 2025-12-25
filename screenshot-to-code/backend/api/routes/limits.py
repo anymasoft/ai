@@ -80,7 +80,6 @@ async def get_limits(api_key_info: dict = Depends(get_api_key)):
             detail={"error": "unauthorized", "message": "User ID not found in API key"},
         )
 
-    tier = api_key_info.get("tier", "free")
     rate_limit_concurrent = api_key_info.get("rate_limit_concurrent", 10)
     rate_limit_hourly = api_key_info.get("rate_limit_hourly", 100)
 
@@ -100,7 +99,6 @@ async def get_limits(api_key_info: dict = Depends(get_api_key)):
             rate_limits=RateLimitsInfo(
                 concurrent_generations=concurrent, generations_per_hour=hourly
             ),
-            tier=tier,
         )
     except Exception as e:
         # If anything fails, return default limits
@@ -113,5 +111,4 @@ async def get_limits(api_key_info: dict = Depends(get_api_key)):
                 concurrent_generations=RateLimitInfo(limit=rate_limit_concurrent, current=0),
                 generations_per_hour=RateLimitInfo(limit=rate_limit_hourly, current=0),
             ),
-            tier=tier,
         )

@@ -17,7 +17,6 @@ class FormatInfo(BaseModel):
 
     id: str
     name: str
-    tier: Literal["free", "pro"]
     cost: int
     beta: bool = False
 
@@ -93,7 +92,6 @@ class LimitsResponse(BaseModel):
 
     credits: CreditsInfo
     rate_limits: RateLimitsInfo
-    tier: Literal["free", "pro"]
 
 
 class ErrorResponse(BaseModel):
