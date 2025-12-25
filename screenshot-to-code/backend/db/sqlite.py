@@ -425,8 +425,8 @@ def init_db() -> None:
         cursor.execute("""
             INSERT OR IGNORE INTO api_keys (
                 id, key_hash, name, credits_total, credits_used
-            ) VALUES (?, ?, ?, ?, ?, ?)
-        """, ("key_dev_default", dev_key_hash, "Development Key", "pro", 10000, 0))
+            ) VALUES (?, ?, ?, ?, ?)
+        """, ("key_dev_default", dev_key_hash, "Development Key", 10000, 0))
 
         # Initialize default tariffs if they don't exist
         cursor.execute("SELECT COUNT(*) FROM tariffs")
