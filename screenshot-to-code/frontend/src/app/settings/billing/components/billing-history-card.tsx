@@ -2,6 +2,7 @@ import { useState, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
+import { Button } from "@/components/ui/button"
 import { Loader2 } from "lucide-react"
 import { fetchJSON } from "@/lib/api"
 
@@ -30,6 +31,7 @@ interface BillingHistoryCardProps {
 export function BillingHistoryCard({ history }: BillingHistoryCardProps) {
   const [payments, setPayments] = useState<Payment[]>([])
   const [loading, setLoading] = useState(true)
+  const [showAll, setShowAll] = useState(false)
 
   useEffect(() => {
     fetchPayments()
@@ -43,7 +45,7 @@ export function BillingHistoryCard({ history }: BillingHistoryCardProps) {
       console.log("[BILLING] Received response:", data)
       const paymentsList = data.payments || []
       console.log(`[BILLING] Got ${paymentsList.length} payments`)
-      setPayments(paymentsList.slice(0, 5)) // Show last 5 payments
+      setPayments(paymentsList)
     } catch (error) {
       console.error("[BILLING] Error loading payments:", error)
       setPayments([])
@@ -71,6 +73,8 @@ export function BillingHistoryCard({ history }: BillingHistoryCardProps) {
   }
 
   const displayPayments = payments.length > 0 ? payments : history || []
+  const visiblePayments = showAll ? displayPayments : displayPayments.slice(0, 2)
+  const hasMorePayments = displayPayments.length > 2
 
   return (
     <Card>
@@ -91,7 +95,7 @@ export function BillingHistoryCard({ history }: BillingHistoryCardProps) {
           </div>
         ) : (
           <div className="space-y-4">
-            {displayPayments.map((item: any, index) => (
+            {visiblePayments.map((item: any, index) => (
               <div key={item.id}>
                 <div className="flex items-center justify-between py-2">
                   <div>
@@ -111,9 +115,20 @@ export function BillingHistoryCard({ history }: BillingHistoryCardProps) {
                     </Badge>
                   </div>
                 </div>
-                {index < displayPayments.length - 1 && <Separator />}
+                {index < visiblePayments.length - 1 && <Separator />}
               </div>
             ))}
+            {hasMorePayments && (
+              <div className="pt-4">
+                <Button
+                  variant="outline"
+                  className="w-full"
+                  onClick={() => setShowAll(!showAll)}
+                >
+                  {showAll ? "Скрыть" : `Показать ещё (${displayPayments.length - 2})`}
+                </Button>
+              </div>
+            )}
           </div>
         )}
       </CardContent>
