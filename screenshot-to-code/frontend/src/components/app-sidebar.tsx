@@ -56,7 +56,7 @@ const getNavData = (unreadCount: number, email: string | null, isAdmin: boolean)
           icon: BookOpen,
         },
         {
-          title: "Отзывы",
+          title: "Обратная связь",
           url: "/feedback",
           icon: MessageSquare,
         },

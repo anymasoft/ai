@@ -73,76 +73,97 @@ async def generate_code(
     Credits are deducted immediately on success.
     Generation proceeds asynchronously.
     """
-
-    # 1. Calculate cost
-    cost = get_format_cost(request.format)
-
-    # 2. Generate ID first (before deducting credits)
-    generation_id = create_generation_id()
-
-    # 3. Atomically check and deduct credits from user account
-    # This prevents race conditions where multiple concurrent requests
-    # could bypass the credit check
-    user_id = api_key_info["user_id"]
-    deduct_credits_atomic(user_id, cost)
-
-    # 4. Save generation record
-    save_generation(generation_id, user_id, request, cost)
-
-    # 5. Trigger actual generation in background
-    from api.generation_service import trigger_generation
-    import asyncio
     import logging
-
     logger = logging.getLogger("api.generate")
 
-    # Create task for background generation
-    task = asyncio.create_task(trigger_generation(generation_id))
+    try:
+        # 1. Calculate cost
+        cost = get_format_cost(request.format)
 
-    # Add callback to catch any unhandled exceptions
-    def handle_generation_error(task_obj):
-        try:
-            # If task failed, the exception will be here
-            task_obj.result()
-        except asyncio.CancelledError:
-            # Task was cancelled, ignore
-            pass
-        except Exception as e:
-            # Task raised an exception
-            # Note: trigger_generation already catches exceptions and updates DB,
-            # but this callback ensures we log any unexpected issues
-            logger.error(f"Unexpected error in generation task {generation_id}: {e}", exc_info=True)
+        # 2. Generate ID first (before deducting credits)
+        generation_id = create_generation_id()
 
-    task.add_done_callback(handle_generation_error)
+        # 3. Atomically check and deduct credits from user account
+        # This prevents race conditions where multiple concurrent requests
+        # could bypass the credit check
+        user_id = api_key_info["user_id"]
+        deduct_credits_atomic(user_id, cost)
 
-    # 6. Build stream URL dynamically
-    # Strategy:
-    # 1. Use API_PUBLIC_BASE_URL environment variable if set (for production behind reverse proxy)
-    # 2. Otherwise, construct from request URL (for local development)
-    # 3. Replace http/https with ws/wss accordingly
+        # 4. Save generation record
+        save_generation(generation_id, user_id, request, cost)
 
-    api_base_url = os.getenv("API_PUBLIC_BASE_URL")
+        # 5. Trigger actual generation in background
+        from api.generation_service import trigger_generation
+        import asyncio
 
-    if api_base_url:
-        # Production: use configured base URL
-        # Should be like: https://api.example.com or http://localhost:7001
-        stream_url = (
-            api_base_url.replace("https://", "wss://")
-            .replace("http://", "ws://")
-            .rstrip("/")
+        # Create task for background generation
+        task = asyncio.create_task(trigger_generation(generation_id))
+
+        # Add callback to catch any unhandled exceptions
+        def handle_generation_error(task_obj):
+            try:
+                # If task failed, the exception will be here
+                task_obj.result()
+            except asyncio.CancelledError:
+                # Task was cancelled, ignore
+                pass
+            except Exception as e:
+                # Task raised an exception
+                # Note: trigger_generation already catches exceptions and updates DB,
+                # but this callback ensures we log any unexpected issues
+                logger.error(f"Unexpected error in generation task {generation_id}: {e}", exc_info=True)
+
+        task.add_done_callback(handle_generation_error)
+
+        # 6. Build stream URL dynamically
+        # Strategy:
+        # 1. Use API_PUBLIC_BASE_URL environment variable if set (for production behind reverse proxy)
+        # 2. Otherwise, construct from request URL (for local development)
+        # 3. Replace http/https with ws/wss accordingly
+
+        api_base_url = os.getenv("API_PUBLIC_BASE_URL")
+
+        if api_base_url:
+            # Production: use configured base URL
+            # Should be like: https://api.example.com or http://localhost:7001
+            stream_url = (
+                api_base_url.replace("https://", "wss://")
+                .replace("http://", "ws://")
+                .rstrip("/")
+            )
+            stream_url = f"{stream_url}/api/stream/{generation_id}"
+        else:
+            # Development: construct from request
+            # http://localhost:7001 -> ws://localhost:7001
+            # https://example.com -> wss://example.com
+            scheme = "wss" if http_request.url.scheme == "https" else "ws"
+            netloc = http_request.url.netloc  # host:port
+            stream_url = f"{scheme}://{netloc}/api/stream/{generation_id}"
+
+        return GenerateResponse(
+            generation_id=generation_id,
+            status="processing",
+            credits_charged=cost,
+            stream_url=stream_url,
         )
-        stream_url = f"{stream_url}/api/stream/{generation_id}"
-    else:
-        # Development: construct from request
-        # http://localhost:7001 -> ws://localhost:7001
-        # https://example.com -> wss://example.com
-        scheme = "wss" if http_request.url.scheme == "https" else "ws"
-        netloc = http_request.url.netloc  # host:port
-        stream_url = f"{scheme}://{netloc}/api/stream/{generation_id}"
 
-    return GenerateResponse(
-        generation_id=generation_id,
-        status="processing",
-        credits_charged=cost,
-        stream_url=stream_url,
-    )
+    except HTTPException as e:
+        # Re-raise FastAPI HTTPException (e.g., from authentication)
+        logger.error(f"HTTP error in /api/generate: {e.detail}")
+        raise
+
+    except ValueError as e:
+        # Invalid format, insufficient credits, etc.
+        logger.error(f"Validation error in /api/generate: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e)
+        )
+
+    except Exception as e:
+        # Catch all other exceptions (DB errors, generation service errors, etc.)
+        logger.error(f"Unexpected error in /api/generate: {str(e)}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Generation request failed. Please try again."
+        )
