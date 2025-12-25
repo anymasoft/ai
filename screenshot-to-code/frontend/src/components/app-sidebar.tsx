@@ -120,7 +120,6 @@ const getNavData = (unreadCount: number, email: string | null, isAdmin: boolean)
     user: {
       name: email ? email.split("@")[0] : "Пользователь",
       email: email || "не авторизирован",
-      avatar: "",
     },
     navGroups,
   }

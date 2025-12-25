@@ -4,7 +4,6 @@ import * as React from "react"
 import { X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
-import { Logo } from "./logo"
 
 export function SidebarNotification() {
   const [isVisible, setIsVisible] = React.useState(true)
@@ -26,7 +25,11 @@ export function SidebarNotification() {
         
         <div className="pr-6">
           <h3 className="flex items-center gap-3 font-semibold text-neutral-900 dark:text-neutral-100 mb-2 mt-1">
-            <Logo size={42} className="-mt-1" />
+            <img
+              src="/logo/logo-large.webp"
+              alt="Screen2Code"
+              className="h-10 w-10 -mt-1"
+            />
             <div>
               Welcome to{" "}
               <a 
