@@ -69,25 +69,31 @@ async def stream_generation(
             cursor = conn.cursor()
 
             cursor.execute("""
-                SELECT result_code, error_message, status
+                SELECT error_message, status
                 FROM api_generations
                 WHERE id = ?
             """, (generation_id,))
 
             row = cursor.fetchone()
-            conn.close()
 
             if row:
-                result_code, error_message, status = row
+                error_message, status = row
 
-                if status == "completed" and result_code:
-                    # Stream the result code as chunks (simulate streaming)
-                    chunk_size = 1000
-                    for i in range(0, len(result_code), chunk_size):
-                        chunk = result_code[i:i+chunk_size]
+                if status == "completed":
+                    # Send all stored chunks in order
+                    cursor.execute("""
+                        SELECT chunk_index, chunk_data
+                        FROM api_generation_chunks
+                        WHERE generation_id = ?
+                        ORDER BY chunk_index ASC
+                    """, (generation_id,))
+
+                    chunks = cursor.fetchall()
+
+                    for chunk_index, chunk_data in chunks:
                         await websocket.send_json({
                             "type": "chunk",
-                            "data": chunk,
+                            "data": chunk_data,
                             "variant_index": 0
                         })
 
@@ -105,13 +111,14 @@ async def stream_generation(
                         "variant_index": 0
                     })
 
+            conn.close()
             await websocket.close(code=1000)
             return
 
-        # Otherwise, poll database for updates
-        last_result_length = 0
+        # Otherwise, poll database for updates with chunk index tracking
+        last_chunk_index = -1  # Track last sent chunk index (start from -1 so first chunk 0 is sent)
         poll_count = 0
-        max_polls = 600  # 5 minutes at 0.5s intervals
+        max_polls = 1200  # 10 minutes at 0.5s intervals (was 5 minutes, now extended)
 
         while poll_count < max_polls:
             poll_count += 1
@@ -121,15 +128,15 @@ async def stream_generation(
             cursor = conn.cursor()
 
             cursor.execute("""
-                SELECT result_code, error_message, status
+                SELECT error_message, status
                 FROM api_generations
                 WHERE id = ?
             """, (generation_id,))
 
             row = cursor.fetchone()
-            conn.close()
 
             if not row:
+                conn.close()
                 await websocket.send_json({
                     "type": "error",
                     "error": "generation_not_found",
@@ -139,17 +146,27 @@ async def stream_generation(
                 await websocket.close(code=1011)
                 return
 
-            result_code, error_message, status = row
+            error_message, status = row
 
-            # Send new chunks if available
-            if result_code and len(result_code) > last_result_length:
-                new_chunk = result_code[last_result_length:]
+            # Send new chunks (only chunks after last_chunk_index)
+            cursor.execute("""
+                SELECT chunk_index, chunk_data
+                FROM api_generation_chunks
+                WHERE generation_id = ? AND chunk_index > ?
+                ORDER BY chunk_index ASC
+            """, (generation_id, last_chunk_index))
+
+            chunks = cursor.fetchall()
+            conn.close()
+
+            # Send each new chunk
+            for chunk_index, chunk_data in chunks:
                 await websocket.send_json({
                     "type": "chunk",
-                    "data": new_chunk,
+                    "data": chunk_data,
                     "variant_index": 0
                 })
-                last_result_length = len(result_code)
+                last_chunk_index = chunk_index
 
             # Check if completed
             if status == "completed":

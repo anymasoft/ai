@@ -13,12 +13,14 @@ class DatabaseWebSocket:
 
     This allows API generations to reuse the existing WebSocket-based pipeline
     by writing results to the database instead of streaming to a client.
+
+    Chunks are stored with indices to prevent duplicates on reconnect.
     """
 
     def __init__(self, generation_id: str, db_path: str = "data/api.db"):
         self.generation_id = generation_id
         self.db_path = db_path
-        self.chunks: list[str] = []
+        self.chunk_index = 0  # Track chunk number for streaming
         self.is_closed = False
 
     async def accept(self) -> None:
@@ -26,23 +28,21 @@ class DatabaseWebSocket:
         pass
 
     async def send_json(self, data: Dict[str, Any]) -> None:
-        """Store chunks in memory, update database on completion."""
+        """Store chunks in database with index, update status on completion."""
         if self.is_closed:
             return
 
         msg_type = data.get("type")
         value = data.get("value", "")
 
-        # Store chunks
+        # Store chunks with index
         if msg_type == "chunk":
-            self.chunks.append(value)
+            self._store_chunk(value)
 
         # On completion, save to database
         elif msg_type in ["variantComplete", "generation_complete"]:
-            result_code = "".join(self.chunks)
             self._update_generation(
                 status="completed",
-                result_code=result_code,
                 completed_at=datetime.utcnow()
             )
 
@@ -62,10 +62,31 @@ class DatabaseWebSocket:
         # This should never be called in API mode
         raise NotImplementedError("receive_json not supported for API generations")
 
+    def _store_chunk(self, chunk_data: str) -> None:
+        """Store chunk with index in database."""
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+
+        try:
+            cursor.execute("""
+                INSERT INTO api_generation_chunks (generation_id, chunk_index, chunk_data)
+                VALUES (?, ?, ?)
+            """, (self.generation_id, self.chunk_index, chunk_data))
+
+            conn.commit()
+            print(f"[API_GEN] Stored chunk {self.chunk_index} for generation {self.generation_id}")
+            self.chunk_index += 1
+
+        except Exception as e:
+            conn.rollback()
+            print(f"[API_GEN] Error storing chunk: {e}")
+            raise
+        finally:
+            conn.close()
+
     def _update_generation(
         self,
         status: Optional[str] = None,
-        result_code: Optional[str] = None,
         error_message: Optional[str] = None,
         completed_at: Optional[datetime] = None,
         model_used: Optional[str] = None,
@@ -81,10 +102,6 @@ class DatabaseWebSocket:
             if status is not None:
                 updates.append("status = ?")
                 params.append(status)
-
-            if result_code is not None:
-                updates.append("result_code = ?")
-                params.append(result_code)
 
             if error_message is not None:
                 updates.append("error_message = ?")
