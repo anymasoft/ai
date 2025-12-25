@@ -51,10 +51,10 @@ export default function BillingReturn() {
           setPolling(false)
 
           // Auto-redirect after 2 seconds
-          console.error("[BILLING] scheduling redirect to /settings/billing?success=1")
+          console.error("[BILLING] scheduling redirect to /settings/billing")
           setTimeout(() => {
-            console.error("[BILLING] redirect to /settings/billing?success=1")
-            navigate("/settings/billing?success=1")
+            console.error("[BILLING] redirect to /settings/billing")
+            navigate("/settings/billing")
           }, 2000)
           return
         } else if (response.status === "canceled") {
