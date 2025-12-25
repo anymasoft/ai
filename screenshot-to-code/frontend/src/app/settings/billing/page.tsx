@@ -69,12 +69,40 @@ export default function BillingSettings() {
       console.error("[BILLING] processPaymentAndFetchData() STARTED with paymentId:", paymentId)
       setLoading(true)
 
-      // First, call GET /api/billing/status to process the payment
-      const url = `/api/billing/status?payment_id=${paymentId}`
-      console.error("[BILLING] Calling GET", url)
-      const statusResponse = await fetchJSON<PaymentStatusResponse>(url)
-      console.error("[BILLING] ✓ GET /api/billing/status completed")
-      console.error("[BILLING] Payment status response:", JSON.stringify(statusResponse))
+      // Poll for payment status with retries (like the old /billing page did)
+      let statusResponse: PaymentStatusResponse | null = null
+      let pollAttempt = 0
+      const maxPolls = 60 // Try for 2.5 minutes (60 * 2.5s)
+
+      while (pollAttempt < maxPolls) {
+        try {
+          console.error(`[BILLING] Polling payment status (attempt ${pollAttempt + 1}/${maxPolls})`)
+          const url = `/api/billing/status?payment_id=${paymentId}`
+          statusResponse = await fetchJSON<PaymentStatusResponse>(url)
+          console.error("[BILLING] Payment status response:", JSON.stringify(statusResponse))
+
+          if (statusResponse.status === "succeeded" || statusResponse.status === "canceled") {
+            console.error(`[BILLING] ✓ Payment ${statusResponse.status}! Stopping poll`)
+            break
+          }
+
+          // If pending, wait before next poll
+          if (statusResponse.status === "pending") {
+            console.error("[BILLING] Payment still pending, waiting 2.5s before next poll...")
+            await new Promise(resolve => setTimeout(resolve, 2500))
+            pollAttempt++
+          }
+        } catch (pollErr) {
+          console.error(`[BILLING] Error during poll (attempt ${pollAttempt + 1}):`, pollErr)
+          // Wait before retrying
+          await new Promise(resolve => setTimeout(resolve, 2500))
+          pollAttempt++
+        }
+      }
+
+      if (!statusResponse) {
+        throw new Error("Failed to get payment status after polling")
+      }
 
       // Clear payment_id from URL to avoid re-processing
       console.error("[BILLING] Clearing payment_id from URL")
