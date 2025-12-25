@@ -52,12 +52,7 @@ export default function AdminPaymentsPage() {
       setPayments(data.payments || [])
     } catch (error) {
       console.error("[ADMIN] Error loading payments:", error)
-      if (error instanceof ApiError && error.status === 403) {
-        toast.error("Доступ запрещен")
-        navigate("/playground")
-      } else {
-        toast.error("Ошибка при загрузке платежей")
-      }
+      toast.error("Ошибка при загрузке платежей")
     } finally {
       setLoading(false)
     }
@@ -100,7 +95,7 @@ export default function AdminPaymentsPage() {
   }, [pageSize])
 
   return (
-    <div className="space-y-6">
+    <div className="container mx-auto px-4 py-6">
       <div className="space-y-4">
         <div className="flex items-center justify-between">
           <div>

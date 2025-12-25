@@ -55,12 +55,7 @@ export default function AdminMessagesPage() {
       setTotalPages(data.pagination?.totalPages || 1)
     } catch (error) {
       console.error("Error:", error)
-      if (error instanceof ApiError && error.status === 403) {
-        toast.error("Доступ запрещен")
-        navigate("/playground")
-      } else {
-        toast.error("Ошибка при загрузке сообщений")
-      }
+      toast.error("Ошибка при загрузке сообщений")
     } finally {
       setLoading(false)
     }

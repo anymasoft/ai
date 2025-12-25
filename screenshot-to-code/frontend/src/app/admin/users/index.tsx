@@ -64,12 +64,7 @@ export default function AdminUsersPage() {
       setUsers(data.users || [])
     } catch (error) {
       console.error("Error:", error)
-      if (error instanceof ApiError && error.status === 403) {
-        toast.error("Доступ запрещен")
-        navigate("/playground")
-      } else {
-        toast.error("Ошибка при загрузке пользователей")
-      }
+      toast.error("Ошибка при загрузке пользователей")
     } finally {
       setLoading(false)
     }
