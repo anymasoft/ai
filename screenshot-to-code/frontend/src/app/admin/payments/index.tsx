@@ -20,10 +20,10 @@ interface Payment {
   id: string
   user_id: string
   email: string
-  package: string
-  credits_amount: number
-  amount_rubles: number
-  status: "pending" | "succeeded" | "canceled"
+  plan: string
+  amount: number
+  currency: string
+  provider: string
   created_at: string
 }
 
@@ -80,12 +80,12 @@ export default function AdminPaymentsPage() {
     })
   }
 
-  const getPackageName = (pkg: string): string => {
+  const getPlanName = (plan: string): string => {
     const names: Record<string, string> = {
       basic: "Basic",
       professional: "Professional",
     }
-    return names[pkg] || pkg
+    return names[plan] || plan
   }
 
   // Пагинация
@@ -150,9 +150,9 @@ export default function AdminPaymentsPage() {
                   <TableRow>
                     <TableHead>ID</TableHead>
                     <TableHead>Пользователь</TableHead>
-                    <TableHead>Пакет</TableHead>
+                    <TableHead>План</TableHead>
                     <TableHead>Сумма</TableHead>
-                    <TableHead>Статус</TableHead>
+                    <TableHead>Провайдер</TableHead>
                     <TableHead>Дата</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -161,11 +161,11 @@ export default function AdminPaymentsPage() {
                     <TableRow key={p.id}>
                       <TableCell className="font-mono text-xs">{p.id.slice(0, 8)}</TableCell>
                       <TableCell>{p.email}</TableCell>
-                      <TableCell>{getPackageName(p.package)}</TableCell>
-                      <TableCell>{p.amount_rubles.toFixed(0)} ₽</TableCell>
+                      <TableCell>{getPlanName(p.plan)}</TableCell>
+                      <TableCell>{(p.amount / 100).toFixed(2)} {p.currency}</TableCell>
                       <TableCell>
-                        <Badge variant={p.status === "succeeded" ? "default" : "secondary"}>
-                          {p.status === "succeeded" ? "✓ Оплачено" : p.status === "pending" ? "⏳ Ожидание" : "✗ Отменено"}
+                        <Badge variant="secondary">
+                          {p.provider}
                         </Badge>
                       </TableCell>
                       <TableCell className="text-sm">{formatDate(p.created_at)}</TableCell>
