@@ -20,7 +20,6 @@ const AdminTariffs = lazy(() => import('@/app/admin/tariffs'))
 const SignIn = lazy(() => import('@/app/auth/sign-in/page'))
 const AuthCallback = lazy(() => import('@/app/auth/callback/page'))
 
-const AccountSettings = lazy(() => import('@/app/settings/account/page'))
 const BillingSettings = lazy(() => import('@/app/settings/billing/page'))
 
 export interface RouteConfig {
@@ -84,7 +83,7 @@ export const routes: RouteConfig[] = [
       },
       {
         path: "/settings/account",
-        element: <ProtectedRoute><AccountSettings /></ProtectedRoute>
+        element: <Navigate to="/settings/billing" replace />
       },
       {
         path: "/settings/billing",
