@@ -40,21 +40,6 @@ const getNavData = (unreadCount: number, email: string | null, isAdmin: boolean)
           url: "/history",
           icon: Clock,
         },
-      ],
-    },
-    {
-      label: "Разработчикам",
-      items: [
-        {
-          title: "API",
-          url: "/api",
-          icon: Terminal,
-        },
-        {
-          title: "Документация",
-          url: "/docs",
-          icon: BookOpen,
-        },
         {
           title: "Обратная связь",
           url: "/feedback",
@@ -62,6 +47,28 @@ const getNavData = (unreadCount: number, email: string | null, isAdmin: boolean)
         },
       ],
     },
+    // Раздел "Разработчикам" скрыт временно (API, Документация)
+    // TODO: раскрыть когда понадобится
+    // {
+    //   label: "Разработчикам",
+    //   items: [
+    //     {
+    //       title: "API",
+    //       url: "/api",
+    //       icon: Terminal,
+    //     },
+    //     {
+    //       title: "Документация",
+    //       url: "/docs",
+    //       icon: BookOpen,
+    //     },
+    //     {
+    //       title: "Обратная связь",
+    //       url: "/feedback",
+    //       icon: MessageSquare,
+    //     },
+    //   ],
+    // },
   ]
 
   navGroups.push({

@@ -7,8 +7,8 @@ import { ProtectedAdminRoute } from '@/components/router/protected-admin-route'
 // const Dashboard = lazy(() => import('@/app/dashboard/page')) // TODO: Отключено - Overview не используется
 const Playground = lazy(() => import('@/app/playground/page'))
 const History = lazy(() => import('@/app/history/page'))
-const ApiPage = lazy(() => import('@/app/api/page'))
-const DocsPage = lazy(() => import('@/app/docs/page'))
+// const ApiPage = lazy(() => import('@/app/api/page')) // Скрыто временно
+// const DocsPage = lazy(() => import('@/app/docs/page')) // Скрыто временно
 const FeedbackPage = lazy(() => import('@/app/feedback'))
 
 const AdminMessages = lazy(() => import('@/app/admin/messages'))
@@ -49,13 +49,22 @@ export const routes: RouteConfig[] = [
         path: "/history",
         element: <ProtectedRoute><History /></ProtectedRoute>
       },
+      // Скрыто временно - редирект на /billing
+      // {
+      //   path: "/api",
+      //   element: <ProtectedRoute><ApiPage /></ProtectedRoute>
+      // },
       {
         path: "/api",
-        element: <ProtectedRoute><ApiPage /></ProtectedRoute>
+        element: <Navigate to="/settings/billing" replace />
       },
+      // {
+      //   path: "/docs",
+      //   element: <ProtectedRoute><DocsPage /></ProtectedRoute>
+      // },
       {
         path: "/docs",
-        element: <ProtectedRoute><DocsPage /></ProtectedRoute>
+        element: <Navigate to="/settings/billing" replace />
       },
       {
         path: "/feedback",
