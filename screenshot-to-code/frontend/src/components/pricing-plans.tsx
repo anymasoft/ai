@@ -84,13 +84,15 @@ export function PricingPlans({
       if (currentPlanId === plan.id) {
         return 'Текущий тариф'
       }
+      // Free plan is automatic, cannot be selected manually
+      if (plan.id === 'free') {
+        return 'Free (автоматически)'
+      }
       const currentIndex = plans.findIndex(p => p.id === currentPlanId)
       const planIndex = plans.findIndex(p => p.id === plan.id)
 
       if (planIndex > currentIndex) {
         return 'Обновить тариф'
-      } else if (planIndex < currentIndex) {
-        return 'Понизить тариф'
       }
     }
     return 'Начать'
@@ -104,7 +106,14 @@ export function PricingPlans({
   }
 
   const isButtonDisabled = (plan: PricingPlan) => {
-    return mode === 'billing' && currentPlanId === plan.id
+    if (mode === 'billing' && currentPlanId === plan.id) {
+      return true // Current plan is disabled
+    }
+    // Disable downgrade to Free plan
+    if (mode === 'billing' && plan.id === 'free' && currentPlanId !== 'free') {
+      return true
+    }
+    return false
   }
 
   return (
