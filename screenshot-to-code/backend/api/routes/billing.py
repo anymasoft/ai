@@ -584,6 +584,8 @@ async def list_user_payments(user: dict = Depends(get_current_user)):
     if not user_id:
         raise HTTPException(status_code=401, detail="Not authenticated")
 
+    print(f"[BILLING] user-payments request for user_id: {user_id}")
+
     conn = get_conn()
     conn.row_factory = sqlite3.Row
     cursor = conn.cursor()
@@ -598,11 +600,18 @@ async def list_user_payments(user: dict = Depends(get_current_user)):
 
         payments = [dict(row) for row in cursor.fetchall()]
 
+        print(f"[BILLING] Found {len(payments)} payments for user {user_id}")
+        for payment in payments:
+            print(f"[BILLING]   - {payment}")
+
         return {
             "payments": payments,
             "total": len(payments),
         }
 
+    except Exception as e:
+        print(f"[BILLING] Error fetching payments: {e}")
+        raise HTTPException(status_code=500, detail=f"Error fetching payments: {e}")
     finally:
         conn.close()
 
