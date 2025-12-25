@@ -1,7 +1,7 @@
 """Background generation service for API."""
 
 import asyncio
-from db import get_api_conn, hash_api_key
+from db import get_api_conn, get_db_path
 import sqlite3
 from datetime import datetime
 from typing import Dict, Any, Optional
@@ -17,9 +17,9 @@ class DatabaseWebSocket:
     Chunks are stored with indices to prevent duplicates on reconnect.
     """
 
-    def __init__(self, generation_id: str, db_path: str = "data/api.db"):
+    def __init__(self, generation_id: str):
         self.generation_id = generation_id
-        self.db_path = db_path
+        self.db_path = str(get_db_path())  # Use correct database path
         self.chunk_index = 0  # Track chunk number for streaming
         self.is_closed = False
 
@@ -213,7 +213,7 @@ async def trigger_generation(generation_id: str) -> None:
 
         # Update generation record to "failed"
         try:
-            conn = sqlite3.connect("data/api.db")
+            conn = sqlite3.connect(str(get_db_path()))
             cursor = conn.cursor()
 
             error_message = f"Generation failed: {str(e)}"
