@@ -38,6 +38,20 @@ class SetUsageRequest(BaseModel):
     used_generations: int
 
 
+class AddCreditsRequest(BaseModel):
+    """Request to add credits to user."""
+
+    userId: str
+    amount: int
+
+
+class SetCreditsRequest(BaseModel):
+    """Request to set user credits balance."""
+
+    userId: str
+    credits: int
+
+
 @router.get("")
 async def get_users(admin: dict = Depends(get_admin_user)):
     """
@@ -335,6 +349,159 @@ async def set_user_usage(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail={"error": "internal_error", "message": "Failed to set usage"},
+        )
+
+    finally:
+        conn.close()
+
+
+@router.post("/add-credits")
+async def add_credits_to_user(
+    request: AddCreditsRequest,
+    admin: dict = Depends(get_admin_user),
+):
+    """
+    Add credits to user's balance.
+
+    Request body:
+    {
+        "userId": "user-id",
+        "amount": 10
+    }
+
+    Returns:
+    {
+        "success": true,
+        "credits_added": 10,
+        "new_balance": 110
+    }
+    """
+    if request.amount <= 0:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={
+                "error": "invalid_input",
+                "message": "Amount must be > 0",
+            },
+        )
+
+    conn = get_db()
+    cursor = conn.cursor()
+
+    try:
+        # Check user exists and get current credits
+        cursor.execute("SELECT credits FROM users WHERE id = ?", (request.userId,))
+        row = cursor.fetchone()
+        if not row:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail={"error": "not_found", "message": "User not found"},
+            )
+
+        current_credits = row[0] if row[0] else 0
+        new_balance = current_credits + request.amount
+
+        print(f"[ADMIN] Adding {request.amount} credits to user {request.userId}: {current_credits} → {new_balance}")
+
+        # Update credits
+        cursor.execute(
+            "UPDATE users SET credits = ?, updated_at = datetime('now') WHERE id = ?",
+            (new_balance, request.userId),
+        )
+
+        conn.commit()
+
+        print(f"[ADMIN] Successfully added {request.amount} credits to user {request.userId}")
+
+        return {
+            "success": True,
+            "credits_added": request.amount,
+            "new_balance": new_balance,
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        conn.rollback()
+        print(f"[ADMIN] Error adding credits: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail={"error": "internal_error", "message": "Failed to add credits"},
+        )
+
+    finally:
+        conn.close()
+
+
+@router.post("/set-credits")
+async def set_credits_for_user(
+    request: SetCreditsRequest,
+    admin: dict = Depends(get_admin_user),
+):
+    """
+    Set user's credits balance to exact value.
+
+    Request body:
+    {
+        "userId": "user-id",
+        "credits": 100
+    }
+
+    Returns:
+    {
+        "success": true,
+        "new_balance": 100
+    }
+    """
+    if request.credits < 0:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={
+                "error": "invalid_input",
+                "message": "Credits must be >= 0",
+            },
+        )
+
+    conn = get_db()
+    cursor = conn.cursor()
+
+    try:
+        # Check user exists and get current credits
+        cursor.execute("SELECT credits FROM users WHERE id = ?", (request.userId,))
+        row = cursor.fetchone()
+        if not row:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail={"error": "not_found", "message": "User not found"},
+            )
+
+        current_credits = row[0] if row[0] else 0
+
+        print(f"[ADMIN] Setting credits for user {request.userId}: {current_credits} → {request.credits}")
+
+        # Update credits
+        cursor.execute(
+            "UPDATE users SET credits = ?, updated_at = datetime('now') WHERE id = ?",
+            (request.credits, request.userId),
+        )
+
+        conn.commit()
+
+        print(f"[ADMIN] Successfully set credits for user {request.userId} to {request.credits}")
+
+        return {
+            "success": True,
+            "new_balance": request.credits,
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        conn.rollback()
+        print(f"[ADMIN] Error setting credits: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail={"error": "internal_error", "message": "Failed to set credits"},
         )
 
     finally:
