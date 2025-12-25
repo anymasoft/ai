@@ -188,16 +188,9 @@ ws://api.example.com/api/stream/gen_abc123def456?api_key=xxx
 
 **Server → Client Messages:**
 
-1. **Chunk** (code fragment)
-```json
-{
-  "type": "chunk",
-  "data": "<html>...",
-  "variant_index": 0
-}
-```
+All WebSocket messages use snake_case for field names.
 
-2. **Status Update**
+1. **Status Update** (initial message when client connects)
 ```json
 {
   "type": "status",
@@ -206,16 +199,16 @@ ws://api.example.com/api/stream/gen_abc123def456?api_key=xxx
 }
 ```
 
-3. **Code Complete**
+2. **Code Chunk** (streamed as generation progresses)
 ```json
 {
-  "type": "code",
-  "data": "<html>...</html>",
+  "type": "chunk",
+  "data": "<div>...",
   "variant_index": 0
 }
 ```
 
-4. **Variant Complete**
+3. **Variant Complete** (sent when all chunks for a variant are done)
 ```json
 {
   "type": "variant_complete",
@@ -223,22 +216,23 @@ ws://api.example.com/api/stream/gen_abc123def456?api_key=xxx
 }
 ```
 
-5. **Error**
+4. **Error** (sent if generation fails)
 ```json
 {
   "type": "error",
   "error": "generation_failed",
-  "message": "Model rate limit exceeded"
+  "message": "Model rate limit exceeded",
+  "variant_index": 0
 }
 ```
 
-6. **Generation Complete**
-```json
-{
-  "type": "complete",
-  "generation_id": "gen_abc123def456"
-}
-```
+**Error types:**
+- `generation_failed` - LLM API error
+- `generation_timeout` - exceeded 10 minute timeout
+- `generation_not_found` - generation ID not found
+- `internal_error` - unexpected server error
+
+**Note:** No separate "complete" message is sent. Connection closes after `variant_complete`.
 
 **Client → Server:** (none, read-only stream)
 

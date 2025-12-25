@@ -59,8 +59,8 @@ async def stream_generation(
         # Send initial status
         await websocket.send_json({
             "type": "status",
-            "value": f"Generation {generation_status}",
-            "variantIndex": 0
+            "message": f"Generation {generation_status}",
+            "variant_index": 0
         })
 
         # If already completed or failed, send result immediately
@@ -87,22 +87,22 @@ async def stream_generation(
                         chunk = result_code[i:i+chunk_size]
                         await websocket.send_json({
                             "type": "chunk",
-                            "value": chunk,
-                            "variantIndex": 0
+                            "data": chunk,
+                            "variant_index": 0
                         })
 
                     # Send completion message
                     await websocket.send_json({
-                        "type": "variantComplete",
-                        "value": "Generation complete",
-                        "variantIndex": 0
+                        "type": "variant_complete",
+                        "variant_index": 0
                     })
 
                 elif status == "failed":
                     await websocket.send_json({
-                        "type": "variantError",
-                        "value": error_message or "Generation failed",
-                        "variantIndex": 0
+                        "type": "error",
+                        "error": "generation_failed",
+                        "message": error_message or "Generation failed",
+                        "variant_index": 0
                     })
 
             await websocket.close(code=1000)
@@ -132,8 +132,9 @@ async def stream_generation(
             if not row:
                 await websocket.send_json({
                     "type": "error",
-                    "value": "Generation not found",
-                    "variantIndex": 0
+                    "error": "generation_not_found",
+                    "message": "Generation not found",
+                    "variant_index": 0
                 })
                 await websocket.close(code=1011)
                 return
@@ -145,17 +146,16 @@ async def stream_generation(
                 new_chunk = result_code[last_result_length:]
                 await websocket.send_json({
                     "type": "chunk",
-                    "value": new_chunk,
-                    "variantIndex": 0
+                    "data": new_chunk,
+                    "variant_index": 0
                 })
                 last_result_length = len(result_code)
 
             # Check if completed
             if status == "completed":
                 await websocket.send_json({
-                    "type": "variantComplete",
-                    "value": "Generation complete",
-                    "variantIndex": 0
+                    "type": "variant_complete",
+                    "variant_index": 0
                 })
                 await websocket.close(code=1000)
                 return
@@ -163,9 +163,10 @@ async def stream_generation(
             # Check if failed
             if status == "failed":
                 await websocket.send_json({
-                    "type": "variantError",
-                    "value": error_message or "Generation failed",
-                    "variantIndex": 0
+                    "type": "error",
+                    "error": "generation_failed",
+                    "message": error_message or "Generation failed",
+                    "variant_index": 0
                 })
                 await websocket.close(code=1011)
                 return
@@ -176,23 +177,26 @@ async def stream_generation(
         # Timeout
         await websocket.send_json({
             "type": "error",
-            "value": "Generation timeout",
-            "variantIndex": 0
+            "error": "generation_timeout",
+            "message": "Generation took too long (10 minute timeout)",
+            "variant_index": 0
         })
         await websocket.close(code=1011)
 
     except WebSocketDisconnect:
-        # Client disconnected
+        # Client disconnected gracefully
         pass
     except Exception as e:
-        # Error occurred
+        # Unexpected error occurred
         print(f"[API_STREAM] Error streaming generation {generation_id}: {e}")
         try:
             await websocket.send_json({
                 "type": "error",
-                "value": str(e),
-                "variantIndex": 0
+                "error": "internal_error",
+                "message": "Internal server error",
+                "variant_index": 0
             })
             await websocket.close(code=1011)
         except:
+            # Even sending error failed, give up gracefully
             pass
