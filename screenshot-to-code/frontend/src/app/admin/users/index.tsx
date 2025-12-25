@@ -53,13 +53,9 @@ export default function AdminUsersPage() {
   // Dialog states
   const [selectedUser, setSelectedUser] = useState<User | null>(null)
   const [changePlanOpen, setChangePlanOpen] = useState(false)
-  const [setUsageOpen, setSetUsageOpen] = useState(false)
   const [disableConfirmOpen, setDisableConfirmOpen] = useState(false)
   const [disableConfirmAction, setDisableConfirmAction] = useState<{user: User, disable: boolean} | null>(null)
-  const [resetLimitsConfirmOpen, setResetLimitsConfirmOpen] = useState(false)
-  const [resetLimitsUser, setResetLimitsUser] = useState<User | null>(null)
   const [newPlan, setNewPlan] = useState<"free" | "basic" | "professional">("free")
-  const [newUsage, setNewUsage] = useState(0)
 
   useEffect(() => {
     fetchUsers()
@@ -158,53 +154,6 @@ export default function AdminUsersPage() {
     }
   }
 
-  function openResetLimitsConfirm(user: User) {
-    setResetLimitsUser(user)
-    setResetLimitsConfirmOpen(true)
-  }
-
-  async function confirmResetLimits() {
-    if (!resetLimitsUser) return
-
-    setActionLoading(true)
-    try {
-      await fetchJSON(`/api/admin/users/${resetLimitsUser.id}/reset-limits`, {
-        method: "POST",
-      })
-      toast.success(`Счетчик использования обнулен`)
-      await fetchUsers()
-    } catch (error) {
-      console.error("Error:", error)
-      toast.error("Не удалось обнулить счетчик")
-    } finally {
-      setActionLoading(false)
-      setResetLimitsConfirmOpen(false)
-      setResetLimitsUser(null)
-    }
-  }
-
-  async function handleSetUsage() {
-    if (!selectedUser) return
-
-    setActionLoading(true)
-    try {
-      await fetchJSON(`/api/admin/users/${selectedUser.id}/set-usage`, {
-        method: "POST",
-        body: JSON.stringify({
-          userId: selectedUser.id,
-          used_generations: newUsage,
-        }),
-      })
-      toast.success(`Usage set to ${newUsage}`)
-      setSetUsageOpen(false)
-      await fetchUsers()
-    } catch (error) {
-      console.error("Error:", error)
-      toast.error("Failed to set usage")
-    } finally {
-      setActionLoading(false)
-    }
-  }
 
   return (
     <div className="container mx-auto px-4 py-6">
@@ -258,7 +207,7 @@ export default function AdminUsersPage() {
                   <TableRow>
                     <TableHead>Email</TableHead>
                     <TableHead>План</TableHead>
-                    <TableHead>Использовано</TableHead>
+                    <TableHead>Баланс</TableHead>
                     <TableHead>Статус</TableHead>
                     <TableHead>Роль</TableHead>
                     <TableHead className="w-[50px]">Действия</TableHead>
@@ -274,7 +223,7 @@ export default function AdminUsersPage() {
                         {getPlanBadge(user.plan)}
                       </TableCell>
                       <TableCell className="text-sm">
-                        {user.used_generations} / {user.credits}
+                        {user.credits}
                       </TableCell>
                       <TableCell>
                         <Badge variant={user.disabled ? "destructive" : "outline"}>
@@ -319,23 +268,6 @@ export default function AdminUsersPage() {
                               Change Plan
                             </DropdownMenuItem>
 
-                            {/* Обнулить счетчик использования */}
-                            <DropdownMenuItem
-                              onClick={() => openResetLimitsConfirm(user)}
-                            >
-                              Reset Usage
-                            </DropdownMenuItem>
-
-                            {/* Установить использование */}
-                            <DropdownMenuItem
-                              onClick={() => {
-                                setSelectedUser(user)
-                                setNewUsage(user.used_generations)
-                                setSetUsageOpen(true)
-                              }}
-                            >
-                              Set Usage
-                            </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </TableCell>
@@ -384,39 +316,7 @@ export default function AdminUsersPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Set Usage Dialog */}
-      <Dialog open={setUsageOpen} onOpenChange={setSetUsageOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Set Usage</DialogTitle>
-            <DialogDescription>
-              Set generations used for {selectedUser?.email}
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div>
-              <label className="text-sm font-medium">Used Generations</label>
-              <Input
-                type="number"
-                min="0"
-                value={newUsage}
-                onChange={(e) => setNewUsage(parseInt(e.target.value) || 0)}
-              />
-            </div>
-            <div className="flex justify-end gap-2">
-              <Button variant="outline" onClick={() => setSetUsageOpen(false)}>
-                Cancel
-              </Button>
-              <Button onClick={handleSetUsage} disabled={actionLoading}>
-                {actionLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Set Usage
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      {/* Disable/Enable Confirmation Dialog */}
+{/* Disable/Enable Confirmation Dialog */}
       <Dialog open={disableConfirmOpen} onOpenChange={setDisableConfirmOpen}>
         <DialogContent>
           <DialogHeader>
@@ -449,33 +349,6 @@ export default function AdminUsersPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Reset Limits Confirmation Dialog */}
-      <Dialog open={resetLimitsConfirmOpen} onOpenChange={setResetLimitsConfirmOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Reset Usage Counter</DialogTitle>
-            <DialogDescription>
-              Reset usage counter to 0 for {resetLimitsUser?.email}? Credits balance will NOT be affected. Current: {resetLimitsUser?.used_generations}/{resetLimitsUser?.credits} → After: 0/{resetLimitsUser?.credits}
-            </DialogDescription>
-          </DialogHeader>
-          <div className="flex justify-end gap-2">
-            <Button
-              variant="outline"
-              onClick={() => setResetLimitsConfirmOpen(false)}
-              disabled={actionLoading}
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={confirmResetLimits}
-              disabled={actionLoading}
-            >
-              {actionLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Reset Usage
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
     </div>
   )
 }
