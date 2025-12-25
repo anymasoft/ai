@@ -13,7 +13,7 @@ except ImportError:
     YOOKASSA_AVAILABLE = False
     print("[BILLING] WARNING: yookassa not installed. Install with: pip install yookassa")
 
-from backend.db.sqlite import get_conn
+from db.sqlite import get_conn
 
 # ===========================
 # CONFIGURATION

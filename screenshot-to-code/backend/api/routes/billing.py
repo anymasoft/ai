@@ -5,8 +5,8 @@ from pydantic import BaseModel
 from typing import Optional
 import os
 
-from backend.api.auth import get_current_user, get_admin_user
-from backend.api.billing.yookassa import (
+from api.auth import get_current_user, get_admin_user
+from api.billing.yookassa import (
     create_payment,
     check_payment_status,
     add_credits_to_user,
@@ -309,7 +309,7 @@ async def get_billing_usage(user: dict = Depends(get_current_user)):
         raise HTTPException(status_code=401, detail="Not authenticated")
 
     # Get user info from database
-    from backend.db.sqlite import get_conn
+    from db.sqlite import get_conn
 
     conn = get_conn()
     cursor = conn.cursor()
