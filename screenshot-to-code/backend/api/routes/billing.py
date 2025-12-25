@@ -458,6 +458,115 @@ async def deduct_credits_endpoint(request: dict, user: dict = Depends(get_curren
     }
 
 
+@router.get("/api/billing/tariffs")
+async def get_tariffs():
+    """
+    Получить все тарифы с ценами и количеством кредитов.
+
+    Returns список тарифов:
+    [
+        {
+            "key": "free",
+            "name": "Free",
+            "price_rub": 0,
+            "credits": 0,
+            "is_active": true
+        },
+        ...
+    ]
+    """
+    from db.sqlite import get_all_tariffs
+
+    try:
+        tariffs = get_all_tariffs()
+        print(f"[BILLING] GET /api/billing/tariffs returning {len(tariffs)} tariffs")
+        return {"tariffs": tariffs}
+    except Exception as e:
+        print(f"[BILLING] Error getting tariffs: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail={"error": "internal_error", "message": "Failed to get tariffs"},
+        )
+
+
+@router.put("/api/admin/tariffs/{key}")
+async def update_tariff_endpoint(
+    key: str,
+    request: dict,
+    admin: dict = Depends(get_admin_user),
+):
+    """
+    Обновить тариф (только для админов).
+
+    Request body:
+    {
+        "price_rub": 3000,
+        "credits": 100
+    }
+
+    Returns:
+    {
+        "success": true,
+        "tariff": {...}
+    }
+    """
+    from db.sqlite import update_tariff, get_tariff_by_key
+
+    try:
+        # Validate input
+        price_rub = request.get("price_rub")
+        credits = request.get("credits")
+
+        if price_rub is None or credits is None:
+            raise HTTPException(
+                status_code=400,
+                detail={"error": "invalid_input", "message": "price_rub and credits are required"},
+            )
+
+        if not isinstance(price_rub, (int, float)) or not isinstance(credits, int):
+            raise HTTPException(
+                status_code=400,
+                detail={"error": "invalid_input", "message": "price_rub must be number, credits must be integer"},
+            )
+
+        if price_rub < 0 or credits < 0:
+            raise HTTPException(
+                status_code=400,
+                detail={"error": "invalid_input", "message": "price_rub and credits must be >= 0"},
+            )
+
+        # Check tariff exists
+        existing = get_tariff_by_key(key)
+        if not existing:
+            raise HTTPException(
+                status_code=404,
+                detail={"error": "not_found", "message": f"Tariff '{key}' not found"},
+            )
+
+        # Update tariff
+        print(f"[BILLING] Admin {admin.get('email')} updating tariff '{key}': price={price_rub}, credits={credits}")
+        success = update_tariff(key, price_rub, credits)
+
+        if not success:
+            raise HTTPException(
+                status_code=500,
+                detail={"error": "update_failed", "message": "Failed to update tariff"},
+            )
+
+        # Return updated tariff
+        updated = get_tariff_by_key(key)
+        return {"success": True, "tariff": updated}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"[BILLING] Error updating tariff: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail={"error": "internal_error", "message": "Failed to update tariff"},
+        )
+
+
 @router.get("/api/billing/user-payments")
 async def list_user_payments(user: dict = Depends(get_current_user)):
     """

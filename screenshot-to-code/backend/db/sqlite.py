@@ -787,3 +787,93 @@ def cleanup_expired_sessions() -> int:
         raise
     finally:
         conn.close()
+
+
+# ===========================
+# TARIFFS MANAGEMENT
+# ===========================
+
+
+def get_all_tariffs():
+    """Get all tariffs with pricing and credits."""
+    conn = get_conn()
+    cursor = conn.cursor()
+
+    try:
+        cursor.execute("""
+            SELECT key, name, price_rub, credits, is_active, created_at, updated_at
+            FROM tariffs
+            WHERE is_active = 1
+            ORDER BY price_rub ASC
+        """)
+
+        tariffs = []
+        for row in cursor.fetchall():
+            tariffs.append({
+                "key": row[0],
+                "name": row[1],
+                "price_rub": row[2],
+                "credits": row[3],
+                "is_active": bool(row[4]),
+                "created_at": row[5],
+                "updated_at": row[6],
+            })
+
+        return tariffs
+
+    finally:
+        conn.close()
+
+
+def get_tariff_by_key(key: str):
+    """Get a specific tariff by key."""
+    conn = get_conn()
+    cursor = conn.cursor()
+
+    try:
+        cursor.execute("""
+            SELECT key, name, price_rub, credits, is_active, created_at, updated_at
+            FROM tariffs
+            WHERE key = ?
+        """, (key,))
+
+        row = cursor.fetchone()
+        if row:
+            return {
+                "key": row[0],
+                "name": row[1],
+                "price_rub": row[2],
+                "credits": row[3],
+                "is_active": bool(row[4]),
+                "created_at": row[5],
+                "updated_at": row[6],
+            }
+        return None
+
+    finally:
+        conn.close()
+
+
+def update_tariff(key: str, price_rub: float, credits: int) -> bool:
+    """Update tariff price and credits."""
+    conn = get_conn()
+    cursor = conn.cursor()
+
+    try:
+        cursor.execute("""
+            UPDATE tariffs
+            SET price_rub = ?, credits = ?, updated_at = CURRENT_TIMESTAMP
+            WHERE key = ?
+        """, (price_rub, credits, key))
+
+        conn.commit()
+        rows = cursor.rowcount
+        print(f"[DB] Updated tariff '{key}': price={price_rub} rub, credits={credits} (rows affected: {rows})")
+        return rows > 0
+
+    except Exception as e:
+        conn.rollback()
+        print(f"[DB] Error updating tariff: {e}")
+        return False
+    finally:
+        conn.close()

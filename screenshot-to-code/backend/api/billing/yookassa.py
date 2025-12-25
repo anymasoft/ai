@@ -55,9 +55,11 @@ def create_payment(
     """
     Create a payment in YooKassa for a credits package using HTTP API.
 
+    Цена берется из БД (таблица tariffs) - НЕ из захардкодированной конфигурации!
+
     Args:
         user_id: User ID
-        package: Package name (basic or professional)
+        package: Package name (basic или professional)
         return_url: URL to return after payment (e.g., http://localhost:5173/billing)
 
     Returns:
@@ -71,7 +73,9 @@ def create_payment(
 
     print(f"[BILLING] create_payment called: user={user_id}, package={package}")
 
-    if package not in PACKAGES:
+    # Validate package name
+    valid_packages = ["free", "basic", "professional"]
+    if package not in valid_packages:
         print(f"[BILLING] ✗ Invalid package: {package}")
         return None
 
@@ -79,8 +83,26 @@ def create_payment(
         print("[BILLING] ✗ YooKassa not configured. Set YOOKASSA_SHOP_ID and YOOKASSA_API_KEY")
         return None
 
-    print(f"[BILLING] ✓ YooKassa configured, creating payment...")
-    package_info = PACKAGES[package]
+    # Получить цену тарифа из БД (CRITICAL!)
+    from db.sqlite import get_tariff_by_key
+
+    print(f"[BILLING] ✓ YooKassa configured, fetching tariff '{package}' from DB...")
+    tariff = get_tariff_by_key(package)
+
+    if not tariff:
+        print(f"[BILLING] ✗ Tariff '{package}' not found in DB!")
+        return None
+
+    # Использовать цену и credits из БД
+    price_rub = tariff["price_rub"]
+    credits = tariff["credits"]
+    print(f"[BILLING] Got tariff from DB: price={price_rub} rub, credits={credits}")
+
+    package_info = {
+        "name": tariff["name"],
+        "price_kopeks": int(price_rub * 100),  # Convert rubles to kopeks
+        "credits": credits,
+    }
     db_payment_id = str(uuid.uuid4())
 
     try:
