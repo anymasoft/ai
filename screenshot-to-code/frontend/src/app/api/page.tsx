@@ -80,75 +80,74 @@ export default function ApiPage() {
           </CardContent>
         </Card>
 
-        {/* API Key */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Key size={20} />
-              Ваш API ключ
-            </CardTitle>
-            <CardDescription>
-              Используйте этот ключ для аутентификации в API запросах
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {loading ? (
-              <div className="text-sm text-muted-foreground">
-                Загрузка API ключа...
-              </div>
-            ) : apiKey ? (
-              <>
-                <div className="flex gap-2">
-                  <Input
-                    type="password"
-                    value={apiKey}
-                    readOnly
-                    className="font-mono text-sm"
-                  />
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    onClick={handleCopyKey}
-                    className="shrink-0"
-                    title={copied ? "Скопировано!" : "Копировать"}
-                  >
-                    {copied ? <Check size={16} /> : <Copy size={16} />}
-                  </Button>
+        {/* Compact Info Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* API Key */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-lg">
+                <Key size={18} />
+                API ключ
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {loading ? (
+                <div className="text-xs text-muted-foreground">
+                  Загрузка...
                 </div>
-                <p className="text-xs text-muted-foreground">
-                  ⚠️ Храните ключ в секрете. Не публикуйте его в публичных репозиториях.
-                </p>
-              </>
-            ) : (
-              <div className="text-sm text-red-600">
-                Не удалось загрузить API ключ. Попробуйте перезагрузить страницу.
-              </div>
-            )}
-          </CardContent>
-        </Card>
+              ) : apiKey ? (
+                <>
+                  <div className="flex gap-2">
+                    <Input
+                      type="text"
+                      value={apiKey}
+                      readOnly
+                      className="font-mono text-xs"
+                    />
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleCopyKey}
+                      title={copied ? "Скопировано!" : "Копировать"}
+                    >
+                      {copied ? <Check size={14} /> : <Copy size={14} />}
+                    </Button>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    ⚠️ Храните в секрете
+                  </p>
+                </>
+              ) : (
+                <div className="text-xs text-red-600">
+                  Ошибка загрузки
+                </div>
+              )}
+            </CardContent>
+          </Card>
 
-        {/* Available Formats */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Поддерживаемые форматы</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-2">
-              <div className="flex items-center gap-2 text-sm">
-                <Badge variant="secondary">HTML + Tailwind</Badge>
+          {/* Available Formats */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg">Форматы</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-1">
+                <div className="text-xs">
+                  <Badge variant="secondary" className="text-xs">HTML + Tailwind</Badge>
+                </div>
+                <div className="text-xs">
+                  <Badge variant="secondary" className="text-xs">HTML + CSS</Badge>
+                </div>
+                <div className="text-xs">
+                  <Badge variant="secondary" className="text-xs">React + Tailwind</Badge>
+                </div>
+                <div className="text-xs">
+                  <Badge variant="secondary" className="text-xs">Vue + Tailwind</Badge>
+                </div>
               </div>
-              <div className="flex items-center gap-2 text-sm">
-                <Badge variant="secondary">HTML + CSS</Badge>
-              </div>
-              <div className="flex items-center gap-2 text-sm">
-                <Badge variant="secondary">React + Tailwind</Badge>
-              </div>
-              <div className="flex items-center gap-2 text-sm">
-                <Badge variant="secondary">Vue + Tailwind</Badge>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        </div>
 
         {/* Code Examples */}
         <Card>
@@ -252,34 +251,29 @@ print(result.json()['result_code'])`}
         {/* Endpoints Reference */}
         <Card>
           <CardHeader>
-            <CardTitle>Конечные точки API</CardTitle>
+            <CardTitle className="text-lg">Endpoints</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="space-y-2 text-sm">
+            <div className="space-y-1 text-xs">
               <div className="flex items-start gap-2">
-                <Badge variant="outline" className="font-mono">POST</Badge>
-                <code className="text-xs">/api/generate</code>
-                <span className="text-muted-foreground">- Начать генерирование кода</span>
+                <Badge variant="outline" className="font-mono text-xs shrink-0">POST</Badge>
+                <code className="text-xs font-mono">/api/generate</code>
               </div>
               <div className="flex items-start gap-2">
-                <Badge variant="outline" className="font-mono">WS</Badge>
-                <code className="text-xs">/api/stream/:id</code>
-                <span className="text-muted-foreground">- Потоковая передача прогресса генерирования</span>
+                <Badge variant="outline" className="font-mono text-xs shrink-0">WS</Badge>
+                <code className="text-xs font-mono">/api/stream/:id</code>
               </div>
               <div className="flex items-start gap-2">
-                <Badge variant="outline" className="font-mono">GET</Badge>
-                <code className="text-xs">/api/generations/:id</code>
-                <span className="text-muted-foreground">- Получить результат генерирования</span>
+                <Badge variant="outline" className="font-mono text-xs shrink-0">GET</Badge>
+                <code className="text-xs font-mono">/api/generations/:id</code>
               </div>
               <div className="flex items-start gap-2">
-                <Badge variant="outline" className="font-mono">GET</Badge>
-                <code className="text-xs">/api/limits</code>
-                <span className="text-muted-foreground">- Проверить использование и лимиты</span>
+                <Badge variant="outline" className="font-mono text-xs shrink-0">GET</Badge>
+                <code className="text-xs font-mono">/api/limits</code>
               </div>
               <div className="flex items-start gap-2">
-                <Badge variant="outline" className="font-mono">GET</Badge>
-                <code className="text-xs">/api/formats</code>
-                <span className="text-muted-foreground">- Список доступных форматов</span>
+                <Badge variant="outline" className="font-mono text-xs shrink-0">GET</Badge>
+                <code className="text-xs font-mono">/api/formats</code>
               </div>
             </div>
           </CardContent>
