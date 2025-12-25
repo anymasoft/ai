@@ -186,6 +186,25 @@ WebSocket stream for real-time generation updates.
 ws://api.example.com/api/stream/gen_abc123def456?api_key=xxx
 ```
 
+**⚠️ SECURITY REQUIREMENTS:**
+
+1. **HTTPS/WSS Mandatory in Production**
+   - API key is passed in query parameter (visible in logs, browser history, proxies)
+   - **MUST use `wss://` (WebSocket Secure)** instead of `ws://` in production
+   - HTTP + Query parameter = **UNENCRYPTED API KEY** (security breach)
+   - Set `API_PUBLIC_BASE_URL` to HTTPS URL to get `wss://` URLs
+
+2. **Authentication**
+   - Requires `api_key` query parameter
+   - Invalid/missing key: connection closes with reason "Invalid API key" or "API key required"
+   - Returns WebSocket close code 1008 (Policy Violation)
+
+3. **Best Practices**
+   - Never use `ws://` with API keys on untrusted networks
+   - Rotate API keys regularly
+   - Use different keys for different applications
+   - Monitor usage in admin panel
+
 **Server → Client Messages:**
 
 All WebSocket messages use snake_case for field names.
