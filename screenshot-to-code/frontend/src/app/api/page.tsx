@@ -131,7 +131,6 @@ export default function ApiPage() {
         <Card>
           <CardHeader>
             <CardTitle>Поддерживаемые форматы</CardTitle>
-            <CardDescription>Все форматы стоят 1 кредит за генерацию</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="space-y-2">
