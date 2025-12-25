@@ -15,7 +15,7 @@ def verify_api_key(api_key: str) -> dict:
     """
     Verify API key and return key info.
 
-    Returns dict with: id, tier, credits_total, credits_used, rate_limit_*
+    Returns dict with: id, user_id, tier, credits_total, credits_used, rate_limit_*
 
     Raises HTTPException if invalid.
     """
@@ -33,7 +33,7 @@ def verify_api_key(api_key: str) -> dict:
 
     cursor.execute(
         """
-        SELECT id, tier, credits_total, credits_used,
+        SELECT id, user_id, tier, credits_total, credits_used,
                rate_limit_concurrent, rate_limit_hourly, is_active
         FROM api_keys
         WHERE key_hash = ? AND is_active = 1

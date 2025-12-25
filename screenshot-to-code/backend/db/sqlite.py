@@ -121,7 +121,9 @@ def init_db() -> None:
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS api_keys (
                 id TEXT PRIMARY KEY,
+                user_id TEXT,
                 key_hash TEXT NOT NULL UNIQUE,
+                key_plain TEXT,
                 name TEXT,
                 tier TEXT NOT NULL DEFAULT 'free',
                 credits_total INTEGER NOT NULL DEFAULT 0,
@@ -130,9 +132,24 @@ def init_db() -> None:
                 rate_limit_hourly INTEGER NOT NULL DEFAULT 100,
                 created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
                 last_used_at TIMESTAMP,
-                is_active BOOLEAN NOT NULL DEFAULT 1
+                is_active BOOLEAN NOT NULL DEFAULT 1,
+                FOREIGN KEY (user_id) REFERENCES users(id)
             )
         """)
+
+        # Add missing columns if they don't exist (for migration)
+        try:
+            cursor.execute("PRAGMA table_info(api_keys)")
+            columns = [row[1] for row in cursor.fetchall()]
+
+            if 'user_id' not in columns:
+                cursor.execute("ALTER TABLE api_keys ADD COLUMN user_id TEXT")
+            if 'key_plain' not in columns:
+                cursor.execute("ALTER TABLE api_keys ADD COLUMN key_plain TEXT")
+
+            conn.commit()
+        except Exception as e:
+            print(f"[DB] API keys migration warning (non-critical): {e}")
 
         # Create API generations table (for REST API)
         cursor.execute("""

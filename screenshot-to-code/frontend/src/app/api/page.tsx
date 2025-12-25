@@ -1,67 +1,43 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Copy, Check, ExternalLink, Terminal, Key, Activity, Zap } from "lucide-react"
+import { Copy, Check, ExternalLink, Terminal, Key } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
-import { Separator } from "@/components/ui/separator"
-import { Progress } from "@/components/ui/progress"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { fetchJSON } from "@/lib/api"
 
 export default function ApiPage() {
   const [copied, setCopied] = useState(false)
-  const [apiKey, setApiKey] = useState("sk_test_•••••••••••••••••••••")
-  const [limits, setLimits] = useState<any>(null)
-  const [formats, setFormats] = useState<any[]>([])
+  const [apiKey, setApiKey] = useState<string | null>(null)
+  const [loading, setLoading] = useState(true)
 
-  // TODO: Replace with real API key from backend
+  // Load real API key for current user
+  useEffect(() => {
+    async function loadApiKey() {
+      try {
+        setLoading(true)
+        // Get current user's API key
+        const response = await fetchJSON<{ api_key: string }>("/api/user/api-key")
+        setApiKey(response.api_key)
+      } catch (error) {
+        console.error("Failed to load API key:", error)
+        setApiKey(null)
+      } finally {
+        setLoading(false)
+      }
+    }
+    loadApiKey()
+  }, [])
+
   const handleCopyKey = () => {
+    if (!apiKey) return
     navigator.clipboard.writeText(apiKey)
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)
   }
-
-  // Fetch limits from API
-  useEffect(() => {
-    // TODO: Add real API call
-    // fetch('/api/limits', {
-    //   headers: { 'X-API-Key': realApiKey }
-    // }).then(r => r.json()).then(setLimits)
-
-    // Mock data for now
-    setLimits({
-      credits: {
-        total: 10000,
-        used: 2340,
-        remaining: 7660,
-      },
-      rate_limits: {
-        concurrent_generations: { limit: 10, current: 2 },
-        generations_per_hour: { limit: 100, current: 47, reset_at: new Date(Date.now() + 1800000) },
-      },
-      tier: "pro",
-    })
-  }, [])
-
-  // Fetch formats from API
-  useEffect(() => {
-    // TODO: Add real API call
-    // fetch('/api/formats').then(r => r.json()).then(setFormats)
-
-    // Mock data for now
-    setFormats([
-      { id: "html_tailwind", name: "HTML + Tailwind", cost: 10 },
-      { id: "html_css", name: "HTML + CSS", cost: 10 },
-      { id: "react_tailwind", name: "React + Tailwind", cost: 15 },
-      { id: "vue_tailwind", name: "Vue + Tailwind", cost: 15 },
-    ])
-  }, [])
-
-  const creditsProgress = limits
-    ? (limits.credits.used / limits.credits.total) * 100
-    : 0
 
   return (
     <>
@@ -116,110 +92,63 @@ export default function ApiPage() {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="flex gap-2">
-              <Input
-                type="password"
-                value={apiKey}
-                readOnly
-                className="font-mono text-sm"
-              />
-              <Button
-                variant="outline"
-                size="icon"
-                onClick={handleCopyKey}
-                className="shrink-0"
-              >
-                {copied ? <Check size={16} /> : <Copy size={16} />}
-              </Button>
-            </div>
-            <p className="text-xs text-muted-foreground">
-              ⚠️ Храните ключ в секрете. Не публикуйте его в публичных репозиториях.
-            </p>
+            {loading ? (
+              <div className="text-sm text-muted-foreground">
+                Загрузка API ключа...
+              </div>
+            ) : apiKey ? (
+              <>
+                <div className="flex gap-2">
+                  <Input
+                    type="password"
+                    value={apiKey}
+                    readOnly
+                    className="font-mono text-sm"
+                  />
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={handleCopyKey}
+                    className="shrink-0"
+                    title={copied ? "Скопировано!" : "Копировать"}
+                  >
+                    {copied ? <Check size={16} /> : <Copy size={16} />}
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  ⚠️ Храните ключ в секрете. Не публикуйте его в публичных репозиториях.
+                </p>
+              </>
+            ) : (
+              <div className="text-sm text-red-600">
+                Не удалось загрузить API ключ. Попробуйте перезагрузить страницу.
+              </div>
+            )}
           </CardContent>
         </Card>
-
-        {/* Usage & Limits */}
-        {limits && (
-          <div className="grid gap-4 md:grid-cols-2">
-            {/* Credits */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Activity size={20} />
-                  Использование кредитов
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div>
-                  <div className="flex justify-between text-sm mb-2">
-                    <span className="text-muted-foreground">Использовано / Всего</span>
-                    <span className="font-medium">
-                      {limits.credits.used.toLocaleString()} / {limits.credits.total.toLocaleString()}
-                    </span>
-                  </div>
-                  <Progress value={creditsProgress} className="h-2" />
-                </div>
-                <div className="text-sm">
-                  <span className="text-muted-foreground">Осталось: </span>
-                  <span className="font-semibold text-lg">
-                    {limits.credits.remaining.toLocaleString()}
-                  </span>
-                  <span className="text-muted-foreground ml-1">кредитов</span>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Rate Limits */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Zap size={20} />
-                  Лимиты скорости
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Одновременные генерации</span>
-                  <span className="font-medium">
-                    {limits.rate_limits.concurrent_generations.current} /{" "}
-                    {limits.rate_limits.concurrent_generations.limit}
-                  </span>
-                </div>
-                <Separator />
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Генераций в час</span>
-                  <span className="font-medium">
-                    {limits.rate_limits.generations_per_hour.current} /{" "}
-                    {limits.rate_limits.generations_per_hour.limit}
-                  </span>
-                </div>
-                <div className="text-xs text-muted-foreground">
-                  Переустанавливается через{" "}
-                  {Math.round((limits.rate_limits.generations_per_hour.reset_at - Date.now()) / 60000)}{" "}
-                  минут
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        )}
 
         {/* Available Formats */}
         <Card>
           <CardHeader>
-            <CardTitle>Доступные форматы</CardTitle>
-            <CardDescription>Стоимость в кредитах за генерацию</CardDescription>
+            <CardTitle>Поддерживаемые форматы</CardTitle>
+            <CardDescription>Все форматы стоят 1 кредит за генерацию</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
-              {formats.map((format) => (
-                <div
-                  key={format.id}
-                  className="flex items-center justify-between p-3 border rounded-lg"
-                >
-                  <span className="font-medium text-sm">{format.name}</span>
-                  <Badge variant="secondary">{format.cost} cr</Badge>
-                </div>
-              ))}
+            <div className="space-y-2">
+              <div className="flex items-center gap-2 text-sm">
+                <Badge variant="secondary">HTML + Tailwind</Badge>
+              </div>
+              <div className="flex items-center gap-2 text-sm">
+                <Badge variant="secondary">HTML + CSS</Badge>
+              </div>
+              <div className="flex items-center gap-2 text-sm">
+                <Badge variant="secondary">React + Tailwind</Badge>
+                <span className="text-xs text-muted-foreground">(требует Pro)</span>
+              </div>
+              <div className="flex items-center gap-2 text-sm">
+                <Badge variant="secondary">Vue + Tailwind</Badge>
+                <span className="text-xs text-muted-foreground">(требует Pro)</span>
+              </div>
             </div>
           </CardContent>
         </Card>
