@@ -574,56 +574,37 @@ async def list_user_payments(user: dict = Depends(get_current_user)):
     """
     Получить список платежей текущего пользователя.
 
+    Эквивалент: GET /api/billing/history в YouTubeAnalytics
+
     Args:
-        user: Текущий пользователь из сессии
+        user: Текущий пользователь из сессии (дата достается через get_current_user)
 
     Returns:
         Список платежей пользователя (упорядочено по датам, новые первыми)
     """
-    # DEBUG: Логируем всю session информацию
-    print(f"[BILLING] list_user_payments() called")
-    print(f"[BILLING] session data: {user}")
-
+    # Достаём user_id из сессии
     user_data = user.get("user")
     if not user_data:
-        print(f"[BILLING] ERROR: No user data in session!")
         raise HTTPException(status_code=401, detail="User not found in session")
 
     user_id = user_data.get("id")
     if not user_id:
-        print(f"[BILLING] ERROR: No user_id in session!")
         raise HTTPException(status_code=401, detail="Не авторизирован")
 
-    print(f"[BILLING] user-payments request for user_id: {user_id}")
+    print(f"[BILLING] GET /api/billing/user-payments user_id={user_id}")
 
-    conn = get_conn()
-    conn.row_factory = sqlite3.Row
-    cursor = conn.cursor()
-
+    # Используем существующую функцию для получения платежей
+    # (та же функция что и для админ-панели, но с фильтром по user_id)
     try:
-        cursor.execute("""
-            SELECT id, user_id, package, credits_amount, amount_cents / 100.0 as amount_rubles, status, created_at
-            FROM payments
-            WHERE user_id = ?
-            ORDER BY created_at DESC
-        """, (user_id,))
-
-        payments = [dict(row) for row in cursor.fetchall()]
-
+        payments = get_payments_list(user_id=user_id, limit=100)
         print(f"[BILLING] Found {len(payments)} payments for user {user_id}")
-        for payment in payments:
-            print(f"[BILLING]   - {payment}")
-
         return {
             "payments": payments,
             "total": len(payments),
         }
-
     except Exception as e:
-        print(f"[BILLING] Error fetching payments: {e}")
-        raise HTTPException(status_code=500, detail=f"Error fetching payments: {e}")
-    finally:
-        conn.close()
+        print(f"[BILLING] Error fetching payments for user {user_id}: {e}")
+        raise HTTPException(status_code=500, detail="Error fetching payments")
 
 
 @router.get("/api/billing/payments")
