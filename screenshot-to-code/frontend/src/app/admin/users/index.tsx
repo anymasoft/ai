@@ -171,11 +171,11 @@ export default function AdminUsersPage() {
       await fetchJSON(`/api/admin/users/${resetLimitsUser.id}/reset-limits`, {
         method: "POST",
       })
-      toast.success(`Limits reset to plan defaults`)
+      toast.success(`Счетчик использования обнулен`)
       await fetchUsers()
     } catch (error) {
       console.error("Error:", error)
-      toast.error("Failed to reset limits")
+      toast.error("Не удалось обнулить счетчик")
     } finally {
       setActionLoading(false)
       setResetLimitsConfirmOpen(false)
@@ -299,7 +299,7 @@ export default function AdminUsersPage() {
                             <DropdownMenuLabel>Действия</DropdownMenuLabel>
                             <DropdownMenuSeparator />
 
-                            {/* Disable/Enable */}
+                            {/* Отключить/Включить */}
                             <DropdownMenuItem
                               onClick={() =>
                                 openDisableConfirm(user, !user.disabled)
@@ -308,7 +308,7 @@ export default function AdminUsersPage() {
                               {user.disabled ? "Enable" : "Disable"}
                             </DropdownMenuItem>
 
-                            {/* Change Plan */}
+                            {/* Изменить план */}
                             <DropdownMenuItem
                               onClick={() => {
                                 setSelectedUser(user)
@@ -319,14 +319,14 @@ export default function AdminUsersPage() {
                               Change Plan
                             </DropdownMenuItem>
 
-                            {/* Reset Limits */}
+                            {/* Обнулить счетчик использования */}
                             <DropdownMenuItem
                               onClick={() => openResetLimitsConfirm(user)}
                             >
-                              Reset Limits
+                              Reset Usage
                             </DropdownMenuItem>
 
-                            {/* Set Usage */}
+                            {/* Установить использование */}
                             <DropdownMenuItem
                               onClick={() => {
                                 setSelectedUser(user)
@@ -453,9 +453,9 @@ export default function AdminUsersPage() {
       <Dialog open={resetLimitsConfirmOpen} onOpenChange={setResetLimitsConfirmOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Reset Limits</DialogTitle>
+            <DialogTitle>Reset Usage Counter</DialogTitle>
             <DialogDescription>
-              Reset {resetLimitsUser?.email} credits to plan defaults? This will set usage to 0 and credits to {resetLimitsUser?.plan === "basic" ? "100" : resetLimitsUser?.plan === "professional" ? "500" : "0"}.
+              Reset usage counter to 0 for {resetLimitsUser?.email}? Credits balance will NOT be affected. Current: {resetLimitsUser?.used_generations}/{resetLimitsUser?.credits} → After: 0/{resetLimitsUser?.credits}
             </DialogDescription>
           </DialogHeader>
           <div className="flex justify-end gap-2">
@@ -471,7 +471,7 @@ export default function AdminUsersPage() {
               disabled={actionLoading}
             >
               {actionLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Reset Limits
+              Reset Usage
             </Button>
           </div>
         </DialogContent>
