@@ -2,8 +2,6 @@ import { Outlet } from "react-router-dom"
 import { AppSidebar } from "@/components/app-sidebar"
 import { SiteHeader } from "@/components/site-header"
 import { SiteFooter } from "@/components/site-footer"
-import { ThemeCustomizer, ThemeCustomizerTrigger } from "@/components/theme-customizer"
-import { UpgradeToProButton } from "@/components/upgrade-to-pro-button"
 import { Toaster } from "@/components/ui/sonner"
 import { BackendStatusBanner } from "@/components/backend-status-banner"
 import { useSidebarConfig } from "@/hooks/use-sidebar-config"
@@ -11,10 +9,8 @@ import {
   SidebarInset,
   SidebarProvider,
 } from "@/components/ui/sidebar"
-import { useState } from "react"
 
 export function DashboardLayout() {
-  const [themeCustomizerOpen, setThemeCustomizerOpen] = useState(false)
   const { config } = useSidebarConfig()
 
   return (
@@ -68,12 +64,6 @@ export function DashboardLayout() {
         </>
       )}
 
-      <ThemeCustomizerTrigger onClick={() => setThemeCustomizerOpen(true)} />
-      <ThemeCustomizer
-        open={themeCustomizerOpen}
-        onOpenChange={setThemeCustomizerOpen}
-      />
-      <UpgradeToProButton />
       <BackendStatusBanner />
       <Toaster />
     </SidebarProvider>
