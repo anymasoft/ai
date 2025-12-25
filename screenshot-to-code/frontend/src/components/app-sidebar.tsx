@@ -1,6 +1,5 @@
 import * as React from "react"
 import {
-  LayoutDashboard,
   Code2,
   Clock,
   Terminal,
@@ -36,11 +35,6 @@ const getNavData = (unreadCount: number, email: string | null, isAdmin: boolean)
     {
       label: "Основное",
       items: [
-        {
-          title: "Обзор",
-          url: "/dashboard",
-          icon: LayoutDashboard,
-        },
         {
           title: "Генератор",
           url: "/playground",
