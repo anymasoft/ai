@@ -4,9 +4,11 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
 from typing import Optional
 import os
+import sqlite3
 
 from api.routes.auth import get_current_user
 from api.admin_auth import get_admin_user
+from db.sqlite import get_conn
 from api.billing.yookassa import (
     create_payment,
     check_payment_status,
