@@ -21,7 +21,6 @@ const AuthCallback = lazy(() => import('@/app/auth/callback/page'))
 
 const AccountSettings = lazy(() => import('@/app/settings/account/page'))
 const BillingSettings = lazy(() => import('@/app/settings/billing/page'))
-const BillingReturn = lazy(() => import('@/app/billing/page'))
 
 export interface RouteConfig {
   path: string
@@ -87,10 +86,6 @@ export const routes: RouteConfig[] = [
         element: <ProtectedRoute><BillingSettings /></ProtectedRoute>
       },
     ]
-  },
-  {
-    path: "/billing",
-    element: <BillingReturn />
   },
   {
     path: "/auth/sign-in",
