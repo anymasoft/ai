@@ -22,6 +22,7 @@ export interface PricingPlan {
   description: string
   price: string
   frequency: string
+  credits: number
   features: string[]
   popular?: boolean
   current?: boolean
@@ -106,7 +107,8 @@ export function PricingPlans({
     name: tariff.name,
     description: planFeatures[tariff.key]?.description || tariff.name,
     price: tariff.price_rub === 0 ? '0' : tariff.price_rub.toString(),
-    frequency: tariff.price_rub === 0 ? ' ₽' : ` ₽ (${tariff.credits} генераций)`,
+    frequency: '₽',
+    credits: tariff.credits,
     features: planFeatures[tariff.key]?.features || [],
     popular: tariff.key === 'basic',
   }))
@@ -125,39 +127,24 @@ export function PricingPlans({
     )
   }
   const getButtonText = (plan: PricingPlan) => {
-    if (mode === 'billing') {
-      if (currentPlanId === plan.id) {
-        return 'Текущий тариф'
-      }
-      // Free plan is automatic, cannot be selected manually
-      if (plan.id === 'free') {
-        return 'Free (автоматически)'
-      }
-      const currentIndex = plans.findIndex(p => p.id === currentPlanId)
-      const planIndex = plans.findIndex(p => p.id === plan.id)
-
-      if (planIndex > currentIndex) {
-        return 'Обновить тариф'
-      }
+    // Free - это дефолт, не покупается
+    if (plan.id === 'free') {
+      return 'Получить'
     }
-    return 'Начать'
+    // Разовая покупка - каждый раз "Купить"
+    return 'Купить'
   }
 
   const getButtonVariant = (plan: PricingPlan) => {
-    if (mode === 'billing' && currentPlanId === plan.id) {
-      return 'outline' as const
-    }
     return plan.popular ? 'default' as const : 'outline' as const
   }
 
   const isButtonDisabled = (plan: PricingPlan) => {
-    if (mode === 'billing' && currentPlanId === plan.id) {
-      return true // Current plan is disabled
-    }
-    // Disable downgrade to Free plan
-    if (mode === 'billing' && plan.id === 'free' && currentPlanId !== 'free') {
+    // Free - это дефолт, disabled (не покупается)
+    if (plan.id === 'free') {
       return true
     }
+    // Basic и Professional - всегда можно купить (разовая покупка)
     return false
   }
 
@@ -195,6 +182,9 @@ export function PricingPlans({
             <div className='flex items-baseline justify-center'>
               <span className='text-4xl font-bold'>{tier.price}</span>
               <span className='text-muted-foreground text-sm'>{tier.frequency}</span>
+            </div>
+            <div className='text-center text-sm text-muted-foreground'>
+              Включено: {tier.credits} генераций
             </div>
             <div className='space-y-2'>
               {tier.features.map(feature => (
