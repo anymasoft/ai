@@ -7,7 +7,6 @@ import { PricingPlans } from "@/components/pricing-plans"
 import { BillingHistoryCard } from "./components/billing-history-card"
 import { Loader2, Coins } from "lucide-react"
 import { fetchJSON } from "@/lib/api"
-import { Button } from "@/components/ui/button"
 
 interface BillingUsage {
   credits: number
@@ -175,29 +174,14 @@ export default function BillingSettings() {
           <>
             <div className="grid gap-6 grid-cols-1 lg:grid-cols-2">
               <Card>
-                <CardHeader>
-                  <CardTitle>Ваш баланс</CardTitle>
-                  <CardDescription>
-                    Текущий баланс генераций.
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-2">
-                      <Coins className="h-5 w-5 text-yellow-500" />
-                      <span className="font-semibold">Баланс</span>
-                    </div>
-                    <div className="text-right">
-                      <div className="text-2xl font-bold">{balance}</div>
-                      <div className="text-sm text-muted-foreground">генераций</div>
+                <CardContent className="p-8">
+                  <div className="flex items-center justify-center gap-4">
+                    <Coins className="h-12 w-12 text-yellow-500" />
+                    <div className="text-center">
+                      <div className="text-5xl font-bold">{balance}</div>
+                      <div className="text-sm text-muted-foreground">credits</div>
                     </div>
                   </div>
-
-                  <Button variant="outline" className="w-full" onClick={() => {
-                    document.querySelector('[href*="pricing"]')?.scrollIntoView({ behavior: 'smooth' })
-                  }}>
-                    Пополнить баланс
-                  </Button>
                 </CardContent>
               </Card>
               <BillingHistoryCard history={billingHistoryData} />
