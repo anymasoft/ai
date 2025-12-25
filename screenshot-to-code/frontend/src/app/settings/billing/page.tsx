@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import { useLocation } from "react-router-dom"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { PricingPlans } from "@/components/pricing-plans"
 import { CurrentPlanCard } from "./components/current-plan-card"
@@ -38,12 +39,23 @@ export default function BillingSettings() {
   const [error, setError] = useState<string | null>(null)
   const [purchasing, setPurchasing] = useState<string | null>(null)
 
-  console.error("[BILLING] BillingSettings component mounted")
+  const location = useLocation()
+  const searchParams = new URLSearchParams(location.search)
+  const isReturningFromPayment = searchParams.get('success') === '1'
+
+  console.error("[BILLING] BillingSettings component mounted. isReturningFromPayment:", isReturningFromPayment)
 
   useEffect(() => {
     console.error("[BILLING] BillingSettings useEffect - fetching billing data")
-    fetchBillingData()
-  }, [])
+    if (isReturningFromPayment) {
+      // Returning from payment - poll until credits are actually added
+      console.error("[BILLING] User returning from payment, will poll for credits")
+      pollForCredits()
+    } else {
+      // Normal page load
+      fetchBillingData()
+    }
+  }, [isReturningFromPayment])
 
   async function fetchBillingData() {
     try {
@@ -59,6 +71,57 @@ export default function BillingSettings() {
     } finally {
       setLoading(false)
     }
+  }
+
+  async function pollForCredits() {
+    let pollCount = 0
+    const maxPolls = 24 // 60 seconds (2.5s per poll)
+
+    const poll = async () => {
+      try {
+        console.error(`[BILLING] polling for credits (${pollCount + 1}/${maxPolls})`)
+        const data = await fetchJSON<BillingUsage>("/api/billing/usage")
+        console.error("[BILLING] GET /api/billing/usage response:", JSON.stringify(data))
+
+        if (data.credits > 0) {
+          // Credits are here! Payment was successful
+          console.error("[BILLING] ✓ Credits detected:", data.credits)
+          setBillingUsage(data)
+          setError(null)
+          setLoading(false)
+          return true // Stop polling
+        }
+
+        pollCount++
+        if (pollCount >= maxPolls) {
+          console.error("[BILLING] Timeout waiting for credits")
+          // Timeout - load whatever we have
+          setBillingUsage(data)
+          setLoading(false)
+          return true // Stop polling
+        }
+
+        return false // Continue polling
+      } catch (err) {
+        console.error("[BILLING] Error polling for credits:", err)
+        pollCount++
+        if (pollCount >= maxPolls) {
+          setLoading(false)
+          return true // Stop polling
+        }
+        return false // Continue polling
+      }
+    }
+
+    // Poll immediately
+    if (await poll()) return
+
+    // Poll every 2.5 seconds
+    const interval = setInterval(async () => {
+      if (await poll()) {
+        clearInterval(interval)
+      }
+    }, 2500)
   }
 
   const handlePlanSelect = async (planId: string) => {
