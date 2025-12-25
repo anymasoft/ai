@@ -23,14 +23,6 @@ import { Loader2, RefreshCcw, MoreVertical } from "lucide-react"
 import { toast } from "sonner"
 import { fetchJSON, ApiError } from "@/lib/api"
 import { useNavigate } from "react-router-dom"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
-
 interface User {
   id: string
   email: string
@@ -52,10 +44,12 @@ export default function AdminUsersPage() {
 
   // Dialog states
   const [selectedUser, setSelectedUser] = useState<User | null>(null)
-  const [changePlanOpen, setChangePlanOpen] = useState(false)
   const [disableConfirmOpen, setDisableConfirmOpen] = useState(false)
   const [disableConfirmAction, setDisableConfirmAction] = useState<{user: User, disable: boolean} | null>(null)
-  const [newPlan, setNewPlan] = useState<"free" | "basic" | "professional">("free")
+  const [addCreditsOpen, setAddCreditsOpen] = useState(false)
+  const [addCreditsAmount, setAddCreditsAmount] = useState("")
+  const [setCreditsOpen, setSetCreditsOpen] = useState(false)
+  const [setCreditsAmount, setSetCreditsAmount] = useState("")
 
   useEffect(() => {
     fetchUsers()
@@ -83,11 +77,6 @@ export default function AdminUsersPage() {
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString("ru-RU")
-  }
-
-  const getPlanBadge = (plan: string) => {
-    if (!plan) return <Badge variant="secondary">free</Badge>
-    return <Badge variant="outline">{plan}</Badge>
   }
 
   const getRoleBadge = (role: string) => {
@@ -131,24 +120,61 @@ export default function AdminUsersPage() {
     }
   }
 
-  async function handleChangePlan() {
-    if (!selectedUser) return
+  async function handleAddCredits() {
+    if (!selectedUser || !addCreditsAmount) return
+
+    const amount = parseInt(addCreditsAmount)
+    if (isNaN(amount) || amount <= 0) {
+      toast.error("Введите положительное число")
+      return
+    }
 
     setActionLoading(true)
     try {
-      await fetchJSON("/api/admin/users/change-plan", {
+      const response = await fetchJSON<{success: boolean, new_balance: number}>("/api/admin/users/add-credits", {
         method: "POST",
         body: JSON.stringify({
           userId: selectedUser.id,
-          plan: newPlan,
+          amount: amount,
         }),
       })
-      toast.success(`Plan changed to ${newPlan}`)
-      setChangePlanOpen(false)
+      toast.success(`Добавлено ${amount} кредитов`)
+      setAddCreditsOpen(false)
+      setAddCreditsAmount("")
       await fetchUsers()
     } catch (error) {
       console.error("Error:", error)
-      toast.error("Failed to change plan")
+      toast.error("Ошибка при добавлении кредитов")
+    } finally {
+      setActionLoading(false)
+    }
+  }
+
+  async function handleSetCredits() {
+    if (!selectedUser || !setCreditsAmount) return
+
+    const amount = parseInt(setCreditsAmount)
+    if (isNaN(amount) || amount < 0) {
+      toast.error("Введите неотрицательное число")
+      return
+    }
+
+    setActionLoading(true)
+    try {
+      const response = await fetchJSON<{success: boolean, new_balance: number}>("/api/admin/users/set-credits", {
+        method: "POST",
+        body: JSON.stringify({
+          userId: selectedUser.id,
+          credits: amount,
+        }),
+      })
+      toast.success(`Баланс установлен на ${amount} кредитов`)
+      setSetCreditsOpen(false)
+      setSetCreditsAmount("")
+      await fetchUsers()
+    } catch (error) {
+      console.error("Error:", error)
+      toast.error("Ошибка при установке баланса")
     } finally {
       setActionLoading(false)
     }
@@ -206,7 +232,6 @@ export default function AdminUsersPage() {
                 <TableHeader>
                   <TableRow>
                     <TableHead>Email</TableHead>
-                    <TableHead>План</TableHead>
                     <TableHead>Баланс</TableHead>
                     <TableHead>Статус</TableHead>
                     <TableHead>Роль</TableHead>
@@ -218,9 +243,6 @@ export default function AdminUsersPage() {
                     <TableRow key={user.id}>
                       <TableCell className="font-mono text-sm">
                         {user.email}
-                      </TableCell>
-                      <TableCell>
-                        {getPlanBadge(user.plan)}
                       </TableCell>
                       <TableCell className="text-sm">
                         {user.credits}
@@ -257,15 +279,28 @@ export default function AdminUsersPage() {
                               {user.disabled ? "Enable" : "Disable"}
                             </DropdownMenuItem>
 
-                            {/* Изменить план */}
+                            <DropdownMenuSeparator />
+
+                            {/* Добавить кредиты */}
                             <DropdownMenuItem
                               onClick={() => {
                                 setSelectedUser(user)
-                                setNewPlan(user.plan as any)
-                                setChangePlanOpen(true)
+                                setAddCreditsAmount("")
+                                setAddCreditsOpen(true)
                               }}
                             >
-                              Change Plan
+                              Add credits
+                            </DropdownMenuItem>
+
+                            {/* Установить баланс */}
+                            <DropdownMenuItem
+                              onClick={() => {
+                                setSelectedUser(user)
+                                setSetCreditsAmount(user.credits.toString())
+                                setSetCreditsOpen(true)
+                              }}
+                            >
+                              Set credits
                             </DropdownMenuItem>
 
                           </DropdownMenuContent>
@@ -280,43 +315,73 @@ export default function AdminUsersPage() {
         </CardContent>
       </Card>
 
-      {/* Change Plan Dialog */}
-      <Dialog open={changePlanOpen} onOpenChange={setChangePlanOpen}>
+      {/* Add Credits Dialog */}
+      <Dialog open={addCreditsOpen} onOpenChange={setAddCreditsOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Change Plan</DialogTitle>
+            <DialogTitle>Добавить кредиты</DialogTitle>
             <DialogDescription>
-              Change {selectedUser?.email} plan
+              Добавить кредиты пользователю {selectedUser?.email}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div>
-              <label className="text-sm font-medium">New Plan</label>
-              <Select value={newPlan} onValueChange={(value: any) => setNewPlan(value)}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="free">Free</SelectItem>
-                  <SelectItem value="basic">Basic</SelectItem>
-                  <SelectItem value="professional">Professional</SelectItem>
-                </SelectContent>
-              </Select>
+              <label className="text-sm font-medium">Количество кредитов</label>
+              <Input
+                type="number"
+                min="1"
+                value={addCreditsAmount}
+                onChange={(e) => setAddCreditsAmount(e.target.value)}
+                placeholder="10"
+              />
             </div>
             <div className="flex justify-end gap-2">
-              <Button variant="outline" onClick={() => setChangePlanOpen(false)}>
-                Cancel
+              <Button variant="outline" onClick={() => setAddCreditsOpen(false)}>
+                Отмена
               </Button>
-              <Button onClick={handleChangePlan} disabled={actionLoading}>
+              <Button onClick={handleAddCredits} disabled={actionLoading}>
                 {actionLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Change Plan
+                Добавить
               </Button>
             </div>
           </div>
         </DialogContent>
       </Dialog>
 
-{/* Disable/Enable Confirmation Dialog */}
+      {/* Set Credits Dialog */}
+      <Dialog open={setCreditsOpen} onOpenChange={setSetCreditsOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Установить баланс</DialogTitle>
+            <DialogDescription>
+              Установить баланс кредитов для пользователя {selectedUser?.email}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <label className="text-sm font-medium">Новый баланс</label>
+              <Input
+                type="number"
+                min="0"
+                value={setCreditsAmount}
+                onChange={(e) => setSetCreditsAmount(e.target.value)}
+                placeholder="100"
+              />
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setSetCreditsOpen(false)}>
+                Отмена
+              </Button>
+              <Button onClick={handleSetCredits} disabled={actionLoading}>
+                {actionLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                Установить
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Disable/Enable Confirmation Dialog */}
       <Dialog open={disableConfirmOpen} onOpenChange={setDisableConfirmOpen}>
         <DialogContent>
           <DialogHeader>
