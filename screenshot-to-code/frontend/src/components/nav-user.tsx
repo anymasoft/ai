@@ -88,26 +88,26 @@ export function NavUser({
               <DropdownMenuItem asChild className="cursor-pointer">
                 <Link to="/settings/account">
                   <CircleUser />
-                  Account
+                  Аккаунт
                 </Link>
               </DropdownMenuItem>
               <DropdownMenuItem asChild className="cursor-pointer">
                 <Link to="/settings/billing">
                   <CreditCard />
-                  Billing
+                  Тарифы
                 </Link>
               </DropdownMenuItem>
               <DropdownMenuItem asChild className="cursor-pointer">
                 <Link to="/settings/notifications">
                   <BellDot />
-                  Notifications
+                  Уведомления
                 </Link>
               </DropdownMenuItem>
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={handleLogout} className="cursor-pointer">
               <LogOut />
-              Log out
+              Выйти
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

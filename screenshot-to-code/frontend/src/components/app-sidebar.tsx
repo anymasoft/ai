@@ -34,27 +34,27 @@ import {
 const getNavData = (unreadCount: number, email: string | null, isAdmin: boolean) => {
   const navGroups = [
     {
-      label: "Main",
+      label: "Основное",
       items: [
         {
-          title: "Overview",
+          title: "Обзор",
           url: "/dashboard",
           icon: LayoutDashboard,
         },
         {
-          title: "Playground",
+          title: "Генератор",
           url: "/playground",
           icon: Code2,
         },
         {
-          title: "History",
+          title: "История",
           url: "/history",
           icon: Clock,
         },
       ],
     },
     {
-      label: "Developer",
+      label: "Разработчикам",
       items: [
         {
           title: "API",
@@ -62,12 +62,12 @@ const getNavData = (unreadCount: number, email: string | null, isAdmin: boolean)
           icon: Terminal,
         },
         {
-          title: "Docs",
+          title: "Документация",
           url: "/docs",
           icon: BookOpen,
         },
         {
-          title: "Feedback",
+          title: "Отзывы",
           url: "/feedback",
           icon: MessageSquare,
         },
@@ -76,15 +76,15 @@ const getNavData = (unreadCount: number, email: string | null, isAdmin: boolean)
   ]
 
   navGroups.push({
-    label: "Account",
+    label: "Аккаунт",
     items: [
       {
-        title: "Billing",
+        title: "Тарифы",
         url: "/settings/billing",
         icon: CreditCard,
       },
       {
-        title: "Settings",
+        title: "Настройки",
         url: "/settings/account",
         icon: Settings,
       },
@@ -94,26 +94,26 @@ const getNavData = (unreadCount: number, email: string | null, isAdmin: boolean)
   // Only add Admin section if user is admin (at the bottom)
   if (isAdmin) {
     navGroups.push({
-      label: "Admin",
+      label: "Администрирование",
       items: [
         {
-          title: "Messages",
+          title: "Сообщения",
           url: "/admin/messages",
           icon: Mail,
           badge: unreadCount,
         },
         {
-          title: "Users",
+          title: "Пользователи",
           url: "/admin/users",
           icon: Users,
         },
         {
-          title: "Payments",
+          title: "Платежи",
           url: "/admin/payments",
           icon: DollarSign,
         },
         {
-          title: "Tariffs",
+          title: "Тарифы",
           url: "/admin/tariffs",
           icon: Tag,
         },
@@ -123,8 +123,8 @@ const getNavData = (unreadCount: number, email: string | null, isAdmin: boolean)
 
   return {
     user: {
-      name: email ? email.split("@")[0] : "User",
-      email: email || "not signed in",
+      name: email ? email.split("@")[0] : "Пользователь",
+      email: email || "не авторизирован",
       avatar: "",
     },
     navGroups,
