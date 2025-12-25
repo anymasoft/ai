@@ -407,6 +407,46 @@ def get_user_credits(user_id: str) -> int:
         conn.close()
 
 
+def get_user_plan(user_id: str) -> str:
+    """
+    Определить тариф пользователя по последнему успешному платежу.
+
+    Правило:
+    - Если нет успешных платежей → "free"
+    - Если последний успешный платёж package="basic" → "basic"
+    - Если последний успешный платёж package="professional" → "professional"
+
+    Args:
+        user_id: User ID
+
+    Returns:
+        Plan name: "free", "basic", или "professional"
+    """
+
+    conn = get_conn()
+    cursor = conn.cursor()
+
+    try:
+        # Получить последний успешный платёж
+        cursor.execute(
+            """
+            SELECT package FROM payments
+            WHERE user_id = ? AND status = 'succeeded'
+            ORDER BY created_at DESC
+            LIMIT 1
+            """,
+            (user_id,),
+        )
+        row = cursor.fetchone()
+
+        if row:
+            return row[0]  # Возвращаем package ("basic" или "professional")
+        else:
+            return "free"  # Нет успешных платежей
+    finally:
+        conn.close()
+
+
 def get_payments_list(user_id: Optional[str] = None, limit: int = 50) -> list:
     """Get list of payments (admin view)."""
 
