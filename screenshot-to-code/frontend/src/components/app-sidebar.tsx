@@ -11,6 +11,7 @@ import {
   CreditCard,
   Settings,
   MessageSquare,
+  Tag,
 } from "lucide-react"
 import { Link } from "react-router-dom"
 import { Logo } from "@/components/logo"
@@ -110,6 +111,11 @@ const getNavData = (unreadCount: number, email: string | null, isAdmin: boolean)
           title: "Payments",
           url: "/admin/payments",
           icon: DollarSign,
+        },
+        {
+          title: "Tariffs",
+          url: "/admin/tariffs",
+          icon: Tag,
         },
       ],
     })

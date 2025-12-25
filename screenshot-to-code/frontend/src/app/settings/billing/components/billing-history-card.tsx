@@ -38,10 +38,14 @@ export function BillingHistoryCard({ history }: BillingHistoryCardProps) {
   async function fetchPayments() {
     try {
       setLoading(true)
+      console.log("[BILLING] Fetching user payments from /api/billing/user-payments")
       const data = await fetchJSON<{ payments: Payment[] }>("/api/billing/user-payments")
-      setPayments((data.payments || []).slice(0, 5)) // Show last 5 payments
+      console.log("[BILLING] Received response:", data)
+      const paymentsList = data.payments || []
+      console.log(`[BILLING] Got ${paymentsList.length} payments`)
+      setPayments(paymentsList.slice(0, 5)) // Show last 5 payments
     } catch (error) {
-      console.error("Error loading payments:", error)
+      console.error("[BILLING] Error loading payments:", error)
       setPayments([])
     } finally {
       setLoading(false)
