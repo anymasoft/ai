@@ -155,21 +155,12 @@ export default function BillingReturn() {
           {/* Actions */}
           <div className="space-y-3">
             {status === "succeeded" && (
-              <>
-                <Button
-                  onClick={handleContinue}
-                  className="w-full bg-green-600 hover:bg-green-700"
-                >
-                  Перейти к генерации
-                </Button>
-                <Button
-                  onClick={() => navigate("/settings/billing")}
-                  variant="outline"
-                  className="w-full"
-                >
-                  Вернуться в биллинг
-                </Button>
-              </>
+              <Button
+                onClick={handleContinue}
+                className="w-full bg-green-600 hover:bg-green-700"
+              >
+                Перейти к генерации
+              </Button>
             )}
 
             {status === "canceled" && (
