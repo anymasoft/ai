@@ -69,16 +69,11 @@ async def get_user_api_key(user: dict = Depends(get_current_user)):
         api_key_hash = hash_api_key(api_key)
         api_key_id = f"key_{uuid.uuid4().hex[:16]}"
 
-        # Get user's plan
-        cursor.execute("SELECT plan FROM users WHERE id = ?", (user_id,))
-        user_row = cursor.fetchone()
-        tier = user_row[0] if user_row else "free"
-
         # Insert new API key (with both plain and hash)
         cursor.execute("""
-            INSERT INTO api_keys (id, user_id, key_plain, key_hash, tier, is_active)
-            VALUES (?, ?, ?, ?, ?, 1)
-        """, (api_key_id, user_id, api_key, api_key_hash, tier))
+            INSERT INTO api_keys (id, user_id, key_plain, key_hash, is_active)
+            VALUES (?, ?, ?, ?, 1)
+        """, (api_key_id, user_id, api_key, api_key_hash))
 
         conn.commit()
         conn.close()

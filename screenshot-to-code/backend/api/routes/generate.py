@@ -74,33 +74,22 @@ async def generate_code(
     Generation proceeds asynchronously.
     """
 
-    # 1. Check tier access
-    tier = api_key_info["tier"]
-    if request.format in ["react_tailwind", "vue_tailwind"] and tier != "pro":
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail={
-                "error": "forbidden",
-                "message": f"Format '{request.format}' requires 'pro' tier",
-            },
-        )
-
-    # 2. Calculate cost
+    # 1. Calculate cost
     cost = get_format_cost(request.format)
 
-    # 3. Generate ID first (before deducting credits)
+    # 2. Generate ID first (before deducting credits)
     generation_id = create_generation_id()
 
-    # 4. Atomically check and deduct credits from user account
+    # 3. Atomically check and deduct credits from user account
     # This prevents race conditions where multiple concurrent requests
     # could bypass the credit check
     user_id = api_key_info["user_id"]
     deduct_credits_atomic(user_id, cost)
 
-    # 5. Save generation record
+    # 4. Save generation record
     save_generation(generation_id, user_id, request, cost)
 
-    # 6. Trigger actual generation in background
+    # 5. Trigger actual generation in background
     from api.generation_service import trigger_generation
     import asyncio
     import logging
@@ -126,7 +115,7 @@ async def generate_code(
 
     task.add_done_callback(handle_generation_error)
 
-    # 7. Build stream URL dynamically
+    # 6. Build stream URL dynamically
     # Strategy:
     # 1. Use API_PUBLIC_BASE_URL environment variable if set (for production behind reverse proxy)
     # 2. Otherwise, construct from request URL (for local development)
