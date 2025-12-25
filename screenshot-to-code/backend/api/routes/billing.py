@@ -98,7 +98,7 @@ async def checkout(request: CheckoutRequest, user: dict = Depends(get_current_us
 
     Args:
         request: Пакет для покупки (basic или professional)
-        user: Текущий пользователь из сессии
+        user: Текущий сеанс пользователя
 
     Returns:
         Данные платежа с URL подтверждения
@@ -107,7 +107,12 @@ async def checkout(request: CheckoutRequest, user: dict = Depends(get_current_us
         400: Неверный пакет или ошибка создания платежа
     """
 
-    user_id = user.get("id")
+    # Extract user from session data
+    user_data = user.get("user")
+    if not user_data:
+        raise HTTPException(status_code=401, detail="User not found in session")
+
+    user_id = user_data.get("id")
     if not user_id:
         raise HTTPException(status_code=401, detail="Не авторизирован")
 
@@ -155,7 +160,7 @@ async def payment_status(
 
     Args:
         payment_id: ID платежа из нашей БД
-        user: Текущий пользователь из сессии
+        user: Текущий сеанс пользователя
 
     Returns:
         Статус платежа и начисленные кредиты (если успешно)
@@ -165,7 +170,12 @@ async def payment_status(
         403: Платёж не принадлежит пользователю
     """
 
-    user_id = user.get("id")
+    # Extract user from session data
+    user_data = user.get("user")
+    if not user_data:
+        raise HTTPException(status_code=401, detail="User not found in session")
+
+    user_id = user_data.get("id")
     if not user_id:
         raise HTTPException(status_code=401, detail="Не авторизирован")
 
@@ -299,15 +309,20 @@ async def get_billing_usage(user: dict = Depends(get_current_user)):
     Returns current plan, used generations, and limits.
 
     Args:
-        user: Current user from session
+        user: Current session data from cookies
 
     Returns:
         BillingUsageResponse with plan, used, limit, remaining
     """
 
-    user_id = user.get("id")
+    # Extract user from session data
+    user_data = user.get("user")
+    if not user_data:
+        raise HTTPException(status_code=401, detail="User not found in session")
+
+    user_id = user_data.get("id")
     if not user_id:
-        raise HTTPException(status_code=401, detail="Not authenticated")
+        raise HTTPException(status_code=401, detail="User ID not found in session")
 
     # Get user info from database
     from db.sqlite import get_conn
@@ -358,13 +373,18 @@ async def get_balance(user: dict = Depends(get_current_user)):
     Получить текущий баланс кредитов пользователя.
 
     Args:
-        user: Текущий пользователь из сессии
+        user: Текущий сеанс пользователя
 
     Returns:
         Текущий баланс кредитов
     """
 
-    user_id = user.get("id")
+    # Extract user from session data
+    user_data = user.get("user")
+    if not user_data:
+        raise HTTPException(status_code=401, detail="User not found in session")
+
+    user_id = user_data.get("id")
     if not user_id:
         raise HTTPException(status_code=401, detail="Не авторизирован")
 
@@ -386,13 +406,18 @@ async def deduct_credits_endpoint(request: dict, user: dict = Depends(get_curren
 
     Args:
         request: { format: "html_tailwind" | "html_css" | "react_tailwind" | "vue_tailwind" }
-        user: Current user from session
+        user: Current session data
 
     Returns:
         New credits balance or error if insufficient credits
     """
 
-    user_id = user.get("id")
+    # Extract user from session data
+    user_data = user.get("user")
+    if not user_data:
+        raise HTTPException(status_code=401, detail="User not found in session")
+
+    user_id = user_data.get("id")
     if not user_id:
         raise HTTPException(status_code=401, detail="Не авторизирован")
 
