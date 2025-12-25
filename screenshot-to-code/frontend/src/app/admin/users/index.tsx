@@ -365,9 +365,9 @@ export default function AdminUsersPage() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="free">Free (30 generations)</SelectItem>
-                  <SelectItem value="basic">Basic (200 generations)</SelectItem>
-                  <SelectItem value="professional">Professional (1000 generations)</SelectItem>
+                  <SelectItem value="free">Free</SelectItem>
+                  <SelectItem value="basic">Basic</SelectItem>
+                  <SelectItem value="professional">Professional</SelectItem>
                 </SelectContent>
               </Select>
             </div>
