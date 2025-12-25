@@ -17,7 +17,7 @@ export default function BillingReturn() {
   const searchParams = new URLSearchParams(location.search)
   const paymentId = searchParams.get("payment_id")
 
-  console.error("[BILLING] /billing/return mounted. paymentId:", paymentId)
+  console.error("[BILLING] /billing mounted. paymentId:", paymentId)
 
   const [status, setStatus] = useState<"pending" | "succeeded" | "canceled" | "error">("pending")
   const [message, setMessage] = useState("Проверяем статус платежа...")

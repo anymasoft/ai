@@ -58,7 +58,7 @@ def create_payment(
     Args:
         user_id: User ID
         package: Package name (basic or professional)
-        return_url: URL to return after payment (e.g., http://localhost:5173/billing/return)
+        return_url: URL to return after payment (e.g., http://localhost:5173/billing)
 
     Returns:
         {
