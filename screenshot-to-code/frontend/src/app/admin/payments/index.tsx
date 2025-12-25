@@ -9,14 +9,6 @@ import { toast } from "sonner"
 import { fetchJSON, ApiError } from "@/lib/api"
 import { useNavigate } from "react-router-dom"
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-  DialogClose,
-} from "@/components/ui/dialog"
-import {
   Select,
   SelectContent,
   SelectItem,
@@ -27,6 +19,7 @@ import {
 interface Payment {
   id: string
   user_id: string
+  email: string
   package: string
   credits_amount: number
   amount_rubles: number
@@ -39,24 +32,23 @@ export default function AdminPaymentsPage() {
   const [payments, setPayments] = useState<Payment[]>([])
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
-  const [showAddCredits, setShowAddCredits] = useState(false)
-  const [addingCredits, setAddingCredits] = useState(false)
-  const [addUserId, setAddUserId] = useState("")
-  const [addCreditsAmount, setAddCreditsAmount] = useState("")
-  const [addReason, setAddReason] = useState("support")
   const [pageSize, setPageSize] = useState(20)
   const [currentPage, setCurrentPage] = useState(1)
+  const [emailFilter, setEmailFilter] = useState("")
 
   useEffect(() => {
     fetchPayments()
-  }, [])
+  }, [emailFilter])
 
   async function fetchPayments() {
     try {
       setLoading(true)
-      const data = await fetchJSON<{ payments: Payment[]; total: number }>(
-        "/api/billing/payments"
-      )
+      const params = new URLSearchParams()
+      if (emailFilter) {
+        params.append("email", emailFilter)
+      }
+      const url = `/api/admin/payments${params.toString() ? "?" + params.toString() : ""}`
+      const data = await fetchJSON<{ payments: Payment[] }>(url)
       setPayments(data.payments || [])
     } catch (error) {
       console.error("[ADMIN] Error loading payments:", error)
@@ -76,39 +68,6 @@ export default function AdminPaymentsPage() {
     await fetchPayments()
     setRefreshing(false)
     toast.success("Платежи обновлены")
-  }
-
-  async function handleAddCredits() {
-    if (!addUserId.trim()) {
-      toast.error("Укажите ID пользователя")
-      return
-    }
-    const credits = parseInt(addCreditsAmount)
-    if (isNaN(credits) || credits <= 0) {
-      toast.error("Укажите положительное количество кредитов")
-      return
-    }
-    try {
-      setAddingCredits(true)
-      await fetchJSON("/api/billing/add-credits", {
-        method: "POST",
-        body: JSON.stringify({
-          user_id: addUserId,
-          credits: credits,
-          reason: addReason,
-        }),
-      })
-      toast.success(`Добавлено ${credits} кредитов`)
-      setAddUserId("")
-      setAddCreditsAmount("")
-      setAddReason("support")
-      setShowAddCredits(false)
-    } catch (error) {
-      console.error("[ADMIN] Error adding credits:", error)
-      toast.error("Ошибка при добавлении кредитов")
-    } finally {
-      setAddingCredits(false)
-    }
   }
 
   const formatDate = (dateString: string) => {
@@ -142,19 +101,34 @@ export default function AdminPaymentsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold">Платежи</h1>
-          <p className="text-muted-foreground">Список всех платежей</p>
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold">Платежи</h1>
+            <p className="text-muted-foreground">Список всех платежей</p>
+          </div>
+          <Button onClick={handleRefresh} disabled={refreshing} variant="outline" size="icon">
+            <RefreshCcw className="h-4 w-4" />
+          </Button>
         </div>
-        <div className="space-x-2">
-          <Button onClick={handleRefresh} disabled={refreshing} variant="outline">
-            <RefreshCcw className="h-4 w-4 mr-2" />
-            Обновить
-          </Button>
-          <Button onClick={() => setShowAddCredits(true)} className="bg-blue-600">
-            + Добавить кредиты
-          </Button>
+
+        {/* Email Filter */}
+        <div className="flex gap-2">
+          <Input
+            placeholder="Фильтр по email..."
+            value={emailFilter}
+            onChange={(e) => setEmailFilter(e.target.value)}
+            className="max-w-sm"
+          />
+          {emailFilter && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setEmailFilter("")}
+            >
+              Очистить
+            </Button>
+          )}
         </div>
       </div>
 
@@ -186,7 +160,7 @@ export default function AdminPaymentsPage() {
                   {paginatedPayments.map((p) => (
                     <TableRow key={p.id}>
                       <TableCell className="font-mono text-xs">{p.id.slice(0, 8)}</TableCell>
-                      <TableCell className="font-mono text-xs">{p.user_id.slice(0, 8)}</TableCell>
+                      <TableCell>{p.email}</TableCell>
                       <TableCell>{getPackageName(p.package)}</TableCell>
                       <TableCell>{p.amount_rubles.toFixed(0)} ₽</TableCell>
                       <TableCell>
@@ -256,51 +230,6 @@ export default function AdminPaymentsPage() {
           )}
         </CardContent>
       </Card>
-
-      <Dialog open={showAddCredits} onOpenChange={setShowAddCredits}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Добавить кредиты вручную</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
-            <input
-              placeholder="ID пользователя"
-              value={addUserId}
-              onChange={(e) => setAddUserId(e.target.value)}
-              disabled={addingCredits}
-              className="w-full px-3 py-2 border rounded"
-            />
-            <input
-              placeholder="Количество кредитов"
-              type="number"
-              min="1"
-              value={addCreditsAmount}
-              onChange={(e) => setAddCreditsAmount(e.target.value)}
-              disabled={addingCredits}
-              className="w-full px-3 py-2 border rounded"
-            />
-            <select
-              value={addReason}
-              onChange={(e) => setAddReason(e.target.value)}
-              disabled={addingCredits}
-              className="w-full px-3 py-2 border rounded"
-            >
-              <option>Поддержка</option>
-              <option>Компенсация</option>
-              <option>Промо</option>
-            </select>
-            <div className="flex gap-3">
-              <Button onClick={handleAddCredits} disabled={addingCredits} className="flex-1">
-                {addingCredits && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-                Добавить
-              </Button>
-              <DialogClose asChild>
-                <Button variant="outline" className="flex-1">Отмена</Button>
-              </DialogClose>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
     </div>
   )
 }
