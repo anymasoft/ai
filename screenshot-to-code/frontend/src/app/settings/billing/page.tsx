@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import { useLocation, useSearchParams } from "react-router-dom"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { PricingPlans } from "@/components/pricing-plans"
 import { CurrentPlanCard } from "./components/current-plan-card"
@@ -11,6 +12,12 @@ import { fetchJSON, ApiError } from "@/lib/api"
 interface BillingUsage {
   plan: string  // "free", "basic", или "professional"
   credits: number
+}
+
+interface PaymentStatusResponse {
+  status: "pending" | "succeeded" | "canceled"
+  credits?: number
+  message: string
 }
 
 interface CurrentPlan {
@@ -33,15 +40,51 @@ interface CurrentPlan {
 const billingHistoryData: Array<{id: number; month: string; plan: string; amount: string; status: string}> = []
 
 export default function BillingSettings() {
+  const [searchParams] = useSearchParams()
+  const paymentId = searchParams.get("payment_id")
+
   const [billingUsage, setBillingUsage] = useState<BillingUsage | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [purchasing, setPurchasing] = useState<string | null>(null)
 
   useEffect(() => {
-    console.error("[BILLING] BillingSettings component mounted - fetching billing data")
-    fetchBillingData()
-  }, [])
+    console.error("[BILLING] ========== useEffect CALLED ==========")
+    console.error("[BILLING] BillingSettings component mounted")
+    console.error("[BILLING] searchParams:", Object.fromEntries(searchParams))
+    console.error("[BILLING] paymentId from URL:", paymentId)
+
+    // If returning from payment, first process the payment status
+    if (paymentId) {
+      console.error("[BILLING] ✓ Payment ID FOUND! Processing payment:", paymentId)
+      processPaymentAndFetchData()
+    } else {
+      console.error("[BILLING] ✗ No payment ID found, just fetching billing data")
+      fetchBillingData()
+    }
+  }, [paymentId])
+
+  async function processPaymentAndFetchData() {
+    try {
+      console.error("[BILLING] processPaymentAndFetchData() STARTED with paymentId:", paymentId)
+      setLoading(true)
+
+      // First, call GET /api/billing/status to process the payment
+      const url = `/api/billing/status?payment_id=${paymentId}`
+      console.error("[BILLING] Calling GET", url)
+      const statusResponse = await fetchJSON<PaymentStatusResponse>(url)
+      console.error("[BILLING] Payment status response:", JSON.stringify(statusResponse))
+
+      // Then fetch the updated billing data
+      console.error("[BILLING] Calling fetchBillingData() after payment processing")
+      await fetchBillingData()
+    } catch (err) {
+      console.error("[BILLING] Error processing payment:", err)
+      // Even if payment processing fails, try to load billing data
+      console.error("[BILLING] Attempting fetchBillingData() despite error")
+      await fetchBillingData()
+    }
+  }
 
   async function fetchBillingData() {
     try {
