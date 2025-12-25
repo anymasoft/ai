@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge"
 import { Loader2, RefreshCcw } from "lucide-react"
 import { toast } from "sonner"
 import { fetchJSON, ApiError } from "@/lib/api"
-import { useNavigate } from "react-router-dom"
+import { useNavigate, useLocation } from "react-router-dom"
 import {
   Select,
   SelectContent,
@@ -29,6 +29,7 @@ interface Payment {
 
 export default function AdminPaymentsPage() {
   const navigate = useNavigate()
+  const location = useLocation()
   const [payments, setPayments] = useState<Payment[]>([])
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
@@ -54,7 +55,10 @@ export default function AdminPaymentsPage() {
       console.error("[ADMIN] Error loading payments:", error)
       if (error instanceof ApiError && error.status === 403) {
         toast.error("Доступ запрещен")
-        navigate("/playground")
+        // Only redirect to playground if on root path
+        if (location.pathname === "/") {
+          navigate("/playground")
+        }
       } else {
         toast.error("Ошибка при загрузке платежей")
       }
@@ -100,7 +104,7 @@ export default function AdminPaymentsPage() {
   }, [pageSize])
 
   return (
-    <div className="space-y-6">
+    <div className="container mx-auto px-4 py-6">
       <div className="space-y-4">
         <div className="flex items-center justify-between">
           <div>

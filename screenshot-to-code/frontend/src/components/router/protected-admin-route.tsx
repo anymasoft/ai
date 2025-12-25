@@ -1,6 +1,6 @@
 import { useAdminStore } from "@/store/admin"
 import { useAuthStore } from "@/store/auth"
-import { Navigate } from "react-router-dom"
+import { Navigate, useLocation } from "react-router-dom"
 import { ReactNode } from "react"
 
 interface ProtectedAdminRouteProps {
@@ -10,6 +10,7 @@ interface ProtectedAdminRouteProps {
 export function ProtectedAdminRoute({ children }: ProtectedAdminRouteProps) {
   const { user, isLoading } = useAuthStore()
   const isAdmin = useAdminStore((state) => state.isAdmin)
+  const location = useLocation()
 
   // First check: is user authenticated?
   if (isLoading) {
@@ -29,7 +30,12 @@ export function ProtectedAdminRoute({ children }: ProtectedAdminRouteProps) {
 
   // Second check: is user admin?
   if (!isAdmin) {
-    return <Navigate to="/playground" replace />
+    // Only redirect to playground if on root path
+    if (location.pathname === "/") {
+      return <Navigate to="/playground" replace />
+    }
+    // Otherwise stay on current admin route - let API auth handle it
+    return <>{children}</>
   }
 
   return <>{children}</>
