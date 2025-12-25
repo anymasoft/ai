@@ -240,6 +240,19 @@ def init_db() -> None:
         # BILLING TABLES
         # ====================
 
+        # Create tariffs table (for managed pricing)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS tariffs (
+                key TEXT PRIMARY KEY,
+                name TEXT NOT NULL,
+                price_rub REAL NOT NULL,
+                credits INTEGER NOT NULL,
+                is_active INTEGER DEFAULT 1,
+                created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+
         # Create payments table (for YooKassa billing)
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS payments (
@@ -331,6 +344,12 @@ def init_db() -> None:
             ON admin_messages(isRead, createdAt DESC)
         """)
 
+        # Tariff indexes
+        cursor.execute("""
+            CREATE INDEX IF NOT EXISTS idx_tariffs_is_active
+            ON tariffs(is_active)
+        """)
+
         # Billing indexes
         cursor.execute("""
             CREATE INDEX IF NOT EXISTS idx_payments_user_id
@@ -360,6 +379,25 @@ def init_db() -> None:
                 id, key_hash, name, tier, credits_total, credits_used
             ) VALUES (?, ?, ?, ?, ?, ?)
         """, ("key_dev_default", dev_key_hash, "Development Key", "pro", 10000, 0))
+
+        # Initialize default tariffs if they don't exist
+        cursor.execute("SELECT COUNT(*) FROM tariffs")
+        tariff_count = cursor.fetchone()[0]
+
+        if tariff_count == 0:
+            print("[DB] Initializing default tariffs...")
+            default_tariffs = [
+                ("free", "Free", 0.0, 0),
+                ("basic", "Basic", 3000.0, 100),
+                ("professional", "Professional", 14000.0, 500),
+            ]
+
+            for key, name, price_rub, credits in default_tariffs:
+                cursor.execute("""
+                    INSERT INTO tariffs (key, name, price_rub, credits, is_active)
+                    VALUES (?, ?, ?, ?, 1)
+                """, (key, name, price_rub, credits))
+            print("[DB] Default tariffs initialized: free, basic, professional")
 
         conn.commit()
         print(f"[DB] Initialized successfully at {DB_PATH}")

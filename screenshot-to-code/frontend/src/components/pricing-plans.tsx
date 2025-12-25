@@ -115,6 +115,20 @@ export function PricingPlans({
     features: planFeatures[tariff.key]?.features || [],
     popular: tariff.key === 'basic',
   }))
+
+  // Show error if no tariffs are available
+  if (plans.length === 0) {
+    return (
+      <div className="rounded-lg border border-destructive bg-destructive/10 p-6 text-center">
+        <p className="text-destructive font-medium">
+          Тарифы недоступны. Обратитесь к администратору.
+        </p>
+        <p className="text-sm text-muted-foreground mt-2">
+          Если вы админ, проверьте, что тарифы инициализированы в БД.
+        </p>
+      </div>
+    )
+  }
   const getButtonText = (plan: PricingPlan) => {
     if (mode === 'billing') {
       if (currentPlanId === plan.id) {
