@@ -66,8 +66,8 @@ async def get_payments(
         if email:
             # Join with users to filter by email
             query = """
-                SELECT p.id, p.user_id, u.email, p.plan, p.amount, p.currency,
-                       p.provider, p.created_at
+                SELECT p.id, p.user_id, u.email, p.package, p.credits_amount,
+                       p.amount_cents, p.status, p.created_at
                 FROM payments p
                 LEFT JOIN users u ON p.user_id = u.id
                 WHERE u.email LIKE ?
@@ -76,18 +76,27 @@ async def get_payments(
             params = [f"%{email}%"]
         else:
             query = """
-                SELECT p.id, p.user_id, u.email, p.plan, p.amount, p.currency,
-                       p.provider, p.created_at
+                SELECT p.id, p.user_id, u.email, p.package, p.credits_amount,
+                       p.amount_cents, p.status, p.created_at
                 FROM payments p
                 LEFT JOIN users u ON p.user_id = u.id
                 ORDER BY p.created_at DESC
             """
 
         cursor.execute(query, params)
-        payments = [dict(row) for row in cursor.fetchall()]
+        rows = cursor.fetchall()
 
-        # Calculate total sum
-        total_sum = sum(p.get("amount", 0) for p in payments)
+        # Transform amount_cents to amount_rubles
+        payments = []
+        for row in rows:
+            payment_dict = dict(row)
+            amount_cents = payment_dict.get("amount_cents", 0) or 0
+            payment_dict["amount_rubles"] = amount_cents / 100 if amount_cents > 0 else 0
+            payment_dict.pop("amount_cents", None)
+            payments.append(payment_dict)
+
+        # Calculate total sum in rubles
+        total_sum = sum(p.get("amount_rubles", 0) for p in payments)
 
         return {"payments": payments, "totalSum": total_sum}
 
