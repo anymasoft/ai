@@ -125,9 +125,11 @@ async def checkout(request: CheckoutRequest, user: dict = Depends(get_current_us
         )
 
     # Create payment in YooKassa
+    print(f"[BILLING] POST /api/billing/checkout user_id={user_id}, package={request.package}, RETURN_URL={RETURN_URL}")
     payment_result = create_payment(user_id, request.package, RETURN_URL)
 
     if not payment_result:
+        print(f"[BILLING] ERROR: payment_result is None!")
         raise HTTPException(
             status_code=500,
             detail={
@@ -136,15 +138,18 @@ async def checkout(request: CheckoutRequest, user: dict = Depends(get_current_us
             },
         )
 
+    print(f"[BILLING] payment_result: {payment_result}")
     package_info = PACKAGES[request.package]
 
-    return CheckoutResponse(
+    response = CheckoutResponse(
         db_payment_id=payment_result["db_payment_id"],
         confirmation_url=payment_result["confirmation_url"],
         package=request.package,
         credits_amount=package_info["credits"],
         amount_rubles=package_info["price_kopeks"] / 100,
     )
+    print(f"[BILLING] returning: {response}")
+    return response
 
 
 @router.get("/api/billing/status")
@@ -168,18 +173,25 @@ async def payment_status(
         403: Платёж не принадлежит пользователю
     """
 
+    print(f"[BILLING] >>>>>> /api/billing/status called with payment_id={payment_id}")
+
     # Extract user from session data
     user_data = user.get("user")
     if not user_data:
+        print(f"[BILLING] ERROR: user not found in session. session data: {user}")
         raise HTTPException(status_code=401, detail="User not found in session")
 
     user_id = user_data.get("id")
     if not user_id:
+        print(f"[BILLING] ERROR: user_id not found in user data: {user_data}")
         raise HTTPException(status_code=401, detail="Не авторизирован")
+
+    print(f"[BILLING] >>>>>> /api/billing/status user_id={user_id}, payment_id={payment_id}")
 
     # Get payment from our DB
     payment = get_payment_by_db_id(payment_id)
     if not payment:
+        print(f"[BILLING] ERROR: payment not found in DB. payment_id={payment_id}")
         raise HTTPException(
             status_code=404,
             detail={
@@ -188,8 +200,11 @@ async def payment_status(
             },
         )
 
+    print(f"[BILLING] found payment in DB: {payment}")
+
     # Verify payment belongs to this user
     if payment["user_id"] != user_id:
+        print(f"[BILLING] ERROR: payment user_id mismatch. payment.user_id={payment['user_id']}, current user_id={user_id}")
         raise HTTPException(
             status_code=403,
             detail={
