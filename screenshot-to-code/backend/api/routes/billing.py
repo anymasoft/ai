@@ -458,6 +458,44 @@ async def deduct_credits_endpoint(request: dict, user: dict = Depends(get_curren
     }
 
 
+@router.get("/api/billing/user-payments")
+async def list_user_payments(user: dict = Depends(get_current_user)):
+    """
+    Получить список платежей текущего пользователя.
+
+    Args:
+        user: Текущий пользователь из сессии
+
+    Returns:
+        Список платежей пользователя (упорядочено по датам, новые первыми)
+    """
+    user_id = user.get("id")
+    if not user_id:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+
+    conn = get_conn()
+    conn.row_factory = sqlite3.Row
+    cursor = conn.cursor()
+
+    try:
+        cursor.execute("""
+            SELECT id, user_id, package, credits_amount, amount_rubles, status, created_at
+            FROM payments
+            WHERE user_id = ?
+            ORDER BY created_at DESC
+        """, (user_id,))
+
+        payments = [dict(row) for row in cursor.fetchall()]
+
+        return {
+            "payments": payments,
+            "total": len(payments),
+        }
+
+    finally:
+        conn.close()
+
+
 @router.get("/api/billing/payments")
 async def list_payments(admin: dict = Depends(get_admin_user)):
     """
