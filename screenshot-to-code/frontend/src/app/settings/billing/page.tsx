@@ -73,16 +73,24 @@ export default function BillingSettings() {
       const url = `/api/billing/status?payment_id=${paymentId}`
       console.error("[BILLING] Calling GET", url)
       const statusResponse = await fetchJSON<PaymentStatusResponse>(url)
+      console.error("[BILLING] ✓ GET /api/billing/status completed")
       console.error("[BILLING] Payment status response:", JSON.stringify(statusResponse))
+
+      // Clear payment_id from URL to avoid re-processing
+      console.error("[BILLING] Clearing payment_id from URL")
+      window.history.replaceState({}, document.title, "/settings/billing")
+      console.error("[BILLING] URL cleaned")
 
       // Then fetch the updated billing data
       console.error("[BILLING] Calling fetchBillingData() after payment processing")
       await fetchBillingData()
+      console.error("[BILLING] ✓ processPaymentAndFetchData() completed successfully")
     } catch (err) {
-      console.error("[BILLING] Error processing payment:", err)
+      console.error("[BILLING] ✗ Error processing payment:", err)
       // Even if payment processing fails, try to load billing data
       console.error("[BILLING] Attempting fetchBillingData() despite error")
       await fetchBillingData()
+      console.error("[BILLING] fetchBillingData() completed after error")
     }
   }
 

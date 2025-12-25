@@ -431,8 +431,11 @@ def get_user_plan(user_id: str) -> str:
         row = cursor.fetchone()
 
         if row and row[0]:
-            return row[0]  # Возвращаем plan из users таблицы
+            plan = row[0]
+            print(f"[BILLING] get_user_plan({user_id}) = {plan} (from DB)")
+            return plan  # Возвращаем plan из users таблицы
         else:
+            print(f"[BILLING] get_user_plan({user_id}) = 'free' (default, no plan in DB)")
             return "free"  # Default is free
     finally:
         conn.close()
@@ -457,6 +460,7 @@ def update_user_plan(user_id: str, plan: str) -> bool:
     cursor = conn.cursor()
 
     try:
+        print(f"[BILLING] update_user_plan() - updating user {user_id} to plan '{plan}'")
         cursor.execute(
             """
             UPDATE users SET plan = ?, updated_at = datetime('now')
@@ -465,12 +469,12 @@ def update_user_plan(user_id: str, plan: str) -> bool:
             (plan, user_id),
         )
         conn.commit()
-
-        print(f"[BILLING] Updated user {user_id} plan to {plan}")
+        rows_updated = cursor.rowcount
+        print(f"[BILLING] ✓ update_user_plan() - successfully updated {rows_updated} rows for user {user_id} to plan '{plan}'")
         return True
 
     except Exception as e:
-        print(f"[BILLING] Error updating user plan: {e}")
+        print(f"[BILLING] ✗ update_user_plan() - error: {e}")
         return False
     finally:
         conn.close()
