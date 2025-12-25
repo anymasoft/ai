@@ -38,6 +38,7 @@ export default function BillingSettings() {
   const [billingUsage, setBillingUsage] = useState<BillingUsage | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [purchasing, setPurchasing] = useState<string | null>(null)
 
   useEffect(() => {
     fetchBillingData()
@@ -57,9 +58,38 @@ export default function BillingSettings() {
     }
   }
 
-  const handlePlanSelect = (planId: string) => {
-    console.log('Plan selected:', planId)
-    // Handle plan selection logic here
+  const handlePlanSelect = async (planId: string) => {
+    // Map planId to package name for API
+    const packageMap: Record<string, string> = {
+      basic: "basic",
+      professional: "professional",
+      free: "free",
+    }
+
+    const packageName = packageMap[planId]
+    if (!packageName || packageName === "free") {
+      console.log("Free plan selected - no action needed")
+      return
+    }
+
+    try {
+      setPurchasing(packageName)
+
+      const response = await fetchJSON<{ confirmation_url: string }>("/api/billing/checkout", {
+        method: "POST",
+        body: JSON.stringify({ package: packageName }),
+      })
+
+      if (response.confirmation_url) {
+        // Redirect to YooKassa payment page
+        window.location.href = response.confirmation_url
+      }
+    } catch (err) {
+      console.error("Error creating payment:", err)
+      alert("Ошибка при создании платежа. Попробуйте позже.")
+    } finally {
+      setPurchasing(null)
+    }
   }
 
   // Build current plan data from API response
@@ -94,9 +124,9 @@ export default function BillingSettings() {
     <>
       <div className="space-y-6 px-4 lg:px-6">
         <div>
-          <h1 className="text-3xl font-bold">Plans & Billing</h1>
+          <h1 className="text-3xl font-bold">Тарифы и биллинг</h1>
           <p className="text-muted-foreground">
-            Manage your subscription and billing information.
+            Управляйте вашей подпиской и информацией об оплате.
           </p>
         </div>
 
@@ -120,9 +150,9 @@ export default function BillingSettings() {
             <div className="grid gap-6">
               <Card>
                 <CardHeader>
-                  <CardTitle>Available Plans</CardTitle>
+                  <CardTitle>Доступные пакеты</CardTitle>
                   <CardDescription>
-                    Choose a plan that works best for you.
+                    Выберите пакет, который вам подходит.
                   </CardDescription>
                 </CardHeader>
                 <CardContent>

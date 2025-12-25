@@ -29,46 +29,46 @@ const defaultPlans: PricingPlan[] = [
     id: 'free',
     name: 'Free',
     description: 'Для знакомства с платформой',
-    price: '$0',
-    frequency: '/month',
+    price: '0 ₽',
+    frequency: '',
     features: [
-      '500 credits / month',
+      '3 генерации бесплатно',
       'HTML + Tailwind',
       'HTML + CSS',
-      'Email support',
-      'Rate limit: 5/hour',
+      'Email поддержка',
+      'Без limit',
     ],
   },
   {
     id: 'basic',
     name: 'Basic',
-    description: 'Для малых проектов',
-    price: '$29',
-    frequency: '/month',
+    description: 'Разовая покупка',
+    price: '3 000',
+    frequency: ' ₽',
     features: [
-      '5,000 credits / month',
-      'All formats (HTML, React, Vue)',
-      'API access',
-      'Priority email support',
-      'Rate limit: 50/hour',
-      '10 concurrent generations',
+      '100 генераций',
+      'Все форматы (HTML, React, Vue)',
+      'API доступ',
+      'Приоритетная поддержка',
+      'Неограниченный лимит',
+      '1 генерация = 1 credit',
     ],
     popular: true,
   },
   {
     id: 'professional',
     name: 'Professional',
-    description: 'Для больших команд',
-    price: '$99',
-    frequency: '/month',
+    description: 'Для активного использования',
+    price: '14 000',
+    frequency: ' ₽',
     features: [
-      '25,000 credits / month',
-      'All formats + priority queue',
-      'Full API access',
-      'Priority support (24h response)',
-      'Rate limit: 200/hour',
-      '50 concurrent generations',
-      'Webhook notifications',
+      '500 генераций',
+      'Все форматы + приоритет',
+      'Полный API доступ',
+      'Приоритетная поддержка (24ч)',
+      'Неограниченный лимит',
+      '1 генерация = 1 credit',
+      'Подходит для агентств и команд',
     ],
   },
 ]
@@ -82,18 +82,18 @@ export function PricingPlans({
   const getButtonText = (plan: PricingPlan) => {
     if (mode === 'billing') {
       if (currentPlanId === plan.id) {
-        return 'Current Plan'
+        return 'Текущий тариф'
       }
       const currentIndex = plans.findIndex(p => p.id === currentPlanId)
       const planIndex = plans.findIndex(p => p.id === plan.id)
-      
+
       if (planIndex > currentIndex) {
-        return 'Upgrade Plan'
+        return 'Обновить тариф'
       } else if (planIndex < currentIndex) {
-        return 'Downgrade Plan'
+        return 'Понизить тариф'
       }
     }
-    return 'Get Started'
+    return 'Начать'
   }
 
   const getButtonVariant = (plan: PricingPlan) => {
@@ -123,10 +123,10 @@ export function PricingPlans({
               <Badge className='mx-auto flex w-fit gap-1.5 rounded-full font-medium'>
                 <Sparkles className='!size-4' />
                 {mode === 'pricing' && (
-                <span>Most Popular</span>
+                <span>Популярный</span>
                 )}
                 {currentPlanId === tier.id && mode === 'billing' && (
-                  <span>Current Plan</span>
+                  <span>Текущий тариф</span>
                 )}
               </Badge>
             </div>
