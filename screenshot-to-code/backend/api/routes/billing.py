@@ -580,9 +580,19 @@ async def list_user_payments(user: dict = Depends(get_current_user)):
     Returns:
         Список платежей пользователя (упорядочено по датам, новые первыми)
     """
-    user_id = user.get("id")
+    # DEBUG: Логируем всю session информацию
+    print(f"[BILLING] list_user_payments() called")
+    print(f"[BILLING] session data: {user}")
+
+    user_data = user.get("user")
+    if not user_data:
+        print(f"[BILLING] ERROR: No user data in session!")
+        raise HTTPException(status_code=401, detail="User not found in session")
+
+    user_id = user_data.get("id")
     if not user_id:
-        raise HTTPException(status_code=401, detail="Not authenticated")
+        print(f"[BILLING] ERROR: No user_id in session!")
+        raise HTTPException(status_code=401, detail="Не авторизирован")
 
     print(f"[BILLING] user-payments request for user_id: {user_id}")
 
