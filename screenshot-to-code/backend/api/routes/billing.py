@@ -50,10 +50,8 @@ class CheckoutResponse(BaseModel):
 class BillingUsageResponse(BaseModel):
     """Billing usage response for authenticated users."""
 
-    plan: str  # free, basic, professional
-    used: int  # used generations
-    limit: int  # generation limit for this plan
-    remaining: int  # limit - used
+    credits: int  # current credits balance
+    is_free: bool  # True if credits == 0
 
 
 class PaymentStatusResponse(BaseModel):
@@ -219,13 +217,16 @@ async def payment_status(
     # Process based on status
     if yookassa_payment["status"] == "succeeded":
         # IDEMPOTENT: Add credits only if status is pending (not already succeeded)
+        print(f"[BILLING] payment succeeded in YooKassa. payment_status={payment['status']}")
         if payment["status"] != "succeeded":
+            print(f"[BILLING] adding {payment['credits_amount']} credits to user {user_id}")
             success = add_credits_to_user(
                 user_id,
                 payment["credits_amount"],
                 reason=f"payment:{payment['package']}",
             )
             if success:
+                print(f"[BILLING] credits added successfully, marking payment as succeeded")
                 update_payment_status(payment_id, "succeeded")
                 return PaymentStatusResponse(
                     status="succeeded",
@@ -306,13 +307,13 @@ async def get_billing_usage(user: dict = Depends(get_current_user)):
     """
     Get billing usage information for authenticated user.
 
-    Returns current plan based on credits balance.
+    Returns ONLY the source of truth: credits from users table.
 
     Args:
         user: Current session data from cookies
 
     Returns:
-        BillingUsageResponse with plan, used, limit, remaining
+        BillingUsageResponse with credits and is_free
     """
 
     # Extract user from session data
@@ -324,51 +325,14 @@ async def get_billing_usage(user: dict = Depends(get_current_user)):
     if not user_id:
         raise HTTPException(status_code=401, detail="User ID not found in session")
 
-    # Get current credits balance
+    # Get current credits balance - ONLY SOURCE OF TRUTH
     current_credits = get_user_credits(user_id)
 
-    # Determine plan based on credits balance
-    # If user has any credits, they have purchased a plan
-    if current_credits > 0:
-        # Get the last successful payment to determine which plan
-        from db.sqlite import get_conn
-
-        conn = get_conn()
-        cursor = conn.cursor()
-
-        try:
-            cursor.execute(
-                """
-                SELECT package, credits_amount
-                FROM payments
-                WHERE user_id = ? AND status = 'succeeded'
-                ORDER BY completed_at DESC LIMIT 1
-                """,
-                (user_id,),
-            )
-            payment = cursor.fetchone()
-
-            if payment:
-                package = payment[0]  # basic or professional
-                plan = package  # Use package as plan
-            else:
-                # Shouldn't happen, but fallback to free
-                plan = "free"
-        finally:
-            conn.close()
-    else:
-        plan = "free"
-
-    # For credits-based system:
-    # - limit = current_credits (available generations)
-    # - used = 0 (we track by remaining credits, not usage)
-    # - remaining = current_credits
+    print(f"[BILLING] GET /api/billing/usage user_id={user_id}, credits={current_credits}")
 
     return BillingUsageResponse(
-        plan=plan,
-        used=0,
-        limit=current_credits if current_credits > 0 else 3,  # 3 is free plan limit
-        remaining=current_credits if current_credits > 0 else 3,
+        credits=current_credits,
+        is_free=current_credits == 0,
     )
 
 
