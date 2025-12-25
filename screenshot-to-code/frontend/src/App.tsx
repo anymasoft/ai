@@ -25,11 +25,9 @@ function App() {
     checkAuth()
   }, [checkAuth]);
 
-  // Check admin status when user is authenticated
+  // Check admin status based on user role
   useEffect(() => {
-    if (user) {
-      checkAdmin()
-    }
+    checkAdmin()
   }, [user, checkAdmin])
 
   return (

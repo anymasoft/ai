@@ -1,22 +1,18 @@
 import { create } from "zustand"
-import { fetchJSON, ApiError } from "@/lib/api"
+import { useAuthStore } from "./auth"
 
 interface AdminStore {
   isAdmin: boolean
   setIsAdmin: (isAdmin: boolean) => void
-  checkAdmin: () => Promise<void>
+  checkAdmin: () => void
 }
 
 export const useAdminStore = create<AdminStore>((set) => ({
   isAdmin: false,
   setIsAdmin: (isAdmin: boolean) => set({ isAdmin }),
-  checkAdmin: async () => {
-    try {
-      await fetchJSON<{ count: number }>("/api/admin/messages/unread-count")
-      set({ isAdmin: true })
-    } catch (error) {
-      // 401 or any other error means not admin
-      set({ isAdmin: false })
-    }
+  checkAdmin: () => {
+    // Get admin status from user.role, no API call needed
+    const user = useAuthStore.getState().user
+    set({ isAdmin: user?.role === "admin" ?? false })
   },
 }))
