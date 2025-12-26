@@ -1,5 +1,4 @@
 import type { CSSProperties } from "react";
-import { useTranslation } from "react-i18next";
 
 import {
   BentoCard,
@@ -40,16 +39,57 @@ type BentoCards = [
   BentoCardTranslations,
 ];
 
+const cards: BentoCards = [
+  {
+    title: "Адаптивный дизайн",
+    description: "Автоматически создаёт мобильные версии",
+    eyebrow: "Основное",
+  },
+  {
+    title: "Быстрая генерация",
+    description: "Получи результат за несколько секунд",
+    eyebrow: "Производительность",
+  },
+  {
+    title: "Аутентификация",
+    description: "Встроенная система управления пользователями",
+    eyebrow: "Безопасность",
+  },
+  {
+    title: "Уведомления",
+    description: "Система оповещений в реальном времени",
+    eyebrow: "Коммуникация",
+  },
+  {
+    title: "Тёмный режим",
+    description: "Встроенная поддержка светлой и тёмной темы",
+    eyebrow: "Доступность",
+  },
+  {
+    title: "Управление командой",
+    description: "Легко управляй членами команды и ролями",
+    eyebrow: "Сотрудничество",
+  },
+  {
+    title: "Интернационализация",
+    description: "Поддержка нескольких языков из коробки",
+    eyebrow: "Локализация",
+  },
+  {
+    title: "Расширяемость",
+    description: "Модульная архитектура для простого расширения",
+    eyebrow: "Архитектура",
+  },
+];
+
 export function Features() {
-  const { t } = useTranslation("landing", { keyPrefix: "features" });
-  const cards = t("cards", { returnObjects: true }) as BentoCards;
 
   return (
     <section className="px-4 py-24">
-      <h2 className="font-semibold text-base text-primary">{t("eyebrow")}</h2>
+      <h2 className="font-semibold text-base text-primary">Возможности</h2>
 
       <p className="mt-2 max-w-lg text-pretty font-semibold text-4xl text-foreground sm:text-5xl">
-        {t("title")}
+        Всё для вашего проекта
       </p>
 
       <BentoGrid className="mt-10 max-lg:[&_>*:first-child]:rounded-t-4xl max-lg:[&_>*:last-child]:rounded-b-4xl">

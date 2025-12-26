@@ -4,7 +4,6 @@ import {
   IconBook,
   IconTestPipe,
 } from "@tabler/icons-react";
-import { useTranslation } from "react-i18next";
 
 import { cn } from "@/lib/utils";
 
@@ -13,12 +12,26 @@ const featureIcons = [IconBolt, IconTestPipe, IconBook, IconAdjustments];
 const imageClassNames =
   "border-border w-3xl max-w-none rounded-xl border sm:w-228 md:-ml-4 lg:-ml-0";
 
+const features = [
+  {
+    title: "Быстрое преобразование",
+    description: "Мгновенно преобразуй скриншоты в работающий код",
+  },
+  {
+    title: "Поддержка видео",
+    description: "Записывай видео-туториалы и генерируй код из них",
+  },
+  {
+    title: "Документирование",
+    description: "Автоматически создавай документацию для своего кода",
+  },
+  {
+    title: "Полная настройка",
+    description: "Выбирай язык, фреймворк и стиль кода по своему усмотрению",
+  },
+];
+
 export function Description() {
-  const { t } = useTranslation("landing", { keyPrefix: "description" });
-  const features = t("features", { returnObjects: true }) as {
-    title: string;
-    description: string;
-  }[];
 
   return (
     <div className="py-24 sm:py-32">
@@ -27,15 +40,15 @@ export function Description() {
           <div className="lg:pr-8">
             <div className="lg:max-w-xl">
               <h2 className="font-semibold text-base text-primary">
-                {t("eyebrow")}
+                Возможности
               </h2>
 
               <p className="mt-2 text-pretty font-semibold text-4xl text-foreground tracking-tight sm:text-5xl">
-                {t("title")}
+                Всё что тебе нужно для генерации кода
               </p>
 
               <p className="mt-6 text-lg/8 text-muted-foreground">
-                {t("subtitle")}
+                Мощные инструменты для преобразования дизайна в код
               </p>
 
               <dl className="mt-10 max-w-xl space-y-8 text-base/7 text-muted-foreground lg:max-w-none">
@@ -64,7 +77,7 @@ export function Description() {
           </div>
 
           <img
-            alt={t("image.light")}
+            alt="Управление членами команды"
             className={cn(imageClassNames, "dark:hidden")}
             height={1442}
             src="/images/app-light-members.png"
@@ -72,7 +85,7 @@ export function Description() {
           />
 
           <img
-            alt={t("image.dark")}
+            alt="Управление членами команды в тёмной теме"
             className={cn(imageClassNames, "hidden dark:block")}
             height={1442}
             src="/images/app-dark-members.png"

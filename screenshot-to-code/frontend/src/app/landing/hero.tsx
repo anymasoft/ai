@@ -1,6 +1,5 @@
 import { IconBook2 } from "@tabler/icons-react";
 import type { CSSProperties } from "react";
-import { Trans, useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
 
 import { Badge } from "@/components/ui/badge";
@@ -14,8 +13,6 @@ const imageFadeStyle: CSSProperties = {
 };
 
 export function Hero() {
-  const { t } = useTranslation("landing", { keyPrefix: "hero" });
-  const { t: tCommon } = useTranslation("translation");
 
   return (
     <section className="relative z-0 py-24 text-center sm:pt-32">
@@ -34,13 +31,7 @@ export function Hero() {
 
       <div className="mx-auto max-w-2xl px-4">
         <Badge className="mb-8" variant="secondary">
-          <Trans
-            components={{
-              1: <span className="underline" />,
-            }}
-            i18nKey="hero.badge"
-            ns="landing"
-          />
+          Теперь <span className="underline">с поддержкой видео</span>
         </Badge>
 
         <h1 className="">
@@ -48,38 +39,28 @@ export function Hero() {
             aria-hidden="true"
             className="font-mono font-semibold text-4xl sm:text-7xl"
           >
-            {t("title")}
+            Из скриншота в код
           </span>
 
-          <span className="sr-only">{tCommon("appName")}</span>
+          <span className="sr-only">Screenshot to Code</span>
         </h1>
 
         <p className="mt-8 text-lg text-muted-foreground sm:text-xl/8">
           <span className="relative">
-            <Trans
-              components={{
-                1: (
-                  <span className="text-primary underline decoration-primary decoration-wavy underline-offset-4">
-                    free
-                  </span>
-                ),
-              }}
-              i18nKey="hero.description"
-              ns="landing"
-            />
+            Преобразуй любой скриншот в чистый, функциональный код <span className="text-primary underline decoration-primary decoration-wavy underline-offset-4">бесплатно</span>
           </span>
         </p>
 
         <div className="mt-10 flex items-center justify-center gap-2">
           <Button asChild>
             <Link to="/auth/sign-in">
-              {t("cta.primary")}
+              Начать
             </Link>
           </Button>
 
           <Button asChild className="text-foreground" variant="link">
             <a href="https://github.com/janhesters/react-router-saas-template">
-              {t("cta.secondary")}
+              Документация
               <IconBook2 />
             </a>
           </Button>
@@ -88,14 +69,14 @@ export function Hero() {
 
       <div className="mt-16 px-4">
         <img
-          alt={t("image.light")}
+          alt="Приложение в светлой теме"
           className={cn(imageClassNames, "shadow-sm dark:hidden")}
           src="/images/app-light.png"
           style={imageFadeStyle}
         />
 
         <img
-          alt={t("image.dark")}
+          alt="Приложение в тёмной теме"
           className={cn(imageClassNames, "hidden dark:block")}
           src="/images/app-dark.png"
           style={imageFadeStyle}

@@ -1,4 +1,3 @@
-import { useTranslation } from "react-i18next";
 import {
   SiEslint,
   SiMockserviceworker,
@@ -15,11 +14,10 @@ import {
 } from "react-icons/si";
 
 export function Logos() {
-  const { t } = useTranslation("landing", { keyPrefix: "logos" });
   return (
     <section className="py-12 text-center sm:px-4">
       <h2 className="text-center font-semibold text-muted-foreground text-sm">
-        {t("title")}
+        Построено с использованием современных технологий
       </h2>
 
       <div className="relative mt-6">

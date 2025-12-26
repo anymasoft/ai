@@ -1,14 +1,11 @@
 import { IconLayoutList } from "@tabler/icons-react";
 import type { ComponentProps } from "react";
-import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
 
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 export function Header({ className, ...props }: ComponentProps<"header">) {
-  const { t } = useTranslation("landing", { keyPrefix: "header" });
-  const { t: tCommon } = useTranslation("translation");
 
   return (
     <header
@@ -28,14 +25,14 @@ export function Header({ className, ...props }: ComponentProps<"header">) {
           </div>
 
           <span className="hidden font-mono sm:block">
-            {tCommon("appName")}
+            Screen2Code
           </span>
         </Link>
 
         <nav className="sm:-translate-x-1/2 sm:-translate-y-1/2 flex gap-2 sm:absolute sm:top-1/2 sm:left-1/2">
           <Button asChild size="sm" variant="ghost">
             <Link to="/pricing">
-              {t("navLinks.pricing")}
+              Цены
             </Link>
           </Button>
         </nav>
@@ -43,13 +40,13 @@ export function Header({ className, ...props }: ComponentProps<"header">) {
         <div className="flex gap-2">
           <Button asChild size="sm" variant="outline">
             <Link to="/auth/sign-in">
-              {t("login")}
+              Войти
             </Link>
           </Button>
 
           <Button asChild size="sm">
             <Link to="/auth/sign-in">
-              {t("register")}
+              Зарегистрироваться
             </Link>
           </Button>
         </div>
