@@ -4,8 +4,27 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { DotPattern } from '@/components/dot-pattern'
 import { assetUrl, getAppUrl } from "@/lib/utils"
+import { useState, useEffect } from 'react'
 
 export function HeroSection() {
+  const [showCode, setShowCode] = useState(false)
+  const [htmlCode, setHtmlCode] = useState('')
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    // Загрузить содержимое index.html для режима Code
+    fetch('/index.html')
+      .then(res => res.text())
+      .then(html => {
+        setHtmlCode(html)
+        setLoading(false)
+      })
+      .catch(err => {
+        console.error('Error loading index.html:', err)
+        setLoading(false)
+      })
+  }, [])
+
   return (
     <section className="relative overflow-hidden bg-gradient-to-b from-background to-background/80 pt-20 sm:pt-32 pb-16">
       {/* Background Pattern */}
@@ -65,44 +84,78 @@ export function HeroSection() {
           </div>
         </div>
 
-        {/* Hero Image/Visual */}
-        <div className="mx-auto mt-20 max-w-6xl hidden">
+        {/* Hero Demo Block - Preview / Code */}
+        <div className="mx-auto mt-20 max-w-6xl">
           <div className="relative group">
-            {/* Top background glow effect - positioned above the image */}
+            {/* Top background glow effect */}
             <div className="absolute top-2 lg:-top-8 left-1/2 transform -translate-x-1/2 w-[90%] mx-auto h-24 lg:h-80 bg-primary/50 rounded-full blur-3xl"></div>
 
-            <div className="relative rounded-xl border bg-card shadow-2xl">
-              {/* Light mode dashboard image */}
-              <img
-                src={assetUrl("dashboard-light.png")}
-                alt="Dashboard Preview - Light Mode"
-                className="w-full rounded-xl object-cover block dark:hidden"
-              />
-
-              {/* Dark mode dashboard image */}
-              <img
-                src={assetUrl("dashboard-dark.png")}
-                alt="Dashboard Preview - Dark Mode"
-                className="w-full rounded-xl object-cover hidden dark:block"
-              />
-
-              {/* Bottom fade effect - gradient overlay that fades the image to background */}
-              <div className="absolute bottom-0 left-0 w-full h-32 md:h-40 lg:h-48 bg-gradient-to-b from-background/0 via-background/70 to-background rounded-b-xl"></div>
-
-              {/* Overlay play button for demo */}
-              <div className="absolute inset-0 flex items-center justify-center">
-                <Button
-                  size="lg"
-                  className="rounded-full h-16 w-16 p-0 cursor-pointer hover:scale-105 transition-transform"
-                  asChild
+            <div className="relative rounded-xl border bg-card shadow-2xl overflow-hidden">
+              {/* Preview / Code Tabs */}
+              <div className="flex border-b bg-muted/50">
+                <button
+                  onClick={() => setShowCode(false)}
+                  className={`flex-1 px-4 py-3 text-sm font-medium transition-colors ${
+                    !showCode
+                      ? 'bg-background border-b-2 border-primary text-foreground'
+                      : 'text-muted-foreground hover:text-foreground'
+                  }`}
                 >
-                  <a href="#" aria-label="Watch demo video">
-                    <Play className="h-6 w-6 fill-current" />
-                  </a>
-                </Button>
+                  Preview
+                </button>
+                <button
+                  onClick={() => setShowCode(true)}
+                  className={`flex-1 px-4 py-3 text-sm font-medium transition-colors ${
+                    showCode
+                      ? 'bg-background border-b-2 border-primary text-foreground'
+                      : 'text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  Code
+                </button>
               </div>
+
+              {/* Preview Mode - iframe */}
+              {!showCode && (
+                <div className="bg-background">
+                  <iframe
+                    src="/index.html"
+                    title="Screen2Code Demo"
+                    className="w-full border-0"
+                    style={{ height: '600px' }}
+                    sandbox="allow-same-origin"
+                  />
+                </div>
+              )}
+
+              {/* Code Mode - HTML Source */}
+              {showCode && (
+                <div className="bg-background p-4 overflow-auto max-h-[600px]">
+                  {loading ? (
+                    <div className="flex items-center justify-center h-[600px] text-muted-foreground">
+                      Загрузка кода...
+                    </div>
+                  ) : htmlCode ? (
+                    <pre className="text-xs text-muted-foreground font-mono whitespace-pre-wrap break-words">
+                      <code>{htmlCode}</code>
+                    </pre>
+                  ) : (
+                    <div className="text-muted-foreground">
+                      Не удалось загрузить код
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Bottom fade effect */}
+              <div className="absolute bottom-0 left-0 w-full h-12 bg-gradient-to-t from-background to-background/0 pointer-events-none"></div>
             </div>
           </div>
+
+          {/* Small caption */}
+          <p className="text-center text-xs text-muted-foreground mt-4">
+            Это не изображение. Это реальный HTML-код.
+          </p>
         </div>
       </div>
     </section>
