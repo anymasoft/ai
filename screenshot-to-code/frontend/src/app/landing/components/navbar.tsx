@@ -29,7 +29,7 @@ import { ModeToggle } from '@/components/mode-toggle'
 import { useTheme } from '@/hooks/use-theme'
 
 const navigationItems = [
-  { name: 'Home', href: '/landing' },
+  { name: 'Home', href: '/' },
   { name: 'Features', href: '#features' },
   { name: 'Solutions', href: '#features', hasMegaMenu: true },
   { name: 'Team', href: '#team' },
@@ -80,7 +80,7 @@ export function LandingNavbar() {
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 flex h-16 items-center justify-between">
         {/* Logo */}
         <div className="flex items-center space-x-2">
-          <a href={getAppUrl("/landing")} className="flex items-center space-x-2 cursor-pointer">
+          <a href="/" className="flex items-center space-x-2 cursor-pointer">
             <Logo size={32} />
             <span className="font-bold">
               ShadcnStore
@@ -131,7 +131,7 @@ export function LandingNavbar() {
             </a>
           </Button>
           <Button variant="outline" asChild className="cursor-pointer">
-            <a href={getAppUrl("/dashboard")} target="_blank" rel="noopener noreferrer">
+            <a href={getAppUrl("/app")} target="_blank" rel="noopener noreferrer">
               <LayoutDashboard className="h-4 w-4 mr-2" />
               Dashboard
             </a>
@@ -140,7 +140,7 @@ export function LandingNavbar() {
             <a href={getAppUrl("/auth/sign-in")}>Sign In</a>
           </Button>
           <Button asChild className="cursor-pointer">
-            <a href={getAppUrl("/auth/sign-up")}>Get Started</a>
+            <a href={getAppUrl("/auth/sign-in")}>Get Started</a>
           </Button>
         </div>
 
@@ -248,7 +248,7 @@ export function LandingNavbar() {
                 {/* Primary Actions */}
                 <div className="space-y-3">
                   <Button variant="outline" size="lg" asChild className="w-full cursor-pointer">
-                    <a href={getAppUrl("/dashboard")}>
+                    <a href={getAppUrl("/app")}>
                       <LayoutDashboard className="size-4" />
                       Dashboard
                     </a>
@@ -259,7 +259,7 @@ export function LandingNavbar() {
                       <a href={getAppUrl("/auth/sign-in")}>Sign In</a>
                     </Button>
                     <Button asChild size="lg" className="cursor-pointer" >
-                      <a href={getAppUrl("/auth/sign-up")}>Get Started</a>
+                      <a href={getAppUrl("/auth/sign-in")}>Get Started</a>
                     </Button>
                   </div>
                 </div>
