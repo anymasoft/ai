@@ -14,7 +14,6 @@ import {
   SiStripe,
 } from "react-icons/si";
 
-import { PlaywrightIcon } from "./svgs/playwright-icon";
 import { RRLockupDarkIcon } from "./svgs/rr-lockup-dark-icon";
 import { RRLockupLightIcon } from "./svgs/rr-lockup-light-icon";
 import { Marquee } from "@/components/magicui/marquee";
@@ -63,10 +62,6 @@ export function Logos() {
             {
               icon: <SiVitest className="size-16" title="Vitest" />,
               key: "vitest",
-            },
-            {
-              icon: <PlaywrightIcon className="size-16" />,
-              key: "playwright",
             },
             {
               icon: <SiPostgresql className="size-16" title="PostgreSQL" />,
