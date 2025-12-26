@@ -3,8 +3,17 @@ import { Check } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { getAppUrl } from '@/lib/utils'
+import { fetchJSON } from '@/lib/api'
+
+interface Tariff {
+  key: string
+  name: string
+  price_rub: number
+  credits: number
+  is_active: boolean
+}
 
 const plans = [
   {
@@ -63,6 +72,57 @@ const plans = [
 
 export function PricingSection() {
   const [isYearly, setIsYearly] = useState(false)
+  const [tariffs, setTariffs] = useState<Tariff[]>([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    fetchTariffs()
+  }, [])
+
+  async function fetchTariffs() {
+    try {
+      setLoading(true)
+      const data = await fetchJSON<{ tariffs: Tariff[] }>("/api/billing/tariffs")
+      setTariffs(data.tariffs || [])
+    } catch (error) {
+      console.error("Error loading tariffs:", error)
+      setTariffs([])
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // Map tariffs to plan structure
+  const displayPlans = tariffs.map(tariff => ({
+    name: tariff.name,
+    description: tariff.key === 'free'
+      ? 'Разовый стартовый бонус'
+      : tariff.key === 'basic'
+      ? 'Подходит для небольших проектов'
+      : 'Подходит для агентств и команд',
+    monthlyPrice: tariff.price_rub,
+    yearlyPrice: tariff.price_rub,
+    features: tariff.key === 'free'
+      ? ['HTML + Tailwind', 'HTML + CSS', 'Email поддержка']
+      : tariff.key === 'basic'
+      ? ['Все форматы (HTML, React, Vue)', 'API доступ', 'Приоритетная поддержка', `${tariff.credits} генераций`]
+      : ['Все форматы + приоритет', 'Полный API доступ', 'Приоритетная поддержка (24ч)', `${tariff.credits} генераций`],
+    cta: 'Get Started',
+    popular: tariff.key === 'basic'
+  }))
+
+  if (loading) {
+    return (
+      <section id="pricing" className="py-24 sm:py-32 bg-muted/40">
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-center">
+          <div className="text-center">
+            <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-current border-r-transparent"></div>
+            <p className="mt-4 text-sm text-gray-600">Загрузка тарифов...</p>
+          </div>
+        </div>
+      </section>
+    )
+  }
 
   return (
     <section id="pricing" className="py-24 sm:py-32 bg-muted/40">
@@ -78,7 +138,7 @@ export function PricingSection() {
           </p>
 
           {/* Billing Toggle */}
-          <div className="flex items-center justify-center mb-2">
+          <div className="flex items-center justify-center mb-2 hidden">
             <ToggleGroup
               type="single"
               value={isYearly ? "yearly" : "monthly"}
@@ -100,7 +160,7 @@ export function PricingSection() {
             </ToggleGroup>
           </div>
 
-          <p className="text-sm text-muted-foreground">
+          <p className="text-sm text-muted-foreground hidden">
             <span className="text-primary font-semibold">Save 20%</span> On Annual Billing
           </p>
         </div>
@@ -109,7 +169,7 @@ export function PricingSection() {
         <div className="mx-auto max-w-6xl">
           <div className="rounded-xl border">
             <div className="grid lg:grid-cols-3">
-              {plans.map((plan, index) => (
+              {displayPlans.map((plan, index) => (
                 <div
                   key={index}
                   className={`p-8 grid grid-rows-subgrid row-span-4 gap-6 ${
@@ -182,12 +242,7 @@ export function PricingSection() {
         {/* Enterprise Note */}
         <div className="mt-16 text-center">
           <p className="text-muted-foreground">
-            Need custom components or have questions? {' '}
-            <Button variant="link" className="p-0 h-auto cursor-pointer" asChild>
-              <a href="#contact">
-                Contact our team
-              </a>
-            </Button>
+            Наши контакты: support@beem.ink
           </p>
         </div>
       </div>
