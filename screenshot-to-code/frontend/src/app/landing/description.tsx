@@ -1,28 +1,36 @@
+import { Zap, Video, BookOpen, Settings } from "lucide-react";
+
 import { cn } from "@/lib/utils";
 
 const imageClassNames =
   "border-border w-3xl max-w-none rounded-xl border sm:w-228 md:-ml-4 lg:-ml-0";
 
-const features = [
+type FeatureType = {
+  title: string;
+  description: string;
+  icon: React.ReactNode;
+};
+
+const features: FeatureType[] = [
   {
     title: "Быстрое преобразование",
     description: "Мгновенно преобразуй скриншоты в работающий код",
-    icon: "⚡",
+    icon: <Zap className="size-5 text-primary" />,
   },
   {
     title: "Поддержка видео",
     description: "Записывай видео-туториалы и генерируй код из них",
-    icon: "🎬",
+    icon: <Video className="size-5 text-primary" />,
   },
   {
     title: "Документирование",
     description: "Автоматически создавай документацию для своего кода",
-    icon: "📚",
+    icon: <BookOpen className="size-5 text-primary" />,
   },
   {
     title: "Полная настройка",
     description: "Выбирай язык, фреймворк и стиль кода по своему усмотрению",
-    icon: "⚙️",
+    icon: <Settings className="size-5 text-primary" />,
   },
 ];
 
@@ -50,12 +58,12 @@ export function Description() {
                 {features.map((feature) => (
                   <div className="relative pl-9" key={feature.title}>
                     <dt className="inline font-semibold text-foreground">
-                      <span
+                      <div
                         aria-hidden="true"
-                        className="absolute top-1 left-1 text-2xl"
+                        className="absolute top-1 left-0"
                       >
                         {feature.icon}
-                      </span>
+                      </div>
                       {feature.title}
                     </dt>{" "}
                     <dd className="inline">{feature.description}</dd>

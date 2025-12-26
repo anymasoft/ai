@@ -1,17 +1,28 @@
+import {
+  Code,
+  Database,
+  CreditCard,
+  Zap,
+  Box,
+  TestTubes,
+  GitBranch,
+  FileText,
+} from "lucide-react";
+
 export function Logos() {
   const technologies = [
-    "TypeScript",
-    "Supabase",
-    "Stripe",
-    "Tailwind CSS",
-    "shadcn/ui",
-    "Vitest",
-    "PostgreSQL",
-    "Prisma",
-    "MSW",
-    "Testing Library",
-    "ESLint",
-    "Prettier",
+    { name: "TypeScript", icon: Code },
+    { name: "Supabase", icon: Database },
+    { name: "Stripe", icon: CreditCard },
+    { name: "Tailwind CSS", icon: Zap },
+    { name: "shadcn/ui", icon: Box },
+    { name: "Vitest", icon: TestTubes },
+    { name: "PostgreSQL", icon: Database },
+    { name: "Prisma", icon: Box },
+    { name: "MSW", icon: GitBranch },
+    { name: "Testing Library", icon: TestTubes },
+    { name: "ESLint", icon: FileText },
+    { name: "Prettier", icon: FileText },
   ];
 
   return (
@@ -22,12 +33,15 @@ export function Logos() {
 
       <div className="relative mt-6">
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-4 lg:grid-cols-6 max-w-5xl mx-auto">
-          {technologies.map((tech) => (
+          {technologies.map(({ name, icon: Icon }) => (
             <div
-              className="flex items-center justify-center px-4 py-3 rounded-lg border border-border text-sm font-medium text-muted-foreground hover:text-foreground transition"
-              key={tech}
+              className="flex flex-col items-center justify-center px-4 py-4 rounded-lg border border-border hover:border-primary transition group"
+              key={name}
             >
-              {tech}
+              <Icon className="size-6 text-muted-foreground group-hover:text-primary mb-2 transition" />
+              <span className="text-xs font-medium text-muted-foreground group-hover:text-foreground transition">
+                {name}
+              </span>
             </div>
           ))}
         </div>

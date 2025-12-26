@@ -1,5 +1,6 @@
 import type { ComponentProps } from "react";
 import { Link } from "react-router-dom";
+import { Layout } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -19,8 +20,8 @@ export function Header({ className, ...props }: ComponentProps<"header">) {
           className="flex items-center gap-2 self-center font-medium"
           to="/"
         >
-          <div className="flex size-8 items-center justify-center rounded-md bg-primary text-primary-foreground sm:size-6 font-bold text-sm">
-            S2C
+          <div className="flex size-8 items-center justify-center rounded-md bg-primary text-primary-foreground sm:size-6">
+            <Layout className="size-5 sm:size-4" />
           </div>
 
           <span className="hidden font-mono sm:block">

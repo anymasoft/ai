@@ -1,5 +1,6 @@
 import type { CSSProperties } from "react";
 import { Link } from "react-router-dom";
+import { BookOpen } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -58,8 +59,9 @@ export function Hero() {
           </Button>
 
           <Button asChild className="text-foreground" variant="link">
-            <a href="https://github.com/janhesters/react-router-saas-template">
-              Документация →
+            <a href="https://github.com/janhesters/react-router-saas-template" className="inline-flex items-center gap-2">
+              Документация
+              <BookOpen className="size-4" />
             </a>
           </Button>
         </div>

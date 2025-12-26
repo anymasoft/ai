@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import { Github } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 
@@ -25,8 +26,9 @@ export function CTA() {
           </Button>
 
           <Button asChild className="text-background dark:text-foreground" variant="link">
-            <a href="https://github.com/janhesters/react-router-saas-template">
-              GitHub →
+            <a href="https://github.com/janhesters/react-router-saas-template" className="inline-flex items-center gap-2">
+              GitHub
+              <Github className="size-4" />
             </a>
           </Button>
         </div>
