@@ -25,18 +25,18 @@ export function BaseLayout({ children, title, description }: BaseLayoutProps) {
       style={
         {
           "--sidebar-width": "16rem",
-          "--sidebar-width-icon": "3rem",
+          "--sidebar-width-icon": "3rem", 
           "--header-height": "calc(var(--spacing) * 14)",
         } as React.CSSProperties
       }
-      className={`flex flex-col min-h-screen ${config.collapsible === "none" ? "sidebar-none-mode" : ""}`}
+      className={config.collapsible === "none" ? "sidebar-none-mode" : ""}
     >
       {config.side === "left" ? (
         <>
-          <AppSidebar
-            variant={config.variant}
-            collapsible={config.collapsible}
-            side={config.side}
+          <AppSidebar 
+            variant={config.variant} 
+            collapsible={config.collapsible} 
+            side={config.side} 
           />
           <SidebarInset>
             <SiteHeader />
@@ -83,10 +83,10 @@ export function BaseLayout({ children, title, description }: BaseLayoutProps) {
             </div>
             <SiteFooter />
           </SidebarInset>
-          <AppSidebar
-            variant={config.variant}
-            collapsible={config.collapsible}
-            side={config.side}
+          <AppSidebar 
+            variant={config.variant} 
+            collapsible={config.collapsible} 
+            side={config.side} 
           />
         </>
       )}
