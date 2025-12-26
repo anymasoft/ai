@@ -431,9 +431,12 @@ export default function PlaygroundPage() {
         <div className="grid grid-cols-1 lg:grid-cols-[340px_1fr] gap-6 h-full flex-1">
           {/* Left Column - Controls */}
           <div className="flex flex-col h-full">
-            <Card className="p-6 overflow-y-auto flex-1">
-          <div className="space-y-4">
-            <h3 className="font-semibold">Создать сайт</h3>
+            <Card className="p-6 flex flex-col h-full">
+              <div className="space-y-4">
+                <h3 className="font-semibold">Создать сайт</h3>
+
+                {/* Scrollable Settings Area */}
+                <div className="space-y-4 flex-1 overflow-y-auto pr-2">
 
             {/* Image Upload */}
             <div className="space-y-2">
@@ -512,6 +515,11 @@ export default function PlaygroundPage() {
               />
             </div>
 
+            {/* Close scrollable area, start CTA block */}
+                </div>
+
+                {/* CTA Block - NOT scrollable, always visible at bottom */}
+                <div className="border-t pt-4 space-y-4 flex-shrink-0">
             {/* Format Selector */}
             <div className="space-y-2">
               <label className="text-sm font-medium">Формат вывода</label>
@@ -626,7 +634,12 @@ export default function PlaygroundPage() {
                 {isStreaming ? "Отменить" : (credits === null || credits < creditsToDeduct) ? "Недостаточно кредитов" : "Создать сайт"}
               </Button>
             </div>
-            </div>
+
+            {/* Close CTA block */}
+                </div>
+
+            {/* Close outer space-y-4 */}
+                </div>
             </Card>
           </div>
 
