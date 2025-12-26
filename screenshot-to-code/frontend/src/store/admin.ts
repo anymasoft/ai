@@ -13,6 +13,6 @@ export const useAdminStore = create<AdminStore>((set) => ({
   checkAdmin: () => {
     // Get admin status from user.role, no API call needed
     const user = useAuthStore.getState().user
-    set({ isAdmin: user?.role === "admin" ?? false })
+    set({ isAdmin: user?.role === "admin" })
   },
 }))
