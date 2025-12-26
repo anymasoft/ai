@@ -3,8 +3,6 @@ import type { CSSProperties } from "react";
 import { Trans, useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
 
-import { RRLockupDarkIcon } from "./svgs/rr-lockup-dark-icon";
-import { RRLockupLightIcon } from "./svgs/rr-lockup-light-icon";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -46,11 +44,6 @@ export function Hero() {
         </Badge>
 
         <h1 className="">
-          <RRLockupLightIcon className="block px-2 dark:hidden" />
-          <RRLockupDarkIcon className="hidden px-2 dark:block" />
-
-          <br />
-
           <span
             aria-hidden="true"
             className="font-mono font-semibold text-4xl sm:text-7xl"
