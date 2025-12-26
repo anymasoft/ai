@@ -419,18 +419,24 @@ export default function PlaygroundPage() {
 
   return (
     <>
-      <div className="px-4 lg:px-6">
-        <div className="flex flex-col gap-2">
+      <div className="px-4 lg:px-6 pb-4">
+        <div className="flex flex-col gap-2 pt-4">
           <h1 className="text-2xl font-bold tracking-tight">Сайт из скриншота</h1>
           <p className="text-muted-foreground">Загрузите скриншот или вставьте URL — получите готовый код</p>
         </div>
       </div>
-      <div className="@container/main px-4 lg:px-6 py-6 min-h-[calc(100vh-200px)]">
-        <div className="grid grid-cols-1 lg:grid-cols-[340px_1fr] gap-6 h-full">
-        {/* Input Form Card */}
-        <Card className="p-6">
-          <div className="space-y-4">
-            <h3 className="font-semibold">Создать сайт</h3>
+
+      {/* Main Playground Container */}
+      <div className="@container/main px-4 lg:px-6 pb-6 flex-1 flex flex-col h-[calc(100vh-180px)]">
+        <div className="grid grid-cols-1 lg:grid-cols-[340px_1fr] gap-6 h-full flex-1">
+          {/* Left Column - Controls */}
+          <div className="flex flex-col h-full">
+            <Card className="p-6 flex flex-col h-full">
+              <div className="space-y-4">
+                <h3 className="font-semibold">Создать сайт</h3>
+
+                {/* Scrollable Settings Area */}
+                <div className="space-y-4 flex-1 overflow-y-auto pr-2">
 
             {/* Image Upload */}
             <div className="space-y-2">
@@ -509,6 +515,11 @@ export default function PlaygroundPage() {
               />
             </div>
 
+            {/* Close scrollable area, start CTA block */}
+                </div>
+
+                {/* CTA Block - NOT scrollable, always visible at bottom */}
+                <div className="border-t pt-4 space-y-4 flex-shrink-0">
             {/* Format Selector */}
             <div className="space-y-2">
               <label className="text-sm font-medium">Формат вывода</label>
@@ -623,19 +634,17 @@ export default function PlaygroundPage() {
                 {isStreaming ? "Отменить" : (credits === null || credits < creditsToDeduct) ? "Недостаточно кредитов" : "Создать сайт"}
               </Button>
             </div>
-          </div>
-        </Card>
 
-        {/* Right Column - Preview & Results */}
-        <div className="flex flex-col gap-6 lg:overflow-y-auto lg:max-h-[calc(100vh-180px)] relative">
-          {/* Success Notification - Floating Toast */}
-          {showSuccessNotification && (
-            <div className="absolute top-4 right-4 z-10 pointer-events-none animate-in fade-in slide-in-from-top-1 duration-300">
-              <div className="rounded-md bg-emerald-50 px-3 py-2 border border-emerald-200 shadow-sm">
-                <p className="text-xs font-medium text-emerald-800 whitespace-nowrap">Создание сайта завершено</p>
-              </div>
-            </div>
-          )}
+            {/* Close CTA block */}
+                </div>
+
+            {/* Close outer space-y-4 */}
+                </div>
+            </Card>
+          </div>
+
+          {/* Right Column - Preview & Results */}
+          <div className="flex flex-col gap-6 h-full overflow-y-auto overflow-x-hidden">
 
           {/* Empty State - when no results yet */}
           {chunks.length === 0 && !isStreaming && (
@@ -762,6 +771,15 @@ export default function PlaygroundPage() {
         </div>
         </div>
       </div>
+
+      {/* Success Notification - Floating Toast (NOT inside iframe or right-column) */}
+      {showSuccessNotification && (
+        <div className="fixed right-4 top-1/2 transform -translate-y-1/2 z-50 pointer-events-none animate-in fade-in slide-in-from-right-2 duration-300">
+          <div className="rounded-md bg-emerald-50/95 backdrop-blur-sm px-2 py-1 border border-emerald-200/50 shadow-sm">
+            <p className="text-xs font-medium text-emerald-700 whitespace-nowrap">Готово</p>
+          </div>
+        </div>
+      )}
 
       {/* Paywall Dialog */}
       <Dialog open={showPaywall} onOpenChange={setShowPaywall}>
