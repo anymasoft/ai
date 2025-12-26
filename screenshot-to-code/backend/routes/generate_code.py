@@ -372,8 +372,9 @@ class ParameterExtractionStage:
         # Base URL for OpenAI API (from env only)
         openai_base_url = OPENAI_BASE_URL
 
-        # Image generation always enabled (legacy support)
-        should_generate_images = True
+        # Extract image generation setting from frontend (defaults to True for backward compatibility)
+        should_generate_images = params.get("shouldGenerateImages", "true").lower() == "true"
+        print(f"[DIAG:EXTRACT] should_generate_images={should_generate_images}")
 
         # Extract and validate generation type
         generation_type = params.get("generationType", "create")
