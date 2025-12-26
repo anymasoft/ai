@@ -10,7 +10,6 @@ import {
   BentoCardTitle,
   BentoGrid,
 } from "./bento-grid";
-import { Iphone15Pro } from "@/components/magicui/iphone-15-pro";
 import { cn } from "@/lib/utils";
 
 const imageClassNames = "w-full rounded-t-lg h-full object-cover object-left";
@@ -64,13 +63,15 @@ export function Features() {
 
           <div className="relative flex h-full flex-col items-center px-10 max-lg:min-h-120">
             <BentoCardMedia className="absolute top-0 bottom-0">
-              <Iphone15Pro
-                className="dark:hidden"
+              <img
+                alt="App Mobile Light"
+                className="dark:hidden w-full h-full object-contain"
                 src="/images/app-mobile-light.png"
               />
 
-              <Iphone15Pro
-                className="hidden dark:block"
+              <img
+                alt="App Mobile Dark"
+                className="hidden dark:block w-full h-full object-contain"
                 src="/images/app-mobile-dark.png"
               />
             </BentoCardMedia>
