@@ -3,28 +3,24 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent } from '@/components/ui/card'
 import { CardDecorator } from '@/components/ui/card-decorator'
-import { Github, Code, Palette, Layout, Crown } from 'lucide-react'
+import { Code, Eye, Zap } from 'lucide-react'
+import { getAppUrl } from '@/lib/utils'
 
 const values = [
   {
     icon: Code,
-    title: 'Developer First',
-    description: 'Every component is built with the developer experience in mind, ensuring clean code and easy integration.'
+    title: 'Из скриншота в код',
+    description: 'Загрузите скриншот любого сайта и получите готовую верстку в HTML, React или Vue за считанные секунды.'
   },
   {
-    icon: Palette,
-    title: 'Design Excellence',
-    description: 'We maintain the highest design standards, following shadcn/ui principles and modern UI patterns.'
+    icon: Eye,
+    title: 'Живой предпросмотр',
+    description: 'Видите результат сразу в браузере. Редактируйте код в реальном времени и тестируйте изменения без перезагрузки.'
   },
   {
-    icon: Layout,
-    title: 'Production Ready',
-    description: 'Battle-tested components used in real applications with proven performance and reliability across different environments.'
-  },
-  {
-    icon: Crown,
-    title: 'Premium Quality',
-    description: 'Hand-crafted with attention to detail and performance optimization, ensuring exceptional user experience and accessibility.'
+    icon: Zap,
+    title: 'Подходит для разработки и продакшна',
+    description: 'Используйте для прототипирования, перевода макетов в код или ускорения разработки полноценных приложений.'
   }
 ]
 
@@ -35,19 +31,19 @@ export function AboutSection() {
         {/* Section Header */}
         <div className="mx-auto max-w-4xl text-center mb-16">
           <Badge variant="outline" className="mb-4">
-            About ShadcnStore
+            О сервисе
           </Badge>
           <h2 className="text-3xl font-bold tracking-tight sm:text-4xl mb-6">
-            Built for developers, by developers
+            Хватит вручную верстать то, что уже существует
           </h2>
           <p className="text-lg text-muted-foreground mb-8">
-            We're passionate about creating the best marketplace for shadcn/ui components and templates.
-            Our mission is to accelerate development and help developers build beautiful admin interfaces faster.
+            Сайты уже созданы. Дизайны есть везде. Зачем повторять вручную то, что можно получить автоматически?
+            Загрузите скриншот — получите готовый, рабочий код.
           </p>
         </div>
 
         {/* Modern Values Grid with Enhanced Design */}
-        <div className="grid grid-cols-1 gap-x-8 gap-y-12 sm:grid-cols-2 xl:grid-cols-4 mb-12">
+        <div className="grid grid-cols-1 gap-x-8 gap-y-12 sm:grid-cols-2 xl:grid-cols-3 mb-12">
           {values.map((value, index) => (
             <Card key={index} className='group shadow-xs py-2'>
               <CardContent className='p-8'>
@@ -65,19 +61,10 @@ export function AboutSection() {
 
         {/* Call to Action */}
         <div className="mt-16 text-center">
-          <div className="flex items-center justify-center gap-2 mb-6">
-            <span className="text-muted-foreground">❤️ Made with love for the developer community</span>
-          </div>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Button size="lg" className="cursor-pointer" asChild>
-              <a href="https://github.com/silicondeck/shadcn-dashboard-landing-template" target="_blank" rel="noopener noreferrer">
-                <Github className="mr-2 h-4 w-4" />
-                Star on GitHub
-              </a>
-            </Button>
-            <Button size="lg" variant="outline" className="cursor-pointer" asChild>
-              <a href="https://discord.com/invite/XEQhPc9a6p" target="_blank" rel="noopener noreferrer">
-                Join Discord Community
+              <a href={getAppUrl("/log-in")}>
+                Попробовать на своём сайте
               </a>
             </Button>
           </div>
