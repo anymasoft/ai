@@ -412,7 +412,8 @@ export default function PlaygroundPage() {
           <p className="text-muted-foreground">Загрузите скриншот или вставьте URL — получите готовый код</p>
         </div>
       </div>
-      <div className="@container/main px-4 lg:px-6 space-y-6">
+      <div className="@container/main px-4 lg:px-6 py-6">
+        <div className="grid grid-cols-1 lg:grid-cols-[480px_1fr] gap-6">
         {/* Input Form Card */}
         <Card className="p-6">
           <div className="space-y-4">
@@ -612,116 +613,120 @@ export default function PlaygroundPage() {
           </div>
         </Card>
 
-        {/* Creating Indicator */}
-        {isStreaming && chunks.length === 0 && (
-          <Card className="p-6">
-            <div className="flex items-center gap-3 text-muted-foreground">
-              <Loader2 size={20} className="animate-spin" />
-              <div>
-                <p className="font-medium">Создание кода...</p>
-                <p className="text-sm">Это может занять несколько минут</p>
-              </div>
-            </div>
-          </Card>
-        )}
-
-        {/* Preview / Code Tabs */}
-        {chunks.length > 0 && (
-          <Card className="p-6">
-            <Tabs defaultValue="preview" className="w-full">
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <h3 className="font-semibold flex items-center gap-2">
-                    Результат
-                    {isStreaming && (
-                      <span className="text-muted-foreground flex items-center gap-1.5 text-sm font-normal">
-                        <Loader2 size={14} className="animate-spin" />
-                        создание сайта...
-                      </span>
-                    )}
-                  </h3>
-                  <TabsList>
-                    <TabsTrigger value="preview">Предпросмотр</TabsTrigger>
-                    <TabsTrigger value="code">Код</TabsTrigger>
-                  </TabsList>
+        {/* Right Column - Preview & Results */}
+        <div className="flex flex-col gap-6 lg:overflow-y-auto lg:max-h-[calc(100vh-180px)]">
+          {/* Creating Indicator */}
+          {isStreaming && chunks.length === 0 && (
+            <Card className="p-6">
+              <div className="flex items-center gap-3 text-muted-foreground">
+                <Loader2 size={20} className="animate-spin" />
+                <div>
+                  <p className="font-medium">Создание кода...</p>
+                  <p className="text-sm">Это может занять несколько минут</p>
                 </div>
-
-                {/* Preview Tab */}
-                <TabsContent value="preview" className="mt-4">
-                  <iframe
-                    srcDoc={chunks.join("")}
-                    className="w-full border rounded bg-white"
-                    style={{ minHeight: "600px" }}
-                    title="Preview"
-                    sandbox="allow-same-origin allow-scripts"
-                  />
-                </TabsContent>
-
-                {/* Code Tab */}
-                <TabsContent value="code" className="mt-4">
-                  <div className="space-y-3">
-                    {/* Export buttons */}
-                    <div className="flex items-center justify-end gap-2">
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button
-                            onClick={handleCopyCode}
-                            variant="ghost"
-                            size="sm"
-                            disabled={!chunks.length || isStreaming}
-                          >
-                            {copied ? <Check size={16} /> : <Copy size={16} />}
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent>{copied ? "Скопировано!" : "Копировать"}</TooltipContent>
-                      </Tooltip>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button
-                            onClick={handleDownloadHTML}
-                            variant="ghost"
-                            size="sm"
-                            disabled={!chunks.length || isStreaming}
-                          >
-                            <Download size={16} />
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent>Загрузить HTML</TooltipContent>
-                      </Tooltip>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button
-                            onClick={handleDownloadZIP}
-                            variant="ghost"
-                            size="sm"
-                            disabled={!chunks.length || isStreaming}
-                          >
-                            <FileArchive size={16} />
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent>Загрузить ZIP</TooltipContent>
-                      </Tooltip>
-                    </div>
-                    {/* Code block */}
-                    <pre className="bg-muted p-4 rounded text-sm overflow-auto max-h-96">
-                      <code>{chunks.join("")}</code>
-                    </pre>
-                  </div>
-                </TabsContent>
               </div>
-            </Tabs>
-          </Card>
-        )}
+            </Card>
+          )}
 
-        {/* Error Card */}
-        {error && (
-          <Card className="p-6 border-destructive">
-            <div className="space-y-2">
-              <h3 className="font-semibold text-destructive">Ошибка</h3>
-              <p className="text-sm text-muted-foreground">{error}</p>
-            </div>
-          </Card>
-        )}
+          {/* Preview / Code Tabs */}
+          {chunks.length > 0 && (
+            <Card className="p-6">
+              <Tabs defaultValue="preview" className="w-full">
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <h3 className="font-semibold flex items-center gap-2">
+                      Результат
+                      {isStreaming && (
+                        <span className="text-muted-foreground flex items-center gap-1.5 text-sm font-normal">
+                          <Loader2 size={14} className="animate-spin" />
+                          создание сайта...
+                        </span>
+                      )}
+                    </h3>
+                    <TabsList>
+                      <TabsTrigger value="preview">Предпросмотр</TabsTrigger>
+                      <TabsTrigger value="code">Код</TabsTrigger>
+                    </TabsList>
+                  </div>
+
+                  {/* Preview Tab */}
+                  <TabsContent value="preview" className="mt-4">
+                    <iframe
+                      srcDoc={chunks.join("")}
+                      className="w-full border rounded bg-white"
+                      style={{ minHeight: "600px" }}
+                      title="Preview"
+                      sandbox="allow-same-origin allow-scripts"
+                    />
+                  </TabsContent>
+
+                  {/* Code Tab */}
+                  <TabsContent value="code" className="mt-4">
+                    <div className="space-y-3">
+                      {/* Export buttons */}
+                      <div className="flex items-center justify-end gap-2">
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              onClick={handleCopyCode}
+                              variant="ghost"
+                              size="sm"
+                              disabled={!chunks.length || isStreaming}
+                            >
+                              {copied ? <Check size={16} /> : <Copy size={16} />}
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>{copied ? "Скопировано!" : "Копировать"}</TooltipContent>
+                        </Tooltip>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              onClick={handleDownloadHTML}
+                              variant="ghost"
+                              size="sm"
+                              disabled={!chunks.length || isStreaming}
+                            >
+                              <Download size={16} />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>Загрузить HTML</TooltipContent>
+                        </Tooltip>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              onClick={handleDownloadZIP}
+                              variant="ghost"
+                              size="sm"
+                              disabled={!chunks.length || isStreaming}
+                            >
+                              <FileArchive size={16} />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>Загрузить ZIP</TooltipContent>
+                        </Tooltip>
+                      </div>
+                      {/* Code block */}
+                      <pre className="bg-muted p-4 rounded text-sm overflow-auto max-h-96">
+                        <code>{chunks.join("")}</code>
+                      </pre>
+                    </div>
+                  </TabsContent>
+                </div>
+              </Tabs>
+            </Card>
+          )}
+
+          {/* Error Card */}
+          {error && (
+            <Card className="p-6 border-destructive">
+              <div className="space-y-2">
+                <h3 className="font-semibold text-destructive">Ошибка</h3>
+                <p className="text-sm text-muted-foreground">{error}</p>
+              </div>
+            </Card>
+          )}
+        </div>
+        </div>
       </div>
 
       {/* Paywall Dialog */}
