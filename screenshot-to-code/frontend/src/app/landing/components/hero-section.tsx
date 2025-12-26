@@ -1,5 +1,5 @@
 
-import { ArrowRight, Play, Star } from 'lucide-react'
+import { ArrowRight, Play, Star, Copy, Check } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { DotPattern } from '@/components/dot-pattern'
@@ -10,6 +10,7 @@ export function HeroSection() {
   const [showCode, setShowCode] = useState(false)
   const [htmlCode, setHtmlCode] = useState('')
   const [loading, setLoading] = useState(true)
+  const [copied, setCopied] = useState(false)
 
   useEffect(() => {
     // Загрузить содержимое demo.html для режима Code
@@ -24,6 +25,16 @@ export function HeroSection() {
         setLoading(false)
       })
   }, [])
+
+  const handleCopyHtml = async () => {
+    try {
+      await navigator.clipboard.writeText(htmlCode)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    } catch (err) {
+      console.error('Failed to copy:', err)
+    }
+  }
 
   return (
     <section className="relative overflow-hidden bg-gradient-to-b from-background to-background/80 pt-20 sm:pt-32 pb-16">
@@ -116,9 +127,23 @@ export function HeroSection() {
               </div>
 
               {/* Explanatory text above iframe */}
-              <p className="text-center text-lg font-semibold text-foreground pt-6 pb-4">
-                Это не изображение. Это реальный HTML-код.
-              </p>
+              <div className="text-center pt-6 pb-4 flex items-center justify-center gap-2">
+                <button
+                  onClick={handleCopyHtml}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md hover:bg-muted transition-colors disabled:opacity-50"
+                  title="Копировать HTML-код"
+                  disabled={loading}
+                >
+                  {copied ? (
+                    <Check className="w-5 h-5 text-green-500 flex-shrink-0" />
+                  ) : (
+                    <Copy className="w-5 h-5 text-foreground flex-shrink-0" />
+                  )}
+                  <span className="text-lg font-semibold text-foreground">
+                    Это не изображение. Это реальный HTML-код.
+                  </span>
+                </button>
+              </div>
 
               {/* Preview Mode - iframe */}
               {!showCode && (
