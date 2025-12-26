@@ -91,28 +91,35 @@ export function HeroSection() {
             <div className="absolute top-2 lg:-top-8 left-1/2 transform -translate-x-1/2 w-[90%] mx-auto h-24 lg:h-80 bg-primary/50 rounded-full blur-3xl"></div>
 
             <div className="relative rounded-xl border bg-card shadow-2xl overflow-hidden">
-              {/* Preview / Code Tabs */}
-              <div className="flex border-b bg-muted/50">
+              {/* Preview / Code Toggle - Top Right */}
+              <div className="absolute top-3 right-4 z-10 flex gap-1 bg-background/95 rounded-lg border border-border p-1 backdrop-blur-sm">
                 <button
                   onClick={() => setShowCode(false)}
-                  className={`flex-1 px-4 py-3 text-sm font-medium transition-colors ${
+                  className={`px-3 py-1.5 text-xs font-medium rounded transition-colors ${
                     !showCode
-                      ? 'bg-background border-b-2 border-primary text-foreground'
-                      : 'text-muted-foreground hover:text-foreground'
+                      ? 'bg-primary text-primary-foreground'
+                      : 'text-muted-foreground hover:text-foreground hover:bg-muted'
                   }`}
                 >
                   Preview
                 </button>
                 <button
                   onClick={() => setShowCode(true)}
-                  className={`flex-1 px-4 py-3 text-sm font-medium transition-colors ${
+                  className={`px-3 py-1.5 text-xs font-medium rounded transition-colors ${
                     showCode
-                      ? 'bg-background border-b-2 border-primary text-foreground'
-                      : 'text-muted-foreground hover:text-foreground'
+                      ? 'bg-primary text-primary-foreground'
+                      : 'text-muted-foreground hover:text-foreground hover:bg-muted'
                   }`}
                 >
                   Code
                 </button>
+              </div>
+
+              {/* Explanatory text above iframe */}
+              <div className="relative bg-background p-3 pt-4 border-b border-border">
+                <p className="text-sm text-muted-foreground">
+                  Это не изображение. Это реальный HTML-код, сгенерированный из скриншота.
+                </p>
               </div>
 
               {/* Preview Mode - iframe */}
