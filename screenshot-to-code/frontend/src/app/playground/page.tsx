@@ -427,11 +427,11 @@ export default function PlaygroundPage() {
       </div>
 
       {/* Main Playground Container */}
-      <div className="@container/main px-4 lg:px-6 pb-6 flex flex-col h-full">
-        <div className="grid grid-cols-1 lg:grid-cols-[340px_1fr] gap-6 h-full">
+      <div className="@container/main px-4 lg:px-6 pb-6">
+        <div className="grid grid-cols-1 lg:grid-cols-[340px_1fr] gap-6">
           {/* Left Column - Controls */}
-          <div className="flex flex-col h-full">
-            <Card className="p-6 flex flex-col h-full">
+          <div>
+            <Card className="p-6 flex flex-col">
               <div className="space-y-4">
                 <h3 className="font-semibold">Создать сайт</h3>
 
@@ -553,8 +553,8 @@ export default function PlaygroundPage() {
             </div>
                 </div>
 
-                {/* Scrollable Settings Area */}
-                <div className="space-y-4 flex-1 overflow-y-auto pr-2 border-t pt-4">
+                {/* Settings Area */}
+                <div className="space-y-4 border-t pt-4">
 
             {/* Image Upload */}
             <div className="space-y-2">
@@ -638,7 +638,7 @@ export default function PlaygroundPage() {
           </div>
 
           {/* Right Column - Preview & Results */}
-          <div className="flex flex-col gap-6 h-full overflow-y-auto overflow-x-hidden">
+          <div className="flex flex-col gap-6">
 
           {/* Empty State - when no results yet */}
           {chunks.length === 0 && !isStreaming && (
@@ -743,7 +743,7 @@ export default function PlaygroundPage() {
                         </Tooltip>
                       </div>
                       {/* Code block */}
-                      <pre className="bg-muted p-4 rounded text-sm overflow-auto max-h-96">
+                      <pre className="bg-muted p-4 rounded text-sm">
                         <code>{chunks.join("")}</code>
                       </pre>
                     </div>
