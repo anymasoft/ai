@@ -12,7 +12,6 @@ import {
   FormItem,
   FormMessage,
 } from "@/components/ui/form"
-import { Logo } from '@/components/logo'
 import { Github, Twitter, Linkedin, Youtube, Heart } from 'lucide-react'
 
 const newsletterSchema = z.object({
@@ -110,7 +109,11 @@ export function LandingFooter() {
           <div className="col-span-4 lg:col-span-2 max-w-2xl">
             <div className="flex items-center space-x-2 mb-4 max-lg:justify-center">
               <div className="flex items-center space-x-2 cursor-pointer">
-                <Logo size={32} />
+                <img
+                  src="/logo/logo-sidebar.webp"
+                  alt="Screen2Code"
+                  className="h-8 w-8"
+                />
                 <span className="font-bold text-xl">Screen2Code</span>
               </div>
             </div>
