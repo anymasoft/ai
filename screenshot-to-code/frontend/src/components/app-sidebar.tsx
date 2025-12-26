@@ -115,7 +115,7 @@ const getNavData = (unreadCount: number, email: string | null, isAdmin: boolean)
   return {
     primaryAction: {
       title: "Сайт из скриншота",
-      url: "/playground",
+      url: "/app/playground",
       icon: Code2,
     },
     user: {

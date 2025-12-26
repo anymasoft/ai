@@ -88,19 +88,19 @@ export function NavUser({
             <DropdownMenuSeparator />
             <DropdownMenuGroup>
               <DropdownMenuItem asChild className="cursor-pointer">
-                <Link to="/settings/account">
+                <Link to="/app/settings/account">
                   <CircleUser />
                   Аккаунт
                 </Link>
               </DropdownMenuItem>
               <DropdownMenuItem asChild className="cursor-pointer">
-                <Link to="/settings/billing">
+                <Link to="/app/settings/billing">
                   <CreditCard />
                   Тарифы
                 </Link>
               </DropdownMenuItem>
               <DropdownMenuItem asChild className="cursor-pointer">
-                <Link to="/settings/notifications">
+                <Link to="/app/settings/notifications">
                   <BellDot />
                   Уведомления
                 </Link>
