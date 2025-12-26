@@ -30,7 +30,7 @@ export function ProtectedRoute({ children, requiredRole }: ProtectedRouteProps) 
   }
 
   if (requiredRole && user.role !== requiredRole) {
-    return <Navigate to="/playground" replace />
+    return <Navigate to="/app/playground" replace />
   }
 
   return <>{children}</>

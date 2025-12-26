@@ -25,7 +25,7 @@ export default function HistoryPage() {
   const handleOpen = (item: HistoryItem) => {
     // Store the item in sessionStorage to pass to playground
     sessionStorage.setItem("playground_load", JSON.stringify(item))
-    navigate("/playground")
+    navigate("/app/playground")
   }
 
   // Pagination logic
@@ -55,7 +55,7 @@ export default function HistoryPage() {
                 Ваш сгенерированный код появится здесь.
               </p>
               <Button
-                onClick={() => navigate("/playground")}
+                onClick={() => navigate("/app/playground")}
                 variant="default"
                 className="mt-4"
               >

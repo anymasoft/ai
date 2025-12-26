@@ -57,7 +57,7 @@ export default function MessageDetail() {
       console.error("Error:", error)
       if (error instanceof ApiError && error.status === 404) {
         toast.error("Сообщение не найдено")
-        navigate("/admin/messages")
+        navigate("/app/admin/messages")
       } else {
         toast.error("Ошибка при загрузке сообщения")
       }
@@ -92,7 +92,7 @@ export default function MessageDetail() {
       })
 
       toast.success("Сообщение удалено")
-      navigate("/admin/messages")
+      navigate("/app/admin/messages")
     } catch (error) {
       console.error("Error:", error)
       toast.error("Ошибка при удалении сообщения")
@@ -128,7 +128,7 @@ export default function MessageDetail() {
           <p className="text-muted-foreground">Сообщение не найдено</p>
           <Button
             variant="outline"
-            onClick={() => navigate("/admin/messages")}
+            onClick={() => navigate("/app/admin/messages")}
             className="mt-4"
           >
             <ArrowLeft className="h-4 w-4 mr-2" />
@@ -145,7 +145,7 @@ export default function MessageDetail() {
       <div className="flex items-center justify-between mb-6">
         <Button
           variant="ghost"
-          onClick={() => navigate("/admin/messages")}
+          onClick={() => navigate("/app/admin/messages")}
         >
           <ArrowLeft className="h-4 w-4 mr-2" />
           Назад к списку

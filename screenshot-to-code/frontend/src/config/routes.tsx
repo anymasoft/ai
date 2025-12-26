@@ -4,6 +4,7 @@ import { DashboardLayout } from '@/components/layouts/dashboard-layout'
 import { ProtectedRoute } from '@/components/router/protected-route'
 import { ProtectedAdminRoute } from '@/components/router/protected-admin-route'
 
+const LandingPage = lazy(() => import('@/app/landing/landing-page'))
 // const Dashboard = lazy(() => import('@/app/dashboard/page')) // TODO: Отключено - Overview не используется
 const Playground = lazy(() => import('@/app/playground/page'))
 const History = lazy(() => import('@/app/history/page'))
@@ -31,22 +32,26 @@ export interface RouteConfig {
 export const routes: RouteConfig[] = [
   {
     path: "/",
+    element: <LandingPage />
+  },
+  {
+    path: "/app",
     element: <DashboardLayout />,
     children: [
       {
-        path: "/",
-        element: <Navigate to="/playground" replace />
+        path: "/app",
+        element: <Navigate to="/app/playground" replace />
       },
       // {
       //   path: "/dashboard",
       //   element: <ProtectedRoute><Dashboard /></ProtectedRoute>
       // },
       {
-        path: "/playground",
+        path: "/app/playground",
         element: <ProtectedRoute><Playground /></ProtectedRoute>
       },
       {
-        path: "/history",
+        path: "/app/history",
         element: <ProtectedRoute><History /></ProtectedRoute>
       },
       // Скрыто временно - редирект на /billing
@@ -55,47 +60,47 @@ export const routes: RouteConfig[] = [
       //   element: <ProtectedRoute><ApiPage /></ProtectedRoute>
       // },
       {
-        path: "/api",
-        element: <Navigate to="/settings/billing" replace />
+        path: "/app/api",
+        element: <Navigate to="/app/settings/billing" replace />
       },
       // {
       //   path: "/docs",
       //   element: <ProtectedRoute><DocsPage /></ProtectedRoute>
       // },
       {
-        path: "/docs",
-        element: <Navigate to="/settings/billing" replace />
+        path: "/app/docs",
+        element: <Navigate to="/app/settings/billing" replace />
       },
       {
-        path: "/feedback",
+        path: "/app/feedback",
         element: <ProtectedRoute><FeedbackPage /></ProtectedRoute>
       },
       {
-        path: "/admin/messages",
+        path: "/app/admin/messages",
         element: <ProtectedAdminRoute><AdminMessages /></ProtectedAdminRoute>
       },
       {
-        path: "/admin/messages/:id",
+        path: "/app/admin/messages/:id",
         element: <ProtectedAdminRoute><AdminMessageDetail /></ProtectedAdminRoute>
       },
       {
-        path: "/admin/users",
+        path: "/app/admin/users",
         element: <ProtectedAdminRoute><AdminUsers /></ProtectedAdminRoute>
       },
       {
-        path: "/admin/payments",
+        path: "/app/admin/payments",
         element: <ProtectedAdminRoute><AdminPayments /></ProtectedAdminRoute>
       },
       {
-        path: "/admin/tariffs",
+        path: "/app/admin/tariffs",
         element: <ProtectedAdminRoute><AdminTariffs /></ProtectedAdminRoute>
       },
       {
-        path: "/settings/account",
-        element: <Navigate to="/settings/billing" replace />
+        path: "/app/settings/account",
+        element: <Navigate to="/app/settings/billing" replace />
       },
       {
-        path: "/settings/billing",
+        path: "/app/settings/billing",
         element: <ProtectedRoute><BillingSettings /></ProtectedRoute>
       },
     ]
@@ -110,6 +115,6 @@ export const routes: RouteConfig[] = [
   },
   {
     path: "*",
-    element: <ProtectedRoute><Navigate to="/playground" replace /></ProtectedRoute>
+    element: <Navigate to="/" replace />
   }
 ]
