@@ -612,13 +612,13 @@ export default function PlaygroundPage() {
           </div>
         </Card>
 
-        {/* Generating Indicator */}
+        {/* Creating Indicator */}
         {isStreaming && chunks.length === 0 && (
           <Card className="p-6">
             <div className="flex items-center gap-3 text-muted-foreground">
               <Loader2 size={20} className="animate-spin" />
               <div>
-                <p className="font-medium">Генерирование кода...</p>
+                <p className="font-medium">Создание кода...</p>
                 <p className="text-sm">Это может занять несколько минут</p>
               </div>
             </div>
@@ -636,7 +636,7 @@ export default function PlaygroundPage() {
                     {isStreaming && (
                       <span className="text-muted-foreground flex items-center gap-1.5 text-sm font-normal">
                         <Loader2 size={14} className="animate-spin" />
-                        генерирование...
+                        создание сайта...
                       </span>
                     )}
                   </h3>
