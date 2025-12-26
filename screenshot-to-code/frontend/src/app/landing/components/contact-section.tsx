@@ -63,7 +63,7 @@ export function ContactSection() {
             Need help or have questions?
           </h2>
           <p className="text-lg text-muted-foreground">
-            Our team is here to help you get the most out of ShadcnStore. Choose the best way to reach out to us.
+            Our team is here to help you get the most out of Screen2Code. Choose the best way to reach out to us.
           </p>
         </div>
 
@@ -202,7 +202,7 @@ export function ContactSection() {
                           <FormLabel>Message</FormLabel>
                           <FormControl>
                             <Textarea
-                              placeholder="Tell us how we can help you with ShadcnStore components..."
+                              placeholder="Tell us how we can help you with Screen2Code..."
                               rows={10}
                               className="min-h-50"
                               {...field}
