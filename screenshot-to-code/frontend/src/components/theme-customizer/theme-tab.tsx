@@ -1,5 +1,3 @@
-"use client"
-
 import { Palette, Dices, Upload, ExternalLink, Sun, Moon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
@@ -13,7 +11,6 @@ import { radiusOptions, baseColors } from '@/config/theme-customizer-constants'
 import { ColorPicker } from '@/components/color-picker'
 import type { ImportedTheme } from '@/types/theme-customizer'
 import React from 'react'
-import "./circular-transition.css"
 
 interface ThemeTabProps {
   selectedTheme: string
