@@ -30,7 +30,9 @@ import {
   SidebarMenuItem,
 } from "@/components/ui/sidebar"
 
-const getNavData = (unreadCount: number, email: string | null, isAdmin: boolean) => {
+import type { User } from "@/store/auth"
+
+const getNavData = (unreadCount: number, user: User | null, isAdmin: boolean) => {
   const navGroups = [
     {
       label: "Основное",
@@ -119,8 +121,8 @@ const getNavData = (unreadCount: number, email: string | null, isAdmin: boolean)
       icon: Code2,
     },
     user: {
-      name: email ? email.split("@")[0] : "Пользователь",
-      email: email || "не авторизирован",
+      name: user?.name || "Пользователь",
+      email: user?.email || "не авторизирован",
     },
     navGroups,
   }
@@ -128,9 +130,9 @@ const getNavData = (unreadCount: number, email: string | null, isAdmin: boolean)
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const unreadCount = useUnreadCount()
-  const email = useAuthStore((state) => state.user?.email ?? null)
+  const user = useAuthStore((state) => state.user ?? null)
   const isAdmin = useAdminStore((state) => state.isAdmin)
-  const data = React.useMemo(() => getNavData(unreadCount, email, isAdmin), [unreadCount, email, isAdmin])
+  const data = React.useMemo(() => getNavData(unreadCount, user, isAdmin), [unreadCount, user, isAdmin])
 
   return (
     <Sidebar {...props}>
