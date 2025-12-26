@@ -12,15 +12,15 @@ export function HeroSection() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    // Загрузить содержимое index.html для режима Code
-    fetch('/index.html')
+    // Загрузить содержимое demo.html для режима Code
+    fetch('/demo.html')
       .then(res => res.text())
       .then(html => {
         setHtmlCode(html)
         setLoading(false)
       })
       .catch(err => {
-        console.error('Error loading index.html:', err)
+        console.error('Error loading demo.html:', err)
         setLoading(false)
       })
   }, [])
@@ -119,11 +119,11 @@ export function HeroSection() {
               {!showCode && (
                 <div className="bg-background">
                   <iframe
-                    src="/index.html"
+                    src="/demo.html"
                     title="Screen2Code Demo"
                     className="w-full border-0"
                     style={{ height: '600px' }}
-                    sandbox="allow-same-origin"
+                    sandbox="allow-same-origin allow-scripts"
                   />
                 </div>
               )}
