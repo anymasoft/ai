@@ -373,7 +373,11 @@ class ParameterExtractionStage:
         openai_base_url = OPENAI_BASE_URL
 
         # Extract image generation setting from frontend (defaults to True for backward compatibility)
-        should_generate_images = params.get("shouldGenerateImages", "true").lower() == "true"
+        should_generate_images_param = params.get("shouldGenerateImages", True)
+        if isinstance(should_generate_images_param, str):
+            should_generate_images = should_generate_images_param.lower() == "true"
+        else:
+            should_generate_images = bool(should_generate_images_param)
         print(f"[DIAG:EXTRACT] should_generate_images={should_generate_images}")
 
         # Extract and validate generation type
