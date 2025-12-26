@@ -44,6 +44,7 @@
 
 :root {
   --font-inter: 'Inter', system-ui, sans-serif;
+  --header-height: 56px;
   --radius: 0.625rem;
   --background: oklch(1 0 0);
   --foreground: oklch(0.145 0 0);
