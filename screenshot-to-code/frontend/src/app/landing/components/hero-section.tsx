@@ -92,7 +92,7 @@ export function HeroSection() {
 
             <div className="relative rounded-xl border bg-card shadow-2xl overflow-hidden">
               {/* Preview / Code Toggle - Top Right */}
-              <div className="absolute top-3 right-3 z-10 flex gap-1 bg-background/95 rounded-lg border border-border p-1 backdrop-blur-sm">
+              <div className="absolute top-3 right-4 z-10 flex gap-1 bg-background/95 rounded-lg border border-border p-1 backdrop-blur-sm">
                 <button
                   onClick={() => setShowCode(false)}
                   className={`px-3 py-1.5 text-xs font-medium rounded transition-colors ${
@@ -114,6 +114,11 @@ export function HeroSection() {
                   Code
                 </button>
               </div>
+
+              {/* Explanatory text above iframe */}
+              <p className="text-center text-lg font-semibold text-foreground pt-6 pb-4">
+                Это не изображение. Это реальный HTML-код.
+              </p>
 
               {/* Preview Mode - iframe */}
               {!showCode && (
@@ -153,7 +158,7 @@ export function HeroSection() {
           </div>
 
           {/* Small caption */}
-          <p className="text-center text-xs text-muted-foreground mt-4">
+          <p className="text-center text-xs text-muted-foreground mt-4 hidden">
             Это не изображение. Это реальный HTML-код.
           </p>
         </div>
