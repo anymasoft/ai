@@ -60,6 +60,7 @@ export default function PlaygroundPage() {
     "html_tailwind"
   )
   const [creationMode, setCreationMode] = useState<"fast" | "full">("full")
+  const [showSuccessNotification, setShowSuccessNotification] = useState(false)
 
   // Derived: credits to deduct based on mode
   const creditsToDeduct = creationMode === "fast" ? 1 : 3
@@ -103,6 +104,15 @@ export default function PlaygroundPage() {
   useEffect(() => {
     chunksRef.current = chunks
   }, [chunks])
+
+  // Auto-hide success notification after 4 seconds
+  useEffect(() => {
+    if (!showSuccessNotification) return
+    const timer = setTimeout(() => {
+      setShowSuccessNotification(false)
+    }, 4000)
+    return () => clearTimeout(timer)
+  }, [showSuccessNotification])
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -256,6 +266,9 @@ export default function PlaygroundPage() {
             format: selectedFormat,
           })
           console.log("History item added successfully")
+
+          // Show success notification
+          setShowSuccessNotification(true)
         } else {
           console.warn("No chunks to save - chunksRef.current is empty")
         }
@@ -413,7 +426,7 @@ export default function PlaygroundPage() {
         </div>
       </div>
       <div className="@container/main px-4 lg:px-6 py-6">
-        <div className="grid grid-cols-1 lg:grid-cols-[480px_1fr] gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-[340px_1fr] gap-6">
         {/* Input Form Card */}
         <Card className="p-6">
           <div className="space-y-4">
@@ -615,6 +628,25 @@ export default function PlaygroundPage() {
 
         {/* Right Column - Preview & Results */}
         <div className="flex flex-col gap-6 lg:overflow-y-auto lg:max-h-[calc(100vh-180px)]">
+          {/* Success Notification */}
+          {showSuccessNotification && (
+            <div className="rounded-md bg-emerald-50 p-4 border border-emerald-200">
+              <p className="text-sm font-medium text-emerald-800">Создание сайта завершено</p>
+            </div>
+          )}
+
+          {/* Empty State - when no results yet */}
+          {chunks.length === 0 && !isStreaming && (
+            <div className="flex items-center justify-center min-h-[500px] rounded-lg border-2 border-dashed border-muted-foreground/20 bg-muted/30">
+              <div className="text-center">
+                <p className="text-sm text-muted-foreground leading-relaxed max-w-xs">
+                  Здесь появится предпросмотр сайта<br />
+                  после нажатия «Создать сайт»
+                </p>
+              </div>
+            </div>
+          )}
+
           {/* Creating Indicator */}
           {isStreaming && chunks.length === 0 && (
             <Card className="p-6">
