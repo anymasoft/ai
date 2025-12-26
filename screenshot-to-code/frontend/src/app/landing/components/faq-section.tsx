@@ -3,6 +3,7 @@ import { CircleHelp } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion'
 import { Badge } from '@/components/ui/badge'
+import { getAppUrl } from '@/lib/utils'
 
 type FaqItem = {
   value: string
@@ -13,39 +14,39 @@ type FaqItem = {
 const faqItems: FaqItem[] = [
   {
     value: 'item-1',
-    question: 'How do I integrate ShadcnStore components into my project?',
+    question: 'Что я получу на выходе?',
     answer:
-      'Integration is simple! All our components are built with shadcn/ui and work with React, Next.js, and Vite. Just copy the component code, install any required dependencies, and paste it into your project. Each component comes with detailed installation instructions and examples.',
+      'Чистый, готовый к использованию код на HTML, React или Vue. Весь код содержит Tailwind CSS классы, правильную структуру и семантику. Вы получаете файл, который можно сразу вставить в проект или использовать как основу для доработки.',
   },
   {
     value: 'item-2',
-    question: 'What\'s the difference between free and premium components?',
+    question: 'Можно ли использовать код в продакшене?',
     answer:
-      'Free components include essential UI elements like buttons, forms, and basic layouts. Premium components offer advanced features like complex data tables, analytics dashboards, authentication flows, and complete admin templates. Premium also includes Figma files, priority support, and commercial licenses.',
+      'Да! Код полностью готов к использованию в реальных проектах. Это не прототип — это работающий код, который можно сразу развернуть. AI создаёт правильную структуру, добавляет нужные атрибуты доступности и оптимизирует производительность.',
   },
   {
     value: 'item-3',
-    question: 'Can I use these components in commercial projects?',
+    question: 'Чем отличается быстрый режим от полного?',
     answer:
-      'Yes! Free components come with an MIT license for unlimited use. Premium components include a commercial license that allows usage in client projects, SaaS applications, and commercial products without attribution requirements.',
+      'Быстрый режим обрабатывает скриншот за несколько секунд и создаёт основную структуру страницы. Полный режим — это более детальный анализ с лучшей точностью стилизации, правильной иерархией элементов и полной воссоздание дизайна. Выбирайте в зависимости от сложности дизайна.',
   },
   {
     value: 'item-4',
-    question: 'Do you provide support and updates?',
+    question: 'Что происходит с изображениями?',
     answer:
-      'Absolutely! We provide community support for free components through our Discord server and GitHub issues. Premium subscribers get priority email support, regular component updates, and early access to new releases. We also maintain compatibility with the latest shadcn/ui versions.',
+      'Изображения обрабатываются в зависимости от режима. AI распознаёт их место в макете и добавляет корректные теги <img> с плейсхолдерами. Вы можете легко заменить ссылки на свои изображения. Текст из картинок переводится в обычный текст для доступности.',
   },
   {
     value: 'item-5',
-    question: 'What frameworks and tools do you support?',
+    question: 'Можно ли дорабатывать результат?',
     answer:
-      'Our components work with React 18+, Next.js 13+, and Vite. We use TypeScript, Tailwind CSS, and follow shadcn/ui conventions. Components are tested with popular tools like React Hook Form, TanStack Query, and Zustand for state management.',
+      'Конечно! Код создан так, чтобы его было легко редактировать. Используйте встроенный редактор в нашем интерфейсе или скопируйте код в свой IDE. Все стили на Tailwind — просто обновите классы. Никаких чёрных ящиков, только чистый HTML/React/Vue.',
   },
   {
     value: 'item-6',
-    question: 'How often do you release new components?',
+    question: 'Где сохраняются созданные сайты?',
     answer:
-      'We release new components and templates weekly. Premium subscribers get early access to new releases, while free components are updated regularly based on community feedback. You can track our roadmap and request specific components through our GitHub repository.',
+      'Все созданные версии автоматически сохраняются в вашем личном кабинете. Вы можете вернуться к любой версии, сравнить результаты или скачать несколько вариантов одного дизайна. История хранится столько, сколько нужно — удаляйте только когда хотите.',
   },
 ]
 
@@ -55,12 +56,12 @@ const FaqSection = () => {
       <div className="container mx-auto px-4 sm:px-6 lg:px-8">
         {/* Section Header */}
         <div className="mx-auto max-w-2xl text-center mb-16">
-          <Badge variant="outline" className="mb-4">FAQ</Badge>
+          <Badge variant="outline" className="mb-4">Вопросы</Badge>
           <h2 className="text-3xl font-bold tracking-tight sm:text-4xl mb-4">
-            Frequently Asked Questions
+            Часто задаваемые вопросы
           </h2>
           <p className="text-lg text-muted-foreground">
-            Everything you need to know about ShadcnStore components, licensing, and integration. Still have questions? We're here to help!
+            Всё, что нужно знать о Screen2Code, выходном коде и использовании. Ещё вопросы? Напишите нам!
           </p>
         </div>
 
@@ -89,11 +90,11 @@ const FaqSection = () => {
           {/* Contact Support CTA */}
           <div className="text-center mt-12">
             <p className="text-muted-foreground mb-4">
-              Still have questions? We're here to help.
+              Остались вопросы? Напишите нам или начните работу.
             </p>
             <Button className='cursor-pointer' asChild>
-              <a href="#contact">
-                Contact Support
+              <a href={getAppUrl("/log-in")}>
+                Начать работу
               </a>
             </Button>
           </div>

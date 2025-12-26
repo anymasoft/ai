@@ -29,13 +29,10 @@ import { ModeToggle } from '@/components/mode-toggle'
 import { useTheme } from '@/hooks/use-theme'
 
 const navigationItems = [
-  { name: 'Home', href: '/' },
-  { name: 'Features', href: '#features' },
-  { name: 'Solutions', href: '#features', hasMegaMenu: true },
-  { name: 'Team', href: '#team' },
-  { name: 'Pricing', href: '#pricing' },
-  { name: 'FAQ', href: '#faq' },
-  { name: 'Contact', href: '#contact' },
+  { name: 'Главная', href: '/' },
+  { name: 'Возможности', href: '#features' },
+  { name: 'Тарифы', href: '#pricing' },
+  { name: 'Вопросы', href: '#faq' },
 ]
 
 // Solutions menu items for mobile
@@ -83,7 +80,7 @@ export function LandingNavbar() {
           <a href="/" className="flex items-center space-x-2 cursor-pointer">
             <Logo size={32} />
             <span className="font-bold">
-              ShadcnStore
+              Screen2Code
             </span>
           </a>
         </div>
@@ -125,22 +122,8 @@ export function LandingNavbar() {
         {/* Desktop CTA */}
         <div className="hidden xl:flex items-center space-x-2">
           <ModeToggle variant="ghost" />
-          <Button variant="ghost" size="icon" asChild className="cursor-pointer">
-            <a href="https://github.com/silicondeck/shadcn-dashboard-landing-template" target="_blank" rel="noopener noreferrer" aria-label="GitHub Repository">
-              <Github className="h-5 w-5" />
-            </a>
-          </Button>
-          <Button variant="outline" asChild className="cursor-pointer">
-            <a href={getAppUrl("/playground")} target="_blank" rel="noopener noreferrer">
-              <LayoutDashboard className="h-4 w-4 mr-2" />
-              Dashboard
-            </a>
-          </Button>
-          <Button variant="ghost" asChild className="cursor-pointer">
-            <a href={getAppUrl("/auth/sign-in")}>Sign In</a>
-          </Button>
           <Button asChild className="cursor-pointer">
-            <a href={getAppUrl("/auth/sign-in")}>Get Started</a>
+            <a href={getAppUrl("/log-in")}>Создать сайт</a>
           </Button>
         </div>
 
@@ -160,7 +143,7 @@ export function LandingNavbar() {
                   <div className="p-2 bg-primary/10 rounded-lg">
                     <Logo size={16} />
                   </div>
-                  <SheetTitle className="text-lg font-semibold">ShadcnStore</SheetTitle>
+                  <SheetTitle className="text-lg font-semibold">Screen2Code</SheetTitle>
                   <div className="ml-auto flex items-center gap-2">
                     <Button
                       variant="ghost"
@@ -170,11 +153,6 @@ export function LandingNavbar() {
                     >
                       <Moon className="h-4 w-4 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
                       <Sun className="absolute h-4 w-4 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
-                    </Button>
-                    <Button variant="ghost" size="icon" asChild className="cursor-pointer h-8 w-8">
-                      <a href="https://github.com/silicondeck/shadcn-dashboard-landing-template" target="_blank" rel="noopener noreferrer" aria-label="GitHub Repository">
-                        <Github className="h-4 w-4" />
-                      </a>
                     </Button>
                     <Button variant="ghost" size="icon" onClick={() => setIsOpen(false)} className="cursor-pointer h-8 w-8">
                       <X className="h-4 w-4" />
@@ -247,21 +225,9 @@ export function LandingNavbar() {
 
                 {/* Primary Actions */}
                 <div className="space-y-3">
-                  <Button variant="outline" size="lg" asChild className="w-full cursor-pointer">
-                    <a href={getAppUrl("/playground")}>
-                      <LayoutDashboard className="size-4" />
-                      Dashboard
-                    </a>
+                  <Button asChild size="lg" className="w-full cursor-pointer">
+                    <a href={getAppUrl("/log-in")}>Создать сайт</a>
                   </Button>
-
-                  <div className="grid grid-cols-2 gap-3">
-                    <Button variant="outline" size="lg" asChild className="cursor-pointer">
-                      <a href={getAppUrl("/auth/sign-in")}>Sign In</a>
-                    </Button>
-                    <Button asChild size="lg" className="cursor-pointer" >
-                      <a href={getAppUrl("/auth/sign-in")}>Get Started</a>
-                    </Button>
-                  </div>
                 </div>
               </div>
             </div>

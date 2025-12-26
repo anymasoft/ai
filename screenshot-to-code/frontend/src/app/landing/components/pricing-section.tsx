@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { useState } from 'react'
+import { getAppUrl } from '@/lib/utils'
 
 const plans = [
   {
@@ -68,12 +69,12 @@ export function PricingSection() {
       <div className="container mx-auto px-4 sm:px-6 lg:px-8">
         {/* Section Header */}
         <div className="mx-auto max-w-2xl text-center mb-12">
-          <Badge variant="outline" className="mb-4">Pricing Plans</Badge>
+          <Badge variant="outline" className="mb-4">Тарифные планы</Badge>
           <h2 className="text-3xl font-bold tracking-tight sm:text-4xl mb-4">
-            Choose your plan
+            Выберите объём под свои задачи
           </h2>
           <p className="text-lg text-muted-foreground mb-8">
-            Start building with our free components or upgrade to Pro for access to premium templates and advanced features.
+            1 кредит = 1 создание сайта. Используйте ровно столько, сколько нужно.
           </p>
 
           {/* Billing Toggle */}
@@ -88,13 +89,13 @@ export function PricingSection() {
                 value="monthly"
                 className="data-[state=on]:bg-background data-[state=on]:border-border border-transparent border px-6 !rounded-full data-[state=on]:text-foreground hover:bg-transparent cursor-pointer transition-colors"
               >
-                Monthly
+                Месячно
               </ToggleGroupItem>
               <ToggleGroupItem
                 value="yearly"
                 className="data-[state=on]:bg-background data-[state=on]:border-border border-transparent border px-6 !rounded-full data-[state=on]:text-foreground hover:bg-transparent cursor-pointer transition-colors"
               >
-                Annually
+                Ежегодно
               </ToggleGroupItem>
             </ToggleGroup>
           </div>
@@ -148,8 +149,11 @@ export function PricingSection() {
                           : 'shadow-sm shadow-black/15 border border-transparent bg-background ring-1 ring-foreground/10 hover:bg-muted/50'
                       }`}
                       variant={plan.popular ? 'default' : 'secondary'}
+                      asChild
                     >
-                      {plan.cta}
+                      <a href={getAppUrl("/log-in")}>
+                        {plan.cta}
+                      </a>
                     </Button>
                   </div>
 
