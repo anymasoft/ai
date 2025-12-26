@@ -1,384 +1,45 @@
-<html lang="ru">
-<head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Формирование перемещений по заказам на производство</title>
-<script src="https://cdn.tailwindcss.com"></script>
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css" />
-<style>
-  /* Scrollbar styling for the table */
-  .scrollbar-thin::-webkit-scrollbar {
-    height: 8px;
-    width: 8px;
-  }
-  .scrollbar-thin::-webkit-scrollbar-thumb {
-    background-color: #cbd5e1;
-    border-radius: 4px;
-  }
-  .scrollbar-thin::-webkit-scrollbar-track {
-    background: transparent;
-  }
-  /* Hide horizontal scrollbar but allow scroll */
-  .no-scrollbar::-webkit-scrollbar {
-    display: none;
-  }
-  /* For Firefox */
-  .no-scrollbar {
-    scrollbar-width: none;
-  }
-</style>
-</head>
-<body class="bg-[#fff9d6] font-sans text-[13px] text-[#000000] select-none">
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/webp" href="/logo/favicon-32.webp" />
+    <link rel="icon" type="image/png" sizes="16x16" href="/logo/favicon-16.png" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/logo/favicon-32.png" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
-<!-- Top bar -->
-<header class="flex items-center gap-2 px-2 py-1 bg-[#fff9d6] border-b border-[#e0d87a]">
-  <div class="flex items-center gap-1">
-    <img src="https://placehold.co/24x24/ffcc00/000000?text=1C" alt="Логотип 1С красный на желтом фоне" class="w-6 h-6" />
-    <button class="w-6 h-6 flex items-center justify-center hover:bg-[#f0eaa0] rounded">
-      <i class="fas fa-bars text-[#b37f00]"></i>
-    </button>
-  </div>
-  <div class="flex-1 text-[13px] font-normal leading-[1.2] text-[#000000] whitespace-nowrap overflow-hidden text-ellipsis">
-    [КОПИЯ] Копия 7 КИ СУПЦП / 1С:ERP Управление предприятием 2 (1С:Предприятие)
-  </div>
-  <div class="flex items-center gap-2 bg-[#fffde0] border border-[#f0f0c0] rounded px-2 py-1 text-[#666] text-[12px] w-[220px]">
-    <i class="fas fa-search text-[#999]"></i>
-    <input type="text" placeholder="Поиск Ctrl+Shift+F" class="bg-[#fffde0] outline-none w-full text-[12px] text-[#666]" />
-  </div>
-  <button title="Уведомления" class="w-6 h-6 flex items-center justify-center hover:bg-[#f0eaa0] rounded">
-    <i class="far fa-bell text-[#b37f00]"></i>
-  </button>
-  <button title="История" class="w-6 h-6 flex items-center justify-center hover:bg-[#f0eaa0] rounded">
-    <i class="fas fa-history text-[#b37f00]"></i>
-  </button>
-  <button title="Избранное" class="w-6 h-6 flex items-center justify-center hover:bg-[#f0eaa0] rounded">
-    <i class="fas fa-star text-[#b37f00]"></i>
-  </button>
-  <div class="flex items-center gap-1 border border-[#b37f00] rounded px-2 py-1 text-[12px] font-normal text-[#b37f00] cursor-default select-text">
-    Мартынова Виктория
-    <i class="fas fa-caret-down"></i>
-  </div>
-  <button title="Свернуть" class="w-6 h-6 flex items-center justify-center hover:bg-[#f0eaa0] rounded">
-    <i class="fas fa-window-minimize text-[#b37f00]"></i>
-  </button>
-  <button title="Развернуть" class="w-6 h-6 flex items-center justify-center hover:bg-[#f0eaa0] rounded">
-    <i class="far fa-window-maximize text-[#b37f00]"></i>
-  </button>
-  <button title="Закрыть" class="w-6 h-6 flex items-center justify-center hover:bg-[#f0eaa0] rounded">
-    <i class="fas fa-times text-[#b37f00]"></i>
-  </button>
-</header>
+    <!-- Primary Meta Tags -->
+    <title>Screen2Code - Сайт из скриншота</title>
+    <meta name="title" content="Screen2Code - Сайт из скриншота" />
+    <meta name="description" content="Создавайте веб-сайты из скриншотов за секунды. Преобразуйте изображения в полнофункциональный HTML/CSS код с помощью AI." />
 
-<div class="flex h-[calc(100vh-36px)]">
+    <!-- Canonical (points to the main template URL) -->
+    <link rel="canonical" href="https://shadcnstore.com/templates/dashboard/shadcn-dashboard-landing-template/" />
 
-  <!-- Sidebar -->
-  <nav class="flex flex-col gap-1 bg-[#f0e080] w-[240px] px-2 py-3 text-[13px] text-[#4d4200] select-none overflow-y-auto border-r border-[#e0d87a]">
-    <a href="#" class="flex items-center gap-2 px-2 py-1 rounded hover:bg-[#e0d87a]">
-      <i class="fas fa-home w-5"></i> Главная
-    </a>
-    <a href="#" class="flex items-center gap-2 px-2 py-1 rounded hover:bg-[#e0d87a]">
-      <i class="fas fa-users-cog w-5"></i> CRM и маркетинг
-    </a>
-    <a href="#" class="flex items-center gap-2 px-2 py-1 rounded hover:bg-[#e0d87a]">
-      <i class="fas fa-shopping-cart w-5"></i> Продажи
-    </a>
-    <a href="#" class="flex items-center gap-2 px-2 py-1 rounded hover:bg-[#e0d87a]">
-      <i class="fas fa-shopping-basket w-5"></i> Закупки
-    </a>
-    <a href="#" class="flex items-center gap-2 px-2 py-1 rounded hover:bg-[#e0d87a]">
-      <i class="fas fa-warehouse w-5"></i> Склад и доставка
-    </a>
-    <a href="#" class="flex items-center gap-2 px-2 py-1 rounded hover:bg-[#e0d87a]">
-      <i class="fas fa-industry w-5"></i> Производство
-    </a>
-    <a href="#" class="flex items-center gap-2 px-2 py-1 rounded hover:bg-[#e0d87a]">
-      <i class="fas fa-user-tie w-5"></i> Кадры
-    </a>
-    <a href="#" class="flex items-center gap-2 px-2 py-1 rounded hover:bg-[#e0d87a]">
-      <i class="fas fa-money-check-alt w-5"></i> Зарплата
-    </a>
-    <a href="#" class="flex items-center gap-2 px-2 py-1 rounded hover:bg-[#e0d87a]">
-      <i class="fas fa-university w-5"></i> Казначейство
-    </a>
-    <a href="#" class="flex items-center gap-2 px-2 py-1 rounded hover:bg-[#e0d87a]">
-      <i class="fas fa-chart-bar w-5"></i> Финансовый результат и контроллинг
-    </a>
-    <a href="#" class="flex items-center gap-2 px-2 py-1 rounded hover:bg-[#e0d87a]">
-      <i class="fas fa-building w-5"></i> Внеоборотные активы
-    </a>
-    <a href="#" class="flex items-center gap-2 px-2 py-1 rounded hover:bg-[#e0d87a]">
-      <i class="fas fa-book w-5"></i> Регламентированный учет
-    </a>
-    <a href="#" class="flex items-center gap-2 px-2 py-1 rounded hover:bg-[#e0d87a]">
-      <i class="fas fa-cogs w-5"></i> НСИ и администрирование
-    </a>
-    <a href="#" class="flex items-center gap-2 px-2 py-1 rounded hover:bg-[#e0d87a]">
-      <i class="fas fa-network-wired w-5"></i> Корпоративная шина данных
-    </a>
-    <a href="#" class="flex items-center gap-2 px-2 py-1 rounded hover:bg-[#e0d87a]">
-      <i class="fas fa-file-alt w-5"></i> СУПЦП Администрирование
-    </a>
-    <a href="#" class="flex items-center gap-2 px-2 py-1 rounded hover:bg-[#e0d87a]">
-      <i class="fas fa-file-import w-5"></i> СУПЦП Интеграция
-    </a>
-    <a href="#" class="flex items-center gap-2 px-2 py-1 rounded hover:bg-[#e0d87a]">
-      <i class="fas fa-tools w-5"></i> Материально-техническое обеспечение
-    </a>
-    <a href="#" class="flex items-center gap-2 px-2 py-1 rounded hover:bg-[#e0d87a]">
-      <i class="fas fa-code w-5"></i> СУПЦП Разработка 1С
-    </a>
-    <a href="#" class="flex items-center gap-2 px-2 py-1 rounded hover:bg-[#e0d87a]">
-      <i class="fas fa-file w-5"></i> СУПЦП новые объекты СТАР
-    </a>
-    <button class="flex items-center justify-center w-full mt-2 py-1 rounded bg-[#e0d87a] hover:bg-[#d0c060] text-[12px] font-semibold text-[#4d4200]">
-      <i class="fas fa-chevron-down"></i>
-    </button>
-  </nav>
+    <!-- Open Graph / Facebook / LinkedIn -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="ShadcnStore" />
+    <meta property="og:title" content="Shadcn Dashboard & Landing Template" />
+    <meta property="og:description" content="Open-source Shadcn UI dashboard + landing page template built with React (Vite) and Next.js. Clean, modern, and production-ready." />
+    <meta property="og:url" content="https://shadcnstore.com/templates/dashboard/shadcn-dashboard-landing-template/" />
+    <!-- Use an absolute URL so scrapers can fetch the image reliably -->
+    <meta property="og:image" content="https://shadcnstore.com/templates/dashboard/shadcn-dashboard-landing-template/og-image.png" />
+    <meta property="og:image:alt" content="Screenshot of the Shadcn Dashboard & Landing Template" />
+    <!-- Optional: dimensions (leave generic if not exact) -->
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
 
-  <main class="flex-1 flex flex-col overflow-hidden">
-
-    <!-- Tabs -->
-    <div class="flex items-center gap-1 bg-[#f0eaa0] border-b border-[#d0c060] px-2 select-none overflow-x-auto scrollbar-thin">
-      <button class="flex items-center gap-1 py-1 px-2 border border-[#d0c060] rounded bg-[#f0eaa0] text-[13px] font-normal text-[#000] whitespace-nowrap">
-        Заявки на СТО
-        <i class="fas fa-times text-[#666] cursor-pointer"></i>
-      </button>
-      <button class="flex items-center gap-1 py-1 px-2 border border-[#d0c060] rounded bg-[#f0eaa0] text-[13px] font-normal text-[#000] whitespace-nowrap">
-        Заявка на СТО (создание) *
-        <i class="fas fa-times text-[#666] cursor-pointer"></i>
-      </button>
-      <button class="flex items-center gap-1 py-1 px-2 border border-[#d0c060] rounded bg-[#f0eaa0] text-[13px] font-normal text-[#000] whitespace-nowrap">
-        Структура предприятия
-        <i class="fas fa-times text-[#666] cursor-pointer"></i>
-      </button>
-      <button class="flex items-center gap-1 py-1 px-2 border border-[#d0c060] rounded bg-[#f0eaa0] text-[13px] font-normal text-[#000] whitespace-nowrap">
-        Заказы на перемещение товаров
-        <i class="fas fa-times text-[#666] cursor-pointer"></i>
-      </button>
-      <button class="flex items-center gap-1 py-1 px-2 border border-[#d0c060] rounded bg-[#f0eaa0] text-[13px] font-normal text-[#000] whitespace-nowrap">
-        Ресурсные спецификации
-        <i class="fas fa-times text-[#666] cursor-pointer"></i>
-      </button>
-      <button class="flex items-center gap-1 py-1 px-2 border border-[#d0c060] rounded bg-[#f0eaa0] text-[13px] font-normal text-[#000] whitespace-nowrap border-b-2 border-[#0a7a0a]">
-        <i class="fas fa-star text-yellow-400"></i>
-        <span class="font-bold">Формирование перемещений по заказам на производство</span>
-        <i class="fas fa-times text-[#666] cursor-pointer"></i>
-      </button>
-    </div>
-
-    <!-- Content -->
-    <section class="flex flex-col flex-1 overflow-hidden p-2 text-[12px] text-[#000]">
-
-      <div class="mb-1 select-text">
-        <span class="font-semibold">Шаг 2 из 3.</span> Определение состава и объема перемещений
-      </div>
-
-      <div class="flex items-center gap-1 mb-2">
-        <button title="Заполнить 'К перемещению'" class="flex items-center gap-1 border border-[#999] rounded bg-[#f9f9f9] px-2 py-1 hover:bg-[#e0e0e0]">
-          <input type="checkbox" id="fillCheckbox" class="w-4 h-4" />
-          <label for="fillCheckbox" class="select-none cursor-pointer text-[12px]">Заполнить "К перемещению"</label>
-        </button>
-        <button title="Только отмеченные" class="flex items-center gap-1 border border-[#999] rounded bg-[#f9f9f9] px-2 py-1 hover:bg-[#e0e0e0]">
-          <input type="checkbox" id="onlyChecked" class="w-4 h-4" />
-          <label for="onlyChecked" class="select-none cursor-pointer text-[12px]">Только отмеченные</label>
-        </button>
-      </div>
-
-      <!-- Table container -->
-      <div class="flex-1 overflow-auto border border-[#ccc] rounded bg-white text-[12px] text-[#000]">
-        <table class="w-full border-collapse table-fixed min-w-[1200px]">
-          <thead class="bg-[#f9f0b0] border-b border-[#d0c060]">
-            <tr>
-              <th class="border-r border-[#d0c060] px-2 py-1 w-[120px] text-left align-top leading-tight">
-                Направление<br />деятельности
-              </th>
-              <th class="border-r border-[#d0c060] px-2 py-1 w-[400px] text-left align-top leading-tight">
-                Номенклатура, Код, Характеристика
-              </th>
-              <th class="border-r border-[#d0c060] px-2 py-1 w-[40px] text-center align-top leading-tight">
-                Ед. изм.
-              </th>
-              <th class="border-r border-[#d0c060] px-2 py-1 w-[160px] text-left align-top leading-tight">
-                Обозначение<br />Конструкторское наименование
-              </th>
-              <th class="border-r border-[#d0c060] px-2 py-1 w-[100px] text-center align-top leading-tight">
-                Дата начала
-              </th>
-              <th class="border-r border-[#d0c060] px-2 py-1 w-[100px] text-center align-top leading-tight">
-                Дата окончания
-              </th>
-              <th class="border-r border-[#d0c060] px-2 py-1 w-[200px] text-left align-top leading-tight">
-                ДСЕ<br />Характеристика ДСЕ
-              </th>
-              <th class="px-2 py-1 w-[80px] text-left align-top leading-tight">
-                Обеспечено ДС
-              </th>
-            </tr>
-          </thead>
-          <tbody class="text-[12px]">
-            <tr class="bg-[#fff7cc]">
-              <td class="border-r border-[#ddd] px-2 py-1 align-top leading-tight break-words max-w-[120px]">0151/8</td>
-              <td class="border-r border-[#ddd] px-2 py-1 align-top leading-tight break-words max-w-[400px]">
-                Муллитокремнеземистый войлок МКРВ-200 20x700x5000 ГОСТ 23619-79, 00-02010290
-              </td>
-              <td class="border-r border-[#ddd] px-2 py-1 text-center align-top leading-tight">г</td>
-              <td class="border-r border-[#ddd] px-2 py-1 align-top leading-tight break-words max-w-[160px]">
-                МКРВ-200<br />Муллитокремнеземистый войлок
-              </td>
-              <td class="border-r border-[#ddd] px-2 py-1 text-center align-top leading-tight">08.12.2025</td>
-              <td class="border-r border-[#ddd] px-2 py-1 text-center align-top leading-tight">09.01.2026</td>
-              <td class="border-r border-[#ddd] px-2 py-1 align-top leading-tight bg-[#fff7cc]"></td>
-              <td class="px-2 py-1 align-top leading-tight"></td>
-            </tr>
-            <tr>
-              <td class="border-r border-[#ddd] px-2 py-1 align-top leading-tight break-words max-w-[120px]">0151/8</td>
-              <td class="border-r border-[#ddd] px-2 py-1 align-top leading-tight break-words max-w-[400px]">
-                Этилсиликат-40 ГОСТ 26371-84, 00-01246253
-              </td>
-              <td class="border-r border-[#ddd] px-2 py-1 text-center align-top leading-tight">г</td>
-              <td class="border-r border-[#ddd] px-2 py-1 align-top leading-tight break-words max-w-[160px]">
-                Этилсиликат-40
-              </td>
-              <td class="border-r border-[#ddd] px-2 py-1 text-center align-top leading-tight">08.12.2025</td>
-              <td class="border-r border-[#ddd] px-2 py-1 text-center align-top leading-tight">09.01.2026</td>
-              <td class="border-r border-[#ddd] px-2 py-1 align-top leading-tight"></td>
-              <td class="px-2 py-1 align-top leading-tight"></td>
-            </tr>
-            <tr>
-              <td class="border-r border-[#ddd] px-2 py-1 align-top leading-tight break-words max-w-[120px]">0151/8</td>
-              <td class="border-r border-[#ddd] px-2 py-1 align-top leading-tight break-words max-w-[400px]">
-                Аргон газообразный высокой чистоты ТУ 6-21-12-94, 00-01901579
-              </td>
-              <td class="border-r border-[#ddd] px-2 py-1 text-center align-top leading-tight">л; дм^3</td>
-              <td class="border-r border-[#ddd] px-2 py-1 align-top leading-tight break-words max-w-[160px]">
-                Аргон
-              </td>
-              <td class="border-r border-[#ddd] px-2 py-1 text-center align-top leading-tight">20.01.2026</td>
-              <td class="border-r border-[#ddd] px-2 py-1 text-center align-top leading-tight">21.01.2026</td>
-              <td class="border-r border-[#ddd] px-2 py-1 align-top leading-tight"></td>
-              <td class="px-2 py-1 align-top leading-tight"></td>
-            </tr>
-            <tr>
-              <td class="border-r border-[#ddd] px-2 py-1 align-top leading-tight break-words max-w-[120px]">0151/8</td>
-              <td class="border-r border-[#ddd] px-2 py-1 align-top leading-tight break-words max-w-[400px]">
-                Жидкость "К" красная проникающая для цветной дефектоскопии ТУ 2332-065-05015207-99, ...
-              </td>
-              <td class="border-r border-[#ddd] px-2 py-1 text-center align-top leading-tight">г</td>
-              <td class="border-r border-[#ddd] px-2 py-1 align-top leading-tight break-words max-w-[160px]">
-                "К"<br />Жидкость
-              </td>
-              <td class="border-r border-[#ddd] px-2 py-1 text-center align-top leading-tight">16.12.2025</td>
-              <td class="border-r border-[#ddd] px-2 py-1 text-center align-top leading-tight">09.01.2026</td>
-              <td class="border-r border-[#ddd] px-2 py-1 align-top leading-tight"></td>
-              <td class="px-2 py-1 align-top leading-tight"></td>
-            </tr>
-            <tr>
-              <td class="border-r border-[#ddd] px-2 py-1 align-top leading-tight break-words max-w-[120px]">0151/8</td>
-              <td class="border-r border-[#ddd] px-2 py-1 align-top leading-tight break-words max-w-[400px]">
-                Пенетрант постэмульгируемый люминисцентный Magnaflux Zyglo ZL-37 , 00-01807775
-              </td>
-              <td class="border-r border-[#ddd] px-2 py-1 text-center align-top leading-tight">см^3; мл</td>
-              <td class="border-r border-[#ddd] px-2 py-1 align-top leading-tight break-words max-w-[160px]">
-                Zyglo ZL-37<br />Пенетрант постэмульгируемый
-              </td>
-              <td class="border-r border-[#ddd] px-2 py-1 text-center align-top leading-tight">08.12.2025</td>
-              <td class="border-r border-[#ddd] px-2 py-1 text-center align-top leading-tight">14.01.2026</td>
-              <td class="border-r border-[#ddd] px-2 py-1 align-top leading-tight"></td>
-              <td class="px-2 py-1 align-top leading-tight"></td>
-            </tr>
-            <tr>
-              <td class="border-r border-[#ddd] px-2 py-1 align-top leading-tight break-words max-w-[120px]">0151/8</td>
-              <td class="border-r border-[#ddd] px-2 py-1 align-top leading-tight break-words max-w-[400px]">
-                Материал шлифовальный 25А F70 ГОСТ 28818-90, 00-01217123
-              </td>
-              <td class="border-r border-[#ddd] px-2 py-1 text-center align-top leading-tight">г</td>
-              <td class="border-r border-[#ddd] px-2 py-1 align-top leading-tight break-words max-w-[160px]">
-                25А<br />Материал шлифовальный
-              </td>
-              <td class="border-r border-[#ddd] px-2 py-1 text-center align-top leading-tight">08.12.2025</td>
-              <td class="border-r border-[#ddd] px-2 py-1 text-center align-top leading-tight">09.01.2026</td>
-              <td class="border-r border-[#ddd] px-2 py-1 align-top leading-tight"></td>
-              <td class="px-2 py-1 align-top leading-tight"></td>
-            </tr>
-            <tr>
-              <td class="border-r border-[#ddd] px-2 py-1 align-top leading-tight break-words max-w-[120px]">0151/8</td>
-              <td class="border-r border-[#ddd] px-2 py-1 align-top leading-tight break-words max-w-[400px]">
-                Материал для шлифования из карбида кремния 64С F120 ГОСТ 26327-84, 00-01375005
-              </td>
-              <td class="border-r border-[#ddd] px-2 py-1 text-center align-top leading-tight">г</td>
-              <td class="border-r border-[#ddd] px-2 py-1 align-top leading-tight break-words max-w-[160px]">
-                64С<br />Материал для шлифования
-              </td>
-              <td class="border-r border-[#ddd] px-2 py-1 text-center align-top leading-tight">31.12.2025</td>
-              <td class="border-r border-[#ddd] px-2 py-1 text-center align-top leading-tight">31.12.2025</td>
-              <td class="border-r border-[#ddd] px-2 py-1 align-top leading-tight"></td>
-              <td class="px-2 py-1 align-top leading-tight"></td>
-            </tr>
-            <tr>
-              <td class="border-r border-[#ddd] px-2 py-1 align-top leading-tight break-words max-w-[120px]">0151/8</td>
-              <td class="border-r border-[#ddd] px-2 py-1 align-top leading-tight break-words max-w-[400px]">
-                Воск синтетический модельный Ultracast RG20 ТУ 20.41.42-18-03406062-2021, 00-01609122
-              </td>
-              <td class="border-r border-[#ddd] px-2 py-1 text-center align-top leading-tight">г</td>
-              <td class="border-r border-[#ddd] px-2 py-1 align-top leading-tight break-words max-w-[160px]">
-                Ultracast RG20<br />Воск синтетический модельный
-              </td>
-              <td class="border-r border-[#ddd] px-2 py-1 text-center align-top leading-tight">08.12.2025</td>
-              <td class="border-r border-[#ddd] px-2 py-1 text-center align-top leading-tight">09.01.2026</td>
-              <td class="border-r border-[#ddd] px-2 py-1 align-top leading-tight"></td>
-              <td class="px-2 py-1 align-top leading-tight"></td>
-            </tr>
-            <tr>
-              <td class="border-r border-[#ddd] px-2 py-1 align-top leading-tight break-words max-w-[120px]">0151/8</td>
-              <td class="border-r border-[#ddd] px-2 py-1 align-top leading-tight break-words max-w-[400px]">
-                Круг 14 ГОСТ 2590-2006 / 10X11H23T3MP ТУ 14-1-312-72, 00-01203136
-              </td>
-              <td class="border-r border-[#ddd] px-2 py-1 text-center align-top leading-tight">г</td>
-              <td class="border-r border-[#ddd] px-2 py-1 align-top leading-tight break-words max-w-[160px]">
-                10X11H23T3MP<br />Круг
-              </td>
-              <td class="border-r border-[#ddd] px-2 py-1 text-center align-top leading-tight">13.01.2026</td>
-              <td class="border-r border-[#ddd] px-2 py-1 text-center align-top leading-tight">13.01.2026</td>
-              <td class="border-r border-[#ddd] px-2 py-1 align-top leading-tight"></td>
-              <td class="px-2 py-1 align-top leading-tight">4</td>
-            </tr>
-            <tr>
-              <td class="border-r border-[#ddd] px-2 py-1 align-top leading-tight break-words max-w-[120px]">0151/8</td>
-              <td class="border-r border-[#ddd] px-2 py-1 align-top leading-tight break-words max-w-[400px]">
-                Пластификатор ДБФ высший сорт ГОСТ 8728-88, 00-01234567
-              </td>
-              <td class="border-r border-[#ddd] px-2 py-1 text-center align-top leading-tight">г</td>
-              <td class="border-r border-[#ddd] px-2 py-1 align-top leading-tight break-words max-w-[160px]">
-                ДБФ
-              </td>
-              <td class="border-r border-[#ddd] px-2 py-1 text-center align-top leading-tight">14.01.2026</td>
-              <td class="border-r border-[#ddd] px-2 py-1 text-center align-top leading-tight">14.01.2026</td>
-              <td class="border-r border-[#ddd] px-2 py-1 align-top leading-tight"></td>
-              <td class="px-2 py-1 align-top leading-tight"></td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-
-      <!-- Bottom buttons -->
-      <div class="flex justify-between mt-2">
-        <button class="border border-[#999] rounded px-3 py-1 text-[12px] bg-[#f9f9f9] hover:bg-[#e0e0e0] select-none">
-          &lt; Назад
-        </button>
-        <div class="flex gap-2">
-          <button class="bg-[#f9d800] border border-[#b3a300] rounded px-4 py-1 text-[12px] font-semibold text-[#4d4200] hover:bg-[#e0c800] select-none">
-            Далее &gt;
-          </button>
-          <button class="border border-[#999] rounded px-3 py-1 text-[12px] bg-[#f9f9f9] hover:bg-[#e0e0e0] select-none">
-            Закрыть
-          </button>
-        </div>
-      </div>
-
-    </section>
-
-  </main>
-</div>
-
-</body>
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Shadcn Dashboard & Landing Template" />
+    <meta name="twitter:description" content="Open-source Shadcn UI dashboard + landing page template built with React (Vite) and Next.js. Clean, modern, and production-ready." />
+    <meta name="twitter:image" content="https://shadcnstore.com/templates/dashboard/shadcn-dashboard-landing-template/og-image.png" />
+    <meta name="twitter:image:alt" content="Screenshot of the Shadcn Dashboard & Landing Template" />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap" rel="stylesheet">
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
 </html>
