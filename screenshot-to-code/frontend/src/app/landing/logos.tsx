@@ -14,8 +14,6 @@ import {
   SiStripe,
 } from "react-icons/si";
 
-import { RRLockupDarkIcon } from "./svgs/rr-lockup-dark-icon";
-import { RRLockupLightIcon } from "./svgs/rr-lockup-light-icon";
 import { Marquee } from "@/components/magicui/marquee";
 
 export function Logos() {
@@ -30,15 +28,6 @@ export function Logos() {
         {/* Marquee with fading edges */}
         <Marquee className="max-w-full">
           {[
-            {
-              icon: (
-                <>
-                  <RRLockupDarkIcon className="hidden h-24 w-auto dark:block" />
-                  <RRLockupLightIcon className="block h-24 w-auto dark:hidden" />
-                </>
-              ),
-              key: "react-router",
-            },
             {
               icon: <SiTypescript className="size-16" title="TypeScript" />,
               key: "typescript",

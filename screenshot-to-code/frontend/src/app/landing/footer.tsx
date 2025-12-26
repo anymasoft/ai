@@ -3,7 +3,6 @@ import type { ComponentProps } from "react";
 import { useTranslation } from "react-i18next";
 import { FaGithub, FaLinkedin, FaXTwitter } from "react-icons/fa6";
 
-import { ReactsquadLogoIcon } from "./svgs/reactsquad-logo-icon";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
@@ -62,13 +61,6 @@ export function Footer({ className, ...props }: ComponentProps<"footer">) {
         <div className="flex items-center gap-2">
           <span className="flex items-center gap-2">
             {t("madeWithLove")}
-            <a
-              aria-label={t("reactsquad")}
-              className="h-6 w-auto text-foreground"
-              href="https://reactsquad.io"
-            >
-              <ReactsquadLogoIcon />
-            </a>
           </span>
         </div>
       </div>
