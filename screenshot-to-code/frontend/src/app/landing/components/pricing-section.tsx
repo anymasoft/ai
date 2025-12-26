@@ -105,9 +105,9 @@ export function PricingSection() {
     features: tariff.key === 'free'
       ? ['HTML + Tailwind', 'HTML + CSS', 'Email поддержка']
       : tariff.key === 'basic'
-      ? ['Все форматы (HTML, React, Vue)', 'API доступ', 'Приоритетная поддержка', `${tariff.credits} генераций`]
-      : ['Все форматы + приоритет', 'Полный API доступ', 'Приоритетная поддержка (24ч)', `${tariff.credits} генераций`],
-    cta: 'Get Started',
+      ? ['Все форматы (HTML, React, Vue)', 'Приоритетная поддержка', `${tariff.credits} генераций`]
+      : ['Все форматы + приоритет', 'Приоритетная поддержка (24ч)', `${tariff.credits} генераций`],
+    cta: tariff.key === 'free' ? 'Начать' : 'Купить пакет',
     popular: tariff.key === 'basic'
   }))
 
@@ -188,15 +188,12 @@ export function PricingSection() {
                   <div>
                     <div className="text-4xl font-bold mb-1">
                       {plan.name === 'Lifetime' ? (
-                        `$${plan.monthlyPrice}`
+                        `₽${plan.monthlyPrice}`
                       ) : plan.name === 'Free' ? (
-                        '$0'
+                        '₽0'
                       ) : (
-                        `$${isYearly ? plan.yearlyPrice : plan.monthlyPrice}`
+                        `₽${isYearly ? plan.yearlyPrice : plan.monthlyPrice}`
                       )}
-                    </div>
-                    <div className="text-muted-foreground text-sm">
-                      {plan.name === 'Lifetime' ? 'One-time payment' : 'Per month'}
                     </div>
                   </div>
 
@@ -242,7 +239,7 @@ export function PricingSection() {
         {/* Enterprise Note */}
         <div className="mt-16 text-center">
           <p className="text-muted-foreground">
-            Наши контакты: support@beem.ink
+            Наши контакты: <a href="mailto:support@beem.ink" className="hover:text-foreground transition-colors">support@beem.ink</a>
           </p>
         </div>
       </div>
