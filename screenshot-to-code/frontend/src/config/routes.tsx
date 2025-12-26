@@ -10,6 +10,7 @@ const History = lazy(() => import('@/app/history/page'))
 // const ApiPage = lazy(() => import('@/app/api/page')) // Скрыто временно
 // const DocsPage = lazy(() => import('@/app/docs/page')) // Скрыто временно
 const FeedbackPage = lazy(() => import('@/app/feedback'))
+const LandingPage = lazy(() => import('@/app/landing/landing-page'))
 
 const AdminMessages = lazy(() => import('@/app/admin/messages'))
 const AdminMessageDetail = lazy(() => import('@/app/admin/messages/MessageDetail'))
@@ -35,7 +36,7 @@ export const routes: RouteConfig[] = [
     children: [
       {
         path: "/",
-        element: <Navigate to="/playground" replace />
+        element: <LandingPage />
       },
       // {
       //   path: "/dashboard",
