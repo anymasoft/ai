@@ -19,6 +19,7 @@ export interface Settings {
   // Only relevant for hosted version
   isTermOfServiceAccepted: boolean
   anthropicApiKey: string | null // Added property for anthropic API key
+  shouldGenerateImages?: boolean // Whether to generate images for full mode
 }
 
 export const AppState = {
