@@ -131,7 +131,7 @@ export function LandingNavbar() {
             </a>
           </Button>
           <Button variant="outline" asChild className="cursor-pointer">
-            <a href={getAppUrl("/app")} target="_blank" rel="noopener noreferrer">
+            <a href={getAppUrl("/playground")} target="_blank" rel="noopener noreferrer">
               <LayoutDashboard className="h-4 w-4 mr-2" />
               Dashboard
             </a>
@@ -248,7 +248,7 @@ export function LandingNavbar() {
                 {/* Primary Actions */}
                 <div className="space-y-3">
                   <Button variant="outline" size="lg" asChild className="w-full cursor-pointer">
-                    <a href={getAppUrl("/app")}>
+                    <a href={getAppUrl("/playground")}>
                       <LayoutDashboard className="size-4" />
                       Dashboard
                     </a>
