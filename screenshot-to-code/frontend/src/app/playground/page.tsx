@@ -59,6 +59,10 @@ export default function PlaygroundPage() {
   const [selectedFormat, setSelectedFormat] = useState<"html_tailwind" | "html_css" | "react_tailwind" | "vue_tailwind">(
     "html_tailwind"
   )
+  const [creationMode, setCreationMode] = useState<"fast" | "full">("full")
+
+  // Derived: credits to deduct based on mode
+  const creditsToDeduct = creationMode === "fast" ? 1 : 3
 
   // Load credits balance
   useEffect(() => {
@@ -124,7 +128,7 @@ export default function PlaygroundPage() {
 
   const handleGenerate = async () => {
     // Check credits
-    if (credits === null || credits === 0) {
+    if (credits === null || credits < creditsToDeduct) {
       setShowPaywall(true)
       return
     }
@@ -140,16 +144,16 @@ export default function PlaygroundPage() {
     setChunks([])
     setError(null)
 
-    // DEDUCT CREDITS IMMEDIATELY (atomically, before generation)
+    // DEDUCT CREDITS IMMEDIATELY (atomically, before creation)
     try {
-      console.log("[CREDITS] Deducting 1 credit before generation. Current:", credits)
+      console.log(`[CREDITS] Deducting ${creditsToDeduct} credit(s) before creation. Current: ${credits}`)
       const deductResponse = await fetchJSON<{
         success: boolean
         remaining_credits: number
         message: string
       }>("/api/billing/deduct-credits", {
         method: "POST",
-        body: JSON.stringify({ format: selectedFormat }),
+        body: JSON.stringify({ amount: creditsToDeduct, format: selectedFormat }),
       })
 
       if (!deductResponse.success) {
@@ -159,10 +163,11 @@ export default function PlaygroundPage() {
       const newCredits = deductResponse.remaining_credits
       setCredits(newCredits)
       console.log("[CREDITS] Successfully deducted. Remaining:", newCredits)
-      toast.success(`Списано 1 кредит. Осталось: ${newCredits}`)
+      const modeLabel = creationMode === "fast" ? "(быстро)" : "(с предпросмотром)"
+      toast.success(`Списано ${creditsToDeduct} кредит(ов) ${modeLabel}. Осталось: ${newCredits}`)
 
       // Show paywall if no more credits
-      if (newCredits === 0) {
+      if (newCredits < creditsToDeduct) {
         setTimeout(() => {
           setShowPaywall(true)
         }, 1000)
@@ -199,6 +204,8 @@ export default function PlaygroundPage() {
       codeGenerationModel: CodeGenerationModel.CLAUDE_4_5_SONNET_2025_09_29,
       isTermOfServiceAccepted: true,
       anthropicApiKey: null,
+      // Mode setting
+      shouldGenerateImages: creationMode === "full",
     }
 
     const callbacks: CodeGenerationCallbacks = {
@@ -477,18 +484,15 @@ export default function PlaygroundPage() {
 
             {/* Instructions */}
             <div className="space-y-2">
-              <label className="text-sm font-medium">Инструкции для генерации</label>
+              <label className="text-sm font-medium">Инструкции для создания</label>
               <Textarea
-                placeholder="Например, сосредоточьтесь на точности макета, сохраняйте классы Tailwind, избегайте встроенных стилей…"
+                placeholder="Например:&#10;— сохранить структуру и пропорции&#10;— использовать Tailwind-классы&#10;— избегать inline-стилей&#10;— упростить секции с изображениями"
                 value={instructions}
                 onChange={(e) => setInstructions(e.target.value)}
                 disabled={isStreaming}
                 rows={4}
                 className="placeholder:text-muted-foreground/60"
               />
-              <p className="text-xs text-muted-foreground/80">
-                Опционально: опишите, что должно быть изменено или выделено в сгенерированном коде.
-              </p>
             </div>
 
             {/* Format Selector */}
@@ -512,14 +516,11 @@ export default function PlaygroundPage() {
                   <SelectItem value="react_tailwind">
                     <div className="flex items-center gap-2">
                       React + Tailwind
-                      <Badge variant="secondary" className="ml-1">Pro</Badge>
                     </div>
                   </SelectItem>
                   <SelectItem value="vue_tailwind">
                     <div className="flex items-center gap-2">
                       Vue + Tailwind
-                      <Badge variant="secondary" className="ml-1">Pro</Badge>
-                      <Badge variant="outline" className="ml-1 text-xs">Бета</Badge>
                     </div>
                   </SelectItem>
                 </SelectContent>
@@ -533,16 +534,79 @@ export default function PlaygroundPage() {
               </div>
             )}
 
+            {/* Creation Mode Selection */}
+            <div className="space-y-3 border-t pt-4">
+              <label className="text-sm font-medium">Режим создания сайта</label>
+
+              {/* Fast Mode */}
+              <div
+                onClick={() => !isStreaming && setCreationMode("fast")}
+                className={`p-3 rounded border-2 cursor-pointer transition ${
+                  creationMode === "fast"
+                    ? "border-blue-500 bg-blue-50"
+                    : "border-muted hover:border-muted-foreground/30 bg-muted/30"
+                } ${isStreaming ? "opacity-50 cursor-not-allowed" : ""}`}
+              >
+                <div className="flex items-start gap-3">
+                  <div className="mt-1">
+                    <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${
+                      creationMode === "fast"
+                        ? "border-blue-500 bg-blue-500"
+                        : "border-muted-foreground/40"
+                    }`}>
+                      {creationMode === "fast" && (
+                        <div className="w-2 h-2 bg-white rounded-full" />
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex-1">
+                    <p className="font-medium text-sm">Быстро (для разработки)</p>
+                    <p className="text-xs text-muted-foreground">только код, без изображений</p>
+                    <p className="text-xs font-semibold text-blue-600 mt-1">1 кредит</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Full Mode */}
+              <div
+                onClick={() => !isStreaming && setCreationMode("full")}
+                className={`p-3 rounded border-2 cursor-pointer transition ${
+                  creationMode === "full"
+                    ? "border-blue-500 bg-blue-50"
+                    : "border-muted hover:border-muted-foreground/30 bg-muted/30"
+                } ${isStreaming ? "opacity-50 cursor-not-allowed" : ""}`}
+              >
+                <div className="flex items-start gap-3">
+                  <div className="mt-1">
+                    <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${
+                      creationMode === "full"
+                        ? "border-blue-500 bg-blue-500"
+                        : "border-muted-foreground/40"
+                    }`}>
+                      {creationMode === "full" && (
+                        <div className="w-2 h-2 bg-white rounded-full" />
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex-1">
+                    <p className="font-medium text-sm">Полный предпросмотр</p>
+                    <p className="text-xs text-muted-foreground">код + изображения через AI</p>
+                    <p className="text-xs font-semibold text-blue-600 mt-1">3 кредита</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
             {/* Generate/Cancel Button */}
             <div className="flex gap-2">
               <Button
                 onClick={isStreaming ? handleCancel : handleGenerate}
                 variant={isStreaming ? "destructive" : "default"}
                 className="gap-2"
-                disabled={!isStreaming && (credits === null || credits === 0)}
+                disabled={!isStreaming && (credits === null || credits < creditsToDeduct)}
               >
                 {isStreaming && <Loader2 size={16} className="animate-spin" />}
-                {isStreaming ? "Отменить" : (credits === 0 || credits === null) ? "Кредиты закончились" : "Создать сайт"}
+                {isStreaming ? "Отменить" : (credits === null || credits < creditsToDeduct) ? "Недостаточно кредитов" : "Создать сайт"}
               </Button>
             </div>
           </div>
@@ -664,17 +728,12 @@ export default function PlaygroundPage() {
       <Dialog open={showPaywall} onOpenChange={setShowPaywall}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>У вас закончились генерации</DialogTitle>
+            <DialogTitle>Кредиты закончились</DialogTitle>
             <DialogDescription>
-              Для продолжения работы необходимо купить пакет генераций.
+              Чтобы продолжить создание сайта, купите кредиты.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-6">
-            <div className="space-y-2">
-              <p className="text-sm text-muted-foreground">
-                Каждая генерация требует 1 кредит. Выберите пакет, который вам нужен.
-              </p>
-            </div>
             <div className="space-y-3">
               <button
                 onClick={() => {
@@ -683,7 +742,7 @@ export default function PlaygroundPage() {
                 }}
                 className="w-full px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition"
               >
-                Перейти к покупке
+                Купить кредиты
               </button>
               <button
                 onClick={() => setShowPaywall(false)}
