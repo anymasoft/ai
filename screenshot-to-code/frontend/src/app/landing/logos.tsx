@@ -1,5 +1,4 @@
 import { useTranslation } from "react-i18next";
-import { FaStripe } from "react-icons/fa6";
 import {
   SiEslint,
   SiMockserviceworker,
@@ -12,6 +11,7 @@ import {
   SiTestinglibrary,
   SiTypescript,
   SiVitest,
+  SiStripe,
 } from "react-icons/si";
 
 import { PlaywrightIcon } from "./svgs/playwright-icon";
@@ -49,7 +49,7 @@ export function Logos() {
               key: "supabase",
             },
             {
-              icon: <FaStripe className="size-16" title="Stripe" />,
+              icon: <SiStripe className="size-16" title="Stripe" />,
               key: "stripe",
             },
             {
