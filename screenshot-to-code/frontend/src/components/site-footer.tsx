@@ -1,5 +1,4 @@
 import { Heart } from "lucide-react"
-import { Link } from "react-router-dom"
 
 export function SiteFooter() {
   return (
@@ -10,18 +9,10 @@ export function SiteFooter() {
             <span>Made with</span>
             <Heart className="h-4 w-4 fill-red-500 text-red-500" />
             <span>by</span>
-            <Link
-              to="https://shadcnstore.com"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="font-medium text-foreground hover:text-primary transition-colors"
-            >
-              ShadcnStore Team
-            </Link>
+            <span className="font-medium text-foreground">
+              Screen2Code
+            </span>
           </div>
-          <p className="text-xs text-muted-foreground">
-            Building beautiful, accessible blocks, templates and dashboards for modern web applications.
-          </p>
         </div>
       </div>
     </footer>
