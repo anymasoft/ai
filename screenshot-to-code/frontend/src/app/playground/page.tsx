@@ -60,7 +60,6 @@ export default function PlaygroundPage() {
     "html_tailwind"
   )
   const [creationMode, setCreationMode] = useState<"fast" | "full">("full")
-  const [showSuccessNotification, setShowSuccessNotification] = useState(false)
 
   // Derived: credits to deduct based on mode
   const creditsToDeduct = creationMode === "fast" ? 1 : 3
@@ -104,15 +103,6 @@ export default function PlaygroundPage() {
   useEffect(() => {
     chunksRef.current = chunks
   }, [chunks])
-
-  // Auto-hide success notification after 4 seconds
-  useEffect(() => {
-    if (!showSuccessNotification) return
-    const timer = setTimeout(() => {
-      setShowSuccessNotification(false)
-    }, 4000)
-    return () => clearTimeout(timer)
-  }, [showSuccessNotification])
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -266,9 +256,6 @@ export default function PlaygroundPage() {
             format: selectedFormat,
           })
           console.log("History item added successfully")
-
-          // Show success notification
-          setShowSuccessNotification(true)
         } else {
           console.warn("No chunks to save - chunksRef.current is empty")
         }
@@ -419,24 +406,95 @@ export default function PlaygroundPage() {
 
   return (
     <>
-      <div className="px-4 lg:px-6 pb-4">
-        <div className="flex flex-col gap-2 pt-4">
+      <div className="px-4 lg:px-6">
+        <div className="flex flex-col gap-2">
           <h1 className="text-2xl font-bold tracking-tight">Сайт из скриншота</h1>
           <p className="text-muted-foreground">Загрузите скриншот или вставьте URL — получите готовый код</p>
         </div>
       </div>
+      <div className="@container/main px-4 lg:px-6 space-y-6">
+        {/* Input Form Card */}
+        <Card className="p-6">
+          <div className="space-y-4">
+            <h3 className="font-semibold">Создать сайт</h3>
 
-      {/* Main Playground Container */}
-      <div className="@container/main px-4 lg:px-6 pb-6">
-        <div className="grid grid-cols-1 lg:grid-cols-[340px_1fr] gap-6">
-          {/* Left Column - Controls */}
-          <div>
-            <Card className="p-6 flex flex-col">
-              <div className="space-y-4">
-                <h3 className="font-semibold">Создать сайт</h3>
+            {/* Image Upload */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Загрузить изображение</label>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/png,image/jpeg,image/webp"
+                onChange={handleImageChange}
+                className="hidden"
+              />
+              <Button
+                onClick={() => !isStreaming && !url && fileInputRef.current?.click()}
+                variant="outline"
+                disabled={isStreaming || !!url}
+                className="w-full justify-start text-muted-foreground"
+              >
+                {imageFile ? imageFile.name : "Выберите файл изображения"}
+              </Button>
+              {url && (
+                <p className="text-xs text-muted-foreground/70">URL используется в качестве источника</p>
+              )}
+              {imagePreview && (
+                <div className="mt-2 relative inline-block">
+                  <img src={imagePreview} alt="Preview" className="max-h-32 rounded border" />
+                  <button
+                    onClick={handleRemoveImage}
+                    disabled={isStreaming}
+                    className="absolute top-1 right-1 bg-black/50 hover:bg-black/70 text-white rounded-full p-1 transition-colors disabled:opacity-50"
+                    aria-label="Remove image"
+                  >
+                    <X size={16} />
+                  </button>
+                </div>
+              )}
+            </div>
 
-                {/* CTA Block - Always Visible at Top */}
-                <div className="space-y-4 flex-shrink-0">
+            {/* URL Input */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Или введите URL</label>
+              <div className="flex gap-2">
+                <Input
+                  type="url"
+                  placeholder="https://example.com"
+                  value={url}
+                  onChange={(e) => setUrl(e.target.value)}
+                  disabled={isStreaming || !!imageFile}
+                  className="placeholder:text-muted-foreground/60"
+                />
+                {url && (
+                  <Button
+                    onClick={handleClearUrl}
+                    variant="outline"
+                    size="sm"
+                    disabled={isStreaming}
+                  >
+                    Очистить
+                  </Button>
+                )}
+              </div>
+              {imageFile && (
+                <p className="text-xs text-muted-foreground/70">Изображение используется в качестве источника</p>
+              )}
+            </div>
+
+            {/* Instructions */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Инструкции для создания</label>
+              <Textarea
+                placeholder="Например:&#10;— сохранить структуру и пропорции&#10;— использовать Tailwind-классы&#10;— избегать inline-стилей&#10;— упростить секции с изображениями"
+                value={instructions}
+                onChange={(e) => setInstructions(e.target.value)}
+                disabled={isStreaming}
+                rows={4}
+                className="placeholder:text-muted-foreground/60"
+              />
+            </div>
+
             {/* Format Selector */}
             <div className="space-y-2">
               <label className="text-sm font-medium">Формат вывода</label>
@@ -551,229 +609,120 @@ export default function PlaygroundPage() {
                 {isStreaming ? "Отменить" : (credits === null || credits < creditsToDeduct) ? "Недостаточно кредитов" : "Создать сайт"}
               </Button>
             </div>
-                </div>
-
-                {/* Settings Area */}
-                <div className="space-y-4 border-t pt-4">
-
-            {/* Image Upload */}
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Загрузить изображение</label>
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/png,image/jpeg,image/webp"
-                onChange={handleImageChange}
-                className="hidden"
-              />
-              <Button
-                onClick={() => !isStreaming && !url && fileInputRef.current?.click()}
-                variant="outline"
-                disabled={isStreaming || !!url}
-                className="w-full justify-start text-muted-foreground"
-              >
-                {imageFile ? imageFile.name : "Выберите файл изображения"}
-              </Button>
-              {url && (
-                <p className="text-xs text-muted-foreground/70">URL используется в качестве источника</p>
-              )}
-              {imagePreview && (
-                <div className="mt-2 relative inline-block">
-                  <img src={imagePreview} alt="Preview" className="max-h-32 rounded border" />
-                  <button
-                    onClick={handleRemoveImage}
-                    disabled={isStreaming}
-                    className="absolute top-1 right-1 bg-black/50 hover:bg-black/70 text-white rounded-full p-1 transition-colors disabled:opacity-50"
-                    aria-label="Remove image"
-                  >
-                    <X size={16} />
-                  </button>
-                </div>
-              )}
-            </div>
-
-            {/* URL Input */}
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Или введите URL</label>
-              <div className="flex gap-2">
-                <Input
-                  type="url"
-                  placeholder="https://example.com"
-                  value={url}
-                  onChange={(e) => setUrl(e.target.value)}
-                  disabled={isStreaming || !!imageFile}
-                  className="placeholder:text-muted-foreground/60"
-                />
-                {url && (
-                  <Button
-                    onClick={handleClearUrl}
-                    variant="outline"
-                    size="sm"
-                    disabled={isStreaming}
-                  >
-                    Очистить
-                  </Button>
-                )}
-              </div>
-              {imageFile && (
-                <p className="text-xs text-muted-foreground/70">Изображение используется в качестве источника</p>
-              )}
-            </div>
-
-            {/* Instructions */}
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Инструкции для создания</label>
-              <Textarea
-                placeholder="Например:&#10;— сохранить структуру и пропорции&#10;— использовать Tailwind-классы&#10;— избегать inline-стилей&#10;— упростить секции с изображениями"
-                value={instructions}
-                onChange={(e) => setInstructions(e.target.value)}
-                disabled={isStreaming}
-                rows={4}
-                className="placeholder:text-muted-foreground/60"
-              />
-            </div>
-                </div>
-              </div>
-            </Card>
           </div>
+        </Card>
 
-          {/* Right Column - Preview & Results */}
-          <div className="flex flex-col gap-6">
-
-          {/* Empty State - when no results yet */}
-          {chunks.length === 0 && !isStreaming && (
-            <div className="flex items-center justify-center min-h-[500px] rounded-lg border-2 border-dashed border-muted-foreground/20 bg-muted/30">
-              <div className="text-center">
-                <p className="text-sm text-muted-foreground leading-relaxed max-w-xs">
-                  Здесь появится предпросмотр сайта<br />
-                  после нажатия «Создать сайт»
-                </p>
+        {/* Creating Indicator */}
+        {isStreaming && chunks.length === 0 && (
+          <Card className="p-6">
+            <div className="flex items-center gap-3 text-muted-foreground">
+              <Loader2 size={20} className="animate-spin" />
+              <div>
+                <p className="font-medium">Создание кода...</p>
+                <p className="text-sm">Это может занять несколько минут</p>
               </div>
             </div>
-          )}
+          </Card>
+        )}
 
-          {/* Creating Indicator */}
-          {isStreaming && chunks.length === 0 && (
-            <Card className="p-6">
-              <div className="flex items-center gap-3 text-muted-foreground">
-                <Loader2 size={20} className="animate-spin" />
-                <div>
-                  <p className="font-medium">Создание кода...</p>
-                  <p className="text-sm">Это может занять несколько минут</p>
+        {/* Preview / Code Tabs */}
+        {chunks.length > 0 && (
+          <Card className="p-6">
+            <Tabs defaultValue="preview" className="w-full">
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="font-semibold flex items-center gap-2">
+                    Результат
+                    {isStreaming && (
+                      <span className="text-muted-foreground flex items-center gap-1.5 text-sm font-normal">
+                        <Loader2 size={14} className="animate-spin" />
+                        создание сайта...
+                      </span>
+                    )}
+                  </h3>
+                  <TabsList>
+                    <TabsTrigger value="preview">Предпросмотр</TabsTrigger>
+                    <TabsTrigger value="code">Код</TabsTrigger>
+                  </TabsList>
                 </div>
-              </div>
-            </Card>
-          )}
 
-          {/* Preview / Code Tabs */}
-          {chunks.length > 0 && (
-            <Card className="p-6">
-              <Tabs defaultValue="preview" className="w-full">
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <h3 className="font-semibold flex items-center gap-2">
-                      Результат
-                      {isStreaming && (
-                        <span className="text-muted-foreground flex items-center gap-1.5 text-sm font-normal">
-                          <Loader2 size={14} className="animate-spin" />
-                          создание сайта...
-                        </span>
-                      )}
-                    </h3>
-                    <TabsList>
-                      <TabsTrigger value="preview">Предпросмотр</TabsTrigger>
-                      <TabsTrigger value="code">Код</TabsTrigger>
-                    </TabsList>
-                  </div>
+                {/* Preview Tab */}
+                <TabsContent value="preview" className="mt-4">
+                  <iframe
+                    srcDoc={chunks.join("")}
+                    className="w-full border rounded bg-white"
+                    style={{ minHeight: "600px" }}
+                    title="Preview"
+                    sandbox="allow-same-origin allow-scripts"
+                  />
+                </TabsContent>
 
-                  {/* Preview Tab */}
-                  <TabsContent value="preview" className="mt-4">
-                    <iframe
-                      srcDoc={chunks.join("")}
-                      className="w-full border rounded bg-white"
-                      style={{ minHeight: "600px" }}
-                      title="Preview"
-                      sandbox="allow-same-origin allow-scripts"
-                    />
-                  </TabsContent>
-
-                  {/* Code Tab */}
-                  <TabsContent value="code" className="mt-4">
-                    <div className="space-y-3">
-                      {/* Export buttons */}
-                      <div className="flex items-center justify-end gap-2">
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Button
-                              onClick={handleCopyCode}
-                              variant="ghost"
-                              size="sm"
-                              disabled={!chunks.length || isStreaming}
-                            >
-                              {copied ? <Check size={16} /> : <Copy size={16} />}
-                            </Button>
-                          </TooltipTrigger>
-                          <TooltipContent>{copied ? "Скопировано!" : "Копировать"}</TooltipContent>
-                        </Tooltip>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Button
-                              onClick={handleDownloadHTML}
-                              variant="ghost"
-                              size="sm"
-                              disabled={!chunks.length || isStreaming}
-                            >
-                              <Download size={16} />
-                            </Button>
-                          </TooltipTrigger>
-                          <TooltipContent>Загрузить HTML</TooltipContent>
-                        </Tooltip>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Button
-                              onClick={handleDownloadZIP}
-                              variant="ghost"
-                              size="sm"
-                              disabled={!chunks.length || isStreaming}
-                            >
-                              <FileArchive size={16} />
-                            </Button>
-                          </TooltipTrigger>
-                          <TooltipContent>Загрузить ZIP</TooltipContent>
-                        </Tooltip>
-                      </div>
-                      {/* Code block */}
-                      <pre className="bg-muted p-4 rounded text-sm">
-                        <code>{chunks.join("")}</code>
-                      </pre>
+                {/* Code Tab */}
+                <TabsContent value="code" className="mt-4">
+                  <div className="space-y-3">
+                    {/* Export buttons */}
+                    <div className="flex items-center justify-end gap-2">
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            onClick={handleCopyCode}
+                            variant="ghost"
+                            size="sm"
+                            disabled={!chunks.length || isStreaming}
+                          >
+                            {copied ? <Check size={16} /> : <Copy size={16} />}
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>{copied ? "Скопировано!" : "Копировать"}</TooltipContent>
+                      </Tooltip>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            onClick={handleDownloadHTML}
+                            variant="ghost"
+                            size="sm"
+                            disabled={!chunks.length || isStreaming}
+                          >
+                            <Download size={16} />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>Загрузить HTML</TooltipContent>
+                      </Tooltip>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            onClick={handleDownloadZIP}
+                            variant="ghost"
+                            size="sm"
+                            disabled={!chunks.length || isStreaming}
+                          >
+                            <FileArchive size={16} />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>Загрузить ZIP</TooltipContent>
+                      </Tooltip>
                     </div>
-                  </TabsContent>
-                </div>
-              </Tabs>
-            </Card>
-          )}
-
-          {/* Error Card */}
-          {error && (
-            <Card className="p-6 border-destructive">
-              <div className="space-y-2">
-                <h3 className="font-semibold text-destructive">Ошибка</h3>
-                <p className="text-sm text-muted-foreground">{error}</p>
+                    {/* Code block */}
+                    <pre className="bg-muted p-4 rounded text-sm overflow-auto max-h-96">
+                      <code>{chunks.join("")}</code>
+                    </pre>
+                  </div>
+                </TabsContent>
               </div>
-            </Card>
-          )}
-        </div>
-        </div>
-      </div>
+            </Tabs>
+          </Card>
+        )}
 
-      {/* Success Notification - Floating Toast (NOT inside iframe or right-column) */}
-      {showSuccessNotification && (
-        <div className="fixed right-4 top-4 z-50 pointer-events-none animate-in fade-in slide-in-from-right-2 duration-300">
-          <div className="rounded-md bg-emerald-50/95 backdrop-blur-sm px-2 py-1 border border-emerald-200/50 shadow-sm">
-            <p className="text-xs font-medium text-emerald-700 whitespace-nowrap">Готово</p>
-          </div>
-        </div>
-      )}
+        {/* Error Card */}
+        {error && (
+          <Card className="p-6 border-destructive">
+            <div className="space-y-2">
+              <h3 className="font-semibold text-destructive">Ошибка</h3>
+              <p className="text-sm text-muted-foreground">{error}</p>
+            </div>
+          </Card>
+        )}
+      </div>
 
       {/* Paywall Dialog */}
       <Dialog open={showPaywall} onOpenChange={setShowPaywall}>
