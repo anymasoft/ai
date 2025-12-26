@@ -21,20 +21,17 @@ export function CTA() {
         </div>
 
         <div className="mt-8 flex items-center justify-center gap-4">
-          <Button render={<Link to="/auth/sign-in" />}>
-            {t("buttons.primary")}
+          <Button asChild>
+            <Link to="/auth/sign-in">
+              {t("buttons.primary")}
+            </Link>
           </Button>
 
-          <Button
-            className="text-background dark:text-foreground"
-            render={
-              // biome-ignore lint/a11y/useAnchorContent: anchor receives props
-              <a href="https://github.com/janhesters/react-router-saas-template" />
-            }
-            variant="link"
-          >
-            {t("buttons.secondary")}
-            <IconBook2 />
+          <Button asChild className="text-background dark:text-foreground" variant="link">
+            <a href="https://github.com/janhesters/react-router-saas-template">
+              {t("buttons.secondary")}
+              <IconBook2 />
+            </a>
           </Button>
         </div>
 

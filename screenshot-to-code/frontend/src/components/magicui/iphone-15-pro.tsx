@@ -2,7 +2,7 @@ import { cn } from "@/lib/utils";
 import React from "react";
 
 interface Iphone15ProProps {
-  children: React.ReactNode;
+  children?: React.ReactNode;
   className?: string;
   src?: string;
 }

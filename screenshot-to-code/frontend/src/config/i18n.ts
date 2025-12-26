@@ -65,7 +65,14 @@ const resources = {
         ]
       },
       footer: {
-        description: 'Convert screenshots to code with AI'
+        description: 'Convert screenshots to code with AI',
+        social: {
+          github: 'GitHub',
+          twitter: 'Twitter',
+          linkedin: 'LinkedIn'
+        },
+        madeWithLove: 'Made with ❤️ by',
+        reactsquad: 'React Squad'
       }
     }
   },
@@ -132,7 +139,14 @@ const resources = {
         ]
       },
       footer: {
-        description: 'Конвертируйте скриншоты в код с помощью AI'
+        description: 'Конвертируйте скриншоты в код с помощью AI',
+        social: {
+          github: 'GitHub',
+          twitter: 'Twitter',
+          linkedin: 'LinkedIn'
+        },
+        madeWithLove: 'Создано с ❤️ командой',
+        reactsquad: 'React Squad'
       }
     }
   }

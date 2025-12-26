@@ -33,18 +33,24 @@ export function Header({ className, ...props }: ComponentProps<"header">) {
         </Link>
 
         <nav className="sm:-translate-x-1/2 sm:-translate-y-1/2 flex gap-2 sm:absolute sm:top-1/2 sm:left-1/2">
-          <Button render={<Link to="/pricing" />} size="sm" variant="ghost">
-            {t("navLinks.pricing")}
+          <Button asChild size="sm" variant="ghost">
+            <Link to="/pricing">
+              {t("navLinks.pricing")}
+            </Link>
           </Button>
         </nav>
 
         <div className="flex gap-2">
-          <Button render={<Link to="/auth/sign-in" />} size="sm" variant="outline">
-            {t("login")}
+          <Button asChild size="sm" variant="outline">
+            <Link to="/auth/sign-in">
+              {t("login")}
+            </Link>
           </Button>
 
-          <Button render={<Link to="/auth/sign-in" />} size="sm">
-            {t("register")}
+          <Button asChild size="sm">
+            <Link to="/auth/sign-in">
+              {t("register")}
+            </Link>
           </Button>
         </div>
       </div>
