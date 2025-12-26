@@ -427,7 +427,7 @@ export default function PlaygroundPage() {
       </div>
 
       {/* Main Playground Container */}
-      <div className="@container/main px-4 lg:px-6 pb-6 flex flex-col h-[calc(100vh-180px)]">
+      <div className="@container/main px-4 lg:px-6 pb-6 flex flex-col h-full">
         <div className="grid grid-cols-1 lg:grid-cols-[340px_1fr] gap-6 h-full">
           {/* Left Column - Controls */}
           <div className="flex flex-col h-full">
