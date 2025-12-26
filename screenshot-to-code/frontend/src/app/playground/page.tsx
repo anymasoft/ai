@@ -419,16 +419,19 @@ export default function PlaygroundPage() {
 
   return (
     <>
-      <div className="px-4 lg:px-6">
-        <div className="flex flex-col gap-2">
+      <div className="px-4 lg:px-6 pb-4">
+        <div className="flex flex-col gap-2 pt-4">
           <h1 className="text-2xl font-bold tracking-tight">Сайт из скриншота</h1>
           <p className="text-muted-foreground">Загрузите скриншот или вставьте URL — получите готовый код</p>
         </div>
       </div>
-      <div className="@container/main px-4 lg:px-6 py-6 min-h-[calc(100vh-200px)]">
-        <div className="grid grid-cols-1 lg:grid-cols-[340px_1fr] gap-6 h-full">
-        {/* Input Form Card */}
-        <Card className="p-6">
+
+      {/* Main Playground Container */}
+      <div className="@container/main px-4 lg:px-6 pb-6 flex-1 flex flex-col h-[calc(100vh-180px)]">
+        <div className="grid grid-cols-1 lg:grid-cols-[340px_1fr] gap-6 h-full flex-1">
+          {/* Left Column - Controls */}
+          <div className="flex flex-col h-full">
+            <Card className="p-6 overflow-y-auto flex-1">
           <div className="space-y-4">
             <h3 className="font-semibold">Создать сайт</h3>
 
@@ -623,19 +626,12 @@ export default function PlaygroundPage() {
                 {isStreaming ? "Отменить" : (credits === null || credits < creditsToDeduct) ? "Недостаточно кредитов" : "Создать сайт"}
               </Button>
             </div>
-          </div>
-        </Card>
-
-        {/* Right Column - Preview & Results */}
-        <div className="flex flex-col gap-6 lg:overflow-y-auto lg:max-h-[calc(100vh-180px)] relative">
-          {/* Success Notification - Floating Toast */}
-          {showSuccessNotification && (
-            <div className="absolute top-4 right-4 z-10 pointer-events-none animate-in fade-in slide-in-from-top-1 duration-300">
-              <div className="rounded-md bg-emerald-50 px-3 py-2 border border-emerald-200 shadow-sm">
-                <p className="text-xs font-medium text-emerald-800 whitespace-nowrap">Создание сайта завершено</p>
-              </div>
             </div>
-          )}
+            </Card>
+          </div>
+
+          {/* Right Column - Preview & Results */}
+          <div className="flex flex-col gap-6 h-full overflow-y-auto overflow-x-hidden">
 
           {/* Empty State - when no results yet */}
           {chunks.length === 0 && !isStreaming && (
@@ -762,6 +758,15 @@ export default function PlaygroundPage() {
         </div>
         </div>
       </div>
+
+      {/* Success Notification - Floating Toast (NOT inside iframe or right-column) */}
+      {showSuccessNotification && (
+        <div className="fixed right-4 top-1/2 transform -translate-y-1/2 z-50 pointer-events-none animate-in fade-in slide-in-from-right-2 duration-300">
+          <div className="rounded-md bg-emerald-50/95 backdrop-blur-sm px-2 py-1 border border-emerald-200/50 shadow-sm">
+            <p className="text-xs font-medium text-emerald-700 whitespace-nowrap">Готово</p>
+          </div>
+        </div>
+      )}
 
       {/* Paywall Dialog */}
       <Dialog open={showPaywall} onOpenChange={setShowPaywall}>
