@@ -1,4 +1,3 @@
-import { IconBook2 } from "@tabler/icons-react";
 import { Link } from "react-router-dom";
 
 import { Button } from "@/components/ui/button";
@@ -27,8 +26,7 @@ export function CTA() {
 
           <Button asChild className="text-background dark:text-foreground" variant="link">
             <a href="https://github.com/janhesters/react-router-saas-template">
-              GitHub
-              <IconBook2 />
+              GitHub →
             </a>
           </Button>
         </div>

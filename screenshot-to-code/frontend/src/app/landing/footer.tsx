@@ -1,6 +1,6 @@
 /** biome-ignore-all lint/a11y/useAnchorContent: anchor receives props */
 import type { ComponentProps } from "react";
-import { FaGithub, FaLinkedin, FaXTwitter } from "react-icons/fa6";
+import { Github, Linkedin, Twitter } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
@@ -23,7 +23,7 @@ export function Footer({ className, ...props }: ComponentProps<"footer">) {
             variant="outline"
           >
             <a href="https://github.com/janhesters/react-router-saas-template">
-              <FaGithub />
+              <Github className="size-4" />
             </a>
           </Button>
 
@@ -35,7 +35,7 @@ export function Footer({ className, ...props }: ComponentProps<"footer">) {
             variant="outline"
           >
             <a href="https://x.com/janhesters">
-              <FaXTwitter />
+              <Twitter className="size-4" />
             </a>
           </Button>
 
@@ -47,7 +47,7 @@ export function Footer({ className, ...props }: ComponentProps<"footer">) {
             variant="outline"
           >
             <a href="https://www.linkedin.com/in/jan-hesters/">
-              <FaLinkedin />
+              <Linkedin className="size-4" />
             </a>
           </Button>
 

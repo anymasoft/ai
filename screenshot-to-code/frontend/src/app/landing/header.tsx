@@ -1,4 +1,3 @@
-import { IconLayoutList } from "@tabler/icons-react";
 import type { ComponentProps } from "react";
 import { Link } from "react-router-dom";
 
@@ -20,8 +19,8 @@ export function Header({ className, ...props }: ComponentProps<"header">) {
           className="flex items-center gap-2 self-center font-medium"
           to="/"
         >
-          <div className="flex size-8 items-center justify-center rounded-md bg-primary text-primary-foreground sm:size-6">
-            <IconLayoutList className="size-6 sm:size-4" />
+          <div className="flex size-8 items-center justify-center rounded-md bg-primary text-primary-foreground sm:size-6 font-bold text-sm">
+            S2C
           </div>
 
           <span className="hidden font-mono sm:block">

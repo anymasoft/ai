@@ -1,4 +1,3 @@
-import { IconBook2 } from "@tabler/icons-react";
 import type { CSSProperties } from "react";
 import { Link } from "react-router-dom";
 
@@ -60,8 +59,7 @@ export function Hero() {
 
           <Button asChild className="text-foreground" variant="link">
             <a href="https://github.com/janhesters/react-router-saas-template">
-              Документация
-              <IconBook2 />
+              Документация →
             </a>
           </Button>
         </div>

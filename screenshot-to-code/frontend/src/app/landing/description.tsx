@@ -1,13 +1,4 @@
-import {
-  IconAdjustments,
-  IconBolt,
-  IconBook,
-  IconTestPipe,
-} from "@tabler/icons-react";
-
 import { cn } from "@/lib/utils";
-
-const featureIcons = [IconBolt, IconTestPipe, IconBook, IconAdjustments];
 
 const imageClassNames =
   "border-border w-3xl max-w-none rounded-xl border sm:w-228 md:-ml-4 lg:-ml-0";
@@ -16,18 +7,22 @@ const features = [
   {
     title: "Быстрое преобразование",
     description: "Мгновенно преобразуй скриншоты в работающий код",
+    icon: "⚡",
   },
   {
     title: "Поддержка видео",
     description: "Записывай видео-туториалы и генерируй код из них",
+    icon: "🎬",
   },
   {
     title: "Документирование",
     description: "Автоматически создавай документацию для своего кода",
+    icon: "📚",
   },
   {
     title: "Полная настройка",
     description: "Выбирай язык, фреймворк и стиль кода по своему усмотрению",
+    icon: "⚙️",
   },
 ];
 
@@ -52,26 +47,20 @@ export function Description() {
               </p>
 
               <dl className="mt-10 max-w-xl space-y-8 text-base/7 text-muted-foreground lg:max-w-none">
-                {features.map((feature, index) => {
-                  const Icon = featureIcons[index];
-
-                  if (!Icon) {
-                    return null;
-                  }
-
-                  return (
-                    <div className="relative pl-9" key={feature.title}>
-                      <dt className="inline font-semibold text-foreground">
-                        <Icon
-                          aria-hidden="true"
-                          className="absolute top-1 left-1 size-5 text-primary"
-                        />
-                        {feature.title}
-                      </dt>{" "}
-                      <dd className="inline">{feature.description}</dd>
-                    </div>
-                  );
-                })}
+                {features.map((feature) => (
+                  <div className="relative pl-9" key={feature.title}>
+                    <dt className="inline font-semibold text-foreground">
+                      <span
+                        aria-hidden="true"
+                        className="absolute top-1 left-1 text-2xl"
+                      >
+                        {feature.icon}
+                      </span>
+                      {feature.title}
+                    </dt>{" "}
+                    <dd className="inline">{feature.description}</dd>
+                  </div>
+                ))}
               </dl>
             </div>
           </div>
