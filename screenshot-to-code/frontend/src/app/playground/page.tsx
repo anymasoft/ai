@@ -427,99 +427,16 @@ export default function PlaygroundPage() {
       </div>
 
       {/* Main Playground Container */}
-      <div className="@container/main px-4 lg:px-6 pb-6 flex-1 flex flex-col h-[calc(100vh-180px)]">
-        <div className="grid grid-cols-1 lg:grid-cols-[340px_1fr] gap-6 h-full flex-1">
+      <div className="@container/main px-4 lg:px-6 pb-6 flex flex-col h-[calc(100vh-180px)]">
+        <div className="grid grid-cols-1 lg:grid-cols-[340px_1fr] gap-6 h-full">
           {/* Left Column - Controls */}
           <div className="flex flex-col h-full">
             <Card className="p-6 flex flex-col h-full">
               <div className="space-y-4">
                 <h3 className="font-semibold">Создать сайт</h3>
 
-                {/* Scrollable Settings Area */}
-                <div className="space-y-4 flex-1 overflow-y-auto pr-2">
-
-            {/* Image Upload */}
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Загрузить изображение</label>
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/png,image/jpeg,image/webp"
-                onChange={handleImageChange}
-                className="hidden"
-              />
-              <Button
-                onClick={() => !isStreaming && !url && fileInputRef.current?.click()}
-                variant="outline"
-                disabled={isStreaming || !!url}
-                className="w-full justify-start text-muted-foreground"
-              >
-                {imageFile ? imageFile.name : "Выберите файл изображения"}
-              </Button>
-              {url && (
-                <p className="text-xs text-muted-foreground/70">URL используется в качестве источника</p>
-              )}
-              {imagePreview && (
-                <div className="mt-2 relative inline-block">
-                  <img src={imagePreview} alt="Preview" className="max-h-32 rounded border" />
-                  <button
-                    onClick={handleRemoveImage}
-                    disabled={isStreaming}
-                    className="absolute top-1 right-1 bg-black/50 hover:bg-black/70 text-white rounded-full p-1 transition-colors disabled:opacity-50"
-                    aria-label="Remove image"
-                  >
-                    <X size={16} />
-                  </button>
-                </div>
-              )}
-            </div>
-
-            {/* URL Input */}
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Или введите URL</label>
-              <div className="flex gap-2">
-                <Input
-                  type="url"
-                  placeholder="https://example.com"
-                  value={url}
-                  onChange={(e) => setUrl(e.target.value)}
-                  disabled={isStreaming || !!imageFile}
-                  className="placeholder:text-muted-foreground/60"
-                />
-                {url && (
-                  <Button
-                    onClick={handleClearUrl}
-                    variant="outline"
-                    size="sm"
-                    disabled={isStreaming}
-                  >
-                    Очистить
-                  </Button>
-                )}
-              </div>
-              {imageFile && (
-                <p className="text-xs text-muted-foreground/70">Изображение используется в качестве источника</p>
-              )}
-            </div>
-
-            {/* Instructions */}
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Инструкции для создания</label>
-              <Textarea
-                placeholder="Например:&#10;— сохранить структуру и пропорции&#10;— использовать Tailwind-классы&#10;— избегать inline-стилей&#10;— упростить секции с изображениями"
-                value={instructions}
-                onChange={(e) => setInstructions(e.target.value)}
-                disabled={isStreaming}
-                rows={4}
-                className="placeholder:text-muted-foreground/60"
-              />
-            </div>
-
-            {/* Close scrollable area, start CTA block */}
-                </div>
-
-                {/* CTA Block - NOT scrollable, always visible at bottom */}
-                <div className="border-t pt-4 space-y-4 flex-shrink-0">
+                {/* CTA Block - Always Visible at Top */}
+                <div className="space-y-4 flex-shrink-0">
             {/* Format Selector */}
             <div className="space-y-2">
               <label className="text-sm font-medium">Формат вывода</label>
@@ -634,11 +551,87 @@ export default function PlaygroundPage() {
                 {isStreaming ? "Отменить" : (credits === null || credits < creditsToDeduct) ? "Недостаточно кредитов" : "Создать сайт"}
               </Button>
             </div>
-
-            {/* Close CTA block */}
                 </div>
 
-            {/* Close outer space-y-4 */}
+                {/* Scrollable Settings Area */}
+                <div className="space-y-4 flex-1 overflow-y-auto pr-2 border-t pt-4">
+
+            {/* Image Upload */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Загрузить изображение</label>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/png,image/jpeg,image/webp"
+                onChange={handleImageChange}
+                className="hidden"
+              />
+              <Button
+                onClick={() => !isStreaming && !url && fileInputRef.current?.click()}
+                variant="outline"
+                disabled={isStreaming || !!url}
+                className="w-full justify-start text-muted-foreground"
+              >
+                {imageFile ? imageFile.name : "Выберите файл изображения"}
+              </Button>
+              {url && (
+                <p className="text-xs text-muted-foreground/70">URL используется в качестве источника</p>
+              )}
+              {imagePreview && (
+                <div className="mt-2 relative inline-block">
+                  <img src={imagePreview} alt="Preview" className="max-h-32 rounded border" />
+                  <button
+                    onClick={handleRemoveImage}
+                    disabled={isStreaming}
+                    className="absolute top-1 right-1 bg-black/50 hover:bg-black/70 text-white rounded-full p-1 transition-colors disabled:opacity-50"
+                    aria-label="Remove image"
+                  >
+                    <X size={16} />
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* URL Input */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Или введите URL</label>
+              <div className="flex gap-2">
+                <Input
+                  type="url"
+                  placeholder="https://example.com"
+                  value={url}
+                  onChange={(e) => setUrl(e.target.value)}
+                  disabled={isStreaming || !!imageFile}
+                  className="placeholder:text-muted-foreground/60"
+                />
+                {url && (
+                  <Button
+                    onClick={handleClearUrl}
+                    variant="outline"
+                    size="sm"
+                    disabled={isStreaming}
+                  >
+                    Очистить
+                  </Button>
+                )}
+              </div>
+              {imageFile && (
+                <p className="text-xs text-muted-foreground/70">Изображение используется в качестве источника</p>
+              )}
+            </div>
+
+            {/* Instructions */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Инструкции для создания</label>
+              <Textarea
+                placeholder="Например:&#10;— сохранить структуру и пропорции&#10;— использовать Tailwind-классы&#10;— избегать inline-стилей&#10;— упростить секции с изображениями"
+                value={instructions}
+                onChange={(e) => setInstructions(e.target.value)}
+                disabled={isStreaming}
+                rows={4}
+                className="placeholder:text-muted-foreground/60"
+              />
+            </div>
                 </div>
             </Card>
           </div>
@@ -774,7 +767,7 @@ export default function PlaygroundPage() {
 
       {/* Success Notification - Floating Toast (NOT inside iframe or right-column) */}
       {showSuccessNotification && (
-        <div className="fixed right-4 top-1/2 transform -translate-y-1/2 z-50 pointer-events-none animate-in fade-in slide-in-from-right-2 duration-300">
+        <div className="fixed right-4 top-4 z-50 pointer-events-none animate-in fade-in slide-in-from-right-2 duration-300">
           <div className="rounded-md bg-emerald-50/95 backdrop-blur-sm px-2 py-1 border border-emerald-200/50 shadow-sm">
             <p className="text-xs font-medium text-emerald-700 whitespace-nowrap">Готово</p>
           </div>
