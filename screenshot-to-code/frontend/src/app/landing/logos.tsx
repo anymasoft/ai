@@ -14,8 +14,6 @@ import {
   SiStripe,
 } from "react-icons/si";
 
-import { Marquee } from "@/components/magicui/marquee";
-
 export function Logos() {
   const { t } = useTranslation("landing", { keyPrefix: "logos" });
   return (
@@ -26,7 +24,7 @@ export function Logos() {
 
       <div className="relative mt-6">
         {/* Marquee with fading edges */}
-        <Marquee className="max-w-full">
+        <div className="max-w-full">
           {[
             {
               icon: <SiTypescript className="size-16" title="TypeScript" />,
@@ -94,7 +92,7 @@ export function Logos() {
               {icon}
             </div>
           ))}
-        </Marquee>
+        </div>
 
         {/* Fading edges */}
         <div className="pointer-events-none absolute inset-y-0 left-0 w-1/4 bg-linear-to-r from-background to-transparent" />
