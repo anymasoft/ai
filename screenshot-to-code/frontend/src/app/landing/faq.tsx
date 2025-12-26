@@ -26,7 +26,7 @@ export function FAQ() {
           {t("title")}
         </h2>
 
-        <Accordion>
+        <Accordion type="single" collapsible>
           {items.map((item, index) => (
             <AccordionItem key={item.question} value={`item-${index}`}>
               <AccordionTrigger>{item.question}</AccordionTrigger>

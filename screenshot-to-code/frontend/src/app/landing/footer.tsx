@@ -20,34 +20,38 @@ export function Footer({ className, ...props }: ComponentProps<"footer">) {
         <div className="flex items-center gap-2">
           <Button
             aria-label={t("social.github")}
+            asChild
             className="size-8"
-            render={
-              <a href="https://github.com/janhesters/react-router-saas-template" />
-            }
             size="icon"
             variant="outline"
           >
-            <FaGithub />
+            <a href="https://github.com/janhesters/react-router-saas-template">
+              <FaGithub />
+            </a>
           </Button>
 
           <Button
             aria-label={t("social.twitter")}
+            asChild
             className="size-8"
-            render={<a href="https://x.com/janhesters" />}
             size="icon"
             variant="outline"
           >
-            <FaXTwitter />
+            <a href="https://x.com/janhesters">
+              <FaXTwitter />
+            </a>
           </Button>
 
           <Button
             aria-label={t("social.linkedin")}
+            asChild
             className="size-8"
-            render={<a href="https://www.linkedin.com/in/jan-hesters/" />}
             size="icon"
             variant="outline"
           >
-            <FaLinkedin />
+            <a href="https://www.linkedin.com/in/jan-hesters/">
+              <FaLinkedin />
+            </a>
           </Button>
 
           <div className="h-6">

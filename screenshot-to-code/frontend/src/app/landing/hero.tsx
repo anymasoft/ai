@@ -78,18 +78,17 @@ export function Hero() {
         </p>
 
         <div className="mt-10 flex items-center justify-center gap-2">
-          <Button render={<Link to="/auth/sign-in" />}>{t("cta.primary")}</Button>
+          <Button asChild>
+            <Link to="/auth/sign-in">
+              {t("cta.primary")}
+            </Link>
+          </Button>
 
-          <Button
-            className="text-foreground"
-            render={
-              // biome-ignore lint/a11y/useAnchorContent: anchor receives props
-              <a href="https://github.com/janhesters/react-router-saas-template" />
-            }
-            variant="link"
-          >
-            {t("cta.secondary")}
-            <IconBook2 />
+          <Button asChild className="text-foreground" variant="link">
+            <a href="https://github.com/janhesters/react-router-saas-template">
+              {t("cta.secondary")}
+              <IconBook2 />
+            </a>
           </Button>
         </div>
       </div>
