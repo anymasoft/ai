@@ -96,18 +96,42 @@ export function PricingSection() {
   const displayPlans = tariffs.map(tariff => ({
     name: tariff.name,
     description: tariff.key === 'free'
-      ? 'Разовый стартовый бонус'
+      ? 'Чтобы понять подход и качество результата'
       : tariff.key === 'basic'
-      ? 'Подходит для небольших проектов'
-      : 'Подходит для агентств и команд',
+      ? 'Для небольших сайтов и MVP'
+      : 'Для регулярной и коммерческой работы',
     monthlyPrice: tariff.price_rub,
     yearlyPrice: tariff.price_rub,
     features: tariff.key === 'free'
-      ? ['HTML + Tailwind', 'HTML + CSS', 'Email поддержка']
+      ? [
+          'Превращение скриншота в рабочий HTML',
+          'Максимальное визуальное сходство с оригиналом',
+          'Читаемая структура разметки',
+          'Tailwind-классы вместо ручного CSS',
+          'Живой предпросмотр в процессе создания',
+          'Подходит для тестов и экспериментов',
+          'Без подписок и обязательств'
+        ]
       : tariff.key === 'basic'
-      ? ['Все форматы (HTML, React, Vue)', 'API доступ', 'Приоритетная поддержка', `${tariff.credits} генераций`]
-      : ['Все форматы + приоритет', 'Полный API доступ', 'Приоритетная поддержка (24ч)', `${tariff.credits} генераций`],
-    cta: 'Get Started',
+      ? [
+          'HTML / React / Vue — готовый код на выходе',
+          'Быстрая сборка интерфейсов без ручной верстки',
+          'Tailwind-классы, удобно дорабатывать вручную',
+          'Экономия времени на типовых страницах',
+          'Подходит для лендингов и внутренних сервисов',
+          'Результат виден сразу, без ожидания финала',
+          'Надёжная база для дальнейшей доработки'
+        ]
+      : [
+          'Массовая генерация заготовок под проекты',
+          'Быстрое клонирование существующих интерфейсов',
+          'Экономия десятков часов ручной верстки',
+          'Рабочий код, готовый к интеграции в проект',
+          'Удобно для агентств и команд',
+          'Подходит для коммерческих задач и клиентов',
+          'Один инструмент вместо рутинной верстки'
+        ],
+    cta: tariff.key === 'free' ? 'Начать' : 'Купить пакет',
     popular: tariff.key === 'basic'
   }))
 
@@ -188,15 +212,12 @@ export function PricingSection() {
                   <div>
                     <div className="text-4xl font-bold mb-1">
                       {plan.name === 'Lifetime' ? (
-                        `$${plan.monthlyPrice}`
+                        `₽${plan.monthlyPrice}`
                       ) : plan.name === 'Free' ? (
-                        '$0'
+                        '₽0'
                       ) : (
-                        `$${isYearly ? plan.yearlyPrice : plan.monthlyPrice}`
+                        `₽${isYearly ? plan.yearlyPrice : plan.monthlyPrice}`
                       )}
-                    </div>
-                    <div className="text-muted-foreground text-sm">
-                      {plan.name === 'Lifetime' ? 'One-time payment' : 'Per month'}
                     </div>
                   </div>
 
@@ -242,7 +263,7 @@ export function PricingSection() {
         {/* Enterprise Note */}
         <div className="mt-16 text-center">
           <p className="text-muted-foreground">
-            Наши контакты: support@beem.ink
+            Наши контакты: <a href="mailto:support@beem.ink" className="hover:text-foreground transition-colors">support@beem.ink</a>
           </p>
         </div>
       </div>
