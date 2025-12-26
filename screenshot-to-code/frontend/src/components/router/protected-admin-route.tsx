@@ -44,8 +44,13 @@ export function ProtectedAdminRoute({ children }: ProtectedAdminRouteProps) {
 
   // Fourth check: is user admin?
   if (!isAdmin) {
-    // Redirect to /app/playground for non-admins
-    return <Navigate to="/app/playground" replace />
+    // Only redirect to /playground if on root path
+    // On admin routes (/admin/*), stay on current page - let component handle auth
+    if (location.pathname === "/") {
+      return <Navigate to="/playground" replace />
+    }
+    // Allow render for admin routes - they'll show error if auth fails
+    return <>{children}</>
   }
 
   return <>{children}</>
