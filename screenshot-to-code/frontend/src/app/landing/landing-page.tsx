@@ -12,7 +12,7 @@ export default function LandingPage() {
     <div className="overflow-hidden">
       <Header />
 
-      <main className="container mx-auto">
+      <main className="container mx-auto pt-[var(--header-height)]">
         <Hero />
         <Logos />
         <Description />
