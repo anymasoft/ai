@@ -3,6 +3,7 @@ import { Navigate } from 'react-router-dom'
 import { DashboardLayout } from '@/components/layouts/dashboard-layout'
 import { ProtectedRoute } from '@/components/router/protected-route'
 import { ProtectedAdminRoute } from '@/components/router/protected-admin-route'
+import { PublicRoute } from '@/components/router/public-route'
 
 // const Dashboard = lazy(() => import('@/app/dashboard/page')) // TODO: Отключено - Overview не используется
 const Playground = lazy(() => import('@/app/playground/page'))
@@ -32,7 +33,7 @@ export interface RouteConfig {
 export const routes: RouteConfig[] = [
   {
     path: "/",
-    element: <LandingPage />
+    element: <PublicRoute><LandingPage /></PublicRoute>
   },
   {
     path: "/",
