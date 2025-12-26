@@ -1,36 +1,34 @@
-import { IconBook2 } from "@tabler/icons-react";
-import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
+import { Github } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 
 export function CTA() {
-  const { t } = useTranslation("landing", { keyPrefix: "cta" });
 
   return (
     <section className="py-12 lg:px-4">
       <div className="relative isolate mx-auto max-w-7xl overflow-hidden border-border bg-foreground px-6 py-16 shadow-2xl sm:rounded-3xl sm:border sm:px-16 dark:bg-background">
         <div className="mx-auto max-w-2xl text-center">
           <h2 className="text-pretty font-semibold text-4xl text-background sm:text-5xl dark:text-foreground">
-            {t("title")}
+            Готов начать?
           </h2>
 
           <p className="mt-4 text-pretty text-lg text-ring dark:text-muted-foreground">
-            {t("description")}
+            Присоединись к тысячам разработчиков, использующих Screen2Code для ускорения своей работы
           </p>
         </div>
 
         <div className="mt-8 flex items-center justify-center gap-4">
           <Button asChild>
             <Link to="/auth/sign-in">
-              {t("buttons.primary")}
+              Начать бесплатно
             </Link>
           </Button>
 
           <Button asChild className="text-background dark:text-foreground" variant="link">
-            <a href="https://github.com/janhesters/react-router-saas-template">
-              {t("buttons.secondary")}
-              <IconBook2 />
+            <a href="https://github.com/janhesters/react-router-saas-template" className="inline-flex items-center gap-2">
+              GitHub
+              <Github className="size-4" />
             </a>
           </Button>
         </div>
