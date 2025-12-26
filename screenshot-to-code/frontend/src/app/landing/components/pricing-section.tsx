@@ -212,11 +212,11 @@ export function PricingSection() {
                   <div>
                     <div className="text-4xl font-bold mb-1">
                       {plan.name === 'Lifetime' ? (
-                        `₽${plan.monthlyPrice}`
+                        `${plan.monthlyPrice} ₽`
                       ) : plan.name === 'Free' ? (
-                        '₽0'
+                        '0 ₽'
                       ) : (
-                        `₽${isYearly ? plan.yearlyPrice : plan.monthlyPrice}`
+                        `${isYearly ? plan.yearlyPrice : plan.monthlyPrice} ₽`
                       )}
                     </div>
                   </div>

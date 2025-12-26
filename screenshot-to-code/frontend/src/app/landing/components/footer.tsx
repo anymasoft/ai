@@ -74,7 +74,7 @@ export function LandingFooter() {
     <footer className="border-t bg-background">
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-16">
         {/* Newsletter Section */}
-        <div className="mb-16">
+        <div className="mb-16 hidden">
           <div className="mx-auto max-w-2xl text-center">
             <h3 className="text-2xl font-bold mb-4">Будьте в курсе новостей</h3>
             <p className="text-muted-foreground mb-6">
@@ -117,7 +117,7 @@ export function LandingFooter() {
             <p className="text-muted-foreground mb-6 max-lg:text-center max-lg:flex max-lg:justify-center">
               Превратите скриншот сайта в рабочий код. AI-помощник для быстрой разработки веб-интерфейсов.
             </p>
-            <div className="flex space-x-4 max-lg:justify-center">
+            <div className="flex space-x-4 max-lg:justify-center hidden">
               {socialLinks.map((social) => (
                 <Button key={social.name} variant="ghost" size="icon" asChild>
                   <a
@@ -134,7 +134,7 @@ export function LandingFooter() {
           </div>
 
           {/* Links Columns */}
-          <div className='max-md:col-span-2 lg:col-span-1'>
+          <div className='max-md:col-span-2 lg:col-span-1 hidden'>
             <h4 className="font-semibold mb-4">Продукт</h4>
             <ul className="space-y-3">
               {footerLinks.product.map((link) => (
@@ -150,7 +150,7 @@ export function LandingFooter() {
             </ul>
           </div>
 
-          <div className='max-md:col-span-2 lg:col-span-1'>
+          <div className='max-md:col-span-2 lg:col-span-1 hidden'>
             <h4 className="font-semibold mb-4">Компания</h4>
             <ul className="space-y-3">
               {footerLinks.company.map((link) => (
@@ -166,7 +166,7 @@ export function LandingFooter() {
             </ul>
           </div>
 
-          <div className='max-md:col-span-2 lg:col-span-1'>
+          <div className='max-md:col-span-2 lg:col-span-1 hidden'>
             <h4 className="font-semibold mb-4">Ресурсы</h4>
             <ul className="space-y-3">
               {footerLinks.resources.map((link) => (
@@ -182,7 +182,7 @@ export function LandingFooter() {
             </ul>
           </div>
 
-          <div className='max-md:col-span-2 lg:col-span-1'>
+          <div className='max-md:col-span-2 lg:col-span-1 hidden'>
             <h4 className="font-semibold mb-4">Правовая информация</h4>
             <ul className="space-y-3">
               {footerLinks.legal.map((link) => (
@@ -211,7 +211,7 @@ export function LandingFooter() {
               <span className="font-semibold text-foreground">Screen2Code</span>
             </div>
             <span className="hidden sm:inline">•</span>
-            <span>© {new Date().getFullYear()} Screen2Code</span>
+            <span>© {new Date().getFullYear()}</span>
           </div>
           <div className="flex items-center space-x-4 text-sm text-muted-foreground mt-4 md:mt-0">
             <a href="#privacy" className="hover:text-foreground transition-colors">

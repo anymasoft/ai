@@ -184,9 +184,9 @@ export function PricingPlans({
             <p className='text-muted-foreground text-sm text-balance'>{tier.description}</p>
           </CardHeader>
           <CardContent className='flex flex-1 flex-col space-y-6'>
-            <div className='flex items-baseline justify-center'>
+            <div className='flex items-baseline justify-center gap-2'>
               <span className='text-4xl font-bold'>{tier.price}</span>
-              <span className='text-muted-foreground text-sm'>{tier.frequency}</span>
+              <span className='text-muted-foreground text-sm font-medium'>{tier.frequency}</span>
             </div>
             <div className='text-center text-sm text-muted-foreground'>
               {tier.id === 'free'
