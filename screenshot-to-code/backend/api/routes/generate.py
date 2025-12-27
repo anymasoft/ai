@@ -2,7 +2,7 @@
 
 import uuid
 import os
-from db import get_api_conn, hash_api_key
+from db import save_generation as db_save_generation, hash_api_key
 from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException, status, Request
 from api.models.requests import GenerateRequest
@@ -15,67 +15,7 @@ router = APIRouter()
 
 def create_generation_id() -> str:
     """Generate unique generation ID."""
-    return f"gen_{uuid.uuid4().hex[:16]}"
-
-
-def save_generation(
-    generation_id: str,
-    user_id: str,
-    request: GenerateRequest,
-    credits_charged: int,
-) -> None:
-    """Save generation to database with retry logic for database locks."""
-    import time
-    import sqlite3
-
-    # TODO: handle input_thumbnail generation for images
-    input_thumbnail = None
-
-    max_retries = 3
-    retry_delay = 0.1  # 100ms
-
-    for attempt in range(max_retries):
-        try:
-            conn = get_api_conn()
-            cursor = conn.cursor()
-
-            cursor.execute(
-                """
-                INSERT INTO api_generations (
-                    id, user_id, status, format, input_type, input_data,
-                    input_thumbnail, instructions, credits_charged, created_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                """,
-                (
-                    generation_id,
-                    user_id,
-                    "processing",
-                    request.format,
-                    request.input.type,
-                    request.input.data,
-                    input_thumbnail,
-                    request.instructions,
-                    credits_charged,
-                    datetime.utcnow(),
-                ),
-            )
-
-            conn.commit()
-            conn.close()
-            return
-
-        except sqlite3.OperationalError as e:
-            if "database is locked" in str(e) and attempt < max_retries - 1:
-                time.sleep(retry_delay * (attempt + 1))
-                continue
-            else:
-                conn.rollback()
-                conn.close()
-                raise
-        except Exception as e:
-            conn.rollback()
-            conn.close()
-            raise
+    return str(uuid.uuid4().hex[:16])
 
 
 @router.post(
@@ -111,8 +51,13 @@ async def generate_code(
         user_id = api_key_info["user_id"]
         deduct_credits_atomic(user_id, cost)
 
-        # 4. Save generation record
-        save_generation(generation_id, user_id, request, cost)
+        # 4. Save generation record to the same table as WebSocket (generations)
+        print(f"[HISTORY][WRITE] generation_id={generation_id} user_id={user_id} (from API /api/generate)")
+        db_save_generation(
+            generation_id=generation_id,
+            user_id=user_id,
+            status="processing",
+        )
 
         # 5. Trigger actual generation in background
         from api.generation_service import trigger_generation

@@ -1517,6 +1517,7 @@ async def stream_code(websocket: WebSocket):
         return
 
     # Save generation with authenticated user
+    print(f"[HISTORY][WRITE] generation_id={generation_id} user_id={user_id} (from WebSocket /generate-code)")
     save_generation(
         status="queued",
         generation_id=generation_id,
