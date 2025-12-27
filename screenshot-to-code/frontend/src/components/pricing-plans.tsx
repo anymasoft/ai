@@ -23,6 +23,7 @@ export interface PricingPlan {
   price: string
   frequency: string
   credits: number
+  price_rub?: number
   features: string[]
   popular?: boolean
   current?: boolean
@@ -123,6 +124,7 @@ export function PricingPlans({
     price: tariff.price_rub === 0 ? '0' : tariff.price_rub.toString(),
     frequency: '₽',
     credits: tariff.credits,
+    price_rub: tariff.price_rub,
     features: packages[tariff.key]?.features || [],
     popular: tariff.key === 'basic',
   }))
@@ -151,6 +153,17 @@ export function PricingPlans({
   const isButtonDisabled = (plan: PricingPlan) => {
     // Все пакеты можно активировать/купить (разовые платежи)
     return false
+  }
+
+  const getPricePerOperation = (plan: PricingPlan): number | null => {
+    // Не показывать для free-пакета
+    if (plan.id === 'free') return null
+
+    // Если нет данных для расчёта - не показывать
+    if (!plan.price_rub || !plan.credits || plan.credits === 0) return null
+
+    // Рассчитать и округлить цену за операцию
+    return Math.round(plan.price_rub / plan.credits)
   }
 
   return (
@@ -194,6 +207,11 @@ export function PricingPlans({
                 : `Включено: ${tier.credits} операций`
               }
             </div>
+            {getPricePerOperation(tier) !== null && (
+              <div className='text-center text-sm text-muted-foreground'>
+                ≈ {getPricePerOperation(tier)} ₽ за операцию
+              </div>
+            )}
             <div className='space-y-2'>
               {tier.features.map(feature => (
                 <div key={feature} className='flex items-center gap-2'>

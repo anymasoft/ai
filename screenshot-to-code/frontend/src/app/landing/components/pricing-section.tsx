@@ -104,6 +104,7 @@ export function PricingSection() {
     monthlyPrice: tariff.price_rub,
     yearlyPrice: tariff.price_rub,
     credits: tariff.credits,
+    price_rub: tariff.price_rub,
     features: tariff.key === 'free'
       ? [
           'Превращение скриншота в рабочий HTML',
@@ -136,6 +137,17 @@ export function PricingSection() {
     cta: tariff.key === 'free' ? 'Начать' : 'Купить пакет',
     popular: tariff.key === 'basic'
   }))
+
+  const getPricePerOperation = (plan: any): number | null => {
+    // Не показывать для free-пакета
+    if (plan.key === 'free') return null
+
+    // Если нет данных для расчёта - не показывать
+    if (!plan.price_rub || !plan.credits || plan.credits === 0) return null
+
+    // Рассчитать и округлить цену за операцию
+    return Math.round(plan.price_rub / plan.credits)
+  }
 
   if (loading) {
     return (
@@ -227,6 +239,11 @@ export function PricingSection() {
                         : `Включено: ${plan.credits} операций`
                       }
                     </div>
+                    {getPricePerOperation(plan) !== null && (
+                      <div className="text-center text-sm text-muted-foreground mb-4">
+                        ≈ {getPricePerOperation(plan)} ₽ за операцию
+                      </div>
+                    )}
                   </div>
 
                   {/* CTA Button */}
