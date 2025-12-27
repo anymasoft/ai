@@ -18,7 +18,7 @@ interface ApiGeneration {
   status: string
 }
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:7001'
+const API_URL = import.meta.env.VITE_API_URL || `${window.location.protocol}//${window.location.host}`
 
 export async function getHistory(): Promise<HistoryItem[]> {
   try {

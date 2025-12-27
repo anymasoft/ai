@@ -32,7 +32,7 @@ export const useAuthStore = create<AuthStore>()(
       try {
         set({ isLoading: true })
 
-        const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:7001'
+        const apiUrl = import.meta.env.VITE_API_URL || `${window.location.protocol}//${window.location.host}`
         const response = await fetch(`${apiUrl}/api/auth/user`, {
           credentials: 'include',
         })
@@ -50,7 +50,7 @@ export const useAuthStore = create<AuthStore>()(
 
     logout: async () => {
       try {
-        const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:7001'
+        const apiUrl = import.meta.env.VITE_API_URL || `${window.location.protocol}//${window.location.host}`
         await fetch(`${apiUrl}/api/auth/logout`, {
           method: 'POST',
           credentials: 'include',

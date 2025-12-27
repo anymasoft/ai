@@ -13,5 +13,20 @@ export default defineConfig({
   },
   define: {
     'import.meta.env.VITE_BASENAME': JSON.stringify(process.env.VITE_BASENAME || ''),
-  }
+  },
+  server: {
+    proxy: {
+      "/api": {
+        target: "http://127.0.0.1:7001",
+        changeOrigin: true,
+        secure: false,
+      },
+      "/generate-code": {
+        target: "ws://127.0.0.1:7001",
+        ws: true,
+        changeOrigin: true,
+        secure: false,
+      },
+    },
+  },
 })
