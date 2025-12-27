@@ -1365,10 +1365,17 @@ class PostProcessingMiddleware(Middleware):
 
 
 def get_user_from_session(websocket: WebSocket) -> dict | None:
-    """Get user info from session cookie in WebSocket connection."""
+    """Get user info from session cookie in WebSocket connection.
+
+    Returns user dict with 'id', 'email', 'plan', etc if valid session exists.
+    Returns None if no session, invalid session, or session expired.
+    """
     try:
         session_id = websocket.cookies.get("session_id")
+        print(f"[WS:AUTH] Extracted session_id from cookies: {repr(session_id)}")
+
         if not session_id:
+            print(f"[WS:AUTH] WARNING: No session_id in cookies")
             return None
 
         conn = get_conn()
@@ -1387,17 +1394,21 @@ def get_user_from_session(websocket: WebSocket) -> dict | None:
         conn.close()
 
         if not row:
+            print(f"[WS:AUTH] Session not found or expired for session_id={repr(session_id)}")
             return None
 
-        return {
+        user_dict = {
             "id": row[0],
             "email": row[1],
             "plan": row[2],
             "used_generations": row[3],
             "disabled": bool(row[4]),
         }
+        print(f"[WS:AUTH] SUCCESS: Found user id={repr(user_dict['id'])} for session_id={repr(session_id)}")
+        return user_dict
+
     except Exception as e:
-        print(f"[WS] Error getting user from session: {e}")
+        print(f"[WS:AUTH] ERROR getting user from session: {e}")
         return None
 
 
@@ -1407,12 +1418,16 @@ async def check_generation_limits(
     """
     Check if user can generate code based on plan limits.
     Returns (is_allowed, error_message)
+
+    IMPORTANT: WebSocket requires valid authentication.
+    If user is not authenticated, returns False with error message.
     """
     user = get_user_from_session(websocket)
 
     if not user:
-        # No user/session = can't check limits, but allow for demo
-        return True, None
+        # No user/session = authentication required
+        print("[WS:LIMITS] No authenticated user found")
+        return False, "Authentication required. Please log in."
 
     if user.get("disabled"):
         return False, "Your account has been disabled"
@@ -1494,15 +1509,33 @@ async def stream_code(websocket: WebSocket):
 
     print("[WS:4.5] get user from session")
     user = get_user_from_session(websocket)
-    user_id = user.get("id") if user else None
-    print(f"[WS:4.5] DONE user_id={user_id} (type={type(user_id).__name__}, repr={repr(user_id)})")
-    if user:
-        print(f"[WS:4.5] Full user object: {user}")
-    else:
-        print(f"[WS:4.5] WARNING: user is None - generation will have NULL user_id")
 
-    print("[WS:5] save_generation to DB")
-    print(f"[WS:5] Saving with user_id={repr(user_id)}")
+    # MANDATORY: User MUST be authenticated
+    if not user:
+        print(f"[WS:4.5] CRITICAL: No authenticated user - rejecting generation")
+        await websocket.send_json({
+            "type": "error",
+            "value": "Not authenticated. Please log in.",
+            "variantIndex": 0
+        })
+        await websocket.close(code=4401, reason="Unauthorized")
+        return
+
+    user_id = user.get("id")
+    print(f"[WS:4.5] DONE user_id={repr(user_id)} (type={type(user_id).__name__})")
+    print(f"[WS:4.5] Full user object: {user}")
+
+    if not user_id:
+        print(f"[WS:4.5] CRITICAL: user_id is empty/None in authenticated user")
+        await websocket.send_json({
+            "type": "error",
+            "value": "User ID missing. Please log in again.",
+            "variantIndex": 0
+        })
+        await websocket.close(code=4401, reason="Invalid user")
+        return
+
+    print("[WS:5] save_generation to DB with authenticated user")
     save_generation(
         status="queued",
         generation_id=generation_id,
