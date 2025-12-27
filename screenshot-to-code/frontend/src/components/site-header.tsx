@@ -35,6 +35,21 @@ export function SiteHeader() {
     return () => clearInterval(interval)
   }, [])
 
+  // Listen for balance updates from other components (e.g., after payment)
+  useEffect(() => {
+    const handleBalanceUpdated = async () => {
+      try {
+        const data = await fetchJSON<{ credits: number }>("/api/billing/balance")
+        setBalance(data.credits)
+      } catch (err) {
+        console.error("Error refreshing balance:", err)
+      }
+    }
+
+    window.addEventListener("balance-updated", handleBalanceUpdated)
+    return () => window.removeEventListener("balance-updated", handleBalanceUpdated)
+  }, [])
+
   return (
     <header className="flex h-(--header-height) shrink-0 items-center gap-2 border-b transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-(--header-height)">
       <div className="flex w-full items-center gap-1 px-4 py-3 lg:gap-2 lg:px-6">
