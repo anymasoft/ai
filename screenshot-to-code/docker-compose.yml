@@ -8,16 +8,14 @@ services:
     
     env_file:
       - .env
-    
-    # or 
-    # environment:
-      #- BACKEND_PORT=7001   # if you change the port, make sure to also change the VITE_WS_BACKEND_URL at frontend/.env.local
-      # - OPENAI_API_KEY=your_openai_api_key
-    
-    ports:
-      - "${BACKEND_PORT:-7001}:${BACKEND_PORT:-7001}"
 
-    command: poetry run uvicorn main:app --host 0.0.0.0 --port ${BACKEND_PORT:-7001}
+    # NOTE: BACKEND_PORT=5173 для обеспечения same-origin с frontend.
+    # Это гарантирует что браузер отправит session_id cookie при WebSocket.
+    # Если менять PORT, убедитесь что совпадает с портом frontend.
+    ports:
+      - "${BACKEND_PORT:-5173}:${BACKEND_PORT:-5173}"
+
+    command: poetry run uvicorn main:app --host 0.0.0.0 --port ${BACKEND_PORT:-5173}
   
   frontend:
     build:
