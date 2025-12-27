@@ -84,7 +84,7 @@ async def logout(request: Request):
             print(f"[Auth] Error deleting session: {e}")
 
     response = JSONResponse({"ok": True})
-    response.delete_cookie("session_id", httponly=True, samesite="lax")
+    response.delete_cookie("session_id", httponly=True, samesite="lax", path="/")
     return response
 
 
@@ -217,6 +217,7 @@ async def google_oauth_callback(
         httponly=True,
         secure=False,  # True в production с HTTPS
         samesite="lax",
+        path="/",
         max_age=SESSION_EXPIRATION_DAYS * 24 * 60 * 60,
     )
 
