@@ -7,7 +7,7 @@ import openai
 import uuid
 from codegen.utils import extract_html_content, validate_react_output, validate_vue_output
 from db import update_generation, get_conn
-from api.config.plans import get_plan_limit, is_format_allowed
+from api.config.plans import get_plan_limit
 from datetime import datetime
 
 # Import shutdown flag from main
@@ -1436,14 +1436,9 @@ async def check_generation_limits(
     used = user.get("used_generations", 0)
     limit = get_plan_limit(plan)
 
-    # Check usage limit
+    # Check usage limit (only limitation is by number of operations, not by format)
     if used >= limit:
-        return False, f"You have reached your {plan} plan limit ({limit} generations/month)"
-
-    # Check format availability (if specified in params)
-    format_name = params.get("generatedCodeConfig", "html_tailwind")
-    if not is_format_allowed(plan, format_name):
-        return False, f"Format '{format_name}' is not available in your {plan} plan"
+        return False, f"You have reached your limit ({limit} generations/month). Please upgrade your plan to continue."
 
     return True, None
 
