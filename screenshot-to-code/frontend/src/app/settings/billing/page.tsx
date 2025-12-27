@@ -95,6 +95,8 @@ export default function BillingSettings() {
       // Then fetch the updated billing data
       console.error("[BILLING] Calling fetchBillingData() after payment processing")
       await fetchBillingData()
+      // Notify navbar to refresh balance
+      window.dispatchEvent(new CustomEvent("balance-updated"))
       console.error("[BILLING] ✓ processPaymentAndFetchData() completed successfully")
     } catch (err) {
       console.error("[BILLING] ✗ Error processing payment:", err)
