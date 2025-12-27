@@ -1,6 +1,6 @@
 import { useAuthStore } from "@/store/auth"
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:7001"
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || `${window.location.protocol}//${window.location.host}`
 
 export class ApiError extends Error {
   constructor(

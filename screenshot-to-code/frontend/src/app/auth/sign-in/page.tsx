@@ -69,7 +69,7 @@ export function SignInPage() {
     const left = window.screen.width / 2 - width / 2
     const top = window.screen.height / 2 - height / 2
 
-    const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:7001'
+    const apiUrl = import.meta.env.VITE_API_URL || `${window.location.protocol}//${window.location.host}`
     const popup = window.open(
       `${apiUrl}/api/oauth/google?redirect_to=/playground`,
       'google-signin',

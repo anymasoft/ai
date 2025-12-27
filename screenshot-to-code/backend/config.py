@@ -60,11 +60,8 @@ ALLOWED_ORIGINS = [
 ]
 
 # Server
-# NOTE: PORT должен совпадать с frontend port (по умолчанию 5173)
-# для обеспечения same-origin при WebSocket upgrade.
-# Это гарантирует что браузер отправит session_id cookie.
 HOST = "127.0.0.1"
-PORT = 5173
+PORT = 7001
 
 # Logging
 LOG_DB_PATH = True  # Log absolute DB path on each request
