@@ -568,6 +568,7 @@ def save_generation(
     now = datetime.utcnow().isoformat()
 
     try:
+        print(f"[DB:save_generation] BEFORE INSERT: id={generation_id}, user_id={repr(user_id)} (type={type(user_id).__name__}), status={status}")
         cursor.execute("""
             INSERT INTO generations
             (id, user_id, created_at, status, input_image_sha256, error_message)
@@ -581,7 +582,7 @@ def save_generation(
             error_message,
         ))
         conn.commit()
-        print(f"[DB] Saved UI generation id={generation_id} status={status}")
+        print(f"[DB] Saved UI generation id={generation_id} status={status} user_id={repr(user_id)}")
         return generation_id
 
     except Exception as e:
