@@ -117,10 +117,10 @@ export default function DocsPage() {
               <div className="flex gap-3 rounded-lg border border-yellow-200 bg-yellow-50 dark:border-yellow-800 dark:bg-yellow-950 p-4">
                 <AlertTriangle className="h-4 w-4 text-yellow-600 dark:text-yellow-400 shrink-0 mt-0.5" />
                 <p className="text-sm text-yellow-800 dark:text-yellow-200">
-                  <strong>Credits списываются немедленно</strong> при успешном старте генерации.
+                  <strong>Credits списываются немедленно</strong> при успешном старте операции.
                 </p>
               </div>
-              <p className="text-sm text-muted-foreground">Запуск генерации кода.</p>
+              <p className="text-sm text-muted-foreground">Запуск операции кода.</p>
 
               <div className="space-y-2">
                 <p className="text-sm font-medium">Тело запроса:</p>
@@ -192,7 +192,7 @@ export default function DocsPage() {
                   <li>• <code className="bg-muted px-1 py-0.5 rounded">status</code> - обновление статуса</li>
                   <li>• <code className="bg-muted px-1 py-0.5 rounded">code</code> - полный код</li>
                   <li>• <code className="bg-muted px-1 py-0.5 rounded">variant_complete</code> - вариант завершён</li>
-                  <li>• <code className="bg-muted px-1 py-0.5 rounded">complete</code> - генерация завершена</li>
+                  <li>• <code className="bg-muted px-1 py-0.5 rounded">complete</code> - операция завершена</li>
                   <li>• <code className="bg-muted px-1 py-0.5 rounded">error</code> - ошибка</li>
                 </ul>
               </div>
@@ -200,7 +200,7 @@ export default function DocsPage() {
               <div className="flex gap-3 rounded-lg border border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-950 p-4">
                 <Clock className="h-4 w-4 text-blue-600 dark:text-blue-400 shrink-0 mt-0.5" />
                 <p className="text-sm text-blue-800 dark:text-blue-200">
-                  Соединение закрывается после завершения генерации или через 10 минут таймаута.
+                  Соединение закрывается после завершения операции или через 10 минут таймаута.
                 </p>
               </div>
             </div>
@@ -213,7 +213,7 @@ export default function DocsPage() {
                 <Badge variant="outline" className="font-mono">GET</Badge>
                 <code className="text-sm">/api/generations/:id</code>
               </div>
-              <p className="text-sm text-muted-foreground">Получить результат и метаданные генерации.</p>
+              <p className="text-sm text-muted-foreground">Получить результат и метаданные операции.</p>
 
               <div className="space-y-2">
                 <p className="text-sm font-medium">Ответ: <code className="text-xs bg-muted px-1.5 py-0.5 rounded">200 OK</code></p>
@@ -235,7 +235,7 @@ export default function DocsPage() {
               <div className="space-y-2">
                 <p className="text-sm font-medium">Возможные статусы:</p>
                 <ul className="text-xs text-muted-foreground space-y-1 ml-4">
-                  <li>• <code className="bg-muted px-1 py-0.5 rounded">processing</code> - генерация в процессе</li>
+                  <li>• <code className="bg-muted px-1 py-0.5 rounded">processing</code> - операция в процессе</li>
                   <li>• <code className="bg-muted px-1 py-0.5 rounded">completed</code> - успешно завершена</li>
                   <li>• <code className="bg-muted px-1 py-0.5 rounded">failed</code> - произошла ошибка</li>
                 </ul>
@@ -292,7 +292,7 @@ export default function DocsPage() {
             <div className="flex gap-3 rounded-lg border border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-950 p-4">
               <CheckCircle2 className="h-4 w-4 text-green-600 dark:text-green-400 shrink-0 mt-0.5" />
               <p className="text-sm text-green-800 dark:text-green-200">
-                <strong>Credits списываются немедленно</strong> при успешном запуске генерации (до её завершения).
+                <strong>Credits списываются немедленно</strong> при успешном запуске операции (до её завершения).
               </p>
             </div>
 
@@ -301,7 +301,7 @@ export default function DocsPage() {
               <ul className="text-sm text-muted-foreground space-y-1 ml-4">
                 <li>• ✅ При успешном <code className="bg-muted px-1 py-0.5 rounded">POST /api/generate</code></li>
                 <li>• ❌ НЕ списываются при ошибке запроса (400/429)</li>
-                <li>• ❌ НЕ возвращаются при неудачной генерации</li>
+                <li>• ❌ НЕ возвращаются при неудачной операции</li>
               </ul>
             </div>
 
@@ -413,8 +413,8 @@ export default function DocsPage() {
             <div className="space-y-2">
               <p className="text-sm text-muted-foreground">На один API ключ:</p>
               <ul className="text-sm space-y-1 ml-4">
-                <li>• <strong>Одновременных генераций:</strong> 10</li>
-                <li>• <strong>Генераций в час:</strong> 100</li>
+                <li>• <strong>Одновременных операций:</strong> 10</li>
+                <li>• <strong>Операций в час:</strong> 100</li>
                 <li>• <strong>Макс. размер изображения:</strong> 10MB</li>
                 <li>• <strong>Таймауты:</strong> 60s (HTTP), 600s (WebSocket)</li>
               </ul>
@@ -433,7 +433,7 @@ export default function DocsPage() {
               <li>• Все ID используют префиксы: <code className="bg-muted px-1 py-0.5 rounded">gen_</code>, <code className="bg-muted px-1 py-0.5 rounded">key_</code></li>
               <li>• Base64 изображения должны включать data URI: <code className="bg-muted px-1 py-0.5 rounded">data:image/png;base64,...</code></li>
               <li>• WebSocket переподключение не поддерживается - используйте polling</li>
-              <li>• Результаты генерации хранятся 30 дней</li>
+              <li>• Результаты операций хранятся 30 дней</li>
             </ul>
           </CardContent>
         </Card>
