@@ -22,6 +22,33 @@ function getSessionIdFromCookies(): string | null {
   return null
 }
 
+// Helper: Get session_id from any available source
+function getSessionId(): string | null {
+  // Try cookies first
+  let sessionId = getSessionIdFromCookies()
+  console.log("[WS:FRONTEND] Checking cookies:", sessionId ? "✓ found" : "✗ not found")
+
+  if (!sessionId) {
+    // Try localStorage
+    sessionId = localStorage.getItem("session_id")
+    console.log("[WS:FRONTEND] Checking localStorage:", sessionId ? "✓ found" : "✗ not found")
+  }
+
+  if (!sessionId) {
+    // Try sessionStorage
+    sessionId = sessionStorage.getItem("session_id")
+    console.log("[WS:FRONTEND] Checking sessionStorage:", sessionId ? "✓ found" : "✗ not found")
+  }
+
+  if (sessionId) {
+    console.log("[WS:FRONTEND] Using session_id from cache, length:", sessionId.length)
+  } else {
+    console.warn("[WS:FRONTEND] ⚠️ No session_id found in cookies, localStorage, or sessionStorage")
+  }
+
+  return sessionId
+}
+
 type WebSocketResponse = {
   type:
     | "chunk"
@@ -51,11 +78,17 @@ export function generateCode(
   params: FullGenerationSettings,
   callbacks: CodeGenerationCallbacks
 ) {
-  // Get session_id from cookies and add to WebSocket URL
-  const sessionId = getSessionIdFromCookies()
-  const queryString = sessionId ? `?session_id=${encodeURIComponent(sessionId)}` : ""
-  const wsUrl = `${WS_BACKEND_URL}/generate-code${queryString}`
-  console.log("[WS] Connecting to backend @ ", wsUrl)
+  // Get session_id from available sources
+  const sessionId = getSessionId()
+
+  if (!sessionId) {
+    console.error("[WS:FRONTEND] ✗ CRITICAL: Cannot start generation - no session_id available")
+    callbacks.onVariantError(0, "Session not found. Please log in again.")
+    return
+  }
+
+  const wsUrl = `${WS_BACKEND_URL}/generate-code?session_id=${encodeURIComponent(sessionId)}`
+  console.log("[WS:FRONTEND] opening WS with session_id length =", sessionId.length, "url =", wsUrl)
 
   const ws = new WebSocket(wsUrl)
   wsRef.current = ws
