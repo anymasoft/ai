@@ -94,6 +94,7 @@ export function PricingSection() {
 
   // Map tariffs to plan structure
   const displayPlans = tariffs.map(tariff => ({
+    key: tariff.key,
     name: tariff.name,
     description: tariff.key === 'free'
       ? 'Чтобы понять подход и качество результата'
@@ -102,6 +103,7 @@ export function PricingSection() {
       : 'Для регулярной и коммерческой работы',
     monthlyPrice: tariff.price_rub,
     yearlyPrice: tariff.price_rub,
+    credits: tariff.credits,
     features: tariff.key === 'free'
       ? [
           'Превращение скриншота в рабочий HTML',
@@ -218,6 +220,12 @@ export function PricingSection() {
                       ) : (
                         `${isYearly ? plan.yearlyPrice : plan.monthlyPrice} ₽`
                       )}
+                    </div>
+                    <div className="text-center text-sm text-muted-foreground mb-4">
+                      {plan.key === 'free'
+                        ? 'Включено: 3 генерации бесплатно для старта'
+                        : `Включено: ${plan.credits} генераций`
+                      }
                     </div>
                   </div>
 
