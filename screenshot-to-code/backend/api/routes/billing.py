@@ -404,7 +404,8 @@ async def deduct_credits_endpoint(request: dict, user: dict = Depends(get_curren
     Requires authentication. Called by frontend BEFORE generation starts.
 
     Args:
-        request: { format: "html_tailwind" | "html_css" | "react_tailwind" | "vue_tailwind" }
+        request: { amount: 1 | 3, format: "html_tailwind" | ... }
+                 'amount' is based on mode (1 for fast, 3 for full)
         user: Current session data
 
     Returns:
@@ -426,20 +427,16 @@ async def deduct_credits_endpoint(request: dict, user: dict = Depends(get_curren
     if not user_id:
         raise HTTPException(status_code=401, detail="Не авторизирован")
 
-    # Get format from request
-    format_type = request.get("format", "html_tailwind")
+    # Cost calculation:
+    # Priority 1: Use 'amount' from frontend (based on mode: 1 for fast, 3 for full)
+    # Priority 2: Default to 1 if not provided
+    cost = request.get("amount", 1)
 
-    # Calculate cost based on format
-    format_costs = {
-        "html_tailwind": 1,
-        "html_css": 1,
-        "react_tailwind": 2,
-        "vue_tailwind": 2,
-    }
+    # Ensure cost is a positive integer
+    if not isinstance(cost, int) or cost <= 0:
+        cost = 1
 
-    cost = format_costs.get(format_type, 1)
-
-    print(f"[CREDITS] Deducting {cost} credit(s) for format={format_type}, user={user_id}")
+    print(f"[CREDITS] Deducting {cost} credit(s) for user={user_id}")
 
     # Atomically deduct credits (checks if sufficient before deducting)
     success = deduct_credits(user_id, cost)
