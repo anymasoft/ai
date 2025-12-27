@@ -16,6 +16,12 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
 
 const ITEMS_PER_PAGE = 10
 
@@ -24,7 +30,8 @@ export default function HistoryPage() {
   const [history, setHistory] = useState<HistoryItem[]>([])
   const [currentPage, setCurrentPage] = useState(1)
   const [loading, setLoading] = useState(true)
-  const [deleting, setDeleting] = useState<string | null>(null)
+  const [deletingItemId, setDeletingItemId] = useState<string | null>(null)
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null)
   const [showClearDialog, setShowClearDialog] = useState(false)
   const [isClearing, setIsClearing] = useState(false)
 
@@ -56,7 +63,7 @@ export default function HistoryPage() {
 
   const handleDeleteItem = async (id: string) => {
     try {
-      setDeleting(id)
+      setDeletingItemId(id)
       const success = await deleteHistoryItem(id)
       if (success) {
         // Remove from local state
@@ -72,7 +79,8 @@ export default function HistoryPage() {
     } catch (error) {
       console.error("Error deleting item:", error)
     } finally {
-      setDeleting(null)
+      setDeletingItemId(null)
+      setDeleteConfirmId(null)
     }
   }
 
@@ -120,24 +128,26 @@ export default function HistoryPage() {
               <p className="text-muted-foreground">История вашего сгенерированного кода</p>
             </div>
             {history.length > 0 && (
-              <Button
-                variant="destructive"
-                size="sm"
-                onClick={() => setShowClearDialog(true)}
-                disabled={isClearing}
-              >
-                {isClearing ? (
-                  <>
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    Очистка...
-                  </>
-                ) : (
-                  <>
-                    <Trash2 className="h-4 w-4 mr-2" />
-                    Очистить всё
-                  </>
-                )}
-              </Button>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-9 w-9 text-destructive hover:text-destructive hover:bg-destructive/10"
+                      onClick={() => setShowClearDialog(true)}
+                      disabled={isClearing}
+                    >
+                      {isClearing ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Trash2 className="h-4 w-4" />
+                      )}
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>Очистить историю</TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
             )}
           </div>
         </div>
@@ -161,53 +171,44 @@ export default function HistoryPage() {
           </Card>
         ) : (
           <>
-            <div className="grid gap-3">
+            <div className="grid gap-2">
               {currentItems.map((item) => (
                 <Card
                   key={item.id}
-                  className="p-3 flex items-start justify-between gap-4 hover:bg-accent/50 transition-colors group"
+                  className="p-3 flex flex-nowrap items-center justify-between gap-3 hover:bg-accent/50 transition-colors group min-h-fit"
                 >
                   <div
-                    className="flex-1 cursor-pointer"
+                    className="flex-1 cursor-pointer min-w-0"
                     onClick={() => handleOpen(item)}
                   >
-                    <div className="space-y-2">
-                      <div className="flex items-center gap-4">
-                        <div className="flex-1 min-w-0 flex items-center gap-2">
-                          <p className="text-sm font-medium truncate">
-                            {item.sourceType === "image" ? "📷" : "🌐"} {item.sourceLabel}
-                          </p>
-                          <Badge variant="outline" className="text-xs shrink-0">
-                            {getFormatDisplay(item.format)}
-                          </Badge>
-                          <p className="text-xs text-muted-foreground shrink-0">
-                            {formatDate(item.createdAt)}
-                          </p>
-                        </div>
-                      </div>
+                    <div className="flex items-center gap-2 flex-nowrap overflow-hidden">
+                      <p className="text-sm font-medium shrink-0 whitespace-nowrap">
+                        {item.sourceType === "image" ? "📷" : "🌐"} {item.sourceLabel}
+                      </p>
+                      <Badge variant="outline" className="text-xs shrink-0">
+                        {getFormatDisplay(item.format)}
+                      </Badge>
+                      <p className="text-xs text-muted-foreground shrink-0 whitespace-nowrap">
+                        {formatDate(item.createdAt)}
+                      </p>
                       {item.instructions && (
-                        <p className="text-xs text-muted-foreground line-clamp-1">
+                        <p className="text-xs text-muted-foreground truncate shrink-0">
                           {item.instructions}
                         </p>
                       )}
-                      <div className="bg-muted/50 px-2 py-1 rounded text-xs overflow-hidden">
-                        <code className="line-clamp-1 text-muted-foreground/80">
-                          {item.result.slice(0, 120)}...
-                        </code>
-                      </div>
                     </div>
                   </div>
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
+                    className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10 shrink-0"
                     onClick={(e) => {
                       e.stopPropagation()
-                      handleDeleteItem(item.id)
+                      setDeleteConfirmId(item.id)
                     }}
-                    disabled={deleting === item.id}
+                    disabled={deletingItemId === item.id}
                   >
-                    {deleting === item.id ? (
+                    {deletingItemId === item.id ? (
                       <Loader2 className="h-4 w-4 animate-spin" />
                     ) : (
                       <Trash2 className="h-4 w-4" />
@@ -274,6 +275,37 @@ export default function HistoryPage() {
           </>
         )}
       </div>
+
+      {/* Delete Single Item Confirmation Dialog */}
+      <AlertDialog open={deleteConfirmId !== null} onOpenChange={(open) => {
+        if (!open) setDeleteConfirmId(null)
+      }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Удалить генерацию?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Действие нельзя отменить.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="flex gap-3 justify-end">
+            <AlertDialogCancel>Отмена</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => deleteConfirmId && handleDeleteItem(deleteConfirmId)}
+              disabled={deletingItemId !== null}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deletingItemId !== null ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Удаление...
+                </>
+              ) : (
+                'Удалить'
+              )}
+            </AlertDialogAction>
+          </div>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Clear History Confirmation Dialog */}
       <AlertDialog open={showClearDialog} onOpenChange={setShowClearDialog}>
