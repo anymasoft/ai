@@ -54,7 +54,7 @@ const packages: Record<string, { name: string; description: string; buttonText: 
   basic: {
     name: 'Basic',
     description: 'Для небольших сайтов и MVP',
-    buttonText: 'Купить 100 преобразований',
+    buttonText: 'Купить 100 операций',
     features: [
       'HTML / React / Vue — готовый код на выходе',
       'Быстрая сборка интерфейсов без ручной верстки',
@@ -68,9 +68,9 @@ const packages: Record<string, { name: string; description: string; buttonText: 
   professional: {
     name: 'Professional',
     description: 'Для регулярной и коммерческой работы',
-    buttonText: 'Купить 500 преобразований',
+    buttonText: 'Купить 500 операций',
     features: [
-      'Массовое преобразование заготовок под проекты',
+      'Массовая операция с заготовками под проекты',
       'Быстрое клонирование существующих интерфейсов',
       'Экономия десятков часов ручной верстки',
       'Рабочий код, готовый к интеграции в проект',
@@ -190,8 +190,8 @@ export function PricingPlans({
             </div>
             <div className='text-center text-sm text-muted-foreground'>
               {tier.id === 'free'
-                ? 'Включено: 3 преобразования бесплатно для старта'
-                : `Включено: ${tier.credits} преобразований`
+                ? 'Включено: 3 операции бесплатно для старта'
+                : `Включено: ${tier.credits} операций`
               }
             </div>
             <div className='space-y-2'>

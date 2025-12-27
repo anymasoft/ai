@@ -107,7 +107,7 @@ export function BillingHistoryCard({ history }: BillingHistoryCardProps) {
                       {item.month || formatDate(item.created_at)}
                     </div>
                     <div className="text-sm text-muted-foreground">
-                      {item.plan || getPackageName(item.package)} ({item.credits_amount} преобразований)
+                      {item.plan || getPackageName(item.package)} ({item.credits_amount} операций)
                     </div>
                   </div>
                   <div className="text-right">

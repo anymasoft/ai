@@ -156,7 +156,7 @@ export default function BillingSettings() {
         <div>
           <h1 className="text-3xl font-bold">Пакеты и баланс</h1>
           <p className="text-muted-foreground">
-            Просмотрите ваш баланс преобразований и покупайте пакеты по мере необходимости.
+            Просмотрите ваш баланс операций и покупайте пакеты по мере необходимости.
           </p>
         </div>
 
@@ -191,7 +191,7 @@ export default function BillingSettings() {
                 <CardHeader>
                   <CardTitle>Пакеты пополнения</CardTitle>
                   <CardDescription>
-                    Выберите пакет для пополнения баланса преобразований.
+                    Выберите пакет для пополнения баланса операций.
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
