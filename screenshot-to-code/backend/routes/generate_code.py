@@ -1365,23 +1365,17 @@ class PostProcessingMiddleware(Middleware):
 
 
 def get_user_from_session(websocket: WebSocket) -> dict | None:
-    """Get user info from session (query params or cookies in WebSocket connection).
+    """Get user info from session cookie in WebSocket connection.
 
     Returns user dict with 'id', 'email', 'plan', etc if valid session exists.
     Returns None if no session, invalid session, or session expired.
     """
     try:
-        # Try query params first, fallback to cookies
-        session_id = websocket.query_params.get("session_id")
-        if session_id:
-            print(f"[WS:AUTH] Found session_id from query params")
-        else:
-            session_id = websocket.cookies.get("session_id")
-            if session_id:
-                print(f"[WS:AUTH] Found session_id from cookies")
+        session_id = websocket.cookies.get("session_id")
+        print(f"[WS:AUTH] Extracted session_id from cookies: {repr(session_id)}")
 
         if not session_id:
-            print(f"[WS:AUTH] WARNING: No session_id in query params or cookies")
+            print(f"[WS:AUTH] WARNING: No session_id in cookies")
             return None
 
         conn = get_conn()
