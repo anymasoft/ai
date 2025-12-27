@@ -154,6 +154,7 @@ def init_db() -> None:
                 input_type TEXT NOT NULL,
                 input_data TEXT NOT NULL,
                 input_thumbnail TEXT,
+                input_label TEXT,
                 instructions TEXT,
                 result_code TEXT,
                 error_message TEXT,
@@ -215,6 +216,7 @@ def init_db() -> None:
                             input_type TEXT NOT NULL,
                             input_data TEXT NOT NULL,
                             input_thumbnail TEXT,
+                            input_label TEXT,
                             instructions TEXT,
                             result_code TEXT,
                             error_message TEXT,
@@ -232,7 +234,7 @@ def init_db() -> None:
                     cursor.execute("""
                         INSERT INTO api_generations_new
                         SELECT id, user_id, status, format, input_type, input_data,
-                               input_thumbnail, instructions, result_code, error_message,
+                               input_thumbnail, NULL, instructions, result_code, error_message,
                                credits_charged, model_used, duration_ms, created_at,
                                started_at, completed_at
                         FROM api_generations
@@ -261,6 +263,18 @@ def init_db() -> None:
 
         except Exception as e:
             print(f"[DB] API generations migration warning (non-critical): {e}")
+
+        # Add input_label column if it doesn't exist (for history display)
+        try:
+            cursor.execute("PRAGMA table_info(api_generations)")
+            columns = [row[1] for row in cursor.fetchall()]
+
+            if 'input_label' not in columns:
+                cursor.execute("ALTER TABLE api_generations ADD COLUMN input_label TEXT")
+                conn.commit()
+                print("[DB] Added input_label column to api_generations")
+        except Exception as e:
+            print(f"[DB] input_label migration warning (non-critical): {e}")
 
         # Create API generation chunks table (for streaming without duplicates on reconnect)
         cursor.execute("""
