@@ -6,6 +6,19 @@ import { DotPattern } from '@/components/dot-pattern'
 import { assetUrl, getAppUrl } from "@/lib/utils"
 import { useState, useEffect } from 'react'
 
+// Функция для цветового выделения HTML
+function highlightHtml(html: string): string {
+  return html
+    // HTML-теги → синий цвет
+    .replace(/(&lt;\/?[\w-]+[^&]*?&gt;)/g, '<span class="text-blue-500">$1</span>')
+    // Имена атрибутов → зелёный цвет
+    .replace(/\s([\w-]+)=/g, ' <span class="text-green-600">$1</span>=')
+    // Строковые значения → оранжевый цвет
+    .replace(/"([^"]*)"/g, '<span class="text-amber-500">"$1"</span>')
+    // HTML-комментарии → серый цвет
+    .replace(/(&lt;!--[^&]*?--&gt;)/g, '<span class="text-slate-500">$1</span>')
+}
+
 export function HeroSection() {
   const [showCode, setShowCode] = useState(false)
   const [htmlCode, setHtmlCode] = useState('')
@@ -160,14 +173,23 @@ export function HeroSection() {
 
               {/* Code Mode - HTML Source */}
               {showCode && (
-                <div className="bg-background p-4 overflow-auto max-h-[600px]">
+                <div className="bg-slate-950 p-6 overflow-auto max-h-[600px]">
                   {loading ? (
                     <div className="flex items-center justify-center h-[600px] text-muted-foreground">
                       Загрузка кода...
                     </div>
                   ) : htmlCode ? (
-                    <pre className="text-xs text-muted-foreground font-mono whitespace-pre-wrap break-words">
-                      <code>{htmlCode}</code>
+                    <pre className="text-sm text-slate-100 font-mono whitespace-pre-wrap break-words leading-relaxed">
+                      <code
+                        dangerouslySetInnerHTML={{
+                          __html: highlightHtml(
+                            htmlCode
+                              .replace(/</g, '&lt;')
+                              .replace(/>/g, '&gt;')
+                              .replace(/"/g, '"')
+                          )
+                        }}
+                      />
                     </pre>
                   ) : (
                     <div className="text-muted-foreground">
