@@ -173,13 +173,13 @@ export function HeroSection() {
 
               {/* Code Mode - HTML Source */}
               {showCode && (
-                <div className="bg-slate-950 p-6 overflow-auto max-h-[600px]">
+                <div className="bg-muted p-6 overflow-auto max-h-[600px]">
                   {loading ? (
                     <div className="flex items-center justify-center h-[600px] text-muted-foreground">
                       Загрузка кода...
                     </div>
                   ) : htmlCode ? (
-                    <pre className="text-sm text-slate-100 font-mono whitespace-pre-wrap break-words leading-relaxed">
+                    <pre className="text-sm text-foreground font-mono whitespace-pre-wrap break-words leading-relaxed">
                       <code
                         dangerouslySetInnerHTML={{
                           __html: highlightHtml(
