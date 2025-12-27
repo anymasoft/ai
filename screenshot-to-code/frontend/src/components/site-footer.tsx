@@ -1,6 +1,8 @@
 import { Heart } from "lucide-react"
 
 export function SiteFooter() {
+  const currentYear = new Date().getFullYear()
+
   return (
     <footer className="shrink-0 border-t bg-background">
       <div className="px-4 py-6 lg:px-6">
@@ -13,6 +15,7 @@ export function SiteFooter() {
               Screen2Code
             </span>
           </div>
+          <span className="text-xs text-muted-foreground">© {currentYear}</span>
         </div>
       </div>
     </footer>
