@@ -10,18 +10,6 @@ const ERROR_MESSAGE =
 
 const CANCEL_MESSAGE = "Code generation cancelled"
 
-// Helper: Get session_id from cookies
-function getSessionIdFromCookies(): string | null {
-  const cookies = document.cookie.split("; ")
-  for (const cookie of cookies) {
-    const [name, value] = cookie.split("=")
-    if (name === "session_id") {
-      return decodeURIComponent(value)
-    }
-  }
-  return null
-}
-
 type WebSocketResponse = {
   type:
     | "chunk"
@@ -51,16 +39,8 @@ export function generateCode(
   params: FullGenerationSettings,
   callbacks: CodeGenerationCallbacks
 ) {
-  const sessionId = getSessionIdFromCookies()
-
-  if (!sessionId) {
-    console.error("[WS] No session_id found in cookies")
-    callbacks.onVariantError(0, "Session not found. Please log in again.")
-    return
-  }
-
-  const wsUrl = `${WS_BACKEND_URL}/generate-code?session_id=${encodeURIComponent(sessionId)}`
-  console.log("[WS] opening WebSocket", wsUrl)
+  const wsUrl = `${WS_BACKEND_URL}/generate-code`
+  console.log("[WS] Connecting to backend @ ", wsUrl)
 
   const ws = new WebSocket(wsUrl)
   wsRef.current = ws
