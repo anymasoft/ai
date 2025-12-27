@@ -92,6 +92,7 @@ class PipelineContext:
 
     websocket: WebSocket
     generation_id: str
+    user_id: str = None  # User ID for tracking who created the generation
     ws_comm: "WebSocketCommunicator | None" = None
     params: Dict[str, str] = field(default_factory=dict)
     extracted_params: "ExtractedParams | None" = None
@@ -169,8 +170,12 @@ class Pipeline:
             else:
                 print(f"[PIPELINE] Using provided generation_id={generation_id}")
 
-            context = PipelineContext(websocket=websocket, generation_id=generation_id, websocket_already_accepted=websocket_already_accepted)
-            print(f"[DEBUG] PipelineContext created with generation_id={context.generation_id}")
+            # Extract user_id from session
+            user = get_user_from_session(websocket)
+            user_id = user.get("id") if user else None
+
+            context = PipelineContext(websocket=websocket, generation_id=generation_id, user_id=user_id, websocket_already_accepted=websocket_already_accepted)
+            print(f"[DEBUG] PipelineContext created with generation_id={context.generation_id}, user_id={context.user_id}")
             # If params are provided (from queue), skip parameter extraction
             if params:
                 context.params = params
@@ -1110,8 +1115,9 @@ class WebSocketSetupMiddleware(Middleware):
                 save_generation(
                     status="started",
                     generation_id=context.generation_id,
+                    user_id=context.user_id,
                 )
-                print(f"[INIT] Generation started with id={context.generation_id}")
+                print(f"[INIT] Generation started with id={context.generation_id}, user_id={context.user_id}")
             except Exception:
                 # Silent - generation_id is still valid for future saves
                 pass
@@ -1486,10 +1492,16 @@ async def stream_code(websocket: WebSocket):
     generation_id = str(uuid.uuid4().hex[:16])
     print(f"[WS:4] DONE generation_id={generation_id}")
 
+    print("[WS:4.5] get user from session")
+    user = get_user_from_session(websocket)
+    user_id = user.get("id") if user else None
+    print(f"[WS:4.5] DONE user_id={user_id}")
+
     print("[WS:5] save_generation to DB")
     save_generation(
         status="queued",
         generation_id=generation_id,
+        user_id=user_id,
     )
     print(f"[WS:5] DONE save_generation record={generation_id}")
 
