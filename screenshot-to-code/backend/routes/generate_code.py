@@ -1473,27 +1473,18 @@ async def increment_user_generations(websocket: WebSocket) -> None:
 @router.websocket("/generate-code")
 async def stream_code(websocket: WebSocket):
     """Handle WebSocket code generation requests using a queue"""
-    print("[WS] HANDLER ENTERED - frontend connected to generation route")
-
     from gen_queue.generation_queue import enqueue_generation, GenerationJob
     from db import save_generation
     import uuid
 
-    print("[WS:0] Handler start")
-    print(f"[WS:0] Client: {websocket.client}")
-
-    print("[WS:1] accept WebSocket")
     await websocket.accept()
-    print("[WS:1] DONE accept")
 
-    print("[WS:2] receive_json from client")
     params: Dict[str, str] = await websocket.receive_json()
-    print("[WS:2] DONE receive_json")
 
-    print("[WS:3] check generation limits")
+    # Check if user is allowed to generate
     is_allowed, error_message = await check_generation_limits(websocket, params)
     if not is_allowed:
-        print(f"[WS:3] LIMIT CHECK FAILED: {error_message}")
+        print(f"[WS] Generation rejected: {error_message}")
         await websocket.send_json({
             "type": "error",
             "value": error_message or "Generation limit reached",
@@ -1501,18 +1492,13 @@ async def stream_code(websocket: WebSocket):
         })
         await websocket.close(code=4029, reason="Limit exceeded")
         return
-    print("[WS:3] DONE params check - limits OK")
 
-    print("[WS:4] create generation_id")
     generation_id = str(uuid.uuid4().hex[:16])
-    print(f"[WS:4] DONE generation_id={generation_id}")
 
-    print("[WS:4.5] get user from session")
+    # Get authenticated user - MANDATORY
     user = get_user_from_session(websocket)
-
-    # MANDATORY: User MUST be authenticated
     if not user:
-        print(f"[WS:4.5] CRITICAL: No authenticated user - rejecting generation")
+        print(f"[WS] Rejected: No authenticated user")
         await websocket.send_json({
             "type": "error",
             "value": "Not authenticated. Please log in.",
@@ -1522,11 +1508,8 @@ async def stream_code(websocket: WebSocket):
         return
 
     user_id = user.get("id")
-    print(f"[WS:4.5] DONE user_id={repr(user_id)} (type={type(user_id).__name__})")
-    print(f"[WS:4.5] Full user object: {user}")
-
     if not user_id:
-        print(f"[WS:4.5] CRITICAL: user_id is empty/None in authenticated user")
+        print(f"[WS] Rejected: Missing user_id in authenticated user")
         await websocket.send_json({
             "type": "error",
             "value": "User ID missing. Please log in again.",
@@ -1535,35 +1518,28 @@ async def stream_code(websocket: WebSocket):
         await websocket.close(code=4401, reason="Invalid user")
         return
 
-    print("[WS:5] save_generation to DB with authenticated user")
+    # Save generation with authenticated user
     save_generation(
         status="queued",
         generation_id=generation_id,
         user_id=user_id,
     )
-    print(f"[WS:5] DONE save_generation record={generation_id} with user_id={repr(user_id)}")
 
-    print("[WS:6] send status message")
     await websocket.send_json({
         "type": "status",
         "value": "Queued for processing...",
         "variantIndex": 0
     })
-    print("[WS:6] DONE send status")
 
-    print("[WS:7] create GenerationJob")
     job = GenerationJob(
         generation_id=generation_id,
         websocket=websocket,
         params=params,
         websocket_already_accepted=True,
     )
-    print(f"[WS:7] DONE GenerationJob created")
 
-    print("[WS:8] enqueue_generation")
     await enqueue_generation(job)
-    print(f"[WS:8] DONE enqueue_generation job_id={generation_id}")
 
-    print("[WS:9] start keep-alive loop")
+    # Keep connection alive
     while True:
         await asyncio.sleep(0.1)
