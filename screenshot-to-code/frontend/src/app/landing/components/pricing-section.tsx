@@ -288,7 +288,7 @@ export function PricingSection() {
         {/* Enterprise Note */}
         <div className="mt-16 text-center">
           <p className="text-muted-foreground">
-            Наши контакты: <a href="mailto:support@beem.ink" className="hover:text-foreground transition-colors">support@beem.ink</a>
+            Наши контакты: <a href="mailto:support@beem.ink" className="text-primary underline hover:text-primary/80 transition-colors">support@beem.ink</a>
           </p>
         </div>
       </div>
