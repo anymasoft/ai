@@ -1495,15 +1495,20 @@ async def stream_code(websocket: WebSocket):
     print("[WS:4.5] get user from session")
     user = get_user_from_session(websocket)
     user_id = user.get("id") if user else None
-    print(f"[WS:4.5] DONE user_id={user_id}")
+    print(f"[WS:4.5] DONE user_id={user_id} (type={type(user_id).__name__}, repr={repr(user_id)})")
+    if user:
+        print(f"[WS:4.5] Full user object: {user}")
+    else:
+        print(f"[WS:4.5] WARNING: user is None - generation will have NULL user_id")
 
     print("[WS:5] save_generation to DB")
+    print(f"[WS:5] Saving with user_id={repr(user_id)}")
     save_generation(
         status="queued",
         generation_id=generation_id,
         user_id=user_id,
     )
-    print(f"[WS:5] DONE save_generation record={generation_id}")
+    print(f"[WS:5] DONE save_generation record={generation_id} with user_id={repr(user_id)}")
 
     print("[WS:6] send status message")
     await websocket.send_json({

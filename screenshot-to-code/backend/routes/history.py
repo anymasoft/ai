@@ -16,11 +16,14 @@ async def get_generations_list(limit: int = 20, current_user: dict = Depends(get
             raise HTTPException(status_code=401, detail="Not authenticated")
 
         user_id = user.get("id")
+        print(f"[API:get_generations] current_user.id={repr(user_id)} (type={type(user_id).__name__})")
+        print(f"[API:get_generations] Full user object: {user}")
 
         # Query API generations table filtered by user_id
         conn = get_api_conn()
         cursor = conn.cursor()
 
+        print(f"[API:get_generations] Executing WHERE user_id = {repr(user_id)} LIMIT {limit}")
         cursor.execute(
             """
             SELECT id, input_type, input_label, input_thumbnail, format, status,
@@ -35,6 +38,18 @@ async def get_generations_list(limit: int = 20, current_user: dict = Depends(get
 
         rows = cursor.fetchall()
         conn.close()
+
+        print(f"[API:get_generations] Query returned {len(rows)} rows")
+        if len(rows) == 0:
+            print(f"[API:get_generations] WARNING: Empty result! Checking database for ANY generations...")
+            conn2 = get_api_conn()
+            cursor2 = conn2.cursor()
+            cursor2.execute("SELECT id, user_id FROM api_generations")
+            all_gens = cursor2.fetchall()
+            print(f"[API:get_generations] Total generations in DB: {len(all_gens)}")
+            for gen in all_gens:
+                print(f"[API:get_generations] Found: id={gen[0]}, user_id={repr(gen[1])} (type={type(gen[1]).__name__})")
+            conn2.close()
 
         # Format response
         enhanced = []
