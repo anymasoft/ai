@@ -1477,6 +1477,9 @@ async def stream_code(websocket: WebSocket):
     from db import save_generation
     import uuid
 
+    # ДИАГНОСТИКА: Показать ВСЕ cookies при подключении
+    print(f"[WS:DEBUG] All cookies: {websocket.cookies}")
+
     await websocket.accept()
 
     params: Dict[str, str] = await websocket.receive_json()
