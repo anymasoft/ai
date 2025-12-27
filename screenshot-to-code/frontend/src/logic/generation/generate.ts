@@ -10,6 +10,18 @@ const ERROR_MESSAGE =
 
 const CANCEL_MESSAGE = "Code generation cancelled"
 
+// Helper: Get session_id from cookies
+function getSessionIdFromCookies(): string | null {
+  const cookies = document.cookie.split("; ")
+  for (const cookie of cookies) {
+    const [name, value] = cookie.split("=")
+    if (name === "session_id") {
+      return decodeURIComponent(value)
+    }
+  }
+  return null
+}
+
 type WebSocketResponse = {
   type:
     | "chunk"
@@ -39,7 +51,10 @@ export function generateCode(
   params: FullGenerationSettings,
   callbacks: CodeGenerationCallbacks
 ) {
-  const wsUrl = `${WS_BACKEND_URL}/generate-code`
+  // Get session_id from cookies and add to WebSocket URL
+  const sessionId = getSessionIdFromCookies()
+  const queryString = sessionId ? `?session_id=${encodeURIComponent(sessionId)}` : ""
+  const wsUrl = `${WS_BACKEND_URL}/generate-code${queryString}`
   console.log("[WS] Connecting to backend @ ", wsUrl)
 
   const ws = new WebSocket(wsUrl)
