@@ -22,6 +22,7 @@ async def get_generations_list(limit: int = 20, current_user: dict = Depends(get
         # Use list_generations() to read from generations table (WebSocket generations)
         generations = list_generations(limit=limit, user_id=user_id)
 
+        print(f"[HISTORY][READ] user_id={user_id} rows={len(generations)}")
         print(f"[API:get_generations] Query returned {len(generations)} rows from generations table")
         if len(generations) == 0:
             print(f"[API:get_generations] WARNING: Empty result! Checking database for ANY generations...")
