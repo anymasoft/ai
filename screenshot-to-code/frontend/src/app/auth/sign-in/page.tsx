@@ -11,6 +11,7 @@ export function SignInPage() {
   const [error, setError] = useState<string | null>(null)
   const popupRef = useRef<Window | null>(null)
   const popupCheckInterval = useRef<NodeJS.Timeout | null>(null)
+  const oauthSuccessRef = useRef(false) // флаг что popup успешно закрылся
 
   // Слушаем сообщения от popup
   useEffect(() => {
@@ -20,8 +21,31 @@ export function SignInPage() {
         return
       }
 
-      if (event.data.type === 'auth-success') {
-        // Вызываем checkAuth() в основном окне
+      // Обработка OAuth popup callback
+      if (event.data.type === 'oauth-success') {
+        oauthSuccessRef.current = true
+        try {
+          // Вызываем checkAuth() в основном окне
+          await checkAuth()
+
+          setIsLoading(false)
+          setError(null)
+
+          // Закрываем polling
+          if (popupCheckInterval.current) {
+            clearInterval(popupCheckInterval.current)
+          }
+
+          // Перейти на нужную страницу
+          const redirectTo = event.data.redirect_to || '/playground'
+          navigate(redirectTo)
+        } catch (err) {
+          console.error('Error during OAuth callback:', err)
+          setIsLoading(false)
+          setError('Ошибка при завершении входа')
+        }
+      } else if (event.data.type === 'auth-success') {
+        // Legacy: старый формат (для совместимости)
         await checkAuth()
 
         setIsLoading(false)
@@ -63,6 +87,7 @@ export function SignInPage() {
   const handleGoogleSignIn = () => {
     setIsLoading(true)
     setError(null)
+    oauthSuccessRef.current = false // сбрасываем флаг для новой попытки
 
     const width = 500
     const height = 600
@@ -84,11 +109,15 @@ export function SignInPage() {
       return
     }
 
-    // Polling для проверки, закрыл ли пользователь popup вручную (не закончив OAuth)
+    // Polling для проверки, закрыл ли пользователь popup вручную
+    // (но не показываем ошибку если popup закрылся успешно через oauth-success)
     popupCheckInterval.current = setInterval(() => {
       if (popup.closed) {
-        setIsLoading(false)
-        setError('Окно входа было закрыто')
+        // Только показываем ошибку если не было успешного oauth-success
+        if (!oauthSuccessRef.current) {
+          setIsLoading(false)
+          setError('Окно входа было закрыто')
+        }
         if (popupCheckInterval.current) {
           clearInterval(popupCheckInterval.current)
         }
