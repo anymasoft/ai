@@ -69,12 +69,12 @@ export default function AdminTariffsPage() {
       const credits = parseInt(editing.credits as string)
 
       if (isNaN(price_rub) || isNaN(credits)) {
-        toast.error("Цена и количество генераций должны быть числами")
+        toast.error("Цена и количество преобразований должны быть числами")
         return
       }
 
       if (price_rub < 0 || credits < 0) {
-        toast.error("Цена и количество генераций не могут быть отрицательными")
+        toast.error("Цена и количество преобразований не могут быть отрицательными")
         return
       }
 
@@ -105,7 +105,7 @@ export default function AdminTariffsPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold">Управление тарифами</h1>
-          <p className="text-muted-foreground">Редактируйте цены и количество генераций</p>
+          <p className="text-muted-foreground">Редактируйте цены и количество преобразований</p>
         </div>
         <Button
           variant="outline"
