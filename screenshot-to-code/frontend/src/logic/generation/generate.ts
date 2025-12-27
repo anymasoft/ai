@@ -51,11 +51,16 @@ export function generateCode(
   params: FullGenerationSettings,
   callbacks: CodeGenerationCallbacks
 ) {
-  // Get session_id from cookies and add to WebSocket URL
   const sessionId = getSessionIdFromCookies()
-  const queryString = sessionId ? `?session_id=${encodeURIComponent(sessionId)}` : ""
-  const wsUrl = `${WS_BACKEND_URL}/generate-code${queryString}`
-  console.log("[WS] Connecting to backend @ ", wsUrl)
+
+  if (!sessionId) {
+    console.error("[WS] No session_id found in cookies")
+    callbacks.onVariantError(0, "Session not found. Please log in again.")
+    return
+  }
+
+  const wsUrl = `${WS_BACKEND_URL}/generate-code?session_id=${encodeURIComponent(sessionId)}`
+  console.log("[WS] opening WebSocket", wsUrl)
 
   const ws = new WebSocket(wsUrl)
   wsRef.current = ws
