@@ -40,11 +40,27 @@ async def get_generations_list(limit: int = 20, current_user: dict = Depends(get
         enhanced = []
         for row in rows:
             gen = dict(row)
+
+            # Use input_label if available, otherwise derive from input_type
+            input_label = gen.get("input_label")
+            if not input_label:
+                if gen["input_type"] == "url":
+                    # For URLs, try to extract domain from input_data
+                    try:
+                        from urllib.parse import urlparse
+                        parsed = urlparse(gen["input_data"])
+                        input_label = parsed.hostname or gen["input_data"]
+                    except:
+                        input_label = "URL"
+                else:
+                    # For images, use generic label
+                    input_label = "Image"
+
             enhanced.append({
                 "generation_id": gen["id"],
                 "created_at": gen["created_at"],
                 "input_type": gen["input_type"],
-                "input_label": gen["input_label"],
+                "input_label": input_label,
                 "input_thumbnail": gen["input_thumbnail"],
                 "format": gen["format"],
                 "status": gen["status"],
