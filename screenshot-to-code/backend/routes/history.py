@@ -1,6 +1,6 @@
 """History endpoints for accessing generation records."""
 from fastapi import APIRouter, HTTPException, Depends, Request
-from db import list_generations, get_generation, get_generation_variants, delete_generation, get_api_conn
+from db import list_generations, get_generation, get_generation_variants, delete_generation, get_conn
 from datetime import datetime
 from api.routes.auth import get_current_user
 
@@ -19,67 +19,39 @@ async def get_generations_list(limit: int = 20, current_user: dict = Depends(get
         print(f"[API:get_generations] current_user.id={repr(user_id)} (type={type(user_id).__name__})")
         print(f"[API:get_generations] Full user object: {user}")
 
-        # Query API generations table filtered by user_id
-        conn = get_api_conn()
-        cursor = conn.cursor()
+        # Use list_generations() to read from generations table (WebSocket generations)
+        generations = list_generations(limit=limit, user_id=user_id)
 
-        print(f"[API:get_generations] Executing WHERE user_id = {repr(user_id)} LIMIT {limit}")
-        cursor.execute(
-            """
-            SELECT id, input_type, input_label, input_thumbnail, format, status,
-                   result_code, created_at, completed_at, error_message, credits_charged
-            FROM api_generations
-            WHERE user_id = ?
-            ORDER BY created_at DESC
-            LIMIT ?
-            """,
-            (user_id, limit)
-        )
-
-        rows = cursor.fetchall()
-        conn.close()
-
-        print(f"[API:get_generations] Query returned {len(rows)} rows")
-        if len(rows) == 0:
+        print(f"[API:get_generations] Query returned {len(generations)} rows from generations table")
+        if len(generations) == 0:
             print(f"[API:get_generations] WARNING: Empty result! Checking database for ANY generations...")
-            conn2 = get_api_conn()
-            cursor2 = conn2.cursor()
-            cursor2.execute("SELECT id, user_id FROM api_generations")
-            all_gens = cursor2.fetchall()
+            conn = get_conn()
+            cursor = conn.cursor()
+            cursor.execute("SELECT id, user_id FROM generations")
+            all_gens = cursor.fetchall()
             print(f"[API:get_generations] Total generations in DB: {len(all_gens)}")
             for gen in all_gens:
                 print(f"[API:get_generations] Found: id={gen[0]}, user_id={repr(gen[1])} (type={type(gen[1]).__name__})")
-            conn2.close()
+            conn.close()
 
         # Format response
         enhanced = []
-        for row in rows:
-            gen = dict(row)
-
-            # Use input_label if available, otherwise derive from input_type
-            input_label = gen.get("input_label")
-            if not input_label:
-                if gen["input_type"] == "url":
-                    # For URLs, try to extract domain from input_data
-                    try:
-                        from urllib.parse import urlparse
-                        parsed = urlparse(gen["input_data"])
-                        input_label = parsed.hostname or gen["input_data"]
-                    except:
-                        input_label = "URL"
-                else:
-                    # For images, use generic label
-                    input_label = "Image"
+        for gen in generations:
+            # Get variants for this generation to extract result_code
+            variants = get_generation_variants(gen["id"])
+            result_code = None
+            if variants:
+                result_code = variants[0].get("html")
 
             enhanced.append({
                 "generation_id": gen["id"],
                 "created_at": gen["created_at"],
-                "input_type": gen["input_type"],
-                "input_label": input_label,
-                "input_thumbnail": gen["input_thumbnail"],
-                "format": gen["format"],
+                "input_type": "unknown",  # Not stored in generations table
+                "input_label": "Generation",
+                "input_thumbnail": None,
+                "format": "html_tailwind",  # Not stored in generations table
                 "status": gen["status"],
-                "result_code": gen["result_code"],
+                "result_code": result_code,
                 "display_name": f"Generation — {datetime.fromisoformat(gen['created_at']).strftime('%Y-%m-%d %H:%M')}",
             })
 
@@ -137,22 +109,15 @@ async def delete_generation_endpoint(generation_id: str, current_user: dict = De
         user_id = user.get("id")
 
         # Verify generation belongs to current user
-        conn = get_api_conn()
-        cursor = conn.cursor()
-
-        cursor.execute(
-            "SELECT id FROM api_generations WHERE id = ? AND user_id = ?",
-            (generation_id, user_id)
-        )
-
-        if not cursor.fetchone():
-            conn.close()
+        generation = get_generation(generation_id)
+        if not generation:
             raise HTTPException(status_code=404, detail="Generation not found")
 
-        # Delete the generation
-        cursor.execute("DELETE FROM api_generations WHERE id = ?", (generation_id,))
-        conn.commit()
-        conn.close()
+        if generation.get("user_id") != user_id:
+            raise HTTPException(status_code=403, detail="Not authorized to delete this generation")
+
+        # Delete the generation (cascades to generation_variants)
+        delete_generation(generation_id)
 
         print(f"[API] DELETE /generations/{generation_id}: deleted for user {user_id}")
         return {
@@ -177,10 +142,10 @@ async def clear_history(current_user: dict = Depends(get_current_user)):
         user_id = user.get("id")
 
         # Delete all generations for this user
-        conn = get_api_conn()
+        conn = get_conn()
         cursor = conn.cursor()
 
-        cursor.execute("DELETE FROM api_generations WHERE user_id = ?", (user_id,))
+        cursor.execute("DELETE FROM generations WHERE user_id = ?", (user_id,))
         deleted_count = cursor.rowcount
         conn.commit()
         conn.close()
