@@ -205,9 +205,10 @@ async def google_oauth_callback(
             status_code=302,
         )
 
-    # PART 6: Возвращаем redirect с HttpOnly session cookie
+    # PART 6: Редиректим popup на /oauth/success для handshake с родительским окном
+    # Popup передаст сообщение родителю и закроется
     response = RedirectResponse(
-        url=f"{FRONTEND_URL}/auth/callback?success=true&redirect_to={redirect_to}",
+        url=f"{FRONTEND_URL}/oauth/success?redirect_to={redirect_to}",
         status_code=302,
     )
 
