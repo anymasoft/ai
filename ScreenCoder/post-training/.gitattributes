@@ -1,3 +1,0 @@
-*.safetensors filter=lfs diff=lfs merge=lfs -text
-rl.tar.gz* filter=lfs diff=lfs merge=lfs -text
-vllm.tar.gz* filter=lfs diff=lfs merge=lfs -text

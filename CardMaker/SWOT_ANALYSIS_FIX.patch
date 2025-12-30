@@ -1,0 +1,119 @@
+diff --git a/YouTubeAnalitycs/src/lib/ai/analyzeChannel.ts b/YouTubeAnalitycs/src/lib/ai/analyzeChannel.ts
+index 586d21b..75d1ee0 100644
+--- a/YouTubeAnalitycs/src/lib/ai/analyzeChannel.ts
++++ b/YouTubeAnalitycs/src/lib/ai/analyzeChannel.ts
+@@ -68,24 +68,21 @@ function calculateEngagement(views: number, likes: number, comments: number): nu
+ }
+ 
+ /**
+- * Форматирует длительность видео
++ * Форматирует длительность видео (из количества секунд)
+  */
+-function formatDuration(duration: string | undefined): string {
+-  // Duration в формате ISO 8601 (PT1H2M10S)
+-  if (!duration) return 'н/д';
+-  const match = duration.match(/PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/);
+-  if (!match) return duration;
++function formatDurationFromSeconds(seconds: number | undefined): string {
++  if (!seconds || seconds === 0) return 'н/д';
+ 
+-  const hours = parseInt(match[1] || '0');
+-  const minutes = parseInt(match[2] || '0');
+-  const seconds = parseInt(match[3] || '0');
++  const hours = Math.floor(seconds / 3600);
++  const minutes = Math.floor((seconds % 3600) / 60);
++  const secs = Math.floor(seconds % 60);
+ 
+   if (hours > 0) {
+     return `${hours}ч ${minutes}м`;
+   } else if (minutes > 0) {
+-    return `${minutes}м ${seconds}с`;
++    return `${minutes}м ${secs}с`;
+   } else {
+-    return `${seconds}с`;
++    return `${secs}с`;
+   }
+ }
+ 
+@@ -105,8 +102,7 @@ export async function analyzeChannel(
+     url: dbPath.startsWith("file:") ? dbPath : `file:${dbPath}`,
+   });
+ 
+-  try {
+-    // Получаем данные канала
++  // Получаем данные канала
+     console.log("[AI] Запрос данных канала из БД...");
+     const competitorResult = await dbClient.execute({
+       sql: "SELECT * FROM competitors WHERE id = ?",
+@@ -144,7 +140,7 @@ export async function analyzeChannel(
+       viewCount: row.viewCountInt as number,
+       likeCount: row.likeCountInt as number,
+       commentCount: row.commentCountInt as number,
+-      duration: row.durationSeconds as string | undefined,
++      durationSeconds: row.durationSeconds as number | undefined,
+       description: (row.data ? JSON.parse(row.data as string).snippet?.description : '') || '',
+       engagement: calculateEngagement(
+         row.viewCountInt as number,
+@@ -154,8 +150,6 @@ export async function analyzeChannel(
+     }));
+ 
+     // НОВАЯ АРХИТЕКТУРА: Без исторических метрик — анализируем только текущие данные и TOP-12 видео
+-    dbClient.close();
+-
+     // Вычисляем агрегированные метрики
+     const avgViews = videos.length > 0
+       ? Math.round(videos.reduce((sum, v) => sum + v.viewCount, 0) / videos.length)
+@@ -167,14 +161,9 @@ export async function analyzeChannel(
+ 
+     const avgDuration = videos.length > 0
+       ? videos.reduce((sum, v) => {
+-          // Проверяем наличие duration перед использованием
+-          if (!v.duration) return sum;
+-          const match = v.duration.match(/PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/);
+-          if (!match) return sum;
+-          const hours = parseInt(match[1] || '0');
+-          const minutes = parseInt(match[2] || '0');
+-          const seconds = parseInt(match[3] || '0');
+-          return sum + hours * 3600 + minutes * 60 + seconds;
++          // durationSeconds это число (количество секунд) или undefined
++          if (!v.durationSeconds || v.durationSeconds === 0) return sum;
++          return sum + v.durationSeconds;
+         }, 0) / videos.length
+       : 0;
+ 
+@@ -206,12 +195,16 @@ export async function analyzeChannel(
+         просмотры: formatNumber(v.viewCount),
+         лайки: formatNumber(v.likeCount),
+         комментарии: formatNumber(v.commentCount),
+-        длительность: formatDuration(v.duration),
++        длительность: formatDurationFromSeconds(v.durationSeconds),
+         длительность_секунды: v.durationSeconds || 0,
+         вовлеченность: v.engagement.toFixed(3) + '%',
+       })),
+     };
+ 
++    // ЛОГИРОВАНИЕ: Проверяем данные перед отправкой в GPT
++    console.log("[AI] SWOT INPUT VIDEOS:", JSON.stringify(videos, null, 2));
++    console.log("[AI] SWOT INPUT CHANNEL DATA:", JSON.stringify(channelData, null, 2));
++
+     const prompt = `
+ Ты — эксперт YouTube-аналитики, креативный продюсер и стратег роста каналов.
+ Твоя задача — сделать максимально глубокий, практичный и коммерчески ценный SWOT-анализ канала,
+@@ -395,15 +388,6 @@ ${JSON.stringify(channelData, null, 2)}
+       ),
+     });
+ 
+-    return analysis;
+-  } catch (error) {
+-    dbClient.close();
+-    console.error("[AI] Ошибка при детальном SWOT-анализе:", error);
+-
+-    if (error instanceof Error) {
+-      throw new Error(`AI analysis failed: ${error.message}`);
+-    }
+-
+-    throw new Error("AI analysis failed with unknown error");
+-  }
++  dbClient.close();
++  return analysis;
+ }
