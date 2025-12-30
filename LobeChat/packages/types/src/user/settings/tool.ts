@@ -1,5 +1,0 @@
-import { UserInterventionConfig } from '../../tool';
-
-export interface UserToolConfig {
-  humanIntervention?: UserInterventionConfig;
-}
