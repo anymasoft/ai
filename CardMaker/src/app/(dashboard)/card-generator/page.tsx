@@ -19,9 +19,7 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible"
 import { Badge } from "@/components/ui/badge"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Copy, CheckCircle, ChevronDown, Loader2 } from "lucide-react"
-import { useState as useStateHook } from "react"
 
 // Mock данные для примера результата
 const MOCK_CARD_RESULT = {
