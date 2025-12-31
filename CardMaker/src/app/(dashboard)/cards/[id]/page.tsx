@@ -1,29 +1,34 @@
 "use client"
 
-import React from "react"
-import { useState } from "react"
-import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
-import { Copy, CheckCircle, ChevronDown, ArrowLeft } from "lucide-react"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
+import { Copy, Download, CheckCircle, ArrowLeft } from "lucide-react"
 import { toast } from "sonner"
+import { useState } from "react"
 
-// Mock данные для просмотра карточки
-const MOCK_CARD_DATA = {
-  "card-001": {
-    id: "card-001",
-    productTitle: "Спортивные умные часы GPS водонепроницаемые",
-    marketplace: "ozon",
-    marketplace_label: "Ozon",
-    category: "sports",
-    style: "selling",
-    style_label: "Продающий",
-    createdAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000),
-    title: "Спортивные Умные Часы GPS водонепроницаемые - Идеально для Фитнеса",
-    description: `Профессиональные спортивные смарт-часы с встроенным GPS, идеальны для любителей фитнеса и бега.
+interface CardDetailsProps {
+  params: {
+    id: string
+  }
+}
+
+// Mock карточка товара
+const MOCK_CARD = {
+  id: "1",
+  productName: "Умные часы с GPS и пульсометром",
+  marketplace: "ozon",
+  marketplace_label: "Ozon",
+  style: "selling",
+  style_label: "Продающий",
+  characteristics: `Экран 1.69", AMOLED, IP67, 30 часов батареи, совместимы с iOS и Android, вес 41г`,
+  description: `Профессиональные спортивные смарт-часы с встроенным GPS, идеальны для любителей фитнеса и бега.
 
 Характеристики:
 • GPS + GLONASS + Galileo для точного отслеживания маршрута
@@ -41,79 +46,11 @@ const MOCK_CARD_DATA = {
 ✓ Официальная гарантия 24 месяца
 ✓ Быстрая доставка - в наличии
 ✓ Русскоязычная техподдержка`,
-    keywords: ["спортивные часы", "смарт-часы GPS", "фитнес часы", "часы для бега", "водонепроницаемые часы"],
-    whyItWorks: "Описание содержит конкретные характеристики, которые хочет видеть покупатель. Используются стоп-слова вроде 'Идеально', 'Профессиональные'. Товар позиционируется как premium сегмент через упоминание качественных материалов и технологий.",
-  },
-  "card-002": {
-    id: "card-002",
-    productTitle: "Кроссовки спортивные беговые для мужчин",
-    marketplace: "wildberries",
-    marketplace_label: "Wildberries",
-    category: "fashion",
-    style: "expert",
-    style_label: "Экспертный",
-    createdAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000),
-    title: "Беговые кроссовки высокого класса - для профессиональных спортсменов",
-    description: "Кроссовки созданы с использованием новейшей технологии амортизации...",
-    keywords: ["кроссовки", "беговые кроссовки", "спортивная обувь"],
-    whyItWorks: "Использован экспертный стиль описания с акцентом на технологии.",
-  },
-  "card-003": {
-    id: "card-003",
-    productTitle: "Ноутбук 15.6 дюймов алюминиевый корпус SSD 512GB",
-    marketplace: "ozon",
-    marketplace_label: "Ozon",
-    category: "electronics",
-    style: "brief",
-    style_label: "Краткий",
-    createdAt: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000),
-    title: "Ноутбук 15.6\" алюминий SSD 512GB",
-    description: "Мощный ноутбук для работы и развлечений. Алюминиевый корпус, SSD 512GB, 16GB RAM, Intel Core i7.",
-    keywords: ["ноутбук", "ноутбук 15.6", "ноутбук с SSD"],
-    whyItWorks: "Краткое описание, прямое и понятное. Все ключевые характеристики на виду.",
-  },
 }
 
-interface CardDetailsPageProps {
-  params: Promise<{ id: string }>
-}
-
-export default function CardDetailsPage({ params }: CardDetailsPageProps) {
+export default function CardDetailsPage({ params }: CardDetailsProps) {
   const router = useRouter()
   const [copiedSection, setCopiedSection] = useState<string | null>(null)
-  const [id, setId] = useState<string>("")
-
-  // Получаем ID из params (асинхронно)
-  React.useEffect(() => {
-    params.then((p) => setId(p.id))
-  }, [params])
-
-  // Ищем карточку в mock данных
-  const card = MOCK_CARD_DATA[id as keyof typeof MOCK_CARD_DATA]
-
-  if (!id || !card) {
-    return (
-      <div className="space-y-6 px-4 md:px-6">
-        <div className="flex items-center gap-2">
-          <Button variant="ghost" size="sm" onClick={() => router.back()}>
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Назад
-          </Button>
-        </div>
-        <Card>
-          <CardHeader>
-            <CardTitle>Карточка не найдена</CardTitle>
-            <CardDescription>К сожалению, карточка с ID {id} не существует</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Link href="/cards-history">
-              <Button>Вернуться к истории карточек</Button>
-            </Link>
-          </CardContent>
-        </Card>
-      </div>
-    )
-  }
 
   const handleCopy = (text: string, section: string) => {
     navigator.clipboard.writeText(text)
@@ -122,149 +59,130 @@ export default function CardDetailsPage({ params }: CardDetailsPageProps) {
     setTimeout(() => setCopiedSection(null), 2000)
   }
 
-  return (
-    <div className="space-y-6 px-4 md:px-6">
-      {/* Кнопка назад */}
-      <div className="flex items-center justify-between">
-        <Button variant="ghost" size="sm" onClick={() => router.back()}>
-          <ArrowLeft className="h-4 w-4 mr-2" />
-          Назад к истории
-        </Button>
-      </div>
+  const handleEdit = () => {
+    toast.info("Функция редактирования (скоро будет доступна)")
+  }
 
-      {/* Заголовок и мета-информация */}
-      <div className="space-y-2">
-        <h1 className="text-3xl font-bold line-clamp-2">{card.productTitle}</h1>
-        <div className="flex flex-wrap gap-2">
-          <Badge className="bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-100">
-            {card.marketplace_label}
-          </Badge>
-          <Badge variant="secondary">{card.style_label}</Badge>
-          <span className="text-xs text-muted-foreground">
-            {card.createdAt.toLocaleDateString("ru-RU", {
-              year: "numeric",
-              month: "long",
-              day: "numeric",
-            })}
-          </span>
+  const handleRegenerate = () => {
+    toast.info("Функция переподготовки (скоро будет доступна)")
+  }
+
+  return (
+    <TooltipProvider>
+      <div className="space-y-6 px-4 md:px-6 py-4">
+        {/* Кнопка назад */}
+        <button
+          onClick={() => router.back()}
+          className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          Вернуться
+        </button>
+
+        {/* HEADER */}
+        <div className="space-y-3">
+          <div className="flex items-start justify-between gap-4">
+            <div className="flex-1">
+              <h1 className="text-3xl font-bold mb-2">{MOCK_CARD.productName}</h1>
+              <div className="flex gap-2 flex-wrap">
+                <Badge variant="secondary">
+                  {MOCK_CARD.marketplace_label}
+                </Badge>
+                <Badge variant="outline">
+                  {MOCK_CARD.style_label}
+                </Badge>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* TOOLBAR ДЕЙСТВИЙ - ИКОНКИ С TOOLTIP */}
+        <div className="flex gap-2 items-center p-4 bg-muted/30 rounded-lg w-fit">
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                onClick={() => handleCopy(MOCK_CARD.description, "description")}
+                className="p-2 rounded-md hover:bg-muted transition-colors"
+              >
+                {copiedSection === "description" ? (
+                  <CheckCircle className="h-4 w-4 text-green-600" />
+                ) : (
+                  <Copy className="h-4 w-4" />
+                )}
+              </button>
+            </TooltipTrigger>
+            <TooltipContent>Скопировать описание</TooltipContent>
+          </Tooltip>
+
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button className="p-2 rounded-md hover:bg-muted transition-colors">
+                <Download className="h-4 w-4" />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent>Экспорт в CSV</TooltipContent>
+          </Tooltip>
+
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button className="p-2 rounded-md hover:bg-muted transition-colors">
+                <Download className="h-4 w-4" />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent>Экспорт в TXT</TooltipContent>
+          </Tooltip>
+        </div>
+
+        {/* BODY - ИНФОРМАЦИЯ О ТОВАРЕ */}
+        <div className="space-y-6">
+          {/* Наименование товара */}
+          <div className="space-y-2">
+            <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wide">
+              Наименование товара
+            </h2>
+            <div className="bg-muted/50 p-4 rounded-lg text-sm">
+              {MOCK_CARD.productName}
+            </div>
+          </div>
+
+          {/* Характеристики */}
+          <div className="space-y-2">
+            <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wide">
+              Характеристики
+            </h2>
+            <div className="bg-muted/50 p-4 rounded-lg text-sm leading-relaxed">
+              {MOCK_CARD.characteristics}
+            </div>
+          </div>
+
+          {/* Описание товара */}
+          <div className="space-y-2">
+            <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wide">
+              Текст описания карточки
+            </h2>
+            <div className="bg-muted/50 p-4 rounded-lg text-sm leading-relaxed whitespace-pre-wrap">
+              {MOCK_CARD.description}
+            </div>
+          </div>
+        </div>
+
+        {/* ACTIONS - КНОПКИ */}
+        <div className="flex gap-2 pt-4 border-t">
+          <Button
+            onClick={handleEdit}
+            variant="outline"
+            className="flex-1 gap-2"
+          >
+            Редактировать
+          </Button>
+          <Button
+            onClick={handleRegenerate}
+            className="flex-1 gap-2"
+          >
+            Переподготовить
+          </Button>
         </div>
       </div>
-
-      {/* Название товара (SEO) */}
-      <Card>
-        <CardHeader className="pb-3 pt-4">
-          <div className="flex items-start justify-between gap-3">
-            <div className="flex-1">
-              <CardTitle className="text-base">Название товара (SEO)</CardTitle>
-              <CardDescription className="text-xs">Оптимизировано для поиска</CardDescription>
-            </div>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => handleCopy(card.title, "title")}
-              title="Копировать"
-              className="h-8 w-8"
-            >
-              {copiedSection === "title" ? (
-                <CheckCircle className="h-4 w-4 text-green-600" />
-              ) : (
-                <Copy className="h-4 w-4" />
-              )}
-            </Button>
-          </div>
-        </CardHeader>
-        <CardContent className="pt-0">
-          <p className="text-sm font-medium leading-relaxed">{card.title}</p>
-        </CardContent>
-      </Card>
-
-      {/* Описание товара */}
-      <Card>
-        <CardHeader className="pb-3 pt-4">
-          <div className="flex items-start justify-between gap-3">
-            <div className="flex-1">
-              <CardTitle className="text-base">Описание товара</CardTitle>
-              <CardDescription className="text-xs">Полное описание с характеристиками</CardDescription>
-            </div>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => handleCopy(card.description, "description")}
-              title="Копировать"
-              className="h-8 w-8"
-            >
-              {copiedSection === "description" ? (
-                <CheckCircle className="h-4 w-4 text-green-600" />
-              ) : (
-                <Copy className="h-4 w-4" />
-              )}
-            </Button>
-          </div>
-        </CardHeader>
-        <CardContent className="pt-0">
-          <div className="bg-muted/50 p-3 rounded-md text-sm whitespace-pre-wrap leading-relaxed">
-            {card.description}
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* SEO-ключи */}
-      <Card>
-        <CardHeader className="pb-3 pt-4">
-          <div className="flex items-start justify-between gap-3">
-            <div className="flex-1">
-              <CardTitle className="text-base">SEO-ключи</CardTitle>
-              <CardDescription className="text-xs">Основные слова для поиска</CardDescription>
-            </div>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => handleCopy(card.keywords.join(", "), "keywords")}
-              title="Копировать"
-              className="h-8 w-8"
-            >
-              {copiedSection === "keywords" ? (
-                <CheckCircle className="h-4 w-4 text-green-600" />
-              ) : (
-                <Copy className="h-4 w-4" />
-              )}
-            </Button>
-          </div>
-        </CardHeader>
-        <CardContent className="pt-0">
-          <div className="flex flex-wrap gap-2">
-            {card.keywords.map((keyword, index) => (
-              <Badge key={index} variant="secondary" className="text-xs">
-                {keyword}
-              </Badge>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Пояснение почему так */}
-      <Collapsible defaultOpen={false}>
-        <CollapsibleTrigger className="flex items-center gap-2 font-medium text-sm hover:text-primary transition-colors py-1">
-          <ChevronDown className="h-4 w-4 transition-transform data-[state=open]:rotate-180" />
-          Почему описание выглядит именно так?
-        </CollapsibleTrigger>
-        <CollapsibleContent className="mt-3">
-          <Card className="border bg-muted/50">
-            <CardContent className="pt-4">
-              <p className="text-xs text-muted-foreground leading-relaxed">
-                {card.whyItWorks}
-              </p>
-            </CardContent>
-          </Card>
-        </CollapsibleContent>
-      </Collapsible>
-
-      {/* Кнопка вернуться */}
-      <div className="flex justify-center pt-2">
-        <Button variant="outline" onClick={() => router.push("/cards-history")}>
-          Вернуться к истории карточек
-        </Button>
-      </div>
-    </div>
+    </TooltipProvider>
   )
 }
