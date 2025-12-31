@@ -49,7 +49,7 @@ export function FreeFormSection() {
             Проходит требования Ozon / Wildberries
           </Badge>
           <h2 className="text-3xl md:text-4xl font-bold mb-2">
-            Твой успех начинается здесь
+            Попробуй бесплатно
           </h2>
           <p className="text-muted-foreground">
             Сгенерируй готовое описание товара за один клик
