@@ -29,20 +29,20 @@ export function HeroSection() {
 
           {/* Main Headline */}
           <h1 className="mb-6 text-4xl font-bold tracking-tight sm:text-6xl lg:text-7xl">
-            AI-сценарист для YouTube: получи топовый сценарий{' '}
+            Быстрое и качественное создание описаний товаров{' '}
             <span className="bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
-              одним нажатием кнопки
+              для Ozon и Wildberries
             </span>
           </h1>
 
           {/* Subheading */}
           <p className="mx-auto mb-10 max-w-2xl text-lg text-muted-foreground sm:text-xl">
-            Мы автоматизируем самый сложный этап YouTube-заработка — превращение трендов и успешных видео конкурентов в готовые сценарии, которые удерживают внимание и проходят монетизацию.
+            Помогаем быстро подготовить понятные и аккуратные описания товаров, которые соответствуют требованиям маркетплейсов и не требуют доработки перед публикацией.
           </p>
 
           {/* Additional descriptive line */}
           <p className="mx-auto mb-10 max-w-2xl text-base text-muted-foreground">
-            Без догадок. Без «а вдруг зайдёт». Только то, что уже работает в вашей нише.
+            Без догадок и правок вручную. Чётко, по правилам и под задачи маркетплейсов.
           </p>
 
           {/* CTA Buttons */}
