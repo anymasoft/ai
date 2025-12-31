@@ -227,41 +227,44 @@ export default function CardGeneratorPage() {
                 <ChevronDown className="h-4 w-4 transition-transform data-[state=open]:rotate-180" />
                 Дополнительные настройки
               </CollapsibleTrigger>
-              <CollapsibleContent className="mt-4 space-y-3 ml-0">
-                {/* SEO-ключи */}
+              <CollapsibleContent className="mt-4 space-y-4 ml-0">
+                {/* SEO-ключи - textarea, компактный */}
                 <div className="space-y-2">
-                  <Label htmlFor="seokeys" className="text-xs">SEO-ключи</Label>
-                  <Input
+                  <Label htmlFor="seokeys" className="text-xs font-medium">SEO-ключи</Label>
+                  <Textarea
                     id="seokeys"
-                    placeholder="часы GPS, умные часы, фитнес..."
+                    placeholder="Введите список ключевых слов (через запятую или с новой строки)"
                     value={seoKeywords}
                     onChange={(e) => setSeoKeywords(e.target.value)}
-                    className="text-sm h-9"
+                    className="text-sm resize-none min-h-16"
+                    rows={2}
                   />
                 </div>
 
-                {/* Конкуренты */}
+                {/* Конкуренты - сетка с textarea */}
                 <div className="space-y-2">
-                  <Label className="text-xs">Конкуренты (опционально)</Label>
-                  <div className="space-y-2">
+                  <Label className="text-xs font-medium">Конкуренты (опционально)</Label>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                     {competitors.map((competitor, index) => (
-                      <div key={index} className="flex gap-2">
-                        <Input
-                          placeholder={`Конкурент ${index + 1}`}
+                      <div key={index} className="relative">
+                        <Textarea
+                          placeholder={`Описание товара конкурента ${index + 1}`}
                           value={competitor}
                           onChange={(e) => {
                             const newCompetitors = [...competitors]
                             newCompetitors[index] = e.target.value
                             setCompetitors(newCompetitors)
                           }}
-                          className="text-sm h-9"
+                          className="text-sm resize-none pr-8 min-h-16"
+                          rows={2}
                         />
                         {competitors.length > 1 && (
                           <Button
                             variant="ghost"
                             size="sm"
                             onClick={() => handleRemoveCompetitor(index)}
-                            className="h-9 w-9 px-2"
+                            title="Удалить"
+                            className="absolute top-1 right-1 h-6 w-6 p-0"
                           >
                             ✕
                           </Button>
