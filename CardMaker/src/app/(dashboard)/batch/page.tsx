@@ -134,57 +134,54 @@ export default function BatchPage() {
         </div>
 
         {/* TABS — Список / Файл */}
-        <Tabs defaultValue="list" className="w-full flex flex-col">
+        <Tabs defaultValue="list" className="w-full">
           <TabsList className="grid w-full max-w-xs grid-cols-2">
             <TabsTrigger value="list">Вставить список</TabsTrigger>
             <TabsTrigger value="file">Загрузить файл</TabsTrigger>
           </TabsList>
 
-          {/* Fixed height container for tab content */}
-          <div className="h-80 flex flex-col mt-4">
-            {/* TAB: СПИСОК */}
-            <TabsContent value="list" className="flex-1 flex flex-col m-0 space-y-2">
-              <Textarea
-                placeholder={`Умные часы с GPS и пульсометром. Экран 1.69", IP67, 30 часов работы, совместимы с iOS и Android.
+          {/* TAB: СПИСОК */}
+          <TabsContent value="list" className="mt-4 space-y-2">
+            <Textarea
+              placeholder={`Умные часы с GPS и пульсометром. Экран 1.69", IP67, 30 часов работы, совместимы с iOS и Android.
 Беспроводные наушники с активным шумоподавлением, Bluetooth 5.3, до 40 часов работы.
 Спортивный рюкзак. Объём 30л, влагозащита IPX4, удобные лямки.`}
-                value={listInput}
-                onChange={(e) => setListInput(e.target.value)}
-                className="flex-1 resize-none font-normal"
-              />
-              <p className="text-xs text-muted-foreground">Каждая строка — отдельный товар</p>
-            </TabsContent>
+              value={listInput}
+              onChange={(e) => setListInput(e.target.value)}
+              className="min-h-40 resize-none font-normal"
+            />
+            <p className="text-xs text-muted-foreground">Каждая строка — отдельный товар</p>
+          </TabsContent>
 
-            {/* TAB: ФАЙЛ */}
-            <TabsContent value="file" className="flex-1 flex flex-col m-0 space-y-2">
-              <div className="flex-1 border-2 border-dashed border-border rounded-lg p-8 text-center hover:bg-muted/30 cursor-pointer transition-colors flex items-center justify-center">
-                <input
-                  type="file"
-                  accept=".csv,.xlsx"
-                  onChange={handleFileUpload}
-                  className="hidden"
-                  id="file-input"
-                />
-                <label htmlFor="file-input" className="cursor-pointer flex flex-col items-center gap-2">
-                  <Upload className="h-8 w-8 text-muted-foreground" />
-                  <p className="font-medium text-sm">Загрузите CSV или XLSX файл</p>
-                  <p className="text-xs text-muted-foreground">(до 10 MB)</p>
-                </label>
+          {/* TAB: ФАЙЛ */}
+          <TabsContent value="file" className="mt-4 space-y-2">
+            <div className="min-h-40 border-2 border-dashed border-border rounded-lg p-8 text-center hover:bg-muted/30 cursor-pointer transition-colors flex items-center justify-center">
+              <input
+                type="file"
+                accept=".csv,.xlsx"
+                onChange={handleFileUpload}
+                className="hidden"
+                id="file-input"
+              />
+              <label htmlFor="file-input" className="cursor-pointer flex flex-col items-center gap-2">
+                <Upload className="h-8 w-8 text-muted-foreground" />
+                <p className="font-medium text-sm">Загрузите CSV или XLSX файл</p>
+                <p className="text-xs text-muted-foreground">(до 10 MB)</p>
+              </label>
+            </div>
+            {fileInput && (
+              <div className="bg-muted p-2 rounded text-sm flex justify-between items-center">
+                <span>{fileInput.name}</span>
+                <button
+                  onClick={() => setFileInput(null)}
+                  className="text-xs text-muted-foreground hover:text-foreground"
+                >
+                  ✕
+                </button>
               </div>
-              {fileInput && (
-                <div className="bg-muted p-2 rounded text-sm flex justify-between items-center">
-                  <span>{fileInput.name}</span>
-                  <button
-                    onClick={() => setFileInput(null)}
-                    className="text-xs text-muted-foreground hover:text-foreground"
-                  >
-                    ✕
-                  </button>
-                </div>
-              )}
-              <p className="text-xs text-muted-foreground">Каждая строка — отдельный товар</p>
-            </TabsContent>
-          </div>
+            )}
+            <p className="text-xs text-muted-foreground">Каждая строка — отдельный товар</p>
+          </TabsContent>
         </Tabs>
 
       {/* РЕЗУЛЬТАТЫ */}
