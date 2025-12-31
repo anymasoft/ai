@@ -34,7 +34,7 @@ const navGroups = [
     items: [
       {
         title: "Массовая подготовка",
-        url: "/cards/batch",
+        url: "/batch",
         icon: Zap,
       },
       {
