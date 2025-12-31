@@ -101,6 +101,9 @@ export default function CardGeneratorPage() {
     <div className="space-y-4 px-4 md:px-6">
       {/* Заголовок */}
       <div>
+        <Badge variant="outline" className="mb-4 border-green-600/50 text-green-700 dark:text-green-400 inline-block">
+          Проходит требования Ozon / Wildberries
+        </Badge>
         <h1 className="text-3xl font-bold">Мастер создания карточек товаров</h1>
         <p className="text-muted-foreground text-sm mt-1">
           Для Ozon и Wildberries
