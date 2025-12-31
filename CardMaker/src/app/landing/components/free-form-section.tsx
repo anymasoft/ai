@@ -24,7 +24,7 @@ export function FreeFormSection() {
     setIsGenerating(true)
     setTimeout(() => {
       // Mock результат
-      const mockResult = `${prompt}\n\nОсновные характеристики:\n• Надежность и качество\n• Оптимальная цена\n• Быстрая доставка\n• Гарантия от производителя\n\nИдеально для тех, кто ценит соотношение цены и качества.`
+      const mockResult = `${prompt}\n\nОсновные характеристики:\n• Подходит для повседневного использования и спорта\n• Совместим с популярными смартфонами\n• Удобен в настройке и использовании\n• Продуман для длительной эксплуатации\n\nХороший выбор для тех, кто ищет функциональность без переплаты.`
       setResult(mockResult)
       setIsGenerating(false)
       toast.success("Описание создано!")
@@ -49,10 +49,10 @@ export function FreeFormSection() {
             Проходит требования Ozon / Wildberries
           </Badge>
           <h2 className="text-3xl md:text-4xl font-bold mb-3 text-center">
-            Попробуй бесплатно
+            Попробуйте бесплатно
           </h2>
           <p className="text-muted-foreground text-center">
-            Сгенерируй готовое описание товара за один клик
+            Получите готовое описание товара за один шаг
           </p>
         </div>
 
@@ -126,7 +126,7 @@ export function FreeFormSection() {
                   size="sm"
                   className="gap-2 rounded-lg h-9"
                 >
-                  Полная версия с SEO и стилями
+                  Расширенные возможности для карточек товаров
                   <ArrowRight className="h-3.5 w-3.5" />
                 </Button>
               </Link>
@@ -138,25 +138,25 @@ export function FreeFormSection() {
         <div className="mt-12 grid md:grid-cols-2 gap-4">
           <Card className="bg-muted/50">
             <CardHeader>
-              <CardTitle className="text-base">Бесплатная версия</CardTitle>
+              <CardTitle className="text-base">Бесплатно</CardTitle>
             </CardHeader>
             <CardContent className="text-sm space-y-2 text-muted-foreground">
-              <div>✓ Базовое описание товара</div>
+              <div>✓ Простое описание товара</div>
               <div>✓ Простой интерфейс</div>
-              <div>✓ Без регистрации</div>
+              <div>✓ Доступно без регистрации</div>
               <div className="text-xs mt-3 pt-2 border-t">Отлично для быстрой пробы</div>
             </CardContent>
           </Card>
 
           <Card className="border-primary/50">
             <CardHeader>
-              <CardTitle className="text-base">Полная версия</CardTitle>
+              <CardTitle className="text-base">Расширенный доступ</CardTitle>
             </CardHeader>
             <CardContent className="text-sm space-y-2 text-muted-foreground">
-              <div>✓ SEO-оптимизация</div>
-              <div>✓ 3 стиля описания</div>
-              <div>✓ Анализ конкурентов</div>
-              <div>✓ Проверка требований Ozon / Wildberries</div>
+              <div>✓ Учёт поисковых запросов</div>
+              <div>✓ Несколько вариантов подачи текста</div>
+              <div>✓ Сравнение с товарами конкурентов</div>
+              <div>✓ Проверка требований Ozon и Wildberries</div>
               <div>✓ История и экспорт</div>
               <div className="text-xs mt-3 pt-2 border-t">Требует регистрации (бесплатная пробная версия)</div>
             </CardContent>
