@@ -137,124 +137,140 @@ export default function CardGeneratorPage() {
             </p>
           </div>
 
-          {/* Маркетплейс */}
+          {/* Маркетплейс - радио карточки */}
           <div className="space-y-2">
-            <Label htmlFor="marketplace">Маркетплейс *</Label>
-            <Select value={marketplace} onValueChange={setMarketplace}>
-              <SelectTrigger id="marketplace">
-                <SelectValue placeholder="Выберите маркетплейс" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="ozon">Ozon</SelectItem>
-                <SelectItem value="wildberries">Wildberries</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* Категория товара */}
-          <div className="space-y-2">
-            <Label htmlFor="category">Категория товара *</Label>
-            <Select value={category} onValueChange={setCategory}>
-              <SelectTrigger id="category">
-                <SelectValue placeholder="Выберите категорию" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="electronics">Электроника</SelectItem>
-                <SelectItem value="fashion">Одежда и обувь</SelectItem>
-                <SelectItem value="home">Товары для дома</SelectItem>
-                <SelectItem value="sports">Спорт и фитнес</SelectItem>
-                <SelectItem value="beauty">Красота и здоровье</SelectItem>
-                <SelectItem value="toys">Игрушки и хобби</SelectItem>
-                <SelectItem value="books">Книги и медиа</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* Дополнительные настройки */}
-          <div className="border-t pt-6">
-            <Collapsible defaultOpen={false}>
-              <CollapsibleTrigger className="flex items-center gap-2 hover:text-primary transition-colors">
-                <ChevronDown className="h-4 w-4 transition-transform data-[state=open]:rotate-180" />
-                <span className="font-medium text-sm">Дополнительные настройки</span>
-              </CollapsibleTrigger>
-              <CollapsibleContent className="mt-4 space-y-4">
-                {/* Стиль описания */}
-                <div className="space-y-2">
-                  <Label>Стиль описания</Label>
-                  <div className="space-y-2">
-                    {[
-                      { value: "selling", label: "Продающий", desc: "Фокус на преимущества и выгоду" },
-                      { value: "expert", label: "Экспертный", desc: "Технические характеристики и спецификации" },
-                      { value: "brief", label: "Краткий", desc: "Минимум текста, максимум фактов" },
-                    ].map((option) => (
-                      <label key={option.value} className="flex items-start gap-3 p-2 rounded border border-border cursor-pointer hover:bg-muted/50">
-                        <input
-                          type="radio"
-                          name="style"
-                          value={option.value}
-                          checked={style === option.value}
-                          onChange={() => setStyle(option.value)}
-                          className="mt-1"
-                        />
-                        <div>
-                          <p className="font-medium text-sm">{option.label}</p>
-                          <p className="text-xs text-muted-foreground">{option.desc}</p>
-                        </div>
-                      </label>
-                    ))}
-                  </div>
-                </div>
-
-                {/* SEO-ключи */}
-                <div className="space-y-2">
-                  <Label htmlFor="seokeys">SEO-ключи (опционально)</Label>
-                  <Input
-                    id="seokeys"
-                    placeholder="Через запятую: часы GPS, умные часы, фитнес трекер"
-                    value={seoKeywords}
-                    onChange={(e) => setSeoKeywords(e.target.value)}
+            <Label>Маркетплейс *</Label>
+            <div className="grid grid-cols-2 gap-3">
+              {[
+                { value: "ozon", label: "Ozon" },
+                { value: "wildberries", label: "Wildberries" },
+              ].map((option) => (
+                <label
+                  key={option.value}
+                  className={`p-4 rounded-lg border-2 cursor-pointer transition-all ${
+                    marketplace === option.value
+                      ? "border-primary bg-primary/5"
+                      : "border-border hover:border-primary/50"
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    name="marketplace"
+                    value={option.value}
+                    checked={marketplace === option.value}
+                    onChange={() => setMarketplace(option.value)}
+                    className="hidden"
                   />
-                  <p className="text-xs text-muted-foreground">
-                    Ключевые слова помогут улучшить видимость в поиске
-                  </p>
-                </div>
+                  <span className="font-medium">{option.label}</span>
+                </label>
+              ))}
+            </div>
+          </div>
 
-                {/* Конкуренты */}
-                <div className="space-y-2">
-                  <Label>Конкуренты (опционально)</Label>
-                  <p className="text-xs text-muted-foreground mb-2">
-                    Сравните ваш товар с конкурентами чтобы выделить преимущества
-                  </p>
-                  {competitors.map((competitor, index) => (
-                    <div key={index} className="flex gap-2">
-                      <Input
-                        placeholder={`Опишите конкурента ${index + 1}`}
-                        value={competitor}
-                        onChange={(e) => {
-                          const newCompetitors = [...competitors]
-                          newCompetitors[index] = e.target.value
-                          setCompetitors(newCompetitors)
-                        }}
-                      />
-                      {competitors.length > 1 && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleRemoveCompetitor(index)}
-                        >
-                          ✕
-                        </Button>
-                      )}
+          {/* Категория товара и Дополнительные настройки в одну строку */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Категория товара */}
+            <div className="space-y-2">
+              <Label htmlFor="category">Категория товара *</Label>
+              <Select value={category} onValueChange={setCategory}>
+                <SelectTrigger id="category">
+                  <SelectValue placeholder="Выберите категорию" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="electronics">Электроника</SelectItem>
+                  <SelectItem value="fashion">Одежда и обувь</SelectItem>
+                  <SelectItem value="home">Товары для дома</SelectItem>
+                  <SelectItem value="sports">Спорт и фитнес</SelectItem>
+                  <SelectItem value="beauty">Красота и здоровье</SelectItem>
+                  <SelectItem value="toys">Игрушки и хобби</SelectItem>
+                  <SelectItem value="books">Книги и медиа</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Дополнительные настройки */}
+            <div className="space-y-2">
+              <Collapsible defaultOpen={false} className="h-full">
+                <CollapsibleTrigger className="flex items-center gap-2 hover:text-primary transition-colors p-2 -mx-2">
+                  <ChevronDown className="h-4 w-4 transition-transform data-[state=open]:rotate-180" />
+                  <Label className="cursor-pointer font-medium text-sm">Дополнительные настройки</Label>
+                </CollapsibleTrigger>
+                <CollapsibleContent className="mt-4 space-y-4">
+                  {/* Стиль описания */}
+                  <div className="space-y-2">
+                    <Label className="text-xs">Стиль описания</Label>
+                    <div className="space-y-2">
+                      {[
+                        { value: "selling", label: "Продающий", desc: "Преимущества и выгода" },
+                        { value: "expert", label: "Экспертный", desc: "Характеристики и спецификации" },
+                        { value: "brief", label: "Краткий", desc: "Минимум текста" },
+                      ].map((option) => (
+                        <label key={option.value} className="flex items-start gap-2 p-2 rounded border border-border cursor-pointer hover:bg-muted/50">
+                          <input
+                            type="radio"
+                            name="style"
+                            value={option.value}
+                            checked={style === option.value}
+                            onChange={() => setStyle(option.value)}
+                            className="mt-1"
+                          />
+                          <div>
+                            <p className="font-medium text-xs">{option.label}</p>
+                            <p className="text-xs text-muted-foreground">{option.desc}</p>
+                          </div>
+                        </label>
+                      ))}
                     </div>
-                  ))}
-                  {competitors.length < 3 && (
-                    <Button variant="outline" size="sm" onClick={handleAddCompetitor}>
-                      + Добавить конкурента
-                    </Button>
-                  )}
-                </div>
-              </CollapsibleContent>
-            </Collapsible>
+                  </div>
+
+                  {/* SEO-ключи */}
+                  <div className="space-y-2">
+                    <Label htmlFor="seokeys" className="text-xs">SEO-ключи</Label>
+                    <Input
+                      id="seokeys"
+                      placeholder="часы GPS, умные часы, фитнес..."
+                      value={seoKeywords}
+                      onChange={(e) => setSeoKeywords(e.target.value)}
+                      className="text-xs h-8"
+                    />
+                  </div>
+
+                  {/* Конкуренты */}
+                  <div className="space-y-2">
+                    <Label className="text-xs">Конкуренты</Label>
+                    {competitors.map((competitor, index) => (
+                      <div key={index} className="flex gap-2">
+                        <Input
+                          placeholder={`Конкурент ${index + 1}`}
+                          value={competitor}
+                          onChange={(e) => {
+                            const newCompetitors = [...competitors]
+                            newCompetitors[index] = e.target.value
+                            setCompetitors(newCompetitors)
+                          }}
+                          className="text-xs h-8"
+                        />
+                        {competitors.length > 1 && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleRemoveCompetitor(index)}
+                            className="h-8 w-8"
+                          >
+                            ✕
+                          </Button>
+                        )}
+                      </div>
+                    ))}
+                    {competitors.length < 3 && (
+                      <Button variant="outline" size="xs" onClick={handleAddCompetitor}>
+                        + Добавить
+                      </Button>
+                    )}
+                  </div>
+                </CollapsibleContent>
+              </Collapsible>
+            </div>
           </div>
 
           {/* Кнопка создания */}
@@ -296,20 +312,14 @@ export default function CardGeneratorPage() {
                 </div>
                 <Button
                   variant="ghost"
-                  size="sm"
+                  size="icon"
                   onClick={() => handleCopy(result.title, "title")}
-                  className="gap-2"
+                  title="Копировать"
                 >
                   {copiedSection === "title" ? (
-                    <>
-                      <CheckCircle className="h-4 w-4 text-green-600" />
-                      Скопировано
-                    </>
+                    <CheckCircle className="h-4 w-4 text-green-600" />
                   ) : (
-                    <>
-                      <Copy className="h-4 w-4" />
-                      Копировать
-                    </>
+                    <Copy className="h-4 w-4" />
                   )}
                 </Button>
               </div>
@@ -329,20 +339,14 @@ export default function CardGeneratorPage() {
                 </div>
                 <Button
                   variant="ghost"
-                  size="sm"
+                  size="icon"
                   onClick={() => handleCopy(result.description, "description")}
-                  className="gap-2"
+                  title="Копировать"
                 >
                   {copiedSection === "description" ? (
-                    <>
-                      <CheckCircle className="h-4 w-4 text-green-600" />
-                      Скопировано
-                    </>
+                    <CheckCircle className="h-4 w-4 text-green-600" />
                   ) : (
-                    <>
-                      <Copy className="h-4 w-4" />
-                      Копировать
-                    </>
+                    <Copy className="h-4 w-4" />
                   )}
                 </Button>
               </div>
@@ -364,20 +368,14 @@ export default function CardGeneratorPage() {
                 </div>
                 <Button
                   variant="ghost"
-                  size="sm"
+                  size="icon"
                   onClick={() => handleCopy(result.keywords.join(", "), "keywords")}
-                  className="gap-2"
+                  title="Копировать"
                 >
                   {copiedSection === "keywords" ? (
-                    <>
-                      <CheckCircle className="h-4 w-4 text-green-600" />
-                      Скопировано
-                    </>
+                    <CheckCircle className="h-4 w-4 text-green-600" />
                   ) : (
-                    <>
-                      <Copy className="h-4 w-4" />
-                      Копировать
-                    </>
+                    <Copy className="h-4 w-4" />
                   )}
                 </Button>
               </div>
