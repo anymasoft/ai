@@ -6,6 +6,7 @@ import {
   FileText,
   MessageSquare,
   Sparkles,
+  Zap,
 } from "lucide-react"
 import Link from "next/link"
 import { useSession } from "next-auth/react"
@@ -13,6 +14,7 @@ import { Logo } from "@/components/logo"
 import { SidebarNotification } from "@/components/sidebar-notification"
 import { ADMIN_EMAIL } from "@/lib/admin-config"
 import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
 
 import { NavMain } from "@/components/nav-main"
 import { NavUser } from "@/components/nav-user"
@@ -91,11 +93,18 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         </SidebarMenu>
       </SidebarHeader>
       <SidebarContent>
-        <div className="px-2 py-2">
+        <div className="px-2 py-2 space-y-2">
           <Button asChild className="w-full" size="sm">
             <Link href="/card-generator" className="gap-2">
               <Sparkles className="size-4" />
               + Создание карточки
+            </Link>
+          </Button>
+          <Button asChild variant="outline" className="w-full" size="sm">
+            <Link href="/cards/batch" className="gap-2">
+              <Zap className="size-4" />
+              <span className="flex-1">Массовая подготовка</span>
+              <Badge variant="secondary" className="ml-1 h-5">Premium</Badge>
             </Link>
           </Button>
         </div>
