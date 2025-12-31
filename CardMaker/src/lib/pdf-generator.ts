@@ -492,7 +492,7 @@ export class PDFBuilder {
         color: COLORS.muted,
       })
 
-      page.drawText("YouTube Analytics Premium Report", {
+      page.drawText("CardMaker - Товарные Карточки Маркетплейсов", {
         x: MARGIN,
         y: 25,
         size: 9,

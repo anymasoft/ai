@@ -6,7 +6,6 @@ import { Command as CommandPrimitive } from "cmdk"
 import {
   Search,
   LayoutDashboard,
-  MessageCircle,
   Shield,
   Settings,
   HelpCircle,
@@ -14,11 +13,7 @@ import {
   Bell,
   Link2,
   Palette,
-  Target,
-  GitCompare,
-  TrendingUp,
   FileText,
-  FileBarChart,
   type LucideIcon,
 } from "lucide-react"
 
@@ -126,16 +121,9 @@ export function CommandSearch({ open, onOpenChange }: CommandSearchProps) {
   const commandRef = React.useRef<HTMLDivElement>(null)
 
   const searchItems: SearchItem[] = [
-    // YouTube Analytics (Main sections)
-    { title: "Панель управления", url: "/dashboard", group: "Аналитика", icon: LayoutDashboard },
-    { title: "Конкуренты", url: "/competitors", group: "Аналитика", icon: Target },
-    { title: "Сравнить каналы", url: "/competitors/compare", group: "Аналитика", icon: GitCompare },
-    { title: "Тренды контента", url: "/trending", group: "Аналитика", icon: TrendingUp },
-    { title: "Сценарии видео", url: "/scripts", group: "Аналитика", icon: FileText },
-    { title: "AI отчеты", url: "/reports", group: "Аналитика", icon: FileBarChart },
-
-    // Chat & Collaboration
-    { title: "AI ассистент", url: "/chat", group: "Инструменты", icon: MessageCircle },
+    // CardMaker (Main sections)
+    { title: "Создание карточки", url: "/card-generator", group: "Инструменты", icon: FileText },
+    { title: "История карточек", url: "/cards-history", group: "Инструменты", icon: LayoutDashboard },
 
     // Authentication
     { title: "Вход", url: "/sign-in", group: "Аут.", icon: Shield },
