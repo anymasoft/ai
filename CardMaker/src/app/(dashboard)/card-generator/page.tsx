@@ -121,22 +121,22 @@ export default function CardGeneratorPage() {
           <CardDescription>Мы создадим привлекательную карточку для маркетплейса</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          {/* Верхняя строка: Маркетплейс + Категория + Стиль */}
-          <div className="space-y-3">
-            {/* Маркетплейс - инлайн радио карточки */}
-            <div className="space-y-2">
-              <Label>Маркетплейс *</Label>
-              <div className="grid grid-cols-2 gap-2">
+          {/* Toolbar: Маркетплейс + Категория + Стиль в одну строку */}
+          <div className="grid grid-cols-[auto_1fr_auto] gap-3 items-end">
+            {/* Маркетплейс - компактный segmented control */}
+            <div className="flex flex-col gap-1.5">
+              <Label className="text-xs font-medium">Маркетплейс *</Label>
+              <div className="flex gap-1 bg-muted p-0.5 rounded-md w-fit">
                 {[
                   { value: "ozon", label: "Ozon" },
-                  { value: "wildberries", label: "Wildberries" },
+                  { value: "wildberries", label: "WB" },
                 ].map((option) => (
                   <label
                     key={option.value}
-                    className={`p-3 rounded-lg border-2 cursor-pointer transition-all text-sm font-medium ${
+                    className={`px-2.5 py-1.5 rounded text-xs font-medium cursor-pointer transition-all ${
                       marketplace === option.value
-                        ? "border-primary bg-primary/5"
-                        : "border-border hover:border-primary/50"
+                        ? "bg-background shadow-sm border border-primary/20"
+                        : "hover:text-primary"
                     }`}
                   >
                     <input
@@ -153,11 +153,11 @@ export default function CardGeneratorPage() {
               </div>
             </div>
 
-            {/* Категория товара */}
-            <div className="space-y-2">
-              <Label htmlFor="category">Категория товара *</Label>
+            {/* Категория товара - растягивающийся элемент */}
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="category" className="text-xs font-medium">Категория *</Label>
               <Select value={category} onValueChange={setCategory}>
-                <SelectTrigger id="category" className="h-10">
+                <SelectTrigger id="category" className="h-9 text-sm">
                   <SelectValue placeholder="Выберите категорию" />
                 </SelectTrigger>
                 <SelectContent>
@@ -172,10 +172,10 @@ export default function CardGeneratorPage() {
               </Select>
             </div>
 
-            {/* Стиль описания - горизонтальный выбор */}
-            <div className="space-y-2">
-              <Label className="text-sm">Стиль описания</Label>
-              <div className="flex flex-wrap gap-2">
+            {/* Стиль описания - компактные inline кнопки */}
+            <div className="flex flex-col gap-1.5">
+              <Label className="text-xs font-medium">Стиль</Label>
+              <div className="flex gap-1">
                 {[
                   { value: "selling", label: "Продающий" },
                   { value: "expert", label: "Экспертный" },
@@ -183,10 +183,10 @@ export default function CardGeneratorPage() {
                 ].map((option) => (
                   <label
                     key={option.value}
-                    className={`px-3 py-2 rounded-md border text-sm cursor-pointer transition-all ${
+                    className={`px-2 py-1.5 rounded text-xs cursor-pointer transition-all border ${
                       style === option.value
                         ? "border-primary bg-primary/10 font-medium"
-                        : "border-border hover:border-primary/50"
+                        : "border-transparent hover:border-border/50"
                     }`}
                   >
                     <input
