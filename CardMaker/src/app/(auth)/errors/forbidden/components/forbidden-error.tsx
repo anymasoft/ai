@@ -21,7 +21,7 @@ export function ForbiddenError() {
         <h2 className="mb-3 text-2xl font-semibold">Запрещено</h2>
         <p>Доступ к этому ресурсу запрещен. У вас нет необходимых прав для просмотра этой страницы.</p>
         <div className='mt-6 flex items-center justify-center gap-4 md:mt-8'>
-          <Button className='cursor-pointer' onClick={() => router.push('/trending')}>На главную</Button>
+          <Button className='cursor-pointer' onClick={() => router.push('/card-generator')}>На главную</Button>
           <Button variant='outline' className='flex cursor-pointer items-center gap-1' onClick={() => router.push('#')}>
             Связаться с нами
           </Button>

@@ -33,63 +33,25 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  // Admin-only routes (check first, before other protected routes)
+  // Get token early to check authentication for all other routes
+  const token = await getToken({
+    req: request,
+    secret: process.env.NEXTAUTH_SECRET
+  });
+
+  // If not authenticated, redirect to landing page
+  if (!token) {
+    return NextResponse.redirect(new URL('/landing', request.url));
+  }
+
+  // Admin-only routes (check AFTER authentication, require admin email)
   if (pathname.startsWith('/admin') || pathname.startsWith('/api/admin')) {
-    const token = await getToken({
-      req: request,
-      secret: process.env.NEXTAUTH_SECRET
-    });
-
-    // If no token, redirect to sign-in
-    if (!token) {
-      const signInUrl = new URL('/sign-in', request.url);
-      signInUrl.searchParams.set('callbackUrl', pathname);
-      return NextResponse.redirect(signInUrl);
-    }
-
-    // If not admin email, redirect to home
+    // If not admin email, redirect to card-generator
     if (token.email !== ADMIN_EMAIL) {
-      return NextResponse.redirect(new URL('/', request.url));
+      return NextResponse.redirect(new URL('/card-generator', request.url));
     }
 
     return NextResponse.next();
-  }
-
-  // Protected routes that require authentication
-  const protectedRoutes = [
-    '/dashboard',
-    '/dashboard-demo',
-    '/competitors',
-    '/trending',
-    '/reports',
-    '/settings',
-    '/users',
-    '/mail',
-    '/tasks',
-    '/chat',
-    '/calendar',
-    '/faqs',
-    '/pricing',
-  ];
-
-  // Check if current path starts with any protected route
-  const isProtectedRoute = protectedRoutes.some(route =>
-    pathname.startsWith(route)
-  );
-
-  if (isProtectedRoute) {
-    // Get the token to check authentication
-    const token = await getToken({
-      req: request,
-      secret: process.env.NEXTAUTH_SECRET
-    });
-
-    // If no token, redirect to sign-in
-    if (!token) {
-      const signInUrl = new URL('/sign-in', request.url);
-      signInUrl.searchParams.set('callbackUrl', pathname);
-      return NextResponse.redirect(signInUrl);
-    }
   }
 
   // Redirect aliases
@@ -101,6 +63,7 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL('/sign-up', request.url));
   }
 
+  // All other routes are accessible if authenticated
   return NextResponse.next();
 }
 

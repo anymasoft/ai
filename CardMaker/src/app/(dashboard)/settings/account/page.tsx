@@ -7,7 +7,7 @@ export default function AccountSettings() {
   const router = useRouter()
 
   useEffect(() => {
-    router.replace("/trending")
+    router.replace("/card-generator")
   }, [router])
 
   return null

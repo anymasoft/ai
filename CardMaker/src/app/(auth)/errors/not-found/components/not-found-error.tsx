@@ -21,7 +21,7 @@ export function NotFoundError() {
         <h2 className="mb-3 text-2xl font-semibold">Страница не найдена</h2>
         <p>Страница, которую вы ищете, не существует или была перемещена на другое место.</p>
         <div className='mt-6 flex items-center justify-center gap-4 md:mt-8'>
-          <Button className='cursor-pointer' onClick={() => router.push('/trending')}>На главную</Button>
+          <Button className='cursor-pointer' onClick={() => router.push('/card-generator')}>На главную</Button>
           <Button variant='outline' className='flex cursor-pointer items-center gap-1' onClick={() => router.push('#')}>
             Связаться с нами
           </Button>
