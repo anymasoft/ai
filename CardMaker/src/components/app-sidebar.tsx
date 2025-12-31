@@ -38,12 +38,6 @@ const navGroups = [
     label: "Основное",
     items: [
       {
-        title: "Создание карточки",
-        url: "/card-generator",
-        icon: Sparkles,
-        isFeatured: true, // Делает пункт визуально главным (жёлтый цвет, жирный текст)
-      },
-      {
         title: "История карточек",
         url: "/cards-history",
         icon: FileText,
@@ -139,15 +133,14 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         </SidebarMenu>
       </SidebarHeader>
       <SidebarContent>
-        {/* Кнопка в шапке отключена - навигация через меню в sidebar */}
-        {/* <div className="px-2 py-2">
+        <div className="px-2 py-2">
           <Button asChild className="w-full" size="sm">
             <Link href="/card-generator" className="gap-2">
               <Sparkles className="size-4" />
-              + Новая карточка
+              + Создание карточки
             </Link>
           </Button>
-        </div> */}
+        </div>
         {navGroups.map((group) => (
           <NavMain key={group.label} label={group.label} items={group.items} />
         ))}
