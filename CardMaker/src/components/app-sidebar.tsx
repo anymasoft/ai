@@ -2,15 +2,9 @@
 
 import * as React from "react"
 import {
-  LayoutDashboard,
   Settings,
-  TrendingUp,
-  FileBarChart,
-  Target,
-  GitCompare,
   FileText,
   MessageSquare,
-  BarChart3,
   Sparkles,
 } from "lucide-react"
 import Link from "next/link"
@@ -64,42 +58,6 @@ const navGroups = [
       },
     ],
   },
-  // СКРЫТО: YouTube-specific функционал
-  // {
-  //   label: "Аналитика",
-  //   items: [
-  //     {
-  //       title: "Обзор",
-  //       url: "/dashboard",
-  //       icon: LayoutDashboard,
-  //     },
-  //     {
-  //       title: "Конкуренты",
-  //       url: "/competitors",
-  //       icon: Target,
-  //     },
-  //     {
-  //       title: "Сравнение",
-  //       url: "/competitors/compare",
-  //       icon: GitCompare,
-  //     },
-  //     {
-  //       title: "История сценариев",
-  //       url: "/scripts",
-  //       icon: FileText,
-  //     },
-  //     {
-  //       title: "FAQ",
-  //       url: "/faqs",
-  //       icon: FileText,
-  //     },
-  //     {
-  //       title: "Обратная связь",
-  //       url: "/feedback",
-  //       icon: MessageSquare,
-  //     },
-  //   ],
-  // },
 ]
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {

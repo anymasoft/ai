@@ -80,23 +80,6 @@ export default {
 
   // Deep Analysis
   deepAnalysisInProgress: "Analysis in progress...",
-
-  // Channel Page
-  backToCompetitors: "Back to Competitors",
-  viewOnYoutube: "View on YouTube",
-  subscribers: "subscribers",
-  videos: "videos",
-  views: "views",
-  updatedAt: "Updated",
-  overview: "Overview",
-  avgViewsPerVideo: "Avg views per video",
-  aiInsights: "AI Insights",
-  briefSummary: "Brief Summary",
-  analysisGenerated: "Analysis generated",
-  strengths: "Strengths",
-  weaknesses: "Weaknesses",
-  opportunities: "Opportunities",
-  threats: "Threats",
   recommendations: "Recommendations",
   noAIAnalysis: "No AI analysis available. Analysis will be generated automatically when sufficient data is available.",
   growthOverTime: "Growth Over Time",

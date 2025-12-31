@@ -13,7 +13,7 @@ export function SiteFooter() {
             <span className="font-medium text-foreground">Beem Analytics</span>
           </div>
           <p className="text-xs text-muted-foreground">
-            Современные инструменты для аналитики YouTube и создания контента на основе данных.
+            Инструмент для подготовки описаний карточек товаров для Ozon и Wildberries с учётом требований маркетплейсов.
           </p>
         </div>
       </div>

@@ -1,8 +1,6 @@
-import { Inter } from 'next/font/google'
+// Google Fonts import disabled due to network restrictions
+// Use system fonts instead
 
-// Configure Inter font to match exactly what Next.js optimizes for
-export const inter = Inter({
-  subsets: ['latin'],
-  display: 'swap',
+export const inter = {
   variable: '--font-inter',
-})
+}

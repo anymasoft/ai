@@ -80,23 +80,6 @@ export default {
 
   // Глубокий анализ
   deepAnalysisInProgress: "Анализ в процессе...",
-
-  // Страница канала
-  backToCompetitors: "Назад к конкурентам",
-  viewOnYoutube: "Открыть на YouTube",
-  subscribers: "подписчиков",
-  videos: "видео",
-  views: "просмотров",
-  updatedAt: "Обновлено",
-  overview: "Обзор",
-  avgViewsPerVideo: "Средние просмотры на видео",
-  aiInsights: "AI Инсайты",
-  briefSummary: "Краткая сводка",
-  analysisGenerated: "Анализ сгенерирован",
-  strengths: "Сильные стороны",
-  weaknesses: "Слабые стороны",
-  opportunities: "Возможности",
-  threats: "Угрозы",
   recommendations: "Рекомендации",
   noAIAnalysis: "Нет доступного AI-анализа. Анализ будет генерироваться автоматически при наличии достаточных данных.",
   growthOverTime: "Рост со временем",
