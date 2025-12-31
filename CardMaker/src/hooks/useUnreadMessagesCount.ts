@@ -5,6 +5,8 @@ export function useUnreadMessagesCount() {
   const [isLoading, setIsLoading] = useState(false)
 
   useEffect(() => {
+    let intervalId: NodeJS.Timeout
+
     async function fetchUnreadCount() {
       try {
         setIsLoading(true)
@@ -13,14 +15,21 @@ export function useUnreadMessagesCount() {
         const data = await res.json()
         setUnreadCount(data.unreadCount || 0)
       } catch (error) {
-        console.error("Error fetching unread count:", error)
+        // Логирование отключено
       } finally {
         setIsLoading(false)
       }
     }
 
-    // Загрузим только один раз при монтировании компонента
+    // Загрузим сразу
     fetchUnreadCount()
+
+    // Затем будем polling каждые 10 секунд
+    intervalId = setInterval(fetchUnreadCount, 10000)
+
+    return () => {
+      if (intervalId) clearInterval(intervalId)
+    }
   }, [])
 
   return { unreadCount, isLoading }
