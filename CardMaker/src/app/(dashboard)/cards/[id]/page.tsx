@@ -1,7 +1,6 @@
 "use client"
 
 import { useRouter } from "next/navigation"
-import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import {
   Tooltip,
@@ -9,7 +8,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
-import { Copy, Download, CheckCircle, ArrowLeft } from "lucide-react"
+import { Copy, Download, CheckCircle, ArrowLeft, RefreshCw } from "lucide-react"
 import { toast } from "sonner"
 import { useState } from "react"
 
@@ -51,6 +50,7 @@ const MOCK_CARD = {
 export default function CardDetailsPage({ params }: CardDetailsProps) {
   const router = useRouter()
   const [copiedSection, setCopiedSection] = useState<string | null>(null)
+  const [description, setDescription] = useState(MOCK_CARD.description)
 
   const handleCopy = (text: string, section: string) => {
     navigator.clipboard.writeText(text)
@@ -59,12 +59,8 @@ export default function CardDetailsPage({ params }: CardDetailsProps) {
     setTimeout(() => setCopiedSection(null), 2000)
   }
 
-  const handleEdit = () => {
-    toast.info("Функция редактирования (скоро будет доступна)")
-  }
-
-  const handleRegenerate = () => {
-    toast.info("Функция переподготовки (скоро будет доступна)")
+  const handleRefresh = () => {
+    toast.info("Обновление результата (скоро будет доступна)")
   }
 
   return (
@@ -96,91 +92,93 @@ export default function CardDetailsPage({ params }: CardDetailsProps) {
           </div>
         </div>
 
-        {/* TOOLBAR ДЕЙСТВИЙ - ИКОНКИ С TOOLTIP */}
-        <div className="flex gap-2 items-center p-4 bg-muted/30 rounded-lg w-fit">
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <button
-                onClick={() => handleCopy(MOCK_CARD.description, "description")}
-                className="p-2 rounded-md hover:bg-muted transition-colors"
-              >
-                {copiedSection === "description" ? (
-                  <CheckCircle className="h-4 w-4 text-green-600" />
-                ) : (
-                  <Copy className="h-4 w-4" />
-                )}
-              </button>
-            </TooltipTrigger>
-            <TooltipContent>Скопировать описание</TooltipContent>
-          </Tooltip>
-
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <button className="p-2 rounded-md hover:bg-muted transition-colors">
-                <Download className="h-4 w-4" />
-              </button>
-            </TooltipTrigger>
-            <TooltipContent>Экспорт в CSV</TooltipContent>
-          </Tooltip>
-
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <button className="p-2 rounded-md hover:bg-muted transition-colors">
-                <Download className="h-4 w-4" />
-              </button>
-            </TooltipTrigger>
-            <TooltipContent>Экспорт в TXT</TooltipContent>
-          </Tooltip>
-        </div>
-
         {/* BODY - ИНФОРМАЦИЯ О ТОВАРЕ */}
         <div className="space-y-6">
           {/* Наименование товара */}
           <div className="space-y-2">
-            <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wide">
+            <h2 className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
               Наименование товара
             </h2>
-            <div className="bg-muted/50 p-4 rounded-lg text-sm">
+            <p className="text-base">
               {MOCK_CARD.productName}
-            </div>
+            </p>
           </div>
 
           {/* Характеристики */}
           <div className="space-y-2">
-            <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wide">
+            <h2 className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
               Характеристики
             </h2>
-            <div className="bg-muted/50 p-4 rounded-lg text-sm leading-relaxed">
+            <p className="text-sm leading-relaxed text-foreground">
               {MOCK_CARD.characteristics}
-            </div>
+            </p>
           </div>
 
-          {/* Описание товара */}
+          {/* Описание товара - РЕДАКТИРУЕМЫЙ ДОКУМЕНТ */}
           <div className="space-y-2">
-            <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wide">
-              Текст описания карточки
-            </h2>
-            <div className="bg-muted/50 p-4 rounded-lg text-sm leading-relaxed whitespace-pre-wrap">
-              {MOCK_CARD.description}
-            </div>
-          </div>
-        </div>
+            <div className="flex items-center justify-between gap-4 mb-3">
+              <h2 className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                Текст описания карточки
+              </h2>
+              {/* ДЕЙСТВИЯ - ТОЛЬКО ИКОНКИ */}
+              <div className="flex gap-2 items-center">
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      onClick={() => handleCopy(description, "description")}
+                      className="p-1.5 rounded-md hover:bg-muted transition-colors"
+                    >
+                      {copiedSection === "description" ? (
+                        <CheckCircle className="h-4 w-4 text-green-600" />
+                      ) : (
+                        <Copy className="h-4 w-4 text-muted-foreground hover:text-foreground" />
+                      )}
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent>Скопировать</TooltipContent>
+                </Tooltip>
 
-        {/* ACTIONS - КНОПКИ */}
-        <div className="flex gap-2 pt-4 border-t">
-          <Button
-            onClick={handleEdit}
-            variant="outline"
-            className="flex-1 gap-2"
-          >
-            Редактировать
-          </Button>
-          <Button
-            onClick={handleRegenerate}
-            className="flex-1 gap-2"
-          >
-            Переподготовить
-          </Button>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button className="p-1.5 rounded-md hover:bg-muted transition-colors">
+                      <Download className="h-4 w-4 text-muted-foreground hover:text-foreground" />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent>Экспорт CSV</TooltipContent>
+                </Tooltip>
+
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button className="p-1.5 rounded-md hover:bg-muted transition-colors">
+                      <Download className="h-4 w-4 text-muted-foreground hover:text-foreground" />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent>Экспорт TXT</TooltipContent>
+                </Tooltip>
+
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      onClick={handleRefresh}
+                      className="p-1.5 rounded-md hover:bg-muted transition-colors"
+                    >
+                      <RefreshCw className="h-4 w-4 text-muted-foreground hover:text-foreground" />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent>Обновить результат</TooltipContent>
+                </Tooltip>
+              </div>
+            </div>
+
+            {/* Редактируемая область текста */}
+            <textarea
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              className="w-full p-4 rounded-lg border border-border bg-transparent text-sm leading-relaxed font-mono resize-none focus:outline-none focus:ring-1 focus:ring-ring focus:border-transparent placeholder-muted-foreground"
+              rows={16}
+              placeholder="Введите описание..."
+            />
+          </div>
         </div>
       </div>
     </TooltipProvider>
