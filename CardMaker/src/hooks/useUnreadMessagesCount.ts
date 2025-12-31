@@ -15,7 +15,7 @@ export function useUnreadMessagesCount() {
         const data = await res.json()
         setUnreadCount(data.unreadCount || 0)
       } catch (error) {
-        console.error("Error fetching unread count:", error)
+        // Логирование отключено
       } finally {
         setIsLoading(false)
       }
