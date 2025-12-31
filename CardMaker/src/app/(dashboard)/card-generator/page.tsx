@@ -60,7 +60,7 @@ export default function CardGeneratorPage() {
   const [category, setCategory] = useState("")
   const [style, setStyle] = useState("selling")
   const [seoKeywords, setSeoKeywords] = useState("")
-  const [competitors, setCompetitors] = useState([""])
+  const [competitors, setCompetitors] = useState(["", "", ""])
 
   // Generation state
   const [isGenerating, setIsGenerating] = useState(false)
@@ -96,13 +96,6 @@ export default function CardGeneratorPage() {
     setTimeout(() => setCopiedSection(null), 2000)
   }
 
-  const handleAddCompetitor = () => {
-    setCompetitors([...competitors, ""])
-  }
-
-  const handleRemoveCompetitor = (index: number) => {
-    setCompetitors(competitors.filter((_, i) => i !== index))
-  }
 
   return (
     <div className="space-y-4 px-4 md:px-6">
@@ -241,47 +234,26 @@ export default function CardGeneratorPage() {
                   />
                 </div>
 
-                {/* Конкуренты - сетка с textarea */}
+                {/* Конкуренты - статическая сетка 3 слота */}
                 <div className="space-y-2">
                   <Label className="text-xs font-medium">Конкуренты (опционально)</Label>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
                     {competitors.map((competitor, index) => (
-                      <div key={index} className="relative">
+                      <div key={index}>
                         <Textarea
-                          placeholder={`Описание товара конкурента ${index + 1}`}
+                          placeholder="Описание товара конкурента"
                           value={competitor}
                           onChange={(e) => {
                             const newCompetitors = [...competitors]
                             newCompetitors[index] = e.target.value
                             setCompetitors(newCompetitors)
                           }}
-                          className="text-sm resize-none pr-8 min-h-16"
+                          className="text-sm resize-none min-h-16"
                           rows={2}
                         />
-                        {competitors.length > 1 && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleRemoveCompetitor(index)}
-                            title="Удалить"
-                            className="absolute top-1 right-1 h-6 w-6 p-0"
-                          >
-                            ✕
-                          </Button>
-                        )}
                       </div>
                     ))}
                   </div>
-                  {competitors.length < 3 && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={handleAddCompetitor}
-                      className="h-8 text-xs"
-                    >
-                      + Добавить конкурента
-                    </Button>
-                  )}
                 </div>
               </CollapsibleContent>
             </Collapsible>
