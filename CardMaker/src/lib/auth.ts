@@ -82,5 +82,4 @@ export const authOptions: NextAuthOptions = {
     signIn: "/sign-in",
     error: "/auth-callback",
   },
-  debug: true,
 };
