@@ -36,6 +36,14 @@ const adminItems = [
     title: "Сообщения",
     url: "/admin/messages",
   },
+  {
+    title: "Правила маркетплейсов",
+    url: "/admin/marketplace-rules",
+  },
+  {
+    title: "Стили описаний",
+    url: "/admin/styles",
+  },
 ]
 
 export function AdminMessagesMenuButton() {

@@ -41,6 +41,7 @@ const navGroups = [
         title: "Создание карточки",
         url: "/card-generator",
         icon: Sparkles,
+        isFeatured: true, // Делает пункт визуально главным (жёлтый цвет, жирный текст)
       },
       {
         title: "История карточек",

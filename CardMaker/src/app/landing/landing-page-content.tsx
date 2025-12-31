@@ -16,6 +16,7 @@ import { CTASection } from './components/cta-section'
 import { LandingFooter } from './components/footer'
 // import { LandingThemeCustomizer, LandingThemeCustomizerTrigger } from './components/landing-theme-customizer'
 import { AboutSection } from './components/about-section'
+import { FreeFormSection } from './components/free-form-section'
 
 export function LandingPageContent() {
   return (
@@ -31,6 +32,7 @@ export function LandingPageContent() {
         <AboutSection />
         <FeaturesSection />
         {/* <TeamSection /> */}
+        <FreeFormSection />
         <PricingSection />
         {/* <TestimonialsSection /> */}
         {/* <BlogSection /> */}
