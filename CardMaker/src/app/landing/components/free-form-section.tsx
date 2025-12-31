@@ -68,8 +68,8 @@ export function FreeFormSection() {
                 placeholder="Умные часы с GPS и пульсометром. Экран 1.69&quot;, влагозащита IP67, 30 часов работы, совместимы с iOS и Android, подходят для спорта и повседневного использования."
                 value={prompt}
                 onChange={(e) => setPrompt(e.target.value)}
-                rows={14}
-                className="resize-none rounded-2xl border-2 border-gradient-to-r from-primary/50 via-primary/30 to-primary/50 p-5 text-base bg-card transition-all duration-300 focus:border-primary focus:shadow-lg focus:shadow-primary/20 focus-visible:outline-none focus-visible:ring-0 hover:border-primary/70 min-h-72"
+                rows={10}
+                className="resize-none rounded-2xl border-2 border-gradient-to-r from-primary/50 via-primary/30 to-primary/50 p-5 text-base bg-card transition-all duration-300 focus:border-primary focus:shadow-lg focus:shadow-primary/20 focus-visible:outline-none focus-visible:ring-0 hover:border-primary/70 min-h-48"
               />
 
               {/* Generate Button - Inside Textarea */}
