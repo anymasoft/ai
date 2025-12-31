@@ -3,156 +3,133 @@
 import { useState } from "react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
+import { Card, CardContent } from "@/components/ui/card"
 import { Textarea } from "@/components/ui/textarea"
-import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
-import { ArrowRight, Sparkles } from "lucide-react"
+import { ArrowRight, Copy, Sparkles, Check } from "lucide-react"
 import { toast } from "sonner"
 
 export function FreeFormSection() {
-  const [productName, setProductName] = useState("")
-  const [features, setFeatures] = useState("")
+  const [prompt, setPrompt] = useState("")
   const [result, setResult] = useState<string | null>(null)
   const [isGenerating, setIsGenerating] = useState(false)
+  const [copied, setCopied] = useState(false)
 
   const handleGenerate = () => {
-    if (!productName.trim() || !features.trim()) {
-      toast.error("Заполни название и характеристики")
+    if (!prompt.trim()) {
+      toast.error("Заполни описание товара")
       return
     }
 
     setIsGenerating(true)
     setTimeout(() => {
       // Mock результат
-      const mockResult = `${productName} с лучшими функциями. ${features}. Идеально для тех, кто ценит качество и надежность. Гарантия, быстрая доставка, поддержка.`
+      const mockResult = `${prompt}\n\nОсновные характеристики:\n• Надежность и качество\n• Оптимальная цена\n• Быстрая доставка\n• Гарантия от производителя\n\nИдеально для тех, кто ценит соотношение цены и качества.`
       setResult(mockResult)
       setIsGenerating(false)
       toast.success("Описание создано!")
     }, 1000)
   }
 
+  const handleCopy = () => {
+    if (result) {
+      navigator.clipboard.writeText(result)
+      setCopied(true)
+      toast.success("Скопировано!")
+      setTimeout(() => setCopied(false), 2000)
+    }
+  }
+
   return (
-    <section className="py-12 md:py-20 px-4 md:px-6 lg:px-0 bg-gradient-to-br from-primary/5 to-transparent">
-      <div className="max-w-4xl mx-auto">
-        <div className="text-center mb-10">
-          <Badge className="mb-4" variant="outline">
-            БЕСПЛАТНАЯ ВЕРСИЯ
+    <section className="py-16 md:py-24 px-4 md:px-6 lg:px-0">
+      <div className="max-w-3xl mx-auto">
+        {/* Header */}
+        <div className="mb-8">
+          <Badge variant="outline" className="mb-4 border-green-600/50 text-green-700 dark:text-green-400">
+            Проходит требования Ozon / Wildberries
           </Badge>
-          <h2 className="text-3xl md:text-4xl font-bold mb-3">
-            Попробуй бесплатно
+          <h2 className="text-3xl md:text-4xl font-bold mb-2">
+            Твой успех начинается здесь
           </h2>
-          <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-            Сгенерируй простое описание товара прямо здесь.
-            Для полного функционала (SEO, стили, конкуренты) — авторизуйся в сервисе.
+          <p className="text-muted-foreground">
+            Сгенерируй готовое описание товара за один клик
           </p>
         </div>
 
-        {/* Form */}
-        <Card className="border-2">
-          <CardHeader>
-            <CardTitle className="text-lg">Генератор описаний</CardTitle>
-            <CardDescription>Быстрая генерация базового описания товара</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="product-name" className="font-medium">Название товара</Label>
-              <Input
-                id="product-name"
-                placeholder="Пример: Умные часы"
-                value={productName}
-                onChange={(e) => setProductName(e.target.value)}
-              />
-            </div>
+        {/* Prompt Input - Simplified Form */}
+        <div className="space-y-4">
+          <div className="relative group">
+            <Textarea
+              placeholder="Умные часы с GPS и пульсометром. Экран 1.69&quot;, влагозащита IP67, 30 часов работы, совместимы с iOS и Android, подходят для спорта и повседневного использования."
+              value={prompt}
+              onChange={(e) => setPrompt(e.target.value)}
+              rows={4}
+              className="resize-none rounded-2xl border-2 border-border/50 p-4 text-base transition-all hover:border-border/80 focus:border-primary focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary"
+            />
+          </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="features" className="font-medium">Характеристики (кратко)</Label>
-              <Textarea
-                id="features"
-                placeholder="Пример: Bluetooth 5.3, водонепроницаемость IP67, 30 часов батареи, совместимы с iOS/Android"
-                value={features}
-                onChange={(e) => setFeatures(e.target.value)}
-                rows={3}
-                className="resize-none"
-              />
-            </div>
-
-            <Button
+          {/* Generate Button - Compact Icon Only */}
+          <div className="flex items-center gap-3">
+            <button
               onClick={handleGenerate}
-              disabled={isGenerating || !productName.trim() || !features.trim()}
-              className="w-full gap-2"
-              size="lg"
+              disabled={isGenerating || !prompt.trim()}
+              className="group relative inline-flex h-12 w-12 items-center justify-center rounded-full bg-primary text-primary-foreground transition-all hover:shadow-lg hover:shadow-primary/50 disabled:opacity-50 disabled:cursor-not-allowed"
+              title="Сгенерировать описание"
             >
               {isGenerating ? (
-                <>
-                  <span className="h-4 w-4 animate-spin">⚙️</span>
-                  Генерирую...
-                </>
+                <Sparkles className="h-5 w-5 animate-spin" />
               ) : (
-                <>
-                  <Sparkles className="h-4 w-4" />
-                  Сгенерировать описание
-                </>
+                <Sparkles className="h-5 w-5 transition-transform group-hover:scale-110" />
               )}
-            </Button>
+            </button>
+            <span className="text-sm text-muted-foreground">
+              {isGenerating ? "Генерирую..." : "Нажми для генерации"}
+            </span>
+          </div>
 
-            {/* Result */}
-            {result && (
-              <div className="bg-muted/50 p-4 rounded-lg border">
-                <p className="text-sm font-medium mb-2">Результат:</p>
-                <p className="text-sm text-foreground leading-relaxed mb-3">{result}</p>
-                <Button variant="outline" size="sm" onClick={() => {
-                  navigator.clipboard.writeText(result)
-                  toast.success("Скопировано!")
-                }}>
-                  Скопировать текст
-                </Button>
-              </div>
-            )}
-
-            {/* CTA */}
-            <div className="border-t pt-4">
-              <p className="text-sm text-muted-foreground mb-3">
-                Нужно больше возможностей?
-              </p>
-              <Link href="/sign-in">
-                <Button className="w-full gap-2" variant="default">
-                  Полная версия с SEO, стилями и конкурентами
-                  <ArrowRight className="h-4 w-4" />
-                </Button>
-              </Link>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Features comparison */}
-        <div className="mt-10 grid md:grid-cols-2 gap-4">
-          <Card className="bg-muted/50">
-            <CardHeader>
-              <CardTitle className="text-base">Бесплатная версия</CardTitle>
-            </CardHeader>
-            <CardContent className="text-sm space-y-2 text-muted-foreground">
-              <div>✓ Базовое описание товара</div>
-              <div>✓ Простой интерфейс</div>
-              <div>✓ Без регистрации</div>
-              <div className="text-xs mt-3">Отлично для быстрой пробы</div>
-            </CardContent>
-          </Card>
-
-          <Card className="border-primary/50">
-            <CardHeader>
-              <CardTitle className="text-base">Полная версия</CardTitle>
-            </CardHeader>
-            <CardContent className="text-sm space-y-2 text-muted-foreground">
-              <div>✓ SEO-оптимизация</div>
-              <div>✓ 3 стиля описания</div>
-              <div>✓ Анализ конкурентов</div>
-              <div>✓ История и экспорт</div>
-              <div className="text-xs mt-3">Требует регистрации (бесплатная пробная версия)</div>
-            </CardContent>
-          </Card>
+          {/* Note */}
+          <p className="text-xs text-muted-foreground mt-3">
+            В бесплатной версии требования маркетплейсов не проверяются
+          </p>
         </div>
+
+        {/* Result */}
+        {result && (
+          <div className="mt-6 space-y-3">
+            <Card className="border-border/50 overflow-hidden">
+              <CardContent className="pt-6 relative">
+                {/* Copy Button - Icon in Top Right */}
+                <button
+                  onClick={handleCopy}
+                  className="absolute top-4 right-4 inline-flex h-8 w-8 items-center justify-center rounded-lg hover:bg-muted transition-colors"
+                  title="Скопировать"
+                >
+                  {copied ? (
+                    <Check className="h-4 w-4 text-green-600" />
+                  ) : (
+                    <Copy className="h-4 w-4 text-muted-foreground" />
+                  )}
+                </button>
+
+                <p className="text-sm leading-relaxed text-foreground whitespace-pre-wrap pr-10">
+                  {result}
+                </p>
+              </CardContent>
+            </Card>
+
+            {/* CTA - Compact */}
+            <Link href="/sign-in">
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-2 rounded-lg h-9"
+              >
+                Полная версия с SEO и стилями
+                <ArrowRight className="h-3.5 w-3.5" />
+              </Button>
+            </Link>
+          </div>
+        )}
       </div>
     </section>
   )
