@@ -14,10 +14,10 @@ export default function HomePage() {
     }
 
     if (session) {
-      // User is authenticated
-      router.replace("/dashboard");
+      // User is authenticated - redirect to card generator
+      router.replace("/card-generator");
     } else {
-      // User is not authenticated
+      // User is not authenticated - show landing page
       router.replace("/landing");
     }
   }, [router, session, status]);
