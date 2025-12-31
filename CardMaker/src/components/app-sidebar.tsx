@@ -50,6 +50,16 @@ const navGroups = [
     ],
   },
   {
+    label: "Поддержка",
+    items: [
+      {
+        title: "Обратная связь",
+        url: "/feedback",
+        icon: MessageSquare,
+      },
+    ],
+  },
+  {
     label: "Аккаунт",
     items: [
       {
@@ -128,14 +138,15 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         </SidebarMenu>
       </SidebarHeader>
       <SidebarContent>
-        <div className="px-2 py-2">
+        {/* Кнопка в шапке отключена - навигация через меню в sidebar */}
+        {/* <div className="px-2 py-2">
           <Button asChild className="w-full" size="sm">
             <Link href="/card-generator" className="gap-2">
               <Sparkles className="size-4" />
               + Новая карточка
             </Link>
           </Button>
-        </div>
+        </div> */}
         {navGroups.map((group) => (
           <NavMain key={group.label} label={group.label} items={group.items} />
         ))}
