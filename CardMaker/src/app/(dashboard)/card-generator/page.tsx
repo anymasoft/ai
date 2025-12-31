@@ -202,14 +202,14 @@ export default function CardGeneratorPage() {
             <Label htmlFor="description" className="font-semibold">Описание товара *</Label>
             <Textarea
               id="description"
-              placeholder="Введите описание товара, его особенности, преимущества..."
+              placeholder="Пример: Беспроводные наушники TWS. Bluetooth 5.3, ANC шумоподавление, 30 часов с кейсом, сенсорное управление, встроенный микрофон, USB-C. Идеальны для спорта, прогулок и путешествий. Корпус из премиум-пластика, прочные и легкие."
               value={productDescription}
               onChange={(e) => setProductDescription(e.target.value)}
               rows={4}
               className="resize-none"
             />
             <p className="text-xs text-muted-foreground">
-              Опишите подробно: материалы, размеры, особенности, преимущества
+              Пиши как для покупателя: что это, для кого, ключевые характеристики, комплектация, материалы, размеры, преимущества.
             </p>
           </div>
 
@@ -223,25 +223,32 @@ export default function CardGeneratorPage() {
               <CollapsibleContent className="mt-4 space-y-4 ml-0">
                 {/* SEO-ключи - textarea, компактный */}
                 <div className="space-y-2">
-                  <Label htmlFor="seokeys" className="text-xs font-medium">SEO-ключи</Label>
+                  <Label htmlFor="seokeys" className="text-xs font-medium">SEO-ключи (опционально)</Label>
                   <Textarea
                     id="seokeys"
-                    placeholder="Введите список ключевых слов (через запятую или с новой строки)"
+                    placeholder="умные часы&#10;часы с GPS&#10;фитнес трекер&#10;smart watch&#10;водонепроницаемые часы"
                     value={seoKeywords}
                     onChange={(e) => setSeoKeywords(e.target.value)}
                     className="text-sm resize-none min-h-16"
                     rows={2}
                   />
+                  <p className="text-xs text-muted-foreground">
+                    Можно с новой строки или через запятую. Оставь пустым, если не знаешь.
+                  </p>
                 </div>
 
                 {/* Конкуренты - статическая сетка 3 слота */}
                 <div className="space-y-2">
-                  <Label className="text-xs font-medium">Конкуренты (опционально)</Label>
+                  <Label className="text-xs font-medium">Описания конкурентов (опционально)</Label>
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
                     {competitors.map((competitor, index) => (
                       <div key={index}>
                         <Textarea
-                          placeholder="Описание товара конкурента"
+                          placeholder={
+                            index === 0
+                              ? "Пример: Смарт-часы с GPS и пульсометром. Экран 1.69\", влагозащита IP67, 12 режимов спорта, уведомления, ремешок силикон..."
+                              : "Пример описания конкурента"
+                          }
                           value={competitor}
                           onChange={(e) => {
                             const newCompetitors = [...competitors]
@@ -254,6 +261,9 @@ export default function CardGeneratorPage() {
                       </div>
                     ))}
                   </div>
+                  <p className="text-xs text-muted-foreground">
+                    Вставь текст из карточки конкурента (можно частично). Пустые поля игнорируются.
+                  </p>
                 </div>
               </CollapsibleContent>
             </Collapsible>

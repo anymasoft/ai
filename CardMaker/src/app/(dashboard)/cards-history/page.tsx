@@ -6,10 +6,12 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
-import { RefreshCcw, Copy, CheckCircle, Eye } from "lucide-react"
+import { RefreshCcw, Copy, CheckCircle } from "lucide-react"
 import { format } from "date-fns"
 import { ru } from "date-fns/locale"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
+import { toast } from "sonner"
 
 // Mock данные истории карточек
 const MOCK_CARDS_HISTORY = [
@@ -45,6 +47,7 @@ const MARKETPLACE_COLORS: Record<string, string> = {
 }
 
 export default function CardsHistoryPage() {
+  const router = useRouter()
   const [cards, setCards] = useState(MOCK_CARDS_HISTORY)
   const [loading, setLoading] = useState(false)
   const [copiedId, setCopiedId] = useState<string | null>(null)
@@ -69,13 +72,25 @@ export default function CardsHistoryPage() {
     setLoading(true)
     setTimeout(() => {
       setLoading(false)
+      toast.info("Список карточек обновлён")
     }, 1000)
   }
 
-  const handleCopy = (title: string, id: string) => {
+  const handleCopy = (title: string, id: string, e: React.MouseEvent) => {
+    e.stopPropagation() // Не переходить на страницу карточки при клике на Copy
     navigator.clipboard.writeText(title)
     setCopiedId(id)
+    toast.success("Скопировано в буфер обмена")
     setTimeout(() => setCopiedId(null), 2000)
+  }
+
+  const handleRegenerate = (id: string, e: React.MouseEvent) => {
+    e.stopPropagation() // Не переходить на страницу карточки при клике на Regenerate
+    toast.info("Функция перегенерации (скоро будет доступна)")
+  }
+
+  const handleRowClick = (cardId: string) => {
+    router.push(`/cards/${cardId}`)
   }
 
   return (
@@ -144,7 +159,11 @@ export default function CardsHistoryPage() {
                 </TableHeader>
                 <TableBody>
                   {cards.map((card) => (
-                    <TableRow key={card.id} className="hover:bg-muted/50">
+                    <TableRow
+                      key={card.id}
+                      className="hover:bg-muted/50 cursor-pointer"
+                      onClick={() => handleRowClick(card.id)}
+                    >
                       <TableCell>
                         <div className="space-y-1">
                           <p className="font-medium text-sm line-clamp-2" title={card.productTitle}>
@@ -172,14 +191,14 @@ export default function CardsHistoryPage() {
                           </p>
                         </div>
                       </TableCell>
-                      <TableCell className="text-right">
+                      <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                         <div className="flex items-center justify-end gap-2">
                           <Tooltip>
                             <TooltipTrigger asChild>
                               <Button
                                 variant="ghost"
                                 size="sm"
-                                onClick={() => handleCopy(card.productTitle, card.id)}
+                                onClick={(e) => handleCopy(card.productTitle, card.id, e)}
                               >
                                 {copiedId === card.id ? (
                                   <CheckCircle className="h-4 w-4 text-green-600" />
@@ -195,12 +214,12 @@ export default function CardsHistoryPage() {
                               <Button
                                 variant="ghost"
                                 size="sm"
-                                onClick={() => window.alert(`Просмотр карточки ${card.id} (mock)`)}
+                                onClick={(e) => handleRegenerate(card.id, e)}
                               >
-                                <Eye className="h-4 w-4" />
+                                <RefreshCcw className="h-4 w-4" />
                               </Button>
                             </TooltipTrigger>
-                            <TooltipContent>Просмотреть карточку</TooltipContent>
+                            <TooltipContent>Перегенерировать (скоро)</TooltipContent>
                           </Tooltip>
                         </div>
                       </TableCell>
