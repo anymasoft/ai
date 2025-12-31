@@ -116,7 +116,7 @@ export default function CardsHistoryPage() {
           </CardHeader>
           <CardContent>
             <p className="text-sm text-muted-foreground mb-4">
-              Перейдите в раздел "Генерация карточки" чтобы создать описание товара.
+              Перейдите в раздел "Создание карточки" чтобы создать описание товара.
             </p>
             <Link href="/card-generator">
               <Button>Создать карточку</Button>
@@ -215,7 +215,7 @@ export default function CardsHistoryPage() {
                 <strong>Всего карточек:</strong> {cards.length}
               </p>
               <p>
-                Чтобы создать новую карточку, перейдите в раздел "Генерация карточки".
+                Чтобы создать новую карточку, перейдите в раздел "Создание карточки".
               </p>
             </div>
           </CardContent>

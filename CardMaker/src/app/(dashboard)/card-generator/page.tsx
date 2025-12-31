@@ -23,7 +23,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Copy, CheckCircle, ChevronDown, Loader2 } from "lucide-react"
 import { useState as useStateHook } from "react"
 
-// Mock данные для результатов генерации
+// Mock данные для примера результата
 const MOCK_CARD_RESULT = {
   title: "Спортивные Умные Часы GPS водонепроницаемые - Идеально для Фитнеса",
   description: `Профессиональные спортивные смарт-часы с встроенным GPS, идеальны для любителей фитнеса и бега.
@@ -84,7 +84,7 @@ export default function CardGeneratorPage() {
       return
     }
 
-    // Имитация генерации
+    // Имитация создания карточки
     setIsGenerating(true)
     setTimeout(() => {
       setResult(MOCK_CARD_RESULT)
@@ -110,17 +110,17 @@ export default function CardGeneratorPage() {
     <div className="space-y-6 px-4 md:px-6">
       {/* Заголовок */}
       <div>
-        <h1 className="text-3xl font-bold">Генератор карточек товаров</h1>
+        <h1 className="text-3xl font-bold">Мастер создания карточек товаров</h1>
         <p className="text-muted-foreground mt-1">
           Для Ozon и Wildberries
         </p>
       </div>
 
-      {/* ФОРМА ГЕНЕРАЦИИ */}
+      {/* ФОРМА СОЗДАНИЯ КАРТОЧКИ */}
       <Card>
         <CardHeader>
-          <CardTitle>Создать карточку</CardTitle>
-          <CardDescription>Заполните основные данные о товаре</CardDescription>
+          <CardTitle>Опишите свой товар</CardTitle>
+          <CardDescription>Мы создадим привлекательную карточку для маркетплейса</CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
           {/* Основное описание товара */}
@@ -259,7 +259,7 @@ export default function CardGeneratorPage() {
             </Collapsible>
           </div>
 
-          {/* Кнопка генерации */}
+          {/* Кнопка создания */}
           <div className="flex justify-end pt-4 border-t">
             <Button
               onClick={handleGenerateCard}
@@ -270,22 +270,22 @@ export default function CardGeneratorPage() {
               {isGenerating ? (
                 <>
                   <Loader2 className="h-4 w-4 animate-spin" />
-                  Генерируем...
+                  Создаём карточку...
                 </>
               ) : (
-                "Сгенерировать карточку"
+                "Создать карточку"
               )}
             </Button>
           </div>
         </CardContent>
       </Card>
 
-      {/* РЕЗУЛЬТАТ ГЕНЕРАЦИИ */}
+      {/* РЕЗУЛЬТАТ СОЗДАНИЯ */}
       {result && (
         <div className="space-y-4">
           <div>
-            <h2 className="text-2xl font-bold">Результат</h2>
-            <p className="text-muted-foreground text-sm">Карточка готова к использованию</p>
+            <h2 className="text-2xl font-bold">Ваша карточка готова</h2>
+            <p className="text-muted-foreground text-sm">Скопируйте текст и используйте на маркетплейсе</p>
           </div>
 
           {/* Название товара */}
@@ -412,7 +412,7 @@ export default function CardGeneratorPage() {
             </CollapsibleContent>
           </Collapsible>
 
-          {/* Кнопка создать новую */}
+          {/* Кнопка создать ещё одну карточку */}
           <div className="flex justify-center pt-4">
             <Button
               variant="outline"
@@ -423,7 +423,7 @@ export default function CardGeneratorPage() {
                 setCategory("")
               }}
             >
-              Создать новую карточку
+              Создать ещё одну карточку
             </Button>
           </div>
         </div>

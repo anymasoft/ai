@@ -38,7 +38,7 @@ const navGroups = [
     label: "Основное",
     items: [
       {
-        title: "Генерация карточки",
+        title: "Создание карточки",
         url: "/card-generator",
         icon: Sparkles,
       },
@@ -120,7 +120,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                   <span className="truncate font-medium">
                     Card Maker
                   </span>
-                  <span className="truncate text-xs">Генератор карточек</span>
+                  <span className="truncate text-xs">Создание карточек</span>
                 </div>
               </Link>
             </SidebarMenuButton>
