@@ -98,9 +98,9 @@ export default function CardGeneratorPage() {
 
 
   return (
-    <div className="space-y-4 px-4 md:px-6">
-      {/* Заголовок */}
-      <div>
+    <div className="space-y-6 px-4 md:px-6">
+      {/* Заголовок с бэйджем */}
+      <div className="text-center pt-2">
         <Badge variant="outline" className="mb-4 border-green-600/50 text-green-700 dark:text-green-400 inline-block">
           Проходит требования Ozon / Wildberries
         </Badge>
