@@ -35,65 +35,66 @@ import {
 
 const navGroups = [
   {
-    label: "Аналитика",
+    label: "Основное",
     items: [
       {
-        title: "Обзор",
-        url: "/dashboard",
-        icon: LayoutDashboard,
+        title: "Генерация карточки",
+        url: "/card-generator",
+        icon: Sparkles,
       },
       {
-        title: "Конкуренты",
-        url: "/competitors",
-        icon: Target,
-      },
-      {
-        title: "Сравнение",
-        url: "/competitors/compare",
-        icon: GitCompare,
-      },
-      {
-        title: "История сценариев",
-        url: "/scripts",
+        title: "История карточек",
+        url: "/cards-history",
         icon: FileText,
-      },
-      // DISABLED: PDF reports with Russian content show as transliteration (bad UX)
-      // Uncomment to re-enable when solution is found
-      /*
-      {
-        title: "Reports",
-        url: "/reports",
-        icon: FileBarChart,
-      },
-      */
-      {
-        title: "FAQ",
-        url: "/faqs",
-        icon: FileText,
-      },
-      {
-        title: "Обратная связь",
-        url: "/feedback",
-        icon: MessageSquare,
       },
     ],
   },
   {
-    label: "Настройки",
+    label: "Аккаунт",
     items: [
       {
-        title: "Настройки",
-        url: "#",
+        title: "Биллинг",
+        url: "/settings/billing",
         icon: Settings,
-        items: [
-          {
-            title: "Биллинг",
-            url: "/settings/billing",
-          },
-        ],
       },
     ],
   },
+  // СКРЫТО: YouTube-specific функционал
+  // {
+  //   label: "Аналитика",
+  //   items: [
+  //     {
+  //       title: "Обзор",
+  //       url: "/dashboard",
+  //       icon: LayoutDashboard,
+  //     },
+  //     {
+  //       title: "Конкуренты",
+  //       url: "/competitors",
+  //       icon: Target,
+  //     },
+  //     {
+  //       title: "Сравнение",
+  //       url: "/competitors/compare",
+  //       icon: GitCompare,
+  //     },
+  //     {
+  //       title: "История сценариев",
+  //       url: "/scripts",
+  //       icon: FileText,
+  //     },
+  //     {
+  //       title: "FAQ",
+  //       url: "/faqs",
+  //       icon: FileText,
+  //     },
+  //     {
+  //       title: "Обратная связь",
+  //       url: "/feedback",
+  //       icon: MessageSquare,
+  //     },
+  //   ],
+  // },
 ]
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
@@ -111,15 +112,15 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton size="lg" asChild>
-              <Link href="/trending">
+              <Link href="/card-generator">
                 <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
                   <Logo size={24} className="text-current" />
                 </div>
                 <div className="grid flex-1 text-left text-sm leading-tight">
                   <span className="truncate font-medium">
-                    Beem Analytics
+                    Card Maker
                   </span>
-                  <span className="truncate text-xs">Панель аналитики</span>
+                  <span className="truncate text-xs">Генератор карточек</span>
                 </div>
               </Link>
             </SidebarMenuButton>
@@ -129,9 +130,9 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       <SidebarContent>
         <div className="px-2 py-2">
           <Button asChild className="w-full" size="sm">
-            <Link href="/trending" className="gap-2">
+            <Link href="/card-generator" className="gap-2">
               <Sparkles className="size-4" />
-              + Создать сценарий
+              + Новая карточка
             </Link>
           </Button>
         </div>
