@@ -27,12 +27,13 @@ export function LandingPageContent() {
       {/* Main Content */}
       <main>
         <HeroSection />
+        {/* Free-form generation — directly after "Your success starts here" button */}
+        <FreeFormSection />
         {/* <LogoCarousel /> */}
         {/* <StatsSection /> */}
         <AboutSection />
         <FeaturesSection />
         {/* <TeamSection /> */}
-        <FreeFormSection />
         <PricingSection />
         {/* <TestimonialsSection /> */}
         {/* <BlogSection /> */}
