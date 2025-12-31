@@ -57,19 +57,13 @@ export async function middleware(request: NextRequest) {
 
   // Protected routes that require authentication
   const protectedRoutes = [
-    '/dashboard',
-    '/dashboard-demo',
-    '/competitors',
-    '/trending',
-    '/reports',
+    '/card-generator',
+    '/cards',
     '/settings',
     '/users',
     '/mail',
-    '/tasks',
-    '/chat',
     '/calendar',
     '/faqs',
-    '/pricing',
   ];
 
   // Check if current path starts with any protected route
