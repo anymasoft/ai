@@ -72,7 +72,7 @@ export const validateProductDescription = async (params: {
       marketplace,
     })
 
-    // Вызываем OpenAI API для валидации (модель берётся из OPENAI_MODEL или по умолчанию gpt-4.1-mini)
+    // Вызываем OpenAI API для валидации (модель СТРОГО из OPENAI_MODEL)
     const response = await callOpenAI(
       [
         {

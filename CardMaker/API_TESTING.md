@@ -13,8 +13,8 @@
    OPENAI_API_KEY=sk-...your-api-key...
    OPENAI_MODEL=gpt-4.1-mini
    ```
-   - `OPENAI_API_KEY` — обязательно, API ключ OpenAI
-   - `OPENAI_MODEL` — опционально, по умолчанию `gpt-4.1-mini`
+   - `OPENAI_API_KEY` — **обязательно**, API ключ OpenAI
+   - `OPENAI_MODEL` — **обязательно**, модель OpenAI для использования
 
 3. **Убедиться что вы авторизованы в приложении**
    - Откройте http://localhost:3000/sign-in

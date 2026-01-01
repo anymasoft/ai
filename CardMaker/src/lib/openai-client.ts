@@ -27,10 +27,18 @@ export const getOpenAIClient = (): OpenAI => {
 
 /**
  * Получить модель OpenAI из переменной окружения OPENAI_MODEL
- * По умолчанию используется gpt-4.1-mini
+ * ТРЕБУЕТСЯ устанавливать OPENAI_MODEL в .env.local
  */
 export const getOpenAIModel = (): string => {
-  return process.env.OPENAI_MODEL || 'gpt-4.1-mini'
+  const model = process.env.OPENAI_MODEL
+
+  if (!model) {
+    throw new Error(
+      'OPENAI_MODEL не установлен. Добавь переменную окружения в .env.local, например: OPENAI_MODEL=gpt-4.1-mini'
+    )
+  }
+
+  return model
 }
 
 // Типы для ответов OpenAI
