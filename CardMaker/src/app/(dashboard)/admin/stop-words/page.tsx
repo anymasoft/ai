@@ -16,7 +16,6 @@ interface StopWordsPreset {
   name: string
   label: string
   description: string
-  defaultValue: string
 }
 
 const STOP_WORDS_PRESETS: StopWordsPreset[] = [
@@ -25,35 +24,31 @@ const STOP_WORDS_PRESETS: StopWordsPreset[] = [
     name: "Маркетинговые слова",
     label: "Запрещённые маркетинговые слова",
     description: "Слова с преувеличением и броскими утверждениями, которые маркетплейсы не одобряют",
-    defaultValue: "",
   },
   {
     id: "health",
     name: "Запрещённые обещания",
     label: "Медицинские и здоровье обещания",
     description: "Слова, обещающие медицинский эффект, излечение или улучшение здоровья",
-    defaultValue: "",
   },
   {
     id: "prohibited",
     name: "Общие запреты",
     label: "Общие запрещённые слова",
     description: "Слова, которые маркетплейсы запрещают в описаниях категорически",
-    defaultValue: "",
   },
   {
     id: "custom",
     name: "Пользовательский список",
     label: "Кастомные стоп-слова",
     description: "Добавь сюда свои слова, которые не должны быть в описаниях",
-    defaultValue: "",
   },
 ]
 
 export default function StopWordsPage() {
   const [stopWords, setStopWords] = useState<Record<string, string>>(
     STOP_WORDS_PRESETS.reduce((acc, preset) => {
-      acc[preset.id] = preset.defaultValue
+      acc[preset.id] = ""
       return acc
     }, {} as Record<string, string>)
   )
@@ -121,14 +116,6 @@ export default function StopWordsPage() {
     }
   }
 
-  const handleReset = (presetId: string) => {
-    const preset = STOP_WORDS_PRESETS.find((p) => p.id === presetId)
-    if (preset) {
-      handleStopWordsChange(presetId, preset.defaultValue)
-      toast.info(`Список "${preset.name}" восстановлен`)
-    }
-  }
-
   const getWordCount = (text: string): number => {
     return text
       .split("\n")
@@ -191,12 +178,6 @@ export default function StopWordsPage() {
                 </div>
 
                 <div className="flex justify-end gap-2">
-                  <Button
-                    variant="outline"
-                    onClick={() => handleReset(preset.id)}
-                  >
-                    Восстановить по умолчанию
-                  </Button>
                   <Button onClick={handleSave} disabled={saving}>
                     {saved ? "✓ Сохранено" : saving ? "Сохраняю..." : "Сохранить"}
                   </Button>
@@ -245,9 +226,6 @@ export default function StopWordsPage() {
           </p>
           <p>
             <strong>4. Проверка:</strong> При валидации описания система проверит наличие этих слов в тексте.
-          </p>
-          <p>
-            <strong>5. Восстановление:</strong> Нажми "Восстановить по умолчанию" чтобы вернуть исходный список.
           </p>
         </CardContent>
       </Card>
