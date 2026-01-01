@@ -92,16 +92,26 @@ export default function ValidatePage() {
 
             {/* Marketplace selector */}
             <div className="px-6 pb-3 flex gap-2 border-b">
-              <label className="text-xs font-medium text-muted-foreground py-1">Маркетплейс:</label>
-              <select
-                value={marketplace}
-                onChange={(e) => setMarketplace(e.target.value as Marketplace)}
-                disabled={isLoading}
-                className="text-xs px-2 py-1 rounded border border-input bg-background hover:border-neutral-400 disabled:opacity-50"
-              >
-                <option value="ozon">Ozon</option>
-                <option value="wildberries">Wildberries</option>
-              </select>
+              <label className="text-xs font-medium py-1">Маркетплейс:</label>
+              <div className="flex gap-1 bg-muted p-0.5 rounded-md w-fit">
+                {[
+                  { value: "ozon" as const, label: "Ozon" },
+                  { value: "wildberries" as const, label: "Wildberries" },
+                ].map((opt) => (
+                  <button
+                    key={opt.value}
+                    onClick={() => setMarketplace(opt.value)}
+                    disabled={isLoading}
+                    className={`px-2.5 py-1.5 rounded text-xs font-medium transition-all disabled:opacity-50 ${
+                      marketplace === opt.value
+                        ? "bg-background shadow-sm border border-primary/20"
+                        : "hover:text-primary"
+                    }`}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
             </div>
 
             <CardContent className="flex-1 p-0 flex flex-col overflow-hidden">

@@ -6,7 +6,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
-import { RefreshCcw, Copy, CheckCircle } from "lucide-react"
+import { RefreshCcw, Copy, CheckCircle, Sparkles } from "lucide-react"
 import { format } from "date-fns"
 import { ru } from "date-fns/locale"
 import Link from "next/link"
@@ -134,7 +134,9 @@ export default function CardsHistoryPage() {
               Перейдите в раздел "Создание карточки" чтобы создать описание товара.
             </p>
             <Link href="/card-generator">
-              <Button>Создать карточку</Button>
+              <Button size="icon" variant="default" title="Создать карточку">
+                <Sparkles className="size-5" />
+              </Button>
             </Link>
           </CardContent>
         </Card>

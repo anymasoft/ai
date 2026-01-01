@@ -104,11 +104,10 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         </SidebarMenu>
       </SidebarHeader>
       <SidebarContent>
-        <div className="px-2 py-2">
-          <Button asChild className="w-full" size="sm">
-            <Link href="/card-generator" className="gap-2">
-              <Sparkles className="size-4" />
-              + Создание карточки
+        <div className="px-2 py-2 flex justify-center">
+          <Button asChild size="icon" variant="default">
+            <Link href="/card-generator" title="Создание карточки">
+              <Sparkles className="size-5" />
             </Link>
           </Button>
         </div>
