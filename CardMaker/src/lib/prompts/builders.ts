@@ -169,7 +169,7 @@ export const loadCategoryPrompt = async (
 export const buildGenerationPrompt = async (params: {
   productTitle: string
   productCategory: string
-  marketplace: 'ozon' | 'wildberries'
+  marketplace: 'ozon' | 'wb'
   style: string
   seoKeywords?: string[]
   competitors?: string[]
@@ -204,6 +204,17 @@ export const buildGenerationPrompt = async (params: {
   const stylePrompt = selectedStyle
     ? `\nСтиль описания: ${selectedStyle.title}\n${selectedStyle.prompt}`
     : ''
+
+  // [ДИАГНОСТИКА] Логируем выбранный стиль в dev режиме
+  if (process.env.NODE_ENV !== 'production') {
+    console.log('[buildGenerationPrompt] Style Info:', {
+      requestedKey: style,
+      foundStyle: selectedStyle?.key || '❌ NOT FOUND',
+      styleTitle: selectedStyle?.title || '-',
+      stylePromptLength: selectedStyle?.prompt?.length || 0,
+      allAvailableStyles: styles.map((s) => ({ key: s.key, title: s.title })),
+    })
+  }
 
   // Компонуем стоп-слова в удобный список
   const stopWordsList = stopWords
@@ -248,6 +259,17 @@ ${stopWordsList || 'Основные запреты: преувеличение,
     Array.isArray(seoKeywords) &&
     seoKeywords.some((k) => k && k.trim().length > 0)
 
+  // [ДИАГНОСТИКА] Логируем SEO-ключи в dev режиме
+  if (process.env.NODE_ENV !== 'production') {
+    const validSeoKeys = seoKeywords.filter((k) => k && k.trim().length > 0)
+    console.log('[buildGenerationPrompt] SEO Keywords:', {
+      hasSeoKeywords,
+      count: validSeoKeys.length,
+      keywords: validSeoKeys.slice(0, 3), // показываем первые 3
+      willBeAddedToPrompt: hasSeoKeywords,
+    })
+  }
+
   // Проверяем наличие валидных описаний конкурентов (ОПЦИОНАЛЬНО)
   const validCompetitors = competitors.filter((c) => c && c.trim().length > 0)
   const hasCompetitors = validCompetitors.length > 0
@@ -287,6 +309,33 @@ ${additionalNotes}`)
 
   const userPrompt = userPromptParts.join('')
 
+  // [ДИАГНОСТИКА] Логируем полностью assembled prompt в dev режиме
+  if (process.env.NODE_ENV !== 'production') {
+    console.log(
+      `\n${'═'.repeat(80)}\n[buildGenerationPrompt] FULL PROMPT FOR STYLE: ${selectedStyle?.key || 'UNKNOWN'}\n${'═'.repeat(80)}\n`
+    )
+    console.log('SYSTEM PROMPT (первые 500 символов):')
+    console.log(systemPrompt.substring(0, 500))
+    console.log('\n... (остальное сокращено для читаемости)\n')
+
+    console.log('USER PROMPT (полностью):')
+    console.log(userPrompt)
+
+    console.log(
+      `\n${'═'.repeat(80)}\nSTYLE ANALYSIS:\n${'═'.repeat(80)}`
+    )
+    console.log({
+      styleKey: selectedStyle?.key,
+      styleTitle: selectedStyle?.title,
+      stylePromptEmpty: !selectedStyle?.prompt || selectedStyle.prompt.trim().length === 0,
+      hasSeoKeywords,
+      seoBlockPresent: userPrompt.includes('SEO-ключи'),
+      systemPromptLength: systemPrompt.length,
+      userPromptLength: userPrompt.length,
+    })
+    console.log(`${'═'.repeat(80)}\n`)
+  }
+
   return {
     systemPrompt,
     userPrompt,
@@ -304,7 +353,7 @@ ${additionalNotes}`)
  */
 export const buildValidationPrompt = async (params: {
   description: string
-  marketplace: 'ozon' | 'wildberries'
+  marketplace: 'ozon' | 'wb'
 }): Promise<{ systemPrompt: string; userPrompt: string }> => {
   const { description, marketplace } = params
 

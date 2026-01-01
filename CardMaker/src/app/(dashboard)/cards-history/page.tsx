@@ -26,7 +26,7 @@ const MOCK_CARDS_HISTORY = [
   {
     id: "card-002",
     productTitle: "Кроссовки спортивные беговые для мужчин",
-    marketplace: "wildberries",
+    marketplace: "wb",
     marketplace_label: "Wildberries",
     category: "fashion",
     createdAt: Date.now() - 5 * 24 * 60 * 60 * 1000, // 5 дней назад
@@ -43,7 +43,7 @@ const MOCK_CARDS_HISTORY = [
 
 const MARKETPLACE_COLORS: Record<string, string> = {
   ozon: "bg-blue-100 text-blue-800",
-  wildberries: "bg-purple-100 text-purple-800",
+  wb: "bg-purple-100 text-purple-800",
 }
 
 export default function CardsHistoryPage() {

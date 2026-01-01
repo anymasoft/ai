@@ -86,7 +86,7 @@ const parseGenerationResponse = (text: string): {
 export const generateProductCard = async (params: {
   productTitle: string
   productCategory: string
-  marketplace: 'ozon' | 'wildberries'
+  marketplace: 'ozon' | 'wb'
   style: 'selling' | 'expert' | 'brief'
   seoKeywords?: string[]
   competitors?: string[]

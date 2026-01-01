@@ -7,7 +7,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Badge } from "@/components/ui/badge"
 import { AlertCircle, CheckCircle2 } from "lucide-react"
 
-type Marketplace = "ozon" | "wildberries"
+type Marketplace = "ozon" | "wb"
 
 interface ValidationResult {
   isValid: boolean
@@ -96,7 +96,7 @@ export default function ValidatePage() {
               <div className="flex gap-1 bg-muted p-0.5 rounded-md w-fit">
                 {[
                   { value: "ozon" as const, label: "Ozon" },
-                  { value: "wildberries" as const, label: "Wildberries" },
+                  { value: "wb" as const, label: "Wildberries" },
                 ].map((opt) => (
                   <button
                     key={opt.value}

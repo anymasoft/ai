@@ -6,8 +6,8 @@ import { z } from 'zod'
 
 // Схема валидации для request body
 const validateTextSchema = z.object({
-  description: z.string().min(1, 'Описание обязательно').max(5000),
-  marketplace: z.enum(['ozon', 'wildberries']),
+  text: z.string().trim().min(1, 'Текст обязателен').max(5000),
+  marketplace: z.enum(['ozon', 'wb']),
 })
 
 type ValidateTextRequest = z.infer<typeof validateTextSchema>
@@ -34,7 +34,7 @@ export async function POST(request: NextRequest) {
 
     // Вызываем сервис валидации
     const result = await validateProductDescription({
-      description: validation.data.description,
+      description: validation.data.text,
       marketplace: validation.data.marketplace,
     })
 
