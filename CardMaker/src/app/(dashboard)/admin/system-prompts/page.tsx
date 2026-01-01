@@ -175,15 +175,15 @@ export default function SystemPromptsPage() {
       <div className="flex items-center justify-between pt-4 border-t">
         <div className="text-sm">
           {isDirty ? (
-            <p className="text-yellow-600 flex items-center gap-2">
+            <div className="text-yellow-600 flex items-center gap-2">
               <div className="h-2 w-2 rounded-full bg-yellow-600" />
               Есть несохранённые изменения
-            </p>
+            </div>
           ) : (
-            <p className="text-green-600 flex items-center gap-2">
+            <div className="text-green-600 flex items-center gap-2">
               <CheckCircle2 className="h-4 w-4" />
               Все сохранено
-            </p>
+            </div>
           )}
         </div>
         <Button
