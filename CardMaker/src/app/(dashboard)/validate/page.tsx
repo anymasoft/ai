@@ -9,11 +9,19 @@ import { AlertCircle, CheckCircle2 } from "lucide-react"
 
 type Marketplace = "ozon" | "wb"
 
+interface ValidationIssue {
+  type: 'forbidden_words' | 'grammar' | 'requirements' | 'exaggeration' | 'clarity' | 'other'
+  severity: 'error' | 'warning' | 'info'
+  message: string
+  suggestion?: string
+}
+
 interface ValidationResult {
   isValid: boolean
-  score?: number
-  issues: string[]
-  bannedWordsFound: string[]
+  score: number
+  issues: ValidationIssue[]
+  summary: string
+  validatedAt: string
 }
 
 export default function ValidatePage() {
@@ -48,7 +56,12 @@ export default function ValidatePage() {
       }
 
       const result = await response.json()
-      setValidation(result)
+      // API возвращает { success: true, data: ValidationResult }
+      if (result.success && result.data) {
+        setValidation(result.data)
+      } else {
+        throw new Error("Неверный формат ответа от API")
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Неизвестная ошибка")
     } finally {
@@ -165,14 +178,14 @@ export default function ValidatePage() {
                       <CheckCircle2 className="h-5 w-5 text-green-600 flex-shrink-0 mt-0.5" />
                       <div>
                         <p className="text-sm font-semibold text-green-700">Проверка пройдена</p>
-                        <p className="text-xs text-green-600 mt-1">Описание соответствует требованиям маркетплейса</p>
+                        <p className="text-xs text-green-600 mt-1">{validation.summary || 'Описание соответствует требованиям маркетплейса'}</p>
                       </div>
                     </div>
                   </div>
 
-                  {validation.score !== undefined && (
+                  {typeof validation.score === 'number' && (
                     <div className="text-center py-4">
-                      <div className="text-3xl font-bold text-green-700">{validation.score}%</div>
+                      <div className="text-3xl font-bold text-green-700">{Math.round(validation.score)}%</div>
                       <p className="text-xs text-muted-foreground mt-1">Качество описания</p>
                     </div>
                   )}
@@ -187,46 +200,42 @@ export default function ValidatePage() {
                       <AlertCircle className="h-5 w-5 text-red-600 flex-shrink-0 mt-0.5" />
                       <div>
                         <p className="text-sm font-semibold text-red-700">Обнаружены нарушения</p>
-                        <p className="text-xs text-red-600 mt-1">Требования маркетплейса не соблюдены</p>
+                        <p className="text-xs text-red-600 mt-1">{validation.summary || 'Требования маркетплейса не соблюдены'}</p>
                       </div>
                     </div>
                   </div>
 
-                  {validation.score !== undefined && (
+                  {typeof validation.score === 'number' && (
                     <div className="text-center py-3">
-                      <div className="text-2xl font-bold text-red-700">{validation.score}%</div>
+                      <div className="text-2xl font-bold text-red-700">{Math.round(validation.score)}%</div>
                       <p className="text-xs text-muted-foreground mt-1">Качество описания</p>
                     </div>
                   )}
 
-                  {validation.issues.length > 0 && (
+                  {Array.isArray(validation.issues) && validation.issues.length > 0 && (
                     <div className="bg-red-50 border border-red-200 rounded-lg p-3 space-y-2">
                       <p className="text-xs font-semibold text-red-700">Проблемы:</p>
-                      <ul className="space-y-1">
+                      <ul className="space-y-1.5">
                         {validation.issues.map((issue, i) => (
-                          <li key={i} className="flex items-start gap-2 text-xs text-red-700">
-                            <span className="font-bold mt-0.5 flex-shrink-0">•</span>
-                            <span>{issue}</span>
+                          <li key={i} className="text-xs">
+                            <div className="flex items-start gap-2">
+                              <span className="font-bold mt-0.5 flex-shrink-0">•</span>
+                              <div className="flex-1">
+                                <p className="text-red-700 font-medium">{issue.message}</p>
+                                {issue.suggestion && (
+                                  <p className="text-red-600 text-xs mt-0.5">💡 {issue.suggestion}</p>
+                                )}
+                              </div>
+                            </div>
                           </li>
                         ))}
                       </ul>
                     </div>
                   )}
 
-                  {validation.bannedWordsFound.length > 0 && (
-                    <div className="bg-red-50 border border-red-200 rounded-lg p-3 space-y-2">
-                      <p className="text-xs font-semibold text-red-700">Запрещённые слова:</p>
-                      <div className="flex flex-wrap gap-1">
-                        {validation.bannedWordsFound.map((word, i) => (
-                          <Badge
-                            key={i}
-                            variant="secondary"
-                            className="bg-red-200 text-red-900 text-xs py-0.5"
-                          >
-                            {word}
-                          </Badge>
-                        ))}
-                      </div>
+                  {(!Array.isArray(validation.issues) || validation.issues.length === 0) && (
+                    <div className="bg-gray-50 border border-gray-200 rounded-lg p-3">
+                      <p className="text-xs text-gray-600">Обнаружены проблемы, но детали недоступны</p>
                     </div>
                   )}
                 </div>
