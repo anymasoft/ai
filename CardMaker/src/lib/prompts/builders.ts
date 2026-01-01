@@ -134,6 +134,27 @@ export const loadStopWords = async (
 }
 
 /**
+ * Загрузить мини-промпт категории из БД
+ */
+export const loadCategoryPrompt = async (
+  categoryKey: string
+): Promise<string> => {
+  try {
+    const result = await db.execute(
+      'SELECT prompt FROM category_prompts WHERE key = ? AND is_active = 1 LIMIT 1',
+      [categoryKey]
+    )
+
+    const rows = Array.isArray(result) ? result : result.rows || []
+
+    return rows[0]?.prompt?.trim() || ''
+  } catch (error) {
+    console.error(`[loadCategoryPrompt] Ошибка загрузки для ${categoryKey}:`, error)
+    return ''
+  }
+}
+
+/**
  * Построить промпт для генерации описания
  *
  * Структура промпта:
@@ -165,11 +186,12 @@ export const buildGenerationPrompt = async (params: {
   } = params
 
   // Загружаем все необходимые данные параллельно
-  const [systemPrompts, styles, marketplaceRules, stopWords] = await Promise.all([
+  const [systemPrompts, styles, marketplaceRules, stopWords, categoryPrompt] = await Promise.all([
     loadSystemPrompts(),
     loadStyles(),
     loadMarketplaceRules(marketplace),
     loadStopWords(marketplace),
+    loadCategoryPrompt(productCategory),
   ])
 
   // Находим base prompt для генерации
@@ -193,6 +215,13 @@ export const buildGenerationPrompt = async (params: {
     .join('\n')
 
   // Строим системный промпт
+  const categoryBlock = categoryPrompt
+    ? `\n\n═══════════════════════════════════════════════════════════════
+ИНСТРУКЦИИ ПО КАТЕГОРИИ:
+═══════════════════════════════════════════════════════════════
+${categoryPrompt}`
+    : ''
+
   const systemPrompt = `${basePrompt}
 ${stylePrompt}
 
@@ -201,7 +230,7 @@ ${stylePrompt}
 ═══════════════════════════════════════════════════════════════
 
 ## Маркетплейс: ${marketplace === 'ozon' ? 'Озон' : 'WildBerries'}
-${marketplaceRules ? `\n${marketplaceRules}` : ''}
+${marketplaceRules ? `\n${marketplaceRules}` : ''}${categoryBlock}
 
 ## Важные ограничения (ЗАПРЕЩЕНО ИСПОЛЬЗОВАТЬ):
 ${stopWordsList || 'Основные запреты: преувеличение, медицинские обещания, гарантии без оснований'}
