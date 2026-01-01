@@ -141,13 +141,17 @@ export const loadStopWords = async (
  * 2. Выбранный стиль
  * 3. Правила маркетплейса
  * 4. Стоп-слова для валидации
- * 5. Инструкции о формате ответа
+ * 5. (ОПЦИОНАЛЬНО) SEO-ключи, если есть
+ * 6. (ОПЦИОНАЛЬНО) Описания конкурентов, если есть
+ * 7. Инструкции о формате ответа
  */
 export const buildGenerationPrompt = async (params: {
   productTitle: string
   productCategory: string
   marketplace: 'ozon' | 'wildberries'
   style: string
+  seoKeywords?: string[]
+  competitors?: string[]
   additionalNotes?: string
 }): Promise<{ systemPrompt: string; userPrompt: string }> => {
   const {
@@ -155,6 +159,8 @@ export const buildGenerationPrompt = async (params: {
     productCategory,
     marketplace,
     style,
+    seoKeywords = [],
+    competitors = [],
     additionalNotes = '',
   } = params
 
@@ -208,18 +214,49 @@ ${stopWordsList || 'Основные запреты: преувеличение,
 - Без пустых слов и воды
 - Правильная пунктуация и орфография`
 
+  // Проверяем наличие валидных SEO-ключей (ОПЦИОНАЛЬНО)
+  const hasSeoKeywords =
+    Array.isArray(seoKeywords) &&
+    seoKeywords.some((k) => k && k.trim().length > 0)
+
+  // Проверяем наличие валидных описаний конкурентов (ОПЦИОНАЛЬНО)
+  const validCompetitors = competitors.filter((c) => c && c.trim().length > 0)
+  const hasCompetitors = validCompetitors.length > 0
+
   // Строим пользовательский промпт
-  const userPrompt = `Создай описание для товара:
+  const userPromptParts = [
+    `Создай описание для товара:
 
 ТОВАР:
 - Название: ${productTitle}
-- Категория: ${productCategory}
-${additionalNotes ? `- Дополнительная информация: ${additionalNotes}` : ''}
+- Категория: ${productCategory}`,
+  ]
 
+  // Добавляем SEO-ключи ТОЛЬКО если есть хотя бы одно значение
+  if (hasSeoKeywords) {
+    userPromptParts.push(`\nSEO-ключи для оптимизации поиска:
+${seoKeywords.filter((k) => k && k.trim().length > 0).join(', ')}`)
+  }
+
+  // Добавляем описания конкурентов ТОЛЬКО если есть хотя бы одно описание
+  if (hasCompetitors) {
+    userPromptParts.push(`\nДля вдохновения (описания товаров конкурентов):
+${validCompetitors.map((c, i) => `${i + 1}. ${c}`).join('\n\n')}`)
+  }
+
+  // Добавляем дополнительные заметки если есть
+  if (additionalNotes && additionalNotes.trim()) {
+    userPromptParts.push(`\nДополнительная информация:
+${additionalNotes}`)
+  }
+
+  userPromptParts.push(`
 Ответь ТОЛЬКО описанием товара, без дополнительных комментариев или объяснений.
 Структура ответа:
 1. Заголовок (до 300 символов)
-2. Основное описание (до 1500 символов)`
+2. Основное описание (до 1500 символов)`)
+
+  const userPrompt = userPromptParts.join('')
 
   return {
     systemPrompt,

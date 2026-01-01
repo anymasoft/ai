@@ -5,12 +5,14 @@ import { generateProductCard } from '@/lib/ai-services/generation'
 import { z } from 'zod'
 
 // Схема валидации для request body
+// ВАЖНО: соответствует реальному body из UI (card-generator/page.tsx)
 const generateCardSchema = z.object({
-  productTitle: z.string().min(1, 'Название товара обязательно').max(500),
-  productCategory: z.string().min(1, 'Категория товара обязательна').max(200),
+  productDescription: z.string().min(1, 'Описание товара обязательно').max(5000),
   marketplace: z.enum(['ozon', 'wildberries']),
-  style: z.enum(['selling', 'expert', 'brief']),
-  additionalNotes: z.string().max(1000).optional(),
+  category: z.string().min(1, 'Категория товара обязательна').max(200),
+  style: z.enum(['selling', 'expert', 'brief']).default('selling'),
+  seoKeywords: z.array(z.string()).optional().default([]),
+  competitors: z.array(z.string()).optional().default([]),
 })
 
 type GenerateCardRequest = z.infer<typeof generateCardSchema>
@@ -23,19 +25,26 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json()
+    console.log('[generate-card] raw body:', body)
 
     // Валидируем входные данные
     const validation = generateCardSchema.safeParse(body)
     if (!validation.success) {
-      const errors = validation.error.errors.map((e) => `${e.path.join('.')}: ${e.message}`)
+      const errors = validation.error.issues.map((e) => `${e.path.join('.')}: ${e.message}`)
       return NextResponse.json(
         { error: `Ошибка валидации: ${errors.join(', ')}` },
         { status: 400 }
       )
     }
 
+    // Преобразуем данные из UI формата в формат сервиса
     const params: Parameters<typeof generateProductCard>[0] = {
-      ...validation.data,
+      productTitle: validation.data.productDescription,
+      productCategory: validation.data.category,
+      marketplace: validation.data.marketplace,
+      style: validation.data.style as 'selling' | 'expert' | 'brief',
+      seoKeywords: validation.data.seoKeywords,
+      competitors: validation.data.competitors,
       userId: session.user.id,
     }
 

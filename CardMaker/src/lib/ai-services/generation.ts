@@ -38,6 +38,8 @@ export const generateProductCard = async (params: {
   productCategory: string
   marketplace: 'ozon' | 'wildberries'
   style: 'selling' | 'expert' | 'brief'
+  seoKeywords?: string[]
+  competitors?: string[]
   additionalNotes?: string
   userId?: string
 }): Promise<{ success: true; data: GeneratedProductCard } | { success: false; error: GenerationError }> => {
@@ -47,6 +49,8 @@ export const generateProductCard = async (params: {
       productCategory,
       marketplace,
       style,
+      seoKeywords,
+      competitors,
       additionalNotes,
       userId,
     } = params
@@ -92,6 +96,8 @@ export const generateProductCard = async (params: {
       productCategory: productCategory.trim(),
       marketplace,
       style,
+      seoKeywords,
+      competitors,
       additionalNotes: additionalNotes?.trim(),
     })
 

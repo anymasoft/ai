@@ -46,11 +46,12 @@ Cookie: next-auth.session-token=YOUR_SESSION_COOKIE
 
 ```json
 {
-  "productTitle": "Смарт-часы с AMOLED экраном",
-  "productCategory": "Электроника",
+  "productDescription": "Смарт-часы с AMOLED экраном. Водонепроницаемые, GPS, батарея 7 дней. Идеальны для спортсменов.",
   "marketplace": "ozon",
+  "category": "electronics",
   "style": "selling",
-  "additionalNotes": "Водонепроницаемые, GPS, батарея 7 дней"
+  "seoKeywords": ["смарт-часы", "GPS часы", "спортивные часы"],
+  "competitors": ["Альтернативное описание конкурента 1", "Альтернативное описание конкурента 2"]
 }
 ```
 
@@ -58,11 +59,12 @@ Cookie: next-auth.session-token=YOUR_SESSION_COOKIE
 
 | Параметр | Тип | Обязательно | Описание |
 |----------|-----|-------------|---------|
-| `productTitle` | string | ✅ | Название товара (макс. 500 символов) |
-| `productCategory` | string | ✅ | Категория товара (макс. 200 символов) |
+| `productDescription` | string | ✅ | Описание товара (макс. 5000 символов) |
+| `category` | string | ✅ | Категория товара (макс. 200 символов) |
 | `marketplace` | enum | ✅ | `ozon` или `wildberries` |
 | `style` | enum | ✅ | `selling`, `expert` или `brief` |
-| `additionalNotes` | string | ❌ | Дополнительная информация (макс. 1000 символов) |
+| `seoKeywords` | array | ❌ | Массив SEO-ключевых слов (опционально) |
+| `competitors` | array | ❌ | Массив описаний конкурентов (опционально) |
 
 ### Стили описания
 
@@ -130,11 +132,11 @@ curl -X POST http://localhost:3000/api/generate-card \
   -H "Content-Type: application/json" \
   -H "Cookie: next-auth.session-token=YOUR_SESSION_COOKIE" \
   -d '{
-    "productTitle": "Смарт-часы с AMOLED экраном",
-    "productCategory": "Электроника",
+    "productDescription": "Смарт-часы с AMOLED экраном. Водонепроницаемые, GPS, батарея 7 дней. Идеальны для спортсменов и активных людей.",
     "marketplace": "ozon",
+    "category": "electronics",
     "style": "selling",
-    "additionalNotes": "Водонепроницаемые, GPS, батарея 7 дней"
+    "seoKeywords": ["смарт-часы", "GPS", "спортивные часы"]
   }'
 ```
 
@@ -145,10 +147,11 @@ curl -X POST http://localhost:3000/api/generate-card \
   -H "Content-Type: application/json" \
   -H "Cookie: next-auth.session-token=YOUR_SESSION_COOKIE" \
   -d '{
-    "productTitle": "Мобильный процессор Snapdragon 8 Gen 3",
-    "productCategory": "Компоненты ПК",
+    "productDescription": "Мобильный процессор последнего поколения. Архитектура Cortex, частота 3.4 ГГц, 4нм техпроцесс, поддержка 5G. Производительность выше на 30% чем предыдущее поколение.",
     "marketplace": "wildberries",
-    "style": "expert"
+    "category": "electronics",
+    "style": "expert",
+    "seoKeywords": ["процессор", "Snapdragon", "мобильный"]
   }'
 ```
 
@@ -159,9 +162,9 @@ curl -X POST http://localhost:3000/api/generate-card \
   -H "Content-Type: application/json" \
   -H "Cookie: next-auth.session-token=YOUR_SESSION_COOKIE" \
   -d '{
-    "productTitle": "USB-C кабель 2м",
-    "productCategory": "Аксессуары",
+    "productDescription": "USB-C кабель 2 метра. Быстрая зарядка 100W. Совместим с iPhone, Android, ноутбуками. Прочный нейлоновый кабель.",
     "marketplace": "ozon",
+    "category": "electronics",
     "style": "brief"
   }'
 ```
