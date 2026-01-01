@@ -7,6 +7,7 @@ import {
   MessageSquare,
   Sparkles,
   Zap,
+  CheckCircle2,
 } from "lucide-react"
 import Link from "next/link"
 import { useSession } from "next-auth/react"
@@ -36,6 +37,11 @@ const navGroups = [
         title: "Массовая подготовка",
         url: "/batch",
         icon: Zap,
+      },
+      {
+        title: "Проверка описания",
+        url: "/validate",
+        icon: CheckCircle2,
       },
       {
         title: "История карточек",
