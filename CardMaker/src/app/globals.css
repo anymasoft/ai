@@ -170,3 +170,19 @@ html {
 .animate-logo-scroll:hover {
   animation-play-state: paused;
 }
+
+/* ===== ЕДИНЫЙ СТИЛЬ ДЛЯ ПОЛЬЗОВАТЕЛЬСКОГО ТЕКСТА ===== */
+/* Применяется ко всем полям ввода, textarea и результатам генерации */
+.user-text {
+  @apply text-base text-gray-800 leading-7 border border-gray-200 bg-white;
+  @apply focus:border-gray-400 focus:ring-1 focus:ring-gray-300 focus:outline-none;
+  @apply dark:bg-gray-950 dark:text-gray-100 dark:border-gray-700;
+  @apply dark:focus:border-gray-600 dark:focus:ring-gray-700;
+}
+
+/* Readonly версия стиля (для результатов генерации) */
+.user-text-readonly {
+  @apply text-base text-gray-800 leading-7;
+  @apply dark:text-gray-100;
+}
+

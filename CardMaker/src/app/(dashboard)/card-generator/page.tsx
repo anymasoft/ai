@@ -217,7 +217,7 @@ export default function CardGeneratorPage() {
               value={productDescription}
               onChange={(e) => setProductDescription(e.target.value)}
               rows={4}
-              className="resize-none"
+              className="user-text resize-none rounded-md"
             />
             <p className="text-xs text-muted-foreground">
               Пиши как для покупателя: что это, для кого, ключевые характеристики, комплектация, материалы, размеры, преимущества.
@@ -240,7 +240,7 @@ export default function CardGeneratorPage() {
                     placeholder="умные часы&#10;часы с GPS&#10;фитнес трекер&#10;smart watch&#10;водонепроницаемые часы"
                     value={seoKeywords}
                     onChange={(e) => setSeoKeywords(e.target.value)}
-                    className="text-sm resize-none min-h-16"
+                    className="user-text resize-none min-h-16 rounded-md"
                     rows={2}
                   />
                   <p className="text-xs text-muted-foreground">
@@ -268,7 +268,7 @@ export default function CardGeneratorPage() {
                             newCompetitors[index] = e.target.value
                             setCompetitors(newCompetitors)
                           }}
-                          className="text-sm resize-none min-h-16"
+                          className="user-text resize-none min-h-16 rounded-md"
                           rows={2}
                         />
                       </div>
@@ -344,7 +344,7 @@ export default function CardGeneratorPage() {
 
             <CardContent className="pt-2 px-4">
               <div className="mb-4 h-px bg-gray-200" />
-              <p className="text-gray-800 text-base leading-7 whitespace-pre-line">
+              <p className="user-text-readonly whitespace-pre-line">
                 {result.description}
               </p>
             </CardContent>
