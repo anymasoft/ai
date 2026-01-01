@@ -282,6 +282,16 @@ async function getClient() {
            ('mr_wb', 'wildberries', '', 1);`
         );
 
+        // Инициализация стоп-слов
+        await _client.execute(
+          `INSERT OR IGNORE INTO stop_words (id, marketplace, category, words, is_active)
+           VALUES
+           ('sw_marketing', NULL, 'marketing', '', 1),
+           ('sw_health', NULL, 'health', '', 1),
+           ('sw_prohibited', NULL, 'prohibited', '', 1),
+           ('sw_custom', NULL, 'custom', '', 1);`
+        );
+
         console.log("✅ Tables initialized");
       } catch (error) {
         console.error("❌ DB init error:", error);
