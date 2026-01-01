@@ -157,9 +157,24 @@ export default function StylesPage() {
                           Редактируй инструкцию для этого стиля
                         </CardDescription>
                       </div>
-                      <Badge variant={style.is_active ? "default" : "secondary"}>
-                        {style.is_active ? "Активен" : "Неактивен"}
-                      </Badge>
+                      <div className="flex gap-2 items-center">
+                        <Badge variant={style.is_active ? "default" : "secondary"}>
+                          {style.is_active ? "Активен" : "Неактивен"}
+                        </Badge>
+                        <Button
+                          onClick={() => handleSave(style.key)}
+                          disabled={saving}
+                          size="icon"
+                          variant="outline"
+                          title="Сохранить стиль"
+                        >
+                          {saving ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <Save className="h-4 w-4" />
+                          )}
+                        </Button>
+                      </div>
                     </div>
                   </CardHeader>
                   <CardContent className="space-y-4">
@@ -191,16 +206,6 @@ export default function StylesPage() {
                         onClick={() => handleClear(style.key)}
                       >
                         Очистить
-                      </Button>
-                      <Button
-                        onClick={() => handleSave(style.key)}
-                        disabled={saving}
-                      >
-                        {savedId === style.key
-                          ? "✓ Сохранено"
-                          : saving
-                            ? "Сохраняю..."
-                            : "Сохранить"}
                       </Button>
                     </div>
                   </CardContent>

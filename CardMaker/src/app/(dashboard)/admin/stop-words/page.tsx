@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { toast } from "sonner"
-import { AlertCircle } from "lucide-react"
+import { AlertCircle, Save, Loader2 } from "lucide-react"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 
 interface StopWordsPreset {
@@ -157,7 +157,22 @@ export default function StopWordsPage() {
                     <CardTitle>{preset.label}</CardTitle>
                     <CardDescription>{preset.description}</CardDescription>
                   </div>
-                  <Badge variant="outline">{getWordCount(stopWords[preset.id])} слов</Badge>
+                  <div className="flex gap-2 items-center">
+                    <Badge variant="outline">{getWordCount(stopWords[preset.id])} слов</Badge>
+                    <Button
+                      onClick={handleSave}
+                      disabled={saving}
+                      size="icon"
+                      variant="outline"
+                      title="Сохранить стоп-слова"
+                    >
+                      {saving ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Save className="h-4 w-4" />
+                      )}
+                    </Button>
+                  </div>
                 </div>
               </CardHeader>
               <CardContent className="space-y-4">
@@ -177,11 +192,6 @@ export default function StopWordsPage() {
                   </p>
                 </div>
 
-                <div className="flex justify-end gap-2">
-                  <Button onClick={handleSave} disabled={saving}>
-                    {saved ? "✓ Сохранено" : saving ? "Сохраняю..." : "Сохранить"}
-                  </Button>
-                </div>
               </CardContent>
             </Card>
 

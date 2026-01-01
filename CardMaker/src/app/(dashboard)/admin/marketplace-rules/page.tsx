@@ -147,9 +147,24 @@ export default function MarketplaceRulesPage() {
                           Требования для заголовков, описаний и других полей
                         </CardDescription>
                       </div>
-                      <Badge variant={rule.is_active ? "default" : "secondary"}>
-                        {rule.is_active ? "Активны" : "Неактивны"}
-                      </Badge>
+                      <div className="flex gap-2 items-center">
+                        <Badge variant={rule.is_active ? "default" : "secondary"}>
+                          {rule.is_active ? "Активны" : "Неактивны"}
+                        </Badge>
+                        <Button
+                          onClick={() => handleSave(rule.marketplace)}
+                          disabled={saving}
+                          size="icon"
+                          variant="outline"
+                          title="Сохранить правила"
+                        >
+                          {saving ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <Save className="h-4 w-4" />
+                          )}
+                        </Button>
+                      </div>
                     </div>
                   </CardHeader>
                   <CardContent className="space-y-4">
@@ -180,16 +195,6 @@ export default function MarketplaceRulesPage() {
                         onClick={() => handleClear(rule.marketplace)}
                       >
                         Очистить
-                      </Button>
-                      <Button
-                        onClick={() => handleSave(rule.marketplace)}
-                        disabled={saving}
-                      >
-                        {savedId === rule.marketplace
-                          ? "✓ Сохранено"
-                          : saving
-                            ? "Сохраняю..."
-                            : "Сохранить"}
                       </Button>
                     </div>
                   </CardContent>
