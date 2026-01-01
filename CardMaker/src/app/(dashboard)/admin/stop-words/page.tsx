@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
@@ -8,129 +8,100 @@ import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { toast } from "sonner"
-import { AlertCircle } from "lucide-react"
+import { AlertCircle, Loader2 } from "lucide-react"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 
-interface StopWordsPreset {
+interface StopWordsEntry {
   id: string
-  name: string
-  label: string
-  description: string
-  defaultValue: string
+  marketplace?: string
+  category: string
+  words: string
+  is_active: number
 }
 
-const STOP_WORDS_PRESETS: StopWordsPreset[] = [
-  {
-    id: "marketing",
-    name: "Маркетинговые слова",
-    label: "Запрещённые маркетинговые слова",
-    description: "Слова с преувеличением и броскими утверждениями, которые маркетплейсы не одобряют",
-    defaultValue: `уникальный
-лучший
-самый
-идеальный
-только у нас
-исключительно
-прямо сейчас
-не пропустите
-гарантированно
-премиум
-люкс
-топ
-хит
-мега
-супер
-невероятный
-чудо`,
-  },
-  {
-    id: "health",
-    name: "Запрещённые обещания",
-    label: "Медицинские и здоровье обещания",
-    description: "Слова, обещающие медицинский эффект, излечение или улучшение здоровья",
-    defaultValue: `лечит
-исцеляет
-избавляет
-устраняет боль
-помогает похудеть
-ускоряет метаболизм
-повышает иммунитет
-избавляет от болезни
-медицинский эффект
-излечение
-панацея
-целебный
-волшебный
-чудодейственный`,
-  },
-  {
-    id: "prohibited",
-    name: "Общие запреты",
-    label: "Общие запрещённые слова",
-    description: "Слова, которые маркетплейсы запрещают в описаниях категорически",
-    defaultValue: `оригинал
-поддельный
-подделка
-контрафакт
-скидка только сегодня
-успейте купить
-свяжитесь с нами
-позвоните сейчас
-ссылка на сайт
-go to
-кликните
-перейдите по ссылке`,
-  },
-  {
-    id: "custom",
-    name: "Пользовательский список",
-    label: "Кастомные стоп-слова",
-    description: "Добавь сюда свои слова, которые не должны быть в описаниях",
-    defaultValue: ``,
-  },
-]
-
 export default function StopWordsPage() {
-  const [stopWords, setStopWords] = useState<Record<string, string>>(
-    STOP_WORDS_PRESETS.reduce((acc, preset) => {
-      acc[preset.id] = preset.defaultValue
-      return acc
-    }, {} as Record<string, string>)
-  )
+  const [stopWords, setStopWords] = useState<StopWordsEntry[]>([])
+  const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
-  const [saved, setSaved] = useState(false)
+  const [savedId, setSavedId] = useState<string | null>(null)
 
-  const handleStopWordsChange = (presetId: string, value: string) => {
-    setStopWords((prev) => ({
-      ...prev,
-      [presetId]: value,
-    }))
-  }
+  // Загрузить стоп-слова при загрузке страницы
+  useEffect(() => {
+    loadStopWords()
+  }, [])
 
-  const handleSave = async () => {
-    setSaving(true)
-    // Имитация сохранения
-    setTimeout(() => {
-      setSaving(false)
-      setSaved(true)
-      toast.success("Стоп-слова сохранены")
-      setTimeout(() => setSaved(false), 3000)
-    }, 500)
-  }
+  const loadStopWords = async () => {
+    try {
+      setLoading(true)
+      const response = await fetch("/api/admin/config/stop-words")
+      if (!response.ok) throw new Error("Ошибка при загрузке стоп-слов")
 
-  const handleReset = (presetId: string) => {
-    const preset = STOP_WORDS_PRESETS.find((p) => p.id === presetId)
-    if (preset) {
-      handleStopWordsChange(presetId, preset.defaultValue)
-      toast.info(`Список "${preset.name}" восстановлен`)
+      const data = await response.json()
+      setStopWords(data.stopWords || [])
+    } catch (error) {
+      console.error("Ошибка:", error)
+      toast.error("Не удалось загрузить стоп-слова")
+    } finally {
+      setLoading(false)
     }
   }
 
-  const getWordCount = (text: string): number => {
-    return text
-      .split("\n")
-      .filter((line) => line.trim().length > 0)
-      .length
+  const handleWordsChange = (id: string, value: string) => {
+    setStopWords((prev) =>
+      prev.map((item) =>
+        item.id === id ? { ...item, words: value } : item
+      )
+    )
+  }
+
+  const handleSave = async (id: string) => {
+    const entry = stopWords.find((item) => item.id === id)
+    if (!entry) return
+
+    setSaving(true)
+    try {
+      const response = await fetch("/api/admin/config/stop-words", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          stopWords: [
+            {
+              id: entry.id,
+              marketplace: entry.marketplace || null,
+              category: entry.category,
+              words: entry.words,
+            },
+          ],
+        }),
+      })
+
+      if (!response.ok) throw new Error("Ошибка при сохранении")
+
+      setSavedId(id)
+      toast.success(`Стоп-слова "${entry.category}" сохранены`)
+      setTimeout(() => setSavedId(null), 2000)
+    } catch (error) {
+      console.error("Ошибка:", error)
+      toast.error("Не удалось сохранить стоп-слова")
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const handleClear = (id: string) => {
+    handleWordsChange(id, "")
+    toast.info("Стоп-слова очищены")
+  }
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-[60vh]">
+        <div className="text-center space-y-4">
+          <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary" />
+          <p className="text-muted-foreground">Загрузка стоп-слов...</p>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -138,116 +109,124 @@ export default function StopWordsPage() {
       <div>
         <h1 className="text-3xl font-bold">Стоп-слова</h1>
         <p className="text-muted-foreground mt-1">
-          Управляй списками слов, которые НЕ должны появляться в описаниях товаров. Эти слова будут проверяться при валидации.
+          Управляй списками запрещённых слов. Эти слова не будут использоваться при генерации описаний.
         </p>
       </div>
 
-      <Alert>
-        <AlertCircle className="h-4 w-4" />
-        <AlertDescription>
-          Слова должны быть записаны по одному на строку. При проверке описания система будет искать эти слова (с учётом морфологии и регистра).
-        </AlertDescription>
-      </Alert>
+      {stopWords.length === 0 ? (
+        <Alert>
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>
+            Нет стоп-слов в системе. Добавь списки через программу или создай их вручную.
+          </AlertDescription>
+        </Alert>
+      ) : (
+        <>
+          <Alert>
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>
+              Стоп-слова применяются при валидации и генерации описаний. Список должен содержать слова, разделённые переносом строки (каждое слово на отдельной строке).
+            </AlertDescription>
+          </Alert>
 
-      <Tabs defaultValue="marketing" className="w-full">
-        <TabsList className="grid w-full max-w-2xl grid-cols-4">
-          {STOP_WORDS_PRESETS.map((preset) => (
-            <TabsTrigger key={preset.id} value={preset.id}>
-              {preset.name}
-            </TabsTrigger>
-          ))}
-        </TabsList>
+          <Tabs defaultValue={stopWords[0]?.id || ""} className="w-full">
+            <TabsList className="grid w-full max-w-3xl grid-cols-2 sm:grid-cols-3 md:grid-cols-4">
+              {stopWords.map((item) => (
+                <TabsTrigger key={item.id} value={item.id} className="text-xs">
+                  {item.category}
+                </TabsTrigger>
+              ))}
+            </TabsList>
 
-        {STOP_WORDS_PRESETS.map((preset) => (
-          <TabsContent key={preset.id} value={preset.id} className="space-y-4 mt-4">
-            <Card>
-              <CardHeader>
-                <div className="flex items-start justify-between">
-                  <div>
-                    <CardTitle>{preset.label}</CardTitle>
-                    <CardDescription>{preset.description}</CardDescription>
-                  </div>
-                  <Badge variant="outline">{getWordCount(stopWords[preset.id])} слов</Badge>
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor={`stopwords-${preset.id}`} className="text-base font-semibold">
-                    Список стоп-слов
-                  </Label>
-                  <Textarea
-                    id={`stopwords-${preset.id}`}
-                    value={stopWords[preset.id]}
-                    onChange={(e) => handleStopWordsChange(preset.id, e.target.value)}
-                    placeholder="Введи слова по одному на строку..."
-                    className="min-h-64 resize-none font-mono text-sm"
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    По одному слову на строку. Пробелы в начале и конце строк будут автоматически удалены.
-                  </p>
-                </div>
+            {stopWords.map((item) => (
+              <TabsContent key={item.id} value={item.id} className="space-y-4 mt-4">
+                <Card>
+                  <CardHeader>
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <CardTitle>{item.category}</CardTitle>
+                        <CardDescription>
+                          {item.marketplace ? `Для маркетплейса: ${item.marketplace}` : "Общие стоп-слова для всех маркетплейсов"}
+                        </CardDescription>
+                      </div>
+                      <Badge variant={item.is_active ? "default" : "secondary"}>
+                        {item.is_active ? "Активны" : "Неактивны"}
+                      </Badge>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="space-y-2">
+                      <Label
+                        htmlFor={`words-${item.id}`}
+                        className="text-base font-semibold"
+                      >
+                        Слова (по одному на строку)
+                      </Label>
+                      <Textarea
+                        id={`words-${item.id}`}
+                        value={item.words}
+                        onChange={(e) =>
+                          handleWordsChange(item.id, e.target.value)
+                        }
+                        placeholder="Введи запрещённые слова, по одному на строку..."
+                        className="min-h-96 resize-none font-mono text-sm"
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        Каждое слово должно быть на отдельной строке. Система будет игнорировать эти слова при генерации описаний.
+                      </p>
+                    </div>
 
-                <div className="flex justify-end gap-2">
-                  <Button
-                    variant="outline"
-                    onClick={() => handleReset(preset.id)}
-                  >
-                    Восстановить по умолчанию
-                  </Button>
-                  <Button onClick={handleSave} disabled={saving}>
-                    {saved ? "✓ Сохранено" : saving ? "Сохраняю..." : "Сохранить"}
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
+                    <div className="flex justify-end gap-2">
+                      <Button
+                        variant="outline"
+                        onClick={() => handleClear(item.id)}
+                      >
+                        Очистить
+                      </Button>
+                      <Button
+                        onClick={() => handleSave(item.id)}
+                        disabled={saving}
+                      >
+                        {savedId === item.id
+                          ? "✓ Сохранено"
+                          : saving
+                            ? "Сохраняю..."
+                            : "Сохранить"}
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+            ))}
+          </Tabs>
 
-            {/* Preview */}
-            {getWordCount(stopWords[preset.id]) > 0 && (
-              <Card className="bg-muted/50 border-dashed">
-                <CardHeader>
-                  <CardTitle className="text-sm">Предпросмотр слов</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  <div className="flex flex-wrap gap-2">
-                    {stopWords[preset.id]
-                      .split("\n")
-                      .filter((word) => word.trim().length > 0)
-                      .map((word, index) => (
-                        <Badge key={index} variant="secondary" className="font-mono text-xs">
-                          {word.trim()}
-                        </Badge>
-                      ))}
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-          </TabsContent>
-        ))}
-      </Tabs>
-
-      {/* Info Card */}
-      <Card className="bg-muted/50 border-dashed">
-        <CardHeader>
-          <CardTitle className="text-base">Как использовать стоп-слова</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-2 text-sm text-muted-foreground">
-          <p>
-            <strong>1. Организация:</strong> Слова разделены по категориям для удобства управления.
-          </p>
-          <p>
-            <strong>2. Формат:</strong> Каждое слово на отдельной строке. Система автоматически удалит пробелы.
-          </p>
-          <p>
-            <strong>3. Сохранение:</strong> После редактирования нажми "Сохранить" чтобы применить изменения.
-          </p>
-          <p>
-            <strong>4. Проверка:</strong> При валидации описания система проверит наличие этих слов в тексте.
-          </p>
-          <p>
-            <strong>5. Восстановление:</strong> Нажми "Восстановить по умолчанию" чтобы вернуть исходный список.
-          </p>
-        </CardContent>
-      </Card>
+          {/* Info Card */}
+          <Card className="bg-muted/50 border-dashed">
+            <CardHeader>
+              <CardTitle className="text-base">Когда использовать стоп-слова</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2 text-sm text-muted-foreground">
+              <p>
+                <strong>Маркетинговые запреты:</strong> Слова с преувеличением,
+                которые маркетплейсы не одобряют (уникальный, лучший, мега и
+                т.д.).
+              </p>
+              <p>
+                <strong>Здоровье и медицина:</strong> Запрещённые обещания
+                эффекта (лечит, исцеляет, помогает похудеть).
+              </p>
+              <p>
+                <strong>Ссылки и контакты:</strong> Слова типа "сайт", "звоните"
+                которые маркетплейсы запрещают.
+              </p>
+              <p>
+                <strong>Специфичные для маркетплейса:</strong> Разные правила на
+                Ozon, Wildberries и других платформах.
+              </p>
+            </CardContent>
+          </Card>
+        </>
+      )}
     </div>
   )
 }
