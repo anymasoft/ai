@@ -8,10 +8,13 @@
    ```
    Сервер будет доступен на http://localhost:3000
 
-2. **Установить переменную окружения OPENAI_API_KEY в `.env.local`:**
+2. **Установить переменные окружения в `.env.local`:**
    ```bash
    OPENAI_API_KEY=sk-...your-api-key...
+   OPENAI_MODEL=gpt-4.1-mini
    ```
+   - `OPENAI_API_KEY` — обязательно, API ключ OpenAI
+   - `OPENAI_MODEL` — опционально, по умолчанию `gpt-4.1-mini`
 
 3. **Убедиться что вы авторизованы в приложении**
    - Откройте http://localhost:3000/sign-in
