@@ -242,6 +242,36 @@ async function getClient() {
         await _client.execute(`CREATE INDEX IF NOT EXISTS idx_stop_words_marketplace_category
           ON stop_words(marketplace, category, is_active);`);
 
+        // ========== CATEGORY PROMPTS ==========
+        // Мини-промпты для разных категорий товаров
+        await _client.execute(`CREATE TABLE IF NOT EXISTS category_prompts (
+          id TEXT PRIMARY KEY,
+          key TEXT NOT NULL UNIQUE,
+          title TEXT NOT NULL,
+          prompt TEXT NOT NULL DEFAULT '',
+          is_active INTEGER DEFAULT 1,
+          updated_at INTEGER DEFAULT (cast(strftime('%s','now') as integer))
+        );`);
+
+        await _client.execute(`CREATE INDEX IF NOT EXISTS idx_category_prompts_key_active
+          ON category_prompts(key, is_active);`);
+
+        // Инициализируем категории если их ещё нет
+        const categoryCheckResult = await _client.execute(`SELECT COUNT(*) as count FROM category_prompts;`);
+        const categoryCount = (categoryCheckResult.rows?.[0] as any)?.count || 0;
+
+        if (categoryCount === 0) {
+          await _client.execute(`INSERT INTO category_prompts (id, key, title, prompt, is_active)
+            VALUES
+              ('cp_electronics', 'electronics', 'Электроника', '', 1),
+              ('cp_fashion', 'fashion', 'Одежда и обувь', '', 1),
+              ('cp_home', 'home', 'Товары для дома', '', 1),
+              ('cp_sports', 'sports', 'Спорт и фитнес', '', 1),
+              ('cp_beauty', 'beauty', 'Красота и здоровье', '', 1),
+              ('cp_toys', 'toys', 'Игрушки и хобби', '', 1),
+              ('cp_books', 'books', 'Книги и медиа', '', 1);`);
+        }
+
         // ========== JOBS QUEUE ==========
         // Очередь задач для обработки
         await _client.execute(`CREATE TABLE IF NOT EXISTS jobs (

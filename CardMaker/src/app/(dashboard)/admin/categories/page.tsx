@@ -33,13 +33,22 @@ export default function CategoriesPage() {
     try {
       setLoading(true)
       const response = await fetch("/api/admin/config/categories")
-      if (!response.ok) throw new Error("Ошибка при загрузке категорий")
+
+      if (!response.ok) {
+        const data = await response.json()
+        throw new Error(data.error || "Ошибка при загрузке категорий")
+      }
 
       const data = await response.json()
-      setCategories(data.categories || [])
+      if (!data.categories || !Array.isArray(data.categories)) {
+        throw new Error("Некорректный формат ответа от API")
+      }
+
+      setCategories(data.categories)
     } catch (error) {
-      console.error("Ошибка:", error)
-      toast.error("Не удалось загрузить категории")
+      console.error("❌ Error loading categories:", error)
+      const message = error instanceof Error ? error.message : "Не удалось загрузить категории"
+      toast.error(message)
     } finally {
       setLoading(false)
     }
