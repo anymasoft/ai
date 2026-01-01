@@ -28,6 +28,15 @@ export async function GET(request: NextRequest) {
     })
   } catch (error) {
     console.error("❌ Error fetching categories:", error)
+
+    // Проверяем если это ошибка о несуществующей таблице
+    if (error instanceof Error && error.message.includes("no such table")) {
+      return NextResponse.json(
+        { error: "Таблица категорий не инициализирована. Перезагрузите приложение." },
+        { status: 503 }
+      )
+    }
+
     return NextResponse.json({ error: "Failed to fetch categories" }, { status: 500 })
   }
 }
