@@ -169,7 +169,7 @@ export const loadCategoryPrompt = async (
 export const buildGenerationPrompt = async (params: {
   productTitle: string
   productCategory: string
-  marketplace: 'ozon' | 'wildberries'
+  marketplace: 'ozon' | 'wb'
   style: string
   seoKeywords?: string[]
   competitors?: string[]
@@ -353,7 +353,7 @@ ${additionalNotes}`)
  */
 export const buildValidationPrompt = async (params: {
   description: string
-  marketplace: 'ozon' | 'wildberries'
+  marketplace: 'ozon' | 'wb'
 }): Promise<{ systemPrompt: string; userPrompt: string }> => {
   const { description, marketplace } = params
 

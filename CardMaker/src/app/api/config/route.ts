@@ -45,7 +45,7 @@ export async function GET(request: NextRequest) {
     if (!prompts.gen_base) missing.push("gen_base")
     if (!prompts.validate_base) missing.push("validate_base")
     if (styles.length === 0) missing.push("styles")
-    if (!marketplaceRules.ozon && !marketplaceRules.wildberries) missing.push("marketplace_rules")
+    if (!marketplaceRules.ozon && !marketplaceRules.wb) missing.push("marketplace_rules")
 
     return NextResponse.json({
       prompts: {

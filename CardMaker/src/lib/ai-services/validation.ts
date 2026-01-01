@@ -47,7 +47,7 @@ export interface ValidationError {
  */
 export const validateProductDescription = async (params: {
   description: string
-  marketplace: 'ozon' | 'wildberries'
+  marketplace: 'ozon' | 'wb'
 }): Promise<
   | { success: true; data: ValidationResult }
   | { success: false; error: ValidationError }

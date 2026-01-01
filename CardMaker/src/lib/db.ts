@@ -309,7 +309,7 @@ async function getClient() {
           `INSERT OR IGNORE INTO marketplace_rules (id, marketplace, content, is_active)
            VALUES
            ('mr_ozon', 'ozon', '', 1),
-           ('mr_wb', 'wildberries', '', 1);`
+           ('mr_wb', 'wb', '', 1);`
         );
 
         // Инициализация стоп-слов

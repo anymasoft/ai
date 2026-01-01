@@ -8,7 +8,7 @@ import { z } from 'zod'
 // ВАЖНО: соответствует реальному body из UI (card-generator/page.tsx)
 const generateCardSchema = z.object({
   productDescription: z.string().min(1, 'Описание товара обязательно').max(5000),
-  marketplace: z.enum(['ozon', 'wildberries']),
+  marketplace: z.enum(['ozon', 'wb']),
   category: z.string().min(1, 'Категория товара обязательна').max(200),
   style: z.enum(['selling', 'expert', 'brief']).default('selling'),
   seoKeywords: z.array(z.string()).optional().default([]),

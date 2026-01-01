@@ -133,7 +133,7 @@ export default function CardGeneratorPage() {
               <div className="flex gap-1 bg-muted p-0.5 rounded-md w-fit">
                 {[
                   { value: "ozon", label: "Ozon" },
-                  { value: "wildberries", label: "WB" },
+                  { value: "wb", label: "WB" },
                 ].map((option) => (
                   <label
                     key={option.value}
