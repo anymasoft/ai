@@ -84,7 +84,7 @@ export const validateProductDescription = async (params: {
           content: userPrompt,
         },
       ],
-      'gpt-4o-mini',
+      'gpt-4.1-mini',
       0.5, // Более низкая температура для консистентности JSON
       1500
     )

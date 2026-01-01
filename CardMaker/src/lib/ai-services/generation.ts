@@ -107,7 +107,7 @@ export const generateProductCard = async (params: {
           content: userPrompt,
         },
       ],
-      'gpt-4o-mini',
+      'gpt-4.1-mini',
       0.7,
       2000
     )

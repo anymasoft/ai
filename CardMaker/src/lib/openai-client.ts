@@ -28,7 +28,7 @@ export const getOpenAIClient = (): OpenAI => {
 // Конфигурация моделей
 export const OPENAI_MODELS = {
   // Основная модель для генерации и валидации
-  GENERATION: 'gpt-4o-mini',
+  GENERATION: 'gpt-4.1-mini',
   // Альтернатива если нужна старая модель
   LEGACY: 'gpt-3.5-turbo',
 } as const
