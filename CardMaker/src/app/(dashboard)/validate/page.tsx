@@ -189,6 +189,25 @@ export default function ValidatePage() {
                       <p className="text-xs text-muted-foreground mt-1">Качество описания</p>
                     </div>
                   )}
+
+                  {/* Шкала оценки */}
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 space-y-2">
+                    <p className="text-xs font-semibold text-blue-900">Интерпретация оценки</p>
+                    <div className="space-y-1 text-xs text-blue-800">
+                      <div className="flex justify-between">
+                        <span>90–100%:</span>
+                        <span className="font-medium">Отлично — можно публиковать</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>70–89%:</span>
+                        <span className="font-medium">Хорошо — исправить замечания</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>&lt;70%:</span>
+                        <span className="font-medium">Требует внимания</span>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               )}
 
@@ -238,6 +257,25 @@ export default function ValidatePage() {
                       <p className="text-xs text-gray-600">Обнаружены проблемы, но детали недоступны</p>
                     </div>
                   )}
+
+                  {/* Шкала оценки */}
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 space-y-2">
+                    <p className="text-xs font-semibold text-blue-900">Интерпретация оценки</p>
+                    <div className="space-y-1 text-xs text-blue-800">
+                      <div className="flex justify-between">
+                        <span>90–100%:</span>
+                        <span className="font-medium">Отлично — можно публиковать</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>70–89%:</span>
+                        <span className="font-medium">Хорошо — исправить замечания</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>&lt;70%:</span>
+                        <span className="font-medium">Требует внимания</span>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               )}
             </CardContent>
