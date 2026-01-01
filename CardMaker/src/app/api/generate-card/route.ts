@@ -43,12 +43,8 @@ export async function POST(request: NextRequest) {
       productCategory: validation.data.category,
       marketplace: validation.data.marketplace,
       style: validation.data.style as 'selling' | 'expert' | 'brief',
-      additionalNotes: [
-        validation.data.seoKeywords?.length ? `SEO-ключи: ${validation.data.seoKeywords.join(', ')}` : null,
-        validation.data.competitors?.filter(c => c.trim()).length
-          ? `Описания конкурентов: ${validation.data.competitors.filter(c => c.trim()).join('; ')}`
-          : null,
-      ].filter(Boolean).join('\n'),
+      seoKeywords: validation.data.seoKeywords,
+      competitors: validation.data.competitors,
       userId: session.user.id,
     }
 
