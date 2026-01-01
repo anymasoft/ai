@@ -309,6 +309,33 @@ ${additionalNotes}`)
 
   const userPrompt = userPromptParts.join('')
 
+  // [ДИАГНОСТИКА] Логируем полностью assembled prompt в dev режиме
+  if (process.env.NODE_ENV !== 'production') {
+    console.log(
+      `\n${'═'.repeat(80)}\n[buildGenerationPrompt] FULL PROMPT FOR STYLE: ${selectedStyle?.key || 'UNKNOWN'}\n${'═'.repeat(80)}\n`
+    )
+    console.log('SYSTEM PROMPT (первые 500 символов):')
+    console.log(systemPrompt.substring(0, 500))
+    console.log('\n... (остальное сокращено для читаемости)\n')
+
+    console.log('USER PROMPT (полностью):')
+    console.log(userPrompt)
+
+    console.log(
+      `\n${'═'.repeat(80)}\nSTYLE ANALYSIS:\n${'═'.repeat(80)}`
+    )
+    console.log({
+      styleKey: selectedStyle?.key,
+      styleTitle: selectedStyle?.title,
+      stylePromptEmpty: !selectedStyle?.prompt || selectedStyle.prompt.trim().length === 0,
+      hasSeoKeywords,
+      seoBlockPresent: userPrompt.includes('SEO-ключи'),
+      systemPromptLength: systemPrompt.length,
+      userPromptLength: userPrompt.length,
+    })
+    console.log(`${'═'.repeat(80)}\n`)
+  }
+
   return {
     systemPrompt,
     userPrompt,
