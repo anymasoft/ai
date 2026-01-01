@@ -321,38 +321,29 @@ export default function CardGeneratorPage() {
             <p className="text-muted-foreground text-sm mt-2">Скопируйте текст и используйте на маркетплейсе</p>
           </div>
 
-          {/* ЗАГОЛОВОК ТОВАРА */}
-          <div className="space-y-2">
-            <h3 className="text-2xl font-semibold text-gray-900 leading-snug">
-              {result.title}
-            </h3>
-            <div className="h-px bg-gray-200" />
-          </div>
-
-          {/* Описание товара */}
+          {/* КАРТОЧКА ТОВАРА - единый артефакт */}
           <Card className="border">
-            <CardHeader className="pb-3 pt-4">
-              <div className="flex items-start justify-between gap-3">
-                <div className="flex-1">
-                  <CardTitle className="text-base">Описание товара</CardTitle>
-                  <CardDescription className="text-xs">Полное описание с характеристиками</CardDescription>
-                </div>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => handleCopy(result.description, "description")}
-                  title="Копировать"
-                  className="h-8 w-8"
-                >
-                  {copiedSection === "description" ? (
-                    <CheckCircle className="h-4 w-4 text-green-600" />
-                  ) : (
-                    <Copy className="h-4 w-4" />
-                  )}
-                </Button>
-              </div>
+            <CardHeader className="pb-2 pt-4 px-4 flex items-start justify-between gap-3">
+              <h2 className="text-2xl font-semibold text-gray-900 leading-snug flex-1">
+                {result.title}
+              </h2>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => handleCopy(result.description, "description")}
+                title="Копировать"
+                className="h-8 w-8"
+              >
+                {copiedSection === "description" ? (
+                  <CheckCircle className="h-4 w-4 text-green-600" />
+                ) : (
+                  <Copy className="h-4 w-4" />
+                )}
+              </Button>
             </CardHeader>
-            <CardContent className="pt-0">
+
+            <CardContent className="pt-2 px-4">
+              <div className="mb-4 h-px bg-gray-200" />
               <p className="text-gray-800 text-base leading-7 whitespace-pre-line">
                 {result.description}
               </p>
