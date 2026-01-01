@@ -45,6 +45,10 @@ const adminItems = [
     url: "/admin/styles",
   },
   {
+    title: "Категории",
+    url: "/admin/categories",
+  },
+  {
     title: "Стоп-слова",
     url: "/admin/stop-words",
   },
