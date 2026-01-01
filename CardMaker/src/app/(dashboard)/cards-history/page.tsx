@@ -134,9 +134,7 @@ export default function CardsHistoryPage() {
               Перейдите в раздел "Создание карточки" чтобы создать описание товара.
             </p>
             <Link href="/card-generator">
-              <Button size="icon" variant="default" title="Создать карточку">
-                <Sparkles className="size-5" />
-              </Button>
+              <Button>Создать карточку</Button>
             </Link>
           </CardContent>
         </Card>
