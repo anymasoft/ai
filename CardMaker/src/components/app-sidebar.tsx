@@ -43,11 +43,12 @@ const navGroups = [
         url: "/validate",
         icon: CheckCircle2,
       },
-      {
-        title: "История карточек",
-        url: "/cards-history",
-        icon: FileText,
-      },
+      // TODO: История карточек будет добавлена позже
+      // {
+      //   title: "История карточек",
+      //   url: "/cards-history",
+      //   icon: FileText,
+      // },
     ],
   },
   {
