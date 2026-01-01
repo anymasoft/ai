@@ -293,13 +293,9 @@ export default function CardGeneratorPage() {
               {isGenerating ? (
                 <>
                   <Loader2 className="h-4 w-4 animate-spin" />
-                  Создаём карточку...
                 </>
               ) : (
-                <>
-                  <Sparkles className="h-4 w-4" />
-                  Создать карточку
-                </>
+                <Sparkles className="h-4 w-4" />
               )}
             </Button>
           </div>
