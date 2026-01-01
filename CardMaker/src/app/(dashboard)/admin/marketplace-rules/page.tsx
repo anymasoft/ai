@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
@@ -8,76 +8,94 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
 import { toast } from "sonner"
-import { Save, AlertCircle } from "lucide-react"
+import { Save, AlertCircle, Loader2 } from "lucide-react"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 
-const DEFAULT_RULES = {
-  ozon: `Правила и требования для Ozon:
-
-1. Заголовок товара (до 100 символов):
-   - НЕ использовать CAPS LOCK (кроме аббревиатур)
-   - НЕ повторять слова
-   - Включить главное слово (например, название товара)
-   - Можно добавить размер/цвет в конце
-
-2. Описание товара:
-   - Запрещено обещать лечение
-   - Запрещена чрезмерная эмоциональность
-   - Требуется указание материала
-   - Запрещены ссылки на сайты
-
-3. Ключевые слова:
-   - Максимум 5-7 ключевых слов
-   - Разделены запятыми
-   - Без точек в конце
-
-4. Фото:
-   - Минимум 3 фото
-   - Качество не ниже 500x500px
-   - На белом фоне`,
-  wildberries: `Правила и требования для Wildberries:
-
-1. Название товара (до 160 символов):
-   - Можно использовать специальные символы (/, -, .)
-   - Обязательно указать основное слово
-   - Можно добавить модель/версию
-
-2. Описание товара:
-   - Максимум 3000 символов
-   - Нужно описать материал, размеры, вес
-   - Можно использовать маркированные списки
-   - Запрещена реклама других сайтов
-
-3. Артикул и штрихкод:
-   - Штрихкод обязателен (EAN-13)
-   - Артикул продавца (до 20 символов)
-
-4. Характеристики:
-   - Заполнить все обязательные поля
-   - Цвет, размер, материал обязательны
-   - Не использовать "Нет" или "Не указано"
-
-5. Фото:
-   - Минимум 2 фото, рекомендуется 5+
-   - Размер от 500x500px
-   - Первое фото - главное (без текста)`,
+interface MarketplaceRule {
+  id: string
+  marketplace: string
+  content: string
+  is_active: number
 }
 
 export default function MarketplaceRulesPage() {
-  const [ozonRules, setOzonRules] = useState(DEFAULT_RULES.ozon)
-  const [wbRules, setWbRules] = useState(DEFAULT_RULES.wildberries)
+  const [rules, setRules] = useState<MarketplaceRule[]>([])
+  const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
-  const [saved, setSaved] = useState(false)
+  const [savedId, setSavedId] = useState<string | null>(null)
 
-  const handleSave = async () => {
+  // Загрузить правила при загрузке страницы
+  useEffect(() => {
+    loadRules()
+  }, [])
+
+  const loadRules = async () => {
+    try {
+      setLoading(true)
+      const response = await fetch("/api/admin/config/marketplace-rules")
+      if (!response.ok) throw new Error("Ошибка при загрузке правил")
+
+      const data = await response.json()
+      setRules(data.rules || [])
+    } catch (error) {
+      console.error("Ошибка:", error)
+      toast.error("Не удалось загрузить правила маркетплейсов")
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleRuleChange = (marketplace: string, value: string) => {
+    setRules((prev) =>
+      prev.map((rule) =>
+        rule.marketplace === marketplace
+          ? { ...rule, content: value }
+          : rule
+      )
+    )
+  }
+
+  const handleSave = async (marketplace: string) => {
+    const rule = rules.find((r) => r.marketplace === marketplace)
+    if (!rule) return
+
     setSaving(true)
-    // Имитация сохранения
-    setTimeout(() => {
+    try {
+      const response = await fetch("/api/admin/config/marketplace-rules", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          rules: [{ marketplace: rule.marketplace, content: rule.content }],
+        }),
+      })
+
+      if (!response.ok) throw new Error("Ошибка при сохранении")
+
+      setSavedId(marketplace)
+      toast.success(`Правила для "${marketplace}" сохранены`)
+      setTimeout(() => setSavedId(null), 2000)
+    } catch (error) {
+      console.error("Ошибка:", error)
+      toast.error("Не удалось сохранить правила")
+    } finally {
       setSaving(false)
-      setSaved(true)
-      toast.success("Правила сохранены")
-      setTimeout(() => setSaved(false), 3000)
-    }, 500)
+    }
+  }
+
+  const handleClear = (marketplace: string) => {
+    handleRuleChange(marketplace, "")
+    toast.info("Правила очищены")
+  }
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-[60vh]">
+        <div className="text-center space-y-4">
+          <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary" />
+          <p className="text-muted-foreground">Загрузка правил маркетплейсов...</p>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -89,124 +107,98 @@ export default function MarketplaceRulesPage() {
         </p>
       </div>
 
-      <Alert>
-        <AlertCircle className="h-4 w-4" />
-        <AlertDescription>
-          Изменения правил будут применены при следующей генерации карточек. Уже созданные карточки не изменяются.
-        </AlertDescription>
-      </Alert>
+      {rules.length === 0 ? (
+        <Alert>
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>
+            Нет правил для маркетплейсов. Добавь правила через программу или создай их вручную.
+          </AlertDescription>
+        </Alert>
+      ) : (
+        <>
+          <Alert>
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>
+              Изменения правил будут применены при следующей генерации карточек. Уже созданные карточки не изменяются.
+            </AlertDescription>
+          </Alert>
 
-      <Tabs defaultValue="ozon" className="w-full">
-        <TabsList className="grid w-full max-w-xs grid-cols-2">
-          <TabsTrigger value="ozon">Ozon</TabsTrigger>
-          <TabsTrigger value="wildberries">Wildberries</TabsTrigger>
-        </TabsList>
+          <Tabs defaultValue={rules[0]?.marketplace || ""} className="w-full">
+            <TabsList className="grid w-full max-w-xs grid-cols-2">
+              {rules.map((rule) => (
+                <TabsTrigger key={rule.marketplace} value={rule.marketplace}>
+                  {rule.marketplace}
+                </TabsTrigger>
+              ))}
+            </TabsList>
 
-        {/* Ozon Tab */}
-        <TabsContent value="ozon" className="space-y-4 mt-4">
-          <Card>
-            <CardHeader>
-              <div className="flex items-start justify-between">
-                <div>
-                  <CardTitle>Правила Ozon</CardTitle>
-                  <CardDescription>
-                    Требования для заголовков, описаний и других полей карточки
-                  </CardDescription>
-                </div>
-                <Badge>Основной</Badge>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="ozon-rules" className="text-base font-semibold">
-                  Правила и требования
-                </Label>
-                <Textarea
-                  id="ozon-rules"
-                  value={ozonRules}
-                  onChange={(e) => setOzonRules(e.target.value)}
-                  className="min-h-96 resize-none font-mono text-sm"
-                />
-                <p className="text-xs text-muted-foreground">
-                  Используй форматирование текста для удобства. Все требования будут показаны в интерфейсе при создании карточки.
-                </p>
-              </div>
+            {rules.map((rule) => (
+              <TabsContent
+                key={rule.marketplace}
+                value={rule.marketplace}
+                className="space-y-4 mt-4"
+              >
+                <Card>
+                  <CardHeader>
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <CardTitle>Правила {rule.marketplace}</CardTitle>
+                        <CardDescription>
+                          Требования для заголовков, описаний и других полей
+                        </CardDescription>
+                      </div>
+                      <Badge variant={rule.is_active ? "default" : "secondary"}>
+                        {rule.is_active ? "Активны" : "Неактивны"}
+                      </Badge>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="space-y-2">
+                      <Label
+                        htmlFor={`rules-${rule.marketplace}`}
+                        className="text-base font-semibold"
+                      >
+                        Правила и требования
+                      </Label>
+                      <Textarea
+                        id={`rules-${rule.marketplace}`}
+                        value={rule.content}
+                        onChange={(e) =>
+                          handleRuleChange(rule.marketplace, e.target.value)
+                        }
+                        placeholder="Опиши требования для этого маркетплейса..."
+                        className="min-h-96 resize-none font-mono text-sm"
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        Используй форматирование текста для удобства. Все требования будут показаны в интерфейсе при создании карточки.
+                      </p>
+                    </div>
 
-              <div className="flex justify-end gap-2">
-                <Button variant="outline" onClick={() => setOzonRules(DEFAULT_RULES.ozon)}>
-                  Восстановить по умолчанию
-                </Button>
-                <Button onClick={handleSave} disabled={saving}>
-                  {saved ? "✓ Сохранено" : saving ? "Сохраняю..." : "Сохранить"}
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        {/* Wildberries Tab */}
-        <TabsContent value="wildberries" className="space-y-4 mt-4">
-          <Card>
-            <CardHeader>
-              <div className="flex items-start justify-between">
-                <div>
-                  <CardTitle>Правила Wildberries</CardTitle>
-                  <CardDescription>
-                    Требования для заголовков, описаний и других полей карточки
-                  </CardDescription>
-                </div>
-                <Badge variant="secondary">Вторичный</Badge>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="wb-rules" className="text-base font-semibold">
-                  Правила и требования
-                </Label>
-                <Textarea
-                  id="wb-rules"
-                  value={wbRules}
-                  onChange={(e) => setWbRules(e.target.value)}
-                  className="min-h-96 resize-none font-mono text-sm"
-                />
-                <p className="text-xs text-muted-foreground">
-                  Используй форматирование текста для удобства. Все требования будут показаны в интерфейсе при создании карточки.
-                </p>
-              </div>
-
-              <div className="flex justify-end gap-2">
-                <Button variant="outline" onClick={() => setWbRules(DEFAULT_RULES.wildberries)}>
-                  Восстановить по умолчанию
-                </Button>
-                <Button onClick={handleSave} disabled={saving}>
-                  {saved ? "✓ Сохранено" : saving ? "Сохраняю..." : "Сохранить"}
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
-
-      {/* Info Card */}
-      <Card className="bg-muted/50 border-dashed">
-        <CardHeader>
-          <CardTitle className="text-base">Как это работает</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-2 text-sm text-muted-foreground">
-          <p>
-            <strong>1. Редактирование:</strong> Редактируй требования для каждого маркетплейса в отдельных вкладках.
-          </p>
-          <p>
-            <strong>2. Сохранение:</strong> Нажми "Сохранить" чтобы применить изменения.
-          </p>
-          <p>
-            <strong>3. Применение:</strong> При следующей генерации карточки система будет учитывать эти правила.
-          </p>
-          <p>
-            <strong>4. Восстановление:</strong> Нажми "Восстановить по умолчанию" чтобы вернуть исходные требования.
-          </p>
-        </CardContent>
-      </Card>
+                    <div className="flex justify-end gap-2">
+                      <Button
+                        variant="outline"
+                        onClick={() => handleClear(rule.marketplace)}
+                      >
+                        Очистить
+                      </Button>
+                      <Button
+                        onClick={() => handleSave(rule.marketplace)}
+                        disabled={saving}
+                      >
+                        {savedId === rule.marketplace
+                          ? "✓ Сохранено"
+                          : saving
+                            ? "Сохраняю..."
+                            : "Сохранить"}
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+            ))}
+          </Tabs>
+        </>
+      )}
     </div>
   )
 }
