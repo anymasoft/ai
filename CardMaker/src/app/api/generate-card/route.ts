@@ -23,11 +23,12 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json()
+    console.log('[generate-card] raw body:', body)
 
     // Валидируем входные данные
     const validation = generateCardSchema.safeParse(body)
     if (!validation.success) {
-      const errors = validation.error.errors.map((e) => `${e.path.join('.')}: ${e.message}`)
+      const errors = validation.error.issues.map((e) => `${e.path.join('.')}: ${e.message}`)
       return NextResponse.json(
         { error: `Ошибка валидации: ${errors.join(', ')}` },
         { status: 400 }
