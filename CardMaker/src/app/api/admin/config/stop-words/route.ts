@@ -52,29 +52,12 @@ export async function PUT(request: NextRequest) {
 
       const marketplace = sw.marketplace || null
 
-      // Проверить, существует ли запись
-      const existing = await db.execute(
-        `SELECT id FROM stop_words WHERE marketplace = ? AND category = ?`,
-        [marketplace, sw.category]
+      // Использовать REPLACE для обновления существующих или создания новых
+      await db.execute(
+        `INSERT OR REPLACE INTO stop_words (id, marketplace, category, words, is_active, updated_at)
+         VALUES (?, ?, ?, ?, 1, cast(strftime('%s','now') as integer))`,
+        [sw.id, marketplace, sw.category, sw.words]
       )
-
-      if ((existing.rows?.length || 0) > 0) {
-        // Обновить
-        await db.execute(
-          `UPDATE stop_words SET words = ?, updated_at = cast(strftime('%s','now') as integer)
-           WHERE marketplace = ? AND category = ?`,
-          [sw.words, marketplace, sw.category]
-        )
-      } else {
-        // Вставить (только если данные приходят явно)
-        if (sw.id) {
-          await db.execute(
-            `INSERT INTO stop_words (id, marketplace, category, words, is_active)
-             VALUES (?, ?, ?, ?, 1)`,
-            [sw.id, marketplace, sw.category, sw.words]
-          )
-        }
-      }
     }
 
     return NextResponse.json({ success: true })
