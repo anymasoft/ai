@@ -9,15 +9,15 @@ export async function GET(request: NextRequest) {
 
   try {
     // Get all users and their current plans
-    const result = await db.execute(`
-      SELECT
+    const result = await db.execute(
+      `SELECT
         u.id as userId,
         u.email,
         u.plan
       FROM users u
       ORDER BY u.createdAt DESC
-      LIMIT 500
-    `)
+      LIMIT 500`
+    )
 
     const rows = Array.isArray(result) ? result : result.rows || []
 
@@ -31,14 +31,12 @@ export async function GET(request: NextRequest) {
         const monthlyLimit = getMonthlyScriptLimit(plan as any)
 
         // Get usage for current month
-        const usageResult = await db.execute({
-          sql: `
-            SELECT COALESCE(SUM(scriptsUsed), 0) as totalUsed
-            FROM user_usage_daily
-            WHERE userId = ? AND day LIKE ?
-          `,
-          args: [row.userId, monthPrefix + '%'],
-        })
+        const usageResult = await db.execute(
+          `SELECT COALESCE(SUM(scriptsUsed), 0) as totalUsed
+           FROM user_usage_daily
+           WHERE userId = ? AND day LIKE ?`,
+          [row.userId, monthPrefix + '%']
+        )
 
         const usageRows = Array.isArray(usageResult) ? usageResult : usageResult.rows || []
         const monthlyUsed = usageRows[0]?.totalUsed || 0
