@@ -315,10 +315,18 @@ export default function CardGeneratorPage() {
 
       {/* РЕЗУЛЬТАТ СОЗДАНИЯ */}
       {result && (
-        <div className="space-y-3">
+        <div className="space-y-4">
           <div className="pt-2">
-            <h2 className="text-2xl font-bold">Ваша карточка готова</h2>
-            <p className="text-muted-foreground text-sm mt-1">Скопируйте текст и используйте на маркетплейсе</p>
+            <h2 className="text-3xl font-bold text-gray-900">Ваша карточка готова</h2>
+            <p className="text-muted-foreground text-sm mt-2">Скопируйте текст и используйте на маркетплейсе</p>
+          </div>
+
+          {/* ЗАГОЛОВОК ТОВАРА */}
+          <div className="space-y-2">
+            <h3 className="text-2xl font-semibold text-gray-900 leading-snug">
+              {result.title}
+            </h3>
+            <div className="h-px bg-gray-200" />
           </div>
 
           {/* Описание товара */}
@@ -345,9 +353,9 @@ export default function CardGeneratorPage() {
               </div>
             </CardHeader>
             <CardContent className="pt-0">
-              <div className="bg-muted/50 p-3 rounded-md text-sm whitespace-pre-wrap leading-relaxed">
+              <p className="text-gray-800 text-base leading-7 whitespace-pre-line">
                 {result.description}
-              </div>
+              </p>
             </CardContent>
           </Card>
 
