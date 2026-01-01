@@ -6,23 +6,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Textarea } from "@/components/ui/textarea"
 import { Badge } from "@/components/ui/badge"
 import { AlertCircle, CheckCircle2 } from "lucide-react"
+import { generateCheckBreakdown } from '@/lib/validation/check-breakdown'
+import type { ValidationIssue, CheckResult } from '@/lib/validation/check-breakdown'
 
 type Marketplace = "ozon" | "wb"
-
-interface ValidationIssue {
-  type: 'forbidden_words' | 'grammar' | 'requirements' | 'exaggeration' | 'clarity' | 'other'
-  severity: 'error' | 'warning' | 'info'
-  message: string
-  suggestion?: string
-}
-
-interface CheckResult {
-  id: string
-  name: string
-  weight: number
-  passed: boolean
-  penaltyApplied?: number
-}
 
 interface ValidationResult {
   isValid: boolean
@@ -31,46 +18,6 @@ interface ValidationResult {
   summary: string
   validatedAt: string
   checks?: CheckResult[]
-}
-
-// Генерировать breakdown проверок на основе issues
-function generateCheckBreakdown(issues: ValidationIssue[]): CheckResult[] {
-  const checkCategories: Record<string, { name: string; baseWeight: number }> = {
-    forbidden_words: { name: 'Запрещённые слова', baseWeight: 25 },
-    requirements: { name: 'Соответствие правилам маркетплейса', baseWeight: 25 },
-    grammar: { name: 'Грамматика и пунктуация', baseWeight: 20 },
-    exaggeration: { name: 'Отсутствие преувеличений', baseWeight: 15 },
-    clarity: { name: 'Ясность и структура текста', baseWeight: 10 },
-    other: { name: 'Прочие проблемы', baseWeight: 5 },
-  }
-
-  const checksByType = new Map<string, ValidationIssue[]>()
-  for (const issue of issues) {
-    if (!checksByType.has(issue.type)) {
-      checksByType.set(issue.type, [])
-    }
-    checksByType.get(issue.type)!.push(issue)
-  }
-
-  const checks: CheckResult[] = []
-  const totalWeight = Object.values(checkCategories).reduce((sum, cat) => sum + cat.baseWeight, 0)
-
-  for (const [typeId, category] of Object.entries(checkCategories)) {
-    const issuesForType = checksByType.get(typeId) || []
-    const hasErrors = issuesForType.some((i) => i.severity === 'error')
-
-    const check: CheckResult = {
-      id: typeId,
-      name: category.name,
-      weight: Math.round((category.baseWeight / totalWeight) * 100),
-      passed: issuesForType.length === 0,
-      penaltyApplied: hasErrors ? Math.round(category.baseWeight * 0.8) : undefined,
-    }
-
-    checks.push(check)
-  }
-
-  return checks
 }
 
 // Получить описание оценки по проценту
@@ -250,25 +197,22 @@ export default function ValidatePage() {
               {/* Success state */}
               {validation && validation.isValid && (
                 <div className="space-y-4">
-                  {/* Score with description */}
-                  {typeof validation.score === 'number' && (() => {
-                    const scoreDesc = getScoreDescription(validation.score)
-                    const isGood = validation.score >= 70
-                    return (
-                      <div className={`${isGood ? 'bg-green-50 border border-green-200' : 'bg-yellow-50 border border-yellow-200'} rounded-lg p-4`}>
-                        <div className="flex items-start gap-3">
-                          <CheckCircle2 className={`h-5 w-5 ${isGood ? 'text-green-600' : 'text-yellow-600'} flex-shrink-0 mt-0.5`} />
-                          <div className="flex-1">
-                            <div className="flex items-baseline gap-2">
-                              <p className={`text-lg font-bold ${scoreDesc.color}`}>{Math.round(validation.score)}%</p>
-                              <p className={`text-xs font-semibold ${scoreDesc.color}`}>{scoreDesc.level}</p>
-                            </div>
-                            <p className={`text-xs mt-1.5 ${isGood ? 'text-green-700' : 'text-yellow-700'}`}>{scoreDesc.message}</p>
-                          </div>
-                        </div>
+                  <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                    <div className="flex items-start gap-3">
+                      <CheckCircle2 className="h-5 w-5 text-green-600 flex-shrink-0 mt-0.5" />
+                      <div>
+                        <p className="text-sm font-semibold text-green-700">Проверка пройдена</p>
+                        <p className="text-xs text-green-600 mt-1">{validation.summary || 'Описание соответствует требованиям маркетплейса'}</p>
                       </div>
-                    )
-                  })()}
+                    </div>
+                  </div>
+
+                  {typeof validation.score === 'number' && (
+                    <div className="text-center py-4">
+                      <div className="text-3xl font-bold text-green-700">{Math.round(validation.score)}%</div>
+                      <p className="text-xs text-muted-foreground mt-1">Качество описания</p>
+                    </div>
+                  )}
 
                   {/* Checks breakdown */}
                   {Array.isArray(validation.checks) && validation.checks.length > 0 && (
@@ -278,7 +222,7 @@ export default function ValidatePage() {
                         {validation.checks.map((check) => (
                           <div key={check.id} className="flex items-center justify-between text-xs">
                             <div className="flex items-center gap-2 flex-1">
-                              <span className={`${check.passed ? '✔' : '✖'} ${check.passed ? 'text-green-600' : 'text-red-600'}`}>
+                              <span className={check.passed ? 'text-green-600' : 'text-red-600'}>
                                 {check.passed ? '✔' : '✖'}
                               </span>
                               <span className="text-gray-700 flex-1">{check.name}</span>
@@ -303,24 +247,22 @@ export default function ValidatePage() {
               {/* Failure state */}
               {validation && !validation.isValid && (
                 <div className="space-y-3">
-                  {/* Score with description */}
-                  {typeof validation.score === 'number' && (() => {
-                    const scoreDesc = getScoreDescription(validation.score)
-                    return (
-                      <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-                        <div className="flex items-start gap-3">
-                          <AlertCircle className="h-5 w-5 text-red-600 flex-shrink-0 mt-0.5" />
-                          <div className="flex-1">
-                            <div className="flex items-baseline gap-2">
-                              <p className="text-lg font-bold text-red-700">{Math.round(validation.score)}%</p>
-                              <p className="text-xs font-semibold text-red-700">{scoreDesc.level}</p>
-                            </div>
-                            <p className="text-xs mt-1.5 text-red-700">{scoreDesc.message}</p>
-                          </div>
-                        </div>
+                  <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                    <div className="flex items-start gap-3">
+                      <AlertCircle className="h-5 w-5 text-red-600 flex-shrink-0 mt-0.5" />
+                      <div>
+                        <p className="text-sm font-semibold text-red-700">Обнаружены нарушения</p>
+                        <p className="text-xs text-red-600 mt-1">{validation.summary || 'Требования маркетплейса не соблюдены'}</p>
                       </div>
-                    )
-                  })()}
+                    </div>
+                  </div>
+
+                  {typeof validation.score === 'number' && (
+                    <div className="text-center py-3">
+                      <div className="text-2xl font-bold text-red-700">{Math.round(validation.score)}%</div>
+                      <p className="text-xs text-muted-foreground mt-1">Качество описания</p>
+                    </div>
+                  )}
 
                   {Array.isArray(validation.issues) && validation.issues.length > 0 && (
                     <div className="bg-red-50 border border-red-200 rounded-lg p-3 space-y-2">
@@ -351,7 +293,7 @@ export default function ValidatePage() {
                         {validation.checks.map((check) => (
                           <div key={check.id} className="flex items-center justify-between text-xs">
                             <div className="flex items-center gap-2 flex-1">
-                              <span className={`${check.passed ? 'text-green-600' : 'text-red-600'}`}>
+                              <span className={check.passed ? 'text-green-600' : 'text-red-600'}>
                                 {check.passed ? '✔' : '✖'}
                               </span>
                               <span className="text-gray-700 flex-1">{check.name}</span>
