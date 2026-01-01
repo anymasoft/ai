@@ -10,27 +10,9 @@ import type { ValidationIssue, CheckResult, ValidationResult } from '@/lib/ai-se
 
 type Marketplace = "ozon" | "wb"
 
-// Получить описание оценки по проценту
-function getScoreDescription(score: number): { level: string; message: string; color: string } {
-  if (score >= 90) {
-    return {
-      level: 'Отлично',
-      message: 'Карточка соответствует требованиям маркетплейса. Можно публиковать.',
-      color: 'text-green-700',
-    }
-  } else if (score >= 70) {
-    return {
-      level: 'Хорошо',
-      message: 'Есть потенциальные риски. Желательно исправить замечания.',
-      color: 'text-yellow-700',
-    }
-  } else {
-    return {
-      level: 'Требует внимания',
-      message: 'Высокий риск отклонения. Рекомендуем исправить нарушения.',
-      color: 'text-red-700',
-    }
-  }
+const MARKETPLACE_NAMES: Record<Marketplace, string> = {
+  ozon: "Ozon",
+  wb: "Wildberries"
 }
 
 export default function ValidatePage() {
@@ -186,20 +168,13 @@ export default function ValidatePage() {
                     <div className="flex items-start gap-3">
                       <CheckCircle2 className="h-5 w-5 text-green-600 flex-shrink-0 mt-0.5" />
                       <div>
-                        <p className="text-sm font-semibold text-green-700">Проверка пройдена</p>
-                        <p className="text-xs text-green-600 mt-1">{validation.summary || 'Описание соответствует требованиям маркетплейса'}</p>
+                        <p className="text-sm font-semibold text-green-700">✅ Описание соответствует требованиям {MARKETPLACE_NAMES[marketplace]}</p>
+                        {validation.summary && (
+                          <p className="text-xs text-green-600 mt-1">{validation.summary}</p>
+                        )}
                       </div>
                     </div>
                   </div>
-
-                  {typeof validation.score === 'number' && (
-                    <div className="text-center py-4">
-                      <div className="text-3xl font-bold text-green-700">{Math.round(validation.score)}%</div>
-                      <p className="text-xs text-muted-foreground mt-1">Качество описания</p>
-                    </div>
-                  )}
-
-
                 </div>
               )}
 
@@ -210,22 +185,17 @@ export default function ValidatePage() {
                     <div className="flex items-start gap-3">
                       <AlertCircle className="h-5 w-5 text-red-600 flex-shrink-0 mt-0.5" />
                       <div>
-                        <p className="text-sm font-semibold text-red-700">Обнаружены нарушения</p>
-                        <p className="text-xs text-red-600 mt-1">{validation.summary || 'Требования маркетплейса не соблюдены'}</p>
+                        <p className="text-sm font-semibold text-red-700">❌ Описание НЕ соответствует требованиям {MARKETPLACE_NAMES[marketplace]}</p>
+                        {validation.summary && (
+                          <p className="text-xs text-red-600 mt-1">{validation.summary}</p>
+                        )}
                       </div>
                     </div>
                   </div>
 
-                  {typeof validation.score === 'number' && (
-                    <div className="text-center py-3">
-                      <div className="text-2xl font-bold text-red-700">{Math.round(validation.score)}%</div>
-                      <p className="text-xs text-muted-foreground mt-1">Качество описания</p>
-                    </div>
-                  )}
-
                   {Array.isArray(validation.issues) && validation.issues.length > 0 && (
                     <div className="bg-red-50 border border-red-200 rounded-lg p-3 space-y-2">
-                      <p className="text-xs font-semibold text-red-700">Проблемы:</p>
+                      <p className="text-xs font-semibold text-red-700">Нарушения:</p>
                       <ul className="space-y-1.5">
                         {validation.issues.map((issue, i) => (
                           <li key={i} className="text-xs">
@@ -243,63 +213,10 @@ export default function ValidatePage() {
                       </ul>
                     </div>
                   )}
-
-                  {/* Checks breakdown */}
-                  {Array.isArray(validation.checks) && validation.checks.length > 0 && (
-                    <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 space-y-2">
-                      <p className="text-xs font-semibold text-gray-700">Как формируется оценка</p>
-                      <div className="space-y-1.5">
-                        {validation.checks.map((check) => (
-                          <div key={check.id} className="flex items-center justify-between text-xs">
-                            <div className="flex items-center gap-2 flex-1">
-                              <span className={check.passed ? 'text-green-600' : 'text-red-600'}>
-                                {check.passed ? '✔' : '✖'}
-                              </span>
-                              <span className="text-gray-700 flex-1">{check.name}</span>
-                            </div>
-                            <div className="flex items-center gap-1 text-gray-600">
-                              <span>{check.weight}%</span>
-                              {typeof check.penaltyApplied === 'number' && (
-                                <span className="text-red-600">−{check.penaltyApplied}%</span>
-                              )}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                      <p className="text-xs text-gray-500 mt-2 pt-2 border-t border-gray-300">
-                        Оценка показывает степень соответствия требованиям маркетплейса и рискам отклонения.
-                      </p>
-                    </div>
-                  )}
-
-                  {(!Array.isArray(validation.issues) || validation.issues.length === 0) && (
-                    <div className="bg-gray-50 border border-gray-200 rounded-lg p-3">
-                      <p className="text-xs text-gray-600">Обнаружены проблемы, но детали недоступны</p>
-                    </div>
-                  )}
                 </div>
               )}
             </CardContent>
           </Card>
-        </div>
-
-        {/* Интерпретация оценки - всегда видна */}
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mt-6">
-          <p className="text-xs font-semibold text-blue-900 mb-3">Интерпретация оценки</p>
-          <div className="space-y-2 text-xs text-blue-800">
-            <div className="flex justify-between">
-              <span>90–100%:</span>
-              <span className="font-medium">Отлично — можно публиковать</span>
-            </div>
-            <div className="flex justify-between">
-              <span>70–89%:</span>
-              <span className="font-medium">Хорошо — исправить замечания</span>
-            </div>
-            <div className="flex justify-between">
-              <span>&lt;70%:</span>
-              <span className="font-medium">Требует внимания</span>
-            </div>
-          </div>
         </div>
       </div>
     </div>
