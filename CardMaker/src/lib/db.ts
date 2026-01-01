@@ -187,6 +187,97 @@ async function getClient() {
         await _client.execute(`CREATE INDEX IF NOT EXISTS idx_admin_messages_isRead
           ON admin_messages(isRead, createdAt DESC);`);
 
+        // ========== CONFIG Tables ==========
+        // System Prompts для генерации и валидации
+        await _client.execute(`CREATE TABLE IF NOT EXISTS system_prompts (
+          id TEXT PRIMARY KEY,
+          key TEXT NOT NULL UNIQUE,
+          content TEXT NOT NULL DEFAULT '',
+          is_active INTEGER DEFAULT 1,
+          updated_at INTEGER DEFAULT (cast(strftime('%s','now') as integer))
+        );`);
+
+        await _client.execute(`CREATE INDEX IF NOT EXISTS idx_system_prompts_key_active
+          ON system_prompts(key, is_active);`);
+
+        // Стили описаний
+        await _client.execute(`CREATE TABLE IF NOT EXISTS styles (
+          id TEXT PRIMARY KEY,
+          key TEXT NOT NULL UNIQUE,
+          title TEXT NOT NULL,
+          prompt TEXT NOT NULL DEFAULT '',
+          is_active INTEGER DEFAULT 1,
+          updated_at INTEGER DEFAULT (cast(strftime('%s','now') as integer))
+        );`);
+
+        await _client.execute(`CREATE INDEX IF NOT EXISTS idx_styles_key_active
+          ON styles(key, is_active);`);
+
+        // Правила маркетплейсов
+        await _client.execute(`CREATE TABLE IF NOT EXISTS marketplace_rules (
+          id TEXT PRIMARY KEY,
+          marketplace TEXT NOT NULL,
+          content TEXT NOT NULL DEFAULT '',
+          is_active INTEGER DEFAULT 1,
+          updated_at INTEGER DEFAULT (cast(strftime('%s','now') as integer))
+        );`);
+
+        await _client.execute(`CREATE INDEX IF NOT EXISTS idx_marketplace_rules_marketplace
+          ON marketplace_rules(marketplace, is_active);`);
+
+        // Стоп-слова
+        await _client.execute(`CREATE TABLE IF NOT EXISTS stop_words (
+          id TEXT PRIMARY KEY,
+          marketplace TEXT,
+          category TEXT NOT NULL,
+          words TEXT NOT NULL,
+          is_active INTEGER DEFAULT 1,
+          updated_at INTEGER DEFAULT (cast(strftime('%s','now') as integer))
+        );`);
+
+        await _client.execute(`CREATE INDEX IF NOT EXISTS idx_stop_words_marketplace_category
+          ON stop_words(marketplace, category, is_active);`);
+
+        // ========== JOBS QUEUE ==========
+        // Очередь задач для обработки
+        await _client.execute(`CREATE TABLE IF NOT EXISTS jobs (
+          id TEXT PRIMARY KEY,
+          type TEXT NOT NULL,
+          status TEXT NOT NULL DEFAULT 'queued',
+          payload TEXT NOT NULL,
+          result TEXT,
+          error TEXT,
+          created_at INTEGER DEFAULT (cast(strftime('%s','now') as integer)),
+          updated_at INTEGER DEFAULT (cast(strftime('%s','now') as integer))
+        );`);
+
+        await _client.execute(`CREATE INDEX IF NOT EXISTS idx_jobs_status_type
+          ON jobs(status, type, updated_at DESC);`);
+
+        await _client.execute(`CREATE INDEX IF NOT EXISTS idx_jobs_created_at
+          ON jobs(created_at DESC);`);
+
+        // Инициализация конфигов по умолчанию
+        await _client.execute(
+          `INSERT OR IGNORE INTO system_prompts (id, key, content, is_active)
+           VALUES ('sp_gen_base', 'gen_base', '', 1), ('sp_validate_base', 'validate_base', '', 1);`
+        );
+
+        await _client.execute(
+          `INSERT OR IGNORE INTO styles (id, key, title, prompt, is_active)
+           VALUES
+           ('st_selling', 'selling', 'Продающий', '', 1),
+           ('st_expert', 'expert', 'Экспертный', '', 1),
+           ('st_brief', 'brief', 'Краткий', '', 1);`
+        );
+
+        await _client.execute(
+          `INSERT OR IGNORE INTO marketplace_rules (id, marketplace, content, is_active)
+           VALUES
+           ('mr_ozon', 'ozon', '', 1),
+           ('mr_wb', 'wildberries', '', 1);`
+        );
+
         console.log("✅ Tables initialized");
       } catch (error) {
         console.error("❌ DB init error:", error);
