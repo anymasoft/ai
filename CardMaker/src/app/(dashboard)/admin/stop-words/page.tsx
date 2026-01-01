@@ -16,6 +16,7 @@ interface StopWordsPreset {
   name: string
   label: string
   description: string
+  defaultValue: string
 }
 
 const STOP_WORDS_PRESETS: StopWordsPreset[] = [
@@ -24,29 +25,38 @@ const STOP_WORDS_PRESETS: StopWordsPreset[] = [
     name: "Маркетинговые слова",
     label: "Запрещённые маркетинговые слова",
     description: "Слова с преувеличением и броскими утверждениями, которые маркетплейсы не одобряют",
+    defaultValue: "",
   },
   {
     id: "health",
     name: "Запрещённые обещания",
     label: "Медицинские и здоровье обещания",
     description: "Слова, обещающие медицинский эффект, излечение или улучшение здоровья",
+    defaultValue: "",
   },
   {
     id: "prohibited",
     name: "Общие запреты",
     label: "Общие запрещённые слова",
     description: "Слова, которые маркетплейсы запрещают в описаниях категорически",
+    defaultValue: "",
   },
   {
     id: "custom",
     name: "Пользовательский список",
     label: "Кастомные стоп-слова",
     description: "Добавь сюда свои слова, которые не должны быть в описаниях",
+    defaultValue: "",
   },
 ]
 
 export default function StopWordsPage() {
-  const [stopWords, setStopWords] = useState<Record<string, string>>({})
+  const [stopWords, setStopWords] = useState<Record<string, string>>(
+    STOP_WORDS_PRESETS.reduce((acc, preset) => {
+      acc[preset.id] = preset.defaultValue
+      return acc
+    }, {} as Record<string, string>)
+  )
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
 
@@ -114,8 +124,8 @@ export default function StopWordsPage() {
   const handleReset = (presetId: string) => {
     const preset = STOP_WORDS_PRESETS.find((p) => p.id === presetId)
     if (preset) {
-      handleStopWordsChange(presetId, "")
-      toast.info(`Список "${preset.name}" очищен`)
+      handleStopWordsChange(presetId, preset.defaultValue)
+      toast.info(`Список "${preset.name}" восстановлен`)
     }
   }
 
