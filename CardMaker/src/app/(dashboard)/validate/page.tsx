@@ -16,12 +16,21 @@ interface ValidationIssue {
   suggestion?: string
 }
 
+interface CheckResult {
+  id: string
+  name: string
+  weight: number
+  passed: boolean
+  penaltyApplied?: number
+}
+
 interface ValidationResult {
   isValid: boolean
   score: number
   issues: ValidationIssue[]
   summary: string
   validatedAt: string
+  checks?: CheckResult[]
 }
 
 export default function ValidatePage() {
@@ -190,6 +199,34 @@ export default function ValidatePage() {
                     </div>
                   )}
 
+                  {/* Checks breakdown */}
+                  {Array.isArray(validation.checks) && validation.checks.length > 0 && (
+                    <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 space-y-2">
+                      <p className="text-xs font-semibold text-gray-700">Как формируется оценка</p>
+                      <div className="space-y-1.5">
+                        {validation.checks.map((check) => (
+                          <div key={check.id} className="flex items-center justify-between text-xs">
+                            <div className="flex items-center gap-2 flex-1">
+                              <span className={check.passed ? 'text-green-600' : 'text-red-600'}>
+                                {check.passed ? '✔' : '✖'}
+                              </span>
+                              <span className="text-gray-700 flex-1">{check.name}</span>
+                            </div>
+                            <div className="flex items-center gap-1 text-gray-600">
+                              <span>{check.weight}%</span>
+                              {typeof check.penaltyApplied === 'number' && (
+                                <span className="text-red-600">−{check.penaltyApplied}%</span>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                      <p className="text-xs text-gray-500 mt-2 pt-2 border-t border-gray-300">
+                        Оценка показывает степень соответствия требованиям маркетплейса и рискам отклонения.
+                      </p>
+                    </div>
+                  )}
+
                   {/* Шкала оценки */}
                   <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 space-y-2">
                     <p className="text-xs font-semibold text-blue-900">Интерпретация оценки</p>
@@ -255,6 +292,34 @@ export default function ValidatePage() {
                   {(!Array.isArray(validation.issues) || validation.issues.length === 0) && (
                     <div className="bg-gray-50 border border-gray-200 rounded-lg p-3">
                       <p className="text-xs text-gray-600">Обнаружены проблемы, но детали недоступны</p>
+                    </div>
+                  )}
+
+                  {/* Checks breakdown */}
+                  {Array.isArray(validation.checks) && validation.checks.length > 0 && (
+                    <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 space-y-2">
+                      <p className="text-xs font-semibold text-gray-700">Как формируется оценка</p>
+                      <div className="space-y-1.5">
+                        {validation.checks.map((check) => (
+                          <div key={check.id} className="flex items-center justify-between text-xs">
+                            <div className="flex items-center gap-2 flex-1">
+                              <span className={check.passed ? 'text-green-600' : 'text-red-600'}>
+                                {check.passed ? '✔' : '✖'}
+                              </span>
+                              <span className="text-gray-700 flex-1">{check.name}</span>
+                            </div>
+                            <div className="flex items-center gap-1 text-gray-600">
+                              <span>{check.weight}%</span>
+                              {typeof check.penaltyApplied === 'number' && (
+                                <span className="text-red-600">−{check.penaltyApplied}%</span>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                      <p className="text-xs text-gray-500 mt-2 pt-2 border-t border-gray-300">
+                        Оценка показывает степень соответствия требованиям маркетплейса и рискам отклонения.
+                      </p>
                     </div>
                   )}
 
