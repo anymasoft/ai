@@ -2,22 +2,14 @@
 
 import { callOpenAI } from '@/lib/openai-client'
 import { buildValidationPrompt } from '@/lib/prompts/builders'
+import { generateCheckBreakdown, CheckResult } from '@/lib/validation/check-breakdown'
+import type { ValidationIssue } from '@/lib/validation/check-breakdown'
 
 /**
- * Проблема, найденная при валидации
+ * Переэкспортируем типы для удобства импорта
  */
-export interface ValidationIssue {
-  type:
-    | 'forbidden_words'
-    | 'grammar'
-    | 'requirements'
-    | 'exaggeration'
-    | 'clarity'
-    | 'other'
-  severity: 'error' | 'warning' | 'info'
-  message: string
-  suggestion?: string
-}
+export type { ValidationIssue, CheckResult } from '@/lib/validation/check-breakdown'
+export { generateCheckBreakdown } from '@/lib/validation/check-breakdown'
 
 /**
  * Результат валидации описания
@@ -28,6 +20,7 @@ export interface ValidationResult {
   issues: ValidationIssue[]
   summary: string
   validatedAt: string
+  checks?: CheckResult[] // детализация по проверкам (опционально)
 }
 
 /**

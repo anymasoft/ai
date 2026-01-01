@@ -6,15 +6,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Textarea } from "@/components/ui/textarea"
 import { Badge } from "@/components/ui/badge"
 import { AlertCircle, CheckCircle2 } from "lucide-react"
+import { generateCheckBreakdown } from '@/lib/validation/check-breakdown'
+import type { ValidationIssue, CheckResult } from '@/lib/validation/check-breakdown'
 
 type Marketplace = "ozon" | "wb"
-
-interface ValidationIssue {
-  type: 'forbidden_words' | 'grammar' | 'requirements' | 'exaggeration' | 'clarity' | 'other'
-  severity: 'error' | 'warning' | 'info'
-  message: string
-  suggestion?: string
-}
 
 interface ValidationResult {
   isValid: boolean
@@ -22,6 +17,30 @@ interface ValidationResult {
   issues: ValidationIssue[]
   summary: string
   validatedAt: string
+  checks?: CheckResult[]
+}
+
+// Получить описание оценки по проценту
+function getScoreDescription(score: number): { level: string; message: string; color: string } {
+  if (score >= 90) {
+    return {
+      level: 'Отлично',
+      message: 'Карточка соответствует требованиям маркетплейса. Можно публиковать.',
+      color: 'text-green-700',
+    }
+  } else if (score >= 70) {
+    return {
+      level: 'Хорошо',
+      message: 'Есть потенциальные риски. Желательно исправить замечания.',
+      color: 'text-yellow-700',
+    }
+  } else {
+    return {
+      level: 'Требует внимания',
+      message: 'Высокий риск отклонения. Рекомендуем исправить нарушения.',
+      color: 'text-red-700',
+    }
+  }
 }
 
 export default function ValidatePage() {
@@ -58,7 +77,12 @@ export default function ValidatePage() {
       const result = await response.json()
       // API возвращает { success: true, data: ValidationResult }
       if (result.success && result.data) {
-        setValidation(result.data)
+        // Генерируем breakdown проверок если его нет
+        const validationData = {
+          ...result.data,
+          checks: result.data.checks || generateCheckBreakdown(result.data.issues || []),
+        }
+        setValidation(validationData)
       } else {
         throw new Error("Неверный формат ответа от API")
       }
@@ -190,24 +214,7 @@ export default function ValidatePage() {
                     </div>
                   )}
 
-                  {/* Шкала оценки */}
-                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 space-y-2">
-                    <p className="text-xs font-semibold text-blue-900">Интерпретация оценки</p>
-                    <div className="space-y-1 text-xs text-blue-800">
-                      <div className="flex justify-between">
-                        <span>90–100%:</span>
-                        <span className="font-medium">Отлично — можно публиковать</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span>70–89%:</span>
-                        <span className="font-medium">Хорошо — исправить замечания</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span>&lt;70%:</span>
-                        <span className="font-medium">Требует внимания</span>
-                      </div>
-                    </div>
-                  </div>
+
                 </div>
               )}
 
@@ -249,6 +256,34 @@ export default function ValidatePage() {
                           </li>
                         ))}
                       </ul>
+                    </div>
+                  )}
+
+                  {/* Checks breakdown */}
+                  {Array.isArray(validation.checks) && validation.checks.length > 0 && (
+                    <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 space-y-2">
+                      <p className="text-xs font-semibold text-gray-700">Как формируется оценка</p>
+                      <div className="space-y-1.5">
+                        {validation.checks.map((check) => (
+                          <div key={check.id} className="flex items-center justify-between text-xs">
+                            <div className="flex items-center gap-2 flex-1">
+                              <span className={check.passed ? 'text-green-600' : 'text-red-600'}>
+                                {check.passed ? '✔' : '✖'}
+                              </span>
+                              <span className="text-gray-700 flex-1">{check.name}</span>
+                            </div>
+                            <div className="flex items-center gap-1 text-gray-600">
+                              <span>{check.weight}%</span>
+                              {typeof check.penaltyApplied === 'number' && (
+                                <span className="text-red-600">−{check.penaltyApplied}%</span>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                      <p className="text-xs text-gray-500 mt-2 pt-2 border-t border-gray-300">
+                        Оценка показывает степень соответствия требованиям маркетплейса и рискам отклонения.
+                      </p>
                     </div>
                   )}
 
