@@ -131,6 +131,7 @@ async function getClient() {
           currency TEXT DEFAULT 'RUB',
           status TEXT NOT NULL DEFAULT 'pending',
           billingCycle TEXT DEFAULT 'monthly',
+          provider TEXT DEFAULT 'yookassa',
           createdAt INTEGER NOT NULL,
           updatedAt INTEGER NOT NULL,
           expiresAt INTEGER,
@@ -139,6 +140,9 @@ async function getClient() {
 
         await _client.execute(`CREATE INDEX IF NOT EXISTS idx_payments_externalPaymentId
           ON payments(externalPaymentId);`);
+
+        await _client.execute(`CREATE INDEX IF NOT EXISTS idx_payments_provider
+          ON payments(provider);`);
 
         // Таблица для переопределения подписок (ручное управление платежами)
         await _client.execute(`CREATE TABLE IF NOT EXISTS admin_subscriptions (
