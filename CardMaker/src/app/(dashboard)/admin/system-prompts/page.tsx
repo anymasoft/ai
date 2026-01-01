@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { AlertCircle, Loader2, CheckCircle2 } from "lucide-react"
+import { AlertCircle, Loader2, CheckCircle2, Save } from "lucide-react"
 import { toast } from "sonner"
 
 interface SystemPrompts {
@@ -115,6 +115,22 @@ export default function SystemPromptsPage() {
         </Alert>
       )}
 
+      <div className="flex justify-end mb-4">
+        <Button
+          onClick={handleSave}
+          disabled={saving || !isDirty}
+          size="icon"
+          variant="outline"
+          title="Сохранить промпты"
+        >
+          {saving ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            <Save className="h-4 w-4" />
+          )}
+        </Button>
+      </div>
+
       <div className="space-y-6">
         {/* Промпт для генерации */}
         <Card>
@@ -171,8 +187,8 @@ export default function SystemPromptsPage() {
         </Card>
       </div>
 
-      {/* Buttons */}
-      <div className="flex items-center justify-between pt-4 border-t">
+      {/* Status indicator */}
+      <div className="flex justify-center pt-4 border-t">
         <div className="text-sm">
           {isDirty ? (
             <div className="text-yellow-600 flex items-center gap-2">
@@ -186,21 +202,6 @@ export default function SystemPromptsPage() {
             </div>
           )}
         </div>
-        <Button
-          onClick={handleSave}
-          disabled={saving || !isDirty}
-          size="lg"
-          className="gap-2"
-        >
-          {saving ? (
-            <>
-              <Loader2 className="h-4 w-4 animate-spin" />
-              Сохранение...
-            </>
-          ) : (
-            "Сохранить"
-          )}
-        </Button>
       </div>
     </div>
   )
