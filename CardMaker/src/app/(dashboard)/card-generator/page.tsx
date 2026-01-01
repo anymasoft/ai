@@ -321,34 +321,6 @@ export default function CardGeneratorPage() {
             <p className="text-muted-foreground text-sm mt-1">Скопируйте текст и используйте на маркетплейсе</p>
           </div>
 
-          {/* Название товара */}
-          <Card className="border">
-            <CardHeader className="pb-3 pt-4">
-              <div className="flex items-start justify-between gap-3">
-                <div className="flex-1">
-                  <CardTitle className="text-base">Название товара (SEO)</CardTitle>
-                  <CardDescription className="text-xs">Оптимизировано для поиска</CardDescription>
-                </div>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => handleCopy(result.title, "title")}
-                  title="Копировать"
-                  className="h-8 w-8"
-                >
-                  {copiedSection === "title" ? (
-                    <CheckCircle className="h-4 w-4 text-green-600" />
-                  ) : (
-                    <Copy className="h-4 w-4" />
-                  )}
-                </Button>
-              </div>
-            </CardHeader>
-            <CardContent className="pt-0">
-              <p className="text-sm font-medium leading-relaxed">{result.title}</p>
-            </CardContent>
-          </Card>
-
           {/* Описание товара */}
           <Card className="border">
             <CardHeader className="pb-3 pt-4">
