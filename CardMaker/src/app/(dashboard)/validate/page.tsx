@@ -202,37 +202,38 @@ export default function ValidatePage() {
             </div>
 
             <CardContent className="flex-1 p-0 flex flex-col overflow-hidden">
-              {/* Highlight overlay for first word */}
-              {shouldHighlightFirstWord && (
-                <div
-                  className="absolute top-0 left-0 right-0 p-4 font-mono text-sm leading-relaxed pointer-events-none overflow-hidden"
-                  style={{
-                    fontFamily: "inherit",
-                    whiteSpace: "pre-wrap",
-                    wordBreak: "break-word",
-                    width: textareaRef.current?.offsetWidth,
-                    height: textareaRef.current?.offsetHeight,
-                  }}
-                >
-                  <mark className="bg-rose-100 text-rose-900 rounded px-1">{firstWord}</mark>
-                  {text.length > firstWord.length && text[firstWord.length]}
-                </div>
-              )}
+              {/* Input area - визуальный контейнер */}
+              <div className="flex-1 flex flex-col p-4 bg-muted/20 border border-input rounded-lg m-4 overflow-hidden hover:border-neutral-400 transition-colors">
+                {/* Highlight overlay for first word */}
+                {shouldHighlightFirstWord && (
+                  <div
+                    className="absolute top-0 left-0 right-0 p-4 font-mono text-sm leading-relaxed pointer-events-none overflow-hidden"
+                    style={{
+                      fontFamily: "inherit",
+                      whiteSpace: "pre-wrap",
+                      wordBreak: "break-word",
+                      width: textareaRef.current?.offsetWidth,
+                      height: textareaRef.current?.offsetHeight,
+                    }}
+                  >
+                    <mark className="bg-rose-100 text-rose-900 rounded px-1">{firstWord}</mark>
+                    {text.length > firstWord.length && text[firstWord.length]}
+                  </div>
+                )}
 
-              {/* Textarea */}
-              <Textarea
-                ref={textareaRef}
-                placeholder="Вставьте описание товара, которое хотите проверить перед публикацией на маркетплейсе."
-                value={text}
-                onChange={(e) => setText(e.target.value)}
-                className={`flex-1 resize-none min-h-0 font-mono text-sm rounded-none border-0 ${
-                  ran && validation
-                    ? validation.isValid
-                      ? "border-green-500 focus-visible:ring-green-500"
-                      : "border-red-500 focus-visible:ring-red-500"
-                    : ""
-                } ${shouldHighlightFirstWord ? "bg-transparent" : ""}`}
-              />
+                {/* Textarea */}
+                <Textarea
+                  ref={textareaRef}
+                  placeholder="Вставьте описание товара, которое хотите проверить перед публикацией на маркетплейсе."
+                  value={text}
+                  onChange={(e) => setText(e.target.value)}
+                  className={`flex-1 resize-none min-h-0 font-mono text-sm bg-transparent border-0 outline-none focus-visible:ring-0 ${
+                    ran && demoMode === "error"
+                      ? "placeholder-red-400"
+                      : "placeholder-muted-foreground"
+                  } ${shouldHighlightFirstWord ? "bg-transparent" : ""}`}
+                />
+              </div>
             </CardContent>
           </Card>
 
@@ -249,15 +250,15 @@ export default function ValidatePage() {
                     Здесь появятся результаты проверки вашего описания
                   </div>
                 </div>
-              ) : validation?.isValid ? (
-                /* Success state - зелёный режим */
+              ) : demoMode === "ok" ? (
+                /* Success state - ЗЕЛЁНЫЙ РЕЖИМ (demo) */
                 <div className="space-y-4">
                   <div className="bg-green-50 border border-green-200 rounded-lg p-4">
                     <div className="flex items-start gap-3">
                       <CheckCircle2 className="h-5 w-5 text-green-600 flex-shrink-0 mt-0.5" />
                       <div>
                         <p className="text-sm font-semibold text-green-700">Проверка пройдена</p>
-                        <p className="text-xs text-green-600 mt-1">Описание готово к публикации на маркетплейсе</p>
+                        <p className="text-xs text-green-600 mt-1">Описание соответствует требованиям маркетплейса</p>
                       </div>
                     </div>
                   </div>
@@ -273,7 +274,7 @@ export default function ValidatePage() {
                   </div>
                 </div>
               ) : (
-                /* Error state - красный режим */
+                /* Error state - КРАСНЫЙ РЕЖИМ (demo) */
                 <div className="space-y-3">
                   <div className="bg-red-50 border border-red-200 rounded-lg p-4">
                     <div className="flex items-start gap-3">
@@ -292,37 +293,42 @@ export default function ValidatePage() {
                   </div>
 
                   {/* Issues */}
-                  {validation?.issues && validation.issues.length > 0 && (
-                    <div className="bg-red-50 border border-red-200 rounded-lg p-3 space-y-2">
-                      <p className="text-xs font-semibold text-red-700">Проблемы:</p>
-                      <ul className="space-y-1">
-                        {validation.issues.map((issue, idx) => (
-                          <li key={idx} className="flex items-start gap-2 text-xs text-red-700">
-                            <span className="font-bold mt-0.5 flex-shrink-0">•</span>
-                            <span>{issue}</span>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
+                  <div className="bg-red-50 border border-red-200 rounded-lg p-3 space-y-2">
+                    <p className="text-xs font-semibold text-red-700">Проблемы:</p>
+                    <ul className="space-y-1">
+                      <li className="flex items-start gap-2 text-xs text-red-700">
+                        <span className="font-bold mt-0.5 flex-shrink-0">•</span>
+                        <span>Используются запрещённые маркетинговые слова</span>
+                      </li>
+                      <li className="flex items-start gap-2 text-xs text-red-700">
+                        <span className="font-bold mt-0.5 flex-shrink-0">•</span>
+                        <span>Недостаточно информации о характеристиках товара</span>
+                      </li>
+                      <li className="flex items-start gap-2 text-xs text-red-700">
+                        <span className="font-bold mt-0.5 flex-shrink-0">•</span>
+                        <span>Описание может быть более подробным</span>
+                      </li>
+                    </ul>
+                  </div>
 
                   {/* Banned words */}
-                  {validation?.bannedWordsFound && validation.bannedWordsFound.length > 0 && (
-                    <div className="bg-red-50 border border-red-200 rounded-lg p-3 space-y-2">
-                      <p className="text-xs font-semibold text-red-700">Запрещённые слова:</p>
-                      <div className="flex flex-wrap gap-1">
-                        {validation.bannedWordsFound.map((word, idx) => (
-                          <Badge
-                            key={idx}
-                            variant="secondary"
-                            className="bg-red-200 text-red-900 text-xs py-0.5"
-                          >
-                            {word}
-                          </Badge>
-                        ))}
-                      </div>
+                  <div className="bg-red-50 border border-red-200 rounded-lg p-3 space-y-2">
+                    <p className="text-xs font-semibold text-red-700">Запрещённые слова:</p>
+                    <div className="flex flex-wrap gap-1">
+                      <Badge
+                        variant="secondary"
+                        className="bg-red-200 text-red-900 text-xs py-0.5"
+                      >
+                        уникальный
+                      </Badge>
+                      <Badge
+                        variant="secondary"
+                        className="bg-red-200 text-red-900 text-xs py-0.5"
+                      >
+                        лучший
+                      </Badge>
                     </div>
-                  )}
+                  </div>
                 </div>
               )}
             </CardContent>
