@@ -24,8 +24,12 @@ import { Copy, CheckCircle, ChevronDown, Loader2, Sparkles, AlertCircle } from "
 interface CardResult {
   title: string
   description: string
-  keywords: string[]
-  whyItWorks: string
+  usage: {
+    inputTokens: number
+    outputTokens: number
+    totalTokens: number
+  }
+  generatedAt: string
 }
 
 export default function CardGeneratorPage() {
@@ -82,7 +86,12 @@ export default function CardGeneratorPage() {
       }
 
       const data = await response.json()
-      setResult(data)
+      // API возвращает { success: true, data: CardResult }
+      if (data.success && data.data) {
+        setResult(data.data)
+      } else {
+        throw new Error("Неверный формат ответа от API")
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Неизвестная ошибка")
     } finally {
@@ -367,57 +376,6 @@ export default function CardGeneratorPage() {
               </div>
             </CardContent>
           </Card>
-
-          {/* SEO-ключи */}
-          <Card className="border">
-            <CardHeader className="pb-3 pt-4">
-              <div className="flex items-start justify-between gap-3">
-                <div className="flex-1">
-                  <CardTitle className="text-base">SEO-ключи</CardTitle>
-                  <CardDescription className="text-xs">Основные слова для поиска</CardDescription>
-                </div>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => handleCopy(result.keywords.join(", "), "keywords")}
-                  title="Копировать"
-                  className="h-8 w-8"
-                >
-                  {copiedSection === "keywords" ? (
-                    <CheckCircle className="h-4 w-4 text-green-600" />
-                  ) : (
-                    <Copy className="h-4 w-4" />
-                  )}
-                </Button>
-              </div>
-            </CardHeader>
-            <CardContent className="pt-0">
-              <div className="flex flex-wrap gap-2">
-                {result.keywords.map((keyword, index) => (
-                  <Badge key={index} variant="secondary" className="text-xs">
-                    {keyword}
-                  </Badge>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Пояснение почему так */}
-          <Collapsible defaultOpen={false}>
-            <CollapsibleTrigger className="flex items-center gap-2 font-medium text-sm hover:text-primary transition-colors py-1">
-              <ChevronDown className="h-4 w-4 transition-transform data-[state=open]:rotate-180" />
-              Почему описание выглядит именно так?
-            </CollapsibleTrigger>
-            <CollapsibleContent className="mt-3">
-              <Card className="border bg-muted/50">
-                <CardContent className="pt-4">
-                  <p className="text-xs text-muted-foreground leading-relaxed">
-                    {result.whyItWorks}
-                  </p>
-                </CardContent>
-              </Card>
-            </CollapsibleContent>
-          </Collapsible>
 
           {/* Кнопка создать ещё одну карточку */}
           <div className="flex justify-center pt-2">

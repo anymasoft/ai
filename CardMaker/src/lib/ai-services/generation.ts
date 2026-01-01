@@ -148,8 +148,14 @@ export const generateProductCard = async (params: {
     }
 
     // Логируем использование если передан userId
+    // Ошибки логирования НЕ должны прерывать основной процесс
     if (userId) {
-      await logGenerationUsage(userId, response.usage?.totalTokens || 0)
+      try {
+        await logGenerationUsage(userId, response.usage?.totalTokens || 0)
+      } catch (logError) {
+        console.error('[generateProductCard] Ошибка логирования использования:', logError)
+        // продолжаем работу, логирование не критично
+      }
     }
 
     return {
@@ -230,30 +236,18 @@ const logGenerationUsage = async (userId: string, tokens: number): Promise<void>
   try {
     const today = new Date().toISOString().split('T')[0]
 
-    // Проверяем есть ли уже запись за сегодня
-    const existingResult = await db.execute(
-      'SELECT id, cardsUsed FROM user_usage_daily WHERE userId = ? AND day = ? LIMIT 1',
-      [userId, today]
+    // Используем INSERT OR REPLACE для UPSERT
+    // Если запись существует → обновляем cardsUsed
+    // Если нет → создаём новую с cardsUsed = 1
+    await db.execute(
+      `INSERT INTO user_usage_daily (userId, day, cardsUsed, updatedAt)
+       VALUES (?, ?, 1, ?)
+       ON CONFLICT(userId, day)
+       DO UPDATE SET
+         cardsUsed = cardsUsed + 1,
+         updatedAt = excluded.updatedAt`,
+      [userId, today, Math.floor(Date.now() / 1000)]
     )
-
-    const existingRows = Array.isArray(existingResult)
-      ? existingResult
-      : existingResult.rows || []
-
-    if (existingRows.length > 0) {
-      // Обновляем существующую запись
-      const currentCards = existingRows[0].cardsUsed || 0
-      await db.execute(
-        'UPDATE user_usage_daily SET cardsUsed = cardsUsed + 1, updatedAt = ? WHERE userId = ? AND day = ?',
-        [Math.floor(Date.now() / 1000), userId, today]
-      )
-    } else {
-      // Создаём новую запись
-      await db.execute(
-        'INSERT INTO user_usage_daily (userId, day, cardsUsed, updatedAt) VALUES (?, ?, 1, ?)',
-        [userId, today, Math.floor(Date.now() / 1000)]
-      )
-    }
   } catch (error) {
     console.error('[logGenerationUsage] Ошибка логирования:', error)
     // Ошибка логирования не должна прерывать основной процесс
