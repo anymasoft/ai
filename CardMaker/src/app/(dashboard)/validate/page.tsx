@@ -124,39 +124,32 @@ export default function ValidatePage() {
 
   return (
     <div className="min-h-screen bg-background py-8">
-      <div className="mx-auto max-w-3xl px-4">
-        {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold tracking-tight mb-2">Проверка описания</h1>
-          <p className="text-muted-foreground">
-            Убедитесь, что карточка пройдёт модерацию маркетплейса
-          </p>
-        </div>
-
-        {/* Badge */}
-        <div className="mb-8">
+      <div className="mx-auto max-w-7xl px-4">
+        {/* Header - как в card-generator */}
+        <div className="text-center pt-2 mb-8">
+          <h1 className="text-3xl font-bold tracking-tight mb-3">Проверка описания</h1>
           <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 hover:bg-green-50">
             Проходит требования Ozon / Wildberries
           </Badge>
         </div>
 
-        {/* Main Form */}
-        <Card className="mb-8">
-          <CardHeader className="pb-4">
-            <CardTitle className="text-lg">Описание товара</CardTitle>
-            <CardDescription>
-              Вставьте текст описания для проверки перед публикацией
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {/* Textarea */}
-            <div className="space-y-2">
+        {/* Two-column layout */}
+        <div className="grid grid-cols-[1fr_minmax(320px,32%)] gap-4">
+          {/* LEFT COLUMN - Input */}
+          <Card>
+            <CardHeader className="pb-4">
+              <CardTitle className="text-lg">Описание товара</CardTitle>
+              <CardDescription>
+                Вставьте текст описания для проверки перед публикацией
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {/* Textarea */}
               <Textarea
                 placeholder="Вставьте описание товара, которое хотите проверить перед публикацией на маркетплейсе."
                 value={text}
                 onChange={(e) => setText(e.target.value)}
-                rows={10}
-                className={`resize-y min-h-[320px] font-mono text-sm ${
+                className={`resize-y min-h-[560px] font-mono text-sm ${
                   validation !== null
                     ? validation.isValid
                       ? "border-green-500 focus-visible:ring-green-500"
@@ -169,91 +162,103 @@ export default function ValidatePage() {
                 }`}
               />
 
-              {/* Validation Result */}
-              {validation !== null && (
-                <div className="mt-4 space-y-3">
-                  {validation.isValid ? (
-                    <div className="space-y-2">
-                      <div className="flex items-center gap-2 text-green-700">
-                        <CheckCircle2 className="h-5 w-5" />
-                        <span className="text-sm font-medium">Проверка пройдена. Описание соответствует требованиям.</span>
-                      </div>
+              {/* Button */}
+              <div className="flex gap-2 pt-2 border-t">
+                <Button
+                  onClick={handleValidate}
+                  size="sm"
+                  className="w-fit"
+                >
+                  Проверить
+                </Button>
+
+                {/* Demo Mode Toggle (dev only) */}
+                <Button
+                  onClick={() => setIsDemoMode(!isDemoMode)}
+                  variant="ghost"
+                  size="sm"
+                  className="ml-auto text-xs"
+                  title="Переключитель для тестирования UI (dev only)"
+                >
+                  {isDemoMode ? "Реальная проверка" : "Demo: ошибка"}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* RIGHT COLUMN - Results */}
+          <Card className="h-fit">
+            <CardHeader className="pb-4">
+              <CardTitle className="text-lg">Результаты</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4 max-h-[calc(560px+100px)] overflow-y-auto">
+              {/* Before validation - Placeholder */}
+              {validation === null ? (
+                <div className="text-center py-12">
+                  <div className="text-muted-foreground text-sm">
+                    Здесь появятся результаты проверки вашего описания
+                  </div>
+                </div>
+              ) : validation.isValid ? (
+                /* Success state */
+                <div className="space-y-2">
+                  <div className="flex items-start gap-2">
+                    <CheckCircle2 className="h-5 w-5 text-green-600 flex-shrink-0 mt-0.5" />
+                    <div>
+                      <p className="text-sm font-medium text-green-700">Проверка пройдена</p>
+                      <p className="text-xs text-green-600 mt-1">Описание соответствует требованиям маркетплейса</p>
                     </div>
-                  ) : (
-                    <div className="space-y-3">
-                      <div className="flex items-center gap-2 text-red-700">
-                        <AlertCircle className="h-5 w-5" />
-                        <span className="text-sm font-medium">
-                          Обнаружены нарушения требований маркетплейса
-                        </span>
+                  </div>
+                </div>
+              ) : (
+                /* Error state */
+                <div className="space-y-3">
+                  <div className="flex items-start gap-2">
+                    <AlertCircle className="h-5 w-5 text-red-600 flex-shrink-0 mt-0.5" />
+                    <div>
+                      <p className="text-sm font-medium text-red-700">Обнаружены нарушения</p>
+                      <p className="text-xs text-red-600 mt-1">Требования маркетплейса не соблюдены</p>
+                    </div>
+                  </div>
+
+                  {/* Issues */}
+                  <div className="bg-red-50 border border-red-200 rounded-md p-3 space-y-2">
+                    <p className="text-xs font-semibold text-red-700">Проблемы:</p>
+                    <ul className="space-y-1">
+                      {validation.issues.map((issue, idx) => (
+                        <li key={idx} className="flex items-start gap-2 text-xs text-red-700">
+                          <span className="font-bold mt-0.5">•</span>
+                          <span>{issue}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+
+                  {/* Banned words */}
+                  {validation.bannedWordsFound.length > 0 && (
+                    <div className="space-y-2">
+                      <p className="text-xs font-semibold text-red-700">Запрещённые слова:</p>
+                      <div className="flex flex-wrap gap-1">
+                        {validation.bannedWordsFound.map((word, idx) => (
+                          <Badge
+                            key={idx}
+                            variant="secondary"
+                            className="bg-red-200 text-red-900 text-xs"
+                          >
+                            {word}
+                          </Badge>
+                        ))}
                       </div>
-
-                      {/* Issues Card */}
-                      <Card className="bg-red-50 border-red-200">
-                        <CardHeader className="pb-3">
-                          <CardTitle className="text-base">Найденные проблемы</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                          <ul className="space-y-2">
-                            {validation.issues.map((issue, idx) => (
-                              <li key={idx} className="flex items-start gap-3 text-sm text-foreground">
-                                <span className="text-red-500 font-bold mt-0.5">•</span>
-                                <span>{issue}</span>
-                              </li>
-                            ))}
-                          </ul>
-
-                          {validation.bannedWordsFound.length > 0 && (
-                            <div className="mt-4 pt-4 border-t border-red-200">
-                              <p className="text-xs font-medium text-red-700 mb-2">
-                                Запрещённые слова в описании:
-                              </p>
-                              <div className="flex flex-wrap gap-2">
-                                {validation.bannedWordsFound.map((word, idx) => (
-                                  <Badge
-                                    key={idx}
-                                    variant="secondary"
-                                    className="bg-red-200 text-red-900"
-                                  >
-                                    {word}
-                                  </Badge>
-                                ))}
-                              </div>
-                            </div>
-                          )}
-                        </CardContent>
-                      </Card>
                     </div>
                   )}
                 </div>
               )}
-            </div>
+            </CardContent>
+          </Card>
+        </div>
 
-            {/* Button */}
-            <div className="flex gap-2">
-              <Button
-                onClick={handleValidate}
-                size="sm"
-                className="w-fit"
-              >
-                Проверить
-              </Button>
-
-              {/* Demo Mode Toggle (dev only) */}
-              <Button
-                onClick={() => setIsDemoMode(!isDemoMode)}
-                variant="ghost"
-                size="sm"
-                className="ml-auto text-xs"
-              >
-                {isDemoMode ? "Реальная проверка" : "Показать ошибку (demo)"}
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* CTA */}
-        <div className="text-center">
+        {/* CTA - внизу, полная ширина */}
+        <div className="text-center mt-8">
           <p className="text-sm text-muted-foreground">
             В платной версии вы можете сразу исправлять и подготавливать описания под маркетплейсы.
           </p>
