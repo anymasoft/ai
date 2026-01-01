@@ -65,7 +65,7 @@ export async function GET(request: NextRequest) {
         p.id,
         p.userId,
         u.email,
-        p.plan,
+        p.planId as plan,
         p.amount,
         p.expiresAt,
         p.provider,
@@ -100,12 +100,9 @@ export async function GET(request: NextRequest) {
     console.log("SQL Query:", query)
     console.log("Query params:", params)
 
-    const result =
-      params.length > 0
-        ? await db.execute({ sql: query, args: params })
-        : await db.execute(query)
+    const result = await db.execute(query, params.length > 0 ? params : undefined)
 
-    const rows = Array.isArray(result) ? result : result.rows || []
+    const rows = result.rows || []
 
     const payments = rows.map((row: any) => ({
       id: row.id,
