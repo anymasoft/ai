@@ -10,12 +10,14 @@ import { db } from '@/lib/db'
 export interface GeneratedProductCard {
   title: string
   description: string
-  usage: {
+  keywords?: string[]
+  explanation?: string
+  usage?: {
     inputTokens: number
     outputTokens: number
     totalTokens: number
   }
-  generatedAt: string
+  generatedAt?: string
 }
 
 /**
@@ -25,6 +27,54 @@ export interface GenerationError {
   code: string
   message: string
   details?: any
+}
+
+/**
+ * Парсить ответ OpenAI и извлечь структурированные поля
+ * Ожидается формат:
+ * Заголовок: ...
+ * Описание: ...
+ * Ключевые слова: ...
+ * Пояснение: ...
+ */
+const parseGenerationResponse = (text: string): {
+  title: string
+  description: string
+  keywords?: string[]
+  explanation?: string
+} => {
+  // Регулярные выражения для поиска секций
+  const titleMatch = text.match(/(?:Заголовок|Название)[\s:]*([^\n]+(?:\n(?!(?:Описание|Ключевые|Пояснение))[^\n]+)*)/i)
+  const descriptionMatch = text.match(/(?:Описание|Основное описание)[\s:]*([^\n]+(?:\n(?!(?:Ключевые|Пояснение|Объяснение))[^\n]+)*)/i)
+  const keywordsMatch = text.match(/(?:Ключевые слова|SEO-ключи)[\s:]*([^\n]+(?:\n(?!(?:Пояснение|Объяснение))[^\n]+)*)/i)
+  const explanationMatch = text.match(/(?:Пояснение|Почему это работает|Объяснение)[\s:]*([^\n]+(?:\n[^\n]+)*)/i)
+
+  // Извлекаем и очищаем заголовок
+  const title = titleMatch?.[1]?.trim() || 'Сгенерированная карточка'
+
+  // Извлекаем и очищаем описание
+  const description = descriptionMatch?.[1]?.trim() || text
+
+  // Парсим ключевые слова из списка или CSV
+  let keywords: string[] | undefined
+  if (keywordsMatch) {
+    const keywordsText = keywordsMatch[1]
+    keywords = keywordsText
+      .split(/[,\n-]/g)
+      .map((k) => k.trim())
+      .filter((k) => k.length > 0 && !k.match(/^[•*]/))
+      .slice(0, 10) // максимум 10 ключевых слов
+  }
+
+  // Извлекаем пояснение
+  const explanation = explanationMatch?.[1]?.trim()
+
+  return {
+    title,
+    description,
+    keywords: keywords && keywords.length > 0 ? keywords : undefined,
+    explanation: explanation && explanation.length > 10 ? explanation : undefined,
+  }
 }
 
 /**
@@ -118,27 +168,14 @@ export const generateProductCard = async (params: {
       2000
     )
 
-    // Парсим результат
-    const lines = response.content.trim().split('\n')
-    const emptyLineIndex = lines.findIndex((line) => !line.trim())
-
-    const title = lines
-      .slice(0, emptyLineIndex === -1 ? 1 : emptyLineIndex)
-      .join('\n')
-      .trim()
-
-    const description = lines
-      .slice(emptyLineIndex === -1 ? 1 : emptyLineIndex + 1)
-      .join('\n')
-      .trim()
-
-    // Если не удалось разделить на два блока, используем весь текст как описание
-    const finalTitle = title || `Описание товара: ${productTitle}`
-    const finalDescription = description || response.content
+    // Парсим результат используя специальный парсер
+    const parsed = parseGenerationResponse(response.content)
 
     const result: GeneratedProductCard = {
-      title: finalTitle,
-      description: finalDescription,
+      title: parsed.title,
+      description: parsed.description,
+      keywords: parsed.keywords,
+      explanation: parsed.explanation,
       usage: response.usage || {
         inputTokens: 0,
         outputTokens: 0,

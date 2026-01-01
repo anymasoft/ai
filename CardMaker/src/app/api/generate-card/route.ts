@@ -25,7 +25,6 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json()
-    console.log('[generate-card] raw body:', body)
 
     // Валидируем входные данные
     const validation = generateCardSchema.safeParse(body)
