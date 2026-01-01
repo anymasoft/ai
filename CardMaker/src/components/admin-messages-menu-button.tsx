@@ -44,6 +44,10 @@ const adminItems = [
     title: "Стили описаний",
     url: "/admin/styles",
   },
+  {
+    title: "Стоп-слова",
+    url: "/admin/stop-words",
+  },
 ]
 
 export function AdminMessagesMenuButton() {
