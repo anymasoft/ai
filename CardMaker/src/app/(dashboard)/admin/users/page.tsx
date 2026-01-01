@@ -23,6 +23,7 @@ interface User {
   createdAt: number
   lastActive: number | null
   disabled: boolean
+  cardsUsed?: number
 }
 
 const PAID_PLANS = ["basic", "professional", "enterprise"]
