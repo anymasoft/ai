@@ -205,6 +205,17 @@ export const buildGenerationPrompt = async (params: {
     ? `\nСтиль описания: ${selectedStyle.title}\n${selectedStyle.prompt}`
     : ''
 
+  // [ДИАГНОСТИКА] Логируем выбранный стиль в dev режиме
+  if (process.env.NODE_ENV !== 'production') {
+    console.log('[buildGenerationPrompt] Style Info:', {
+      requestedKey: style,
+      foundStyle: selectedStyle?.key || '❌ NOT FOUND',
+      styleTitle: selectedStyle?.title || '-',
+      stylePromptLength: selectedStyle?.prompt?.length || 0,
+      allAvailableStyles: styles.map((s) => ({ key: s.key, title: s.title })),
+    })
+  }
+
   // Компонуем стоп-слова в удобный список
   const stopWordsList = stopWords
     .map((sw) => {
@@ -247,6 +258,17 @@ ${stopWordsList || 'Основные запреты: преувеличение,
   const hasSeoKeywords =
     Array.isArray(seoKeywords) &&
     seoKeywords.some((k) => k && k.trim().length > 0)
+
+  // [ДИАГНОСТИКА] Логируем SEO-ключи в dev режиме
+  if (process.env.NODE_ENV !== 'production') {
+    const validSeoKeys = seoKeywords.filter((k) => k && k.trim().length > 0)
+    console.log('[buildGenerationPrompt] SEO Keywords:', {
+      hasSeoKeywords,
+      count: validSeoKeys.length,
+      keywords: validSeoKeys.slice(0, 3), // показываем первые 3
+      willBeAddedToPrompt: hasSeoKeywords,
+    })
+  }
 
   // Проверяем наличие валидных описаний конкурентов (ОПЦИОНАЛЬНО)
   const validCompetitors = competitors.filter((c) => c && c.trim().length > 0)
