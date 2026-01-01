@@ -123,7 +123,8 @@ export function CommandSearch({ open, onOpenChange }: CommandSearchProps) {
   const searchItems: SearchItem[] = [
     // CardMaker (Main sections)
     { title: "Создание карточки", url: "/card-generator", group: "Инструменты", icon: FileText },
-    { title: "История карточек", url: "/cards-history", group: "Инструменты", icon: LayoutDashboard },
+    // TODO: История карточек будет добавлена позже
+    // { title: "История карточек", url: "/cards-history", group: "Инструменты", icon: LayoutDashboard },
 
     // Authentication
     { title: "Вход", url: "/sign-in", group: "Аут.", icon: Shield },

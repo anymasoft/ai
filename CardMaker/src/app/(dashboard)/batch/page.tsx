@@ -11,14 +11,15 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
-import { Copy, Download, Upload, Sparkles, CheckCircle, Clock } from "lucide-react"
+import { Copy, Download, Upload, Sparkles, CheckCircle, Clock, AlertCircle } from "lucide-react"
 import { toast } from "sonner"
+import { useEffect } from "react"
 
-const MOCK_RESULTS = [
-  { id: 1, name: "Умные часы с GPS", status: "completed" as const },
-  { id: 2, name: "Беспроводные наушники", status: "completed" as const },
-  { id: 3, name: "Спортивный рюкзак", status: "in-progress" as const },
-]
+interface BatchItem {
+  id: string
+  name: string
+  status: "queued" | "processing" | "completed" | "failed"
+}
 
 export default function BatchPage() {
   const [listInput, setListInput] = useState("")
@@ -26,19 +27,78 @@ export default function BatchPage() {
   const [marketplace, setMarketplace] = useState("ozon")
   const [style, setStyle] = useState("selling")
   const [isGenerating, setIsGenerating] = useState(false)
-  const [showResults, setShowResults] = useState(false)
+  const [batchId, setBatchId] = useState<string | null>(null)
+  const [results, setResults] = useState<BatchItem[]>([])
+  const [error, setError] = useState<string | null>(null)
 
-  const handleGenerate = () => {
+  // Polling для обновления статусов
+  useEffect(() => {
+    if (!batchId) return
+
+    const pollInterval = setInterval(async () => {
+      try {
+        const response = await fetch(`/api/batch/${batchId}`)
+        if (!response.ok) throw new Error("Ошибка при загрузке статуса")
+        const data = await response.json()
+        setResults(data.items)
+
+        // Если все завершено, остановить polling
+        if (data.items.every((item: BatchItem) => item.status === "completed" || item.status === "failed")) {
+          setIsGenerating(false)
+          clearInterval(pollInterval)
+        }
+      } catch (err) {
+        console.error("Polling error:", err)
+      }
+    }, 2000) // Опрашиваем каждые 2 сек
+
+    return () => clearInterval(pollInterval)
+  }, [batchId])
+
+  const handleGenerate = async () => {
     if (!marketplace) {
-      toast.error("Выберите маркетплейс")
+      setError("Выберите маркетплейс")
       return
     }
+
+    if (!listInput.trim() && !fileInput) {
+      setError("Введите список товаров или загрузьте файл")
+      return
+    }
+
     setIsGenerating(true)
-    setShowResults(true)
-    setTimeout(() => {
+    setError(null)
+    setResults([])
+
+    try {
+      // Парсим список товаров
+      const items = listInput
+        .split("\n")
+        .map((line) => line.trim())
+        .filter((line) => line)
+
+      const response = await fetch("/api/batch/create", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          items,
+          marketplace,
+          style,
+        }),
+      })
+
+      if (!response.ok) {
+        const data = await response.json()
+        throw new Error(data.error || "Ошибка при создании батча")
+      }
+
+      const data = await response.json()
+      setBatchId(data.batchId)
+      setResults(data.items)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Неизвестная ошибка")
       setIsGenerating(false)
-      toast.success("Готово!")
-    }, 1500)
+    }
   }
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -184,8 +244,19 @@ export default function BatchPage() {
           </TabsContent>
         </Tabs>
 
+      {/* ERROR MESSAGE */}
+      {error && (
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex items-start gap-3">
+          <AlertCircle className="h-5 w-5 text-red-600 flex-shrink-0 mt-0.5" />
+          <div>
+            <p className="text-sm font-semibold text-red-700">Ошибка</p>
+            <p className="text-xs text-red-600 mt-1">{error}</p>
+          </div>
+        </div>
+      )}
+
       {/* РЕЗУЛЬТАТЫ */}
-      {showResults && (
+      {results.length > 0 && (
         <div className="space-y-3 mt-6 pt-4 border-t">
           {/* TOOLBAR — только иконки */}
           <div className="flex gap-2 items-center">
@@ -194,7 +265,7 @@ export default function BatchPage() {
                 <button
                   onClick={() => {
                     navigator.clipboard.writeText(
-                      MOCK_RESULTS.map((r) => r.name).join("\n")
+                      results.map((r) => r.name).join("\n")
                     )
                     toast.success("Скопировано")
                   }}
@@ -237,20 +308,35 @@ export default function BatchPage() {
                 </tr>
               </thead>
               <tbody>
-                {MOCK_RESULTS.map((result) => (
+                {results.map((result) => (
                   <tr
                     key={result.id}
                     className="border-b hover:bg-muted/30 cursor-pointer transition-colors"
                   >
                     <td className="py-2 px-3 text-sm">{result.name}</td>
                     <td className="py-2 px-3 text-xs">
-                      {result.status === "completed" ? (
+                      {result.status === "completed" && (
                         <div className="flex items-center gap-1">
                           <CheckCircle className="h-4 w-4 text-green-600" />
+                          <span className="text-green-600">Готово</span>
                         </div>
-                      ) : (
+                      )}
+                      {result.status === "processing" && (
                         <div className="flex items-center gap-1">
                           <Clock className="h-4 w-4 text-blue-600 animate-spin" />
+                          <span className="text-blue-600">Обработка</span>
+                        </div>
+                      )}
+                      {result.status === "queued" && (
+                        <div className="flex items-center gap-1">
+                          <Clock className="h-4 w-4 text-gray-600" />
+                          <span className="text-gray-600">В очереди</span>
+                        </div>
+                      )}
+                      {result.status === "failed" && (
+                        <div className="flex items-center gap-1">
+                          <AlertCircle className="h-4 w-4 text-red-600" />
+                          <span className="text-red-600">Ошибка</span>
                         </div>
                       )}
                     </td>

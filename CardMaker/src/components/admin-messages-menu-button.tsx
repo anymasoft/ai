@@ -48,6 +48,10 @@ const adminItems = [
     title: "Стоп-слова",
     url: "/admin/stop-words",
   },
+  {
+    title: "System Prompts",
+    url: "/admin/system-prompts",
+  },
 ]
 
 export function AdminMessagesMenuButton() {

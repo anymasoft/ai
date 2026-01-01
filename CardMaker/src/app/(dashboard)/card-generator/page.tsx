@@ -19,32 +19,7 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible"
 import { Badge } from "@/components/ui/badge"
-import { Copy, CheckCircle, ChevronDown, Loader2, Sparkles } from "lucide-react"
-
-// Mock данные для примера результата
-const MOCK_CARD_RESULT = {
-  title: "Спортивные Умные Часы GPS водонепроницаемые - Идеально для Фитнеса",
-  description: `Профессиональные спортивные смарт-часы с встроенным GPS, идеальны для любителей фитнеса и бега.
-
-Характеристики:
-• GPS + GLONASS + Galileo для точного отслеживания маршрута
-• Мониторинг сердечного ритма 24/7 с AI анализом
-• 100+ режимов тренировок (бег, плавание, велосипед)
-• Водонепроницаемость 50м - можно использовать в бассейне
-• Батарея до 14 дней в режиме обычных часов
-• Экран AMOLED 1.4" яркий и четкий
-• Интеграция с iOS и Android
-• Вес 41г - легче чем кредитная карта
-
-Почему выбирают эти часы:
-✓ Ультраточный GPS (погрешность ±3м)
-✓ Премиум корпус из титанового сплава
-✓ Официальная гарантия 24 месяца
-✓ Быстрая доставка - в наличии
-✓ Русскоязычная техподдержка`,
-  keywords: ["спортивные часы", "смарт-часы GPS", "фитнес часы", "часы для бега", "водонепроницаемые часы"],
-  whyItWorks: "Описание содержит конкретные характеристики, которые хочет видеть покупатель. Используются стоп-слова вроде 'Идеально', 'Профессиональные'. Товар позиционируется как premium сегмент через упоминание качественных материалов и технологий.",
-}
+import { Copy, CheckCircle, ChevronDown, Loader2, Sparkles, AlertCircle } from "lucide-react"
 
 interface CardResult {
   title: string
@@ -65,29 +40,54 @@ export default function CardGeneratorPage() {
   // Generation state
   const [isGenerating, setIsGenerating] = useState(false)
   const [result, setResult] = useState<CardResult | null>(null)
+  const [error, setError] = useState<string | null>(null)
   const [copiedSection, setCopiedSection] = useState<string | null>(null)
 
   const handleGenerateCard = async () => {
     // Валидация
     if (!productDescription.trim()) {
-      alert("Заполните описание товара")
+      setError("Заполните описание товара")
       return
     }
     if (!marketplace) {
-      alert("Выберите маркетплейс")
+      setError("Выберите маркетплейс")
       return
     }
     if (!category) {
-      alert("Выберите категорию товара")
+      setError("Выберите категорию товара")
       return
     }
 
-    // Имитация создания карточки
     setIsGenerating(true)
-    setTimeout(() => {
-      setResult(MOCK_CARD_RESULT)
+    setError(null)
+    setResult(null)
+
+    try {
+      const response = await fetch("/api/generate-card", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          productDescription,
+          marketplace,
+          category,
+          style,
+          seoKeywords: seoKeywords ? seoKeywords.split(",").map((k) => k.trim()) : [],
+          competitors: competitors.filter((c) => c.trim()),
+        }),
+      })
+
+      if (!response.ok) {
+        const data = await response.json()
+        throw new Error(data.error || "Ошибка при генерации карточки")
+      }
+
+      const data = await response.json()
+      setResult(data)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Неизвестная ошибка")
+    } finally {
       setIsGenerating(false)
-    }, 1500)
+    }
   }
 
   const handleCopy = (text: string, section: string) => {
@@ -271,6 +271,17 @@ export default function CardGeneratorPage() {
             </Collapsible>
           </div>
 
+          {/* Error message */}
+          {error && (
+            <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex items-start gap-3">
+              <AlertCircle className="h-5 w-5 text-red-600 flex-shrink-0 mt-0.5" />
+              <div>
+                <p className="text-sm font-semibold text-red-700">Ошибка</p>
+                <p className="text-xs text-red-600 mt-1">{error}</p>
+              </div>
+            </div>
+          )}
+
           {/* Кнопка создания */}
           <div className="flex justify-end pt-4 border-t">
             <Button
@@ -285,7 +296,10 @@ export default function CardGeneratorPage() {
                   Создаём карточку...
                 </>
               ) : (
-                <Sparkles className="h-4 w-4" />
+                <>
+                  <Sparkles className="h-4 w-4" />
+                  Создать карточку
+                </>
               )}
             </Button>
           </div>
