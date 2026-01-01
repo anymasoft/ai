@@ -20,8 +20,8 @@ export async function GET(request: NextRequest) {
   try {
     const today = new Date().toISOString().split("T")[0]
 
-    const result = await db.execute(`
-      SELECT
+    const result = await db.execute(
+      `SELECT
         u.id,
         u.email,
         u.name,
@@ -34,10 +34,13 @@ export async function GET(request: NextRequest) {
       FROM users u
       LEFT JOIN user_usage_daily uud ON u.id = uud.userId AND uud.day = ?
       ORDER BY u.createdAt DESC
-      LIMIT 500
-    `, [today])
+      LIMIT 500`,
+      [today]
+    )
 
     const rows = Array.isArray(result) ? result : result.rows || []
+    console.log(`[GET /api/admin/users] Loaded ${rows.length} users`)
+
     const users = rows.map((row: any) => ({
       id: row.id,
       email: row.email,
