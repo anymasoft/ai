@@ -6,32 +6,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Textarea } from "@/components/ui/textarea"
 import { Badge } from "@/components/ui/badge"
 import { AlertCircle, CheckCircle2 } from "lucide-react"
+import type { ValidationIssue, CheckResult, ValidationResult } from '@/lib/ai-services/validation'
 
 type Marketplace = "ozon" | "wb"
-
-interface ValidationIssue {
-  type: 'forbidden_words' | 'grammar' | 'requirements' | 'exaggeration' | 'clarity' | 'other'
-  severity: 'error' | 'warning' | 'info'
-  message: string
-  suggestion?: string
-}
-
-interface CheckResult {
-  id: string
-  name: string
-  weight: number
-  passed: boolean
-  penaltyApplied?: number
-}
-
-interface ValidationResult {
-  isValid: boolean
-  score: number
-  issues: ValidationIssue[]
-  summary: string
-  validatedAt: string
-  checks?: CheckResult[]
-}
 
 // Получить описание оценки по проценту
 function getScoreDescription(score: number): { level: string; message: string; color: string } {

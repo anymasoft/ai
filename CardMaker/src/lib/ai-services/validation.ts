@@ -2,14 +2,33 @@
 
 import { callOpenAI } from '@/lib/openai-client'
 import { buildValidationPrompt } from '@/lib/prompts/builders'
-import { generateCheckBreakdown, CheckResult } from '@/lib/validation/check-breakdown'
-import type { ValidationIssue } from '@/lib/validation/check-breakdown'
 
 /**
- * Переэкспортируем типы для удобства импорта
+ * Проблема, найденная при валидации
  */
-export type { ValidationIssue, CheckResult } from '@/lib/validation/check-breakdown'
-export { generateCheckBreakdown } from '@/lib/validation/check-breakdown'
+export interface ValidationIssue {
+  type:
+    | 'forbidden_words'
+    | 'grammar'
+    | 'requirements'
+    | 'exaggeration'
+    | 'clarity'
+    | 'other'
+  severity: 'error' | 'warning' | 'info'
+  message: string
+  suggestion?: string
+}
+
+/**
+ * Результат проверки (для детализации оценки)
+ */
+export interface CheckResult {
+  id: string
+  name: string
+  weight: number
+  passed: boolean
+  penaltyApplied?: number
+}
 
 /**
  * Результат валидации описания
