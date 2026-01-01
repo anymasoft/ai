@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
@@ -16,7 +16,6 @@ interface StopWordsPreset {
   name: string
   label: string
   description: string
-  defaultValue: string
 }
 
 const STOP_WORDS_PRESETS: StopWordsPreset[] = [
@@ -25,80 +24,54 @@ const STOP_WORDS_PRESETS: StopWordsPreset[] = [
     name: "Маркетинговые слова",
     label: "Запрещённые маркетинговые слова",
     description: "Слова с преувеличением и броскими утверждениями, которые маркетплейсы не одобряют",
-    defaultValue: `уникальный
-лучший
-самый
-идеальный
-только у нас
-исключительно
-прямо сейчас
-не пропустите
-гарантированно
-премиум
-люкс
-топ
-хит
-мега
-супер
-невероятный
-чудо`,
   },
   {
     id: "health",
     name: "Запрещённые обещания",
     label: "Медицинские и здоровье обещания",
     description: "Слова, обещающие медицинский эффект, излечение или улучшение здоровья",
-    defaultValue: `лечит
-исцеляет
-избавляет
-устраняет боль
-помогает похудеть
-ускоряет метаболизм
-повышает иммунитет
-избавляет от болезни
-медицинский эффект
-излечение
-панацея
-целебный
-волшебный
-чудодейственный`,
   },
   {
     id: "prohibited",
     name: "Общие запреты",
     label: "Общие запрещённые слова",
     description: "Слова, которые маркетплейсы запрещают в описаниях категорически",
-    defaultValue: `оригинал
-поддельный
-подделка
-контрафакт
-скидка только сегодня
-успейте купить
-свяжитесь с нами
-позвоните сейчас
-ссылка на сайт
-go to
-кликните
-перейдите по ссылке`,
   },
   {
     id: "custom",
     name: "Пользовательский список",
     label: "Кастомные стоп-слова",
     description: "Добавь сюда свои слова, которые не должны быть в описаниях",
-    defaultValue: ``,
   },
 ]
 
 export default function StopWordsPage() {
-  const [stopWords, setStopWords] = useState<Record<string, string>>(
-    STOP_WORDS_PRESETS.reduce((acc, preset) => {
-      acc[preset.id] = preset.defaultValue
-      return acc
-    }, {} as Record<string, string>)
-  )
+  const [stopWords, setStopWords] = useState<Record<string, string>>({})
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
+
+  // Загрузить стоп-слова из БД при монтировании
+  useEffect(() => {
+    const fetchStopWords = async () => {
+      try {
+        const response = await fetch("/api/admin/config/stop-words")
+        if (response.ok) {
+          const data = await response.json()
+          const wordsMap: Record<string, string> = {}
+          data.stopWords.forEach((sw: any) => {
+            if (!sw.marketplace && STOP_WORDS_PRESETS.find(p => p.id === sw.category)) {
+              wordsMap[sw.category] = sw.words || ""
+            }
+          })
+          setStopWords(wordsMap)
+        }
+      } catch (error) {
+        console.error("Ошибка при загрузке стоп-слов:", error)
+      }
+    }
+
+    fetchStopWords()
+  }, [])
 
   const handleStopWordsChange = (presetId: string, value: string) => {
     setStopWords((prev) => ({
@@ -109,20 +82,40 @@ export default function StopWordsPage() {
 
   const handleSave = async () => {
     setSaving(true)
-    // Имитация сохранения
-    setTimeout(() => {
+    try {
+      const response = await fetch("/api/admin/config/stop-words", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          stopWords: STOP_WORDS_PRESETS.map((preset) => ({
+            id: `sw_${preset.id}`,
+            marketplace: null,
+            category: preset.id,
+            words: stopWords[preset.id] || "",
+          })),
+        }),
+      })
+
+      if (response.ok) {
+        setSaved(true)
+        toast.success("Стоп-слова сохранены")
+        setTimeout(() => setSaved(false), 3000)
+      } else {
+        toast.error("Ошибка при сохранении")
+      }
+    } catch (error) {
+      console.error("Ошибка при сохранении стоп-слов:", error)
+      toast.error("Ошибка при сохранении")
+    } finally {
       setSaving(false)
-      setSaved(true)
-      toast.success("Стоп-слова сохранены")
-      setTimeout(() => setSaved(false), 3000)
-    }, 500)
+    }
   }
 
   const handleReset = (presetId: string) => {
     const preset = STOP_WORDS_PRESETS.find((p) => p.id === presetId)
     if (preset) {
-      handleStopWordsChange(presetId, preset.defaultValue)
-      toast.info(`Список "${preset.name}" восстановлен`)
+      handleStopWordsChange(presetId, "")
+      toast.info(`Список "${preset.name}" очищен`)
     }
   }
 
