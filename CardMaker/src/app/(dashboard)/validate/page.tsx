@@ -6,19 +6,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Textarea } from "@/components/ui/textarea"
 import { Badge } from "@/components/ui/badge"
 import { AlertCircle, CheckCircle2 } from "lucide-react"
-import { generateCheckBreakdown } from '@/lib/validation/check-breakdown'
-import type { ValidationIssue, CheckResult } from '@/lib/validation/check-breakdown'
+import type { ValidationIssue, CheckResult, ValidationResult } from '@/lib/ai-services/validation'
 
 type Marketplace = "ozon" | "wb"
-
-interface ValidationResult {
-  isValid: boolean
-  score: number
-  issues: ValidationIssue[]
-  summary: string
-  validatedAt: string
-  checks?: CheckResult[]
-}
 
 // Получить описание оценки по проценту
 function getScoreDescription(score: number): { level: string; message: string; color: string } {
@@ -77,12 +67,7 @@ export default function ValidatePage() {
       const result = await response.json()
       // API возвращает { success: true, data: ValidationResult }
       if (result.success && result.data) {
-        // Генерируем breakdown проверок если его нет
-        const validationData = {
-          ...result.data,
-          checks: result.data.checks || generateCheckBreakdown(result.data.issues || []),
-        }
-        setValidation(validationData)
+        setValidation(result.data)
       } else {
         throw new Error("Неверный формат ответа от API")
       }
