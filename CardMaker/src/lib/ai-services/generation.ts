@@ -95,7 +95,7 @@ export const generateProductCard = async (params: {
       additionalNotes: additionalNotes?.trim(),
     })
 
-    // Вызываем OpenAI API
+    // Вызываем OpenAI API (модель берётся из OPENAI_MODEL или по умолчанию gpt-4.1-mini)
     const response = await callOpenAI(
       [
         {
@@ -107,7 +107,7 @@ export const generateProductCard = async (params: {
           content: userPrompt,
         },
       ],
-      'gpt-4.1-mini',
+      undefined, // модель берётся из env
       0.7,
       2000
     )

@@ -72,7 +72,7 @@ export const validateProductDescription = async (params: {
       marketplace,
     })
 
-    // Вызываем OpenAI API для валидации
+    // Вызываем OpenAI API для валидации (модель берётся из OPENAI_MODEL или по умолчанию gpt-4.1-mini)
     const response = await callOpenAI(
       [
         {
@@ -84,7 +84,7 @@ export const validateProductDescription = async (params: {
           content: userPrompt,
         },
       ],
-      'gpt-4.1-mini',
+      undefined, // модель берётся из env
       0.5, // Более низкая температура для консистентности JSON
       1500
     )

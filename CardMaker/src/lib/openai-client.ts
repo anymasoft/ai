@@ -25,17 +25,17 @@ export const getOpenAIClient = (): OpenAI => {
   return openaiClient
 }
 
-// Конфигурация моделей
-export const OPENAI_MODELS = {
-  // Основная модель для генерации и валидации
-  GENERATION: 'gpt-4.1-mini',
-  // Альтернатива если нужна старая модель
-  LEGACY: 'gpt-3.5-turbo',
-} as const
-
-export type OpenAIModel = typeof OPENAI_MODELS[keyof typeof OPENAI_MODELS]
+/**
+ * Получить модель OpenAI из переменной окружения OPENAI_MODEL
+ * По умолчанию используется gpt-4.1-mini
+ */
+export const getOpenAIModel = (): string => {
+  return process.env.OPENAI_MODEL || 'gpt-4.1-mini'
+}
 
 // Типы для ответов OpenAI
+export type OpenAIModel = string
+
 export interface ChatCompletionMessage {
   role: 'system' | 'user' | 'assistant'
   content: string
@@ -56,15 +56,16 @@ export interface ChatCompletionResponse {
  */
 export const callOpenAI = async (
   messages: ChatCompletionMessage[],
-  model: OpenAIModel = OPENAI_MODELS.GENERATION,
+  model?: OpenAIModel,
   temperature: number = 0.7,
   maxTokens: number = 2000
 ): Promise<ChatCompletionResponse> => {
   try {
     const client = getOpenAIClient()
+    const resolvedModel = model || getOpenAIModel()
 
     const response = await client.chat.completions.create({
-      model,
+      model: resolvedModel,
       messages: messages as any,
       temperature,
       max_tokens: maxTokens,
