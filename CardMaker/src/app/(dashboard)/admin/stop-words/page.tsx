@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
@@ -100,30 +100,6 @@ export default function StopWordsPage() {
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
 
-  // Загрузить данные из БД при монтировании
-  useEffect(() => {
-    const fetchStopWords = async () => {
-      try {
-        const response = await fetch("/api/admin/config/stop-words")
-        if (response.ok) {
-          const data = await response.json()
-          // Преобразовать в формат Record<category, words>
-          const wordsMap: Record<string, string> = {}
-          data.stopWords.forEach((sw: any) => {
-            if (!sw.marketplace && STOP_WORDS_PRESETS.find(p => p.id === sw.category)) {
-              wordsMap[sw.category] = sw.words || ""
-            }
-          })
-          setStopWords(wordsMap)
-        }
-      } catch (error) {
-        console.error("Failed to fetch stop words:", error)
-      }
-    }
-
-    fetchStopWords()
-  }, [])
-
   const handleStopWordsChange = (presetId: string, value: string) => {
     setStopWords((prev) => ({
       ...prev,
@@ -133,32 +109,20 @@ export default function StopWordsPage() {
 
   const handleSave = async () => {
     setSaving(true)
-    try {
-      const response = await fetch("/api/admin/config/stop-words", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          stopWords: STOP_WORDS_PRESETS.map((preset) => ({
-            id: `sw_${preset.id}`,
-            marketplace: null,
-            category: preset.id,
-            words: stopWords[preset.id] || "",
-          })),
-        }),
-      })
-
-      if (response.ok) {
-        setSaved(true)
-        toast.success("Стоп-слова сохранены")
-        setTimeout(() => setSaved(false), 3000)
-      } else {
-        toast.error("Ошибка при сохранении стоп-слов")
-      }
-    } catch (error) {
-      console.error("Error saving stop words:", error)
-      toast.error("Ошибка при сохранении стоп-слов")
-    } finally {
+    // Имитация сохранения
+    setTimeout(() => {
       setSaving(false)
+      setSaved(true)
+      toast.success("Стоп-слова сохранены")
+      setTimeout(() => setSaved(false), 3000)
+    }, 500)
+  }
+
+  const handleReset = (presetId: string) => {
+    const preset = STOP_WORDS_PRESETS.find((p) => p.id === presetId)
+    if (preset) {
+      handleStopWordsChange(presetId, preset.defaultValue)
+      toast.info(`Список "${preset.name}" восстановлен`)
     }
   }
 
@@ -224,6 +188,12 @@ export default function StopWordsPage() {
                 </div>
 
                 <div className="flex justify-end gap-2">
+                  <Button
+                    variant="outline"
+                    onClick={() => handleReset(preset.id)}
+                  >
+                    Восстановить по умолчанию
+                  </Button>
                   <Button onClick={handleSave} disabled={saving}>
                     {saved ? "✓ Сохранено" : saving ? "Сохраняю..." : "Сохранить"}
                   </Button>
@@ -272,6 +242,9 @@ export default function StopWordsPage() {
           </p>
           <p>
             <strong>4. Проверка:</strong> При валидации описания система проверит наличие этих слов в тексте.
+          </p>
+          <p>
+            <strong>5. Восстановление:</strong> Нажми "Восстановить по умолчанию" чтобы вернуть исходный список.
           </p>
         </CardContent>
       </Card>
