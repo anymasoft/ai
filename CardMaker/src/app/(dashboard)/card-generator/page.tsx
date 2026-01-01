@@ -19,7 +19,7 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible"
 import { Badge } from "@/components/ui/badge"
-import { Copy, CheckCircle, ChevronDown, Loader2 } from "lucide-react"
+import { Copy, CheckCircle, ChevronDown, Loader2, Sparkles } from "lucide-react"
 
 // Mock данные для примера результата
 const MOCK_CARD_RESULT = {
@@ -285,7 +285,7 @@ export default function CardGeneratorPage() {
                   Создаём карточку...
                 </>
               ) : (
-                "Создать карточку"
+                <Sparkles className="h-4 w-4" />
               )}
             </Button>
           </div>
