@@ -16,7 +16,6 @@ interface StopWordsPreset {
   name: string
   label: string
   description: string
-  defaultValue: string
 }
 
 const STOP_WORDS_PRESETS: StopWordsPreset[] = [
@@ -25,68 +24,24 @@ const STOP_WORDS_PRESETS: StopWordsPreset[] = [
     name: "Маркетинговые слова",
     label: "Запрещённые маркетинговые слова",
     description: "Слова с преувеличением и броскими утверждениями, которые маркетплейсы не одобряют",
-    defaultValue: `уникальный
-лучший
-самый
-идеальный
-только у нас
-исключительно
-прямо сейчас
-не пропустите
-гарантированно
-премиум
-люкс
-топ
-хит
-мега
-супер
-невероятный
-чудо`,
   },
   {
     id: "health",
     name: "Запрещённые обещания",
     label: "Медицинские и здоровье обещания",
     description: "Слова, обещающие медицинский эффект, излечение или улучшение здоровья",
-    defaultValue: `лечит
-исцеляет
-избавляет
-устраняет боль
-помогает похудеть
-ускоряет метаболизм
-повышает иммунитет
-избавляет от болезни
-медицинский эффект
-излечение
-панацея
-целебный
-волшебный
-чудодейственный`,
   },
   {
     id: "prohibited",
     name: "Общие запреты",
     label: "Общие запрещённые слова",
     description: "Слова, которые маркетплейсы запрещают в описаниях категорически",
-    defaultValue: `оригинал
-поддельный
-подделка
-контрафакт
-скидка только сегодня
-успейте купить
-свяжитесь с нами
-позвоните сейчас
-ссылка на сайт
-go to
-кликните
-перейдите по ссылке`,
   },
   {
     id: "custom",
     name: "Пользовательский список",
     label: "Кастомные стоп-слова",
     description: "Добавь сюда свои слова, которые не должны быть в описаниях",
-    defaultValue: ``,
   },
 ]
 
@@ -159,8 +114,8 @@ export default function StopWordsPage() {
   const handleReset = (presetId: string) => {
     const preset = STOP_WORDS_PRESETS.find((p) => p.id === presetId)
     if (preset) {
-      handleStopWordsChange(presetId, preset.defaultValue)
-      toast.info(`Список "${preset.name}" восстановлен`)
+      handleStopWordsChange(presetId, "")
+      toast.info(`Список "${preset.name}" очищен`)
     }
   }
 
