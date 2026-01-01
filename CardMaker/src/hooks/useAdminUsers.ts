@@ -10,8 +10,7 @@ interface AdminUser {
   expiresAt: number | null
   createdAt: number
   disabled: boolean
-  analysesUsed: number
-  scriptsUsed: number
+  cardsUsed?: number
   lastActive: number | null
 }
 

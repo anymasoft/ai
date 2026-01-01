@@ -29,8 +29,7 @@ export async function GET(request: NextRequest) {
         u.expiresAt,
         u.createdAt,
         COALESCE(u.disabled, 0) as disabled,
-        COALESCE(uud.analysesUsed, 0) as analysesUsed,
-        COALESCE(uud.scriptsUsed, 0) as scriptsUsed
+        COALESCE(uud.cardsUsed, 0) as cardsUsed
       FROM users u
       LEFT JOIN user_usage_daily uud ON u.id = uud.userId AND uud.day = ?
       ORDER BY u.createdAt DESC
@@ -49,8 +48,7 @@ export async function GET(request: NextRequest) {
       expiresAt: row.expiresAt || null,
       createdAt: row.createdAt || 0,
       disabled: row.disabled === 1,
-      analysesUsed: row.analysesUsed || 0,
-      scriptsUsed: row.scriptsUsed || 0,
+      cardsUsed: row.cardsUsed || 0,
       lastActive: null,
     }))
 

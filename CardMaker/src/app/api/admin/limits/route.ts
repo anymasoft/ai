@@ -32,7 +32,7 @@ export async function GET(request: NextRequest) {
 
         // Get usage for current month
         const usageResult = await db.execute(
-          `SELECT COALESCE(SUM(scriptsUsed), 0) as totalUsed
+          `SELECT COALESCE(SUM(cardsUsed), 0) as totalUsed
            FROM user_usage_daily
            WHERE userId = ? AND day LIKE ?`,
           [row.userId, monthPrefix + '%']
