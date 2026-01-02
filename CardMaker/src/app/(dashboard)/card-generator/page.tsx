@@ -82,13 +82,15 @@ export default function CardGeneratorPage() {
         }),
       })
 
+      const data = await response.json()
+
+      // Проверяем ошибку (HTTP != 2xx)
       if (!response.ok) {
-        const data = await response.json()
-        throw new Error(data.error || "Ошибка при генерации карточки")
+        const errorMsg = data.error?.message || data.error || "Ошибка при генерации карточки"
+        throw new Error(errorMsg)
       }
 
-      const data = await response.json()
-      // API возвращает { success: true, data }
+      // Проверяем успех (HTTP 200)
       if (data.success && data.data) {
         setResult(data.data)
       } else {
