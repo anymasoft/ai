@@ -1,10 +1,12 @@
-import { getNodeDb } from './db'
-import { generateProductCard } from './ai-services/generation'
-
 /**
- * Worker для обработки batch jobs из БД
- * Простой loop без параллелизма - 1 поток, обработка по одному
+ * Standalone batch worker process
+ * Запускается отдельно: npm run worker:batch или tsx scripts/batch-worker.ts
+ *
+ * ⚠️ НИКОГДА не импортируй этот файл в Next.js коде
  */
+
+import { getNodeDb } from '../src/lib/db-node'
+import { generateProductCard } from '../src/lib/ai-services/generation'
 
 let isRunning = false
 
@@ -18,7 +20,7 @@ interface JobRecord {
  * Запустить worker - обрабатывает jobs из очереди
  * Должен работать как долгоживущий процесс
  */
-export async function startBatchWorker() {
+async function startBatchWorker() {
   if (isRunning) {
     console.log('[BatchWorker] Already running')
     return
@@ -141,14 +143,29 @@ async function processOneJob(): Promise<void> {
 /**
  * Остановить worker
  */
-export function stopBatchWorker() {
+function stopBatchWorker() {
   isRunning = false
   console.log('[BatchWorker] Stopping')
 }
 
 /**
- * Проверить, работает ли worker
+ * MAIN: Start the worker
  */
-export function isBatchWorkerRunning(): boolean {
-  return isRunning
-}
+console.log('[BatchWorker] Process starting...')
+startBatchWorker().catch((err) => {
+  console.error('[BatchWorker] Fatal error:', err)
+  process.exit(1)
+})
+
+// Graceful shutdown handlers
+process.on('SIGTERM', () => {
+  console.log('[BatchWorker] SIGTERM received, stopping...')
+  stopBatchWorker()
+  setTimeout(() => process.exit(0), 5000)
+})
+
+process.on('SIGINT', () => {
+  console.log('[BatchWorker] SIGINT received, stopping...')
+  stopBatchWorker()
+  setTimeout(() => process.exit(0), 5000)
+})
