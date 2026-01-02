@@ -22,8 +22,8 @@ interface User {
   expiresAt: number | null
   createdAt: number
   disabled: boolean
-  total_generations: number
-  used_generations: number
+  generation_balance: number
+  generation_used: number
 }
 
 const PAID_PLANS = ["basic", "professional", "enterprise"]

@@ -13,19 +13,19 @@ export async function GET(request: NextRequest) {
 
   try {
     const usersResult = await db.execute(
-      `SELECT id, email, total_generations, used_generations FROM users ORDER BY email ASC`
+      `SELECT id, email, generation_balance, generation_used FROM users ORDER BY email ASC`
     )
     const users = Array.isArray(usersResult) ? usersResult : usersResult.rows || []
 
-    const usages = users.map((user: any) => ({
+    const balances = users.map((user: any) => ({
       userId: user.id,
       email: user.email,
-      total_generations: user.total_generations || 0,
-      used_generations: user.used_generations || 0,
-      remaining_generations: Math.max(0, (user.total_generations || 0) - (user.used_generations || 0)),
+      generation_balance: user.generation_balance || 0,
+      generation_used: user.generation_used || 0,
+      remaining: Math.max(0, (user.generation_balance || 0) - (user.generation_used || 0)),
     }))
 
-    return NextResponse.json({ usages })
+    return NextResponse.json({ balances })
   } catch (error) {
     console.error('[GET /api/admin/limits] Error:', error)
     return NextResponse.json(
