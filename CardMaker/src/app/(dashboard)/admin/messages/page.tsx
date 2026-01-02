@@ -67,7 +67,7 @@ export default function AdminMessagesPage() {
   async function markAsRead(messageId: string) {
     try {
       setMarkingAsRead(messageId)
-      const res = await fetch(`/api/admin/messages/${messageId}/read`, {
+      const res = await fetch(`/api/admin/messages/by-id/read-marker?id=${messageId}`, {
         method: "PATCH",
       })
       if (!res.ok) throw new Error("Failed to mark as read")
@@ -90,7 +90,7 @@ export default function AdminMessagesPage() {
   async function deleteMessage(messageId: string) {
     try {
       setDeleting(messageId)
-      const res = await fetch(`/api/admin/messages/${messageId}`, {
+      const res = await fetch(`/api/admin/messages/by-id?id=${messageId}`, {
         method: "DELETE",
       })
       if (!res.ok) throw new Error("Failed to delete message")
@@ -247,7 +247,7 @@ export default function AdminMessagesPage() {
                     <TableRow
                       key={message.id}
                       className="cursor-pointer hover:bg-muted/50"
-                      onClick={() => router.push(`/admin/messages/${message.id}`)}
+                      onClick={() => router.push(`/admin/messages/by-id?id=${message.id}`)}
                     >
                       <TableCell className="font-medium text-sm">
                         <div className="truncate min-w-0">{message.firstName} {message.lastName}</div>

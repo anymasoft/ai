@@ -110,7 +110,7 @@ export default function AdminPaymentsPage() {
   async function deletePayment(paymentId: number) {
     try {
       setDeletingId(paymentId)
-      const res = await fetch(`/api/admin/payments/${paymentId}`, {
+      const res = await fetch(`/api/admin/payments/by-id?id=${paymentId}`, {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
       })

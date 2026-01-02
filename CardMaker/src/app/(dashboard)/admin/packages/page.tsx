@@ -87,7 +87,7 @@ export default function AdminPackagesPage() {
         return;
       }
 
-      const response = await fetch(`/api/admin/packages/${editing.key}`, {
+      const response = await fetch(`/api/admin/packages/by-key?key=${editing.key}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

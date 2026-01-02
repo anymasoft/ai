@@ -1,6 +1,6 @@
 "use client"
 
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { Badge } from "@/components/ui/badge"
 import {
   Tooltip,
@@ -11,12 +11,6 @@ import {
 import { Copy, Download, CheckCircle, ArrowLeft, RefreshCw } from "lucide-react"
 import { toast } from "sonner"
 import { useState } from "react"
-
-interface CardDetailsProps {
-  params: {
-    id: string
-  }
-}
 
 // Mock карточка товара
 const MOCK_CARD = {
@@ -47,8 +41,10 @@ const MOCK_CARD = {
 ✓ Русскоязычная техподдержка`,
 }
 
-export default function CardDetailsPage({ params }: CardDetailsProps) {
+export default function CardDetailsPage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const cardId = searchParams.get('id') || MOCK_CARD.id
   const [copiedSection, setCopiedSection] = useState<string | null>(null)
   const [description, setDescription] = useState(MOCK_CARD.description)
 

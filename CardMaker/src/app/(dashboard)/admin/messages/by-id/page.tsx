@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { useRouter, useParams } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Loader2, ArrowLeft, Mail } from "lucide-react"
@@ -23,8 +23,8 @@ interface Message {
 
 export default function MessageDetailPage() {
   const router = useRouter()
-  const params = useParams()
-  const messageId = params.id as string
+  const searchParams = useSearchParams()
+  const messageId = searchParams.get('id') || ''
 
   const [message, setMessage] = useState<Message | null>(null)
   const [loading, setLoading] = useState(true)
@@ -37,7 +37,7 @@ export default function MessageDetailPage() {
   async function fetchMessage() {
     try {
       setLoading(true)
-      const res = await fetch(`/api/admin/messages/${messageId}`)
+      const res = await fetch(`/api/admin/messages/by-id?id=${messageId}`)
       if (!res.ok) throw new Error("Failed to fetch message")
       const data = await res.json()
       setMessage(data.message)
@@ -57,7 +57,7 @@ export default function MessageDetailPage() {
   async function markAsRead() {
     try {
       setMarkingAsRead(true)
-      const res = await fetch(`/api/admin/messages/${messageId}/read`, {
+      const res = await fetch(`/api/admin/messages/by-id/read-marker?id=${messageId}`, {
         method: "PATCH",
       })
       if (!res.ok) throw new Error("Failed to mark as read")

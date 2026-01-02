@@ -44,7 +44,7 @@ export default function BatchPage() {
 
     const pollInterval = setInterval(async () => {
       try {
-        const response = await fetch(`/api/batch/${batchId}`)
+        const response = await fetch(`/api/batch/by-id?id=${batchId}`)
         if (!response.ok) throw new Error("Ошибка при загрузке статуса")
         const data = await response.json()
         setResults(data.items)
