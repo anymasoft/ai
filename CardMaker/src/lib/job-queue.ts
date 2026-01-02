@@ -74,28 +74,36 @@ class JobQueue {
   }
 
   /**
-   * Начать обработку очереди
+   * Начать обработку очереди (долгоживущий обработчик)
+   * Должен работать всё время жизни сервера
    */
   async start() {
-    while (this.queue.length > 0 || this.processing.size > 0) {
-      // Заполняем обработчиков если есть место
-      while (this.queue.length > 0 && this.processing.size < this.concurrency) {
-        const jobId = this.queue.shift()!
-        const job = this.jobs.get(jobId)!
+    // Долгоживущий цикл обработки задач
+    // Проверяет очередь каждые 100ms
+    while (true) {
+      try {
+        // Заполняем обработчиков если есть место
+        while (this.queue.length > 0 && this.processing.size < this.concurrency) {
+          const jobId = this.queue.shift()!
+          const job = this.jobs.get(jobId)!
 
-        this.processing.add(jobId)
-        job.status = "processing"
-        job.startedAt = Date.now()
+          this.processing.add(jobId)
+          job.status = "processing"
+          job.startedAt = Date.now()
 
-        // Обработка в фоне (не await)
-        this.processJob(jobId).catch((err) => {
-          console.error(`Job ${jobId} error:`, err)
-        })
-      }
+          // Обработка в фоне (не await)
+          this.processJob(jobId).catch((err) => {
+            console.error(`Job ${jobId} error:`, err)
+          })
+        }
 
-      // Ждём немного перед следующей проверкой
-      if (this.processing.size > 0) {
+        // Ждём перед следующей проверкой
+        // Это позволяет CPU отдохнуть и принимать новые задачи
         await new Promise((resolve) => setTimeout(resolve, 100))
+      } catch (error) {
+        console.error("Queue processor error:", error)
+        // Продолжаем даже при ошибке
+        await new Promise((resolve) => setTimeout(resolve, 1000))
       }
     }
   }

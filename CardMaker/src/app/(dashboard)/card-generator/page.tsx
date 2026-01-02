@@ -55,15 +55,29 @@ export default function CardGeneratorPage() {
     if (!jobId) return
 
     const pollJobStatus = async () => {
+      const url = `/api/jobs/${jobId}`
+      console.log('[pollJobStatus] Polling:', { jobId, url })
+
       try {
-        const response = await fetch(`/api/jobs/${jobId}`)
+        const response = await fetch(url)
+
         if (!response.ok) {
-          setError("Ошибка при получении статуса задачи")
+          const text = await response.text()
+          console.error('[pollJobStatus] HTTP error:', { status: response.status, text })
+          setError(`Ошибка получения статуса (HTTP ${response.status})`)
           setIsGenerating(false)
           return
         }
 
-        const jobData = await response.json()
+        let jobData
+        try {
+          jobData = await response.json()
+        } catch (jsonErr) {
+          console.error('[pollJobStatus] JSON parse error:', jsonErr, { response })
+          setError("Неверный формат ответа от сервера")
+          setIsGenerating(false)
+          return
+        }
 
         if (jobData.status === "completed") {
           setResult(jobData.result)
@@ -76,8 +90,9 @@ export default function CardGeneratorPage() {
         }
         // Если queued или processing - продолжаем polling
       } catch (err) {
-        console.error("Polling error:", err)
-        // При ошибке сети продолжаем polling
+        console.error("[pollJobStatus] Network/fetch error:", { error: err, jobId, message: err instanceof Error ? err.message : "unknown" })
+        // При сетевой ошибке продолжаем polling (это может быть временная потеря сети)
+        // Не показываем ошибку пользователю - очередь продолжает работать
       }
     }
 
