@@ -23,6 +23,7 @@ export default function AdminUsersPage() {
   const [loading, setLoading] = useState(true)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editBalance, setEditBalance] = useState<number>(0)
+  const [editUsed, setEditUsed] = useState<number>(0)
   const [savingId, setSavingId] = useState<string | null>(null)
   const [filterEmail, setFilterEmail] = useState("")
 
@@ -45,21 +46,21 @@ export default function AdminUsersPage() {
     }
   }
 
-  async function saveBalance(userId: string, newBalance: number) {
+  async function saveUserValues(userId: string) {
     try {
       setSavingId(userId)
       const res = await fetch("/api/admin/users", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userId, generation_balance: newBalance }),
+        body: JSON.stringify({ userId, generation_balance: editBalance, generation_used: editUsed }),
       })
-      if (!res.ok) throw new Error("Failed to update balance")
-      toast.success("Balance updated")
+      if (!res.ok) throw new Error("Failed to update")
+      toast.success("User values updated")
       setEditingId(null)
       fetchUsers()
     } catch (error) {
       console.error("Error:", error)
-      toast.error("Failed to update balance")
+      toast.error("Failed to update")
     } finally {
       setSavingId(null)
     }
@@ -149,18 +150,18 @@ export default function AdminUsersPage() {
                     </TableCell>
                     <TableCell>
                       {editingId === user.id ? (
-                        <div className="flex gap-2">
+                        <div className="flex gap-1">
                           <Input
                             type="number"
                             min="0"
                             value={editBalance}
                             onChange={(e) => setEditBalance(parseInt(e.target.value) || 0)}
-                            className="w-24"
+                            className="w-20"
                           />
                           <Button
                             size="sm"
                             variant="default"
-                            onClick={() => saveBalance(user.id, editBalance)}
+                            onClick={() => saveUserValues(user.id)}
                             disabled={savingId === user.id}
                           >
                             <Check className="h-4 w-4" />
@@ -179,13 +180,35 @@ export default function AdminUsersPage() {
                           onClick={() => {
                             setEditingId(user.id)
                             setEditBalance(user.generation_balance)
+                            setEditUsed(user.generation_used)
                           }}
                         >
                           {user.generation_balance}
                         </div>
                       )}
                     </TableCell>
-                    <TableCell>{user.generation_used}</TableCell>
+                    <TableCell>
+                      {editingId === user.id ? (
+                        <Input
+                          type="number"
+                          min="0"
+                          value={editUsed}
+                          onChange={(e) => setEditUsed(parseInt(e.target.value) || 0)}
+                          className="w-20"
+                        />
+                      ) : (
+                        <div
+                          className="cursor-pointer hover:bg-muted p-2 rounded"
+                          onClick={() => {
+                            setEditingId(user.id)
+                            setEditBalance(user.generation_balance)
+                            setEditUsed(user.generation_used)
+                          }}
+                        >
+                          {user.generation_used}
+                        </div>
+                      )}
+                    </TableCell>
                     <TableCell className="text-sm">
                       {formatDate(user.createdAt)}
                     </TableCell>
