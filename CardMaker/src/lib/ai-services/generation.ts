@@ -249,6 +249,7 @@ const getLimitForPlan = async (plan: string): Promise<number> => {
 /**
  * Проверить, есть ли у пользователя лимит для генерации
  * (интеграция с системой лимитов из БД)
+ * Проверяет per-user override сначала, потом глобальный лимит
  */
 const checkUserGenerationLimit = async (userId: string): Promise<boolean> => {
   try {
@@ -267,9 +268,27 @@ const checkUserGenerationLimit = async (userId: string): Promise<boolean> => {
     }
 
     const plan = userRows[0].plan || 'free'
+    const limitKey = `single_daily_limit_${plan}`
 
-    // Получаем лимит для тарифа из БД
-    const dailyLimit = await getLimitForPlan(plan)
+    // Сначала проверяем per-user override в user_limits
+    let dailyLimit = 0
+    try {
+      const userLimitResult = await db.execute(
+        `SELECT value FROM user_limits WHERE userId = ? AND key = ? LIMIT 1`,
+        [userId, limitKey]
+      )
+      const userLimitRows = Array.isArray(userLimitResult) ? userLimitResult : userLimitResult.rows || []
+      if (userLimitRows.length > 0) {
+        dailyLimit = userLimitRows[0].value || 0
+      }
+    } catch (e) {
+      // таблица user_limits может не существовать, продолжаем
+    }
+
+    // Если per-user override не найден, берем глобальный лимит
+    if (dailyLimit === 0) {
+      dailyLimit = await getLimitForPlan(plan)
+    }
 
     // Получаем текущее использование за день
     const usageResult = await db.execute(

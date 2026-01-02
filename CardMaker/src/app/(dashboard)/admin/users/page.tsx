@@ -38,6 +38,10 @@ export default function AdminUsersPage() {
   const [disableAction, setDisableAction] = useState<"disable" | "enable">("disable")
   const [showExtendDialog, setShowExtendDialog] = useState(false)
   const [showCancelDialog, setShowCancelDialog] = useState(false)
+  const [showManageLimitsDialog, setShowManageLimitsDialog] = useState(false)
+  const [limitsAction, setLimitsAction] = useState<"set" | "add" | "reset">("set")
+  const [limitsKey, setLimitsKey] = useState("")
+  const [limitsValue, setLimitsValue] = useState("")
   const [filterEmail, setFilterEmail] = useState("")
   const [filterPlan, setFilterPlan] = useState("")
   const [filterStatus, setFilterStatus] = useState("")
@@ -94,6 +98,48 @@ export default function AdminUsersPage() {
     } catch (error) {
       console.error("Error:", error)
       toast.error("Failed to reset limits")
+    }
+  }
+
+  async function manageLimits(userId: string) {
+    try {
+      if (!limitsKey) {
+        toast.error("Limit key is required")
+        return
+      }
+
+      const payload: any = { userId, key: limitsKey, action: limitsAction }
+
+      if (limitsAction !== "reset") {
+        const value = parseInt(limitsValue, 10)
+        if (isNaN(value) || value < 0) {
+          toast.error("Value must be a non-negative number")
+          return
+        }
+        payload.value = value
+      }
+
+      const res = await fetch("/api/admin/users/limits", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      })
+
+      if (!res.ok) {
+        const error = await res.json()
+        throw new Error(error.error || "Failed to manage limits")
+      }
+
+      const result = await res.json()
+      toast.success(result.message || "Limit updated")
+      setShowManageLimitsDialog(false)
+      setLimitsKey("")
+      setLimitsValue("")
+      setLimitsAction("set")
+      refresh()
+    } catch (error) {
+      console.error("Error:", error)
+      toast.error(error instanceof Error ? error.message : "Failed to manage limits")
     }
   }
 
@@ -469,6 +515,110 @@ export default function AdminUsersPage() {
                                 </div>
                               </AlertDialogContent>
                             </AlertDialog>
+
+                            <Dialog open={showManageLimitsDialog && selectedUser === user.id} onOpenChange={setShowManageLimitsDialog}>
+                              <DialogTrigger asChild>
+                                <DropdownMenuItem
+                                  onSelect={(e) => {
+                                    e.preventDefault()
+                                    setSelectedUser(user.id)
+                                    setLimitsAction("set")
+                                    setLimitsKey("")
+                                    setLimitsValue("")
+                                    setShowManageLimitsDialog(true)
+                                  }}
+                                >
+                                  Manage Limits
+                                </DropdownMenuItem>
+                              </DialogTrigger>
+                              <DialogContent className="max-w-md">
+                                <DialogHeader>
+                                  <DialogTitle>Manage User Limits</DialogTitle>
+                                </DialogHeader>
+                                <div className="space-y-4">
+                                  <div>
+                                    <label className="text-sm font-medium text-muted-foreground">Limit Key</label>
+                                    <Select value={limitsKey} onValueChange={setLimitsKey}>
+                                      <SelectTrigger className="mt-1">
+                                        <SelectValue placeholder="Select limit key" />
+                                      </SelectTrigger>
+                                      <SelectContent>
+                                        <SelectItem value="single_daily_limit_free">Daily Limit (Free)</SelectItem>
+                                        <SelectItem value="single_daily_limit_basic">Daily Limit (Basic)</SelectItem>
+                                        <SelectItem value="single_daily_limit_professional">Daily Limit (Professional)</SelectItem>
+                                        <SelectItem value="single_daily_limit_enterprise">Daily Limit (Enterprise)</SelectItem>
+                                        <SelectItem value="batch_max_items_per_request">Batch Items Per Request</SelectItem>
+                                        <SelectItem value="batch_max_queued_per_user">Max Queued Batch Items</SelectItem>
+                                      </SelectContent>
+                                    </Select>
+                                  </div>
+
+                                  <div>
+                                    <label className="text-sm font-medium text-muted-foreground">Action</label>
+                                    <div className="flex gap-4 mt-2">
+                                      <label className="flex items-center gap-2 cursor-pointer">
+                                        <input
+                                          type="radio"
+                                          value="set"
+                                          checked={limitsAction === "set"}
+                                          onChange={(e) => setLimitsAction(e.target.value as "set" | "add" | "reset")}
+                                        />
+                                        <span className="text-sm">Set (exact value)</span>
+                                      </label>
+                                      <label className="flex items-center gap-2 cursor-pointer">
+                                        <input
+                                          type="radio"
+                                          value="add"
+                                          checked={limitsAction === "add"}
+                                          onChange={(e) => setLimitsAction(e.target.value as "set" | "add" | "reset")}
+                                        />
+                                        <span className="text-sm">Add (increment)</span>
+                                      </label>
+                                      <label className="flex items-center gap-2 cursor-pointer">
+                                        <input
+                                          type="radio"
+                                          value="reset"
+                                          checked={limitsAction === "reset"}
+                                          onChange={(e) => setLimitsAction(e.target.value as "set" | "add" | "reset")}
+                                        />
+                                        <span className="text-sm">Reset</span>
+                                      </label>
+                                    </div>
+                                  </div>
+
+                                  {limitsAction !== "reset" && (
+                                    <div>
+                                      <label className="text-sm font-medium text-muted-foreground">
+                                        Value {limitsAction === "add" ? "(to add)" : "(exact)"}
+                                      </label>
+                                      <Input
+                                        type="number"
+                                        min="0"
+                                        value={limitsValue}
+                                        onChange={(e) => setLimitsValue(e.target.value)}
+                                        placeholder="Enter value"
+                                        className="mt-1"
+                                      />
+                                    </div>
+                                  )}
+
+                                  <div className="flex gap-2">
+                                    <Button
+                                      onClick={() => manageLimits(user.id)}
+                                      disabled={!limitsKey || (limitsAction !== "reset" && !limitsValue)}
+                                    >
+                                      {limitsAction === "set" ? "Set" : limitsAction === "add" ? "Add" : "Reset"}
+                                    </Button>
+                                    <Button
+                                      variant="outline"
+                                      onClick={() => setShowManageLimitsDialog(false)}
+                                    >
+                                      Cancel
+                                    </Button>
+                                  </div>
+                                </div>
+                              </DialogContent>
+                            </Dialog>
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </TableCell>

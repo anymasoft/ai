@@ -341,6 +341,20 @@ async function getClient() {
            ('single_daily_limit_enterprise', 1000, 'Дневной лимит для enterprise тарифа');`
         );
 
+        // ========== USER_LIMITS TABLE ==========
+        // Per-user лимиты (переопределение глобальных лимитов)
+        await _client.execute(`CREATE TABLE IF NOT EXISTS user_limits (
+          userId TEXT NOT NULL,
+          key TEXT NOT NULL,
+          value INTEGER NOT NULL,
+          updated_at INTEGER DEFAULT (cast(strftime('%s','now') as integer)),
+          PRIMARY KEY (userId, key),
+          FOREIGN KEY (userId) REFERENCES users(id) ON DELETE CASCADE
+        );`);
+
+        await _client.execute(`CREATE INDEX IF NOT EXISTS idx_user_limits_userId
+          ON user_limits(userId);`);
+
         // Инициализация конфигов по умолчанию
         await _client.execute(
           `INSERT OR IGNORE INTO system_prompts (id, key, content, is_active)
