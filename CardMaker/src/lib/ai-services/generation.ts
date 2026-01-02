@@ -126,15 +126,30 @@ export const generateProductCard = async (params: {
       }
     }
 
-    // Проверяем лимиты пользователя если передан userId
+    // Проверяем пакет пользователя если передан userId
     if (userId) {
-      const canGenerate = await checkUserGenerationLimit(userId)
-      if (!canGenerate) {
+      const userResult = await db.execute(
+        'SELECT total_generations, used_generations FROM users WHERE id = ?',
+        [userId]
+      )
+      const rows = Array.isArray(userResult) ? userResult : userResult.rows || []
+      if (rows.length === 0) {
         return {
           success: false,
           error: {
-            code: 'LIMIT_EXCEEDED',
-            message: 'Превышен месячный лимит генераций',
+            code: 'USER_NOT_FOUND',
+            message: 'Пользователь не найден',
+          },
+        }
+      }
+
+      const user = rows[0] as any
+      if (user.used_generations >= user.total_generations) {
+        return {
+          success: false,
+          error: {
+            code: 'PACKAGE_EXHAUSTED',
+            message: 'Пакет генераций исчерпан',
           },
         }
       }
@@ -184,15 +199,12 @@ export const generateProductCard = async (params: {
       generatedAt: new Date().toISOString(),
     }
 
-    // Логируем использование если передан userId
-    // Ошибки логирования НЕ должны прерывать основной процесс
+    // Увеличиваем счётчик использования пакета если передан userId
     if (userId) {
-      try {
-        await logGenerationUsage(userId, response.usage?.totalTokens || 0)
-      } catch (logError) {
-        console.error('[generateProductCard] Ошибка логирования использования:', logError)
-        // продолжаем работу, логирование не критично
-      }
+      await db.execute(
+        'UPDATE users SET used_generations = used_generations + 1, updatedAt = ? WHERE id = ?',
+        [Math.floor(Date.now() / 1000), userId]
+      )
     }
 
     return {
@@ -214,121 +226,3 @@ export const generateProductCard = async (params: {
   }
 }
 
-/**
- * Получить лимит для тарифа из БД (с fallback на hardcoded)
- */
-const getLimitForPlan = async (plan: string): Promise<number> => {
-  try {
-    const limitKey = `single_daily_limit_${plan}`
-    const result = await db.execute(
-      `SELECT value FROM limits_config WHERE key = ? LIMIT 1`,
-      [limitKey]
-    )
-    const rows = Array.isArray(result) ? result : result.rows || []
-    if (rows.length > 0) {
-      return (rows[0] as any).value || 0
-    }
-
-    // Fallback на hardcoded значения (если нет в БД)
-    const fallbacks: Record<string, number> = {
-      free: 5,
-      basic: 20,
-      professional: 100,
-      enterprise: 1000,
-    }
-    return fallbacks[plan] || 0
-  } catch (error) {
-    console.error('[getLimitForPlan] Ошибка получения лимита:', error)
-    // Fallback на hardcoded
-    return ['free', 'basic', 'professional', 'enterprise'].includes(plan)
-      ? { free: 5, basic: 20, professional: 100, enterprise: 1000 }[plan] || 0
-      : 0
-  }
-}
-
-/**
- * Проверить, есть ли у пользователя лимит для генерации
- * (интеграция с системой лимитов из БД)
- * Проверяет per-user override сначала, потом глобальный лимит
- */
-const checkUserGenerationLimit = async (userId: string): Promise<boolean> => {
-  try {
-    const today = new Date().toISOString().split('T')[0]
-
-    // Получаем пользователя и его тариф
-    const userResult = await db.execute(
-      'SELECT plan FROM users WHERE id = ? LIMIT 1',
-      [userId]
-    )
-
-    const userRows = Array.isArray(userResult) ? userResult : userResult.rows || []
-
-    if (userRows.length === 0) {
-      return false
-    }
-
-    const plan = userRows[0].plan || 'free'
-    const limitKey = `single_daily_limit_${plan}`
-
-    // Сначала проверяем per-user override в user_limits
-    let dailyLimit = 0
-    try {
-      const userLimitResult = await db.execute(
-        `SELECT value FROM user_limits WHERE userId = ? AND key = ? LIMIT 1`,
-        [userId, limitKey]
-      )
-      const userLimitRows = Array.isArray(userLimitResult) ? userLimitResult : userLimitResult.rows || []
-      if (userLimitRows.length > 0) {
-        dailyLimit = userLimitRows[0].value || 0
-      }
-    } catch (e) {
-      // таблица user_limits может не существовать, продолжаем
-    }
-
-    // Если per-user override не найден, берем глобальный лимит
-    if (dailyLimit === 0) {
-      dailyLimit = await getLimitForPlan(plan)
-    }
-
-    // Получаем текущее использование за день
-    const usageResult = await db.execute(
-      `SELECT COALESCE(SUM(cardsUsed), 0) as totalUsed FROM user_usage_daily
-       WHERE userId = ? AND day = ?`,
-      [userId, today]
-    )
-
-    const usageRows = Array.isArray(usageResult) ? usageResult : usageResult.rows || []
-    const currentUsage = usageRows[0]?.totalUsed || 0
-
-    return currentUsage < dailyLimit
-  } catch (error) {
-    console.error('[checkUserGenerationLimit] Ошибка проверки лимита:', error)
-    // На случай ошибки разрешаем генерацию
-    return true
-  }
-}
-
-/**
- * Логировать использование генерации для пользователя
- */
-const logGenerationUsage = async (userId: string, tokens: number): Promise<void> => {
-  try {
-    const today = new Date().toISOString().split('T')[0]
-
-    // Используем INSERT OR REPLACE для UPSERT
-    // Если запись существует → обновляем cardsUsed
-    // Если нет → создаём новую с cardsUsed = 1
-    await db.execute(
-      `INSERT INTO user_usage_daily (userId, day, cardsUsed, updatedAt)
-       VALUES (?, ?, 1, ?)
-       ON CONFLICT(userId, day)
-       DO UPDATE SET
-         cardsUsed = cardsUsed + 1,
-         updatedAt = excluded.updatedAt`,
-      [userId, today, Math.floor(Date.now() / 1000)]
-    )
-  } catch (error) {
-    console.error('[logGenerationUsage] Ошибка логирования:', error)
-    // Ошибка логирования не должна прерывать основной процесс
-  }
-}

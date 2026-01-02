@@ -72,9 +72,15 @@ async function getClient() {
           disabled INTEGER NOT NULL DEFAULT 0,
           expiresAt INTEGER,
           paymentProvider TEXT DEFAULT "free",
+          total_generations INTEGER NOT NULL DEFAULT 0,
+          used_generations INTEGER NOT NULL DEFAULT 0,
           createdAt INTEGER NOT NULL,
           updatedAt INTEGER NOT NULL
         );`);
+
+        // Добавить поля для существующих пользователей (миграция)
+        await addColumnIfNotExists(_client, 'users', 'total_generations', 'INTEGER NOT NULL DEFAULT 0');
+        await addColumnIfNotExists(_client, 'users', 'used_generations', 'INTEGER NOT NULL DEFAULT 0');
 
         await _client.execute(`CREATE TABLE IF NOT EXISTS accounts (
           userId TEXT NOT NULL,

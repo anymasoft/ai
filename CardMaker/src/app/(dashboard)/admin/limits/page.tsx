@@ -14,18 +14,15 @@ import { toast } from "sonner"
 interface UserUsage {
   userId: string
   email: string
-  plan: string
-  monthlyLimit: number
-  monthlyUsed: number
-  monthlyRemaining: number
-  percentageUsed: number
+  total_generations: number
+  used_generations: number
+  remaining_generations: number
 }
 
 export default function AdminLimitsPage() {
   const [usages, setUsages] = useState<UserUsage[]>([])
   const [loading, setLoading] = useState(true)
   const [filterEmail, setFilterEmail] = useState("")
-  const [filterPlan, setFilterPlan] = useState("")
   const [pageSize, setPageSize] = useState(20)
   const [currentPage, setCurrentPage] = useState(1)
 
@@ -36,13 +33,20 @@ export default function AdminLimitsPage() {
   async function fetchUsages() {
     try {
       setLoading(true)
-      const res = await fetch("/api/admin/limits")
-      if (!res.ok) throw new Error("Failed to fetch usages")
+      const res = await fetch("/api/admin/users")
+      if (!res.ok) throw new Error("Failed to fetch users")
       const data = await res.json()
-      setUsages(data.usages || [])
+      const mappedUsages = (data.users || []).map((user: any) => ({
+        userId: user.id,
+        email: user.email,
+        total_generations: user.total_generations || 0,
+        used_generations: user.used_generations || 0,
+        remaining_generations: Math.max(0, (user.total_generations || 0) - (user.used_generations || 0)),
+      }))
+      setUsages(mappedUsages)
     } catch (error) {
       console.error("Error:", error)
-      toast.error("Failed to load usage information")
+      toast.error("Failed to load package information")
     } finally {
       setLoading(false)
     }
@@ -51,8 +55,7 @@ export default function AdminLimitsPage() {
   // Фильтруем использование
   const filteredUsages = usages.filter((usage) => {
     const matchEmail = usage.email.toLowerCase().includes(filterEmail.toLowerCase())
-    const matchPlan = filterPlan === "all" || !filterPlan || usage.plan === filterPlan
-    return matchEmail && matchPlan
+    return matchEmail
   })
 
   // Пагинация
@@ -64,7 +67,7 @@ export default function AdminLimitsPage() {
   // Сброс на первую страницу при изменении фильтров
   useEffect(() => {
     setCurrentPage(1)
-  }, [filterEmail, filterPlan])
+  }, [filterEmail])
 
   const getProgressColor = (percentage: number) => {
     if (percentage < 50) return "bg-green-500"
@@ -76,8 +79,8 @@ export default function AdminLimitsPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold">Script Usage</h1>
-          <p className="text-muted-foreground">Monitor monthly script generation limits</p>
+          <h1 className="text-3xl font-bold">Generation Packages</h1>
+          <p className="text-muted-foreground">User generation package usage</p>
         </div>
         <Button
           variant="outline"
@@ -91,15 +94,15 @@ export default function AdminLimitsPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Monthly Script Usage</CardTitle>
+          <CardTitle>Package Usage</CardTitle>
           <CardDescription>
             {filteredUsages.length} of {usages.length} users
             {filteredUsages.length > 0 && ` • Page ${currentPage} of ${totalPages}`}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div>
+          <div className="flex gap-4 items-end flex-wrap">
+            <div className="flex-1 min-w-[200px]">
               <label className="text-sm font-medium">Email</label>
               <div className="flex gap-2 mt-1">
                 <Input
@@ -118,22 +121,7 @@ export default function AdminLimitsPage() {
                 )}
               </div>
             </div>
-            <div>
-              <label className="text-sm font-medium">Plan</label>
-              <Select value={filterPlan || "all"} onValueChange={setFilterPlan}>
-                <SelectTrigger className="mt-1">
-                  <SelectValue placeholder="All plans" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All plans</SelectItem>
-                  <SelectItem value="free">Free</SelectItem>
-                  <SelectItem value="basic">Basic</SelectItem>
-                  <SelectItem value="professional">Professional</SelectItem>
-                  <SelectItem value="enterprise">Enterprise</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
+            <div className="flex-1 min-w-[120px]">
               <label className="text-sm font-medium">Per page</label>
               <Select value={String(pageSize)} onValueChange={(v) => {
                 setPageSize(Number(v))
@@ -166,37 +154,18 @@ export default function AdminLimitsPage() {
                 <TableHeader>
                   <TableRow>
                     <TableHead className="max-w-[240px]">Email</TableHead>
-                    <TableHead>Plan</TableHead>
-                    <TableHead>Monthly Limit</TableHead>
-                    <TableHead>Usage</TableHead>
-                    <TableHead>Progress</TableHead>
+                    <TableHead>Package</TableHead>
+                    <TableHead>Used</TableHead>
+                    <TableHead>Remaining</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {paginatedUsages.map((usage) => (
                     <TableRow key={usage.userId}>
                       <TableCell className="font-mono text-sm truncate overflow-hidden text-ellipsis break-all" title={usage.email}>{usage.email}</TableCell>
-                      <TableCell>
-                        <Badge variant="outline">{usage.plan}</Badge>
-                      </TableCell>
-                      <TableCell className="text-right">{usage.monthlyLimit} scripts</TableCell>
-                      <TableCell>
-                        <div className="text-sm">
-                          <span className="font-semibold">{usage.monthlyUsed}</span>
-                          <span className="text-muted-foreground"> / {usage.monthlyLimit}</span>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          <div className="w-32 h-2 bg-gray-200 rounded-full overflow-hidden">
-                            <div
-                              className={`h-full ${getProgressColor(usage.percentageUsed)}`}
-                              style={{ width: `${Math.min(usage.percentageUsed, 100)}%` }}
-                            />
-                          </div>
-                          <span className="text-sm font-medium w-10 text-right">{usage.percentageUsed}%</span>
-                        </div>
-                      </TableCell>
+                      <TableCell className="font-semibold">{usage.total_generations}</TableCell>
+                      <TableCell>{usage.used_generations}</TableCell>
+                      <TableCell className="font-semibold">{usage.remaining_generations}</TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
