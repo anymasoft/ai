@@ -132,7 +132,7 @@ export async function POST(request: NextRequest) {
       headers: {
         "Content-Type": "application/json",
         Authorization: `Basic ${auth}`,
-        "Idempotence-Key": `${session.user.id}-${planId}-${Date.now()}`,
+        "Idempotence-Key": `${session.user.id}-${packageKey}-${Date.now()}`,
       },
       body: JSON.stringify(paymentRequest),
     });

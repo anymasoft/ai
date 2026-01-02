@@ -6,9 +6,8 @@ import { db } from "@/lib/db"
 // Схема валидации для PATCH запроса
 const updateUserSchema = z.object({
   userId: z.string().min(1, "userId is required"),
-  disabled: z.boolean().optional(),
   generation_balance: z.number().int().min(0).optional(),
-  reset_used: z.boolean().optional(),
+  generation_used: z.number().int().min(0).optional(),
 })
 
 export async function GET(request: NextRequest) {
@@ -69,7 +68,7 @@ export async function PATCH(request: NextRequest) {
       )
     }
 
-    const { userId, disabled, generation_balance, reset_used } = validation.data
+    const { userId, generation_balance, generation_used } = validation.data
     const updatedAt = Math.floor(Date.now() / 1000)
 
     // Проверить существование пользователя
@@ -89,18 +88,14 @@ export async function PATCH(request: NextRequest) {
     const updates: string[] = []
     const params: any[] = []
 
-    if (disabled !== undefined) {
-      updates.push("disabled = ?")
-      params.push(disabled ? 1 : 0)
-    }
-
     if (generation_balance !== undefined) {
       updates.push("generation_balance = ?")
       params.push(generation_balance)
     }
 
-    if (reset_used === true) {
-      updates.push("generation_used = 0")
+    if (generation_used !== undefined) {
+      updates.push("generation_used = ?")
+      params.push(generation_used)
     }
 
     if (updates.length > 0) {
