@@ -20,8 +20,29 @@ const batchCreateSchema = z.object({
   items: z.array(batchItemSchema).min(1, 'Нужен хотя бы один товар'),
 })
 
-const MAX_ITEMS_PER_BATCH = 200
-const MAX_QUEUED_JOBS_PER_USER = 300
+// Значения по умолчанию (могут быть переопределены в limits_config БД)
+const DEFAULT_MAX_ITEMS_PER_BATCH = 200
+const DEFAULT_MAX_QUEUED_JOBS_PER_USER = 300
+
+/**
+ * Получить лимит из БД с fallback на значения по умолчанию
+ */
+async function getLimit(db: any, key: string, fallback: number): Promise<number> {
+  try {
+    const result = await db.execute(
+      `SELECT value FROM limits_config WHERE key = ? LIMIT 1`,
+      [key]
+    )
+    const rows = Array.isArray(result) ? result : result.rows || []
+    if (rows.length > 0) {
+      return (rows[0] as any).value || fallback
+    }
+    return fallback
+  } catch (error) {
+    console.warn(`[batch/create] Failed to get limit ${key}, using fallback`)
+    return fallback
+  }
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -44,22 +65,27 @@ export async function POST(request: NextRequest) {
 
     const { marketplace, style, items } = validation.data
 
+    const db = await getClient()
+
+    // Получаем лимиты из БД
+    const maxItemsPerBatch = await getLimit(db, 'batch_max_items_per_request', DEFAULT_MAX_ITEMS_PER_BATCH)
+    const maxQueuedPerUser = await getLimit(db, 'batch_max_queued_per_user', DEFAULT_MAX_QUEUED_JOBS_PER_USER)
+
     // Проверяем лимит на количество товаров в одном batch
-    if (items.length > MAX_ITEMS_PER_BATCH) {
+    if (items.length > maxItemsPerBatch) {
       return NextResponse.json(
-        { error: `Максимум ${MAX_ITEMS_PER_BATCH} товаров в одном batch` },
+        { error: `Максимум ${maxItemsPerBatch} товаров в одном batch` },
         { status: 400 }
       )
     }
 
-    const db = await getClient()
-
-    // Проверяем количество queued jobs для пользователя в БД
+    // Проверяем количество queued jobs ТОЛЬКО для текущего пользователя (PER-USER лимит)
     const queuedResult = await db.execute(
-      `SELECT COUNT(*) as count FROM jobs WHERE status IN ('queued', 'processing')`
+      `SELECT COUNT(*) as count FROM jobs WHERE status IN ('queued', 'processing') AND userId = ?`,
+      [session.user.id]
     )
     const queuedCount = ((queuedResult.rows?.[0] as any)?.count || 0) as number
-    if (queuedCount + items.length > MAX_QUEUED_JOBS_PER_USER) {
+    if (queuedCount + items.length > maxQueuedPerUser) {
       return NextResponse.json(
         { error: 'Слишком много задач в очереди. Дождитесь завершения текущих.' },
         { status: 429 }
@@ -82,6 +108,7 @@ export async function POST(request: NextRequest) {
       const jobPayload = {
         batchId,
         itemIndex,
+        userId: session.user.id, // Передаём реальный userId в payload
         description: item.description,
         category: item.category,
         marketplace,
@@ -91,9 +118,9 @@ export async function POST(request: NextRequest) {
       }
 
       await db.execute(
-        `INSERT INTO jobs (id, type, status, payload, created_at, updated_at)
-         VALUES (?, 'batch_card', 'queued', ?, ?, ?)`,
-        [jobId, JSON.stringify(jobPayload), Date.now(), Date.now()]
+        `INSERT INTO jobs (id, userId, type, status, payload, created_at, updated_at)
+         VALUES (?, ?, 'batch_card', 'queued', ?, ?, ?)`,
+        [jobId, session.user.id, JSON.stringify(jobPayload), Date.now(), Date.now()]
       )
     }
 

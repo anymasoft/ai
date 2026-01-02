@@ -215,8 +215,40 @@ export const generateProductCard = async (params: {
 }
 
 /**
+ * Получить лимит для тарифа из БД (с fallback на hardcoded)
+ */
+const getLimitForPlan = async (plan: string): Promise<number> => {
+  try {
+    const limitKey = `single_daily_limit_${plan}`
+    const result = await db.execute(
+      `SELECT value FROM limits_config WHERE key = ? LIMIT 1`,
+      [limitKey]
+    )
+    const rows = Array.isArray(result) ? result : result.rows || []
+    if (rows.length > 0) {
+      return (rows[0] as any).value || 0
+    }
+
+    // Fallback на hardcoded значения (если нет в БД)
+    const fallbacks: Record<string, number> = {
+      free: 5,
+      basic: 20,
+      professional: 100,
+      enterprise: 1000,
+    }
+    return fallbacks[plan] || 0
+  } catch (error) {
+    console.error('[getLimitForPlan] Ошибка получения лимита:', error)
+    // Fallback на hardcoded
+    return ['free', 'basic', 'professional', 'enterprise'].includes(plan)
+      ? { free: 5, basic: 20, professional: 100, enterprise: 1000 }[plan] || 0
+      : 0
+  }
+}
+
+/**
  * Проверить, есть ли у пользователя лимит для генерации
- * (интеграция с системой лимитов)
+ * (интеграция с системой лимитов из БД)
  */
 const checkUserGenerationLimit = async (userId: string): Promise<boolean> => {
   try {
@@ -236,17 +268,8 @@ const checkUserGenerationLimit = async (userId: string): Promise<boolean> => {
 
     const plan = userRows[0].plan || 'free'
 
-    // Определяем лимит на основе тарифа
-    const limits: Record<string, number> = {
-      free: 5,
-      basic: 20,
-      professional: 100,
-      enterprise: 1000,
-      pro: 100,
-      business: 500,
-    }
-
-    const dailyLimit = limits[plan] || 0
+    // Получаем лимит для тарифа из БД
+    const dailyLimit = await getLimitForPlan(plan)
 
     // Получаем текущее использование за день
     const usageResult = await db.execute(

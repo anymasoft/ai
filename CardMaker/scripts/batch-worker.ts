@@ -16,6 +16,10 @@ interface JobRecord {
   status: string
 }
 
+// Simple in-memory кэш для конфигов (TTL 5 минут)
+const configCache: Map<string, { value: any; timestamp: number }> = new Map()
+const CACHE_TTL_MS = 5 * 60 * 1000 // 5 минут
+
 /**
  * Запустить worker - обрабатывает jobs из очереди
  * Должен работать как долгоживущий процесс
@@ -27,7 +31,10 @@ async function startBatchWorker() {
   }
 
   isRunning = true
-  console.log('[BatchWorker] Starting (infinite loop, 1 thread)')
+  console.log('[BatchWorker] Starting (infinite loop, concurrency-safe)')
+
+  // Запусти recovery один раз при старте
+  await recoverStuckJobs()
 
   while (true) {
     try {
@@ -101,8 +108,9 @@ async function processOneJob(): Promise<void> {
       throw new Error('Missing required fields in payload')
     }
 
-    // 4. Вызвать generateProductCard
-    // userId не критичен для batch, но нужен для функции
+    // 4. Вызвать generateProductCard с РЕАЛЬНЫМ userId из payload
+    // userId критичен для лимитов и логирования использования
+    const realUserId = payload.userId // реальный пользователь, создавший batch
     const result = await generateProductCard({
       productTitle: description,
       productCategory: category,
@@ -110,7 +118,7 @@ async function processOneJob(): Promise<void> {
       style: style as 'selling' | 'expert' | 'brief',
       seoKeywords,
       competitors,
-      userId: 'batch-worker', // системное значение
+      userId: realUserId, // реальный userId для лимитов и логирования
     })
 
     // 5. Сохранить результат
@@ -138,6 +146,71 @@ async function processOneJob(): Promise<void> {
       [errorMessage, Date.now(), jobId]
     )
   }
+}
+
+/**
+ * Восстановить зависшие jobs (timeout > job_processing_timeout_seconds)
+ * Вернуть их обратно в 'queued' чтобы они могли быть переобработаны
+ */
+async function recoverStuckJobs(): Promise<void> {
+  try {
+    const db = await getNodeDb()
+    const timeoutSeconds = await getLimit('job_processing_timeout_seconds', 1800)
+    const nowSeconds = Math.floor(Date.now() / 1000)
+    const cutoffSeconds = nowSeconds - timeoutSeconds
+
+    const result = await db.execute(
+      `UPDATE jobs
+       SET status = 'queued', updated_at = ?
+       WHERE status = 'processing' AND (updated_at IS NULL OR updated_at < ?)`,
+      [Date.now(), cutoffSeconds]
+    )
+
+    const recoveredCount = (result.rows?.[0] as any)?.changes || 0
+    if (recoveredCount > 0) {
+      console.log(`[BatchWorker] Recovered ${recoveredCount} stuck jobs`)
+    }
+  } catch (error) {
+    console.error('[BatchWorker] Recovery error:', error)
+    // Ошибка recovery не должна прерывать worker
+  }
+}
+
+/**
+ * Получить кэшированный конфиг из БД (с TTL)
+ */
+async function getCachedConfig(key: string, fallback: any = null): Promise<any> {
+  const now = Date.now()
+  const cached = configCache.get(key)
+
+  // Проверяем кэш
+  if (cached && now - cached.timestamp < CACHE_TTL_MS) {
+    return cached.value
+  }
+
+  try {
+    const db = await getNodeDb()
+    const result = await db.execute(
+      `SELECT value FROM limits_config WHERE key = ? LIMIT 1`,
+      [key]
+    )
+    const rows = result.rows || []
+    const value = rows.length > 0 ? (rows[0] as any).value : fallback
+
+    // Кэшируем результат
+    configCache.set(key, { value, timestamp: now })
+    return value
+  } catch (error) {
+    console.warn(`[BatchWorker] Failed to get config ${key}, using fallback:`, error)
+    return fallback
+  }
+}
+
+/**
+ * Получить лимит из БД с fallback на hardcoded значения (используя кэш)
+ */
+async function getLimit(key: string, fallback: number): Promise<number> {
+  return getCachedConfig(key, fallback)
 }
 
 /**

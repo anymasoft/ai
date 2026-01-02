@@ -276,20 +276,28 @@ async function getClient() {
         // Очередь задач для обработки
         await _client.execute(`CREATE TABLE IF NOT EXISTS jobs (
           id TEXT PRIMARY KEY,
+          userId TEXT,
           type TEXT NOT NULL,
           status TEXT NOT NULL DEFAULT 'queued',
           payload TEXT NOT NULL,
           result TEXT,
           error TEXT,
           created_at INTEGER DEFAULT (cast(strftime('%s','now') as integer)),
-          updated_at INTEGER DEFAULT (cast(strftime('%s','now') as integer))
+          updated_at INTEGER DEFAULT (cast(strftime('%s','now') as integer)),
+          FOREIGN KEY (userId) REFERENCES users(id) ON DELETE CASCADE
         );`);
+
+        // Миграция: добавить userId если его нет (для обратной совместимости)
+        await addColumnIfNotExists(_client, 'jobs', 'userId', 'TEXT');
 
         await _client.execute(`CREATE INDEX IF NOT EXISTS idx_jobs_status_type
           ON jobs(status, type, updated_at DESC);`);
 
         await _client.execute(`CREATE INDEX IF NOT EXISTS idx_jobs_created_at
           ON jobs(created_at DESC);`);
+
+        await _client.execute(`CREATE INDEX IF NOT EXISTS idx_jobs_userId_status
+          ON jobs(userId, status, created_at DESC);`);
 
         // ========== BATCHES TABLE ==========
         // Таблица для отслеживания batch операций
@@ -310,6 +318,28 @@ async function getClient() {
 
         await _client.execute(`CREATE INDEX IF NOT EXISTS idx_batches_status
           ON batches(status, updatedAt DESC);`);
+
+        // ========== LIMITS CONFIG TABLE ==========
+        // Таблица для управления лимитами без редеплоя
+        await _client.execute(`CREATE TABLE IF NOT EXISTS limits_config (
+          key TEXT PRIMARY KEY,
+          value INTEGER NOT NULL,
+          description TEXT,
+          updated_at INTEGER DEFAULT (cast(strftime('%s','now') as integer))
+        );`);
+
+        // Инициализация лимитов по умолчанию
+        await _client.execute(
+          `INSERT OR IGNORE INTO limits_config (key, value, description)
+           VALUES
+           ('batch_max_items_per_request', 200, 'Максимум товаров в одном batch'),
+           ('batch_max_queued_per_user', 300, 'Максимум товаров в очереди на пользователя'),
+           ('job_processing_timeout_seconds', 1800, 'Timeout для зависшего job (30 минут)'),
+           ('single_daily_limit_free', 5, 'Дневной лимит для free тарифа'),
+           ('single_daily_limit_basic', 20, 'Дневной лимит для basic тарифа'),
+           ('single_daily_limit_professional', 100, 'Дневной лимит для professional тарифа'),
+           ('single_daily_limit_enterprise', 1000, 'Дневной лимит для enterprise тарифа');`
+        );
 
         // Инициализация конфигов по умолчанию
         await _client.execute(

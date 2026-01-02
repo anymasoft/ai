@@ -1,65 +1,97 @@
-import { NextRequest, NextResponse } from "next/server"
-import { verifyAdminAccess } from "@/lib/admin-api"
-import { db } from "@/lib/db"
-import { getMonthlyScriptLimit } from "@/config/plan-limits"
+import { NextRequest, NextResponse } from 'next/server'
+import { getServerSession } from 'next-auth/next'
+import { authOptions } from '@/lib/auth'
+import { getClient } from '@/lib/db'
 
-export async function GET(request: NextRequest) {
-  const { isAdmin, response } = await verifyAdminAccess(request)
-  if (!isAdmin) return response
+/**
+ * Admin API для управления лимитами
+ * GET /api/admin/limits - получить все лимиты
+ * POST /api/admin/limits - обновить лимит
+ */
+
+// Проверка прав администратора
+async function checkAdminAccess(session: any): Promise<boolean> {
+  if (!session?.user?.id) return false
 
   try {
-    // Get all users and their current plans
+    const db = await getClient()
     const result = await db.execute(
-      `SELECT
-        u.id as userId,
-        u.email,
-        u.plan
-      FROM users u
-      ORDER BY u.createdAt DESC
-      LIMIT 500`
+      'SELECT role FROM users WHERE id = ? LIMIT 1',
+      [session.user.id]
     )
+    const rows = Array.isArray(result) ? result : result.rows || []
+    const user = rows[0] as any
+    return user?.role === 'admin'
+  } catch (error) {
+    console.error('[Admin Limits] Check access error:', error)
+    return false
+  }
+}
 
+export async function GET(request: NextRequest) {
+  try {
+    const session = await getServerSession(authOptions)
+    if (!session?.user || !(await checkAdminAccess(session))) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 403 })
+    }
+
+    const db = await getClient()
+    const result = await db.execute('SELECT key, value, description FROM limits_config ORDER BY key ASC')
     const rows = Array.isArray(result) ? result : result.rows || []
 
-    // Get monthly usage for each user
-    const today = new Date()
-    const monthPrefix = today.toISOString().slice(0, 7) // YYYY-MM
+    return NextResponse.json({
+      success: true,
+      limits: rows,
+    })
+  } catch (error) {
+    console.error('[GET /api/admin/limits] Error:', error)
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : 'Unknown error' },
+      { status: 500 }
+    )
+  }
+}
 
-    const usages = await Promise.all(
-      rows.map(async (row: any) => {
-        const plan = row.plan || "free"
-        const monthlyLimit = getMonthlyScriptLimit(plan as any)
+export async function POST(request: NextRequest) {
+  try {
+    const session = await getServerSession(authOptions)
+    if (!session?.user || !(await checkAdminAccess(session))) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 403 })
+    }
 
-        // Get usage for current month
-        const usageResult = await db.execute(
-          `SELECT COALESCE(SUM(cardsUsed), 0) as totalUsed
-           FROM user_usage_daily
-           WHERE userId = ? AND day LIKE ?`,
-          [row.userId, monthPrefix + '%']
-        )
+    const body = await request.json()
+    const { key, value } = body
 
-        const usageRows = Array.isArray(usageResult) ? usageResult : usageResult.rows || []
-        const monthlyUsed = usageRows[0]?.totalUsed || 0
-        const monthlyRemaining = Math.max(0, monthlyLimit - monthlyUsed)
-        const percentageUsed = monthlyLimit > 0 ? Math.round((monthlyUsed / monthlyLimit) * 100) : 0
+    // Валидация
+    if (!key || typeof value !== 'number') {
+      return NextResponse.json(
+        { error: 'Invalid request: key and number value are required' },
+        { status: 400 }
+      )
+    }
 
-        return {
-          userId: row.userId,
-          email: row.email,
-          plan,
-          monthlyLimit,
-          monthlyUsed,
-          monthlyRemaining,
-          percentageUsed,
-        }
-      })
+    const db = await getClient()
+
+    // Обновить или создать лимит
+    await db.execute(
+      `INSERT INTO limits_config (key, value, updated_at)
+       VALUES (?, ?, ?)
+       ON CONFLICT(key) DO UPDATE SET
+         value = excluded.value,
+         updated_at = excluded.updated_at`,
+      [key, value, Date.now()]
     )
 
-    return NextResponse.json({ usages })
+    console.log(`[Admin] Updated limit ${key} to ${value}`)
+
+    return NextResponse.json({
+      success: true,
+      message: `Limit ${key} updated to ${value}`,
+    })
   } catch (error) {
-    console.error("Error fetching usage:", error)
+    console.error('[POST /api/admin/limits] Error:', error)
     return NextResponse.json(
-      { error: "Failed to fetch usage" },
+      { error: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }
     )
   }
