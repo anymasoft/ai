@@ -19,7 +19,10 @@ type GenerateCardRequest = z.infer<typeof generateCardSchema>
 export async function POST(request: NextRequest) {
   const session = await getServerSession(authOptions)
   if (!session?.user) {
-    return NextResponse.json({ error: 'Требуется авторизация' }, { status: 401 })
+    return NextResponse.json(
+      { success: false, error: { code: 'UNAUTHORIZED', message: 'Требуется авторизация' } },
+      { status: 401 }
+    )
   }
 
   try {
@@ -30,10 +33,17 @@ export async function POST(request: NextRequest) {
     if (!validation.success) {
       const errors = validation.error.issues.map((e) => `${e.path.join('.')}: ${e.message}`)
       return NextResponse.json(
-        { error: `Ошибка валидации: ${errors.join(', ')}` },
+        { success: false, error: { code: 'INVALID_INPUT', message: `Ошибка валидации: ${errors.join(', ')}` } },
         { status: 400 }
       )
     }
+
+    // Логируем начало генерации
+    console.info('[generate-card] starting', {
+      userId: session.user.id,
+      marketplace: validation.data.marketplace,
+      style: validation.data.style,
+    })
 
     // Синхронно вызываем генерацию
     const result = await generateProductCard({
@@ -46,7 +56,36 @@ export async function POST(request: NextRequest) {
       userId: session.user.id,
     })
 
-    // Возвращаем результат сразу
+    // ✅ КРИТИЧЕСКАЯ ПРОВЕРКА: result.success
+    if (!result.success) {
+      const statusCode =
+        result.error.code === 'LIMIT_EXCEEDED' ? 429 :
+        result.error.code === 'INVALID_INPUT' ? 400 :
+        500
+
+      console.info('[generate-card] generation failed', {
+        code: result.error.code,
+        message: result.error.message,
+        status: statusCode,
+      })
+
+      return NextResponse.json(
+        { success: false, error: { code: result.error.code, message: result.error.message } },
+        { status: statusCode }
+      )
+    }
+
+    // ✅ Успех: проверяем, что data существует
+    if (!result.data || !result.data.title || !result.data.description) {
+      console.error('[generate-card] invalid result shape', { data: result.data })
+      return NextResponse.json(
+        { success: false, error: { code: 'INTERNAL_ERROR', message: 'Неверный ответ от генератора' } },
+        { status: 500 }
+      )
+    }
+
+    console.info('[generate-card] success', { titleLength: result.data.title.length })
+
     return NextResponse.json(
       {
         success: true,
@@ -55,11 +94,17 @@ export async function POST(request: NextRequest) {
       { status: 200 }
     )
   } catch (error) {
-    console.error('[POST /api/generate-card] Ошибка:', error)
+    console.error('[generate-card] unexpected error', {
+      message: error instanceof Error ? error.message : String(error),
+    })
 
     return NextResponse.json(
       {
-        error: error instanceof Error ? error.message : 'Неизвестная ошибка при генерации',
+        success: false,
+        error: {
+          code: 'INTERNAL_ERROR',
+          message: error instanceof Error ? error.message : 'Неизвестная ошибка при генерации',
+        },
       },
       { status: 500 }
     )
