@@ -1,18 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
-import { z } from "zod"
 import { verifyAdminAccess } from "@/lib/admin-api"
 import { db } from "@/lib/db"
-import { updateUserPlan } from "@/lib/payments"
-
-// Валидные тарифные планы (ТОЛЬКО из PLAN_LIMITS + free)
-const VALID_PLANS = ["basic", "professional", "enterprise", "free"]
-
-// Схема валидации для PATCH запроса
-const updatePaymentSchema = z.object({
-  userId: z.string().min(1, "userId is required"),
-  plan: z.enum([...VALID_PLANS] as [string, ...string[]]),
-  expiresAt: z.number().int().positive().nullable().optional(),
-})
 
 // Начало дня (00:00:00)
 function parseLocalDateStart(dateString: string): number {
@@ -59,20 +47,20 @@ export async function GET(request: NextRequest) {
       toDateFormatted: toDate ? new Date(toDate * 1000).toISOString() : null,
     })
 
-    // Get only real YooKassa payments from payments table
+    // Get all payments from payments table (with user info)
     let query = `
       SELECT
         p.id,
         p.userId,
         u.email,
-        p.planId as plan,
+        p.packageKey as plan,
         p.amount,
-        p.expiresAt,
+        p.status,
         p.provider,
         p.createdAt
       FROM payments p
       JOIN users u ON p.userId = u.id
-      WHERE p.provider = 'yookassa'
+      WHERE 1=1
     `
 
     const params: any[] = []
@@ -109,16 +97,15 @@ export async function GET(request: NextRequest) {
       userId: row.userId,
       email: row.email,
       plan: row.plan,
-      expiresAt: row.expiresAt,
+      expiresAt: null,
       provider: row.provider,
-      price: row.amount,
+      price: typeof row.amount === "number" ? row.amount.toFixed(2) : row.amount,
       createdAt: row.createdAt,
     }))
 
-    // Calculate total sum
+    // Calculate total sum (amount в рублях, convert to copecks for sum)
     const totalSum = payments.reduce((sum, payment) => {
-      const priceStr = payment.price.replace(/[^\d]/g, "")
-      const priceNum = parseInt(priceStr) || 0
+      const priceNum = parseFloat(payment.price) * 100 || 0
       return sum + priceNum
     }, 0)
 
@@ -131,43 +118,6 @@ export async function GET(request: NextRequest) {
     console.error("Error fetching payments:", error)
     return NextResponse.json(
       { error: "Failed to fetch payments" },
-      { status: 500 }
-    )
-  }
-}
-
-export async function PATCH(request: NextRequest) {
-  const { isAdmin, response } = await verifyAdminAccess(request)
-  if (!isAdmin) return response
-
-  try {
-    const body = await request.json()
-
-    // Валидируем данные
-    const validation = updatePaymentSchema.safeParse(body)
-    if (!validation.success) {
-      return NextResponse.json(
-        { error: `Validation error: ${validation.error.errors[0].message}` },
-        { status: 400 }
-      )
-    }
-
-    const { userId, plan, expiresAt } = validation.data
-
-    // Используем ту же функцию, что и для платежей через YooKassa
-    // Это сбрасывает месячное использование и обновляет план
-    await updateUserPlan({
-      userId,
-      plan: plan as "basic" | "professional" | "enterprise" | "free",
-      expiresAt: expiresAt || null,
-      paymentProvider: "manual",
-    })
-
-    return NextResponse.json({ success: true })
-  } catch (error) {
-    console.error("Error updating payment:", error)
-    return NextResponse.json(
-      { error: "Failed to update payment" },
       { status: 500 }
     )
   }
