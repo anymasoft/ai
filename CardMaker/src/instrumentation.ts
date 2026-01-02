@@ -36,5 +36,16 @@ console.warn = (...args: any[]) => {
 
 export async function register() {
   // Инициализация сервера
-  // Очередь теперь используется через БД, не нужна инициализация
+  if (typeof window === "undefined") {
+    try {
+      // Запустить batch worker для обработки jobs из БД
+      const { startBatchWorker } = await import("./lib/batch-worker")
+      startBatchWorker().catch((err) => {
+        console.error("[BatchWorker] Failed to start:", err)
+      })
+      console.log("[Server] Batch worker scheduled to start (infinite loop)")
+    } catch (error) {
+      console.error("[Server] Initialization error:", error)
+    }
+  }
 }
