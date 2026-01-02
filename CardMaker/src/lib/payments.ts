@@ -110,6 +110,20 @@ export function isSubscriptionActive(expiresAt: number | null): boolean {
 }
 
 /**
+ * Получает количество генераций для плана
+ */
+export function getGenerationsForPlan(
+  plan: "basic" | "professional" | "enterprise"
+): number {
+  const generations: Record<string, number> = {
+    basic: 50,
+    professional: 250,
+    enterprise: 1000,
+  };
+  return generations[plan] || 0;
+}
+
+/**
  * Получает цену платежа для тариф (в копейках для ЮKassa API)
  */
 export function getPlanPrice(
@@ -155,7 +169,7 @@ export async function applySuccessfulPayment(
 
     // ШАГ 1: Найти платёж в БД
     const paymentResult = await db.execute(
-      "SELECT id, userId, plan, status FROM payments WHERE externalPaymentId = ?",
+      "SELECT id, userId, planId, status FROM payments WHERE externalPaymentId = ?",
       [paymentId]
     );
     const paymentRows = Array.isArray(paymentResult)
@@ -170,10 +184,10 @@ export async function applySuccessfulPayment(
     }
 
     const payment = paymentRows[0];
-    const { userId, plan: planId, status: currentStatus } = payment;
+    const { userId, planId, status: currentStatus } = payment;
 
     console.log(
-      `[applySuccessfulPayment] Found payment: userId=${userId}, plan=${planId}, status=${currentStatus}`
+      `[applySuccessfulPayment] Found payment: userId=${userId}, planId=${planId}, status=${currentStatus}`
     );
 
     // ШАГ 2: ЗАЩИТА от дублирования — если уже succeeded, ничего не делаем
@@ -192,25 +206,39 @@ export async function applySuccessfulPayment(
       return { success: false, reason: `Payment status is ${currentStatus}` };
     }
 
-    // ШАГ 4: Активируем тариф на 30 дней
+    // ШАГ 4: Определяем количество генераций для плана
+    const generationsAmount = getGenerationsForPlan(
+      planId as "basic" | "professional" | "enterprise"
+    );
+
+    if (generationsAmount === 0) {
+      console.error(
+        `[applySuccessfulPayment] ❌ Invalid plan ${planId}`
+      );
+      return { success: false, reason: `Invalid plan: ${planId}` };
+    }
+
+    console.log(
+      `[applySuccessfulPayment] Adding ${generationsAmount} generations to user ${userId}`
+    );
+
+    // ШАГ 5: Увеличиваем generation_balance пользователя
     const now = Math.floor(Date.now() / 1000);
-    const thirtyDaysInSeconds = 30 * 24 * 60 * 60;
-    const expiresAt = now + thirtyDaysInSeconds;
+    await db.execute(
+      `UPDATE users
+       SET generation_balance = generation_balance + ?, updatedAt = ?
+       WHERE id = ?`,
+      [generationsAmount, now, userId]
+    );
 
-    console.log(`[applySuccessfulPayment] Activating plan for user ${userId}`);
-
-    // ШАГ 5: Обновляем users (через updateUserPlan)
-    await updateUserPlan({
-      userId,
-      plan: planId as "basic" | "professional" | "enterprise" | "free",
-      expiresAt,
-      paymentProvider: "yookassa",
-    });
+    console.log(
+      `[applySuccessfulPayment] Updated generation_balance for user ${userId}`
+    );
 
     // ШАГ 6: Обновляем payments.status = 'succeeded'
     await db.execute(
-      "UPDATE payments SET status = 'succeeded', expiresAt = ? WHERE externalPaymentId = ?",
-      [expiresAt, paymentId]
+      "UPDATE payments SET status = 'succeeded', updatedAt = ? WHERE externalPaymentId = ?",
+      [now, paymentId]
     );
 
     console.log(
