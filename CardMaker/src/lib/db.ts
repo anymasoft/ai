@@ -371,3 +371,4 @@ export const db = {
 };
 
 export default db;
+export { getClient, execute };
