@@ -38,11 +38,19 @@ export async function register() {
   // Инициализация queue processors (только на сервере)
   if (typeof window === "undefined") {
     try {
+      // 1. Сначала регистрируем процессоры
       const { registerQueueProcessors } = await import("./lib/queue-processors")
       registerQueueProcessors()
       console.log("[Queue] Processors registered successfully")
+
+      // 2. ТОЛЬКО ПОТОМ запускаем очередь
+      const { globalJobQueue } = await import("./lib/job-queue")
+      globalJobQueue.start().catch((err) => {
+        console.error("[Queue] Failed to start queue processor:", err)
+      })
+      console.log("[Queue] Queue processor started (infinite loop)")
     } catch (error) {
-      console.error("[Queue] Failed to register processors:", error)
+      console.error("[Queue] Initialization error:", error)
     }
   }
 }

@@ -30,10 +30,18 @@ class JobQueue {
   private processors: Map<string, (data: Record<string, unknown>) => Promise<unknown>> = new Map()
   private concurrency: number
   private timeoutMs: number
+  private instanceId: string
 
   constructor(options: JobQueueOptions = {}) {
     this.concurrency = options.concurrency || 3
     this.timeoutMs = options.timeoutMs || 30000
+    this.instanceId = Math.random().toString(36).slice(2, 9)
+
+    console.log('[QUEUE init]', {
+      instanceId: this.instanceId,
+      concurrency: this.concurrency,
+      timeoutMs: this.timeoutMs,
+    })
   }
 
   /**
@@ -56,6 +64,16 @@ class JobQueue {
     }
     this.jobs.set(id, job)
     this.queue.push(id)
+
+    console.log('[QUEUE enqueue]', {
+      instanceId: this.instanceId,
+      jobId: id,
+      totalJobs: this.jobs.size,
+      queueLength: this.queue.length,
+      processingCount: this.processing.size,
+      allJobIds: Array.from(this.jobs.keys()),
+    })
+
     return job
   }
 
@@ -63,7 +81,18 @@ class JobQueue {
    * Получить задачу по ID
    */
   getJob(id: string): Job | undefined {
-    return this.jobs.get(id)
+    const job = this.jobs.get(id)
+
+    console.log('[QUEUE getJob]', {
+      instanceId: this.instanceId,
+      requestedJobId: id,
+      found: !!job,
+      totalJobs: this.jobs.size,
+      allJobIds: Array.from(this.jobs.keys()),
+      jobStatus: job?.status,
+    })
+
+    return job
   }
 
   /**
@@ -74,28 +103,48 @@ class JobQueue {
   }
 
   /**
-   * Начать обработку очереди
+   * Начать обработку очереди (долгоживущий обработчик)
+   * Должен работать всё время жизни сервера
    */
   async start() {
-    while (this.queue.length > 0 || this.processing.size > 0) {
-      // Заполняем обработчиков если есть место
-      while (this.queue.length > 0 && this.processing.size < this.concurrency) {
-        const jobId = this.queue.shift()!
-        const job = this.jobs.get(jobId)!
+    console.log('[QUEUE start]', {
+      instanceId: this.instanceId,
+      message: 'Queue processor starting (infinite loop)',
+    })
 
-        this.processing.add(jobId)
-        job.status = "processing"
-        job.startedAt = Date.now()
+    // Долгоживущий цикл обработки задач
+    // Проверяет очередь каждые 100ms
+    while (true) {
+      try {
+        // Заполняем обработчиков если есть место
+        while (this.queue.length > 0 && this.processing.size < this.concurrency) {
+          const jobId = this.queue.shift()!
+          const job = this.jobs.get(jobId)!
 
-        // Обработка в фоне (не await)
-        this.processJob(jobId).catch((err) => {
-          console.error(`Job ${jobId} error:`, err)
-        })
-      }
+          this.processing.add(jobId)
+          job.status = "processing"
+          job.startedAt = Date.now()
 
-      // Ждём немного перед следующей проверкой
-      if (this.processing.size > 0) {
+          console.log('[QUEUE processing]', {
+            instanceId: this.instanceId,
+            jobId,
+            processingCount: this.processing.size,
+            queueLength: this.queue.length,
+          })
+
+          // Обработка в фоне (не await)
+          this.processJob(jobId).catch((err) => {
+            console.error(`Job ${jobId} error:`, err)
+          })
+        }
+
+        // Ждём перед следующей проверкой
+        // Это позволяет CPU отдохнуть и принимать новые задачи
         await new Promise((resolve) => setTimeout(resolve, 100))
+      } catch (error) {
+        console.error("Queue processor error:", error)
+        // Продолжаем даже при ошибке
+        await new Promise((resolve) => setTimeout(resolve, 1000))
       }
     }
   }
@@ -126,10 +175,23 @@ class JobQueue {
       job.status = "completed"
       job.result = result
       job.completedAt = Date.now()
+
+      console.log('[QUEUE completed]', {
+        instanceId: this.instanceId,
+        jobId,
+        status: job.status,
+      })
     } catch (error) {
       job.status = "failed"
       job.error = error instanceof Error ? error.message : String(error)
       job.completedAt = Date.now()
+
+      console.log('[QUEUE failed]', {
+        instanceId: this.instanceId,
+        jobId,
+        status: job.status,
+        error: job.error,
+      })
     } finally {
       this.processing.delete(jobId)
     }
@@ -140,10 +202,23 @@ class JobQueue {
    */
   cleanup() {
     const cutoff = Date.now() - this.timeoutMs * 2
+    const beforeSize = this.jobs.size
+    let removed = 0
+
     for (const [id, job] of this.jobs) {
       if (job.completedAt && job.completedAt < cutoff) {
         this.jobs.delete(id)
+        removed++
       }
+    }
+
+    if (removed > 0) {
+      console.log('[QUEUE cleanup]', {
+        removed,
+        jobsBeforeCleanup: beforeSize,
+        jobsAfterCleanup: this.jobs.size,
+        cutoffTimestamp: cutoff,
+      })
     }
   }
 }
@@ -154,14 +229,10 @@ export const globalJobQueue = new JobQueue({
   timeoutMs: 120000, // 120 сек timeout (нужно для OpenAI API + длинных промптов)
 })
 
-// Автоматически запустить очередь при импорте
+// ВАЖНО: start() вызывается из instrumentation.ts ПОСЛЕ регистрации процессоров
+// Это гарантирует, что процессоры зарегистрированы ДО запуска очереди
+// Периодическая очистка завершённых задач - безопасна (не зависит от процессоров)
 if (typeof window === "undefined") {
-  // Только на сервере
-  globalJobQueue.start().catch((err) => {
-    console.error("Job queue error:", err)
-  })
-
-  // Периодическая очистка завершённых задач
   setInterval(() => {
     globalJobQueue.cleanup()
   }, 60000) // каждую минуту
