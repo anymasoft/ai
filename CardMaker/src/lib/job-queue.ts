@@ -229,14 +229,10 @@ export const globalJobQueue = new JobQueue({
   timeoutMs: 120000, // 120 сек timeout (нужно для OpenAI API + длинных промптов)
 })
 
-// Автоматически запустить очередь при импорте
+// ВАЖНО: start() вызывается из instrumentation.ts ПОСЛЕ регистрации процессоров
+// Это гарантирует, что процессоры зарегистрированы ДО запуска очереди
+// Периодическая очистка завершённых задач - безопасна (не зависит от процессоров)
 if (typeof window === "undefined") {
-  // Только на сервере
-  globalJobQueue.start().catch((err) => {
-    console.error("Job queue error:", err)
-  })
-
-  // Периодическая очистка завершённых задач
   setInterval(() => {
     globalJobQueue.cleanup()
   }, 60000) // каждую минуту
