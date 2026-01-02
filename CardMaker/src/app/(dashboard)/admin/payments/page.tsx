@@ -293,10 +293,9 @@ export default function AdminPaymentsPage() {
                 <TableHeader>
                   <TableRow>
                     <TableHead className="max-w-[240px]">Email</TableHead>
-                    <TableHead>Plan</TableHead>
-                    <TableHead>Price</TableHead>
-                    <TableHead>Expires</TableHead>
-                    <TableHead>Paid Date</TableHead>
+                    <TableHead>Package</TableHead>
+                    <TableHead>Amount</TableHead>
+                    <TableHead>Date</TableHead>
                     <TableHead className="w-[50px]"></TableHead>
                   </TableRow>
                 </TableHeader>
@@ -308,7 +307,6 @@ export default function AdminPaymentsPage() {
                         <Badge variant="outline">{payment.plan}</Badge>
                       </TableCell>
                       <TableCell className="font-medium">{formatPrice(payment.price)}</TableCell>
-                      <TableCell>{formatDate(payment.expiresAt)}</TableCell>
                       <TableCell>{formatDate(payment.createdAt)}</TableCell>
                       <TableCell>
                         <Button

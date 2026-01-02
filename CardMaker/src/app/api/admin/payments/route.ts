@@ -88,9 +88,11 @@ export async function GET(request: NextRequest) {
     console.log("SQL Query:", query)
     console.log("Query params:", params)
 
-    const result = await db.execute(query, params.length > 0 ? params : undefined)
+    // Всегда передаём массив параметров (может быть пустым)
+    const result = await db.execute(query, params.length > 0 ? params : [])
 
-    const rows = result.rows || []
+    // libsql возвращает { rows: [...] }
+    const rows = Array.isArray(result) ? result : (result.rows || [])
 
     const payments = rows.map((row: any) => ({
       id: row.id,
