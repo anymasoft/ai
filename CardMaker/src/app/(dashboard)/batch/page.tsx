@@ -1,10 +1,17 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import {
   Tooltip,
   TooltipContent,
@@ -25,6 +32,7 @@ export default function BatchPage() {
   const [listInput, setListInput] = useState("")
   const [fileInput, setFileInput] = useState<File | null>(null)
   const [marketplace, setMarketplace] = useState("ozon")
+  const [category, setCategory] = useState("")
   const [style, setStyle] = useState("selling")
   const [isGenerating, setIsGenerating] = useState(false)
   const [batchId, setBatchId] = useState<string | null>(null)
@@ -61,6 +69,11 @@ export default function BatchPage() {
       return
     }
 
+    if (!category) {
+      setError("Выберите категорию товара")
+      return
+    }
+
     if (!listInput.trim() && !fileInput) {
       setError("Введите список товаров или загрузьте файл")
       return
@@ -71,19 +84,26 @@ export default function BatchPage() {
     setResults([])
 
     try {
-      // Парсим список товаров
-      const items = listInput
+      // Парсим список товаров - каждая строка = description товара
+      const descriptions = listInput
         .split("\n")
         .map((line) => line.trim())
         .filter((line) => line)
+
+      // Преобразуем в формат API: { description, category, seoKeywords }
+      const items = descriptions.map((description) => ({
+        description,
+        category,
+        seoKeywords: [],
+      }))
 
       const response = await fetch("/api/batch/create", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          items,
           marketplace,
           style,
+          items,
         }),
       })
 
@@ -94,7 +114,8 @@ export default function BatchPage() {
 
       const data = await response.json()
       setBatchId(data.batchId)
-      setResults(data.items)
+      // Инициализируем пустой массив, он заполнится через polling
+      setResults([])
     } catch (err) {
       setError(err instanceof Error ? err.message : "Неизвестная ошибка")
       setIsGenerating(false)
@@ -148,6 +169,25 @@ export default function BatchPage() {
                 </button>
               ))}
             </div>
+          </div>
+
+          {/* Категория товара */}
+          <div className="flex flex-col gap-1 flex-1">
+            <label htmlFor="batch-category" className="text-xs font-medium">Категория товара *</label>
+            <Select value={category} onValueChange={setCategory}>
+              <SelectTrigger id="batch-category" className="h-9 text-sm">
+                <SelectValue placeholder="Выберите категорию" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="electronics">Электроника</SelectItem>
+                <SelectItem value="fashion">Одежда и обувь</SelectItem>
+                <SelectItem value="home">Товары для дома</SelectItem>
+                <SelectItem value="sports">Спорт и фитнес</SelectItem>
+                <SelectItem value="beauty">Красота и здоровье</SelectItem>
+                <SelectItem value="toys">Игрушки и хобби</SelectItem>
+                <SelectItem value="books">Книги и медиа</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
 
           {/* Стиль */}

@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth/next'
 import { authOptions } from '@/lib/auth'
-import { generateProductCard } from '@/lib/ai-services/generation'
 import { z } from 'zod'
+import { globalJobQueue } from '@/lib/job-queue'
+import { randomUUID } from 'crypto'
 
 // Схема валидации для request body
 // ВАЖНО: соответствует реальному body из UI (card-generator/page.tsx)
@@ -36,36 +37,34 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Преобразуем данные из UI формата в формат сервиса
-    const params: Parameters<typeof generateProductCard>[0] = {
-      productTitle: validation.data.productDescription,
-      productCategory: validation.data.category,
-      marketplace: validation.data.marketplace,
-      style: validation.data.style as 'selling' | 'expert' | 'brief',
-      seoKeywords: validation.data.seoKeywords,
-      competitors: validation.data.competitors,
-      userId: session.user.id,
+    // Создаём job для обработки через очередь
+    const jobId = randomUUID()
+
+    // Параметры для генерации
+    const jobPayload = {
+      type: 'single_generation',
+      payload: {
+        description: validation.data.productDescription,
+        category: validation.data.category,
+        marketplace: validation.data.marketplace,
+        style: validation.data.style,
+        seoKeywords: validation.data.seoKeywords,
+        competitors: validation.data.competitors,
+      },
     }
 
-    // Вызываем сервис генерации
-    const result = await generateProductCard(params)
+    // Добавляем job в очередь
+    globalJobQueue.enqueue(jobId, session.user.id, jobPayload)
 
-    if (!result.success) {
-      const statusCode = result.error.code === 'LIMIT_EXCEEDED' ? 429 : 500
-
-      return NextResponse.json(
-        {
-          error: result.error.message,
-          code: result.error.code,
-        },
-        { status: statusCode }
-      )
-    }
-
-    return NextResponse.json({
-      success: true,
-      data: result.data,
-    })
+    // Возвращаем jobId для polling
+    return NextResponse.json(
+      {
+        success: true,
+        jobId,
+        pollingUrl: `/api/jobs/${jobId}`,
+      },
+      { status: 202 } // 202 Accepted - задача принята в очередь
+    )
   } catch (error) {
     console.error('[POST /api/generate-card] Ошибка:', error)
 

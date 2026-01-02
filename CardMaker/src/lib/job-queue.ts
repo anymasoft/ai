@@ -151,7 +151,7 @@ class JobQueue {
 // Глобальная очередь (singleton)
 export const globalJobQueue = new JobQueue({
   concurrency: 3, // макс 3 параллельные обработки
-  timeoutMs: 30000, // 30 сек timeout
+  timeoutMs: 120000, // 120 сек timeout (нужно для OpenAI API + длинных промптов)
 })
 
 // Автоматически запустить очередь при импорте

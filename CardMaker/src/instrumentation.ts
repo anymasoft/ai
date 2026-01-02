@@ -34,6 +34,15 @@ console.warn = (...args: any[]) => {
   }
 };
 
-export function register() {
-  // Инициализация завершена
+export async function register() {
+  // Инициализация queue processors (только на сервере)
+  if (typeof window === "undefined") {
+    try {
+      const { registerQueueProcessors } = await import("./lib/queue-processors")
+      registerQueueProcessors()
+      console.log("[Queue] Processors registered successfully")
+    } catch (error) {
+      console.error("[Queue] Failed to register processors:", error)
+    }
+  }
 }
