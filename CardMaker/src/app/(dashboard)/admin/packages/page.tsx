@@ -22,6 +22,7 @@ interface EditingPackage {
   key: string;
   price_rub: number | string;
   generations: number | string;
+  is_active: number;
 }
 
 export default function AdminPackagesPage() {
@@ -60,6 +61,7 @@ export default function AdminPackagesPage() {
       key: pkg.key,
       price_rub: pkg.price_rub,
       generations: pkg.generations,
+      is_active: pkg.is_active,
     });
   }
 
@@ -93,7 +95,7 @@ export default function AdminPackagesPage() {
         body: JSON.stringify({
           price_rub,
           generations,
-          is_active: 1,
+          is_active: editing.is_active,
         }),
       });
 
@@ -142,6 +144,7 @@ export default function AdminPackagesPage() {
                     <TableHead>Название</TableHead>
                     <TableHead>Цена (₽)</TableHead>
                     <TableHead>Генерации</TableHead>
+                    <TableHead>Активен</TableHead>
                     <TableHead className="w-[180px]">Действия</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -184,6 +187,26 @@ export default function AdminPackagesPage() {
                           />
                         ) : (
                           pkg.generations
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        {editingKey === pkg.key ? (
+                          <input
+                            type="checkbox"
+                            checked={editing?.is_active === 1}
+                            onChange={(e) =>
+                              setEditing({
+                                ...editing!,
+                                is_active: e.target.checked ? 1 : 0,
+                              })
+                            }
+                          />
+                        ) : (
+                          <input
+                            type="checkbox"
+                            checked={pkg.is_active === 1}
+                            disabled
+                          />
                         )}
                       </TableCell>
                       <TableCell>

@@ -65,24 +65,6 @@ export default function AdminUsersPage() {
     }
   }
 
-  async function resetUsed(userId: string) {
-    try {
-      setSavingId(userId)
-      const res = await fetch("/api/admin/users", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userId, reset_used: true }),
-      })
-      if (!res.ok) throw new Error("Failed to reset used")
-      toast.success("Usage reset")
-      fetchUsers()
-    } catch (error) {
-      console.error("Error:", error)
-      toast.error("Failed to reset used")
-    } finally {
-      setSavingId(null)
-    }
-  }
 
   const formatDate = (timestamp: number) => {
     return new Date(timestamp * 1000).toLocaleDateString()
@@ -157,7 +139,6 @@ export default function AdminUsersPage() {
                   <TableHead>Balance</TableHead>
                   <TableHead>Used</TableHead>
                   <TableHead>Created</TableHead>
-                  <TableHead className="w-[120px]">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -207,16 +188,6 @@ export default function AdminUsersPage() {
                     <TableCell>{user.generation_used}</TableCell>
                     <TableCell className="text-sm">
                       {formatDate(user.createdAt)}
-                    </TableCell>
-                    <TableCell>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => resetUsed(user.id)}
-                        disabled={savingId === user.id}
-                      >
-                        Reset
-                      </Button>
                     </TableCell>
                   </TableRow>
                 ))}

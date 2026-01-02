@@ -6,9 +6,7 @@ import { db } from "@/lib/db"
 // Схема валидации для PATCH запроса
 const updateUserSchema = z.object({
   userId: z.string().min(1, "userId is required"),
-  disabled: z.boolean().optional(),
-  generation_balance: z.number().int().min(0).optional(),
-  reset_used: z.boolean().optional(),
+  generation_balance: z.number().int().min(0),
 })
 
 export async function GET(request: NextRequest) {
@@ -69,7 +67,7 @@ export async function PATCH(request: NextRequest) {
       )
     }
 
-    const { userId, disabled, generation_balance, reset_used } = validation.data
+    const { userId, generation_balance } = validation.data
     const updatedAt = Math.floor(Date.now() / 1000)
 
     // Проверить существование пользователя
@@ -85,34 +83,11 @@ export async function PATCH(request: NextRequest) {
       )
     }
 
-    // Строим UPDATE запрос динамически
-    const updates: string[] = []
-    const params: any[] = []
-
-    if (disabled !== undefined) {
-      updates.push("disabled = ?")
-      params.push(disabled ? 1 : 0)
-    }
-
-    if (generation_balance !== undefined) {
-      updates.push("generation_balance = ?")
-      params.push(generation_balance)
-    }
-
-    if (reset_used === true) {
-      updates.push("generation_used = 0")
-    }
-
-    if (updates.length > 0) {
-      updates.push("updatedAt = ?")
-      params.push(updatedAt)
-      params.push(userId)
-
-      await db.execute(
-        `UPDATE users SET ${updates.join(", ")} WHERE id = ?`,
-        params
-      )
-    }
+    // Обновляем generation_balance пользователя
+    await db.execute(
+      "UPDATE users SET generation_balance = ?, updatedAt = ? WHERE id = ?",
+      [generation_balance, updatedAt, userId]
+    )
 
     return NextResponse.json({ success: true })
   } catch (error) {
