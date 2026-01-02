@@ -2,15 +2,12 @@ import { NextRequest, NextResponse } from "next/server"
 import { db } from "@/lib/db"
 import { verifyAdminAccess } from "@/lib/admin-api"
 
-export async function GET(
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) {
+export async function GET(request: NextRequest) {
   const { isAdmin, response } = await verifyAdminAccess(request)
   if (!isAdmin) return response
 
   try {
-    const id = params.id
+    const id = request.nextUrl.searchParams.get('id')
 
     const result = await db.execute(
       `SELECT id, email, firstName, lastName, subject, message, createdAt, isRead
@@ -41,15 +38,12 @@ export async function GET(
   }
 }
 
-export async function DELETE(
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) {
+export async function DELETE(request: NextRequest) {
   const { isAdmin, response } = await verifyAdminAccess(request)
   if (!isAdmin) return response
 
   try {
-    const id = params.id
+    const id = request.nextUrl.searchParams.get('id')
 
     await db.execute(
       `DELETE FROM admin_messages WHERE id = ?`,

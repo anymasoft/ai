@@ -2,15 +2,12 @@ import { NextRequest, NextResponse } from "next/server"
 import { db } from "@/lib/db"
 import { verifyAdminAccess } from "@/lib/admin-api"
 
-export async function PATCH(
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) {
+export async function PATCH(request: NextRequest) {
   const { isAdmin, response } = await verifyAdminAccess(request)
   if (!isAdmin) return response
 
   try {
-    const id = params.id
+    const id = request.nextUrl.searchParams.get('id')
 
     await db.execute(
       `UPDATE admin_messages SET isRead = 1 WHERE id = ?`,

@@ -34,16 +34,13 @@ async function requireAdmin() {
   return { ok: true, userId: session.user.id };
 }
 
-// PUT /api/admin/packages/{key}
-export async function PUT(
-  request: NextRequest,
-  { params }: { params: { key: string } }
-) {
+// PUT /api/admin/packages/by-key
+export async function PUT(request: NextRequest) {
   try {
     const auth = await requireAdmin();
     if (!auth.ok) return auth.response;
 
-    const { key } = params;
+    const key = request.nextUrl.searchParams.get('key');
     const body = await request.json();
     const { price_rub, generations, is_active } = body;
 

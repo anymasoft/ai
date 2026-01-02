@@ -2,15 +2,13 @@ import { NextRequest, NextResponse } from "next/server"
 import { verifyAdminAccess } from "@/lib/admin-api"
 import { db } from "@/lib/db"
 
-export async function DELETE(
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) {
+export async function DELETE(request: NextRequest) {
   const { isAdmin, response } = await verifyAdminAccess(request)
   if (!isAdmin) return response
 
   try {
-    const paymentId = parseInt(params.id, 10)
+    const id = request.nextUrl.searchParams.get('id')
+    const paymentId = parseInt(id || '', 10)
     if (isNaN(paymentId)) {
       return NextResponse.json(
         { error: "Invalid payment ID" },

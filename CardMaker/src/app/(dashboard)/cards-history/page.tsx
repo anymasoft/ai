@@ -90,7 +90,7 @@ export default function CardsHistoryPage() {
   }
 
   const handleRowClick = (cardId: string) => {
-    router.push(`/cards/${cardId}`)
+    router.push(`/cards/by-id?id=${cardId}`)
   }
 
   return (
