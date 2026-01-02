@@ -11,58 +11,51 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Loader2, RefreshCcw, X } from "lucide-react"
 import { toast } from "sonner"
 
-interface UserUsage {
+interface UserBalance {
   userId: string
   email: string
-  total_generations: number
-  used_generations: number
-  remaining_generations: number
+  generation_balance: number
+  generation_used: number
+  remaining: number
 }
 
 export default function AdminLimitsPage() {
-  const [usages, setUsages] = useState<UserUsage[]>([])
+  const [balances, setBalances] = useState<UserBalance[]>([])
   const [loading, setLoading] = useState(true)
   const [filterEmail, setFilterEmail] = useState("")
   const [pageSize, setPageSize] = useState(20)
   const [currentPage, setCurrentPage] = useState(1)
 
   useEffect(() => {
-    fetchUsages()
+    fetchBalances()
   }, [])
 
-  async function fetchUsages() {
+  async function fetchBalances() {
     try {
       setLoading(true)
-      const res = await fetch("/api/admin/users")
-      if (!res.ok) throw new Error("Failed to fetch users")
+      const res = await fetch("/api/admin/limits")
+      if (!res.ok) throw new Error("Failed to fetch balances")
       const data = await res.json()
-      const mappedUsages = (data.users || []).map((user: any) => ({
-        userId: user.id,
-        email: user.email,
-        total_generations: user.total_generations || 0,
-        used_generations: user.used_generations || 0,
-        remaining_generations: Math.max(0, (user.total_generations || 0) - (user.used_generations || 0)),
-      }))
-      setUsages(mappedUsages)
+      setBalances(data.balances || [])
     } catch (error) {
       console.error("Error:", error)
-      toast.error("Failed to load package information")
+      toast.error("Failed to load balance information")
     } finally {
       setLoading(false)
     }
   }
 
-  // Фильтруем использование
-  const filteredUsages = usages.filter((usage) => {
-    const matchEmail = usage.email.toLowerCase().includes(filterEmail.toLowerCase())
+  // Фильтруем балансы
+  const filteredBalances = balances.filter((balance) => {
+    const matchEmail = balance.email.toLowerCase().includes(filterEmail.toLowerCase())
     return matchEmail
   })
 
   // Пагинация
-  const totalPages = Math.ceil(filteredUsages.length / pageSize)
+  const totalPages = Math.ceil(filteredBalances.length / pageSize)
   const startIndex = (currentPage - 1) * pageSize
   const endIndex = startIndex + pageSize
-  const paginatedUsages = filteredUsages.slice(startIndex, endIndex)
+  const paginatedBalances = filteredBalances.slice(startIndex, endIndex)
 
   // Сброс на первую страницу при изменении фильтров
   useEffect(() => {
@@ -79,13 +72,13 @@ export default function AdminLimitsPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold">Generation Packages</h1>
-          <p className="text-muted-foreground">User generation package usage</p>
+          <h1 className="text-3xl font-bold">Generation Balance</h1>
+          <p className="text-muted-foreground">User generation balance overview</p>
         </div>
         <Button
           variant="outline"
           size="icon"
-          onClick={fetchUsages}
+          onClick={fetchBalances}
           disabled={loading}
         >
           <RefreshCcw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
@@ -94,10 +87,10 @@ export default function AdminLimitsPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Package Usage</CardTitle>
+          <CardTitle>Balance Overview</CardTitle>
           <CardDescription>
-            {filteredUsages.length} of {usages.length} users
-            {filteredUsages.length > 0 && ` • Page ${currentPage} of ${totalPages}`}
+            {filteredBalances.length} of {balances.length} users
+            {filteredBalances.length > 0 && ` • Page ${currentPage} of ${totalPages}`}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -154,28 +147,28 @@ export default function AdminLimitsPage() {
                 <TableHeader>
                   <TableRow>
                     <TableHead className="max-w-[240px]">Email</TableHead>
-                    <TableHead>Package</TableHead>
+                    <TableHead>Balance</TableHead>
                     <TableHead>Used</TableHead>
                     <TableHead>Remaining</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {paginatedUsages.map((usage) => (
-                    <TableRow key={usage.userId}>
-                      <TableCell className="font-mono text-sm truncate overflow-hidden text-ellipsis break-all" title={usage.email}>{usage.email}</TableCell>
-                      <TableCell className="font-semibold">{usage.total_generations}</TableCell>
-                      <TableCell>{usage.used_generations}</TableCell>
-                      <TableCell className="font-semibold">{usage.remaining_generations}</TableCell>
+                  {paginatedBalances.map((balance) => (
+                    <TableRow key={balance.userId}>
+                      <TableCell className="font-mono text-sm truncate overflow-hidden text-ellipsis break-all" title={balance.email}>{balance.email}</TableCell>
+                      <TableCell className="font-semibold">{balance.generation_balance}</TableCell>
+                      <TableCell>{balance.generation_used}</TableCell>
+                      <TableCell className="font-semibold">{balance.remaining}</TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
               </Table>
             </div>
 
-            {filteredUsages.length > 0 && (
+            {filteredBalances.length > 0 && (
               <div className="flex items-center justify-between border-t pt-4 mt-4">
                 <div className="text-sm text-muted-foreground">
-                  Showing {startIndex + 1} to {Math.min(endIndex, filteredUsages.length)} of {filteredUsages.length} results
+                  Showing {startIndex + 1} to {Math.min(endIndex, filteredBalances.length)} of {filteredBalances.length} results
                 </div>
                 <div className="flex gap-2">
                   <Button

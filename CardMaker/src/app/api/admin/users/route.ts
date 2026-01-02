@@ -11,7 +11,7 @@ const updateUserSchema = z.object({
   userId: z.string().min(1, "userId is required"),
   plan: z.enum([...VALID_PLANS] as [string, ...string[]]).optional(),
   disabled: z.boolean().optional(),
-  total_generations: z.number().int().min(0).optional(),
+  generation_balance: z.number().int().min(0).optional(),
   reset_used: z.boolean().optional(),
 })
 
@@ -29,8 +29,8 @@ export async function GET(request: NextRequest) {
         u.expiresAt,
         u.createdAt,
         COALESCE(u.disabled, 0) as disabled,
-        COALESCE(u.total_generations, 0) as total_generations,
-        COALESCE(u.used_generations, 0) as used_generations
+        COALESCE(u.generation_balance, 0) as generation_balance,
+        COALESCE(u.generation_used, 0) as generation_used
       FROM users u
       ORDER BY u.createdAt DESC
       LIMIT 500`
@@ -47,8 +47,8 @@ export async function GET(request: NextRequest) {
       expiresAt: row.expiresAt || null,
       createdAt: row.createdAt || 0,
       disabled: row.disabled === 1,
-      total_generations: row.total_generations || 0,
-      used_generations: row.used_generations || 0,
+      generation_balance: row.generation_balance || 0,
+      generation_used: row.generation_used || 0,
     }))
 
     return NextResponse.json({ users })
@@ -77,7 +77,7 @@ export async function PATCH(request: NextRequest) {
       )
     }
 
-    const { userId, plan, disabled, total_generations, reset_used } = validation.data
+    const { userId, plan, disabled, generation_balance, reset_used } = validation.data
     const updatedAt = Math.floor(Date.now() / 1000)
 
     // Проверить существование пользователя
@@ -108,16 +108,16 @@ export async function PATCH(request: NextRequest) {
       )
     }
 
-    if (total_generations !== undefined) {
+    if (generation_balance !== undefined) {
       await db.execute(
-        "UPDATE users SET total_generations = ?, updatedAt = ? WHERE id = ?",
-        [total_generations, updatedAt, userId]
+        "UPDATE users SET generation_balance = ?, updatedAt = ? WHERE id = ?",
+        [generation_balance, updatedAt, userId]
       )
     }
 
     if (reset_used === true) {
       await db.execute(
-        "UPDATE users SET used_generations = 0, updatedAt = ? WHERE id = ?",
+        "UPDATE users SET generation_used = 0, updatedAt = ? WHERE id = ?",
         [updatedAt, userId]
       )
     }
