@@ -1,4 +1,4 @@
-import { getClient } from './db'
+import { getNodeDb } from './db'
 import { generateProductCard } from './ai-services/generation'
 
 /**
@@ -44,7 +44,7 @@ export async function startBatchWorker() {
  * Обработать одну задачу из очереди
  */
 async function processOneJob(): Promise<void> {
-  const db = await getClient()
+  const db = await getNodeDb()
 
   // 1. Найти первый queued job
   const jobsResult = await db.execute(
