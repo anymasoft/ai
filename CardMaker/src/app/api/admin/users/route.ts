@@ -3,13 +3,9 @@ import { z } from "zod"
 import { verifyAdminAccess } from "@/lib/admin-api"
 import { db } from "@/lib/db"
 
-// Валидные тарифные планы
-const VALID_PLANS = ["free", "basic", "professional", "enterprise", "pro", "business"]
-
 // Схема валидации для PATCH запроса
 const updateUserSchema = z.object({
   userId: z.string().min(1, "userId is required"),
-  plan: z.enum([...VALID_PLANS] as [string, ...string[]]).optional(),
   disabled: z.boolean().optional(),
   generation_balance: z.number().int().min(0).optional(),
   reset_used: z.boolean().optional(),
@@ -25,8 +21,6 @@ export async function GET(request: NextRequest) {
         u.id,
         u.email,
         u.name,
-        u.plan,
-        u.expiresAt,
         u.createdAt,
         COALESCE(u.disabled, 0) as disabled,
         COALESCE(u.generation_balance, 0) as generation_balance,
@@ -43,8 +37,6 @@ export async function GET(request: NextRequest) {
       id: row.id,
       email: row.email,
       name: row.name,
-      plan: row.plan || "free",
-      expiresAt: row.expiresAt || null,
       createdAt: row.createdAt || 0,
       disabled: row.disabled === 1,
       generation_balance: row.generation_balance || 0,
@@ -77,7 +69,7 @@ export async function PATCH(request: NextRequest) {
       )
     }
 
-    const { userId, plan, disabled, generation_balance, reset_used } = validation.data
+    const { userId, disabled, generation_balance, reset_used } = validation.data
     const updatedAt = Math.floor(Date.now() / 1000)
 
     // Проверить существование пользователя
@@ -93,32 +85,32 @@ export async function PATCH(request: NextRequest) {
       )
     }
 
-    // Update users table
-    if (plan) {
-      await db.execute(
-        "UPDATE users SET plan = ?, updatedAt = ? WHERE id = ?",
-        [plan, updatedAt, userId]
-      )
-    }
+    // Строим UPDATE запрос динамически
+    const updates: string[] = []
+    const params: any[] = []
 
     if (disabled !== undefined) {
-      await db.execute(
-        "UPDATE users SET disabled = ?, updatedAt = ? WHERE id = ?",
-        [disabled ? 1 : 0, updatedAt, userId]
-      )
+      updates.push("disabled = ?")
+      params.push(disabled ? 1 : 0)
     }
 
     if (generation_balance !== undefined) {
-      await db.execute(
-        "UPDATE users SET generation_balance = ?, updatedAt = ? WHERE id = ?",
-        [generation_balance, updatedAt, userId]
-      )
+      updates.push("generation_balance = ?")
+      params.push(generation_balance)
     }
 
     if (reset_used === true) {
+      updates.push("generation_used = 0")
+    }
+
+    if (updates.length > 0) {
+      updates.push("updatedAt = ?")
+      params.push(updatedAt)
+      params.push(userId)
+
       await db.execute(
-        "UPDATE users SET generation_used = 0, updatedAt = ? WHERE id = ?",
-        [updatedAt, userId]
+        `UPDATE users SET ${updates.join(", ")} WHERE id = ?`,
+        params
       )
     }
 

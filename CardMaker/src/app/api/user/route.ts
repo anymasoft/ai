@@ -1,8 +1,8 @@
 /**
  * GET /api/user
  *
- * ЕДИНСТВЕННЫЙ ИСТОЧНИК ИСТИНЫ О ПОЛЬЗОВАТЕЛЕ И ЕГО ТАРИФЕ
- * Всегда читает plan и expiresAt напрямую из БД таблицы users
+ * Возвращает информацию о текущем пользователе
+ * Всегда читает напрямую из БД таблицы users
  * БЕЗ кэширования, БЕЗ fallback, БЕЗ вычислений
  *
  * Response:
@@ -10,9 +10,8 @@
  *   id: string
  *   email: string
  *   name: string
- *   plan: 'free' | 'basic' | 'professional' | 'enterprise'
- *   expiresAt: number | null
- *   paymentProvider: string | null
+ *   generation_balance: number
+ *   generation_used: number
  *   disabled: boolean
  * }
  */
@@ -37,7 +36,7 @@ export async function GET(request: NextRequest) {
 
     // КРИТИЧЕСКОЕ: Читаем НАПРЯМУЮ ИЗ БД, БЕЗ кэширования
     const result = await db.execute(
-      `SELECT id, email, name, plan, expiresAt, paymentProvider, disabled
+      `SELECT id, email, name, generation_balance, generation_used, disabled
        FROM users WHERE id = ?`,
       [session.user.id]
     );
@@ -60,9 +59,8 @@ export async function GET(request: NextRequest) {
       id: user.id,
       email: user.email,
       name: user.name,
-      plan: user.plan || "free",
-      expiresAt: user.expiresAt || null,
-      paymentProvider: user.paymentProvider || null,
+      generation_balance: user.generation_balance || 0,
+      generation_used: user.generation_used || 0,
       disabled: user.disabled === 1 || user.disabled === true,
     });
   } catch (error) {
