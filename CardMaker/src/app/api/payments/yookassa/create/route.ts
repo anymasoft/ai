@@ -173,9 +173,17 @@ export async function POST(request: NextRequest) {
     const now = Math.floor(Date.now() / 1000);
 
     await db.execute(
-      `INSERT INTO payments (externalPaymentId, userId, plan, amount, provider, status, createdAt)
-       VALUES (?, ?, ?, ?, 'yookassa', 'pending', ?)`,
-      [paymentData.id, session.user.id, planId, planPrice, now]
+      `INSERT INTO payments (id, externalPaymentId, userId, planId, amount, provider, status, createdAt, updatedAt)
+       VALUES (?, ?, ?, ?, ?, 'yookassa', 'pending', ?, ?)`,
+      [
+        `payment_${Date.now()}_${session.user.id}`,
+        paymentData.id,
+        session.user.id,
+        planId,
+        parseFloat(amountRubles),
+        now,
+        now
+      ]
     );
 
     console.log(
