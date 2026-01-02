@@ -136,7 +136,7 @@ export default function AdminLimitsPage() {
             <div className="flex justify-center py-8">
               <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
             </div>
-          ) : filteredUsages.length === 0 ? (
+          ) : filteredBalances.length === 0 ? (
             <div className="py-8 text-center text-muted-foreground">
               No users found
             </div>
