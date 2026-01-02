@@ -127,28 +127,47 @@ async function getClient() {
         await _client.execute(`CREATE INDEX IF NOT EXISTS idx_product_cards_userId
           ON product_cards(userId, createdAt DESC);`);
 
+        // ========== Packages Table ==========
+        await _client.execute(`CREATE TABLE IF NOT EXISTS packages (
+          key TEXT PRIMARY KEY,
+          title TEXT NOT NULL,
+          price_rub INTEGER NOT NULL,
+          generations INTEGER NOT NULL,
+          is_active INTEGER DEFAULT 1,
+          created_at INTEGER DEFAULT (cast(strftime('%s','now') as integer)),
+          updated_at INTEGER DEFAULT (cast(strftime('%s','now') as integer))
+        );`);
+
+        // Инициализация пакетов по умолчанию
+        await _client.execute(
+          `INSERT OR IGNORE INTO packages (key, title, price_rub, generations, is_active)
+           VALUES
+           ('basic', 'Basic', 99000, 50, 1),
+           ('pro', 'Professional', 249000, 250, 1),
+           ('enterprise', 'Enterprise', 599000, 1000, 1);`
+        );
+
         // ========== Billing/Payments Tables ==========
         await _client.execute(`CREATE TABLE IF NOT EXISTS payments (
           id TEXT PRIMARY KEY,
           userId TEXT NOT NULL,
-          planId TEXT NOT NULL,
+          packageKey TEXT NOT NULL,
           externalPaymentId TEXT NOT NULL UNIQUE,
           amount REAL NOT NULL,
           currency TEXT DEFAULT 'RUB',
           status TEXT NOT NULL DEFAULT 'pending',
-          billingCycle TEXT DEFAULT 'monthly',
           provider TEXT DEFAULT 'yookassa',
           createdAt INTEGER NOT NULL,
           updatedAt INTEGER NOT NULL,
-          expiresAt INTEGER,
-          FOREIGN KEY (userId) REFERENCES users(id) ON DELETE CASCADE
+          FOREIGN KEY (userId) REFERENCES users(id) ON DELETE CASCADE,
+          FOREIGN KEY (packageKey) REFERENCES packages(key)
         );`);
 
         await _client.execute(`CREATE INDEX IF NOT EXISTS idx_payments_externalPaymentId
           ON payments(externalPaymentId);`);
 
-        await _client.execute(`CREATE INDEX IF NOT EXISTS idx_payments_provider
-          ON payments(provider);`);
+        await _client.execute(`CREATE INDEX IF NOT EXISTS idx_payments_userId_createdAt
+          ON payments(userId, createdAt DESC);`);
 
         // Таблица для переопределения подписок (ручное управление платежами)
         await _client.execute(`CREATE TABLE IF NOT EXISTS admin_subscriptions (
