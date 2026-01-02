@@ -66,9 +66,9 @@ export async function GET(
     // Вычисляем текущий статус batch
     let currentStatus = batchRecord.status
     if (stats.total > 0) {
-      if (stats.completed === stats.total) {
+      if ((stats.completed || 0) === stats.total) {
         currentStatus = 'completed'
-      } else if (stats.processing > 0 || stats.queued > 0) {
+      } else if ((stats.processing || 0) > 0 || (stats.queued || 0) > 0) {
         currentStatus = 'processing'
       }
     }
@@ -105,7 +105,7 @@ export async function GET(
         }
         return {
           jobId: job.id,
-          status: job.status,
+          status: job.status === 'done' ? 'completed' : job.status, // Convert 'done' to 'completed' for UI
           result,
           error: job.error || null,
         }
