@@ -99,7 +99,6 @@ export async function GET(request: NextRequest) {
       userId: row.userId,
       email: row.email,
       plan: row.plan,
-      expiresAt: null,
       provider: row.provider,
       price: typeof row.amount === "number" ? row.amount.toFixed(2) : row.amount,
       createdAt: row.createdAt,
