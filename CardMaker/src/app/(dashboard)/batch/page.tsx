@@ -20,7 +20,6 @@ import {
 } from "@/components/ui/tooltip"
 import { Copy, Download, Upload, Sparkles, CheckCircle, Clock, AlertCircle } from "lucide-react"
 import { toast } from "sonner"
-import { useEffect } from "react"
 
 interface BatchItem {
   id: string
