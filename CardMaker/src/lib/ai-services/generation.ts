@@ -129,7 +129,7 @@ export const generateProductCard = async (params: {
     // Проверяем баланс пользователя если передан userId
     if (userId) {
       const userResult = await db.execute(
-        'SELECT generation_balance, generation_used FROM users WHERE id = ?',
+        'SELECT generation_balance FROM users WHERE id = ?',
         [userId]
       )
       const rows = Array.isArray(userResult) ? userResult : userResult.rows || []
@@ -144,12 +144,12 @@ export const generateProductCard = async (params: {
       }
 
       const user = rows[0] as any
-      if (user.generation_used >= user.generation_balance) {
+      if ((user.generation_balance || 0) <= 0) {
         return {
           success: false,
           error: {
-            code: 'BALANCE_EXHAUSTED',
-            message: 'Баланс генераций исчерпан',
+            code: 'INSUFFICIENT_BALANCE',
+            message: 'Недостаточно генераций',
           },
         }
       }
@@ -199,10 +199,10 @@ export const generateProductCard = async (params: {
       generatedAt: new Date().toISOString(),
     }
 
-    // Увеличиваем счётчик использования баланса если передан userId
+    // Уменьшаем баланс и увеличиваем счётчик использования если передан userId
     if (userId) {
       await db.execute(
-        'UPDATE users SET generation_used = generation_used + 1, updatedAt = ? WHERE id = ?',
+        'UPDATE users SET generation_balance = generation_balance - 1, generation_used = generation_used + 1, updatedAt = ? WHERE id = ?',
         [Math.floor(Date.now() / 1000), userId]
       )
     }

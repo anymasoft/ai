@@ -4,7 +4,7 @@
  *
  * Body:
  * {
- *   planId: "basic" | "professional" | "enterprise"
+ *   packageKey: "basic" | "pro" | "enterprise"
  * }
  *
  * Response:
@@ -18,7 +18,6 @@
 
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
-import { getPlanPrice, getPlanName } from "@/lib/payments";
 import { NextRequest, NextResponse } from "next/server";
 
 // Интерфейсы для ЮKassa API
@@ -61,29 +60,33 @@ export async function POST(request: NextRequest) {
 
     // Парсим тело запроса
     const body = await request.json();
-    const { planId } = body;
+    const { packageKey } = body;
 
-    // Валидируем planId
-    if (!planId || !["basic", "professional", "enterprise"].includes(planId)) {
+    // Валидируем packageKey
+    if (!packageKey || typeof packageKey !== "string") {
       return NextResponse.json(
-        { success: false, error: "Неверный ID тариф" },
+        { success: false, error: "Требуется packageKey" },
         { status: 400 }
       );
     }
 
-    // Получаем цену тариф в копейках
-    const amountCopecks = getPlanPrice(
-      planId as "basic" | "professional" | "enterprise"
+    // Получаем пакет из БД
+    const { db } = await import("@/lib/db");
+    const packageResult = await db.execute(
+      `SELECT key, title, price_rub, generations FROM packages WHERE key = ? AND is_active = 1`,
+      [packageKey]
     );
-    if (amountCopecks === 0) {
+
+    if (!packageResult.rows || packageResult.rows.length === 0) {
       return NextResponse.json(
-        { success: false, error: "Не удалось определить цену тариф" },
+        { success: false, error: "Пакет не найден" },
         { status: 400 }
       );
     }
 
-    // Конвертируем копейки в рубли (строка)
-    const amountRubles = (amountCopecks / 100).toFixed(2);
+    const pkg = packageResult.rows[0] as any;
+    const priceRub = pkg.price_rub;
+    const amountRubles = (priceRub / 100).toFixed(2);
 
     // Получаем креденшалы ЮKassa из переменных окружения
     const yooKassaShopId = process.env.YOOKASSA_SHOP_ID;
@@ -105,8 +108,6 @@ export async function POST(request: NextRequest) {
     console.log("[YooKassa]   - webhookUrl =", webhookUrl);
     console.log("[YooKassa]   - Shop ID =", yooKassaShopId ? "✓ SET" : "❌ MISSING");
 
-    // ВАЖНО: return_url БЕЗ paymentId (так как paymentData ещё не получен)
-    // Check endpoint получит paymentId по userId и createdAt DESC
     const paymentRequest: YooKassaPaymentRequest = {
       amount: {
         value: amountRubles,
@@ -117,9 +118,7 @@ export async function POST(request: NextRequest) {
         return_url: `${process.env.NEXTAUTH_URL}/settings/billing?success=1`,
       },
       capture: true,
-      description: `Подписка на тариф ${getPlanName(
-        planId as "basic" | "professional" | "enterprise"
-      )} - ${session.user.email}`,
+      description: `Пакет ${pkg.title}: ${pkg.generations} генераций - ${session.user.email}`,
     };
 
     // Отправляем запрос в ЮKassa
@@ -167,19 +166,16 @@ export async function POST(request: NextRequest) {
     );
 
     // Сохраняем платёж в БД с status='pending'
-    const { db } = await import("@/lib/db");
-    const { PLAN_LIMITS } = await import("@/config/plan-limits");
-    const planPrice = PLAN_LIMITS[planId as "basic" | "professional" | "enterprise"]?.price || "0 ₽";
     const now = Math.floor(Date.now() / 1000);
 
     await db.execute(
-      `INSERT INTO payments (id, externalPaymentId, userId, planId, amount, provider, status, createdAt, updatedAt)
+      `INSERT INTO payments (id, externalPaymentId, userId, packageKey, amount, provider, status, createdAt, updatedAt)
        VALUES (?, ?, ?, ?, ?, 'yookassa', 'pending', ?, ?)`,
       [
         `payment_${Date.now()}_${session.user.id}`,
         paymentData.id,
         session.user.id,
-        planId,
+        packageKey,
         parseFloat(amountRubles),
         now,
         now
