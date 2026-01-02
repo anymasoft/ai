@@ -291,6 +291,26 @@ async function getClient() {
         await _client.execute(`CREATE INDEX IF NOT EXISTS idx_jobs_created_at
           ON jobs(created_at DESC);`);
 
+        // ========== BATCHES TABLE ==========
+        // Таблица для отслеживания batch операций
+        await _client.execute(`CREATE TABLE IF NOT EXISTS batches (
+          id TEXT PRIMARY KEY,
+          userId TEXT NOT NULL,
+          marketplace TEXT NOT NULL,
+          style TEXT NOT NULL,
+          totalItems INTEGER NOT NULL,
+          status TEXT NOT NULL DEFAULT 'queued',
+          createdAt INTEGER DEFAULT (cast(strftime('%s','now') as integer)),
+          updatedAt INTEGER DEFAULT (cast(strftime('%s','now') as integer)),
+          FOREIGN KEY (userId) REFERENCES users(id) ON DELETE CASCADE
+        );`);
+
+        await _client.execute(`CREATE INDEX IF NOT EXISTS idx_batches_userId
+          ON batches(userId, createdAt DESC);`);
+
+        await _client.execute(`CREATE INDEX IF NOT EXISTS idx_batches_status
+          ON batches(status, updatedAt DESC);`);
+
         // Инициализация конфигов по умолчанию
         await _client.execute(
           `INSERT OR IGNORE INTO system_prompts (id, key, content, is_active)
