@@ -2,11 +2,9 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth/next'
 import { authOptions } from '@/lib/auth'
 import { z } from 'zod'
-import { globalJobQueue } from '@/lib/job-queue'
-import { randomUUID } from 'crypto'
+import { generateProductCard } from '@/lib/ai-services/generation'
 
 // Схема валидации для request body
-// ВАЖНО: соответствует реальному body из UI (card-generator/page.tsx)
 const generateCardSchema = z.object({
   productDescription: z.string().min(1, 'Описание товара обязательно').max(5000),
   marketplace: z.enum(['ozon', 'wb']),
@@ -37,33 +35,24 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Создаём job для обработки через очередь
-    const jobId = randomUUID()
+    // Синхронно вызываем генерацию
+    const result = await generateProductCard({
+      productTitle: validation.data.productDescription,
+      productCategory: validation.data.category,
+      marketplace: validation.data.marketplace,
+      style: validation.data.style,
+      seoKeywords: validation.data.seoKeywords,
+      competitors: validation.data.competitors,
+      userId: session.user.id,
+    })
 
-    // Параметры для генерации
-    const jobPayload = {
-      type: 'single_generation',
-      payload: {
-        description: validation.data.productDescription,
-        category: validation.data.category,
-        marketplace: validation.data.marketplace,
-        style: validation.data.style,
-        seoKeywords: validation.data.seoKeywords,
-        competitors: validation.data.competitors,
-      },
-    }
-
-    // Добавляем job в очередь
-    globalJobQueue.enqueue(jobId, session.user.id, jobPayload)
-
-    // Возвращаем jobId для polling
+    // Возвращаем результат сразу
     return NextResponse.json(
       {
         success: true,
-        jobId,
-        pollingUrl: `/api/jobs/${jobId}`,
+        data: result.data,
       },
-      { status: 202 } // 202 Accepted - задача принята в очередь
+      { status: 200 }
     )
   } catch (error) {
     console.error('[POST /api/generate-card] Ошибка:', error)

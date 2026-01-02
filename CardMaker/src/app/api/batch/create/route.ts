@@ -2,8 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth/next'
 import { authOptions } from '@/lib/auth'
 import { z } from 'zod'
-import { globalJobQueue } from '@/lib/job-queue'
-import { createBatchRecord, updateBatchStatus } from '@/lib/batch-operations'
+import { getClient } from '@/lib/db'
 import { randomUUID } from 'crypto'
 
 // Схема для одного item в batch
@@ -53,9 +52,13 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Проверяем количество queued jobs для пользователя
-    const userJobs = globalJobQueue.getUserJobs(session.user.id)
-    const queuedCount = userJobs.filter((j) => j.status === 'queued' || j.status === 'processing').length
+    const db = await getClient()
+
+    // Проверяем количество queued jobs для пользователя в БД
+    const queuedResult = await db.execute(
+      `SELECT COUNT(*) as count FROM jobs WHERE status IN ('queued', 'processing')`
+    )
+    const queuedCount = ((queuedResult.rows?.[0] as any)?.count || 0) as number
     if (queuedCount + items.length > MAX_QUEUED_JOBS_PER_USER) {
       return NextResponse.json(
         { error: 'Слишком много задач в очереди. Дождитесь завершения текущих.' },
@@ -64,44 +67,34 @@ export async function POST(request: NextRequest) {
     }
 
     // Создаём batch запись в БД
-    const batchId = await createBatchRecord({
-      userId: session.user.id,
-      marketplace,
-      style,
-      totalItems: items.length,
-    })
+    const batchId = randomUUID()
+    await db.execute(
+      `INSERT INTO batches (id, userId, marketplace, style, totalItems, status, createdAt, updatedAt)
+       VALUES (?, ?, ?, ?, ?, 'queued', ?, ?)`,
+      [batchId, session.user.id, marketplace, style, items.length, Date.now(), Date.now()]
+    )
 
-    // Добавляем каждый item в очередь как отдельный job
+    // Добавляем каждый item как job в очередь
     for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
       const item = items[itemIndex]
       const jobId = randomUUID()
 
       const jobPayload = {
-        type: 'batch_card_generation',
-        payload: {
-          batchId,
-          itemIndex,
-          description: item.description,
-          category: item.category,
-          marketplace,
-          style,
-          seoKeywords: item.seoKeywords || [],
-          competitors: item.competitors || [],
-        },
+        batchId,
+        itemIndex,
+        description: item.description,
+        category: item.category,
+        marketplace,
+        style,
+        seoKeywords: item.seoKeywords || [],
+        competitors: item.competitors || [],
       }
 
-      globalJobQueue.enqueue(jobId, session.user.id, jobPayload)
-    }
-
-    // Обновляем статус batch если нужно (может быть уже processing если items быстро начали обрабатываться)
-    const batchJobs = globalJobQueue.getUserJobs(session.user.id).filter((j) => {
-      const payload = j.data.payload as any
-      return payload?.batchId === batchId
-    })
-
-    const hasProcessing = batchJobs.some((j) => j.status === 'processing')
-    if (hasProcessing) {
-      await updateBatchStatus(batchId, 'processing')
+      await db.execute(
+        `INSERT INTO jobs (id, type, status, payload, created_at, updated_at)
+         VALUES (?, 'batch_card', 'queued', ?, ?, ?)`,
+        [jobId, JSON.stringify(jobPayload), Date.now(), Date.now()]
+      )
     }
 
     return NextResponse.json(
