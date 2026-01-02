@@ -21,9 +21,9 @@ interface User {
   plan: string
   expiresAt: number | null
   createdAt: number
-  lastActive: number | null
   disabled: boolean
-  cardsUsed?: number
+  total_generations: number
+  used_generations: number
 }
 
 const PAID_PLANS = ["basic", "professional", "enterprise"]
@@ -32,6 +32,7 @@ export default function AdminUsersPage() {
   const { users, loading, refresh } = useAdminUsers()
   const [selectedPlan, setSelectedPlan] = useState<string>("")
   const [selectedUser, setSelectedUser] = useState<string>("")
+  const [packageValue, setPackageValue] = useState<string>("")
   const [showPlanDialog, setShowPlanDialog] = useState(false)
   const [showResetDialog, setShowResetDialog] = useState(false)
   const [showDisableDialog, setShowDisableDialog] = useState(false)
@@ -97,6 +98,48 @@ export default function AdminUsersPage() {
     }
   }
 
+  async function manageLimits(userId: string) {
+    try {
+      if (!limitsKey) {
+        toast.error("Limit key is required")
+        return
+      }
+
+      const payload: any = { userId, key: limitsKey, action: limitsAction }
+
+      if (limitsAction !== "reset") {
+        const value = parseInt(limitsValue, 10)
+        if (isNaN(value) || value < 0) {
+          toast.error("Value must be a non-negative number")
+          return
+        }
+        payload.value = value
+      }
+
+      const res = await fetch("/api/admin/users/limits", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      })
+
+      if (!res.ok) {
+        const error = await res.json()
+        throw new Error(error.error || "Failed to manage limits")
+      }
+
+      const result = await res.json()
+      toast.success(result.message || "Limit updated")
+      setShowManageLimitsDialog(false)
+      setLimitsKey("")
+      setLimitsValue("")
+      setLimitsAction("set")
+      refresh()
+    } catch (error) {
+      console.error("Error:", error)
+      toast.error(error instanceof Error ? error.message : "Failed to manage limits")
+    }
+  }
+
   async function extendPayment(userId: string) {
     try {
       const res = await fetch("/api/admin/payments/extend", {
@@ -131,6 +174,45 @@ export default function AdminUsersPage() {
     } catch (error) {
       console.error("Error:", error)
       toast.error("Failed to cancel")
+    }
+  }
+
+  async function savePackage(userId: string) {
+    try {
+      const value = parseInt(packageValue, 10)
+      if (isNaN(value) || value < 0) {
+        toast.error("Package value must be a non-negative number")
+        return
+      }
+
+      const res = await fetch("/api/admin/users", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId, total_generations: value }),
+      })
+      if (!res.ok) throw new Error("Failed to save package")
+      toast.success("Package updated")
+      setPackageValue("")
+      refresh()
+    } catch (error) {
+      console.error("Error:", error)
+      toast.error("Failed to save package")
+    }
+  }
+
+  async function resetUsedGenerations(userId: string) {
+    try {
+      const res = await fetch("/api/admin/users", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId, reset_used: true }),
+      })
+      if (!res.ok) throw new Error("Failed to reset")
+      toast.success("Usage reset")
+      refresh()
+    } catch (error) {
+      console.error("Error:", error)
+      toast.error("Failed to reset usage")
     }
   }
 
@@ -285,6 +367,7 @@ export default function AdminUsersPage() {
                     <TableHead className="max-w-[240px]">Email</TableHead>
                     <TableHead>Name</TableHead>
                     <TableHead>Plan</TableHead>
+                    <TableHead>Package</TableHead>
                     <TableHead>Expires</TableHead>
                     <TableHead>Created</TableHead>
                     <TableHead>Status</TableHead>
@@ -300,6 +383,11 @@ export default function AdminUsersPage() {
                         <Badge className={getPlanColor(user.plan)}>
                           {user.plan}
                         </Badge>
+                      </TableCell>
+                      <TableCell className="text-sm">
+                        <div className="flex items-center gap-1">
+                          <span>{user.used_generations}/{user.total_generations}</span>
+                        </div>
                       </TableCell>
                       <TableCell>{formatDate(user.expiresAt)}</TableCell>
                       <TableCell>{formatDate(user.createdAt)}</TableCell>
@@ -469,6 +557,61 @@ export default function AdminUsersPage() {
                                 </div>
                               </AlertDialogContent>
                             </AlertDialog>
+
+                            <Dialog open={showManageLimitsDialog && selectedUser === user.id} onOpenChange={setShowManageLimitsDialog}>
+                              <DialogTrigger asChild>
+                                <DropdownMenuItem
+                                  onSelect={(e) => {
+                                    e.preventDefault()
+                                    setSelectedUser(user.id)
+                                    setPackageValue("")
+                                  }}
+                                >
+                                  Set Package
+                                </DropdownMenuItem>
+                              </DialogTrigger>
+                              <DialogContent className="max-w-sm">
+                                <DialogHeader>
+                                  <DialogTitle>Set Generation Package</DialogTitle>
+                                </DialogHeader>
+                                <div className="space-y-4">
+                                  <div>
+                                    <label className="text-sm font-medium">Package Size (generations)</label>
+                                    <Input
+                                      type="number"
+                                      min="0"
+                                      value={packageValue}
+                                      onChange={(e) => setPackageValue(e.target.value)}
+                                      placeholder="Enter package size"
+                                      className="mt-1"
+                                    />
+                                  </div>
+                                  <div className="flex gap-2">
+                                    <Button
+                                      onClick={() => savePackage(user.id)}
+                                      disabled={!packageValue}
+                                    >
+                                      Save
+                                    </Button>
+                                    <Button
+                                      variant="outline"
+                                      onClick={() => setShowManageLimitsDialog(false)}
+                                    >
+                                      Cancel
+                                    </Button>
+                                  </div>
+                                </div>
+                              </DialogContent>
+                            </Dialog>
+
+                            <DropdownMenuItem
+                              onSelect={(e) => {
+                                e.preventDefault()
+                                resetUsedGenerations(user.id)
+                              }}
+                            >
+                              Reset Usage
+                            </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </TableCell>
