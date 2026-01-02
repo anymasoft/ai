@@ -35,22 +35,17 @@ console.warn = (...args: any[]) => {
 };
 
 export async function register() {
-  // Инициализация queue processors (только на сервере)
+  // Инициализация сервера
   if (typeof window === "undefined") {
     try {
-      // 1. Сначала регистрируем процессоры
-      const { registerQueueProcessors } = await import("./lib/queue-processors")
-      registerQueueProcessors()
-      console.log("[Queue] Processors registered successfully")
-
-      // 2. ТОЛЬКО ПОТОМ запускаем очередь
-      const { globalJobQueue } = await import("./lib/job-queue")
-      globalJobQueue.start().catch((err) => {
-        console.error("[Queue] Failed to start queue processor:", err)
+      // Запустить batch worker для обработки jobs из БД
+      const { startBatchWorker } = await import("./lib/batch-worker")
+      startBatchWorker().catch((err) => {
+        console.error("[BatchWorker] Failed to start:", err)
       })
-      console.log("[Queue] Queue processor started (infinite loop)")
+      console.log("[Server] Batch worker scheduled to start (infinite loop)")
     } catch (error) {
-      console.error("[Queue] Initialization error:", error)
+      console.error("[Server] Initialization error:", error)
     }
   }
 }

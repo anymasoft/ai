@@ -45,64 +45,9 @@ export default function CardGeneratorPage() {
 
   // Generation state
   const [isGenerating, setIsGenerating] = useState(false)
-  const [jobId, setJobId] = useState<string | null>(null)
   const [result, setResult] = useState<CardResult | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [copiedSection, setCopiedSection] = useState<string | null>(null)
-
-  // Polling для получения статуса job'а
-  useEffect(() => {
-    if (!jobId) return
-
-    const pollJobStatus = async () => {
-      const url = `/api/jobs/${jobId}`
-      console.log('[pollJobStatus] Polling:', { jobId, url })
-
-      try {
-        const response = await fetch(url)
-
-        if (!response.ok) {
-          const text = await response.text()
-          console.error('[pollJobStatus] HTTP error:', { status: response.status, text })
-          setError(`Ошибка получения статуса (HTTP ${response.status})`)
-          setIsGenerating(false)
-          return
-        }
-
-        let jobData
-        try {
-          jobData = await response.json()
-        } catch (jsonErr) {
-          console.error('[pollJobStatus] JSON parse error:', jsonErr, { response })
-          setError("Неверный формат ответа от сервера")
-          setIsGenerating(false)
-          return
-        }
-
-        if (jobData.status === "completed") {
-          setResult(jobData.result)
-          setIsGenerating(false)
-          setJobId(null)
-        } else if (jobData.status === "failed") {
-          setError(jobData.error || "Ошибка при генерации карточки")
-          setIsGenerating(false)
-          setJobId(null)
-        }
-        // Если queued или processing - продолжаем polling
-      } catch (err) {
-        console.error("[pollJobStatus] Network/fetch error:", { error: err, jobId, message: err instanceof Error ? err.message : "unknown" })
-        // При сетевой ошибке продолжаем polling (это может быть временная потеря сети)
-        // Не показываем ошибку пользователю - очередь продолжает работать
-      }
-    }
-
-    // Первый опрос сразу
-    pollJobStatus()
-
-    // Polling каждые 500ms
-    const interval = setInterval(pollJobStatus, 500)
-    return () => clearInterval(interval)
-  }, [jobId])
 
   const handleGenerateCard = async () => {
     // Валидация
@@ -139,20 +84,19 @@ export default function CardGeneratorPage() {
 
       if (!response.ok) {
         const data = await response.json()
-        throw new Error(data.error || "Ошибка при создании задачи")
+        throw new Error(data.error || "Ошибка при генерации карточки")
       }
 
       const data = await response.json()
-      // API возвращает { success: true, jobId, pollingUrl }
-      if (data.success && data.jobId) {
-        // Сохраняем jobId и начинаем polling
-        setJobId(data.jobId)
-        // isGenerating остается true до завершения polling
+      // API возвращает { success: true, data }
+      if (data.success && data.data) {
+        setResult(data.data)
       } else {
         throw new Error("Неверный формат ответа от API")
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Неизвестная ошибка")
+    } finally {
       setIsGenerating(false)
     }
   }

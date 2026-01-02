@@ -1,12 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth/next'
 import { authOptions } from '@/lib/auth'
-import { globalJobQueue } from '@/lib/job-queue'
-import { getBatchRecord, getBatchJobsStats, getBatchJobs, updateBatchStatus } from '@/lib/batch-operations'
+import { getClient } from '@/lib/db'
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions)
@@ -14,14 +13,20 @@ export async function GET(
       return NextResponse.json({ error: 'Требуется авторизация' }, { status: 401 })
     }
 
-    const { id: batchId } = params
+    const { id: batchId } = await params
 
     if (!batchId) {
       return NextResponse.json({ error: 'Требуется batch ID' }, { status: 400 })
     }
 
+    const db = await getClient()
+
     // Получаем информацию о batch из БД
-    const batchRecord = await getBatchRecord(batchId)
+    const batchResult = await db.execute(
+      `SELECT * FROM batches WHERE id = ?`,
+      [batchId]
+    )
+    const batchRecord = batchResult.rows?.[0] as any
 
     if (!batchRecord) {
       return NextResponse.json({ error: 'Batch not found' }, { status: 404 })
@@ -36,24 +41,44 @@ export async function GET(
     }
 
     // Получаем статистику jobs для этого batch
-    const stats = await getBatchJobsStats(batchId)
+    const statsResult = await db.execute(
+      `SELECT
+        COUNT(*) as total,
+        SUM(CASE WHEN status = 'queued' THEN 1 ELSE 0 END) as queued,
+        SUM(CASE WHEN status = 'processing' THEN 1 ELSE 0 END) as processing,
+        SUM(CASE WHEN status = 'done' THEN 1 ELSE 0 END) as completed,
+        SUM(CASE WHEN status = 'failed' THEN 1 ELSE 0 END) as failed
+      FROM jobs
+      WHERE JSON_EXTRACT(payload, '$.batchId') = ?`,
+      [batchId]
+    )
+    const stats = (statsResult.rows?.[0] as any) || { total: 0, queued: 0, processing: 0, completed: 0, failed: 0 }
 
-    // Получаем детали всех jobs (если их не слишком много)
-    const batchJobs = await getBatchJobs(batchId)
+    // Получаем детали всех jobs
+    const jobsResult = await db.execute(
+      `SELECT id, status, result, error FROM jobs
+       WHERE JSON_EXTRACT(payload, '$.batchId') = ?
+       ORDER BY created_at ASC`,
+      [batchId]
+    )
+    const batchJobs = jobsResult.rows || []
 
     // Вычисляем текущий статус batch
     let currentStatus = batchRecord.status
     if (stats.total > 0) {
-      if (stats.completed === stats.total) {
+      if ((stats.completed || 0) === stats.total) {
         currentStatus = 'completed'
-      } else if (stats.processing > 0 || stats.queued > 0) {
+      } else if ((stats.processing || 0) > 0 || (stats.queued || 0) > 0) {
         currentStatus = 'processing'
       }
     }
 
     // Обновляем статус в БД если изменился
     if (currentStatus !== batchRecord.status) {
-      await updateBatchStatus(batchId, currentStatus)
+      await db.execute(
+        `UPDATE batches SET status = ?, updatedAt = ? WHERE id = ?`,
+        [currentStatus, Date.now(), batchId]
+      )
     }
 
     // Формируем ответ
@@ -64,10 +89,10 @@ export async function GET(
       style: batchRecord.style,
       totalItems: batchRecord.totalItems,
       stats: {
-        queued: stats.queued,
-        processing: stats.processing,
-        completed: stats.completed,
-        failed: stats.failed,
+        queued: stats.queued || 0,
+        processing: stats.processing || 0,
+        completed: stats.completed || 0,
+        failed: stats.failed || 0,
       },
       items: batchJobs.map((job: any) => {
         let result = null
@@ -80,7 +105,7 @@ export async function GET(
         }
         return {
           jobId: job.id,
-          status: job.status,
+          status: job.status === 'done' ? 'completed' : job.status, // Convert 'done' to 'completed' for UI
           result,
           error: job.error || null,
         }
