@@ -1,5 +1,3 @@
-'use server'
-
 import { globalJobQueue } from './job-queue'
 import { generateProductCard } from './ai-services/generation'
 
