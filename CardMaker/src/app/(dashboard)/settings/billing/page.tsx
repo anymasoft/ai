@@ -3,10 +3,9 @@
 import { useSession } from "next-auth/react"
 import { useEffect, useState } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Alert, AlertDescription } from "@/components/ui/alert"
-import { PricingPlans } from "@/components/pricing-plans"
 import { CurrentPlanCard } from "./components/current-plan-card"
 import { BillingHistoryCard } from "./components/billing-history-card"
+import { PackageSelector } from "@/components/package-selector"
 import { useCheckPaymentStatus } from "@/hooks/useCheckPaymentStatus"
 
 interface UsageInfo {
@@ -15,7 +14,7 @@ interface UsageInfo {
 }
 
 export default function BillingSettings() {
-  const { data: session, status } = useSession()
+  const { data: session } = useSession()
   const checkResult = useCheckPaymentStatus()
   const [usageInfo, setUsageInfo] = useState<UsageInfo | null>(null)
   const [isLoadingUsage, setIsLoadingUsage] = useState(true)
@@ -102,9 +101,7 @@ export default function BillingSettings() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <PricingPlans
-              mode="billing"
-            />
+            <PackageSelector />
           </CardContent>
         </Card>
       </div>
