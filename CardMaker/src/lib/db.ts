@@ -142,9 +142,9 @@ async function getClient() {
         await _client.execute(
           `INSERT OR IGNORE INTO packages (key, title, price_rub, generations, is_active)
            VALUES
-           ('basic', 'Basic', 99000, 50, 1),
-           ('pro', 'Professional', 249000, 250, 1),
-           ('enterprise', 'Enterprise', 599000, 1000, 1);`
+           ('basic', 'Basic', 990, 50, 1),
+           ('pro', 'Professional', 2490, 250, 1),
+           ('enterprise', 'Enterprise', 5990, 1000, 1);`
         );
 
         // ========== Billing/Payments Tables ==========

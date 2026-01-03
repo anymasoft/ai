@@ -8,10 +8,21 @@ import { BillingHistoryCard } from "./components/billing-history-card"
 import { PackageSelector } from "@/components/package-selector"
 import { useCheckPaymentStatus } from "@/hooks/useCheckPaymentStatus"
 import { toast } from "sonner"
+import { Badge } from "@/components/ui/badge"
+import { Loader2 } from "lucide-react"
 
 interface UsageInfo {
   balance: number
   used: number
+}
+
+interface Payment {
+  id: string
+  userId: string
+  packageKey: string
+  amount: number
+  status: string
+  createdAt: number
 }
 
 export default function BillingSettings() {
@@ -20,6 +31,8 @@ export default function BillingSettings() {
   const [usageInfo, setUsageInfo] = useState<UsageInfo | null>(null)
   const [isLoadingUsage, setIsLoadingUsage] = useState(true)
   const [isCheckingPayment, setIsCheckingPayment] = useState(false)
+  const [payments, setPayments] = useState<Payment[]>([])
+  const [isLoadingPayments, setIsLoadingPayments] = useState(false)
 
   // Получаем информацию о балансе описаний
   const fetchUsageInfo = async () => {
@@ -45,6 +58,24 @@ export default function BillingSettings() {
     }
   }
 
+  // Загружаем платежи пользователя
+  const fetchPayments = async () => {
+    try {
+      setIsLoadingPayments(true)
+      const response = await fetch("/api/admin/payments", {
+        cache: "no-store",
+      })
+      if (response.ok) {
+        const data = await response.json()
+        setPayments(data.payments || [])
+      }
+    } catch (error) {
+      console.error("[BillingPage] Ошибка при загрузке платежей:", error)
+    } finally {
+      setIsLoadingPayments(false)
+    }
+  }
+
   // Инициальная загрузка баланса
   useEffect(() => {
     if (!session?.user?.id) {
@@ -53,6 +84,7 @@ export default function BillingSettings() {
     }
 
     fetchUsageInfo()
+    fetchPayments()
     setIsLoadingUsage(false)
   }, [session?.user?.id])
 
@@ -66,11 +98,20 @@ export default function BillingSettings() {
     if (!isSuccess) return
 
     let pollingCount = 0
-    const maxPolls = 15 // 15 * 2 сек = 30 сек максимум
+    const maxPolls = 15
+    let interval: NodeJS.Timeout | null = null
+    let hasSucceeded = false
 
     setIsCheckingPayment(true)
 
+    const stopPolling = () => {
+      if (interval) clearInterval(interval)
+      setIsCheckingPayment(false)
+    }
+
     const pollPaymentStatus = async () => {
+      if (hasSucceeded) return
+
       pollingCount++
 
       try {
@@ -85,16 +126,18 @@ export default function BillingSettings() {
         // Если платёж прошёл успешно
         if (data.success && data.status === "succeeded") {
           console.log("[BillingPage] Payment succeeded! Updating balance...")
+          hasSucceeded = true
 
-          // Обновляем баланс
+          // Обновляем баланс и платежи
           await fetchUsageInfo()
+          await fetchPayments()
 
-          setIsCheckingPayment(false)
           toast.success("Оплата прошла успешно! Баланс обновлён.")
 
           // Очищаем URL от параметра success
           window.history.replaceState({}, "", window.location.pathname)
 
+          stopPolling()
           return
         }
 
@@ -104,27 +147,29 @@ export default function BillingSettings() {
           return
         }
 
-        // Если превышен лимит попыток или ошибка
+        // Если превышен лимит попыток
         if (pollingCount >= maxPolls) {
-          setIsCheckingPayment(false)
           toast.info(
             "Платёж всё ещё обрабатывается. Баланс обновится автоматически в течение минуты."
           )
           window.history.replaceState({}, "", window.location.pathname)
+          stopPolling()
           return
         }
 
-        // Другие ошибки
-        setIsCheckingPayment(false)
-        toast.error(data.error || "Ошибка при проверке платежа")
-        window.history.replaceState({}, "", window.location.pathname)
+        // Другие ошибки (но не "No pending payment found" - это нормально)
+        if (data.error && !data.error.includes("No pending payment")) {
+          toast.error(data.error)
+          window.history.replaceState({}, "", window.location.pathname)
+          stopPolling()
+        }
       } catch (error) {
         console.error("[BillingPage] Payment check error:", error)
 
         if (pollingCount >= maxPolls) {
-          setIsCheckingPayment(false)
           toast.error("Не удалось проверить статус платежа")
           window.history.replaceState({}, "", window.location.pathname)
+          stopPolling()
         }
       }
     }
@@ -133,16 +178,17 @@ export default function BillingSettings() {
     pollPaymentStatus()
 
     // Дальше polling каждые 2 секунды
-    const interval = setInterval(() => {
-      if (pollingCount < maxPolls) {
+    interval = setInterval(() => {
+      if (pollingCount < maxPolls && !hasSucceeded) {
         pollPaymentStatus()
       } else {
-        clearInterval(interval)
-        setIsCheckingPayment(false)
+        stopPolling()
       }
     }, 2000)
 
-    return () => clearInterval(interval)
+    return () => {
+      if (interval) clearInterval(interval)
+    }
   }, [session?.user?.id])
 
   const isLoading = isLoadingUsage
@@ -190,7 +236,64 @@ export default function BillingSettings() {
           balance={usageInfo?.balance || 0}
           used={usageInfo?.used || 0}
         />
-        <BillingHistoryCard />
+        <Card>
+          <CardHeader>
+            <CardTitle>История платежей</CardTitle>
+            <CardDescription>
+              Последние покупки пакетов описаний
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {isLoadingPayments ? (
+              <div className="flex justify-center py-4">
+                <Loader2 className="h-5 w-5 animate-spin" />
+              </div>
+            ) : payments.length === 0 ? (
+              <p className="text-sm text-muted-foreground">
+                Платежи отсутствуют
+              </p>
+            ) : (
+              <div className="space-y-3">
+                {payments.slice(0, 5).map((payment) => (
+                  <div
+                    key={payment.id}
+                    className="flex items-center justify-between p-3 border rounded-lg"
+                  >
+                    <div className="space-y-1">
+                      <p className="text-sm font-medium">
+                        Пакет {payment.packageKey}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {new Date(
+                          payment.createdAt * 1000
+                        ).toLocaleDateString("ru-RU")}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="text-right">
+                        <p className="text-sm font-medium">
+                          {payment.amount} ₽
+                        </p>
+                        <Badge
+                          variant={
+                            payment.status === "succeeded"
+                              ? "default"
+                              : "secondary"
+                          }
+                          className="text-xs"
+                        >
+                          {payment.status === "succeeded"
+                            ? "Завершен"
+                            : "Ожидание"}
+                        </Badge>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
       </div>
 
       <div className="grid gap-6">

@@ -86,7 +86,7 @@ export async function POST(request: NextRequest) {
 
     const pkg = packageResult.rows[0] as any;
     const priceRub = pkg.price_rub;
-    const amountRubles = (priceRub / 100).toFixed(2);
+    // amount уже в рублях, без конвертаций
 
     // Получаем креденшалы ЮKassa из переменных окружения
     const yooKassaShopId = process.env.YOOKASSA_SHOP_ID;
@@ -110,7 +110,7 @@ export async function POST(request: NextRequest) {
 
     const paymentRequest: YooKassaPaymentRequest = {
       amount: {
-        value: amountRubles,
+        value: priceRub.toString(),
         currency: "RUB",
       },
       confirmation: {
@@ -176,7 +176,7 @@ export async function POST(request: NextRequest) {
         paymentData.id,
         session.user.id,
         packageKey,
-        parseFloat(amountRubles),
+        priceRub,
         now,
         now
       ]

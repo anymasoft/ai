@@ -114,12 +114,18 @@ export default function AdminPaymentsPage() {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
       })
-      if (!res.ok) throw new Error("Failed to delete payment")
+      const data = await res.json()
+
+      if (!res.ok) {
+        toast.error(data.error || "Ошибка удаления платежа")
+        return
+      }
       toast.success("Payment deleted")
       fetchPayments()
     } catch (error) {
       console.error("Error:", error)
-      toast.error("Failed to delete payment")
+      const errMsg = data?.error || "Ошибка удаления платежа"
+      toast.error(errMsg)
     } finally {
       setDeletingId(null)
     }
