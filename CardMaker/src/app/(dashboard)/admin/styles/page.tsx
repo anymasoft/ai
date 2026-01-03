@@ -109,7 +109,7 @@ export default function StylesPage() {
       <div>
         <h1 className="text-3xl font-bold">Стили описаний</h1>
         <p className="text-muted-foreground mt-1">
-          Управляй инструкциями для каждого стиля. Они определяют, как система будет генерировать описания.
+          Управляй инструкциями для каждого стиля. Они определяют, как система будет создавать описания.
         </p>
       </div>
 
@@ -125,7 +125,7 @@ export default function StylesPage() {
           <Alert>
             <AlertCircle className="h-4 w-4" />
             <AlertDescription>
-              Изменения стилей применяются ко всем новым генерациям. Пользователи выбирают стиль при создании карточки.
+              Изменения стилей применяются ко всем новым описаниям. Пользователи выбирают стиль при создании карточки.
             </AlertDescription>
           </Alert>
 
@@ -191,7 +191,7 @@ export default function StylesPage() {
                         onChange={(e) =>
                           handleStyleChange(style.key, e.target.value)
                         }
-                        placeholder="Введи инструкцию для AI как генерировать описания в этом стиле"
+                        placeholder="Введи инструкцию для AI как создавать описания в этом стиле"
                         className="min-h-96 resize-none font-mono text-sm"
                       />
                       <p className="text-xs text-muted-foreground">

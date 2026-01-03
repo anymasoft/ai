@@ -32,6 +32,8 @@ export default function AdminPackagesPage() {
   const [saving, setSaving] = useState<string | null>(null);
   const [values, setValues] = useState<EditState>({});
 
+  console.log('[AdminPackagesPage] Rendered. Packages:', packages.length, 'Values:', Object.keys(values).length);
+
   useEffect(() => {
     loadPackages();
   }, []);
@@ -104,7 +106,7 @@ export default function AdminPackagesPage() {
     <div className="space-y-6">
       <div>
         <h1 className="text-3xl font-bold">Управление Пакетами</h1>
-        <p className="text-gray-600 mt-2">Редактируйте цены и количество генераций</p>
+        <p className="text-gray-600 mt-2">Редактируйте цены и количество описаний</p>
       </div>
 
       <Card>
@@ -126,7 +128,7 @@ export default function AdminPackagesPage() {
                   <TableRow>
                     <TableHead>Название</TableHead>
                     <TableHead>Цена (₽)</TableHead>
-                    <TableHead>Генерации</TableHead>
+                    <TableHead>Описания</TableHead>
                     <TableHead>Активен</TableHead>
                     <TableHead className="w-[180px]">Действия</TableHead>
                   </TableRow>
@@ -149,7 +151,7 @@ export default function AdminPackagesPage() {
                               },
                             })
                           }
-                          className="w-24"
+                          className="w-24 border border-gray-300"
                         />
                       </TableCell>
                       <TableCell>
@@ -166,7 +168,7 @@ export default function AdminPackagesPage() {
                               },
                             })
                           }
-                          className="w-20"
+                          className="w-20 border border-gray-300"
                         />
                       </TableCell>
                       <TableCell>
@@ -182,6 +184,7 @@ export default function AdminPackagesPage() {
                               },
                             })
                           }
+                          className="w-4 h-4 cursor-pointer"
                         />
                       </TableCell>
                       <TableCell>

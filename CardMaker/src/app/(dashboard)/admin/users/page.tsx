@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Loader2, RefreshCcw } from "lucide-react"
+import { Loader2, RefreshCcw, X } from "lucide-react"
 import { toast } from "sonner"
 
 interface User {
@@ -19,10 +19,7 @@ interface User {
 }
 
 interface UserValues {
-  [userId: string]: {
-    generation_balance: number
-    generation_used: number
-  }
+  [userId: string]: number
 }
 
 export default function AdminUsersPage() {
@@ -48,41 +45,37 @@ export default function AdminUsersPage() {
       // Инициализируем значения для каждого пользователя
       const newValues: UserValues = {}
       usersList.forEach((user: User) => {
-        newValues[user.id] = {
-          generation_balance: user.generation_balance,
-          generation_used: user.generation_used,
-        }
+        newValues[user.id] = user.generation_balance
       })
       setValues(newValues)
     } catch (error) {
       console.error("Error:", error)
-      toast.error("Failed to load users")
+      toast.error("Ошибка загрузки пользователей")
     } finally {
       setLoading(false)
     }
   }
 
-  async function saveUserValues(userId: string) {
+  async function saveUserBalance(userId: string) {
     try {
       setSaving(userId)
-      const userVal = values[userId]
-      if (!userVal) return
+      const balance = values[userId]
+      if (balance === undefined) return
 
       const res = await fetch("/api/admin/users", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           userId,
-          generation_balance: userVal.generation_balance,
-          generation_used: userVal.generation_used,
+          generation_balance: balance,
         }),
       })
       if (!res.ok) throw new Error("Failed to update")
-      toast.success("User values updated")
+      toast.success("Баланс обновлен")
       await fetchUsers()
     } catch (error) {
       console.error("Error:", error)
-      toast.error("Failed to update")
+      toast.error("Ошибка обновления")
     } finally {
       setSaving(null)
     }
@@ -109,8 +102,8 @@ export default function AdminUsersPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold">Users</h1>
-          <p className="text-muted-foreground">Manage user generation balance</p>
+          <h1 className="text-3xl font-bold">Пользователи</h1>
+          <p className="text-muted-foreground">Управляйте балансом пользователей</p>
         </div>
         <Button
           variant="outline"
@@ -126,19 +119,19 @@ export default function AdminUsersPage() {
         <CardHeader>
           <div className="flex justify-between items-center">
             <div>
-              <CardTitle>All Users</CardTitle>
+              <CardTitle>Все пользователи</CardTitle>
               <CardDescription>
-                {filteredUsers.length} users
+                {filteredUsers.length} пользователей
               </CardDescription>
             </div>
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex-1">
-            <label className="text-sm font-medium text-muted-foreground">Filter by email</label>
+            <label className="text-sm font-medium text-muted-foreground">Фильтр по email</label>
             <div className="flex gap-2 mt-2">
               <Input
-                placeholder="Search email..."
+                placeholder="Поиск email..."
                 value={filterEmail}
                 onChange={(e) => setFilterEmail(e.target.value)}
               />
@@ -159,10 +152,8 @@ export default function AdminUsersPage() {
               <TableHeader>
                 <TableRow>
                   <TableHead>Email</TableHead>
-                  <TableHead>Balance</TableHead>
-                  <TableHead>Used</TableHead>
-                  <TableHead>Created</TableHead>
-                  <TableHead>Действия</TableHead>
+                  <TableHead>Баланс</TableHead>
+                  <TableHead>Сохранить</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -175,43 +166,20 @@ export default function AdminUsersPage() {
                       <Input
                         type="number"
                         min="0"
-                        value={values[user.id]?.generation_balance || 0}
+                        value={values[user.id] || 0}
                         onChange={(e) =>
                           setValues({
                             ...values,
-                            [user.id]: {
-                              ...values[user.id],
-                              generation_balance: parseInt(e.target.value) || 0,
-                            },
+                            [user.id]: parseInt(e.target.value) || 0,
                           })
                         }
-                        className="w-20"
+                        className="w-20 border border-gray-300"
                       />
-                    </TableCell>
-                    <TableCell>
-                      <Input
-                        type="number"
-                        min="0"
-                        value={values[user.id]?.generation_used || 0}
-                        onChange={(e) =>
-                          setValues({
-                            ...values,
-                            [user.id]: {
-                              ...values[user.id],
-                              generation_used: parseInt(e.target.value) || 0,
-                            },
-                          })
-                        }
-                        className="w-20"
-                      />
-                    </TableCell>
-                    <TableCell className="text-sm">
-                      {formatDate(user.createdAt)}
                     </TableCell>
                     <TableCell>
                       <Button
                         size="sm"
-                        onClick={() => saveUserValues(user.id)}
+                        onClick={() => saveUserBalance(user.id)}
                         disabled={saving === user.id}
                         className="bg-green-600 hover:bg-green-700"
                       >
@@ -227,7 +195,7 @@ export default function AdminUsersPage() {
 
           {filteredUsers.length === 0 && (
             <div className="py-8 text-center text-muted-foreground">
-              No users found
+              Пользователи не найдены
             </div>
           )}
         </CardContent>

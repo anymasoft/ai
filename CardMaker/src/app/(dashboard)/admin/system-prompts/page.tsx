@@ -104,7 +104,7 @@ export default function SystemPromptsPage() {
       <div>
         <h1 className="text-3xl font-bold">System Prompts</h1>
         <p className="text-muted-foreground mt-1">
-          Управляй системными промптами для генерации и валидации описаний товаров. Эти промпты будут использоваться при обработке запросов.
+          Управляй системными промптами для создания и валидации описаний товаров. Эти промпты будут использоваться при обработке запросов.
         </p>
       </div>
 
@@ -135,9 +135,9 @@ export default function SystemPromptsPage() {
         {/* Промпт для генерации */}
         <Card>
           <CardHeader>
-            <CardTitle>Промпт генерации (gen_base)</CardTitle>
+            <CardTitle>Промпт создания (gen_base)</CardTitle>
             <CardDescription>
-              Базовый промпт для генерации описаний товаров. Будет использоваться при создании карточек.
+              Базовый промпт для создания описаний товаров. Будет использоваться при создании карточек.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -146,7 +146,7 @@ export default function SystemPromptsPage() {
             </Label>
             <Textarea
               id="gen_base"
-              placeholder="Введите базовый промпт для генерации описаний..."
+              placeholder="Введите базовый промпт для создания описаний..."
               value={prompts.gen_base}
               onChange={(e) => setPrompts({ ...prompts, gen_base: e.target.value })}
               disabled={saving}

@@ -22,7 +22,6 @@ export async function GET(request: NextRequest) {
       email: user.email,
       generation_balance: user.generation_balance || 0,
       generation_used: user.generation_used || 0,
-      remaining: Math.max(0, (user.generation_balance || 0) - (user.generation_used || 0)),
     }))
 
     return NextResponse.json({ balances })
