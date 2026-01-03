@@ -21,16 +21,20 @@ import { useUnreadMessagesCount } from "@/hooks/useUnreadMessagesCount"
 
 const adminItems = [
   {
+    title: "Пакеты",
+    url: "/admin/packages",
+  },
+  {
     title: "Пользователи",
     url: "/admin/users",
   },
   {
-    title: "Использование",
-    url: "/admin/limits",
-  },
-  {
     title: "Платежи",
     url: "/admin/payments",
+  },
+  {
+    title: "Использование",
+    url: "/admin/limits",
   },
   {
     title: "Сообщения",

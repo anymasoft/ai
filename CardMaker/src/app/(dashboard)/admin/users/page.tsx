@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Loader2, RefreshCcw, Check, X } from "lucide-react"
+import { Loader2, RefreshCcw } from "lucide-react"
 import { toast } from "sonner"
 
 interface User {
@@ -18,13 +18,18 @@ interface User {
   generation_used: number
 }
 
+interface UserValues {
+  [userId: string]: {
+    generation_balance: number
+    generation_used: number
+  }
+}
+
 export default function AdminUsersPage() {
   const [users, setUsers] = useState<User[]>([])
   const [loading, setLoading] = useState(true)
-  const [editingId, setEditingId] = useState<string | null>(null)
-  const [editBalance, setEditBalance] = useState<number>(0)
-  const [editUsed, setEditUsed] = useState<number>(0)
-  const [savingId, setSavingId] = useState<string | null>(null)
+  const [saving, setSaving] = useState<string | null>(null)
+  const [values, setValues] = useState<UserValues>({})
   const [filterEmail, setFilterEmail] = useState("")
 
   useEffect(() => {
@@ -37,7 +42,18 @@ export default function AdminUsersPage() {
       const res = await fetch("/api/admin/users")
       if (!res.ok) throw new Error("Failed to fetch users")
       const data = await res.json()
-      setUsers(data.users || [])
+      const usersList = data.users || []
+      setUsers(usersList)
+
+      // Инициализируем значения для каждого пользователя
+      const newValues: UserValues = {}
+      usersList.forEach((user: User) => {
+        newValues[user.id] = {
+          generation_balance: user.generation_balance,
+          generation_used: user.generation_used,
+        }
+      })
+      setValues(newValues)
     } catch (error) {
       console.error("Error:", error)
       toast.error("Failed to load users")
@@ -48,21 +64,27 @@ export default function AdminUsersPage() {
 
   async function saveUserValues(userId: string) {
     try {
-      setSavingId(userId)
+      setSaving(userId)
+      const userVal = values[userId]
+      if (!userVal) return
+
       const res = await fetch("/api/admin/users", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userId, generation_balance: editBalance, generation_used: editUsed }),
+        body: JSON.stringify({
+          userId,
+          generation_balance: userVal.generation_balance,
+          generation_used: userVal.generation_used,
+        }),
       })
       if (!res.ok) throw new Error("Failed to update")
       toast.success("User values updated")
-      setEditingId(null)
-      fetchUsers()
+      await fetchUsers()
     } catch (error) {
       console.error("Error:", error)
       toast.error("Failed to update")
     } finally {
-      setSavingId(null)
+      setSaving(null)
     }
   }
 
@@ -140,6 +162,7 @@ export default function AdminUsersPage() {
                   <TableHead>Balance</TableHead>
                   <TableHead>Used</TableHead>
                   <TableHead>Created</TableHead>
+                  <TableHead>Действия</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -149,68 +172,52 @@ export default function AdminUsersPage() {
                       {user.email}
                     </TableCell>
                     <TableCell>
-                      {editingId === user.id ? (
-                        <div className="flex gap-1">
-                          <Input
-                            type="number"
-                            min="0"
-                            value={editBalance}
-                            onChange={(e) => setEditBalance(parseInt(e.target.value) || 0)}
-                            className="w-20"
-                          />
-                          <Button
-                            size="sm"
-                            variant="default"
-                            onClick={() => saveUserValues(user.id)}
-                            disabled={savingId === user.id}
-                          >
-                            <Check className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => setEditingId(null)}
-                          >
-                            <X className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      ) : (
-                        <div
-                          className="cursor-pointer hover:bg-muted p-2 rounded"
-                          onClick={() => {
-                            setEditingId(user.id)
-                            setEditBalance(user.generation_balance)
-                            setEditUsed(user.generation_used)
-                          }}
-                        >
-                          {user.generation_balance}
-                        </div>
-                      )}
+                      <Input
+                        type="number"
+                        min="0"
+                        value={values[user.id]?.generation_balance || 0}
+                        onChange={(e) =>
+                          setValues({
+                            ...values,
+                            [user.id]: {
+                              ...values[user.id],
+                              generation_balance: parseInt(e.target.value) || 0,
+                            },
+                          })
+                        }
+                        className="w-20"
+                      />
                     </TableCell>
                     <TableCell>
-                      {editingId === user.id ? (
-                        <Input
-                          type="number"
-                          min="0"
-                          value={editUsed}
-                          onChange={(e) => setEditUsed(parseInt(e.target.value) || 0)}
-                          className="w-20"
-                        />
-                      ) : (
-                        <div
-                          className="cursor-pointer hover:bg-muted p-2 rounded"
-                          onClick={() => {
-                            setEditingId(user.id)
-                            setEditBalance(user.generation_balance)
-                            setEditUsed(user.generation_used)
-                          }}
-                        >
-                          {user.generation_used}
-                        </div>
-                      )}
+                      <Input
+                        type="number"
+                        min="0"
+                        value={values[user.id]?.generation_used || 0}
+                        onChange={(e) =>
+                          setValues({
+                            ...values,
+                            [user.id]: {
+                              ...values[user.id],
+                              generation_used: parseInt(e.target.value) || 0,
+                            },
+                          })
+                        }
+                        className="w-20"
+                      />
                     </TableCell>
                     <TableCell className="text-sm">
                       {formatDate(user.createdAt)}
+                    </TableCell>
+                    <TableCell>
+                      <Button
+                        size="sm"
+                        onClick={() => saveUserValues(user.id)}
+                        disabled={saving === user.id}
+                        className="bg-green-600 hover:bg-green-700"
+                      >
+                        {saving === user.id && <Loader2 className="h-3 w-3 mr-1 animate-spin" />}
+                        Сохранить
+                      </Button>
                     </TableCell>
                   </TableRow>
                 ))}
