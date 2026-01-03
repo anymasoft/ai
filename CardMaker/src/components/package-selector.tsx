@@ -104,7 +104,7 @@ export function PackageSelector({ onPackageSelect }: PackageSelectorProps) {
           <CardContent className="space-y-4">
             <div>
               <div className="text-3xl font-bold">
-                {(pkg.price_rub / 100).toFixed(0)} ₽
+                {pkg.price_rub} ₽
               </div>
               <div className="text-sm text-muted-foreground">
                 {pkg.generations} описаний
