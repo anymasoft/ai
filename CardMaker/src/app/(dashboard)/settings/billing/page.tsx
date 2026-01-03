@@ -19,7 +19,10 @@ interface UsageInfo {
 interface Payment {
   id: string
   userId: string
+  email: string
   packageKey: string
+  packageTitle: string
+  generations: number
   amount: number
   status: string
   createdAt: number
@@ -253,15 +256,18 @@ export default function BillingSettings() {
                 Платежи отсутствуют
               </p>
             ) : (
-              <div className="space-y-3">
+              <div className="space-y-4">
                 {payments.slice(0, 5).map((payment) => (
                   <div
                     key={payment.id}
-                    className="flex items-center justify-between p-3 border rounded-lg"
+                    className="flex items-start justify-between p-3 border rounded-lg text-sm"
                   >
-                    <div className="space-y-1">
-                      <p className="text-sm font-medium">
-                        Пакет {payment.packageKey}
+                    <div className="space-y-1 flex-1">
+                      <p className="font-medium">
+                        {payment.packageTitle}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {payment.generations} описаний
                       </p>
                       <p className="text-xs text-muted-foreground">
                         {new Date(
@@ -269,24 +275,22 @@ export default function BillingSettings() {
                         ).toLocaleDateString("ru-RU")}
                       </p>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <div className="text-right">
-                        <p className="text-sm font-medium">
-                          {payment.amount} ₽
-                        </p>
-                        <Badge
-                          variant={
-                            payment.status === "succeeded"
-                              ? "default"
-                              : "secondary"
-                          }
-                          className="text-xs"
-                        >
-                          {payment.status === "succeeded"
-                            ? "Завершен"
-                            : "Ожидание"}
-                        </Badge>
-                      </div>
+                    <div className="flex flex-col items-end gap-2">
+                      <p className="font-semibold">
+                        {payment.amount} ₽
+                      </p>
+                      <Badge
+                        variant={
+                          payment.status === "succeeded"
+                            ? "default"
+                            : "secondary"
+                        }
+                        className="text-xs"
+                      >
+                        {payment.status === "succeeded"
+                          ? "Успешно"
+                          : "Ожидание"}
+                      </Badge>
                     </div>
                   </div>
                 ))}

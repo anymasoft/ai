@@ -37,29 +37,22 @@ export async function GET(request: NextRequest) {
       toDate = parseLocalDateEnd(toDateStr)
     }
 
-    // Debug logging
-    console.log("Date filter debug:", {
-      fromDateStr,
-      toDateStr,
-      fromDate,
-      toDate,
-      fromDateFormatted: fromDate ? new Date(fromDate * 1000).toISOString() : null,
-      toDateFormatted: toDate ? new Date(toDate * 1000).toISOString() : null,
-    })
-
-    // Get all payments from payments table (with user info)
+    // Get all payments from payments table with package info
     let query = `
       SELECT
         p.id,
         p.userId,
         u.email,
-        p.packageKey as plan,
+        p.packageKey,
+        pk.title as packageTitle,
+        pk.generations,
         p.amount,
         p.status,
         p.provider,
         p.createdAt
       FROM payments p
       JOIN users u ON p.userId = u.id
+      LEFT JOIN packages pk ON p.packageKey = pk.key
       WHERE 1=1
     `
 
@@ -71,22 +64,16 @@ export async function GET(request: NextRequest) {
     }
 
     if (fromDate !== null) {
-      // >= включает начало дня (00:00:00) - платежи с этого дня включаются
       query += ` AND p.createdAt >= ?`
       params.push(fromDate)
     }
 
     if (toDate !== null) {
-      // <= включает конец дня (23:59:59) - платежи до конца этого дня включаются
-      // parseLocalDateEnd() уже установит время на 23:59:59
       query += ` AND p.createdAt <= ?`
       params.push(toDate)
     }
 
     query += ` ORDER BY p.createdAt DESC LIMIT 500`
-
-    console.log("SQL Query:", query)
-    console.log("Query params:", params)
 
     // Всегда передаём массив параметров (может быть пустым)
     const result = await db.execute(query, params.length > 0 ? params : [])
@@ -98,16 +85,18 @@ export async function GET(request: NextRequest) {
       id: row.id,
       userId: row.userId,
       email: row.email,
-      plan: row.plan,
+      packageKey: row.packageKey,
+      packageTitle: row.packageTitle || row.packageKey,
+      generations: row.generations || 0,
+      amount: row.amount,
+      status: row.status,
       provider: row.provider,
-      price: typeof row.amount === "number" ? row.amount.toFixed(2) : row.amount,
       createdAt: row.createdAt,
     }))
 
-    // Calculate total sum (amount в рублях, convert to copecks for sum)
+    // Calculate total sum in rubles
     const totalSum = payments.reduce((sum, payment) => {
-      const priceNum = parseFloat(payment.price) * 100 || 0
-      return sum + priceNum
+      return sum + (payment.amount || 0)
     }, 0)
 
     return NextResponse.json({
