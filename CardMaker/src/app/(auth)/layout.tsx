@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Вход в сервис генерации сценариев для YouTube",
-  description: "Войдите в аккаунт и получите идеи и сценарии для YouTube, которые помогают расти просмотрам.",
+  title: "Вход в CardMaker",
+  description: "Войдите в аккаунт и получите идеи и сценарии для создания описаний товаров, которые помогают расти просмотрам.",
 };
 
 export default function AuthLayout({

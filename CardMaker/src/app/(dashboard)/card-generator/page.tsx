@@ -86,7 +86,7 @@ export default function CardGeneratorPage() {
 
       // Проверяем ошибку (HTTP != 2xx)
       if (!response.ok) {
-        const errorMsg = data.error?.message || data.error || "Ошибка при генерации карточки"
+        const errorMsg = data.error?.message || data.error || "Ошибка при создании карточки"
         throw new Error(errorMsg)
       }
 

@@ -55,7 +55,7 @@ export function CurrentPlanCard({
             {monthlyUsed > 0 ? (
               <>Использовано {monthlyUsed} сценариев ({percentageUsed}%)</>
             ) : (
-              <>Статистика появится после первой генерации</>
+              <>Статистика появится после первого использования</>
             )}
           </p>
         </div>

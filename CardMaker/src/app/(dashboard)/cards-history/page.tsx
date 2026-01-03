@@ -86,7 +86,7 @@ export default function CardsHistoryPage() {
 
   const handleRegenerate = (id: string, e: React.MouseEvent) => {
     e.stopPropagation() // Не переходить на страницу карточки при клике на Regenerate
-    toast.info("Функция перегенерации (скоро будет доступна)")
+    toast.info("Функция пересоздания (скоро будет доступна)")
   }
 
   const handleRowClick = (cardId: string) => {
@@ -219,7 +219,7 @@ export default function CardsHistoryPage() {
                                 <RefreshCcw className="h-4 w-4" />
                               </Button>
                             </TooltipTrigger>
-                            <TooltipContent>Перегенерировать (скоро)</TooltipContent>
+                            <TooltipContent>Пересоздать (скоро)</TooltipContent>
                           </Tooltip>
                         </div>
                       </TableCell>

@@ -106,7 +106,7 @@ export default function AdminPackagesPage() {
     <div className="space-y-6">
       <div>
         <h1 className="text-3xl font-bold">Управление Пакетами</h1>
-        <p className="text-gray-600 mt-2">Редактируйте цены и количество генераций</p>
+        <p className="text-gray-600 mt-2">Редактируйте цены и количество описаний</p>
       </div>
 
       <Card>
@@ -128,7 +128,7 @@ export default function AdminPackagesPage() {
                   <TableRow>
                     <TableHead>Название</TableHead>
                     <TableHead>Цена (₽)</TableHead>
-                    <TableHead>Генерации</TableHead>
+                    <TableHead>Описания</TableHead>
                     <TableHead>Активен</TableHead>
                     <TableHead className="w-[180px]">Действия</TableHead>
                   </TableRow>

@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Loader2, RefreshCcw } from "lucide-react"
+import { Loader2, RefreshCcw, X } from "lucide-react"
 import { toast } from "sonner"
 
 interface User {
@@ -50,7 +50,7 @@ export default function AdminUsersPage() {
       setValues(newValues)
     } catch (error) {
       console.error("Error:", error)
-      toast.error("Failed to load users")
+      toast.error("Ошибка загрузки пользователей")
     } finally {
       setLoading(false)
     }
@@ -71,11 +71,11 @@ export default function AdminUsersPage() {
         }),
       })
       if (!res.ok) throw new Error("Failed to update")
-      toast.success("Balance updated")
+      toast.success("Баланс обновлен")
       await fetchUsers()
     } catch (error) {
       console.error("Error:", error)
-      toast.error("Failed to update")
+      toast.error("Ошибка обновления")
     } finally {
       setSaving(null)
     }
@@ -102,8 +102,8 @@ export default function AdminUsersPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold">Users</h1>
-          <p className="text-muted-foreground">Manage user generation balance</p>
+          <h1 className="text-3xl font-bold">Пользователи</h1>
+          <p className="text-muted-foreground">Управляйте балансом пользователей</p>
         </div>
         <Button
           variant="outline"
@@ -119,19 +119,19 @@ export default function AdminUsersPage() {
         <CardHeader>
           <div className="flex justify-between items-center">
             <div>
-              <CardTitle>All Users</CardTitle>
+              <CardTitle>Все пользователи</CardTitle>
               <CardDescription>
-                {filteredUsers.length} users
+                {filteredUsers.length} пользователей
               </CardDescription>
             </div>
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex-1">
-            <label className="text-sm font-medium text-muted-foreground">Filter by email</label>
+            <label className="text-sm font-medium text-muted-foreground">Фильтр по email</label>
             <div className="flex gap-2 mt-2">
               <Input
-                placeholder="Search email..."
+                placeholder="Поиск email..."
                 value={filterEmail}
                 onChange={(e) => setFilterEmail(e.target.value)}
               />
@@ -152,8 +152,8 @@ export default function AdminUsersPage() {
               <TableHeader>
                 <TableRow>
                   <TableHead>Email</TableHead>
-                  <TableHead>Balance</TableHead>
-                  <TableHead>Save</TableHead>
+                  <TableHead>Баланс</TableHead>
+                  <TableHead>Сохранить</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -184,7 +184,7 @@ export default function AdminUsersPage() {
                         className="bg-green-600 hover:bg-green-700"
                       >
                         {saving === user.id && <Loader2 className="h-3 w-3 mr-1 animate-spin" />}
-                        Save
+                        Сохранить
                       </Button>
                     </TableCell>
                   </TableRow>
@@ -195,7 +195,7 @@ export default function AdminUsersPage() {
 
           {filteredUsers.length === 0 && (
             <div className="py-8 text-center text-muted-foreground">
-              No users found
+              Пользователи не найдены
             </div>
           )}
         </CardContent>

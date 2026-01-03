@@ -36,11 +36,11 @@ export function PackageSelector({ onPackageSelect }: PackageSelectorProps) {
       if (data.success) {
         setPackages(data.packages || [])
       } else {
-        setError('Failed to load packages')
+        setError('Ошибка загрузки пакетов')
       }
     } catch (err) {
       console.error('Error fetching packages:', err)
-      setError('Failed to load packages')
+      setError('Ошибка загрузки пакетов')
     } finally {
       setLoading(false)
     }
@@ -64,7 +64,7 @@ export function PackageSelector({ onPackageSelect }: PackageSelectorProps) {
       const data = await response.json()
 
       if (!data.success || !data.paymentUrl) {
-        setError(data.error || 'Failed to create payment')
+        setError(data.error || 'Ошибка создания платежа')
         return
       }
 
@@ -72,7 +72,7 @@ export function PackageSelector({ onPackageSelect }: PackageSelectorProps) {
       window.location.href = data.paymentUrl
     } catch (err) {
       console.error('Payment error:', err)
-      setError('Payment system error')
+      setError('Ошибка системы платежей')
     } finally {
       setLoadingPackage(null)
     }
@@ -107,7 +107,7 @@ export function PackageSelector({ onPackageSelect }: PackageSelectorProps) {
                 {(pkg.price_rub / 100).toFixed(0)} ₽
               </div>
               <div className="text-sm text-muted-foreground">
-                {pkg.generations} генераций
+                {pkg.generations} описаний
               </div>
             </div>
 

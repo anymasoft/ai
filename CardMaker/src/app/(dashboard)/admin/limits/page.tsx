@@ -71,8 +71,8 @@ export default function AdminLimitsPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold">Generation Balance</h1>
-          <p className="text-muted-foreground">User generation balance overview</p>
+          <h1 className="text-3xl font-bold">Баланс описаний</h1>
+          <p className="text-muted-foreground">Просмотр баланса описаний пользователей</p>
         </div>
         <Button
           variant="outline"

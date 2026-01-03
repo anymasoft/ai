@@ -103,7 +103,7 @@ export default function MarketplaceRulesPage() {
       <div>
         <h1 className="text-3xl font-bold">Правила маркетплейсов</h1>
         <p className="text-muted-foreground mt-1">
-          Управляй требованиями для каждого маркетплейса. Эти правила будут учитываться при генерации карточек.
+          Управляй требованиями для каждого маркетплейса. Эти правила будут учитываться при создании карточек.
         </p>
       </div>
 
@@ -119,7 +119,7 @@ export default function MarketplaceRulesPage() {
           <Alert>
             <AlertCircle className="h-4 w-4" />
             <AlertDescription>
-              Изменения правил будут применены при следующей генерации карточек. Уже созданные карточки не изменяются.
+              Изменения правил будут применены при следующем создании карточек. Уже созданные карточки не изменяются.
             </AlertDescription>
           </Alert>
 

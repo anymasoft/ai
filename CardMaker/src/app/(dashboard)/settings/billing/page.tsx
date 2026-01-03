@@ -11,9 +11,9 @@ export default function BillingSettings() {
   return (
     <div className="space-y-6 px-4 lg:px-6">
       <div>
-        <h1 className="text-3xl font-bold">Генерации</h1>
+        <h1 className="text-3xl font-bold">Описания</h1>
         <p className="text-muted-foreground">
-          Купите генерации для создания описаний товаров.
+          Купите пакеты для создания описаний товаров.
         </p>
       </div>
 
@@ -24,7 +24,7 @@ export default function BillingSettings() {
       <div className="grid gap-6">
         <Card>
           <CardHeader>
-            <CardTitle>Доступные пакеты генераций</CardTitle>
+            <CardTitle>Доступные пакеты описаний</CardTitle>
             <CardDescription>
               Выберите пакет и пополните свой баланс.
             </CardDescription>
