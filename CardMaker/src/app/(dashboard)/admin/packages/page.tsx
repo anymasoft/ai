@@ -32,6 +32,8 @@ export default function AdminPackagesPage() {
   const [saving, setSaving] = useState<string | null>(null);
   const [values, setValues] = useState<EditState>({});
 
+  console.log('[AdminPackagesPage] Rendered. Packages:', packages.length, 'Values:', Object.keys(values).length);
+
   useEffect(() => {
     loadPackages();
   }, []);
@@ -149,7 +151,7 @@ export default function AdminPackagesPage() {
                               },
                             })
                           }
-                          className="w-24"
+                          className="w-24 border border-gray-300"
                         />
                       </TableCell>
                       <TableCell>
@@ -166,7 +168,7 @@ export default function AdminPackagesPage() {
                               },
                             })
                           }
-                          className="w-20"
+                          className="w-20 border border-gray-300"
                         />
                       </TableCell>
                       <TableCell>
@@ -182,6 +184,7 @@ export default function AdminPackagesPage() {
                               },
                             })
                           }
+                          className="w-4 h-4 cursor-pointer"
                         />
                       </TableCell>
                       <TableCell>

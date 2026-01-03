@@ -16,7 +16,6 @@ interface UserBalance {
   email: string
   generation_balance: number
   generation_used: number
-  remaining: number
 }
 
 export default function AdminLimitsPage() {
@@ -149,7 +148,6 @@ export default function AdminLimitsPage() {
                     <TableHead className="max-w-[240px]">Email</TableHead>
                     <TableHead>Balance</TableHead>
                     <TableHead>Used</TableHead>
-                    <TableHead>Remaining</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -158,7 +156,6 @@ export default function AdminLimitsPage() {
                       <TableCell className="font-mono text-sm truncate overflow-hidden text-ellipsis break-all" title={balance.email}>{balance.email}</TableCell>
                       <TableCell className="font-semibold">{balance.generation_balance}</TableCell>
                       <TableCell>{balance.generation_used}</TableCell>
-                      <TableCell className="font-semibold">{balance.remaining}</TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
