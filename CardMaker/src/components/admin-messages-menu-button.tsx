@@ -33,10 +33,6 @@ const adminItems = [
     url: "/admin/payments",
   },
   {
-    title: "Использование",
-    url: "/admin/limits",
-  },
-  {
     title: "Сообщения",
     url: "/admin/messages",
   },

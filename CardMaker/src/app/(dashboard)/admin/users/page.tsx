@@ -19,10 +19,7 @@ interface User {
 }
 
 interface UserValues {
-  [userId: string]: {
-    generation_balance: number
-    generation_used: number
-  }
+  [userId: string]: number
 }
 
 export default function AdminUsersPage() {
@@ -48,10 +45,7 @@ export default function AdminUsersPage() {
       // Инициализируем значения для каждого пользователя
       const newValues: UserValues = {}
       usersList.forEach((user: User) => {
-        newValues[user.id] = {
-          generation_balance: user.generation_balance,
-          generation_used: user.generation_used,
-        }
+        newValues[user.id] = user.generation_balance
       })
       setValues(newValues)
     } catch (error) {
@@ -62,23 +56,22 @@ export default function AdminUsersPage() {
     }
   }
 
-  async function saveUserValues(userId: string) {
+  async function saveUserBalance(userId: string) {
     try {
       setSaving(userId)
-      const userVal = values[userId]
-      if (!userVal) return
+      const balance = values[userId]
+      if (balance === undefined) return
 
       const res = await fetch("/api/admin/users", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           userId,
-          generation_balance: userVal.generation_balance,
-          generation_used: userVal.generation_used,
+          generation_balance: balance,
         }),
       })
       if (!res.ok) throw new Error("Failed to update")
-      toast.success("User values updated")
+      toast.success("Balance updated")
       await fetchUsers()
     } catch (error) {
       console.error("Error:", error)
@@ -160,9 +153,7 @@ export default function AdminUsersPage() {
                 <TableRow>
                   <TableHead>Email</TableHead>
                   <TableHead>Balance</TableHead>
-                  <TableHead>Used</TableHead>
-                  <TableHead>Created</TableHead>
-                  <TableHead>Действия</TableHead>
+                  <TableHead>Save</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -175,48 +166,25 @@ export default function AdminUsersPage() {
                       <Input
                         type="number"
                         min="0"
-                        value={values[user.id]?.generation_balance || 0}
+                        value={values[user.id] || 0}
                         onChange={(e) =>
                           setValues({
                             ...values,
-                            [user.id]: {
-                              ...values[user.id],
-                              generation_balance: parseInt(e.target.value) || 0,
-                            },
+                            [user.id]: parseInt(e.target.value) || 0,
                           })
                         }
-                        className="w-20"
+                        className="w-20 border border-gray-300"
                       />
-                    </TableCell>
-                    <TableCell>
-                      <Input
-                        type="number"
-                        min="0"
-                        value={values[user.id]?.generation_used || 0}
-                        onChange={(e) =>
-                          setValues({
-                            ...values,
-                            [user.id]: {
-                              ...values[user.id],
-                              generation_used: parseInt(e.target.value) || 0,
-                            },
-                          })
-                        }
-                        className="w-20"
-                      />
-                    </TableCell>
-                    <TableCell className="text-sm">
-                      {formatDate(user.createdAt)}
                     </TableCell>
                     <TableCell>
                       <Button
                         size="sm"
-                        onClick={() => saveUserValues(user.id)}
+                        onClick={() => saveUserBalance(user.id)}
                         disabled={saving === user.id}
                         className="bg-green-600 hover:bg-green-700"
                       >
                         {saving === user.id && <Loader2 className="h-3 w-3 mr-1 animate-spin" />}
-                        Сохранить
+                        Save
                       </Button>
                     </TableCell>
                   </TableRow>
