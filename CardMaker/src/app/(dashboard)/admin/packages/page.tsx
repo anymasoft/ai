@@ -18,19 +18,19 @@ interface Package {
   updated_at: number;
 }
 
-interface EditingPackage {
-  key: string;
-  price_rub: number | string;
-  generations: number | string;
-  is_active: number;
+interface EditState {
+  [key: string]: {
+    price_rub: number;
+    generations: number;
+    is_active: number;
+  };
 }
 
 export default function AdminPackagesPage() {
   const [packages, setPackages] = useState<Package[]>([]);
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [editingKey, setEditingKey] = useState<string | null>(null);
-  const [editing, setEditing] = useState<EditingPackage | null>(null);
+  const [saving, setSaving] = useState<string | null>(null);
+  const [values, setValues] = useState<EditState>({});
 
   useEffect(() => {
     loadPackages();
@@ -43,7 +43,19 @@ export default function AdminPackagesPage() {
       const data = await response.json();
 
       if (data.success) {
-        setPackages(data.packages || []);
+        const pkgs = data.packages || [];
+        setPackages(pkgs);
+
+        // Инициализируем значения для каждого пакета
+        const newValues: EditState = {};
+        pkgs.forEach((pkg: Package) => {
+          newValues[pkg.key] = {
+            price_rub: pkg.price_rub,
+            generations: pkg.generations,
+            is_active: pkg.is_active,
+          };
+        });
+        setValues(newValues);
       } else {
         toast.error('Ошибка при загрузке пакетов');
       }
@@ -55,56 +67,27 @@ export default function AdminPackagesPage() {
     }
   }
 
-  function startEditing(pkg: Package) {
-    setEditingKey(pkg.key);
-    setEditing({
-      key: pkg.key,
-      price_rub: pkg.price_rub,
-      generations: pkg.generations,
-      is_active: pkg.is_active,
-    });
-  }
-
-  function cancelEditing() {
-    setEditingKey(null);
-    setEditing(null);
-  }
-
-  async function savePackage() {
-    if (!editing) return;
-
+  async function savePackage(key: string) {
     try {
-      setSaving(true);
+      setSaving(key);
 
-      const price_rub = parseInt(editing.price_rub as string);
-      const generations = parseInt(editing.generations as string);
+      const pkg = values[key];
+      if (!pkg) return;
 
-      if (isNaN(price_rub) || isNaN(generations)) {
-        toast.error('Цена и количество генераций должны быть числами');
-        return;
-      }
-
-      if (price_rub < 0 || generations < 0) {
-        toast.error('Цена и количество генераций не могут быть отрицательными');
-        return;
-      }
-
-      const response = await fetch(`/api/admin/packages/by-key?key=${editing.key}`, {
+      const response = await fetch(`/api/admin/packages/by-key?key=${key}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          price_rub,
-          generations,
-          is_active: editing.is_active,
+          price_rub: pkg.price_rub,
+          generations: pkg.generations,
+          is_active: pkg.is_active,
         }),
       });
 
       const data = await response.json();
 
       if (data.success) {
-        toast.success(`Пакет "${editing.key}" обновлен`);
-        setEditingKey(null);
-        setEditing(null);
+        toast.success(`Пакет "${key}" обновлен`);
         await loadPackages();
       } else {
         toast.error(data.error || 'Ошибка при сохранении');
@@ -113,7 +96,7 @@ export default function AdminPackagesPage() {
       console.error('Error saving package:', error);
       toast.error('Ошибка при сохранении пакета');
     } finally {
-      setSaving(false);
+      setSaving(null);
     }
   }
 
@@ -153,92 +136,64 @@ export default function AdminPackagesPage() {
                     <TableRow key={pkg.key}>
                       <TableCell className="font-medium">{pkg.title}</TableCell>
                       <TableCell>
-                        {editingKey === pkg.key ? (
-                          <Input
-                            type="number"
-                            min="0"
-                            step="100"
-                            value={editing?.price_rub}
-                            onChange={(e) =>
-                              setEditing({
-                                ...editing!,
-                                price_rub: e.target.value,
-                              })
-                            }
-                            className="w-[150px]"
-                          />
-                        ) : (
-                          `${(pkg.price_rub / 100).toFixed(2)} ₽`
-                        )}
+                        <Input
+                          type="number"
+                          min="0"
+                          value={values[pkg.key]?.price_rub || 0}
+                          onChange={(e) =>
+                            setValues({
+                              ...values,
+                              [pkg.key]: {
+                                ...values[pkg.key],
+                                price_rub: parseInt(e.target.value) || 0,
+                              },
+                            })
+                          }
+                          className="w-24"
+                        />
                       </TableCell>
                       <TableCell>
-                        {editingKey === pkg.key ? (
-                          <Input
-                            type="number"
-                            min="0"
-                            value={editing?.generations}
-                            onChange={(e) =>
-                              setEditing({
-                                ...editing!,
-                                generations: e.target.value,
-                              })
-                            }
-                            className="w-[120px]"
-                          />
-                        ) : (
-                          pkg.generations
-                        )}
+                        <Input
+                          type="number"
+                          min="0"
+                          value={values[pkg.key]?.generations || 0}
+                          onChange={(e) =>
+                            setValues({
+                              ...values,
+                              [pkg.key]: {
+                                ...values[pkg.key],
+                                generations: parseInt(e.target.value) || 0,
+                              },
+                            })
+                          }
+                          className="w-20"
+                        />
                       </TableCell>
                       <TableCell>
-                        {editingKey === pkg.key ? (
-                          <input
-                            type="checkbox"
-                            checked={editing?.is_active === 1}
-                            onChange={(e) =>
-                              setEditing({
-                                ...editing!,
+                        <input
+                          type="checkbox"
+                          checked={values[pkg.key]?.is_active === 1}
+                          onChange={(e) =>
+                            setValues({
+                              ...values,
+                              [pkg.key]: {
+                                ...values[pkg.key],
                                 is_active: e.target.checked ? 1 : 0,
-                              })
-                            }
-                          />
-                        ) : (
-                          <input
-                            type="checkbox"
-                            checked={pkg.is_active === 1}
-                            disabled
-                          />
-                        )}
+                              },
+                            })
+                          }
+                        />
                       </TableCell>
                       <TableCell>
-                        {editingKey === pkg.key ? (
-                          <div className="flex gap-2">
-                            <Button
-                              size="sm"
-                              onClick={savePackage}
-                              disabled={saving}
-                              className="bg-green-600 hover:bg-green-700"
-                            >
-                              {saving && <Loader2 className="h-3 w-3 mr-1 animate-spin" />}
-                              Сохранить
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={cancelEditing}
-                              disabled={saving}
-                            >
-                              Отмена
-                            </Button>
-                          </div>
-                        ) : (
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => startEditing(pkg)}
-                          >
-                            Изменить
-                          </Button>
-                        )}
+                        <Button
+                          size="sm"
+                          onClick={() => savePackage(pkg.key)}
+                          disabled={saving === pkg.key}
+                          className="bg-green-600 hover:bg-green-700"
+                        >
+                          {saving === pkg.key && <Loader2 className="h-3 w-3 mr-1 animate-spin" />}
+                          Сохранить
+                        </Button>
                       </TableCell>
                     </TableRow>
                   ))}
