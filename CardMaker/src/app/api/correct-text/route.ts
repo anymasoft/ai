@@ -46,9 +46,11 @@ export async function POST(request: NextRequest) {
       issues: validation.data.issues as ValidationIssue[],
     })
 
-    if (!result.success) {
+    // Если была ошибка при исправлении
+    if (!result.success && result.error) {
       return NextResponse.json(
         {
+          success: false,
           error: result.error.message,
           code: result.error.code,
         },
@@ -56,8 +58,9 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // Успешный результат (даже если изменений не было)
     return NextResponse.json({
-      success: true,
+      success: result.success,
       data: result.data,
     })
   } catch (error) {
