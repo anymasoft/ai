@@ -6,7 +6,6 @@ import {
   FileText,
   MessageSquare,
   Sparkles,
-  Zap,
   CheckCircle2,
 } from "lucide-react"
 import Link from "next/link"
@@ -33,11 +32,6 @@ const navGroups = [
   {
     label: "Основное",
     items: [
-      {
-        title: "Массовая подготовка",
-        url: "/batch",
-        icon: Zap,
-      },
       {
         title: "Проверка описания",
         url: "/validate",
