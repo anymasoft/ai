@@ -145,7 +145,7 @@ export function FreeFormSection() {
 
           {/* Note */}
           <p className="text-xs text-muted-foreground text-center">
-            Проверка занимает 10-30 секунд. Детальный результат доступен после регистрации.
+            В бесплатной версии требования маркетплейцов не проверяются
           </p>
         </div>
 
