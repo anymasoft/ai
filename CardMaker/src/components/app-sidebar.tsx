@@ -7,6 +7,7 @@ import {
   MessageSquare,
   Sparkles,
   CheckCircle2,
+  Zap,
 } from "lucide-react"
 import Link from "next/link"
 import { useSession } from "next-auth/react"
@@ -36,6 +37,11 @@ const navGroups = [
         title: "Проверка описания",
         url: "/validate",
         icon: CheckCircle2,
+      },
+      {
+        title: "Создание описания",
+        url: "/card-generator",
+        icon: Zap,
       },
       // TODO: История карточек будет добавлена позже
       // {
@@ -100,9 +106,9 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       <SidebarContent>
         <div className="px-2 py-2">
           <Button asChild className="w-full" size="sm">
-            <Link href="/card-generator" className="gap-2">
+            <Link href="/validate" className="gap-2">
               <Sparkles className="size-4" />
-              + Создание карточки
+              + Проверить описание
             </Link>
           </Button>
         </div>

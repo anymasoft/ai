@@ -226,3 +226,112 @@ const summarizeIssues = (issues: ValidationIssue[]): string => {
 
   return parts.join('. ')
 }
+
+/**
+ * Исправить описание товара на основе результатов валидации
+ * Применяет только suggestions из найденных проблем
+ *
+ * @param params Параметры для исправления
+ * @returns Исправленный текст или ошибка
+ */
+export const correctProductDescription = async (params: {
+  description: string
+  marketplace: 'ozon' | 'wb'
+  issues: ValidationIssue[]
+}): Promise<
+  | { success: true; data: { corrected: string; changesCount: number } }
+  | { success: false; error: ValidationError }
+> => {
+  try {
+    const { description, marketplace, issues } = params
+
+    if (!description?.trim()) {
+      return {
+        success: false,
+        error: {
+          code: 'INVALID_INPUT',
+          message: 'Описание не может быть пустым',
+        },
+      }
+    }
+
+    // Если нет problems с suggestions, возвращаем оригинальный текст
+    const issuesWithSuggestions = issues.filter((i) => i.suggestion)
+    if (issuesWithSuggestions.length === 0) {
+      return {
+        success: true,
+        data: {
+          corrected: description,
+          changesCount: 0,
+        },
+      }
+    }
+
+    // Строим промпт для исправления
+    const suggestionsText = issuesWithSuggestions
+      .map((issue, i) => `${i + 1}. ${issue.message}\n   Предложение: ${issue.suggestion}`)
+      .join('\n')
+
+    const systemPrompt = `Ты помощник по улучшению описаний товаров для маркетплейса ${marketplace === 'ozon' ? 'Ozon' : 'Wildberries'}.
+Твоя задача: исправить описание товара, применив только предложенные правки.
+Правила:
+- Исправляй ТОЛЬКО то, что указано в предложениях
+- НЕ переписывай текст целиком
+- НЕ изменяй значение или смысл
+- Сохраняй структуру и стиль оригинального текста
+- Удаляй или нейтрализуй запрещённые утверждения
+- Возвращай только исправленный текст без объяснений`
+
+    const userPrompt = `Исправь следующее описание товара:
+
+Оригинальный текст:
+"""${description}"""
+
+Предложенные правки:
+${suggestionsText}
+
+Верни ТОЛЬКО исправленный текст.`
+
+    const response = await callOpenAI(
+      [
+        {
+          role: 'system',
+          content: systemPrompt,
+        },
+        {
+          role: 'user',
+          content: userPrompt,
+        },
+      ],
+      undefined,
+      0.3, // Низкая температура для точности
+      1500
+    )
+
+    const corrected = response.content.trim()
+
+    // Подсчитываем примерное количество изменений
+    // (очень приблизительно, на основе количества suggestions)
+    const changesCount = issuesWithSuggestions.length
+
+    return {
+      success: true,
+      data: {
+        corrected,
+        changesCount,
+      },
+    }
+  } catch (error) {
+    console.error('[correctProductDescription] Ошибка исправления:', error)
+
+    return {
+      success: false,
+      error: {
+        code: 'CORRECTION_ERROR',
+        message:
+          error instanceof Error ? error.message : 'Неизвестная ошибка при исправлении',
+        details: error instanceof Error ? error.stack : undefined,
+      },
+    }
+  }
+}

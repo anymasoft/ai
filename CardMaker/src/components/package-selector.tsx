@@ -107,7 +107,7 @@ export function PackageSelector({ onPackageSelect }: PackageSelectorProps) {
                 {pkg.price_rub} ₽
               </div>
               <div className="text-sm text-muted-foreground">
-                {pkg.generations} описаний
+                {pkg.generations} кредитов
               </div>
             </div>
 

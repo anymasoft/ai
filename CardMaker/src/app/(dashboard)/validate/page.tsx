@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Textarea } from "@/components/ui/textarea"
 import { Badge } from "@/components/ui/badge"
-import { AlertCircle, CheckCircle2 } from "lucide-react"
+import { AlertCircle, CheckCircle2, Loader2 } from "lucide-react"
 import type { ValidationIssue, CheckResult, ValidationResult } from '@/lib/ai-services/validation'
 
 type Marketplace = "ozon" | "wb"
@@ -21,6 +21,8 @@ export default function ValidatePage() {
   const [isLoading, setIsLoading] = useState(false)
   const [validation, setValidation] = useState<ValidationResult | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [isCorrecting, setIsCorrecting] = useState(false)
+  const [correctedText, setCorrectedText] = useState<string | null>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
   const handleValidate = async () => {
@@ -33,6 +35,7 @@ export default function ValidatePage() {
     setIsLoading(true)
     setError(null)
     setValidation(null)
+    setCorrectedText(null)
 
     try {
       const response = await fetch("/api/validate-text", {
@@ -57,6 +60,43 @@ export default function ValidatePage() {
       setError(err instanceof Error ? err.message : "Неизвестная ошибка")
     } finally {
       setIsLoading(false)
+    }
+  }
+
+  const handleCorrect = async () => {
+    if (!text.trim() || !validation) {
+      return
+    }
+
+    setIsCorrecting(true)
+    setError(null)
+
+    try {
+      const response = await fetch("/api/correct-text", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          text,
+          marketplace,
+          issues: validation.issues,
+        }),
+      })
+
+      if (!response.ok) {
+        const data = await response.json()
+        throw new Error(data.error || "Ошибка при исправлении текста")
+      }
+
+      const result = await response.json()
+      if (result.success && result.data) {
+        setCorrectedText(result.data.corrected)
+      } else {
+        throw new Error("Неверный формат ответа от API")
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Неизвестная ошибка")
+    } finally {
+      setIsCorrecting(false)
     }
   }
 
@@ -211,6 +251,57 @@ export default function ValidatePage() {
                           </li>
                         ))}
                       </ul>
+                    </div>
+                  )}
+
+                  {/* Correction button and result */}
+                  {!correctedText && !isCorrecting && (
+                    <Button
+                      onClick={handleCorrect}
+                      variant="outline"
+                      className="w-full"
+                      disabled={!validation || isCorrecting}
+                    >
+                      Исправить автоматически
+                    </Button>
+                  )}
+
+                  {isCorrecting && (
+                    <div className="flex items-center justify-center py-4">
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        Исправляется...
+                      </div>
+                    </div>
+                  )}
+
+                  {correctedText && (
+                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 space-y-3">
+                      <div>
+                        <p className="text-xs font-semibold text-blue-700 mb-2">✨ Исправленный текст:</p>
+                        <p className="text-sm text-blue-900 whitespace-pre-wrap">{correctedText}</p>
+                      </div>
+                      <div className="flex gap-2">
+                        <Button
+                          onClick={() => {
+                            setText(correctedText)
+                            setCorrectedText(null)
+                            setValidation(null)
+                          }}
+                          size="sm"
+                          className="flex-1"
+                        >
+                          Применить
+                        </Button>
+                        <Button
+                          onClick={() => setCorrectedText(null)}
+                          variant="outline"
+                          size="sm"
+                          className="flex-1"
+                        >
+                          Отмена
+                        </Button>
+                      </div>
                     </div>
                   )}
                 </div>
