@@ -8,18 +8,19 @@ export async function DELETE(request: NextRequest) {
 
   try {
     const id = request.nextUrl.searchParams.get('id')
-    const paymentId = parseInt(id || '', 10)
-    if (isNaN(paymentId)) {
+
+    // id — это строка вида "payment_timestamp_userId"
+    if (!id || typeof id !== 'string' || id.trim() === '') {
       return NextResponse.json(
-        { error: "Invalid payment ID" },
+        { error: "Payment ID required" },
         { status: 400 }
       )
     }
 
-    // Удаляем платеж из таблицы
+    // Удаляем платеж из таблицы по текстовому id
     const result = await db.execute(
       `DELETE FROM payments WHERE id = ?`,
-      [paymentId]
+      [id]
     )
 
     return NextResponse.json({
