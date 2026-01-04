@@ -347,6 +347,9 @@ export default function ValidatePage() {
                                 <span className="font-bold mt-0.5 flex-shrink-0">•</span>
                                 <div className="flex-1">
                                   <p className="text-red-700 font-medium leading-snug">{issue.message}</p>
+                                  {issue.text_fragment && (
+                                    <p className="text-red-600/70 text-xs mt-1 px-2 py-1 bg-red-100/50 rounded leading-snug font-mono break-words">↳ {issue.text_fragment}</p>
+                                  )}
                                   {issue.suggestion && (
                                     <p className="text-red-600 text-sm mt-0.5 leading-snug">{issue.suggestion}</p>
                                   )}
@@ -386,6 +389,9 @@ export default function ValidatePage() {
                                 <span className="font-bold mt-0.5 flex-shrink-0">•</span>
                                 <div className="flex-1">
                                   <p className="text-amber-700 font-medium leading-snug">{issue.message}</p>
+                                  {issue.text_fragment && (
+                                    <p className="text-amber-600/70 text-xs mt-1 px-2 py-1 bg-amber-100/50 rounded leading-snug font-mono break-words">↳ {issue.text_fragment}</p>
+                                  )}
                                   {issue.suggestion && (
                                     <p className="text-amber-600 text-sm mt-0.5 leading-snug">{issue.suggestion}</p>
                                   )}

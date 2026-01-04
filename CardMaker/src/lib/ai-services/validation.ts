@@ -12,6 +12,7 @@ export interface ValidationIssue {
   severity: 'error' | 'warning'
   message: string
   suggestion?: string
+  text_fragment?: string // ДОБАВЛЕНО: проблемный фрагмент текста из описания
 }
 
 /**
@@ -136,6 +137,7 @@ export const validateDescriptionWithRules = async (params: {
         severity: violation.severity || 'error',
         message: violation.description || violation.message || 'Неизвестная проблема',
         suggestion: violation.suggestion,
+        text_fragment: violation.text_fragment, // Проблемный фрагмент из описания
       }))
       .filter((issue: ValidationIssue) => issue.message)
 
