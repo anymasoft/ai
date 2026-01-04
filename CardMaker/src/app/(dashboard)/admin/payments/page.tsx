@@ -22,10 +22,11 @@ interface Payment {
   id: number
   userId: string
   email: string
-  plan: string
-  expiresAt: number | null
+  packageKey: string
+  packageTitle: string
+  amount: number
+  status: string
   provider: string
-  price: string
   createdAt: number
 }
 
@@ -74,13 +75,21 @@ export default function AdminPaymentsPage() {
 
   const formatDisplayDate = (date: Date | undefined) => {
     if (!date) return "Выберите дату"
-    return date.toLocaleDateString("ru-RU", { year: "numeric", month: "short", day: "numeric" })
+    return date.toLocaleDateString("ru-RU", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+    })
+  }
+
+  const formatPrice = (amount?: number) => {
+    if (typeof amount !== "number") return "—"
+    return `${amount} ₽`
   }
 
   const handleFromDateSelect = (date: Date | undefined) => {
     setSelectedFromDate(date)
     if (date) {
-      // Используем локальное форматирование вместо toISOString() чтобы избежать проблем с таймзоной
       const year = date.getFullYear()
       const month = String(date.getMonth() + 1).padStart(2, "0")
       const day = String(date.getDate()).padStart(2, "0")
@@ -93,7 +102,6 @@ export default function AdminPaymentsPage() {
   const handleToDateSelect = (date: Date | undefined) => {
     setSelectedToDate(date)
     if (date) {
-      // Используем локальное форматирование вместо toISOString() чтобы избежать проблем с таймзоной
       const year = date.getFullYear()
       const month = String(date.getMonth() + 1).padStart(2, "0")
       const day = String(date.getDate()).padStart(2, "0")
@@ -101,10 +109,6 @@ export default function AdminPaymentsPage() {
     } else {
       setFilterTo("")
     }
-  }
-
-  const formatPrice = (price: string) => {
-    return price.replace(/\s/g, " ")
   }
 
   async function deletePayment(paymentId: number) {
@@ -124,41 +128,34 @@ export default function AdminPaymentsPage() {
       fetchPayments()
     } catch (error) {
       console.error("Error:", error)
-      const errMsg = data?.error || "Ошибка удаления платежа"
-      toast.error(errMsg)
+      toast.error("Ошибка удаления платежа")
     } finally {
       setDeletingId(null)
     }
   }
 
-  // Фильтруем платежи по датам (если нужно дополнительная фильтрация на фронте)
   const filteredPayments = payments.filter((payment) => {
     const matchEmail = payment.email.toLowerCase().includes(filterEmail.toLowerCase())
     return matchEmail
   })
 
-  // Пагинация
   const totalPages = Math.ceil(filteredPayments.length / pageSize)
   const startIndex = (currentPage - 1) * pageSize
   const endIndex = startIndex + pageSize
   const paginatedPayments = filteredPayments.slice(startIndex, endIndex)
 
-  // Сброс на первую страницу при изменении фильтров или размера страницы
   useEffect(() => {
     setCurrentPage(1)
   }, [filterEmail, filterFrom, filterTo, pageSize])
-
-  // Сброс на первую страницу при изменении размера страницы
-  useEffect(() => {
-    setCurrentPage(1)
-  }, [pageSize])
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold">YooKassa Payments</h1>
-          <p className="text-muted-foreground">Real payments from YooKassa gateway</p>
+          <p className="text-muted-foreground">
+            Real payments from YooKassa gateway
+          </p>
         </div>
         <Button
           variant="outline"
@@ -177,12 +174,13 @@ export default function AdminPaymentsPage() {
               <CardTitle>Payment Transactions</CardTitle>
               <CardDescription>
                 {filteredPayments.length} payments found
-                {filteredPayments.length > 0 && ` • Page ${currentPage} of ${totalPages}`}
+                {filteredPayments.length > 0 &&
+                  ` • Page ${currentPage} of ${totalPages}`}
               </CardDescription>
             </div>
             {filteredPayments.length > 0 && (
               <div className="text-lg font-semibold">
-                Total: {totalSum.toLocaleString("ru-RU")} ₽
+                Total: {totalSum} ₽
               </div>
             )}
           </div>
@@ -190,7 +188,9 @@ export default function AdminPaymentsPage() {
         <CardContent className="space-y-4">
           <div className="flex gap-3 items-end flex-wrap">
             <div className="flex-1 min-w-[200px]">
-              <label className="text-sm font-medium text-muted-foreground">Email</label>
+              <label className="text-sm font-medium text-muted-foreground">
+                Email
+              </label>
               <div className="flex gap-2 mt-1">
                 <Input
                   placeholder="Filter by email..."
@@ -209,7 +209,9 @@ export default function AdminPaymentsPage() {
               </div>
             </div>
             <div className="flex-1 min-w-[160px]">
-              <label className="text-sm font-medium text-muted-foreground">От</label>
+              <label className="text-sm font-medium text-muted-foreground">
+                От
+              </label>
               <div className="flex gap-2 mt-1">
                 <Popover>
                   <PopoverTrigger asChild>
@@ -218,7 +220,9 @@ export default function AdminPaymentsPage() {
                       className="flex-1 justify-start text-left font-normal text-xs"
                     >
                       <CalendarIcon className="h-4 w-4 mr-1 flex-shrink-0" />
-                      <span className="truncate">{formatDisplayDate(selectedFromDate)}</span>
+                      <span className="truncate">
+                        {formatDisplayDate(selectedFromDate)}
+                      </span>
                     </Button>
                   </PopoverTrigger>
                   <PopoverContent className="w-auto p-0" align="start">
@@ -246,7 +250,9 @@ export default function AdminPaymentsPage() {
               </div>
             </div>
             <div className="flex-1 min-w-[160px]">
-              <label className="text-sm font-medium text-muted-foreground">До</label>
+              <label className="text-sm font-medium text-muted-foreground">
+                До
+              </label>
               <div className="flex gap-2 mt-1">
                 <Popover>
                   <PopoverTrigger asChild>
@@ -255,7 +261,9 @@ export default function AdminPaymentsPage() {
                       className="flex-1 justify-start text-left font-normal text-xs"
                     >
                       <CalendarIcon className="h-4 w-4 mr-1 flex-shrink-0" />
-                      <span className="truncate">{formatDisplayDate(selectedToDate)}</span>
+                      <span className="truncate">
+                        {formatDisplayDate(selectedToDate)}
+                      </span>
                     </Button>
                   </PopoverTrigger>
                   <PopoverContent className="w-auto p-0" align="start">
@@ -294,97 +302,127 @@ export default function AdminPaymentsPage() {
             </div>
           ) : (
             <>
-            <div className="overflow-hidden">
-              <Table className="w-full table-fixed">
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="max-w-[240px]">Email</TableHead>
-                    <TableHead>Package</TableHead>
-                    <TableHead>Amount</TableHead>
-                    <TableHead>Date</TableHead>
-                    <TableHead className="w-[50px]"></TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {paginatedPayments.map((payment) => (
-                    <TableRow key={payment.id}>
-                      <TableCell className="font-mono text-sm truncate overflow-hidden text-ellipsis break-all" title={payment.email}>{payment.email}</TableCell>
-                      <TableCell>
-                        <Badge variant="outline">{payment.plan}</Badge>
-                      </TableCell>
-                      <TableCell className="font-medium">{formatPrice(payment.price)}</TableCell>
-                      <TableCell>{formatDate(payment.createdAt)}</TableCell>
-                      <TableCell>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => deletePayment(payment.id)}
-                          disabled={deletingId === payment.id}
-                          className="text-destructive hover:text-destructive"
-                        >
-                          <X className="h-4 w-4" />
-                        </Button>
-                      </TableCell>
+              <div className="overflow-hidden">
+                <Table className="w-full table-fixed">
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="max-w-[240px]">Email</TableHead>
+                      <TableHead>Package</TableHead>
+                      <TableHead>Amount</TableHead>
+                      <TableHead>Date</TableHead>
+                      <TableHead className="w-[50px]"></TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-
-            {filteredPayments.length > 0 && (
-              <>
-              <div className="border-t pt-4 mt-4">
-              </div>
-
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <label className="text-sm font-medium text-muted-foreground">Records per page:</label>
-                  <Select value={pageSize.toString()} onValueChange={(value) => setPageSize(parseInt(value))}>
-                    <SelectTrigger className="w-[120px]">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="10">10</SelectItem>
-                      <SelectItem value="20">20</SelectItem>
-                      <SelectItem value="50">50</SelectItem>
-                      <SelectItem value="100">100</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="flex gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                    disabled={currentPage === 1}
-                  >
-                    Previous
-                  </Button>
-                  <div className="flex items-center gap-1">
-                    {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
-                      <Button
-                        key={page}
-                        variant={currentPage === page ? "default" : "outline"}
-                        size="sm"
-                        onClick={() => setCurrentPage(page)}
-                        className="min-w-[40px]"
-                      >
-                        {page}
-                      </Button>
+                  </TableHeader>
+                  <TableBody>
+                    {paginatedPayments.map((payment) => (
+                      <TableRow key={payment.id}>
+                        <TableCell
+                          className="font-mono text-sm truncate overflow-hidden text-ellipsis break-all"
+                          title={payment.email}
+                        >
+                          {payment.email}
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant="outline">
+                            {payment.packageTitle}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="font-medium">
+                          {formatPrice(payment.amount)}
+                        </TableCell>
+                        <TableCell>{formatDate(payment.createdAt)}</TableCell>
+                        <TableCell>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => deletePayment(payment.id)}
+                            disabled={deletingId === payment.id}
+                            className="text-destructive hover:text-destructive"
+                          >
+                            {deletingId === payment.id ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              <X className="h-4 w-4" />
+                            )}
+                          </Button>
+                        </TableCell>
+                      </TableRow>
                     ))}
-                  </div>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-                    disabled={currentPage === totalPages}
-                  >
-                    Next
-                  </Button>
-                </div>
+                  </TableBody>
+                </Table>
               </div>
-              </>
-            )}
+
+              {filteredPayments.length > 0 && (
+                <>
+                  <div className="border-t pt-4 mt-4"></div>
+
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <label className="text-sm font-medium text-muted-foreground">
+                        Records per page:
+                      </label>
+                      <Select
+                        value={pageSize.toString()}
+                        onValueChange={(value) =>
+                          setPageSize(parseInt(value))
+                        }
+                      >
+                        <SelectTrigger className="w-[120px]">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="10">10</SelectItem>
+                          <SelectItem value="20">20</SelectItem>
+                          <SelectItem value="50">50</SelectItem>
+                          <SelectItem value="100">100</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="flex gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() =>
+                          setCurrentPage((p) => Math.max(1, p - 1))
+                        }
+                        disabled={currentPage === 1}
+                      >
+                        Previous
+                      </Button>
+                      <div className="flex items-center gap-1">
+                        {Array.from(
+                          { length: totalPages },
+                          (_, i) => i + 1
+                        ).map((page) => (
+                          <Button
+                            key={page}
+                            variant={
+                              currentPage === page ? "default" : "outline"
+                            }
+                            size="sm"
+                            onClick={() => setCurrentPage(page)}
+                            className="min-w-[40px]"
+                          >
+                            {page}
+                          </Button>
+                        ))}
+                      </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() =>
+                          setCurrentPage((p) =>
+                            Math.min(totalPages, p + 1)
+                          )
+                        }
+                        disabled={currentPage === totalPages}
+                      >
+                        Next
+                      </Button>
+                    </div>
+                  </div>
+                </>
+              )}
             </>
           )}
         </CardContent>
