@@ -51,6 +51,9 @@ export function FreeFormSection() {
 
       const result = await response.json()
       if (result.success && result.data) {
+        // Искусственная задержка на лендинге для эмфазы результата (5 сек)
+        await new Promise(resolve => setTimeout(resolve, 5000))
+
         setValidation(result.data)
         if (result.data.ok) {
           toast.success("Описание пройдёт модерацию")
@@ -161,19 +164,19 @@ export function FreeFormSection() {
         {validation && (
           <div className="space-y-4 mb-8">
             <Card className={validation.ok ? "border-green-200 dark:border-green-900 bg-green-50 dark:bg-green-950" : "border-red-200 dark:border-red-900 bg-red-50 dark:bg-red-950"}>
-              <CardContent className="pt-6">
-                <div className="flex gap-3">
+              <CardContent className="pt-8 pb-8">
+                <div className="flex flex-col items-center justify-center gap-3">
                   {validation.ok ? (
                     <>
-                      <CheckCircle2 className="h-5 w-5 text-green-600 flex-shrink-0 mt-0.5" />
-                      <p className="text-sm font-medium text-green-900 dark:text-green-100">
+                      <CheckCircle2 className="h-8 w-8 text-green-600 flex-shrink-0" />
+                      <p className="text-lg font-semibold text-green-900 dark:text-green-100 text-center">
                         Описание пройдёт модерацию
                       </p>
                     </>
                   ) : (
                     <>
-                      <AlertCircle className="h-5 w-5 text-red-600 flex-shrink-0 mt-0.5" />
-                      <p className="text-sm font-medium text-red-900 dark:text-red-100">
+                      <AlertCircle className="h-8 w-8 text-red-600 flex-shrink-0" />
+                      <p className="text-lg font-semibold text-red-900 dark:text-red-100 text-center">
                         Описание не пройдёт модерацию
                       </p>
                     </>
