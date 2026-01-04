@@ -12,10 +12,22 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 
+interface LoginForm1Props extends React.ComponentProps<"div"> {
+  returnUrl?: string
+}
+
 export function LoginForm1({
   className,
+  returnUrl,
   ...props
-}: React.ComponentProps<"div">) {
+}: LoginForm1Props) {
+  // Determine the redirect URL: use returnUrl if provided, otherwise default to /validate
+  const getRedirectUrl = () => {
+    if (returnUrl && returnUrl.startsWith('/')) {
+      return returnUrl;
+    }
+    return '/validate';
+  };
 
   // Listen for auth success or error message from popup
   useEffect(() => {
@@ -24,7 +36,7 @@ export function LoginForm1({
 
       if (event.data.type === "auth-success") {
         // Redirect to dashboard after successful auth
-        window.location.href = "/card-generator";
+        window.location.href = getRedirectUrl();
       }
 
       if (event.data.type === "auth-error") {
@@ -55,7 +67,7 @@ export function LoginForm1({
     // Fallback if popup is blocked
     if (!popup) {
       console.warn("Popup blocked, using redirect method");
-      signIn("google", { callbackUrl: "/card-generator" });
+      signIn("google", { callbackUrl: getRedirectUrl() });
     }
   };
 
