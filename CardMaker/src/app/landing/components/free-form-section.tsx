@@ -11,10 +11,6 @@ import { toast } from "sonner"
 
 interface ValidationResponse {
   ok: boolean
-  issueCount: number
-  score: number
-  categories: string[]
-  summary: string
 }
 
 type Marketplace = "ozon" | "wb"
@@ -57,9 +53,9 @@ export function FreeFormSection() {
       if (result.success && result.data) {
         setValidation(result.data)
         if (result.data.ok) {
-          toast.success("Описание соответствует требованиям!")
+          toast.success("Описание пройдёт модерацию")
         } else {
-          toast.error(`Найдено ${result.data.issueCount} потенциальных нарушений`)
+          toast.error("Описание не пройдёт модерацию")
         }
       } else {
         throw new Error("Неверный формат ответа от API")
@@ -161,7 +157,7 @@ export function FreeFormSection() {
           </Card>
         )}
 
-        {/* Result Summary */}
+        {/* Result Summary - Binary PASS/FAIL only */}
         {validation && (
           <div className="space-y-4 mb-8">
             <Card className={validation.ok ? "border-green-200 dark:border-green-900 bg-green-50 dark:bg-green-950" : "border-red-200 dark:border-red-900 bg-red-50 dark:bg-red-950"}>
@@ -170,26 +166,16 @@ export function FreeFormSection() {
                   {validation.ok ? (
                     <>
                       <CheckCircle2 className="h-5 w-5 text-green-600 flex-shrink-0 mt-0.5" />
-                      <div className="flex-1">
-                        <p className="text-sm font-medium text-green-900 dark:text-green-100">
-                          ✓ Нарушений не найдено
-                        </p>
-                        <p className="text-xs text-green-800 dark:text-green-200 mt-1">
-                          Вероятность отклонения низкая. Описание соответствует требованиям маркетплейца.
-                        </p>
-                      </div>
+                      <p className="text-sm font-medium text-green-900 dark:text-green-100">
+                        Описание пройдёт модерацию
+                      </p>
                     </>
                   ) : (
                     <>
                       <AlertCircle className="h-5 w-5 text-red-600 flex-shrink-0 mt-0.5" />
-                      <div className="flex-1">
-                        <p className="text-sm font-medium text-red-900 dark:text-red-100">
-                          ⚠️ Найдено {validation.issueCount} потенциальных нарушений
-                        </p>
-                        <p className="text-xs text-red-800 dark:text-red-200 mt-1">
-                          Вероятность отклонения высокая. Типы проблем: {validation.categories.join(", ")}
-                        </p>
-                      </div>
+                      <p className="text-sm font-medium text-red-900 dark:text-red-100">
+                        Описание не пройдёт модерацию
+                      </p>
                     </>
                   )}
                 </div>

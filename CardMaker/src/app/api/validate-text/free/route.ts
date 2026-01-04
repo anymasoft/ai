@@ -50,18 +50,14 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Сжимаем результат для free версии: только summary
+    // Возвращаем ТОЛЬКО бинарный результат для free версии
+    // isValid — единственный источник истины
     const data = result.data
-    const categories = data.issues.map((i) => i.type)
 
     return NextResponse.json({
       success: true,
       data: {
-        ok: data.isValid,
-        issueCount: data.issues.length,
-        score: data.score,
-        categories: [...new Set(categories)], // Уникальные категории
-        summary: data.summary,
+        ok: data.isValid, // true = пройдёт модерацию, false = не пройдёт
       },
     })
   } catch (error) {
