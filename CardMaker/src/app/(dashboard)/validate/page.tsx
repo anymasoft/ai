@@ -100,20 +100,17 @@ export default function ValidatePage() {
   }
 
   return (
-    <div className="flex flex-col min-h-screen bg-background">
-      {/* Main content */}
-      <div className="flex-1 py-8">
-        <div className="mx-auto max-w-7xl px-4">
-          {/* Header */}
-          <div className="text-center mb-8">
-            <h1 className="text-3xl font-bold tracking-tight mb-3">Проверка описания</h1>
-            <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 hover:bg-green-50">
-              Проходит требования Ozon / Wildberries
-            </Badge>
-          </div>
+    <div className="mx-auto max-w-7xl px-4 py-8">
+      {/* Header */}
+      <div className="text-center mb-8">
+        <h1 className="text-3xl font-bold tracking-tight mb-3">Проверка описания</h1>
+        <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 hover:bg-green-50">
+          Проходит требования Ozon / Wildberries
+        </Badge>
+      </div>
 
-          {/* Two-column layout - normal flow, no fixed heights */}
-          <div className="grid grid-cols-[1fr_minmax(320px,32%)] gap-4 auto-rows-max">
+      {/* Two-column layout - normal flow, no fixed heights */}
+      <div className="grid grid-cols-[1fr_minmax(320px,32%)] gap-4 auto-rows-max">
             {/* LEFT COLUMN - Input */}
             <Card className="flex flex-col">
               <CardHeader className="flex flex-row items-start justify-between gap-4 pb-4">
@@ -272,8 +269,6 @@ export default function ValidatePage() {
               </CardContent>
             </Card>
           </div>
-        </div>
-      </div>
     </div>
   )
 }
