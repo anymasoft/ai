@@ -22,18 +22,21 @@ export default function ValidatePage() {
   const [isLoading, setIsLoading] = useState(false)
   const [validation, setValidation] = useState<ValidationResult | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [showCorrectionSuccess, setShowCorrectionSuccess] = useState(false)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
   const handleValidate = async () => {
     if (!text.trim()) {
       setValidation(null)
       setError(null)
+      setShowCorrectionSuccess(false)
       return
     }
 
     setIsLoading(true)
     setError(null)
     setValidation(null)
+    setShowCorrectionSuccess(false)
 
     try {
       const response = await fetch("/api/validate-text", {
@@ -90,6 +93,8 @@ export default function ValidatePage() {
         setText(result.data.corrected)
         // Сбрасываем валидацию
         setValidation(null)
+        // Показываем success feedback
+        setShowCorrectionSuccess(true)
       } else {
         throw new Error("Неверный формат ответа от API")
       }
@@ -126,9 +131,9 @@ export default function ValidatePage() {
       </div>
 
       {/* Workspace: 2-column layout with fixed heights */}
-      <div className="flex flex-1 overflow-hidden gap-4 pb-4">
+      <div className="grid grid-cols-[minmax(0,2fr)_minmax(360px,1fr)] gap-4 pb-4 overflow-hidden">
         {/* LEFT COLUMN - Input */}
-        <Card className="flex flex-col flex-1 overflow-hidden">
+        <Card className="flex flex-col overflow-hidden">
           <CardHeader className="flex flex-row items-start justify-between gap-4 pb-4 flex-shrink-0">
             <div className="flex-1">
               <CardTitle className="text-lg">Описание товара</CardTitle>
@@ -187,7 +192,10 @@ export default function ValidatePage() {
                 ref={textareaRef}
                 placeholder="Вставьте описание товара, которое хотите проверить перед публикацией на маркетплейсе."
                 value={text}
-                onChange={(e) => setText(e.target.value)}
+                onChange={(e) => {
+                  setText(e.target.value)
+                  setShowCorrectionSuccess(false)
+                }}
                 disabled={isLoading}
                 className="flex-1 resize-none min-h-0 font-mono text-sm bg-transparent border-0 outline-none focus-visible:ring-0 placeholder-muted-foreground disabled:opacity-50"
               />
@@ -196,15 +204,30 @@ export default function ValidatePage() {
         </Card>
 
         {/* RIGHT COLUMN - Results */}
-        <Card className="flex flex-col flex-1 overflow-hidden">
+        <Card className="flex flex-col overflow-hidden">
           <CardHeader className="pb-4 flex-shrink-0">
             <CardTitle className="text-lg">Результаты</CardTitle>
           </CardHeader>
 
           {/* Results content - scrollable */}
           <CardContent className="flex-1 overflow-y-auto space-y-4 p-4">
+            {/* Success state - after correction */}
+            {showCorrectionSuccess && !validation && !error && (
+              <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                <div className="flex items-start gap-3">
+                  <CheckCircle2 className="h-5 w-5 text-green-600 flex-shrink-0 mt-0.5" />
+                  <div>
+                    <p className="text-sm font-semibold text-green-700">✅ Описание успешно исправлено</p>
+                    <p className="text-xs text-green-600 mt-2">
+                      Текст приведён в соответствие требованиями маркетплейса. Вы можете повторно нажать «Проверить» для финальной валидации.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Before validation - Placeholder */}
-            {!validation && !error && (
+            {!validation && !error && !showCorrectionSuccess && (
               <div className="text-center text-muted-foreground text-sm py-6">
                 Здесь появятся результаты проверки вашего описания
               </div>
