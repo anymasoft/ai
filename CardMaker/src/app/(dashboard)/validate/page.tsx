@@ -191,7 +191,7 @@ export default function ValidatePage() {
                 Выберите маркетплейс и вставьте текст описания для проверки
               </CardDescription>
             </div>
-            <div className="flex gap-2 flex-shrink-0">
+            <div className="flex flex-col gap-2 flex-shrink-0">
               <Button
                 onClick={handleValidate}
                 disabled={isLoading || !text.trim()}
@@ -200,6 +200,22 @@ export default function ValidatePage() {
               >
                 {isLoading ? "Проверяется..." : "Проверить"}
               </Button>
+              {validation && !validation.isValid && (
+                <Button
+                  onClick={handleCorrect}
+                  disabled={isLoading}
+                  size="sm"
+                  className="h-9 bg-amber-600 hover:bg-amber-700"
+                >
+                  {isLoading ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    </>
+                  ) : (
+                    "Исправить"
+                  )}
+                </Button>
+              )}
             </div>
           </CardHeader>
 
@@ -229,7 +245,7 @@ export default function ValidatePage() {
 
           {/* Input area - scrollable */}
           <CardContent className="flex-1 overflow-y-auto p-4 flex flex-col">
-            <div className="relative flex-1 flex flex-col p-4 bg-muted/20 border border-input rounded-lg overflow-hidden hover:border-neutral-400 transition-colors">
+            <div className="relative flex-1 flex flex-col p-4 bg-muted/20 border border-input rounded-lg overflow-hidden hover:border-neutral-400 transition-colors min-h-96">
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger asChild>
@@ -403,26 +419,6 @@ export default function ValidatePage() {
               </>
             )}
           </CardContent>
-
-          {/* Correction button - always at bottom */}
-          {validation && !validation.isValid && (
-            <div className="border-t p-4 flex-shrink-0">
-              <Button
-                onClick={handleCorrect}
-                disabled={isLoading}
-                className="w-full"
-              >
-                {isLoading ? (
-                  <>
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    Исправляется...
-                  </>
-                ) : (
-                  "Исправить автоматически"
-                )}
-              </Button>
-            </div>
-          )}
         </Card>
       </div>
     </div>
