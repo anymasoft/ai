@@ -6,7 +6,6 @@ import {
   FileText,
   MessageSquare,
   Sparkles,
-  CheckCircle2,
   Zap,
 } from "lucide-react"
 import Link from "next/link"
@@ -31,13 +30,8 @@ import {
 
 const navGroups = [
   {
-    label: "Основное",
+    label: "Инструменты",
     items: [
-      {
-        title: "Проверка описания",
-        url: "/validate",
-        icon: CheckCircle2,
-      },
       {
         title: "Создание описания",
         url: "/card-generator",
