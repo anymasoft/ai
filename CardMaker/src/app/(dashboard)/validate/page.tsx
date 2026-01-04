@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Textarea } from "@/components/ui/textarea"
 import { Badge } from "@/components/ui/badge"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
-import { AlertCircle, CheckCircle2, Loader2, Copy } from "lucide-react"
+import { AlertCircle, CheckCircle2, AlertTriangle, Loader2, Copy } from "lucide-react"
 import { toast } from "sonner"
 import type { ValidationResult } from '@/lib/ai-services/validation'
 
@@ -15,6 +15,25 @@ type Marketplace = "ozon" | "wb"
 const MARKETPLACE_NAMES: Record<Marketplace, string> = {
   ozon: "Ozon",
   wb: "Wildberries"
+}
+
+// Типы статусов валидации UI
+type ValidationUIStatus = "fail" | "pass_with_warning" | "pass"
+
+/**
+ * Определить статус UI для результата валидации
+ * - fail: есть критические ошибки (isValid === false)
+ * - pass_with_warning: проходит проверку, но есть предупреждения
+ * - pass: полностью соответствует требованиям
+ */
+function getValidationUIStatus(result: ValidationResult): ValidationUIStatus {
+  if (!result.isValid) {
+    return "fail"
+  }
+
+  // Есть ли нарушения (warnings)?
+  const hasWarnings = result.issues && result.issues.length > 0
+  return hasWarnings ? "pass_with_warning" : "pass"
 }
 
 export default function ValidatePage() {
@@ -254,7 +273,7 @@ export default function ValidatePage() {
                 <div className="flex items-start gap-3">
                   <CheckCircle2 className="h-5 w-5 text-green-600 flex-shrink-0 mt-0.5" />
                   <div>
-                    <p className="text-sm font-semibold text-green-700">✅ Описание успешно исправлено</p>
+                    <p className="text-sm font-semibold text-green-700">Описание успешно исправлено</p>
                     <p className="text-xs text-green-600 mt-2">
                       Текст приведён в соответствие требованиями маркетплейса. Вы можете повторно нажать «Проверить» для финальной валидации.
                     </p>
@@ -270,7 +289,7 @@ export default function ValidatePage() {
               </div>
             )}
 
-            {/* Error state */}
+            {/* Error state - network/server errors */}
             {error && (
               <div className="bg-red-50 border border-red-200 rounded-lg p-4">
                 <div className="flex items-start gap-3">
@@ -283,58 +302,105 @@ export default function ValidatePage() {
               </div>
             )}
 
-            {/* Success state */}
-            {validation && validation.isValid && (
-              <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-                <div className="flex items-start gap-3">
-                  <CheckCircle2 className="h-5 w-5 text-green-600 flex-shrink-0 mt-0.5" />
-                  <div>
-                    <p className="text-sm font-semibold text-green-700">✅ Описание соответствует требованиям {MARKETPLACE_NAMES[validation.marketplace]}</p>
-                    {validation.summary && (
-                      <p className="text-xs text-green-600 mt-1">{validation.summary}</p>
-                    )}
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Failure state */}
-            {validation && !validation.isValid && (
-              <div className="space-y-3">
-                <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-                  <div className="flex items-start gap-3">
-                    <AlertCircle className="h-5 w-5 text-red-600 flex-shrink-0 mt-0.5" />
-                    <div>
-                      <p className="text-sm font-semibold text-red-700">❌ Описание НЕ соответствует требованиям {MARKETPLACE_NAMES[validation.marketplace]}</p>
-                      {validation.summary && (
-                        <p className="text-xs text-red-600 mt-1">{validation.summary}</p>
-                      )}
+            {/* Validation result UI - three states based on getValidationUIStatus() */}
+            {validation && (
+              <>
+                {getValidationUIStatus(validation) === "fail" && (
+                  <>
+                    {/* FAIL: Critical errors found */}
+                    <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                      <div className="flex items-start gap-3">
+                        <AlertCircle className="h-5 w-5 text-red-600 flex-shrink-0 mt-0.5" />
+                        <div>
+                          <p className="text-sm font-semibold text-red-700">Описание НЕ соответствует требованиям {MARKETPLACE_NAMES[validation.marketplace]}</p>
+                          {validation.summary && (
+                            <p className="text-xs text-red-600 mt-1">{validation.summary}</p>
+                          )}
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                </div>
 
-                {/* Issues list */}
-                {validation.issues && validation.issues.length > 0 && (
-                  <div className="bg-red-50 border border-red-200 rounded-lg p-3 space-y-2">
-                    <p className="text-xs font-semibold text-red-700">Нарушения:</p>
-                    <ul className="space-y-1.5">
-                      {validation.issues.map((issue, i) => (
-                        <li key={i} className="text-xs">
-                          <div className="flex items-start gap-2">
-                            <span className="font-bold mt-0.5 flex-shrink-0">•</span>
-                            <div className="flex-1">
-                              <p className="text-red-700 font-medium">{issue.message}</p>
-                              {issue.suggestion && (
-                                <p className="text-red-600 text-xs mt-0.5">💡 {issue.suggestion}</p>
-                              )}
-                            </div>
-                          </div>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
+                    {/* Issues list for FAIL */}
+                    {validation.issues && validation.issues.length > 0 && (
+                      <div className="bg-red-50 border border-red-200 rounded-lg p-3 space-y-2">
+                        <p className="text-xs font-semibold text-red-700">Нарушения:</p>
+                        <ul className="space-y-1.5">
+                          {validation.issues.map((issue, i) => (
+                            <li key={i} className="text-xs">
+                              <div className="flex items-start gap-2">
+                                <span className="font-bold mt-0.5 flex-shrink-0">•</span>
+                                <div className="flex-1">
+                                  <p className="text-red-700 font-medium">{issue.message}</p>
+                                  {issue.suggestion && (
+                                    <p className="text-red-600 text-xs mt-0.5">{issue.suggestion}</p>
+                                  )}
+                                </div>
+                              </div>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                  </>
                 )}
-              </div>
+
+                {getValidationUIStatus(validation) === "pass_with_warning" && (
+                  <>
+                    {/* PASS + WARNING: Passes but has warnings */}
+                    <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+                      <div className="flex items-start gap-3">
+                        <AlertTriangle className="h-5 w-5 text-amber-600 flex-shrink-0 mt-0.5" />
+                        <div>
+                          <p className="text-sm font-semibold text-amber-700">Описание проходит модерацию, но есть замечания</p>
+                          <p className="text-xs text-amber-600 mt-1">
+                            Карточка, скорее всего, будет принята, но описание можно улучшить
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Issues list for PASS+WARNING */}
+                    {validation.issues && validation.issues.length > 0 && (
+                      <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 space-y-2">
+                        <p className="text-xs font-semibold text-amber-700">Замечания:</p>
+                        <ul className="space-y-1.5">
+                          {validation.issues.map((issue, i) => (
+                            <li key={i} className="text-xs">
+                              <div className="flex items-start gap-2">
+                                <span className="font-bold mt-0.5 flex-shrink-0">•</span>
+                                <div className="flex-1">
+                                  <p className="text-amber-700 font-medium">{issue.message}</p>
+                                  {issue.suggestion && (
+                                    <p className="text-amber-600 text-xs mt-0.5">{issue.suggestion}</p>
+                                  )}
+                                </div>
+                              </div>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                  </>
+                )}
+
+                {getValidationUIStatus(validation) === "pass" && (
+                  <>
+                    {/* PASS: Fully compliant, no issues */}
+                    <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                      <div className="flex items-start gap-3">
+                        <CheckCircle2 className="h-5 w-5 text-green-600 flex-shrink-0 mt-0.5" />
+                        <div>
+                          <p className="text-sm font-semibold text-green-700">Описание соответствует требованиям {MARKETPLACE_NAMES[validation.marketplace]}</p>
+                          {validation.summary && (
+                            <p className="text-xs text-green-600 mt-1">{validation.summary}</p>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                    {/* No issues list for PASS - intentionally empty */}
+                  </>
+                )}
+              </>
             )}
           </CardContent>
 
