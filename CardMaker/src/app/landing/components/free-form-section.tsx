@@ -90,7 +90,7 @@ export function FreeFormSection() {
             Проверьте описание бесплатно
           </h2>
           <p className="text-muted-foreground text-center">
-            Узнайте, соответствует ли ваше описание требованиям маркетплейцов за 10 секунд
+            Узнайте, соответствует ли ваше описание требованиям маркетплейсов за 10 секунд
           </p>
         </div>
 
@@ -145,7 +145,7 @@ export function FreeFormSection() {
 
           {/* Note */}
           <p className="text-xs text-muted-foreground text-center">
-            В бесплатной версии требования маркетплейцов не проверяются
+            В бесплатной версии требования маркетплейсов не проверяются
           </p>
         </div>
 
