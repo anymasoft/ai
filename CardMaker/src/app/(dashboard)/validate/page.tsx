@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Textarea } from "@/components/ui/textarea"
 import { Badge } from "@/components/ui/badge"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { AlertCircle, CheckCircle2, Loader2, Copy } from "lucide-react"
 import { toast } from "sonner"
 import type { ValidationResult } from '@/lib/ai-services/validation'
@@ -202,14 +203,20 @@ export default function ValidatePage() {
           {/* Input area - scrollable */}
           <CardContent className="flex-1 overflow-y-auto p-4 flex flex-col">
             <div className="relative flex-1 flex flex-col p-4 bg-muted/20 border border-input rounded-lg overflow-hidden hover:border-neutral-400 transition-colors">
-              <button
-                onClick={handleCopyText}
-                disabled={!text.trim() || isLoading}
-                className="absolute top-4 right-4 p-2 rounded-md opacity-50 hover:opacity-100 hover:bg-muted transition-all disabled:opacity-25 disabled:cursor-not-allowed"
-                title="Скопировать текст"
-              >
-                <Copy className="h-4 w-4" />
-              </button>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      onClick={handleCopyText}
+                      disabled={!text.trim() || isLoading}
+                      className="absolute top-4 right-4 p-2 rounded-md opacity-50 hover:opacity-100 hover:bg-muted transition-all disabled:opacity-25 disabled:cursor-not-allowed cursor-pointer"
+                    >
+                      <Copy className="h-4 w-4" />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent>Скопировать текст</TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
               <Textarea
                 ref={textareaRef}
                 placeholder="Вставьте описание товара, которое хотите проверить перед публикацией на маркетплейсе."
