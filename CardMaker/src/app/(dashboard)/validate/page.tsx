@@ -5,7 +5,8 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Textarea } from "@/components/ui/textarea"
 import { Badge } from "@/components/ui/badge"
-import { AlertCircle, CheckCircle2, Loader2 } from "lucide-react"
+import { AlertCircle, CheckCircle2, Loader2, Copy } from "lucide-react"
+import { toast } from "sonner"
 import type { ValidationResult } from '@/lib/ai-services/validation'
 
 type Marketplace = "ozon" | "wb"
@@ -99,6 +100,19 @@ export default function ValidatePage() {
     }
   }
 
+  const handleCopyText = async () => {
+    if (!text.trim()) {
+      return
+    }
+
+    try {
+      await navigator.clipboard.writeText(text)
+      toast.success("Текст скопирован")
+    } catch (err) {
+      toast.error("Не удалось скопировать текст")
+    }
+  }
+
   return (
     <div className="mx-auto max-w-7xl px-4 py-8">
       {/* Header */}
@@ -158,7 +172,15 @@ export default function ValidatePage() {
 
               {/* Input area */}
               <CardContent className="p-4 flex flex-col" style={{ minHeight: "300px" }}>
-                <div className="flex-1 flex flex-col p-4 bg-muted/20 border border-input rounded-lg overflow-hidden hover:border-neutral-400 transition-colors">
+                <div className="relative flex-1 flex flex-col p-4 bg-muted/20 border border-input rounded-lg overflow-hidden hover:border-neutral-400 transition-colors">
+                  <button
+                    onClick={handleCopyText}
+                    disabled={!text.trim() || isLoading}
+                    className="absolute top-4 right-4 p-2 rounded-md opacity-50 hover:opacity-100 hover:bg-muted transition-all disabled:opacity-25 disabled:cursor-not-allowed"
+                    title="Скопировать текст"
+                  >
+                    <Copy className="h-4 w-4" />
+                  </button>
                   <Textarea
                     ref={textareaRef}
                     placeholder="Вставьте описание товара, которое хотите проверить перед публикацией на маркетплейсе."
