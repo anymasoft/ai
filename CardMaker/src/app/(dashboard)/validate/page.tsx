@@ -289,7 +289,7 @@ export default function ValidatePage() {
                 <div className="flex items-start gap-3">
                   <CheckCircle2 className="h-5 w-5 text-green-600 flex-shrink-0 mt-0.5" />
                   <div>
-                    <p className="text-sm font-semibold text-green-700">✅ Описание соответствует требованиям {MARKETPLACE_NAMES[marketplace]}</p>
+                    <p className="text-sm font-semibold text-green-700">✅ Описание соответствует требованиям {MARKETPLACE_NAMES[validation.marketplace]}</p>
                     {validation.summary && (
                       <p className="text-xs text-green-600 mt-1">{validation.summary}</p>
                     )}
@@ -305,7 +305,7 @@ export default function ValidatePage() {
                   <div className="flex items-start gap-3">
                     <AlertCircle className="h-5 w-5 text-red-600 flex-shrink-0 mt-0.5" />
                     <div>
-                      <p className="text-sm font-semibold text-red-700">❌ Описание НЕ соответствует требованиям {MARKETPLACE_NAMES[marketplace]}</p>
+                      <p className="text-sm font-semibold text-red-700">❌ Описание НЕ соответствует требованиям {MARKETPLACE_NAMES[validation.marketplace]}</p>
                       {validation.summary && (
                         <p className="text-xs text-red-600 mt-1">{validation.summary}</p>
                       )}
