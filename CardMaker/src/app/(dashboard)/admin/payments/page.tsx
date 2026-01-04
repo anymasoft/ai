@@ -19,7 +19,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Calendar } from "@/components/ui/calendar"
 
 interface Payment {
-  id: number
+  id: string
   userId: string
   email: string
   packageKey: string
@@ -41,7 +41,7 @@ export default function AdminPaymentsPage() {
   const [pageSize, setPageSize] = useState(20)
   const [currentPage, setCurrentPage] = useState(1)
   const [totalSum, setTotalSum] = useState(0)
-  const [deletingId, setDeletingId] = useState<number | null>(null)
+  const [deletingId, setDeletingId] = useState<string | null>(null)
 
   useEffect(() => {
     fetchPayments()
@@ -111,10 +111,10 @@ export default function AdminPaymentsPage() {
     }
   }
 
-  async function deletePayment(paymentId: number) {
+  async function deletePayment(paymentId: string) {
     try {
       setDeletingId(paymentId)
-      const res = await fetch(`/api/admin/payments/by-id?id=${paymentId}`, {
+      const res = await fetch(`/api/admin/payments/by-id?id=${encodeURIComponent(paymentId)}`, {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
       })
