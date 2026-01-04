@@ -22,34 +22,34 @@ export function HeroSection() {
           <div className="mb-8 flex justify-center">
             <Badge variant="outline" className="px-4 py-2 border-foreground">
               <Star className="w-3 h-3 mr-2 fill-current" />
-              AI-анализ конкурентов + генерация сценариев
+              Проверка текста по 100+ правилам маркетплейсов
               <ArrowRight className="w-3 h-3 ml-2" />
             </Badge>
           </div>
 
           {/* Main Headline */}
           <h1 className="mb-6 text-4xl font-bold tracking-tight sm:text-6xl lg:text-7xl">
-            Быстрое и качественное создание описаний товаров{' '}
+            Проверьте описание товара на соответствие требованиям{' '}
             <span className="bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
-              для Ozon и Wildberries
+              Ozon и Wildberries
             </span>
           </h1>
 
           {/* Subheading */}
           <p className="mx-auto mb-10 max-w-2xl text-lg text-muted-foreground sm:text-xl">
-            Помогаем быстро подготовить понятные и аккуратные описания товаров, которые соответствуют требованиям маркетплейсов и не требуют доработки перед публикацией.
+            Найдите ошибки в описании ещё до публикации и исправьте их. Система проверяет соответствие требованиям маркетплейсов, выявляет проблемы и помогает оптимизировать текст.
           </p>
 
           {/* Additional descriptive line */}
           <p className="mx-auto mb-10 max-w-2xl text-base text-muted-foreground">
-            Без догадок и правок вручную. Чётко, по правилам и под задачи маркетплейсов.
+            Убедитесь, что ваша карточка пройдёт модерацию. Без отклонений и переделок.
           </p>
 
           {/* CTA Buttons */}
           <div className="flex flex-col gap-4 sm:flex-row sm:justify-center">
             <Button size="lg" className="text-base cursor-pointer bg-red-600 hover:bg-red-700 text-white" asChild>
-              <Link href="/sign-in">
-                Твой успех начинается здесь
+              <Link href="#free-form">
+                Проверить описание бесплатно
                 <ArrowRight className="ml-2 h-4 w-4" />
               </Link>
             </Button>

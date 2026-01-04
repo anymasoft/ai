@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useRef } from "react"
+import { useState, useRef, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Textarea } from "@/components/ui/textarea"
@@ -24,6 +24,28 @@ export default function ValidatePage() {
   const [error, setError] = useState<string | null>(null)
   const [showCorrectionSuccess, setShowCorrectionSuccess] = useState(false)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
+
+  // Prefill from landing page free check
+  useEffect(() => {
+    const prefill = localStorage.getItem("beem_validate_prefill")
+    if (prefill) {
+      try {
+        const data = JSON.parse(prefill) as {
+          marketplace: Marketplace
+          text: string
+          intent?: "details" | "fix"
+        }
+        if (data.text && data.marketplace) {
+          setText(data.text)
+          setMarketplace(data.marketplace)
+          toast.success("Описание загружено из проверки")
+        }
+      } catch (e) {
+        console.error("Failed to parse prefill data", e)
+      }
+      localStorage.removeItem("beem_validate_prefill")
+    }
+  }, [])
 
   const handleValidate = async () => {
     if (!text.trim()) {
