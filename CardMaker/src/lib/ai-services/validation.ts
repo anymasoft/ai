@@ -145,8 +145,13 @@ export const validateDescriptionWithRules = async (params: {
     // ШАГ 3: В РЕЖИМЕ SUMMARY убираем детали issues
     const issuesForResponse = mode === 'summary' ? [] : issues
 
+    // ШАГ 4: Формируем isValid на основе КРИТИЧЕСКИХ ошибок (severity === "error")
+    // isValid === false ТОЛЬКО если есть хотя бы одна ошибка с severity === "error"
+    // isValid === true, если нет критических ошибок (warnings не блокируют)
+    const hasCriticalErrors = issues.some((i) => i.severity === 'error')
+
     const result: ValidationResult = {
-      isValid: issues.length === 0,
+      isValid: !hasCriticalErrors,
       score,
       issues: issuesForResponse, // ← В summary режиме пусто
       summary: issues.length === 0
