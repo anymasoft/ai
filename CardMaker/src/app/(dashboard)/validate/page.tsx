@@ -58,7 +58,7 @@ export default function ValidatePage() {
 
     setIsLoading(true)
     setError(null)
-    setValidation(null) // Сбросить результат, чтобы снова включить селектор
+    setValidation(null)
     setShowCorrectionSuccess(false)
 
     try {
@@ -195,7 +195,7 @@ export default function ValidatePage() {
                 <button
                   key={opt.value}
                   onClick={() => setMarketplace(opt.value)}
-                  disabled={isLoading || !!validation}
+                  disabled={isLoading}
                   className={`px-2.5 py-1.5 rounded text-xs font-medium transition-all disabled:opacity-50 ${
                     marketplace === opt.value
                       ? "bg-background shadow-sm border border-primary/20"
