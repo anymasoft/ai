@@ -191,7 +191,7 @@ export default function ValidatePage() {
                 Выберите маркетплейс и вставьте текст описания для проверки
               </CardDescription>
             </div>
-            <div className="flex gap-2 flex-shrink-0">
+            <div className="flex flex-col gap-2 flex-shrink-0">
               <Button
                 onClick={handleValidate}
                 disabled={isLoading || !text.trim()}
@@ -200,6 +200,22 @@ export default function ValidatePage() {
               >
                 {isLoading ? "Проверяется..." : "Проверить"}
               </Button>
+              {validation && !validation.isValid && (
+                <Button
+                  onClick={handleCorrect}
+                  disabled={isLoading}
+                  size="sm"
+                  className="h-9 bg-amber-600 hover:bg-amber-700"
+                >
+                  {isLoading ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    </>
+                  ) : (
+                    "Исправить"
+                  )}
+                </Button>
+              )}
             </div>
           </CardHeader>
 
@@ -229,7 +245,7 @@ export default function ValidatePage() {
 
           {/* Input area - scrollable */}
           <CardContent className="flex-1 overflow-y-auto p-4 flex flex-col">
-            <div className="relative flex-1 flex flex-col p-4 bg-muted/20 border border-input rounded-lg overflow-hidden hover:border-neutral-400 transition-colors">
+            <div className="relative flex-1 flex flex-col p-4 bg-muted/20 border border-input rounded-lg overflow-hidden hover:border-neutral-400 transition-colors min-h-96">
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger asChild>
@@ -253,7 +269,7 @@ export default function ValidatePage() {
                   setShowCorrectionSuccess(false)
                 }}
                 disabled={isLoading}
-                className="flex-1 resize-none min-h-0 font-mono text-sm bg-transparent border-0 outline-none focus-visible:ring-0 placeholder-muted-foreground disabled:opacity-50"
+                className="flex-1 resize-none min-h-0 user-text bg-transparent border-0 outline-none focus-visible:ring-0 placeholder-muted-foreground disabled:opacity-50"
               />
             </div>
           </CardContent>
@@ -312,9 +328,9 @@ export default function ValidatePage() {
                       <div className="flex items-start gap-3">
                         <AlertCircle className="h-5 w-5 text-red-600 flex-shrink-0 mt-0.5" />
                         <div>
-                          <p className="text-sm font-semibold text-red-700">Описание НЕ соответствует требованиям {MARKETPLACE_NAMES[validation.marketplace]}</p>
+                          <p className="text-base font-semibold text-red-700">Описание НЕ соответствует требованиям {MARKETPLACE_NAMES[validation.marketplace]}</p>
                           {validation.summary && (
-                            <p className="text-xs text-red-600 mt-1">{validation.summary}</p>
+                            <p className="text-sm text-red-600 mt-1">{validation.summary}</p>
                           )}
                         </div>
                       </div>
@@ -323,16 +339,16 @@ export default function ValidatePage() {
                     {/* Issues list for FAIL */}
                     {validation.issues && validation.issues.length > 0 && (
                       <div className="bg-red-50 border border-red-200 rounded-lg p-3 space-y-2">
-                        <p className="text-xs font-semibold text-red-700">Нарушения:</p>
+                        <p className="text-sm font-semibold text-red-700">Нарушения:</p>
                         <ul className="space-y-1.5">
                           {validation.issues.map((issue, i) => (
-                            <li key={i} className="text-xs">
+                            <li key={i} className="text-sm">
                               <div className="flex items-start gap-2">
                                 <span className="font-bold mt-0.5 flex-shrink-0">•</span>
                                 <div className="flex-1">
-                                  <p className="text-red-700 font-medium">{issue.message}</p>
+                                  <p className="text-red-700 font-medium leading-snug">{issue.message}</p>
                                   {issue.suggestion && (
-                                    <p className="text-red-600 text-xs mt-0.5">{issue.suggestion}</p>
+                                    <p className="text-red-600 text-sm mt-0.5 leading-snug">{issue.suggestion}</p>
                                   )}
                                 </div>
                               </div>
@@ -351,8 +367,8 @@ export default function ValidatePage() {
                       <div className="flex items-start gap-3">
                         <AlertTriangle className="h-5 w-5 text-amber-600 flex-shrink-0 mt-0.5" />
                         <div>
-                          <p className="text-sm font-semibold text-amber-700">Описание проходит модерацию, но есть замечания</p>
-                          <p className="text-xs text-amber-600 mt-1">
+                          <p className="text-base font-semibold text-amber-700">Описание проходит модерацию, но есть замечания</p>
+                          <p className="text-sm text-amber-600 mt-1">
                             Карточка, скорее всего, будет принята, но описание можно улучшить
                           </p>
                         </div>
@@ -362,16 +378,16 @@ export default function ValidatePage() {
                     {/* Issues list for PASS+WARNING */}
                     {validation.issues && validation.issues.length > 0 && (
                       <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 space-y-2">
-                        <p className="text-xs font-semibold text-amber-700">Замечания:</p>
+                        <p className="text-sm font-semibold text-amber-700">Замечания:</p>
                         <ul className="space-y-1.5">
                           {validation.issues.map((issue, i) => (
-                            <li key={i} className="text-xs">
+                            <li key={i} className="text-sm">
                               <div className="flex items-start gap-2">
                                 <span className="font-bold mt-0.5 flex-shrink-0">•</span>
                                 <div className="flex-1">
-                                  <p className="text-amber-700 font-medium">{issue.message}</p>
+                                  <p className="text-amber-700 font-medium leading-snug">{issue.message}</p>
                                   {issue.suggestion && (
-                                    <p className="text-amber-600 text-xs mt-0.5">{issue.suggestion}</p>
+                                    <p className="text-amber-600 text-sm mt-0.5 leading-snug">{issue.suggestion}</p>
                                   )}
                                 </div>
                               </div>
@@ -390,9 +406,9 @@ export default function ValidatePage() {
                       <div className="flex items-start gap-3">
                         <CheckCircle2 className="h-5 w-5 text-green-600 flex-shrink-0 mt-0.5" />
                         <div>
-                          <p className="text-sm font-semibold text-green-700">Описание соответствует требованиям {MARKETPLACE_NAMES[validation.marketplace]}</p>
+                          <p className="text-base font-semibold text-green-700">Описание соответствует требованиям {MARKETPLACE_NAMES[validation.marketplace]}</p>
                           {validation.summary && (
-                            <p className="text-xs text-green-600 mt-1">{validation.summary}</p>
+                            <p className="text-sm text-green-600 mt-1">{validation.summary}</p>
                           )}
                         </div>
                       </div>
@@ -403,26 +419,6 @@ export default function ValidatePage() {
               </>
             )}
           </CardContent>
-
-          {/* Correction button - always at bottom */}
-          {validation && !validation.isValid && (
-            <div className="border-t p-4 flex-shrink-0">
-              <Button
-                onClick={handleCorrect}
-                disabled={isLoading}
-                className="w-full"
-              >
-                {isLoading ? (
-                  <>
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    Исправляется...
-                  </>
-                ) : (
-                  "Исправить автоматически"
-                )}
-              </Button>
-            </div>
-          )}
         </Card>
       </div>
     </div>
