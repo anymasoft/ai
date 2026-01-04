@@ -10,17 +10,12 @@ export interface CheckResult {
 }
 
 /**
- * Проблема, найденная при валидации (импортируем отсюда)
+ * Проблема, найденная при валидации
+ * ШАГ 5: ТОЛЬКО 2 ТИПА ОШИБОК
  */
 export interface ValidationIssue {
-  type:
-    | 'forbidden_words'
-    | 'grammar'
-    | 'requirements'
-    | 'exaggeration'
-    | 'clarity'
-    | 'other'
-  severity: 'error' | 'warning' | 'info'
+  type: 'forbidden_words' | 'marketplace_rule'
+  severity: 'error' | 'warning'
   message: string
   suggestion?: string
 }
@@ -29,15 +24,18 @@ export interface ValidationIssue {
  * Сгенерировать breakdown проверок на основе найденных issues
  * Для прозрачности и объяснения итогового скора
  */
+/**
+ * ШАГ 5: ОБНОВЛЁННЫЙ BREAKDOWN
+ *
+ * Теперь ТОЛЬКО для 2 типов проверок:
+ * - forbidden_words (50% веса)
+ * - marketplace_rule (50% веса)
+ */
 export const generateCheckBreakdown = (issues: ValidationIssue[]): CheckResult[] => {
-  // Категории проверок с базовыми весами
+  // Категории проверок - ТОЛЬКО 2 НОВЫЕ
   const checkCategories: Record<string, { name: string; baseWeight: number }> = {
-    forbidden_words: { name: 'Запрещённые слова', baseWeight: 25 },
-    requirements: { name: 'Соответствие правилам маркетплейса', baseWeight: 25 },
-    grammar: { name: 'Грамматика и пунктуация', baseWeight: 20 },
-    exaggeration: { name: 'Отсутствие преувеличений', baseWeight: 15 },
-    clarity: { name: 'Ясность и структура текста', baseWeight: 10 },
-    other: { name: 'Прочие проблемы', baseWeight: 5 },
+    forbidden_words: { name: 'Запрещённые слова', baseWeight: 50 },
+    marketplace_rule: { name: 'Соответствие правилам маркетплейса', baseWeight: 50 },
   }
 
   // Объединяем категории по типам
