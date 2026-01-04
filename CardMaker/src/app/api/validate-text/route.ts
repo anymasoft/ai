@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth/next'
 import { authOptions } from '@/lib/auth'
-import { validateProductDescription } from '@/lib/ai-services/validation'
+import { validateDescriptionWithRules } from '@/lib/ai-services/validation'
 import { z } from 'zod'
 
 // Схема валидации для request body
@@ -12,6 +12,13 @@ const validateTextSchema = z.object({
 
 type ValidateTextRequest = z.infer<typeof validateTextSchema>
 
+/**
+ * ШАГ 4: PROTECTED ENDPOINT ДЛЯ /VALIDATE СТРАНИЦЫ
+ *
+ * - Использует ОДНУ ФУНКЦИЮ валидации (validateDescriptionWithRules)
+ * - mode = 'full': возвращает ВСЕ детали (issues, score, summary)
+ * - С авторизацией (Auth required)
+ */
 export async function POST(request: NextRequest) {
   const session = await getServerSession(authOptions)
   if (!session?.user) {
@@ -32,10 +39,11 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Вызываем сервис валидации
-    const result = await validateProductDescription({
+    // Вызываем ЕДИНУЮ функцию валидации
+    const result = await validateDescriptionWithRules({
       description: validation.data.text,
       marketplace: validation.data.marketplace,
+      mode: 'full', // ← ПОЛНЫЕ ДАННЫЕ для /validate страницы
     })
 
     if (!result.success) {

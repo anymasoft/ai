@@ -5,16 +5,11 @@ import { buildValidationPrompt } from '@/lib/prompts/builders'
 
 /**
  * Проблема, найденная при валидации
+ * ТОЛЬКО 2 типа: запрещённые слова и нарушение правил маркетплейса
  */
 export interface ValidationIssue {
-  type:
-    | 'forbidden_words'
-    | 'grammar'
-    | 'requirements'
-    | 'exaggeration'
-    | 'clarity'
-    | 'other'
-  severity: 'error' | 'warning' | 'info'
+  type: 'forbidden_words' | 'marketplace_rule'
+  severity: 'error' | 'warning'
   message: string
   suggestion?: string
 }
@@ -39,6 +34,8 @@ export interface ValidationResult {
   issues: ValidationIssue[]
   summary: string
   validatedAt: string
+  marketplace: 'ozon' | 'wb' // ДОБАВЛЕНО: для проверки свежести данных
+  configVersion: string // ДОБАВЛЕНО: версия конфига
   checks?: CheckResult[] // детализация по проверкам (опционально)
 }
 
@@ -52,20 +49,28 @@ export interface ValidationError {
 }
 
 /**
- * Валидировать описание товара используя OpenAI
+ * ШАГ 1: ЕДИНЫЙ BACKEND-ENGINE ВАЛИДАЦИИ
  *
- * @param params Параметры для валидации
+ * Основная функция валидации описаний товаров
+ * - Используется для лендинга И /validate
+ * - Детерминирована (temperature = 0)
+ * - Возвращает: isValid (всегда) + детали (опционально)
+ *
+ * @param params.description Текст описания
+ * @param params.marketplace Маркетплейс (ozon | wb)
+ * @param params.mode Режим ответа: 'summary' (только isValid) или 'full' (все детали)
  * @returns Результат валидации или ошибка
  */
-export const validateProductDescription = async (params: {
+export const validateDescriptionWithRules = async (params: {
   description: string
   marketplace: 'ozon' | 'wb'
+  mode?: 'summary' | 'full'
 }): Promise<
   | { success: true; data: ValidationResult }
   | { success: false; error: ValidationError }
 > => {
   try {
-    const { description, marketplace } = params
+    const { description, marketplace, mode = 'full' } = params
 
     // Валидируем входные данные
     if (!description?.trim()) {
@@ -78,13 +83,13 @@ export const validateProductDescription = async (params: {
       }
     }
 
-    // Строим промпты на основе конфигурации из БД
+    // Строим ЕДИНЫЙ промпт на основе конфигурации из БД
     const { systemPrompt, userPrompt } = await buildValidationPrompt({
       description: description.trim(),
       marketplace,
     })
 
-    // Вызываем OpenAI API для валидации (модель СТРОГО из OPENAI_MODEL)
+    // Вызываем OpenAI API с temperature = 0 для ДЕТЕРМИНИРОВАННОСТИ
     const response = await callOpenAI(
       [
         {
@@ -97,7 +102,7 @@ export const validateProductDescription = async (params: {
         },
       ],
       undefined, // модель берётся из env
-      0.5, // Более низкая температура для консистентности JSON
+      0, // ✅ ТЕМПЕРАТУРА 0 - ДЕТЕРМИНИРОВАНА
       1500
     )
 
@@ -105,7 +110,6 @@ export const validateProductDescription = async (params: {
     let validationData: any
 
     try {
-      // Пытаемся найти JSON объект в ответе
       const jsonMatch = response.content.match(/\{[\s\S]*\}/)
       if (!jsonMatch) {
         throw new Error('JSON не найден в ответе')
@@ -113,9 +117,8 @@ export const validateProductDescription = async (params: {
 
       validationData = JSON.parse(jsonMatch[0])
     } catch (parseError) {
-      console.error('[validateProductDescription] Ошибка парсинга JSON:', parseError)
+      console.error('[validateDescriptionWithRules] Ошибка парсинга JSON:', parseError)
 
-      // Если не удалось распарсить, возвращаем как ошибку парсинга
       return {
         success: false,
         error: {
@@ -126,28 +129,32 @@ export const validateProductDescription = async (params: {
       }
     }
 
-    // Нормализуем данные валидации
-    const issues: ValidationIssue[] = (validationData.issues || [])
-      .map((issue: any) => ({
-        type: issue.type || 'other',
-        severity: issue.severity || 'warning',
-        message: issue.message || 'Неизвестная проблема',
-        suggestion: issue.suggestion,
+    // Нормализуем данные валидации (ТОЛЬКО 2 типа: forbidden_words и marketplace_rule)
+    const issues: ValidationIssue[] = (validationData.violations || [])
+      .map((violation: any) => ({
+        type: violation.type || 'marketplace_rule',
+        severity: violation.severity || 'error',
+        message: violation.description || violation.message || 'Неизвестная проблема',
+        suggestion: violation.suggestion,
       }))
       .filter((issue: ValidationIssue) => issue.message)
 
-    // Высчитываем финальный скор если не передан
-    const score =
-      typeof validationData.score === 'number' && validationData.score >= 0 && validationData.score <= 100
-        ? validationData.score
-        : calculateScore(issues, validationData.isValid)
+    // Вычисляем скор
+    const score = Math.max(0, Math.min(100, 100 - issues.length * 10))
+
+    // ШАГ 3: В РЕЖИМЕ SUMMARY убираем детали issues
+    const issuesForResponse = mode === 'summary' ? [] : issues
 
     const result: ValidationResult = {
-      isValid: validationData.isValid === true,
+      isValid: issues.length === 0,
       score,
-      issues,
-      summary: validationData.summary || summarizeIssues(issues),
+      issues: issuesForResponse, // ← В summary режиме пусто
+      summary: issues.length === 0
+        ? 'Описание соответствует всем требованиям'
+        : `Найдено ${issues.length} нарушений`,
       validatedAt: new Date().toISOString(),
+      marketplace,
+      configVersion: '1.0.0', // TODO: читать из config
     }
 
     return {
@@ -155,7 +162,7 @@ export const validateProductDescription = async (params: {
       data: result,
     }
   } catch (error) {
-    console.error('[validateProductDescription] Ошибка валидации:', error)
+    console.error('[validateDescriptionWithRules] Ошибка валидации:', error)
 
     return {
       success: false,
@@ -167,6 +174,24 @@ export const validateProductDescription = async (params: {
       },
     }
   }
+}
+
+/**
+ * LEGACY: Старая функция validateProductDescription (для совместимости)
+ * ПРОСТО ВЫЗЫВАЕТ новую функцию validateDescriptionWithRules()
+ */
+export const validateProductDescription = async (params: {
+  description: string
+  marketplace: 'ozon' | 'wb'
+}): Promise<
+  | { success: true; data: ValidationResult }
+  | { success: false; error: ValidationError }
+> => {
+  return validateDescriptionWithRules({
+    description: params.description,
+    marketplace: params.marketplace,
+    mode: 'full',
+  })
 }
 
 /**

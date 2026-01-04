@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { validateProductDescription } from '@/lib/ai-services/validation'
+import { validateDescriptionWithRules } from '@/lib/ai-services/validation'
 import { z } from 'zod'
 
 // Схема валидации для request body (public, без авторизации)
@@ -11,8 +11,12 @@ const validateTextFreeSchema = z.object({
 type ValidateTextFreeRequest = z.infer<typeof validateTextFreeSchema>
 
 /**
+ * ШАГ 4: PUBLIC ENDPOINT ДЛЯ ЛЕНДИНГА
+ *
  * Public endpoint для бесплатной проверки описания товара.
- * Возвращает только summary (OK/NOT OK), без деталей ошибок.
+ * - Использует ОДНУ ФУНКЦИЮ валидации (validateDescriptionWithRules)
+ * - mode = 'summary': возвращает только OK/NOT OK
+ * - Без авторизации
  */
 export async function POST(request: NextRequest) {
   try {
@@ -29,10 +33,11 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Вызываем сервис валидации
-    const result = await validateProductDescription({
+    // Вызываем ЕДИНУЮ функцию валидации
+    const result = await validateDescriptionWithRules({
       description: validation.data.text,
       marketplace: validation.data.marketplace,
+      mode: 'summary', // ← ТОЛЬКО SUMMARY для лендинга
     })
 
     if (!result.success) {
@@ -47,13 +52,7 @@ export async function POST(request: NextRequest) {
 
     // Сжимаем результат для free версии: только summary
     const data = result.data
-    const issuesByType = data.issues.reduce((acc, issue) => {
-      if (!acc[issue.type]) acc[issue.type] = 0
-      acc[issue.type]++
-      return acc
-    }, {} as Record<string, number>)
-
-    const categories = Object.keys(issuesByType)
+    const categories = data.issues.map((i) => i.type)
 
     return NextResponse.json({
       success: true,
@@ -61,7 +60,7 @@ export async function POST(request: NextRequest) {
         ok: data.isValid,
         issueCount: data.issues.length,
         score: data.score,
-        categories: categories,
+        categories: [...new Set(categories)], // Уникальные категории
         summary: data.summary,
       },
     })
