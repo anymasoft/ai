@@ -7,6 +7,7 @@ type SignInPageProps = {
   searchParams: Promise<{
     error?: string
     reason?: string
+    returnUrl?: string
   }>
 }
 
@@ -28,7 +29,7 @@ export default async function Page(props: SignInPageProps) {
           </div>
           Beem Analytics
         </Link>
-        <LoginForm1 />
+        <LoginForm1 returnUrl={searchParams?.returnUrl} />
       </div>
     </div>
   )
