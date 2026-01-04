@@ -254,7 +254,7 @@ const summarizeIssues = (issues: ValidationIssue[]): string => {
 
 /**
  * Исправить описание товара на основе результатов валидации
- * Применяет только suggestions из найденных проблем
+ * Использует violations (без suggestions) для корректировки текста
  *
  * @param params Параметры для исправления
  * @returns Исправленный текст или ошибка
@@ -280,9 +280,8 @@ export const correctProductDescription = async (params: {
       }
     }
 
-    // Если нет problems с suggestions, возвращаем оригинальный текст
-    const issuesWithSuggestions = issues.filter((i) => i.suggestion)
-    if (issuesWithSuggestions.length === 0) {
+    // Если нет issues, нечего исправлять
+    if (!issues || issues.length === 0) {
       return {
         success: true,
         data: {
@@ -292,30 +291,32 @@ export const correctProductDescription = async (params: {
       }
     }
 
-    // Строим промпт для исправления
-    const suggestionsText = issuesWithSuggestions
-      .map((issue, i) => `${i + 1}. ${issue.message}\n   Предложение: ${issue.suggestion}`)
+    // Форматируем violations (issues) в понятный для GPT список проблем
+    const violationsText = issues
+      .map((issue, i) => `${i + 1}. [${issue.type}] ${issue.message}`)
       .join('\n')
 
-    const systemPrompt = `Ты помощник по улучшению описаний товаров для маркетплейса ${marketplace === 'ozon' ? 'Ozon' : 'Wildberries'}.
-Твоя задача: исправить описание товара, применив только предложенные правки.
+    const systemPrompt = `Ты помощник по улучшению описаний товаров для маркетплейса ${marketplace === 'ozon' ? 'Озон' : 'Wildberries'}.
+
+Твоя задача: исправить описание товара, устранив выявленные проблемы.
+
 Правила:
-- Исправляй ТОЛЬКО то, что указано в предложениях
+- Исправляй ТОЛЬКО выявленные проблемы из списка нарушений
 - НЕ переписывай текст целиком
 - НЕ изменяй значение или смысл
 - Сохраняй структуру и стиль оригинального текста
 - Удаляй или нейтрализуй запрещённые утверждения
 - Возвращай только исправленный текст без объяснений`
 
-    const userPrompt = `Исправь следующее описание товара:
+    const userPrompt = `Исправь следующее описание товара, устраняя указанные нарушения:
 
 Оригинальный текст:
 """${description}"""
 
-Предложенные правки:
-${suggestionsText}
+Выявленные проблемы:
+${violationsText}
 
-Верни ТОЛЬКО исправленный текст.`
+Верни ТОЛЬКО исправленный текст, без пояснений.`
 
     const response = await callOpenAI(
       [
@@ -335,14 +336,18 @@ ${suggestionsText}
 
     const corrected = response.content.trim()
 
-    // Подсчитываем примерное количество изменений
-    // (очень приблизительно, на основе количества suggestions)
-    const changesCount = issuesWithSuggestions.length
+    // Проверяем, действительно ли текст изменился
+    const originalTrimmed = description.trim()
+    const correctedTrimmed = corrected.trim()
+    const hasChanges = originalTrimmed !== correctedTrimmed && corrected.length > 0
+
+    // Примерный подсчёт изменений на основе количества исправленных проблем
+    const changesCount = hasChanges ? issues.length : 0
 
     return {
       success: true,
       data: {
-        corrected,
+        corrected: correctedTrimmed || originalTrimmed,
         changesCount,
       },
     }

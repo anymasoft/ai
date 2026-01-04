@@ -93,6 +93,7 @@ export default function ValidatePage() {
 
     setIsLoading(true)
     setError(null)
+    setShowCorrectionSuccess(false)
 
     try {
       const response = await fetch("/api/correct-text", {
@@ -112,12 +113,19 @@ export default function ValidatePage() {
 
       const result = await response.json()
       if (result.success && result.data) {
-        // Применяем исправления сразу в textarea
-        setText(result.data.corrected)
-        // Сбрасываем валидацию
-        setValidation(null)
-        // Показываем success feedback
-        setShowCorrectionSuccess(true)
+        const correctedText = result.data.corrected?.trim() || ""
+        const originalText = text.trim()
+        const hasRealChanges = correctedText !== originalText && result.data.changesCount > 0
+
+        if (hasRealChanges) {
+          // Действительно были изменения → применяем и показываем успех
+          setText(correctedText)
+          setValidation(null)
+          setShowCorrectionSuccess(true)
+        } else {
+          // Нет изменений → показываем warning, но НЕ сбрасываем валидацию
+          setError("Автоисправление не внесло изменений. Проверьте текст вручную или попробуйте ещё раз.")
+        }
       } else {
         throw new Error("Неверный формат ответа от API")
       }
