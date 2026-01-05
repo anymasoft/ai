@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Вход в CardMaker",
-  description: "Войдите в аккаунт и получите идеи и сценарии для создания описаний товаров, которые помогают расти просмотрам.",
+  title: "Вход в Beem",
+  description: "Войдите в аккаунт и проверяйте описания товаров для Ozon и Wildberries перед публикацией.",
 };
 
 export default function AuthLayout({

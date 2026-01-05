@@ -16,7 +16,7 @@ export function AccessDeniedError() {
         <h1 className='mb-4 text-3xl font-bold'>Access Denied</h1>
         <h2 className="mb-3 text-2xl font-semibold">Your account has been disabled</h2>
         <p className='mb-6 max-w-lg text-muted-foreground'>
-          Your access to YouTube Analytics has been temporarily restricted. If you believe this is a mistake, please contact our support team for assistance.
+          Your access to Beem has been temporarily restricted. If you believe this is a mistake, please contact our support team for assistance.
         </p>
         <div className='mt-6 flex flex-col items-center justify-center gap-3 md:mt-8 md:flex-row'>
           <Button
