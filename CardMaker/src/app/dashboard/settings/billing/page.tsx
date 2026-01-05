@@ -256,7 +256,7 @@ export default function BillingSettings() {
                 Платежи отсутствуют
               </p>
             ) : (
-              <div className="space-y-4">
+              <div className="space-y-4"> 
                 {payments.slice(0, 2).map((payment) => (
                   <div
                     key={payment.id}
