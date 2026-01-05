@@ -5,7 +5,7 @@ import { redirect } from "next/navigation"
  * Пользователи переадресовываются на /card-generator.
  *
  * Весь код batch сохранён для будущей активации:
- * - src/app/(dashboard)/batch/page.tsx (текущий файл)
+ * - src/app/dashboard/batch/page.tsx (текущий файл)
  * - src/app/api/batch/by-id/route.ts
  * - src/app/api/batch/create/route.ts
  * - src/lib/batch-operations.ts
