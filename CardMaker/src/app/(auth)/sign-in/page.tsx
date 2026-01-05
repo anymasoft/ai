@@ -27,7 +27,7 @@ export default async function Page(props: SignInPageProps) {
           <div className="bg-primary text-primary-foreground flex size-9 items-center justify-center rounded-md">
             <Logo size={24} />
           </div>
-          Beem
+          Beem Analytics
         </Link>
         <LoginForm1 returnUrl={searchParams?.returnUrl} />
       </div>

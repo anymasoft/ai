@@ -9,10 +9,10 @@ export function SiteFooter() {
             <span>Made with</span>
             <Heart className="h-4 w-4 fill-red-500 text-red-500" />
             <span>by</span>
-            <span className="font-medium text-foreground">Beem</span>
+            <span className="font-medium text-foreground">Beem Analytics</span>
           </div>
           <p className="text-xs text-muted-foreground">
-            Инструмент для проверки карточек товаров на Ozon и Wildberries перед модерацией.
+            Инструмент для подготовки описаний карточек товаров для Ozon и Wildberries с учётом требований маркетплейсов.
           </p>
         </div>
       </div>

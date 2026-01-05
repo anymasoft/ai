@@ -95,7 +95,7 @@ export function LandingNavbar() {
             className="flex items-center space-x-2 cursor-pointer"
           >
             <Logo size={32} />
-            <span className="font-bold">Beem</span>
+            <span className="font-bold">Beem Analytics</span>
           </Link>
         </div>
 

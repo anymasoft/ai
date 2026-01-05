@@ -8,7 +8,7 @@ import { Toaster } from "@/components/ui/sonner";
 import { inter } from "@/lib/fonts";
 
 export const metadata: Metadata = {
-  title: "Beem — проверка карточек товаров для Ozon и Wildberries",
+  title: "Beem Analytics — проверка карточек товаров для Ozon и Wildberries",
   description: "Проверьте описание товара для Ozon и Wildberries и заранее узнайте, пройдёт ли карточка модерацию. Beem находит критические ошибки и стоп-слова до публикации.",
 };
 

@@ -58,7 +58,7 @@ export function LandingFooter() {
             <div className="flex items-center space-x-2 mb-4 max-lg:justify-center">
               <div className="flex items-center space-x-2">
                 <Logo size={32} />
-                <span className="font-bold text-xl">Beem</span>
+                <span className="font-bold text-xl">Beem Analytics</span>
               </div>
             </div>
             <p className="text-muted-foreground mb-6 max-lg:text-center max-lg:flex max-lg:justify-center">
