@@ -93,7 +93,7 @@ export function LandingNavbar() {
         {/* Logo */}
         <div className="flex items-center space-x-2">
           <Link
-            href="/landing"
+            href="/"
             className="flex items-center space-x-2 cursor-pointer"
           >
             <Logo size={32} />
