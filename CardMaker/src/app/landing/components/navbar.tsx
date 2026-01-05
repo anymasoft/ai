@@ -4,6 +4,7 @@ import { useState } from "react"
 import Link from "next/link"
 import {
   Menu,
+  Github,
   LayoutDashboard,
   ChevronDown,
   X,
@@ -58,6 +59,7 @@ const solutionsItems = [
   { title: "Ресурсы" },
   { name: "Документация", href: "#docs" },
   { name: "Компоненты", href: "#showcase" },
+  { name: "GitHub репозиторий", href: "#github" },
   { name: "Дизайн-система", href: "#design-system" },
 ]
 
@@ -174,6 +176,21 @@ export function LandingNavbar() {
                     >
                       <Moon className="h-4 w-4 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
                       <Sun className="absolute h-4 w-4 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      asChild
+                      className="cursor-pointer h-8 w-8"
+                    >
+                      <a
+                        href="https://github.com/silicondeck/shadcn-dashboard-landing-template"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        aria-label="GitHub репозиторий"
+                      >
+                        <Github className="h-4 w-4" />
+                      </a>
                     </Button>
                     <Button
                       variant="ghost"

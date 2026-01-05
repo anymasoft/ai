@@ -16,7 +16,7 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form"
-import { Mail, MessageCircle, BookOpen } from "lucide-react"
+import { Mail, MessageCircle, Github, BookOpen } from "lucide-react"
 
 const contactFormSchema = z.object({
   firstName: z.string().min(2, {
@@ -98,6 +98,34 @@ export function ContactSection() {
                     rel="noopener noreferrer"
                   >
                     Войти в Discord
+                  </a>
+                </Button>
+              </CardContent>
+            </Card>
+
+            <Card className="hover:shadow-md transition-shadow cursor-pointer">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Github className="h-5 w-5 text-primary" />
+                  GitHub Issues
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-muted-foreground mb-3">
+                  Сообщайте об ошибках и оставляйте запросы — всё в одном месте.
+                </p>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="cursor-pointer"
+                  asChild
+                >
+                  <a
+                    href="https://github.com/silicondeck/shadcn-dashboard-landing-template/issues"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    Открыть на GitHub
                   </a>
                 </Button>
               </CardContent>

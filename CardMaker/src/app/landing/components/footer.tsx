@@ -3,7 +3,7 @@
 import { Separator } from '@/components/ui/separator'
 import { Button } from '@/components/ui/button'
 import { Logo } from '@/components/logo'
-import { Heart } from 'lucide-react'
+import { Github, Twitter, Linkedin, Youtube, Heart } from 'lucide-react'
 
 const footerLinks = {
   product: [
@@ -31,6 +31,13 @@ const footerLinks = {
     // { name: 'Status', href: '#status' },
   ],
 }
+
+const socialLinks = [
+  { name: 'Twitter', href: '#', icon: Twitter },
+  { name: 'GitHub', href: '#', icon: Github },
+  { name: 'LinkedIn', href: '#', icon: Linkedin },
+  { name: 'YouTube', href: '#', icon: Youtube },
+]
 
 export function LandingFooter() {
   return (
@@ -64,6 +71,20 @@ export function LandingFooter() {
             <p className="text-muted-foreground mb-6 max-lg:text-center max-lg:flex max-lg:justify-center">
               Инструмент для подготовки описаний карточек товаров для Ozon и Wildberries с учётом требований маркетплейсов.
             </p>
+            <div className="flex space-x-4 max-lg:justify-center">
+              {socialLinks.map((social) => (
+                <Button key={social.name} variant="ghost" size="icon" asChild>
+                  <a
+                    href={social.href}
+                    aria-label={social.name}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    <social.icon className="h-4 w-4" />
+                  </a>
+                </Button>
+              ))}
+            </div>
           </div>
 
           {/* Links Columns */}

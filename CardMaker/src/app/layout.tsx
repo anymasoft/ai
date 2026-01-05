@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
- 
+
 import { ThemeProvider } from "@/components/theme-provider";
 import { SidebarConfigProvider } from "@/contexts/sidebar-context";
 import { AuthProvider } from "@/components/auth-provider";
@@ -8,8 +8,8 @@ import { Toaster } from "@/components/ui/sonner";
 import { inter } from "@/lib/fonts";
 
 export const metadata: Metadata = {
-  title: "Beem Analytics — проверка карточек товаров для Ozon и Wildberries",
-  description: "Проверьте описание товара для Ozon и Wildberries и заранее узнайте, пройдёт ли карточка модерацию. Beem находит критические ошибки и стоп-слова до публикации.",
+  title: "AI-сценарист для YouTube",
+  description: "Подбираем темы и сценарии для YouTube-видео, которые уже доказали рост просмотров у конкурентов",
 };
 
 export default function RootLayout({
@@ -35,20 +35,7 @@ export default function RootLayout({
             `,
           }}
         />
-        <script
-          type="text/javascript"
-          dangerouslySetInnerHTML={{
-            __html: `
-              (function(m,e,t,r,i,k,a){
-                m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};
-                m[i].l=1*new Date();
-                for (var j = 0; j < document.scripts.length; j++) {if (document.scripts[j].src === r) { return; }}
-                k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)
-              })(window, document,'script','https://mc.yandex.ru/metrika/tag.js?id=105909654', 'ym');
-              ym(105909654, 'init', {ssr:true, webvisor:true, clickmap:true, ecommerce:"dataLayer", accurateTrackBounce:true, trackLinks:true});
-            `,
-          }}
-        />
+        
         <noscript>
           <div>
             <img src="https://mc.yandex.ru/watch/105909654" style={{position: 'absolute', left: '-9999px'}} alt="" />
