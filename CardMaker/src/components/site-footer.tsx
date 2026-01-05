@@ -1,5 +1,4 @@
 import { Heart } from "lucide-react"
-import Link from "next/link"
 
 export function SiteFooter() {
   return (
@@ -10,10 +9,10 @@ export function SiteFooter() {
             <span>Made with</span>
             <Heart className="h-4 w-4 fill-red-500 text-red-500" />
             <span>by</span>
-            <span className="font-medium text-foreground">Beem Analytics</span>
+            <span className="font-medium text-foreground">Beem</span>
           </div>
           <p className="text-xs text-muted-foreground">
-            Инструмент для подготовки описаний карточек товаров для Ozon и Wildberries с учётом требований маркетплейсов.
+            Инструмент для проверки карточек товаров на Ozon и Wildberries перед модерацией.
           </p>
         </div>
       </div>
