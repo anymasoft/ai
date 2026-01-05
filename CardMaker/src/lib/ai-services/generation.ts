@@ -126,35 +126,6 @@ export const generateProductCard = async (params: {
       }
     }
 
-    // Проверяем баланс пользователя если передан userId
-    if (userId) {
-      const userResult = await db.execute(
-        'SELECT generation_balance FROM users WHERE id = ?',
-        [userId]
-      )
-      const rows = Array.isArray(userResult) ? userResult : userResult.rows || []
-      if (rows.length === 0) {
-        return {
-          success: false,
-          error: {
-            code: 'USER_NOT_FOUND',
-            message: 'Пользователь не найден',
-          },
-        }
-      }
-
-      const user = rows[0] as any
-      if ((user.generation_balance || 0) <= 0) {
-        return {
-          success: false,
-          error: {
-            code: 'INSUFFICIENT_BALANCE',
-            message: 'Недостаточно генераций',
-          },
-        }
-      }
-    }
-
     // Строим промпты на основе конфигурации из БД
     const { systemPrompt, userPrompt } = await buildGenerationPrompt({
       productTitle: productTitle.trim(),
@@ -197,14 +168,6 @@ export const generateProductCard = async (params: {
         totalTokens: 0,
       },
       generatedAt: new Date().toISOString(),
-    }
-
-    // Уменьшаем баланс и увеличиваем счётчик использования если передан userId
-    if (userId) {
-      await db.execute(
-        'UPDATE users SET generation_balance = generation_balance - 1, generation_used = generation_used + 1, updatedAt = ? WHERE id = ?',
-        [Math.floor(Date.now() / 1000), userId]
-      )
     }
 
     return {

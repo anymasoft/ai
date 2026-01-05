@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth/next'
 import { authOptions } from '@/lib/auth'
 import { correctProductDescription, type ValidationIssue } from '@/lib/ai-services/validation'
+import { deductCredits } from '@/lib/billing/deductCredits'
 import { z } from 'zod'
 
 // Схема валидации для request body
@@ -55,6 +56,15 @@ export async function POST(request: NextRequest) {
           code: result.error.code,
         },
         { status: 500 }
+      )
+    }
+
+    // Операция выполнена успешно → списать 1 кредит
+    const deductResult = await deductCredits(session.user.id, 1, 'correct')
+    if (!deductResult.success) {
+      return NextResponse.json(
+        { error: 'Не удалось списать кредит (недостаточно средств)' },
+        { status: 402 }
       )
     }
 

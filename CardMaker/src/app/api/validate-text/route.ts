@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth/next'
 import { authOptions } from '@/lib/auth'
 import { validateDescriptionWithRules } from '@/lib/ai-services/validation'
-import { db } from '@/lib/db'
+import { deductCredits } from '@/lib/billing/deductCredits'
 import { z } from 'zod'
 
 // Схема валидации для request body
@@ -57,11 +57,12 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Списать 1 кредит за проверку если пользователь авторизован
-    if (session.user.id) {
-      await db.execute(
-        'UPDATE users SET generation_balance = generation_balance - 1, generation_used = generation_used + 1, updatedAt = ? WHERE id = ?',
-        [Math.floor(Date.now() / 1000), session.user.id]
+    // Операция выполнена успешно → списать 1 кредит
+    const deductResult = await deductCredits(session.user.id, 1, 'validate')
+    if (!deductResult.success) {
+      return NextResponse.json(
+        { error: 'Не удалось списать кредит (недостаточно средств)' },
+        { status: 402 }
       )
     }
 
