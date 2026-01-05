@@ -73,20 +73,9 @@ export function PricingSection() {
           <ul className="space-y-3 text-sm text-muted-foreground">
             <li className="flex items-center justify-center gap-2">
               <span>•</span>
-              <span>Несколько пробных описаний</span>
+              <span>Проверьте описание товара на соответствие требованиям Ozon и Wildberries</span>
             </li>
-            <li className="flex items-center justify-center gap-2">
-              <span>•</span>
-              <span>Простой режим без настроек</span>
-            </li>
-            <li className="flex items-center justify-center gap-2">
-              <span>•</span>
-              <span>Без регистрации</span>
-            </li>
-            <li className="flex items-center justify-center gap-2">
-              <span>•</span>
-              <span>Подходит, чтобы оценить формат результата перед оплатой</span>
-            </li>
+            
           </ul>
         </div>
 

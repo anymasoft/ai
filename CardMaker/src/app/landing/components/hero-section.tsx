@@ -49,7 +49,7 @@ export function HeroSection() {
           <div className="flex flex-col gap-4 sm:flex-row sm:justify-center">
             <Button size="lg" className="text-base cursor-pointer bg-red-600 hover:bg-red-700 text-white" asChild>
               <Link href="#free-form">
-                Проверить описание бесплатно
+                Проверить риск модерации
                 <ArrowRight className="ml-2 h-4 w-4" />
               </Link>
             </Button>

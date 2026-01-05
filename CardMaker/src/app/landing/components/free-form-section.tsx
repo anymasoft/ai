@@ -144,7 +144,7 @@ export function FreeFormSection() {
 
           {/* Note */}
           <p className="text-xs text-muted-foreground text-center">
-            В бесплатной версии требования маркетплейсов не проверяются
+            Проверка описания по правилам маркетплейсов
           </p>
         </div>
 
@@ -244,10 +244,10 @@ export function FreeFormSection() {
             <CardContent className="text-sm space-y-2 text-muted-foreground">
               <div>✓ Все ошибки с точными ссылками</div>
               <div>✓ Детальные рекомендации по исправлению</div>
-              <div>✓ Автоматическое исправление (1 кредит)</div>
+              <div>✓ Автоматическое исправление</div>
               <div>✓ История всех проверок</div>
               <div>✓ Пакетная обработка описаний</div>
-              <div className="text-xs mt-3 pt-2 border-t">Требует регистрации (включает бесплатный баланс)</div>
+              <div className="text-xs mt-3 pt-2 border-t">Требует регистрации</div>
             </CardContent>
           </Card>
         </div>

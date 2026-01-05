@@ -139,7 +139,7 @@ export function LandingNavbar() {
         <div className="hidden xl:flex items-center space-x-2">
           <ModeToggle variant="ghost" />
           <Button asChild className="cursor-pointer bg-red-600 hover:bg-red-700 text-white">
-            <Link href="/sign-in">Твой сценарий ждет!</Link>
+            <Link href="/sign-in">Войти</Link>
           </Button>
         </div>
 
@@ -276,7 +276,7 @@ export function LandingNavbar() {
                 {/* Primary Actions */}
                 <div className="space-y-3">
                   <Button asChild size="lg" className="w-full cursor-pointer">
-                    <Link href="/sign-in">Твой сценарий ждет!</Link>
+                    <Link href="/sign-in">Войти</Link>
                   </Button>
                 </div>
               </div>
