@@ -257,7 +257,7 @@ export default function BillingSettings() {
               </p>
             ) : (
               <div className="space-y-4">
-                {payments.slice(0, 5).map((payment) => (
+                {payments.slice(0, 2).map((payment) => (
                   <div
                     key={payment.id}
                     className="flex items-start justify-between p-3 border rounded-lg text-sm"
