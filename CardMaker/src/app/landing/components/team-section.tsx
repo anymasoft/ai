@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent } from '@/components/ui/card'
 import { CardDecorator } from '@/components/ui/card-decorator'
-import { Github, Linkedin, Globe } from 'lucide-react'
+import { Globe } from 'lucide-react'
 
 
 const team = [
@@ -17,8 +17,6 @@ const team = [
     image: 'https://images.unsplash.com/photo-1494790108755-2616b612b786?q=60&w=150&auto=format&fit=crop',
     fallback: 'AC',
     social: {
-      linkedin: '#',
-      github: '#',
       website: '#'
     }
   },
@@ -30,8 +28,6 @@ const team = [
     image: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?q=60&w=150&auto=format&fit=crop',
     fallback: 'MR',
     social: {
-      linkedin: '#',
-      github: '#',
       website: '#'
     }
   },
@@ -43,8 +39,6 @@ const team = [
     image: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?q=60&w=150&auto=format&fit=crop',
     fallback: 'SL',
     social: {
-      linkedin: '#',
-      github: '#',
       website: '#'
     }
   },
@@ -56,8 +50,6 @@ const team = [
     image: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=60&w=150&auto=format&fit=crop',
     fallback: 'DK',
     social: {
-      linkedin: '#',
-      github: '#',
       website: '#'
     }
   },
@@ -69,8 +61,6 @@ const team = [
     image: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=60&w=150&auto=format&fit=crop',
     fallback: 'ET',
     social: {
-      linkedin: '#',
-      github: '#',
       website: '#'
     }
   },
@@ -82,8 +72,6 @@ const team = [
     image: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?q=60&w=150&auto=format&fit=crop',
     fallback: 'RM',
     social: {
-      linkedin: '#',
-      github: '#',
       website: '#'
     }
   },
@@ -95,8 +83,6 @@ const team = [
     image: 'https://images.unsplash.com/photo-1566492031773-4f4e44671d66?q=60&w=150&auto=format&fit=crop',
     fallback: 'JA',
     social: {
-      linkedin: '#',
-      github: '#',
       website: '#'
     }
   },
@@ -108,8 +94,6 @@ const team = [
     image: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?q=60&w=150&auto=format&fit=crop',
     fallback: 'IG',
     social: {
-      linkedin: '#',
-      github: '#',
       website: '#'
     }
   }
@@ -169,36 +153,6 @@ export function TeamSection() {
 
                   {/* Social Links */}
                   <div className="flex items-center justify-center gap-3">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8 cursor-pointer hover:text-primary"
-                      asChild
-                    >
-                      <a
-                        href={member.social.linkedin}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        aria-label={`${member.name} LinkedIn`}
-                      >
-                        <Linkedin className="h-4 w-4" />
-                      </a>
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8 cursor-pointer hover:text-primary"
-                      asChild
-                    >
-                      <a
-                        href={member.social.github}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        aria-label={`${member.name} GitHub`}
-                      >
-                        <Github className="h-4 w-4" />
-                      </a>
-                    </Button>
                     <Button
                       variant="ghost"
                       size="icon"
