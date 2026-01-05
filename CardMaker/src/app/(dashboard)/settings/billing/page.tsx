@@ -201,7 +201,7 @@ export default function BillingSettings() {
     return (
       <div className="space-y-6 px-4 lg:px-6">
         <div>
-          <h1 className="text-3xl font-bold">Описания и биллинг</h1>
+          <h1 className="text-3xl font-bold">Биллинг</h1>
           <p className="text-muted-foreground">
             Управляйте своей подпиской и информацией о биллинге.
           </p>
@@ -218,7 +218,7 @@ export default function BillingSettings() {
   return (
     <div className="space-y-6 px-4 lg:px-6">
       <div>
-        <h1 className="text-3xl font-bold">Описания и биллинг</h1>
+        <h1 className="text-3xl font-bold">Биллинг</h1>
         <p className="text-muted-foreground">
           Управляйте своей подпиской и информацией о биллинге.
         </p>
