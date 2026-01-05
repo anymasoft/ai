@@ -1,9 +1,18 @@
 "use client"
 
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { Check } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+
+interface Package {
+  key: string
+  title: string
+  price_rub: number
+  generations: number
+  is_active: number
+}
 
 const plans = [
   {
@@ -54,6 +63,32 @@ const plans = [
 ]
 
 export function PricingSection() {
+  const [packages, setPackages] = useState<Package[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+
+  useEffect(() => {
+    const fetchPackages = async () => {
+      try {
+        const res = await fetch('/api/packages')
+        const data = await res.json()
+        if (data.success && data.packages) {
+          setPackages(data.packages)
+        }
+      } catch (error) {
+        console.error('Error fetching packages:', error)
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    fetchPackages()
+  }, [])
+
+  // Функция для получения данных пакета по названию плана
+  const getPackageData = (planName: string): Package | undefined => {
+    return packages.find(pkg => pkg.title.toLowerCase() === planName.toLowerCase())
+  }
+
   return (
     <section id="pricing" className="py-24 sm:py-32 bg-muted/40">
       <div className="container mx-auto px-4 sm:px-6 lg:px-8">
@@ -114,12 +149,19 @@ export function PricingSection() {
 
                   {/* Pricing */}
                   <div>
-                    <div className="text-4xl font-bold mb-1">
-                      {plan.monthlyPrice} ₽
-                    </div>
-                    <div className="text-muted-foreground text-sm">
-                      в месяц
-                    </div>
+                    {(() => {
+                      const pkg = getPackageData(plan.name)
+                      return (
+                        <>
+                          <div className="text-4xl font-bold mb-1">
+                            {pkg ? pkg.price_rub : plan.monthlyPrice} ₽
+                          </div>
+                          <div className="text-muted-foreground text-sm">
+                            {pkg ? `${pkg.generations} кредитов` : ''}
+                          </div>
+                        </>
+                      )
+                    })()}
                   </div>
 
                   {/* CTA Button */}
