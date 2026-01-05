@@ -250,9 +250,9 @@ export default function CardGeneratorPage() {
                   </p>
                 </div>
 
-                {/* Конкуренты - статическая сетка 3 слота */}
+                {/* Примеры товаров - статическая сетка 3 слота */}
                 <div className="space-y-2">
-                  <Label className="text-xs font-medium">Описания конкурентов (опционально)</Label>
+                  <Label className="text-xs font-medium">Примеры похожих товаров (опционально)</Label>
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
                     {competitors.map((competitor, index) => (
                       <div key={index}>
@@ -277,7 +277,7 @@ export default function CardGeneratorPage() {
                     ))}
                   </div>
                   <p className="text-xs text-muted-foreground">
-                    Вставь текст из карточки конкурента (можно частично). Пустые поля игнорируются.
+                    Вставь описания похожих товаров для вдохновения (можно частично). Пустые поля игнорируются.
                   </p>
                 </div>
               </CollapsibleContent>

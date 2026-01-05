@@ -1,6 +1,6 @@
 /**
  * Конфигурация лимитов по тарифам
- * ИСТОЧНИК ИСТИНЫ для лимитов сценариев и других возможностей
+ * ИСТОЧНИК ИСТИНЫ для лимитов проверок и других возможностей
  */
 
 export type PlanType = 'free' | 'basic' | 'professional' | 'enterprise';
@@ -45,7 +45,7 @@ export const PLAN_LIMITS: Record<PlanType, PlanLimits> = {
 };
 
 /**
- * Получить лимит сценариев для плана
+ * Получить лимит проверок для плана
  */
 export function getMonthlyScriptLimit(plan: PlanType): number {
   return PLAN_LIMITS[plan]?.monthlyScriptLimit || 0;
