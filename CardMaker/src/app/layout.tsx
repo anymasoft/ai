@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
-
+ 
 import { ThemeProvider } from "@/components/theme-provider";
 import { SidebarConfigProvider } from "@/contexts/sidebar-context";
 import { AuthProvider } from "@/components/auth-provider";
