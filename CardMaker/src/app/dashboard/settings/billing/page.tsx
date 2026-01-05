@@ -101,7 +101,7 @@ export default function BillingSettings() {
     if (!isSuccess) return
 
     let pollingCount = 0
-    const maxPolls = 15
+    const maxPolls = 150
     let interval: NodeJS.Timeout | null = null
     let hasSucceeded = false
 
