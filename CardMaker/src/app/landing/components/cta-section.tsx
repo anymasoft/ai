@@ -34,11 +34,11 @@ export function CTASection() {
               {/* Main Content */}
               <div className='space-y-6'>
                 <h1 className='text-4xl font-bold tracking-tight text-balance sm:text-5xl lg:text-6xl'>
-                  Перестаньте угадывать. Начните снимать то, что уже работает.
+                  Проверьте карточку перед модерацией маркетплейса.
                 </h1>
 
                 <p className='text-muted-foreground mx-auto max-w-2xl text-balance lg:text-xl'>
-                  Не нужно ждать результатов месяцы. Используйте готовые сценарии на основе реальных данных и начните зарабатывать с первого видео.
+                  Beem находит критические ошибки, стоп-слова и проблемы с форматированием до публикации на Ozon и Wildberries. Сэкономьте время на переделку отклоненных карточек.
                 </p>
               </div>
 
