@@ -16,7 +16,7 @@ export function CurrentPlanCard({
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Баланс описаний</CardTitle>
+        <CardTitle>Баланс кредитов</CardTitle>
         <CardDescription>
           Ваш текущий баланс и статистика использования.
         </CardDescription>
@@ -25,7 +25,7 @@ export function CurrentPlanCard({
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-2">
             <Zap className="h-5 w-5 text-yellow-500" />
-            <span className="font-semibold">Описания</span>
+            <span className="font-semibold">Кредиты</span>
             <Badge variant="secondary">Активен</Badge>
           </div>
           <div className="text-right">
@@ -37,12 +37,12 @@ export function CurrentPlanCard({
         {/* Статистика использования */}
         <div className="space-y-3 border-t pt-4">
           <div className="flex justify-between items-center">
-            <span className="text-sm font-medium">Всего использовано</span>
-            <span className="text-sm font-medium text-primary">{used} описаний</span>
+            <span className="text-sm font-medium">Использовано</span>
+            <span className="text-sm font-medium text-primary">{used} кредитов</span>
           </div>
           <p className="text-xs text-muted-foreground">
             {used > 0 ? (
-              <>Вы создали {used} описаний товаров</>
+              <>Вы использовали {used} кредитов</>
             ) : (
               <>Статистика появится после первого использования</>
             )}
