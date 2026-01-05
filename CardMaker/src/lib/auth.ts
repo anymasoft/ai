@@ -12,6 +12,36 @@ export const authOptions: NextAuthOptions = {
   session: {
     strategy: "jwt",
   },
+  trustHost: true,
+  useSecureCookies: true,
+  cookies: {
+    sessionToken: {
+      name: `__Secure-next-auth.session-token`,
+      options: {
+        httpOnly: true,
+        secure: true,
+        sameSite: "lax",
+        path: "/",
+      },
+    },
+    callbackUrl: {
+      name: `__Secure-next-auth.callback-url`,
+      options: {
+        httpOnly: false,
+        secure: true,
+        sameSite: "lax",
+        path: "/",
+      },
+    },
+    csrfToken: {
+      name: `__Host-next-auth.csrf-token`,
+      options: {
+        httpOnly: true,
+        secure: true,
+        sameSite: "lax",
+      },
+    },
+  },
   secret: process.env.NEXTAUTH_SECRET,
   callbacks: {
     async signIn({ user }) {
@@ -82,5 +112,5 @@ export const authOptions: NextAuthOptions = {
     signIn: "/sign-in",
     error: "/auth-callback",
   },
-  debug: true,
+  debug: process.env.NODE_ENV === "development",
 };
