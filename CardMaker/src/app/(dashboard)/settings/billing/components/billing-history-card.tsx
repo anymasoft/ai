@@ -33,12 +33,22 @@ export function BillingHistoryCard() {
   }, [])
 
   async function fetchPayments() {
-    // ВРЕМЕННО для MVP: История платежей выключена
-    // TODO: Исправить SQL запрос в /api/payments/user-history
-    // Проблема: используется p.plan (не существует) вместо p.planId
-    // Включить после исправления backend схемы
-    setLoading(false)
-    setError("История платежей будет доступна в следующих обновлениях")
+    try {
+      setLoading(true)
+      setError(null)
+      // Загружаем все платежи
+      const res = await fetch("/api/payments/user-history?limit=100")
+      if (!res.ok) throw new Error("Failed to fetch payment history")
+      const data = await res.json()
+      setAllPayments(data.payments || [])
+      // Показываем только последние DISPLAY_COUNT платежей
+      setPayments((data.payments || []).slice(0, DISPLAY_COUNT))
+    } catch (err) {
+      console.error("Error fetching payments:", err)
+      setError("Не удалось загрузить историю платежей")
+    } finally {
+      setLoading(false)
+    }
   }
 
   const formatDate = (timestamp: number) => {
