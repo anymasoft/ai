@@ -9,7 +9,6 @@ export async function middleware(request: NextRequest) {
   // Public routes that don't require authentication
   const publicRoutes = [
     '/',
-    '/landing',
     '/sign-in',
     '/sign-up',
     '/forgot-password',
@@ -39,9 +38,9 @@ export async function middleware(request: NextRequest) {
     secret: process.env.NEXTAUTH_SECRET
   });
 
-  // If not authenticated, redirect to landing page
+  // If not authenticated, redirect to home page
   if (!token) {
-    return NextResponse.redirect(new URL('/landing', request.url));
+    return NextResponse.redirect(new URL('/', request.url));
   }
 
   // Admin-only routes (check AFTER authentication, require admin email)
