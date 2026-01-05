@@ -160,11 +160,6 @@ export function FeaturesSection() {
                   <ArrowRight className="ms-2 size-4" aria-hidden="true" />
                 </a>
               </Button>
-              <Button size="lg" variant="outline" className="cursor-pointer">
-                <a href="https://github.com/silicondeck/shadcn-dashboard-landing-template" target="_blank" rel="noopener noreferrer">
-                  GitHub Repository
-                </a>
-              </Button>
             </div>
           </div>
 

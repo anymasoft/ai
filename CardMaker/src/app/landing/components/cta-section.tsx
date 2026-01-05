@@ -1,6 +1,6 @@
 "use client"
 
-import { ArrowRight, TrendingUp, Package, Github } from 'lucide-react'
+import { TrendingUp, Package } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
@@ -48,13 +48,6 @@ export function CTASection() {
                   <a href='/sign-in'>
                     <Package className='me-2 size-5' />
                     Попробовать бесплатно
-                  </a>
-                </Button>
-                <Button variant='outline' size='lg' className='cursor-pointer px-8 py-6 text-lg font-medium group' asChild>
-                  <a href='#pricing'>
-                    <Github className='me-2 size-5' />
-                    Выбрать план
-                    <ArrowRight className='ms-2 size-4 transition-transform group-hover:translate-x-1' />
                   </a>
                 </Button>
               </div>

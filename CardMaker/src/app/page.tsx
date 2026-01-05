@@ -3,24 +3,30 @@ import { LandingPageContent } from './landing/landing-page-content'
 
 // Metadata for the landing page
 export const metadata: Metadata = {
-  title: 'Beem Analytics — AI-сервис для создания сценариев YouTube и анализа конкурентов',
-  description: 'Создавайте сильные YouTube-сценарии и находите идеи для роста канала с помощью AI: анализ конкурентов, контента и работающих форматов — всё в одном сервисе.',
+  title: 'Beem — проверка карточек товаров для Ozon и Wildberries',
+  description:
+    'Проверьте описание товара для Ozon и Wildberries и заранее узнайте, пройдёт ли карточка модерацию. Beem находит критические ошибки и стоп-слова до публикации.',
   keywords: [
-    'youtube сценарии',
-    'идеи для youtube',
-    'анализ конкурентов youtube',
-    'ai сценарии видео',
-    'продвижение youtube канала',
+    'проверка карточки ozon',
+    'проверка карточки wildberries',
+    'модерация ozon',
+    'модерация wildberries',
+    'ошибки карточки товара',
+    'стоп слова ozon',
+    'стоп слова wildberries',
+    'проверка описания товара',
   ],
   openGraph: {
-    title: 'Beem Analytics — AI-сценарии и рост YouTube-каналов',
-    description: 'AI-платформа для создания сценариев YouTube и поиска идей через анализ конкурентов и контента. Помогает быстрее расти и снимать видео, которые заходят.',
+    title: 'Beem — проверка карточек товаров Ozon и Wildberries',
+    description:
+      'Сервис проверки описаний товаров для Ozon и Wildberries. Показывает, пройдёт ли карточка модерацию, и подсвечивает критические ошибки и риски.',
     type: 'website',
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Beem Analytics — AI-сценарии для YouTube',
-    description: 'Создавайте сценарии YouTube и находите выигрышные идеи с помощью AI-анализа конкурентов и контента.',
+    title: 'Beem — проверка карточек Ozon и WB',
+    description:
+      'Проверьте описание товара для Ozon и Wildberries перед публикацией и снизьте риск отклонения карточки.',
   },
 }
 
