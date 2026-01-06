@@ -47,7 +47,7 @@ export function LoginForm3({
                 <div className="flex items-center">
                   <Label htmlFor="password">Пароль</Label>
                   <a
-                    href="/forgot-password-3"
+                    href="/auth/forgot-password-3"
                     className="ml-auto text-sm underline-offset-2 hover:underline"
                   >
                     Забыли пароль?
@@ -94,7 +94,7 @@ export function LoginForm3({
               </div>
               <div className="text-center text-sm">
                 Нет аккаунта?{" "}
-                <a href="/sign-up-3" className="underline underline-offset-4">
+                <a href="/auth/sign-up-3" className="underline underline-offset-4">
                   Зарегистрироваться
                 </a>
               </div>

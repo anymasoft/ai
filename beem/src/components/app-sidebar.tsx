@@ -100,7 +100,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       <SidebarContent>
         <div className="px-2 py-2">
           <Button asChild className="w-full" size="sm">
-            <Link href="/validate" className="gap-2">
+            <Link href="/dashboard/validate" className="gap-2">
               <Sparkles className="size-4" />
               + Проверить описание
             </Link>
