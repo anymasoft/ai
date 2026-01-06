@@ -9,7 +9,6 @@ const footerLinks = {
     { name: 'Функции', href: '#features' },
     { name: 'Тарифы', href: '#pricing' },
     { name: 'О нас', href: '#about' },
-    { name: 'ЧаВО', href: '#faq' },
   ],
   company: [
     { name: 'Контакты', href: '#contact' },
