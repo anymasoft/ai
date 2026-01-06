@@ -126,26 +126,23 @@ export function PricingSection() {
 
         {/* Pricing Cards */}
         <div className="mx-auto max-w-6xl">
+          {/* Badge above all cards */}
+          <div className="mb-8 flex justify-center">
+            <Badge className="bg-amber-50 text-amber-700 dark:bg-amber-950 dark:text-amber-300 border border-amber-200 dark:border-amber-800 text-xs">
+              ⭐ Оптимален для продавцов маркетплейсов
+            </Badge>
+          </div>
+
           <div className="grid lg:grid-cols-3 gap-6">
             {plans.map((plan, index) => (
-              <div key={index} className="flex flex-col">
-                {/* Badge above card - only for popular plans */}
-                {plan.popular && (
-                  <div className="mb-4 flex justify-center">
-                    <Badge className="bg-amber-50 text-amber-700 dark:bg-amber-950 dark:text-amber-300 border border-amber-200 dark:border-amber-800 text-xs">
-                      ⭐ Оптимален для продавцов маркетплейсов
-                    </Badge>
-                  </div>
-                )}
-
-                {/* Card */}
-                <div
-                  className={`p-8 grid grid-rows-subgrid row-span-4 gap-6 rounded-xl border ${
-                    plan.popular
-                      ? 'my-2 mx-4 bg-card border-transparent shadow-xl ring-1 ring-foreground/10 backdrop-blur'
-                      : ''
-                  }`}
-                >
+              <div
+                key={index}
+                className={`p-8 grid grid-rows-subgrid row-span-4 gap-6 rounded-xl border ${
+                  plan.popular
+                    ? 'bg-card border-transparent shadow-xl ring-1 ring-foreground/10 backdrop-blur'
+                    : ''
+                }`}
+              >
                   {/* Plan Header */}
                   <div>
                     <div className="text-lg font-medium tracking-tight mb-2">{plan.name}</div>
@@ -202,7 +199,6 @@ export function PricingSection() {
                       ))}
                     </ul>
                   </div>
-                </div>
               </div>
             ))}
           </div>
