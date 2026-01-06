@@ -1,6 +1,8 @@
 # Node.js dependencies
 node_modules/
 .npm/
+**/.next/
+
 
 # Tailwind CSS standalone CLI
 tailwindcss-linux-x64
