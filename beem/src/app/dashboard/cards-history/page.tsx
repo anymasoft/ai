@@ -90,7 +90,7 @@ export default function CardsHistoryPage() {
   }
 
   const handleRowClick = (cardId: string) => {
-    router.push(`/cards/by-id?id=${cardId}`)
+    router.push(`/dashboard/cards/by-id?id=${cardId}`)
   }
 
   return (
@@ -133,7 +133,7 @@ export default function CardsHistoryPage() {
             <p className="text-sm text-muted-foreground mb-4">
               Перейдите в раздел "Создание карточки" чтобы создать описание товара.
             </p>
-            <Link href="/card-generator">
+            <Link href="/dashboard/card-generator">
               <Button>Создать карточку</Button>
             </Link>
           </CardContent>
