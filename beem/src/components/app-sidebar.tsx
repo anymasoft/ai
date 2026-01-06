@@ -34,13 +34,13 @@ const navGroups = [
     items: [
       {
         title: "Создание описания",
-        url: "/card-generator",
+        url: "/dashboard/card-generator",
         icon: Zap,
       },
       // TODO: История карточек будет добавлена позже
       // {
       //   title: "История карточек",
-      //   url: "/cards-history",
+      //   url: "/dashboard/cards-history",
       //   icon: FileText,
       // },
     ],
@@ -50,7 +50,7 @@ const navGroups = [
     items: [
       {
         title: "Обратная связь",
-        url: "/feedback",
+        url: "/dashboard/feedback",
         icon: MessageSquare,
       },
     ],
@@ -60,7 +60,7 @@ const navGroups = [
     items: [
       {
         title: "Биллинг",
-        url: "/settings/billing",
+        url: "/dashboard/settings/billing",
         icon: Settings,
       },
     ],
@@ -87,7 +87,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton size="lg" asChild>
-              <Link href="/card-generator">
+              <Link href="/dashboard/card-generator">
                 <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
                   <Logo size={24} className="text-current" />
                 </div>
