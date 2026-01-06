@@ -1,7 +1,6 @@
 "use client"
 
 import { useState } from "react"
-import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Textarea } from "@/components/ui/textarea"
@@ -70,11 +69,6 @@ export function FreeFormSection() {
     } finally {
       setIsLoading(false)
     }
-  }
-
-  const handleSavePrefill = (intent: "details" | "fix") => {
-    const prefill = { marketplace, text, intent }
-    localStorage.setItem("beem_validate_prefill", JSON.stringify(prefill))
   }
 
   return (
@@ -184,24 +178,6 @@ export function FreeFormSection() {
                 </div>
               </CardContent>
             </Card>
-
-            {/* CTA Buttons - Only show if NOT OK */}
-            {!validation.ok && (
-              <div className="flex flex-col gap-3">
-                <Link href="/auth/sign-in" onClick={() => handleSavePrefill("details")}>
-                  <Button variant="outline" size="sm" className="w-full gap-2">
-                    Показать проблемные места (1 кредит)
-                    <ArrowRight className="h-3.5 w-3.5" />
-                  </Button>
-                </Link>
-                <Link href="/auth/sign-in" onClick={() => handleSavePrefill("fix")}>
-                  <Button size="sm" className="w-full gap-2 bg-primary hover:bg-primary/90">
-                    Исправить автоматически (1 кредит)
-                    <ArrowRight className="h-3.5 w-3.5" />
-                  </Button>
-                </Link>
-              </div>
-            )}
 
             {/* Soft CTA - Only show if OK */}
             {validation.ok && (
