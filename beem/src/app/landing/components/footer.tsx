@@ -114,7 +114,7 @@ export function LandingFooter() {
           </div> */}
 
           <div className='max-md:col-span-2 lg:col-span-1'>
-            <h4 className="font-semibold mb-4">Юридические</h4>
+            <h4 className="font-semibold mb-4">Compliance</h4>
             <ul className="space-y-3">
               {footerLinks.legal.map((link) => (
                 <li key={link.name}>
@@ -133,7 +133,7 @@ export function LandingFooter() {
         <Separator className="my-8" />
 
         {/* Bottom Footer */}
-        <div className="flex flex-col lg:flex-row justify-between items-center gap-2">
+        <div className="flex flex-col items-center justify-center gap-2">
           <div className="flex flex-col sm:flex-row items-center gap-2 text-muted-foreground text-sm">
             <div className="flex items-center gap-1">
               <span>Made with</span>
@@ -141,14 +141,6 @@ export function LandingFooter() {
               <span>by</span>
               <span className="font-semibold text-foreground">Beem Analytics</span>
             </div>
-          </div>
-          <div className="flex items-center space-x-4 text-sm text-muted-foreground mt-4 md:mt-0">
-            <a href="/privacy" className="hover:text-foreground transition-colors">
-              Политика конфиденциальности
-            </a>
-            <a href="/terms" className="hover:text-foreground transition-colors">
-              Условия использования
-            </a>
           </div>
         </div>
       </div>
