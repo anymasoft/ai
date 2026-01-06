@@ -1,8 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import Image from "next/image"
-import { ArrowRight, Play, Star } from "lucide-react"
+import { ArrowRight, Star } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { DotPattern } from "@/components/dot-pattern"
@@ -28,10 +27,13 @@ export function HeroSection() {
           </div>
 
           {/* Main Headline */}
-          <h1 className="mb-6 text-4xl font-bold tracking-tight sm:text-6xl lg:text-7xl">
-            Проверьте описание товара на соответствие требованиям{' '}
+          <h1 className="mb-6 text-4xl font-bold tracking-tight sm:text-5xl lg:text-6xl">
+            <span className="block mb-2">Описание не проходит модерацию</span>
             <span className="bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
-              Ozon и Wildberries
+              OZON или Wildberries?
+            </span>
+            <span className="block text-2xl sm:text-4xl lg:text-5xl mt-4 font-bold text-foreground">
+              Проверьте за 10 секунд — бесплатно
             </span>
           </h1>
 
@@ -46,70 +48,13 @@ export function HeroSection() {
           </p>
 
           {/* CTA Buttons */}
-          <div className="flex flex-col gap-4 sm:flex-row sm:justify-center">
+          <div className="flex justify-center">
             <Button size="lg" className="text-base cursor-pointer bg-red-600 hover:bg-red-700 text-white" asChild>
               <Link href="#free-form">
                 Проверить риск модерации
                 <ArrowRight className="ml-2 h-4 w-4" />
               </Link>
             </Button>
-            <Button
-              variant="outline"
-              size="lg"
-              className="text-base cursor-pointer hidden"
-              asChild
-            >
-              <a href="#">
-                <Play className="mr-2 h-4 w-4" />
-                Смотреть демо
-              </a>
-            </Button>
-          </div>
-        </div>
-
-        {/* Hero Image/Visual */}
-        <div className="mx-auto mt-20 max-w-6xl hidden">
-          <div className="relative group">
-            {/* Top background glow effect - positioned above the image */}
-            <div className="absolute top-2 lg:-top-8 left-1/2 transform -translate-x-1/2 w-[90%] mx-auto h-24 lg:h-80 bg-primary/50 rounded-full blur-3xl"></div>
-
-            <div className="relative rounded-xl border bg-card shadow-2xl">
-              {/* Light mode dashboard image */}
-              <Image
-                src="/dashboard-light.png"
-                alt="Dashboard Preview - Light Mode"
-                width={1200}
-                height={800}
-                className="w-full rounded-xl object-cover block dark:hidden"
-                priority
-              />
-
-              {/* Dark mode dashboard image */}
-              <Image
-                src="/dashboard-dark.png"
-                alt="Dashboard Preview - Dark Mode"
-                width={1200}
-                height={800}
-                className="w-full rounded-xl object-cover hidden dark:block"
-                priority
-              />
-
-              {/* Bottom fade effect - gradient overlay that fades the image to background */}
-              <div className="absolute bottom-0 left-0 w-full h-32 md:h-40 lg:h-48 bg-gradient-to-b from-background/0 via-background/70 to-background rounded-b-xl"></div>
-
-              {/* Overlay play button for demo */}
-              <div className="absolute inset-0 flex items-center justify-center">
-                <Button
-                  size="lg"
-                  className="rounded-full h-16 w-16 p-0 cursor-pointer hover:scale-105 transition-transform"
-                  asChild
-                >
-                  <a href="#" aria-label="Watch demo video">
-                    <Play className="h-6 w-6 fill-current" />
-                  </a>
-                </Button>
-              </div>
-            </div>
           </div>
         </div>
       </div>
