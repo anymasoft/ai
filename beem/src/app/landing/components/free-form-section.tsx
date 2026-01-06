@@ -221,8 +221,6 @@ export function FreeFormSection() {
               <div>✓ Все ошибки с точными ссылками</div>
               <div>✓ Детальные рекомендации по исправлению</div>
               <div>✓ Автоматическое исправление</div>
-              <div>✓ История всех проверок</div>
-              <div>✓ Пакетная обработка описаний</div>
               <div className="text-xs mt-3 pt-2 border-t">Требует регистрации</div>
             </CardContent>
           </Card>
