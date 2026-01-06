@@ -1,0 +1,517 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ProductCopy AI | Создайте продающее описание товара за 1 минуту</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Подключение Inter font -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Яндекс.Метрика -->
+    <script type="text/javascript">
+        (function(m,e,t,r,i,k,a){m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};
+        m[i].l=1*new Date();k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)})
+        (window, document, "script", "https://mc.yandex.ru/metrika/tag.js", "ym");
+        
+        ym(12345678, "init", {
+            clickmap:true,
+            trackLinks:true,
+            accurateTrackBounce:true
+        });
+    </script>
+    <noscript><div><img src="https://mc.yandex.ru/watch/12345678" style="position:absolute; left:-9999px;" alt="" /></div></noscript>
+    <style>
+        /* Кастомные стили для светлой темы */
+        * {
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 50%, #e2e8f0 100%);
+            min-height: 100vh;
+            overflow-x: hidden;
+            color: #1e293b;
+        }
+        
+        /* Эффект тонкой текстуры для фона */
+        .texture-bg::before {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='1' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='0.03'/%3E%3C/svg%3E");
+            pointer-events: none;
+            z-index: -1;
+            border-radius: inherit;
+        }
+        
+        /* Glassmorphism эффект для светлой темы */
+        .glassmorphism-light {
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.9);
+            box-shadow: 
+                0 4px 6px -1px rgba(0, 0, 0, 0.05),
+                0 10px 15px -3px rgba(0, 0, 0, 0.05),
+                inset 0 1px 0 0 rgba(255, 255, 255, 0.8);
+        }
+        
+        /* Плавные анимации */
+        .fade-in {
+            animation: fadeIn 0.5s ease-out forwards;
+        }
+        
+        .slide-up {
+            animation: slideUp 0.5s ease-out forwards;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        
+        @keyframes slideUp {
+            from { transform: translateY(20px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+        
+        /* Адаптивный textarea с авто-высотой */
+        .auto-resize {
+            resize: none;
+            overflow: hidden;
+            min-height: 100px;
+            max-height: 200px;
+        }
+        
+        /* Градиентный текст */
+        .gradient-text {
+            background: linear-gradient(90deg, #4f46e5 0%, #7c3aed 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        /* Свечение для кнопок и элементов */
+        .glow-effect {
+            box-shadow: 0 4px 14px 0 rgba(99, 102, 241, 0.2);
+        }
+        
+        .glow-effect:hover {
+            box-shadow: 0 6px 20px 0 rgba(99, 102, 241, 0.3);
+        }
+        
+        /* Акцентные поля ввода */
+        .input-accent {
+            border-color: #e2e8f0;
+            background: white;
+        }
+        
+        .input-accent:focus {
+            border-color: #8b5cf6;
+            box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.1);
+        }
+        
+        /* Компактные аккуратные кнопки */
+        .btn-primary {
+            padding: 10px 24px;
+            font-weight: 600;
+            font-size: 14px;
+            border-radius: 10px;
+            transition: all 0.2s ease;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            border: none;
+            outline: none;
+        }
+        
+        .btn-primary:focus-visible {
+            outline: 2px solid #4f46e5;
+            outline-offset: 2px;
+        }
+        
+        /* Стили для отключенных кнопок */
+        .btn-primary:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none !important;
+            box-shadow: none !important;
+        }
+        
+        /* Стили для вторичной кнопки */
+        .btn-secondary {
+            padding: 10px 24px;
+            font-weight: 500;
+            font-size: 14px;
+            border-radius: 10px;
+            transition: all 0.2s ease;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            background: white;
+            border: 1px solid #e2e8f0;
+            color: #475569;
+        }
+        
+        .btn-secondary:hover {
+            border-color: #cbd5e1;
+            background: #f8fafc;
+        }
+        
+        .btn-secondary:focus-visible {
+            outline: 2px solid #4f46e5;
+            outline-offset: 2px;
+        }
+        
+        /* Улучшенная доступность для фокуса */
+        *:focus {
+            outline: none;
+        }
+        
+        *:focus-visible {
+            outline: 2px solid #4f46e5;
+            outline-offset: 2px;
+        }
+        
+        /* Стили для успешного экрана */
+        .success-card {
+            background: white;
+            border: 1px solid #e2e8f0;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05);
+        }
+    </style>
+</head>
+<body class="flex flex-col items-center justify-center min-h-screen p-4 md:p-8 texture-bg">
+    <div class="max-w-4xl w-full mx-auto">
+        <!-- Hero блок -->
+        <div class="text-center mb-10 fade-in">
+            <h1 class="text-3xl md:text-4xl lg:text-5xl font-bold mb-5 leading-tight">
+                Создайте <span class="gradient-text">продающее описание товара</span><br>для маркетплейсов за 1 минуту
+            </h1>
+            <p class="text-lg md:text-xl text-slate-600 max-w-3xl mx-auto">
+                SEO · без воды · под требования Ozon и Wildberries
+            </p>
+        </div>
+        
+        <!-- Форма (Шаг 1) -->
+        <div id="step1" class="glassmorphism-light rounded-2xl p-6 md:p-8 max-w-3xl mx-auto mb-8 fade-in">
+            <div class="space-y-5">
+                <!-- Поле "Название товара" -->
+                <div>
+                    <label for="productName" class="block text-sm font-medium text-slate-700 mb-2">Название товара</label>
+                    <input 
+                        type="text" 
+                        id="productName" 
+                        class="w-full px-4 py-3 input-accent rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none transition-all duration-200"
+                        placeholder="Например: Беспроводные наушники с шумоподавлением"
+                        required
+                        aria-required="true"
+                        aria-label="Название товара"
+                    >
+                </div>
+                
+                <!-- Поле "Краткое описание / особенности" -->
+                <div>
+                    <label for="productDescription" class="block text-sm font-medium text-slate-700 mb-2">Краткое описание / особенности</label>
+                    <textarea 
+                        id="productDescription" 
+                        class="auto-resize w-full px-4 py-3 input-accent rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none transition-all duration-200"
+                        placeholder="Для кого товар, ключевые преимущества, что важно подчеркнуть"
+                        rows="3"
+                        aria-label="Краткое описание товара"
+                    ></textarea>
+                    <p class="text-xs text-slate-500 mt-2">Опционально, максимум 6 строк</p>
+                </div>
+                
+                <!-- Кнопка Шаг 1 -->
+                <div class="pt-3">
+                    <button 
+                        id="generateBtn" 
+                        class="btn-primary w-full bg-gradient-to-r from-indigo-500 to-violet-600 text-white hover:from-indigo-600 hover:to-violet-700 transform hover:scale-[1.02] glow-effect"
+                        disabled
+                        aria-label="Создать описание бесплатно"
+                        aria-disabled="true"
+                    >
+                        Создать описание бесплатно
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Форма Шаг 2 (скрыта изначально) -->
+        <div id="step2" class="glassmorphism-light rounded-2xl p-6 md:p-8 max-w-3xl mx-auto mb-8 hidden slide-up">
+            <div class="space-y-5">
+                <div class="text-center mb-4">
+                    <h2 class="text-xl font-semibold text-slate-800 mb-2">Укажите email — мы пришлём готовое описание</h2>
+                    <p class="text-slate-600 text-sm">Результат будет отправлен в течение 24 часов.<br>Первые заявки обрабатываем вручную.</p>
+                </div>
+                
+                <!-- Поле email -->
+                <div>
+                    <label for="userEmail" class="block text-sm font-medium text-slate-700 mb-2">Ваш email</label>
+                    <input 
+                        type="email" 
+                        id="userEmail" 
+                        class="w-full px-4 py-3 input-accent rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none transition-all duration-200"
+                        placeholder="your@email.com"
+                        required
+                        aria-required="true"
+                        aria-label="Ваш email"
+                    >
+                </div>
+                
+                <!-- Кнопка Шаг 2 -->
+                <div class="pt-3 flex flex-col sm:flex-row gap-3">
+                    <button 
+                        id="backBtn"
+                        class="btn-secondary"
+                        aria-label="Вернуться назад"
+                    >
+                        Назад
+                    </button>
+                    <button 
+                        id="submitBtn" 
+                        class="btn-primary flex-1 bg-gradient-to-r from-indigo-500 to-violet-600 text-white hover:from-indigo-600 hover:to-violet-700 transform hover:scale-[1.02] glow-effect"
+                        aria-label="Получить результат"
+                    >
+                        Получить результат
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Экран успеха (скрыт изначально) -->
+        <div id="successScreen" class="success-card rounded-2xl p-8 md:p-10 max-w-3xl mx-auto text-center hidden fade-in">
+            <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gradient-to-r from-indigo-100 to-violet-100 mb-5">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-indigo-600" viewBox="0 0 20 20" fill="currentColor">
+                    <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
+                </svg>
+            </div>
+            <h2 class="text-2xl md:text-3xl font-bold text-slate-800 mb-3">Заявка принята 🎉</h2>
+            <p class="text-lg text-slate-600 max-w-xl mx-auto">Мы пришлём описание на почту в течение 24 часов.</p>
+        </div>
+        
+        <!-- Информация о процессе -->
+        <div class="max-w-3xl mx-auto mt-8 text-center text-slate-500 text-sm">
+            <p>AI-инструмент создаёт описания с учётом SEO-требований, ключевых слов и стиля, который нравится покупателям.</p>
+        </div>
+        
+        <!-- Логотип и дополнительная информация -->
+        <div class="mt-12 pt-6 border-t border-slate-200">
+            <div class="flex flex-col md:flex-row justify-between items-center text-sm text-slate-500">
+                <div class="mb-4 md:mb-0">
+                    <div class="flex items-center">
+                        <div class="w-8 h-8 rounded-lg bg-gradient-to-r from-indigo-500 to-violet-600 flex items-center justify-center mr-2">
+                            <span class="text-white font-bold text-xs">PC</span>
+                        </div>
+                        <span class="font-semibold text-slate-700">ProductCopy AI</span>
+                    </div>
+                </div>
+                <div class="text-center md:text-right">
+                    <p>Первые 100 заявок обрабатываются бесплатно</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // Константа Яндекс.Метрики
+        const METRIKA_ID = 12345678;
+        
+        // DOM элементы
+        const step1Element = document.getElementById('step1');
+        const step2Element = document.getElementById('step2');
+        const successScreenElement = document.getElementById('successScreen');
+        const productNameInput = document.getElementById('productName');
+        const productDescriptionInput = document.getElementById('productDescription');
+        const userEmailInput = document.getElementById('userEmail');
+        const generateBtn = document.getElementById('generateBtn');
+        const backBtn = document.getElementById('backBtn');
+        const submitBtn = document.getElementById('submitBtn');
+        
+        // Проверка заполнения полей для активации кнопки
+        function checkFormValidity() {
+            const isProductNameValid = productNameInput.value.trim().length > 0;
+            
+            generateBtn.disabled = !isProductNameValid;
+            
+            // Обновляем aria-атрибут для доступности
+            generateBtn.setAttribute('aria-disabled', generateBtn.disabled);
+        }
+        
+        // Авто-высота для textarea
+        function autoResizeTextarea() {
+            productDescriptionInput.style.height = 'auto';
+            const newHeight = Math.min(productDescriptionInput.scrollHeight, 160);
+            productDescriptionInput.style.height = newHeight + 'px';
+        }
+        
+        // Переход к шагу 2
+        function goToStep2() {
+            // Отправка цели в Яндекс.Метрику
+            if (typeof ym !== 'undefined') {
+                ym(METRIKA_ID, 'reachGoal', 'click_generate');
+            }
+            
+            // Анимация перехода
+            step1Element.classList.add('hidden');
+            step2Element.classList.remove('hidden');
+            step2Element.classList.add('slide-up');
+            
+            // Фокус на поле email для доступности
+            setTimeout(() => {
+                userEmailInput.focus();
+            }, 300);
+        }
+        
+        // Возврат к шагу 1
+        function goToStep1() {
+            step2Element.classList.remove('slide-up');
+            step2Element.classList.add('hidden');
+            step1Element.classList.remove('hidden');
+            step1Element.classList.add('fade-in');
+            
+            // Фокус на первом поле для доступности
+            setTimeout(() => {
+                productNameInput.focus();
+            }, 300);
+        }
+        
+        // Отправка формы
+        async function submitForm() {
+            // Валидация email
+            const email = userEmailInput.value.trim();
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            
+            if (!emailRegex.test(email)) {
+                alert('Пожалуйста, введите корректный email адрес');
+                userEmailInput.focus();
+                return;
+            }
+            
+            // Отправка цели в Яндекс.Метрику
+            if (typeof ym !== 'undefined') {
+                ym(METRIKA_ID, 'reachGoal', 'email_submitted');
+            }
+            
+            // Блокируем кнопку на время отправки
+            submitBtn.disabled = true;
+            submitBtn.setAttribute('aria-disabled', 'true');
+            submitBtn.innerHTML = 'Отправка...';
+            
+            // Собираем данные
+            const formData = {
+                email: email,
+                productName: productNameInput.value.trim(),
+                description: productDescriptionInput.value.trim(),
+                date: new Date().toISOString()
+            };
+            
+            try {
+                // Отправка данных на сервер
+                const response = await fetch('save.php', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(formData)
+                });
+                
+                const result = await response.text();
+                
+                if (response.ok) {
+                    // Показываем экран успеха
+                    step2Element.classList.add('hidden');
+                    successScreenElement.classList.remove('hidden');
+                    successScreenElement.classList.add('fade-in');
+                    
+                    // Фокус на успешном сообщении для доступности
+                    setTimeout(() => {
+                        successScreenElement.setAttribute('tabindex', '-1');
+                        successScreenElement.focus();
+                    }, 300);
+                } else {
+                    alert('Ошибка при сохранении заявки. Пожалуйста, попробуйте еще раз.');
+                    submitBtn.disabled = false;
+                    submitBtn.setAttribute('aria-disabled', 'false');
+                    submitBtn.innerHTML = 'Получить результат';
+                }
+            } catch (error) {
+                console.error('Ошибка:', error);
+                alert('Ошибка при сохранении заявки. Пожалуйста, попробуйте еще раз.');
+                submitBtn.disabled = false;
+                submitBtn.setAttribute('aria-disabled', 'false');
+                submitBtn.innerHTML = 'Получить результат';
+            }
+        }
+        
+        // Инициализация событий
+        document.addEventListener('DOMContentLoaded', function() {
+            // Проверка валидности формы при вводе
+            productNameInput.addEventListener('input', checkFormValidity);
+            productDescriptionInput.addEventListener('input', autoResizeTextarea);
+            
+            // Кнопка "Создать описание бесплатно"
+            generateBtn.addEventListener('click', function() {
+                if (!generateBtn.disabled) {
+                    goToStep2();
+                }
+            });
+            
+            // Обработка нажатия Enter в полях формы (шаг 1)
+            productNameInput.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter' && !generateBtn.disabled) {
+                    goToStep2();
+                }
+            });
+            
+            productDescriptionInput.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter' && e.ctrlKey && !generateBtn.disabled) {
+                    goToStep2();
+                }
+            });
+            
+            // Кнопка "Назад"
+            backBtn.addEventListener('click', goToStep1);
+            
+            // Кнопка "Получить результат"
+            submitBtn.addEventListener('click', submitForm);
+            
+            // Отправка формы по нажатию Enter в поле email
+            userEmailInput.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    submitForm();
+                }
+            });
+            
+            // Инициализация авто-высоты для textarea
+            autoResizeTextarea();
+            
+            // Проверка валидности формы при загрузке
+            checkFormValidity();
+            
+            // Улучшение доступности: добавление ARIA-live региона для динамического контента
+            const ariaLiveRegion = document.createElement('div');
+            ariaLiveRegion.setAttribute('aria-live', 'polite');
+            ariaLiveRegion.setAttribute('aria-atomic', 'true');
+            ariaLiveRegion.classList.add('sr-only');
+            document.body.appendChild(ariaLiveRegion);
+            
+            // Сообщение о статусе кнопки для скринридеров
+            generateBtn.addEventListener('mouseenter', function() {
+                if (generateBtn.disabled) {
+                    ariaLiveRegion.textContent = 'Кнопка "Создать описание бесплатно" неактивна. Заполните все поля, чтобы продолжить.';
+                }
+            });
+        });
+    </script>
+</body>
+</html>
