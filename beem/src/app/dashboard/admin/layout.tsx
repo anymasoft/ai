@@ -11,7 +11,7 @@ export default async function AdminLayout({
   // ЧАСТЬ 1: Проверка авторизации
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) {
-    redirect("/sign-in");
+    redirect("/auth/sign-in");
   }
 
   // ЧАСТЬ 2: Проверка admin статуса

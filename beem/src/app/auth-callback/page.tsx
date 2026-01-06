@@ -16,7 +16,7 @@ export default function AuthCallback() {
           { 
             type: "auth-error",
             error: error,
-            redirectTo: error === "AccessDenied" ? "/errors/access-denied" : "/sign-in"
+            redirectTo: error === "AccessDenied" ? "/errors/access-denied" : "/auth/sign-in"
           }, 
           window.location.origin
         );
@@ -26,7 +26,7 @@ export default function AuthCallback() {
         if (error === "AccessDenied") {
           window.location.href = "/errors/access-denied";
         } else {
-          window.location.href = "/sign-in?error=" + encodeURIComponent(error);
+          window.location.href = "/auth/sign-in?error=" + encodeURIComponent(error);
         }
       }
       return;

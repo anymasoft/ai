@@ -234,7 +234,7 @@ export function PricingPlans({
                 aria-label={`${getButtonText(tier)} - ${tier.name} plan`}
                 asChild
               >
-                <Link href="/sign-in">
+                <Link href="/auth/sign-in">
                   {getButtonText(tier)}
                 </Link>
               </Button>

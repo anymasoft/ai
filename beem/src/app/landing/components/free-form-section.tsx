@@ -188,13 +188,13 @@ export function FreeFormSection() {
             {/* CTA Buttons - Only show if NOT OK */}
             {!validation.ok && (
               <div className="flex flex-col gap-3">
-                <Link href="/sign-in" onClick={() => handleSavePrefill("details")}>
+                <Link href="/auth/sign-in" onClick={() => handleSavePrefill("details")}>
                   <Button variant="outline" size="sm" className="w-full gap-2">
                     Показать проблемные места (1 кредит)
                     <ArrowRight className="h-3.5 w-3.5" />
                   </Button>
                 </Link>
-                <Link href="/sign-in" onClick={() => handleSavePrefill("fix")}>
+                <Link href="/auth/sign-in" onClick={() => handleSavePrefill("fix")}>
                   <Button size="sm" className="w-full gap-2 bg-primary hover:bg-primary/90">
                     Исправить автоматически (1 кредит)
                     <ArrowRight className="h-3.5 w-3.5" />

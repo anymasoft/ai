@@ -45,7 +45,7 @@ export function CTASection() {
               {/* CTA Buttons */}
               <div className='flex flex-col justify-center gap-4 sm:flex-row sm:gap-6'>
                 <Button size='lg' className='cursor-pointer px-8 py-6 text-lg font-medium' asChild>
-                  <a href='/sign-in'>
+                  <a href='/auth/sign-in'>
                     <Package className='me-2 size-5' />
                     Попробовать бесплатно
                   </a>
