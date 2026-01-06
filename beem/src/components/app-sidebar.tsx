@@ -70,10 +70,15 @@ const navGroups = [
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const { data: session } = useSession()
 
+  // ЗАЩИТА: Если нет session, не рендерим sidebar
+  if (!session?.user?.email) {
+    return null
+  }
+
   const user = {
-    name: session?.user?.name || "Пользователь",
-    email: session?.user?.email || "user@example.com",
-    avatar: session?.user?.image || "",
+    name: session.user.name || session.user.email,
+    email: session.user.email,
+    avatar: session.user.image || "",
   }
 
   return (
