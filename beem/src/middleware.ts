@@ -10,11 +10,11 @@ export async function middleware(request: NextRequest) {
   const publicRoutes = [
     '/',
     '/landing',
-    '/sign-in',
-    '/sign-up',
-    '/forgot-password',
-    '/forgot-password-2',
-    '/forgot-password-3',
+    '/auth/sign-in',
+    '/auth/sign-up',
+    '/auth/forgot-password',
+    '/auth/forgot-password-2',
+    '/auth/forgot-password-3',
     '/auth-callback',
   ];
 
@@ -56,11 +56,11 @@ export async function middleware(request: NextRequest) {
 
   // Redirect aliases
   if (pathname === '/login') {
-    return NextResponse.redirect(new URL('/sign-in', request.url));
+    return NextResponse.redirect(new URL('/auth/sign-in', request.url));
   }
 
   if (pathname === '/register') {
-    return NextResponse.redirect(new URL('/sign-up', request.url));
+    return NextResponse.redirect(new URL('/auth/sign-up', request.url));
   }
 
   // All other routes are accessible if authenticated

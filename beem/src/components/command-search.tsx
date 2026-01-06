@@ -127,9 +127,9 @@ export function CommandSearch({ open, onOpenChange }: CommandSearchProps) {
     // { title: "История карточек", url: "/cards-history", group: "Инструменты", icon: LayoutDashboard },
 
     // Authentication
-    { title: "Вход", url: "/sign-in", group: "Аут.", icon: Shield },
-    { title: "Регистрация", url: "/sign-up", group: "Аут.", icon: Shield },
-    { title: "Забыли пароль", url: "/forgot-password", group: "Аут.", icon: Shield },
+    { title: "Вход", url: "/auth/sign-in", group: "Аут.", icon: Shield },
+    { title: "Регистрация", url: "/auth/sign-up", group: "Аут.", icon: Shield },
+    { title: "Забыли пароль", url: "/auth/forgot-password", group: "Аут.", icon: Shield },
 
     // Settings & Account
     { title: "Аккаунт", url: "/settings/account", group: "Параметры", icon: Settings },

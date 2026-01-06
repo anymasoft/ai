@@ -164,7 +164,7 @@ export function PricingSection() {
                       variant={plan.popular ? 'default' : 'secondary'}
                       asChild
                     >
-                      <Link href="/sign-in">
+                      <Link href="/auth/sign-in">
                         {plan.cta}
                       </Link>
                     </Button>
