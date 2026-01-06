@@ -1,19 +1,17 @@
 "use client"
 
 import { Separator } from '@/components/ui/separator'
-import { Button } from '@/components/ui/button'
+import { Heart } from 'lucide-react'
 import { Logo } from '@/components/logo'
-import { Github, Twitter, Linkedin, Youtube, Heart } from 'lucide-react'
 
 const footerLinks = {
   product: [
-    { name: 'Features', href: '#features' },
-    { name: 'Pricing', href: '#pricing' },
-    { name: 'About', href: '#about' },
-    { name: 'FAQ', href: '#faq' },
+    { name: 'Функции', href: '#features' },
+    { name: 'Тарифы', href: '#pricing' },
+    { name: 'О нас', href: '#about' },
   ],
   company: [
-    { name: 'Contact', href: '#contact' },
+    { name: 'Контакты', href: '#contact' },
     // { name: 'Blog', href: '#blog' },
     // { name: 'Careers', href: '#careers' },
     // { name: 'Press', href: '#press' },
@@ -25,19 +23,12 @@ const footerLinks = {
   //   { name: 'Webinars', href: '#webinars' },
   // ],
   legal: [
-    { name: 'Privacy', href: '#privacy' },
-    { name: 'Terms', href: '#terms' },
+    { name: 'Политика конфиденциальности', href: '/privacy' },
+    { name: 'Условия использования', href: '/terms' },
     // { name: 'Security', href: '#security' },
     // { name: 'Status', href: '#status' },
   ],
 }
-
-const socialLinks = [
-  { name: 'Twitter', href: '#', icon: Twitter },
-  { name: 'GitHub', href: '#', icon: Github },
-  { name: 'LinkedIn', href: '#', icon: Linkedin },
-  { name: 'YouTube', href: '#', icon: Youtube },
-]
 
 export function LandingFooter() {
   return (
@@ -71,25 +62,11 @@ export function LandingFooter() {
             <p className="text-muted-foreground mb-6 max-lg:text-center max-lg:flex max-lg:justify-center">
               Инструмент для подготовки описаний карточек товаров для Ozon и Wildberries с учётом требований маркетплейсов.
             </p>
-            <div className="flex space-x-4 max-lg:justify-center">
-              {socialLinks.map((social) => (
-                <Button key={social.name} variant="ghost" size="icon" asChild>
-                  <a
-                    href={social.href}
-                    aria-label={social.name}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  >
-                    <social.icon className="h-4 w-4" />
-                  </a>
-                </Button>
-              ))}
-            </div>
           </div>
 
           {/* Links Columns */}
           <div className='max-md:col-span-2 lg:col-span-1'>
-            <h4 className="font-semibold mb-4">Product</h4>
+            <h4 className="font-semibold mb-4">Продукт</h4>
             <ul className="space-y-3">
               {footerLinks.product.map((link) => (
                 <li key={link.name}>
@@ -105,7 +82,7 @@ export function LandingFooter() {
           </div>
 
           <div className='max-md:col-span-2 lg:col-span-1'>
-            <h4 className="font-semibold mb-4">Company</h4>
+            <h4 className="font-semibold mb-4">Компания</h4>
             <ul className="space-y-3">
               {footerLinks.company.map((link) => (
                 <li key={link.name}>
@@ -137,7 +114,7 @@ export function LandingFooter() {
           </div> */}
 
           <div className='max-md:col-span-2 lg:col-span-1'>
-            <h4 className="font-semibold mb-4">Legal</h4>
+            <h4 className="font-semibold mb-4">Юридические</h4>
             <ul className="space-y-3">
               {footerLinks.legal.map((link) => (
                 <li key={link.name}>
@@ -166,11 +143,11 @@ export function LandingFooter() {
             </div>
           </div>
           <div className="flex items-center space-x-4 text-sm text-muted-foreground mt-4 md:mt-0">
-            <a href="#privacy" className="hover:text-foreground transition-colors">
-              Privacy Policy
+            <a href="/privacy" className="hover:text-foreground transition-colors">
+              Политика конфиденциальности
             </a>
-            <a href="#terms" className="hover:text-foreground transition-colors">
-              Terms of Service
+            <a href="/terms" className="hover:text-foreground transition-colors">
+              Условия использования
             </a>
           </div>
         </div>
