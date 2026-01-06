@@ -101,6 +101,13 @@ export function PricingSection() {
           <p className="text-lg text-muted-foreground mb-8">
             Выберите тариф, который подходит под объём вашей работы с карточками товаров — от разовых задач до регулярного использования.
           </p>
+
+          {/* Security Badge */}
+          <div className="flex justify-center">
+            <Badge className="bg-blue-50 text-blue-700 dark:bg-blue-950 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
+              🔐 Безопасный вход · Только через Google · 1 минута
+            </Badge>
+          </div>
         </div>
 
         {/* Free Plan Info */}
@@ -132,7 +139,14 @@ export function PricingSection() {
                 >
                   {/* Plan Header */}
                   <div>
-                    <div className="text-lg font-medium tracking-tight mb-2">{plan.name}</div>
+                    <div className="flex items-center gap-3 mb-2">
+                      <div className="text-lg font-medium tracking-tight">{plan.name}</div>
+                      {plan.popular && (
+                        <Badge className="bg-amber-50 text-amber-700 dark:bg-amber-950 dark:text-amber-300 border border-amber-200 dark:border-amber-800 text-xs">
+                          ⭐ Оптимален для продавцов маркетплейсов
+                        </Badge>
+                      )}
+                    </div>
                     <div className="text-muted-foreground text-balance text-sm">{plan.description}</div>
                   </div>
 

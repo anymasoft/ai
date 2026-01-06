@@ -1,5 +1,6 @@
 "use client"
 
+import Link from "next/link"
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -159,7 +160,7 @@ export function FreeFormSection() {
           <div className="space-y-4 mb-8">
             <Card className={validation.ok ? "border-green-200 dark:border-green-900 bg-green-50 dark:bg-green-950" : "border-red-200 dark:border-red-900 bg-red-50 dark:bg-red-950"}>
               <CardContent className="pt-8 pb-8">
-                <div className="flex flex-col items-center justify-center gap-3">
+                <div className="flex flex-col items-center justify-center gap-4">
                   {validation.ok ? (
                     <>
                       <CheckCircle2 className="h-8 w-8 text-green-600 flex-shrink-0" />
@@ -173,26 +174,43 @@ export function FreeFormSection() {
                       <p className="text-lg font-semibold text-red-900 dark:text-red-100 text-center">
                         Описание не пройдёт модерацию
                       </p>
+                      <Button asChild className="mt-2 bg-red-600 hover:bg-red-700 text-white">
+                        <Link href="/auth/sign-in">
+                          Получить полный разбор и исправления
+                        </Link>
+                      </Button>
+                      <p className="text-xs text-red-700 dark:text-red-300 text-center mt-2">
+                        Покажем все нарушения требований OZON и Wildberries и предложим исправления
+                      </p>
                     </>
                   )}
                 </div>
               </CardContent>
             </Card>
 
-            {/* Soft CTA - Only show if OK */}
+            {/* CTA after "Passed" result */}
             {validation.ok && (
-              <div className="flex justify-center">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => {
-                    setText("")
-                    setValidation(null)
-                  }}
-                  className="gap-2"
-                >
-                  Проверить другое описание
-                </Button>
+              <div className="space-y-4">
+                <div className="text-sm text-center text-muted-foreground bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800 rounded-lg p-3">
+                  ⚠️ Даже если описание проходит модерацию, оно может терять позиции в поиске или снижать конверсию.
+                </div>
+                <div className="flex flex-col sm:flex-row gap-3 justify-center">
+                  <Button asChild className="bg-primary hover:bg-primary/90">
+                    <Link href="/auth/sign-in">
+                      Проверить глубже (SEO + правила)
+                      <ArrowRight className="ml-2 h-4 w-4" />
+                    </Link>
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setText("")
+                      setValidation(null)
+                    }}
+                  >
+                    Проверить другое описание
+                  </Button>
+                </div>
               </div>
             )}
           </div>
