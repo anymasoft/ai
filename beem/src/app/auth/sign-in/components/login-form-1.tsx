@@ -21,12 +21,12 @@ export function LoginForm1({
   returnUrl,
   ...props
 }: LoginForm1Props) {
-  // Determine the redirect URL: use returnUrl if provided, otherwise default to /validate
+  // Determine the redirect URL: use returnUrl if provided, otherwise default to /dashboard/validate
   const getRedirectUrl = () => {
     if (returnUrl && returnUrl.startsWith('/')) {
       return returnUrl;
     }
-    return '/validate';
+    return '/dashboard/validate';
   };
 
   // Listen for auth success or error message from popup
