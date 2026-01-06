@@ -13,7 +13,7 @@ interface ConfigMissingNoticeProps {
  * Компонент для отображения уведомления об отсутствии конфигурации
  * Показывается если отсутствуют критичные элементы (промпты, правила, стоп-слова и т.д.)
  */
-export function ConfigMissingNotice({ missing, adminLink = "/admin/system-prompts" }: ConfigMissingNoticeProps) {
+export function ConfigMissingNotice({ missing, adminLink = "/dashboard/admin/system-prompts" }: ConfigMissingNoticeProps) {
   if (!missing || missing.length === 0) {
     return null
   }
