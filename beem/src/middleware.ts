@@ -16,6 +16,8 @@ export async function middleware(request: NextRequest) {
     '/auth/forgot-password-2',
     '/auth/forgot-password-3',
     '/auth-callback',
+    '/privacy',
+    '/terms',
   ];
 
   // Error pages are public
