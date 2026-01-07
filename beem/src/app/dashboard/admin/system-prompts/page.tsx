@@ -104,7 +104,7 @@ export default function SystemPromptsPage() {
       <div>
         <h1 className="text-3xl font-bold">System Prompts</h1>
         <p className="text-muted-foreground mt-1">
-          Управляй системными промптами для создания и валидации описаний товаров. Эти промпты будут использоваться при обработке запросов.
+          Управляй системными промптами для создания и проверки описаний товаров. Эти промпты будут использоваться при обработке запросов.
         </p>
       </div>
 
@@ -159,12 +159,12 @@ export default function SystemPromptsPage() {
           </CardContent>
         </Card>
 
-        {/* Промпт для валидации */}
+        {/* Промпт для проверки */}
         <Card>
           <CardHeader>
-            <CardTitle>Промпт валидации (validate_base)</CardTitle>
+            <CardTitle>Промпт проверки (validate_base)</CardTitle>
             <CardDescription>
-              Базовый промпт для проверки описаний товаров. Будет использоваться при валидации.
+              Базовый промпт для проверки описаний товаров. Будет использоваться при проверке описаний.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -173,7 +173,7 @@ export default function SystemPromptsPage() {
             </Label>
             <Textarea
               id="validate_base"
-              placeholder="Введите базовый промпт для валидации описаний..."
+              placeholder="Введите базовый промпт для проверки описаний..."
               value={prompts.validate_base}
               onChange={(e) => setPrompts({ ...prompts, validate_base: e.target.value })}
               disabled={saving}

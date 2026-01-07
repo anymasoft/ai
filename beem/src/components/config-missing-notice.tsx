@@ -20,7 +20,7 @@ export function ConfigMissingNotice({ missing, adminLink = "/dashboard/admin/sys
 
   const missingLabels: Record<string, string> = {
     gen_base: "Промпт для генерации",
-    validate_base: "Промпт для валидации",
+    validate_base: "Промпт для проверки",
     marketplace_rules: "Правила маркетплейсов",
     stop_words: "Стоп-слова",
     styles: "Стили описаний",

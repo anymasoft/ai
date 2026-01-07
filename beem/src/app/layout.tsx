@@ -9,7 +9,7 @@ import { Toaster } from "@/components/ui/sonner";
 import { inter } from "@/lib/fonts";
 
 export const metadata: Metadata = {
-  title: "Валидатор описаний товаров для ОЗОН и Wildberries",
+  title: "Помощник описаний товаров для ОЗОН и Wildberries",
   description: "Проверьте описание товара на соответствие требованиям маркетплейсов за 10 секунд. Найдите ошибки и исправьте перед публикацией.",
 };
 
