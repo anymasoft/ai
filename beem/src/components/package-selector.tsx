@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Loader2, Check } from 'lucide-react'
+import { trackGoal, METRIKA_EVENTS } from '@/lib/metrika'
 
 interface Package {
   key: string
@@ -92,6 +93,17 @@ export function PackageSelector({ onPackageSelect }: PackageSelectorProps) {
     try {
       setError(null)
       setLoadingPackage(packageKey)
+
+      // Получаем информацию о пакете для события
+      const selectedPackage = packages.find(pkg => pkg.key === packageKey)
+
+      // Событие: пользователь начал процесс платежа
+      if (selectedPackage) {
+        trackGoal(METRIKA_EVENTS.PAYMENT_START, {
+          plan: packageKey,
+          amount: selectedPackage.price_rub
+        })
+      }
 
       const response = await fetch('/api/payments/yookassa/create', {
         method: 'POST',
