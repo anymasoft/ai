@@ -224,16 +224,6 @@ export default function BillingSettings() {
         </p>
       </div>
 
-      {isCheckingPayment && (
-        <Card className="border-blue-200 bg-blue-50">
-          <CardContent className="pt-6">
-            <p className="text-sm text-blue-700">
-              ⏳ Ожидаем подтверждение оплаты…
-            </p>
-          </CardContent>
-        </Card>
-      )}
-
       <div className="grid gap-6 grid-cols-1 lg:grid-cols-2">
         <CurrentPlanCard
           balance={usageInfo?.balance || 0}
