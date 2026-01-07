@@ -115,7 +115,7 @@ export async function POST(request: NextRequest) {
       },
       confirmation: {
         type: "redirect",
-        return_url: `${process.env.NEXTAUTH_URL}/settings/billing?success=1`,
+        return_url: `${process.env.NEXTAUTH_URL}/dashboard/settings/billing?success=1`,
       },
       capture: true,
       description: `Пакет ${pkg.title}: ${pkg.generations} генераций - ${session.user.email}`,
