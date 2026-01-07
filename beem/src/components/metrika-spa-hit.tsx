@@ -11,6 +11,7 @@ import { useEffect } from 'react'
 export function MetrikaSpaHit() {
   const pathname = usePathname()
   const searchParams = useSearchParams()
+  const query = searchParams.toString()
 
   useEffect(() => {
     // Проверяем доступность window и window.ym
@@ -25,9 +26,7 @@ export function MetrikaSpaHit() {
     }
 
     // Собираем полный URL с параметрами
-    const url = searchParams.toString()
-      ? `${pathname}?${searchParams.toString()}`
-      : pathname
+    const url = query ? `${pathname}?${query}` : pathname
 
     try {
       // Отправляем SPA-hit в Яндекс.Метрику
@@ -39,7 +38,7 @@ export function MetrikaSpaHit() {
     } catch (error) {
       console.error('[Метрика] Ошибка при отправке SPA-hit:', error)
     }
-  }, [pathname, searchParams])
+  }, [pathname, query])
 
   return null
 }
