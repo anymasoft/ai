@@ -1,6 +1,6 @@
 /**
  * Конфигурация лимитов по тарифам
- * ИСТОЧНИК ИСТИНЫ для лимитов сценариев и других возможностей
+ * ИСТОЧНИК ИСТИНЫ для лимитов проверок описаний товаров и других возможностей
  */
 
 export type PlanType = 'free' | 'basic' | 'professional' | 'enterprise';
@@ -18,34 +18,34 @@ export const PLAN_LIMITS: Record<PlanType, PlanLimits> = {
     id: 'free',
     name: 'Free',
     price: '0 ₽',
-    monthlyScriptLimit: 3,
+    monthlyScriptLimit: 10,
     description: 'Для знакомства с сервисом',
   },
   basic: {
     id: 'basic',
     name: 'Basic',
-    price: '990 ₽',
-    monthlyScriptLimit: 30,
-    description: 'Для начинающих авторов',
+    price: '490 ₽',
+    monthlyScriptLimit: 50,
+    description: 'Для продавцов одного товара',
   },
   professional: {
     id: 'professional',
     name: 'Professional',
-    price: '2 490 ₽',
-    monthlyScriptLimit: 100,
-    description: 'Для растущих каналов',
+    price: '1 290 ₽',
+    monthlyScriptLimit: 200,
+    description: 'Для интернет-магазинов',
   },
   enterprise: {
     id: 'enterprise',
     name: 'Enterprise',
-    price: '5 990 ₽',
-    monthlyScriptLimit: 300,
-    description: 'Для студий и команд',
+    price: '4 990 ₽',
+    monthlyScriptLimit: 1000,
+    description: 'Для больших каталогов',
   },
 };
 
 /**
- * Получить лимит сценариев для плана
+ * Получить лимит проверок для плана
  */
 export function getMonthlyScriptLimit(plan: PlanType): number {
   return PLAN_LIMITS[plan]?.monthlyScriptLimit || 0;
