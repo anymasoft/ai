@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Вход в аккаунт",
+  title: "Вход в CardMaker",
   description: "Войдите в аккаунт и начните проверять описания товаров для маркетплейсов. Валидируйте тексты за 10 секунд.",
 };
 
