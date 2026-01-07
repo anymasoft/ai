@@ -132,14 +132,14 @@ export function CommandSearch({ open, onOpenChange }: CommandSearchProps) {
     { title: "Забыли пароль", url: "/auth/forgot-password", group: "Аут.", icon: Shield },
 
     // Settings & Account
-    { title: "Аккаунт", url: "/settings/account", group: "Параметры", icon: Settings },
-    { title: "Биллинг и тарифы", url: "/settings/billing", group: "Параметры", icon: CreditCard },
-    { title: "Внешний вид", url: "/settings/appearance", group: "Параметры", icon: Palette },
-    { title: "Уведомления", url: "/settings/notifications", group: "Параметры", icon: Bell },
-    { title: "Подключения", url: "/settings/connections", group: "Параметры", icon: Link2 },
+    { title: "Аккаунт", url: "/dashboard/settings/account", group: "Параметры", icon: Settings },
+    { title: "Биллинг и тарифы", url: "/dashboard/settings/billing", group: "Параметры", icon: CreditCard },
+    { title: "Внешний вид", url: "/dashboard/settings/appearance", group: "Параметры", icon: Palette },
+    { title: "Уведомления", url: "/dashboard/settings/notifications", group: "Параметры", icon: Bell },
+    { title: "Подключения", url: "/dashboard/settings/connections", group: "Параметры", icon: Link2 },
 
     // Info Pages
-    { title: "ЧАВ", url: "/faqs", group: "Информация", icon: HelpCircle },
+    { title: "ЧАВ", url: "/dashboard/faqs", group: "Информация", icon: HelpCircle },
   ]
 
   const groupedItems = searchItems.reduce((acc, item) => {
