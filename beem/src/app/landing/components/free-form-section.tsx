@@ -8,6 +8,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Badge } from "@/components/ui/badge"
 import { ArrowRight, Sparkles, CheckCircle2, AlertCircle } from "lucide-react"
 import { toast } from "sonner"
+import { trackGoal, METRIKA_EVENTS } from "@/lib/metrika"
 
 interface ValidationResponse {
   ok: boolean
@@ -33,6 +34,9 @@ export function FreeFormSection() {
       return
     }
 
+    // Событие: пользователь кликнул "Проверить" на бесплатной форме
+    trackGoal(METRIKA_EVENTS.FREE_SUBMIT, { marketplace })
+
     setIsLoading(true)
     setError(null)
     setValidation(null)
@@ -56,8 +60,12 @@ export function FreeFormSection() {
 
         setValidation(result.data)
         if (result.data.ok) {
+          // Событие: результат "ПРОЙДЕТ"
+          trackGoal(METRIKA_EVENTS.FREE_RESULT_PASS, { marketplace, source: 'landing_free' })
           toast.success("Описание пройдёт модерацию")
         } else {
+          // Событие: результат "НЕ ПРОЙДЕТ"
+          trackGoal(METRIKA_EVENTS.FREE_RESULT_FAIL, { marketplace, source: 'landing_free' })
           toast.error("Описание не пройдёт модерацию")
         }
       } else {
@@ -174,7 +182,7 @@ export function FreeFormSection() {
                       <p className="text-lg font-semibold text-red-900 dark:text-red-100 text-center">
                         Описание не пройдёт модерацию
                       </p>
-                      <Button asChild className="mt-2 bg-red-600 hover:bg-red-700 text-white">
+                      <Button asChild className="mt-2 bg-red-600 hover:bg-red-700 text-white" onClick={() => trackGoal(METRIKA_EVENTS.CTA_FAIL_GET_FULL, { marketplace })}>
                         <Link href="/auth/sign-in">
                           Получить полный разбор и исправления
                         </Link>

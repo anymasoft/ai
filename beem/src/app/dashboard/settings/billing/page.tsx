@@ -9,6 +9,7 @@ import { PackageSelector } from "@/components/package-selector"
 import { toast } from "sonner"
 import { Badge } from "@/components/ui/badge"
 import { Loader2 } from "lucide-react"
+import { trackGoal, METRIKA_EVENTS } from "@/lib/metrika"
 
 interface UsageInfo {
   balance: number
@@ -132,6 +133,16 @@ export default function BillingSettings() {
           // Обновляем баланс и платежи
           await fetchUsageInfo()
           await fetchPayments()
+
+          // Событие: платеж успешно подтвержден
+          // Получаем информацию о платеже из последнего платежа в истории
+          if (data.payment) {
+            trackGoal(METRIKA_EVENTS.PAYMENT_SUCCESS, {
+              plan: data.payment.packageKey,
+              amount: data.payment.amount,
+              credits_added: data.payment.generations
+            })
+          }
 
           toast.success("Оплата прошла успешно! Баланс обновлён.")
 

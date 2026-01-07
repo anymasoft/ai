@@ -2,6 +2,7 @@
 
 import { useEffect } from "react"
 import { useSearchParams } from "next/navigation"
+import { trackGoal, METRIKA_EVENTS } from "@/lib/metrika"
 
 export default function AuthCallback() {
   const searchParams = useSearchParams()
@@ -34,6 +35,9 @@ export default function AuthCallback() {
 
     // This page is opened in a popup after successful OAuth authentication
     // Close the popup and let the parent window refresh
+    // Событие: успешный вход через Google
+    trackGoal(METRIKA_EVENTS.SIGNIN_SUCCESS)
+
     if (window.opener) {
       window.opener.postMessage({ type: "auth-success" }, window.location.origin);
       window.close();

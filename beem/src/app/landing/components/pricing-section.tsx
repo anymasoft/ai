@@ -1,10 +1,11 @@
 "use client"
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import Link from 'next/link'
 import { Check } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import { trackGoal, METRIKA_EVENTS } from '@/lib/metrika'
 
 interface Package {
   key: string
@@ -65,6 +66,8 @@ const plans = [
 export function PricingSection() {
   const [packages, setPackages] = useState<Package[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const sectionRef = useRef<HTMLElement>(null)
+  const hasTracked = useRef(false)
 
   useEffect(() => {
     const fetchPackages = async () => {
@@ -84,13 +87,35 @@ export function PricingSection() {
     fetchPackages()
   }, [])
 
+  // Отслеживание видимости секции pricing (для события pricing_view)
+  useEffect(() => {
+    const section = sectionRef.current
+    if (!section) return
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          // Когда секция становится видна и ещё не было трекинга
+          if (entry.isIntersecting && !hasTracked.current) {
+            hasTracked.current = true
+            trackGoal(METRIKA_EVENTS.PRICING_VIEW)
+          }
+        })
+      },
+      { threshold: 0.3 } // Срабатывает когда 30% секции видно
+    )
+
+    observer.observe(section)
+    return () => observer.disconnect()
+  }, [])
+
   // Функция для получения данных пакета по названию плана
   const getPackageData = (planName: string): Package | undefined => {
     return packages.find(pkg => pkg.title.toLowerCase() === planName.toLowerCase())
   }
 
   return (
-    <section id="pricing" className="py-24 sm:py-32 bg-muted/40">
+    <section id="pricing" ref={sectionRef} className="py-24 sm:py-32 bg-muted/40">
       <div className="container mx-auto px-4 sm:px-6 lg:px-8">
         {/* Section Header */}
         <div className="mx-auto max-w-2xl text-center mb-12">
