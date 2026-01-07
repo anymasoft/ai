@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Script from "next/script";
+import { Suspense } from "react";
 import "./globals.css";
 
 import { ThemeProvider } from "@/components/theme-provider";
@@ -62,7 +63,9 @@ export default function RootLayout({
         </Script>
       </head>
       <body className={inter.className}>
-        <MetrikaSpaHit />
+        <Suspense fallback={null}>
+          <MetrikaSpaHit />
+        </Suspense>
         <AuthProvider>
           <ThemeProvider defaultTheme="system" storageKey="nextjs-ui-theme">
             <SidebarConfigProvider>
