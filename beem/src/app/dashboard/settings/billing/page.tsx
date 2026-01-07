@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { CurrentPlanCard } from "./components/current-plan-card"
 import { BillingHistoryCard } from "./components/billing-history-card"
 import { PackageSelector } from "@/components/package-selector"
+import { useCheckPaymentStatus } from "@/hooks/useCheckPaymentStatus"
 import { toast } from "sonner"
 import { Badge } from "@/components/ui/badge"
 import { Loader2 } from "lucide-react"
@@ -29,8 +30,10 @@ interface Payment {
 
 export default function BillingSettings() {
   const { data: session } = useSession()
+  const checkResult = useCheckPaymentStatus()
   const [usageInfo, setUsageInfo] = useState<UsageInfo | null>(null)
   const [isLoadingUsage, setIsLoadingUsage] = useState(true)
+  const [isCheckingPayment, setIsCheckingPayment] = useState(false)
   const [payments, setPayments] = useState<Payment[]>([])
   const [isLoadingPayments, setIsLoadingPayments] = useState(false)
 
@@ -88,7 +91,7 @@ export default function BillingSettings() {
     setIsLoadingUsage(false)
   }, [session?.user?.id])
 
-  // Обработка успешного возврата с success=1 (БЕЗ ПОЛИНГА)
+  // Polling для проверки статуса платежа после возврата из YooKassa
   useEffect(() => {
     if (!session?.user?.id) return
 
@@ -97,17 +100,98 @@ export default function BillingSettings() {
 
     if (!isSuccess) return
 
-    console.log("[BillingPage] Success parameter detected - updating balance and payments")
+    let pollingCount = 0
+    const maxPolls = 150
+    let interval: NodeJS.Timeout | null = null
+    let hasSucceeded = false
 
-    // Немедленно обновляем баланс и платежи (они уже обновлены в БД)
-    fetchUsageInfo()
-    fetchPayments()
+    setIsCheckingPayment(true)
 
-    // Показываем успех
-    toast.success("Оплата прошла успешно! Баланс обновлён.")
+    const stopPolling = () => {
+      if (interval) clearInterval(interval)
+      setIsCheckingPayment(false)
+    }
 
-    // Очищаем URL от параметра success
-    window.history.replaceState({}, "", window.location.pathname)
+    const pollPaymentStatus = async () => {
+      if (hasSucceeded) return
+
+      pollingCount++
+
+      try {
+        const response = await fetch("/api/payments/yookassa/check", {
+          cache: "no-store",
+        })
+
+        const data = await response.json()
+
+        console.log(`[BillingPage] Payment check (poll ${pollingCount}):`, data)
+
+        // Если платёж прошёл успешно
+        if (data.success && data.status === "succeeded") {
+          console.log("[BillingPage] Payment succeeded! Updating balance...")
+          hasSucceeded = true
+
+          // Обновляем баланс и платежи
+          await fetchUsageInfo()
+          await fetchPayments()
+
+          toast.success("Оплата прошла успешно! Баланс обновлён.")
+
+          // Очищаем URL от параметра success
+          window.history.replaceState({}, "", window.location.pathname)
+
+          stopPolling()
+          return
+        }
+
+        // Если ещё pending и не превышен лимит попыток
+        if (!data.success && data.status === "pending" && pollingCount < maxPolls) {
+          // Продолжаем polling
+          return
+        }
+
+        // Если превышен лимит попыток
+        if (pollingCount >= maxPolls) {
+          toast.info(
+            "Платёж всё ещё обрабатывается. Баланс обновится автоматически в течение минуты."
+          )
+          window.history.replaceState({}, "", window.location.pathname)
+          stopPolling()
+          return
+        }
+
+        // Другие ошибки (но не "No pending payment found" - это нормально)
+        if (data.error && !data.error.includes("No pending payment")) {
+          toast.error(data.error)
+          window.history.replaceState({}, "", window.location.pathname)
+          stopPolling()
+        }
+      } catch (error) {
+        console.error("[BillingPage] Payment check error:", error)
+
+        if (pollingCount >= maxPolls) {
+          toast.error("Не удалось проверить статус платежа")
+          window.history.replaceState({}, "", window.location.pathname)
+          stopPolling()
+        }
+      }
+    }
+
+    // Первая проверка сразу
+    pollPaymentStatus()
+
+    // Дальше polling каждые 2 секунды
+    interval = setInterval(() => {
+      if (pollingCount < maxPolls && !hasSucceeded) {
+        pollPaymentStatus()
+      } else {
+        stopPolling()
+      }
+    }, 2000)
+
+    return () => {
+      if (interval) clearInterval(interval)
+    }
   }, [session?.user?.id])
 
   const isLoading = isLoadingUsage
@@ -139,6 +223,16 @@ export default function BillingSettings() {
           Управляйте своей подпиской и информацией о биллинге.
         </p>
       </div>
+
+      {isCheckingPayment && (
+        <Card className="border-blue-200 bg-blue-50">
+          <CardContent className="pt-6">
+            <p className="text-sm text-blue-700">
+              ⏳ Ожидаем подтверждение оплаты…
+            </p>
+          </CardContent>
+        </Card>
+      )}
 
       <div className="grid gap-6 grid-cols-1 lg:grid-cols-2">
         <CurrentPlanCard
