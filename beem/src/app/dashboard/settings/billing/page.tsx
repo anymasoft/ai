@@ -6,7 +6,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { CurrentPlanCard } from "./components/current-plan-card"
 import { BillingHistoryCard } from "./components/billing-history-card"
 import { PackageSelector } from "@/components/package-selector"
-import { useCheckPaymentStatus } from "@/hooks/useCheckPaymentStatus"
 import { toast } from "sonner"
 import { Badge } from "@/components/ui/badge"
 import { Loader2 } from "lucide-react"
@@ -30,7 +29,6 @@ interface Payment {
 
 export default function BillingSettings() {
   const { data: session } = useSession()
-  const checkResult = useCheckPaymentStatus()
   const [usageInfo, setUsageInfo] = useState<UsageInfo | null>(null)
   const [isLoadingUsage, setIsLoadingUsage] = useState(true)
   const [isCheckingPayment, setIsCheckingPayment] = useState(false)
