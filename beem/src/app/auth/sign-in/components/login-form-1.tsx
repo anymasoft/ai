@@ -75,7 +75,7 @@ export function LoginForm1({
     <div className={cn("flex flex-col gap-6", className)} {...props}>
       <Card>
         <CardHeader className="text-center">
-          <CardTitle className="text-xl">Войдите в YouTube Аналитику</CardTitle>
+          <CardTitle className="text-xl">Начните проверять описания товаров</CardTitle>
           <CardDescription>
             Войдите с помощью вашего аккаунта Google
           </CardDescription>
