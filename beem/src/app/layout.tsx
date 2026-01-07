@@ -19,25 +19,11 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className={`${inter.variable} antialiased`} suppressHydrationWarning>
+    <html lang="en" className={`${inter.variable} antialiased`}>
       <head>
         <script
           dangerouslySetInnerHTML={{
             __html: `
-              // Применение темы до первого рендеринга, чтобы избежать FOUC
-              (function() {
-                const storageKey = "nextjs-ui-theme";
-                const stored = localStorage.getItem(storageKey);
-                let theme = stored || "system";
-
-                if (theme === "system") {
-                  theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
-                }
-
-                document.documentElement.classList.remove("light", "dark");
-                document.documentElement.classList.add(theme);
-              })();
-
               if (!window.ethereum) {
                 window.ethereum = {
                   isFake: true,
