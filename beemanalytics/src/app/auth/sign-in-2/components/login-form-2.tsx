@@ -10,7 +10,7 @@ export function LoginForm2({
   ...props
 }: React.ComponentProps<"form">) {
   return (
-    <form className={cn("flex flex-col gap-6", className)} {...props} action="/trending">
+    <form className={cn("flex flex-col gap-6", className)} {...props} action="/dashboard">
       <div className="flex flex-col items-center gap-2 text-center">
         <h1 className="text-2xl font-bold">Войдите в свой аккаунт</h1>
         <p className="text-muted-foreground text-sm text-balance">
