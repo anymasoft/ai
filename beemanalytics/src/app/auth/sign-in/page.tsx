@@ -1,7 +1,7 @@
 import { LoginForm1 } from "./components/login-form-1"
 import { Logo } from "@/components/logo"
 import Link from "next/link"
-import { AccessDeniedError } from "@/app/(auth)/errors/access-denied/components/access-denied-error"
+import { AccessDeniedError } from "@/app/auth/errors/access-denied/components/access-denied-error"
 
 type SignInPageProps = {
   searchParams: Promise<{
