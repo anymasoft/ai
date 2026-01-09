@@ -1,0 +1,37 @@
+{
+  "name": "ai-content-engine",
+  "version": "1.0.0",
+  "description": "Чистый AI pipeline для генерации контента из текста (3 стадии: анализ → структура → финальный контент)",
+  "type": "module",
+  "main": "pipeline.ts",
+  "bin": {
+    "ai-engine": "runner.ts"
+  },
+  "scripts": {
+    "dev": "npx tsx runner.ts examples/input.txt",
+    "run": "npx tsx runner.ts",
+    "type-check": "tsc --noEmit"
+  },
+  "keywords": [
+    "ai",
+    "content-generation",
+    "gpt",
+    "openai",
+    "pipeline",
+    "semantic-map",
+    "narrative-skeleton"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "openai": "^4.24.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "typescript": "^5.0.0",
+    "tsx": "^4.0.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
