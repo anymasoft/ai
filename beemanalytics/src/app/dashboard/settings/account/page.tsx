@@ -7,7 +7,7 @@ export default function AccountSettings() {
   const router = useRouter()
 
   useEffect(() => {
-    router.replace("/trending")
+    router.replace("/dashboard")
   }, [router])
 
   return null

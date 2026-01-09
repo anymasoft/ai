@@ -24,7 +24,7 @@ export function LoginForm1({
 
       if (event.data.type === "auth-success") {
         // Redirect to dashboard after successful auth
-        window.location.href = "/trending";
+        window.location.href = "/dashboard";
       }
 
       if (event.data.type === "auth-error") {
@@ -55,7 +55,7 @@ export function LoginForm1({
     // Fallback if popup is blocked
     if (!popup) {
       console.warn("Popup blocked, using redirect method");
-      signIn("google", { callbackUrl: "/trending" });
+      signIn("google", { callbackUrl: "/dashboard" });
     }
   };
 
