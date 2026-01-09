@@ -1,7 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
-import { db } from "@/lib/db";
+import {
+  db,
+  generateRequestHash,
+  getExistingJob,
+  createJob,
+  updateJobIntermediate,
+  completeJob,
+  failJob
+} from "@/lib/db";
 import OpenAI from "openai";
 import { randomUUID } from "crypto";
 import type { GeneratedScript, SavedScript } from "@/types/scripts";
@@ -672,6 +680,117 @@ function generateNarrativeSkeletonFallback(
 }
 
 // ============================================================================
+// ШАГ 3.5: RETRY HELPER И FALLBACK ДЛЯ STAGE-3
+// ============================================================================
+
+/**
+ * Wrapper для retry logic с exponential backoff
+ * Ретраит функцию до 2 раз при определённых ошибках
+ */
+async function retryWithBackoff<T>(
+  fn: () => Promise<T>,
+  maxRetries: number = 2,
+  backoffMs: number = 500
+): Promise<T> {
+  let lastError: any;
+
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      return await fn();
+    } catch (error) {
+      lastError = error;
+
+      // Не ретраим на 4xx (клиентские ошибки валидации)
+      if (error instanceof Error && error.message.includes("400")) {
+        throw error;
+      }
+
+      if (attempt < maxRetries) {
+        const delayMs = backoffMs * Math.pow(2, attempt);
+        console.log(
+          `[Retry] Attempt ${attempt + 1}/${maxRetries + 1} failed, retrying in ${delayMs}ms...`
+        );
+        await new Promise(resolve => setTimeout(resolve, delayMs));
+      }
+    }
+  }
+
+  throw lastError;
+}
+
+/**
+ * Fallback функция для Stage-3
+ * Если GPT падает, генерируем минимальный, но валидный сценарий из skeleton
+ * Результат помечен как degraded=true
+ */
+function generateScriptFallback(
+  skeleton: NarrativeSkeleton,
+  videos: VideoForScript[],
+  semanticMap: SemanticMap
+): GeneratedScript & { degraded: boolean } {
+  console.log("[ScriptFallback] Generating degraded script from skeleton...");
+
+  // Берём лучший hook из skeleton
+  const hook =
+    skeleton.hookCandidates.length > 0
+      ? skeleton.hookCandidates[0]
+      : `Как использовать ${semanticMap.mergedTopics[0] || "эту тему"} эффективнее`;
+
+  // Сочиняем title из paradox или main question
+  const title =
+    skeleton.centralParadox.split("\n")[0] ||
+    skeleton.mainQuestion.replace("?", "") ||
+    `Важное о ${semanticMap.mergedTopics[0] || "контенте"}`;
+
+  // Outline берём из skeleton напрямую
+  const outline = skeleton.storyBeats.length > 0 ? skeleton.storyBeats : ["Введение", "Основной контент", "Вывод"];
+
+  // scriptText конструируем из skeleton элементов
+  const scriptText = [
+    `# ${hook}`,
+    "",
+    "## Введение",
+    `${skeleton.coreIdea}`,
+    "",
+    "## Основной конфликт",
+    `${skeleton.mainConflict}`,
+    "",
+    "## Центральная идея",
+    `${skeleton.centralParadox}`,
+    "",
+    "## Структура",
+    skeleton.storyBeats.map((beat, i) => `${i + 1}. ${beat}`).join("\n"),
+    "",
+    "## Эмоциональные моменты",
+    skeleton.emotionalBeats.map((beat, i) => `- ${beat}`).join("\n"),
+    "",
+    "## Рекомендуемые видео для вдохновения",
+    videos.map((v, i) => `${i + 1}. "${v.title}" (${v.viewCount.toLocaleString()} просмотров)`).join("\n"),
+    "",
+    "## Заключение",
+    skeleton.endingIdeas[0] || "Спасибо за внимание!",
+  ].join("\n");
+
+  const whyItShouldWork = [
+    `Этот сценарий основан на анализе ${videos.length} успешных видео и построен по структуре, которая работает для целевой аудитории.`,
+    `Ключевые паттерны успеха: ${semanticMap.commonPatterns.slice(0, 3).join(", ")}.`,
+    `Эмоциональные триггеры включают: ${semanticMap.emotionalSpikes.slice(0, 2).join(", ")}.`,
+    "(Это деградированная версия сценария — рекомендуется повторить генерацию для оптимальных результатов.)",
+  ].join(" ");
+
+  console.log("[ScriptFallback] Degraded script generated successfully");
+
+  return {
+    title: title.slice(0, 100), // Ограничиваем длину
+    hook,
+    outline,
+    scriptText,
+    whyItShouldWork,
+    degraded: true,
+  };
+}
+
+// ============================================================================
 // ШАГ 4: ГЕНЕРАЦИЯ СЦЕНАРИЯ ЧЕРЕЗ OPENAI
 // ============================================================================
 
@@ -788,12 +907,14 @@ const SCRIPT_GENERATOR_SYSTEM_PROMPT_V2 = `Ты — элитный сценар�
  * Генерирует финальный сценарий через OpenAI
  * Использует скелет и данные видео для создания готового текста
  * @param temperature - температура для GPT-вызова (влияет на креативность)
+ * @param jobId - ID job'а для логирования и сохранения статуса
  */
 async function generateScriptFromSkeleton(
   skeleton: NarrativeSkeleton,
   videos: VideoForScript[],
   semanticMap: SemanticMap,
-  temperature: number
+  temperature: number,
+  jobId?: string
 ): Promise<GeneratedScript> {
   const openai = new OpenAI({
     apiKey: process.env.OPENAI_API_KEY,
@@ -963,12 +1084,106 @@ export async function POST(req: NextRequest) {
 
     // 2. Парсим тело запроса
     const body = await req.json();
-    const { sourceMode = "trending", selectedVideoIds, youtubeUrl, temperature } = body as {
-      sourceMode?: "trending" | "youtube";
+    const { sourceMode = "trending", selectedVideoIds, youtubeUrl, temperature, format = "video_script" } = body as {
+      sourceMode?: "trending" | "youtube" | "idea";
       selectedVideoIds?: string[];
       youtubeUrl?: string;
+      ideaTitle?: string;
       temperature?: number;
+      format?: "video_script" | "article" | "blog" | "description";
     };
+
+    // ============================================================================
+    // ИДЕМПОТЕНТНОСТЬ: Проверка существующего job'а
+    // ============================================================================
+    const requestHash = generateRequestHash({
+      userId,
+      sourceMode: sourceMode as "trending" | "youtube" | "idea",
+      selectedVideoIds,
+      youtubeUrl,
+      temperature
+    });
+
+    console.log(`[ScriptGenerate] requestHash: ${requestHash}`);
+
+    // Проверяем есть ли уже завершённый job с этим хешем
+    const existingJob = await getExistingJob(userId, requestHash);
+    if (existingJob) {
+      if (existingJob.status === "completed") {
+        // Идемпотентность: возвращаем существующий скрипт
+        console.log(`[ScriptGenerate] Returning existing completed job: ${existingJob.jobId}`);
+
+        // Получаем сохранённый скрипт
+        const savedScriptResult = await db.execute(
+          `SELECT id, userId, title, hook, outline, scriptText, whyItShouldWork, sourceVideos, createdAt
+           FROM generated_scripts WHERE id = ?`,
+          [existingJob.resultScriptId]
+        );
+
+        if (savedScriptResult.rows && savedScriptResult.rows.length > 0) {
+          const row = savedScriptResult.rows[0];
+          const savedScript: SavedScript = {
+            id: row.id as string,
+            userId: row.userId as string,
+            title: row.title as string,
+            hook: row.hook as string,
+            outline: JSON.parse(row.outline as string),
+            scriptText: row.scriptText as string,
+            whyItShouldWork: row.whyItShouldWork as string,
+            sourceVideos: JSON.parse(row.sourceVideos as string),
+            createdAt: row.createdAt as number
+          };
+
+          return NextResponse.json(
+            {
+              script: savedScript,
+              meta: {
+                jobId: existingJob.jobId,
+                cached: true,
+                degraded: false
+              }
+            },
+            { status: 200 }
+          );
+        }
+      } else if (existingJob.status === "processing") {
+        // Job ещё обрабатывается
+        console.log(`[ScriptGenerate] Job is still processing: ${existingJob.jobId}`);
+        return NextResponse.json(
+          {
+            error: "Script generation is already in progress for this request",
+            jobId: existingJob.jobId,
+            status: "processing"
+          },
+          { status: 202 }
+        );
+      } else if (existingJob.status === "failed") {
+        // Job не удался
+        console.log(`[ScriptGenerate] Previous job failed: ${existingJob.jobId}`);
+        console.log(`[ScriptGenerate] Error was: ${existingJob.errorMessage}`);
+        // Пользователь может повторить - создадим новый job
+      }
+    }
+
+    // Создаём новый job для этого запроса
+    const jobId = randomUUID();
+    try {
+      await createJob({
+        jobId,
+        userId,
+        requestHash,
+        sourceMode: sourceMode as "trending" | "youtube" | "idea",
+        format: format as "video_script" | "article" | "blog" | "description"
+      });
+    } catch (error) {
+      console.error(`[ScriptGenerate] Failed to create job: ${error}`);
+      return NextResponse.json(
+        { error: "Failed to create generation job" },
+        { status: 500 }
+      );
+    }
+
+    console.log(`[ScriptGenerate] Created new job: ${jobId}`);
 
     // Валидация контракта
     let videos: VideoForScript[] = [];
@@ -1117,16 +1332,54 @@ export async function POST(req: NextRequest) {
     // 4. PIPELINE: Генерация семантической карты
     const semanticMap = await generateSemanticMap(videos);
 
+    // Сохраняем промежуточный результат (Stage-1) в job
+    await updateJobIntermediate(jobId, {
+      semanticMapJson: JSON.stringify(semanticMap)
+    });
+    console.log(`[ScriptGenerate] Saved Semantic Map for job: ${jobId}`);
+
     // 5. PIPELINE: Генерация нарративного скелета
     const narrativeSkeleton = await generateNarrativeSkeleton(semanticMap, videos);
 
-    // 6. PIPELINE: Генерация финального сценария через OpenAI
-    const generatedScript = await generateScriptFromSkeleton(
-      narrativeSkeleton,
-      videos,
-      semanticMap,
-      scriptTemperature
-    );
+    // Сохраняем промежуточный результат (Stage-2) в job
+    await updateJobIntermediate(jobId, {
+      skeletonJson: JSON.stringify(narrativeSkeleton)
+    });
+    console.log(`[ScriptGenerate] Saved Narrative Skeleton for job: ${jobId}`);
+
+    // 6. PIPELINE: Генерация финального сценария через OpenAI (с retry + fallback)
+    let generatedScript: GeneratedScript & { degraded?: boolean };
+    let usingFallback = false;
+
+    try {
+      // Оборачиваем Stage-3 в retry (2 ретрая с exponential backoff)
+      generatedScript = await retryWithBackoff(
+        () =>
+          generateScriptFromSkeleton(
+            narrativeSkeleton,
+            videos,
+            semanticMap,
+            scriptTemperature,
+            jobId
+          ),
+        2,  // maxRetries
+        500 // backoffMs
+      );
+
+      console.log(`[ScriptGenerate] Stage-3 succeeded on first attempt or after retry`);
+    } catch (stage3Error) {
+      // Stage-3 упал даже после retry → используем fallback
+      console.error(`[ScriptGenerate] Stage-3 failed after retries, using fallback:`, stage3Error);
+
+      generatedScript = generateScriptFallback(
+        narrativeSkeleton,
+        videos,
+        semanticMap
+      );
+      usingFallback = true;
+
+      console.log(`[ScriptGenerate] Using fallback script for job: ${jobId}`);
+    }
 
     // 7. Сохранение в БД
     const scriptId = randomUUID();
@@ -1181,7 +1434,11 @@ export async function POST(req: NextRequest) {
     const usageRecord = checkUsage.rows?.[0];
     console.log(`[ScriptGenerate] ПРОВЕРКА БД: userId=${userId}, day=${today}, scriptsUsed=${usageRecord?.scriptsUsed || 'N/A'}`);
 
-    // 8. Формируем ответ
+    // 8.1. Завершаем job с результатом
+    await completeJob(jobId, scriptId);
+    console.log(`[ScriptGenerate] Completed job: ${jobId} with script: ${scriptId}`);
+
+    // 8.2. Формируем ответ
     const savedScript: SavedScript = {
       id: scriptId,
       userId,
@@ -1194,20 +1451,46 @@ export async function POST(req: NextRequest) {
       createdAt,
     };
 
-    return NextResponse.json({ script: savedScript }, { status: 201 });
+    return NextResponse.json(
+      {
+        script: savedScript,
+        meta: {
+          jobId,
+          cached: false,
+          degraded: usingFallback,
+          usedFallback: usingFallback ? "Stage-3 GPT failed, using fallback from skeleton" : undefined
+        }
+      },
+      { status: 201 }
+    );
 
   } catch (error) {
     console.error("[ScriptGenerate] Ошибка:", error);
 
+    // Помечаем job как failed
+    const errorMessage = error instanceof Error ? error.message : "Ошибка генерации сценария";
+    if (jobId) {
+      await failJob(jobId, errorMessage);
+      console.log(`[ScriptGenerate] Failed job: ${jobId}, error: ${errorMessage}`);
+    }
+
     if (error instanceof Error) {
       return NextResponse.json(
-        { error: error.message },
+        {
+          error: error.message,
+          jobId,
+          meta: { failed: true }
+        },
         { status: 500 }
       );
     }
 
     return NextResponse.json(
-      { error: "Ошибка генерации сценария" },
+      {
+        error: "Ошибка генерации сценария",
+        jobId,
+        meta: { failed: true }
+      },
       { status: 500 }
     );
   }

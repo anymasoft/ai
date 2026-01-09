@@ -647,6 +647,28 @@ async function getClient() {
         await _client.execute(`CREATE INDEX IF NOT EXISTS idx_admin_messages_isRead
           ON admin_messages(isRead, createdAt DESC);`);
 
+        // Таблица для отслеживания job'ов генерации сценариев
+        // Используется для идемпотентности (защита от double-click) и сохранения промежуточных результатов
+        await _client.execute(`CREATE TABLE IF NOT EXISTS script_generation_jobs (
+          jobId TEXT PRIMARY KEY NOT NULL,
+          userId TEXT NOT NULL,
+          requestHash TEXT NOT NULL,
+          status TEXT NOT NULL DEFAULT 'processing',
+          sourceMode TEXT NOT NULL DEFAULT 'trending',
+          format TEXT NOT NULL DEFAULT 'video_script',
+          semanticMapJson TEXT,
+          skeletonJson TEXT,
+          resultScriptId TEXT,
+          errorMessage TEXT,
+          createdAt INTEGER NOT NULL,
+          updatedAt INTEGER NOT NULL,
+          FOREIGN KEY (userId) REFERENCES users(id) ON DELETE CASCADE,
+          UNIQUE(userId, requestHash)
+        );`);
+
+        await _client.execute(`CREATE INDEX IF NOT EXISTS idx_script_jobs_userId_status
+          ON script_generation_jobs(userId, status, updatedAt DESC);`);
+
         // Инициализация системных флагов по умолчанию
         await _client.execute(`INSERT OR IGNORE INTO system_flags (key, value) VALUES ('enableTrending', 'true');`);
         await _client.execute(`INSERT OR IGNORE INTO system_flags (key, value) VALUES ('enableComparison', 'true');`);
@@ -664,3 +686,170 @@ async function getClient() {
 }
 
 export const db = await getClient();
+
+// ============================================================================
+// HELPERS ДЛЯ ИДЕМПОТЕНТНОСТИ И JOB-TRACKING
+// ============================================================================
+
+/**
+ * Генерирует хеш запроса для идемпотентности
+ * На основе userId + sourceMode + selectedVideoIds/youtubeUrl + temperature + day bucket
+ */
+export function generateRequestHash(params: {
+  userId: string
+  sourceMode: "trending" | "youtube" | "idea"
+  selectedVideoIds?: string[]
+  youtubeUrl?: string
+  ideaTitle?: string
+  temperature?: number
+}): string {
+  const dayBucket = new Date().toISOString().split('T')[0]
+  const key = [
+    params.userId,
+    params.sourceMode,
+    params.selectedVideoIds?.sort().join(',') || params.youtubeUrl || params.ideaTitle || '',
+    params.temperature || '0.8',
+    dayBucket
+  ].join('|')
+
+  // Простой хеш (в production можно использовать crypto.createHash)
+  return require('crypto').createHash('sha256').update(key).digest('hex').slice(0, 16)
+}
+
+/**
+ * Проверяет, есть ли уже завершённый job с таким requestHash
+ * Если есть → возвращает resultScriptId для идемпотентности
+ */
+export async function getExistingJob(userId: string, requestHash: string): Promise<{
+  jobId: string
+  status: "processing" | "completed" | "failed"
+  resultScriptId?: string
+  errorMessage?: string
+} | null> {
+  try {
+    const result = await db.execute(
+      `SELECT jobId, status, resultScriptId, errorMessage FROM script_generation_jobs
+       WHERE userId = ? AND requestHash = ?
+       ORDER BY createdAt DESC LIMIT 1`,
+      [userId, requestHash]
+    )
+
+    if (result.rows && result.rows.length > 0) {
+      const row = result.rows[0]
+      return {
+        jobId: row.jobId as string,
+        status: row.status as "processing" | "completed" | "failed",
+        resultScriptId: row.resultScriptId as string | undefined,
+        errorMessage: row.errorMessage as string | undefined
+      }
+    }
+  } catch (error) {
+    console.error("[DB] Error getting existing job:", error)
+  }
+
+  return null
+}
+
+/**
+ * Создаёт новый job запись
+ */
+export async function createJob(params: {
+  jobId: string
+  userId: string
+  requestHash: string
+  sourceMode: "trending" | "youtube" | "idea"
+  format: "video_script" | "article" | "blog" | "description"
+}): Promise<void> {
+  try {
+    const now = Math.floor(Date.now() / 1000)
+    await db.execute(
+      `INSERT INTO script_generation_jobs
+       (jobId, userId, requestHash, status, sourceMode, format, createdAt, updatedAt)
+       VALUES (?, ?, ?, 'processing', ?, ?, ?, ?)`,
+      [
+        params.jobId,
+        params.userId,
+        params.requestHash,
+        params.sourceMode,
+        params.format,
+        now,
+        now
+      ]
+    )
+  } catch (error) {
+    console.error("[DB] Error creating job:", error)
+    throw error
+  }
+}
+
+/**
+ * Сохраняет промежуточный результат (Semantic Map или Skeleton)
+ */
+export async function updateJobIntermediate(jobId: string, data: {
+  semanticMapJson?: string
+  skeletonJson?: string
+}): Promise<void> {
+  try {
+    const now = Math.floor(Date.now() / 1000)
+    const updates: string[] = []
+    const values: any[] = []
+
+    if (data.semanticMapJson) {
+      updates.push("semanticMapJson = ?")
+      values.push(data.semanticMapJson)
+    }
+    if (data.skeletonJson) {
+      updates.push("skeletonJson = ?")
+      values.push(data.skeletonJson)
+    }
+
+    updates.push("updatedAt = ?")
+    values.push(now)
+
+    values.push(jobId)
+
+    await db.execute(
+      `UPDATE script_generation_jobs SET ${updates.join(', ')} WHERE jobId = ?`,
+      values
+    )
+  } catch (error) {
+    console.error("[DB] Error updating job intermediate:", error)
+    // Не throw - это не критично, просто лог
+  }
+}
+
+/**
+ * Завершает job с результатом
+ */
+export async function completeJob(jobId: string, resultScriptId: string): Promise<void> {
+  try {
+    const now = Math.floor(Date.now() / 1000)
+    await db.execute(
+      `UPDATE script_generation_jobs
+       SET status = 'completed', resultScriptId = ?, updatedAt = ?
+       WHERE jobId = ?`,
+      [resultScriptId, now, jobId]
+    )
+  } catch (error) {
+    console.error("[DB] Error completing job:", error)
+    throw error
+  }
+}
+
+/**
+ * Помечает job как failed с сообщением об ошибке
+ */
+export async function failJob(jobId: string, errorMessage: string): Promise<void> {
+  try {
+    const now = Math.floor(Date.now() / 1000)
+    await db.execute(
+      `UPDATE script_generation_jobs
+       SET status = 'failed', errorMessage = ?, updatedAt = ?
+       WHERE jobId = ?`,
+      [errorMessage, now, jobId]
+    )
+  } catch (error) {
+    console.error("[DB] Error failing job:", error)
+    // Не throw
+  }
+}
