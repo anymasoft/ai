@@ -128,7 +128,7 @@ export default function ComparePage() {
   function handleRowClick(channelId: string, e: React.MouseEvent) {
     e.stopPropagation();
     e.preventDefault();
-    router.push(`/channel/${channelId}`);
+    router.push(`/dashboard/channel/${channelId}`);
   }
   function getSortedCompetitors(): CompetitorSummary[] {
     const sorted = [...competitors].sort((a, b) => {

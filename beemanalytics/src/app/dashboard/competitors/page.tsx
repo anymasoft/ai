@@ -141,7 +141,7 @@ export default function CompetitorsPage() {
   }
 
   function handleRowClick(competitorId: number) {
-    router.push(`/channel/${competitorId}`)
+    router.push(`/dashboard/channel/${competitorId}`)
   }
 
   function formatNumber(num: number): string {
