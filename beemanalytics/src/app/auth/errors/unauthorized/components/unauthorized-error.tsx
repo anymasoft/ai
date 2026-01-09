@@ -21,7 +21,7 @@ export function UnauthorizedError() {
         <h2 className="mb-3 text-2xl font-semibold">Неавторизировано</h2>
         <p>У вас нет доступа к этому ресурсу. Пожалуйста, войдите или свяжитесь с администратором.</p>
         <div className='mt-6 flex items-center justify-center gap-4 md:mt-8'>
-          <Button className='cursor-pointer' onClick={() => router.push('/dashboard')}>На главную</Button>
+          <Button className='cursor-pointer' onClick={() => router.push('/dashboard/trending')}>На главную</Button>
           <Button variant='outline' className='flex cursor-pointer items-center gap-1' onClick={() => router.push('#')}>
             Связаться с нами
           </Button>

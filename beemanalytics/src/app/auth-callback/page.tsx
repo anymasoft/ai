@@ -38,8 +38,8 @@ export default function AuthCallback() {
       window.opener.postMessage({ type: "auth-success" }, window.location.origin);
       window.close();
     } else {
-      // If not in popup, redirect to dashboard
-      window.location.href = "/dashboard";
+      // If not in popup, redirect to dashboard trending page
+      window.location.href = "/dashboard/trending";
     }
   }, [error]);
 
