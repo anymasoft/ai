@@ -791,7 +791,7 @@ export default function TrendingPage() {
             <h3 className="text-xl font-bold">
               Сценарий успешно создан и сохранён!
             </h3>
-            <Link href={`/scripts/${savedScript.id}`}>
+            <Link href={`/dashboard/scripts/${savedScript.id}`}>
               <Button className="gap-2">
                 <FileText className="h-4 w-4" />
                 Открыть сценарий

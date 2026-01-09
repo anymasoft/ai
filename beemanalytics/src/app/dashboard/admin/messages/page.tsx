@@ -247,7 +247,7 @@ export default function AdminMessagesPage() {
                     <TableRow
                       key={message.id}
                       className="cursor-pointer hover:bg-muted/50"
-                      onClick={() => router.push(`/admin/messages/${message.id}`)}
+                      onClick={() => router.push(`/dashboard/admin/messages/${message.id}`)}
                     >
                       <TableCell className="font-medium text-sm">
                         <div className="truncate min-w-0">{message.firstName} {message.lastName}</div>
