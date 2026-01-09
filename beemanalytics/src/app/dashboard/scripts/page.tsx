@@ -217,7 +217,7 @@ export default function ScriptsHistoryPage() {
                     <TableRow
                       key={script.id}
                       className="cursor-pointer hover:bg-muted/50"
-                      onClick={() => router.push(`/scripts/${script.id}`)}
+                      onClick={() => router.push(`/dashboard/scripts/${script.id}`)}
                     >
                       <TableCell>
                         <div className="space-y-1">

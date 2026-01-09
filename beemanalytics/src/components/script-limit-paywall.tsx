@@ -46,12 +46,12 @@ export function ScriptLimitPaywall({ isOpen, onClose }: ScriptLimitPaywallProps)
           </div>
 
           <div className="flex flex-col gap-3 pt-2">
-            <Link href="/settings/billing" onClick={onClose} className="w-full">
+            <Link href="/dashboard/settings/billing" onClick={onClose} className="w-full">
               <Button className="w-full" size="lg">
                 Выбрать тариф
               </Button>
             </Link>
-            <Link href="/settings/billing" onClick={onClose} className="w-full">
+            <Link href="/dashboard/settings/billing" onClick={onClose} className="w-full">
               <Button variant="outline" className="w-full" size="lg">
                 Посмотреть тарифы
               </Button>
