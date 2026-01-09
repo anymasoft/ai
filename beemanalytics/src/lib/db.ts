@@ -853,3 +853,140 @@ export async function failJob(jobId: string, errorMessage: string): Promise<void
     // Не throw
   }
 }
+
+// ============================================================================
+// АТОМАРНОЕ СОХРАНЕНИЕ СКРИПТА И ИНКРЕМЕНТА USAGE
+// ============================================================================
+
+/**
+ * Сохраняет скрипт и инкрементирует usage в одной логической операции
+ * Если одна часть упадёт, пытается откатить другую (компенсирующая логика)
+ *
+ * @returns scriptId если успешно, или throws если оба шага упали
+ */
+export async function saveScriptAndIncrementUsage(params: {
+  scriptId: string
+  userId: string
+  title: string
+  hook: string
+  outline: string // JSON stringified array
+  scriptText: string
+  whyItShouldWork: string
+  sourceVideos: string // JSON stringified array
+  createdAt: number
+}): Promise<string> {
+  const now = Math.floor(Date.now() / 1000)
+  const today = new Date().toISOString().split('T')[0]
+
+  let scriptInserted = false
+  let usageUpdated = false
+
+  try {
+    // ШАГ 1: Вставляем скрипт
+    console.log(`[DB] Saving script: ${params.scriptId}`)
+    await db.execute(
+      `INSERT INTO generated_scripts
+       (id, userId, title, hook, outline, scriptText, whyItShouldWork, sourceVideos, createdAt)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        params.scriptId,
+        params.userId,
+        params.title,
+        params.hook,
+        params.outline,
+        params.scriptText,
+        params.whyItShouldWork,
+        params.sourceVideos,
+        params.createdAt
+      ]
+    )
+    scriptInserted = true
+    console.log(`[DB] Script inserted: ${params.scriptId}`)
+
+    // ШАГ 2: Инкрементируем usage
+    console.log(`[DB] Incrementing usage for user ${params.userId} on ${today}`)
+    await db.execute(
+      `INSERT INTO user_usage_daily (userId, day, scriptsUsed, updatedAt)
+       VALUES (?, ?, 1, ?)
+       ON CONFLICT(userId, day)
+       DO UPDATE SET
+         scriptsUsed = scriptsUsed + 1,
+         updatedAt = excluded.updatedAt`,
+      [params.userId, today, now]
+    )
+    usageUpdated = true
+    console.log(`[DB] Usage incremented for ${params.userId}`)
+
+    return params.scriptId
+  } catch (error) {
+    console.error(`[DB] Error in saveScriptAndIncrementUsage:`, error)
+    console.error(`[DB] State: scriptInserted=${scriptInserted}, usageUpdated=${usageUpdated}`)
+
+    // КОМПЕНСИРУЮЩАЯ ЛОГИКА: если один шаг успешен, а другой нет
+    if (scriptInserted && !usageUpdated) {
+      // Скрипт вставлен, но usage не обновлён - это плохо
+      // Пытаемся удалить скрипт
+      try {
+        console.warn(`[DB] Compensating: deleting script because usage increment failed`)
+        await db.execute(`DELETE FROM generated_scripts WHERE id = ?`, [params.scriptId])
+        console.log(`[DB] Script deleted (compensation)`)
+      } catch (deleteError) {
+        console.error(`[DB] Failed to compensate - script left in DB without usage!`, deleteError)
+        // В этом случае скрипт остался в БД без usage инкремента
+        // UI должна обработать это состояние
+      }
+    } else if (!scriptInserted && usageUpdated) {
+      // Usage обновлён, но скрипт не вставлен - это очень редкий случай
+      // Пытаемся откатить usage
+      try {
+        console.warn(`[DB] Compensating: decrementing usage because script insertion failed`)
+        await db.execute(
+          `UPDATE user_usage_daily SET scriptsUsed = scriptsUsed - 1 WHERE userId = ? AND day = ?`,
+          [params.userId, today]
+        )
+        console.log(`[DB] Usage decremented (compensation)`)
+      } catch (rollbackError) {
+        console.error(`[DB] Failed to rollback usage!`, rollbackError)
+      }
+    }
+
+    throw new Error(
+      `Failed to save script and increment usage: ${error instanceof Error ? error.message : String(error)}`
+    )
+  }
+}
+
+/**
+ * Проверяет и логирует состояние после сохранения
+ * Полезно для диагностики проблем с консистентностью
+ */
+export async function verifyScriptAndUsage(params: {
+  scriptId: string
+  userId: string
+}): Promise<{
+  scriptExists: boolean
+  usageCount: number | null
+}> {
+  try {
+    const today = new Date().toISOString().split('T')[0]
+
+    const scriptCheck = await db.execute(
+      `SELECT id FROM generated_scripts WHERE id = ?`,
+      [params.scriptId]
+    )
+    const scriptExists = (scriptCheck.rows?.length || 0) > 0
+
+    const usageCheck = await db.execute(
+      `SELECT scriptsUsed FROM user_usage_daily WHERE userId = ? AND day = ?`,
+      [params.userId, today]
+    )
+    const usageCount = usageCheck.rows?.[0]?.scriptsUsed as number | null
+
+    console.log(`[DB] Verification: scriptExists=${scriptExists}, usageCount=${usageCount}`)
+
+    return { scriptExists, usageCount }
+  } catch (error) {
+    console.error(`[DB] Verification failed:`, error)
+    return { scriptExists: false, usageCount: null }
+  }
+}

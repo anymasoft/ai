@@ -8,7 +8,9 @@ import {
   createJob,
   updateJobIntermediate,
   completeJob,
-  failJob
+  failJob,
+  saveScriptAndIncrementUsage,
+  verifyScriptAndUsage
 } from "@/lib/db";
 import OpenAI from "openai";
 import { randomUUID } from "crypto";
@@ -1381,58 +1383,43 @@ export async function POST(req: NextRequest) {
       console.log(`[ScriptGenerate] Using fallback script for job: ${jobId}`);
     }
 
-    // 7. Сохранение в БД
+    // ============================================================================
+    // 7. АТОМАРНОЕ СОХРАНЕНИЕ: скрипт + usage в одной логической операции
+    // ============================================================================
     const scriptId = randomUUID();
     const createdAt = Date.now();
     const sourceVideoIds = videos.map(v => v.id);
 
-    await db.execute({
-      sql: `
-        INSERT INTO generated_scripts
-        (id, userId, title, hook, outline, scriptText, whyItShouldWork, sourceVideos, createdAt)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-      `,
-      args: [
-        scriptId,
-        userId,
-        generatedScript.title,
-        generatedScript.hook,
-        JSON.stringify(generatedScript.outline),
-        generatedScript.scriptText,
-        generatedScript.whyItShouldWork,
-        JSON.stringify(sourceVideoIds),
-        createdAt,
-      ],
+    console.log(`[ScriptGenerate] Starting atomic save: script + usage for user ${userId}`);
+
+    // Используем атомарную функцию сохранения
+    // Если одна часть упадёт, применяется компенсирующая логика
+    await saveScriptAndIncrementUsage({
+      scriptId,
+      userId,
+      title: generatedScript.title,
+      hook: generatedScript.hook,
+      outline: JSON.stringify(generatedScript.outline),
+      scriptText: generatedScript.scriptText,
+      whyItShouldWork: generatedScript.whyItShouldWork,
+      sourceVideos: JSON.stringify(sourceVideoIds),
+      createdAt
     });
 
-    console.log(`[ScriptGenerate] Сценарий сохранён в БД: ${scriptId}`);
+    console.log(`[ScriptGenerate] Atomic save completed: ${scriptId}`);
 
-    // 7.1. Инкремент использования сценариев
-    const today = new Date().toISOString().split('T')[0];
-    const updatedAtTs = Math.floor(Date.now() / 1000);
-    console.log("[GENERATOR] UPSERT user_usage_daily: userId =", userId, "day =", today, "scriptsUsed += 1");
-
-    await db.execute({
-      sql: `
-        INSERT INTO user_usage_daily (userId, day, scriptsUsed, updatedAt)
-        VALUES (?, ?, 1, ?)
-        ON CONFLICT(userId, day)
-        DO UPDATE SET
-          scriptsUsed = scriptsUsed + 1,
-          updatedAt = excluded.updatedAt
-      `,
-      args: [userId, today, updatedAtTs],
+    // 7.1. Верификация: проверяем что обе части успешно сохранились
+    const verification = await verifyScriptAndUsage({
+      scriptId,
+      userId
     });
 
-    console.log(`[ScriptGenerate] Использование сценариев обновлено для ${userId} на ${today}`);
+    if (!verification.scriptExists) {
+      console.error(`[ScriptGenerate] CRITICAL: Script not found after save!`);
+      throw new Error("Script verification failed - script not found in database");
+    }
 
-    // Лог-проверка: убедиться, что запись реально в БД
-    const checkUsage = await db.execute({
-      sql: `SELECT scriptsUsed FROM user_usage_daily WHERE userId = ? AND day = ?`,
-      args: [userId, today],
-    });
-    const usageRecord = checkUsage.rows?.[0];
-    console.log(`[ScriptGenerate] ПРОВЕРКА БД: userId=${userId}, day=${today}, scriptsUsed=${usageRecord?.scriptsUsed || 'N/A'}`);
+    console.log(`[ScriptGenerate] Verification passed: script exists, daily usage count = ${verification.usageCount}`);
 
     // 8.1. Завершаем job с результатом
     await completeJob(jobId, scriptId);
