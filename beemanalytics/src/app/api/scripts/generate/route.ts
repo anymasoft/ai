@@ -903,6 +903,83 @@ function validateScriptQuality(
 }
 
 // ============================================================================
+// IDEA MODE: СОЗДАНИЕ СИНТЕТИЧЕСКИХ ВИДЕО ИЗ ИДЕИ
+// ============================================================================
+
+/**
+ * Преобразует пользовательскую идею в синтетические видео для pipeline
+ * Идея: {title, hook, description, outline} → VideoForScript[]
+ */
+function transformIdeaToSyntheticVideos(idea: {
+  title: string;
+  description?: string;
+  outline?: string[];
+  hook?: string;
+}): VideoForScript[] {
+  const now = new Date().toISOString();
+
+  // Первое синтетическое видео: сама идея как основной видеоконтент
+  const syntheticVideo1: VideoForScript = {
+    id: `idea-main-${Date.now()}`,
+    title: idea.title,
+    channelTitle: "Your Channel (Idea Mode)",
+    channelHandle: "your-channel",
+    tags: ["idea", "original-concept", "creative"],
+    viewCount: 10000, // Искусственно высокое число для важности
+    likeCount: 500,
+    commentCount: 100,
+    viewsPerDay: 1000, // Высокий momentum для идей
+    momentumScore: 8.5, // Высокий momentum score для новых идей
+    publishDate: now,
+  };
+
+  // Второе синтетическое видео: из outline (если есть)
+  let syntheticVideo2: VideoForScript | null = null;
+  if (idea.outline && idea.outline.length > 0) {
+    const outlineTitle = idea.outline[0] || "Content Outline";
+    syntheticVideo2 = {
+      id: `idea-outline-${Date.now()}`,
+      title: `${outlineTitle} (Content Structure)`,
+      channelTitle: "Your Channel (Idea Mode)",
+      channelHandle: "your-channel",
+      tags: ["outline", "structure", "plan"],
+      viewCount: 8000,
+      likeCount: 400,
+      commentCount: 80,
+      viewsPerDay: 800,
+      momentumScore: 7.5,
+      publishDate: now,
+    };
+  }
+
+  // Третье синтетическое видео: из hook (если есть)
+  let syntheticVideo3: VideoForScript | null = null;
+  if (idea.hook && idea.hook.trim().length > 0) {
+    syntheticVideo3 = {
+      id: `idea-hook-${Date.now()}`,
+      title: `Hook: ${idea.hook.substring(0, 50)}...`,
+      channelTitle: "Your Channel (Idea Mode)",
+      channelHandle: "your-channel",
+      tags: ["hook", "engagement", "opening"],
+      viewCount: 6000,
+      likeCount: 300,
+      commentCount: 60,
+      viewsPerDay: 600,
+      momentumScore: 6.5,
+      publishDate: now,
+    };
+  }
+
+  // Собираем итоговый массив
+  const syntheticVideos = [syntheticVideo1];
+  if (syntheticVideo2) syntheticVideos.push(syntheticVideo2);
+  if (syntheticVideo3) syntheticVideos.push(syntheticVideo3);
+
+  console.log(`[IdeaMode] Created ${syntheticVideos.length} synthetic videos from idea: "${idea.title}"`);
+  return syntheticVideos;
+}
+
+// ============================================================================
 // ШАГ 4: ГЕНЕРАЦИЯ СЦЕНАРИЯ ЧЕРЕЗ OPENAI
 // ============================================================================
 
@@ -1196,13 +1273,26 @@ export async function POST(req: NextRequest) {
 
     // 2. Парсим тело запроса
     const body = await req.json();
-    const { sourceMode = "trending", selectedVideoIds, youtubeUrl, temperature, format = "video_script" } = body as {
+    const {
+      sourceMode = "trending",
+      selectedVideoIds,
+      youtubeUrl,
+      temperature,
+      format = "video_script",
+      ideaTitle,
+      ideaDescription,
+      ideaOutline,
+      ideaHook,
+    } = body as {
       sourceMode?: "trending" | "youtube" | "idea";
       selectedVideoIds?: string[];
       youtubeUrl?: string;
-      ideaTitle?: string;
       temperature?: number;
       format?: "video_script" | "article" | "blog" | "description";
+      ideaTitle?: string;
+      ideaDescription?: string;
+      ideaOutline?: string[];
+      ideaHook?: string;
     };
 
     // ============================================================================
@@ -1213,7 +1303,8 @@ export async function POST(req: NextRequest) {
       sourceMode: sourceMode as "trending" | "youtube" | "idea",
       selectedVideoIds,
       youtubeUrl,
-      temperature
+      temperature,
+      ideaTitle
     });
 
     console.log(`[ScriptGenerate] requestHash: ${requestHash}`);
@@ -1252,7 +1343,9 @@ export async function POST(req: NextRequest) {
               meta: {
                 jobId: existingJob.jobId,
                 cached: true,
-                degraded: false
+                degraded: false,
+                sourceMode,
+                format
               }
             },
             { status: 200 }
@@ -1300,7 +1393,25 @@ export async function POST(req: NextRequest) {
     // Валидация контракта
     let videos: VideoForScript[] = [];
 
-    if (sourceMode === "youtube") {
+    if (sourceMode === "idea") {
+      // Idea режим: создаём синтетические видео из пользовательской идеи
+      if (!ideaTitle || typeof ideaTitle !== "string" || ideaTitle.trim().length === 0) {
+        return NextResponse.json(
+          { error: "ideaTitle is required for idea sourceMode" },
+          { status: 400 }
+        );
+      }
+
+      console.log(`[ScriptGenerate] Idea режим. Title: "${ideaTitle}"`);
+
+      // Преобразуем идею в синтетические видео для pipeline
+      videos = transformIdeaToSyntheticVideos({
+        title: ideaTitle.trim(),
+        description: ideaDescription,
+        outline: ideaOutline,
+        hook: ideaHook,
+      });
+    } else if (sourceMode === "youtube") {
       // YouTube режим
       if (!youtubeUrl || typeof youtubeUrl !== "string" || youtubeUrl.trim().length === 0) {
         return NextResponse.json(
@@ -1637,6 +1748,8 @@ export async function POST(req: NextRequest) {
           cached: false,
           degraded: usingFallback,
           usedFallback: usingFallback ? "Stage-3 GPT failed, using fallback from skeleton" : undefined,
+          sourceMode,
+          format,
           qualityCheck: {
             isValid: qualityCheck.isValid,
             severity: qualityCheck.severity,
