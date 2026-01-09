@@ -30,7 +30,7 @@ export function YouTubeQuickActions() {
   return (
     <div className="flex items-center gap-2">
       <Button
-        onClick={() => router.push("/competitors")}
+        onClick={() => router.push("/dashboard/competitors")}
         className="gap-2"
       >
         <Plus className="h-4 w-4" />
@@ -50,7 +50,7 @@ export function YouTubeQuickActions() {
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-48">
           <DropdownMenuItem
-            onClick={() => router.push("/trending")}
+            onClick={() => router.push("/dashboard/trending")}
             className="gap-2 cursor-pointer"
           >
             <FileText className="h-4 w-4" />

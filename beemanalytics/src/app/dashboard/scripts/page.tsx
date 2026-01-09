@@ -176,7 +176,7 @@ export default function ScriptsHistoryPage() {
               <li>Ваш сценарий появится здесь после генерации</li>
             </ul>
             <div className="mt-4">
-              <Link href="/trending">
+              <Link href="/dashboard/trending">
                 <Button className="gap-2">
                   <Video className="h-4 w-4" />
                   Перейти к Trending

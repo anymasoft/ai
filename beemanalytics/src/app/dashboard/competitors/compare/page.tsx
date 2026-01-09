@@ -253,7 +253,7 @@ export default function ComparePage() {
           <h1 className="text-3xl font-bold">Сравнить конкурентов</h1>
           <p className="text-muted-foreground">Параллельное сравнение всех отслеживаемых каналов</p>
         </div>
-        <Link href="/competitors">
+        <Link href="/dashboard/competitors">
           <Button variant="outline">Вернуться к конкурентам</Button>
         </Link>
       </div>
@@ -282,7 +282,7 @@ export default function ComparePage() {
               <p className="text-muted-foreground mb-4">
                 Нет конкурентов для сравнения. Добавьте конкурентов в первую очередь.
               </p>
-              <Link href="/competitors">
+              <Link href="/dashboard/competitors">
                 <Button>Добавить конкурентов</Button>
               </Link>
             </div>

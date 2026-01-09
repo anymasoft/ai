@@ -203,7 +203,7 @@ export function RecentVideos() {
         <Button
           variant="outline"
           size="sm"
-          onClick={() => window.open("/trending", "_self")}
+          onClick={() => window.open("/dashboard/trending", "_self")}
         >
           <Eye className="h-4 w-4 mr-2" />
           Показать все

@@ -127,30 +127,30 @@ export function CommandSearch({ open, onOpenChange }: CommandSearchProps) {
 
   const searchItems: SearchItem[] = [
     // YouTube Analytics (Main sections)
-    { title: "Панель управления", url: "/dashboard", group: "Аналитика", icon: LayoutDashboard },
-    { title: "Конкуренты", url: "/competitors", group: "Аналитика", icon: Target },
-    { title: "Сравнить каналы", url: "/competitors/compare", group: "Аналитика", icon: GitCompare },
-    { title: "Тренды контента", url: "/trending", group: "Аналитика", icon: TrendingUp },
-    { title: "Сценарии видео", url: "/scripts", group: "Аналитика", icon: FileText },
-    { title: "AI отчеты", url: "/reports", group: "Аналитика", icon: FileBarChart },
+    { title: "Панель управления", url: "/dashboard/dashboard", group: "Аналитика", icon: LayoutDashboard },
+    { title: "Конкуренты", url: "/dashboard/competitors", group: "Аналитика", icon: Target },
+    { title: "Сравнить каналы", url: "/dashboard/competitors/compare", group: "Аналитика", icon: GitCompare },
+    { title: "Тренды контента", url: "/dashboard/trending", group: "Аналитика", icon: TrendingUp },
+    { title: "Сценарии видео", url: "/dashboard/scripts", group: "Аналитика", icon: FileText },
+    { title: "AI отчеты", url: "/dashboard/reports", group: "Аналитика", icon: FileBarChart },
 
     // Chat & Collaboration
-    { title: "AI ассистент", url: "/chat", group: "Инструменты", icon: MessageCircle },
+    { title: "AI ассистент", url: "/dashboard/chat", group: "Инструменты", icon: MessageCircle },
 
     // Authentication
-    { title: "Вход", url: "/sign-in", group: "Аут.", icon: Shield },
-    { title: "Регистрация", url: "/sign-up", group: "Аут.", icon: Shield },
-    { title: "Забыли пароль", url: "/forgot-password", group: "Аут.", icon: Shield },
+    { title: "Вход", url: "/auth/sign-in", group: "Аут.", icon: Shield },
+    { title: "Регистрация", url: "/auth/sign-up", group: "Аут.", icon: Shield },
+    { title: "Забыли пароль", url: "/auth/forgot-password", group: "Аут.", icon: Shield },
 
     // Settings & Account
-    { title: "Аккаунт", url: "/settings/account", group: "Параметры", icon: Settings },
-    { title: "Биллинг и тарифы", url: "/settings/billing", group: "Параметры", icon: CreditCard },
-    { title: "Внешний вид", url: "/settings/appearance", group: "Параметры", icon: Palette },
-    { title: "Уведомления", url: "/settings/notifications", group: "Параметры", icon: Bell },
-    { title: "Подключения", url: "/settings/connections", group: "Параметры", icon: Link2 },
+    { title: "Аккаунт", url: "/dashboard/settings/account", group: "Параметры", icon: Settings },
+    { title: "Биллинг и тарифы", url: "/dashboard/settings/billing", group: "Параметры", icon: CreditCard },
+    { title: "Внешний вид", url: "/dashboard/settings/appearance", group: "Параметры", icon: Palette },
+    { title: "Уведомления", url: "/dashboard/settings/notifications", group: "Параметры", icon: Bell },
+    { title: "Подключения", url: "/dashboard/settings/connections", group: "Параметры", icon: Link2 },
 
     // Info Pages
-    { title: "ЧАВ", url: "/faqs", group: "Информация", icon: HelpCircle },
+    { title: "ЧАВ", url: "/dashboard/faqs", group: "Информация", icon: HelpCircle },
   ]
 
   const groupedItems = searchItems.reduce((acc, item) => {

@@ -296,7 +296,7 @@ export default async function ChannelPage({ params }: PageProps) {
         {/* Back button */}
         <div className="pt-6">
           <Link
-            href="/competitors"
+            href="/dashboard/competitors"
             className="inline-flex items-center text-sm text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
           >
             <ArrowLeft className="w-4 h-4 mr-1" />

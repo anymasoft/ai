@@ -165,7 +165,7 @@ export default function CompetitorsPage() {
           <p className="text-muted-foreground">Отслеживайте и анализируйте ваших конкурентов</p>
         </div>
         {competitors.length >= 2 && (
-          <Link href="/competitors/compare">
+          <Link href="/dashboard/competitors/compare">
             <Button variant="default">
               <Scale className="mr-2 h-4 w-4" />
               Сравнить всех

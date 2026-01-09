@@ -8,7 +8,7 @@ export default function NotFound() {
         <h1 className="text-4xl font-bold">404</h1>
         <p className="text-muted-foreground mt-2">Страница не найдена</p>
         <Button asChild className="mt-4">
-          <Link href="/dashboard">Перейти в панель</Link>
+          <Link href="/dashboard/trending">Перейти в панель</Link>
         </Button>
       </div>
     </div>

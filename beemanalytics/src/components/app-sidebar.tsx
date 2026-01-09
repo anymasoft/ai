@@ -39,22 +39,22 @@ const navGroups = [
     items: [
       {
         title: "Обзор",
-        url: "/dashboard",
+        url: "/dashboard/dashboard",
         icon: LayoutDashboard,
       },
       {
         title: "Конкуренты",
-        url: "/competitors",
+        url: "/dashboard/competitors",
         icon: Target,
       },
       {
         title: "Сравнение",
-        url: "/competitors/compare",
+        url: "/dashboard/competitors/compare",
         icon: GitCompare,
       },
       {
         title: "История сценариев",
-        url: "/scripts",
+        url: "/dashboard/scripts",
         icon: FileText,
       },
       // DISABLED: PDF reports with Russian content show as transliteration (bad UX)
@@ -62,18 +62,18 @@ const navGroups = [
       /*
       {
         title: "Reports",
-        url: "/reports",
+        url: "/dashboard/reports",
         icon: FileBarChart,
       },
       */
       {
         title: "FAQ",
-        url: "/faqs",
+        url: "/dashboard/faqs",
         icon: FileText,
       },
       {
         title: "Обратная связь",
-        url: "/feedback",
+        url: "/dashboard/feedback",
         icon: MessageSquare,
       },
     ],
@@ -88,7 +88,7 @@ const navGroups = [
         items: [
           {
             title: "Биллинг",
-            url: "/settings/billing",
+            url: "/dashboard/settings/billing",
           },
         ],
       },
@@ -111,7 +111,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton size="lg" asChild>
-              <Link href="/trending">
+              <Link href="/dashboard/trending">
                 <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
                   <Logo size={24} className="text-current" />
                 </div>
@@ -129,7 +129,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       <SidebarContent>
         <div className="px-2 py-2">
           <Button asChild className="w-full" size="sm">
-            <Link href="/trending" className="gap-2">
+            <Link href="/dashboard/trending" className="gap-2">
               <Sparkles className="size-4" />
               + Создать сценарий
             </Link>
