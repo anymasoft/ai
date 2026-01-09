@@ -29,7 +29,7 @@ export async function middleware(request: NextRequest) {
   }
 
   // Admin-only routes (check first, before other protected routes)
-  if (pathname.startsWith('/admin') || pathname.startsWith('/api/admin')) {
+  if (pathname.startsWith('/dashboard/admin') || pathname.startsWith('/api/admin')) {
     const token = await getToken({
       req: request,
       secret: process.env.NEXTAUTH_SECRET
