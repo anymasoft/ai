@@ -1266,10 +1266,23 @@ export async function POST(req: NextRequest) {
         `[ScriptGenerate] User ${userId} hit limit: ${usageInfo.monthlyUsed}/${usageInfo.monthlyLimit}`
       );
       return NextResponse.json(
-        { error: "Monthly limit exhausted" },
+        {
+          error: "Monthly limit exhausted",
+          meta: {
+            userPlan,
+            usage: {
+              used: usageInfo.monthlyUsed,
+              limit: usageInfo.monthlyLimit,
+              remaining: 0
+            }
+          }
+        },
         { status: 429 }
       );
     }
+
+    // Сохраняем initial usage для последующего сравнения
+    const usageInfoBefore = usageInfo.monthlyUsed;
 
     // 2. Парсим тело запроса
     const body = await req.json();
@@ -1345,7 +1358,13 @@ export async function POST(req: NextRequest) {
                 cached: true,
                 degraded: false,
                 sourceMode,
-                format
+                format,
+                userPlan,
+                usage: {
+                  used: usageInfo.monthlyUsed,
+                  limit: usageInfo.monthlyLimit,
+                  remaining: usageInfo.monthlyLimit - usageInfo.monthlyUsed
+                }
               }
             },
             { status: 200 }
@@ -1647,6 +1666,14 @@ export async function POST(req: NextRequest) {
               meta: {
                 failed: true,
                 reason: "quality_check_failed",
+                sourceMode,
+                format,
+                userPlan,
+                usage: {
+                  used: usageInfo.monthlyUsed,
+                  limit: usageInfo.monthlyLimit,
+                  remaining: usageInfo.monthlyLimit - usageInfo.monthlyUsed
+                },
                 issues: retryQualityCheck.issues,
                 severity: retryQualityCheck.severity
               }
@@ -1727,6 +1754,9 @@ export async function POST(req: NextRequest) {
     await completeJob(jobId, scriptId);
     console.log(`[ScriptGenerate] Completed job: ${jobId} with script: ${scriptId}`);
 
+    // 8.1.5 Получаем обновлённую информацию об использовании для ответа
+    const usageInfoAfter = await getBillingScriptUsageInfo(userId, userPlan);
+
     // 8.2. Формируем ответ
     const savedScript: SavedScript = {
       id: scriptId,
@@ -1750,6 +1780,13 @@ export async function POST(req: NextRequest) {
           usedFallback: usingFallback ? "Stage-3 GPT failed, using fallback from skeleton" : undefined,
           sourceMode,
           format,
+          userPlan,
+          usage: {
+            usedBefore: usageInfoBefore,
+            usedAfter: usageInfoAfter.monthlyUsed,
+            limit: usageInfoAfter.monthlyLimit,
+            remaining: usageInfoAfter.monthlyLimit - usageInfoAfter.monthlyUsed
+          },
           qualityCheck: {
             isValid: qualityCheck.isValid,
             severity: qualityCheck.severity,
@@ -1770,12 +1807,32 @@ export async function POST(req: NextRequest) {
       console.log(`[ScriptGenerate] Failed job: ${jobId}, error: ${errorMessage}`);
     }
 
+    // Подготавливаем информацию об использовании если она доступна
+    const errorMeta: any = {
+      failed: true,
+      reason: "generation_error"
+    };
+
+    if (sourceMode && format) {
+      errorMeta.sourceMode = sourceMode;
+      errorMeta.format = format;
+    }
+
+    if (userPlan && usageInfo) {
+      errorMeta.userPlan = userPlan;
+      errorMeta.usage = {
+        used: usageInfo.monthlyUsed,
+        limit: usageInfo.monthlyLimit,
+        remaining: usageInfo.monthlyLimit - usageInfo.monthlyUsed
+      };
+    }
+
     if (error instanceof Error) {
       return NextResponse.json(
         {
           error: error.message,
           jobId,
-          meta: { failed: true }
+          meta: errorMeta
         },
         { status: 500 }
       );
@@ -1785,7 +1842,7 @@ export async function POST(req: NextRequest) {
       {
         error: "Ошибка генерации сценария",
         jobId,
-        meta: { failed: true }
+        meta: errorMeta
       },
       { status: 500 }
     );
