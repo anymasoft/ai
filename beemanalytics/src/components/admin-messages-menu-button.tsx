@@ -22,19 +22,19 @@ import { useUnreadMessagesCount } from "@/hooks/useUnreadMessagesCount"
 const adminItems = [
   {
     title: "Пользователи",
-    url: "/admin/users",
+    url: "/dashboard/admin/users",
   },
   {
     title: "Использование",
-    url: "/admin/limits",
+    url: "/dashboard/admin/limits",
   },
   {
     title: "Платежи",
-    url: "/admin/payments",
+    url: "/dashboard/admin/payments",
   },
   {
     title: "Сообщения",
-    url: "/admin/messages",
+    url: "/dashboard/admin/messages",
   },
 ]
 
@@ -48,7 +48,7 @@ export function AdminMessagesMenuButton() {
   }
 
   const shouldBeOpen = adminItems.some(item => isActive(item.url))
-  const messagesItem = adminItems.find(item => item.url === "/admin/messages")
+  const messagesItem = adminItems.find(item => item.url === "/dashboard/admin/messages")
 
   const activeClasses = "bg-white/5 shadow-inner rounded-xl"
 
@@ -69,7 +69,7 @@ export function AdminMessagesMenuButton() {
           <SidebarMenuSub>
             {adminItems.map((item) => {
               const subIsActive = isActive(item.url)
-              const isMessagesItem = item.url === "/admin/messages"
+              const isMessagesItem = item.url === "/dashboard/admin/messages"
 
               return (
                 <SidebarMenuSubItem key={item.title}>
