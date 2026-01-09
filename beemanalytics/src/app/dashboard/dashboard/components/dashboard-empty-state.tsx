@@ -23,7 +23,7 @@ export function DashboardEmptyState() {
 
       <div className="flex flex-col sm:flex-row gap-3 mb-12">
         <Button size="lg" asChild className="gap-2 px-6">
-          <Link href="/competitors">
+          <Link href="/dashboard/competitors">
             <Plus className="w-4 h-4" />
             Добавить первый канал
             <ArrowRight className="w-4 h-4 ml-1" />

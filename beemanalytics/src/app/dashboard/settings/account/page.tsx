@@ -7,7 +7,7 @@ export default function AccountSettings() {
   const router = useRouter()
 
   useEffect(() => {
-    router.replace("/dashboard")
+    router.replace("/dashboard/settings/account")
   }, [router])
 
   return null

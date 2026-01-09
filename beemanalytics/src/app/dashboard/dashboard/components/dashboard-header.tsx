@@ -137,7 +137,7 @@ export function DashboardHeader({ onPeriodChange, currentPeriod = "30" }: Dashbo
 
         {/* Add Channel Button */}
         <Button size="sm" asChild className="h-9 gap-2">
-          <Link href="/competitors">
+          <Link href="/dashboard/competitors">
             <Plus className="w-4 h-4" />
             <span className="hidden sm:inline">Добавить канал</span>
           </Link>
