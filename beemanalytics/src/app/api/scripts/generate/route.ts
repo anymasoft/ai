@@ -793,6 +793,116 @@ function generateScriptFallback(
 }
 
 // ============================================================================
+// ШАГ 3.6: QUALITY GATE - ВАЛИДАЦИЯ КАЧЕСТВА РЕЗУЛЬТАТА
+// ============================================================================
+
+/**
+ * Проверяет качество сгенерированного сценария
+ * Возвращает { isValid: boolean, issues: string[] }
+ * Гарантирует что мусор не списывает лимит
+ */
+function validateScriptQuality(
+  script: GeneratedScript & { degraded?: boolean }
+): {
+  isValid: boolean
+  issues: string[]
+  severity: "critical" | "warning" | "ok"
+} {
+  const issues: string[] = [];
+
+  // ОБЯЗАТЕЛЬНЫЕ ПОЛЯ
+  if (!script.title || script.title.trim().length === 0) {
+    issues.push("Title is empty");
+  }
+
+  if (!script.hook || script.hook.trim().length === 0) {
+    issues.push("Hook is empty");
+  }
+
+  if (!script.outline || !Array.isArray(script.outline) || script.outline.length === 0) {
+    issues.push("Outline is empty or not an array");
+  }
+
+  if (!script.scriptText || script.scriptText.trim().length === 0) {
+    issues.push("Script text is empty");
+  }
+
+  // РАЗМЕРЫ
+  if (script.title.length > 200) {
+    issues.push(`Title too long: ${script.title.length} > 200`);
+  }
+
+  if (script.hook.length > 500) {
+    issues.push(`Hook too long: ${script.hook.length} > 500`);
+  }
+
+  if (script.scriptText.length < 500) {
+    issues.push(
+      `Script text too short: ${script.scriptText.length} < 500 characters`
+    );
+  }
+
+  if (script.scriptText.length > 100000) {
+    issues.push(`Script text too long: ${script.scriptText.length} > 100000`);
+  }
+
+  // СТРУКТУРА OUTLINE
+  if (Array.isArray(script.outline)) {
+    if (script.outline.length < 3) {
+      issues.push(`Outline has too few points: ${script.outline.length} < 3`);
+    }
+
+    if (script.outline.length > 20) {
+      issues.push(`Outline has too many points: ${script.outline.length} > 20`);
+    }
+
+    // Проверка что пункты не пустые
+    const emptyPoints = script.outline.filter((p) => !p || String(p).trim().length === 0);
+    if (emptyPoints.length > 0) {
+      issues.push(`Outline has ${emptyPoints.length} empty points`);
+    }
+  }
+
+  // СОДЕРЖИМОЕ
+  const paragraphs = script.scriptText.split("\n\n").filter((p) => p.trim().length > 0);
+  if (paragraphs.length < 3) {
+    issues.push(`Script has too few paragraphs: ${paragraphs.length} < 3`);
+  }
+
+  // ПОПЫТКА ОБНАРУЖИТЬ ПОВТОР
+  const words = script.scriptText.toLowerCase().split(/\s+/);
+  const uniqueWords = new Set(words);
+  const uniqueRatio = uniqueWords.size / words.length;
+  if (uniqueRatio < 0.4) {
+    // Менее 40% уникальных слов - вероятно, ерунда
+    issues.push(
+      `Low word diversity: ${(uniqueRatio * 100).toFixed(1)}% unique words (< 40%)`
+    );
+  }
+
+  // ОПРЕДЕЛЯЕМ SEVERITY
+  let severity: "critical" | "warning" | "ok" = "ok";
+  const criticalIssues = issues.filter((i) =>
+    i.includes("empty") || i.includes("too short") || i.includes("too few")
+  );
+
+  if (criticalIssues.length > 0) {
+    severity = "critical";
+  } else if (issues.length > 0) {
+    severity = "warning";
+  }
+
+  console.log(`[QC] Quality check result: severity=${severity}, issues=${issues.length}`);
+  issues.forEach((issue) => console.log(`[QC]   - ${issue}`));
+
+  return {
+    isValid: issues.length === 0,
+    issues,
+    severity
+  };
+}
+
+// ============================================================================
 // ШАГ 4: ГЕНЕРАЦИЯ СЦЕНАРИЯ ЧЕРЕЗ OPENAI
 // ============================================================================
 
@@ -1384,6 +1494,87 @@ export async function POST(req: NextRequest) {
     }
 
     // ============================================================================
+    // 6.1. QUALITY GATE: Проверяем качество сгенерированного сценария
+    // ============================================================================
+    console.log(`[QC] Running quality check...`);
+    const qualityCheck = validateScriptQuality(generatedScript);
+
+    if (!qualityCheck.isValid && !usingFallback) {
+      // Если качество плохо и это ещё не fallback результат - пробуем ещё раз
+      console.warn(
+        `[QC] Quality check failed (severity: ${qualityCheck.severity}), retrying Stage-3 with conservative temperature...`
+      );
+
+      try {
+        // Retry Stage-3 с температурой 0.3 (более консервативный результат)
+        generatedScript = await retryWithBackoff(
+          () =>
+            generateScriptFromSkeleton(
+              narrativeSkeleton,
+              videos,
+              semanticMap,
+              0.3, // Очень консервативная температура для retry
+              jobId
+            ),
+          1, // maxRetries=1 для retry
+          500
+        );
+
+        // Проверяем качество retry результата
+        const retryQualityCheck = validateScriptQuality(generatedScript);
+        if (!retryQualityCheck.isValid) {
+          console.error(
+            `[QC] Retry quality check also failed: ${retryQualityCheck.issues.join(", ")}`
+          );
+
+          // Если и retry не помог - возвращаем 422 БЕЗ списания лимита
+          return NextResponse.json(
+            {
+              error: "Generated content quality is too low for publication",
+              details: retryQualityCheck.issues,
+              jobId,
+              meta: {
+                failed: true,
+                reason: "quality_check_failed",
+                issues: retryQualityCheck.issues,
+                severity: retryQualityCheck.severity
+              }
+            },
+            { status: 422 } // 422 Unprocessable Entity - валидный запрос, но результат неприемлем
+          );
+        }
+
+        console.log(`[QC] Retry quality check passed`);
+      } catch (retryError) {
+        console.error(`[QC] Retry Stage-3 failed:`, retryError);
+
+        // Retry тоже не помог - возвращаем 422
+        return NextResponse.json(
+          {
+            error: "Failed to generate content of acceptable quality",
+            details: qualityCheck.issues,
+            jobId,
+            meta: {
+              failed: true,
+              reason: "quality_check_failed_after_retry",
+              issues: qualityCheck.issues
+            }
+          },
+          { status: 422 }
+        );
+      }
+    } else if (!qualityCheck.isValid && usingFallback) {
+      // Fallback результат не прошёл QC - это тревожный сигнал
+      console.warn(
+        `[QC] Even fallback quality check failed: ${qualityCheck.issues.join(", ")}`
+      );
+      // Всё равно сохраняем fallback, но помечаем флаг
+      console.log(`[QC] Proceeding with fallback despite QC issues`);
+    }
+
+    console.log(`[QC] Quality check passed (severity: ${qualityCheck.severity})`);
+
+    // ============================================================================
     // 7. АТОМАРНОЕ СОХРАНЕНИЕ: скрипт + usage в одной логической операции
     // ============================================================================
     const scriptId = randomUUID();
@@ -1445,7 +1636,12 @@ export async function POST(req: NextRequest) {
           jobId,
           cached: false,
           degraded: usingFallback,
-          usedFallback: usingFallback ? "Stage-3 GPT failed, using fallback from skeleton" : undefined
+          usedFallback: usingFallback ? "Stage-3 GPT failed, using fallback from skeleton" : undefined,
+          qualityCheck: {
+            isValid: qualityCheck.isValid,
+            severity: qualityCheck.severity,
+            issues: qualityCheck.issues.length > 0 ? qualityCheck.issues : undefined
+          }
         }
       },
       { status: 201 }
