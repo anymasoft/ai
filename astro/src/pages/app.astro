@@ -355,7 +355,18 @@ import AppLayout from '../layouts/AppLayout.astro';
         }
     }
 
+    #generate-tooltip {
+        transition: opacity 0.2s ease, transform 0.2s ease, visibility 0.2s ease;
+    }
+
     #generate-tooltip:not(.hidden) {
         animation: tooltip-fade-in 0.2s ease-out;
+    }
+
+    #generate-tooltip.hidden {
+        opacity: 0;
+        transform: translateY(4px);
+        visibility: hidden;
+        pointer-events: none;
     }
 </style>
