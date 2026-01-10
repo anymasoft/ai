@@ -73,7 +73,7 @@ import AppLayout from '../layouts/AppLayout.astro';
                             </button>
 
                             <!-- PROMPT BAR - Floating Control Panel (CENTERED, BOTTOM) -->
-                            <div class="absolute bottom-6 left-1/2 -translate-x-1/2 z-30 pointer-events-none px-4 w-full">
+                            <div class="absolute bottom-6 left-1/2 -translate-x-1/2 z-30 pointer-events-none px-4 w-full" style="max-width: 60%">
 
                                 <!-- Input Container (Full Width Minus Padding) -->
                                 <div class="pointer-events-auto relative">
@@ -108,10 +108,10 @@ import AppLayout from '../layouts/AppLayout.astro';
                                         <!-- Generate Button - INSIDE Input (RIGHT) -->
                                         <button
                                             id="generate-btn"
-                                            class="absolute right-3 top-1/2 -translate-y-1/2 p-2 hover:opacity-80 active:scale-95 transition-all duration-150 flex-shrink-0"
+                                            class="absolute right-3 top-1/2 -translate-y-1/2 p-2.5 hover:opacity-80 active:scale-95 transition-all duration-150 flex-shrink-0"
                                             title="Generate"
                                         >
-                                            <img src="/generate.png" alt="Generate" class="w-7 h-7" />
+                                            <img src="/generate.png" alt="Generate" class="w-8 h-8" />
                                         </button>
                                     </div>
                                 </div>
