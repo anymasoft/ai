@@ -1,6 +1,6 @@
 ---
 import Container from "./Container.astro";
-import { getUserFromSession } from '../lib/auth';
+import { getUserFromSession, isAdmin } from '../lib/auth';
 
 // Получаем текущего пользователя из сессии
 const sessionToken = Astro.cookies.get('session_token')?.value;
@@ -8,6 +8,9 @@ const user = sessionToken ? getUserFromSession(sessionToken) : null;
 
 // Инициалы для аватара
 const initials = user ? user.name.split(' ').map(n => n.charAt(0)).join('').toUpperCase().slice(0, 2) : '?';
+
+// Проверяем, является ли пользователь админом
+const userIsAdmin = user ? isAdmin(user.email) : false;
 ---
 
 <header>
@@ -73,6 +76,14 @@ const initials = user ? user.name.split(' ').map(n => n.charAt(0)).join('').toUp
                                 >
                                     Billing
                                 </a>
+                                {userIsAdmin && (
+                                    <a
+                                        href="/admin"
+                                        class="block px-4 py-2 text-sm text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition font-semibold"
+                                    >
+                                        Admin Settings
+                                    </a>
+                                )}
                             </div>
 
                             <!-- Divider -->

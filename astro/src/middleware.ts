@@ -1,14 +1,18 @@
 import { defineMiddleware } from 'astro:middleware';
-import { getUserFromSession } from './lib/auth';
+import { getUserFromSession, isAdmin } from './lib/auth';
 
 export const onRequest = defineMiddleware((context, next) => {
   const pathname = context.url.pathname;
 
   // Защищённые маршруты - требуют аутентификации
-  const protectedRoutes = ['/app', '/account'];
+  const protectedRoutes = ['/app', '/account', '/admin'];
+
+  // Маршруты, требующие прав админа
+  const adminRoutes = ['/admin'];
 
   // Проверяем, является ли текущий маршрут защищённым
   const isProtected = protectedRoutes.some((route) => pathname.startsWith(route));
+  const isAdminRoute = adminRoutes.some((route) => pathname.startsWith(route));
 
   if (isProtected) {
     // Получаем токен сессии из cookies
@@ -23,6 +27,13 @@ export const onRequest = defineMiddleware((context, next) => {
 
     if (user) {
       console.log(`   ✅ Session valid for user: ${user.email}`);
+
+      // Проверяем права админа для админ-маршрутов
+      if (isAdminRoute && !isAdmin(user.email)) {
+        console.log(`   ❌ User is not admin`);
+        console.log(`   - Redirecting to /app`);
+        return context.redirect('/app');
+      }
     } else {
       console.log(`   ❌ Session invalid or not found`);
       console.log(`   - Redirecting to /sign-in`);
