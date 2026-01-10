@@ -20,24 +20,35 @@ export const GET: APIRoute = async (context) => {
   const state = context.url.searchParams.get('state');
   const error = context.url.searchParams.get('error');
 
+  console.log(`\n📨 OAuth Callback received:`);
+  console.log(`   - error: ${error || 'none'}`);
+  console.log(`   - code: ${code ? code.slice(0, 10) + '...' : 'missing'}`);
+  console.log(`   - state: ${state ? state.slice(0, 8) + '...' : 'missing'}`);
+
   // Проверяем, есть ли ошибка от Google
   if (error) {
-    console.error('Google OAuth error:', error);
+    console.error('❌ Google OAuth error:', error);
     return context.redirect('/sign-in?error=google_auth_failed');
   }
 
   // Проверяем code и state
   if (!code || !state) {
-    console.error('Missing code or state');
+    console.error('❌ Missing code or state');
     return context.redirect('/sign-in?error=missing_params');
   }
 
   // Получаем saved state из cookies
   const savedState = context.cookies.get('oauth_state')?.value;
+  console.log(`   - savedState from cookie: ${savedState ? savedState.slice(0, 8) + '...' : 'MISSING'}`);
+
   if (!savedState || savedState !== state) {
-    console.error('State mismatch');
+    console.error('❌ State mismatch!');
+    console.error(`   Expected: ${savedState}`);
+    console.error(`   Got: ${state}`);
     return context.redirect('/sign-in?error=state_mismatch');
   }
+
+  console.log(`✅ State verified successfully`);
 
   // Очищаем state cookie
   context.cookies.delete('oauth_state');

@@ -12,13 +12,18 @@ export const GET: APIRoute = async (context) => {
   // Генерируем state для защиты от CSRF атак
   const state = crypto.randomBytes(32).toString('hex');
 
-  // Сохраняем state в cookies (без шифрования, для простоты)
+  console.log(`🔐 OAuth state generated: ${state.slice(0, 8)}...`);
+
+  // Сохраняем state в cookies
   context.cookies.set('oauth_state', state, {
     httpOnly: true,
     secure: import.meta.env.PROD,
     sameSite: 'lax',
+    path: '/',
     maxAge: 60 * 10, // 10 минут
   });
+
+  console.log(`✅ OAuth state saved to cookie (maxAge: 600s)`);
 
   // Параметры для Google OAuth
   const params = new URLSearchParams({
