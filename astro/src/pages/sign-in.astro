@@ -1,87 +1,58 @@
 ---
+import MinimalLayout from '../layouts/MinimalLayout.astro';
+
 const error = Astro.url.searchParams.get('error');
 ---
 
-<!DOCTYPE html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Sign In - Video Reader AI</title>
-    <link rel="icon" type="image/png" href="/vr_logo_small.png" />
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Urbanist:wght@400;500;600;700&display=swap" rel="stylesheet" />
-  </head>
-  <body class="bg-white dark:bg-gray-950 m-0 p-0 overflow-hidden">
-    <div class="min-h-screen flex items-center justify-center p-4">
-      <div class="w-full max-w-md">
-        <!-- Logo & Title -->
-        <div class="text-center mb-8">
-          <div class="flex items-center justify-center gap-2 mb-4">
-            <img src="/vr_logo_small.png" alt="Video Reader AI" class="h-8 w-8" />
-            <span class="text-2xl font-bold text-gray-900 dark:text-white" style="font-family: 'Urbanist', sans-serif;">Video Reader AI</span>
-          </div>
-          <h1 class="text-3xl font-bold text-gray-900 dark:text-white mb-2" style="font-family: 'Urbanist', sans-serif;">Welcome back</h1>
-          <p class="text-gray-600 dark:text-gray-400" style="font-family: 'Urbanist', sans-serif;">Sign in with your Google account to continue</p>
+<MinimalLayout title="Sign In - Video Reader AI">
+  <main class="min-h-screen flex items-center justify-center p-4">
+    <div class="w-full max-w-md">
+      <!-- Logo & Title -->
+      <div class="text-center mb-8">
+        <div class="flex items-center justify-center gap-2 mb-4">
+          <img src="/vr_logo_small.png" alt="Video Reader AI" class="h-8 w-8" />
+          <span class="text-2xl font-bold text-gray-900 dark:text-white">Video Reader AI</span>
         </div>
-
-        <!-- Error message -->
-        {
-          error && (
-            <div class="mb-6 p-4 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800">
-              <p class="text-sm text-red-700 dark:text-red-400" style="font-family: 'Urbanist', sans-serif;">
-                {error === 'google_auth_failed' && 'Google authentication failed. Please try again.'}
-                {error === 'missing_params' && 'Missing required parameters. Please try again.'}
-                {error === 'state_mismatch' && 'Security check failed. Please try again.'}
-                {error === 'callback_failed' && 'Failed to complete authentication. Please try again.'}
-                {!['google_auth_failed', 'missing_params', 'state_mismatch', 'callback_failed'].includes(
-                  error
-                ) && 'An error occurred. Please try again.'}
-              </p>
-            </div>
-          )
-        }
-
-        <!-- Sign in card -->
-        <div class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-6 shadow-sm">
-          <a
-            href="/api/auth/google"
-            class="w-full flex items-center justify-center gap-3 px-4 py-3 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white font-semibold hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors duration-200 cursor-pointer"
-            style="font-family: 'Urbanist', sans-serif;"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="h-5 w-5">
-              <path
-                d="M12.48 10.92v3.28h7.84c-.24 1.84-.853 3.187-1.787 4.133-1.147 1.147-2.933 2.4-6.053 2.4-4.827 0-8.6-3.893-8.6-8.72s3.773-8.72 8.6-8.72c2.6 0 4.507 1.027 5.907 2.347l2.307-2.307C18.747 1.44 16.133 0 12.48 0 5.867 0 .307 5.387.307 12s5.56 12 12.173 12c3.573 0 6.267-1.173 8.373-3.36 2.16-2.16 2.84-5.213 2.84-7.667 0-.76-.053-1.467-.173-2.053H12.48z"
-                fill="currentColor"></path>
-            </svg>
-            Continue with Google
-          </a>
-        </div>
-
-        <!-- Footer -->
-        <p class="text-center text-sm text-gray-600 dark:text-gray-400 mt-6" style="font-family: 'Urbanist', sans-serif;">
-          Don't have an account? One will be created automatically when you sign in.
-        </p>
+        <h1 class="text-3xl font-bold text-gray-900 dark:text-white mb-2">Welcome back</h1>
+        <p class="text-gray-600 dark:text-gray-400">Sign in with your Google account to continue</p>
       </div>
+
+      <!-- Error message -->
+      {
+        error && (
+          <div class="mb-6 p-4 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800">
+            <p class="text-sm text-red-700 dark:text-red-400">
+              {error === 'google_auth_failed' && 'Google authentication failed. Please try again.'}
+              {error === 'missing_params' && 'Missing required parameters. Please try again.'}
+              {error === 'state_mismatch' && 'Security check failed. Please try again.'}
+              {error === 'callback_failed' && 'Failed to complete authentication. Please try again.'}
+              {!['google_auth_failed', 'missing_params', 'state_mismatch', 'callback_failed'].includes(
+                error
+              ) && 'An error occurred. Please try again.'}
+            </p>
+          </div>
+        )
+      }
+
+      <!-- Sign in card -->
+      <div class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-6 shadow-sm">
+        <a
+          href="/api/auth/google"
+          class="w-full flex items-center justify-center gap-3 px-4 py-3 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white font-semibold hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors duration-200 cursor-pointer"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="h-5 w-5">
+            <path
+              d="M12.48 10.92v3.28h7.84c-.24 1.84-.853 3.187-1.787 4.133-1.147 1.147-2.933 2.4-6.053 2.4-4.827 0-8.6-3.893-8.6-8.72s3.773-8.72 8.6-8.72c2.6 0 4.507 1.027 5.907 2.347l2.307-2.307C18.747 1.44 16.133 0 12.48 0 5.867 0 .307 5.387.307 12s5.56 12 12.173 12c3.573 0 6.267-1.173 8.373-3.36 2.16-2.16 2.84-5.213 2.84-7.667 0-.76-.053-1.467-.173-2.053H12.48z"
+              fill="currentColor"></path>
+          </svg>
+          Continue with Google
+        </a>
+      </div>
+
+      <!-- Footer -->
+      <p class="text-center text-sm text-gray-600 dark:text-gray-400 mt-6">
+        Don't have an account? One will be created automatically when you sign in.
+      </p>
     </div>
-
-    <style>
-      * {
-        margin: 0;
-        padding: 0;
-        box-sizing: border-box;
-      }
-
-      html, body {
-        width: 100%;
-        height: 100%;
-        overflow: hidden;
-      }
-
-      body {
-        font-family: 'Urbanist', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      }
-    </style>
-  </body>
-</html>
+  </main>
+</MinimalLayout>
