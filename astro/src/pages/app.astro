@@ -147,9 +147,83 @@ import AppLayout from '../layouts/AppLayout.astro';
             </div>
         </div>
     </div>
+
+    <!-- Toast Container -->
+    <div id="toast-container" class="fixed bottom-4 right-4 z-50 flex flex-col gap-3 pointer-events-none max-w-md"></div>
 </AppLayout>
 
 <script>
+    // ========== Toast Notifications (shadcn style) ==========
+    function showToast(message: string, type: 'error' | 'success' | 'info' = 'info', duration: number = 4000) {
+        const container = document.getElementById('toast-container') as HTMLElement;
+        if (!container) return;
+
+        // Create toast element
+        const toast = document.createElement('div');
+        toast.className = `
+            pointer-events-auto flex items-start gap-3 px-4 py-3 rounded-lg shadow-lg
+            border backdrop-blur-sm animate-in fade-in slide-in-from-bottom-4 duration-300
+            ${type === 'error' ? 'bg-red-50 dark:bg-red-950 border-red-200 dark:border-red-800' : ''}
+            ${type === 'success' ? 'bg-green-50 dark:bg-green-950 border-green-200 dark:border-green-800' : ''}
+            ${type === 'info' ? 'bg-blue-50 dark:bg-blue-950 border-blue-200 dark:border-blue-800' : ''}
+        `;
+
+        // Create icon
+        let icon = '';
+        if (type === 'error') {
+            icon = `<svg class="w-5 h-5 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/>
+            </svg>`;
+        } else if (type === 'success') {
+            icon = `<svg class="w-5 h-5 text-green-600 dark:text-green-400 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+            </svg>`;
+        } else {
+            icon = `<svg class="w-5 h-5 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm3.5-9c.83 0 1.5-.67 1.5-1.5S16.33 8 15.5 8 14 8.67 14 9.5s.67 1.5 1.5 1.5zm-7 0c.83 0 1.5-.67 1.5-1.5S9.33 8 8.5 8 7 8.67 7 9.5 7.67 11 8.5 11zm3.5 6.5c2.33 0 4.31-1.46 5.11-3.5H6.89c.8 2.04 2.78 3.5 5.11 3.5z"/>
+            </svg>`;
+        }
+
+        // Get text color based on type
+        const textColor = {
+            error: 'text-red-900 dark:text-red-100',
+            success: 'text-green-900 dark:text-green-100',
+            info: 'text-blue-900 dark:text-blue-100'
+        }[type];
+
+        toast.innerHTML = `
+            ${icon}
+            <div class="flex-1 min-w-0">
+                <p class="${textColor} text-sm font-medium break-words">${message}</p>
+            </div>
+            <button class="toast-close ml-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 flex-shrink-0">
+                <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
+                </svg>
+            </button>
+        `;
+
+        // Add close button listener
+        const closeBtn = toast.querySelector('.toast-close') as HTMLElement;
+        if (closeBtn) {
+            closeBtn.addEventListener('click', () => {
+                toast.classList.add('animate-out', 'fade-out', 'slide-out-to-bottom-4');
+                setTimeout(() => toast.remove(), 300);
+            });
+        }
+
+        // Add to container
+        container.appendChild(toast);
+
+        // Auto-remove after duration
+        setTimeout(() => {
+            if (toast.parentElement) {
+                toast.classList.add('animate-out', 'fade-out', 'slide-out-to-bottom-4');
+                setTimeout(() => toast.remove(), 300);
+            }
+        }, duration);
+    }
+
     // ========== Character Counter ==========
     const promptInput = document.getElementById('prompt') as HTMLTextAreaElement;
 
@@ -264,13 +338,16 @@ import AppLayout from '../layouts/AppLayout.astro';
                 generateIcon.classList.remove('hidden');
                 generateSpinner.classList.add('hidden');
                 generateBtn.disabled = false;
+
+                // Show success toast
+                showToast('✅ Видео готово! Нажми кнопку скачивания внизу', 'success', 5000);
             } else {
                 // Provide feedback about missing fields
                 let missingFields = [];
-                if (!hasImage) missingFields.push('image');
-                if (!hasPrompt) missingFields.push('prompt');
-                if (!hasDuration) missingFields.push('duration');
-                alert(`Заполните: ${missingFields.join(', ')}`);
+                if (!hasImage) missingFields.push('фото');
+                if (!hasPrompt) missingFields.push('описание');
+                if (!hasDuration) missingFields.push('длительность');
+                showToast(`⚠️ Заполните: ${missingFields.join(', ')}`, 'error');
             }
         });
     }
