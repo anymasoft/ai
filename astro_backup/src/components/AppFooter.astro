@@ -1,0 +1,42 @@
+---
+import Container from "./Container.astro";
+
+---
+
+<footer class="py-20 md:py-40">
+    <Container>
+      <div class="m-auto md:w-10/12 lg:w-8/12 xl:w-6/12">
+        <div class="flex flex-wrap items-center justify-between md:flex-nowrap">
+          <div
+            class="flex w-full justify-center space-x-12 text-gray-600 dark:text-gray-300 sm:w-7/12 md:justify-start"
+          >
+            <ul class="list-inside list-disc space-y-8">
+              <li><a href="/#features" class="transition hover:text-primary">Features</a></li>
+              <li><a href="/#solution" class="transition hover:text-primary">How it works</a></li>
+              <li><a href="/#reviews" class="transition hover:text-primary">Testimonials</a></li>
+              <li><a href="/#pricing" class="transition hover:text-primary">Pricing</a></li>
+            </ul>
+  
+          </div>
+          <div
+            class="m-auto mt-16 w-10/12 space-y-6 text-center sm:mt-auto sm:w-5/12 sm:text-left"
+          >
+            <span class="block text-gray-500 dark:text-gray-400"
+              >AI-powered YouTube subtitle translation for global content</span
+            >
+  
+            <span class="block text-gray-500 dark:text-gray-400">© 2025 Video Reader AI. All rights reserved.</span>
+  
+            <span class="flex justify-between text-gray-600 dark:text-white">
+              <a href="https://beem.ink/terms" target="_blank" rel="noopener noreferrer" class="font-medium">Terms of Service</a>
+              <a href="https://beem.ink/privacy" target="_blank" rel="noopener noreferrer" class="font-medium">Privacy Policy</a>
+            </span>
+  
+            <span class="block text-gray-500 dark:text-gray-400"
+              >Need help? <a href="#" class="font-semibold text-gray-600 dark:text-white"> Contact Us</a></span
+            >
+          </div>
+        </div>
+      </div>
+    </Container>
+</footer>
