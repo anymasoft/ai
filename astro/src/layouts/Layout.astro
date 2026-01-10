@@ -1,8 +1,13 @@
 ---
-import { AstroFont } from 'astro-font';
 import AppFooter from "../components/AppFooter.astro";
 import AppHeader from "../components/AppHeader.astro";
 import "./../tailus.css"
+
+interface Props {
+  title?: string;
+}
+
+const { title = "Video Reader AI - YouTube Subtitle Translation" } = Astro.props as Props;
 ---
 
 <!DOCTYPE html>
@@ -13,21 +18,11 @@ import "./../tailus.css"
         <link rel="icon" type="image/png" href="/vr_logo_small.png" />
         <meta name="generator" content={Astro.generator} />
         <meta name="description" content="Video Reader AI - Instant AI-powered subtitle translation for YouTube. Watch videos in any language with real-time translation." />
-        <title>Video Reader AI - YouTube Subtitle Translation</title>
+        <title>{title}</title>
 
-        <AstroFont
-            config={[
-                {
-                    src: [],
-                    name: "Urbanist",
-                    preload: true,
-                    display: "swap",
-                    selector: "html",
-                    fallback: "sans-serif",
-                    googleFontsURL: 'https://fonts.googleapis.com/css2?family=Urbanist:wght@400;500;600;700&display=swap',
-                },
-            ]}
-        />
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+        <link href="https://fonts.googleapis.com/css2?family=Urbanist:wght@400;500;600;700&display=swap" rel="stylesheet" />
     </head>
     <body class="bg-white dark:bg-gray-950">
         <AppHeader />
