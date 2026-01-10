@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="24" height="24">
+  <defs>
+    <linearGradient id="sparkGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#3B82F6;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#A855F7;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  <path d="M13 2l3.293 6.707L23 9.414l-5.707 5.293L20.586 21 13 17.414 5.414 21l2.293-6.293L2 9.414l6.707-.707L13 2z" fill="url(#sparkGrad)"/>
+</svg>
