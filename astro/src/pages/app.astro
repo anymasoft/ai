@@ -73,48 +73,45 @@ import AppLayout from '../layouts/AppLayout.astro';
                             </button>
 
                             <!-- PROMPT BAR - Floating Control Panel (CENTERED, BOTTOM) -->
-                            <div class="absolute bottom-6 left-1/2 -translate-x-1/2 z-30 pointer-events-none">
+                            <div class="absolute bottom-6 left-1/2 -translate-x-1/2 z-30 pointer-events-none px-4 w-full">
 
-                                <!-- Prompt Control Container (wide like Anthropic) -->
-                                <div class="pointer-events-auto relative" style="max-width: min(90%, 700px); width: 100%">
+                                <!-- Input Container (Full Width Minus Padding) -->
+                                <div class="pointer-events-auto relative">
 
-                                    <!-- Input + Generate Button Inside -->
+                                    <!-- Input + Buttons Inside -->
                                     <div class="relative">
                                         <textarea
                                             id="prompt"
                                             placeholder="Describe your video..."
-                                            class="w-full px-4 pr-12 py-3 border border-gray-200 dark:border-gray-600 rounded-2xl bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none transition duration-200 resize-none text-sm shadow-lg"
+                                            class="w-full px-16 py-3 border border-gray-200 dark:border-gray-600 rounded-2xl bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none transition duration-200 resize-none text-sm shadow-lg"
                                             rows="2"
                                         ></textarea>
 
-                                        <!-- Generate Button - INSIDE Input (right side) -->
+                                        <!-- Duration Buttons - INSIDE textarea (LEFT BOTTOM) -->
+                                        <div class="absolute left-3 bottom-2 flex gap-1 pointer-events-auto">
+                                            <button
+                                                type="button"
+                                                data-duration="6"
+                                                class="duration-btn px-2.5 py-1 rounded-full text-xs font-semibold border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 hover:border-primary hover:text-primary transition shadow-sm hover:shadow-md active:scale-95 duration-150"
+                                            >
+                                                6s
+                                            </button>
+                                            <button
+                                                type="button"
+                                                data-duration="10"
+                                                class="duration-btn px-2.5 py-1 rounded-full text-xs font-semibold border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 hover:border-primary hover:text-primary transition shadow-sm hover:shadow-md active:scale-95 duration-150"
+                                            >
+                                                10s
+                                            </button>
+                                        </div>
+
+                                        <!-- Generate Button - INSIDE Input (RIGHT) -->
                                         <button
                                             id="generate-btn"
                                             class="absolute right-3 top-1/2 -translate-y-1/2 p-2 hover:opacity-80 active:scale-95 transition-all duration-150 flex-shrink-0"
                                             title="Generate"
                                         >
                                             <img src="/generate.png" alt="Generate" class="w-7 h-7" />
-                                        </button>
-                                    </div>
-
-                                    <!-- Duration Buttons - Absolutely Positioned Below Input -->
-                                    <div
-                                        class="absolute left-3 flex gap-1.5 pointer-events-auto"
-                                        style="top: 100%; margin-top: 8px"
-                                    >
-                                        <button
-                                            type="button"
-                                            data-duration="6"
-                                            class="duration-btn px-3.5 py-1.5 rounded-full text-xs font-semibold border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 hover:border-primary hover:text-primary transition shadow-sm hover:shadow-md active:scale-95 duration-150"
-                                        >
-                                            6s
-                                        </button>
-                                        <button
-                                            type="button"
-                                            data-duration="10"
-                                            class="duration-btn px-3.5 py-1.5 rounded-full text-xs font-semibold border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 hover:border-primary hover:text-primary transition shadow-sm hover:shadow-md active:scale-95 duration-150"
-                                        >
-                                            10s
                                         </button>
                                     </div>
                                 </div>
