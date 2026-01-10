@@ -141,8 +141,8 @@ import AppLayout from '../layouts/AppLayout.astro';
                                                 </div>
                                             </button>
 
-                                            <!-- Tooltip (shown when disabled) -->
-                                            <div id="generate-tooltip" class="absolute bottom-full right-0 mb-3 px-3 py-2 bg-gray-900 dark:bg-gray-950 text-white text-xs rounded-lg shadow-lg border border-gray-700 dark:border-gray-800 whitespace-nowrap z-50 pointer-events-none">
+                                            <!-- Tooltip (shown on hover when disabled) -->
+                                            <div id="generate-tooltip" class="hidden absolute bottom-full right-0 mb-3 px-3 py-2 bg-gray-900 dark:bg-gray-950 text-white text-xs rounded-lg shadow-lg border border-gray-700 dark:border-gray-800 whitespace-nowrap z-50 pointer-events-none">
                                                 Выберите фотографию, длительность, введите описание видео
                                                 <div class="absolute top-full right-2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-l-transparent border-r-transparent border-t-gray-900 dark:border-t-gray-950"></div>
                                             </div>
@@ -170,19 +170,31 @@ import AppLayout from '../layouts/AppLayout.astro';
         const hasPrompt = promptInput?.value.trim().length > 0;
         const hasDuration = selectedDuration !== null;
         const hasImage = selectedImage !== null;
-        const tooltip = document.getElementById('generate-tooltip') as HTMLElement;
 
         if (generateBtn) {
             if (hasPrompt && hasDuration && hasImage) {
                 generateBtn.disabled = false;
                 generateBtn.classList.remove('opacity-50', 'cursor-not-allowed');
-                if (tooltip) tooltip.classList.add('hidden');
             } else {
                 generateBtn.disabled = true;
                 generateBtn.classList.add('opacity-50', 'cursor-not-allowed');
-                if (tooltip) tooltip.classList.remove('hidden');
             }
         }
+    }
+
+    // ========== Tooltip Hover Management ==========
+    const tooltip = document.getElementById('generate-tooltip') as HTMLElement;
+
+    if (generateBtn && tooltip) {
+        generateBtn.addEventListener('mouseenter', () => {
+            if (generateBtn.disabled) {
+                tooltip.classList.remove('hidden');
+            }
+        });
+
+        generateBtn.addEventListener('mouseleave', () => {
+            tooltip.classList.add('hidden');
+        });
     }
 
     // Character Counter + Button Validation
@@ -356,17 +368,20 @@ import AppLayout from '../layouts/AppLayout.astro';
     }
 
     #generate-tooltip {
-        transition: opacity 0.2s ease, transform 0.2s ease, visibility 0.2s ease;
-    }
-
-    #generate-tooltip:not(.hidden) {
-        animation: tooltip-fade-in 0.2s ease-out;
+        transition: opacity 0.2s ease, transform 0.2s ease;
+        opacity: 1;
+        transform: translateY(0);
+        pointer-events: auto;
     }
 
     #generate-tooltip.hidden {
         opacity: 0;
         transform: translateY(4px);
-        visibility: hidden;
+        display: none;
         pointer-events: none;
+    }
+
+    #generate-tooltip:not(.hidden) {
+        animation: tooltip-fade-in 0.2s ease-out;
     }
 </style>
