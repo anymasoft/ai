@@ -1,0 +1,70 @@
+---
+import { getUserFromSession, isAdmin } from '../lib/auth';
+import AppLayout from '../layouts/AppLayout.astro';
+
+// Эта страница должна быть динамичной для работы с cookies
+export const prerender = false;
+
+// Получаем текущего пользователя из сессии
+const sessionToken = Astro.cookies.get('session_token')?.value;
+const user = sessionToken ? getUserFromSession(sessionToken) : null;
+
+// Если пользователь не авторизован, редиректим на sign-in
+if (!user) {
+  return Astro.redirect('/sign-in');
+}
+
+// Проверяем, является ли пользователь админом
+if (!isAdmin(user.email)) {
+  return Astro.redirect('/app');
+}
+---
+
+<AppLayout title="Admin Settings - Video Reader AI">
+  <main class="flex-1 overflow-auto">
+    <div class="max-w-4xl mx-auto p-6 md:p-10">
+      <!-- Header -->
+      <div class="mb-8">
+        <h1 class="text-3xl font-bold text-gray-900 dark:text-white mb-2">Admin Settings</h1>
+        <p class="text-gray-600 dark:text-gray-400">Manage system and user data</p>
+      </div>
+
+      <!-- Admin Info Card -->
+      <div class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-6 mb-6">
+        <div class="flex items-start gap-4 mb-6">
+          <div class="w-16 h-16 rounded-full bg-gradient-to-br from-purple-500 to-blue-600 flex items-center justify-center text-white font-bold text-lg">
+            A
+          </div>
+          <div class="flex-1">
+            <h2 class="text-2xl font-bold text-gray-900 dark:text-white mb-1">Administrator</h2>
+            <p class="text-gray-600 dark:text-gray-400">{user.email}</p>
+          </div>
+        </div>
+
+        <!-- Admin Features -->
+        <div class="space-y-4">
+          <div class="p-4 rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800">
+            <h3 class="font-semibold text-blue-900 dark:text-blue-300 mb-2">👥 User Management</h3>
+            <p class="text-sm text-blue-800 dark:text-blue-400">View and manage all users in the system</p>
+          </div>
+
+          <div class="p-4 rounded-lg bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800">
+            <h3 class="font-semibold text-green-900 dark:text-green-300 mb-2">💰 Credits Management</h3>
+            <p class="text-sm text-green-800 dark:text-green-400">Manage user credits and subscription plans</p>
+          </div>
+
+          <div class="p-4 rounded-lg bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800">
+            <h3 class="font-semibold text-purple-900 dark:text-purple-300 mb-2">⚙️ System Settings</h3>
+            <p class="text-sm text-purple-800 dark:text-purple-400">Configure global application settings</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Coming Soon Notice -->
+      <div class="bg-yellow-50 dark:bg-yellow-900/20 rounded-2xl border border-yellow-200 dark:border-yellow-800 p-6">
+        <h3 class="text-lg font-semibold text-yellow-900 dark:text-yellow-300 mb-2">🚀 Coming Soon</h3>
+        <p class="text-sm text-yellow-800 dark:text-yellow-400">Admin panel features are being developed. More management tools will be available soon.</p>
+      </div>
+    </div>
+  </main>
+</AppLayout>
