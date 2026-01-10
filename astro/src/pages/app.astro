@@ -142,7 +142,7 @@ import AppLayout from '../layouts/AppLayout.astro';
 
                                         <!-- Tooltip (shown on hover when disabled) -->
                                         <div id="generate-tooltip" class="hidden absolute bottom-full right-3 mb-3 px-3 py-2 bg-gray-900 dark:bg-gray-950 text-white text-xs rounded-lg shadow-lg border border-gray-700 dark:border-gray-800 whitespace-nowrap z-50 pointer-events-none">
-                                            Выберите фотографию, длительность, введите описание видео
+                                            Выберите фотографию, введите описание видео
                                             <div class="absolute top-full right-2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-l-transparent border-r-transparent border-t-gray-900 dark:border-t-gray-950"></div>
                                         </div>
                                     </div>
@@ -317,6 +317,12 @@ import AppLayout from '../layouts/AppLayout.astro';
             link.click();
             document.body.removeChild(link);
         });
+    }
+
+    // Set default duration to 6s on page load
+    const firstDurationBtn = document.querySelector('[data-duration="6"]') as HTMLButtonElement;
+    if (firstDurationBtn) {
+        firstDurationBtn.click();
     }
 
     // Initialize button state on page load
