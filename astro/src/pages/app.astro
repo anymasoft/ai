@@ -102,23 +102,23 @@ import AppLayout from '../layouts/AppLayout.astro';
                                         <textarea
                                             id="prompt"
                                             placeholder="Describe your video..."
-                                            class="w-full px-16 py-3 border border-white/30 rounded-2xl bg-white/20 backdrop-blur-md text-gray-900 dark:text-white placeholder:text-gray-500 dark:placeholder:text-gray-400 focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none transition duration-200 resize-none text-sm shadow-lg"
+                                            class="w-full px-16 py-3 border border-white/30 rounded-2xl bg-white/30 backdrop-blur-md text-gray-900 dark:text-white placeholder:text-gray-500 dark:placeholder:text-gray-400 focus:outline-none transition duration-200 resize-none text-sm shadow-lg"
                                             rows="2"
                                         ></textarea>
 
                                         <!-- Duration Buttons - INSIDE textarea (LEFT BOTTOM) -->
-                                        <div class="absolute left-3 bottom-3 flex flex-col gap-1 pointer-events-auto pb-2">
+                                        <div class="absolute left-3 top-3 flex flex-col gap-1 pointer-events-auto">
                                             <button
                                                 type="button"
                                                 data-duration="6"
-                                                class="duration-btn px-2.5 py-1 rounded-full text-xs font-semibold border border-white/30 text-gray-700 dark:text-gray-300 bg-white/20 backdrop-blur-md hover:border-primary hover:text-primary transition shadow-sm hover:shadow-md active:scale-95 duration-150"
+                                                class="duration-btn px-2.5 py-1 rounded-full text-xs font-semibold border border-white/30 text-gray-700 dark:text-gray-300 bg-white/20 backdrop-blur-md hover:bg-white/40 transition shadow-sm hover:shadow-md active:scale-95 duration-150"
                                             >
                                                 6s
                                             </button>
                                             <button
                                                 type="button"
                                                 data-duration="10"
-                                                class="duration-btn px-2.5 py-1 rounded-full text-xs font-semibold border border-white/30 text-gray-700 dark:text-gray-300 bg-white/20 backdrop-blur-md hover:border-primary hover:text-primary transition shadow-sm hover:shadow-md active:scale-95 duration-150"
+                                                class="duration-btn px-2.5 py-1 rounded-full text-xs font-semibold border border-white/30 text-gray-700 dark:text-gray-300 bg-white/20 backdrop-blur-md hover:bg-white/40 transition shadow-sm hover:shadow-md active:scale-95 duration-150"
                                             >
                                                 10s
                                             </button>
@@ -127,8 +127,9 @@ import AppLayout from '../layouts/AppLayout.astro';
                                         <!-- Generate Button - INSIDE Input (RIGHT) -->
                                         <button
                                             id="generate-btn"
-                                            class="absolute right-3 top-1/2 -translate-y-1/2 p-2.5 hover:opacity-80 active:scale-95 transition-all duration-150 flex-shrink-0 disabled:opacity-50 disabled:cursor-not-allowed bg-white/20 backdrop-blur-md rounded-full border border-white/30"
+                                            class="absolute right-3 top-1/2 -translate-y-1/2 p-2.5 hover:opacity-80 active:scale-95 transition-all duration-150 flex-shrink-0 disabled:opacity-50 disabled:cursor-not-allowed bg-white/20 backdrop-blur-md rounded-full border border-white/30 opacity-50 cursor-not-allowed"
                                             title="Generate"
+                                            disabled
                                         >
                                             <img id="generate-icon" src="/generate.png" alt="Generate" class="w-8 h-8" />
                                             <div id="generate-spinner" class="hidden animate-spin absolute inset-0 flex items-center justify-center">
@@ -147,69 +148,33 @@ import AppLayout from '../layouts/AppLayout.astro';
             </div>
         </div>
     </div>
-
-    <!-- Toast Container -->
-    <div id="toast-container" class="fixed top-4 right-4 z-50 flex flex-col gap-2 pointer-events-none max-w-md"></div>
 </AppLayout>
 
 <script>
-    // ========== Toast Notifications (shadcn style) ==========
-    function showToast(message: string, type: 'error' | 'success' | 'info' = 'info', duration: number = 4000) {
-        const container = document.getElementById('toast-container') as HTMLElement;
-        if (!container) return;
+    // ========== Validation and Button State ==========
+    const generateBtn = document.getElementById('generate-btn') as HTMLButtonElement;
+    const promptInput = document.getElementById('prompt') as HTMLTextAreaElement;
+    const imageUpload = document.getElementById('image-upload') as HTMLInputElement;
+    let selectedDuration: string | null = null;
+    let selectedImage: File | null = null;
 
-        // Create toast element
-        const toast = document.createElement('div');
-        toast.className = `
-            pointer-events-auto flex items-start gap-3 px-4 py-3 rounded-lg shadow-lg
-            border backdrop-blur-sm animate-in fade-in slide-in-from-top-4 duration-500
-            ${type === 'error' ? 'bg-red-50 dark:bg-red-950 border-red-200 dark:border-red-800' : ''}
-            ${type === 'success' ? 'bg-green-50 dark:bg-green-950 border-green-200 dark:border-green-800' : ''}
-            ${type === 'info' ? 'bg-blue-50 dark:bg-blue-950 border-blue-200 dark:border-blue-800' : ''}
-        `;
+    function updateGenerateButtonState() {
+        const hasPrompt = promptInput?.value.trim().length > 0;
+        const hasDuration = selectedDuration !== null;
+        const hasImage = selectedImage !== null;
 
-        // Get text color based on type
-        const textColor = {
-            error: 'text-red-900 dark:text-red-100',
-            success: 'text-green-900 dark:text-green-100',
-            info: 'text-blue-900 dark:text-blue-100'
-        }[type];
-
-        toast.innerHTML = `
-            <div class="flex-1 min-w-0">
-                <p class="${textColor} text-sm font-medium break-words">${message}</p>
-            </div>
-            <button class="toast-close ml-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 flex-shrink-0">
-                <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-                    <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
-                </svg>
-            </button>
-        `;
-
-        // Add close button listener
-        const closeBtn = toast.querySelector('.toast-close') as HTMLElement;
-        if (closeBtn) {
-            closeBtn.addEventListener('click', () => {
-                toast.classList.add('animate-out', 'fade-out', 'slide-out-to-top-4', 'duration-500');
-                setTimeout(() => toast.remove(), 500);
-            });
-        }
-
-        // Add to container
-        container.appendChild(toast);
-
-        // Auto-remove after duration
-        setTimeout(() => {
-            if (toast.parentElement) {
-                toast.classList.add('animate-out', 'fade-out', 'slide-out-to-top-4', 'duration-500');
-                setTimeout(() => toast.remove(), 500);
+        if (generateBtn) {
+            if (hasPrompt && hasDuration && hasImage) {
+                generateBtn.disabled = false;
+                generateBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+            } else {
+                generateBtn.disabled = true;
+                generateBtn.classList.add('opacity-50', 'cursor-not-allowed');
             }
-        }, duration);
+        }
     }
 
-    // ========== Character Counter ==========
-    const promptInput = document.getElementById('prompt') as HTMLTextAreaElement;
-
+    // Character Counter + Button Validation
     if (promptInput) {
         promptInput.addEventListener('input', () => {
             const count = promptInput.value.length;
@@ -218,12 +183,12 @@ import AppLayout from '../layouts/AppLayout.astro';
             if (count > 500) {
                 promptInput.value = promptInput.value.substring(0, 500);
             }
+            updateGenerateButtonState();
         });
     }
 
     // ========== Duration Selection ==========
     const durationBtns = document.querySelectorAll('.duration-btn') as NodeListOf<HTMLButtonElement>;
-    let selectedDuration: string | null = null;
 
     durationBtns.forEach(btn => {
         btn.addEventListener('click', () => {
@@ -237,11 +202,11 @@ import AppLayout from '../layouts/AppLayout.astro';
             btn.classList.remove('border-white/30', 'text-gray-700', 'dark:text-gray-300', 'bg-white/20');
             btn.classList.add('bg-primary', 'text-white', 'border-primary');
             selectedDuration = btn.dataset.duration || null;
+            updateGenerateButtonState();
         });
     });
 
     // ========== Image Upload ==========
-    const imageUpload = document.getElementById('image-upload') as HTMLInputElement;
     const imagePreview = document.getElementById('image-preview') as HTMLImageElement;
     const uploadPlaceholder = document.getElementById('upload-placeholder') as HTMLElement;
 
@@ -249,11 +214,13 @@ import AppLayout from '../layouts/AppLayout.astro';
         imageUpload.addEventListener('change', (e) => {
             const file = (e.target as HTMLInputElement).files?.[0];
             if (file) {
+                selectedImage = file;
                 const reader = new FileReader();
                 reader.onload = (event) => {
                     imagePreview.src = event.target?.result as string;
                     imagePreview.classList.remove('hidden');
                     uploadPlaceholder.classList.add('hidden');
+                    updateGenerateButtonState();
                 };
                 reader.readAsDataURL(file);
             }
@@ -285,7 +252,6 @@ import AppLayout from '../layouts/AppLayout.astro';
     }
 
     // ========== Generate Button ==========
-    const generateBtn = document.getElementById('generate-btn') as HTMLButtonElement;
     const generateIcon = document.getElementById('generate-icon') as HTMLImageElement;
     const generateSpinner = document.getElementById('generate-spinner') as HTMLElement;
     const videoPlaceholder = document.getElementById('video-placeholder') as HTMLElement;
@@ -295,43 +261,27 @@ import AppLayout from '../layouts/AppLayout.astro';
 
     if (generateBtn) {
         generateBtn.addEventListener('click', async () => {
-            const hasImage = imagePreview && !imagePreview.classList.contains('hidden');
-            const hasPrompt = promptInput && promptInput.value.trim().length > 0;
-            const hasDuration = selectedDuration !== null;
+            // Disable button and show loading state
+            generateBtn.disabled = true;
+            generateIcon.classList.add('hidden');
+            generateSpinner.classList.remove('hidden');
 
-            if (hasImage && hasPrompt && hasDuration) {
-                // Disable button and show loading state
-                generateBtn.disabled = true;
-                generateIcon.classList.add('hidden');
-                generateSpinner.classList.remove('hidden');
+            // Hide placeholder, show loading indicator
+            videoPlaceholder.classList.add('hidden');
+            videoLoading.classList.remove('hidden');
 
-                // Hide placeholder, show loading indicator
-                videoPlaceholder.classList.add('hidden');
-                videoLoading.classList.remove('hidden');
+            // Simulate video generation with 3 second delay
+            await new Promise(resolve => setTimeout(resolve, 3000));
 
-                // Simulate video generation with 3 second delay
-                await new Promise(resolve => setTimeout(resolve, 3000));
+            // Hide loading, show video
+            videoLoading.classList.add('hidden');
+            videoOutput.classList.remove('hidden');
+            downloadBtn.classList.remove('hidden');
 
-                // Hide loading, show video
-                videoLoading.classList.add('hidden');
-                videoOutput.classList.remove('hidden');
-                downloadBtn.classList.remove('hidden');
-
-                // Re-enable button and reset spinner
-                generateIcon.classList.remove('hidden');
-                generateSpinner.classList.add('hidden');
-                generateBtn.disabled = false;
-
-                // Show success toast
-                showToast('Видео готово! Нажми кнопку скачивания внизу', 'success', 5000);
-            } else {
-                // Provide feedback about missing fields
-                let missingFields = [];
-                if (!hasImage) missingFields.push('фото');
-                if (!hasPrompt) missingFields.push('описание');
-                if (!hasDuration) missingFields.push('длительность');
-                showToast(`Заполните: ${missingFields.join(', ')}`, 'error');
-            }
+            // Re-enable button and reset spinner
+            generateIcon.classList.remove('hidden');
+            generateSpinner.classList.add('hidden');
+            updateGenerateButtonState();
         });
     }
 
@@ -347,4 +297,40 @@ import AppLayout from '../layouts/AppLayout.astro';
             document.body.removeChild(link);
         });
     }
+
+    // Initialize button state on page load
+    updateGenerateButtonState();
 </script>
+
+<style>
+    @keyframes neon-glow {
+        0%, 100% {
+            box-shadow:
+                0 0 8px 0 rgba(59, 130, 246, 0.4),
+                0 0 16px 0 rgba(59, 130, 246, 0.2),
+                inset 0 0 8px 0 rgba(59, 130, 246, 0.1);
+        }
+        50% {
+            box-shadow:
+                0 0 16px 0 rgba(59, 130, 246, 0.7),
+                0 0 32px 0 rgba(59, 130, 246, 0.5),
+                inset 0 0 12px 0 rgba(59, 130, 246, 0.25);
+        }
+    }
+
+    #prompt {
+        background: rgba(255, 255, 255, 0.3);
+    }
+
+    #prompt:hover {
+        animation: neon-glow 2s ease-in-out infinite;
+        border-color: rgb(59, 130, 246);
+        background: rgba(255, 255, 255, 0.4);
+    }
+
+    #prompt:focus {
+        animation: neon-glow 2s ease-in-out infinite;
+        border-color: rgb(59, 130, 246);
+        background: rgba(255, 255, 255, 0.4);
+    }
+</style>
