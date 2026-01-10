@@ -120,7 +120,7 @@ import AppLayout from '../layouts/AppLayout.astro';
                                         <textarea
                                             id="prompt"
                                             placeholder="Describe your video..."
-                                            class="w-full px-12 py-3 border border-gray-300 dark:border-gray-600 rounded-2xl bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder:text-gray-500 dark:placeholder:text-gray-400 focus:outline-none transition duration-200 resize-none text-sm shadow-lg"
+                                            class="w-full px-12 py-3 border rounded-2xl bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder:text-gray-500 dark:placeholder:text-gray-400 focus:outline-none transition duration-200 resize-none text-sm shadow-lg"
                                             rows="2"
                                         ></textarea>
 
@@ -316,6 +316,11 @@ import AppLayout from '../layouts/AppLayout.astro';
                 0 0 32px 0 rgba(59, 130, 246, 0.5),
                 inset 0 0 12px 0 rgba(59, 130, 246, 0.25);
         }
+    }
+
+    #prompt {
+        border-color: rgba(59, 130, 246, 0.3);
+        transition: border-color 0.3s ease;
     }
 
     #prompt:hover {
