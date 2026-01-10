@@ -1,206 +1,152 @@
 ---
 import Container from '../components/Container.astro';
-import Layout from '../layouts/Layout.astro';
+import AppLayout from '../layouts/AppLayout.astro';
 ---
 
-<Layout title="Create Video - Video Reader AI">
-    <main class="min-h-screen bg-white dark:bg-gray-950 pt-20 pb-20">
-        <Container>
-            <div class="mb-12">
-                <h1 class="text-4xl md:text-5xl font-bold text-gray-900 dark:text-white mb-3">
-                    Generate Your Video
-                </h1>
-                <p class="text-lg text-gray-600 dark:text-gray-300">
-                    Upload an image, describe your vision, and let AI create the magic
-                </p>
-            </div>
-
-            <div class="grid lg:grid-cols-3 gap-8 mb-12">
-                <!-- Left Column: Form -->
-                <div class="lg:col-span-1">
-                    <div class="space-y-6">
+<AppLayout title="Create Video - Video Reader AI">
+    <div class="w-full h-full flex flex-col overflow-hidden">
+        <!-- Scrollable Content Area -->
+        <div class="flex-1 overflow-y-auto">
+            <div class="p-6 md:p-8 h-full">
+                <div class="grid lg:grid-cols-3 gap-8 h-full max-w-7xl mx-auto">
+                    <!-- Left Column: Form -->
+                    <div class="lg:col-span-1 flex flex-col space-y-4">
                         <!-- Upload Card -->
-                        <div class="border border-gray-100 dark:border-gray-700 rounded-3xl p-6 bg-white dark:bg-gray-800">
-                            <label class="block text-sm font-semibold text-gray-900 dark:text-white mb-4">
+                        <div class="border border-gray-100 dark:border-gray-700 rounded-3xl p-4 bg-white dark:bg-gray-800">
+                            <label class="block text-sm font-semibold text-gray-900 dark:text-white mb-3">
                                 Upload Image
                             </label>
-                            <div class="relative border-2 border-dashed border-gray-200 dark:border-gray-600 rounded-2xl p-8 text-center hover:border-primary transition cursor-pointer group">
+                            <div class="relative border-2 border-dashed border-gray-200 dark:border-gray-600 rounded-2xl p-6 text-center hover:border-primary transition cursor-pointer group h-40 flex items-center justify-center">
                                 <input
                                     type="file"
                                     accept="image/*"
                                     class="absolute inset-0 opacity-0 cursor-pointer"
                                     id="image-upload"
                                 />
-                                <div class="space-y-2">
+                                <div id="upload-placeholder" class="space-y-2 text-center">
                                     <svg class="w-8 h-8 mx-auto text-gray-400 group-hover:text-primary transition" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
                                     </svg>
                                     <div>
-                                        <p class="text-sm font-medium text-gray-700 dark:text-gray-300">
+                                        <p class="text-xs font-medium text-gray-700 dark:text-gray-300">
                                             Drag image here
                                         </p>
-                                        <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                                        <p class="text-xs text-gray-500 dark:text-gray-400">
                                             or click to select
                                         </p>
                                     </div>
                                 </div>
                                 <img
                                     id="image-preview"
-                                    class="hidden mt-4 w-full h-24 object-cover rounded-lg"
+                                    class="hidden max-h-32 max-w-full object-contain"
                                     alt="Preview"
                                 />
                             </div>
                         </div>
 
                         <!-- Prompt Card -->
-                        <div class="border border-gray-100 dark:border-gray-700 rounded-3xl p-6 bg-white dark:bg-gray-800">
-                            <label class="block text-sm font-semibold text-gray-900 dark:text-white mb-4">
+                        <div class="border border-gray-100 dark:border-gray-700 rounded-3xl p-4 bg-white dark:bg-gray-800 flex flex-col">
+                            <label class="block text-sm font-semibold text-gray-900 dark:text-white mb-2">
                                 Describe Your Video
                             </label>
                             <textarea
                                 id="prompt"
                                 placeholder="E.g., 'Create a dancing video of person walking on beach with sunset'"
-                                class="w-full px-4 py-3 border border-gray-100 dark:border-gray-700 rounded-2xl bg-white dark:bg-gray-900 text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none transition duration-200 resize-none"
-                                rows="4"
+                                class="flex-1 min-h-24 px-3 py-2 border border-gray-100 dark:border-gray-700 rounded-2xl bg-white dark:bg-gray-900 text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none transition duration-200 resize-none text-sm"
                             ></textarea>
                             <p class="text-xs text-gray-500 dark:text-gray-400 mt-2">
                                 <span id="char-count">0</span>/500 characters
                             </p>
+
+                            <!-- Generate Button - Inside Prompt Card -->
+                            <button id="generate-btn" class="mt-3 relative flex h-9 w-full items-center justify-center gap-2 before:absolute before:inset-0 before:rounded-full before:bg-primary before:transition before:duration-300 hover:before:scale-105 active:before:scale-95">
+                                <svg class="relative w-4 h-4 text-white" fill="currentColor" viewBox="0 0 24 24">
+                                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+                                </svg>
+                                <span class="relative text-sm font-semibold text-white">Generate</span>
+                            </button>
                         </div>
 
                         <!-- Duration Card -->
-                        <div class="border border-gray-100 dark:border-gray-700 rounded-3xl p-6 bg-white dark:bg-gray-800">
-                            <label class="block text-sm font-semibold text-gray-900 dark:text-white mb-4">
+                        <div class="border border-gray-100 dark:border-gray-700 rounded-3xl p-4 bg-white dark:bg-gray-800">
+                            <label class="block text-sm font-semibold text-gray-900 dark:text-white mb-3">
                                 Duration
                             </label>
                             <div class="grid grid-cols-4 gap-2">
                                 <button
                                     type="button"
                                     data-duration="5"
-                                    class="duration-btn py-2 px-3 rounded-full text-sm font-medium border border-gray-100 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:border-primary hover:text-primary transition"
+                                    class="duration-btn py-2 px-2 rounded-full text-sm font-medium border border-gray-100 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:border-primary hover:text-primary transition"
                                 >
                                     5s
                                 </button>
                                 <button
                                     type="button"
                                     data-duration="10"
-                                    class="duration-btn py-2 px-3 rounded-full text-sm font-medium border border-gray-100 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:border-primary hover:text-primary transition"
+                                    class="duration-btn py-2 px-2 rounded-full text-sm font-medium border border-gray-100 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:border-primary hover:text-primary transition"
                                 >
                                     10s
                                 </button>
                                 <button
                                     type="button"
                                     data-duration="15"
-                                    class="duration-btn py-2 px-3 rounded-full text-sm font-medium border border-gray-100 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:border-primary hover:text-primary transition"
+                                    class="duration-btn py-2 px-2 rounded-full text-sm font-medium border border-gray-100 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:border-primary hover:text-primary transition"
                                 >
                                     15s
                                 </button>
                                 <button
                                     type="button"
                                     data-duration="30"
-                                    class="duration-btn py-2 px-3 rounded-full text-sm font-medium border border-gray-100 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:border-primary hover:text-primary transition"
+                                    class="duration-btn py-2 px-2 rounded-full text-sm font-medium border border-gray-100 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:border-primary hover:text-primary transition"
                                 >
                                     30s
                                 </button>
                             </div>
                         </div>
-
-                        <!-- Credits Card -->
-                        <div class="border border-gray-100 dark:border-gray-700 rounded-3xl p-6 bg-gradient-to-br from-indigo-50 to-blue-50 dark:from-indigo-900/20 dark:to-blue-900/20">
-                            <p class="text-sm text-gray-700 dark:text-gray-300">
-                                <span class="font-semibold">Your Credits:</span>
-                            </p>
-                            <p class="text-3xl font-bold text-primary mt-2">
-                                5
-                            </p>
-                            <p class="text-xs text-gray-600 dark:text-gray-400 mt-2">
-                                Free credits available
-                            </p>
-                        </div>
-
-                        <!-- Generate Button -->
-                        <button class="w-full relative flex h-12 items-center justify-center px-6 before:absolute before:inset-0 before:rounded-full before:bg-primary before:transition before:duration-300 hover:before:scale-105 active:duration-75 active:before:scale-95">
-                            <span class="relative text-base font-semibold text-white">
-                                Generate Video
-                            </span>
-                        </button>
                     </div>
-                </div>
 
-                <!-- Right Column: Video Player / Result -->
-                <div class="lg:col-span-2">
-                    <div class="border border-gray-100 dark:border-gray-700 rounded-3xl overflow-hidden bg-white dark:bg-gray-800 h-full min-h-96">
-                        <div class="w-full h-96 bg-gradient-to-br from-gray-100 to-gray-50 dark:from-gray-800 dark:to-gray-900 flex items-center justify-center">
-                            <div id="video-player" class="text-center space-y-4">
-                                <svg class="w-16 h-16 mx-auto text-gray-300 dark:text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"></path>
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                                </svg>
-                                <p class="text-gray-500 dark:text-gray-400">
-                                    Your generated video will appear here
-                                </p>
-                                <p class="text-sm text-gray-400 dark:text-gray-500">
-                                    Upload an image and describe your vision to get started
-                                </p>
+                    <!-- Right Column: Video Player / Result -->
+                    <div class="lg:col-span-2 flex flex-col">
+                        <div class="border border-gray-100 dark:border-gray-700 rounded-3xl overflow-hidden bg-white dark:bg-gray-800 h-full flex flex-col">
+                            <div class="flex-1 bg-gradient-to-br from-gray-100 to-gray-50 dark:from-gray-800 dark:to-gray-900 flex items-center justify-center min-h-96">
+                                <div id="video-player" class="text-center space-y-4">
+                                    <svg class="w-16 h-16 mx-auto text-gray-300 dark:text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"></path>
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                    </svg>
+                                    <p class="text-gray-500 dark:text-gray-400">
+                                        Your generated video will appear here
+                                    </p>
+                                    <p class="text-sm text-gray-400 dark:text-gray-500">
+                                        Upload an image and describe your vision to get started
+                                    </p>
+                                </div>
                             </div>
-                        </div>
 
-                        <!-- Video Info Section -->
-                        <div id="video-info" class="hidden p-6 border-t border-gray-100 dark:border-gray-700 space-y-4">
-                            <h3 id="video-title" class="text-lg font-semibold text-gray-900 dark:text-white">
-                                Generated Video
-                            </h3>
-                            <p id="video-date" class="text-sm text-gray-600 dark:text-gray-400">
-                                Just now
-                            </p>
-                            <div class="flex gap-3">
-                                <button class="flex-1 relative flex h-10 items-center justify-center px-4 before:absolute before:inset-0 before:rounded-full before:bg-primary before:transition before:duration-300 hover:before:scale-105 active:before:scale-95">
-                                    <span class="relative text-sm font-semibold text-white">Download</span>
-                                </button>
-                                <button class="flex-1 relative flex h-10 items-center justify-center px-4 before:absolute before:inset-0 before:rounded-full before:border before:border-transparent before:bg-primary/10 before:transition before:duration-300 hover:before:scale-105 dark:before:bg-gray-700">
-                                    <span class="relative text-sm font-semibold text-primary dark:text-white">Share</span>
-                                </button>
+                            <!-- Video Info Section -->
+                            <div id="video-info" class="hidden p-4 border-t border-gray-100 dark:border-gray-700 space-y-3">
+                                <h3 id="video-title" class="text-base font-semibold text-gray-900 dark:text-white">
+                                    Generated Video
+                                </h3>
+                                <p id="video-date" class="text-sm text-gray-600 dark:text-gray-400">
+                                    Just now
+                                </p>
+                                <div class="flex gap-2">
+                                    <button class="flex-1 relative flex h-9 items-center justify-center px-3 before:absolute before:inset-0 before:rounded-full before:bg-primary before:transition before:duration-300 hover:before:scale-105 active:before:scale-95">
+                                        <span class="relative text-xs font-semibold text-white">Download</span>
+                                    </button>
+                                    <button class="flex-1 relative flex h-9 items-center justify-center px-3 before:absolute before:inset-0 before:rounded-full before:border before:border-transparent before:bg-primary/10 before:transition before:duration-300 hover:before:scale-105 dark:before:bg-gray-700">
+                                        <span class="relative text-xs font-semibold text-primary dark:text-white">Share</span>
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
-
-            <!-- Recent Videos Section -->
-            <div class="mt-16">
-                <h2 class="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white mb-8">
-                    Recent Videos
-                </h2>
-                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    <div class="group border border-gray-100 dark:border-gray-700 rounded-3xl overflow-hidden bg-white dark:bg-gray-800 hover:shadow-2xl hover:shadow-gray-600/10 transition">
-                        <div class="relative w-full aspect-video bg-gray-200 dark:bg-gray-700 overflow-hidden flex items-center justify-center">
-                            <svg class="w-12 h-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"></path>
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                            </svg>
-                        </div>
-                        <div class="p-4 space-y-3">
-                            <h3 class="font-semibold text-gray-900 dark:text-white group-hover:text-primary transition">
-                                Sample Video 1
-                            </h3>
-                            <p class="text-xs text-gray-500 dark:text-gray-400">
-                                Created 2 days ago
-                            </p>
-                            <div class="flex gap-2 pt-2">
-                                <button class="flex-1 py-2 px-3 text-xs font-medium rounded-full bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white hover:bg-gray-200 dark:hover:bg-gray-600 transition">
-                                    Download
-                                </button>
-                                <button class="flex-1 py-2 px-3 text-xs font-medium rounded-full bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white hover:bg-gray-200 dark:hover:bg-gray-600 transition">
-                                    Delete
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </Container>
-    </main>
-</Layout>
+        </div>
+    </div>
+</AppLayout>
 
 <script>
     // Character counter
@@ -232,6 +178,7 @@ import Layout from '../layouts/Layout.astro';
     // Image upload preview
     const imageUpload = document.getElementById('image-upload') as HTMLInputElement;
     const imagePreview = document.getElementById('image-preview') as HTMLImageElement;
+    const uploadPlaceholder = document.getElementById('upload-placeholder') as HTMLElement;
 
     if (imageUpload) {
         imageUpload.addEventListener('change', (e) => {
@@ -241,6 +188,7 @@ import Layout from '../layouts/Layout.astro';
                 reader.onload = (event) => {
                     imagePreview.src = event.target?.result as string;
                     imagePreview.classList.remove('hidden');
+                    uploadPlaceholder.classList.add('hidden');
                 };
                 reader.readAsDataURL(file);
             }
