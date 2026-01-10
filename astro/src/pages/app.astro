@@ -112,18 +112,15 @@ import AppLayout from '../layouts/AppLayout.astro';
                             <!-- PROMPT BAR - Floating Control Panel (CENTERED, BOTTOM) -->
                             <div class="absolute bottom-6 left-1/2 -translate-x-1/2 z-30 pointer-events-none px-4 w-full" style="max-width: 60%">
 
-                                <!-- Dark Backdrop for Prompt Visibility -->
-                                <div class="absolute inset-0 bg-black/30 rounded-2xl backdrop-blur-md pointer-events-none"></div>
-
                                 <!-- Input Container (Full Width Minus Padding) -->
-                                <div class="pointer-events-auto relative z-10">
+                                <div class="pointer-events-auto relative">
 
                                     <!-- Input + Generate Button Inside -->
                                     <div class="relative">
                                         <textarea
                                             id="prompt"
                                             placeholder="Describe your video..."
-                                            class="w-full px-12 py-3 border border-white/30 rounded-2xl bg-white/30 backdrop-blur-md text-gray-900 dark:text-white placeholder:text-gray-500 dark:placeholder:text-gray-400 focus:outline-none transition duration-200 resize-none text-sm shadow-lg"
+                                            class="w-full px-12 py-3 border rounded-2xl bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder:text-gray-500 dark:placeholder:text-gray-400 focus:outline-none transition duration-200 resize-none text-sm shadow-lg"
                                             rows="2"
                                         ></textarea>
 
@@ -322,18 +319,17 @@ import AppLayout from '../layouts/AppLayout.astro';
     }
 
     #prompt {
-        background: rgba(255, 255, 255, 0.3);
+        border-color: rgba(59, 130, 246, 0.3);
+        transition: border-color 0.3s ease;
     }
 
     #prompt:hover {
         animation: neon-glow 2s ease-in-out infinite;
         border-color: rgb(59, 130, 246);
-        background: rgba(255, 255, 255, 0.4);
     }
 
     #prompt:focus {
         animation: neon-glow 2s ease-in-out infinite;
         border-color: rgb(59, 130, 246);
-        background: rgba(255, 255, 255, 0.4);
     }
 </style>
