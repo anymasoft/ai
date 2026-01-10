@@ -126,20 +126,27 @@ import AppLayout from '../layouts/AppLayout.astro';
                                         ></textarea>
 
                                         <!-- Generate Button - INSIDE Input (RIGHT) -->
-                                        <button
-                                            id="generate-btn"
-                                            class="absolute right-3 top-1/2 -translate-y-1/2 p-2.5 hover:opacity-80 active:scale-95 transition-all duration-150 flex-shrink-0 disabled:opacity-50 disabled:cursor-not-allowed bg-white/20 backdrop-blur-md rounded-full border border-white/30 opacity-50 cursor-not-allowed"
-                                            title="Generate"
-                                            disabled
-                                        >
-                                            <img id="generate-icon" src="/generate.png" alt="Generate" class="w-8 h-8" />
-                                            <div id="generate-spinner" class="hidden animate-spin absolute inset-0 flex items-center justify-center">
-                                                <svg class="w-8 h-8 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                                                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                                </svg>
+                                        <div class="absolute right-3 top-1/2 -translate-y-1/2 flex-shrink-0 relative group">
+                                            <button
+                                                id="generate-btn"
+                                                class="p-2.5 hover:opacity-80 active:scale-95 transition-all duration-150 flex-shrink-0 disabled:opacity-50 disabled:cursor-not-allowed bg-white/20 backdrop-blur-md rounded-full border border-white/30 opacity-50 cursor-not-allowed"
+                                                disabled
+                                            >
+                                                <img id="generate-icon" src="/generate.png" alt="Generate" class="w-8 h-8" />
+                                                <div id="generate-spinner" class="hidden animate-spin absolute inset-0 flex items-center justify-center">
+                                                    <svg class="w-8 h-8 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                                    </svg>
+                                                </div>
+                                            </button>
+
+                                            <!-- Tooltip (shown when disabled) -->
+                                            <div id="generate-tooltip" class="hidden absolute bottom-full right-0 mb-3 px-3 py-2 bg-gray-900 dark:bg-gray-950 text-white text-xs rounded-lg shadow-lg border border-gray-700 dark:border-gray-800 whitespace-nowrap z-50 pointer-events-none">
+                                                Выберите фотографию, длительность, введите описание видео
+                                                <div class="absolute top-full right-2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-l-transparent border-r-transparent border-t-gray-900 dark:border-t-gray-950"></div>
                                             </div>
-                                        </button>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -163,14 +170,17 @@ import AppLayout from '../layouts/AppLayout.astro';
         const hasPrompt = promptInput?.value.trim().length > 0;
         const hasDuration = selectedDuration !== null;
         const hasImage = selectedImage !== null;
+        const tooltip = document.getElementById('generate-tooltip') as HTMLElement;
 
         if (generateBtn) {
             if (hasPrompt && hasDuration && hasImage) {
                 generateBtn.disabled = false;
                 generateBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+                if (tooltip) tooltip.classList.add('hidden');
             } else {
                 generateBtn.disabled = true;
                 generateBtn.classList.add('opacity-50', 'cursor-not-allowed');
+                if (tooltip) tooltip.classList.remove('hidden');
             }
         }
     }
@@ -332,5 +342,20 @@ import AppLayout from '../layouts/AppLayout.astro';
     #prompt:focus {
         animation: neon-glow 2s ease-in-out infinite;
         border-color: rgb(59, 130, 246);
+    }
+
+    @keyframes tooltip-fade-in {
+        from {
+            opacity: 0;
+            transform: translateY(4px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    #generate-tooltip:not(.hidden) {
+        animation: tooltip-fade-in 0.2s ease-out;
     }
 </style>
