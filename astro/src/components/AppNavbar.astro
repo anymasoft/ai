@@ -1,5 +1,13 @@
 ---
 import Container from "./Container.astro";
+import { getUserFromSession } from '../lib/auth';
+
+// Получаем текущего пользователя из сессии
+const sessionToken = Astro.cookies.get('session_token')?.value;
+const user = sessionToken ? getUserFromSession(sessionToken) : null;
+
+// Инициалы для аватара
+const initials = user ? user.name.split(' ').map(n => n.charAt(0)).join('').toUpperCase().slice(0, 2) : '?';
 ---
 
 <header>
@@ -16,10 +24,12 @@ import Container from "./Container.astro";
 
                 <!-- Right side: Credits + Upgrade + User Menu -->
                 <div class="flex items-center gap-3">
-                    <div class="text-right">
-                        <p class="text-sm text-gray-600 dark:text-gray-400">Credits remaining</p>
-                        <p class="text-2xl font-bold text-primary">5</p>
-                    </div>
+                    {user && (
+                        <div class="text-right">
+                            <p class="text-sm text-gray-600 dark:text-gray-400">Credits remaining</p>
+                            <p class="text-2xl font-bold text-primary">{user.credits}</p>
+                        </div>
+                    )}
 
                     <a
                         href="/billing"
@@ -29,13 +39,14 @@ import Container from "./Container.astro";
                     </a>
 
                     <!-- User Avatar Menu -->
-                    <div class="relative">
-                        <button
-                            id="user-menu-trigger"
-                            class="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-primary to-blue-600 text-white font-semibold text-sm hover:shadow-lg transition-shadow duration-200 cursor-pointer"
-                        >
-                            JD
-                        </button>
+                    {user && (
+                        <div class="relative">
+                            <button
+                                id="user-menu-trigger"
+                                class="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-primary to-blue-600 text-white font-semibold text-sm hover:shadow-lg transition-shadow duration-200 cursor-pointer"
+                            >
+                                {initials}
+                            </button>
 
                         <!-- Dropdown Menu -->
                         <div
@@ -44,20 +55,20 @@ import Container from "./Container.astro";
                         >
                             <!-- User Info -->
                             <div class="px-4 py-3 border-b border-gray-200 dark:border-gray-700">
-                                <p class="font-semibold text-gray-900 dark:text-white">John Doe</p>
-                                <p class="text-xs text-gray-500 dark:text-gray-400">john@example.com</p>
+                                <p class="font-semibold text-gray-900 dark:text-white">{user.name}</p>
+                                <p class="text-xs text-gray-500 dark:text-gray-400">{user.email}</p>
                             </div>
 
                             <!-- Menu Items -->
                             <div class="py-2">
                                 <a
-                                    href="/dashboard/account"
+                                    href="/account"
                                     class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition"
                                 >
                                     Account Settings
                                 </a>
                                 <a
-                                    href="/dashboard/billing"
+                                    href="/billing"
                                     class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition"
                                 >
                                     Billing
@@ -68,13 +79,17 @@ import Container from "./Container.astro";
                             <div class="border-t border-gray-200 dark:border-gray-700"></div>
 
                             <!-- Logout -->
-                            <button
-                                id="logout-btn"
-                                class="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition cursor-pointer"
-                            >
-                                Logout
-                            </button>
+                            <form method="POST" action="/api/auth/logout" class="w-full">
+                                <button
+                                    type="submit"
+                                    class="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition cursor-pointer"
+                                >
+                                    Logout
+                                </button>
+                            </form>
                         </div>
+                        </div>
+                    )}
                     </div>
                 </div>
             </div>
@@ -85,7 +100,6 @@ import Container from "./Container.astro";
 <script>
     const trigger = document.getElementById('user-menu-trigger');
     const dropdown = document.getElementById('user-menu-dropdown');
-    const logoutBtn = document.getElementById('logout-btn');
 
     if (trigger && dropdown) {
         trigger.addEventListener('click', () => {
@@ -97,13 +111,6 @@ import Container from "./Container.astro";
             if (!trigger.contains(e.target) && !dropdown.contains(e.target)) {
                 dropdown.classList.add('hidden');
             }
-        });
-    }
-
-    if (logoutBtn) {
-        logoutBtn.addEventListener('click', () => {
-            // Logout logic here
-            console.log('Logout clicked');
         });
     }
 </script>

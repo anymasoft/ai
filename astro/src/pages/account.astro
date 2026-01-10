@@ -1,0 +1,102 @@
+---
+import { getUserFromSession, isAdmin } from '../lib/auth';
+import AppLayout from '../layouts/AppLayout.astro';
+
+// Эта страница должна быть динамичной для работы с cookies
+export const prerender = false;
+
+// Получаем текущего пользователя из сессии
+const sessionToken = Astro.cookies.get('session_token')?.value;
+const user = sessionToken ? getUserFromSession(sessionToken) : null;
+
+// Если пользователь не авторизован, редиректим на sign-in
+if (!user) {
+  return Astro.redirect('/sign-in');
+}
+
+const adminEmail = 'nazarov.soft@gmail.com';
+const userIsAdmin = isAdmin(user.email);
+---
+
+<AppLayout title="Account - Video Reader AI">
+  <main class="flex-1 overflow-auto">
+    <div class="max-w-2xl mx-auto p-6 md:p-10">
+      <!-- Header -->
+      <div class="mb-8">
+        <h1 class="text-3xl font-bold text-gray-900 dark:text-white mb-2">Account Settings</h1>
+        <p class="text-gray-600 dark:text-gray-400">Manage your account information</p>
+      </div>
+
+      <!-- User Info Card -->
+      <div class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-6 mb-6">
+        <div class="flex items-start gap-4 mb-6">
+          {
+            user.image && (
+              <img
+                src={user.image}
+                alt={user.name}
+                class="w-16 h-16 rounded-full object-cover"
+              />
+            )
+          }
+          {
+            !user.image && (
+              <div class="w-16 h-16 rounded-full bg-gradient-to-br from-primary to-blue-600 flex items-center justify-center text-white font-bold text-lg">
+                {user.name.charAt(0).toUpperCase()}
+              </div>
+            )
+          }
+          <div class="flex-1">
+            <h2 class="text-2xl font-bold text-gray-900 dark:text-white mb-1">{user.name}</h2>
+            <p class="text-gray-600 dark:text-gray-400">{user.email}</p>
+          </div>
+        </div>
+
+        <!-- Info Grid -->
+        <div class="grid grid-cols-2 gap-4 mb-6">
+          <!-- Plan -->
+          <div class="p-4 rounded-lg bg-gray-50 dark:bg-gray-800">
+            <p class="text-xs font-semibold text-gray-600 dark:text-gray-400 mb-1">PLAN</p>
+            <p class="text-lg font-bold text-gray-900 dark:text-white capitalize">{user.plan}</p>
+          </div>
+
+          <!-- Credits -->
+          <div class="p-4 rounded-lg bg-gray-50 dark:bg-gray-800">
+            <p class="text-xs font-semibold text-gray-600 dark:text-gray-400 mb-1">CREDITS</p>
+            <p class="text-lg font-bold text-gray-900 dark:text-white">{user.credits}</p>
+          </div>
+        </div>
+
+        <!-- Logout Button -->
+        <form method="POST" action="/api/auth/logout">
+          <button
+            type="submit"
+            class="w-full px-4 py-2 rounded-lg bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-800 font-semibold hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors duration-200 cursor-pointer"
+          >
+            Logout
+          </button>
+        </form>
+      </div>
+
+      <!-- Admin Section (only for admin) -->
+      {
+        userIsAdmin && (
+          <div class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-6">
+            <div class="mb-6">
+              <h3 class="text-xl font-bold text-gray-900 dark:text-white mb-1">Admin Settings</h3>
+              <p class="text-sm text-gray-600 dark:text-gray-400">
+                You have admin access ({adminEmail})
+              </p>
+            </div>
+
+            <div class="p-4 rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800">
+              <p class="text-sm text-blue-700 dark:text-blue-400">
+                Admin features coming soon. You can manage user credits and plans through the database.
+              </p>
+            </div>
+          </div>
+        )
+      }
+    </div>
+  </main>
+</AppLayout>
