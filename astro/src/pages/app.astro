@@ -1,5 +1,8 @@
 ---
 import AppLayout from '../layouts/AppLayout.astro';
+
+// Эта страница должна быть динамичной для работы с middleware и cookies
+export const prerender = false;
 ---
 
 <AppLayout title="Create Video - Video Reader AI">
