@@ -75,25 +75,25 @@ import AppLayout from '../layouts/AppLayout.astro';
                             <!-- PROMPT BAR - Floating Control Panel (CENTERED, BOTTOM) -->
                             <div class="absolute bottom-6 left-1/2 -translate-x-1/2 z-30 pointer-events-none">
 
-                                <!-- Prompt Control Container (max-width ~70%) -->
-                                <div class="pointer-events-auto relative" style="max-width: min(70%, 500px)">
+                                <!-- Prompt Control Container (wide like Anthropic) -->
+                                <div class="pointer-events-auto relative" style="max-width: min(90%, 700px); width: 100%">
 
                                     <!-- Input + Generate Button Inside -->
                                     <div class="relative">
                                         <textarea
                                             id="prompt"
                                             placeholder="Describe your video..."
-                                            class="w-full px-4 pr-11 py-3 border border-gray-200 dark:border-gray-600 rounded-2xl bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none transition duration-200 resize-none text-sm shadow-lg"
+                                            class="w-full px-4 pr-12 py-3 border border-gray-200 dark:border-gray-600 rounded-2xl bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none transition duration-200 resize-none text-sm shadow-lg"
                                             rows="2"
                                         ></textarea>
 
                                         <!-- Generate Button - INSIDE Input (right side) -->
                                         <button
                                             id="generate-btn"
-                                            class="absolute right-3 top-1/2 -translate-y-1/2 p-1.5 hover:opacity-80 active:scale-95 transition-all duration-150 flex-shrink-0"
+                                            class="absolute right-3 top-1/2 -translate-y-1/2 p-2 hover:opacity-80 active:scale-95 transition-all duration-150 flex-shrink-0"
                                             title="Generate"
                                         >
-                                            <img src="/generate.png" alt="Generate" class="w-6 h-6" />
+                                            <img src="/generate.png" alt="Generate" class="w-7 h-7" />
                                         </button>
                                     </div>
 
