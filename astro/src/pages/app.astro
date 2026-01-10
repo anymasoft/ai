@@ -247,11 +247,11 @@ import AppLayout from '../layouts/AppLayout.astro';
             // Remove active state from all buttons
             durationBtns.forEach(b => {
                 b.classList.remove('bg-primary', 'text-white', 'border-primary');
-                b.classList.add('border-gray-300', 'dark:border-gray-600', 'text-gray-700', 'dark:text-gray-300', 'bg-white', 'dark:bg-gray-800');
+                b.classList.add('border-white/30', 'text-gray-700', 'dark:text-gray-300', 'bg-white/20');
             });
 
             // Add active state to clicked button
-            btn.classList.remove('border-gray-300', 'dark:border-gray-600', 'text-gray-700', 'dark:text-gray-300', 'bg-white', 'dark:bg-gray-800');
+            btn.classList.remove('border-white/30', 'text-gray-700', 'dark:text-gray-300', 'bg-white/20');
             btn.classList.add('bg-primary', 'text-white', 'border-primary');
             selectedDuration = btn.dataset.duration || null;
         });
