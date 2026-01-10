@@ -68,23 +68,23 @@ import AppLayout from '../layouts/AppLayout.astro';
                     <div class="h-full border border-gray-100 dark:border-gray-700 rounded-3xl overflow-hidden bg-white dark:bg-gray-800 flex flex-col relative">
 
                         <!-- Video Area - flex-1 to fill space -->
-                        <div class="flex-1 bg-gradient-to-br from-gray-100 to-gray-50 dark:from-gray-800 dark:to-gray-900 flex items-center justify-center relative overflow-hidden">
+                        <div class="flex-1 bg-gray-900 flex items-center justify-center relative overflow-hidden">
 
                             <!-- Video Placeholder (shown before generation) -->
                             <div id="video-placeholder" class="text-center space-y-4">
-                                <svg class="w-16 h-16 mx-auto text-gray-300 dark:text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <svg class="w-16 h-16 mx-auto text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"></path>
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                                 </svg>
-                                <p class="text-gray-500 dark:text-gray-400 text-sm">Generate your video</p>
+                                <p class="text-gray-400 text-sm">Generate your video</p>
                             </div>
 
                             <!-- Loading Spinner (shown during generation) -->
                             <div id="video-loading" class="hidden text-center space-y-4">
                                 <div class="flex justify-center">
-                                    <div class="animate-spin rounded-full h-12 w-12 border-4 border-gray-200 dark:border-gray-700 border-t-primary"></div>
+                                    <div class="animate-spin rounded-full h-12 w-12 border-4 border-gray-700 border-t-primary"></div>
                                 </div>
-                                <p class="text-gray-500 dark:text-gray-400 text-sm">Generating your video...</p>
+                                <p class="text-gray-400 text-sm">Generating your video...</p>
                             </div>
 
                             <!-- Video Player (shown after generation) -->
