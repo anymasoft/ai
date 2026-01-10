@@ -340,14 +340,14 @@ import AppLayout from '../layouts/AppLayout.astro';
                 generateBtn.disabled = false;
 
                 // Show success toast
-                showToast('✅ Видео готово! Нажми кнопку скачивания внизу', 'success', 5000);
+                showToast('Видео готово! Нажми кнопку скачивания внизу', 'success', 5000);
             } else {
                 // Provide feedback about missing fields
                 let missingFields = [];
                 if (!hasImage) missingFields.push('фото');
                 if (!hasPrompt) missingFields.push('описание');
                 if (!hasDuration) missingFields.push('длительность');
-                showToast(`⚠️ Заполните: ${missingFields.join(', ')}`, 'error');
+                showToast(`Заполните: ${missingFields.join(', ')}`, 'error');
             }
         });
     }
