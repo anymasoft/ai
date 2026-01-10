@@ -15,8 +15,17 @@ export const onRequest = defineMiddleware((context, next) => {
     const cookies = context.cookies;
     const sessionToken = cookies.get('session_token')?.value;
 
+    console.log(`\n🔒 Auth Middleware for: ${pathname}`);
+    console.log(`   - sessionToken: ${sessionToken ? sessionToken.slice(0, 16) + '...' : 'MISSING'}`);
+
     // Проверяем, существует ли сессия
-    if (!sessionToken || !getUserFromSession(sessionToken)) {
+    const user = sessionToken ? getUserFromSession(sessionToken) : null;
+
+    if (user) {
+      console.log(`   ✅ Session valid for user: ${user.email}`);
+    } else {
+      console.log(`   ❌ Session invalid or not found`);
+      console.log(`   - Redirecting to /sign-in`);
       // Редиректим на страницу входа
       return context.redirect('/sign-in');
     }

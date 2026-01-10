@@ -98,19 +98,24 @@ export const GET: APIRoute = async (context) => {
 
     // Создаём или обновляем пользователя в нашей БД
     const user = upsertUser(googleUser.sub, googleUser.email, googleUser.name, googleUser.picture);
+    console.log(`👤 User created/updated: ${user.email} (id: ${user.id})`);
 
     // Создаём сессию
     const sessionToken = createSession(user.id);
+    console.log(`🔐 Session created: ${sessionToken.slice(0, 16)}... (expires in 30 days)`);
 
     // Сохраняем токен сессии в cookies
     context.cookies.set('session_token', sessionToken, {
       httpOnly: true,
       secure: import.meta.env.PROD,
       sameSite: 'lax',
+      path: '/',
       maxAge: 30 * 24 * 60 * 60, // 30 дней
     });
+    console.log(`🍪 Session cookie set: session_token=${sessionToken.slice(0, 16)}...`);
 
-    console.log(`✅ User logged in: ${user.email}`);
+    console.log(`✅ User logged in successfully: ${user.email}`);
+    console.log(`🔄 Redirecting to /app...`);
 
     // Редиректим на /app
     return context.redirect('/app');
