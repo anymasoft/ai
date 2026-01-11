@@ -2,6 +2,7 @@
 import { getUserFromSession, isAdmin } from '../lib/auth';
 import AppLayout from '../layouts/AppLayout.astro';
 import { getDb } from '../lib/db';
+import LiveBalance from '../components/LiveBalance.astro';
 
 // Эта страница должна быть динамичной для работы с cookies
 export const prerender = false;
@@ -88,8 +89,16 @@ const totalBalance = allUsers.reduce((sum, u) => sum + u.generation_balance, 0);
 
       <!-- Header -->
       <div class="mb-6">
-        <h1 class="text-3xl font-bold text-gray-900 dark:text-white mb-1">Панель администратора</h1>
-        <p class="text-gray-600 dark:text-gray-400">Управление пользователями и кредитами системы</p>
+        <div class="flex items-center justify-between mb-4">
+          <div>
+            <h1 class="text-3xl font-bold text-gray-900 dark:text-white mb-1">Панель администратора</h1>
+            <p class="text-gray-600 dark:text-gray-400">Управление пользователями и кредитами системы</p>
+          </div>
+          <div class="text-right">
+            <p class="text-xs text-gray-600 dark:text-gray-400 mb-1">Ваш баланс</p>
+            <LiveBalance size="badge" />
+          </div>
+        </div>
       </div>
 
       <!-- Search Box -->
@@ -129,21 +138,21 @@ const totalBalance = allUsers.reduce((sum, u) => sum + u.generation_balance, 0);
         <!-- Total Users -->
         <div class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-6">
           <div class="text-sm font-semibold text-gray-600 dark:text-gray-400 mb-1">Всего пользователей</div>
-          <div class="text-3xl font-bold text-gray-900 dark:text-white">{totalUsers}</div>
+          <div class="text-3xl font-bold text-gray-900 dark:text-white" data-stat="totalUsers">{totalUsers}</div>
           <p class="text-xs text-gray-500 dark:text-gray-400 mt-2">Активных аккаунтов в системе</p>
         </div>
 
         <!-- Total Generation Credits -->
         <div class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-6">
           <div class="text-sm font-semibold text-gray-600 dark:text-gray-400 mb-1">Всего кредитов</div>
-          <div class="text-3xl font-bold text-primary">{totalGenerationCredits}</div>
+          <div class="text-3xl font-bold text-primary" data-stat="totalGenerationCredits">{totalGenerationCredits}</div>
           <p class="text-xs text-gray-500 dark:text-gray-400 mt-2">Закуплено и использовано</p>
         </div>
 
         <!-- Available Balance -->
         <div class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-6">
           <div class="text-sm font-semibold text-gray-600 dark:text-gray-400 mb-1">Доступный баланс</div>
-          <div class="text-3xl font-bold text-green-600">{totalBalance}</div>
+          <div class="text-3xl font-bold text-green-600" data-stat="totalBalance">{totalBalance}</div>
           <p class="text-xs text-gray-500 dark:text-gray-400 mt-2">Неиспользованных кредитов</p>
         </div>
       </div>
@@ -296,6 +305,49 @@ const totalBalance = allUsers.reduce((sum, u) => sum + u.generation_balance, 0);
 </AppLayout>
 
 <script>
+  // Функция для обновления статистики в реальном времени
+  async function updateStats() {
+    try {
+      const response = await fetch('/api/admin/stats');
+      if (!response.ok) return;
+
+      const data = await response.json();
+      if (!data.success) return;
+
+      // Обновляем каждую статистику
+      const statElements = {
+        totalUsers: document.querySelector('[data-stat="totalUsers"]'),
+        totalGenerationCredits: document.querySelector('[data-stat="totalGenerationCredits"]'),
+        totalBalance: document.querySelector('[data-stat="totalBalance"]')
+      };
+
+      if (statElements.totalUsers && data.totalUsers.toString() !== statElements.totalUsers.textContent?.trim()) {
+        statElements.totalUsers.textContent = data.totalUsers;
+      }
+
+      if (statElements.totalGenerationCredits && data.totalGenerationCredits.toString() !== statElements.totalGenerationCredits.textContent?.trim()) {
+        statElements.totalGenerationCredits.textContent = data.totalGenerationCredits;
+      }
+
+      if (statElements.totalBalance && data.totalBalance.toString() !== statElements.totalBalance.textContent?.trim()) {
+        statElements.totalBalance.textContent = data.totalBalance;
+      }
+    } catch (error) {
+      console.error('[ADMIN_STATS] Error fetching stats:', error);
+    }
+  }
+
+  // Первичная загрузка статистики
+  updateStats();
+
+  // Периодическое обновление каждые 5 секунд
+  const statsInterval = setInterval(updateStats, 5000);
+
+  // Очистка интервала при выгрузке страницы
+  window.addEventListener('unload', () => {
+    clearInterval(statsInterval);
+  });
+
   const editModal = document.getElementById('edit-modal') as HTMLDivElement;
   const cancelEditBtn = document.getElementById('cancel-edit') as HTMLButtonElement;
   const saveBalanceBtn = document.getElementById('save-balance') as HTMLButtonElement;
