@@ -21,6 +21,13 @@ const userIsAdmin = isAdmin(user.email);
 <AppLayout title="Account - Video Reader AI">
   <main class="flex-1 overflow-auto">
     <div class="max-w-2xl mx-auto p-6 md:p-10">
+      <!-- Back Button -->
+      <a href="/app" class="inline-flex items-center justify-center p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition cursor-pointer mb-6">
+        <svg class="w-6 h-6 text-gray-700 dark:text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+        </svg>
+      </a>
+
       <!-- Header -->
       <div class="mb-8">
         <h1 class="text-3xl font-bold text-gray-900 dark:text-white mb-2">Account Settings</h1>
