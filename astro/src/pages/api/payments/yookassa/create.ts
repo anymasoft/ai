@@ -158,7 +158,8 @@ export const POST: APIRoute = async (context) => {
       );
     }
 
-    console.log(`[YooKassa] Payment created: ${paymentData.id} for user ${user.id}`);
+    console.log(`[CREATE] ✅ Payment created in YooKassa: ${paymentData.id}`);
+    console.log(`[CREATE] Payment details: amount=${priceRub}₽, package=${packageKey}, user=${user.id}`);
 
     // Сохраняем платёж в БД с status='pending'
     const now = Math.floor(Date.now() / 1000);
@@ -167,8 +168,9 @@ export const POST: APIRoute = async (context) => {
        VALUES (?, ?, ?, ?, ?, 'yookassa', 'pending', ?, ?)`
     );
 
+    const dbPaymentId = `payment_${Date.now()}_${user.id}`;
     insertStmt.run(
-      `payment_${Date.now()}_${user.id}`,
+      dbPaymentId,
       paymentData.id,
       user.id,
       packageKey,
@@ -177,7 +179,7 @@ export const POST: APIRoute = async (context) => {
       now
     );
 
-    console.log(`[YooKassa] Payment saved to DB: ${paymentData.id}, status='pending'`);
+    console.log(`[CREATE] ✅ Payment saved to DB: ${paymentData.id}, local_id=${dbPaymentId}, status=pending`);
 
     return new Response(
       JSON.stringify({
