@@ -524,28 +524,6 @@ const userBalance = user.generation_balance || 0;
                 (downloadBtn as any).videoUrl = videoUrl;
 
                 console.log(`[GEN] Video displayed for generation: ${generationId}`);
-                    } catch (error) {
-                        const errorMessage = error instanceof Error ? error.message : 'Неизвестная ошибка';
-                        console.error('[GEN] Generation error:', errorMessage);
-
-                        videoLoading.classList.add('hidden');
-                        const isBalanceError = errorMessage.toLowerCase().includes('баланс') ||
-                                              errorMessage.toLowerCase().includes('кредит') ||
-                                              errorMessage.toLowerCase().includes('недостаточно');
-
-                        if (isBalanceError) {
-                            showPaywallOverlay();
-                        } else {
-                            videoPlaceholder.classList.remove('hidden');
-                            showToast(`Ошибка: ${errorMessage}`, 'error');
-                        }
-                    } finally {
-                        // Re-enable button and reset spinner
-                        generateIcon.classList.remove('hidden');
-                        generateSpinner.classList.add('hidden');
-                        generateBtn.disabled = false;
-                        updateGenerateButtonState();
-                    }
             } catch (error) {
                 const errorMessage = error instanceof Error ? error.message : 'Неизвестная ошибка';
                 console.error('[GEN] Generation error:', errorMessage);
