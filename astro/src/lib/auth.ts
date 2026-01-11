@@ -6,7 +6,8 @@ export interface User {
   email: string;
   name: string;
   image?: string;
-  credits: number;
+  generation_balance: number;
+  generation_used: number;
   plan: 'free' | 'pro' | 'enterprise';
   role: 'user' | 'admin';
   disabled: boolean;
@@ -98,10 +99,10 @@ export function upsertUser(googleId: string, email: string, name: string, image?
     return db.prepare('SELECT * FROM users WHERE id = ?').get(googleId) as User;
   }
 
-  // Создаём нового пользователя с 3 кредитами по умолчанию (тестовые)
+  // Создаём нового пользователя с 0 кредитами (пусть купит или админ выдаст)
   db.prepare(
-    'INSERT INTO users (id, email, name, image, credits, plan, role, createdAt, updatedAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)'
-  ).run(googleId, email, name, image, 3, 'free', 'user', now, now);
+    'INSERT INTO users (id, email, name, image, generation_balance, generation_used, plan, role, createdAt, updatedAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+  ).run(googleId, email, name, image, 0, 0, 'free', 'user', now, now);
 
   return db.prepare('SELECT * FROM users WHERE id = ?').get(googleId) as User;
 }
@@ -116,12 +117,12 @@ export function getUserById(userId: string): User | null {
 }
 
 /**
- * Обновляет количество кредитов пользователя
+ * Обновляет generation_balance пользователя
  */
-export function updateUserCredits(userId: string, newCredits: number): void {
+export function updateUserBalance(userId: string, newBalance: number): void {
   const db = getDb();
-  db.prepare('UPDATE users SET credits = ?, updatedAt = ? WHERE id = ?').run(
-    newCredits,
+  db.prepare('UPDATE users SET generation_balance = ?, updatedAt = ? WHERE id = ?').run(
+    newBalance,
     Math.floor(Date.now() / 1000),
     userId
   );
