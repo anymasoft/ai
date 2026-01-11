@@ -1,5 +1,6 @@
 ---
 import Container from "./Container.astro"
+import { ru } from "../lib/i18n"
 
 ---
 
@@ -11,9 +12,13 @@ import Container from "./Container.astro"
       </svg>
       
       <h2 class="my-8 text-2xl font-bold text-gray-700 dark:text-white md:text-4xl">
-        A powerful AI assistant for understanding global content
+        {/* EN: A powerful AI assistant for understanding global content */}
+        {ru.features.title}
       </h2>
-      <p class="text-gray-600 dark:text-gray-300">Video Reader AI helps you watch videos in any language with real-time subtitle translation.</p>
+      <p class="text-gray-600 dark:text-gray-300">
+        {/* EN: Video Reader AI helps you watch videos in any language with real-time subtitle translation. */}
+        {ru.features.subtitle}
+      </p>
     </div>
     <div
       class="mt-16 grid divide-x divide-y divide-gray-100 dark:divide-gray-700 overflow-hidden rounded-3xl border border-gray-100 text-gray-600 dark:border-gray-700 sm:grid-cols-2 lg:grid-cols-4 lg:divide-y-0 xl:grid-cols-4"
@@ -33,10 +38,12 @@ import Container from "./Container.astro"
             <h5
               class="text-xl font-semibold text-gray-700 dark:text-white transition group-hover:text-secondary"
             >
-              Instant subtitle translation
+              {/* EN: Instant subtitle translation */}
+              {ru.features.feature_1}
             </h5>
             <p class="text-gray-600 dark:text-gray-300">
-              Get accurate subtitles in your preferred language the moment they appear.
+              {/* EN: Get accurate subtitles in your preferred language the moment they appear. */}
+              {ru.features.feature_1_desc}
             </p>
           </div>
           <a href="#" class="flex items-center justify-between group-hover:text-secondary" hidden>
@@ -62,10 +69,12 @@ import Container from "./Container.astro"
             <h5
               class="text-xl font-semibold text-gray-700 dark:text-white transition group-hover:text-secondary"
             >
-              Learn while watching
+              {/* EN: Learn while watching */}
+              {ru.features.feature_2}
             </h5>
             <p class="text-gray-600 dark:text-gray-300">
-              Improve language skills naturally with context-rich translations.
+              {/* EN: Improve language skills naturally with context-rich translations. */}
+              {ru.features.feature_2_desc}
             </p>
           </div>
           <a href="#" class="flex items-center justify-between group-hover:text-secondary" hidden>
@@ -91,17 +100,19 @@ import Container from "./Container.astro"
             <h5
               class="text-xl font-semibold text-gray-700 dark:text-white transition group-hover:text-secondary"
             >
-              Export subtitles (Premium)
+              {/* EN: Export subtitles (Premium) */}
+              {ru.features.feature_3}
             </h5>
             <p class="text-gray-600 dark:text-gray-300">
-              Download translated subtitles in SRT, VTT and TXT formats.
+              {/* EN: Download translated subtitles in SRT, VTT and TXT formats. */}
+              {ru.features.feature_3_desc}
             </p>
           </div>
           <a href="#" class="flex items-center justify-between group-hover:text-secondary" hidden>
             <span class="text-sm" hidden>Read more</span>
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-5 h-5 -translate-x-4 text-2xl opacity-0 transition duration-300 group-hover:translate-x-0 group-hover:opacity-100">
               <path fill-rule="evenodd" d="M12.97 3.97a.75.75 0 011.06 0l7.5 7.5a.75.75 0 010 1.06l-7.5 7.5a.75.75 0 11-1.06-1.06l6.22-6.22H3a.75.75 0 010-1.5h16.19l-6.22-6.22a.75.75 0 010-1.06z" clip-rule="evenodd" />
-            </svg>                
+            </svg>
           </a>
         </div>
       </div>
@@ -124,10 +135,12 @@ import Container from "./Container.astro"
             <h5
               class="text-xl font-semibold text-gray-700 dark:text-white transition group-hover:text-secondary"
             >
-              Privacy-first design
+              {/* EN: Privacy-first design */}
+              {ru.features.feature_4}
             </h5>
             <p class="text-gray-600 dark:text-gray-300">
-              Your viewing data never leaves your browser. No tracking, ever.
+              {/* EN: Your viewing data never leaves your browser. No tracking, ever. */}
+              {ru.features.feature_4_desc}
             </p>
           </div>
           <a href="#" class="flex items-center justify-between group-hover:text-secondary" hidden="">
