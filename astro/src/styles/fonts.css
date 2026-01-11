@@ -1,0 +1,42 @@
+/**
+ * Russian Typography Fonts
+ * Для правильного отображения кириллицы
+ */
+
+/* Заголовки - Comfortaa (более дружелюбный, округлый шрифт) */
+@import url('https://fonts.googleapis.com/css2?family=Comfortaa:wght@400;700&display=swap');
+
+/* Основной текст - Fontinc (классический, хорошо читается) */
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans&display=swap');
+
+:root {
+  --font-title: 'Comfortaa', 'Inter', sans-serif;
+  --font-body: 'IBM Plex Sans', 'Inter', sans-serif;
+}
+
+/* Применяем русские шрифты к элементам */
+h1, h2, h3, h4, h5, h6,
+.heading,
+.title {
+  font-family: var(--font-title);
+  font-weight: 700;
+  letter-spacing: -0.5px;
+}
+
+body,
+p,
+span,
+a,
+button,
+.text,
+.body-text {
+  font-family: var(--font-body);
+}
+
+/* Улучшенная читаемость кириллицы */
+body {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  font-feature-settings: 'kern' 1;
+}

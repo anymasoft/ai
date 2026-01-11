@@ -1,5 +1,6 @@
 ---
 import Container from "./Container.astro"
+import { ru } from "@/lib/i18n"
 ---
 
 <div class="relative" id="home">
@@ -12,39 +13,46 @@ import Container from "./Container.astro"
             <div class="grid lg:grid-cols-2 gap-12 lg:gap-8 items-center">
                 <!-- Left column: Text and buttons -->
                 <div>
-                    <h1 class="text-gray-900 text-balance dark:text-white font-bold text-5xl md:text-6xl xl:text-7xl">Understand YouTube in <span class="text-primary dark:text-white">Any Language</span></h1>
-                    <p class="mt-8 text-gray-700 dark:text-gray-300 text-lg">Instant AI-powered subtitle translation directly inside YouTube. No registration required.</p>
+                    {/* EN: Understand YouTube in Any Language */}
+                    <h1 class="text-gray-900 text-balance dark:text-white font-bold text-5xl md:text-6xl xl:text-7xl">{ru.hero.title}</h1>
+                    {/* EN: Instant AI-powered subtitle translation directly inside YouTube. No registration required. */}
+                    <p class="mt-8 text-gray-700 dark:text-gray-300 text-lg">{ru.hero.subtitle}</p>
                     <div class="mt-16 flex flex-wrap gap-y-4 gap-x-6">
                         <a
                           href="#"
                           class="relative flex h-11 w-full items-center justify-center px-6 before:absolute before:inset-0 before:rounded-full before:bg-primary before:transition before:duration-300 hover:before:scale-105 active:duration-75 active:before:scale-95 sm:w-max"
                         >
-                          <span class="relative text-base font-semibold text-white"
-                            >Add to Chrome — Free</span
-                          >
+                          {/* EN: Add to Chrome — Free */}
+                          <span class="relative text-base font-semibold text-white">{ru.hero.cta_install}</span>
                         </a>
                         <a
                           href="#pricing"
                           class="relative flex h-11 w-full items-center justify-center px-6 before:absolute before:inset-0 before:rounded-full before:border before:border-transparent before:bg-primary/10 before:bg-gradient-to-b before:transition before:duration-300 hover:before:scale-105 active:duration-75 active:before:scale-95 dark:before:border-gray-700 dark:before:bg-gray-800 sm:w-max"
                         >
+                          {/* EN: View Pricing */}
                           <span
                             class="relative text-base font-semibold text-primary dark:text-white"
-                            >View Pricing</span
-                          >
+                          >{ru.hero.cta_pricing}</span>
                         </a>
                     </div>
                     <div class="hidden py-8 mt-16 border-y border-gray-100 dark:border-gray-800 lg:flex flex-col gap-4">
                         <div>
-                            <h6 class="text-lg font-semibold text-gray-700 dark:text-white">Real-time translation</h6>
-                            <p class="mt-2 text-gray-500">Translated subtitles appear instantly.</p>
+                            {/* EN: Real-time translation */}
+                            <h6 class="text-lg font-semibold text-gray-700 dark:text-white">Мгновенный перевод</h6>
+                            {/* EN: Translated subtitles appear instantly. */}
+                            <p class="mt-2 text-gray-500">Переведённые субтитры появляются в момент их создания.</p>
                         </div>
                         <div>
-                            <h6 class="text-lg font-semibold text-gray-700 dark:text-white">50+ languages</h6>
-                            <p class="mt-2 text-gray-500">Supports English, Japanese, Korean, Spanish and more.</p>
+                            {/* EN: 50+ languages */}
+                            <h6 class="text-lg font-semibold text-gray-700 dark:text-white">50+ языков</h6>
+                            {/* EN: Supports English, Japanese, Korean, Spanish and more. */}
+                            <p class="mt-2 text-gray-500">Поддерживает английский, японский, корейский, испанский и многие другие.</p>
                         </div>
                         <div>
-                            <h6 class="text-lg font-semibold text-gray-700 dark:text-white">Accurate AI translation</h6>
-                            <p class="mt-2 text-gray-500">Understands context, slang, and nuances.</p>
+                            {/* EN: Accurate AI translation */}
+                            <h6 class="text-lg font-semibold text-gray-700 dark:text-white">Точный перевод ИИ</h6>
+                            {/* EN: Understands context, slang, and nuances. */}
+                            <p class="mt-2 text-gray-500">Понимает контекст, сленг и нюансы.</p>
                         </div>
                     </div>
                 </div>
