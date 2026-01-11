@@ -128,83 +128,6 @@ const totalBalance = allUsers.reduce((sum, u) => sum + u.generation_balance, 0);
         </div>
       </div>
 
-      <!-- Financial Overview Section -->
-      <div class="mb-6">
-        <h2 class="text-2xl font-bold text-gray-900 dark:text-white mb-4">Финансовый анализ пользователей</h2>
-
-        <!-- Financial Filters -->
-        <div class="flex gap-2 mb-4 overflow-x-auto pb-2">
-          <button
-            class="financial-filter whitespace-nowrap px-4 py-2 rounded-lg font-semibold transition cursor-pointer bg-primary text-white"
-            data-filter="all"
-          >
-            Все пользователи
-          </button>
-          <button
-            class="financial-filter whitespace-nowrap px-4 py-2 rounded-lg font-semibold transition cursor-pointer bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white hover:bg-gray-200 dark:hover:bg-gray-700"
-            data-filter="Активный"
-          >
-            🟢 Активный
-          </button>
-          <button
-            class="financial-filter whitespace-nowrap px-4 py-2 rounded-lg font-semibold transition cursor-pointer bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white hover:bg-gray-200 dark:hover:bg-gray-700"
-            data-filter="Под риском"
-          >
-            🟡 Под риском
-          </button>
-          <button
-            class="financial-filter whitespace-nowrap px-4 py-2 rounded-lg font-semibold transition cursor-pointer bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white hover:bg-gray-200 dark:hover:bg-gray-700"
-            data-filter="Спящий"
-          >
-            ⚫ Спящий
-          </button>
-        </div>
-
-        <!-- Top Payers & High Balance Indicators -->
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-          <div class="bg-gradient-to-br from-yellow-50 to-orange-50 dark:from-yellow-900/20 dark:to-orange-900/20 rounded-2xl border border-yellow-200 dark:border-yellow-800 p-4">
-            <div class="text-sm font-semibold text-yellow-800 dark:text-yellow-300 mb-2">🔥 Топ плательщиков</div>
-            <div id="top-payers" class="text-sm text-yellow-700 dark:text-yellow-400">Загрузка...</div>
-          </div>
-          <div class="bg-gradient-to-br from-red-50 to-pink-50 dark:from-red-900/20 dark:to-pink-900/20 rounded-2xl border border-red-200 dark:border-red-800 p-4">
-            <div class="text-sm font-semibold text-red-800 dark:text-red-300 mb-2">⚠️ Высокий баланс (Финансовый риск)</div>
-            <div id="high-balance" class="text-sm text-red-700 dark:text-red-400">Загрузка...</div>
-          </div>
-        </div>
-
-        <!-- Financial Table -->
-        <div class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 overflow-hidden">
-          <!-- Table Header -->
-          <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-800">
-            <h3 class="text-lg font-bold text-gray-900 dark:text-white">Финансовый обзор пользователей</h3>
-          </div>
-
-          <!-- Scrollable Table -->
-          <div class="overflow-x-auto" style="max-height: 600px; overflow-y: auto;">
-            <table class="w-full text-xs">
-              <thead class="sticky top-0 bg-gray-50 dark:bg-gray-800">
-                <tr class="border-b border-gray-200 dark:border-gray-800">
-                  <th class="px-4 py-3 text-left font-semibold text-gray-700 dark:text-gray-300 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700" data-sort="email">Email</th>
-                  <th class="px-4 py-3 text-left font-semibold text-gray-700 dark:text-gray-300 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700" data-sort="name">Имя</th>
-                  <th class="px-4 py-3 text-right font-semibold text-gray-700 dark:text-gray-300 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700" data-sort="totalCreditsBought">Куплено кредитов</th>
-                  <th class="px-4 py-3 text-right font-semibold text-gray-700 dark:text-gray-300 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700" data-sort="totalCreditsUsed">Использовано</th>
-                  <th class="px-4 py-3 text-right font-semibold text-gray-700 dark:text-gray-300 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700" data-sort="currentBalance">Баланс</th>
-                  <th class="px-4 py-3 text-right font-semibold text-gray-700 dark:text-gray-300 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700" data-sort="totalRevenue">Выручка (₽)</th>
-                  <th class="px-4 py-3 text-right font-semibold text-gray-700 dark:text-gray-300 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700" data-sort="avgPricePerCredit">Средняя цена</th>
-                  <th class="px-4 py-3 text-left font-semibold text-gray-700 dark:text-gray-300 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700" data-sort="lastPaymentDate">Последний платеж</th>
-                  <th class="px-4 py-3 text-left font-semibold text-gray-700 dark:text-gray-300 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700" data-sort="status">Статус</th>
-                </tr>
-              </thead>
-              <tbody id="financial-table-body">
-                <tr class="text-center py-8">
-                  <td colspan="9" class="px-6 py-8 text-gray-500 dark:text-gray-400">Загрузка данных...</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </div>
-
       <!-- Users Table -->
       <div class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 overflow-hidden">
         <!-- Table Header -->
@@ -283,6 +206,83 @@ const totalBalance = allUsers.reduce((sum, u) => sum + u.generation_balance, 0);
             </div>
           </div>
         )}
+      </div>
+
+      <!-- Financial Overview Section -->
+      <div class="mb-6">
+        <h2 class="text-2xl font-bold text-gray-900 dark:text-white mb-4">Финансовый анализ пользователей</h2>
+
+        <!-- Financial Filters -->
+        <div class="flex gap-2 mb-4 overflow-x-auto pb-2">
+          <button
+            class="financial-filter whitespace-nowrap px-4 py-2 rounded-lg font-semibold transition cursor-pointer bg-primary text-white"
+            data-filter="all"
+          >
+            Все пользователи
+          </button>
+          <button
+            class="financial-filter whitespace-nowrap px-4 py-2 rounded-lg font-semibold transition cursor-pointer bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white hover:bg-gray-200 dark:hover:bg-gray-700"
+            data-filter="Активный"
+          >
+            🟢 Активный
+          </button>
+          <button
+            class="financial-filter whitespace-nowrap px-4 py-2 rounded-lg font-semibold transition cursor-pointer bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white hover:bg-gray-200 dark:hover:bg-gray-700"
+            data-filter="Под риском"
+          >
+            🟡 Под риском
+          </button>
+          <button
+            class="financial-filter whitespace-nowrap px-4 py-2 rounded-lg font-semibold transition cursor-pointer bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white hover:bg-gray-200 dark:hover:bg-gray-700"
+            data-filter="Спящий"
+          >
+            ⚫ Спящий
+          </button>
+        </div>
+
+        <!-- Top Payers & High Balance Indicators -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+          <div class="bg-gradient-to-br from-yellow-50 to-orange-50 dark:from-yellow-900/20 dark:to-orange-900/20 rounded-2xl border border-yellow-200 dark:border-yellow-800 p-4">
+            <div class="text-sm font-semibold text-yellow-800 dark:text-yellow-300 mb-2">🔥 Топ плательщиков</div>
+            <div id="top-payers" class="text-sm text-yellow-700 dark:text-yellow-400">Загрузка...</div>
+          </div>
+          <div class="bg-gradient-to-br from-red-50 to-pink-50 dark:from-red-900/20 dark:to-pink-900/20 rounded-2xl border border-red-200 dark:border-red-800 p-4">
+            <div class="text-sm font-semibold text-red-800 dark:text-red-300 mb-2">⚠️ Высокий баланс (Финансовый риск)</div>
+            <div id="high-balance" class="text-sm text-red-700 dark:text-red-400">Загрузка...</div>
+          </div>
+        </div>
+
+        <!-- Financial Table -->
+        <div class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 overflow-hidden">
+          <!-- Table Header -->
+          <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-800">
+            <h3 class="text-lg font-bold text-gray-900 dark:text-white">Финансовый обзор пользователей</h3>
+          </div>
+
+          <!-- Scrollable Table -->
+          <div class="overflow-x-auto" style="max-height: 600px; overflow-y: auto;">
+            <table class="w-full text-xs">
+              <thead class="sticky top-0 bg-gray-50 dark:bg-gray-800">
+                <tr class="border-b border-gray-200 dark:border-gray-800">
+                  <th class="px-4 py-3 text-left font-semibold text-gray-700 dark:text-gray-300 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700" data-sort="email">Email</th>
+                  <th class="px-4 py-3 text-left font-semibold text-gray-700 dark:text-gray-300 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700" data-sort="name">Имя</th>
+                  <th class="px-4 py-3 text-right font-semibold text-gray-700 dark:text-gray-300 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700" data-sort="totalCreditsBought">Куплено кредитов</th>
+                  <th class="px-4 py-3 text-right font-semibold text-gray-700 dark:text-gray-300 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700" data-sort="totalCreditsUsed">Использовано</th>
+                  <th class="px-4 py-3 text-right font-semibold text-gray-700 dark:text-gray-300 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700" data-sort="currentBalance">Баланс</th>
+                  <th class="px-4 py-3 text-right font-semibold text-gray-700 dark:text-gray-300 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700" data-sort="totalRevenue">Выручка (₽)</th>
+                  <th class="px-4 py-3 text-right font-semibold text-gray-700 dark:text-gray-300 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700" data-sort="avgPricePerCredit">Средняя цена</th>
+                  <th class="px-4 py-3 text-left font-semibold text-gray-700 dark:text-gray-300 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700" data-sort="lastPaymentDate">Последний платеж</th>
+                  <th class="px-4 py-3 text-left font-semibold text-gray-700 dark:text-gray-300 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700" data-sort="status">Статус</th>
+                </tr>
+              </thead>
+              <tbody id="financial-table-body">
+                <tr class="text-center py-8">
+                  <td colspan="9" class="px-6 py-8 text-gray-500 dark:text-gray-400">Загрузка данных...</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
       </div>
 
       <!-- Edit Balance Modal -->
