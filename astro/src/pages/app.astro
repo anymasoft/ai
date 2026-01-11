@@ -102,6 +102,17 @@ export const prerender = false;
                                 Your browser does not support the video tag.
                             </video>
 
+                            <!-- Paywall Overlay (shown when balance is insufficient) -->
+                            <div id="player-paywall" class="hidden absolute inset-0 flex flex-col items-center justify-center bg-white/95 dark:bg-gray-900/95 backdrop-blur-sm z-20">
+                                <p class="text-xl font-semibold text-gray-900 dark:text-white mb-2">Недостаточно кредитов</p>
+                                <p class="text-sm text-gray-600 dark:text-gray-400 mb-6">
+                                    Чтобы создать видео, пополните баланс
+                                </p>
+                                <button id="paywall-topup" class="px-6 py-3 rounded-xl bg-primary text-white text-base font-semibold hover:bg-primary/90 transition shadow-lg">
+                                    Пополнить баланс
+                                </button>
+                            </div>
+
                             <!-- Download & Clear Buttons - Top Right (hidden until generation) -->
                             <div id="video-controls" class="hidden absolute top-4 right-4 flex gap-2 z-20">
                                 <!-- Download Button -->
@@ -188,6 +199,28 @@ export const prerender = false;
             toast.classList.add('opacity-0');
             setTimeout(() => toast.remove(), 300);
         }, 3000);
+    }
+
+    // ========== Paywall Overlay for Insufficient Balance ==========
+    function showPaywallOverlay() {
+        const paywall = document.getElementById('player-paywall') as HTMLElement;
+        if (!paywall) return;
+
+        // Show paywall
+        paywall.classList.remove('hidden');
+
+        // Auto-hide and reset after 3 seconds
+        setTimeout(() => {
+            paywall.classList.add('hidden');
+        }, 3000);
+    }
+
+    // ========== Paywall Button Handler ==========
+    const paywallTopupBtn = document.getElementById('paywall-topup') as HTMLButtonElement;
+    if (paywallTopupBtn) {
+        paywallTopupBtn.addEventListener('click', () => {
+            window.location.href = '/billing';
+        });
     }
 
     // ========== Validation and Button State ==========
@@ -361,12 +394,21 @@ export const prerender = false;
                         if (!response.ok) {
                             console.error('[GEN] Error:', data.error);
                             videoLoading.classList.add('hidden');
-                            videoPlaceholder.classList.remove('hidden');
                             generateIcon.classList.remove('hidden');
                             generateSpinner.classList.add('hidden');
                             generateBtn.disabled = false;
+
                             const errorMsg = data.error || 'Ошибка при генерации видео';
-                            showToast(errorMsg, 'error');
+                            const isBalanceError = errorMsg.toLowerCase().includes('баланс') ||
+                                                  errorMsg.toLowerCase().includes('кредит') ||
+                                                  errorMsg.toLowerCase().includes('недостаточно');
+
+                            if (isBalanceError) {
+                                showPaywallOverlay();
+                            } else {
+                                videoPlaceholder.classList.remove('hidden');
+                                showToast(errorMsg, 'error');
+                            }
                             return;
                         }
 
@@ -420,8 +462,16 @@ export const prerender = false;
                         console.error('[GEN] Generation error:', errorMessage);
 
                         videoLoading.classList.add('hidden');
-                        videoPlaceholder.classList.remove('hidden');
-                        showToast(`Ошибка: ${errorMessage}`, 'error');
+                        const isBalanceError = errorMessage.toLowerCase().includes('баланс') ||
+                                              errorMessage.toLowerCase().includes('кредит') ||
+                                              errorMessage.toLowerCase().includes('недостаточно');
+
+                        if (isBalanceError) {
+                            showPaywallOverlay();
+                        } else {
+                            videoPlaceholder.classList.remove('hidden');
+                            showToast(`Ошибка: ${errorMessage}`, 'error');
+                        }
                     } finally {
                         // Re-enable button and reset spinner
                         generateIcon.classList.remove('hidden');
