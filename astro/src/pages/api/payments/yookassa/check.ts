@@ -171,17 +171,21 @@ export const GET: APIRoute = async (context) => {
       yooKassaPayment.status === 'succeeded' &&
       yooKassaPayment.paid === true
     ) {
-      console.log(`[CHECK] YooKassa confirmed succeeded, applying payment...`);
+      console.log(`[CHECK] ✅ YooKassa confirmed succeeded (status=${yooKassaPayment.status}, paid=${yooKassaPayment.paid}), applying payment...`);
 
       // Используем ту же функцию
       const applyResult = await applySuccessfulPayment(paymentId);
 
+      console.log(`[CHECK] applySuccessfulPayment result: success=${applyResult.success}, reason=${applyResult.reason || 'none'}`);
+
       if (applyResult.success) {
+        console.log(`[CHECK] ✅ SUCCESS: Payment ${paymentId} applied for user ${user.id}`);
         return new Response(
           JSON.stringify({ success: true, status: 'succeeded' }),
           { status: 200, headers: { 'Content-Type': 'application/json' } }
         );
       } else {
+        console.error(`[CHECK] ❌ FAILED: Could not apply payment: ${applyResult.reason}`);
         return new Response(
           JSON.stringify({
             success: false,

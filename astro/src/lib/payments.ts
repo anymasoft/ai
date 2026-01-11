@@ -72,14 +72,25 @@ export async function applySuccessfulPayment(
 
     // ШАГ 5: Увеличиваем generation_balance пользователя
     const now = Math.floor(Date.now() / 1000);
+
+    // Проверяем текущий баланс ДО обновления
+    const userBeforeStmt = db.prepare('SELECT generation_balance FROM users WHERE id = ?');
+    const userBefore = userBeforeStmt.get(userId) as any;
+    const balanceBefore = userBefore?.generation_balance ?? 0;
+
     const updateUserStmt = db.prepare(
       `UPDATE users
        SET generation_balance = generation_balance + ?, updatedAt = ?
        WHERE id = ?`
     );
-    updateUserStmt.run(generationsAmount, now, userId);
+    const updateResult = updateUserStmt.run(generationsAmount, now, userId);
 
-    console.log(`[applySuccessfulPayment] Updated generation_balance for user ${userId}`);
+    // Проверяем баланс ПОСЛЕ обновления
+    const userAfterStmt = db.prepare('SELECT generation_balance FROM users WHERE id = ?');
+    const userAfter = userAfterStmt.get(userId) as any;
+    const balanceAfter = userAfter?.generation_balance ?? 0;
+
+    console.log(`[applySuccessfulPayment] Balance update for user ${userId}: ${balanceBefore} + ${generationsAmount} = ${balanceAfter} (changes: ${updateResult.changes})`);
 
     // ШАГ 6: Обновляем payments.status = 'succeeded'
     const updatePaymentStmt = db.prepare(

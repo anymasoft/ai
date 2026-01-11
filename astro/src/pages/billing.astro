@@ -95,7 +95,7 @@ const packageCards: PackageCard[] = packages.map((pkg, idx) => {
 								Пополните аккаунт
 							</h1>
 							<p class="text-sm text-gray-600 dark:text-gray-300 mt-1">
-								Баланс: <strong>{user.generation_balance}</strong> кредитов
+								Баланс: <strong data-balance-display>{user.generation_balance}</strong> кредитов
 							</p>
 						</div>
 					</div>
@@ -238,6 +238,29 @@ const packageCards: PackageCard[] = packages.map((pkg, idx) => {
 		});
 	});
 
+	// Функция для обновления баланса в DOM
+	function updateBalanceDisplay(newBalance: number) {
+		const balanceElements = document.querySelectorAll('[data-balance-display]') as NodeListOf<HTMLElement>;
+		balanceElements.forEach(el => {
+			el.textContent = newBalance.toString();
+		});
+	}
+
+	// Функция для получения текущего баланса
+	async function fetchCurrentBalance(): Promise<number | null> {
+		try {
+			const response = await fetch('/api/user/balance');
+			const data = await response.json();
+			if (data.success && typeof data.generation_balance === 'number') {
+				console.log(`[POLLING] Current balance: ${data.generation_balance}`);
+				return data.generation_balance;
+			}
+		} catch (error) {
+			console.error('[POLLING] Error fetching balance:', error);
+		}
+		return null;
+	}
+
 	// Проверка статуса платежа после возврата со страницы Yookassa
 	async function checkPaymentStatus() {
 		const params = new URLSearchParams(window.location.search);
@@ -247,38 +270,64 @@ const packageCards: PackageCard[] = packages.map((pkg, idx) => {
 			return;
 		}
 
+		console.log(`[POLLING] Starting payment status check for paymentId: ${paymentId}`);
 		showStatus('Проверка статуса платежа...', 'loading');
 
 		try {
 			let attempts = 0;
-			const maxAttempts = 30; // Проверяем 30 раз с интервалом 1 сек = 30 сек всего
+			const maxAttempts = 60; // Проверяем 60 раз с интервалом 1 сек = 60 сек всего
 
 			const checkInterval = setInterval(async () => {
 				attempts++;
+				console.log(`[POLLING] Attempt ${attempts}/${maxAttempts}: Checking payment status...`);
 
-				const response = await fetch(`/api/payments/yookassa/check?paymentId=${paymentId}`);
-				const data = await response.json();
+				try {
+					const response = await fetch(`/api/payments/yookassa/check?paymentId=${paymentId}`);
+					const data = await response.json();
 
-				if (data.status === 'succeeded') {
-					clearInterval(checkInterval);
-					showStatus('✓ Платеж успешно выполнен! Кредиты добавлены на ваш счёт.', 'success');
+					console.log(`[POLLING] Check response: status=${data.status}, success=${data.success}`);
 
-					// Обновляем страницу через 2 секунды, чтобы показать новый баланс
-					setTimeout(() => {
-						window.location.href = '/billing';
-					}, 2000);
-				} else if (data.status === 'failed' || data.status === 'cancelled') {
-					clearInterval(checkInterval);
-					showStatus(`Платеж ${data.status === 'cancelled' ? 'отменён' : 'не выполнен'}.`, 'error');
-					enableAllButtons();
-				} else if (attempts >= maxAttempts) {
-					clearInterval(checkInterval);
-					showStatus('Время проверки истекло. Платеж может всё ещё обрабатываться. Попробуйте обновить страницу.', 'error');
-					enableAllButtons();
+					if (data.status === 'succeeded') {
+						clearInterval(checkInterval);
+						console.log(`[POLLING] ✅ Payment succeeded! Fetching updated balance...`);
+
+						// Получаем обновленный баланс
+						const newBalance = await fetchCurrentBalance();
+						if (newBalance !== null) {
+							updateBalanceDisplay(newBalance);
+							showStatus(`✓ Платеж успешно выполнен! Кредиты добавлены. Баланс: ${newBalance}`, 'success');
+						} else {
+							showStatus('✓ Платеж успешно выполнен! Обновляем баланс...', 'success');
+							// Reload если не смогли получить баланс
+							setTimeout(() => {
+								window.location.href = '/billing';
+							}, 2000);
+						}
+
+						// Очищаем параметр из URL
+						setTimeout(() => {
+							window.history.replaceState({}, document.title, '/billing');
+						}, 1000);
+
+						enableAllButtons();
+					} else if (data.status === 'failed' || data.status === 'cancelled') {
+						clearInterval(checkInterval);
+						console.error(`[POLLING] ❌ Payment ${data.status}`);
+						showStatus(`Платеж ${data.status === 'cancelled' ? 'отменён' : 'не выполнен'}.`, 'error');
+						enableAllButtons();
+					} else if (attempts >= maxAttempts) {
+						clearInterval(checkInterval);
+						console.warn(`[POLLING] Max attempts reached (${maxAttempts})`);
+						showStatus('Время проверки истекло. Платеж может всё ещё обрабатываться. Попробуйте обновить страницу.', 'error');
+						enableAllButtons();
+					}
+				} catch (fetchError) {
+					console.error(`[POLLING] Error on attempt ${attempts}:`, fetchError);
 				}
 			}, 1000);
 		} catch (error) {
 			const errorMessage = error instanceof Error ? error.message : 'Неизвестная ошибка';
+			console.error('[POLLING] Fatal error:', errorMessage);
 			showStatus(`Ошибка при проверке статуса: ${errorMessage}`, 'error');
 			enableAllButtons();
 		}
