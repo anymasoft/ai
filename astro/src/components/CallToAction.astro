@@ -1,5 +1,6 @@
 ---
 import Container from "./Container.astro"
+import { ru } from "../lib/i18n"
 
 ---
 
@@ -53,27 +54,32 @@ import Container from "./Container.astro"
         />
       </div>
       <div class="mt-6 m-auto space-y-6 md:w-8/12 lg:w-7/12">
-        <h1 class="text-center text-4xl font-bold text-gray-800 dark:text-white md:text-5xl">Start using Video Reader AI today</h1>
+        <h1 class="text-center text-4xl font-bold text-gray-800 dark:text-white md:text-5xl">
+          {/* EN: Start using Video Reader AI today */}
+          {ru.cta.title}
+        </h1>
         <p class="text-center text-xl text-gray-600 dark:text-gray-300">
-          Join thousands of users watching YouTube without language barriers.
+          {/* EN: Join thousands of users watching YouTube without language barriers. */}
+          {ru.cta.subtitle}
         </p>
         <div class="flex flex-wrap justify-center gap-6">
           <a
             href="#"
             class="relative flex h-12 w-full items-center justify-center px-8 before:absolute before:inset-0 before:rounded-full before:bg-primary before:transition before:duration-300 hover:before:scale-105 active:duration-75 active:before:scale-95 sm:w-max"
           >
-            <span class="relative text-base font-semibold text-white dark:text-dark"
-              >Add to Chrome — Free</span
-            >
+            <span class="relative text-base font-semibold text-white dark:text-dark">
+              {/* EN: Add to Chrome — Free */}
+              {ru.hero.cta_install}
+            </span>
           </a>
           <a
             href="#pricing"
             class="relative flex h-12 w-full items-center justify-center px-8 before:absolute before:inset-0 before:rounded-full before:border before:border-transparent before:bg-primary/10 before:bg-gradient-to-b before:transition before:duration-300 hover:before:scale-105 active:duration-75 active:before:scale-95 dark:before:border-gray-700 dark:before:bg-gray-800 sm:w-max"
           >
-            <span
-              class="relative text-base font-semibold text-primary dark:text-white"
-              >View Pricing</span
-            >
+            <span class="relative text-base font-semibold text-primary dark:text-white">
+              {/* EN: View Pricing */}
+              {ru.hero.cta_pricing}
+            </span>
           </a>
         </div>
       </div>
