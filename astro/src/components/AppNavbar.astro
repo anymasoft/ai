@@ -32,7 +32,7 @@ const userIsAdmin = user ? isAdmin(user.email) : false;
                         <div class="text-right">
                             {/* EN: Credits remaining */}
                             <p class="text-sm text-gray-600 dark:text-gray-400">{ru.navbar.credits_remaining}</p>
-                            <p class="text-2xl font-bold text-primary">{user.generation_balance}</p>
+                            <p id="navbar-balance" class="text-2xl font-bold text-primary" data-initial-balance={user.generation_balance}>{user.generation_balance}</p>
                         </div>
                     )}
 
@@ -110,6 +110,7 @@ const userIsAdmin = user ? isAdmin(user.email) : false;
 <script>
     const trigger = document.getElementById('user-menu-trigger');
     const dropdown = document.getElementById('user-menu-dropdown');
+    const navbarBalance = document.getElementById('navbar-balance');
 
     if (trigger && dropdown) {
         trigger.addEventListener('click', () => {
@@ -123,4 +124,54 @@ const userIsAdmin = user ? isAdmin(user.email) : false;
             }
         });
     }
+
+    // Периодически проверяем баланс пользователя для обновления в реальном времени
+    if (navbarBalance) {
+        async function updateBalance() {
+            try {
+                const response = await fetch('/api/user/balance', {
+                    method: 'GET',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    const newBalance = data.generation_balance;
+                    const currentBalance = parseInt(navbarBalance.textContent || '0', 10);
+
+                    // Обновляем баланс, если он изменился
+                    if (newBalance !== currentBalance) {
+                        navbarBalance.textContent = newBalance;
+                        navbarBalance.dataset.initialBalance = newBalance;
+
+                        // Добавляем анимацию обновления
+                        navbarBalance.style.animation = 'pulse 0.5s ease-in-out';
+                        setTimeout(() => {
+                            navbarBalance.style.animation = '';
+                        }, 500);
+                    }
+                }
+            } catch (error) {
+                console.error('Failed to update balance:', error);
+            }
+        }
+
+        // Проверяем баланс сразу после загрузки страницы и затем каждые 5 секунд
+        updateBalance();
+        setInterval(updateBalance, 5000);
+
+        // Также проверяем баланс, когда страница становится видимой (например, после возврата со страницы платежа)
+        document.addEventListener('visibilitychange', () => {
+            if (!document.hidden) {
+                updateBalance();
+            }
+        });
+    }
 </script>
+
+<style>
+    @keyframes pulse {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.6; }
+    }
+</style>
