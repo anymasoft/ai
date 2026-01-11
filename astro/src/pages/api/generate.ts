@@ -9,6 +9,7 @@ import {
 import { enqueueGeneration, getQueueSize } from '../../lib/minimax/queue';
 import { processQueue } from '../../lib/minimax/processor';
 import { enhancePrompt } from '../../lib/promptEnhancer';
+import { routeToTemplate } from '../../lib/minimax/templateRouter';
 
 interface GenerateRequest {
   prompt: string;
@@ -18,12 +19,19 @@ interface GenerateRequest {
 /**
  * Создает запись генерации с промптом и статусом 'queued'
  * Сохраняет оба промпта: пользовательский и улучшенный
+ * Также сохраняет данные Template Router (шаблон)
  */
 function createGenerationWithPrompts(
   userId: string,
   duration: number,
   promptUser: string,
-  promptFinal: string
+  promptFinal: string,
+  templateData?: {
+    template_id: string;
+    template_name: string;
+    text_inputs: Record<string, string>;
+    final_prompt: string;
+  }
 ): string {
   const db = getDb();
   const cost = duration === 6 ? 1 : 2;
@@ -33,11 +41,26 @@ function createGenerationWithPrompts(
   const insertStmt = db.prepare(
     `INSERT INTO generations (
       id, userId, status, duration, cost, charged,
-      prompt, prompt_final, minimax_status, createdAt
-    ) VALUES (?, ?, ?, ?, ?, 0, ?, ?, 'pending', ?)`
+      prompt, prompt_final, minimax_status, createdAt,
+      minimax_template_id, minimax_template_name, minimax_template_inputs, minimax_final_prompt
+    ) VALUES (?, ?, ?, ?, ?, 0, ?, ?, 'pending', ?,
+              ?, ?, ?, ?)`
   );
 
-  insertStmt.run(generationId, userId, 'queued', duration, cost, promptUser, promptFinal, now);
+  insertStmt.run(
+    generationId,
+    userId,
+    'queued',
+    duration,
+    cost,
+    promptUser,
+    promptFinal,
+    now,
+    templateData?.template_id || null,
+    templateData?.template_name || null,
+    templateData?.text_inputs ? JSON.stringify(templateData.text_inputs) : null,
+    templateData?.final_prompt || null
+  );
 
   return generationId;
 }
@@ -115,9 +138,21 @@ export const POST: APIRoute = async (context) => {
     // ШАГ 3: Улучшаем промпт через Smart Prompt Engine
     const promptFinal = await enhancePrompt(prompt);
 
+    // ШАГ 3.5: Выбираем оптимальный MiniMax Template через Template Router
+    let templateData;
+    try {
+      const imageDescription = 'uploaded image'; // Краткое описание картинки
+      templateData = await routeToTemplate(prompt, imageDescription);
+      console.log('[GEN] Template selected:', templateData.template_name);
+    } catch (templateError) {
+      // Fallback: если Template Router fails, продолжаем без шаблона
+      console.warn('[GEN] Template Router failed, continuing without template:', templateError);
+      templateData = undefined;
+    }
+
     // ШАГ 4: Создаем запись генерации со статусом 'queued'
-    // Оба промпта сохраняются в БД
-    const generationId = createGenerationWithPrompts(user.id, duration, prompt, promptFinal);
+    // Оба промпта и данные шаблона сохраняются в БД
+    const generationId = createGenerationWithPrompts(user.id, duration, prompt, promptFinal, templateData);
 
     // ШАГ 5: Добавляем в глобальную очередь (concurrency=1)
     enqueueGeneration(generationId);
