@@ -60,8 +60,10 @@ updatedAt INTEGER
 
 ### Платежи (Yookassa)
 - `POST /api/payments/yookassa/create` - создать платёж (запрашивает packageKey)
-- `POST /api/payments/yookassa/webhook` - webhook от ЮКассы (payment.succeeded)
-- `POST /api/payments/yookassa/check` - проверить статус платежа
+- `GET /api/payments/yookassa/check` - проверить статус платежа (polling)
+  - Без params → ищет latest pending платёж пользователя
+  - С ?paymentId=XXX → проверяет конкретный платёж
+  - Если pending в ЮКассе → обновляет БД автоматически
 - `GET /api/payments/user-history` - история платежей текущего юзера
 
 ### Администратор
@@ -78,14 +80,20 @@ updatedAt INTEGER
 
 ## 3️⃣ КЛЮЧЕВАЯ ЛОГИКА
 
-### Поток пополнения баланса
+### Поток пополнения баланса (POLLING, не webhook!)
 1. Юзер нажимает "Upgrade" → POST `/api/payments/yookassa/create`
 2. Выбирает пакет (basic/pro/enterprise)
 3. Получает ссылку на платёж ЮКассы
-4. После оплаты ЮКасса отправляет webhook → `POST /api/payments/yookassa/webhook`
-5. Функция `applySuccessfulPayment()` в `/lib/payments.ts`:
-   - Находит платёж в БД по externalPaymentId
-   - Проверяет, что status === 'pending' (идемпотентна)
+4. Переходит на платёжную форму ЮКассы
+5. **После оплаты** ЮКасса редирект → `/billing?success=1`
+6. Frontend вызывает GET `/api/payments/yookassa/check` (polling)
+7. Check endpoint:
+   - Находит latest pending платёж пользователя (или по paymentId)
+   - Проверяет payments.status в БД
+   - Если pending → PULL из ЮКассы API (GET /v3/payments/{id})
+   - Если ЮКасса говорит succeeded → вызывает `applySuccessfulPayment()`
+8. Функция `applySuccessfulPayment()` в `/lib/payments.ts`:
+   - Идемпотентна (проверяет status)
    - Берёт количество генераций из packages таблицы
    - **Увеличивает users.generation_balance** на это количество
    - Обновляет payments.status = 'succeeded'
@@ -172,7 +180,7 @@ updatedAt INTEGER
 
 ### Фаза 3: API endpoints
 1. create payment (POST /api/payments/yookassa/create)
-2. webhook (POST /api/payments/yookassa/webhook)
+2. check payment status (GET /api/payments/yookassa/check) - POLLING, не webhook!
 3. admin endpoints (GET /api/admin/users, PATCH /api/admin/user-balance)
 
 ### Фаза 4: Frontend
