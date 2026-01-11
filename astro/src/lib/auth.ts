@@ -90,6 +90,7 @@ export function upsertUser(googleId: string, email: string, name: string, image?
 
   if (existing) {
     // Обновляем
+    console.log(`👤 User already exists: ${email} (id: ${googleId}), updating name/image`);
     db.prepare('UPDATE users SET name = ?, image = ?, updatedAt = ? WHERE id = ?').run(
       name,
       image,
@@ -100,6 +101,7 @@ export function upsertUser(googleId: string, email: string, name: string, image?
   }
 
   // Создаём нового пользователя с 3 бонусными кредитами
+  console.log(`✨ Creating new user: ${email} (id: ${googleId}) with 3 bonus credits`);
   db.prepare(
     'INSERT INTO users (id, email, name, image, generation_balance, generation_used, plan, role, createdAt, updatedAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
   ).run(googleId, email, name, image, 3, 0, 'free', 'user', now, now);
