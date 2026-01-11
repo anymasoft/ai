@@ -3,18 +3,18 @@ import Container from "./Container.astro"
 
 const pricingData = {
   plan_free_features: [
-    '5 видео в месяц',
+    '100 кредитов',
     'Вертикальный формат',
     'Базовое качество',
   ],
   plan_pro_features: [
-    '50 видео в месяц',
+    '1000 кредитов',
     'Все форматы экспорта',
     'Высокое качество',
     'Приоритетная обработка',
   ],
   plan_premium_features: [
-    '500 видео в месяц',
+    '5000 кредитов',
     'Неограниченный экспорт',
     'Максимальное качество',
     'API для автоматизации',
@@ -34,7 +34,6 @@ const pricingData = {
                     <p class="mt-2 text-gray-600">Протестируй возможности</p>
                     <div class="mt-4">
                         <span class="text-4xl font-bold">0 ₽</span>
-                        <span class="ml-2 text-gray-600">/месяц</span>
                     </div>
                     <ul class="mt-6 space-y-3">
                         {pricingData.plan_free_features.map((feature: string) => (
@@ -79,7 +78,6 @@ const pricingData = {
                     <p class="mt-2 text-gray-600">Для активных селлеров</p>
                     <div class="mt-4">
                         <span class="text-4xl font-bold">299 ₽</span>
-                        <span class="ml-2 text-gray-600">/месяц</span>
                     </div>
                     <ul class="mt-6 space-y-3">
                         {pricingData.plan_pro_features.map((feature: string) => (
@@ -113,10 +111,9 @@ const pricingData = {
                 <div class="p-6">
                     {/* EN: Premium Plan */}
                     <h3 class="text-2xl font-semibold text-gray-900">Премиум</h3>
-                    <p class="mt-2 text-gray-600">Неограниченные видео</p>
+                    <p class="mt-2 text-gray-600">Максимум возможностей</p>
                     <div class="mt-4">
                         <span class="text-4xl font-bold">999 ₽</span>
-                        <span class="ml-2 text-gray-600">/месяц</span>
                     </div>
                     <ul class="mt-6 space-y-3">
                         {pricingData.plan_premium_features.map((feature: string) => (
