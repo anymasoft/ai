@@ -102,16 +102,28 @@ export const prerender = false;
                                 Your browser does not support the video tag.
                             </video>
 
-                            <!-- Download Button - Top Right (hidden until generation) -->
-                            <button
-                                id="download-btn"
-                                class="hidden absolute top-4 right-4 p-2.5 rounded-full bg-white dark:bg-gray-700 text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-600 transition shadow-lg z-20"
-                                title="Download"
-                            >
-                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
-                                </svg>
-                            </button>
+                            <!-- Download & Clear Buttons - Top Right (hidden until generation) -->
+                            <div id="video-controls" class="hidden absolute top-4 right-4 flex gap-2 z-20">
+                                <!-- Download Button -->
+                                <button
+                                    id="download-btn"
+                                    class="p-2.5 rounded-full bg-white dark:bg-gray-700 text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-600 transition shadow-lg cursor-pointer"
+                                >
+                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+                                    </svg>
+                                </button>
+
+                                <!-- Clear Button -->
+                                <button
+                                    id="clear-btn"
+                                    class="p-2.5 rounded-full bg-white dark:bg-gray-700 text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-600 transition shadow-lg cursor-pointer"
+                                >
+                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                                    </svg>
+                                </button>
+                            </div>
 
                             <!-- PROMPT BAR - Floating Control Panel (CENTERED, BOTTOM) -->
                             <div class="absolute bottom-6 left-1/2 -translate-x-1/2 z-30 pointer-events-none px-4 w-full" style="max-width: 60%">
@@ -281,7 +293,9 @@ export const prerender = false;
     const videoPlaceholder = document.getElementById('video-placeholder') as HTMLElement;
     const videoLoading = document.getElementById('video-loading') as HTMLElement;
     const videoOutput = document.getElementById('video-output') as HTMLVideoElement;
+    const videoControls = document.getElementById('video-controls') as HTMLElement;
     const downloadBtn = document.getElementById('download-btn') as HTMLButtonElement;
+    const clearBtn = document.getElementById('clear-btn') as HTMLButtonElement;
 
     if (generateBtn) {
         generateBtn.addEventListener('click', async () => {
@@ -300,7 +314,7 @@ export const prerender = false;
             // Hide loading, show video
             videoLoading.classList.add('hidden');
             videoOutput.classList.remove('hidden');
-            downloadBtn.classList.remove('hidden');
+            videoControls.classList.remove('hidden');
 
             // Re-enable button and reset spinner
             generateIcon.classList.remove('hidden');
@@ -319,6 +333,21 @@ export const prerender = false;
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
+        });
+    }
+
+    // ========== Clear Button ==========
+    if (clearBtn) {
+        clearBtn.addEventListener('click', () => {
+            // Hide video and controls
+            videoOutput.classList.add('hidden');
+            videoControls.classList.add('hidden');
+
+            // Show placeholder
+            videoPlaceholder.classList.remove('hidden');
+
+            // Reset video source
+            videoOutput.src = '';
         });
     }
 
