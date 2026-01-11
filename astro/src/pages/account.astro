@@ -1,6 +1,7 @@
 ---
 import { getUserFromSession, isAdmin } from '../lib/auth';
 import AppLayout from '../layouts/AppLayout.astro';
+import { ru } from '../lib/i18n';
 
 // Эта страница должна быть динамичной для работы с cookies
 export const prerender = false;
@@ -30,8 +31,8 @@ const userIsAdmin = isAdmin(user.email);
 
       <!-- Header -->
       <div class="mb-8">
-        <h1 class="text-3xl font-bold text-gray-900 dark:text-white mb-2">Account Settings</h1>
-        <p class="text-gray-600 dark:text-gray-400">Manage your account information</p>
+        <h1 class="text-3xl font-bold text-gray-900 dark:text-white mb-2">Настройки аккаунта</h1>
+        <p class="text-gray-600 dark:text-gray-400">Управление информацией вашего профиля</p>
       </div>
 
       <!-- User Info Card -->
@@ -63,14 +64,14 @@ const userIsAdmin = isAdmin(user.email);
         <div class="grid grid-cols-2 gap-4 mb-6">
           <!-- Plan -->
           <div class="p-4 rounded-lg bg-gray-50 dark:bg-gray-800">
-            <p class="text-xs font-semibold text-gray-600 dark:text-gray-400 mb-1">PLAN</p>
+            <p class="text-xs font-semibold text-gray-600 dark:text-gray-400 mb-1">ТАРИФ</p>
             <p class="text-lg font-bold text-gray-900 dark:text-white capitalize">{user.plan}</p>
           </div>
 
           <!-- Credits -->
           <div class="p-4 rounded-lg bg-gray-50 dark:bg-gray-800">
-            <p class="text-xs font-semibold text-gray-600 dark:text-gray-400 mb-1">CREDITS</p>
-            <p class="text-lg font-bold text-gray-900 dark:text-white">{user.credits}</p>
+            <p class="text-xs font-semibold text-gray-600 dark:text-gray-400 mb-1">КРЕДИТЫ</p>
+            <p class="text-lg font-bold text-gray-900 dark:text-white">{user.generation_balance}</p>
           </div>
         </div>
       </div>
@@ -80,15 +81,15 @@ const userIsAdmin = isAdmin(user.email);
         userIsAdmin && (
           <div class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-6">
             <div class="mb-6">
-              <h3 class="text-xl font-bold text-gray-900 dark:text-white mb-1">Admin Settings</h3>
+              <h3 class="text-xl font-bold text-gray-900 dark:text-white mb-1">Настройки администратора</h3>
               <p class="text-sm text-gray-600 dark:text-gray-400">
-                You have admin access ({adminEmail})
+                У вас есть доступ администратора ({adminEmail})
               </p>
             </div>
 
             <div class="p-4 rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800">
               <p class="text-sm text-blue-700 dark:text-blue-400">
-                Admin features coming soon. You can manage user credits and plans through the database.
+                Функции администратора появятся очень скоро. Вы можете управлять кредитами и тарифами пользователей через админ-панель.
               </p>
             </div>
           </div>

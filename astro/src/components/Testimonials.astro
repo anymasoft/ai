@@ -1,12 +1,14 @@
 ---
 import Container from "./Container.astro"
+import { ru } from "../lib/i18n"
 ---
 
 <div class="text-gray-600 dark:text-gray-300" id="reviews">
   <Container>
     <div class="mb-20 space-y-4 px-6 md:px-0">
       <h2 class="text-center text-2xl font-bold text-gray-800 dark:text-white md:text-4xl">
-        What users say about Video Reader AI
+        {/* EN: What users say about Video Reader AI */}
+        {ru.testimonials.title}
       </h2>
     </div>
     <div class="md:columns-2 lg:columns-3 gap-8 space-y-8">
@@ -14,61 +16,61 @@ import Container from "./Container.astro"
         <div class="flex gap-4">
           <img class="w-12 h-12 rounded-full" src="./images/avatars/avatar.webp" alt="user avatar" width="400" height="400" loading="lazy">
           <div>
-            <h6 class="text-lg font-medium text-gray-700 dark:text-white">Anna Petrova</h6>
-            <p class="text-sm text-gray-500 dark:text-gray-300">Student</p>
+            <h6 class="text-lg font-medium text-gray-700 dark:text-white">{ru.testimonials.testimonial_1.name}</h6>
+            <p class="text-sm text-gray-500 dark:text-gray-300">{ru.testimonials.testimonial_1.role}</p>
           </div>
         </div>
-        <p class="mt-8">This extension helped me watch Japanese videos I could never understand before.</p>
+        <p class="mt-8">{ru.testimonials.testimonial_1.text}</p>
       </div>
       <div class="aspect-auto p-8 border border-gray-100 rounded-3xl bg-white dark:bg-gray-800 dark:border-gray-700 shadow-2xl shadow-gray-600/10 dark:shadow-none">
         <div class="flex gap-4">
           <img class="w-12 h-12 rounded-full" src="./images/avatars/avatar-1.webp" alt="user avatar" width="200" height="200" loading="lazy">
           <div>
-            <h6 class="text-lg font-medium text-gray-700 dark:text-white">Carlos Mendez</h6>
-            <p class="text-sm text-gray-500 dark:text-gray-300">Developer</p>
+            <h6 class="text-lg font-medium text-gray-700 dark:text-white">{ru.testimonials.testimonial_2.name}</h6>
+            <p class="text-sm text-gray-500 dark:text-gray-300">{ru.testimonials.testimonial_2.role}</p>
           </div>
         </div>
-        <p class="mt-8">Perfect for watching international tech content. Translation quality is amazing.</p>
+        <p class="mt-8">{ru.testimonials.testimonial_2.text}</p>
       </div>
       <div class="aspect-auto p-8 border border-gray-100 rounded-3xl bg-white dark:bg-gray-800 dark:border-gray-700 shadow-2xl shadow-gray-600/10 dark:shadow-none">
         <div class="flex gap-4">
           <img class="w-12 h-12 rounded-full" src="./images/avatars/avatar-2.webp" alt="user avatar" width="200" height="200" loading="lazy">
           <div>
-            <h6 class="text-lg font-medium text-gray-700 dark:text-white">Emily Zhang</h6>
-            <p class="text-sm text-gray-500 dark:text-gray-300">Content creator</p>
+            <h6 class="text-lg font-medium text-gray-700 dark:text-white">{ru.testimonials.testimonial_3.name}</h6>
+            <p class="text-sm text-gray-500 dark:text-gray-300">{ru.testimonials.testimonial_3.role}</p>
           </div>
         </div>
-        <p class="mt-8">Saves me hours. The Premium subtitle export is priceless.</p>
+        <p class="mt-8">{ru.testimonials.testimonial_3.text}</p>
       </div>
       <div class="aspect-auto p-8 border border-gray-100 rounded-3xl bg-white dark:bg-gray-800 dark:border-gray-700 shadow-2xl shadow-gray-600/10 dark:shadow-none">
         <div class="flex gap-4">
           <img class="w-12 h-12 rounded-full" src="./images/avatars/avatar-3.webp" alt="user avatar" width="200" height="200" loading="lazy">
           <div>
-            <h6 class="text-lg font-medium text-gray-700 dark:text-white">David Kim</h6>
-            <p class="text-sm text-gray-500 dark:text-gray-300">Language learner</p>
+            <h6 class="text-lg font-medium text-gray-700 dark:text-white">{ru.testimonials.testimonial_4.name}</h6>
+            <p class="text-sm text-gray-500 dark:text-gray-300">{ru.testimonials.testimonial_4.role}</p>
           </div>
         </div>
-        <p class="mt-8">Game changer for learning Spanish through authentic content. Context is preserved perfectly.</p>
+        <p class="mt-8">{ru.testimonials.testimonial_4.text}</p>
       </div>
       <div class="aspect-auto p-8 border border-gray-100 rounded-3xl bg-white dark:bg-gray-800 dark:border-gray-700 shadow-2xl shadow-gray-600/10 dark:shadow-none">
         <div class="flex gap-4">
           <img class="w-12 h-12 rounded-full" src="./images/avatars/avatar-4.webp" alt="user avatar" width="200" height="200" loading="lazy">
           <div>
-            <h6 class="text-lg font-medium text-gray-700 dark:text-white">Sarah Johnson</h6>
-            <p class="text-sm text-gray-500 dark:text-gray-300">Researcher</p>
+            <h6 class="text-lg font-medium text-gray-700 dark:text-white">{ru.testimonials.testimonial_5.name}</h6>
+            <p class="text-sm text-gray-500 dark:text-gray-300">{ru.testimonials.testimonial_5.role}</p>
           </div>
         </div>
-        <p class="mt-8">Essential for accessing international academic content. The accuracy is impressive.</p>
+        <p class="mt-8">{ru.testimonials.testimonial_5.text}</p>
       </div>
       <div class="aspect-auto p-8 border border-gray-100 rounded-3xl bg-white dark:bg-gray-800 dark:border-gray-700 shadow-2xl shadow-gray-600/10 dark:shadow-none">
         <div class="flex gap-4">
           <img class="w-12 h-12 rounded-full" src="./images/avatars/avatar-2.webp" alt="user avatar" width="400" height="400" loading="lazy">
           <div>
-            <h6 class="text-lg font-medium text-gray-700 dark:text-white">Michael Brown</h6>
-            <p class="text-sm text-gray-500 dark:text-gray-300">Teacher</p>
+            <h6 class="text-lg font-medium text-gray-700 dark:text-white">{ru.testimonials.testimonial_6.name}</h6>
+            <p class="text-sm text-gray-500 dark:text-gray-300">{ru.testimonials.testimonial_6.role}</p>
           </div>
         </div>
-        <p class="mt-8">My students use this to access educational content from around the world. Simple and effective.</p>
+        <p class="mt-8">{ru.testimonials.testimonial_6.text}</p>
       </div>
     </div>
   </Container>

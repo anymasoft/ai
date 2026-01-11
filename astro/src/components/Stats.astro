@@ -1,5 +1,6 @@
 ---
 import Container from "./Container.astro";
+import { ru } from "../lib/i18n";
 
 ---
 
@@ -23,11 +24,12 @@ import Container from "./Container.astro";
         </div>
         <div class="md:7/12 lg:w-1/2">
           <h2 class="text-3xl font-bold text-gray-900 md:text-4xl dark:text-white">
-            AI-powered translation built for YouTube
+            {/* EN: AI-powered translation built for YouTube */}
+            {ru.stats.title}
           </h2>
           <p class="my-8 text-gray-600 dark:text-gray-300">
-            Video Reader AI is designed for viewers who want to access global content without language barriers.
-            <br> <br> Whether you're learning a language or watching foreign creators, our AI gives you clear, context-aware subtitles.
+            {/* EN: Video Reader AI is designed for viewers who want to access global content without language barriers. Whether you're learning a language or watching foreign creators, our AI gives you clear, context-aware subtitles. */}
+            {ru.stats.subtitle}
           </p>
           <div class="divide-y space-y-4 divide-gray-100 dark:divide-gray-800">
             <div class="mt-8 flex gap-4 md:items-center">
@@ -37,8 +39,14 @@ import Container from "./Container.astro";
                 </svg>        
               </div>
               <div class="w-5/6">
-                <h3 class="font-semibold text-lg text-gray-700 dark:text-indigo-300">On-screen translation</h3>
-                <p class="text-gray-500 dark:text-gray-400">Everything happens directly inside the YouTube player. No switching apps.</p>
+                <h3 class="font-semibold text-lg text-gray-700 dark:text-indigo-300">
+                  {/* EN: On-screen translation */}
+                  {ru.stats.stat_1}
+                </h3>
+                <p class="text-gray-500 dark:text-gray-400">
+                  {/* EN: Everything happens directly inside the YouTube player. No switching apps. */}
+                  {ru.stats.stat_1_desc}
+                </p>
               </div> 
             </div> 
             <div class="pt-4 flex gap-4 md:items-center">
@@ -48,8 +56,14 @@ import Container from "./Container.astro";
                 </svg>                                      
               </div>
               <div class="w-5/6">
-                <h3 class="font-semibold text-lg text-gray-700 dark:text-teal-300">Fast & accurate</h3>
-                <p class="text-gray-500 dark:text-gray-400">Powered by advanced AI models optimized for real-time performance.</p>
+                <h3 class="font-semibold text-lg text-gray-700 dark:text-teal-300">
+                  {/* EN: Fast & accurate */}
+                  {ru.stats.stat_2}
+                </h3>
+                <p class="text-gray-500 dark:text-gray-400">
+                  {/* EN: Powered by advanced AI models optimized for real-time performance. */}
+                  {ru.stats.stat_2_desc}
+                </p>
               </div> 
             </div> 
           </div>
