@@ -46,6 +46,18 @@ function initDb() {
     console.log('ℹ️ Migration check passed');
   }
 
+  // Миграция: добавляем credits в payments если колонки нет
+  try {
+    const paymentsInfo = db.pragma('table_info(payments)');
+    const hasCredits = paymentsInfo.some((col: any) => col.name === 'credits');
+    if (!hasCredits) {
+      db.exec('ALTER TABLE payments ADD COLUMN credits INTEGER DEFAULT 0');
+      console.log('✅ Migration: Added credits column to payments table');
+    }
+  } catch (e) {
+    console.log('ℹ️ Migration check for payments passed');
+  }
+
   // ========== SESSIONS TABLE ==========
   db.exec(`
     CREATE TABLE IF NOT EXISTS sessions (
@@ -78,9 +90,8 @@ function initDb() {
     db.exec(`
       INSERT INTO packages (key, title, price_rub, generations, is_active)
       VALUES
-        ('basic', 'Basic', 990, 50, 1),
-        ('pro', 'Professional', 2490, 250, 1),
-        ('enterprise', 'Enterprise', 5990, 1000, 1)
+        ('basic', 'Basic', 3950, 50, 1),
+        ('pro', 'Pro', 13800, 200, 1)
     `);
     console.log('✅ Packages initialized');
   }
@@ -90,9 +101,10 @@ function initDb() {
     CREATE TABLE IF NOT EXISTS payments (
       id TEXT PRIMARY KEY,
       userId TEXT NOT NULL,
-      packageKey TEXT NOT NULL,
+      packageKey TEXT,
       externalPaymentId TEXT NOT NULL UNIQUE,
       amount REAL NOT NULL,
+      credits INTEGER DEFAULT 0,
       currency TEXT DEFAULT 'RUB',
       status TEXT NOT NULL DEFAULT 'pending',
       provider TEXT DEFAULT 'yookassa',

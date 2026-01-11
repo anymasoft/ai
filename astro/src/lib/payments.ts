@@ -24,7 +24,7 @@ export async function applySuccessfulPayment(
 
     // ШАГ 1: Найти платёж в БД
     const paymentStmt = db.prepare(
-      'SELECT id, userId, packageKey, status FROM payments WHERE externalPaymentId = ?'
+      'SELECT id, userId, packageKey, credits, status FROM payments WHERE externalPaymentId = ?'
     );
     const payment = paymentStmt.get(paymentId) as any;
 
@@ -33,10 +33,10 @@ export async function applySuccessfulPayment(
       return { success: false, reason: 'Payment not found in DB' };
     }
 
-    const { userId, packageKey, status: currentStatus } = payment;
+    const { userId, packageKey, credits, status: currentStatus } = payment;
 
     console.log(
-      `[applySuccessfulPayment] Found payment: userId=${userId}, packageKey=${packageKey}, status=${currentStatus}`
+      `[applySuccessfulPayment] Found payment: userId=${userId}, packageKey=${packageKey}, credits=${credits}, status=${currentStatus}`
     );
 
     // ШАГ 2: ЗАЩИТА от дублирования — если уже succeeded, ничего не делаем
@@ -55,19 +55,16 @@ export async function applySuccessfulPayment(
       return { success: false, reason: `Payment status is ${currentStatus}` };
     }
 
-    // ШАГ 4: Получаем количество генераций из packages таблицы
-    const pkgStmt = db.prepare('SELECT generations FROM packages WHERE key = ?');
-    const pkg = pkgStmt.get(packageKey) as any;
-
-    if (!pkg) {
-      console.error(`[applySuccessfulPayment] ❌ Package not found: ${packageKey}`);
-      return { success: false, reason: `Package not found: ${packageKey}` };
+    // ШАГ 4: Получаем количество кредитов из payments таблицы
+    if (!credits || credits <= 0) {
+      console.error(`[applySuccessfulPayment] ❌ Invalid credits amount: ${credits}`);
+      return { success: false, reason: `Invalid credits amount: ${credits}` };
     }
 
-    const generationsAmount = pkg.generations;
+    const creditsAmount = credits;
 
     console.log(
-      `[applySuccessfulPayment] Adding ${generationsAmount} generations to user ${userId}`
+      `[applySuccessfulPayment] Adding ${creditsAmount} credits to user ${userId}`
     );
 
     // ШАГ 5: Увеличиваем generation_balance пользователя
@@ -83,14 +80,14 @@ export async function applySuccessfulPayment(
        SET generation_balance = generation_balance + ?, updatedAt = ?
        WHERE id = ?`
     );
-    const updateResult = updateUserStmt.run(generationsAmount, now, userId);
+    const updateResult = updateUserStmt.run(creditsAmount, now, userId);
 
     // Проверяем баланс ПОСЛЕ обновления
     const userAfterStmt = db.prepare('SELECT generation_balance FROM users WHERE id = ?');
     const userAfter = userAfterStmt.get(userId) as any;
     const balanceAfter = userAfter?.generation_balance ?? 0;
 
-    console.log(`[applySuccessfulPayment] Balance update for user ${userId}: ${balanceBefore} + ${generationsAmount} = ${balanceAfter} (changes: ${updateResult.changes})`);
+    console.log(`[applySuccessfulPayment] Balance update for user ${userId}: ${balanceBefore} + ${creditsAmount} = ${balanceAfter} (changes: ${updateResult.changes})`);
 
     // ШАГ 6: Обновляем payments.status = 'succeeded'
     const updatePaymentStmt = db.prepare(
