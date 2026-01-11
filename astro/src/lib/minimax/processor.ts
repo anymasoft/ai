@@ -66,11 +66,12 @@ export async function processQueue(): Promise<void> {
       // Выставить статус на processing
       updateGenerationStatus(generationId, 'processing');
 
-      // Сформировать callback URL (без generationId в query, только по task_id)
-      const callbackUrl = `${process.env.MINIMAX_CALLBACK_URL || 'http://localhost:3000'}/api/minimax_callback`;
+      // Сформировать callback URL (БЕЗ /api, только /minimax_callback как ожидает MiniMax)
+      const callbackBase = (process.env.MINIMAX_CALLBACK_URL || 'http://localhost:3000').replace(/\/$/, '');
+      const callbackUrl = `${callbackBase}/minimax_callback`;
 
       console.log(
-        `[PROCESSOR] Calling MiniMax: generation=${generationId}, userId=${userId}`
+        `[PROCESSOR] Calling MiniMax: generation=${generationId}, userId=${userId}, callback=${callbackUrl}`
       );
 
       // Вызвать MiniMax API
