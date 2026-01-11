@@ -1,5 +1,5 @@
 ---
-import { getUserFromSession, isAdmin } from '../lib/auth';
+import { getUserFromSession } from '../lib/auth';
 import AppLayout from '../layouts/AppLayout.astro';
 
 // Эта страница должна быть динамичной для работы с cookies
@@ -13,14 +13,12 @@ const user = sessionToken ? getUserFromSession(sessionToken) : null;
 if (!user) {
   return Astro.redirect('/sign-in');
 }
-
-const adminEmail = 'nazarov.soft@gmail.com';
-const userIsAdmin = isAdmin(user.email);
 ---
 
 <AppLayout title="Account - Beem">
-  <main class="flex-1 overflow-auto">
-    <div class="max-w-2xl mx-auto p-6 md:p-10">
+  <main class="flex-1 overflow-hidden">
+    <div class="h-full flex flex-col">
+      <div class="max-w-2xl mx-auto p-6 md:p-10 w-full">
       <!-- Back Button -->
       <a href="/app" class="inline-flex items-center justify-center p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition cursor-pointer mb-6">
         <svg class="w-6 h-6 text-gray-700 dark:text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -35,7 +33,7 @@ const userIsAdmin = isAdmin(user.email);
       </div>
 
       <!-- User Info Card -->
-      <div class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-6 mb-6">
+      <div class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-6">
         <div class="flex items-start gap-4 mb-6">
           {
             user.image && (
@@ -74,26 +72,7 @@ const userIsAdmin = isAdmin(user.email);
           </div>
         </div>
       </div>
-
-      <!-- Admin Section (only for admin) -->
-      {
-        userIsAdmin && (
-          <div class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-6">
-            <div class="mb-6">
-              <h3 class="text-xl font-bold text-gray-900 dark:text-white mb-1">Настройки администратора</h3>
-              <p class="text-sm text-gray-600 dark:text-gray-400">
-                У вас есть доступ администратора ({adminEmail})
-              </p>
-            </div>
-
-            <div class="p-4 rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800">
-              <p class="text-sm text-blue-700 dark:text-blue-400">
-                Функции администратора появятся очень скоро. Вы можете управлять кредитами и тарифами пользователей через админ-панель.
-              </p>
-            </div>
-          </div>
-        )
-      }
+      </div>
     </div>
   </main>
 </AppLayout>

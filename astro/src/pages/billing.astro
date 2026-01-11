@@ -2,8 +2,7 @@
 import Container from '../components/Container.astro';
 import AppLayout from '../layouts/AppLayout.astro';
 import { getUserFromSession } from '../lib/auth';
-import Database from 'better-sqlite3';
-import path from 'path';
+import { getDb } from '../lib/db';
 
 // Эта страница должна быть динамичной для работы с middleware и cookies
 export const prerender = false;
@@ -18,8 +17,7 @@ if (!user) {
 }
 
 // Загружаем пакеты из БД
-const dbPath = path.join(process.cwd(), 'video_reader.db');
-const db = new Database(dbPath);
+const db = getDb();
 
 const packages = db.prepare(`
   SELECT key, title, price_rub, generations
@@ -27,8 +25,6 @@ const packages = db.prepare(`
   WHERE is_active = 1
   ORDER BY price_rub ASC
 `).all() as Array<{key: string; title: string; price_rub: number; generations: number}>;
-
-db.close();
 
 // Карточки пакетов: Basic, Pro, Enterprise
 interface PackageCard {
