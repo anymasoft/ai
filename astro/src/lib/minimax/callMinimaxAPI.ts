@@ -10,7 +10,8 @@ interface MinimaxRequest {
 }
 
 interface MinimaxResponse {
-  task_id?: string;
+  // task_id может быть строка или число от MiniMax API
+  task_id?: string | number;
   status?: string;
   error?: string;
 }
@@ -89,11 +90,14 @@ export async function callMinimaxAPI(
       };
     }
 
-    console.log(`[MINIMAX] ✅ Задача создана: ${data.task_id}`);
+    // Гарантируем что task_id всегда строка (MiniMax может вернуть число)
+    const taskIdString = String(data.task_id);
+    console.log(`[MINIMAX] ✅ Задача создана: ${taskIdString}`);
+    console.log(`[MINIMAX] Task ID type: ${typeof data.task_id}, converted: "${taskIdString}"`);
 
     return {
       success: true,
-      taskId: data.task_id,
+      taskId: taskIdString,
     };
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);

@@ -76,15 +76,30 @@ export const POST: APIRoute = async (context) => {
       );
     }
 
+    // Логирование типа task_id
+    console.log(`[MINIMAX_CALLBACK] Received task_id: "${taskId}", type: ${typeof taskId}`);
+
     // ШАГ 3: Найти generation по task_id
     const db = getDb();
+
+    // Гарантируем что taskId - строка (может быть число)
+    const taskIdString = String(taskId);
+    console.log(`[MINIMAX_CALLBACK] Converted task_id to string: "${taskIdString}"`);
+
     const genStmt = db.prepare(
       'SELECT id, userId FROM generations WHERE minimax_job_id = ?'
     );
-    const generation = genStmt.get(taskId) as any;
+    const generation = genStmt.get(taskIdString) as any;
 
     if (!generation) {
-      console.error(`[MINIMAX_CALLBACK] Generation не найдена для task_id=${taskId}`);
+      console.error(`[MINIMAX_CALLBACK] Generation не найдена для task_id="${taskIdString}"`);
+
+      // Дебаг: посмотрим что есть в БД
+      const allTaskIds = db.prepare(
+        'SELECT id, minimax_job_id FROM generations WHERE minimax_job_id IS NOT NULL LIMIT 5'
+      ).all();
+      console.error(`[MINIMAX_CALLBACK] All task IDs in DB:`, allTaskIds);
+
       return new Response(
         JSON.stringify({ ok: false }),
         { status: 200, headers: { 'Content-Type': 'application/json' } }

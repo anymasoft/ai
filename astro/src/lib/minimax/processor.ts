@@ -98,7 +98,13 @@ export async function processQueue(): Promise<void> {
       // Сохранить task_id в БД
       const taskId = minimaxResult.taskId;
       console.log(`[PROCESSOR] ✅ Task created: ${taskId}`);
-      updateMinimaxJobId(generationId, taskId);
+      console.log(`[PROCESSOR] Task ID type: ${typeof taskId}, value: "${taskId}"`);
+
+      // Гарантируем что taskId - это строка (т.к. может быть число от MiniMax)
+      const taskIdString = String(taskId);
+      console.log(`[PROCESSOR] Task ID converted to string: "${taskIdString}"`);
+
+      updateMinimaxJobId(generationId, taskIdString);
 
       // Удалить из очереди — задача успешно отправлена в MiniMax
       dequeueGeneration();
