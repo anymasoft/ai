@@ -42,10 +42,12 @@ export async function processQueue(): Promise<void> {
     console.log(`[PROCESSOR] Processing generation: ${generationId}`);
 
     try {
-      // Получаем данные генерации из БД
+      // Получаем данные генерации из БД (включая данные шаблона)
       const db = getDb();
       const genStmt = db.prepare(
-        'SELECT id, userId, status, prompt, prompt_final, duration FROM generations WHERE id = ?'
+        `SELECT id, userId, status, prompt, prompt_final, duration,
+                minimax_template_id, minimax_template_name, minimax_template_inputs, minimax_final_prompt
+         FROM generations WHERE id = ?`
       );
       const generation = genStmt.get(generationId) as any;
 
@@ -74,12 +76,27 @@ export async function processQueue(): Promise<void> {
         `[PROCESSOR] Calling MiniMax: generation=${generationId}, userId=${userId}, callback=${callbackUrl}`
       );
 
-      // Вызвать MiniMax API (используем улучшенный финальный промпт)
+      // Подготавливаем данные для MiniMax API
+      const finalPrompt = generation.minimax_final_prompt || generation.prompt_final || generation.prompt;
+      const templateId = generation.minimax_template_id || null;
+      const templateInputs = generation.minimax_template_inputs
+        ? JSON.parse(generation.minimax_template_inputs)
+        : null;
+
+      console.log('[PROCESSOR] Template info:', {
+        templateId,
+        templateName: generation.minimax_template_name,
+        hasInputs: !!templateInputs,
+      });
+
+      // Вызвать MiniMax API с поддержкой шаблонов
       const minimaxResult = await callMinimaxAPI(
         imagePath,
-        generation.prompt_final || generation.prompt,
+        finalPrompt,
         generation.duration,
-        callbackUrl
+        callbackUrl,
+        templateId,
+        templateInputs
       );
 
       if (!minimaxResult.success) {

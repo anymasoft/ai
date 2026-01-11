@@ -3,7 +3,9 @@ import { imageToBase64DataUrl } from './imageToBase64';
 interface MinimaxRequest {
   model: string;
   first_frame_image: string;
-  prompt: string;
+  prompt?: string;
+  template_id?: string;
+  text_inputs?: Record<string, string>;
   duration: number;
   resolution: string;
   callback_url: string;
@@ -22,13 +24,17 @@ interface MinimaxResponse {
  * @param prompt - описание движения товара
  * @param duration - длительность видео (6 или 10)
  * @param callbackUrl - URL для callback'а после завершения
+ * @param templateId - (опционально) ID MiniMax Video Agent Template
+ * @param templateInputs - (опционально) параметры шаблона
  * @returns task_id или ошибка
  */
 export async function callMinimaxAPI(
   imagePath: string,
   prompt: string,
   duration: number,
-  callbackUrl: string
+  callbackUrl: string,
+  templateId?: string | null,
+  templateInputs?: Record<string, string> | null
 ): Promise<{ success: boolean; taskId?: string; error?: string }> {
   try {
     const apiKey = process.env.MINIMAX_API_KEY;
@@ -52,15 +58,26 @@ export async function callMinimaxAPI(
     const payload: MinimaxRequest = {
       model: 'MiniMax-Hailuo-02',
       first_frame_image: imageDataUrl,
-      prompt: prompt,
       duration: durationNumber,  // ← ТОЛЬКО ЧИСЛО
       resolution: '512P',
       callback_url: callbackUrl,
     };
 
-    console.log(
-      `[MINIMAX] Отправляем запрос: duration=${durationNumber}, callback=${callbackUrl}`
-    );
+    // Если есть шаблон, используем его. Иначе используем обычный промпт
+    if (templateId) {
+      payload.template_id = templateId;
+      if (templateInputs) {
+        payload.text_inputs = templateInputs;
+      }
+      console.log(
+        `[MINIMAX] Отправляем запрос с шаблоном: template=${templateId}, duration=${durationNumber}, callback=${callbackUrl}`
+      );
+    } else {
+      payload.prompt = prompt;
+      console.log(
+        `[MINIMAX] Отправляем запрос: duration=${durationNumber}, callback=${callbackUrl}`
+      );
+    }
 
     // Отправляем запрос к MiniMax API
     const response = await fetch('https://api.minimax.io/v1/video_generation', {

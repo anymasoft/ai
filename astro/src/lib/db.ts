@@ -160,6 +160,30 @@ function initDb() {
       db.exec('ALTER TABLE generations ADD COLUMN prompt_final TEXT');
       console.log('✅ Migration: Added prompt_final column to generations table');
     }
+
+    const hasTemplateId = genInfo.some((col: any) => col.name === 'minimax_template_id');
+    if (!hasTemplateId) {
+      db.exec('ALTER TABLE generations ADD COLUMN minimax_template_id TEXT');
+      console.log('✅ Migration: Added minimax_template_id column to generations table');
+    }
+
+    const hasTemplateName = genInfo.some((col: any) => col.name === 'minimax_template_name');
+    if (!hasTemplateName) {
+      db.exec('ALTER TABLE generations ADD COLUMN minimax_template_name TEXT');
+      console.log('✅ Migration: Added minimax_template_name column to generations table');
+    }
+
+    const hasTemplateInputs = genInfo.some((col: any) => col.name === 'minimax_template_inputs');
+    if (!hasTemplateInputs) {
+      db.exec('ALTER TABLE generations ADD COLUMN minimax_template_inputs TEXT');
+      console.log('✅ Migration: Added minimax_template_inputs column to generations table');
+    }
+
+    const hasFinalPromptTemplate = genInfo.some((col: any) => col.name === 'minimax_final_prompt');
+    if (!hasFinalPromptTemplate) {
+      db.exec('ALTER TABLE generations ADD COLUMN minimax_final_prompt TEXT');
+      console.log('✅ Migration: Added minimax_final_prompt column to generations table');
+    }
   } catch (e) {
     console.log('ℹ️ Migration check for generations passed');
   }
