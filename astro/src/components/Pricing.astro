@@ -3,21 +3,21 @@ import Container from "./Container.astro"
 
 const pricingData = {
   plan_free_features: [
-    '100 кредитов в месяц',
-    'Базовое качество анализа',
-    'Стенограмма в TXT',
+    '5 видео в месяц',
+    'Вертикальный формат',
+    'Базовое качество',
   ],
   plan_pro_features: [
-    '5000 кредитов в месяц',
-    'Высокое качество анализа',
-    'Экспорт в TXT, SRT, JSON',
+    '50 видео в месяц',
+    'Все форматы экспорта',
+    'Высокое качество',
     'Приоритетная обработка',
   ],
   plan_premium_features: [
-    'Безлимитные кредиты',
+    '500 видео в месяц',
+    'Неограниченный экспорт',
     'Максимальное качество',
-    'Все форматы экспорта',
-    'API доступ',
+    'API для автоматизации',
     'Приоритетная поддержка',
   ]
 };
@@ -31,7 +31,7 @@ const pricingData = {
                 <div class="p-6">
                     {/* EN: Free Plan */}
                     <h3 class="text-2xl font-semibold text-gray-900">Бесплатно</h3>
-                    <p class="mt-2 text-gray-600">Идеально для пробы</p>
+                    <p class="mt-2 text-gray-600">Протестируй возможности</p>
                     <div class="mt-4">
                         <span class="text-4xl font-bold">0 ₽</span>
                         <span class="ml-2 text-gray-600">/месяц</span>
@@ -75,8 +75,8 @@ const pricingData = {
             <div class="flex flex-col justify-between h-full bg-white border-2 border-indigo-400 rounded-lg shadow-lg">
                 <div class="p-6">
                     {/* EN: Pro Plan */}
-                    <h3 class="text-2xl font-semibold text-gray-900">Профессиональный</h3>
-                    <p class="mt-2 text-gray-600">Для регулярного использования</p>
+                    <h3 class="text-2xl font-semibold text-gray-900">Про</h3>
+                    <p class="mt-2 text-gray-600">Для активных селлеров</p>
                     <div class="mt-4">
                         <span class="text-4xl font-bold">299 ₽</span>
                         <span class="ml-2 text-gray-600">/месяц</span>
@@ -113,7 +113,7 @@ const pricingData = {
                 <div class="p-6">
                     {/* EN: Premium Plan */}
                     <h3 class="text-2xl font-semibold text-gray-900">Премиум</h3>
-                    <p class="mt-2 text-gray-600">Безлимитные возможности</p>
+                    <p class="mt-2 text-gray-600">Неограниченные видео</p>
                     <div class="mt-4">
                         <span class="text-4xl font-bold">999 ₽</span>
                         <span class="ml-2 text-gray-600">/месяц</span>
