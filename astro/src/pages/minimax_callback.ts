@@ -124,10 +124,13 @@ export const POST: APIRoute = async (context) => {
         );
       }
 
-      console.log(`[MINIMAX_CALLBACK] Скачиваем видео: fileId=${fileId}`);
+      // Гарантируем что fileId - строка (может быть число от MiniMax)
+      const fileIdString = String(fileId);
+      console.log(`[MINIMAX_CALLBACK] Received file_id: "${fileIdString}", type: ${typeof fileId}`);
+      console.log(`[MINIMAX_CALLBACK] Скачиваем видео: fileId=${fileIdString}`);
 
       // Скачиваем видео
-      const downloadResult = await downloadVideoFromMinimax(fileId, userId);
+      const downloadResult = await downloadVideoFromMinimax(fileIdString, userId);
 
       if (!downloadResult.success) {
         console.error('[MINIMAX_CALLBACK] Ошибка скачивания видео');
