@@ -77,47 +77,47 @@ const packageCards: PackageCard[] = packages.map((pkg, idx) => {
 
 <AppLayout title="Billing - Beem">
 	<div class="w-full h-full flex flex-col overflow-hidden">
-		<div class="flex-1 overflow-y-auto flex items-center justify-center">
-			<div class="p-6 md:p-8 w-full">
-				<div class="max-w-4xl mx-auto space-y-6">
+		<div class="flex-1 flex flex-col overflow-hidden">
+			<div class="p-3 md:p-4 w-full h-full overflow-hidden flex flex-col">
+				<div class="max-w-5xl mx-auto w-full h-full flex flex-col">
 					<!-- Back Button -->
-					<a href="/app" class="inline-flex items-center justify-center p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition cursor-pointer -ml-2">
-						<svg class="w-6 h-6 text-gray-700 dark:text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+					<a href="/app" class="inline-flex items-center justify-center p-1 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition cursor-pointer -ml-2 mb-2">
+						<svg class="w-5 h-5 text-gray-700 dark:text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
 						</svg>
 					</a>
 
 					<!-- Header -->
-					<div class="text-center">
-						<h1 class="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white">
-							Пополните свой аккаунт
+					<div class="text-center mb-3">
+						<h1 class="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white">
+							Пополните аккаунт
 						</h1>
-						<p class="text-base text-gray-600 dark:text-gray-300 mt-3">
-							Текущий баланс: <strong>{user.generation_balance}</strong> кредитов
+						<p class="text-sm text-gray-600 dark:text-gray-300 mt-1">
+							Баланс: <strong>{user.generation_balance}</strong> кредитов
 						</p>
 					</div>
 
-					<!-- Packages Grid -->
-					<div class={`grid gap-4 ${packageCards.length === 3 ? 'md:grid-cols-3' : 'md:grid-cols-2'}`}>
+					<!-- Packages Grid - компактная -->
+					<div class={`grid gap-2 flex-1 overflow-hidden ${packageCards.length === 3 ? 'md:grid-cols-3' : 'md:grid-cols-2'}`}>
 						{packageCards.map((pkg) => (
-							<div class={`border rounded-3xl p-6 bg-white dark:bg-gray-800 text-left hover:shadow-2xl hover:shadow-gray-600/10 transition flex flex-col h-full ${pkg.popular ? 'border-2 border-primary relative' : 'border-gray-100 dark:border-gray-700'}`}>
+							<div class={`border rounded-xl p-3 bg-white dark:bg-gray-800 text-left hover:shadow-lg hover:shadow-gray-600/10 transition flex flex-col h-full ${pkg.popular ? 'border-2 border-primary relative' : 'border-gray-100 dark:border-gray-700'}`}>
 								{pkg.popular && (
-									<div class="absolute -top-3 left-1/2 -translate-x-1/2 bg-primary text-white px-3 py-0.5 rounded-full text-xs font-semibold whitespace-nowrap">
-										Самый популярный
+									<div class="absolute -top-2 left-1/2 -translate-x-1/2 bg-primary text-white px-2 py-0.5 rounded-full text-xs font-semibold whitespace-nowrap">
+										Популярный
 									</div>
 								)}
-								<h3 class={`text-lg font-bold text-gray-900 dark:text-white mb-1 ${pkg.popular ? 'pt-2' : ''}`}>
+								<h3 class={`text-base font-bold text-gray-900 dark:text-white mb-0.5 ${pkg.popular ? 'pt-1' : ''}`}>
 									{pkg.name}
 								</h3>
-								<p class="text-sm text-gray-600 dark:text-gray-300 mb-2">
+								<p class="text-xs text-gray-600 dark:text-gray-300 mb-1">
 									{pkg.description}
 								</p>
-								<p class="text-3xl font-bold text-primary mb-3">
+								<p class="text-2xl font-bold text-primary mb-2">
 									{pkg.price}
 								</p>
-								<ul class="space-y-1 mb-4 text-gray-600 dark:text-gray-300 flex-1 text-sm">
+								<ul class="space-y-0.5 mb-2 text-gray-600 dark:text-gray-300 flex-1 text-xs">
 									{pkg.features.map((feature) => (
-										<li class="flex items-center gap-2">
+										<li class="flex items-center gap-1">
 											<span class="text-primary text-xs">✓</span>
 											<span>{feature}</span>
 										</li>
@@ -126,20 +126,20 @@ const packageCards: PackageCard[] = packages.map((pkg, idx) => {
 								<button
 									type="button"
 									data-package={pkg.key}
-									class="w-full relative flex h-9 items-center justify-center px-6 before:absolute before:inset-0 before:rounded-full before:bg-primary before:transition before:duration-300 hover:before:scale-105 active:before:scale-95 disabled:opacity-50 disabled:cursor-not-allowed package-button"
+									class="w-full relative flex h-8 items-center justify-center px-4 before:absolute before:inset-0 before:rounded-full before:bg-primary before:transition before:duration-300 hover:before:scale-105 active:before:scale-95 disabled:opacity-50 disabled:cursor-not-allowed package-button"
 								>
-									<span class="relative text-sm font-semibold text-white">Пополнить</span>
+									<span class="relative text-xs font-semibold text-white">Пополнить</span>
 								</button>
 							</div>
 						))}
 					</div>
 
 					<!-- Payment Status Message -->
-					<div id="payment-status" class="hidden px-6 py-3 rounded-lg text-sm font-medium"></div>
+					<div id="payment-status" class="hidden px-3 py-2 rounded-lg text-xs font-medium mt-2"></div>
 
 					<!-- Info Text -->
-					<p class="text-xs text-gray-500 dark:text-gray-400 text-center">
-						После оплаты кредиты поступят на ваш счёт в течение нескольких секунд
+					<p class="text-xs text-gray-500 dark:text-gray-400 text-center mt-2">
+						Кредиты поступят в течение нескольких секунд
 					</p>
 				</div>
 			</div>
