@@ -99,10 +99,10 @@ export function upsertUser(googleId: string, email: string, name: string, image?
     return db.prepare('SELECT * FROM users WHERE id = ?').get(googleId) as User;
   }
 
-  // Создаём нового пользователя с 0 кредитами (пусть купит или админ выдаст)
+  // Создаём нового пользователя с 3 бонусными кредитами
   db.prepare(
     'INSERT INTO users (id, email, name, image, generation_balance, generation_used, plan, role, createdAt, updatedAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
-  ).run(googleId, email, name, image, 0, 0, 'free', 'user', now, now);
+  ).run(googleId, email, name, image, 3, 0, 'free', 'user', now, now);
 
   return db.prepare('SELECT * FROM users WHERE id = ?').get(googleId) as User;
 }
