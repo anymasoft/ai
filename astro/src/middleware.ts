@@ -4,6 +4,13 @@ import { getUserFromSession, isAdmin } from './lib/auth';
 export const onRequest = defineMiddleware((context, next) => {
   const pathname = context.url.pathname;
 
+  // ✅ MiniMax webhook - публичный endpoint, БЕЗ авторизации
+  // Позволяем MiniMax доставлять POST запросы для verification и результатов
+  if (pathname === '/minimax_callback' || pathname.startsWith('/minimax_callback/')) {
+    console.log('[MIDDLEWARE] MiniMax webhook /minimax_callback → allow без авторизации');
+    return next();
+  }
+
   // Получаем токен сессии из cookies
   const sessionToken = context.cookies.get('session_token')?.value;
   const user = sessionToken ? getUserFromSession(sessionToken) : null;
