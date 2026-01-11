@@ -186,13 +186,13 @@ const totalBalance = allUsers.reduce((sum, u) => sum + u.generation_balance, 0);
                 <tr class="border-b border-gray-200 dark:border-gray-800">
                   <th class="px-4 py-3 text-left font-semibold text-gray-700 dark:text-gray-300 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700" data-sort="email">Email</th>
                   <th class="px-4 py-3 text-left font-semibold text-gray-700 dark:text-gray-300 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700" data-sort="name">Имя</th>
-                  <th class="px-4 py-3 text-right font-semibold text-gray-700 dark:text-gray-300 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700" data-sort="creditsBought">Куплено кредитов</th>
-                  <th class="px-4 py-3 text-right font-semibold text-gray-700 dark:text-gray-300 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700" data-sort="creditsUsed">Использовано</th>
-                  <th class="px-4 py-3 text-right font-semibold text-gray-700 dark:text-gray-300 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700" data-sort="balance">Баланс</th>
-                  <th class="px-4 py-3 text-right font-semibold text-gray-700 dark:text-gray-300 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700" data-sort="revenue">Выручка (₽)</th>
-                  <th class="px-4 py-3 text-right font-semibold text-gray-700 dark:text-gray-300 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700" data-sort="avgPrice">Средняя цена</th>
-                  <th class="px-4 py-3 text-left font-semibold text-gray-700 dark:text-gray-300">Последний платеж</th>
-                  <th class="px-4 py-3 text-left font-semibold text-gray-700 dark:text-gray-300">Статус</th>
+                  <th class="px-4 py-3 text-right font-semibold text-gray-700 dark:text-gray-300 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700" data-sort="totalCreditsBought">Куплено кредитов</th>
+                  <th class="px-4 py-3 text-right font-semibold text-gray-700 dark:text-gray-300 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700" data-sort="totalCreditsUsed">Использовано</th>
+                  <th class="px-4 py-3 text-right font-semibold text-gray-700 dark:text-gray-300 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700" data-sort="currentBalance">Баланс</th>
+                  <th class="px-4 py-3 text-right font-semibold text-gray-700 dark:text-gray-300 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700" data-sort="totalRevenue">Выручка (₽)</th>
+                  <th class="px-4 py-3 text-right font-semibold text-gray-700 dark:text-gray-300 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700" data-sort="avgPricePerCredit">Средняя цена</th>
+                  <th class="px-4 py-3 text-left font-semibold text-gray-700 dark:text-gray-300 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700" data-sort="lastPaymentDate">Последний платеж</th>
+                  <th class="px-4 py-3 text-left font-semibold text-gray-700 dark:text-gray-300 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700" data-sort="status">Статус</th>
                 </tr>
               </thead>
               <tbody id="financial-table-body">
@@ -601,7 +601,7 @@ const totalBalance = allUsers.reduce((sum, u) => sum + u.generation_balance, 0);
 
   let allFinancialData: UserFinancial[] = [];
   let currentFilter: string = 'all';
-  let currentSort: { field: string; direction: 'asc' | 'desc' } = { field: 'revenue', direction: 'desc' };
+  let currentSort: { field: string; direction: 'asc' | 'desc' } = { field: 'totalRevenue', direction: 'desc' };
   const financialTableBody = document.getElementById('financial-table-body') as HTMLTableSectionElement;
   const topPayersEl = document.getElementById('top-payers') as HTMLDivElement;
   const highBalanceEl = document.getElementById('high-balance') as HTMLDivElement;
