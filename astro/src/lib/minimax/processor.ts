@@ -45,7 +45,7 @@ export async function processQueue(): Promise<void> {
       // Получаем данные генерации из БД
       const db = getDb();
       const genStmt = db.prepare(
-        'SELECT id, userId, status, prompt, duration FROM generations WHERE id = ?'
+        'SELECT id, userId, status, prompt, prompt_final, duration FROM generations WHERE id = ?'
       );
       const generation = genStmt.get(generationId) as any;
 
@@ -74,10 +74,10 @@ export async function processQueue(): Promise<void> {
         `[PROCESSOR] Calling MiniMax: generation=${generationId}, userId=${userId}, callback=${callbackUrl}`
       );
 
-      // Вызвать MiniMax API
+      // Вызвать MiniMax API (используем улучшенный финальный промпт)
       const minimaxResult = await callMinimaxAPI(
         imagePath,
-        generation.prompt,
+        generation.prompt_final || generation.prompt,
         generation.duration,
         callbackUrl
       );

@@ -154,6 +154,12 @@ function initDb() {
       db.exec('ALTER TABLE generations ADD COLUMN prompt TEXT');
       console.log('✅ Migration: Added prompt column to generations table');
     }
+
+    const hasPromptFinal = genInfo.some((col: any) => col.name === 'prompt_final');
+    if (!hasPromptFinal) {
+      db.exec('ALTER TABLE generations ADD COLUMN prompt_final TEXT');
+      console.log('✅ Migration: Added prompt_final column to generations table');
+    }
   } catch (e) {
     console.log('ℹ️ Migration check for generations passed');
   }
