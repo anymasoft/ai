@@ -28,6 +28,24 @@ function initDb() {
     )
   `);
 
+  // Миграция: добавляем generation_balance если колонки нет
+  try {
+    const tableInfo = db.pragma('table_info(users)');
+    const hasGenerationBalance = tableInfo.some((col: any) => col.name === 'generation_balance');
+    if (!hasGenerationBalance) {
+      db.exec('ALTER TABLE users ADD COLUMN generation_balance INTEGER NOT NULL DEFAULT 0');
+      console.log('✅ Migration: Added generation_balance column to users table');
+    }
+
+    const hasGenerationUsed = tableInfo.some((col: any) => col.name === 'generation_used');
+    if (!hasGenerationUsed) {
+      db.exec('ALTER TABLE users ADD COLUMN generation_used INTEGER NOT NULL DEFAULT 0');
+      console.log('✅ Migration: Added generation_used column to users table');
+    }
+  } catch (e) {
+    console.log('ℹ️ Migration check passed');
+  }
+
   // ========== SESSIONS TABLE ==========
   db.exec(`
     CREATE TABLE IF NOT EXISTS sessions (

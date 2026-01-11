@@ -1,6 +1,5 @@
 ---
 import { getUserFromSession } from '../lib/auth';
-import AppLayout from '../layouts/AppLayout.astro';
 
 // Эта страница должна быть динамичной для работы с cookies
 export const prerender = false;
@@ -13,6 +12,9 @@ const user = sessionToken ? getUserFromSession(sessionToken) : null;
 if (!user) {
   return Astro.redirect('/sign-in');
 }
+
+// Страница /account отключена - редиректим на /billing
+return Astro.redirect('/billing');
 ---
 
 <AppLayout title="Account - Beem">
