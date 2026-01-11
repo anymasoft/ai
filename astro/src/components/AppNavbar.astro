@@ -25,83 +25,78 @@ const userIsAdmin = user ? isAdmin(user.email) : false;
                     </a>
                 </div>
 
-                <!-- Right side: Credits + User Menu -->
-                <div class="flex items-center gap-3">
-                    {user && (
-                        <div class="text-right">
-                            {/* EN: Credits remaining */}
-                            <p class="text-sm text-gray-600 dark:text-gray-400">Кредиты</p>
-                            <p id="navbar-balance" class="text-2xl font-bold text-primary" data-initial-balance={user.generation_balance}>{user.generation_balance}</p>
-                        </div>
-                    )}
+                <!-- Right side: Credits Badge + User Avatar Menu -->
+                {user && (
+                    <div class="flex items-center gap-2">
+                        <!-- Credits Badge - кликабелен на /billing -->
+                        <a
+                            href="/billing"
+                            class="inline-flex items-center justify-center px-3 py-1 rounded-full bg-primary/10 dark:bg-primary/20 text-primary font-bold text-sm hover:bg-primary/20 dark:hover:bg-primary/30 transition cursor-pointer"
+                        >
+                            {user.generation_balance}
+                        </a>
 
-                    <!-- User Avatar Menu -->
-                    {user && (
+                        <!-- User Avatar Menu -->
                         <div class="relative">
                             <button
                                 id="user-menu-trigger"
                                 class="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-primary to-blue-600 text-white font-semibold text-sm hover:shadow-lg transition-shadow duration-200 cursor-pointer"
+                                aria-label="Меню пользователя"
                             >
                                 {initials}
                             </button>
 
-                        <!-- Dropdown Menu -->
-                        <div
-                            id="user-menu-dropdown"
-                            class="hidden absolute right-0 mt-2 w-48 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 shadow-lg z-50"
-                        >
-                            <!-- User Info -->
-                            <div class="px-4 py-3 border-b border-gray-200 dark:border-gray-700">
-                                <p class="font-semibold text-gray-900 dark:text-white">{user.name}</p>
-                                <p class="text-xs text-gray-500 dark:text-gray-400">{user.email}</p>
-                            </div>
+                            <!-- Dropdown Menu -->
+                            <div
+                                id="user-menu-dropdown"
+                                class="hidden absolute right-0 top-full mt-2 w-48 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 shadow-lg z-50"
+                            >
+                                <!-- User Info -->
+                                <div class="px-4 py-3 border-b border-gray-200 dark:border-gray-700">
+                                    <p class="font-semibold text-gray-900 dark:text-white">{user.name}</p>
+                                    <p class="text-xs text-gray-500 dark:text-gray-400">{user.email}</p>
+                                </div>
 
-                            <!-- Menu Items -->
-                            <div class="py-2">
-                                {/* Управление аккаунтом отключено - баланс показывается в навбаре и на /billing
-                                <a
-                                    href="/account"
-                                    class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition"
-                                >
-                                    {/* EN: Account Settings */}
-                                    Управление аккаунтом
-                                </a>
-                                */}
-                                <a
-                                    href="/billing"
-                                    class="relative flex mx-3 my-2 h-8 items-center justify-center rounded-full before:absolute before:inset-0 before:rounded-full before:bg-primary before:transition before:duration-300 hover:before:scale-105 active:duration-75 active:before:scale-95"
-                                >
-                                    {/* EN: Upgrade */}
-                                    <span class="relative text-xs font-semibold text-white">Пополнить</span>
-                                </a>
-                                {userIsAdmin && (
+                                <!-- Divider -->
+                                <div class="border-t border-gray-200 dark:border-gray-700"></div>
+
+                                <!-- Action Items -->
+                                <div class="py-2">
                                     <a
-                                        href="/admin"
-                                        class="block px-4 py-2 text-sm text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition font-semibold"
+                                        href="/billing"
+                                        class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition"
                                     >
-                                        {/* EN: Admin Settings */}
-                                        Панель администратора
+                                        {/* EN: Top Up */}
+                                        Пополнить
                                     </a>
-                                )}
+                                    {userIsAdmin && (
+                                        <a
+                                            href="/admin"
+                                            class="block px-4 py-2 text-sm text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition font-semibold"
+                                        >
+                                            {/* EN: Admin Settings */}
+                                            Панель администратора
+                                        </a>
+                                    )}
+                                </div>
+
+                                <!-- Divider -->
+                                <div class="border-t border-gray-200 dark:border-gray-700"></div>
+
+                                <!-- Logout -->
+                                <form method="POST" action="/api/auth/logout" class="w-full">
+                                    <button
+                                        type="submit"
+                                        class="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition cursor-pointer"
+                                    >
+                                        {/* EN: Logout */}
+                                        Выход
+                                    </button>
+                                </form>
                             </div>
-
-                            <!-- Divider -->
-                            <div class="border-t border-gray-200 dark:border-gray-700"></div>
-
-                            <!-- Logout -->
-                            <form method="POST" action="/api/auth/logout" class="w-full">
-                                <button
-                                    type="submit"
-                                    class="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition cursor-pointer"
-                                >
-                                    {/* EN: Logout */}
-                                    Выход
-                                </button>
-                            </form>
                         </div>
-                        </div>
-                    )}
-                </div>
+                    </div>
+                )}
             </div>
         </Container>
     </nav>
@@ -110,23 +105,51 @@ const userIsAdmin = user ? isAdmin(user.email) : false;
 <script>
     const trigger = document.getElementById('user-menu-trigger');
     const dropdown = document.getElementById('user-menu-dropdown');
-    const navbarBalance = document.getElementById('navbar-balance');
+    const balanceBadge = document.querySelector('a[href="/billing"]');
 
     if (trigger && dropdown) {
-        trigger.addEventListener('click', () => {
+        // Открыть/закрыть меню при клике на аватар
+        trigger.addEventListener('click', (e) => {
+            e.stopPropagation();
             dropdown.classList.toggle('hidden');
         });
 
-        // Close menu when clicking outside
+        // Закрыть меню при клике вне
         document.addEventListener('click', (e) => {
-            if (!trigger.contains(e.target) && !dropdown.contains(e.target)) {
+            const isClickOnTrigger = trigger.contains(e.target);
+            const isClickOnDropdown = dropdown.contains(e.target);
+
+            if (!isClickOnTrigger && !isClickOnDropdown) {
                 dropdown.classList.add('hidden');
             }
         });
+
+        // Закрыть меню при нажатии ESC
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && !dropdown.classList.contains('hidden')) {
+                dropdown.classList.add('hidden');
+            }
+        });
+
+        // Закрыть меню при клике на любую ссылку внутри dropdown
+        const dropdownLinks = dropdown.querySelectorAll('a');
+        dropdownLinks.forEach(link => {
+            link.addEventListener('click', () => {
+                dropdown.classList.add('hidden');
+            });
+        });
+
+        // Закрыть меню при отправке формы логаута
+        const logoutForm = dropdown.querySelector('form');
+        if (logoutForm) {
+            logoutForm.addEventListener('submit', () => {
+                dropdown.classList.add('hidden');
+            });
+        }
     }
 
     // Периодически проверяем баланс пользователя для обновления в реальном времени
-    if (navbarBalance) {
+    if (balanceBadge) {
         async function updateBalance() {
             try {
                 const response = await fetch('/api/user/balance', {
@@ -137,17 +160,16 @@ const userIsAdmin = user ? isAdmin(user.email) : false;
                 if (response.ok) {
                     const data = await response.json();
                     const newBalance = data.generation_balance;
-                    const currentBalance = parseInt(navbarBalance.textContent || '0', 10);
+                    const currentBalance = parseInt(balanceBadge.textContent || '0', 10);
 
                     // Обновляем баланс, если он изменился
                     if (newBalance !== currentBalance) {
-                        navbarBalance.textContent = newBalance;
-                        navbarBalance.dataset.initialBalance = newBalance;
+                        balanceBadge.textContent = newBalance;
 
                         // Добавляем анимацию обновления
-                        navbarBalance.style.animation = 'pulse 0.5s ease-in-out';
+                        balanceBadge.style.animation = 'pulse 0.5s ease-in-out';
                         setTimeout(() => {
-                            navbarBalance.style.animation = '';
+                            balanceBadge.style.animation = '';
                         }, 500);
                     }
                 }
