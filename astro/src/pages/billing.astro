@@ -2,7 +2,8 @@
 import Container from '../components/Container.astro';
 import AppLayout from '../layouts/AppLayout.astro';
 import { getUserFromSession } from '../lib/auth';
-import { ru } from '../lib/i18n';
+import Database from 'better-sqlite3';
+import path from 'path';
 
 // Эта страница должна быть динамичной для работы с middleware и cookies
 export const prerender = false;
@@ -15,13 +16,74 @@ const user = sessionToken ? getUserFromSession(sessionToken) : null;
 if (!user) {
   return Astro.redirect('/');
 }
+
+// Загружаем пакеты из БД
+const dbPath = path.join(process.cwd(), 'video_reader.db');
+const db = new Database(dbPath);
+
+const packages = db.prepare(`
+  SELECT key, title, price_rub, generations
+  FROM packages
+  WHERE is_active = 1
+  ORDER BY price_rub ASC
+`).all() as Array<{key: string; title: string; price_rub: number; generations: number}>;
+
+db.close();
+
+// Карточки пакетов: Basic, Pro, Enterprise
+interface PackageCard {
+  key: string;
+  name: string;
+  description: string;
+  price: string;
+  credits: number;
+  features: string[];
+  popular: boolean;
+}
+
+const packageCards: PackageCard[] = packages.map((pkg, idx) => {
+  const priceRub = pkg.price_rub;
+  // Конвертируем в доллары (примерный курс 1 USD ≈ 110 RUB)
+  const priceUsd = Math.round(priceRub / 110);
+
+  const featureMap: Record<string, string[]> = {
+    basic: [
+      `${pkg.generations} кредитов видео`,
+      'До 60 секунд',
+      'Стандартное качество'
+    ],
+    pro: [
+      `${pkg.generations} кредитов видео`,
+      'До 120 секунд',
+      'Премиум качество',
+      'Приоритетная обработка'
+    ],
+    enterprise: [
+      `${pkg.generations} кредитов видео`,
+      'До 300 секунд',
+      'Максимальное качество',
+      'Приоритетная обработка',
+      'Поддержка 24/7'
+    ]
+  };
+
+  return {
+    key: pkg.key,
+    name: pkg.title,
+    description: idx === 0 ? 'Идеально для проверки возможностей' : idx === 1 ? 'Для серьёзных создателей контента' : 'Для профессионалов',
+    price: `${priceRub} ₽`,
+    credits: pkg.generations,
+    features: featureMap[pkg.key] || featureMap.basic,
+    popular: idx === 1 // Средний пакет - самый популярный
+  };
+});
 ---
 
 <AppLayout title="Billing - Video Reader AI">
 	<div class="w-full h-full flex flex-col overflow-hidden">
 		<div class="flex-1 overflow-hidden flex items-center justify-center">
 			<div class="p-4 w-full h-full flex flex-col">
-				<div class="max-w-3xl mx-auto text-center space-y-3 flex flex-col h-full">
+				<div class="max-w-4xl mx-auto text-center space-y-3 flex flex-col h-full">
 					<!-- Back Button -->
 					<a href="/app" class="inline-flex items-center justify-center p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition cursor-pointer self-start -ml-2 mb-2">
 						<svg class="w-6 h-6 text-gray-700 dark:text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -29,85 +91,195 @@ if (!user) {
 						</svg>
 					</a>
 
-					<h1 class="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white">
-						Пополните свой аккаунт
-					</h1>
-					<p class="text-base text-gray-600 dark:text-gray-300">
-						Купите больше кредитов для продолжения создания видео
-					</p>
-
-					<div class="grid md:grid-cols-2 gap-3 flex-1 min-h-0 overflow-hidden">
-						<div class="border border-gray-100 dark:border-gray-700 rounded-3xl p-4 bg-white dark:bg-gray-800 text-left hover:shadow-2xl hover:shadow-gray-600/10 transition flex flex-col">
-							<h3 class="text-lg font-bold text-gray-900 dark:text-white mb-1">
-								Базовый пакет
-							</h3>
-							<p class="text-sm text-gray-600 dark:text-gray-300 mb-2">
-								Идеально для проверки возможностей
-							</p>
-							<p class="text-3xl font-bold text-primary mb-3">
-								$9
-							</p>
-							<ul class="space-y-1 mb-3 text-gray-600 dark:text-gray-300 flex-1 text-sm">
-								<li class="flex items-center gap-2">
-									<span class="text-primary text-xs">✓</span>
-									<span>10 кредитов видео</span>
-								</li>
-								<li class="flex items-center gap-2">
-									<span class="text-primary text-xs">✓</span>
-									<span>До 60 секунд</span>
-								</li>
-								<li class="flex items-center gap-2">
-									<span class="text-primary text-xs">✓</span>
-									<span>Стандартное качество</span>
-								</li>
-							</ul>
-							<button class="w-full relative flex h-9 items-center justify-center px-6 before:absolute before:inset-0 before:rounded-full before:bg-primary before:transition before:duration-300 hover:before:scale-105 active:before:scale-95">
-								<span class="relative text-sm font-semibold text-white">Скоро доступно</span>
-							</button>
-						</div>
-
-						<div class="border-2 border-primary rounded-3xl p-4 bg-white dark:bg-gray-800 text-left relative hover:shadow-2xl hover:shadow-gray-600/10 transition flex flex-col">
-							<div class="absolute -top-3 left-1/2 -translate-x-1/2 bg-primary text-white px-3 py-0.5 rounded-full text-xs font-semibold">
-								Самый популярный
-							</div>
-							<h3 class="text-lg font-bold text-gray-900 dark:text-white mb-1 pt-2">
-								Профессиональный пакет
-							</h3>
-							<p class="text-sm text-gray-600 dark:text-gray-300 mb-2">
-								Для серьёзных создателей контента
-							</p>
-							<p class="text-3xl font-bold text-primary mb-3">
-								$29
-							</p>
-							<ul class="space-y-1 mb-3 text-gray-600 dark:text-gray-300 flex-1 text-sm">
-								<li class="flex items-center gap-2">
-									<span class="text-primary text-xs">✓</span>
-									<span>50 кредитов видео</span>
-								</li>
-								<li class="flex items-center gap-2">
-									<span class="text-primary text-xs">✓</span>
-									<span>До 120 секунд</span>
-								</li>
-								<li class="flex items-center gap-2">
-									<span class="text-primary text-xs">✓</span>
-									<span>Премиум качество</span>
-								</li>
-								<li class="flex items-center gap-2">
-									<span class="text-primary text-xs">✓</span>
-									<span>Приоритетная обработка</span>
-								</li>
-							</ul>
-							<button class="w-full relative flex h-9 items-center justify-center px-6 before:absolute before:inset-0 before:rounded-full before:bg-primary before:transition before:duration-300 hover:before:scale-105 active:before:scale-95">
-								<span class="relative text-sm font-semibold text-white">Скоро доступно</span>
-							</button>
-						</div>
+					<div>
+						<h1 class="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white">
+							Пополните свой аккаунт
+						</h1>
+						<p class="text-base text-gray-600 dark:text-gray-300 mt-2">
+							Текущий баланс: <strong>{user.generation_balance}</strong> кредитов
+						</p>
 					</div>
 
-					<p class="text-sm text-gray-600 dark:text-gray-300 text-center mt-2">
-						Система платежей появится очень скоро. Сейчас наслаждайтесь <strong>5 бесплатными кредитами</strong>!
+					<div class={`grid gap-3 flex-1 min-h-0 overflow-hidden ${packageCards.length === 3 ? 'md:grid-cols-3' : 'md:grid-cols-2'}`}>
+						{packageCards.map((pkg) => (
+							<div class={`border rounded-3xl p-4 bg-white dark:bg-gray-800 text-left hover:shadow-2xl hover:shadow-gray-600/10 transition flex flex-col ${pkg.popular ? 'border-2 border-primary relative' : 'border-gray-100 dark:border-gray-700'}`}>
+								{pkg.popular && (
+									<div class="absolute -top-3 left-1/2 -translate-x-1/2 bg-primary text-white px-3 py-0.5 rounded-full text-xs font-semibold whitespace-nowrap">
+										Самый популярный
+									</div>
+								)}
+								<h3 class={`text-lg font-bold text-gray-900 dark:text-white mb-1 ${pkg.popular ? 'pt-2' : ''}`}>
+									{pkg.name}
+								</h3>
+								<p class="text-sm text-gray-600 dark:text-gray-300 mb-2">
+									{pkg.description}
+								</p>
+								<p class="text-3xl font-bold text-primary mb-3">
+									{pkg.price}
+								</p>
+								<ul class="space-y-1 mb-4 text-gray-600 dark:text-gray-300 flex-1 text-sm">
+									{pkg.features.map((feature) => (
+										<li class="flex items-center gap-2">
+											<span class="text-primary text-xs">✓</span>
+											<span>{feature}</span>
+										</li>
+									))}
+								</ul>
+								<button
+									type="button"
+									data-package={pkg.key}
+									class="w-full relative flex h-9 items-center justify-center px-6 before:absolute before:inset-0 before:rounded-full before:bg-primary before:transition before:duration-300 hover:before:scale-105 active:before:scale-95 disabled:opacity-50 disabled:cursor-not-allowed package-button"
+								>
+									<span class="relative text-sm font-semibold text-white">Пополнить</span>
+								</button>
+							</div>
+						))}
+					</div>
+
+					<!-- Payment Status Message -->
+					<div id="payment-status" class="hidden px-4 py-2 rounded-lg text-sm"></div>
+
+					<p class="text-xs text-gray-500 dark:text-gray-400 text-center mt-2">
+						После оплаты кредиты поступят на ваш счёт в течение нескольких секунд
 					</p>
 				</div>
 			</div>
 		</div>
 	</div>
 </AppLayout>
+
+<script>
+	const statusDiv = document.getElementById('payment-status') as HTMLDivElement;
+	const packageButtons = document.querySelectorAll('.package-button') as NodeListOf<HTMLButtonElement>;
+
+	function showStatus(message: string, type: 'success' | 'error' | 'loading') {
+		statusDiv.classList.remove('hidden');
+		statusDiv.textContent = message;
+
+		// Удаляем старые классы
+		statusDiv.classList.remove('bg-green-50', 'dark:bg-green-900/20', 'border-green-200', 'dark:border-green-800', 'text-green-700', 'dark:text-green-400');
+		statusDiv.classList.remove('bg-red-50', 'dark:bg-red-900/20', 'border-red-200', 'dark:border-red-800', 'text-red-700', 'dark:text-red-400');
+		statusDiv.classList.remove('bg-blue-50', 'dark:bg-blue-900/20', 'border-blue-200', 'dark:border-blue-800', 'text-blue-700', 'dark:text-blue-400');
+
+		// Добавляем новые классы в зависимости от типа
+		if (type === 'success') {
+			statusDiv.classList.add('bg-green-50', 'dark:bg-green-900/20', 'border', 'border-green-200', 'dark:border-green-800', 'text-green-700', 'dark:text-green-400');
+		} else if (type === 'error') {
+			statusDiv.classList.add('bg-red-50', 'dark:bg-red-900/20', 'border', 'border-red-200', 'dark:border-red-800', 'text-red-700', 'dark:text-red-400');
+		} else if (type === 'loading') {
+			statusDiv.classList.add('bg-blue-50', 'dark:bg-blue-900/20', 'border', 'border-blue-200', 'dark:border-blue-800', 'text-blue-700', 'dark:text-blue-400');
+		}
+	}
+
+	function disableAllButtons() {
+		packageButtons.forEach(btn => {
+			btn.disabled = true;
+		});
+	}
+
+	function enableAllButtons() {
+		packageButtons.forEach(btn => {
+			btn.disabled = false;
+		});
+	}
+
+	packageButtons.forEach(button => {
+		button.addEventListener('click', async (e: Event) => {
+			e.preventDefault();
+
+			const target = e.target as HTMLButtonElement;
+			const packageKey = target.getAttribute('data-package');
+
+			if (!packageKey) {
+				showStatus('Ошибка: пакет не указан', 'error');
+				return;
+			}
+
+			disableAllButtons();
+			showStatus('Создание платежа...', 'loading');
+
+			try {
+				const response = await fetch('/api/payments/yookassa/create', {
+					method: 'POST',
+					headers: {
+						'Content-Type': 'application/json',
+					},
+					body: JSON.stringify({ packageKey })
+				});
+
+				if (!response.ok) {
+					const errorData = await response.json();
+					showStatus(`Ошибка: ${errorData.error || 'Не удалось создать платеж'}`, 'error');
+					enableAllButtons();
+					return;
+				}
+
+				const data = await response.json();
+
+				if (data.success && data.paymentUrl) {
+					showStatus('Перенаправление на Yookassa...', 'loading');
+					// Небольшая задержка перед редиректом для плавного UX
+					setTimeout(() => {
+						window.location.href = data.paymentUrl;
+					}, 500);
+				} else {
+					showStatus(data.error || 'Ошибка при создании платежа', 'error');
+					enableAllButtons();
+				}
+			} catch (error) {
+				const errorMessage = error instanceof Error ? error.message : 'Неизвестная ошибка';
+				showStatus(`Ошибка: ${errorMessage}`, 'error');
+				enableAllButtons();
+			}
+		});
+	});
+
+	// Проверка статуса платежа после возврата со страницы Yookassa
+	async function checkPaymentStatus() {
+		const params = new URLSearchParams(window.location.search);
+		const paymentId = params.get('paymentId');
+
+		if (!paymentId) {
+			return;
+		}
+
+		showStatus('Проверка статуса платежа...', 'loading');
+
+		try {
+			let attempts = 0;
+			const maxAttempts = 30; // Проверяем 30 раз с интервалом 1 сек = 30 сек всего
+
+			const checkInterval = setInterval(async () => {
+				attempts++;
+
+				const response = await fetch(`/api/payments/yookassa/check?paymentId=${paymentId}`);
+				const data = await response.json();
+
+				if (data.status === 'succeeded') {
+					clearInterval(checkInterval);
+					showStatus('✓ Платеж успешно выполнен! Кредиты добавлены на ваш счёт.', 'success');
+
+					// Обновляем страницу через 2 секунды, чтобы показать новый баланс
+					setTimeout(() => {
+						window.location.href = '/billing';
+					}, 2000);
+				} else if (data.status === 'failed' || data.status === 'cancelled') {
+					clearInterval(checkInterval);
+					showStatus(`Платеж ${data.status === 'cancelled' ? 'отменён' : 'не выполнен'}.`, 'error');
+					enableAllButtons();
+				} else if (attempts >= maxAttempts) {
+					clearInterval(checkInterval);
+					showStatus('Время проверки истекло. Платеж может всё ещё обрабатываться. Попробуйте обновить страницу.', 'error');
+					enableAllButtons();
+				}
+			}, 1000);
+		} catch (error) {
+			const errorMessage = error instanceof Error ? error.message : 'Неизвестная ошибка';
+			showStatus(`Ошибка при проверке статуса: ${errorMessage}`, 'error');
+			enableAllButtons();
+		}
+	}
+
+	// Проверяем статус платежа при загрузке страницы
+	checkPaymentStatus();
+</script>

@@ -1,7 +1,6 @@
 ---
 import Container from "./Container.astro";
 import { getUserFromSession, isAdmin } from '../lib/auth';
-import { ru } from '../lib/i18n';
 
 // Получаем текущего пользователя из сессии
 const sessionToken = Astro.cookies.get('session_token')?.value;
@@ -21,8 +20,8 @@ const userIsAdmin = user ? isAdmin(user.email) : false;
                 <!-- Logo -->
                 <div class="flex items-center space-x-2">
                     <a href="/" aria-label="logo" class="flex items-center space-x-2">
-                        <img src="/vr_logo_small.png" alt={ru.common.appName} class="h-8 w-8" />
-                        <span class="text-2xl font-bold text-gray-900 dark:text-white">{ru.common.appName}</span>
+                        <img src="/vr_logo_small.png" alt="Video Reader AI" class="h-8 w-8" />
+                        <span class="text-2xl font-bold text-gray-900 dark:text-white">Video Reader AI</span>
                     </a>
                 </div>
 
@@ -31,8 +30,8 @@ const userIsAdmin = user ? isAdmin(user.email) : false;
                     {user && (
                         <div class="text-right">
                             {/* EN: Credits remaining */}
-                            <p class="text-sm text-gray-600 dark:text-gray-400">{ru.navbar.credits_remaining}</p>
-                            <p class="text-2xl font-bold text-primary">{user.generation_balance}</p>
+                            <p class="text-sm text-gray-600 dark:text-gray-400">Кредиты</p>
+                            <p id="navbar-balance" class="text-2xl font-bold text-primary" data-initial-balance={user.generation_balance}>{user.generation_balance}</p>
                         </div>
                     )}
 
@@ -64,14 +63,14 @@ const userIsAdmin = user ? isAdmin(user.email) : false;
                                     class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition"
                                 >
                                     {/* EN: Account Settings */}
-                                    {ru.navbar.account_settings}
+                                    Управление аккаунтом
                                 </a>
                                 <a
                                     href="/billing"
                                     class="relative flex mx-3 my-2 h-8 items-center justify-center rounded-full before:absolute before:inset-0 before:rounded-full before:bg-primary before:transition before:duration-300 hover:before:scale-105 active:duration-75 active:before:scale-95"
                                 >
                                     {/* EN: Upgrade */}
-                                    <span class="relative text-xs font-semibold text-white">{ru.navbar.upgrade}</span>
+                                    <span class="relative text-xs font-semibold text-white">Пополнить</span>
                                 </a>
                                 {userIsAdmin && (
                                     <a
@@ -79,7 +78,7 @@ const userIsAdmin = user ? isAdmin(user.email) : false;
                                         class="block px-4 py-2 text-sm text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition font-semibold"
                                     >
                                         {/* EN: Admin Settings */}
-                                        {ru.navbar.admin_settings}
+                                        Панель администратора
                                     </a>
                                 )}
                             </div>
@@ -94,7 +93,7 @@ const userIsAdmin = user ? isAdmin(user.email) : false;
                                     class="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition cursor-pointer"
                                 >
                                     {/* EN: Logout */}
-                                    {ru.navbar.logout}
+                                    Выход
                                 </button>
                             </form>
                         </div>
@@ -110,6 +109,7 @@ const userIsAdmin = user ? isAdmin(user.email) : false;
 <script>
     const trigger = document.getElementById('user-menu-trigger');
     const dropdown = document.getElementById('user-menu-dropdown');
+    const navbarBalance = document.getElementById('navbar-balance');
 
     if (trigger && dropdown) {
         trigger.addEventListener('click', () => {
@@ -123,4 +123,54 @@ const userIsAdmin = user ? isAdmin(user.email) : false;
             }
         });
     }
+
+    // Периодически проверяем баланс пользователя для обновления в реальном времени
+    if (navbarBalance) {
+        async function updateBalance() {
+            try {
+                const response = await fetch('/api/user/balance', {
+                    method: 'GET',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    const newBalance = data.generation_balance;
+                    const currentBalance = parseInt(navbarBalance.textContent || '0', 10);
+
+                    // Обновляем баланс, если он изменился
+                    if (newBalance !== currentBalance) {
+                        navbarBalance.textContent = newBalance;
+                        navbarBalance.dataset.initialBalance = newBalance;
+
+                        // Добавляем анимацию обновления
+                        navbarBalance.style.animation = 'pulse 0.5s ease-in-out';
+                        setTimeout(() => {
+                            navbarBalance.style.animation = '';
+                        }, 500);
+                    }
+                }
+            } catch (error) {
+                console.error('Failed to update balance:', error);
+            }
+        }
+
+        // Проверяем баланс сразу после загрузки страницы и затем каждые 5 секунд
+        updateBalance();
+        setInterval(updateBalance, 5000);
+
+        // Также проверяем баланс, когда страница становится видимой (например, после возврата со страницы платежа)
+        document.addEventListener('visibilitychange', () => {
+            if (!document.hidden) {
+                updateBalance();
+            }
+        });
+    }
 </script>
+
+<style>
+    @keyframes pulse {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.6; }
+    }
+</style>

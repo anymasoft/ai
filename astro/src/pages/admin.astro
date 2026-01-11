@@ -1,7 +1,8 @@
 ---
 import { getUserFromSession, isAdmin } from '../lib/auth';
 import AppLayout from '../layouts/AppLayout.astro';
-import { ru } from '../lib/i18n';
+import Database from 'better-sqlite3';
+import path from 'path';
 
 // Эта страница должна быть динамичной для работы с cookies
 export const prerender = false;
@@ -19,11 +20,36 @@ if (!user) {
 if (!isAdmin(user.email)) {
   return Astro.redirect('/app');
 }
+
+// Загружаем всех пользователей из БД
+const dbPath = path.join(process.cwd(), 'video_reader.db');
+const db = new Database(dbPath);
+
+interface UserWithBalance {
+  id: string;
+  name: string;
+  email: string;
+  generation_balance: number;
+  generation_used: number;
+  created_at: string;
+}
+
+const allUsers = db.prepare(`
+  SELECT id, name, email, generation_balance, generation_used, created_at
+  FROM users
+  ORDER BY created_at DESC
+`).all() as UserWithBalance[];
+
+db.close();
+
+const totalUsers = allUsers.length;
+const totalGenerationCredits = allUsers.reduce((sum, u) => sum + (u.generation_balance + u.generation_used), 0);
+const totalBalance = allUsers.reduce((sum, u) => sum + u.generation_balance, 0);
 ---
 
 <AppLayout title="Admin Settings - Video Reader AI">
   <main class="flex-1 overflow-auto">
-    <div class="max-w-4xl mx-auto p-4 md:p-6">
+    <div class="max-w-6xl mx-auto p-4 md:p-6">
       <!-- Back Button -->
       <a href="/app" class="inline-flex items-center justify-center p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition cursor-pointer mb-4">
         <svg class="w-6 h-6 text-gray-700 dark:text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -32,47 +58,299 @@ if (!isAdmin(user.email)) {
       </a>
 
       <!-- Header -->
-      <div class="mb-4">
-        <h1 class="text-2xl font-bold text-gray-900 dark:text-white mb-1">Панель администратора</h1>
-        <p class="text-sm text-gray-600 dark:text-gray-400">Управляйте системой и данными пользователей</p>
+      <div class="mb-6">
+        <h1 class="text-3xl font-bold text-gray-900 dark:text-white mb-1">Панель администратора</h1>
+        <p class="text-gray-600 dark:text-gray-400">Управление пользователями и кредитами системы</p>
       </div>
 
-      <!-- Admin Info Card -->
-      <div class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-4 mb-4">
-        <div class="flex items-start gap-3 mb-4">
-          <div class="w-12 h-12 rounded-full bg-gradient-to-br from-purple-500 to-blue-600 flex items-center justify-center text-white font-bold text-sm">
-            A
-          </div>
-          <div class="flex-1">
-            <h2 class="text-lg font-bold text-gray-900 dark:text-white mb-0.5">Администратор</h2>
-            <p class="text-xs text-gray-600 dark:text-gray-400">{user.email}</p>
-          </div>
+      <!-- Statistics Cards -->
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+        <!-- Total Users -->
+        <div class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-6">
+          <div class="text-sm font-semibold text-gray-600 dark:text-gray-400 mb-1">Всего пользователей</div>
+          <div class="text-3xl font-bold text-gray-900 dark:text-white">{totalUsers}</div>
+          <p class="text-xs text-gray-500 dark:text-gray-400 mt-2">Активных аккаунтов в системе</p>
         </div>
 
-        <!-- Admin Features -->
-        <div class="space-y-2">
-          <div class="p-3 rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800">
-            <h3 class="font-semibold text-blue-900 dark:text-blue-300 text-sm mb-1">👥 Управление пользователями</h3>
-            <p class="text-xs text-blue-800 dark:text-blue-400">Просматривайте и управляйте всеми пользователями в системе</p>
-          </div>
+        <!-- Total Generation Credits -->
+        <div class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-6">
+          <div class="text-sm font-semibold text-gray-600 dark:text-gray-400 mb-1">Всего кредитов</div>
+          <div class="text-3xl font-bold text-primary">{totalGenerationCredits}</div>
+          <p class="text-xs text-gray-500 dark:text-gray-400 mt-2">Закуплено и использовано</p>
+        </div>
 
-          <div class="p-3 rounded-lg bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800">
-            <h3 class="font-semibold text-green-900 dark:text-green-300 text-sm mb-1">💰 Управление кредитами</h3>
-            <p class="text-xs text-green-800 dark:text-green-400">Управляйте кредитами пользователей и их подписками</p>
-          </div>
-
-          <div class="p-3 rounded-lg bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800">
-            <h3 class="font-semibold text-purple-900 dark:text-purple-300 text-sm mb-1">⚙️ Параметры системы</h3>
-            <p class="text-xs text-purple-800 dark:text-purple-400">Настройка глобальных параметров приложения</p>
-          </div>
+        <!-- Available Balance -->
+        <div class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-6">
+          <div class="text-sm font-semibold text-gray-600 dark:text-gray-400 mb-1">Доступный баланс</div>
+          <div class="text-3xl font-bold text-green-600">{totalBalance}</div>
+          <p class="text-xs text-gray-500 dark:text-gray-400 mt-2">Неиспользованных кредитов</p>
         </div>
       </div>
 
-      <!-- Coming Soon Notice -->
-      <div class="bg-yellow-50 dark:bg-yellow-900/20 rounded-2xl border border-yellow-200 dark:border-yellow-800 p-4">
-        <h3 class="text-sm font-semibold text-yellow-900 dark:text-yellow-300 mb-1">🚀 Скоро доступно</h3>
-        <p class="text-xs text-yellow-800 dark:text-yellow-400">Функции админ-панели находятся в разработке. Больше инструментов управления будет доступно в ближайшее время.</p>
+      <!-- Users Table -->
+      <div class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 overflow-hidden">
+        <!-- Table Header -->
+        <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-800">
+          <h2 class="text-lg font-bold text-gray-900 dark:text-white">Пользователи системы</h2>
+        </div>
+
+        <!-- Table -->
+        <div class="overflow-x-auto">
+          <table class="w-full text-sm">
+            <thead>
+              <tr class="border-b border-gray-200 dark:border-gray-800">
+                <th class="px-6 py-3 text-left font-semibold text-gray-700 dark:text-gray-300">Имя</th>
+                <th class="px-6 py-3 text-left font-semibold text-gray-700 dark:text-gray-300">Email</th>
+                <th class="px-6 py-3 text-left font-semibold text-gray-700 dark:text-gray-300">Баланс</th>
+                <th class="px-6 py-3 text-left font-semibold text-gray-700 dark:text-gray-300">Использовано</th>
+                <th class="px-6 py-3 text-left font-semibold text-gray-700 dark:text-gray-300">Дата создания</th>
+                <th class="px-6 py-3 text-left font-semibold text-gray-700 dark:text-gray-300">Действия</th>
+              </tr>
+            </thead>
+            <tbody>
+              {allUsers.map((u) => (
+                <tr class="border-b border-gray-200 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition" data-user-id={u.id}>
+                  <td class="px-6 py-3 font-medium text-gray-900 dark:text-white">{u.name}</td>
+                  <td class="px-6 py-3 text-gray-600 dark:text-gray-400 text-xs">{u.email}</td>
+                  <td class="px-6 py-3">
+                    <span class="inline-flex items-center gap-2">
+                      <span class="font-semibold text-green-600 dark:text-green-400">{u.generation_balance}</span>
+                      <button
+                        class="edit-balance-btn text-xs px-2 py-1 rounded bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 hover:bg-blue-200 dark:hover:bg-blue-900/50 transition"
+                        data-user-id={u.id}
+                      >
+                        Изменить
+                      </button>
+                    </span>
+                  </td>
+                  <td class="px-6 py-3 text-gray-600 dark:text-gray-400">{u.generation_used}</td>
+                  <td class="px-6 py-3 text-xs text-gray-500 dark:text-gray-500">{new Date(u.created_at).toLocaleDateString('ru-RU')}</td>
+                  <td class="px-6 py-3">
+                    <button
+                      class="reset-balance-btn text-xs px-3 py-1 rounded bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 hover:bg-red-200 dark:hover:bg-red-900/50 transition"
+                      data-user-id={u.id}
+                    >
+                      Обнулить
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
+
+      <!-- Edit Balance Modal -->
+      <div id="edit-modal" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+        <div class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-6 max-w-sm w-full mx-4">
+          <h3 class="text-lg font-bold text-gray-900 dark:text-white mb-4">Изменить баланс кредитов</h3>
+
+          <div class="mb-4">
+            <p class="text-sm text-gray-600 dark:text-gray-400 mb-3">
+              Текущий баланс: <span id="current-balance" class="font-bold text-gray-900 dark:text-white">0</span>
+            </p>
+
+            <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Новое значение</label>
+            <input
+              type="number"
+              id="balance-input"
+              class="w-full px-4 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary"
+              placeholder="Введите новое значение"
+              min="0"
+            />
+          </div>
+
+          <div class="flex gap-3">
+            <button
+              id="cancel-edit"
+              class="flex-1 px-4 py-2 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white font-semibold hover:bg-gray-200 dark:hover:bg-gray-700 transition"
+            >
+              Отмена
+            </button>
+            <button
+              id="save-balance"
+              class="flex-1 px-4 py-2 rounded-lg bg-primary text-white font-semibold hover:opacity-90 transition"
+            >
+              Сохранить
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Status Messages -->
+      <div id="status-message" class="hidden fixed bottom-4 right-4 px-4 py-3 rounded-lg text-sm font-semibold max-w-sm z-50"></div>
     </div>
   </main>
 </AppLayout>
+
+<script>
+  const editModal = document.getElementById('edit-modal') as HTMLDivElement;
+  const cancelEditBtn = document.getElementById('cancel-edit') as HTMLButtonElement;
+  const saveBalanceBtn = document.getElementById('save-balance') as HTMLButtonElement;
+  const balanceInput = document.getElementById('balance-input') as HTMLInputElement;
+  const currentBalanceSpan = document.getElementById('current-balance') as HTMLSpanElement;
+  const statusMessage = document.getElementById('status-message') as HTMLDivElement;
+
+  let selectedUserId: string | null = null;
+
+  // Функция для отображения статус-сообщения
+  function showStatus(message: string, type: 'success' | 'error') {
+    statusMessage.textContent = message;
+    statusMessage.classList.remove('hidden', 'bg-green-50', 'dark:bg-green-900/20', 'border-green-200', 'dark:border-green-800', 'text-green-700', 'dark:text-green-400', 'bg-red-50', 'dark:bg-red-900/20', 'border-red-200', 'dark:border-red-800', 'text-red-700', 'dark:text-red-400');
+
+    if (type === 'success') {
+      statusMessage.classList.add('bg-green-50', 'dark:bg-green-900/20', 'border', 'border-green-200', 'dark:border-green-800', 'text-green-700', 'dark:text-green-400');
+    } else {
+      statusMessage.classList.add('bg-red-50', 'dark:bg-red-900/20', 'border', 'border-red-200', 'dark:border-red-800', 'text-red-700', 'dark:text-red-400');
+    }
+
+    setTimeout(() => {
+      statusMessage.classList.add('hidden');
+    }, 4000);
+  }
+
+  // Обработчик кнопок "Изменить"
+  document.querySelectorAll('.edit-balance-btn').forEach(btn => {
+    btn.addEventListener('click', (e: Event) => {
+      const target = e.target as HTMLButtonElement;
+      selectedUserId = target.getAttribute('data-user-id');
+
+      if (selectedUserId) {
+        const row = document.querySelector(`tr[data-user-id="${selectedUserId}"]`);
+        if (row) {
+          const currentBalance = row.querySelector('.font-semibold.text-green-600')?.textContent || '0';
+          currentBalanceSpan.textContent = currentBalance;
+          balanceInput.value = currentBalance;
+          editModal.classList.remove('hidden');
+          balanceInput.focus();
+        }
+      }
+    });
+  });
+
+  // Закрытие модального окна
+  cancelEditBtn.addEventListener('click', () => {
+    editModal.classList.add('hidden');
+    selectedUserId = null;
+  });
+
+  // Закрытие модального окна при клике на фон
+  editModal.addEventListener('click', (e: Event) => {
+    if (e.target === editModal) {
+      editModal.classList.add('hidden');
+      selectedUserId = null;
+    }
+  });
+
+  // Сохранение баланса
+  saveBalanceBtn.addEventListener('click', async () => {
+    if (!selectedUserId) return;
+
+    const newBalance = parseInt(balanceInput.value, 10);
+
+    if (isNaN(newBalance) || newBalance < 0) {
+      showStatus('Пожалуйста, введите корректное значение', 'error');
+      return;
+    }
+
+    saveBalanceBtn.disabled = true;
+    saveBalanceBtn.textContent = 'Сохранение...';
+
+    try {
+      const response = await fetch('/api/admin/users', {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          userId: selectedUserId,
+          generation_balance: newBalance
+        })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        showStatus(`Ошибка: ${errorData.error || 'Не удалось обновить баланс'}`, 'error');
+        saveBalanceBtn.disabled = false;
+        saveBalanceBtn.textContent = 'Сохранить';
+        return;
+      }
+
+      // Обновляем строку в таблице
+      const row = document.querySelector(`tr[data-user-id="${selectedUserId}"]`);
+      if (row) {
+        const balanceCell = row.querySelector('.font-semibold.text-green-600');
+        if (balanceCell) {
+          balanceCell.textContent = newBalance.toString();
+        }
+      }
+
+      editModal.classList.add('hidden');
+      showStatus('✓ Баланс успешно обновлен', 'success');
+      selectedUserId = null;
+      saveBalanceBtn.disabled = false;
+      saveBalanceBtn.textContent = 'Сохранить';
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Неизвестная ошибка';
+      showStatus(`Ошибка: ${errorMessage}`, 'error');
+      saveBalanceBtn.disabled = false;
+      saveBalanceBtn.textContent = 'Сохранить';
+    }
+  });
+
+  // Обработчик кнопок "Обнулить"
+  document.querySelectorAll('.reset-balance-btn').forEach(btn => {
+    btn.addEventListener('click', async (e: Event) => {
+      const target = e.target as HTMLButtonElement;
+      const userId = target.getAttribute('data-user-id');
+
+      if (!userId) return;
+
+      if (!confirm('Вы уверены, что хотите обнулить баланс этого пользователя?')) {
+        return;
+      }
+
+      target.disabled = true;
+      target.textContent = 'Обнуление...';
+
+      try {
+        const response = await fetch('/api/admin/users', {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            userId: userId,
+            generation_balance: 0
+          })
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          showStatus(`Ошибка: ${errorData.error || 'Не удалось обнулить баланс'}`, 'error');
+          target.disabled = false;
+          target.textContent = 'Обнулить';
+          return;
+        }
+
+        // Обновляем строку в таблице
+        const row = document.querySelector(`tr[data-user-id="${userId}"]`);
+        if (row) {
+          const balanceCell = row.querySelector('.font-semibold.text-green-600');
+          if (balanceCell) {
+            balanceCell.textContent = '0';
+          }
+        }
+
+        showStatus('✓ Баланс успешно обнулен', 'success');
+        target.disabled = false;
+        target.textContent = 'Обнулить';
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : 'Неизвестная ошибка';
+        showStatus(`Ошибка: ${errorMessage}`, 'error');
+        target.disabled = false;
+        target.textContent = 'Обнулить';
+      }
+    });
+  });
+</script>
