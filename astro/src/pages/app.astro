@@ -348,6 +348,18 @@ export const prerender = false;
 
             // Reset video source
             videoOutput.src = '';
+
+            // Clear image preview
+            imagePreview.classList.add('hidden');
+            imagePreview.src = '';
+            uploadPlaceholder.classList.remove('hidden');
+
+            // Clear selected image
+            selectedImage = null;
+            imageUpload.value = '';
+
+            // Update button state
+            updateGenerateButtonState();
         });
     }
 
