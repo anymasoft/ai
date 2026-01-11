@@ -62,13 +62,13 @@ import { ru } from "@/lib/i18n"
                     <div class="w-full max-w-lg">
                         <img
                             src="/astrolus-light.png"
-                            alt="Video Reader AI Interface - Light mode"
+                            alt="Интерфейс Video Reader AI - Светлая тема"
                             class="w-full rounded-3xl shadow-2xl shadow-gray-600/20 dark:hidden"
                             loading="lazy"
                         />
                         <img
                             src="/astrolus-dark.png"
-                            alt="Video Reader AI Interface - Dark mode"
+                            alt="Интерфейс Video Reader AI - Тёмная тема"
                             class="w-full rounded-3xl shadow-2xl shadow-gray-600/20 hidden dark:block"
                             loading="lazy"
                         />
@@ -78,7 +78,8 @@ import { ru } from "@/lib/i18n"
 
             <!-- Client logos section -->
             <div class="mt-20 pt-12 border-t border-gray-100 dark:border-gray-800">
-                <p class="text-center text-sm text-gray-600 dark:text-gray-400 mb-8">Trusted by users worldwide</p>
+                {/* EN: Trusted by users worldwide */}
+                <p class="text-center text-sm text-gray-600 dark:text-gray-400 mb-8">{ru.hero.trusted}</p>
                 <div class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-4">
                     <div class="flex justify-center p-2 grayscale transition duration-200 hover:grayscale-0">
                         <img src="./images/clients/microsoft.svg" class="h-8 w-auto" loading="lazy" alt="Microsoft logo" width="100" height="100" />
