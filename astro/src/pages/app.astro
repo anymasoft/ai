@@ -172,6 +172,24 @@ export const prerender = false;
 </AppLayout>
 
 <script>
+    // ========== Toast Notification System ==========
+    function showToast(message: string, type: 'error' | 'success' = 'error') {
+        const toast = document.createElement('div');
+        toast.className = `fixed top-4 right-4 px-4 py-3 rounded-lg shadow-lg z-50 animate-in fade-in slide-in-from-top-2 ${
+            type === 'error'
+                ? 'bg-red-500 text-white'
+                : 'bg-green-500 text-white'
+        }`;
+        toast.textContent = message;
+        document.body.appendChild(toast);
+
+        // Auto-hide after 3 seconds
+        setTimeout(() => {
+            toast.classList.add('opacity-0');
+            setTimeout(() => toast.remove(), 300);
+        }, 3000);
+    }
+
     // ========== Validation and Button State ==========
     const generateBtn = document.getElementById('generate-btn') as HTMLButtonElement;
     const promptInput = document.getElementById('prompt') as HTMLTextAreaElement;
@@ -304,6 +322,11 @@ export const prerender = false;
                 return;
             }
 
+            // ✨ STEP 1: Clear player before starting generation
+            videoOutput.classList.add('hidden');
+            videoControls.classList.add('hidden');
+            videoOutput.src = '';
+
             // Disable button and show loading state
             generateBtn.disabled = true;
             generateIcon.classList.add('hidden');
@@ -342,7 +365,8 @@ export const prerender = false;
                             generateIcon.classList.remove('hidden');
                             generateSpinner.classList.add('hidden');
                             generateBtn.disabled = false;
-                            alert(data.error || 'Ошибка при генерации видео');
+                            const errorMsg = data.error || 'Ошибка при генерации видео';
+                            showToast(errorMsg, 'error');
                             return;
                         }
 
@@ -397,7 +421,7 @@ export const prerender = false;
 
                         videoLoading.classList.add('hidden');
                         videoPlaceholder.classList.remove('hidden');
-                        alert(`Ошибка: ${errorMessage}`);
+                        showToast(`Ошибка: ${errorMessage}`, 'error');
                     } finally {
                         // Re-enable button and reset spinner
                         generateIcon.classList.remove('hidden');
