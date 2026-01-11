@@ -4,26 +4,34 @@ import { getUserFromSession, isAdmin } from './lib/auth';
 export const onRequest = defineMiddleware((context, next) => {
   const pathname = context.url.pathname;
 
+  // Получаем токен сессии из cookies
+  const sessionToken = context.cookies.get('session_token')?.value;
+  const user = sessionToken ? getUserFromSession(sessionToken) : null;
+
   // Защищённые маршруты - требуют аутентификации
-  const protectedRoutes = ['/app', '/account', '/admin'];
+  const protectedRoutes = ['/app', '/account', '/billing', '/admin'];
+  const isProtected = protectedRoutes.some((route) => pathname.startsWith(route));
 
   // Маршруты, требующие прав админа
   const adminRoutes = ['/admin'];
-
-  // Проверяем, является ли текущий маршрут защищённым
-  const isProtected = protectedRoutes.some((route) => pathname.startsWith(route));
   const isAdminRoute = adminRoutes.some((route) => pathname.startsWith(route));
 
-  if (isProtected) {
-    // Получаем токен сессии из cookies
-    const cookies = context.cookies;
-    const sessionToken = cookies.get('session_token')?.value;
+  // Главная страница "/" - только для неавторизованных
+  if (pathname === '/') {
+    if (user) {
+      // Если авторизован - редирект на /app
+      console.log(`\n🔄 Auth Middleware: Authorized user accessing "/"`);
+      console.log(`   - Redirecting to /app`);
+      return context.redirect('/app');
+    }
+    // Если неавторизован - показываем главную страницу
+    return next();
+  }
 
+  // Защищённые маршруты - требуют аутентификации
+  if (isProtected) {
     console.log(`\n🔒 Auth Middleware for: ${pathname}`);
     console.log(`   - sessionToken: ${sessionToken ? sessionToken.slice(0, 16) + '...' : 'MISSING'}`);
-
-    // Проверяем, существует ли сессия
-    const user = sessionToken ? getUserFromSession(sessionToken) : null;
 
     if (user) {
       console.log(`   ✅ Session valid for user: ${user.email}`);
@@ -36,9 +44,9 @@ export const onRequest = defineMiddleware((context, next) => {
       }
     } else {
       console.log(`   ❌ Session invalid or not found`);
-      console.log(`   - Redirecting to /sign-in`);
-      // Редиректим на страницу входа
-      return context.redirect('/sign-in');
+      console.log(`   - Redirecting to /`);
+      // Редиректим на главную страницу
+      return context.redirect('/');
     }
   }
 
