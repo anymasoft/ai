@@ -1,6 +1,5 @@
 ---
 import Container from "./Container.astro"
-import { ru } from "@/lib/i18n"
 ---
 
 <div class="relative" id="home">
@@ -14,16 +13,16 @@ import { ru } from "@/lib/i18n"
                 <!-- Left column: Text and buttons -->
                 <div>
                     {/* EN: Understand YouTube in Any Language */}
-                    <h1 class="text-gray-900 text-balance dark:text-white font-bold text-5xl md:text-6xl xl:text-7xl">{ru.hero.title}</h1>
+                    <h1 class="text-gray-900 text-balance dark:text-white font-bold text-5xl md:text-6xl xl:text-7xl">Поймите видео на любом языке</h1>
                     {/* EN: Instant AI-powered subtitle translation directly inside YouTube. No registration required. */}
-                    <p class="mt-8 text-gray-700 dark:text-gray-300 text-lg">{ru.hero.subtitle}</p>
+                    <p class="mt-8 text-gray-700 dark:text-gray-300 text-lg">Мгновенный перевод субтитров прямо в YouTube. Без регистрации.</p>
                     <div class="mt-16 flex flex-wrap gap-y-4 gap-x-6">
                         <a
                           href="#"
                           class="relative flex h-11 w-full items-center justify-center px-6 before:absolute before:inset-0 before:rounded-full before:bg-primary before:transition before:duration-300 hover:before:scale-105 active:duration-75 active:before:scale-95 sm:w-max"
                         >
                           {/* EN: Add to Chrome — Free */}
-                          <span class="relative text-base font-semibold text-white">{ru.hero.cta_install}</span>
+                          <span class="relative text-base font-semibold text-white">Установить в Chrome — Бесплатно</span>
                         </a>
                         <a
                           href="#pricing"
@@ -32,7 +31,7 @@ import { ru } from "@/lib/i18n"
                           {/* EN: View Pricing */}
                           <span
                             class="relative text-base font-semibold text-primary dark:text-white"
-                          >{ru.hero.cta_pricing}</span>
+                          >Посмотреть тарифы</span>
                         </a>
                     </div>
                     <div class="hidden py-8 mt-16 border-y border-gray-100 dark:border-gray-800 lg:flex flex-col gap-4">
@@ -79,7 +78,7 @@ import { ru } from "@/lib/i18n"
             <!-- Client logos section -->
             <div class="mt-20 pt-12 border-t border-gray-100 dark:border-gray-800">
                 {/* EN: Trusted by users worldwide */}
-                <p class="text-center text-sm text-gray-600 dark:text-gray-400 mb-8">{ru.hero.trusted}</p>
+                <p class="text-center text-sm text-gray-600 dark:text-gray-400 mb-8">Доверяют пользователи по всему миру</p>
                 <div class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-4">
                     <div class="flex justify-center p-2 grayscale transition duration-200 hover:grayscale-0">
                         <img src="./images/clients/microsoft.svg" class="h-8 w-auto" loading="lazy" alt="Microsoft logo" width="100" height="100" />

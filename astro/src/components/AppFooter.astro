@@ -1,6 +1,5 @@
 ---
 import Container from "./Container.astro";
-import { ru } from "../lib/i18n";
 
 ---
 
@@ -12,10 +11,10 @@ import { ru } from "../lib/i18n";
             class="flex w-full justify-center space-x-12 text-gray-600 dark:text-gray-300 sm:w-7/12 md:justify-start"
           >
             <ul class="list-inside list-disc space-y-8">
-              <li><a href="/#features" class="transition hover:text-primary">{ru.footer.features}</a></li>
-              <li><a href="/#solution" class="transition hover:text-primary">{ru.footer.how_it_works}</a></li>
-              <li><a href="/#reviews" class="transition hover:text-primary">{ru.footer.testimonials}</a></li>
-              <li><a href="/#pricing" class="transition hover:text-primary">{ru.footer.pricing}</a></li>
+              <li><a href="/#features" class="transition hover:text-primary">Возможности</a></li>
+              <li><a href="/#solution" class="transition hover:text-primary">Как это работает</a></li>
+              <li><a href="/#reviews" class="transition hover:text-primary">Отзывы</a></li>
+              <li><a href="/#pricing" class="transition hover:text-primary">Тарифы</a></li>
             </ul>
   
           </div>
@@ -23,19 +22,19 @@ import { ru } from "../lib/i18n";
             class="m-auto mt-16 w-10/12 space-y-6 text-center sm:mt-auto sm:w-5/12 sm:text-left"
           >
             <span class="block text-gray-500 dark:text-gray-400">
-              {ru.footer.description}
+              AI-powered YouTube subtitle translation для мирового контента
             </span>
 
-            <span class="block text-gray-500 dark:text-gray-400">{ru.common.copyright}</span>
+            <span class="block text-gray-500 dark:text-gray-400">© 2025 Video Reader AI. Все права защищены.</span>
   
             <span class="flex justify-between text-gray-600 dark:text-white">
-              <a href="https://beem.ink/terms" target="_blank" rel="noopener noreferrer" class="font-medium">{ru.footer.terms}</a>
-              <a href="https://beem.ink/privacy" target="_blank" rel="noopener noreferrer" class="font-medium">{ru.footer.privacy}</a>
+              <a href="https://beem.ink/terms" target="_blank" rel="noopener noreferrer" class="font-medium">Условия использования</a>
+              <a href="https://beem.ink/privacy" target="_blank" rel="noopener noreferrer" class="font-medium">Политика конфиденциальности</a>
             </span>
   
             <span class="block text-gray-500 dark:text-gray-400">
-              {ru.footer.need_help}
-              <a href="#" class="font-semibold text-gray-600 dark:text-white"> {ru.footer.contact}</a>
+              Нужна помощь?
+              <a href="#" class="font-semibold text-gray-600 dark:text-white"> Связаться</a>
             </span>
           </div>
         </div>
