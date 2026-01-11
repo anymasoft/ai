@@ -314,10 +314,56 @@ const userBalance = user.generation_balance || 0;
     const imagePreview = document.getElementById('image-preview') as HTMLImageElement;
     const uploadPlaceholder = document.getElementById('upload-placeholder') as HTMLElement;
 
+    /**
+     * Загружает изображение на сервер через API
+     */
+    async function uploadImageToServer(file: File): Promise<boolean> {
+        try {
+            const formData = new FormData();
+            formData.append('image', file);
+
+            const response = await fetch('/api/upload-image', {
+                method: 'POST',
+                body: formData,
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                console.error('[UPLOAD] Error:', data.error);
+                showToast(data.error || 'Ошибка при загрузке изображения', 'error');
+                return false;
+            }
+
+            console.log('[UPLOAD] ✅ Image uploaded:', data.imagePath);
+            return true;
+        } catch (error) {
+            const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+            console.error('[UPLOAD] Error:', errorMessage);
+            showToast(`Ошибка: ${errorMessage}`, 'error');
+            return false;
+        }
+    }
+
     if (imageUpload) {
-        imageUpload.addEventListener('change', (e) => {
+        imageUpload.addEventListener('change', async (e) => {
             const file = (e.target as HTMLInputElement).files?.[0];
             if (file) {
+                // Проверяем, что это JPEG
+                if (!file.type.startsWith('image/jpeg')) {
+                    showToast('Разрешены только JPEG изображения', 'error');
+                    imageUpload.value = '';
+                    return;
+                }
+
+                // Загружаем изображение на сервер
+                const uploadSuccess = await uploadImageToServer(file);
+                if (!uploadSuccess) {
+                    imageUpload.value = '';
+                    return;
+                }
+
+                // Сохраняем файл локально для preview
                 selectedImage = file;
                 const reader = new FileReader();
                 reader.onload = (event) => {
@@ -394,93 +440,90 @@ const userBalance = user.generation_balance || 0;
             videoLoading.classList.remove('hidden');
 
             try {
-                // Конвертируем фото в base64
-                const reader = new FileReader();
-                reader.onload = async (event) => {
-                    const imageBase64 = event.target?.result as string;
+                // Отправляем запрос на генерацию (изображение уже загружено на сервер)
+                const response = await fetch('/api/generate', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        prompt: promptInput.value,
+                        duration: parseInt(selectedDuration || '6', 10),
+                    }),
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    console.error('[GEN] Error:', data.error);
+                    videoLoading.classList.add('hidden');
+                    generateIcon.classList.remove('hidden');
+                    generateSpinner.classList.add('hidden');
+                    generateBtn.disabled = false;
+
+                    const errorMsg = data.error || 'Ошибка при генерации видео';
+                    const isBalanceError = errorMsg.toLowerCase().includes('баланс') ||
+                                          errorMsg.toLowerCase().includes('кредит') ||
+                                          errorMsg.toLowerCase().includes('недостаточно');
+
+                    if (isBalanceError) {
+                        showPaywallOverlay();
+                    } else {
+                        videoPlaceholder.classList.remove('hidden');
+                        showToast(errorMsg, 'error');
+                    }
+                    return;
+                }
+
+                const generationId = data.generationId;
+                console.log(`[GEN] Started generation: ${generationId}`);
+
+                // Ждем завершения генерации (опрашиваем статус)
+                let generationComplete = false;
+                let videoUrl: string | null = null;
+                let checkAttempts = 0;
+                const maxAttempts = 300; // 300 секунд (5 минут) - ждем callback от MiniMax
+
+                while (!generationComplete && checkAttempts < maxAttempts) {
+                    await new Promise(resolve => setTimeout(resolve, 1000)); // Ждем 1 сек
+                    checkAttempts++;
 
                     try {
-                        // Отправляем запрос на генерацию
-                        const response = await fetch('/api/generate', {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json',
-                            },
-                            body: JSON.stringify({
-                                prompt: promptInput.value,
-                                duration: parseInt(selectedDuration || '6', 10),
-                                imageBase64: imageBase64,
-                            }),
-                        });
+                        const statusResponse = await fetch(
+                            `/api/generate?generationId=${generationId}`
+                        );
+                        const statusData = await statusResponse.json();
 
-                        const data = await response.json();
+                        console.log(`[GEN] Status check: ${statusData.status} (attempt ${checkAttempts})`);
 
-                        if (!response.ok) {
-                            console.error('[GEN] Error:', data.error);
-                            videoLoading.classList.add('hidden');
-                            generateIcon.classList.remove('hidden');
-                            generateSpinner.classList.add('hidden');
-                            generateBtn.disabled = false;
-
-                            const errorMsg = data.error || 'Ошибка при генерации видео';
-                            const isBalanceError = errorMsg.toLowerCase().includes('баланс') ||
-                                                  errorMsg.toLowerCase().includes('кредит') ||
-                                                  errorMsg.toLowerCase().includes('недостаточно');
-
-                            if (isBalanceError) {
-                                showPaywallOverlay();
-                            } else {
-                                videoPlaceholder.classList.remove('hidden');
-                                showToast(errorMsg, 'error');
-                            }
-                            return;
+                        if (statusData.status === 'success' && statusData.charged) {
+                            generationComplete = true;
+                            videoUrl = statusData.videoUrl;
+                            console.log(`[GEN] ✅ Generation complete and charged. videoUrl=${videoUrl}`);
+                        } else if (statusData.status === 'failed') {
+                            throw new Error('Генерация видео не удалась');
                         }
+                    } catch (error) {
+                        console.error('[GEN] Error checking status:', error);
+                    }
+                }
 
-                        const generationId = data.generationId;
-                        console.log(`[GEN] Started generation: ${generationId}`);
+                if (!generationComplete || !videoUrl) {
+                    throw new Error(
+                        'Время ожидания генерации истекло. Видео может быть готово позже.'
+                    );
+                }
 
-                        // Ждем завершения генерации (опрашиваем статус)
-                        let generationComplete = false;
-                        let checkAttempts = 0;
-                        const maxAttempts = 30; // 30 секунд максимум
+                // Генерация готова - показываем видео из MiniMax
+                videoLoading.classList.add('hidden');
+                videoOutput.src = videoUrl; // URL видео из API
+                videoOutput.classList.remove('hidden');
+                videoControls.classList.remove('hidden');
 
-                        while (!generationComplete && checkAttempts < maxAttempts) {
-                            await new Promise(resolve => setTimeout(resolve, 1000)); // Ждем 1 сек
-                            checkAttempts++;
+                // Сохраняем videoUrl для скачивания
+                (downloadBtn as any).videoUrl = videoUrl;
 
-                            try {
-                                const statusResponse = await fetch(
-                                    `/api/generate?generationId=${generationId}`
-                                );
-                                const statusData = await statusResponse.json();
-
-                                console.log(`[GEN] Status check: ${statusData.status} (attempt ${checkAttempts})`);
-
-                                if (statusData.status === 'success' && statusData.charged) {
-                                    generationComplete = true;
-                                    console.log(`[GEN] ✅ Generation complete and charged`);
-                                } else if (statusData.status === 'failed') {
-                                    throw new Error('Генерация видео не удалась');
-                                }
-                            } catch (error) {
-                                console.error('[GEN] Error checking status:', error);
-                            }
-                        }
-
-                        if (!generationComplete) {
-                            throw new Error(
-                                'Время ожидания генерации истекло. Видео может быть готово позже.'
-                            );
-                        }
-
-                        // Генерация готова - показываем видео
-                        // В реальности URL видео приходил бы из API
-                        videoLoading.classList.add('hidden');
-                        videoOutput.src = '/demo.mp4'; // Используем демо видео
-                        videoOutput.classList.remove('hidden');
-                        videoControls.classList.remove('hidden');
-
-                        console.log(`[GEN] Video displayed for generation: ${generationId}`);
+                console.log(`[GEN] Video displayed for generation: ${generationId}`);
                     } catch (error) {
                         const errorMessage = error instanceof Error ? error.message : 'Неизвестная ошибка';
                         console.error('[GEN] Generation error:', errorMessage);
@@ -503,15 +546,23 @@ const userBalance = user.generation_balance || 0;
                         generateBtn.disabled = false;
                         updateGenerateButtonState();
                     }
-                };
-
-                reader.readAsDataURL(selectedImage);
             } catch (error) {
                 const errorMessage = error instanceof Error ? error.message : 'Неизвестная ошибка';
-                console.error('[GEN] Error:', errorMessage);
+                console.error('[GEN] Generation error:', errorMessage);
 
                 videoLoading.classList.add('hidden');
-                videoPlaceholder.classList.remove('hidden');
+                const isBalanceError = errorMessage.toLowerCase().includes('баланс') ||
+                                      errorMessage.toLowerCase().includes('кредит') ||
+                                      errorMessage.toLowerCase().includes('недостаточно');
+
+                if (isBalanceError) {
+                    showPaywallOverlay();
+                } else {
+                    videoPlaceholder.classList.remove('hidden');
+                    showToast(`Ошибка: ${errorMessage}`, 'error');
+                }
+            } finally {
+                // Re-enable button and reset spinner
                 generateIcon.classList.remove('hidden');
                 generateSpinner.classList.add('hidden');
                 generateBtn.disabled = false;
@@ -523,9 +574,12 @@ const userBalance = user.generation_balance || 0;
     // ========== Download Button ==========
     if (downloadBtn) {
         downloadBtn.addEventListener('click', () => {
+            // Получаем URL видео (сохранили при успешной генерации)
+            const videoUrl = (downloadBtn as any).videoUrl || '/videos/output.mp4';
+
             // Create download link
             const link = document.createElement('a');
-            link.href = '/demo.mp4';
+            link.href = videoUrl;
             link.download = 'generated-video.mp4';
             document.body.appendChild(link);
             link.click();

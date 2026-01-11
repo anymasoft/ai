@@ -168,3 +168,49 @@ export function updateGenerationStatus(
     `[GEN] updated generation=${generationId} status=${status}`
   );
 }
+
+/**
+ * Сохранить ID задачи MiniMax
+ *
+ * @param generationId - ID генерации
+ * @param jobId - ID задачи в MiniMax
+ */
+export function updateMinimaxJobId(
+  generationId: string,
+  jobId: string
+): void {
+  const db = getDb();
+
+  const updateStmt = db.prepare(
+    'UPDATE generations SET minimax_job_id = ? WHERE id = ?'
+  );
+
+  updateStmt.run(jobId, generationId);
+
+  console.log(
+    `[GEN] updated generation=${generationId} minimax_job_id=${jobId}`
+  );
+}
+
+/**
+ * Обновить URL видео и статус
+ *
+ * @param generationId - ID генерации
+ * @param videoUrl - URL сохраненного видео
+ */
+export function updateGenerationVideoUrl(
+  generationId: string,
+  videoUrl: string
+): void {
+  const db = getDb();
+
+  const updateStmt = db.prepare(
+    'UPDATE generations SET video_url = ?, minimax_status = ? WHERE id = ?'
+  );
+
+  updateStmt.run(videoUrl, 'completed', generationId);
+
+  console.log(
+    `[GEN] updated generation=${generationId} video_url=${videoUrl}`
+  );
+}
