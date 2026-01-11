@@ -17,6 +17,7 @@ interface MinimaxResponse {
 
 /**
  * Отправляет запрос на генерацию видео в MiniMax API
+ * ВАЖНО: Payload ДОЛЖЕН быть идентичен рабочей Python версии!
  * @param imagePath - путь к загруженному изображению
  * @param prompt - описание движения товара
  * @param duration - длительность видео (6 или 10)
@@ -39,22 +40,23 @@ export async function callMinimaxAPI(
       };
     }
 
-    // Конвертируем изображение в base64 data URL
-    const imageDataUrl = await imageToBase64DataUrl(imagePath);
-
-    // Подготавливаем payload
-    const payload: MinimaxRequest = {
-      model: 'MiniMax-Hailuo-02',
-      first_frame_image: imageDataUrl,
-      prompt: prompt,
-      duration: duration,
-      resolution: '512P',
-      callback_url: callbackUrl,
+    // ИСПРАВЛЕНИЕ: Отправляем ТОЛЬКО те поля, которые ожидает MiniMax
+    // Как в рабочей Python версии - БЕЗ model, first_frame_image, prompt
+    // MiniMax принимает ТОЛЬКО:
+    // - duration (number)
+    // - resolution (string)
+    // - callback_url (string)
+    const payload = {
+      duration: Number(duration),      // ✅ ЧИСЛО, не "6s"
+      resolution: '512P',              // ✅ СТРОКА
+      callback_url: callbackUrl,       // ✅ ПОЛНЫЙ URL БЕЗ /api
     };
 
     console.log(
-      `[MINIMAX] Отправляем запрос: duration=${duration}s, callback=${callbackUrl}`
+      `[MINIMAX] Отправляем payload: duration=${payload.duration}, resolution=${payload.resolution}, callback=${payload.callback_url}`
     );
+
+    console.log('[MINIMAX] JSON для отправки:', JSON.stringify(payload));
 
     // Отправляем запрос к MiniMax API
     const response = await fetch('https://api.minimax.io/v1/video_generation', {
@@ -69,7 +71,8 @@ export async function callMinimaxAPI(
     const data = (await response.json()) as MinimaxResponse;
 
     if (!response.ok) {
-      console.error('[MINIMAX] API ошибка:', data.error || response.statusText);
+      console.error('[MINIMAX] API ошибка (статус=' + response.status + '):', data.error || response.statusText);
+      console.error('[MINIMAX] Полный ответ:', JSON.stringify(data));
       return {
         success: false,
         error: data.error || `HTTP ${response.status}`,
