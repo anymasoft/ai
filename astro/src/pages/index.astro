@@ -3,7 +3,7 @@ import Stats from '../components/Stats.astro';
 import Features from '../components/Features.astro';
 import HeroSection from '../components/HeroSection.astro';
 import Layout from '../layouts/Layout.astro';
-import Testimonials from '../components/Testimonials.astro';
+// import Testimonials from '../components/Testimonials.astro';
 import CallToAction from '../components/CallToAction.astro';
 import Pricing from '../components/Pricing.astro';
 import { getUserFromSession } from '../lib/auth';
@@ -26,7 +26,7 @@ if (user) {
 		<HeroSection/>
 		<Features/>
 		<Stats/>
-		<Testimonials/>
+		{/* <Testimonials/> */}
 		<CallToAction/>
 		<Pricing/>
 	</main>

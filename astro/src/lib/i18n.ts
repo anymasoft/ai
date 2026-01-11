@@ -8,13 +8,13 @@ export const i18n = {
   ru: {
     // ========== ОБЩИЕ ==========
     common: {
-      appName: 'Video Reader AI',
+      appName: 'Beem',
       logout: 'Выход',
       loading: 'Загрузка...',
       error: 'Ошибка',
       success: 'Успешно',
       coming_soon: 'Скоро',
-      copyright: '© 2025 Video Reader AI. Все права защищены.',
+      copyright: '© 2025 Beem. Все права защищены.',
     },
 
     // ========== HEADER & NAVIGATION ==========
@@ -38,7 +38,7 @@ export const i18n = {
     // ========== FEATURES SECTION ==========
     features: {
       title: 'Мощный ассистент для понимания контента на других языках',
-      subtitle: 'Video Reader AI помогает вам смотреть видео на любом языке с мгновенным переводом субтитров.',
+      subtitle: 'Beem помогает вам смотреть видео на любом языке с мгновенным переводом субтитров.',
 
       feature_1: 'Мгновенный перевод субтитров',
       feature_1_desc: 'Получайте точные субтитры на любом языке в момент их появления.',
@@ -56,7 +56,7 @@ export const i18n = {
     // ========== STATS SECTION ==========
     stats: {
       title: 'Перевод с помощью AI, созданный для YouTube',
-      subtitle: 'Video Reader AI разработан для зрителей, которые хотят получить доступ к мировому контенту без языковых барьеров. Смотрите ли вы на иностранном языке или создателей со всего мира — наш AI даст вам понятные, контекстные субтитры.',
+      subtitle: 'Beem разработан для зрителей, которые хотят получить доступ к мировому контенту без языковых барьеров. Смотрите ли вы на иностранном языке или создателей со всего мира — наш AI даст вам понятные, контекстные субтитры.',
 
       stat_1: 'Перевод на экране',
       stat_1_desc: 'Всё происходит прямо в плеере YouTube. Без переключения между приложениями.',
@@ -67,7 +67,7 @@ export const i18n = {
 
     // ========== TESTIMONIALS ==========
     testimonials: {
-      title: 'Что говорят пользователи о Video Reader AI',
+      title: 'Что говорят пользователи о Beem',
 
       testimonial_1: {
         name: 'Анна Петрова',
@@ -142,7 +142,7 @@ export const i18n = {
 
     // ========== CTA SECTION ==========
     cta: {
-      title: 'Начните использовать Video Reader AI сегодня',
+      title: 'Начните использовать Beem сегодня',
       subtitle: 'Присоединитесь к тысячам пользователей, которые смотрят YouTube без языковых барьеров.',
     },
 
@@ -162,10 +162,10 @@ export const i18n = {
     // ========== BLOG SECTION ==========
     blog: {
       title: 'Руководства и видеоуроки',
-      subtitle: 'Узнайте, как максимально эффективно использовать Video Reader AI.',
+      subtitle: 'Узнайте, как максимально эффективно использовать Beem.',
 
       article_1_title: 'Как перевести YouTube субтитры в один клик',
-      article_1_desc: 'Быстрое руководство для начинающих использовать Video Reader AI.',
+      article_1_desc: 'Быстрое руководство для начинающих использовать Beem.',
       article_2_title: 'Топ-5 способов выучить языки с помощью YouTube',
       article_2_desc: 'Как AI перевод помогает усваивать контент быстрее.',
       article_3_title: 'Как экспортировать субтитры для учёбы и работы',
@@ -261,7 +261,7 @@ export const i18n = {
 
     // ========== NAVBAR (Приложение) ==========
     navbar: {
-      appName: 'Video Reader AI',
+      appName: 'Beem',
       credits_remaining: 'Осталось генераций',
       upgrade: 'Пополнить баланс',
       account_settings: 'Мой профиль',
@@ -274,13 +274,13 @@ export const i18n = {
   en: {
     // ========== COMMON ==========
     common: {
-      appName: 'Video Reader AI',
+      appName: 'Beem',
       logout: 'Logout',
       loading: 'Loading...',
       error: 'Error',
       success: 'Success',
       coming_soon: 'Coming Soon',
-      copyright: '© 2025 Video Reader AI. All rights reserved.',
+      copyright: '© 2025 Beem. All rights reserved.',
     },
 
     // ========== HEADER & NAVIGATION ==========
@@ -304,7 +304,7 @@ export const i18n = {
     // ========== FEATURES ==========
     features: {
       title: 'A powerful AI assistant for understanding global content',
-      subtitle: 'Video Reader AI helps you watch videos in any language with real-time subtitle translation.',
+      subtitle: 'Beem helps you watch videos in any language with real-time subtitle translation.',
 
       feature_1: 'Instant subtitle translation',
       feature_1_desc: 'Get accurate subtitles in your preferred language the moment they appear.',
@@ -322,7 +322,7 @@ export const i18n = {
     // ========== STATS ==========
     stats: {
       title: 'AI-powered translation built for YouTube',
-      subtitle: 'Video Reader AI is designed for viewers who want to access global content without language barriers. Whether you\'re learning a language or watching foreign creators, our AI gives you clear, context-aware subtitles.',
+      subtitle: 'Beem is designed for viewers who want to access global content without language barriers. Whether you\'re learning a language or watching foreign creators, our AI gives you clear, context-aware subtitles.',
 
       stat_1: 'On-screen translation',
       stat_1_desc: 'Everything happens directly inside the YouTube player. No switching apps.',
@@ -333,7 +333,7 @@ export const i18n = {
 
     // ========== TESTIMONIALS ==========
     testimonials: {
-      title: 'What users say about Video Reader AI',
+      title: 'What users say about Beem',
 
       testimonial_1: {
         name: 'Anna Petrova',
@@ -408,7 +408,7 @@ export const i18n = {
 
     // ========== CTA ==========
     cta: {
-      title: 'Start using Video Reader AI today',
+      title: 'Start using Beem today',
       subtitle: 'Join thousands of users watching YouTube without language barriers.',
     },
 
@@ -428,10 +428,10 @@ export const i18n = {
     // ========== BLOG ==========
     blog: {
       title: 'Guides & Tutorials',
-      subtitle: 'Learn how to get the most out of Video Reader AI.',
+      subtitle: 'Learn how to get the most out of Beem.',
 
       article_1_title: 'How to translate YouTube subtitles in one click',
-      article_1_desc: 'A quick guide to using Video Reader AI for beginners.',
+      article_1_desc: 'A quick guide to using Beem for beginners.',
       article_2_title: 'Top 5 ways to learn languages using YouTube',
       article_2_desc: 'How AI translation helps you absorb content faster.',
       article_3_title: 'How to export subtitles for study or work',
@@ -527,7 +527,7 @@ export const i18n = {
 
     // ========== NAVBAR ==========
     navbar: {
-      appName: 'Video Reader AI',
+      appName: 'Beem',
       credits_remaining: 'Credits remaining',
       upgrade: 'Upgrade',
       account_settings: 'Account Settings',
