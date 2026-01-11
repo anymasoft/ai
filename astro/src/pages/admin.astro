@@ -173,6 +173,30 @@ const totalBalance = allUsers.reduce((sum, u) => sum + u.generation_balance, 0);
         </div>
       </div>
 
+      <!-- Reset Confirmation Modal -->
+      <div id="reset-modal" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+        <div class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-6 max-w-sm w-full mx-4">
+          <h3 class="text-lg font-bold text-gray-900 dark:text-white mb-2">Обнулить баланс?</h3>
+          <p class="text-sm text-gray-600 dark:text-gray-400 mb-6">
+            Вы уверены, что хотите обнулить баланс этого пользователя? Это действие невозможно отменить.
+          </p>
+          <div class="flex gap-3">
+            <button
+              id="cancel-reset"
+              class="flex-1 px-4 py-2 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white font-semibold hover:bg-gray-200 dark:hover:bg-gray-700 transition"
+            >
+              Отмена
+            </button>
+            <button
+              id="confirm-reset"
+              class="flex-1 px-4 py-2 rounded-lg bg-red-600 text-white font-semibold hover:bg-red-700 transition"
+            >
+              Обнулить
+            </button>
+          </div>
+        </div>
+      </div>
+
       <!-- Status Messages -->
       <div id="status-message" class="hidden fixed bottom-4 right-4 px-4 py-3 rounded-lg text-sm font-semibold max-w-sm z-50"></div>
     </div>
@@ -187,7 +211,12 @@ const totalBalance = allUsers.reduce((sum, u) => sum + u.generation_balance, 0);
   const currentBalanceSpan = document.getElementById('current-balance') as HTMLSpanElement;
   const statusMessage = document.getElementById('status-message') as HTMLDivElement;
 
+  const resetModal = document.getElementById('reset-modal') as HTMLDivElement;
+  const cancelResetBtn = document.getElementById('cancel-reset') as HTMLButtonElement;
+  const confirmResetBtn = document.getElementById('confirm-reset') as HTMLButtonElement;
+
   let selectedUserId: string | null = null;
+  let resetUserId: string | null = null;
 
   // Функция для отображения статус-сообщения
   function showStatus(message: string, type: 'success' | 'error') {
@@ -296,57 +325,88 @@ const totalBalance = allUsers.reduce((sum, u) => sum + u.generation_balance, 0);
 
   // Обработчик кнопок "Обнулить"
   document.querySelectorAll('.reset-balance-btn').forEach(btn => {
-    btn.addEventListener('click', async (e: Event) => {
+    btn.addEventListener('click', (e: Event) => {
       const target = e.target as HTMLButtonElement;
       const userId = target.getAttribute('data-user-id');
 
       if (!userId) return;
 
-      if (!confirm('Вы уверены, что хотите обнулить баланс этого пользователя?')) {
+      resetUserId = userId;
+      resetModal.classList.remove('hidden');
+    });
+  });
+
+  // Закрытие модального окна подтверждения обнуления
+  cancelResetBtn.addEventListener('click', () => {
+    resetModal.classList.add('hidden');
+    resetUserId = null;
+  });
+
+  // Закрытие модального окна при клике на фон
+  resetModal.addEventListener('click', (e: Event) => {
+    if (e.target === resetModal) {
+      resetModal.classList.add('hidden');
+      resetUserId = null;
+    }
+  });
+
+  // Подтверждение обнуления баланса
+  confirmResetBtn.addEventListener('click', async () => {
+    if (!resetUserId) return;
+
+    const target = document.querySelector(`button[data-user-id="${resetUserId}"].reset-balance-btn`) as HTMLButtonElement;
+    if (target) {
+      target.disabled = true;
+      target.textContent = 'Обнуление...';
+    }
+
+    resetModal.classList.add('hidden');
+
+    try {
+      const response = await fetch('/api/admin/users', {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          userId: resetUserId,
+          generation_balance: 0
+        })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        showStatus(`Ошибка: ${errorData.error || 'Не удалось обнулить баланс'}`, 'error');
+        if (target) {
+          target.disabled = false;
+          target.textContent = 'Обнулить';
+        }
         return;
       }
 
-      target.disabled = true;
-      target.textContent = 'Обнуление...';
-
-      try {
-        const response = await fetch('/api/admin/users', {
-          method: 'PATCH',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            userId: userId,
-            generation_balance: 0
-          })
-        });
-
-        if (!response.ok) {
-          const errorData = await response.json();
-          showStatus(`Ошибка: ${errorData.error || 'Не удалось обнулить баланс'}`, 'error');
-          target.disabled = false;
-          target.textContent = 'Обнулить';
-          return;
+      // Обновляем строку в таблице
+      const row = document.querySelector(`tr[data-user-id="${resetUserId}"]`);
+      if (row) {
+        const balanceCell = row.querySelector('.font-semibold.text-green-600');
+        if (balanceCell) {
+          balanceCell.textContent = '0';
         }
+      }
 
-        // Обновляем строку в таблице
-        const row = document.querySelector(`tr[data-user-id="${userId}"]`);
-        if (row) {
-          const balanceCell = row.querySelector('.font-semibold.text-green-600');
-          if (balanceCell) {
-            balanceCell.textContent = '0';
-          }
-        }
-
-        showStatus('✓ Баланс успешно обнулен', 'success');
-        target.disabled = false;
-        target.textContent = 'Обнулить';
-      } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : 'Неизвестная ошибка';
-        showStatus(`Ошибка: ${errorMessage}`, 'error');
+      showStatus('✓ Баланс успешно обнулен', 'success');
+      if (target) {
         target.disabled = false;
         target.textContent = 'Обнулить';
       }
-    });
+      resetUserId = null;
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Неизвестная ошибка';
+      showStatus(`Ошибка: ${errorMessage}`, 'error');
+      if (target) {
+        target.disabled = false;
+        target.textContent = 'Обнулить';
+      }
+      resetUserId = null;
+    }
   });
 </script>
