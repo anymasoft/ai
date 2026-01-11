@@ -1,3 +1,4 @@
+import type { APIRoute } from 'astro';
 import { getDb } from '../lib/db';
 import {
   updateGenerationStatus,
@@ -16,15 +17,16 @@ interface CallbackPayload {
 
 /**
  * POST /minimax_callback
- * Чистый webhook для MiniMax
+ * Webhook для MiniMax - публичный, без авторизации
  *
  * КРИТИЧНО:
- * - НЕ использует Astro context/middleware
  * - ВСЕГДА возвращает JSON
  * - Обрабатывает challenge верно
  * - БЕЗ редиректов, БЕЗ HTML
+ * - Доступен для MiniMax (внешний сервис)
  */
-export async function POST(request: Request) {
+export const POST: APIRoute = async (context) => {
+  const request = context.request;
   try {
     console.log('[MINIMAX_CALLBACK] Получен запрос');
 
