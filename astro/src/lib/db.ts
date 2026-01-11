@@ -1,4 +1,5 @@
 import Database from 'better-sqlite3';
+import path from 'path';
 
 let db: Database.Database | null = null;
 
@@ -6,7 +7,14 @@ function initDb() {
   if (db) return db;
 
   const dbPath = process.env.DATABASE_URL || 'vr_ai.db';
-  db = new Database(dbPath);
+  const absoluteDbPath = path.resolve(dbPath);
+
+  console.log('[DB] Initializing database:');
+  console.log('[DB]   - dbPath (from env/default):', dbPath);
+  console.log('[DB]   - process.cwd():', process.cwd());
+  console.log('[DB]   - absoluteDbPath:', absoluteDbPath);
+
+  db = new Database(absoluteDbPath);
 
   // Включаем foreign keys
   db.pragma('foreign_keys = ON');
