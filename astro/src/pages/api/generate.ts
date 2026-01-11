@@ -8,6 +8,7 @@ import {
 } from '../../lib/minimax/storage';
 import { enqueueGeneration, getQueueSize } from '../../lib/minimax/queue';
 import { processQueue } from '../../lib/minimax/processor';
+import { enhancePrompt } from '../../lib/promptEnhancer';
 
 interface GenerateRequest {
   prompt: string;
@@ -16,12 +17,13 @@ interface GenerateRequest {
 
 /**
  * Создает запись генерации с промптом и статусом 'queued'
- * Промпт сохраняется в БД для последующей обработки
+ * Сохраняет оба промпта: пользовательский и улучшенный
  */
-function createGenerationWithPrompt(
+function createGenerationWithPrompts(
   userId: string,
   duration: number,
-  prompt: string
+  promptUser: string,
+  promptFinal: string
 ): string {
   const db = getDb();
   const cost = duration === 6 ? 1 : 2;
@@ -31,11 +33,11 @@ function createGenerationWithPrompt(
   const insertStmt = db.prepare(
     `INSERT INTO generations (
       id, userId, status, duration, cost, charged,
-      prompt, minimax_status, createdAt
-    ) VALUES (?, ?, ?, ?, ?, 0, ?, 'pending', ?)`
+      prompt, prompt_final, minimax_status, createdAt
+    ) VALUES (?, ?, ?, ?, ?, 0, ?, ?, 'pending', ?)`
   );
 
-  insertStmt.run(generationId, userId, 'queued', duration, cost, prompt, now);
+  insertStmt.run(generationId, userId, 'queued', duration, cost, promptUser, promptFinal, now);
 
   return generationId;
 }
@@ -110,14 +112,17 @@ export const POST: APIRoute = async (context) => {
       );
     }
 
-    // ШАГ 3: Создаем запись генерации со статусом 'queued'
-    // Промпт сохраняется в БД
-    const generationId = createGenerationWithPrompt(user.id, duration, prompt);
+    // ШАГ 3: Улучшаем промпт через Smart Prompt Engine
+    const promptFinal = await enhancePrompt(prompt);
 
-    // ШАГ 4: Добавляем в глобальную очередь (concurrency=1)
+    // ШАГ 4: Создаем запись генерации со статусом 'queued'
+    // Оба промпта сохраняются в БД
+    const generationId = createGenerationWithPrompts(user.id, duration, prompt, promptFinal);
+
+    // ШАГ 5: Добавляем в глобальную очередь (concurrency=1)
     enqueueGeneration(generationId);
 
-    // ШАГ 5: Запускаем обработку очереди асинхронно (не блокируем ответ)
+    // ШАГ 6: Запускаем обработку очереди асинхронно (не блокируем ответ)
     // Используем .catch() чтобы обработать потенциальные ошибки процессора
     processQueue().catch((err) => {
       console.error('[GEN] Queue processor error:', err);
@@ -127,7 +132,7 @@ export const POST: APIRoute = async (context) => {
       `[GEN] task=${generationId} user=${user.id} status=queued, queueSize=${getQueueSize()}`
     );
 
-    // ШАГ 6: Возвращаем generationId и информацию о состоянии очереди
+    // ШАГ 7: Возвращаем generationId и информацию о состоянии очереди
     return new Response(
       JSON.stringify({
         success: true,
