@@ -39,8 +39,8 @@ export const onRequest = defineMiddleware((context, next) => {
       // Проверяем права админа для админ-маршрутов
       if (isAdminRoute && !isAdmin(user.email)) {
         console.log(`   ❌ User is not admin`);
-        console.log(`   - Redirecting to /app`);
-        return context.redirect('/app');
+        console.log(`   - Returning 404`);
+        return new Response('Not Found', { status: 404 });
       }
     } else {
       console.log(`   ❌ Session invalid or not found`);
