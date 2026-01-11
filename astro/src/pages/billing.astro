@@ -2,6 +2,7 @@
 import Container from '../components/Container.astro';
 import AppLayout from '../layouts/AppLayout.astro';
 import { getUserFromSession } from '../lib/auth';
+import { ru } from '../lib/i18n';
 
 // Эта страница должна быть динамичной для работы с middleware и cookies
 export const prerender = false;
@@ -29,19 +30,19 @@ if (!user) {
 					</a>
 
 					<h1 class="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white">
-						Upgrade Your Account
+						Пополните свой аккаунт
 					</h1>
 					<p class="text-base text-gray-600 dark:text-gray-300">
-						Buy more credits to continue generating videos
+						Купите больше кредитов для продолжения создания видео
 					</p>
 
 					<div class="grid md:grid-cols-2 gap-3 flex-1 min-h-0 overflow-hidden">
 						<div class="border border-gray-100 dark:border-gray-700 rounded-3xl p-4 bg-white dark:bg-gray-800 text-left hover:shadow-2xl hover:shadow-gray-600/10 transition flex flex-col">
 							<h3 class="text-lg font-bold text-gray-900 dark:text-white mb-1">
-								Starter Pack
+								Базовый пакет
 							</h3>
 							<p class="text-sm text-gray-600 dark:text-gray-300 mb-2">
-								Perfect for trying out
+								Идеально для проверки возможностей
 							</p>
 							<p class="text-3xl font-bold text-primary mb-3">
 								$9
@@ -49,31 +50,31 @@ if (!user) {
 							<ul class="space-y-1 mb-3 text-gray-600 dark:text-gray-300 flex-1 text-sm">
 								<li class="flex items-center gap-2">
 									<span class="text-primary text-xs">✓</span>
-									<span>10 video credits</span>
+									<span>10 кредитов видео</span>
 								</li>
 								<li class="flex items-center gap-2">
 									<span class="text-primary text-xs">✓</span>
-									<span>Up to 60 seconds</span>
+									<span>До 60 секунд</span>
 								</li>
 								<li class="flex items-center gap-2">
 									<span class="text-primary text-xs">✓</span>
-									<span>Standard quality</span>
+									<span>Стандартное качество</span>
 								</li>
 							</ul>
 							<button class="w-full relative flex h-9 items-center justify-center px-6 before:absolute before:inset-0 before:rounded-full before:bg-primary before:transition before:duration-300 hover:before:scale-105 active:before:scale-95">
-								<span class="relative text-sm font-semibold text-white">Coming Soon</span>
+								<span class="relative text-sm font-semibold text-white">Скоро доступно</span>
 							</button>
 						</div>
 
 						<div class="border-2 border-primary rounded-3xl p-4 bg-white dark:bg-gray-800 text-left relative hover:shadow-2xl hover:shadow-gray-600/10 transition flex flex-col">
 							<div class="absolute -top-3 left-1/2 -translate-x-1/2 bg-primary text-white px-3 py-0.5 rounded-full text-xs font-semibold">
-								Most Popular
+								Самый популярный
 							</div>
 							<h3 class="text-lg font-bold text-gray-900 dark:text-white mb-1 pt-2">
-								Pro Pack
+								Профессиональный пакет
 							</h3>
 							<p class="text-sm text-gray-600 dark:text-gray-300 mb-2">
-								For serious creators
+								Для серьёзных создателей контента
 							</p>
 							<p class="text-3xl font-bold text-primary mb-3">
 								$29
@@ -81,29 +82,29 @@ if (!user) {
 							<ul class="space-y-1 mb-3 text-gray-600 dark:text-gray-300 flex-1 text-sm">
 								<li class="flex items-center gap-2">
 									<span class="text-primary text-xs">✓</span>
-									<span>50 video credits</span>
+									<span>50 кредитов видео</span>
 								</li>
 								<li class="flex items-center gap-2">
 									<span class="text-primary text-xs">✓</span>
-									<span>Up to 120 seconds</span>
+									<span>До 120 секунд</span>
 								</li>
 								<li class="flex items-center gap-2">
 									<span class="text-primary text-xs">✓</span>
-									<span>Premium quality</span>
+									<span>Премиум качество</span>
 								</li>
 								<li class="flex items-center gap-2">
 									<span class="text-primary text-xs">✓</span>
-									<span>Priority processing</span>
+									<span>Приоритетная обработка</span>
 								</li>
 							</ul>
 							<button class="w-full relative flex h-9 items-center justify-center px-6 before:absolute before:inset-0 before:rounded-full before:bg-primary before:transition before:duration-300 hover:before:scale-105 active:before:scale-95">
-								<span class="relative text-sm font-semibold text-white">Coming Soon</span>
+								<span class="relative text-sm font-semibold text-white">Скоро доступно</span>
 							</button>
 						</div>
 					</div>
 
 					<p class="text-sm text-gray-600 dark:text-gray-300 text-center mt-2">
-						Payment processing coming soon. Enjoy <strong>5 free credits</strong>!
+						Система платежей появится очень скоро. Сейчас наслаждайтесь <strong>5 бесплатными кредитами</strong>!
 					</p>
 				</div>
 			</div>
