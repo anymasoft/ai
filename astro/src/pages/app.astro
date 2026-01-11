@@ -299,6 +299,11 @@ export const prerender = false;
 
     if (generateBtn) {
         generateBtn.addEventListener('click', async () => {
+            if (!selectedImage || !selectedDuration || !promptInput?.value) {
+                console.error('[GEN] Missing required data');
+                return;
+            }
+
             // Disable button and show loading state
             generateBtn.disabled = true;
             generateIcon.classList.add('hidden');
@@ -308,18 +313,112 @@ export const prerender = false;
             videoPlaceholder.classList.add('hidden');
             videoLoading.classList.remove('hidden');
 
-            // Simulate video generation with 3 second delay
-            await new Promise(resolve => setTimeout(resolve, 3000));
+            try {
+                // Конвертируем фото в base64
+                const reader = new FileReader();
+                reader.onload = async (event) => {
+                    const imageBase64 = event.target?.result as string;
 
-            // Hide loading, show video
-            videoLoading.classList.add('hidden');
-            videoOutput.classList.remove('hidden');
-            videoControls.classList.remove('hidden');
+                    try {
+                        // Отправляем запрос на генерацию
+                        const response = await fetch('/api/generate', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                            },
+                            body: JSON.stringify({
+                                prompt: promptInput.value,
+                                duration: parseInt(selectedDuration || '6', 10),
+                                imageBase64: imageBase64,
+                            }),
+                        });
 
-            // Re-enable button and reset spinner
-            generateIcon.classList.remove('hidden');
-            generateSpinner.classList.add('hidden');
-            updateGenerateButtonState();
+                        const data = await response.json();
+
+                        if (!response.ok) {
+                            console.error('[GEN] Error:', data.error);
+                            videoLoading.classList.add('hidden');
+                            videoPlaceholder.classList.remove('hidden');
+                            generateIcon.classList.remove('hidden');
+                            generateSpinner.classList.add('hidden');
+                            generateBtn.disabled = false;
+                            alert(data.error || 'Ошибка при генерации видео');
+                            return;
+                        }
+
+                        const generationId = data.generationId;
+                        console.log(`[GEN] Started generation: ${generationId}`);
+
+                        // Ждем завершения генерации (опрашиваем статус)
+                        let generationComplete = false;
+                        let checkAttempts = 0;
+                        const maxAttempts = 30; // 30 секунд максимум
+
+                        while (!generationComplete && checkAttempts < maxAttempts) {
+                            await new Promise(resolve => setTimeout(resolve, 1000)); // Ждем 1 сек
+                            checkAttempts++;
+
+                            try {
+                                const statusResponse = await fetch(
+                                    `/api/generate?generationId=${generationId}`
+                                );
+                                const statusData = await statusResponse.json();
+
+                                console.log(`[GEN] Status check: ${statusData.status} (attempt ${checkAttempts})`);
+
+                                if (statusData.status === 'success' && statusData.charged) {
+                                    generationComplete = true;
+                                    console.log(`[GEN] ✅ Generation complete and charged`);
+                                } else if (statusData.status === 'failed') {
+                                    throw new Error('Генерация видео не удалась');
+                                }
+                            } catch (error) {
+                                console.error('[GEN] Error checking status:', error);
+                            }
+                        }
+
+                        if (!generationComplete) {
+                            throw new Error(
+                                'Время ожидания генерации истекло. Видео может быть готово позже.'
+                            );
+                        }
+
+                        // Генерация готова - показываем видео
+                        // В реальности URL видео приходил бы из API
+                        videoLoading.classList.add('hidden');
+                        videoOutput.src = '/demo.mp4'; // Используем демо видео
+                        videoOutput.classList.remove('hidden');
+                        videoControls.classList.remove('hidden');
+
+                        console.log(`[GEN] Video displayed for generation: ${generationId}`);
+                    } catch (error) {
+                        const errorMessage = error instanceof Error ? error.message : 'Неизвестная ошибка';
+                        console.error('[GEN] Generation error:', errorMessage);
+
+                        videoLoading.classList.add('hidden');
+                        videoPlaceholder.classList.remove('hidden');
+                        alert(`Ошибка: ${errorMessage}`);
+                    } finally {
+                        // Re-enable button and reset spinner
+                        generateIcon.classList.remove('hidden');
+                        generateSpinner.classList.add('hidden');
+                        generateBtn.disabled = false;
+                        updateGenerateButtonState();
+                    }
+                };
+
+                reader.readAsDataURL(selectedImage);
+            } catch (error) {
+                const errorMessage = error instanceof Error ? error.message : 'Неизвестная ошибка';
+                console.error('[GEN] Error:', errorMessage);
+
+                videoLoading.classList.add('hidden');
+                videoPlaceholder.classList.remove('hidden');
+                generateIcon.classList.remove('hidden');
+                generateSpinner.classList.add('hidden');
+                generateBtn.disabled = false;
+                updateGenerateButtonState();
+            }
         });
     }
 

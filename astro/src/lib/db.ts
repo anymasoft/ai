@@ -116,6 +116,21 @@ function initDb() {
     )
   `);
 
+  // ========== GENERATIONS TABLE (для отслеживания видео генераций и списания) ==========
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS generations (
+      id TEXT PRIMARY KEY,
+      userId TEXT NOT NULL,
+      status TEXT NOT NULL DEFAULT 'processing',
+      duration INTEGER NOT NULL,
+      cost INTEGER NOT NULL,
+      charged INTEGER NOT NULL DEFAULT 0,
+      createdAt INTEGER NOT NULL,
+      completedAt INTEGER,
+      FOREIGN KEY (userId) REFERENCES users(id) ON DELETE CASCADE
+    )
+  `);
+
   // ========== CREATE INDEXES ==========
   db.exec(`
     CREATE INDEX IF NOT EXISTS idx_sessions_token ON sessions(token);
@@ -124,6 +139,8 @@ function initDb() {
     CREATE INDEX IF NOT EXISTS idx_payments_externalPaymentId ON payments(externalPaymentId);
     CREATE INDEX IF NOT EXISTS idx_payments_userId_createdAt ON payments(userId, createdAt DESC);
     CREATE INDEX IF NOT EXISTS idx_payments_status ON payments(status);
+    CREATE INDEX IF NOT EXISTS idx_generations_userId ON generations(userId);
+    CREATE INDEX IF NOT EXISTS idx_generations_status ON generations(status);
   `);
 
   console.log('✅ Database initialized with billing tables');
