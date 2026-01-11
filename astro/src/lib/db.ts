@@ -1,4 +1,5 @@
 import Database from 'better-sqlite3';
+import path from 'path';
 
 let db: Database.Database | null = null;
 
@@ -7,6 +8,8 @@ function initDb() {
 
   const dbPath = process.env.DATABASE_URL';
   db = new Database(dbPath);
+
+  db = new Database(absoluteDbPath);
 
   // Включаем foreign keys
   db.pragma('foreign_keys = ON');

@@ -86,10 +86,22 @@ export const POST: APIRoute = async (context) => {
     const taskIdString = String(taskId);
     console.log(`[MINIMAX_CALLBACK] Converted task_id to string: "${taskIdString}"`);
 
+    // ДЕБаг: перед SELECT показываем что ищем
+    console.log(`[MINIMAX_CALLBACK] About to SELECT from DB`);
+    console.log(`[MINIMAX_CALLBACK] SQL: SELECT id, userId FROM generations WHERE minimax_job_id = ?`);
+    console.log(`[MINIMAX_CALLBACK] params: ["${taskIdString}"]`);
+    console.log(`[MINIMAX_CALLBACK] Looking for minimax_job_id type: ${typeof taskIdString}`);
+
     const genStmt = db.prepare(
       'SELECT id, userId FROM generations WHERE minimax_job_id = ?'
     );
     const generation = genStmt.get(taskIdString) as any;
+
+    // ДЕБаг: результат запроса
+    console.log(`[MINIMAX_CALLBACK] SELECT result:`, generation ? 'FOUND' : 'NOT FOUND');
+    if (generation) {
+      console.log(`[MINIMAX_CALLBACK] Found generation id: ${generation.id}`);
+    }
 
     if (!generation) {
       console.error(`[MINIMAX_CALLBACK] Generation не найдена для task_id="${taskIdString}"`);
@@ -99,6 +111,12 @@ export const POST: APIRoute = async (context) => {
         'SELECT id, minimax_job_id FROM generations WHERE minimax_job_id IS NOT NULL LIMIT 5'
       ).all();
       console.error(`[MINIMAX_CALLBACK] All task IDs in DB:`, allTaskIds);
+
+      // ДЕБаг: попробуем найти типы
+      const typeCheck = db.prepare(
+        'SELECT minimax_job_id, typeof(minimax_job_id) as type FROM generations WHERE minimax_job_id IS NOT NULL LIMIT 3'
+      ).all();
+      console.error(`[MINIMAX_CALLBACK] Task ID types in DB:`, typeCheck);
 
       return new Response(
         JSON.stringify({ ok: false }),

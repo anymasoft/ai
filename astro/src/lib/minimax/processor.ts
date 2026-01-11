@@ -104,6 +104,11 @@ export async function processQueue(): Promise<void> {
       const taskIdString = String(taskId);
       console.log(`[PROCESSOR] Task ID converted to string: "${taskIdString}"`);
 
+      // ДЕБаг: перед сохранением показываем что будем обновлять
+      console.log(`[PROCESSOR] About to UPDATE minimax_job_id in DB`);
+      console.log(`[PROCESSOR] SQL: UPDATE generations SET minimax_job_id = ? WHERE id = ?`);
+      console.log(`[PROCESSOR] params: ["${taskIdString}", "${generationId}"]`);
+
       updateMinimaxJobId(generationId, taskIdString);
 
       // Удалить из очереди — задача успешно отправлена в MiniMax
