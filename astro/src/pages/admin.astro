@@ -20,7 +20,7 @@ if (!isAdmin(user.email)) {
   return Astro.redirect('/app');
 }
 
-// Загружаем всех пользователей из БД
+// Загружаем пользователей из БД с пагинацией
 const db = getDb();
 
 interface UserWithBalance {
@@ -32,13 +32,45 @@ interface UserWithBalance {
   createdAt: number;
 }
 
+// Получаем параметры из URL
+const url = new URL(Astro.request.url);
+const searchEmail = url.searchParams.get('search') || '';
+const page = Math.max(1, parseInt(url.searchParams.get('page') || '1', 10));
+const perPage = 20;
+const offset = (page - 1) * perPage;
+
+// Загружаем все пользователей для статистики
 const allUsers = db.prepare(`
   SELECT id, name, email, generation_balance, generation_used, createdAt
   FROM users
   ORDER BY createdAt DESC
 `).all() as UserWithBalance[];
 
-const totalUsers = allUsers.length;
+// Загружаем пользователей для текущей страницы с фильтром
+let query = `
+  SELECT id, name, email, generation_balance, generation_used, createdAt
+  FROM users
+`;
+
+if (searchEmail) {
+  query += ` WHERE email LIKE ?`;
+}
+
+query += ` ORDER BY createdAt DESC LIMIT ? OFFSET ?`;
+
+const params = searchEmail ? [`%${searchEmail}%`, perPage, offset] : [perPage, offset];
+const users = db.prepare(query).all(...params) as UserWithBalance[];
+
+// Подсчитываем количество результатов поиска
+let totalResults = allUsers.length;
+if (searchEmail) {
+  const countQuery = 'SELECT COUNT(*) as count FROM users WHERE email LIKE ?';
+  const countResult = db.prepare(countQuery).get(`%${searchEmail}%`) as any;
+  totalResults = countResult?.count || 0;
+}
+
+const totalPages = Math.ceil(totalResults / perPage);
+
 const totalGenerationCredits = allUsers.reduce((sum, u) => sum + (u.generation_balance + u.generation_used), 0);
 const totalBalance = allUsers.reduce((sum, u) => sum + u.generation_balance, 0);
 ---
@@ -57,6 +89,38 @@ const totalBalance = allUsers.reduce((sum, u) => sum + u.generation_balance, 0);
       <div class="mb-6">
         <h1 class="text-3xl font-bold text-gray-900 dark:text-white mb-1">Панель администратора</h1>
         <p class="text-gray-600 dark:text-gray-400">Управление пользователями и кредитами системы</p>
+      </div>
+
+      <!-- Search Box -->
+      <div class="mb-4">
+        <form method="GET" class="flex gap-2">
+          <input
+            type="text"
+            name="search"
+            placeholder="Поиск по email..."
+            value={searchEmail}
+            class="flex-1 px-4 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary"
+          />
+          <button
+            type="submit"
+            class="px-6 py-2 rounded-lg bg-primary text-white font-semibold hover:opacity-90 transition"
+          >
+            Поиск
+          </button>
+          {searchEmail && (
+            <a
+              href="/admin"
+              class="px-6 py-2 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white font-semibold hover:bg-gray-200 dark:hover:bg-gray-700 transition"
+            >
+              Очистить
+            </a>
+          )}
+        </form>
+        {searchEmail && (
+          <p class="text-sm text-gray-600 dark:text-gray-400 mt-2">
+            Результаты поиска по "{searchEmail}": <strong>{totalResults}</strong> пользователей
+          </p>
+        )}
       </div>
 
       <!-- Statistics Cards -->
@@ -104,7 +168,7 @@ const totalBalance = allUsers.reduce((sum, u) => sum + u.generation_balance, 0);
               </tr>
             </thead>
             <tbody>
-              {allUsers.map((u) => (
+              {users.map((u) => (
                 <tr class="border-b border-gray-200 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition" data-user-id={u.id}>
                   <td class="px-6 py-3 font-medium text-gray-900 dark:text-white">{u.name}</td>
                   <td class="px-6 py-3 text-gray-600 dark:text-gray-400 text-xs">{u.email}</td>
@@ -134,6 +198,33 @@ const totalBalance = allUsers.reduce((sum, u) => sum + u.generation_balance, 0);
             </tbody>
           </table>
         </div>
+
+        <!-- Pagination -->
+        {totalPages > 1 && (
+          <div class="px-6 py-4 border-t border-gray-200 dark:border-gray-800 flex items-center justify-between">
+            <p class="text-sm text-gray-600 dark:text-gray-400">
+              Страница <strong>{page}</strong> из <strong>{totalPages}</strong> · Показано <strong>{users.length}</strong> из <strong>{totalResults}</strong>
+            </p>
+            <div class="flex gap-2">
+              {page > 1 && (
+                <a
+                  href={searchEmail ? `/admin?search=${encodeURIComponent(searchEmail)}&page=${page - 1}` : `/admin?page=${page - 1}`}
+                  class="px-4 py-2 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white font-semibold hover:bg-gray-200 dark:hover:bg-gray-700 transition"
+                >
+                  ← Назад
+                </a>
+              )}
+              {page < totalPages && (
+                <a
+                  href={searchEmail ? `/admin?search=${encodeURIComponent(searchEmail)}&page=${page + 1}` : `/admin?page=${page + 1}`}
+                  class="px-4 py-2 rounded-lg bg-primary text-white font-semibold hover:opacity-90 transition"
+                >
+                  Далее →
+                </a>
+              )}
+            </div>
+          </div>
+        )}
       </div>
 
       <!-- Edit Balance Modal -->

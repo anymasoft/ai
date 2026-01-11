@@ -187,6 +187,10 @@ const packageCards: PackageCard[] = packages.map((pkg, idx) => {
 		});
 	}
 
+	function hideStatus() {
+		statusDiv.classList.add('hidden');
+	}
+
 	packageButtons.forEach(button => {
 		button.addEventListener('click', async (e: Event) => {
 			e.preventDefault();
@@ -266,7 +270,30 @@ const packageCards: PackageCard[] = packages.map((pkg, idx) => {
 		const params = new URLSearchParams(window.location.search);
 		const paymentId = params.get('paymentId');
 
-		// Не проверяем наличие paymentId - check endpoint может найти последний pending платеж сам!
+		// Сначала проверяем, есть ли pending платеж
+		// Если нет - не показываем статус и не запускаем polling
+		try {
+			const checkUrl = paymentId
+				? `/api/payments/yookassa/check?paymentId=${paymentId}`
+				: `/api/payments/yookassa/check`;
+
+			const initialCheck = await fetch(checkUrl);
+			const initialData = await initialCheck.json();
+
+			// Если нет pending платежа - выходим молча
+			if (!initialData.success && initialData.error?.includes('No pending payment')) {
+				console.log('[POLLING] No pending payment found, not showing status');
+				hideStatus();
+				return;
+			}
+		} catch (e) {
+			// Ошибка при проверке - не показываем статус
+			console.log('[POLLING] Could not check for pending payment');
+			hideStatus();
+			return;
+		}
+
+		// Платеж найден - показываем статус и запускаем polling
 		console.log(`[POLLING] Starting payment status check (paymentId: ${paymentId || 'auto-detect'})`);
 		showStatus('Проверка статуса платежа...', 'loading');
 
@@ -306,21 +333,30 @@ const packageCards: PackageCard[] = packages.map((pkg, idx) => {
 							}, 2000);
 						}
 
-						// Очищаем параметр из URL
+						// Очищаем параметр из URL и скрываем статус через 3 сек
 						setTimeout(() => {
 							window.history.replaceState({}, document.title, '/billing');
-						}, 1000);
+							hideStatus();
+						}, 3000);
 
 						enableAllButtons();
 					} else if (data.status === 'failed' || data.status === 'cancelled') {
 						clearInterval(checkInterval);
 						console.error(`[POLLING] ❌ Payment ${data.status}`);
 						showStatus(`Платеж ${data.status === 'cancelled' ? 'отменён' : 'не выполнен'}.`, 'error');
+						// Скрываем статус через 4 сек при ошибке
+						setTimeout(() => {
+							hideStatus();
+						}, 4000);
 						enableAllButtons();
 					} else if (attempts >= maxAttempts) {
 						clearInterval(checkInterval);
 						console.warn(`[POLLING] Max attempts reached (${maxAttempts})`);
 						showStatus('Время проверки истекло. Платеж может всё ещё обрабатываться. Попробуйте обновить страницу.', 'error');
+						// Скрываем статус через 4 сек при timeout
+						setTimeout(() => {
+							hideStatus();
+						}, 4000);
 						enableAllButtons();
 					}
 				} catch (fetchError) {
@@ -331,6 +367,10 @@ const packageCards: PackageCard[] = packages.map((pkg, idx) => {
 			const errorMessage = error instanceof Error ? error.message : 'Неизвестная ошибка';
 			console.error('[POLLING] Fatal error:', errorMessage);
 			showStatus(`Ошибка при проверке статуса: ${errorMessage}`, 'error');
+			// Скрываем статус через 4 сек при ошибке
+			setTimeout(() => {
+				hideStatus();
+			}, 4000);
 			enableAllButtons();
 		}
 	}
