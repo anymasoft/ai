@@ -58,6 +58,7 @@ const userIsAdmin = user ? isAdmin(user.email) : false;
 
                             <!-- Menu Items -->
                             <div class="py-2">
+                                {/* Управление аккаунтом отключено - баланс показывается в навбаре и на /billing
                                 <a
                                     href="/account"
                                     class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition"
@@ -65,6 +66,7 @@ const userIsAdmin = user ? isAdmin(user.email) : false;
                                     {/* EN: Account Settings */}
                                     Управление аккаунтом
                                 </a>
+                                */}
                                 <a
                                     href="/billing"
                                     class="relative flex mx-3 my-2 h-8 items-center justify-center rounded-full before:absolute before:inset-0 before:rounded-full before:bg-primary before:transition before:duration-300 hover:before:scale-105 active:duration-75 active:before:scale-95"
