@@ -57,9 +57,8 @@ export const GET: APIRoute = async (context) => {
 				SELECT
 					SUM(p.amount) as totalRevenue,
 					MAX(p.createdAt) as lastPaymentDate,
-					SUM(CASE WHEN p.status = 'succeeded' THEN pkg.generations ELSE 0 END) as creditsBought
+					SUM(CASE WHEN p.status = 'succeeded' THEN p.credits ELSE 0 END) as creditsBought
 				FROM payments p
-				LEFT JOIN packages pkg ON p.packageKey = pkg.key
 				WHERE p.userId = ? AND p.status = 'succeeded'
 			`).get(user.id) as any;
 

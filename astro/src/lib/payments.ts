@@ -24,7 +24,7 @@ export async function applySuccessfulPayment(
 
     // ШАГ 1: Найти платёж в БД
     const paymentStmt = db.prepare(
-      'SELECT id, userId, packageKey, credits, status FROM payments WHERE externalPaymentId = ?'
+      'SELECT id, userId, credits, status FROM payments WHERE externalPaymentId = ?'
     );
     const payment = paymentStmt.get(paymentId) as any;
 
@@ -33,10 +33,10 @@ export async function applySuccessfulPayment(
       return { success: false, reason: 'Payment not found in DB' };
     }
 
-    const { userId, packageKey, credits, status: currentStatus } = payment;
+    const { userId, credits, status: currentStatus } = payment;
 
     console.log(
-      `[applySuccessfulPayment] Found payment: userId=${userId}, packageKey=${packageKey}, credits=${credits}, status=${currentStatus}`
+      `[applySuccessfulPayment] Found payment: userId=${userId}, credits=${credits}, status=${currentStatus}`
     );
 
     // ШАГ 2: ЗАЩИТА от дублирования — если уже succeeded, ничего не делаем
