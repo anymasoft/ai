@@ -181,7 +181,7 @@ export const i18n = {
       duration_10s: '10 сек',
       video_placeholder: 'Создайте видео',
       video_loading: 'Создаём видео...',
-      prompt_placeholder: 'Опишите, как должен двигаться товар…',
+      prompt_placeholder: 'Красивая девушка в чёрном платье медленно идёт вперёд, камера плавно приближается, волосы развеваются на ветру',
       generate_tooltip: 'Выберите фото, введите описание видео',
       download_button: 'Скачать',
       clear_button: 'Очистить',
