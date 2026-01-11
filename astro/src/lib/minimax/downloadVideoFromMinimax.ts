@@ -1,5 +1,5 @@
 import fs from 'fs';
-import path from 'path';
+import { getUserVideoPath, ensureUserStorageDir } from './storage';
 
 interface FileMetadata {
   file?: {
@@ -11,12 +11,12 @@ interface FileMetadata {
 /**
  * Получает метаданные файла и скачивает видео из MiniMax
  * @param fileId - ID файла от MiniMax
- * @param outputPath - путь где сохранить видео
+ * @param userId - ID пользователя (для определения пути)
  * @returns { success: boolean; filePath?: string; error?: string }
  */
 export async function downloadVideoFromMinimax(
   fileId: string,
-  outputPath: string = './videos/output.mp4'
+  userId: string
 ): Promise<{ success: boolean; filePath?: string; error?: string }> {
   try {
     const apiKey = process.env.MINIMAX_API_KEY;
@@ -27,7 +27,9 @@ export async function downloadVideoFromMinimax(
       };
     }
 
-    console.log(`[DOWNLOAD] Получаем метаданные для file_id=${fileId}`);
+    console.log(
+      `[DOWNLOAD] Получаем метаданные для file_id=${fileId}, userId=${userId}`
+    );
 
     // Шаг 1: Получить метаданные файла
     const metaResponse = await fetch(
@@ -72,27 +74,31 @@ export async function downloadVideoFromMinimax(
     const videoResponse = await fetch(downloadUrl);
 
     if (!videoResponse.ok) {
-      console.error('[DOWNLOAD] Ошибка скачивания видео:', videoResponse.statusText);
+      console.error(
+        '[DOWNLOAD] Ошибка скачивания видео:',
+        videoResponse.statusText
+      );
       return {
         success: false,
         error: `Failed to download video: ${videoResponse.statusText}`,
       };
     }
 
-    // Шаг 4: Сохранить видео на диск
+    // Шаг 4: Сохранить видео в папку пользователя
     const videoBuffer = await videoResponse.arrayBuffer();
 
-    // Создаем директорию если её нет
-    const dir = path.dirname(outputPath);
-    if (!fs.existsSync(dir)) {
-      fs.mkdirSync(dir, { recursive: true });
-      console.log(`[DOWNLOAD] Создана папка: ${dir}`);
-    }
+    // Создаем директорию пользователя если её нет
+    ensureUserStorageDir(userId);
+
+    // Получаем путь сохранения (per-user)
+    const outputPath = getUserVideoPath(userId);
 
     // Сохраняем видео (перезаписываем старый файл)
     fs.writeFileSync(outputPath, Buffer.from(videoBuffer));
 
-    console.log(`[DOWNLOAD] ✅ Видео сохранено: ${outputPath} (${videoBuffer.byteLength} байт)`);
+    console.log(
+      `[DOWNLOAD] ✅ Видео сохранено: ${outputPath} (${videoBuffer.byteLength} байт)`
+    );
 
     return {
       success: true,
