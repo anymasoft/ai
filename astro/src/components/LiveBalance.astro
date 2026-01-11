@@ -1,0 +1,119 @@
+---
+/**
+ * LiveBalance.astro
+ *
+ * Переиспользуемый компонент для отображения LIVE баланса пользователя
+ *
+ * Props:
+ *   - size: 'badge' (маленький) | 'large' (крупный для /billing)
+ *
+ * Использует GET /api/user/balance для получения актуального баланса
+ * Обновляется автоматически каждые 5 секунд и при focus
+ */
+
+interface Props {
+  size?: 'badge' | 'large';
+}
+
+const { size = 'badge' } = Astro.props;
+---
+
+{size === 'badge' && (
+  <a
+    href="/billing"
+    class="live-balance-badge inline-flex items-center justify-center px-3 py-1 rounded-full bg-primary/10 dark:bg-primary/20 text-primary font-bold text-sm hover:bg-primary/20 dark:hover:bg-primary/30 transition cursor-pointer"
+    data-balance-mode="badge"
+  >
+    <span class="balance-value">--</span>
+  </a>
+)}
+
+{size === 'large' && (
+  <div
+    class="live-balance-large text-center py-8"
+    data-balance-mode="large"
+  >
+    <div class="text-5xl md:text-6xl font-bold text-primary mb-2">
+      <span class="balance-value">--</span>
+    </div>
+    <div class="text-gray-600 dark:text-gray-400 text-lg">
+      кредитов доступно
+    </div>
+  </div>
+)}
+
+<script>
+  // Найти все элементы с live balance
+  const balanceElements = document.querySelectorAll('[data-balance-mode]');
+
+  // Функция обновления баланса
+  async function updateLiveBalance() {
+    try {
+      const response = await fetch('/api/user/balance', {
+        method: 'GET',
+        headers: { 'Content-Type': 'application/json' }
+      });
+
+      if (!response.ok) {
+        console.error('[LiveBalance] Failed to fetch balance');
+        return;
+      }
+
+      const data = await response.json();
+      const newBalance = data.generation_balance;
+
+      // Обновляем все элементы баланса на странице
+      balanceElements.forEach((element) => {
+        const valueSpan = element.querySelector('.balance-value');
+        if (valueSpan) {
+          const oldBalance = parseInt(valueSpan.textContent || '0', 10);
+
+          // Обновляем только если баланс изменился
+          if (newBalance !== oldBalance) {
+            valueSpan.textContent = newBalance;
+
+            // Добавляем анимацию пульса
+            element.style.animation = 'pulse-balance 0.5s ease-in-out';
+            setTimeout(() => {
+              element.style.animation = '';
+            }, 500);
+
+            console.log(`[LiveBalance] Updated: ${oldBalance} → ${newBalance}`);
+          }
+        }
+      });
+    } catch (error) {
+      console.error('[LiveBalance] Error updating balance:', error);
+    }
+  }
+
+  // Первичная загрузка баланса
+  updateLiveBalance();
+
+  // Периодическое обновление каждые 5 секунд
+  const updateInterval = setInterval(updateLiveBalance, 5000);
+
+  // Обновление при возврате на страницу (focus)
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) {
+      console.log('[LiveBalance] Page became visible, updating balance');
+      updateLiveBalance();
+    }
+  });
+
+  // Очистка при выгрузке страницы
+  window.addEventListener('unload', () => {
+    clearInterval(updateInterval);
+  });
+</script>
+
+<style>
+  @keyframes pulse-balance {
+    0%, 100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.6;
+    }
+  }
+</style>
