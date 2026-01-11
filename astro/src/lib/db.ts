@@ -58,6 +58,18 @@ function initDb() {
     console.log('ℹ️ Migration check for payments passed');
   }
 
+  // Миграция: отключаем Enterprise пакет
+  try {
+    const enterpriseStmt = db.prepare("SELECT key FROM packages WHERE key = 'enterprise'");
+    const enterprise = enterpriseStmt.get() as any;
+    if (enterprise) {
+      db.exec("UPDATE packages SET is_active = 0 WHERE key = 'enterprise'");
+      console.log('✅ Migration: Disabled Enterprise package');
+    }
+  } catch (e) {
+    console.log('ℹ️ Migration check for Enterprise passed');
+  }
+
   // ========== SESSIONS TABLE ==========
   db.exec(`
     CREATE TABLE IF NOT EXISTS sessions (
