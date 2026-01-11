@@ -266,11 +266,8 @@ const packageCards: PackageCard[] = packages.map((pkg, idx) => {
 		const params = new URLSearchParams(window.location.search);
 		const paymentId = params.get('paymentId');
 
-		if (!paymentId) {
-			return;
-		}
-
-		console.log(`[POLLING] Starting payment status check for paymentId: ${paymentId}`);
+		// Не проверяем наличие paymentId - check endpoint может найти последний pending платеж сам!
+		console.log(`[POLLING] Starting payment status check (paymentId: ${paymentId || 'auto-detect'})`);
 		showStatus('Проверка статуса платежа...', 'loading');
 
 		try {
@@ -282,7 +279,12 @@ const packageCards: PackageCard[] = packages.map((pkg, idx) => {
 				console.log(`[POLLING] Attempt ${attempts}/${maxAttempts}: Checking payment status...`);
 
 				try {
-					const response = await fetch(`/api/payments/yookassa/check?paymentId=${paymentId}`);
+					// Формируем URL с paymentId если он есть, иначе check endpoint найдет последний pending платеж
+					const checkUrl = paymentId
+						? `/api/payments/yookassa/check?paymentId=${paymentId}`
+						: `/api/payments/yookassa/check`;
+
+					const response = await fetch(checkUrl);
 					const data = await response.json();
 
 					console.log(`[POLLING] Check response: status=${data.status}, success=${data.success}`);

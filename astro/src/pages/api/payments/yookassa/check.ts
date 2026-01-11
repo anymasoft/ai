@@ -40,13 +40,14 @@ export const GET: APIRoute = async (context) => {
     const url = new URL(context.request.url);
     let paymentId = url.searchParams.get('paymentId');
 
-    console.log(`[CHECK] Checking payment (userId: ${user.id})`);
+    console.log(`[CHECK] ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+    console.log(`[CHECK] START: Checking payment (userId: ${user.id})`);
 
     const db = getDb();
 
     // ШАГ 1: Если paymentId не передан, ищем latest pending платёж по userId
     if (!paymentId) {
-      console.log(`[CHECK] No paymentId provided, searching for latest pending payment`);
+      console.log(`[CHECK] paymentId not in URL, auto-detecting latest pending payment...`);
 
       const latestStmt = db.prepare(
         "SELECT externalPaymentId, status FROM payments WHERE userId = ? AND status = 'pending' ORDER BY createdAt DESC LIMIT 1"
@@ -179,7 +180,14 @@ export const GET: APIRoute = async (context) => {
       console.log(`[CHECK] applySuccessfulPayment result: success=${applyResult.success}, reason=${applyResult.reason || 'none'}`);
 
       if (applyResult.success) {
-        console.log(`[CHECK] ✅ SUCCESS: Payment ${paymentId} applied for user ${user.id}`);
+        // Получаем обновленный баланс для логирования
+        const updatedUserStmt = db.prepare('SELECT generation_balance FROM users WHERE id = ?');
+        const updatedUser = updatedUserStmt.get(user.id) as any;
+        const newBalance = updatedUser?.generation_balance ?? 0;
+
+        console.log(`[CHECK] ✅ SUCCESS: Payment ${paymentId} APPLIED for user ${user.id}`);
+        console.log(`[CHECK] BALANCE UPDATED: new balance = ${newBalance}`);
+        console.log(`[CHECK] ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
         return new Response(
           JSON.stringify({ success: true, status: 'succeeded' }),
           { status: 200, headers: { 'Content-Type': 'application/json' } }
