@@ -12,7 +12,7 @@ interface UserFinancial {
   lastPaymentDate: number | null;
   totalRevenue: number;
   avgPricePerCredit: number;
-  status: 'Active' | 'At risk' | 'Dormant';
+  status: 'Активный' | 'Под риском' | 'Спящий';
 }
 
 /**
@@ -71,17 +71,17 @@ export const GET: APIRoute = async (context) => {
 			const avgPricePerCredit = creditsBought > 0 ? Math.round((totalRevenue / creditsBought) * 100) / 100 : 0;
 
 			// Определяем статус
-			let status: 'Active' | 'At risk' | 'Dormant' = 'Dormant';
+			let status: 'Активный' | 'Под риском' | 'Спящий' = 'Спящий';
 
 			if (lastPaymentDate !== null) {
 				const daysSincePayment = Math.floor((now - lastPaymentDate) / (24 * 60 * 60));
 
 				if (daysSincePayment < 14 && creditsUsed > 0) {
-					status = 'Active';
+					status = 'Активный';
 				} else if (currentBalance > 0 && daysSincePayment >= 14) {
-					status = 'At risk';
+					status = 'Под риском';
 				} else if (currentBalance === 0 && daysSincePayment >= 30) {
-					status = 'Dormant';
+					status = 'Спящий';
 				}
 			}
 
