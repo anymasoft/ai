@@ -1,8 +1,7 @@
 ---
 import { getUserFromSession, isAdmin } from '../lib/auth';
 import AppLayout from '../layouts/AppLayout.astro';
-import Database from 'better-sqlite3';
-import path from 'path';
+import { getDb } from '../lib/db';
 
 // Эта страница должна быть динамичной для работы с cookies
 export const prerender = false;
@@ -22,8 +21,7 @@ if (!isAdmin(user.email)) {
 }
 
 // Загружаем всех пользователей из БД
-const dbPath = path.join(process.cwd(), 'video_reader.db');
-const db = new Database(dbPath);
+const db = getDb();
 
 interface UserWithBalance {
   id: string;
@@ -31,16 +29,14 @@ interface UserWithBalance {
   email: string;
   generation_balance: number;
   generation_used: number;
-  created_at: string;
+  createdAt: number;
 }
 
 const allUsers = db.prepare(`
-  SELECT id, name, email, generation_balance, generation_used, created_at
+  SELECT id, name, email, generation_balance, generation_used, createdAt
   FROM users
-  ORDER BY created_at DESC
+  ORDER BY createdAt DESC
 `).all() as UserWithBalance[];
-
-db.close();
 
 const totalUsers = allUsers.length;
 const totalGenerationCredits = allUsers.reduce((sum, u) => sum + (u.generation_balance + u.generation_used), 0);
@@ -124,7 +120,7 @@ const totalBalance = allUsers.reduce((sum, u) => sum + u.generation_balance, 0);
                     </span>
                   </td>
                   <td class="px-6 py-3 text-gray-600 dark:text-gray-400">{u.generation_used}</td>
-                  <td class="px-6 py-3 text-xs text-gray-500 dark:text-gray-500">{new Date(u.created_at).toLocaleDateString('ru-RU')}</td>
+                  <td class="px-6 py-3 text-xs text-gray-500 dark:text-gray-500">{new Date(u.createdAt * 1000).toLocaleDateString('ru-RU')}</td>
                   <td class="px-6 py-3">
                     <button
                       class="reset-balance-btn text-xs px-3 py-1 rounded bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 hover:bg-red-200 dark:hover:bg-red-900/50 transition"
