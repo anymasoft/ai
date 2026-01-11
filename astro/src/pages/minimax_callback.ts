@@ -159,8 +159,8 @@ export const POST: APIRoute = async (context) => {
         );
       }
 
-      // Обновляем БД
-      updateGenerationVideoUrl(generationId, '/api/video/current');
+      // Обновляем БД с уникальным timestamp-параметром чтобы избежать кеширования в браузере
+      updateGenerationVideoUrl(generationId, `/api/video/current?t=${Date.now()}`);
       updateGenerationStatus(generationId, 'success');
 
       // Списываем кредиты
