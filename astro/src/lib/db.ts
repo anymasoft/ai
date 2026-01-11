@@ -111,11 +111,38 @@ function initDb() {
       duration INTEGER NOT NULL,
       cost INTEGER NOT NULL,
       charged INTEGER NOT NULL DEFAULT 0,
+      minimax_job_id TEXT,
+      video_url TEXT,
+      minimax_status TEXT DEFAULT 'pending',
       createdAt INTEGER NOT NULL,
       completedAt INTEGER,
       FOREIGN KEY (userId) REFERENCES users(id) ON DELETE CASCADE
     )
   `);
+
+  // Миграция: добавляем MiniMax поля если их нет
+  try {
+    const genInfo = db.pragma('table_info(generations)');
+    const hasMinimaxJobId = genInfo.some((col: any) => col.name === 'minimax_job_id');
+    if (!hasMinimaxJobId) {
+      db.exec('ALTER TABLE generations ADD COLUMN minimax_job_id TEXT');
+      console.log('✅ Migration: Added minimax_job_id column to generations table');
+    }
+
+    const hasVideoUrl = genInfo.some((col: any) => col.name === 'video_url');
+    if (!hasVideoUrl) {
+      db.exec('ALTER TABLE generations ADD COLUMN video_url TEXT');
+      console.log('✅ Migration: Added video_url column to generations table');
+    }
+
+    const hasMinimaxStatus = genInfo.some((col: any) => col.name === 'minimax_status');
+    if (!hasMinimaxStatus) {
+      db.exec('ALTER TABLE generations ADD COLUMN minimax_status TEXT DEFAULT \'pending\'');
+      console.log('✅ Migration: Added minimax_status column to generations table');
+    }
+  } catch (e) {
+    console.log('ℹ️ Migration check for generations passed');
+  }
 
   // ========== CREATE INDEXES ==========
   db.exec(`

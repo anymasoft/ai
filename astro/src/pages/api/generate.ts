@@ -1,16 +1,19 @@
 import type { APIRoute } from 'astro';
+import path from 'path';
+import fs from 'fs';
 import { getUserFromSession } from '../../lib/auth';
 import {
   createGeneration,
   updateGenerationStatus,
   chargeGeneration,
+  updateMinimaxJobId,
 } from '../../lib/billing/chargeGeneration';
 import { getDb } from '../../lib/db';
+import { callMinimaxAPI } from '../../lib/minimax/callMinimaxAPI';
 
 interface GenerateRequest {
   prompt: string;
   duration: number;
-  imageBase64: string;
 }
 
 /**
@@ -31,12 +34,21 @@ export const POST: APIRoute = async (context) => {
     }
 
     const body = (await context.request.json()) as GenerateRequest;
-    const { prompt, duration, imageBase64 } = body;
+    const { prompt, duration } = body;
 
     // Валидируем параметры
-    if (!prompt || !duration || !imageBase64) {
+    if (!prompt || !duration) {
       return new Response(
-        JSON.stringify({ error: 'Требуются prompt, duration и image' }),
+        JSON.stringify({ error: 'Требуются prompt и duration' }),
+        { status: 400, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Проверяем наличие загруженного изображения
+    const imagePath = path.join(process.cwd(), 'uploads', 'image.jpg');
+    if (!fs.existsSync(imagePath)) {
+      return new Response(
+        JSON.stringify({ error: 'Изображение не загружено' }),
         { status: 400, headers: { 'Content-Type': 'application/json' } }
       );
     }
@@ -75,43 +87,54 @@ export const POST: APIRoute = async (context) => {
     // ШАГ 2: Создаем запись генерации
     const generationId = createGeneration(user.id, duration);
 
-    // ШАГ 3: В реальности - отправляем в Minimax
-    // Сейчас - имитируем обработку с 3-секундной задержкой
-    // В production это будет асинхронное задание через очередь
+    // ШАГ 3: Отправляем в MiniMax (фоновая обработка)
+    // Callback от MiniMax будет обрабатываться в /api/minimax_callback
 
-    // Для демо-целей: запускаем обработку в фоне через setTimeout
-    // (в production нужна очередь задач!)
     setTimeout(async () => {
       try {
-        // Имитируем обработку Minimax
-        console.log(
-          `[GEN] Processing generation=${generationId} (simulated)`
-        );
-
         updateGenerationStatus(generationId, 'processing');
 
-        // Имитируем успешную генерацию
-        // В reality: сохранили бы видео на диск/облако
-        updateGenerationStatus(generationId, 'success');
+        // Генерируем callback URL (пример)
+        const callbackUrl = `${process.env.MINIMAX_CALLBACK_URL || 'http://localhost:3000'}/api/minimax_callback?generationId=${generationId}`;
 
-        // ШАГ 4: Списываем кредиты (ТОЛЬКО когда видео готово!)
-        const chargeResult = await chargeGeneration(generationId);
+        console.log(
+          `[GEN] Отправляем в MiniMax: generation=${generationId}, callback=${callbackUrl}`
+        );
 
-        if (chargeResult.success) {
-          console.log(
-            `[GEN] ✅ Successfully charged for generation=${generationId}`
-          );
-        } else {
+        // Вызываем MiniMax API
+        const minimaxResult = await callMinimaxAPI(
+          imagePath,
+          prompt,
+          duration,
+          callbackUrl
+        );
+
+        if (!minimaxResult.success) {
           console.error(
-            `[GEN] ❌ Failed to charge: ${chargeResult.error}`
+            `[GEN] ❌ MiniMax API failed: ${minimaxResult.error}`
           );
-          // Можно откатить генерацию или отправить уведомление админу
+          updateGenerationStatus(generationId, 'failed');
+          return;
         }
+
+        // Сохраняем task_id от MiniMax
+        const taskId = minimaxResult.taskId;
+        console.log(`[GEN] ✅ Task created: ${taskId}`);
+
+        updateMinimaxJobId(generationId, taskId);
+
+        // Теперь ждем callback от MiniMax
+        // После получения callback'а произойдет:
+        // 1. Скачивание видео
+        // 2. Сохранение в /videos/output.mp4
+        // 3. Обновление status на 'success'
+        // 4. Списание кредитов
+
       } catch (error) {
         console.error(`[GEN] Error processing generation:`, error);
         updateGenerationStatus(generationId, 'failed');
       }
-    }, 3000);
+    }, 1000);
 
     console.log(
       `[GEN] task=${generationId} user=${user.id} status=processing`
@@ -165,7 +188,7 @@ export const GET: APIRoute = async (context) => {
 
     const db = getDb();
     const genStmt = db.prepare(
-      'SELECT id, userId, status, duration, cost, charged, createdAt FROM generations WHERE id = ?'
+      'SELECT id, userId, status, duration, cost, charged, video_url, createdAt FROM generations WHERE id = ?'
     );
     const generation = genStmt.get(generationId) as any;
 
@@ -192,6 +215,7 @@ export const GET: APIRoute = async (context) => {
         duration: generation.duration,
         cost: generation.cost,
         charged: generation.charged === 1,
+        videoUrl: generation.video_url, // Новое поле
       }),
       { status: 200, headers: { 'Content-Type': 'application/json' } }
     );
