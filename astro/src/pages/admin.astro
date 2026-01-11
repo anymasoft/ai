@@ -77,7 +77,8 @@ const totalBalance = allUsers.reduce((sum, u) => sum + u.generation_balance, 0);
 ---
 
 <AppLayout title="Admin Settings - Beem">
-  <div class="max-w-6xl mx-auto p-4 md:p-6">
+  <main class="flex-1 overflow-auto">
+    <div class="max-w-6xl mx-auto p-4 md:p-6">
       <!-- Back Button -->
       <a href="/app" class="inline-flex items-center justify-center p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition cursor-pointer mb-4">
         <svg class="w-6 h-6 text-gray-700 dark:text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -348,6 +349,7 @@ const totalBalance = allUsers.reduce((sum, u) => sum + u.generation_balance, 0);
       <!-- Status Messages -->
       <div id="status-message" class="hidden fixed bottom-4 right-4 px-4 py-3 rounded-lg text-sm font-semibold max-w-sm z-50"></div>
     </div>
+  </main>
 </AppLayout>
 
 <script>
