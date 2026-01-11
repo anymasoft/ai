@@ -1,5 +1,6 @@
 ---
 import Container from "./Container.astro";
+import LiveBalance from "./LiveBalance.astro";
 import { getUserFromSession, isAdmin } from '../lib/auth';
 
 // Получаем текущего пользователя из сессии
@@ -28,13 +29,8 @@ const userIsAdmin = user ? isAdmin(user.email) : false;
                 <!-- Right side: Credits Badge + User Avatar Menu -->
                 {user && (
                     <div class="flex items-center gap-2">
-                        <!-- Credits Badge - кликабелен на /billing -->
-                        <a
-                            href="/billing"
-                            class="inline-flex items-center justify-center px-3 py-1 rounded-full bg-primary/10 dark:bg-primary/20 text-primary font-bold text-sm hover:bg-primary/20 dark:hover:bg-primary/30 transition cursor-pointer"
-                        >
-                            {user.generation_balance}
-                        </a>
+                        <!-- Credits Badge - Live Update -->
+                        <LiveBalance size="badge" />
 
                         <!-- User Avatar Menu -->
                         <div class="relative">
@@ -105,7 +101,6 @@ const userIsAdmin = user ? isAdmin(user.email) : false;
 <script>
     const trigger = document.getElementById('user-menu-trigger');
     const dropdown = document.getElementById('user-menu-dropdown');
-    const balanceBadge = document.querySelector('a[href="/billing"]');
 
     if (trigger && dropdown) {
         // Открыть/закрыть меню при клике на аватар
@@ -148,52 +143,5 @@ const userIsAdmin = user ? isAdmin(user.email) : false;
         }
     }
 
-    // Периодически проверяем баланс пользователя для обновления в реальном времени
-    if (balanceBadge) {
-        async function updateBalance() {
-            try {
-                const response = await fetch('/api/user/balance', {
-                    method: 'GET',
-                    headers: { 'Content-Type': 'application/json' }
-                });
-
-                if (response.ok) {
-                    const data = await response.json();
-                    const newBalance = data.generation_balance;
-                    const currentBalance = parseInt(balanceBadge.textContent || '0', 10);
-
-                    // Обновляем баланс, если он изменился
-                    if (newBalance !== currentBalance) {
-                        balanceBadge.textContent = newBalance;
-
-                        // Добавляем анимацию обновления
-                        balanceBadge.style.animation = 'pulse 0.5s ease-in-out';
-                        setTimeout(() => {
-                            balanceBadge.style.animation = '';
-                        }, 500);
-                    }
-                }
-            } catch (error) {
-                console.error('Failed to update balance:', error);
-            }
-        }
-
-        // Проверяем баланс сразу после загрузки страницы и затем каждые 5 секунд
-        updateBalance();
-        setInterval(updateBalance, 5000);
-
-        // Также проверяем баланс, когда страница становится видимой (например, после возврата со страницы платежа)
-        document.addEventListener('visibilitychange', () => {
-            if (!document.hidden) {
-                updateBalance();
-            }
-        });
-    }
+    // Обновление баланса теперь выполняется компонентом LiveBalance
 </script>
-
-<style>
-    @keyframes pulse {
-        0%, 100% { opacity: 1; }
-        50% { opacity: 0.6; }
-    }
-</style>

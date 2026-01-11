@@ -1,5 +1,6 @@
 ---
 import Container from '../components/Container.astro';
+import LiveBalance from '../components/LiveBalance.astro';
 import AppLayout from '../layouts/AppLayout.astro';
 import { getUserFromSession } from '../lib/auth';
 import { getDb } from '../lib/db';
@@ -89,14 +90,9 @@ const packageCards: PackageCard[] = packages.map((pkg, idx) => {
 							</svg>
 						</a>
 
-						<!-- Title and Balance - CENTER -->
+						<!-- Title with Live Balance -->
 						<div class="text-center flex-1">
-							<h1 class="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white">
-								Пополните аккаунт
-							</h1>
-							<p class="text-sm text-gray-600 dark:text-gray-300 mt-1">
-								Баланс: <strong data-balance-display>{user.generation_balance}</strong> кредитов
-							</p>
+							<LiveBalance size="large" />
 						</div>
 					</div>
 
