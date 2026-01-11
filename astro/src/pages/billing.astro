@@ -102,17 +102,19 @@ const packageCards: PackageCard[] = packages.map((pkg, idx) => {
 
 					<!-- Packages Grid with Popular Badge -->
 					<div class="flex-1 overflow-hidden">
-						<div class={`grid gap-2 h-full ${packageCards.length === 3 ? 'md:grid-cols-3' : 'md:grid-cols-2'}`}>
-							{packageCards.map((pkg) => (
-								<div class="relative">
-									{/* Badge - OUTSIDE card, at the top */}
-									{pkg.popular && (
-										<div class="absolute -top-4 left-1/2 -translate-x-1/2 bg-primary text-white px-2 py-0.5 rounded-full text-xs font-semibold whitespace-nowrap z-10">
-											Популярный
-										</div>
-									)}
+						<div class="relative h-full">
+							<!-- Popular Badge - ONE TIME, ABOVE grid -->
+							{packageCards.some(pkg => pkg.popular) && (
+								<div class="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 z-20">
+									<div class="bg-primary text-white px-3 py-1 rounded-full text-xs font-semibold whitespace-nowrap shadow-md">
+										Популярный
+									</div>
+								</div>
+							)}
 
-									{/* Card - CLEAN, without badge inside */}
+							<!-- Pricing Grid - CLEAN cards without badge -->
+							<div class={`grid gap-2 h-full ${packageCards.length === 3 ? 'md:grid-cols-3' : 'md:grid-cols-2'}`}>
+								{packageCards.map((pkg) => (
 									<div class={`border rounded-xl p-3 bg-white dark:bg-gray-800 text-left hover:shadow-lg hover:shadow-gray-600/10 transition flex flex-col h-full ${pkg.popular ? 'border-2 border-primary' : 'border-gray-100 dark:border-gray-700'}`}>
 										<h3 class="text-base font-bold text-gray-900 dark:text-white mb-0.5">
 											{pkg.name}
