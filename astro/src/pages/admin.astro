@@ -2,7 +2,6 @@
 import { getUserFromSession, isAdmin } from '../lib/auth';
 import AppLayout from '../layouts/AppLayout.astro';
 import { getDb } from '../lib/db';
-import LiveBalance from '../components/LiveBalance.astro';
 
 // Эта страница должна быть динамичной для работы с cookies
 export const prerender = false;
@@ -86,20 +85,6 @@ const totalBalance = allUsers.reduce((sum, u) => sum + u.generation_balance, 0);
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
         </svg>
       </a>
-
-      <!-- Header -->
-      <div class="mb-6">
-        <div class="flex items-center justify-between mb-4">
-          <div>
-            <h1 class="text-3xl font-bold text-gray-900 dark:text-white mb-1">Панель администратора</h1>
-            <p class="text-gray-600 dark:text-gray-400">Управление пользователями и кредитами системы</p>
-          </div>
-          <div class="text-right">
-            <p class="text-xs text-gray-600 dark:text-gray-400 mb-1">Ваш баланс</p>
-            <LiveBalance size="badge" />
-          </div>
-        </div>
-      </div>
 
       <!-- Search Box -->
       <div class="mb-4">
