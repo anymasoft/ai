@@ -71,26 +71,12 @@ function initDb() {
     )
   `);
 
-  // ========== PACKAGES TABLE (DEPRECATED - kept for historical data only) ==========
-  // Система больше не использует пакеты - используется прямая продажа кредитов
-  db.exec(`
-    CREATE TABLE IF NOT EXISTS packages (
-      key TEXT PRIMARY KEY,
-      title TEXT NOT NULL,
-      price_rub INTEGER NOT NULL,
-      generations INTEGER NOT NULL,
-      is_active INTEGER DEFAULT 1,
-      created_at INTEGER DEFAULT (cast(strftime('%s','now') as integer)),
-      updated_at INTEGER DEFAULT (cast(strftime('%s','now') as integer))
-    )
-  `);
 
   // ========== PAYMENTS TABLE ==========
   db.exec(`
     CREATE TABLE IF NOT EXISTS payments (
       id TEXT PRIMARY KEY,
       userId TEXT NOT NULL,
-      packageKey TEXT,
       externalPaymentId TEXT NOT NULL UNIQUE,
       amount REAL NOT NULL,
       credits INTEGER DEFAULT 0,

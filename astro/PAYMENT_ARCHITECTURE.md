@@ -4,6 +4,8 @@
 
 Платежная система интегрирована с **ЮКасса** для обработки платежей в рублях (RUB).
 
+Система основана на **прямой продаже кредитов** - пользователи покупают нужное количество кредитов по фиксированной цене за кредит, без привязки к пакетам.
+
 **Технологический стек:**
 - Backend: Astro (Node.js адаптер)
 - БД: SQLite (better-sqlite3)
@@ -18,18 +20,26 @@
 
 #### `/billing` - Страница покупки кредитов
 
+**Три варианта покупки:**
+
+1. **Разовая покупка (Custom)**: 89₽ за кредит (1-10 кредитов)
+   - Пользователь вводит количество кредитов
+   - Цена обновляется в реальном времени: `credits × 89₽`
+
+2. **Basic план**: 50 кредитов за 3950₽ (79₽ за кредит)
+3. **Professional план**: 200 кредитов за 13800₽ (69₽ за кредит, популярный)
+
 **Сценарий:**
-1. Пользователь выбирает пакет (Basic/Pro/Enterprise)
-2. Нажимает кнопку "Пополнить"
-3. Отправляет `POST /api/payments/yookassa/create` с `packageKey`
+1. Пользователь выбирает вариант и количество (для разовой покупки)
+2. Нажимает кнопку "Купить"
+3. Отправляет `POST /api/payments/yookassa/create` с `{ credits, amount }`
 4. Получает `paymentUrl` от ЮКасса
 5. Редиректится на форму ЮКасса (`window.location.href = paymentUrl`)
-6. После оплаты редиректится обратно на `/billing?success=1`
+6. После оплаты редиректится обратно на `/billing`
 7. **Polling логика** проверяет статус каждую секунду (до 60 раз)
 8. Когда статус = `succeeded`:
    - Получает обновленный баланс через `GET /api/user/balance`
    - Обновляет баланс в DOM без перезагрузки
-   - Показывает успешное сообщение
 
 ---
 
@@ -40,13 +50,14 @@
 **Логика:**
 ```
 1. Проверяем аутентификацию (session token)
-2. Парсим packageKey из body
-3. Получаем пакет из БД (количество генераций, цена)
+2. Парсим { credits, amount } из body
+3. Валидируем: credits > 0, amount > 0
 4. Создаём запрос к ЮКасса API:
-   - Сумма: pkg.price_rub
-   - Описание: "Пакет {title}: {generations} генераций - {email}"
-   - Возврат: /billing?success=1
-5. Сохраняем платёж в БД со статусом 'pending'
+   - Сумма: amount рублей
+   - Описание: "Покупка N кредитов - user@email.com"
+   - Возврат: /billing
+5. Сохраняем платёж в БД со статусом 'pending':
+   - Сохраняем количество кредитов в поле credits
 6. Возвращаем paymentUrl клиенту
 ```
 
@@ -54,24 +65,24 @@
 ```json
 POST https://api.yookassa.ru/v3/payments
 {
-  "amount": { "value": "990", "currency": "RUB" },
-  "confirmation": { "type": "redirect", "return_url": "..." },
+  "amount": { "value": "3950", "currency": "RUB" },
+  "confirmation": { "type": "redirect", "return_url": "/billing" },
   "capture": true,
-  "description": "Пакет Basic: 50 генераций - user@email.com"
+  "description": "Покупка 50 кредитов - user@email.com"
 }
 ```
 
 **БД запись (payments таблица):**
 ```sql
 INSERT INTO payments (
-  id, externalPaymentId, userId, packageKey,
-  amount, provider, status, createdAt, updatedAt
+  id, externalPaymentId, userId,
+  amount, credits, provider, status, createdAt, updatedAt
 ) VALUES (
   'payment_<timestamp>_<userId>',
-  '<yookassa_payment_id>',  -- ID платежа в ЮКасса
+  '<yookassa_payment_id>',
   '<user_id>',
-  'basic',
-  990,
+  3950,
+  50,
   'yookassa',
   'pending',
   <timestamp>,
@@ -141,10 +152,10 @@ INSERT INTO payments (
 1. Найти платёж в БД по externalPaymentId
 2. ЗАЩИТА: если статус уже 'succeeded' → выход (уже применен)
 3. ЗАЩИТА: если статус != 'pending' → ошибка (неправильный статус)
-4. Получить количество генераций из таблицы packages
+4. Получить количество кредитов из поля credits в payments таблице
 5. АТОМАРНОЕ ОБНОВЛЕНИЕ баланса:
    UPDATE users
-   SET generation_balance = generation_balance + ?,
+   SET generation_balance = generation_balance + credits,
        updatedAt = ?
    WHERE id = ?
 6. Обновить статус платежа:
@@ -184,39 +195,20 @@ CREATE TABLE users (
 CREATE TABLE payments (
   id TEXT PRIMARY KEY,
   userId TEXT NOT NULL,
-  packageKey TEXT NOT NULL,
   externalPaymentId TEXT NOT NULL UNIQUE,   ← ID от ЮКасса
-  amount REAL NOT NULL,
+  amount REAL NOT NULL,                     ← Сумма в рублях
+  credits INTEGER DEFAULT 0,                ← Количество купленных кредитов
   currency TEXT DEFAULT 'RUB',
   status TEXT DEFAULT 'pending',             ← pending → succeeded → failed
   provider TEXT DEFAULT 'yookassa',
   createdAt INTEGER NOT NULL,
   updatedAt INTEGER NOT NULL,
-  FOREIGN KEY (userId) REFERENCES users(id),
-  FOREIGN KEY (packageKey) REFERENCES packages(key)
+  FOREIGN KEY (userId) REFERENCES users(id)
 )
 
 CREATE INDEX idx_payments_externalPaymentId ON payments(externalPaymentId);
 CREATE INDEX idx_payments_userId_createdAt ON payments(userId, createdAt DESC);
-```
-
-### `packages` таблица
-```sql
-CREATE TABLE packages (
-  key TEXT PRIMARY KEY,
-  title TEXT NOT NULL,
-  price_rub INTEGER NOT NULL,
-  generations INTEGER NOT NULL,              ← Сколько генераций дать
-  is_active INTEGER DEFAULT 1,
-  created_at INTEGER,
-  updated_at INTEGER
-)
-
--- Default packages:
-INSERT INTO packages VALUES
-  ('basic', 'Basic', 990, 50, 1),           -- 990₽ = 50 генераций
-  ('pro', 'Professional', 2490, 250, 1),    -- 2490₽ = 250 генераций
-  ('enterprise', 'Enterprise', 5990, 1000, 1); -- 5990₽ = 1000 генераций
+CREATE INDEX idx_payments_status ON payments(status);
 ```
 
 ---
@@ -227,17 +219,17 @@ INSERT INTO packages VALUES
 ┌─────────────────────────────────────────────────────────────┐
 │ 1. ИНИЦИАЦИЯ ПЛАТЕЖА                                        │
 ├─────────────────────────────────────────────────────────────┤
-│ User → /billing → SELECT "купить"                           │
-│ POST /api/payments/yookassa/create { packageKey }           │
+│ User → /billing → SELECT количество и вариант               │
+│ POST /api/payments/yookassa/create { credits, amount }      │
 └──────────────┬──────────────────────────────────────────────┘
                │
                ▼
 ┌─────────────────────────────────────────────────────────────┐
 │ 2. CREATE PAYMENT                                            │
 ├─────────────────────────────────────────────────────────────┤
-│ [CREATE] GET package from DB                                │
 │ [CREATE] POST https://api.yookassa.ru/v3/payments           │
 │ [CREATE] INSERT INTO payments status='pending'              │
+│          сохраняет amount и credits                         │
 │ [CREATE] RETURN paymentUrl to client                        │
 └──────────────┬──────────────────────────────────────────────┘
                │
@@ -254,7 +246,7 @@ INSERT INTO packages VALUES
 ┌─────────────────────────────────────────────────────────────┐
 │ 4. ВОЗВРАТ И POLLING                                        │
 ├─────────────────────────────────────────────────────────────┤
-│ redirect → /billing?success=1                               │
+│ redirect → /billing                                         │
 │ [POLLING] interval loop: GET /api/payments/yookassa/check   │
 │ [CHECK] SELECT FROM payments WHERE externalPaymentId=?      │
 │ [CHECK] GET https://api.yookassa.ru/v3/payments/{id}        │
@@ -267,8 +259,7 @@ INSERT INTO packages VALUES
 │ [CHECK] YooKassa return status='succeeded', paid=true       │
 │ [CHECK] call applySuccessfulPayment(paymentId)              │
 │ [applySuccessfulPayment] SELECT payment FROM payments       │
-│ [applySuccessfulPayment] SELECT generations FROM packages   │
-│ [applySuccessfulPayment] UPDATE users balance += gen        │
+│ [applySuccessfulPayment] UPDATE users balance += credits    │
 │ [applySuccessfulPayment] UPDATE payments status='succeeded' │
 │ [CHECK] RETURN { status: 'succeeded' }                      │
 └──────────────┬──────────────────────────────────────────────┘
@@ -280,7 +271,6 @@ INSERT INTO packages VALUES
 │ [POLLING] status==='succeeded'                              │
 │ [POLLING] GET /api/user/balance                             │
 │ [POLLING] updateBalanceDisplay(newBalance)                  │
-│ [POLLING] show success message with balance                │
 │ User sees balance updated WITHOUT page reload               │
 └─────────────────────────────────────────────────────────────┘
 ```
@@ -293,27 +283,30 @@ INSERT INTO packages VALUES
 
 #### CREATE endpoint
 ```
+[CREATE] КОНФИГУРАЦИЯ:
+[CREATE]   - authUrl = http://localhost:4321
+[CREATE]   - webhookUrl = http://localhost:4321/api/payments/yookassa/webhook
+[CREATE]   - Shop ID = ✓ SET
 [CREATE] ✅ Payment created in YooKassa: <paymentId>
-[CREATE] Payment details: amount=990₽, package=basic, user=<userId>
+[CREATE] Payment details: amount=3950₽, credits=50, user=<userId>
 [CREATE] ✅ Payment saved to DB: <paymentId>, local_id=..., status=pending
 ```
 
 #### CHECK endpoint
 ```
-[CHECK] Checking payment (userId: <userId>)
+[CHECK] START: Checking payment (userId: <userId>)
 [CHECK] Found latest pending payment: <paymentId>
 [CHECK] Found payment in DB: status=pending, userId=<userId>
 [CHECK] Payment is pending, checking YooKassa API...
 [CHECK] YooKassa response: status=succeeded, paid=true
 [CHECK] ✅ YooKassa confirmed succeeded, applying payment...
 [applySuccessfulPayment] Processing payment: <paymentId>
-[applySuccessfulPayment] Found payment: userId=<userId>, packageKey=basic, status=pending
-[applySuccessfulPayment] Adding 50 generations to user <userId>
+[applySuccessfulPayment] Found payment: userId=<userId>, credits=50, status=pending
+[applySuccessfulPayment] Adding 50 credits to user <userId>
 [applySuccessfulPayment] Balance update for user <userId>: 0 + 50 = 50 (changes: 1)
 [applySuccessfulPayment] ✅ Success! Payment <paymentId> activated for user <userId>
-[CHECK] applySuccessfulPayment result: success=true
-[CHECK] ✅ SUCCESS: Payment <paymentId> applied for user <userId>
-[BALANCE] GET balance for user <userId>: balance=50, used=0
+[CHECK] ✅ SUCCESS: Payment <paymentId> APPLIED for user <userId>
+[CHECK] BALANCE UPDATED: new balance = 50
 ```
 
 ---
@@ -325,11 +318,11 @@ INSERT INTO packages VALUES
 3. ✅ **Авторизация:** Пользователи не видят платежи других людей
 4. ✅ **Foreign Keys:** SQLite включены для консистентности
 5. ✅ **Атомарность:** UPDATE operations в одной транзакции
-6. ✅ **Валидация:** packageKey проверяется в таблице packages
+6. ✅ **Валидация:** credits и amount проверяются перед созданием платежа
 
 ---
 
-## Возможные расширения
+## Расширения в будущем
 
 1. **Webhook поддержка** (для production):
    - POST `/api/payments/yookassa/webhook`
