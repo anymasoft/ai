@@ -101,7 +101,7 @@ const packageCards: PackageCard[] = packages.map((pkg, idx) => {
 					</div>
 
 					<!-- Packages Grid with Popular Badge -->
-					<section class="relative flex-1 overflow-hidden">
+					<section class="relative flex-1">
 						<!-- Popular Badge - SEPARATE LAYER, NOT part of grid -->
 						{packageCards.some(pkg => pkg.popular) && (
 							<div class="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 z-20">
@@ -140,8 +140,7 @@ const packageCards: PackageCard[] = packages.map((pkg, idx) => {
 											<span class="relative text-xs font-semibold text-white">Пополнить</span>
 										</button>
 									</div>
-								</div>
-							))}
+								))}
 						</div>
 					</section>
 
