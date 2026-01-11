@@ -3,14 +3,9 @@
  * POST /api/payments/yookassa/create
  *
  * Body:
- * Вариант 1 (стандартные пакеты):
  * {
- *   packageKey: "basic" | "pro"
- * }
- *
- * Вариант 2 (разовая покупка кредитов):
- * {
- *   customCreditsAmount: number (1-10)
+ *   credits: number (количество кредитов для покупки)
+ *   amount: number (сумма в рублях)
  * }
  *
  * Response:
@@ -67,53 +62,25 @@ export const POST: APIRoute = async (context) => {
 
     // Парсим тело запроса
     const body = await context.request.json() as any;
-    const { packageKey, customCreditsAmount } = body;
+    const { credits, amount } = body;
 
-    const db = getDb();
-    let priceRub: number;
-    let creditsAmount: number;
-    let description: string;
-    let dbPackageKey: string | null = null;
-
-    // Вариант 1: стандартный пакет
-    if (packageKey && typeof packageKey === 'string') {
-      const pkgStmt = db.prepare(
-        `SELECT key, title, price_rub, generations FROM packages WHERE key = ? AND is_active = 1`
-      );
-      const pkg = pkgStmt.get(packageKey) as any;
-
-      if (!pkg) {
-        return new Response(
-          JSON.stringify({ success: false, error: 'Пакет не найден' }),
-          { status: 400, headers: { 'Content-Type': 'application/json' } }
-        );
-      }
-
-      priceRub = pkg.price_rub;
-      creditsAmount = pkg.generations;
-      dbPackageKey = packageKey;
-      description = `Пакет ${pkg.title}: ${pkg.generations} кредитов - ${user.email}`;
-    }
-    // Вариант 2: разовая покупка
-    else if (customCreditsAmount && typeof customCreditsAmount === 'number') {
-      if (customCreditsAmount < 1 || customCreditsAmount > 10 || !Number.isInteger(customCreditsAmount)) {
-        return new Response(
-          JSON.stringify({ success: false, error: 'Количество кредитов должно быть от 1 до 10' }),
-          { status: 400, headers: { 'Content-Type': 'application/json' } }
-        );
-      }
-
-      const CREDIT_PRICE = 89;
-      priceRub = customCreditsAmount * CREDIT_PRICE;
-      creditsAmount = customCreditsAmount;
-      description = `Разовая покупка: ${customCreditsAmount} кредитов - ${user.email}`;
-    }
-    else {
+    // Валидируем параметры
+    if (!credits || typeof credits !== 'number' || credits < 1) {
       return new Response(
-        JSON.stringify({ success: false, error: 'Требуется packageKey или customCreditsAmount' }),
+        JSON.stringify({ success: false, error: 'Требуется валидное количество кредитов' }),
         { status: 400, headers: { 'Content-Type': 'application/json' } }
       );
     }
+
+    if (!amount || typeof amount !== 'number' || amount < 1) {
+      return new Response(
+        JSON.stringify({ success: false, error: 'Требуется валидная сумма' }),
+        { status: 400, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const priceRub = amount;
+    const creditsAmount = credits;
 
     // Получаем креденшалы ЮKassa из переменных окружения
     const yooKassaShopId = process.env.YOOKASSA_SHOP_ID;
@@ -135,6 +102,8 @@ export const POST: APIRoute = async (context) => {
     console.log('[YooKassa]   - authUrl =', authUrl);
     console.log('[YooKassa]   - webhookUrl =', webhookUrl);
     console.log('[YooKassa]   - Shop ID =', yooKassaShopId ? '✓ SET' : '❌ MISSING');
+
+    const description = `Покупка ${creditsAmount} кредитов - ${user.email}`;
 
     const paymentRequest: YooKassaPaymentRequest = {
       amount: {
@@ -158,7 +127,7 @@ export const POST: APIRoute = async (context) => {
       headers: {
         'Content-Type': 'application/json',
         Authorization: `Basic ${auth}`,
-        'Idempotence-Key': `${user.id}-${packageKey}-${Date.now()}`,
+        'Idempotence-Key': `${user.id}-${creditsAmount}-${Date.now()}`,
       },
       body: JSON.stringify(paymentRequest),
     });
@@ -190,10 +159,11 @@ export const POST: APIRoute = async (context) => {
     console.log(`[CREATE] Payment details: amount=${priceRub}₽, credits=${creditsAmount}, user=${user.id}`);
 
     // Сохраняем платёж в БД с status='pending'
+    const db = getDb();
     const now = Math.floor(Date.now() / 1000);
     const insertStmt = db.prepare(
-      `INSERT INTO payments (id, externalPaymentId, userId, packageKey, amount, credits, provider, status, createdAt, updatedAt)
-       VALUES (?, ?, ?, ?, ?, ?, 'yookassa', 'pending', ?, ?)`
+      `INSERT INTO payments (id, externalPaymentId, userId, amount, credits, provider, status, createdAt, updatedAt)
+       VALUES (?, ?, ?, ?, ?, 'yookassa', 'pending', ?, ?)`
     );
 
     const dbPaymentId = `payment_${Date.now()}_${user.id}`;
@@ -201,7 +171,6 @@ export const POST: APIRoute = async (context) => {
       dbPaymentId,
       paymentData.id,
       user.id,
-      dbPackageKey,
       priceRub,
       creditsAmount,
       now,

@@ -1,9 +1,7 @@
 ---
-import Container from '../components/Container.astro';
 import LiveBalance from '../components/LiveBalance.astro';
 import AppLayout from '../layouts/AppLayout.astro';
 import { getUserFromSession } from '../lib/auth';
-import { getDb } from '../lib/db';
 
 // Эта страница должна быть динамичной для работы с middleware и cookies
 export const prerender = false;
@@ -17,62 +15,55 @@ if (!user) {
   return Astro.redirect('/');
 }
 
-// Загружаем пакеты из БД
-const db = getDb();
-
-const packages = db.prepare(`
-  SELECT key, title, price_rub, generations
-  FROM packages
-  WHERE is_active = 1
-  ORDER BY price_rub ASC
-`).all() as Array<{key: string; title: string; price_rub: number; generations: number}>;
-
-// Карточки пакетов: Basic и Pro
-interface PackageCard {
-  key: string;
+// Фиксированные тарифы - без пакетов
+interface PricingPlan {
+  id: string;
   name: string;
-  description: string;
-  price: string;
   credits: number;
-  features: string[];
+  price: number;
+  pricePerCredit: number;
   popular: boolean;
+  isCustom: boolean;
 }
 
-const packageCards: PackageCard[] = packages.map((pkg, idx) => {
-  const priceRub = pkg.price_rub;
-
-  const featureMap: Record<string, string[]> = {
-    basic: [
-      `${pkg.generations} кредитов`,
-      'Для стартапов и экспериментов',
-      'Отличное соотношение цены/качества'
-    ],
-    pro: [
-      `${pkg.generations} кредитов`,
-      'Для активных создателей',
-      'Максимальная экономия'
-    ]
-  };
-
-  return {
-    key: pkg.key,
-    name: pkg.title,
-    description: idx === 0 ? 'Хороший старт' : 'Самый экономный',
-    price: `${priceRub} ₽`,
-    credits: pkg.generations,
-    features: featureMap[pkg.key] || featureMap.basic,
-    popular: idx === 1 // Pro пакет - самый популярный
-  };
-});
+const plans: PricingPlan[] = [
+  {
+    id: 'custom',
+    name: 'Разовая покупка',
+    credits: 1, // будет менять пользователь
+    price: 89, // будет пересчитываться
+    pricePerCredit: 89,
+    popular: false,
+    isCustom: true
+  },
+  {
+    id: 'basic',
+    name: 'Basic',
+    credits: 50,
+    price: 3950,
+    pricePerCredit: 79,
+    popular: false,
+    isCustom: false
+  },
+  {
+    id: 'professional',
+    name: 'Professional',
+    credits: 200,
+    price: 13800,
+    pricePerCredit: 69,
+    popular: true,
+    isCustom: false
+  }
+];
 ---
 
 <AppLayout title="Billing - Beem">
 	<div class="w-full h-full flex flex-col overflow-hidden">
 		<div class="flex-1 flex flex-col overflow-hidden">
 			<div class="p-3 md:p-4 w-full h-full overflow-hidden flex flex-col">
-				<div class="max-w-5xl mx-auto w-full h-full flex flex-col">
+				<div class="max-w-6xl mx-auto w-full h-full flex flex-col">
 					<!-- Header with Back Button -->
-					<div class="flex items-center gap-3 mb-3">
+					<div class="flex items-center gap-3 mb-4">
 						<!-- Back Button - LEFT -->
 						<a href="/app" class="inline-flex items-center justify-center p-1 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition cursor-pointer flex-shrink-0">
 							<svg class="w-5 h-5 text-gray-700 dark:text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -86,79 +77,67 @@ const packageCards: PackageCard[] = packages.map((pkg, idx) => {
 						</div>
 					</div>
 
-					<!-- Packages Grid with Popular Badge -->
-					<section class="relative flex-1">
-						<!-- Popular Badge - SEPARATE LAYER, NOT part of grid -->
-						{packageCards.some(pkg => pkg.popular) && (
-							<div class="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 z-20">
-								<div class="bg-primary text-white px-3 py-1 rounded-full text-xs font-semibold whitespace-nowrap shadow-md">
-									Популярный
-								</div>
-							</div>
-						)}
-
-						<!-- Pricing Grid - с Разовой покупкой + пакеты -->
-						<div class="grid gap-2 h-full md:grid-cols-3">
-							<!-- Разовая покупка - выделенная карточка -->
-							<div class="border-2 border-primary rounded-xl p-4 bg-gradient-to-br from-primary/5 to-primary/10 dark:from-primary/10 dark:to-primary/5 text-left hover:shadow-lg hover:shadow-primary/20 transition flex flex-col h-full">
-								<h3 class="text-base font-bold text-gray-900 dark:text-white mb-0.5">
-									Разовая покупка
-								</h3>
-								<p class="text-xs text-gray-600 dark:text-gray-300 mb-2">
-									Купите ровно столько видео, сколько нужно
-								</p>
-
-								<!-- Input для выбора кол-ва кредитов -->
-								<div class="mb-3 flex-1">
-									<input
-										type="number"
-										id="custom-credits-input"
-										min="1"
-										max="10"
-										value="3"
-										class="w-full px-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary"
-									/>
-									<p class="text-xs text-gray-600 dark:text-gray-400 mt-2 text-center">
-										<span id="price-display">Цена: 3 × 89 ₽ = 267 ₽</span>
-									</p>
-								</div>
-
-								<button
-									type="button"
-									id="custom-credits-button"
-									class="w-full relative flex h-8 items-center justify-center px-4 before:absolute before:inset-0 before:rounded-full before:bg-primary before:transition before:duration-300 hover:before:scale-105 active:before:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
-								>
-									<span class="relative text-xs font-semibold text-white">Купить 267 ₽</span>
-								</button>
-							</div>
-
-							<!-- Стандартные пакеты: Basic и Pro -->
-							{packageCards.map((pkg) => (
-								<div class={`border rounded-xl p-3 bg-white dark:bg-gray-800 text-left hover:shadow-lg hover:shadow-gray-600/10 transition flex flex-col h-full ${pkg.popular ? 'border-2 border-blue-400' : 'border-gray-100 dark:border-gray-700'}`}>
-									{pkg.popular && <span class="inline-block bg-blue-400 text-white text-xs font-semibold px-2 py-1 rounded mb-1 w-fit">Популярно</span>}
-									<h3 class="text-base font-bold text-gray-900 dark:text-white mb-0.5">
-										{pkg.name}
+					<!-- Pricing Grid -->
+					<section class="relative flex-1 flex flex-col">
+						<!-- Pricing Cards Grid -->
+						<div class="grid gap-3 grid-cols-1 md:grid-cols-3 flex-1">
+							{plans.map((plan) => (
+								<div class={`border-2 rounded-xl p-4 flex flex-col h-full transition-all ${
+									plan.popular
+										? 'border-primary bg-gradient-to-br from-primary/5 to-primary/10 dark:from-primary/10 dark:to-primary/5'
+										: 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:shadow-lg hover:shadow-gray-600/10'
+								}`}>
+									{/* Header */}
+									<h3 class="text-lg font-bold text-gray-900 dark:text-white mb-1">
+										{plan.name}
 									</h3>
-									<p class="text-xs text-gray-600 dark:text-gray-300 mb-1">
-										{pkg.description}
+
+									{/* Price Per Credit */}
+									<p class="text-sm text-gray-600 dark:text-gray-400 mb-3">
+										1 кредит = <span class="font-semibold text-gray-900 dark:text-white">{plan.pricePerCredit} ₽</span>
 									</p>
-									<p class="text-2xl font-bold text-primary mb-2">
-										{pkg.price}
-									</p>
-									<ul class="space-y-0.5 mb-2 text-gray-600 dark:text-gray-300 flex-1 text-xs">
-										{pkg.features.map((feature) => (
-											<li class="flex items-center gap-1">
-												<span class="text-primary text-xs">✓</span>
-												<span>{feature}</span>
-											</li>
-										))}
-									</ul>
+
+									{/* Custom Input for One-Time Purchase */}
+									{plan.isCustom && (
+										<div class="mb-4 flex-1 flex flex-col">
+											<input
+												type="number"
+												id="custom-credits-input"
+												min="1"
+												max="10"
+												value="1"
+												class="w-full px-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary mb-2"
+											/>
+											<p class="text-sm text-gray-600 dark:text-gray-400">
+												<span id="price-display">Цена: 1 × 89 ₽ = 89 ₽</span>
+											</p>
+										</div>
+									)}
+
+									{/* Fixed Plans - Show Credits and Price */}
+									{!plan.isCustom && (
+										<div class="mb-4 flex-1 flex flex-col justify-center">
+											<p class="text-2xl font-bold text-primary mb-1">
+												{plan.credits}
+											</p>
+											<p class="text-sm text-gray-600 dark:text-gray-400 mb-3">
+												кредитов
+											</p>
+											<p class="text-2xl font-bold text-gray-900 dark:text-white">
+												{plan.price.toLocaleString('ru-RU')} ₽
+											</p>
+										</div>
+									)}
+
+									{/* Button */}
 									<button
 										type="button"
-										data-package={pkg.key}
-										class="w-full relative flex h-8 items-center justify-center px-4 before:absolute before:inset-0 before:rounded-full before:bg-primary before:transition before:duration-300 hover:before:scale-105 active:before:scale-95 disabled:opacity-50 disabled:cursor-not-allowed package-button"
+										{...(plan.isCustom ? { 'data-custom': 'true', 'id': 'custom-buy-btn' } : { 'data-buy': plan.id })}
+										class="w-full relative flex h-9 items-center justify-center px-4 before:absolute before:inset-0 before:rounded-lg before:bg-primary before:transition before:duration-300 hover:before:scale-105 active:before:scale-95 disabled:opacity-50 disabled:cursor-not-allowed purchase-btn"
 									>
-										<span class="relative text-xs font-semibold text-white">Купить</span>
+										<span class="relative text-sm font-semibold text-white" id={plan.isCustom ? 'btn-text-custom' : undefined}>
+											{plan.isCustom ? 'Купить 89 ₽' : `Купить ${plan.price.toLocaleString('ru-RU')} ₽`}
+										</span>
 									</button>
 								</div>
 							))}
@@ -171,100 +150,75 @@ const packageCards: PackageCard[] = packages.map((pkg, idx) => {
 </AppLayout>
 
 <script>
-	const packageButtons = document.querySelectorAll('.package-button') as NodeListOf<HTMLButtonElement>;
-	const customCreditsInput = document.getElementById('custom-credits-input') as HTMLInputElement;
-	const customCreditsButton = document.getElementById('custom-credits-button') as HTMLButtonElement;
+	const customInput = document.getElementById('custom-credits-input') as HTMLInputElement;
+	const customBuyBtn = document.getElementById('custom-buy-btn') as HTMLButtonElement;
 	const priceDisplay = document.getElementById('price-display') as HTMLSpanElement;
+	const btnText = document.getElementById('btn-text-custom') as HTMLSpanElement;
+	const purchaseButtons = document.querySelectorAll('.purchase-btn') as NodeListOf<HTMLButtonElement>;
 
 	const CREDIT_PRICE = 89;
 
 	function disableAllButtons() {
-		packageButtons.forEach(btn => {
+		purchaseButtons.forEach(btn => {
 			btn.disabled = true;
 		});
-		if (customCreditsButton) customCreditsButton.disabled = true;
 	}
 
 	function enableAllButtons() {
-		packageButtons.forEach(btn => {
+		purchaseButtons.forEach(btn => {
 			btn.disabled = false;
 		});
-		if (customCreditsButton) customCreditsButton.disabled = false;
 	}
 
 	// Обновление цены при изменении input для разовой покупки
-	if (customCreditsInput) {
-		customCreditsInput.addEventListener('input', () => {
-			let value = parseInt(customCreditsInput.value, 10);
+	if (customInput) {
+		customInput.addEventListener('input', () => {
+			let value = parseInt(customInput.value, 10);
 
 			// Валидация
 			if (isNaN(value) || value < 1) value = 1;
 			if (value > 10) value = 10;
 
-			customCreditsInput.value = value.toString();
+			customInput.value = value.toString();
 
 			const totalPrice = value * CREDIT_PRICE;
 			priceDisplay.textContent = `Цена: ${value} × ${CREDIT_PRICE} ₽ = ${totalPrice} ₽`;
 
 			// Обновляем текст кнопки
-			const buttonText = customCreditsButton.querySelector('.relative') as HTMLSpanElement;
-			if (buttonText) {
-				buttonText.textContent = `Купить ${totalPrice} ₽`;
+			if (btnText) {
+				btnText.textContent = `Купить ${totalPrice} ₽`;
 			}
 		});
 	}
 
-	// Обработчик для разовой покупки
-	if (customCreditsButton) {
-		customCreditsButton.addEventListener('click', async (e: Event) => {
-			e.preventDefault();
-
-			const credits = parseInt(customCreditsInput.value, 10);
-			if (isNaN(credits) || credits < 1 || credits > 10) {
-				return;
-			}
-
-			disableAllButtons();
-
-			try {
-				const response = await fetch('/api/payments/yookassa/create', {
-					method: 'POST',
-					headers: {
-						'Content-Type': 'application/json',
-					},
-					body: JSON.stringify({ customCreditsAmount: credits })
-				});
-
-				if (!response.ok) {
-					enableAllButtons();
-					return;
-				}
-
-				const data = await response.json();
-
-				if (data.success && data.paymentUrl) {
-					setTimeout(() => {
-						window.location.href = data.paymentUrl;
-					}, 500);
-				} else {
-					enableAllButtons();
-				}
-			} catch (error) {
-				enableAllButtons();
-			}
-		});
-	}
-
-	// Обработчик нажатия на кнопку пополнения пакетов
-	packageButtons.forEach(button => {
+	// Обработчики кнопок покупки
+	purchaseButtons.forEach(button => {
 		button.addEventListener('click', async (e: Event) => {
 			e.preventDefault();
 
-			const target = e.target as HTMLButtonElement;
-			const packageKey = target.getAttribute('data-package');
+			let credits: number;
+			let amount: number;
 
-			if (!packageKey) {
-				return;
+			// Определяем, какая кнопка нажата
+			if (button.id === 'custom-buy-btn') {
+				// Разовая покупка
+				credits = parseInt(customInput.value, 10);
+				if (isNaN(credits) || credits < 1 || credits > 10) {
+					return;
+				}
+				amount = credits * CREDIT_PRICE;
+			} else {
+				// Фиксированный тариф
+				const planId = button.getAttribute('data-buy');
+				if (planId === 'basic') {
+					credits = 50;
+					amount = 3950;
+				} else if (planId === 'professional') {
+					credits = 200;
+					amount = 13800;
+				} else {
+					return;
+				}
 			}
 
 			disableAllButtons();
@@ -275,7 +229,7 @@ const packageCards: PackageCard[] = packages.map((pkg, idx) => {
 					headers: {
 						'Content-Type': 'application/json',
 					},
-					body: JSON.stringify({ packageKey })
+					body: JSON.stringify({ credits, amount })
 				});
 
 				if (!response.ok) {
@@ -286,7 +240,6 @@ const packageCards: PackageCard[] = packages.map((pkg, idx) => {
 				const data = await response.json();
 
 				if (data.success && data.paymentUrl) {
-					// Небольшая задержка перед редиректом для плавного UX
 					setTimeout(() => {
 						window.location.href = data.paymentUrl;
 					}, 500);
@@ -298,21 +251,6 @@ const packageCards: PackageCard[] = packages.map((pkg, idx) => {
 			}
 		});
 	});
-
-	// Функция для получения текущего баланса
-	async function fetchCurrentBalance(): Promise<number | null> {
-		try {
-			const response = await fetch('/api/user/balance');
-			const data = await response.json();
-			if (data.success && typeof data.generation_balance === 'number') {
-				console.log(`[POLLING] Current balance: ${data.generation_balance}`);
-				return data.generation_balance;
-			}
-		} catch (error) {
-			console.error('[POLLING] Error fetching balance:', error);
-		}
-		return null;
-	}
 
 	// Проверка статуса платежа после возврата со страницы Yookassa
 	async function checkPaymentStatus() {

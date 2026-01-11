@@ -58,17 +58,6 @@ function initDb() {
     console.log('ℹ️ Migration check for payments passed');
   }
 
-  // Миграция: отключаем Enterprise пакет
-  try {
-    const enterpriseStmt = db.prepare("SELECT key FROM packages WHERE key = 'enterprise'");
-    const enterprise = enterpriseStmt.get() as any;
-    if (enterprise) {
-      db.exec("UPDATE packages SET is_active = 0 WHERE key = 'enterprise'");
-      console.log('✅ Migration: Disabled Enterprise package');
-    }
-  } catch (e) {
-    console.log('ℹ️ Migration check for Enterprise passed');
-  }
 
   // ========== SESSIONS TABLE ==========
   db.exec(`
@@ -82,38 +71,12 @@ function initDb() {
     )
   `);
 
-  // ========== PACKAGES TABLE ==========
-  db.exec(`
-    CREATE TABLE IF NOT EXISTS packages (
-      key TEXT PRIMARY KEY,
-      title TEXT NOT NULL,
-      price_rub INTEGER NOT NULL,
-      generations INTEGER NOT NULL,
-      is_active INTEGER DEFAULT 1,
-      created_at INTEGER DEFAULT (cast(strftime('%s','now') as integer)),
-      updated_at INTEGER DEFAULT (cast(strftime('%s','now') as integer))
-    )
-  `);
-
-  // Инициализация пакетов по умолчанию
-  const stmt = db.prepare('SELECT COUNT(*) as count FROM packages');
-  const result = stmt.get() as any;
-  if (result.count === 0) {
-    db.exec(`
-      INSERT INTO packages (key, title, price_rub, generations, is_active)
-      VALUES
-        ('basic', 'Basic', 3950, 50, 1),
-        ('pro', 'Pro', 13800, 200, 1)
-    `);
-    console.log('✅ Packages initialized');
-  }
 
   // ========== PAYMENTS TABLE ==========
   db.exec(`
     CREATE TABLE IF NOT EXISTS payments (
       id TEXT PRIMARY KEY,
       userId TEXT NOT NULL,
-      packageKey TEXT,
       externalPaymentId TEXT NOT NULL UNIQUE,
       amount REAL NOT NULL,
       credits INTEGER DEFAULT 0,
@@ -122,8 +85,7 @@ function initDb() {
       provider TEXT DEFAULT 'yookassa',
       createdAt INTEGER NOT NULL,
       updatedAt INTEGER NOT NULL,
-      FOREIGN KEY (userId) REFERENCES users(id) ON DELETE CASCADE,
-      FOREIGN KEY (packageKey) REFERENCES packages(key)
+      FOREIGN KEY (userId) REFERENCES users(id) ON DELETE CASCADE
     )
   `);
 
