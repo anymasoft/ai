@@ -70,6 +70,7 @@ if (searchEmail) {
 }
 
 const totalPages = Math.ceil(totalResults / perPage);
+const totalUsers = allUsers.length;
 
 const totalGenerationCredits = allUsers.reduce((sum, u) => sum + (u.generation_balance + u.generation_used), 0);
 const totalBalance = allUsers.reduce((sum, u) => sum + u.generation_balance, 0);
