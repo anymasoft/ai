@@ -19,7 +19,7 @@ const userBalance = user.generation_balance || 0;
 
 <AppLayout title="Create Video - Beem">
     <!-- Main Container - No scroll, fixed 100vh -->
-    <div class="w-full h-full flex flex-col overflow-hidden">
+    <div class="w-full h-full flex flex-col overflow-hidden" data-user-balance={userBalance}>
         <!-- Content Area - flex-1 to fill remaining height -->
         <div class="flex-1 overflow-hidden">
             <!-- Grid: LEFT (upload) + RIGHT (video stage) -->
@@ -194,9 +194,10 @@ const userBalance = user.generation_balance || 0;
     </div>
 </AppLayout>
 
-<script define:vars={{ userBalance }}>
-    // ========== User Balance (from server) ==========
-    // userBalance is injected from server
+<script>
+    // ========== Get User Balance ==========
+    const mainContainer = document.querySelector('[data-user-balance]') as HTMLElement;
+    const userBalance = parseInt(mainContainer?.dataset.userBalance || '0', 10);
     console.log(`[APP] User balance: ${userBalance} credits`);
 
     // ========== Toast Notification System ==========
@@ -417,13 +418,21 @@ const userBalance = user.generation_balance || 0;
                         if (!response.ok) {
                             console.error('[GEN] Error:', data.error);
                             videoLoading.classList.add('hidden');
-                            videoPlaceholder.classList.remove('hidden');
                             generateIcon.classList.remove('hidden');
                             generateSpinner.classList.add('hidden');
                             generateBtn.disabled = false;
 
                             const errorMsg = data.error || 'Ошибка при генерации видео';
-                            showToast(errorMsg, 'error');
+                            const isBalanceError = errorMsg.toLowerCase().includes('баланс') ||
+                                                  errorMsg.toLowerCase().includes('кредит') ||
+                                                  errorMsg.toLowerCase().includes('недостаточно');
+
+                            if (isBalanceError) {
+                                showPaywallOverlay();
+                            } else {
+                                videoPlaceholder.classList.remove('hidden');
+                                showToast(errorMsg, 'error');
+                            }
                             return;
                         }
 
@@ -477,8 +486,16 @@ const userBalance = user.generation_balance || 0;
                         console.error('[GEN] Generation error:', errorMessage);
 
                         videoLoading.classList.add('hidden');
-                        videoPlaceholder.classList.remove('hidden');
-                        showToast(`Ошибка: ${errorMessage}`, 'error');
+                        const isBalanceError = errorMessage.toLowerCase().includes('баланс') ||
+                                              errorMessage.toLowerCase().includes('кредит') ||
+                                              errorMessage.toLowerCase().includes('недостаточно');
+
+                        if (isBalanceError) {
+                            showPaywallOverlay();
+                        } else {
+                            videoPlaceholder.classList.remove('hidden');
+                            showToast(`Ошибка: ${errorMessage}`, 'error');
+                        }
                     } finally {
                         // Re-enable button and reset spinner
                         generateIcon.classList.remove('hidden');
