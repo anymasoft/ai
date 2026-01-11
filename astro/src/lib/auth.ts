@@ -30,27 +30,27 @@ export function getUserFromSession(token: string): User | null {
   const db = getDb();
   const now = Math.floor(Date.now() / 1000);
 
-  console.log(`   🔍 Querying session in DB for token: ${token.slice(0, 16)}...`);
+  // console.log(`   🔍 Querying session in DB for token: ${token.slice(0, 16)}...`);
 
   const session = db
     .prepare('SELECT userId FROM sessions WHERE token = ? AND expiresAt > ?')
     .get(token, now) as Session | undefined;
 
   if (!session) {
-    console.log(`   ❌ Session not found in DB`);
+    // console.log(`   ❌ Session not found in DB`);
     return null;
   }
 
-  console.log(`   ✅ Session found, userId: ${session.userId}`);
+  // console.log(`   ✅ Session found, userId: ${session.userId}`);
 
   const user = db.prepare('SELECT * FROM users WHERE id = ?').get(session.userId) as User | undefined;
 
   if (!user) {
-    console.log(`   ❌ User not found for userId: ${session.userId}`);
+    // console.log(`   ❌ User not found for userId: ${session.userId}`);
     return null;
   }
 
-  console.log(`   ✅ User found: ${user.email}`);
+  // console.log(`   ✅ User found: ${user.email}`);
   return user;
 }
 
