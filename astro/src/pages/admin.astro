@@ -2,7 +2,6 @@
 import { getUserFromSession, isAdmin } from '../lib/auth';
 import AppLayout from '../layouts/AppLayout.astro';
 import { getDb } from '../lib/db';
-import LiveBalance from '../components/LiveBalance.astro';
 
 // Эта страница должна быть динамичной для работы с cookies
 export const prerender = false;
@@ -87,20 +86,6 @@ const totalBalance = allUsers.reduce((sum, u) => sum + u.generation_balance, 0);
         </svg>
       </a>
 
-      <!-- Header -->
-      <div class="mb-6">
-        <div class="flex items-center justify-between mb-4">
-          <div>
-            <h1 class="text-3xl font-bold text-gray-900 dark:text-white mb-1">Панель администратора</h1>
-            <p class="text-gray-600 dark:text-gray-400">Управление пользователями и кредитами системы</p>
-          </div>
-          <div class="text-right">
-            <p class="text-xs text-gray-600 dark:text-gray-400 mb-1">Ваш баланс</p>
-            <LiveBalance size="badge" />
-          </div>
-        </div>
-      </div>
-
       <!-- Search Box -->
       <div class="mb-4">
         <form method="GET" class="flex gap-2">
@@ -134,26 +119,89 @@ const totalBalance = allUsers.reduce((sum, u) => sum + u.generation_balance, 0);
       </div>
 
       <!-- Statistics Cards -->
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+      <div class="grid grid-cols-1 md:grid-cols-1 gap-4 mb-6">
         <!-- Total Users -->
         <div class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-6">
           <div class="text-sm font-semibold text-gray-600 dark:text-gray-400 mb-1">Всего пользователей</div>
           <div class="text-3xl font-bold text-gray-900 dark:text-white" data-stat="totalUsers">{totalUsers}</div>
           <p class="text-xs text-gray-500 dark:text-gray-400 mt-2">Активных аккаунтов в системе</p>
         </div>
+      </div>
 
-        <!-- Total Generation Credits -->
-        <div class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-6">
-          <div class="text-sm font-semibold text-gray-600 dark:text-gray-400 mb-1">Всего кредитов</div>
-          <div class="text-3xl font-bold text-primary" data-stat="totalGenerationCredits">{totalGenerationCredits}</div>
-          <p class="text-xs text-gray-500 dark:text-gray-400 mt-2">Закуплено и использовано</p>
+      <!-- Financial Overview Section -->
+      <div class="mb-6">
+        <h2 class="text-2xl font-bold text-gray-900 dark:text-white mb-4">Финансовый анализ пользователей</h2>
+
+        <!-- Financial Filters -->
+        <div class="flex gap-2 mb-4 overflow-x-auto pb-2">
+          <button
+            class="financial-filter whitespace-nowrap px-4 py-2 rounded-lg font-semibold transition cursor-pointer bg-primary text-white"
+            data-filter="all"
+          >
+            Все пользователи
+          </button>
+          <button
+            class="financial-filter whitespace-nowrap px-4 py-2 rounded-lg font-semibold transition cursor-pointer bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white hover:bg-gray-200 dark:hover:bg-gray-700"
+            data-filter="Active"
+          >
+            🟢 Active
+          </button>
+          <button
+            class="financial-filter whitespace-nowrap px-4 py-2 rounded-lg font-semibold transition cursor-pointer bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white hover:bg-gray-200 dark:hover:bg-gray-700"
+            data-filter="At risk"
+          >
+            🟡 At risk
+          </button>
+          <button
+            class="financial-filter whitespace-nowrap px-4 py-2 rounded-lg font-semibold transition cursor-pointer bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white hover:bg-gray-200 dark:hover:bg-gray-700"
+            data-filter="Dormant"
+          >
+            ⚫ Dormant
+          </button>
         </div>
 
-        <!-- Available Balance -->
-        <div class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-6">
-          <div class="text-sm font-semibold text-gray-600 dark:text-gray-400 mb-1">Доступный баланс</div>
-          <div class="text-3xl font-bold text-green-600" data-stat="totalBalance">{totalBalance}</div>
-          <p class="text-xs text-gray-500 dark:text-gray-400 mt-2">Неиспользованных кредитов</p>
+        <!-- Top Payers & High Balance Indicators -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+          <div class="bg-gradient-to-br from-yellow-50 to-orange-50 dark:from-yellow-900/20 dark:to-orange-900/20 rounded-2xl border border-yellow-200 dark:border-yellow-800 p-4">
+            <div class="text-sm font-semibold text-yellow-800 dark:text-yellow-300 mb-2">🔥 Top Payers</div>
+            <div id="top-payers" class="text-sm text-yellow-700 dark:text-yellow-400">Загрузка...</div>
+          </div>
+          <div class="bg-gradient-to-br from-red-50 to-pink-50 dark:from-red-900/20 dark:to-pink-900/20 rounded-2xl border border-red-200 dark:border-red-800 p-4">
+            <div class="text-sm font-semibold text-red-800 dark:text-red-300 mb-2">⚠️ High Balance (Финансовый риск)</div>
+            <div id="high-balance" class="text-sm text-red-700 dark:text-red-400">Загрузка...</div>
+          </div>
+        </div>
+
+        <!-- Financial Table -->
+        <div class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 overflow-hidden">
+          <!-- Table Header -->
+          <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-800">
+            <h3 class="text-lg font-bold text-gray-900 dark:text-white">Users Financial Overview</h3>
+          </div>
+
+          <!-- Scrollable Table -->
+          <div class="overflow-x-auto" style="max-height: 600px; overflow-y: auto;">
+            <table class="w-full text-xs">
+              <thead class="sticky top-0 bg-gray-50 dark:bg-gray-800">
+                <tr class="border-b border-gray-200 dark:border-gray-800">
+                  <th class="px-4 py-3 text-left font-semibold text-gray-700 dark:text-gray-300 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700" data-sort="email">Email</th>
+                  <th class="px-4 py-3 text-left font-semibold text-gray-700 dark:text-gray-300 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700" data-sort="name">Name</th>
+                  <th class="px-4 py-3 text-right font-semibold text-gray-700 dark:text-gray-300 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700" data-sort="creditsBought">Credits Bought</th>
+                  <th class="px-4 py-3 text-right font-semibold text-gray-700 dark:text-gray-300 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700" data-sort="creditsUsed">Used</th>
+                  <th class="px-4 py-3 text-right font-semibold text-gray-700 dark:text-gray-300 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700" data-sort="balance">Balance</th>
+                  <th class="px-4 py-3 text-right font-semibold text-gray-700 dark:text-gray-300 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700" data-sort="revenue">Revenue (₽)</th>
+                  <th class="px-4 py-3 text-right font-semibold text-gray-700 dark:text-gray-300 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700" data-sort="avgPrice">Avg Price</th>
+                  <th class="px-4 py-3 text-left font-semibold text-gray-700 dark:text-gray-300">Last Payment</th>
+                  <th class="px-4 py-3 text-left font-semibold text-gray-700 dark:text-gray-300">Status</th>
+                </tr>
+              </thead>
+              <tbody id="financial-table-body">
+                <tr class="text-center py-8">
+                  <td colspan="9" class="px-6 py-8 text-gray-500 dark:text-gray-400">Загрузка данных...</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
 
@@ -314,31 +362,14 @@ const totalBalance = allUsers.reduce((sum, u) => sum + u.generation_balance, 0);
       const data = await response.json();
       if (!data.success) return;
 
-      // Обновляем каждую статистику
-      const statElements = {
-        totalUsers: document.querySelector('[data-stat="totalUsers"]'),
-        totalGenerationCredits: document.querySelector('[data-stat="totalGenerationCredits"]'),
-        totalBalance: document.querySelector('[data-stat="totalBalance"]')
-      };
-
-      if (statElements.totalUsers && data.totalUsers.toString() !== statElements.totalUsers.textContent?.trim()) {
-        statElements.totalUsers.textContent = data.totalUsers;
-      }
-
-      if (statElements.totalGenerationCredits && data.totalGenerationCredits.toString() !== statElements.totalGenerationCredits.textContent?.trim()) {
-        statElements.totalGenerationCredits.textContent = data.totalGenerationCredits;
-      }
-
-      if (statElements.totalBalance && data.totalBalance.toString() !== statElements.totalBalance.textContent?.trim()) {
-        statElements.totalBalance.textContent = data.totalBalance;
+      const totalUsersEl = document.querySelector('[data-stat="totalUsers"]');
+      if (totalUsersEl && data.totalUsers.toString() !== totalUsersEl.textContent?.trim()) {
+        totalUsersEl.textContent = data.totalUsers;
       }
     } catch (error) {
       console.error('[ADMIN_STATS] Error fetching stats:', error);
     }
   }
-
-  // Первичная загрузка статистики
-  updateStats();
 
   // Периодическое обновление каждые 5 секунд
   const statsInterval = setInterval(updateStats, 5000);
@@ -553,4 +584,195 @@ const totalBalance = allUsers.reduce((sum, u) => sum + u.generation_balance, 0);
       resetUserId = null;
     }
   });
+
+  // ========== ФИНАНСОВАЯ ТАБЛИЦА ==========
+  interface UserFinancial {
+    userId: string;
+    email: string;
+    name: string;
+    totalCreditsBought: number;
+    totalCreditsUsed: number;
+    currentBalance: number;
+    lastPaymentDate: number | null;
+    totalRevenue: number;
+    avgPricePerCredit: number;
+    status: 'Active' | 'At risk' | 'Dormant';
+  }
+
+  let allFinancialData: UserFinancial[] = [];
+  let currentFilter: string = 'all';
+  let currentSort: { field: string; direction: 'asc' | 'desc' } = { field: 'revenue', direction: 'desc' };
+  const financialTableBody = document.getElementById('financial-table-body') as HTMLTableSectionElement;
+  const topPayersEl = document.getElementById('top-payers') as HTMLDivElement;
+  const highBalanceEl = document.getElementById('high-balance') as HTMLDivElement;
+
+  // Загрузка финансовых данных
+  async function loadFinancialData() {
+    try {
+      const response = await fetch('/api/admin/financial-overview');
+      if (!response.ok) throw new Error('Failed to fetch financial data');
+
+      const result = await response.json();
+      if (!result.success) throw new Error('API error');
+
+      allFinancialData = result.data;
+      renderFinancialTable();
+      updateFinancialIndicators();
+    } catch (error) {
+      console.error('[FINANCIAL_TABLE] Error:', error);
+      financialTableBody.innerHTML = '<tr class="text-center"><td colspan="9" class="px-6 py-8 text-red-500">Ошибка загрузки данных</td></tr>';
+    }
+  }
+
+  // Обновление финансовых индикаторов (Top Payers и High Balance)
+  function updateFinancialIndicators() {
+    // Top Payers - 3 пользователя с наибольшей выручкой
+    const topPayers = allFinancialData
+      .filter(u => u.totalRevenue > 0)
+      .sort((a, b) => b.totalRevenue - a.totalRevenue)
+      .slice(0, 3);
+
+    if (topPayers.length > 0) {
+      topPayersEl.innerHTML = topPayers
+        .map(u => `<div>${u.email}: <strong>${u.totalRevenue}₽</strong></div>`)
+        .join('');
+    } else {
+      topPayersEl.textContent = 'Нет платежей';
+    }
+
+    // High Balance - пользователи с высоким балансом (потенциальный риск)
+    const highBalance = allFinancialData
+      .filter(u => u.currentBalance > 100)
+      .sort((a, b) => b.currentBalance - a.currentBalance)
+      .slice(0, 3);
+
+    if (highBalance.length > 0) {
+      highBalanceEl.innerHTML = highBalance
+        .map(u => `<div>${u.email}: <strong>${u.currentBalance} кредитов</strong></div>`)
+        .join('');
+    } else {
+      highBalanceEl.textContent = 'Нет пользователей с высоким балансом';
+    }
+  }
+
+  // Фильтрация и сортировка данных
+  function getFilteredAndSortedData(): UserFinancial[] {
+    let filtered = allFinancialData;
+
+    // Фильтр по статусу
+    if (currentFilter !== 'all') {
+      filtered = filtered.filter(u => u.status === currentFilter);
+    }
+
+    // Сортировка
+    return filtered.sort((a, b) => {
+      let aVal: any = a[currentSort.field as keyof UserFinancial];
+      let bVal: any = b[currentSort.field as keyof UserFinancial];
+
+      if (typeof aVal === 'string') {
+        aVal = aVal.toLowerCase();
+        bVal = bVal.toLowerCase();
+      }
+
+      if (aVal < bVal) return currentSort.direction === 'asc' ? -1 : 1;
+      if (aVal > bVal) return currentSort.direction === 'asc' ? 1 : -1;
+      return 0;
+    });
+  }
+
+  // Форматирование даты
+  function formatDate(timestamp: number | null): string {
+    if (!timestamp) return 'Никогда';
+    const date = new Date(timestamp * 1000);
+    const now = Date.now();
+    const diffMs = now - date.getTime();
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+    if (diffDays === 0) return 'Сегодня';
+    if (diffDays === 1) return 'Вчера';
+    if (diffDays < 7) return `${diffDays} дней назад`;
+    if (diffDays < 30) return `${Math.floor(diffDays / 7)} недель назад`;
+    return date.toLocaleDateString('ru-RU');
+  }
+
+  // Статус цвет
+  function getStatusColor(status: string): string {
+    switch (status) {
+      case 'Active': return 'text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/20 px-2 py-1 rounded';
+      case 'At risk': return 'text-yellow-600 dark:text-yellow-400 bg-yellow-50 dark:bg-yellow-900/20 px-2 py-1 rounded';
+      case 'Dormant': return 'text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded';
+      default: return '';
+    }
+  }
+
+  // Отрисовка финансовой таблицы
+  function renderFinancialTable() {
+    const filtered = getFilteredAndSortedData();
+
+    if (filtered.length === 0) {
+      financialTableBody.innerHTML = '<tr class="text-center"><td colspan="9" class="px-6 py-8 text-gray-500 dark:text-gray-400">Нет данных для отображения</td></tr>';
+      return;
+    }
+
+    financialTableBody.innerHTML = filtered
+      .map(user => `
+        <tr class="border-b border-gray-200 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition">
+          <td class="px-4 py-3 font-medium text-gray-900 dark:text-white truncate max-w-xs">${user.email}</td>
+          <td class="px-4 py-3 text-gray-600 dark:text-gray-400 truncate">${user.name}</td>
+          <td class="px-4 py-3 text-right font-semibold text-gray-900 dark:text-white">${user.totalCreditsBought}</td>
+          <td class="px-4 py-3 text-right text-gray-600 dark:text-gray-400">${user.totalCreditsUsed}</td>
+          <td class="px-4 py-3 text-right font-semibold ${user.currentBalance > 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}">${user.currentBalance}</td>
+          <td class="px-4 py-3 text-right font-semibold text-blue-600 dark:text-blue-400">${Math.round(user.totalRevenue)}₽</td>
+          <td class="px-4 py-3 text-right text-gray-600 dark:text-gray-400">${user.avgPricePerCredit.toFixed(2)}₽</td>
+          <td class="px-4 py-3 text-sm text-gray-600 dark:text-gray-400">${formatDate(user.lastPaymentDate)}</td>
+          <td class="px-4 py-3"><span class="${getStatusColor(user.status)}">${user.status}</span></td>
+        </tr>
+      `)
+      .join('');
+  }
+
+  // Обработчики фильтров
+  document.querySelectorAll('.financial-filter').forEach(btn => {
+    btn.addEventListener('click', (e: Event) => {
+      const target = e.target as HTMLButtonElement;
+      const filter = target.getAttribute('data-filter') || 'all';
+
+      // Обновляем активную кнопку
+      document.querySelectorAll('.financial-filter').forEach(b => {
+        b.classList.remove('bg-primary', 'text-white');
+        b.classList.add('bg-gray-100', 'dark:bg-gray-800', 'text-gray-900', 'dark:text-white');
+      });
+      target.classList.remove('bg-gray-100', 'dark:bg-gray-800', 'text-gray-900', 'dark:text-white');
+      target.classList.add('bg-primary', 'text-white');
+
+      currentFilter = filter;
+      renderFinancialTable();
+    });
+  });
+
+  // Обработчики сортировки
+  document.querySelectorAll('[data-sort]').forEach(th => {
+    th.addEventListener('click', (e: Event) => {
+      const target = e.target as HTMLElement;
+      const field = target.getAttribute('data-sort');
+
+      if (!field) return;
+
+      // Переключаем направление если кликнули по одному полю
+      if (currentSort.field === field) {
+        currentSort.direction = currentSort.direction === 'asc' ? 'desc' : 'asc';
+      } else {
+        currentSort.field = field;
+        currentSort.direction = 'desc';
+      }
+
+      renderFinancialTable();
+    });
+  });
+
+  // Загрузка данных при загрузке страницы
+  loadFinancialData();
+
+  // Периодическое обновление финансовых данных каждые 10 секунд
+  setInterval(loadFinancialData, 10000);
 </script>
