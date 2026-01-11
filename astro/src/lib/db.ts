@@ -6,8 +6,13 @@ let db: Database.Database | null = null;
 function initDb() {
   if (db) return db;
 
-  const dbPath = process.env.DATABASE_URL';
-  db = new Database(dbPath);
+  const dbPath = process.env.DATABASE_URL;
+  const absoluteDbPath = path.resolve(dbPath);
+
+  console.log('[DB] Initializing database:');
+  console.log('[DB]   - dbPath (from env/default):', dbPath);
+  console.log('[DB]   - process.cwd():', process.cwd());
+  console.log('[DB]   - absoluteDbPath:', absoluteDbPath);
 
   db = new Database(absoluteDbPath);
 
