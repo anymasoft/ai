@@ -23,7 +23,7 @@ export const GET: APIRoute = async (context) => {
       );
     }
 
-    console.log(`[BALANCE] GET balance for user ${user.id}: balance=${user.generation_balance}, used=${user.generation_used}`);
+    // console.log(`[BALANCE] GET balance for user ${user.id}: balance=${user.generation_balance}, used=${user.generation_used}`);
 
     return new Response(
       JSON.stringify({
