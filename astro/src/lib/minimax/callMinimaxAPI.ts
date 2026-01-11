@@ -42,18 +42,23 @@ export async function callMinimaxAPI(
     // Конвертируем изображение в base64 data URL
     const imageDataUrl = await imageToBase64DataUrl(imagePath);
 
+    // Гарантируем что duration это число (не строка "6s")
+    const durationNumber = typeof duration === 'string'
+      ? parseInt(duration.replace('s', ''), 10)
+      : Number(duration);
+
     // Подготавливаем payload
     const payload: MinimaxRequest = {
       model: 'MiniMax-Hailuo-02',
       first_frame_image: imageDataUrl,
       prompt: prompt,
-      duration: duration,
+      duration: durationNumber,  // ← ТОЛЬКО ЧИСЛО
       resolution: '512P',
       callback_url: callbackUrl,
     };
 
     console.log(
-      `[MINIMAX] Отправляем запрос: duration=${duration}s, callback=${callbackUrl}`
+      `[MINIMAX] Отправляем запрос: duration=${durationNumber}, callback=${callbackUrl}`
     );
 
     // Отправляем запрос к MiniMax API
