@@ -1,5 +1,4 @@
 import type { APIRoute } from 'astro';
-import path from 'path';
 import { getDb } from '../../lib/db';
 import {
   updateGenerationStatus,
@@ -17,32 +16,25 @@ interface CallbackPayload {
 }
 
 /**
- * POST /api/minimax_callback?generationId=...
+ * POST /api/minimax_callback
  * Webhook от MiniMax для обработки результата генерации видео
  *
- * MiniMax отправляет callback с результатом обработки видео.
- * Если успешно (status === 'success'), скачиваем видео и списываем кредиты.
+ * ВАЖНО: Callback привязывается к generation через task_id (minimax_job_id),
+ * а не через generationId в query. Это обеспечивает надежность.
  */
 export const POST: APIRoute = async (context) => {
   try {
-    // Получаем generationId из query параметров
-    const url = new URL(context.request.url);
-    const generationId = url.searchParams.get('generationId');
-
-    if (!generationId) {
-      console.error('[CALLBACK] Нет generationId в query');
-      return new Response(
-        JSON.stringify({ error: 'Missing generationId' }),
-        { status: 400, headers: { 'Content-Type': 'application/json' } }
-      );
-    }
-
     // Парсим payload от MiniMax
     const payload = (await context.request.json()) as CallbackPayload;
 
-    console.log(`[CALLBACK] generationId=${generationId}, payload:`, payload);
+    console.log('[CALLBACK] Received payload:', {
+      task_id: payload.task_id,
+      status: payload.status,
+      file_id: payload.file_id,
+      error: payload.error,
+    });
 
-    // ШАГ 1: Проверка verification ping от MiniMax
+    // ШАГ 1: Проверка verification challenge от MiniMax
     if (payload.challenge) {
       console.log('[CALLBACK] MiniMax verification challenge received');
       return new Response(
@@ -51,32 +43,52 @@ export const POST: APIRoute = async (context) => {
       );
     }
 
-    // ШАГ 2: Получаем генерацию из БД
-    const db = getDb();
-    const genStmt = db.prepare(
-      'SELECT id, userId, cost FROM generations WHERE id = ?'
-    );
-    const generation = genStmt.get(generationId) as any;
-
-    if (!generation) {
-      console.error(`[CALLBACK] Generation not found: ${generationId}`);
+    // ШАГ 2: Получить task_id из payload
+    const taskId = payload.task_id;
+    if (!taskId) {
+      console.error('[CALLBACK] Нет task_id в payload');
+      // Возвращаем 200 чтобы MiniMax не спамил ретраями
       return new Response(
-        JSON.stringify({ error: 'Generation not found' }),
-        { status: 404, headers: { 'Content-Type': 'application/json' } }
+        JSON.stringify({ ok: false, error: 'Missing task_id' }),
+        { status: 200, headers: { 'Content-Type': 'application/json' } }
       );
     }
 
-    // ШАГ 3: Обработка результата
+    // ШАГ 3: Найти generation по minimax_job_id
+    const db = getDb();
+    const genStmt = db.prepare(
+      'SELECT id, userId, cost, charged FROM generations WHERE minimax_job_id = ?'
+    );
+    const generation = genStmt.get(taskId) as any;
+
+    if (!generation) {
+      console.error(`[CALLBACK] Generation not found for task_id=${taskId}`);
+      // Возвращаем 200 - это нормально, задача могла быть удалена
+      return new Response(
+        JSON.stringify({ ok: false, error: 'Generation not found' }),
+        { status: 200, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const generationId = generation.id;
+    const userId = generation.userId;
+
+    console.log(
+      `[CALLBACK] Found generation: ${generationId}, userId=${userId}`
+    );
+
+    // ШАГ 4: Обработка результата
     if (payload.status === 'success') {
       // Успешная генерация
       const fileId = payload.file_id;
 
       if (!fileId) {
-        console.error('[CALLBACK] Нет file_id в ответе');
+        console.error('[CALLBACK] Нет file_id в success payload');
         updateGenerationStatus(generationId, 'failed');
+        // Возвращаем 200 - callback обработан, но ошибка в данных
         return new Response(
-          JSON.stringify({ error: 'No file_id in success response' }),
-          { status: 400, headers: { 'Content-Type': 'application/json' } }
+          JSON.stringify({ ok: false, error: 'No file_id' }),
+          { status: 200, headers: { 'Content-Type': 'application/json' } }
         );
       }
 
@@ -84,21 +96,21 @@ export const POST: APIRoute = async (context) => {
         `[CALLBACK] ✅ MiniMax success: generationId=${generationId}, fileId=${fileId}`
       );
 
-      // Скачиваем видео
-      const outputPath = path.join(process.cwd(), 'videos', 'output.mp4');
-      const downloadResult = await downloadVideoFromMinimax(fileId, outputPath);
+      // Скачиваем видео в папку пользователя
+      const downloadResult = await downloadVideoFromMinimax(fileId, userId);
 
       if (!downloadResult.success) {
         console.error('[CALLBACK] Ошибка скачивания видео:', downloadResult.error);
         updateGenerationStatus(generationId, 'failed');
+        // Возвращаем 200 - callback обработан
         return new Response(
-          JSON.stringify({ error: downloadResult.error || 'Failed to download video' }),
-          { status: 500, headers: { 'Content-Type': 'application/json' } }
+          JSON.stringify({ ok: false, error: 'Download failed' }),
+          { status: 200, headers: { 'Content-Type': 'application/json' } }
         );
       }
 
-      // Обновляем БД с URL видео
-      const videoUrl = '/videos/output.mp4';
+      // Обновляем БД с URL видео (используем API endpoint)
+      const videoUrl = '/api/video/current';
       updateGenerationVideoUrl(generationId, videoUrl);
 
       // Обновляем статус на success
@@ -129,37 +141,41 @@ export const POST: APIRoute = async (context) => {
       );
     } else if (payload.status === 'failed') {
       // Ошибка при генерации в MiniMax
-      console.error(`[CALLBACK] MiniMax failed: ${payload.error || 'Unknown error'}`);
+      console.error(
+        `[CALLBACK] MiniMax failed for ${generationId}: ${payload.error || 'Unknown error'}`
+      );
 
       updateGenerationStatus(generationId, 'failed');
 
       // Кредиты НЕ списываются при ошибке
-      console.log(`[CALLBACK] Кредиты не списаны (ошибка генерации)`);
+      console.log(
+        `[CALLBACK] Кредиты не списаны (ошибка генерации MiniMax)`
+      );
 
       return new Response(
         JSON.stringify({
           ok: false,
+          generationId,
           error: 'MiniMax generation failed',
         }),
         { status: 200, headers: { 'Content-Type': 'application/json' } }
       );
     } else {
-      // Неизвестный статус
-      console.warn(
-        `[CALLBACK] Unknown status: ${payload.status}`
-      );
+      // Неизвестный статус - просто логируем
+      console.warn(`[CALLBACK] Unknown status for ${generationId}: ${payload.status}`);
 
       return new Response(
-        JSON.stringify({ error: 'Unknown status' }),
-        { status: 400, headers: { 'Content-Type': 'application/json' } }
+        JSON.stringify({ ok: false, error: 'Unknown status' }),
+        { status: 200, headers: { 'Content-Type': 'application/json' } }
       );
     }
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     console.error('[CALLBACK] Error:', errorMessage);
+    // Возвращаем 200 чтобы не ломалось повторное стремление MiniMax
     return new Response(
-      JSON.stringify({ error: 'Internal server error' }),
-      { status: 500, headers: { 'Content-Type': 'application/json' } }
+      JSON.stringify({ ok: false, error: 'Internal server error' }),
+      { status: 200, headers: { 'Content-Type': 'application/json' } }
     );
   }
 };

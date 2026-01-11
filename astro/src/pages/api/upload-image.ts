@@ -1,13 +1,12 @@
 import type { APIRoute } from 'astro';
 import fs from 'fs';
-import path from 'path';
-import { Readable } from 'stream';
 import { getUserFromSession } from '../../lib/auth';
+import { getUserImagePath, ensureUserStorageDir } from '../../lib/minimax/storage';
 
 /**
  * POST /api/upload-image
  * Загружает изображение товара (jpg only)
- * Файл сохраняется как /uploads/image.jpg (перезаписывается)
+ * Файл сохраняется как /storage/<USER_KEY>/image.jpg (перезаписывается)
  */
 export const POST: APIRoute = async (context) => {
   try {
@@ -59,14 +58,11 @@ export const POST: APIRoute = async (context) => {
       );
     }
 
-    // Путь для сохранения (всегда одинаковый)
-    const uploadsDir = path.join(process.cwd(), 'uploads');
-    const imagePath = path.join(uploadsDir, 'image.jpg');
+    // Создаем папку пользователя если её нет
+    ensureUserStorageDir(user.id);
 
-    // Создаем папку если её нет
-    if (!fs.existsSync(uploadsDir)) {
-      fs.mkdirSync(uploadsDir, { recursive: true });
-    }
+    // Получаем путь сохранения (per-user)
+    const imagePath = getUserImagePath(user.id);
 
     // Преобразуем File в Buffer
     const buffer = Buffer.from(await imageFile.arrayBuffer());
@@ -75,14 +71,15 @@ export const POST: APIRoute = async (context) => {
     fs.writeFileSync(imagePath, buffer);
 
     console.log(
-      `[UPLOAD] ✅ Изображение загружено: ${imagePath} (${buffer.length} байт)`
+      `[UPLOAD] ✅ Изображение загружено для пользователя ${user.id}: ${imagePath} (${buffer.length} байт)`
     );
 
     return new Response(
       JSON.stringify({
         success: true,
         message: 'Изображение загружено',
-        imagePath: '/uploads/image.jpg',
+        imagePath: '/storage/image.jpg',
+        userId: user.id,
         size: buffer.length,
       }),
       { status: 200, headers: { 'Content-Type': 'application/json' } }

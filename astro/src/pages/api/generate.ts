@@ -1,15 +1,13 @@
 import type { APIRoute } from 'astro';
-import path from 'path';
-import fs from 'fs';
 import { getUserFromSession } from '../../lib/auth';
-import {
-  createGeneration,
-  updateGenerationStatus,
-  chargeGeneration,
-  updateMinimaxJobId,
-} from '../../lib/billing/chargeGeneration';
 import { getDb } from '../../lib/db';
-import { callMinimaxAPI } from '../../lib/minimax/callMinimaxAPI';
+import {
+  getUserImagePath,
+  userImageExists,
+  ensureUserStorageDir,
+} from '../../lib/minimax/storage';
+import { enqueueGeneration, getQueueSize } from '../../lib/minimax/queue';
+import { processQueue } from '../../lib/minimax/processor';
 
 interface GenerateRequest {
   prompt: string;
@@ -17,8 +15,36 @@ interface GenerateRequest {
 }
 
 /**
+ * Создает запись генерации с промптом и статусом 'queued'
+ * Промпт сохраняется в БД для последующей обработки
+ */
+function createGenerationWithPrompt(
+  userId: string,
+  duration: number,
+  prompt: string
+): string {
+  const db = getDb();
+  const cost = duration === 6 ? 1 : 2;
+  const generationId = `gen_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+  const now = Math.floor(Date.now() / 1000);
+
+  const insertStmt = db.prepare(
+    `INSERT INTO generations (
+      id, userId, status, duration, cost, charged,
+      prompt, minimax_status, createdAt
+    ) VALUES (?, ?, ?, ?, ?, 0, ?, 'pending', ?)`
+  );
+
+  insertStmt.run(generationId, userId, 'queued', duration, cost, prompt, now);
+
+  return generationId;
+}
+
+/**
  * POST /api/generate
  * Генерирует видео из фото и описания
+ * Добавляет задачу в глобальную очередь с concurrency=1
+ * Не блокирует ответ - обработка идет асинхронно через очередь
  */
 export const POST: APIRoute = async (context) => {
   try {
@@ -44,15 +70,6 @@ export const POST: APIRoute = async (context) => {
       );
     }
 
-    // Проверяем наличие загруженного изображения
-    const imagePath = path.join(process.cwd(), 'uploads', 'image.jpg');
-    if (!fs.existsSync(imagePath)) {
-      return new Response(
-        JSON.stringify({ error: 'Изображение не загружено' }),
-        { status: 400, headers: { 'Content-Type': 'application/json' } }
-      );
-    }
-
     if (![6, 10].includes(duration)) {
       return new Response(
         JSON.stringify({ error: 'Duration должна быть 6 или 10' }),
@@ -60,7 +77,16 @@ export const POST: APIRoute = async (context) => {
       );
     }
 
-    // ШАГ 1: Проверяем баланс
+    // ШАГ 1: Проверяем наличие загруженного изображения (per-user)
+    ensureUserStorageDir(user.id);
+    if (!userImageExists(user.id)) {
+      return new Response(
+        JSON.stringify({ error: 'Изображение не загружено' }),
+        { status: 400, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // ШАГ 2: Проверяем баланс
     const db = getDb();
     const userStmt = db.prepare(
       'SELECT generation_balance FROM users WHERE id = ?'
@@ -84,69 +110,33 @@ export const POST: APIRoute = async (context) => {
       );
     }
 
-    // ШАГ 2: Создаем запись генерации
-    const generationId = createGeneration(user.id, duration);
+    // ШАГ 3: Создаем запись генерации со статусом 'queued'
+    // Промпт сохраняется в БД
+    const generationId = createGenerationWithPrompt(user.id, duration, prompt);
 
-    // ШАГ 3: Отправляем в MiniMax (фоновая обработка)
-    // Callback от MiniMax будет обрабатываться в /api/minimax_callback
+    // ШАГ 4: Добавляем в глобальную очередь (concurrency=1)
+    enqueueGeneration(generationId);
 
-    setTimeout(async () => {
-      try {
-        updateGenerationStatus(generationId, 'processing');
-
-        // Генерируем callback URL (пример)
-        const callbackUrl = `${process.env.MINIMAX_CALLBACK_URL || 'http://localhost:3000'}/api/minimax_callback?generationId=${generationId}`;
-
-        console.log(
-          `[GEN] Отправляем в MiniMax: generation=${generationId}, callback=${callbackUrl}`
-        );
-
-        // Вызываем MiniMax API
-        const minimaxResult = await callMinimaxAPI(
-          imagePath,
-          prompt,
-          duration,
-          callbackUrl
-        );
-
-        if (!minimaxResult.success) {
-          console.error(
-            `[GEN] ❌ MiniMax API failed: ${minimaxResult.error}`
-          );
-          updateGenerationStatus(generationId, 'failed');
-          return;
-        }
-
-        // Сохраняем task_id от MiniMax
-        const taskId = minimaxResult.taskId;
-        console.log(`[GEN] ✅ Task created: ${taskId}`);
-
-        updateMinimaxJobId(generationId, taskId);
-
-        // Теперь ждем callback от MiniMax
-        // После получения callback'а произойдет:
-        // 1. Скачивание видео
-        // 2. Сохранение в /videos/output.mp4
-        // 3. Обновление status на 'success'
-        // 4. Списание кредитов
-
-      } catch (error) {
-        console.error(`[GEN] Error processing generation:`, error);
-        updateGenerationStatus(generationId, 'failed');
-      }
-    }, 1000);
+    // ШАГ 5: Запускаем обработку очереди асинхронно (не блокируем ответ)
+    // Используем .catch() чтобы обработать потенциальные ошибки процессора
+    processQueue().catch((err) => {
+      console.error('[GEN] Queue processor error:', err);
+    });
 
     console.log(
-      `[GEN] task=${generationId} user=${user.id} status=processing`
+      `[GEN] task=${generationId} user=${user.id} status=queued, queueSize=${getQueueSize()}`
     );
 
+    // ШАГ 6: Возвращаем generationId и информацию о состоянии очереди
     return new Response(
       JSON.stringify({
         success: true,
         generationId,
         cost,
         balanceBefore: balance,
-        balanceAfter: balance - cost, // будет списано через 3 сек
+        balanceAfter: balance - cost,
+        status: 'queued', // Статус = queued (в очереди), не processing
+        queueSize: getQueueSize(), // Размер очереди для информации клиенту
       }),
       { status: 200, headers: { 'Content-Type': 'application/json' } }
     );
@@ -163,6 +153,7 @@ export const POST: APIRoute = async (context) => {
 /**
  * GET /api/generate?generationId=...
  * Получает статус генерации
+ * Кроме статуса, возвращает videoUrl для скачивания результата
  */
 export const GET: APIRoute = async (context) => {
   try {
@@ -215,7 +206,7 @@ export const GET: APIRoute = async (context) => {
         duration: generation.duration,
         cost: generation.cost,
         charged: generation.charged === 1,
-        videoUrl: generation.video_url, // Новое поле
+        videoUrl: generation.video_url, // URL для скачивания видео
       }),
       { status: 200, headers: { 'Content-Type': 'application/json' } }
     );

@@ -140,6 +140,12 @@ function initDb() {
       db.exec('ALTER TABLE generations ADD COLUMN minimax_status TEXT DEFAULT \'pending\'');
       console.log('✅ Migration: Added minimax_status column to generations table');
     }
+
+    const hasPrompt = genInfo.some((col: any) => col.name === 'prompt');
+    if (!hasPrompt) {
+      db.exec('ALTER TABLE generations ADD COLUMN prompt TEXT');
+      console.log('✅ Migration: Added prompt column to generations table');
+    }
   } catch (e) {
     console.log('ℹ️ Migration check for generations passed');
   }

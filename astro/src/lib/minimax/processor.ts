@@ -1,0 +1,126 @@
+/**
+ * Обработчик очереди генераций MiniMax
+ * Этот модуль отвечает за асинхронную обработку очереди с concurrency=1
+ */
+
+import { getDb } from '../db';
+import {
+  peekQueue,
+  dequeueGeneration,
+  setQueueRunning,
+  isQueueRunning,
+} from './queue';
+import { updateGenerationStatus, updateMinimaxJobId } from '../billing/chargeGeneration';
+import { callMinimaxAPI } from './callMinimaxAPI';
+import { getUserImagePath } from './storage';
+
+/**
+ * Обработать очередь генераций
+ * Берет следующую из очереди и запускает обработку
+ * Рекурсивно вызывает себя для обработки всей очереди
+ */
+export async function processQueue(): Promise<void> {
+  try {
+    // Если уже работаем — не запускаем еще один воркер
+    if (isQueueRunning()) {
+      console.log('[PROCESSOR] Queue already running, skipping');
+      return;
+    }
+
+    // Получаем первую генерацию из очереди (без удаления)
+    const item = peekQueue();
+    if (!item) {
+      console.log('[PROCESSOR] Queue is empty');
+      return;
+    }
+
+    const generationId = item.generationId;
+
+    // Помечаем что обработка началась
+    setQueueRunning(true);
+
+    console.log(`[PROCESSOR] Processing generation: ${generationId}`);
+
+    try {
+      // Получаем данные генерации из БД
+      const db = getDb();
+      const genStmt = db.prepare(
+        'SELECT id, userId, status, prompt, duration FROM generations WHERE id = ?'
+      );
+      const generation = genStmt.get(generationId) as any;
+
+      if (!generation) {
+        console.error(`[PROCESSOR] Generation not found: ${generationId}`);
+        // Удалить из очереди
+        dequeueGeneration();
+        // Продолжить обработку следующей
+        setQueueRunning(false);
+        processQueue();
+        return;
+      }
+
+      // Получить путь к картинке пользователя
+      const userId = generation.userId;
+      const imagePath = getUserImagePath(userId);
+
+      // Выставить статус на processing
+      updateGenerationStatus(generationId, 'processing');
+
+      // Сформировать callback URL (без generationId в query, только по task_id)
+      const callbackUrl = `${process.env.MINIMAX_CALLBACK_URL || 'http://localhost:3000'}/api/minimax_callback`;
+
+      console.log(
+        `[PROCESSOR] Calling MiniMax: generation=${generationId}, userId=${userId}`
+      );
+
+      // Вызвать MiniMax API
+      const minimaxResult = await callMinimaxAPI(
+        imagePath,
+        generation.prompt,
+        generation.duration,
+        callbackUrl
+      );
+
+      if (!minimaxResult.success) {
+        console.error(
+          `[PROCESSOR] MiniMax API failed: ${minimaxResult.error}`
+        );
+        updateGenerationStatus(generationId, 'failed');
+        // Удалить из очереди
+        dequeueGeneration();
+        // Продолжить обработку следующей
+        setQueueRunning(false);
+        processQueue();
+        return;
+      }
+
+      // Сохранить task_id в БД
+      const taskId = minimaxResult.taskId;
+      console.log(`[PROCESSOR] ✅ Task created: ${taskId}`);
+      updateMinimaxJobId(generationId, taskId);
+
+      // Удалить из очереди — задача успешно отправлена в MiniMax
+      dequeueGeneration();
+
+      console.log(`[PROCESSOR] Generation queued successfully, waiting for MiniMax callback`);
+
+      // Завершить обработку и перейти к следующей
+      setQueueRunning(false);
+
+      // Рекурсивно обработать следующую задачу из очереди
+      processQueue();
+
+    } catch (error) {
+      console.error(`[PROCESSOR] Error processing generation:`, error);
+      updateGenerationStatus(generationId, 'failed');
+      // Удалить из очереди
+      dequeueGeneration();
+      // Завершить флаг и перейти к следующей
+      setQueueRunning(false);
+      processQueue();
+    }
+  } catch (error) {
+    console.error('[PROCESSOR] Queue processor error:', error);
+    setQueueRunning(false);
+  }
+}
