@@ -16,7 +16,6 @@ export const GET: APIRoute = async (context) => {
     const user = getUserFromSession(sessionToken);
 
     if (!user) {
-      console.warn('[BALANCE] Invalid session token');
       return new Response(
         JSON.stringify({ error: 'Invalid session' }),
         { status: 401, headers: { 'Content-Type': 'application/json' } }
@@ -37,7 +36,6 @@ export const GET: APIRoute = async (context) => {
       }
     );
   } catch (error) {
-    console.error('[BALANCE] Error fetching user balance:', error);
     return new Response(
       JSON.stringify({ error: 'Internal server error' }),
       { status: 500, headers: { 'Content-Type': 'application/json' } }
