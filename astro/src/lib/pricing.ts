@@ -24,12 +24,21 @@ export const PRICING_PLANS: PricingPlan[] = [
     isCustom: true
   },
   {
+    id: 'free',
+    name: 'Пробный',
+    credits: 1,
+    price: 89,
+    pricePerCredit: 89,
+    popular: false,
+    isCustom: false
+  },
+  {
     id: 'basic',
     name: 'Basic',
     credits: 50,
     price: 3950,
     pricePerCredit: 79,
-    popular: false,
+    popular: true,
     isCustom: false
   },
   {
@@ -38,7 +47,7 @@ export const PRICING_PLANS: PricingPlan[] = [
     credits: 200,
     price: 13800,
     pricePerCredit: 69,
-    popular: true,
+    popular: false,
     isCustom: false
   }
 ];
