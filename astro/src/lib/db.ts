@@ -184,6 +184,12 @@ function initDb() {
       db.exec('ALTER TABLE generations ADD COLUMN minimax_final_prompt TEXT');
       console.log('✅ Migration: Added minimax_final_prompt column to generations table');
     }
+
+    const hasGenerationMode = genInfo.some((col: any) => col.name === 'generation_mode');
+    if (!hasGenerationMode) {
+      db.exec('ALTER TABLE generations ADD COLUMN generation_mode TEXT DEFAULT \'template\'');
+      console.log('✅ Migration: Added generation_mode column to generations table');
+    }
   } catch (e) {
     console.log('ℹ️ Migration check for generations passed');
   }
