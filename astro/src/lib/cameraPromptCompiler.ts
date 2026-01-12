@@ -10,16 +10,84 @@
  *
  * Фаза 2 (этот файл):
  *   - Берет prompt_cinematic из Фазы 1
- *   - Добавляет явные MiniMax camera commands: [Tracking shot], [Push in], etc.
+ *   - Добавляет только ВАЛИДНЫЕ MiniMax camera commands
  *   - Гарантирует что MiniMax поймет требуемые движения камеры
  *   - Результат: prompt_director (готовый для MiniMax)
+ *   - Постобработка: sanitizeCameraCommands() удаляет невалидные команды
  */
+
+/**
+ * Валидный список MiniMax camera commands (15 команд)
+ */
+const VALID_CAMERA_COMMANDS = [
+  'Truck left',
+  'Truck right',
+  'Pan left',
+  'Pan right',
+  'Push in',
+  'Pull out',
+  'Pedestal up',
+  'Pedestal down',
+  'Tilt up',
+  'Tilt down',
+  'Zoom in',
+  'Zoom out',
+  'Shake',
+  'Tracking shot',
+  'Static shot',
+];
+
+/**
+ * Санитайзер команд камеры - удаляет невалидные команды
+ * Проверяет каждую команду в квадратных скобках против белого списка
+ *
+ * @param text - промпт с возможно невалидными командами
+ * @returns промпт с только валидными командами
+ */
+function sanitizeCameraCommands(text: string): {
+  sanitized: string;
+  removedCommands: string[];
+} {
+  const removedCommands: string[] = [];
+
+  // Регулярное выражение для поиска всех [...] блоков
+  const commandRegex = /\[([^\]]+)\]/g;
+  let sanitized = text;
+  const matches = Array.from(text.matchAll(commandRegex));
+
+  for (const match of matches) {
+    const fullCommand = match[0]; // вся команда с скобками: "[Pan left]"
+    const innerText = match[1]; // текст внутри: "Pan left"
+
+    // Проверяем, является ли это комбинацией команд через запятую
+    const parts = innerText.split(',').map(p => p.trim());
+    const validParts = parts.filter(part => VALID_CAMERA_COMMANDS.includes(part));
+
+    if (validParts.length === 0) {
+      // Ни одна часть не валидна - удаляем всю команду
+      removedCommands.push(fullCommand);
+      sanitized = sanitized.replace(fullCommand, '');
+    } else if (validParts.length < parts.length) {
+      // Некоторые части невалидны - заменяем на только валидные части
+      const newCommand = `[${validParts.join(',')}]`;
+      const invalidParts = parts.filter(part => !VALID_CAMERA_COMMANDS.includes(part));
+      removedCommands.push(...invalidParts.map(p => `[${p}]`));
+      sanitized = sanitized.replace(fullCommand, newCommand);
+    }
+    // Если все части валидны - оставляем как есть
+  }
+
+  // Очищаем лишние пробелы
+  sanitized = sanitized.replace(/\s+/g, ' ').trim();
+
+  return { sanitized, removedCommands };
+}
 
 /**
  * Скомпилировать cinematic промпт в MiniMax-совместимый Director Prompt
  *
  * Эта функция вызывает GPT второй раз (после Smart Prompt Enhancer)
- * и добавляет явные MiniMax camera commands в правильные места
+ * и добавляет только ВАЛИДНЫЕ MiniMax camera commands
  *
  * @param cinematicPrompt - результат ФАЗЫ 1 (prompt_cinematic)
  * @returns MiniMax-совместимый промпт с camera commands (prompt_director)
@@ -43,35 +111,34 @@ export async function compileCameraCommands(cinematicPrompt: string): Promise<st
         messages: [
           {
             role: 'system',
-            content: `You are a cinematic camera director for MiniMax Video models.
+            content: `You are a camera-control compiler for MiniMax Video.
 
-Your job is to convert a cinematic video description into a MiniMax camera-controlled prompt.
+You MUST output a single English prompt enhanced with MiniMax camera commands.
 
-Rules:
-- You must preserve all meaning and story from the original prompt.
-- You must add MiniMax camera commands using square brackets [].
-- You must place camera commands exactly where the movement happens in the scene.
-- You must use these commands when applicable:
-
-[Tracking shot]
-[Push in]
-[Pull out]
-[Pan left]
-[Pan right]
-[Tilt up]
-[Tilt down]
-[Zoom in]
-[Zoom out]
-[Pedestal up]
-[Pedestal down]
-[Shake]
+CRITICAL: You may use ONLY the following camera commands (exact spelling):
+[Truck left], [Truck right],
+[Pan left], [Pan right],
+[Push in], [Pull out],
+[Pedestal up], [Pedestal down],
+[Tilt up], [Tilt down],
+[Zoom in], [Zoom out],
+[Shake],
+[Tracking shot],
 [Static shot]
 
-- Use at most 2–5 commands per moment.
-- Combine commands when needed, e.g. [Pan left,Push in].
-- Do not remove or rewrite story, only enhance it with camera control.
-- DO NOT explain anything.
-- Return ONLY the final MiniMax-ready prompt.`,
+Forbidden:
+- Any other bracket commands
+- Film terminology like [Close-up], [Mid-shot], [Low-angle], [Slow motion], [Soft focus]
+- Any explanation text
+
+Rules:
+- Preserve the original meaning and sequence of events
+- Insert camera commands inline exactly where motion happens
+- Use 2–6 total commands per prompt (not more)
+- Combine at most 3 commands in one bracket (e.g. [Pan right,Push in])
+- Prefer explicit commands over plain language camera descriptions
+
+Return ONLY the final prompt text.`,
           },
           {
             role: 'user',
@@ -91,11 +158,22 @@ Rules:
     }
 
     const data = (await response.json()) as any;
-    const directorPrompt = data.choices?.[0]?.message?.content?.trim() || cinematicPrompt;
+    const directorPromptRaw = data.choices?.[0]?.message?.content?.trim() || cinematicPrompt;
+
+    // ПОСТОБРАБОТКА: Санитайзер удаляет невалидные команды
+    const { sanitized: directorPrompt, removedCommands } = sanitizeCameraCommands(directorPromptRaw);
 
     console.log('[DIRECTOR] 🎥 Camera commands compiled');
     console.log(`[DIRECTOR] cinematic:\n${cinematicPrompt}`);
-    console.log(`[DIRECTOR] camera-enhanced:\n${directorPrompt}`);
+    console.log(`[DIRECTOR] camera-enhanced (raw):\n${directorPromptRaw}`);
+
+    if (removedCommands.length > 0) {
+      console.log(`[DIRECTOR] sanitize: removed_invalid=[${removedCommands.join(', ')}]`);
+    } else {
+      console.log('[DIRECTOR] sanitize: no invalid commands found');
+    }
+
+    console.log(`[DIRECTOR] final_prompt_to_minimax:\n${directorPrompt}`);
 
     return directorPrompt;
   } catch (error) {
