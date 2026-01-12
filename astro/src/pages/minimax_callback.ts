@@ -6,6 +6,7 @@ import {
   chargeGeneration,
 } from '../lib/billing/chargeGeneration';
 import { downloadVideoFromMinimax } from '../lib/minimax/downloadVideoFromMinimax';
+import { notifyAdmin } from '../lib/telegramNotifier';
 
 interface CallbackPayload {
   challenge?: string;
@@ -118,6 +119,8 @@ export const POST: APIRoute = async (context) => {
       ).all();
       console.error(`[MINIMAX_CALLBACK] Task ID types in DB:`, typeCheck);
 
+      await notifyAdmin('MINIMAX_CALLBACK', `Generation not found for task_id="${taskIdString}"`);
+
       return new Response(
         JSON.stringify({ ok: false }),
         { status: 200, headers: { 'Content-Type': 'application/json' } }
@@ -135,6 +138,7 @@ export const POST: APIRoute = async (context) => {
 
       if (!fileId) {
         console.error('[MINIMAX_CALLBACK] Нет file_id');
+        await notifyAdmin('MINIMAX_CALLBACK', 'Missing file_id in success response', userId, generationId);
         updateGenerationStatus(generationId, 'failed');
         return new Response(
           JSON.stringify({ ok: false }),
@@ -151,7 +155,9 @@ export const POST: APIRoute = async (context) => {
       const downloadResult = await downloadVideoFromMinimax(fileIdString, userId);
 
       if (!downloadResult.success) {
-        console.error('[MINIMAX_CALLBACK] Ошибка скачивания видео');
+        const downloadError = downloadResult.error || 'Unknown download error';
+        console.error('[MINIMAX_CALLBACK] Ошибка скачивания видео:', downloadError);
+        await notifyAdmin('VIDEO_DOWNLOAD', downloadError, userId, generationId);
         updateGenerationStatus(generationId, 'failed');
         return new Response(
           JSON.stringify({ ok: false }),
@@ -174,7 +180,9 @@ export const POST: APIRoute = async (context) => {
         { status: 200, headers: { 'Content-Type': 'application/json' } }
       );
     } else if (payload.status === 'failed') {
-      console.error(`[MINIMAX_CALLBACK] MiniMax вернул ошибку`);
+      const failReason = payload.error || 'No error message provided';
+      console.error(`[MINIMAX_CALLBACK] MiniMax вернул ошибку: ${failReason}`);
+      await notifyAdmin('MINIMAX_GENERATION', `Video generation failed: ${failReason}`, userId, generationId);
       updateGenerationStatus(generationId, 'failed');
       return new Response(
         JSON.stringify({ ok: false }),
@@ -191,6 +199,7 @@ export const POST: APIRoute = async (context) => {
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
     console.error('[MINIMAX_CALLBACK] Критическая ошибка:', errorMessage);
+    await notifyAdmin('MINIMAX_CALLBACK', `Critical: ${errorMessage}`);
     return new Response(
       JSON.stringify({ ok: false }),
       { status: 200, headers: { 'Content-Type': 'application/json' } }

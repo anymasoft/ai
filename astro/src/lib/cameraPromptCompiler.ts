@@ -16,6 +16,8 @@
  *   - Постобработка: sanitizeCameraCommands() удаляет невалидные команды
  */
 
+import { notifyAdmin } from './telegramNotifier';
+
 /**
  * Валидный список MiniMax camera commands (15 команд)
  */
@@ -177,8 +179,10 @@ Return ONLY the final prompt text.`,
 
     return directorPrompt;
   } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
     console.error('[DIRECTOR] Error compiling camera commands:', error);
     console.warn('[DIRECTOR] Returning cinematic prompt due to error');
+    await notifyAdmin('GPT_CAMERA_COMPILER', errorMessage);
     return cinematicPrompt;
   }
 }

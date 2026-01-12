@@ -9,6 +9,8 @@
  * деталями в зависимости от режима генерации
  */
 
+import { notifyAdmin } from './telegramNotifier';
+
 /**
  * Улучшить промпт через GPT-4o-mini ДЛЯ TEMPLATE MODE
  *
@@ -82,8 +84,10 @@ Start immediately without preamble.`,
 
     return enhancedPrompt;
   } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
     console.error('[SMART_PROMPT:TEMPLATE] Error enhancing prompt:', error);
     console.warn('[SMART_PROMPT:TEMPLATE] Returning original prompt due to error');
+    await notifyAdmin('GPT_ENHANCE_TEMPLATE', errorMessage);
     return userPrompt;
   }
 }
@@ -162,8 +166,10 @@ Start enhancing immediately without preamble.`,
 
     return enhancedPrompt;
   } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
     console.error('[SMART_PROMPT:PROMPT] Error enhancing prompt:', error);
     console.warn('[SMART_PROMPT:PROMPT] Returning original prompt due to error');
+    await notifyAdmin('GPT_ENHANCE_PROMPT', errorMessage);
     return userPrompt;
   }
 }
