@@ -69,17 +69,11 @@ export async function callMinimaxAPI(
       if (templateInputs) {
         payload.text_inputs = templateInputs;
       }
-      console.log('[MINIMAX] 🎬 TEMPLATE MODE: Using MiniMax Video Agent Template');
+      console.log('[MINIMAX] TEMPLATE MODE: Using MiniMax Video Agent Template');
       console.log(`[MINIMAX]   - template_id: ${templateId}`);
-      console.log(`[MINIMAX]   - duration: ${durationNumber}s`);
-      console.log(`[MINIMAX]   - text_inputs: ${templateInputs ? Object.keys(templateInputs).length + ' fields' : 'none'}`);
-      console.log(`[MINIMAX]   - callback: ${callbackUrl}`);
     } else {
       payload.prompt = prompt;
-      console.log('[MINIMAX] ✏️ PROMPT MODE: Using free-form prompt');
-      console.log(`[MINIMAX]   - prompt: "${prompt.substring(0, 80)}${prompt.length > 80 ? '...' : ''}"`);
-      console.log(`[MINIMAX]   - duration: ${durationNumber}s`);
-      console.log(`[MINIMAX]   - callback: ${callbackUrl}`);
+      console.log('[MINIMAX] PROMPT MODE: Using free-form prompt');
     }
 
     // Отправляем запрос к MiniMax API
@@ -112,10 +106,7 @@ export async function callMinimaxAPI(
 
     // Гарантируем что task_id всегда строка (MiniMax может вернуть число)
     const taskIdString = String(data.task_id);
-    console.log(`[MINIMAX] ✅ Task created successfully`);
-    console.log(`[MINIMAX]   - task_id: ${taskIdString}`);
-    console.log(`[MINIMAX]   - task_id type: ${typeof data.task_id}`);
-    console.log(`[MINIMAX] 🚀 Generation submitted to MiniMax queue`);
+    console.log(`[MINIMAX] Task created: ${taskIdString}`);
 
     return {
       success: true,

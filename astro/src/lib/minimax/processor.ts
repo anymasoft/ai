@@ -78,7 +78,7 @@ export async function processQueue(): Promise<void> {
       console.log(
         `[PROCESSOR] Calling MiniMax: generation=${generationId}, userId=${userId}, mode=${generationMode}, callback=${callbackUrl}`
       );
-      console.log(`[PROCESSOR] Mode: ${generationMode === 'template' ? '🎬 TEMPLATE' : '✏️ PROMPT'}`);
+      console.log(`[PROCESSOR] Mode: ${generationMode}`);
 
       // Подготавливаем данные для MiniMax API
       const finalPrompt = generation.minimax_final_prompt || generation.prompt_final || generation.prompt;
@@ -87,15 +87,9 @@ export async function processQueue(): Promise<void> {
         ? JSON.parse(generation.minimax_template_inputs)
         : null;
 
-      console.log('[PROCESSOR] 📦 Generation data prepared:');
+      console.log('[PROCESSOR] Generation data prepared');
       console.log(`[PROCESSOR]   - duration: ${generation.duration}s`);
       console.log(`[PROCESSOR]   - mode: ${generationMode}`);
-      if (generationMode === 'template' && templateId) {
-        console.log(`[PROCESSOR]   - template: ${generation.minimax_template_name} (${templateId})`);
-        console.log(`[PROCESSOR]   - text_inputs: ${templateInputs ? Object.keys(templateInputs).length + ' fields' : 'none'}`);
-      } else {
-        console.log(`[PROCESSOR]   - prompt: "${finalPrompt.substring(0, 80)}${finalPrompt.length > 80 ? '...' : ''}"`);
-      }
 
       // Вызвать MiniMax API с поддержкой шаблонов
       const minimaxResult = await callMinimaxAPI(
@@ -133,8 +127,7 @@ export async function processQueue(): Promise<void> {
       // Удалить из очереди — задача успешно отправлена в MiniMax
       dequeueGeneration();
 
-      console.log(`[PROCESSOR] ✅ Generation ${generationId} successfully queued`);
-      console.log(`[PROCESSOR] 📊 Status: processing (waiting for MiniMax callback)`);
+      console.log(`[PROCESSOR] Generation ${generationId} queued successfully`);
 
       // Завершить обработку и перейти к следующей
       setQueueRunning(false);
