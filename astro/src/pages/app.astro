@@ -258,12 +258,14 @@ const userBalance = user.generation_balance || 0;
 
     // ========== Validation and Button State ==========
     const generateBtn = document.getElementById('generate-btn') as HTMLButtonElement;
-    const promptTextarea = document.getElementById('prompt') as HTMLTextAreaElement;
     const imageUpload = document.getElementById('image-upload') as HTMLInputElement;
     let selectedDuration: string | null = null;
     let selectedImage: File | null = null;
 
     function updateGenerateButtonState() {
+        const promptCard = document.getElementById('ai-prompt-card') as HTMLElement;
+        const promptTextarea = promptCard?.querySelector('#prompt-textarea') as HTMLTextAreaElement;
+
         const hasPrompt = promptTextarea?.value.trim().length > 0;
         const hasDuration = selectedDuration !== null;
         const hasImage = selectedImage !== null;
@@ -291,19 +293,6 @@ const userBalance = user.generation_balance || 0;
 
         generateBtn.addEventListener('mouseleave', () => {
             tooltip.classList.add('hidden');
-        });
-    }
-
-    // Character Counter + Button Validation
-    if (promptTextarea) {
-        promptTextarea.addEventListener('input', () => {
-            const count = promptTextarea.value.length;
-
-            // Truncate if over 500
-            if (count > 500) {
-                promptTextarea.value = promptTextarea.value.substring(0, 500);
-            }
-            updateGenerateButtonState();
         });
     }
 
@@ -420,8 +409,11 @@ const userBalance = user.generation_balance || 0;
     // ========== Mode Selector (из компонента AiPromptCard) ==========
     let selectedMode: 'template' | 'prompt' = 'template';
 
-    // Получаем ссылку на новый textarea из компонента
-    const promptTextarea = document.getElementById('prompt-textarea') as HTMLTextAreaElement;
+    // Функция для получения textarea из компонента
+    function getPromptTextarea(): HTMLTextAreaElement | null {
+        const promptCard = document.getElementById('ai-prompt-card') as HTMLElement;
+        return promptCard?.querySelector('#prompt-textarea') as HTMLTextAreaElement;
+    }
 
     // ========== Generate Button ==========
     const generateIcon = document.getElementById('generate-icon') as HTMLImageElement;
@@ -460,6 +452,7 @@ const userBalance = user.generation_balance || 0;
 
     if (generateBtn) {
         generateBtn.addEventListener('click', async () => {
+            const promptTextarea = getPromptTextarea();
             if (!selectedImage || !selectedDuration || !promptTextarea?.value) {
                 console.error('[GEN] Missing required data');
                 return;
