@@ -13,7 +13,17 @@ let user = sessionToken ? getUserFromSession(sessionToken) : null;
 if (sessionToken && !user) {
   console.log(`\n⚠️ APP: Cookie существует, но сессия не найдена в БД`);
   console.log(`   - Удаляем "залипшую" cookie`);
-  Astro.cookies.delete('session_token');
+
+  // Правильное удаление cookie с ТЕМИ ЖЕ параметрами
+  Astro.cookies.set('session_token', '', {
+    path: '/',
+    sameSite: 'lax',
+    secure: import.meta.env.PROD,
+    httpOnly: true,
+    maxAge: 0,
+  });
+
+  console.log(`   ✅ Cookie очищена (maxAge=0)`);
   user = null;
 }
 
