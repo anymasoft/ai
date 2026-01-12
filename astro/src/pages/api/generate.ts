@@ -94,7 +94,7 @@ export const POST: APIRoute = async (context) => {
     let mode: 'template' | 'prompt' = (body.mode as any) || 'template';
 
     console.log(`[API] generation mode = ${mode}`);
-    console.log(`[API] Mode: ${mode === 'template' ? 'TEMPLATE' : 'PROMPT'}`);
+    console.log(`[API] Mode: ${mode === 'template' ? '🎬 TEMPLATE' : '✏️ PROMPT'}`);
 
     // Валидируем параметры
     if (!prompt || !duration) {
@@ -174,16 +174,16 @@ export const POST: APIRoute = async (context) => {
         setTimeout(() => reject(new Error('Prompt enhancement timeout')), 10000)
       );
       promptFinal = await Promise.race([enhancePromise, timeoutPromise]) as string;
-      console.log(`[API] Prompt enhanced (${mode} mode)`);
+      console.log(`[API] ✅ Prompt enhanced (${mode} mode)`);
     } catch (enhanceError) {
-      console.warn('[API] Prompt enhancement failed, using original prompt');
+      console.warn('[API] ⚠️ Prompt enhancement failed, using original prompt');
       promptFinal = prompt;
     }
 
     // ШАГ 3.5: Выбираем оптимальный MiniMax Template через Template Router (ТОЛЬКО ДЛЯ TEMPLATE MODE)
     let templateData;
     if (mode === 'template') {
-      console.log('[API] Template mode: selecting template...');
+      console.log('[API] 🎬 Template mode: selecting template...');
       try {
         // Применяем timeout в 15 секунд для Template Router
         const imageDescription = 'uploaded image'; // Краткое описание картинки
@@ -192,19 +192,19 @@ export const POST: APIRoute = async (context) => {
           setTimeout(() => reject(new Error('Template Router timeout')), 15000)
         );
         templateData = await Promise.race([routerPromise, timeoutPromise]) as any;
-        console.log('[API] Template selected:', templateData.template_name);
+        console.log('[API] ✅ Template selected:', templateData.template_name);
       } catch (templateError) {
-        console.warn('[API] Template Router failed, continuing without template');
+        console.warn('[API] ⚠️ Template Router failed, continuing without template');
         templateData = undefined;
       }
     } else {
-      console.log('[API] Prompt mode: skipping Template Router');
+      console.log('[API] ✏️ Prompt mode: skipping Template Router');
       templateData = undefined;
     }
 
     // ШАГ 4: Создаем запись генерации со статусом 'queued'
     const generationId = createGenerationWithPrompts(user.id, duration, prompt, promptFinal, mode, templateData);
-    console.log(`[API] Generation created: ${generationId} (mode=${mode})`);
+    console.log(`[API] ✅ Generation created: ${generationId} (mode=${mode})`);
 
     // ШАГ 5: Добавляем в глобальную очередь (concurrency=1)
     enqueueGeneration(generationId);

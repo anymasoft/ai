@@ -443,7 +443,6 @@ const userBalance = user.generation_balance || 0;
     let selectedMode: 'template' | 'prompt' = 'template';
     const modeButtons = document.querySelectorAll('.mode-btn') as NodeListOf<HTMLButtonElement>;
     const modeDescription = document.getElementById('mode-description') as HTMLElement;
-    const promptInput = document.getElementById('prompt') as HTMLTextAreaElement;
 
     const modeDescriptions = {
         template: 'ИИ подберёт лучший сценарий и создаст продающее видео',
@@ -534,7 +533,7 @@ const userBalance = user.generation_balance || 0;
                 console.log(`[UI] Starting generation: mode=${selectedMode}, duration=${selectedDuration}s, prompt="${promptInput.value.substring(0, 50)}..."`);
 
                 // Дополнительная отладка
-                console.log(`[UI] Mode: ${selectedMode === 'template' ? 'TEMPLATE (AI-selected scene)' : 'PROMPT (Free-form scenario)'}`);
+                console.log(`[UI] Mode: ${selectedMode === 'template' ? '🎬 TEMPLATE (AI-selected scene)' : '✏️ PROMPT (Free-form scenario)'}`);
                 console.log(`[UI] Duration: ${selectedDuration}s`);
                 console.log(`[UI] Cost: ${selectedDuration === 6 ? '1 credit' : '2 credits'}`);
 
@@ -553,7 +552,7 @@ const userBalance = user.generation_balance || 0;
                 const data = await response.json();
 
                 if (!response.ok) {
-                    console.error(`[UI] ERROR: Server rejected generation request`);
+                    console.error(`[UI] ❌ Server rejected generation request`);
                     console.error(`[UI]   - status: ${response.status}`);
                     console.error(`[UI]   - error: ${data.error}`);
 
@@ -577,7 +576,7 @@ const userBalance = user.generation_balance || 0;
                 }
 
                 const generationId = data.generationId;
-                console.log(`[UI] OK: Generation request accepted`);
+                console.log(`[UI] ✅ Generation request accepted`);
                 console.log(`[UI]   - generationId: ${generationId}`);
                 console.log(`[UI]   - mode: ${data.mode}`);
                 console.log(`[UI]   - cost: ${data.cost} credits`);
@@ -605,11 +604,11 @@ const userBalance = user.generation_balance || 0;
                         if (statusData.status === 'success' && statusData.charged) {
                             generationComplete = true;
                             videoUrl = statusData.videoUrl;
-                            console.log(`[UI] DONE: Generation complete`);
+                            console.log(`[UI] ✅ Generation complete`);
                             console.log(`[UI]   - generationId: ${generationId}`);
                             console.log(`[UI]   - videoUrl: ${videoUrl}`);
                         } else if (statusData.status === 'failed') {
-                            console.error(`[UI] ERROR: Generation failed`);
+                            console.error(`[UI] ❌ Generation failed`);
                             console.error(`[UI]   - generationId: ${generationId}`);
                             console.error(`[UI]   - status: ${statusData.status}`);
                             throw new Error('Генерация видео не удалась');
@@ -624,7 +623,7 @@ const userBalance = user.generation_balance || 0;
                 }
 
                 if (!generationComplete || !videoUrl) {
-                    console.error(`[UI] ERROR: Generation timeout (${checkAttempts}s elapsed)`);
+                    console.error(`[UI] ⏱️ Generation timeout (${checkAttempts}s elapsed)`);
                     throw new Error(
                         'Время ожидания генерации истекло. Видео может быть готово позже.'
                     );
@@ -639,10 +638,10 @@ const userBalance = user.generation_balance || 0;
                 // Сохраняем videoUrl для скачивания
                 (downloadBtn as any).videoUrl = videoUrl;
 
-                console.log(`[UI] Video displayed successfully`);
+                console.log(`[UI] 🎬 Video displayed successfully`);
             } catch (error) {
                 const errorMessage = error instanceof Error ? error.message : 'Неизвестная ошибка';
-                console.error(`[UI] ERROR: Generation failed`);
+                console.error(`[UI] ❌ Generation failed`);
                 console.error(`[UI]   - error: ${errorMessage}`);
 
                 videoLoading.classList.add('hidden');

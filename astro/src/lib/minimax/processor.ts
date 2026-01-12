@@ -78,7 +78,7 @@ export async function processQueue(): Promise<void> {
       console.log(
         `[PROCESSOR] Calling MiniMax: generation=${generationId}, userId=${userId}, mode=${generationMode}, callback=${callbackUrl}`
       );
-      console.log(`[PROCESSOR] Mode: ${generationMode}`);
+      console.log(`[PROCESSOR] Mode: ${generationMode === 'template' ? '🎬 TEMPLATE' : '✏️ PROMPT'}`);
 
       // Подготавливаем данные для MiniMax API
       const finalPrompt = generation.minimax_final_prompt || generation.prompt_final || generation.prompt;
@@ -87,7 +87,7 @@ export async function processQueue(): Promise<void> {
         ? JSON.parse(generation.minimax_template_inputs)
         : null;
 
-      console.log('[PROCESSOR] Generation data prepared');
+      console.log('[PROCESSOR] 📦 Generation data prepared');
       console.log(`[PROCESSOR]   - duration: ${generation.duration}s`);
       console.log(`[PROCESSOR]   - mode: ${generationMode}`);
 
@@ -127,7 +127,7 @@ export async function processQueue(): Promise<void> {
       // Удалить из очереди — задача успешно отправлена в MiniMax
       dequeueGeneration();
 
-      console.log(`[PROCESSOR] Generation ${generationId} queued successfully`);
+      console.log(`[PROCESSOR] ✅ Generation ${generationId} queued successfully`);
 
       // Завершить обработку и перейти к следующей
       setQueueRunning(false);

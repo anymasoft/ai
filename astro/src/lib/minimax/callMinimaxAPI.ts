@@ -69,11 +69,11 @@ export async function callMinimaxAPI(
       if (templateInputs) {
         payload.text_inputs = templateInputs;
       }
-      console.log('[MINIMAX] TEMPLATE MODE: Using MiniMax Video Agent Template');
+      console.log('[MINIMAX] 🎬 TEMPLATE MODE: Using MiniMax Video Agent Template');
       console.log(`[MINIMAX]   - template_id: ${templateId}`);
     } else {
       payload.prompt = prompt;
-      console.log('[MINIMAX] PROMPT MODE: Using free-form prompt');
+      console.log('[MINIMAX] ✏️ PROMPT MODE: Using free-form prompt');
     }
 
     // Отправляем запрос к MiniMax API
@@ -106,7 +106,7 @@ export async function callMinimaxAPI(
 
     // Гарантируем что task_id всегда строка (MiniMax может вернуть число)
     const taskIdString = String(data.task_id);
-    console.log(`[MINIMAX] Task created: ${taskIdString}`);
+    console.log(`[MINIMAX] ✅ Task created: ${taskIdString}`);
 
     return {
       success: true,
