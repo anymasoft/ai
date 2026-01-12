@@ -90,7 +90,8 @@ export const POST: APIRoute = async (context) => {
     }
 
     const body = (await context.request.json()) as GenerateRequest;
-    const { prompt, duration, mode = 'template' } = body;
+    let { prompt, duration } = body;
+    let mode: 'template' | 'prompt' = (body.mode as any) || 'template';
 
     console.log(`[GEN] Request received: mode=${mode}, duration=${duration}, prompt="${prompt.substring(0, 50)}..."`);
     console.log(`[GEN] Mode: ${mode === 'template' ? '🎬 TEMPLATE (using MiniMax Video Agent Templates)' : '✏️ PROMPT (using free-form prompt)'}`);
@@ -103,11 +104,32 @@ export const POST: APIRoute = async (context) => {
       );
     }
 
+    // Валидируем длину промпта
+    if (prompt.length < 3) {
+      return new Response(
+        JSON.stringify({ error: 'Промпт слишком короткий (минимум 3 символа)' }),
+        { status: 400, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
+
+    if (prompt.length > 2000) {
+      return new Response(
+        JSON.stringify({ error: 'Промпт слишком длинный (максимум 2000 символов)' }),
+        { status: 400, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
+
     if (![6, 10].includes(duration)) {
       return new Response(
         JSON.stringify({ error: 'Duration должна быть 6 или 10' }),
         { status: 400, headers: { 'Content-Type': 'application/json' } }
       );
+    }
+
+    // Валидируем режим
+    if (mode !== 'template' && mode !== 'prompt') {
+      console.warn(`[GEN] Invalid mode: ${mode}, defaulting to 'template'`);
+      mode = 'template';
     }
 
     // ШАГ 1: Проверяем наличие загруженного изображения (per-user)
@@ -143,21 +165,37 @@ export const POST: APIRoute = async (context) => {
       );
     }
 
-    // ШАГ 3: Улучшаем промпт через Smart Prompt Engine
-    const promptFinal = await enhancePrompt(prompt, mode);
-    console.log(`[GEN] ✅ Prompt enhanced (${mode} mode)`);
+    // ШАГ 3: Улучшаем промпт через Smart Prompt Engine (с timeout)
+    let promptFinal = prompt;
+    try {
+      // Применяем timeout в 10 секунд для enhancePrompt
+      const enhancePromise = enhancePrompt(prompt, mode);
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('Prompt enhancement timeout')), 10000)
+      );
+      promptFinal = await Promise.race([enhancePromise, timeoutPromise]) as string;
+      console.log(`[GEN] ✅ Prompt enhanced (${mode} mode)`);
+    } catch (enhanceError) {
+      console.warn('[GEN] ⚠️ Prompt enhancement failed or timed out, using original prompt:', enhanceError);
+      promptFinal = prompt;
+    }
 
     // ШАГ 3.5: Выбираем оптимальный MiniMax Template через Template Router (ТОЛЬКО ДЛЯ TEMPLATE MODE)
     let templateData;
     if (mode === 'template') {
       console.log('[GEN] Template mode: selecting best MiniMax Video Agent Template...');
       try {
+        // Применяем timeout в 15 секунд для Template Router
         const imageDescription = 'uploaded image'; // Краткое описание картинки
-        templateData = await routeToTemplate(prompt, imageDescription);
+        const routerPromise = routeToTemplate(prompt, imageDescription);
+        const timeoutPromise = new Promise((_, reject) =>
+          setTimeout(() => reject(new Error('Template Router timeout')), 15000)
+        );
+        templateData = await Promise.race([routerPromise, timeoutPromise]) as any;
         console.log('[GEN] ✅ Template selected:', templateData.template_name, `(${templateData.template_id})`);
       } catch (templateError) {
         // Fallback: если Template Router fails, продолжаем без шаблона
-        console.warn('[GEN] ⚠️ Template Router failed, continuing without template:', templateError);
+        console.warn('[GEN] ⚠️ Template Router failed or timed out, continuing without template:', templateError);
         templateData = undefined;
       }
     } else {
