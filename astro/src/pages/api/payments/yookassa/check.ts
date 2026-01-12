@@ -40,14 +40,11 @@ export const GET: APIRoute = async (context) => {
     const url = new URL(context.request.url);
     let paymentId = url.searchParams.get('paymentId');
 
-    console.log(`[CHECK] ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
-    console.log(`[CHECK] START: Checking payment (userId: ${user.id})`);
 
     const db = getDb();
 
     // ШАГ 1: Если paymentId не передан, ищем latest pending платёж по userId
     if (!paymentId) {
-      console.log(`[CHECK] paymentId not in URL, auto-detecting latest pending payment...`);
 
       const latestStmt = db.prepare(
         "SELECT externalPaymentId, status FROM payments WHERE userId = ? AND status = 'pending' ORDER BY createdAt DESC LIMIT 1"
@@ -55,7 +52,6 @@ export const GET: APIRoute = async (context) => {
       const latest = latestStmt.get(user.id) as any;
 
       if (!latest) {
-        console.log(`[CHECK] No pending payments found for user`);
         return new Response(
           JSON.stringify({
             success: false,
@@ -66,7 +62,6 @@ export const GET: APIRoute = async (context) => {
       }
 
       paymentId = latest.externalPaymentId;
-      console.log(`[CHECK] Found latest pending payment: ${paymentId}`);
     }
 
     // ШАГ 2: Проверяем статус в БД
@@ -76,7 +71,6 @@ export const GET: APIRoute = async (context) => {
     const dbPayment = dbStmt.get(paymentId) as any;
 
     if (!dbPayment) {
-      console.error(`[CHECK] Payment not found in DB: ${paymentId}`);
       return new Response(
         JSON.stringify({ success: false, error: 'Payment not found' }),
         { status: 404, headers: { 'Content-Type': 'application/json' } }
@@ -102,7 +96,6 @@ export const GET: APIRoute = async (context) => {
 
     // ШАГ 3: ЕСЛИ уже succeeded в БД → готово
     if (dbStatus === 'succeeded') {
-      console.log(`[CHECK] Payment already succeeded in DB`);
       return new Response(
         JSON.stringify({ success: true, status: 'succeeded' }),
         { status: 200, headers: { 'Content-Type': 'application/json' } }
@@ -111,7 +104,6 @@ export const GET: APIRoute = async (context) => {
 
     // ШАГ 4: ЕСЛИ не pending → ошибка
     if (dbStatus !== 'pending') {
-      console.log(`[CHECK] Payment has status: ${dbStatus}`);
       return new Response(
         JSON.stringify({
           success: false,
@@ -123,13 +115,11 @@ export const GET: APIRoute = async (context) => {
     }
 
     // ШАГ 5: PULL из YooKassa API (только если pending)
-    console.log(`[CHECK] Payment is pending, checking YooKassa API...`);
 
     const yooKassaShopId = process.env.YOOKASSA_SHOP_ID;
     const yooKassaApiKey = process.env.YOOKASSA_API_KEY;
 
     if (!yooKassaShopId || !yooKassaApiKey) {
-      console.error('[CHECK] YooKassa credentials missing');
       return new Response(
         JSON.stringify({ error: 'Server configuration error' }),
         { status: 500, headers: { 'Content-Type': 'application/json' } }
@@ -150,7 +140,6 @@ export const GET: APIRoute = async (context) => {
 
     if (!response.ok) {
       const error = await response.json().catch(() => ({}));
-      console.error(`[CHECK] YooKassa API error:`, error);
       return new Response(
         JSON.stringify({
           success: false,
@@ -172,12 +161,10 @@ export const GET: APIRoute = async (context) => {
       yooKassaPayment.status === 'succeeded' &&
       yooKassaPayment.paid === true
     ) {
-      console.log(`[CHECK] ✅ YooKassa confirmed succeeded (status=${yooKassaPayment.status}, paid=${yooKassaPayment.paid}), applying payment...`);
 
       // Используем ту же функцию
       const applyResult = await applySuccessfulPayment(paymentId);
 
-      console.log(`[CHECK] applySuccessfulPayment result: success=${applyResult.success}, reason=${applyResult.reason || 'none'}`);
 
       if (applyResult.success) {
         // Получаем обновленный баланс для логирования
@@ -185,15 +172,11 @@ export const GET: APIRoute = async (context) => {
         const updatedUser = updatedUserStmt.get(user.id) as any;
         const newBalance = updatedUser?.generation_balance ?? 0;
 
-        console.log(`[CHECK] ✅ SUCCESS: Payment ${paymentId} APPLIED for user ${user.id}`);
-        console.log(`[CHECK] BALANCE UPDATED: new balance = ${newBalance}`);
-        console.log(`[CHECK] ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
         return new Response(
           JSON.stringify({ success: true, status: 'succeeded' }),
           { status: 200, headers: { 'Content-Type': 'application/json' } }
         );
       } else {
-        console.error(`[CHECK] ❌ FAILED: Could not apply payment: ${applyResult.reason}`);
         return new Response(
           JSON.stringify({
             success: false,
@@ -206,9 +189,6 @@ export const GET: APIRoute = async (context) => {
     }
 
     // ШАГ 7: ЕСЛИ ещё pending → возвращаем pending
-    console.log(
-      `[CHECK] Payment still pending in YooKassa: ${yooKassaPayment.status}`
-    );
     return new Response(
       JSON.stringify({
         success: false,
@@ -218,7 +198,6 @@ export const GET: APIRoute = async (context) => {
       { status: 200, headers: { 'Content-Type': 'application/json' } }
     );
   } catch (error) {
-    console.error('[CHECK] Error:', error);
     return new Response(
       JSON.stringify({ error: 'Internal server error' }),
       { status: 500, headers: { 'Content-Type': 'application/json' } }
