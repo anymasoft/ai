@@ -48,7 +48,7 @@ export async function processQueue(): Promise<void> {
       const genStmt = db.prepare(
         `SELECT id, userId, status, prompt, prompt_final, duration,
                 minimax_template_id, minimax_template_name, minimax_template_inputs, minimax_final_prompt,
-                generation_mode
+                generation_mode, prompt_director
          FROM generations WHERE id = ?`
       );
       const generation = genStmt.get(generationId) as any;
@@ -81,7 +81,17 @@ export async function processQueue(): Promise<void> {
       console.log(`[PROCESSOR] Mode: ${generationMode === 'template' ? '🎬 TEMPLATE' : '✏️ PROMPT'}`);
 
       // Подготавливаем данные для MiniMax API
-      const finalPrompt = generation.minimax_final_prompt || generation.prompt_final || generation.prompt;
+      // Для PROMPT MODE используем prompt_director (результат Фазы 2 с camera commands)
+      // Для TEMPLATE MODE используем minimax_final_prompt
+      let finalPrompt: string;
+      if (generationMode === 'prompt' && generation.prompt_director) {
+        finalPrompt = generation.prompt_director;
+      } else if (generationMode === 'template' && generation.minimax_final_prompt) {
+        finalPrompt = generation.minimax_final_prompt;
+      } else {
+        finalPrompt = generation.prompt_final || generation.prompt;
+      }
+
       const templateId = generation.minimax_template_id || null;
       const templateInputs = generation.minimax_template_inputs
         ? JSON.parse(generation.minimax_template_inputs)
@@ -90,6 +100,7 @@ export async function processQueue(): Promise<void> {
       console.log('[PROCESSOR] 📦 Generation data prepared');
       console.log(`[PROCESSOR]   - duration: ${generation.duration}s`);
       console.log(`[PROCESSOR]   - mode: ${generationMode}`);
+      console.log(`[MINIMAX] prompt_to_send (first 500 chars):\n${finalPrompt.substring(0, 500)}...`);
 
       // Вызвать MiniMax API с поддержкой шаблонов
       const minimaxResult = await callMinimaxAPI(
