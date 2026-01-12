@@ -1,10 +1,18 @@
 import type { APIRoute } from 'astro';
 import { deleteSession } from '../../../lib/auth';
 
+const COOKIE_NAME = 'session_token';
+const COOKIE_OPTIONS = {
+  path: '/',
+  sameSite: 'lax' as const,
+  secure: import.meta.env.PROD,
+  httpOnly: true,
+};
+
 const logoutHandler: APIRoute = async (context) => {
   try {
     // Получаем токен из cookies
-    const sessionToken = context.cookies.get('session_token')?.value;
+    const sessionToken = context.cookies.get(COOKIE_NAME)?.value;
 
     console.log(`\n🚪 LOGOUT: Пользователь выходит`);
     console.log(`   - sessionToken: ${sessionToken ? sessionToken.slice(0, 16) + '...' : 'MISSING'}`);
@@ -19,9 +27,12 @@ const logoutHandler: APIRoute = async (context) => {
       }
     }
 
-    // Удаляем cookie
-    context.cookies.delete('session_token');
-    console.log(`   ✅ Cookie удалена`);
+    // Правильное удаление cookie с ТЕМИ ЖЕ параметрами
+    context.cookies.set(COOKIE_NAME, '', {
+      ...COOKIE_OPTIONS,
+      maxAge: 0,
+    });
+    console.log(`   ✅ Cookie удалена (maxAge=0)`);
 
     // Редиректим на главную
     console.log(`   - Редирект на /`);

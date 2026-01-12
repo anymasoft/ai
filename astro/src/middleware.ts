@@ -1,6 +1,14 @@
 import { defineMiddleware } from 'astro:middleware';
 import { getUserFromSession, isAdmin } from './lib/auth';
 
+const COOKIE_NAME = 'session_token';
+const COOKIE_OPTIONS = {
+  path: '/',
+  sameSite: 'lax' as const,
+  secure: import.meta.env.PROD,
+  httpOnly: true,
+};
+
 export const onRequest = defineMiddleware((context, next) => {
   const pathname = context.url.pathname;
 
@@ -12,14 +20,26 @@ export const onRequest = defineMiddleware((context, next) => {
   }
 
   // Получаем токен сессии из cookies
-  const sessionToken = context.cookies.get('session_token')?.value;
+  const sessionToken = context.cookies.get(COOKIE_NAME)?.value;
   let user = sessionToken ? getUserFromSession(sessionToken) : null;
 
   // ИСПРАВЛЕНИЕ: Если cookie существует, но сессии нет в БД → удалить cookie
   if (sessionToken && !user) {
-    console.log(`\n⚠️ MIDDLEWARE: Cookie существует, но сессия не найдена в БД`);
-    console.log(`   - Удаляем "залипшую" cookie`);
-    context.cookies.delete('session_token');
+    // Проверяем флаг что мы уже очищали в этом request
+    if (!context.locals.sessionInvalidated) {
+      console.log(`\n⚠️ MIDDLEWARE: Cookie существует, но сессия не найдена в БД`);
+      console.log(`   - Удаляем "залипшую" cookie`);
+
+      // Правильное удаление cookie с ТЕМИ ЖЕ параметрами
+      context.cookies.set(COOKIE_NAME, '', {
+        ...COOKIE_OPTIONS,
+        maxAge: 0,
+      });
+
+      // Отмечаем что очистили
+      context.locals.sessionInvalidated = true;
+      console.log(`   ✅ Cookie очищена (maxAge=0)`);
+    }
     user = null;
   }
 
