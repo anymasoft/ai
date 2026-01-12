@@ -1,0 +1,35 @@
+---
+// Generate page - UI Laboratory for Prompt + Mode selector
+// This is a standalone UI showcase page with no business logic
+
+import RuixenMoonChat from "../components/ui/ruixen-moon-chat";
+---
+
+<!DOCTYPE html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Generate UI Lab</title>
+    <style is:global>
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+        background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+        min-height: 100vh;
+      }
+
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+    </style>
+  </head>
+  <body>
+    <main class="min-h-screen w-full">
+      <RuixenMoonChat client:load />
+    </main>
+  </body>
+</html>
