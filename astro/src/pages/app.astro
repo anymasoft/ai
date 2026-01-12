@@ -501,8 +501,14 @@ const userBalance = user.generation_balance || 0;
             videoLoading.classList.remove('hidden');
 
             try {
-                // Отправляем запрос на генерацию (изображение уже загружено на сервер)
-                console.log(`[GEN] Starting generation: mode=${selectedMode}, duration=${selectedDuration}, prompt="${promptInput.value.substring(0, 50)}..."`);
+                // Подробное логирование перед отправкой
+                console.log(`[UI] ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+                console.log(`[UI] 🎯 STARTING VIDEO GENERATION`);
+                console.log(`[UI] ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+                console.log(`[UI] ${selectedMode === 'template' ? '🎬' : '✏️'} Mode: ${selectedMode === 'template' ? 'TEMPLATE (AI-selected scene)' : 'PROMPT (Free-form scenario)'}`);
+                console.log(`[UI] ⏱️ Duration: ${selectedDuration}s`);
+                console.log(`[UI] 💡 Prompt: "${promptInput.value.substring(0, 60)}${promptInput.value.length > 60 ? '...' : ''}"`);
+                console.log(`[UI] 💳 Cost: ${userBalance >= (selectedDuration === 6 ? 1 : 2) ? selectedDuration === 6 ? '1 credit' : '2 credits' : 'INSUFFICIENT BALANCE'}`);
 
                 const response = await fetch('/api/generate', {
                     method: 'POST',
@@ -519,7 +525,10 @@ const userBalance = user.generation_balance || 0;
                 const data = await response.json();
 
                 if (!response.ok) {
-                    console.error('[GEN] Error:', data.error);
+                    console.error(`[UI] ❌ Server rejected generation request`);
+                    console.error(`[UI]   - status: ${response.status}`);
+                    console.error(`[UI]   - error: ${data.error}`);
+
                     videoLoading.classList.add('hidden');
                     generateIcon.classList.remove('hidden');
                     generateSpinner.classList.add('hidden');
@@ -540,7 +549,13 @@ const userBalance = user.generation_balance || 0;
                 }
 
                 const generationId = data.generationId;
-                console.log(`[GEN] Started generation: ${generationId}`);
+                console.log(`[UI] ✅ Generation request accepted by server`);
+                console.log(`[UI]   - generationId: ${generationId}`);
+                console.log(`[UI]   - mode: ${data.mode}`);
+                console.log(`[UI]   - cost: ${data.cost} credits`);
+                console.log(`[UI]   - new balance: ${data.balanceAfter} credits`);
+                console.log(`[UI]   - queue size: ${data.queueSize}`);
+                console.log(`[UI] ⏳ Polling for video completion...`);
 
                 // Ждем завершения генерации (опрашиваем статус)
                 let generationComplete = false;
@@ -558,21 +573,37 @@ const userBalance = user.generation_balance || 0;
                         );
                         const statusData = await statusResponse.json();
 
-                        console.log(`[GEN] Status check: ${statusData.status} (attempt ${checkAttempts})`);
+                        if (checkAttempts % 10 === 0) {
+                            console.log(`[UI] ⏳ Still processing... (${checkAttempts}s elapsed)`);
+                        }
 
                         if (statusData.status === 'success' && statusData.charged) {
                             generationComplete = true;
                             videoUrl = statusData.videoUrl;
-                            console.log(`[GEN] ✅ Generation complete and charged. videoUrl=${videoUrl}`);
+                            console.log(`[UI] ✅ Generation complete!`);
+                            console.log(`[UI]   - generationId: ${generationId}`);
+                            console.log(`[UI]   - status: ${statusData.status}`);
+                            console.log(`[UI]   - charged: ${statusData.charged}`);
+                            console.log(`[UI]   - videoUrl: ${videoUrl}`);
                         } else if (statusData.status === 'failed') {
+                            console.error(`[UI] ❌ Generation failed`);
+                            console.error(`[UI]   - generationId: ${generationId}`);
+                            console.error(`[UI]   - status: ${statusData.status}`);
                             throw new Error('Генерация видео не удалась');
                         }
                     } catch (error) {
-                        console.error('[GEN] Error checking status:', error);
+                        if (!(error instanceof Error && error.message.includes('не удалась'))) {
+                            console.error('[UI] Error checking status:', error);
+                        } else {
+                            throw error;
+                        }
                     }
                 }
 
                 if (!generationComplete || !videoUrl) {
+                    console.error(`[UI] ⏱️ Generation timeout`);
+                    console.error(`[UI]   - generationId: ${generationId}`);
+                    console.error(`[UI]   - attempts: ${checkAttempts}/${maxAttempts}`);
                     throw new Error(
                         'Время ожидания генерации истекло. Видео может быть готово позже.'
                     );
@@ -587,10 +618,12 @@ const userBalance = user.generation_balance || 0;
                 // Сохраняем videoUrl для скачивания
                 (downloadBtn as any).videoUrl = videoUrl;
 
-                console.log(`[GEN] Video displayed for generation: ${generationId}`);
+                console.log(`[UI] 🎬 Video displayed`);
+                console.log(`[UI] ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
             } catch (error) {
                 const errorMessage = error instanceof Error ? error.message : 'Неизвестная ошибка';
-                console.error('[GEN] Generation error:', errorMessage);
+                console.error(`[UI] ❌ Generation failed with error:`);
+                console.error(`[UI]   - error: ${errorMessage}`);
 
                 videoLoading.classList.add('hidden');
                 const isBalanceError = errorMessage.toLowerCase().includes('баланс') ||
