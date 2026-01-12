@@ -152,7 +152,32 @@ const userBalance = user.generation_balance || 0;
                             <div class="absolute bottom-6 left-1/2 -translate-x-1/2 z-30 pointer-events-none px-4 w-full" style="max-width: 60%">
 
                                 <!-- Input Container (Full Width Minus Padding) -->
-                                <div class="pointer-events-auto relative">
+                                <div class="pointer-events-auto relative space-y-3">
+
+                                    <!-- Mode Selector (NEW) -->
+                                    <div class="flex gap-2 justify-center">
+                                        <button
+                                            id="mode-template"
+                                            class="mode-btn relative px-4 py-2 rounded-full text-sm font-medium bg-white/30 backdrop-blur-md border border-white/40 text-white hover:bg-white/40 transition-all duration-150 active:scale-95 flex items-center gap-2"
+                                            data-mode="template"
+                                        >
+                                            <span>🎬</span>
+                                            <span>Рекламный шаблон</span>
+                                        </button>
+                                        <button
+                                            id="mode-prompt"
+                                            class="mode-btn relative px-4 py-2 rounded-full text-sm font-medium bg-white/30 backdrop-blur-md border border-white/40 text-white hover:bg-white/40 transition-all duration-150 active:scale-95 flex items-center gap-2"
+                                            data-mode="prompt"
+                                        >
+                                            <span>✏️</span>
+                                            <span>Свободный сценарий</span>
+                                        </button>
+                                    </div>
+
+                                    <!-- Mode Descriptions (NEW) -->
+                                    <div id="mode-description" class="text-center text-xs text-white/70">
+                                        ИИ подберёт лучший сценарий и создаст продающее видео
+                                    </div>
 
                                     <!-- Input + Generate Button Inside -->
                                     <div class="relative">
@@ -401,6 +426,42 @@ const userBalance = user.generation_balance || 0;
         }
     }
 
+    // ========== Mode Selector ==========
+    let selectedMode: 'template' | 'prompt' = 'template';
+    const modeButtons = document.querySelectorAll('.mode-btn') as NodeListOf<HTMLButtonElement>;
+    const modeDescription = document.getElementById('mode-description') as HTMLElement;
+
+    const modeDescriptions = {
+        template: 'ИИ подберёт лучший сценарий и создаст продающее видео',
+        prompt: 'Ваш сценарий будет точно воплощён в видео'
+    };
+
+    // Set initial active state
+    const templateBtn = document.getElementById('mode-template') as HTMLButtonElement;
+    const promptBtn = document.getElementById('mode-prompt') as HTMLButtonElement;
+    if (templateBtn) {
+        templateBtn.classList.add('ring-2', 'ring-white', 'bg-white/40');
+    }
+
+    modeButtons.forEach(btn => {
+        btn.addEventListener('click', () => {
+            const mode = btn.getAttribute('data-mode') as 'template' | 'prompt';
+            selectedMode = mode;
+            console.log(`[UI] Mode selected: ${selectedMode}`);
+
+            // Update button styles
+            modeButtons.forEach(b => {
+                b.classList.remove('ring-2', 'ring-white', 'bg-white/40');
+            });
+            btn.classList.add('ring-2', 'ring-white', 'bg-white/40');
+
+            // Update description
+            if (modeDescription) {
+                modeDescription.textContent = modeDescriptions[mode];
+            }
+        });
+    });
+
     // ========== Generate Button ==========
     const generateIcon = document.getElementById('generate-icon') as HTMLImageElement;
     const generateSpinner = document.getElementById('generate-spinner') as HTMLElement;
@@ -441,6 +502,8 @@ const userBalance = user.generation_balance || 0;
 
             try {
                 // Отправляем запрос на генерацию (изображение уже загружено на сервер)
+                console.log(`[GEN] Starting generation: mode=${selectedMode}, duration=${selectedDuration}, prompt="${promptInput.value.substring(0, 50)}..."`);
+
                 const response = await fetch('/api/generate', {
                     method: 'POST',
                     headers: {
@@ -449,6 +512,7 @@ const userBalance = user.generation_balance || 0;
                     body: JSON.stringify({
                         prompt: promptInput.value,
                         duration: parseInt(selectedDuration || '6', 10),
+                        mode: selectedMode,
                     }),
                 });
 

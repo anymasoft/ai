@@ -42,11 +42,12 @@ export async function processQueue(): Promise<void> {
     console.log(`[PROCESSOR] Processing generation: ${generationId}`);
 
     try {
-      // Получаем данные генерации из БД (включая данные шаблона)
+      // Получаем данные генерации из БД (включая данные шаблона и режим)
       const db = getDb();
       const genStmt = db.prepare(
         `SELECT id, userId, status, prompt, prompt_final, duration,
-                minimax_template_id, minimax_template_name, minimax_template_inputs, minimax_final_prompt
+                minimax_template_id, minimax_template_name, minimax_template_inputs, minimax_final_prompt,
+                generation_mode
          FROM generations WHERE id = ?`
       );
       const generation = genStmt.get(generationId) as any;
@@ -72,9 +73,11 @@ export async function processQueue(): Promise<void> {
       const callbackBase = (process.env.MINIMAX_CALLBACK_URL || 'http://localhost:3000').replace(/\/$/, '');
       const callbackUrl = `${callbackBase}/minimax_callback`;
 
+      const generationMode = generation.generation_mode || 'template';
       console.log(
-        `[PROCESSOR] Calling MiniMax: generation=${generationId}, userId=${userId}, callback=${callbackUrl}`
+        `[PROCESSOR] Calling MiniMax: generation=${generationId}, userId=${userId}, mode=${generationMode}, callback=${callbackUrl}`
       );
+      console.log(`[PROCESSOR] Mode: ${generationMode === 'template' ? '🎬 TEMPLATE' : '✏️ PROMPT'}`);
 
       // Подготавливаем данные для MiniMax API
       const finalPrompt = generation.minimax_final_prompt || generation.prompt_final || generation.prompt;

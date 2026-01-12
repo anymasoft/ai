@@ -14,18 +14,21 @@ import { routeToTemplate } from '../../lib/minimax/templateRouter';
 interface GenerateRequest {
   prompt: string;
   duration: number;
+  mode?: 'template' | 'prompt';
 }
 
 /**
  * Создает запись генерации с промптом и статусом 'queued'
  * Сохраняет оба промпта: пользовательский и улучшенный
  * Также сохраняет данные Template Router (шаблон)
+ * Сохраняет режим генерации (template или prompt)
  */
 function createGenerationWithPrompts(
   userId: string,
   duration: number,
   promptUser: string,
   promptFinal: string,
+  mode: 'template' | 'prompt' = 'template',
   templateData?: {
     template_id: string;
     template_name: string;
@@ -42,9 +45,10 @@ function createGenerationWithPrompts(
     `INSERT INTO generations (
       id, userId, status, duration, cost, charged,
       prompt, prompt_final, minimax_status, createdAt,
-      minimax_template_id, minimax_template_name, minimax_template_inputs, minimax_final_prompt
+      minimax_template_id, minimax_template_name, minimax_template_inputs, minimax_final_prompt,
+      generation_mode
     ) VALUES (?, ?, ?, ?, ?, 0, ?, ?, 'pending', ?,
-              ?, ?, ?, ?)`
+              ?, ?, ?, ?, ?)`
   );
 
   insertStmt.run(
@@ -59,7 +63,8 @@ function createGenerationWithPrompts(
     templateData?.template_id || null,
     templateData?.template_name || null,
     templateData?.text_inputs ? JSON.stringify(templateData.text_inputs) : null,
-    templateData?.final_prompt || null
+    templateData?.final_prompt || null,
+    mode
   );
 
   return generationId;
@@ -85,7 +90,10 @@ export const POST: APIRoute = async (context) => {
     }
 
     const body = (await context.request.json()) as GenerateRequest;
-    const { prompt, duration } = body;
+    const { prompt, duration, mode = 'template' } = body;
+
+    console.log(`[GEN] Request received: mode=${mode}, duration=${duration}, prompt="${prompt.substring(0, 50)}..."`);
+    console.log(`[GEN] Mode: ${mode === 'template' ? '🎬 TEMPLATE (using MiniMax Video Agent Templates)' : '✏️ PROMPT (using free-form prompt)'}`);
 
     // Валидируем параметры
     if (!prompt || !duration) {
@@ -137,22 +145,31 @@ export const POST: APIRoute = async (context) => {
 
     // ШАГ 3: Улучшаем промпт через Smart Prompt Engine
     const promptFinal = await enhancePrompt(prompt);
+    console.log(`[GEN] Prompt enhanced (${mode} mode)`)
 
-    // ШАГ 3.5: Выбираем оптимальный MiniMax Template через Template Router
+    // ШАГ 3.5: Выбираем оптимальный MiniMax Template через Template Router (ТОЛЬКО ДЛЯ TEMPLATE MODE)
     let templateData;
-    try {
-      const imageDescription = 'uploaded image'; // Краткое описание картинки
-      templateData = await routeToTemplate(prompt, imageDescription);
-      console.log('[GEN] Template selected:', templateData.template_name);
-    } catch (templateError) {
-      // Fallback: если Template Router fails, продолжаем без шаблона
-      console.warn('[GEN] Template Router failed, continuing without template:', templateError);
+    if (mode === 'template') {
+      console.log('[GEN] Template mode: selecting best MiniMax Video Agent Template...');
+      try {
+        const imageDescription = 'uploaded image'; // Краткое описание картинки
+        templateData = await routeToTemplate(prompt, imageDescription);
+        console.log('[GEN] ✅ Template selected:', templateData.template_name, `(${templateData.template_id})`);
+      } catch (templateError) {
+        // Fallback: если Template Router fails, продолжаем без шаблона
+        console.warn('[GEN] ⚠️ Template Router failed, continuing without template:', templateError);
+        templateData = undefined;
+      }
+    } else {
+      console.log('[GEN] Prompt mode: skipping Template Router, will use free-form prompt');
       templateData = undefined;
     }
 
     // ШАГ 4: Создаем запись генерации со статусом 'queued'
     // Оба промпта и данные шаблона сохраняются в БД
-    const generationId = createGenerationWithPrompts(user.id, duration, prompt, promptFinal, templateData);
+    // Режим (template/prompt) также сохраняется для логирования и аудита
+    const generationId = createGenerationWithPrompts(user.id, duration, prompt, promptFinal, mode, templateData);
+    console.log(`[GEN] Generation record created: ${generationId} (mode=${mode})`);
 
     // ШАГ 5: Добавляем в глобальную очередь (concurrency=1)
     enqueueGeneration(generationId);
@@ -172,6 +189,7 @@ export const POST: APIRoute = async (context) => {
       JSON.stringify({
         success: true,
         generationId,
+        mode,
         cost,
         balanceBefore: balance,
         balanceAfter: balance - cost,
