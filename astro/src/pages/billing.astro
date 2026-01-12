@@ -2,6 +2,7 @@
 import LiveBalance from '../components/LiveBalance.astro';
 import AppLayout from '../layouts/AppLayout.astro';
 import { getUserFromSession } from '../lib/auth';
+import { PRICING_PLANS, type PricingPlan } from '../lib/pricing';
 
 // Эта страница должна быть динамичной для работы с middleware и cookies
 export const prerender = false;
@@ -15,46 +16,7 @@ if (!user) {
   return Astro.redirect('/');
 }
 
-// Фиксированные тарифы - без пакетов
-interface PricingPlan {
-  id: string;
-  name: string;
-  credits: number;
-  price: number;
-  pricePerCredit: number;
-  popular: boolean;
-  isCustom: boolean;
-}
-
-const plans: PricingPlan[] = [
-  {
-    id: 'custom',
-    name: 'Разовая покупка',
-    credits: 1, // будет менять пользователь
-    price: 89, // будет пересчитываться
-    pricePerCredit: 89,
-    popular: false,
-    isCustom: true
-  },
-  {
-    id: 'basic',
-    name: 'Basic',
-    credits: 50,
-    price: 3950,
-    pricePerCredit: 79,
-    popular: false,
-    isCustom: false
-  },
-  {
-    id: 'professional',
-    name: 'Professional',
-    credits: 200,
-    price: 13800,
-    pricePerCredit: 69,
-    popular: true,
-    isCustom: false
-  }
-];
+const plans = PRICING_PLANS;
 ---
 
 <AppLayout title="Billing - Beem">
