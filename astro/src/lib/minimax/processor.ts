@@ -39,7 +39,8 @@ export async function processQueue(): Promise<void> {
     // Помечаем что обработка началась
     setQueueRunning(true);
 
-    console.log(`[PROCESSOR] Processing generation: ${generationId}`);
+    console.log(`[PROCESSOR] ▶️ Processing generation: ${generationId}`);
+    console.log(`[PROCESSOR] ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
 
     try {
       // Получаем данные генерации из БД (включая данные шаблона и режим)
@@ -86,11 +87,15 @@ export async function processQueue(): Promise<void> {
         ? JSON.parse(generation.minimax_template_inputs)
         : null;
 
-      console.log('[PROCESSOR] Template info:', {
-        templateId,
-        templateName: generation.minimax_template_name,
-        hasInputs: !!templateInputs,
-      });
+      console.log('[PROCESSOR] 📦 Generation data prepared:');
+      console.log(`[PROCESSOR]   - duration: ${generation.duration}s`);
+      console.log(`[PROCESSOR]   - mode: ${generationMode}`);
+      if (generationMode === 'template' && templateId) {
+        console.log(`[PROCESSOR]   - template: ${generation.minimax_template_name} (${templateId})`);
+        console.log(`[PROCESSOR]   - text_inputs: ${templateInputs ? Object.keys(templateInputs).length + ' fields' : 'none'}`);
+      } else {
+        console.log(`[PROCESSOR]   - prompt: "${finalPrompt.substring(0, 80)}${finalPrompt.length > 80 ? '...' : ''}"`);
+      }
 
       // Вызвать MiniMax API с поддержкой шаблонов
       const minimaxResult = await callMinimaxAPI(
@@ -117,24 +122,19 @@ export async function processQueue(): Promise<void> {
 
       // Сохранить task_id в БД
       const taskId = minimaxResult.taskId;
-      console.log(`[PROCESSOR] ✅ Task created: ${taskId}`);
-      console.log(`[PROCESSOR] Task ID type: ${typeof taskId}, value: "${taskId}"`);
-
-      // Гарантируем что taskId - это строка (т.к. может быть число от MiniMax)
       const taskIdString = String(taskId);
-      console.log(`[PROCESSOR] Task ID converted to string: "${taskIdString}"`);
 
-      // ДЕБаг: перед сохранением показываем что будем обновлять
-      console.log(`[PROCESSOR] About to UPDATE minimax_job_id in DB`);
-      console.log(`[PROCESSOR] SQL: UPDATE generations SET minimax_job_id = ? WHERE id = ?`);
-      console.log(`[PROCESSOR] params: ["${taskIdString}", "${generationId}"]`);
+      console.log(`[PROCESSOR] ✅ Task created successfully in MiniMax`);
+      console.log(`[PROCESSOR]   - task_id: ${taskIdString}`);
+      console.log(`[PROCESSOR]   - task_id type: ${typeof taskId}`);
 
       updateMinimaxJobId(generationId, taskIdString);
 
       // Удалить из очереди — задача успешно отправлена в MiniMax
       dequeueGeneration();
 
-      console.log(`[PROCESSOR] Generation queued successfully, waiting for MiniMax callback`);
+      console.log(`[PROCESSOR] ✅ Generation ${generationId} successfully queued`);
+      console.log(`[PROCESSOR] 📊 Status: processing (waiting for MiniMax callback)`);
 
       // Завершить обработку и перейти к следующей
       setQueueRunning(false);
