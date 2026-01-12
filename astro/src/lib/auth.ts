@@ -30,27 +30,44 @@ export function getUserFromSession(token: string): User | null {
   const db = getDb();
   const now = Math.floor(Date.now() / 1000);
 
-  // console.log(`   🔍 Querying session in DB for token: ${token.slice(0, 16)}...`);
+  console.log(`   🔍 Querying session in DB for token: ${token.slice(0, 16)}...`);
 
-  const session = db
-    .prepare('SELECT userId FROM sessions WHERE token = ? AND expiresAt > ?')
-    .get(token, now) as Session | undefined;
+  // Сначала проверим все сессии для этого токена БЕЗ проверки expiry
+  const sessionAny = db
+    .prepare('SELECT userId, token, expiresAt FROM sessions WHERE token = ?')
+    .get(token) as any;
 
-  if (!session) {
-    // console.log(`   ❌ Session not found in DB`);
+  if (!sessionAny) {
+    console.log(`   ❌ Session token not found in DB at all`);
+    console.log(`   ⏰ Current timestamp: ${now}`);
     return null;
   }
 
-  // console.log(`   ✅ Session found, userId: ${session.userId}`);
+  console.log(`   ✅ Session found in DB`);
+  console.log(`   ⏰ expiresAt: ${sessionAny.expiresAt}, now: ${now}, expired: ${sessionAny.expiresAt <= now}`);
+
+  if (sessionAny.expiresAt <= now) {
+    console.log(`   ❌ Session expired`);
+    return null;
+  }
+
+  const session = sessionAny as Session;
+  console.log(`   ✅ Session valid, userId: ${session.userId}`);
 
   const user = db.prepare('SELECT * FROM users WHERE id = ?').get(session.userId) as User | undefined;
 
   if (!user) {
-    // console.log(`   ❌ User not found for userId: ${session.userId}`);
+    console.log(`   ❌ User not found for userId: ${session.userId}`);
+    // Let's check what users exist
+    const allUsers = db.prepare('SELECT id, email FROM users').all() as any[];
+    console.log(`   📊 Total users in DB: ${allUsers.length}`);
+    if (allUsers.length > 0) {
+      console.log(`   📊 Sample users: ${allUsers.slice(0, 2).map(u => u.email).join(', ')}`);
+    }
     return null;
   }
 
-  // console.log(`   ✅ User found: ${user.email}`);
+  console.log(`   ✅ User found: ${user.email}`);
   return user;
 }
 
