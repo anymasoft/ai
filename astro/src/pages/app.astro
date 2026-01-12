@@ -178,7 +178,7 @@ const userBalance = user.generation_balance || 0;
                                         <!-- Gradient Border Effect -->
                                         <div class="relative rounded-2xl p-px bg-gradient-to-r from-purple-500/60 via-blue-500/60 to-cyan-500/60 shadow-lg shadow-purple-500/20">
                                             <!-- Mode Bar Inner -->
-                                            <div class="relative bg-black/50 backdrop-blur-xl rounded-2xl p-1 flex gap-0.5">
+                                            <div class="relative bg-white/30 backdrop-blur-md border border-white/30 rounded-2xl p-1 flex gap-0.5">
                                                 <!-- Template Mode Segment -->
                                                 <button
                                                     id="mode-template"
@@ -210,9 +210,7 @@ const userBalance = user.generation_balance || 0;
 
                                     <!-- HELPER TEXT: Mode Description (DYNAMIC) -->
                                     <div id="mode-description" class="text-center text-sm font-medium mt-3 px-2 h-6 transition-all duration-300
-                                                                         bg-gradient-to-r from-purple-400/70 to-blue-400/70
-                                                                         bg-clip-text text-transparent
-                                                                         drop-shadow-sm">
+                                                                         text-gray-700 dark:text-gray-300">
                                         ИИ сам подберёт сценарий и создаст продающее видео для WB и Ozon
                                     </div>
 
@@ -528,6 +526,18 @@ const userBalance = user.generation_balance || 0;
     const downloadBtn = document.getElementById('download-btn') as HTMLButtonElement;
     const clearBtn = document.getElementById('clear-btn') as HTMLButtonElement;
 
+    // Функция для определения визуального режима
+    function getPromptVisualMode(): 'light' | 'glass' {
+        return videoOutput?.src ? 'glass' : 'light';
+    }
+
+    // Логирование текущего визуального режима
+    const initialVisualMode = getPromptVisualMode();
+    const modeSelector = templateBtn?.closest('.mode-bar-container');
+    const selectorClasses = modeSelector?.className || 'unknown';
+    console.log(`[UI] prompt background mode = ${initialVisualMode}`);
+    console.log(`[UI] mode selector classes = ${selectorClasses}`);
+
     if (generateBtn) {
         generateBtn.addEventListener('click', async () => {
             if (!selectedImage || !selectedDuration || !promptTextarea?.value) {
@@ -668,6 +678,8 @@ const userBalance = user.generation_balance || 0;
                 (downloadBtn as any).videoUrl = videoUrl;
 
                 console.log(`[UI] 🎬 Video displayed successfully`);
+                const newVisualMode = getPromptVisualMode();
+                console.log(`[UI] prompt background mode = ${newVisualMode}`);
             } catch (error) {
                 const errorMessage = error instanceof Error ? error.message : 'Неизвестная ошибка';
                 console.error(`[UI] ❌ Generation failed`);
@@ -734,6 +746,10 @@ const userBalance = user.generation_balance || 0;
 
             // Update button state
             updateGenerateButtonState();
+
+            // Логирование о переходе в light режим
+            const clearedVisualMode = getPromptVisualMode();
+            console.log(`[UI] prompt background mode = ${clearedVisualMode}`);
         });
     }
 
@@ -844,22 +860,35 @@ const userBalance = user.generation_balance || 0;
 
     /* Inactive Segment Styles */
     .mode-segment-inactive {
-        color: rgba(255, 255, 255, 0.55);
+        color: rgba(17, 24, 39, 0.7);
         background-color: transparent;
         transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     }
 
+    .dark .mode-segment-inactive {
+        color: rgba(255, 255, 255, 0.7);
+    }
+
     .mode-segment-inactive:hover {
-        color: rgba(255, 255, 255, 0.8);
+        color: rgba(17, 24, 39, 0.9);
+        background-color: rgba(255, 255, 255, 0.1);
+    }
+
+    .dark .mode-segment-inactive:hover {
+        color: rgba(255, 255, 255, 0.9);
         background-color: rgba(255, 255, 255, 0.05);
     }
 
     /* Active Segment Styles */
     .mode-segment-active {
-        color: rgb(255, 255, 255);
+        color: rgb(17, 24, 39);
         background: linear-gradient(135deg, rgba(168, 85, 247, 0.3) 0%, rgba(59, 130, 246, 0.3) 100%);
         border: 1px solid rgba(168, 85, 247, 0.4);
         box-shadow: 0 0 16px rgba(168, 85, 247, 0.25), inset 0 0 8px rgba(168, 85, 247, 0.1);
+    }
+
+    .dark .mode-segment-active {
+        color: rgb(255, 255, 255);
     }
 
     .mode-segment-active:hover {
