@@ -3,6 +3,8 @@
  * Использует GPT-4o-mini для анализа prompt'а и картинки
  */
 
+import { notifyAdmin } from '../telegramNotifier';
+
 interface TemplateRouterResult {
   template_id: string;
   template_name: string;
@@ -154,6 +156,7 @@ image_description: "${imageDescription}"`;
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
     console.error('[TEMPLATE_ROUTER] Error:', errorMessage);
+    await notifyAdmin('TEMPLATE_ROUTER', errorMessage);
     throw error;
   }
 }

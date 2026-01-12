@@ -1,4 +1,5 @@
 import { imageToBase64DataUrl } from './imageToBase64';
+import { notifyAdmin } from '../telegramNotifier';
 
 interface MinimaxRequest {
   model: string;
@@ -89,18 +90,22 @@ export async function callMinimaxAPI(
     const data = (await response.json()) as MinimaxResponse;
 
     if (!response.ok) {
-      console.error('[MINIMAX] API ошибка:', data.error || response.statusText);
+      const errorMsg = data.error || response.statusText;
+      console.error('[MINIMAX] API ошибка:', errorMsg);
+      await notifyAdmin('MINIMAX_CALL', `API error: ${errorMsg} (HTTP ${response.status})`);
       return {
         success: false,
-        error: data.error || `HTTP ${response.status}`,
+        error: errorMsg,
       };
     }
 
     if (!data.task_id) {
+      const errorMsg = 'No task_id in response';
       console.error('[MINIMAX] Нет task_id в ответе:', data);
+      await notifyAdmin('MINIMAX_CALL', errorMsg);
       return {
         success: false,
-        error: 'No task_id in response',
+        error: errorMsg,
       };
     }
 
@@ -115,6 +120,7 @@ export async function callMinimaxAPI(
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
     console.error('[MINIMAX] Ошибка при вызове API:', errorMessage);
+    await notifyAdmin('MINIMAX_CALL', `Exception: ${errorMessage}`);
     return {
       success: false,
       error: errorMessage,
