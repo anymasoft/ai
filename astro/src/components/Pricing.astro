@@ -9,7 +9,7 @@ const purchasablePlans = getPlansSummary();
 const planTexts: Record<string, { title: string; description: string; benefits: string[] }> = {
   free: {
     title: 'Free',
-    description: 'Пробный',
+    description: '3 кредита при регистрации',
     benefits: [
       'Подходит, чтобы протестировать сервис',
       '1 кредит = 1 видео (6 секунд)',
@@ -86,7 +86,9 @@ const planTexts: Record<string, { title: string; description: string; benefits: 
                 {/* Кредиты */}
                 <div class="mt-2">
                   <p class="text-lg text-gray-600 dark:text-gray-400">{plan.credits} кредитов</p>
-                  <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">1 кредит = {plan.pricePerCredit} ₽</p>
+                  {plan.id !== 'free' && (
+                    <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">1 кредит = {plan.pricePerCredit} ₽</p>
+                  )}
                 </div>
 
                 {/* Преимущества */}
