@@ -144,8 +144,8 @@ export const POST: APIRoute = async (context) => {
     }
 
     // ШАГ 3: Улучшаем промпт через Smart Prompt Engine
-    const promptFinal = await enhancePrompt(prompt);
-    console.log(`[GEN] Prompt enhanced (${mode} mode)`)
+    const promptFinal = await enhancePrompt(prompt, mode);
+    console.log(`[GEN] ✅ Prompt enhanced (${mode} mode)`);
 
     // ШАГ 3.5: Выбираем оптимальный MiniMax Template через Template Router (ТОЛЬКО ДЛЯ TEMPLATE MODE)
     let templateData;
