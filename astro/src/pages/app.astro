@@ -154,42 +154,47 @@ const userBalance = user.generation_balance || 0;
                                 <!-- Input Container (Full Width Minus Padding) -->
                                 <div class="pointer-events-auto relative space-y-3">
 
-                                    <!-- Mode Selector: Segmented Control (EQUAL WIDTH, VISIBLE) -->
-                                    <div class="w-full bg-black/40 backdrop-blur-lg rounded-xl p-1.5 border border-white/20">
-                                        <div class="flex gap-2">
-                                            <!-- Template Mode Button -->
-                                            <button
-                                                id="mode-template"
-                                                data-mode="template"
-                                                class="mode-btn flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 active:scale-95
-                                                         text-white/60 hover:text-white/80
-                                                         bg-transparent hover:bg-white/5"
-                                            >
-                                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 4v16m10-16v16M3 8h18M3 16h18"></path>
-                                                </svg>
-                                                <span>Рекламный шаблон</span>
-                                            </button>
+                                    <!-- MODE BAR: Premium Control Panel -->
+                                    <div class="w-full mode-bar-container">
+                                        <!-- Gradient Border Effect -->
+                                        <div class="relative rounded-2xl p-px bg-gradient-to-r from-purple-500/60 via-blue-500/60 to-cyan-500/60 shadow-lg shadow-purple-500/20">
+                                            <!-- Mode Bar Inner -->
+                                            <div class="relative bg-black/50 backdrop-blur-xl rounded-2xl p-1 flex gap-0.5">
+                                                <!-- Template Mode Segment -->
+                                                <button
+                                                    id="mode-template"
+                                                    data-mode="template"
+                                                    class="mode-btn flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-semibold transition-all duration-300 group
+                                                             mode-segment-inactive"
+                                                >
+                                                    <svg class="w-5 h-5 transition-all duration-300 group-hover:scale-110" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 4v16m10-16v16M3 8h18M3 16h18"></path>
+                                                    </svg>
+                                                    <span>Рекламный шаблон</span>
+                                                </button>
 
-                                            <!-- Prompt Mode Button -->
-                                            <button
-                                                id="mode-prompt"
-                                                data-mode="prompt"
-                                                class="mode-btn flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 active:scale-95
-                                                         text-white/60 hover:text-white/80
-                                                         bg-transparent hover:bg-white/5"
-                                            >
-                                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                                                </svg>
-                                                <span>Свободный сценарий</span>
-                                            </button>
+                                                <!-- Prompt Mode Segment -->
+                                                <button
+                                                    id="mode-prompt"
+                                                    data-mode="prompt"
+                                                    class="mode-btn flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-semibold transition-all duration-300 group
+                                                             mode-segment-inactive"
+                                                >
+                                                    <svg class="w-5 h-5 transition-all duration-300 group-hover:scale-110" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                                                    </svg>
+                                                    <span>Свободный сценарий</span>
+                                                </button>
+                                            </div>
                                         </div>
                                     </div>
 
-                                    <!-- Mode Description (DYNAMIC) -->
-                                    <div id="mode-description" class="text-center text-xs text-white/60 px-2">
-                                        ИИ подберёт лучший сценарий и создаст продающее видео
+                                    <!-- HELPER TEXT: Mode Description (DYNAMIC) -->
+                                    <div id="mode-description" class="text-center text-sm font-medium mt-3 px-2 h-6 transition-all duration-300
+                                                                         bg-gradient-to-r from-purple-400/70 to-blue-400/70
+                                                                         bg-clip-text text-transparent
+                                                                         drop-shadow-sm">
+                                        ИИ сам подберёт сценарий и создаст продающее видео для WB и Ozon
                                     </div>
 
                                     <!-- Input + Generate Button Inside -->
@@ -445,8 +450,8 @@ const userBalance = user.generation_balance || 0;
     const modeDescription = document.getElementById('mode-description') as HTMLElement;
 
     const modeDescriptions = {
-        template: 'ИИ подберёт лучший сценарий и создаст продающее видео',
-        prompt: 'Полный контроль над действиями и сценой, но без гарантии качества'
+        template: 'ИИ сам подберёт сценарий и создаст продающее видео для WB и Ozon',
+        prompt: 'Вы управляете сценой и камерой, как режиссёр'
     };
 
     const modePlaceholders = {
@@ -458,10 +463,20 @@ const userBalance = user.generation_balance || 0;
     const templateBtn = document.getElementById('mode-template') as HTMLButtonElement;
     const promptBtn = document.getElementById('mode-prompt') as HTMLButtonElement;
 
-    if (templateBtn) {
-        templateBtn.classList.add('bg-white/20', 'text-white');
-        templateBtn.classList.remove('text-white/60');
+    function updateModeBarState(mode: 'template' | 'prompt') {
+        modeButtons.forEach(btn => {
+            if (btn.getAttribute('data-mode') === mode) {
+                btn.classList.remove('mode-segment-inactive');
+                btn.classList.add('mode-segment-active');
+            } else {
+                btn.classList.add('mode-segment-inactive');
+                btn.classList.remove('mode-segment-active');
+            }
+        });
     }
+
+    // Initialize with template mode active
+    updateModeBarState('template');
 
     modeButtons.forEach(btn => {
         btn.addEventListener('click', () => {
@@ -469,13 +484,8 @@ const userBalance = user.generation_balance || 0;
             selectedMode = mode;
             console.log(`[UI] Mode selected: ${selectedMode}`);
 
-            // Update button styles - remove active from all, add to clicked
-            modeButtons.forEach(b => {
-                b.classList.remove('bg-white/20', 'text-white');
-                b.classList.add('text-white/60');
-            });
-            btn.classList.add('bg-white/20', 'text-white');
-            btn.classList.remove('text-white/60');
+            // Update visual state
+            updateModeBarState(mode);
 
             // Update description
             if (modeDescription) {
@@ -781,5 +791,60 @@ const userBalance = user.generation_balance || 0;
     /* Active Duration button hover effect */
     .duration-btn.bg-primary:hover {
         background-color: rgb(37, 99, 235) !important; /* Slightly darker blue */
+    }
+
+    /* ========== MODE BAR: PREMIUM STYLES ========== */
+
+    /* Gradient border animation for Mode Bar */
+    @keyframes mode-bar-glow {
+        0%, 100% {
+            box-shadow: 0 0 12px rgba(168, 85, 247, 0.4), 0 0 24px rgba(59, 130, 246, 0.2);
+        }
+        50% {
+            box-shadow: 0 0 20px rgba(168, 85, 247, 0.6), 0 0 32px rgba(59, 130, 246, 0.4);
+        }
+    }
+
+    @keyframes segment-gradient {
+        0%, 100% {
+            background-position: 0% center;
+        }
+        50% {
+            background-position: 100% center;
+        }
+    }
+
+    /* Mode Bar Container */
+    .mode-bar-container {
+        animation: mode-bar-glow 3s ease-in-out infinite;
+    }
+
+    .mode-bar-container:hover {
+        animation: mode-bar-glow 2s ease-in-out infinite;
+    }
+
+    /* Inactive Segment Styles */
+    .mode-segment-inactive {
+        color: rgba(255, 255, 255, 0.55);
+        background-color: transparent;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .mode-segment-inactive:hover {
+        color: rgba(255, 255, 255, 0.8);
+        background-color: rgba(255, 255, 255, 0.05);
+    }
+
+    /* Active Segment Styles */
+    .mode-segment-active {
+        color: rgb(255, 255, 255);
+        background: linear-gradient(135deg, rgba(168, 85, 247, 0.3) 0%, rgba(59, 130, 246, 0.3) 100%);
+        border: 1px solid rgba(168, 85, 247, 0.4);
+        box-shadow: 0 0 16px rgba(168, 85, 247, 0.25), inset 0 0 8px rgba(168, 85, 247, 0.1);
+    }
+
+    .mode-segment-active:hover {
+        background: linear-gradient(135deg, rgba(168, 85, 247, 0.4) 0%, rgba(59, 130, 246, 0.4) 100%);
+        box-shadow: 0 0 20px rgba(168, 85, 247, 0.35), inset 0 0 12px rgba(168, 85, 247, 0.15);
     }
 </style>
