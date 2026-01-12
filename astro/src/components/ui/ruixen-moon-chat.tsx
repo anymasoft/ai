@@ -1,9 +1,9 @@
 "use client";
 
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { Textarea } from "./textarea";
 import { Button } from "./button";
-import { cn } from "../../lib/utils";
+import { cn } from "@/lib/utils";
 import {
   ImageIcon,
   FileUp,
@@ -35,7 +35,7 @@ function useAutoResizeTextarea({ minHeight, maxHeight }: AutoResizeProps) {
         return;
       }
 
-      textarea.style.height = `${minHeight}px`;
+      textarea.style.height = `${minHeight}px`; // reset first
       const newHeight = Math.max(
         minHeight,
         Math.min(textarea.scrollHeight, maxHeight ?? Infinity)
@@ -44,6 +44,10 @@ function useAutoResizeTextarea({ minHeight, maxHeight }: AutoResizeProps) {
     },
     [minHeight, maxHeight]
   );
+
+  useEffect(() => {
+    if (textareaRef.current) textareaRef.current.style.height = `${minHeight}px`;
+  }, [minHeight]);
 
   return { textareaRef, adjustHeight };
 }
@@ -56,19 +60,28 @@ export default function RuixenMoonChat() {
   });
 
   return (
-    <div className="relative w-full flex flex-col items-center justify-center py-12 px-4">
+    <div
+      className="relative w-full h-screen bg-cover bg-center flex flex-col items-center"
+      style={{
+        backgroundImage:
+          "url('https://pub-940ccf6255b54fa799a9b01050e6c227.r2.dev/ruixen_moon_2.png')",
+        backgroundAttachment: "fixed",
+      }}
+    >
       {/* Centered AI Title */}
-      <div className="text-center mb-12">
-        <h1 className="text-4xl font-semibold text-white drop-shadow-sm">
-          Ruixen AI
-        </h1>
-        <p className="mt-2 text-neutral-200">
-          Build something amazing — just start typing below.
-        </p>
+      <div className="flex-1 w-full flex flex-col items-center justify-center">
+        <div className="text-center">
+          <h1 className="text-4xl font-semibold text-white drop-shadow-sm">
+            Ruixen AI
+          </h1>
+          <p className="mt-2 text-neutral-200">
+            Build something amazing — just start typing below.
+          </p>
+        </div>
       </div>
 
       {/* Input Box Section */}
-      <div className="w-full max-w-3xl">
+      <div className="w-full max-w-3xl mb-[20vh]">
         <div className="relative bg-black/60 backdrop-blur-md rounded-xl border border-neutral-700">
           <Textarea
             ref={textareaRef}
@@ -88,7 +101,7 @@ export default function RuixenMoonChat() {
           />
 
           {/* Footer Buttons */}
-          <div className="flex items-center justify-between p-3 border-t border-neutral-700">
+          <div className="flex items-center justify-between p-3">
             <Button
               variant="ghost"
               size="icon"
