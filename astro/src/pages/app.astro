@@ -52,7 +52,7 @@ const userBalance = user.generation_balance || 0;
 
                             <input
                                 type="file"
-                                accept="image/*"
+                                accept="image/jpeg"
                                 class="absolute inset-0 opacity-0 cursor-pointer z-10"
                                 id="image-upload"
                                 title=""
@@ -64,8 +64,9 @@ const userBalance = user.generation_balance || 0;
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
                                 </svg>
                                 <div>
-                                    <p class="text-xs font-medium text-gray-700 dark:text-gray-300">Перетащите фото сюда</p>
-                                    <p class="text-xs text-gray-500 dark:text-gray-400">или нажмите, чтобы выбрать</p>
+                                    <p class="text-sm font-medium text-gray-700 dark:text-gray-300">Перетащите фото сюда</p>
+                                    <p class="text-sm text-gray-500 dark:text-gray-400">или нажмите, чтобы выбрать</p>
+                                    <p class="text-xs text-gray-400 dark:text-gray-500">(только формат JPG)</p>
                                 </div>
                             </div>
 
