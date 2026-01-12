@@ -25,49 +25,30 @@ export interface Session {
 
 /**
  * Получает юзера из сессии по токену
+ * (Логирование сделано в middleware и app.astro для избежания спама)
  */
 export function getUserFromSession(token: string): User | null {
   const db = getDb();
   const now = Math.floor(Date.now() / 1000);
 
-  console.log(`   🔍 Querying session in DB for token: ${token.slice(0, 16)}...`);
+  // Проверяем сессию в БД - параллельно проверяем expiry
+  const session = db
+    .prepare('SELECT userId, expiresAt FROM sessions WHERE token = ? AND expiresAt > ?')
+    .get(token, now) as Session | undefined;
 
-  // Сначала проверим все сессии для этого токена БЕЗ проверки expiry
-  const sessionAny = db
-    .prepare('SELECT userId, token, expiresAt FROM sessions WHERE token = ?')
-    .get(token) as any;
-
-  if (!sessionAny) {
-    console.log(`   ❌ Session token not found in DB at all`);
-    console.log(`   ⏰ Current timestamp: ${now}`);
+  if (!session) {
     return null;
   }
 
-  console.log(`   ✅ Session found in DB`);
-  console.log(`   ⏰ expiresAt: ${sessionAny.expiresAt}, now: ${now}, expired: ${sessionAny.expiresAt <= now}`);
-
-  if (sessionAny.expiresAt <= now) {
-    console.log(`   ❌ Session expired`);
-    return null;
-  }
-
-  const session = sessionAny as Session;
-  console.log(`   ✅ Session valid, userId: ${session.userId}`);
-
+  // Сессия валидна, получаем пользователя
   const user = db.prepare('SELECT * FROM users WHERE id = ?').get(session.userId) as User | undefined;
 
   if (!user) {
-    console.log(`   ❌ User not found for userId: ${session.userId}`);
-    // Let's check what users exist
-    const allUsers = db.prepare('SELECT id, email FROM users').all() as any[];
-    console.log(`   📊 Total users in DB: ${allUsers.length}`);
-    if (allUsers.length > 0) {
-      console.log(`   📊 Sample users: ${allUsers.slice(0, 2).map(u => u.email).join(', ')}`);
-    }
+    // Это ошибка - сессия есть, но пользователь удален из БД
+    console.error(`[AUTH] ❌ Session found but user deleted: userId=${session.userId}`);
     return null;
   }
 
-  console.log(`   ✅ User found: ${user.email}`);
   return user;
 }
 
