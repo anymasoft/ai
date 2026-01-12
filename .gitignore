@@ -44,3 +44,4 @@ YouTubeAnalitycs/sqlite.db
 *.db
 YouTubeAnalitycs/package-lock.json
 YouTubeAnalitycs/package.json
+/astro/.astro
