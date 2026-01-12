@@ -90,10 +90,6 @@ export const GET: APIRoute = async (context) => {
       );
     }
 
-    console.log(
-      `[CHECK] Found payment in DB: status=${dbStatus}, userId=${userId}`
-    );
-
     // ШАГ 3: ЕСЛИ уже succeeded в БД → готово
     if (dbStatus === 'succeeded') {
       return new Response(
@@ -151,10 +147,6 @@ export const GET: APIRoute = async (context) => {
     }
 
     const yooKassaPayment = (await response.json()) as YooKassaPaymentResponse;
-
-    console.log(
-      `[CHECK] YooKassa response: status=${yooKassaPayment.status}, paid=${yooKassaPayment.paid}`
-    );
 
     // ШАГ 6: ЕСЛИ YooKassa говорит succeeded → применяем платёж
     if (
