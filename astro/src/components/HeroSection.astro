@@ -12,10 +12,10 @@ import Container from "./Container.astro"
             <div class="grid lg:grid-cols-2 gap-12 lg:gap-8 items-center">
                 <!-- Left column: Text and buttons -->
                 <div>
-                    {/* EN: Create product videos for marketplaces */}
-                    <h1 class="text-gray-900 text-balance dark:text-white font-bold text-5xl md:text-6xl xl:text-7xl">Создавайте видео товаров <span class="text-primary">для карточек</span></h1>
-                    {/* EN: Upload a photo and get a selling video for Wildberries, Ozon, Amazon in minutes */}
-                    <p class="mt-8 text-gray-700 dark:text-gray-300 text-lg">Загрузите фото товара — получите готовое видео для карточки за минуты. Увеличьте конверсию прямо сейчас.</p>
+                    {/* EN: Increase sales on Wildberries and Ozon with video */}
+                    <h1 class="text-gray-900 text-balance dark:text-white font-bold text-5xl md:text-6xl xl:text-7xl">Увеличьте продажи на Wildberries и Ozon <span class="text-primary">с помощью видео</span></h1>
+                    {/* EN: Upload a photo, get a selling video for your marketplace card in 1 minute. Video increases engagement and helps your card rank higher */}
+                    <p class="mt-8 text-gray-700 dark:text-gray-300 text-lg">Загрузите фото товара — получите продающее видео для карточки за 1 минуту.<br />Видео повышает вовлечённость и помогает карточке подниматься в выдаче.</p>
                     <div class="mt-16 flex flex-wrap gap-y-4 gap-x-6">
                         <a
                           href="/sign-in"
@@ -34,24 +34,41 @@ import Container from "./Container.astro"
                           >Посмотреть тарифы</span>
                         </a>
                     </div>
-                    <div class="hidden py-8 mt-16 border-y border-gray-100 dark:border-gray-800 lg:flex flex-col gap-4">
+                    <div class="hidden py-8 mt-16 border-y border-gray-100 dark:border-gray-800 lg:flex flex-col gap-6">
                         <div>
                             {/* EN: For Wildberries and Ozon */}
                             <h6 class="text-lg font-semibold text-gray-700 dark:text-white">Для Wildberries и Ozon</h6>
-                            {/* EN: Videos automatically optimized for marketplace requirements */}
-                            <p class="mt-2 text-gray-500">Видео оптимизированы под требования маркетплейсов</p>
+                            {/* EN: Video increases time on card — this helps you grow in search results and get more orders */}
+                            <p class="mt-2 text-gray-600 dark:text-gray-400">Видео повышает время просмотра карточки — это помогает расти в выдаче и получать больше заказов.</p>
                         </div>
-                        <div>
-                            {/* EN: 6-10 seconds */}
-                            <h6 class="text-lg font-semibold text-gray-700 dark:text-white">6-10 секунд</h6>
-                            {/* EN: Perfect length for product cards */}
-                            <p class="mt-2 text-gray-500">Идеальная длина для карточки товара</p>
-                        </div>
-                        <div>
-                            {/* EN: Vertical format */}
-                            <h6 class="text-lg font-semibold text-gray-700 dark:text-white">Вертикальный формат</h6>
-                            {/* EN: Ready to upload without editing */}
-                            <p class="mt-2 text-gray-500">Готовые видео загружаются одним кликом</p>
+                        <div class="space-y-3">
+                            <div class="flex gap-2">
+                                <svg class="h-5 w-5 text-green-500 mt-1 flex-shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5"></path>
+                                </svg>
+                                <div>
+                                    <p class="font-semibold text-gray-700 dark:text-white">Готово под требования маркетплейсов</p>
+                                    <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Вертикальный формат, оптимальная длина 6–10 секунд</p>
+                                </div>
+                            </div>
+                            <div class="flex gap-2">
+                                <svg class="h-5 w-5 text-green-500 mt-1 flex-shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5"></path>
+                                </svg>
+                                <div>
+                                    <p class="font-semibold text-gray-700 dark:text-white">Оптимальная длина удерживает внимание</p>
+                                    <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">6–10 секунд — достаточно, чтобы заинтересовать покупателя</p>
+                                </div>
+                            </div>
+                            <div class="flex gap-2">
+                                <svg class="h-5 w-5 text-green-500 mt-1 flex-shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5"></path>
+                                </svg>
+                                <div>
+                                    <p class="font-semibold text-gray-700 dark:text-white">Больше вовлечённости = выше позиции = больше заказов</p>
+                                    <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Видео помогает конкурировать в выдаче маркетплейса</p>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
