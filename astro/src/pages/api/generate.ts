@@ -9,6 +9,7 @@ import {
 import { enqueueGeneration, getQueueSize } from '../../lib/minimax/queue';
 import { processQueue } from '../../lib/minimax/processor';
 import { enhancePrompt } from '../../lib/promptEnhancer';
+import { compileCameraCommands } from '../../lib/cameraPromptCompiler';
 import { routeToTemplate } from '../../lib/minimax/templateRouter';
 
 interface GenerateRequest {
@@ -19,7 +20,11 @@ interface GenerateRequest {
 
 /**
  * Создает запись генерации с промптом и статусом 'queued'
- * Сохраняет оба промпта: пользовательский и улучшенный
+ * Сохраняет все промпты:
+ *   - prompt: исходный пользовательский
+ *   - prompt_final: улучшенный (для template mode) или cinematic (для prompt mode фаза 1)
+ *   - prompt_cinematic: результат фазы 1 cinematic expansion (только для prompt mode)
+ *   - prompt_director: результат фазы 2 camera commands (только для prompt mode)
  * Также сохраняет данные Template Router (шаблон)
  * Сохраняет режим генерации (template или prompt)
  */
@@ -34,7 +39,9 @@ function createGenerationWithPrompts(
     template_name: string;
     text_inputs: Record<string, string>;
     final_prompt: string;
-  }
+  },
+  promptCinematic?: string,
+  promptDirector?: string
 ): string {
   const db = getDb();
   const cost = duration === 6 ? 1 : 2;
@@ -46,9 +53,9 @@ function createGenerationWithPrompts(
       id, userId, status, duration, cost, charged,
       prompt, prompt_final, minimax_status, createdAt,
       minimax_template_id, minimax_template_name, minimax_template_inputs, minimax_final_prompt,
-      generation_mode
+      generation_mode, prompt_cinematic, prompt_director
     ) VALUES (?, ?, ?, ?, ?, 0, ?, ?, 'pending', ?,
-              ?, ?, ?, ?, ?)`
+              ?, ?, ?, ?, ?, ?, ?)`
   );
 
   insertStmt.run(
@@ -64,7 +71,9 @@ function createGenerationWithPrompts(
     templateData?.template_name || null,
     templateData?.text_inputs ? JSON.stringify(templateData.text_inputs) : null,
     templateData?.final_prompt || null,
-    mode
+    mode,
+    promptCinematic || null,
+    promptDirector || null
   );
 
   return generationId;
@@ -165,8 +174,12 @@ export const POST: APIRoute = async (context) => {
       );
     }
 
-    // ШАГ 3: Улучшаем промпт через Smart Prompt Engine (с timeout)
+    // ШАГ 3: Улучшаем промпт через Smart Prompt Engine
+    // ФАЗА 1: Cinematic Expansion
     let promptFinal = prompt;
+    let promptCinematic: string | undefined;
+    let promptDirector: string | undefined;
+
     try {
       // Применяем timeout в 10 секунд для enhancePrompt
       const enhancePromise = enhancePrompt(prompt, mode);
@@ -175,9 +188,37 @@ export const POST: APIRoute = async (context) => {
       );
       promptFinal = await Promise.race([enhancePromise, timeoutPromise]) as string;
       console.log(`[API] ✅ Prompt enhanced (${mode} mode)`);
+
+      // Для prompt mode: сохраняем результат фазы 1 как prompt_cinematic
+      if (mode === 'prompt') {
+        promptCinematic = promptFinal;
+      }
     } catch (enhanceError) {
       console.warn('[API] ⚠️ Prompt enhancement failed, using original prompt');
       promptFinal = prompt;
+      if (mode === 'prompt') {
+        promptCinematic = prompt;
+      }
+    }
+
+    // ФАЗА 2: Camera Command Compilation (ТОЛЬКО ДЛЯ PROMPT MODE)
+    if (mode === 'prompt') {
+      console.log('[API] 🎥 Prompt mode: compiling camera commands...');
+      try {
+        // Применяем timeout в 12 секунд для compileCameraCommands
+        const cameraPromise = compileCameraCommands(promptFinal);
+        const timeoutPromise = new Promise((_, reject) =>
+          setTimeout(() => reject(new Error('Camera compilation timeout')), 12000)
+        );
+        promptDirector = await Promise.race([cameraPromise, timeoutPromise]) as string;
+        console.log('[API] ✅ Camera commands compiled');
+        // promptDirector теперь готов к отправке в MiniMax
+        promptFinal = promptDirector; // Используем director prompt для MiniMax
+      } catch (cameraError) {
+        console.warn('[API] ⚠️ Camera compilation failed, using cinematic prompt');
+        promptDirector = promptCinematic;
+        promptFinal = promptCinematic; // Fallback к cinematic если фаза 2 не удалась
+      }
     }
 
     // ШАГ 3.5: Выбираем оптимальный MiniMax Template через Template Router (ТОЛЬКО ДЛЯ TEMPLATE MODE)
@@ -203,7 +244,7 @@ export const POST: APIRoute = async (context) => {
     }
 
     // ШАГ 4: Создаем запись генерации со статусом 'queued'
-    const generationId = createGenerationWithPrompts(user.id, duration, prompt, promptFinal, mode, templateData);
+    const generationId = createGenerationWithPrompts(user.id, duration, prompt, promptFinal, mode, templateData, promptCinematic, promptDirector);
     console.log(`[API] ✅ Generation created: ${generationId} (mode=${mode})`);
 
     // ШАГ 5: Добавляем в глобальную очередь (concurrency=1)

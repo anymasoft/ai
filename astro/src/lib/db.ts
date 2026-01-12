@@ -190,6 +190,18 @@ function initDb() {
       db.exec('ALTER TABLE generations ADD COLUMN generation_mode TEXT DEFAULT \'template\'');
       console.log('✅ Migration: Added generation_mode column to generations table');
     }
+
+    const hasPromptCinematic = genInfo.some((col: any) => col.name === 'prompt_cinematic');
+    if (!hasPromptCinematic) {
+      db.exec('ALTER TABLE generations ADD COLUMN prompt_cinematic TEXT');
+      console.log('✅ Migration: Added prompt_cinematic column to generations table');
+    }
+
+    const hasPromptDirector = genInfo.some((col: any) => col.name === 'prompt_director');
+    if (!hasPromptDirector) {
+      db.exec('ALTER TABLE generations ADD COLUMN prompt_director TEXT');
+      console.log('✅ Migration: Added prompt_director column to generations table');
+    }
   } catch (e) {
     console.log('ℹ️ Migration check for generations passed');
   }
