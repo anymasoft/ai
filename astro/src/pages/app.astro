@@ -280,13 +280,13 @@ const userBalance = user.generation_balance || 0;
 
     // ========== Validation and Button State ==========
     const generateBtn = document.getElementById('generate-btn') as HTMLButtonElement;
-    const promptInput = document.getElementById('prompt') as HTMLTextAreaElement;
+    const promptTextarea = document.getElementById('prompt') as HTMLTextAreaElement;
     const imageUpload = document.getElementById('image-upload') as HTMLInputElement;
     let selectedDuration: string | null = null;
     let selectedImage: File | null = null;
 
     function updateGenerateButtonState() {
-        const hasPrompt = promptInput?.value.trim().length > 0;
+        const hasPrompt = promptTextarea?.value.trim().length > 0;
         const hasDuration = selectedDuration !== null;
         const hasImage = selectedImage !== null;
 
@@ -317,13 +317,13 @@ const userBalance = user.generation_balance || 0;
     }
 
     // Character Counter + Button Validation
-    if (promptInput) {
-        promptInput.addEventListener('input', () => {
-            const count = promptInput.value.length;
+    if (promptTextarea) {
+        promptTextarea.addEventListener('input', () => {
+            const count = promptTextarea.value.length;
 
             // Truncate if over 500
             if (count > 500) {
-                promptInput.value = promptInput.value.substring(0, 500);
+                promptTextarea.value = promptTextarea.value.substring(0, 500);
             }
             updateGenerateButtonState();
         });
@@ -483,8 +483,8 @@ const userBalance = user.generation_balance || 0;
             }
 
             // Update placeholder
-            if (promptInput) {
-                promptInput.placeholder = modePlaceholders[mode];
+            if (promptTextarea) {
+                promptTextarea.placeholder = modePlaceholders[mode];
             }
         });
     });
@@ -501,7 +501,7 @@ const userBalance = user.generation_balance || 0;
 
     if (generateBtn) {
         generateBtn.addEventListener('click', async () => {
-            if (!selectedImage || !selectedDuration || !promptInput?.value) {
+            if (!selectedImage || !selectedDuration || !promptTextarea?.value) {
                 console.error('[GEN] Missing required data');
                 return;
             }
@@ -530,7 +530,7 @@ const userBalance = user.generation_balance || 0;
             try {
                 // Логирование генерации
                 console.log(`[UI] generation mode = ${selectedMode}`);
-                console.log(`[UI] Starting generation: mode=${selectedMode}, duration=${selectedDuration}s, prompt="${promptInput.value.substring(0, 50)}..."`);
+                console.log(`[UI] Starting generation: mode=${selectedMode}, duration=${selectedDuration}s, prompt="${promptTextarea.value.substring(0, 50)}..."`);
 
                 // Дополнительная отладка
                 console.log(`[UI] Mode: ${selectedMode === 'template' ? '🎬 TEMPLATE (AI-selected scene)' : '✏️ PROMPT (Free-form scenario)'}`);
@@ -543,7 +543,7 @@ const userBalance = user.generation_balance || 0;
                         'Content-Type': 'application/json',
                     },
                     body: JSON.stringify({
-                        prompt: promptInput.value,
+                        prompt: promptTextarea.value,
                         duration: parseInt(selectedDuration || '6', 10),
                         mode: selectedMode,
                     }),
