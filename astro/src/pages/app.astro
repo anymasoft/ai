@@ -154,28 +154,41 @@ const userBalance = user.generation_balance || 0;
                                 <!-- Input Container (Full Width Minus Padding) -->
                                 <div class="pointer-events-auto relative space-y-3">
 
-                                    <!-- Mode Selector (NEW) -->
-                                    <div class="flex gap-2 justify-center">
-                                        <button
-                                            id="mode-template"
-                                            class="mode-btn relative px-4 py-2 rounded-full text-sm font-medium bg-white/30 backdrop-blur-md border border-white/40 text-white hover:bg-white/40 transition-all duration-150 active:scale-95 flex items-center gap-2"
-                                            data-mode="template"
-                                        >
-                                            <span>🎬</span>
-                                            <span>Рекламный шаблон</span>
-                                        </button>
-                                        <button
-                                            id="mode-prompt"
-                                            class="mode-btn relative px-4 py-2 rounded-full text-sm font-medium bg-white/30 backdrop-blur-md border border-white/40 text-white hover:bg-white/40 transition-all duration-150 active:scale-95 flex items-center gap-2"
-                                            data-mode="prompt"
-                                        >
-                                            <span>✏️</span>
-                                            <span>Свободный сценарий</span>
-                                        </button>
+                                    <!-- Mode Selector: Segmented Control (EQUAL WIDTH, VISIBLE) -->
+                                    <div class="w-full bg-black/40 backdrop-blur-lg rounded-xl p-1.5 border border-white/20">
+                                        <div class="flex gap-2">
+                                            <!-- Template Mode Button -->
+                                            <button
+                                                id="mode-template"
+                                                data-mode="template"
+                                                class="mode-btn flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 active:scale-95
+                                                         text-white/60 hover:text-white/80
+                                                         bg-transparent hover:bg-white/5"
+                                            >
+                                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 4v16m10-16v16M3 8h18M3 16h18"></path>
+                                                </svg>
+                                                <span>Рекламный шаблон</span>
+                                            </button>
+
+                                            <!-- Prompt Mode Button -->
+                                            <button
+                                                id="mode-prompt"
+                                                data-mode="prompt"
+                                                class="mode-btn flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 active:scale-95
+                                                         text-white/60 hover:text-white/80
+                                                         bg-transparent hover:bg-white/5"
+                                            >
+                                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                                </svg>
+                                                <span>Свободный сценарий</span>
+                                            </button>
+                                        </div>
                                     </div>
 
-                                    <!-- Mode Descriptions (NEW) -->
-                                    <div id="mode-description" class="text-center text-xs text-white/70">
+                                    <!-- Mode Description (DYNAMIC) -->
+                                    <div id="mode-description" class="text-center text-xs text-white/60 px-2">
                                         ИИ подберёт лучший сценарий и создаст продающее видео
                                     </div>
 
@@ -430,17 +443,25 @@ const userBalance = user.generation_balance || 0;
     let selectedMode: 'template' | 'prompt' = 'template';
     const modeButtons = document.querySelectorAll('.mode-btn') as NodeListOf<HTMLButtonElement>;
     const modeDescription = document.getElementById('mode-description') as HTMLElement;
+    const promptInput = document.getElementById('prompt') as HTMLTextAreaElement;
 
     const modeDescriptions = {
         template: 'ИИ подберёт лучший сценарий и создаст продающее видео',
-        prompt: 'Ваш сценарий будет точно воплощён в видео'
+        prompt: 'Полный контроль над действиями и сценой, но без гарантии качества'
     };
 
-    // Set initial active state
+    const modePlaceholders = {
+        template: 'Красивая девушка с наушниками, стильный продукт, модный образ, для карточки WB',
+        prompt: 'Девушка идёт вперёд, поворачивается к камере, улыбается, снимает наушники, плавное движение камеры, кинематографичный свет'
+    };
+
+    // Set initial active state (template mode)
     const templateBtn = document.getElementById('mode-template') as HTMLButtonElement;
     const promptBtn = document.getElementById('mode-prompt') as HTMLButtonElement;
+
     if (templateBtn) {
-        templateBtn.classList.add('ring-2', 'ring-white', 'bg-white/40');
+        templateBtn.classList.add('bg-white/20', 'text-white');
+        templateBtn.classList.remove('text-white/60');
     }
 
     modeButtons.forEach(btn => {
@@ -449,15 +470,22 @@ const userBalance = user.generation_balance || 0;
             selectedMode = mode;
             console.log(`[UI] Mode selected: ${selectedMode}`);
 
-            // Update button styles
+            // Update button styles - remove active from all, add to clicked
             modeButtons.forEach(b => {
-                b.classList.remove('ring-2', 'ring-white', 'bg-white/40');
+                b.classList.remove('bg-white/20', 'text-white');
+                b.classList.add('text-white/60');
             });
-            btn.classList.add('ring-2', 'ring-white', 'bg-white/40');
+            btn.classList.add('bg-white/20', 'text-white');
+            btn.classList.remove('text-white/60');
 
             // Update description
             if (modeDescription) {
                 modeDescription.textContent = modeDescriptions[mode];
+            }
+
+            // Update placeholder
+            if (promptInput) {
+                promptInput.placeholder = modePlaceholders[mode];
             }
         });
     });
@@ -501,14 +529,14 @@ const userBalance = user.generation_balance || 0;
             videoLoading.classList.remove('hidden');
 
             try {
-                // Подробное логирование перед отправкой
-                console.log(`[UI] ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
-                console.log(`[UI] 🎯 STARTING VIDEO GENERATION`);
-                console.log(`[UI] ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
-                console.log(`[UI] ${selectedMode === 'template' ? '🎬' : '✏️'} Mode: ${selectedMode === 'template' ? 'TEMPLATE (AI-selected scene)' : 'PROMPT (Free-form scenario)'}`);
-                console.log(`[UI] ⏱️ Duration: ${selectedDuration}s`);
-                console.log(`[UI] 💡 Prompt: "${promptInput.value.substring(0, 60)}${promptInput.value.length > 60 ? '...' : ''}"`);
-                console.log(`[UI] 💳 Cost: ${userBalance >= (selectedDuration === 6 ? 1 : 2) ? selectedDuration === 6 ? '1 credit' : '2 credits' : 'INSUFFICIENT BALANCE'}`);
+                // Логирование генерации
+                console.log(`[UI] generation mode = ${selectedMode}`);
+                console.log(`[UI] Starting generation: mode=${selectedMode}, duration=${selectedDuration}s, prompt="${promptInput.value.substring(0, 50)}..."`);
+
+                // Дополнительная отладка
+                console.log(`[UI] Mode: ${selectedMode === 'template' ? 'TEMPLATE (AI-selected scene)' : 'PROMPT (Free-form scenario)'}`);
+                console.log(`[UI] Duration: ${selectedDuration}s`);
+                console.log(`[UI] Cost: ${selectedDuration === 6 ? '1 credit' : '2 credits'}`);
 
                 const response = await fetch('/api/generate', {
                     method: 'POST',
@@ -525,7 +553,7 @@ const userBalance = user.generation_balance || 0;
                 const data = await response.json();
 
                 if (!response.ok) {
-                    console.error(`[UI] ❌ Server rejected generation request`);
+                    console.error(`[UI] ERROR: Server rejected generation request`);
                     console.error(`[UI]   - status: ${response.status}`);
                     console.error(`[UI]   - error: ${data.error}`);
 
@@ -549,13 +577,10 @@ const userBalance = user.generation_balance || 0;
                 }
 
                 const generationId = data.generationId;
-                console.log(`[UI] ✅ Generation request accepted by server`);
+                console.log(`[UI] OK: Generation request accepted`);
                 console.log(`[UI]   - generationId: ${generationId}`);
                 console.log(`[UI]   - mode: ${data.mode}`);
                 console.log(`[UI]   - cost: ${data.cost} credits`);
-                console.log(`[UI]   - new balance: ${data.balanceAfter} credits`);
-                console.log(`[UI]   - queue size: ${data.queueSize}`);
-                console.log(`[UI] ⏳ Polling for video completion...`);
 
                 // Ждем завершения генерации (опрашиваем статус)
                 let generationComplete = false;
@@ -580,13 +605,11 @@ const userBalance = user.generation_balance || 0;
                         if (statusData.status === 'success' && statusData.charged) {
                             generationComplete = true;
                             videoUrl = statusData.videoUrl;
-                            console.log(`[UI] ✅ Generation complete!`);
+                            console.log(`[UI] DONE: Generation complete`);
                             console.log(`[UI]   - generationId: ${generationId}`);
-                            console.log(`[UI]   - status: ${statusData.status}`);
-                            console.log(`[UI]   - charged: ${statusData.charged}`);
                             console.log(`[UI]   - videoUrl: ${videoUrl}`);
                         } else if (statusData.status === 'failed') {
-                            console.error(`[UI] ❌ Generation failed`);
+                            console.error(`[UI] ERROR: Generation failed`);
                             console.error(`[UI]   - generationId: ${generationId}`);
                             console.error(`[UI]   - status: ${statusData.status}`);
                             throw new Error('Генерация видео не удалась');
@@ -601,9 +624,7 @@ const userBalance = user.generation_balance || 0;
                 }
 
                 if (!generationComplete || !videoUrl) {
-                    console.error(`[UI] ⏱️ Generation timeout`);
-                    console.error(`[UI]   - generationId: ${generationId}`);
-                    console.error(`[UI]   - attempts: ${checkAttempts}/${maxAttempts}`);
+                    console.error(`[UI] ERROR: Generation timeout (${checkAttempts}s elapsed)`);
                     throw new Error(
                         'Время ожидания генерации истекло. Видео может быть готово позже.'
                     );
@@ -611,18 +632,17 @@ const userBalance = user.generation_balance || 0;
 
                 // Генерация готова - показываем видео из MiniMax
                 videoLoading.classList.add('hidden');
-                videoOutput.src = videoUrl; // URL видео из API
+                videoOutput.src = videoUrl;
                 videoOutput.classList.remove('hidden');
                 videoControls.classList.remove('hidden');
 
                 // Сохраняем videoUrl для скачивания
                 (downloadBtn as any).videoUrl = videoUrl;
 
-                console.log(`[UI] 🎬 Video displayed`);
-                console.log(`[UI] ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+                console.log(`[UI] Video displayed successfully`);
             } catch (error) {
                 const errorMessage = error instanceof Error ? error.message : 'Неизвестная ошибка';
-                console.error(`[UI] ❌ Generation failed with error:`);
+                console.error(`[UI] ERROR: Generation failed`);
                 console.error(`[UI]   - error: ${errorMessage}`);
 
                 videoLoading.classList.add('hidden');
