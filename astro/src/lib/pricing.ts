@@ -26,9 +26,9 @@ export const PRICING_PLANS: PricingPlan[] = [
   {
     id: 'free',
     name: 'Пробный',
-    credits: 1,
-    price: 89,
-    pricePerCredit: 89,
+    credits: 3,
+    price: 0,
+    pricePerCredit: 0,
     popular: false,
     isCustom: false
   },
