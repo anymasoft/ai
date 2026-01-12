@@ -28,28 +28,34 @@ export interface Session {
  * (Логирование сделано в middleware и app.astro для избежания спама)
  */
 export function getUserFromSession(token: string): User | null {
-  const db = getDb();
-  const now = Math.floor(Date.now() / 1000);
+  try {
+    const db = getDb();
+    const now = Math.floor(Date.now() / 1000);
 
-  // Проверяем сессию в БД - параллельно проверяем expiry
-  const session = db
-    .prepare('SELECT userId, expiresAt FROM sessions WHERE token = ? AND expiresAt > ?')
-    .get(token, now) as Session | undefined;
+    // Проверяем сессию в БД - параллельно проверяем expiry
+    const session = db
+      .prepare('SELECT userId, expiresAt FROM sessions WHERE token = ? AND expiresAt > ?')
+      .get(token, now) as Session | undefined;
 
-  if (!session) {
+    if (!session) {
+      return null;
+    }
+
+    // Сессия валидна, получаем пользователя
+    const user = db.prepare('SELECT * FROM users WHERE id = ?').get(session.userId) as User | undefined;
+
+    if (!user) {
+      // Это ошибка - сессия есть, но пользователь удален из БД
+      console.error(`[AUTH] ❌ Session found but user deleted: userId=${session.userId}`);
+      return null;
+    }
+
+    return user;
+  } catch (error) {
+    // Если БД не инициализирована (нет нативного модуля), возвращаем null
+    console.error(`[AUTH] ❌ Error getting user from session:`, error);
     return null;
   }
-
-  // Сессия валидна, получаем пользователя
-  const user = db.prepare('SELECT * FROM users WHERE id = ?').get(session.userId) as User | undefined;
-
-  if (!user) {
-    // Это ошибка - сессия есть, но пользователь удален из БД
-    console.error(`[AUTH] ❌ Session found but user deleted: userId=${session.userId}`);
-    return null;
-  }
-
-  return user;
 }
 
 /**
@@ -111,9 +117,14 @@ export function upsertUser(googleId: string, email: string, name: string, image?
  * Получает пользователя по ID
  */
 export function getUserById(userId: string): User | null {
-  const db = getDb();
-  const user = db.prepare('SELECT * FROM users WHERE id = ?').get(userId) as User | undefined;
-  return user || null;
+  try {
+    const db = getDb();
+    const user = db.prepare('SELECT * FROM users WHERE id = ?').get(userId) as User | undefined;
+    return user || null;
+  } catch (error) {
+    console.error(`[AUTH] ❌ Error getting user by ID:`, error);
+    return null;
+  }
 }
 
 /**
