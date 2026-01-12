@@ -16,7 +16,8 @@ if (!user) {
   return Astro.redirect('/');
 }
 
-const plans = PRICING_PLANS;
+// Исключаем пробный план (Free) - он дается автоматически при регистрации
+const plans = PRICING_PLANS.filter(plan => plan.id !== 'free');
 ---
 
 <AppLayout title="Billing - Beem">
