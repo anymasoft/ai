@@ -13,7 +13,15 @@ export const onRequest = defineMiddleware((context, next) => {
 
   // Получаем токен сессии из cookies
   const sessionToken = context.cookies.get('session_token')?.value;
-  const user = sessionToken ? getUserFromSession(sessionToken) : null;
+  let user = sessionToken ? getUserFromSession(sessionToken) : null;
+
+  // ИСПРАВЛЕНИЕ: Если cookie существует, но сессии нет в БД → удалить cookie
+  if (sessionToken && !user) {
+    console.log(`\n⚠️ MIDDLEWARE: Cookie существует, но сессия не найдена в БД`);
+    console.log(`   - Удаляем "залипшую" cookie`);
+    context.cookies.delete('session_token');
+    user = null;
+  }
 
   // Защищённые маршруты - требуют аутентификации
   const protectedRoutes = ['/app', '/account', '/billing', '/admin'];
@@ -27,8 +35,8 @@ export const onRequest = defineMiddleware((context, next) => {
   if (pathname === '/') {
     if (user) {
       // Если авторизован - редирект на /app
-      console.log(`\n🔄 Auth Middleware: Authorized user accessing "/"`);
-      console.log(`   - Redirecting to /app`);
+      console.log(`\n🔄 MIDDLEWARE: Авторизованный пользователь на "/"`);
+      console.log(`   - Редирект на /app`);
       return context.redirect('/app');
     }
     // Если неавторизован - показываем главную страницу
@@ -37,21 +45,21 @@ export const onRequest = defineMiddleware((context, next) => {
 
   // Защищённые маршруты - требуют аутентификации
   if (isProtected) {
-    console.log(`\n🔒 Auth Middleware for: ${pathname}`);
+    console.log(`\n🔒 MIDDLEWARE: Проверка доступа к ${pathname}`);
     console.log(`   - sessionToken: ${sessionToken ? sessionToken.slice(0, 16) + '...' : 'MISSING'}`);
 
     if (user) {
-      console.log(`   ✅ Session valid for user: ${user.email}`);
+      console.log(`   ✅ Сессия валидна: ${user.email}`);
 
       // Проверяем права админа для админ-маршрутов
       if (isAdminRoute && !isAdmin(user.email)) {
-        console.log(`   ❌ User is not admin`);
-        console.log(`   - Returning 404`);
+        console.log(`   ❌ Нет прав админа`);
+        console.log(`   - Возвращаем 404`);
         return new Response('Not Found', { status: 404 });
       }
     } else {
-      console.log(`   ❌ Session invalid or not found`);
-      console.log(`   - Redirecting to /`);
+      console.log(`   ❌ Сессия невалидна или не найдена`);
+      console.log(`   - Редирект на /`);
       // Редиректим на главную страницу
       return context.redirect('/');
     }
