@@ -1,6 +1,7 @@
 import { defineConfig } from 'astro/config';
 import tailwindcss from '@tailwindcss/vite';
 import node from '@astrojs/node';
+import react from '@astrojs/react';
 import dotenv from 'dotenv';
 import skipHostCheck from './vite-skip-host-check.mjs';
 
@@ -30,6 +31,10 @@ export default defineConfig({
   adapter: node({
     mode: 'standalone'
   }),
+
+  integrations: [
+    react()  // ✅ ДОБАВЛЯЕМ REACT ИНТЕГРАЦИЮ
+  ],
 
   vite: {
     plugins: [
