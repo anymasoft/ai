@@ -56,21 +56,18 @@ import Container from "./Container.astro"
                     </div>
                 </div>
 
-                <!-- Right column: Visual mockup -->
+                <!-- Right column: Demo video -->
                 <div class="relative flex items-start justify-center lg:self-start lg:sticky lg:top-20">
-                    <div class="w-full max-w-lg">
-                        <img
-                            src="/astrolus-light.png"
-                            alt="Интерфейс создания видео товаров - Светлая тема"
-                            class="w-full rounded-3xl shadow-2xl shadow-gray-600/20 dark:hidden"
-                            loading="lazy"
-                        />
-                        <img
-                            src="/astrolus-dark.png"
-                            alt="Интерфейс создания видео товаров - Тёмная тема"
-                            class="w-full rounded-3xl shadow-2xl shadow-gray-600/20 hidden dark:block"
-                            loading="lazy"
-                        />
+                    <div class="w-full max-w-[420px] aspect-[2/3] overflow-hidden rounded-xl shadow-2xl shadow-gray-600/20">
+                        <video
+                            src="/demo-loop_big.mp4"
+                            autoplay
+                            loop
+                            muted
+                            playsinline
+                            preload="auto"
+                            class="absolute inset-0 w-full h-full object-cover"
+                        ></video>
                     </div>
                 </div>
             </div>
