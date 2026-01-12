@@ -45,3 +45,4 @@ YouTubeAnalitycs/sqlite.db
 YouTubeAnalitycs/package-lock.json
 YouTubeAnalitycs/package.json
 /astro/.astro
+astro/.astro/types.d.ts
