@@ -1,25 +1,40 @@
 import type { APIRoute } from 'astro';
 import { deleteSession } from '../../../lib/auth';
 
-export const POST: APIRoute = async (context) => {
+const logoutHandler: APIRoute = async (context) => {
   try {
     // Получаем токен из cookies
     const sessionToken = context.cookies.get('session_token')?.value;
 
+    console.log(`\n🚪 LOGOUT: Пользователь выходит`);
+    console.log(`   - sessionToken: ${sessionToken ? sessionToken.slice(0, 16) + '...' : 'MISSING'}`);
+
     if (sessionToken) {
-      // Удаляем сессию из БД
-      deleteSession(sessionToken);
+      try {
+        // Удаляем сессию из БД
+        deleteSession(sessionToken);
+        console.log(`   ✅ Сессия удалена из БД`);
+      } catch (error) {
+        console.error(`   ⚠️ Ошибка удаления сессии:`, error);
+      }
     }
 
     // Удаляем cookie
     context.cookies.delete('session_token');
-
-    console.log('✅ User logged out');
+    console.log(`   ✅ Cookie удалена`);
 
     // Редиректим на главную
+    console.log(`   - Редирект на /`);
     return context.redirect('/');
   } catch (error) {
-    console.error('Logout error:', error);
-    return new Response('Logout failed', { status: 500 });
+    console.error(`\n❌ LOGOUT ERROR:`, error);
+    return new Response(JSON.stringify({ error: 'Logout failed' }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json' },
+    });
   }
 };
+
+// Поддерживаем оба метода GET и POST
+export const GET = logoutHandler;
+export const POST = logoutHandler;
