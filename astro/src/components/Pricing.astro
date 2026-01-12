@@ -1,143 +1,89 @@
 ---
 import Container from "./Container.astro"
+import { PRICING_PLANS, formatPrice, getPlansSummary } from '../lib/pricing';
 
-const pricingData = {
-  plan_free_features: [
-    '3 кредита на генерацию видео',
-    'Полный функционал сервиса',
-    'Экспорт готовых видео',
-  ],
-  plan_pro_features: [
-    '50 кредитов на генерацию видео',
-    'Приоритетная обработка',
-    'Техническая поддержка',
-  ],
-  plan_premium_features: [
-    '500 кредитов на генерацию видео',
-    'Приоритетная обработка',
-    'Приоритетная поддержка',
-  ]
-};
+const purchasablePlans = getPlansSummary();
 ---
 
-<div id="pricing" class="bg-white">
+<div id="pricing" class="bg-white dark:bg-gray-900">
   <Container>
-    <div class="grid gap-8 mb-16 lg:grid-cols-3 p-4 md:p-8 mt-12">
-        <div class="relative">
-            <div class="flex flex-col justify-between h-full bg-white border border-gray-200 rounded-lg shadow-sm">
-                <div class="p-6">
-                    {/* EN: Free Plan */}
-                    <h3 class="text-2xl font-semibold text-gray-900">Стартовый пакет</h3>
-                    <p class="mt-2 text-gray-600">Для начинающих селлеров</p>
-                    <div class="mt-4">
-                        <span class="text-4xl font-bold">0 ₽</span>
-                    </div>
-                    <ul class="mt-6 space-y-3">
-                        {pricingData.plan_free_features.map((feature: string) => (
-                            <li class="flex items-center gap-2">
-                                <svg class="h-5 w-5 text-gray-600" xmlns="http://www.w3.org/2000/svg" fill="none"
-                                    viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true"
-                                    data-slot="icon">
-                                    <path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5"></path>
-                                </svg> <span>{feature}</span>
-                            </li>
-                        ))}
-                    </ul>
-                </div>
-                <div class="p-6 border-t border-gray-200 rounded-b-lg bg-gray-50">
-                    <a href="/sign-in"
-                        class="block w-full px-4 py-2 font-medium text-center text-white transition-colors bg-gray-900 rounded-lg hover:bg-gray-800">
-                        {/* EN: Get Started */}
-                        Начать
-                        <svg class="h-4 w-4 inline-block ml-2" xmlns="http://www.w3.org/2000/svg" fill="none"
-                            viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true"
-                            data-slot="icon">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3">
-                            </path>
-                        </svg> </a>
-                </div>
-            </div>
-        </div>
+    <!-- Заголовок секции -->
+    <div class="mb-12 text-center">
+      <h2 class="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white mb-4">Цены и кредиты</h2>
+      <p class="text-lg text-gray-600 dark:text-gray-300">Стоимость от <span class="font-semibold text-primary">69 ₽ за видео</span>. Вы покупаете кредиты и используете их, когда нужно.</p>
+      <p class="text-sm text-gray-500 dark:text-gray-400 mt-2">1 кредит = видео 6 секунд · 10 секунд = 2 кредита</p>
+    </div>
 
-        <div class="relative">
+    <!-- Pricing Cards -->
+    <div class="grid gap-8 mb-16 lg:grid-cols-2 p-4 md:p-8">
+      {purchasablePlans.map((plan) => (
+        <div class={`relative ${plan.popular ? '' : ''}`}>
+          {plan.popular && (
             <div class="absolute left-0 right-0 flex justify-center -top-4">
-                <span class="flex items-center gap-1 px-4 py-1 text-sm font-medium text-white rounded-full bg-gradient-to-r from-indigo-600 to-violet-600">
-                <svg class="h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true" data-slot="icon">
-      <path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09ZM18.259 8.715 18 9.75l-.259-1.035a3.375 3.375 0 0 0-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 0 0 2.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 0 0 2.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 0 0-2.456 2.456ZM16.894 20.567 16.5 21.75l-.394-1.183a2.25 2.25 0 0 0-1.423-1.423L13.5 18.75l1.183-.394a2.25 2.25 0 0 0 1.423-1.423l.394-1.183.394 1.183a2.25 2.25 0 0 0 1.423 1.423l1.183.394-1.183.394a2.25 2.25 0 0 0-1.423 1.423Z"></path>
-    </svg>            {/* EN: Most Popular */}
-                  Самый популярный
-            </span>
+              <span class="flex items-center gap-1 px-4 py-1 text-sm font-medium text-white rounded-full bg-gradient-to-r from-indigo-600 to-violet-600">
+                <svg class="h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09ZM18.259 8.715 18 9.75l-.259-1.035a3.375 3.375 0 0 0-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 0 0 2.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 0 0 2.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 0 0-2.456 2.456ZM16.894 20.567 16.5 21.75l-.394-1.183a2.25 2.25 0 0 0-1.423-1.423L13.5 18.75l1.183-.394a2.25 2.25 0 0 0 1.423-1.423l.394-1.183.394 1.183a2.25 2.25 0 0 0 1.423 1.423l1.183.394-1.183.394a2.25 2.25 0 0 0-1.423 1.423Z"></path>
+                </svg>
+                Самый популярный
+              </span>
             </div>
-            <div class="flex flex-col justify-between h-full bg-white border-2 border-indigo-400 rounded-lg shadow-lg">
-                <div class="p-6">
-                    {/* EN: Pro Plan */}
-                    <h3 class="text-2xl font-semibold text-gray-900">Профессиональный пакет</h3>
-                    <p class="mt-2 text-gray-600">Для активных селлеров</p>
-                    <div class="mt-4">
-                        <span class="text-4xl font-bold">299 ₽</span>
-                    </div>
-                    <ul class="mt-6 space-y-3">
-                        {pricingData.plan_pro_features.map((feature: string) => (
-                            <li class="flex items-center gap-2">
-                                <svg class="h-5 w-5 text-green-500" xmlns="http://www.w3.org/2000/svg" fill="none"
-                                    viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true"
-                                    data-slot="icon">
-                                    <path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5"></path>
-                                </svg> <span>{feature}</span>
-                            </li>
-                        ))}
-                    </ul>
-                </div>
-                <div class="p-6 border-t border-gray-200 rounded-b-lg bg-gray-50">
-                    <a href="/sign-in"
-                        class="block w-full px-4 py-2 font-medium text-center text-white transition-colors rounded-lg bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700">
-                        {/* EN: Get Started */}
-                        Начать
-                        <svg class="h-4 w-4 inline-block ml-2" xmlns="http://www.w3.org/2000/svg" fill="none"
-                            viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true"
-                            data-slot="icon">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3">
-                            </path>
-                        </svg> </a>
-                </div>
-            </div>
-        </div>
+          )}
 
-        <div class="relative">
-            <div class="flex flex-col justify-between h-full bg-white border border-gray-200 rounded-lg shadow-sm">
-                <div class="p-6">
-                    {/* EN: Premium Plan */}
-                    <h3 class="text-2xl font-semibold text-gray-900">Максимальный пакет</h3>
-                    <p class="mt-2 text-gray-600">Для масштабирования продаж</p>
-                    <div class="mt-4">
-                        <span class="text-4xl font-bold">999 ₽</span>
-                    </div>
-                    <ul class="mt-6 space-y-3">
-                        {pricingData.plan_premium_features.map((feature: string) => (
-                            <li class="flex items-center gap-2">
-                                <svg class="h-5 w-5 text-green-500" xmlns="http://www.w3.org/2000/svg" fill="none"
-                                    viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true"
-                                    data-slot="icon">
-                                    <path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5"></path>
-                                </svg> <span>{feature}</span>
-                            </li>
-                        ))}
-                    </ul>
-                </div>
-                <div class="p-6 border-t border-gray-200 rounded-b-lg bg-gray-50">
-                    <a href="/sign-in"
-                        class="block w-full px-4 py-2 font-medium text-center text-white transition-colors bg-gray-900 rounded-lg hover:bg-gray-800">
-                        {/* EN: Get Started */}
-                        Начать
-                        <svg class="h-4 w-4 inline-block ml-2" xmlns="http://www.w3.org/2000/svg" fill="none"
-                            viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true"
-                            data-slot="icon">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3">
-                            </path>
-                        </svg> </a>
-                </div>
+          <div class={`flex flex-col justify-between h-full bg-white dark:bg-gray-800 rounded-lg ${plan.popular ? 'border-2 border-indigo-400 shadow-lg' : 'border border-gray-200 dark:border-gray-700 shadow-sm'}`}>
+            <div class="p-6">
+              {/* Название пакета */}
+              <h3 class="text-2xl font-semibold text-gray-900 dark:text-white">{plan.name}</h3>
+
+              {/* Цена */}
+              <div class="mt-4">
+                <span class="text-4xl font-bold text-gray-900 dark:text-white">{formatPrice(plan.price)} ₽</span>
+              </div>
+
+              {/* Кредиты */}
+              <div class="mt-2">
+                <p class="text-lg text-gray-600 dark:text-gray-400">{plan.credits} кредитов</p>
+              </div>
+
+              {/* Преимущества */}
+              <ul class="mt-6 space-y-3">
+                <li class="flex items-center gap-2 text-gray-600 dark:text-gray-300">
+                  <svg class="h-5 w-5 text-green-500 flex-shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5"></path>
+                  </svg>
+                  <span>Видео для карточек WB/Ozon за 1 минуту</span>
+                </li>
+                <li class="flex items-center gap-2 text-gray-600 dark:text-gray-300">
+                  <svg class="h-5 w-5 text-green-500 flex-shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5"></path>
+                  </svg>
+                  <span>Вертикальный формат 6–10 секунд</span>
+                </li>
+                <li class="flex items-center gap-2 text-gray-600 dark:text-gray-300">
+                  <svg class="h-5 w-5 text-green-500 flex-shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5"></path>
+                  </svg>
+                  <span>Помогает увеличить вовлечённость и заказы</span>
+                </li>
+              </ul>
             </div>
+
+            {/* Кнопка */}
+            <div class={`p-6 border-t rounded-b-lg ${plan.popular ? 'border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900' : 'border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900'}`}>
+              <a href="/sign-in"
+                class={`block w-full px-4 py-2 font-medium text-center rounded-lg transition-colors ${
+                  plan.popular
+                    ? 'text-white bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700'
+                    : 'text-white bg-gray-900 dark:bg-gray-700 hover:bg-gray-800 dark:hover:bg-gray-600'
+                }`}>
+                Купить кредиты
+                <svg class="h-4 w-4 inline-block ml-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3"></path>
+                </svg>
+              </a>
+            </div>
+          </div>
         </div>
+      ))}
     </div>
   </Container>
 </div>
