@@ -59,7 +59,7 @@ export async function callMinimaxAPI(
       model: 'MiniMax-Hailuo-02',
       first_frame_image: imageDataUrl,
       duration: durationNumber,  // ← ТОЛЬКО ЧИСЛО
-      resolution: '512P',
+      resolution: '768P',
       callback_url: callbackUrl,
     };
 
