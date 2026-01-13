@@ -1,0 +1,16 @@
+REVERT LOG
+==========
+
+Reverted the following erroneous commits:
+- 10de876: fix: move conditional UI styles to global scope
+- f6f930b: feat: implement conditional UI modes (no-video/has-video)
+- ccfcf90: fix: restore glass morphism effect to all UI elements
+
+Reason: These commits attempted to implement NO-VIDEO/HAS-VIDEO conditional UI modes
+but the approach was flawed (scoped CSS couldn't reach parent classes from components).
+
+Current state: Reverted to commit e47b9e4 
+(feat: remove icons from QuickActions and add shadcn-style tooltips)
+
+Date: 2026-01-13
+Branch: claude/explore-astro-ai-revert-F7UTe
