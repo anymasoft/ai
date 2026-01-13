@@ -36,7 +36,47 @@
 </div>
 
 <style>
-  .mode-toggle-btn {
+  /* NO-VIDEO MODE: Contrast buttons */
+  .no-video .mode-toggle-btn {
+    border: 1px solid #d1d5db !important;
+    background-color: #ffffff !important;
+    color: #374151 !important;
+    backdrop-filter: none !important;
+    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05) !important;
+  }
+
+  .dark .no-video .mode-toggle-btn {
+    border-color: #4b5563 !important;
+    background-color: #374151 !important;
+    color: #e5e7eb !important;
+  }
+
+  .no-video .mode-toggle-btn:hover:not(.mode-toggle-active) {
+    background-color: #f3f4f6 !important;
+    border-color: #9ca3af !important;
+  }
+
+  .dark .no-video .mode-toggle-btn:hover:not(.mode-toggle-active) {
+    background-color: #4b5563 !important;
+    border-color: #6b7280 !important;
+  }
+
+  .no-video .mode-toggle-active {
+    background: #dbeafe !important;
+    border-color: #3b82f6 !important;
+    color: #1e40af !important;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1) !important;
+  }
+
+  .dark .no-video .mode-toggle-active {
+    background: #1e3a8a !important;
+    border-color: #3b82f6 !important;
+    color: #93c5fd !important;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2) !important;
+  }
+
+  /* HAS-VIDEO MODE: Glass pill buttons */
+  .has-video .mode-toggle-btn {
     border: 1px solid rgba(255, 255, 255, 0.3);
     background-color: rgba(255, 255, 255, 0.1);
     background-image: none;
@@ -46,36 +86,40 @@
     cursor: pointer;
   }
 
-  .dark .mode-toggle-btn {
+  .dark .has-video .mode-toggle-btn {
     border-color: rgba(255, 255, 255, 0.2);
     background-color: rgba(255, 255, 255, 0.05);
     color: #cbd5e1;
   }
 
-  /* Inactive state */
-  .mode-toggle-btn:hover:not(.mode-toggle-active) {
+  .has-video .mode-toggle-btn:hover:not(.mode-toggle-active) {
     background-color: rgba(255, 255, 255, 0.15);
     border-color: rgba(255, 255, 255, 0.4);
   }
 
-  .dark .mode-toggle-btn:hover:not(.mode-toggle-active) {
+  .dark .has-video .mode-toggle-btn:hover:not(.mode-toggle-active) {
     background-color: rgba(255, 255, 255, 0.1);
     border-color: rgba(255, 255, 255, 0.3);
   }
 
-  /* Active state */
-  .mode-toggle-active {
+  .has-video .mode-toggle-active {
     background: rgba(255, 255, 255, 0.25);
     border-color: rgba(255, 255, 255, 0.4);
     color: #1e40af;
     box-shadow: 0 0 12px rgba(59, 130, 246, 0.3), inset 0 0 8px rgba(59, 130, 246, 0.1);
   }
 
-  .dark .mode-toggle-active {
+  .dark .has-video .mode-toggle-active {
     background: rgba(255, 255, 255, 0.15);
     border-color: rgba(255, 255, 255, 0.3);
     color: #60a5fa;
     box-shadow: 0 0 12px rgba(59, 130, 246, 0.3), inset 0 0 8px rgba(59, 130, 246, 0.1);
+  }
+
+  /* Base button styles */
+  .mode-toggle-btn {
+    cursor: pointer;
+    transition: all 0.3s ease;
   }
 
   .mode-toggle-btn:focus {

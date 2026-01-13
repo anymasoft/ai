@@ -87,7 +87,7 @@ const userBalance = user.generation_balance || 0;
                 </div>
 
                 <!-- RIGHT COLUMN: Video Stage (FILLS REMAINING SPACE) -->
-                <div class="flex-1 overflow-hidden">
+                <div class="flex-1 overflow-hidden no-video" id="video-section">
                     <div class="h-full border border-gray-100 dark:border-gray-700 rounded-3xl overflow-hidden bg-white dark:bg-gray-800 flex flex-col relative">
 
                         <!-- Video Area - flex-1 to fill space -->
@@ -441,6 +441,27 @@ const userBalance = user.generation_balance || 0;
     const videoControls = document.getElementById('video-controls') as HTMLElement;
     const downloadBtn = document.getElementById('download-btn') as HTMLButtonElement;
     const clearBtn = document.getElementById('clear-btn') as HTMLButtonElement;
+    const videoSection = document.getElementById('video-section') as HTMLElement;
+
+    // ========== UI Mode Manager (has-video / no-video) ==========
+    function updateUIMode() {
+        if (!videoSection) return;
+
+        const hasVideo = videoOutput.src && videoOutput.src.trim() !== '';
+
+        if (hasVideo) {
+            videoSection.classList.remove('no-video');
+            videoSection.classList.add('has-video');
+            console.log('[UI] Switched to HAS-VIDEO mode (glass blur UI)');
+        } else {
+            videoSection.classList.remove('has-video');
+            videoSection.classList.add('no-video');
+            console.log('[UI] Switched to NO-VIDEO mode (white contrast UI)');
+        }
+    }
+
+    // Initialize UI mode
+    updateUIMode();
 
     if (generateBtn) {
         generateBtn.addEventListener('click', async () => {
@@ -596,6 +617,9 @@ const userBalance = user.generation_balance || 0;
                 // Сохраняем videoUrl для скачивания
                 (downloadBtn as any).videoUrl = videoUrl;
 
+                // Обновляем UI режим на HAS-VIDEO
+                updateUIMode();
+
                 console.log(`[UI] 🎬 Video displayed successfully`);
             } catch (error) {
                 const errorMessage = error instanceof Error ? error.message : 'Неизвестная ошибка';
@@ -660,6 +684,9 @@ const userBalance = user.generation_balance || 0;
             // Clear selected image
             selectedImage = null;
             imageUpload.value = '';
+
+            // Обновляем UI режим обратно на NO-VIDEO
+            updateUIMode();
 
             // Update button state
             updateGenerateButtonState();
