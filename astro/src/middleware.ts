@@ -1,6 +1,5 @@
 import { defineMiddleware } from 'astro:middleware';
 import { getUserFromSession, isAdmin } from './lib/auth';
-import { logger } from './lib/logger';
 
 const COOKIE_NAME = 'session_token';
 const COOKIE_OPTIONS = {
@@ -16,7 +15,7 @@ export const onRequest = defineMiddleware((context, next) => {
   // ✅ MiniMax webhook - публичный endpoint, БЕЗ авторизации
   // Позволяем MiniMax доставлять POST запросы для verification и результатов
   if (pathname === '/minimax_callback' || pathname.startsWith('/minimax_callback/')) {
-    logger.log('[MIDDLEWARE] MiniMax webhook /minimax_callback → allow без авторизации');
+    console.log('[MIDDLEWARE] MiniMax webhook /minimax_callback → allow без авторизации');
     return next();
   }
 
@@ -28,8 +27,8 @@ export const onRequest = defineMiddleware((context, next) => {
   if (sessionToken && !user) {
     // Проверяем флаг что мы уже очищали в этом request
     if (!context.locals.sessionInvalidated) {
-      logger.log(`\n⚠️ MIDDLEWARE: Cookie существует, но сессия не найдена в БД`);
-      logger.log(`   - Удаляем "залипшую" cookie`);
+      console.log(`\n⚠️ MIDDLEWARE: Cookie существует, но сессия не найдена в БД`);
+      console.log(`   - Удаляем "залипшую" cookie`);
 
       // Правильное удаление cookie с ТЕМИ ЖЕ параметрами
       context.cookies.set(COOKIE_NAME, '', {
@@ -39,7 +38,7 @@ export const onRequest = defineMiddleware((context, next) => {
 
       // Отмечаем что очистили
       context.locals.sessionInvalidated = true;
-      logger.log(`   ✅ Cookie очищена (maxAge=0)`);
+      console.log(`   ✅ Cookie очищена (maxAge=0)`);
     }
     user = null;
   }
@@ -56,8 +55,8 @@ export const onRequest = defineMiddleware((context, next) => {
   if (pathname === '/') {
     if (user) {
       // Если авторизован - редирект на /app
-      logger.log(`\n🔄 MIDDLEWARE: Авторизованный пользователь на "/"`);
-      logger.log(`   - Редирект на /app`);
+      console.log(`\n🔄 MIDDLEWARE: Авторизованный пользователь на "/"`);
+      console.log(`   - Редирект на /app`);
       return context.redirect('/app');
     }
     // Если неавторизован - показываем главную страницу
@@ -66,21 +65,21 @@ export const onRequest = defineMiddleware((context, next) => {
 
   // Защищённые маршруты - требуют аутентификации
   if (isProtected) {
-    logger.log(`\n🔒 MIDDLEWARE: Проверка доступа к ${pathname}`);
-    logger.log(`   - sessionToken: ${sessionToken ? sessionToken.slice(0, 16) + '...' : 'MISSING'}`);
+    console.log(`\n🔒 MIDDLEWARE: Проверка доступа к ${pathname}`);
+    console.log(`   - sessionToken: ${sessionToken ? sessionToken.slice(0, 16) + '...' : 'MISSING'}`);
 
     if (user) {
-      logger.log(`   ✅ Сессия валидна: ${user.email}`);
+      console.log(`   ✅ Сессия валидна: ${user.email}`);
 
       // Проверяем права админа для админ-маршрутов
       if (isAdminRoute && !isAdmin(user.email)) {
-        logger.log(`   ❌ Нет прав админа`);
-        logger.log(`   - Возвращаем 404`);
+        console.log(`   ❌ Нет прав админа`);
+        console.log(`   - Возвращаем 404`);
         return new Response('Not Found', { status: 404 });
       }
     } else {
-      logger.log(`   ❌ Сессия невалидна или не найдена`);
-      logger.log(`   - Редирект на /`);
+      console.log(`   ❌ Сессия невалидна или не найдена`);
+      console.log(`   - Редирект на /`);
       // Редиректим на главную страницу
       return context.redirect('/');
     }
