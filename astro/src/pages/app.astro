@@ -383,7 +383,7 @@ const userBalance = user.generation_balance || 0;
 
     // ========== Mode Selector ==========
     let selectedMode: 'template' | 'prompt' = 'template';
-    const modeButtons = document.querySelectorAll('.mode-btn') as NodeListOf<HTMLButtonElement>;
+    const modeButtons = document.querySelectorAll('.mode-toggle-btn') as NodeListOf<HTMLButtonElement>;
     const modeDescription = document.getElementById('mode-description') as HTMLElement;
 
     const modeDescriptions = {
@@ -415,19 +415,16 @@ const userBalance = user.generation_balance || 0;
     // Initialize with template mode active
     updateModeBarState('template');
 
+    // Set initial placeholder
+    if (promptTextarea) {
+        promptTextarea.placeholder = modePlaceholders['template'];
+    }
+
     modeButtons.forEach(btn => {
         btn.addEventListener('click', () => {
             const mode = btn.getAttribute('data-mode') as 'template' | 'prompt';
             selectedMode = mode;
             console.log(`[UI] Mode selected: ${selectedMode}`);
-
-            // Update visual state
-            updateModeBarState(mode);
-
-            // Update description
-            if (modeDescription) {
-                modeDescription.textContent = modeDescriptions[mode];
-            }
 
             // Update placeholder
             if (promptTextarea) {
