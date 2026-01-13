@@ -843,4 +843,238 @@ const userBalance = user.generation_balance || 0;
             linear-gradient(135deg, #1f2937 0%, #111827 100%);
         background-attachment: fixed;
     }
+
+    /* ========== CONDITIONAL UI MODES ========== */
+
+    /* NO-VIDEO MODE: White/Contrast UI */
+    .no-video #prompt {
+        background-color: #ffffff !important;
+        border: 1px solid #e5e7eb !important;
+        color: #1f2937 !important;
+        backdrop-filter: none !important;
+        box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1) !important;
+    }
+
+    .dark .no-video #prompt {
+        background-color: #1f2937 !important;
+        border: 1px solid #374151 !important;
+        color: #f3f4f6 !important;
+    }
+
+    .no-video #prompt::placeholder {
+        color: #9ca3af !important;
+    }
+
+    .dark .no-video #prompt::placeholder {
+        color: #6b7280 !important;
+    }
+
+    .no-video #generate-btn {
+        background-color: #ffffff !important;
+        border: 1px solid #d1d5db !important;
+        color: #2563eb !important;
+        backdrop-filter: none !important;
+        box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1) !important;
+    }
+
+    .dark .no-video #generate-btn {
+        background-color: #374151 !important;
+        border: 1px solid #4b5563 !important;
+        color: #60a5fa !important;
+    }
+
+    .no-video #generate-btn:hover:not(:disabled) {
+        background-color: #f3f4f6 !important;
+    }
+
+    .dark .no-video #generate-btn:hover:not(:disabled) {
+        background-color: #4b5563 !important;
+    }
+
+    .no-video .mode-toggle-btn {
+        border: 1px solid #d1d5db !important;
+        background-color: #ffffff !important;
+        color: #374151 !important;
+        backdrop-filter: none !important;
+        box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05) !important;
+    }
+
+    .dark .no-video .mode-toggle-btn {
+        border-color: #4b5563 !important;
+        background-color: #374151 !important;
+        color: #e5e7eb !important;
+    }
+
+    .no-video .mode-toggle-btn:hover:not(.mode-toggle-active) {
+        background-color: #f3f4f6 !important;
+        border-color: #9ca3af !important;
+    }
+
+    .dark .no-video .mode-toggle-btn:hover:not(.mode-toggle-active) {
+        background-color: #4b5563 !important;
+        border-color: #6b7280 !important;
+    }
+
+    .no-video .mode-toggle-active {
+        background: #dbeafe !important;
+        border-color: #3b82f6 !important;
+        color: #1e40af !important;
+        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1) !important;
+    }
+
+    .dark .no-video .mode-toggle-active {
+        background: #1e3a8a !important;
+        border-color: #3b82f6 !important;
+        color: #93c5fd !important;
+        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2) !important;
+    }
+
+    .no-video .duration-toggle-btn {
+        border: 1px solid #d1d5db !important;
+        background-color: #ffffff !important;
+        color: #374151 !important;
+        backdrop-filter: none !important;
+        box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05) !important;
+    }
+
+    .dark .no-video .duration-toggle-btn {
+        border-color: #4b5563 !important;
+        background-color: #374151 !important;
+        color: #e5e7eb !important;
+    }
+
+    .no-video .duration-toggle-btn:hover:not(.duration-toggle-active) {
+        background-color: #f3f4f6 !important;
+        border-color: #9ca3af !important;
+    }
+
+    .dark .no-video .duration-toggle-btn:hover:not(.duration-toggle-active) {
+        background-color: #4b5563 !important;
+        border-color: #6b7280 !important;
+    }
+
+    .no-video .duration-toggle-active {
+        background: #dbeafe !important;
+        border-color: #3b82f6 !important;
+        color: #1e40af !important;
+        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1) !important;
+    }
+
+    .dark .no-video .duration-toggle-active {
+        background: #1e3a8a !important;
+        border-color: #3b82f6 !important;
+        color: #93c5fd !important;
+        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2) !important;
+    }
+
+    /* HAS-VIDEO MODE: Glass Blur UI */
+    .has-video #prompt {
+        border: 1px solid rgba(255, 255, 255, 0.3) !important;
+        background-color: rgba(255, 255, 255, 0.3) !important;
+        -webkit-backdrop-filter: blur(10px) !important;
+        backdrop-filter: blur(10px) !important;
+        color: #475569 !important;
+    }
+
+    .dark .has-video #prompt {
+        border-color: rgba(255, 255, 255, 0.2) !important;
+        background-color: rgba(255, 255, 255, 0.05) !important;
+        color: #cbd5e1 !important;
+    }
+
+    .has-video #generate-btn {
+        background-color: rgba(255, 255, 255, 0.2) !important;
+        border: 1px solid rgba(255, 255, 255, 0.3) !important;
+        -webkit-backdrop-filter: blur(10px) !important;
+        backdrop-filter: blur(10px) !important;
+    }
+
+    .dark .has-video #generate-btn {
+        background-color: rgba(255, 255, 255, 0.15) !important;
+        border: 1px solid rgba(255, 255, 255, 0.2) !important;
+    }
+
+    .has-video #generate-btn:hover:not(:disabled) {
+        background-color: rgba(255, 255, 255, 0.3) !important;
+    }
+
+    .dark .has-video #generate-btn:hover:not(:disabled) {
+        background-color: rgba(255, 255, 255, 0.25) !important;
+    }
+
+    .has-video .mode-toggle-btn {
+        border: 1px solid rgba(255, 255, 255, 0.3) !important;
+        background-color: rgba(255, 255, 255, 0.1) !important;
+        -webkit-backdrop-filter: blur(10px) !important;
+        backdrop-filter: blur(10px) !important;
+        color: #475569 !important;
+    }
+
+    .dark .has-video .mode-toggle-btn {
+        border-color: rgba(255, 255, 255, 0.2) !important;
+        background-color: rgba(255, 255, 255, 0.05) !important;
+        color: #cbd5e1 !important;
+    }
+
+    .has-video .mode-toggle-btn:hover:not(.mode-toggle-active) {
+        background-color: rgba(255, 255, 255, 0.15) !important;
+        border-color: rgba(255, 255, 255, 0.4) !important;
+    }
+
+    .dark .has-video .mode-toggle-btn:hover:not(.mode-toggle-active) {
+        background-color: rgba(255, 255, 255, 0.1) !important;
+        border-color: rgba(255, 255, 255, 0.3) !important;
+    }
+
+    .has-video .mode-toggle-active {
+        background: rgba(255, 255, 255, 0.25) !important;
+        border-color: rgba(255, 255, 255, 0.4) !important;
+        color: #1e40af !important;
+        box-shadow: 0 0 12px rgba(59, 130, 246, 0.3), inset 0 0 8px rgba(59, 130, 246, 0.1) !important;
+    }
+
+    .dark .has-video .mode-toggle-active {
+        background: rgba(255, 255, 255, 0.15) !important;
+        border-color: rgba(255, 255, 255, 0.3) !important;
+        color: #60a5fa !important;
+        box-shadow: 0 0 12px rgba(59, 130, 246, 0.3), inset 0 0 8px rgba(59, 130, 246, 0.1) !important;
+    }
+
+    .has-video .duration-toggle-btn {
+        border: 1px solid rgba(255, 255, 255, 0.3) !important;
+        background-color: rgba(255, 255, 255, 0.1) !important;
+        -webkit-backdrop-filter: blur(10px) !important;
+        backdrop-filter: blur(10px) !important;
+        color: #475569 !important;
+    }
+
+    .dark .has-video .duration-toggle-btn {
+        border-color: rgba(255, 255, 255, 0.2) !important;
+        background-color: rgba(255, 255, 255, 0.05) !important;
+        color: #cbd5e1 !important;
+    }
+
+    .has-video .duration-toggle-btn:hover:not(.duration-toggle-active) {
+        background-color: rgba(255, 255, 255, 0.15) !important;
+        border-color: rgba(255, 255, 255, 0.4) !important;
+    }
+
+    .dark .has-video .duration-toggle-btn:hover:not(.duration-toggle-active) {
+        background-color: rgba(255, 255, 255, 0.1) !important;
+        border-color: rgba(255, 255, 255, 0.3) !important;
+    }
+
+    .has-video .duration-toggle-active {
+        background: rgba(255, 255, 255, 0.25) !important;
+        border-color: rgba(255, 255, 255, 0.4) !important;
+        color: #1e40af !important;
+        box-shadow: 0 0 12px rgba(59, 130, 246, 0.3), inset 0 0 8px rgba(59, 130, 246, 0.1) !important;
+    }
+
+    .dark .has-video .duration-toggle-active {
+        background: rgba(255, 255, 255, 0.15) !important;
+        border-color: rgba(255, 255, 255, 0.3) !important;
+        color: #60a5fa !important;
+        box-shadow: 0 0 12px rgba(59, 130, 246, 0.3), inset 0 0 8px rgba(59, 130, 246, 0.1) !important;
+    }
 </style>
