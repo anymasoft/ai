@@ -117,7 +117,6 @@ const userBalance = user.generation_balance || 0;
                                 controls
                                 controlsList="nodownload"
                             >
-                                <source src="/demo.mp4" type="video/mp4">
                                 Your browser does not support the video tag.
                             </video>
 
@@ -445,8 +444,23 @@ const userBalance = user.generation_balance || 0;
 
     if (generateBtn) {
         generateBtn.addEventListener('click', async () => {
+            // ДИАГНОСТИКА
+            console.log('[GEN] Button clicked!', {
+                hasImage: !!selectedImage,
+                hasDuration: !!selectedDuration,
+                hasPrompt: !!(promptTextarea?.value),
+                promptLen: promptTextarea?.value?.length || 0,
+                buttonDisabled: generateBtn.disabled,
+                mode: selectedMode,
+                duration: selectedDuration
+            });
+
             if (!selectedImage || !selectedDuration || !promptTextarea?.value) {
-                console.error('[GEN] Missing required data');
+                console.error('[GEN] ❌ Missing required data', {
+                    selectedImage: selectedImage ? 'YES' : 'NO',
+                    selectedDuration: selectedDuration ? 'YES' : 'NO',
+                    promptValue: promptTextarea?.value ? `"${promptTextarea.value.substring(0, 50)}..."` : 'EMPTY'
+                });
                 return;
             }
 

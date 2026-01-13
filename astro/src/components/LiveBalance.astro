@@ -77,8 +77,6 @@ const { size = 'badge' } = Astro.props;
             setTimeout(() => {
               element.style.animation = '';
             }, 500);
-
-            console.log(`[LiveBalance] Updated: ${oldBalance} → ${newBalance}`);
           }
         }
       });
@@ -90,20 +88,47 @@ const { size = 'badge' } = Astro.props;
   // Первичная загрузка баланса
   updateLiveBalance();
 
-  // Периодическое обновление каждые 5 секунд
-  const updateInterval = setInterval(updateLiveBalance, 5000);
+  // POLLING ОТКЛЮЧЕН ПО УМОЛЧАНИЮ - уменьшает спам логов
+  // Включается только при видимости и клике на Generate
+  let updateInterval: number | null = null;
+  let isUpdateActive = false;
 
-  // Обновление при возврате на страницу (focus)
+  function startPolling() {
+    if (isUpdateActive) return;
+    isUpdateActive = true;
+    updateInterval = window.setInterval(updateLiveBalance, 60000); // 60 сек вместо 5
+  }
+
+  function stopPolling() {
+    if (!isUpdateActive) return;
+    isUpdateActive = false;
+    if (updateInterval !== null) {
+      clearInterval(updateInterval);
+      updateInterval = null;
+    }
+  }
+
+  // Включить polling когда страница видима
   document.addEventListener('visibilitychange', () => {
     if (!document.hidden) {
-      console.log('[LiveBalance] Page became visible, updating balance');
       updateLiveBalance();
+      startPolling();
+    } else {
+      stopPolling();
+    }
+  });
+
+  // Включить polling при клике на Generate (после успешной генерации баланс изменится)
+  document.addEventListener('click', (e) => {
+    const target = e.target as HTMLElement;
+    if (target?.id === 'generate-btn' || target?.closest('#generate-btn')) {
+      startPolling();
     }
   });
 
   // Очистка при выгрузке страницы
   window.addEventListener('unload', () => {
-    clearInterval(updateInterval);
+    stopPolling();
   });
 </script>
 
