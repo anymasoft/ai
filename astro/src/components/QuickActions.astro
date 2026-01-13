@@ -104,7 +104,7 @@
     line-height: 1.3;
     opacity: 0;
     pointer-events: none;
-    transition: opacity 0.2s ease, visibility 0.2s ease;
+    transition: opacity 0.4s ease, visibility 0.4s ease;
     visibility: hidden;
     z-index: 50;
     box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
@@ -129,7 +129,7 @@
     border-top: 4px solid rgba(31, 41, 55, 0.95);
     opacity: 0;
     pointer-events: none;
-    transition: opacity 0.2s ease;
+    transition: opacity 0.4s ease;
     visibility: hidden;
     z-index: 50;
   }
@@ -138,9 +138,9 @@
     border-top-color: rgba(243, 244, 246, 0.95);
   }
 
-  /* Tooltip show on hover */
-  .mode-toggle-btn:hover::before,
-  .mode-toggle-btn:hover::after {
+  /* Tooltip visible state (controlled by JavaScript) */
+  .mode-toggle-btn.tooltip-visible::before,
+  .mode-toggle-btn.tooltip-visible::after {
     opacity: 1;
     visibility: visible;
   }
@@ -151,6 +151,37 @@
   const modeButtons = document.querySelectorAll('.mode-toggle-btn');
 
   modeButtons.forEach(button => {
+    let tooltipTimeoutId: any = null;
+    let hideTimeoutId: any = null;
+
+    // Show tooltip with delay on mouseenter
+    button.addEventListener('mouseenter', () => {
+      // Clear any pending hide timeouts
+      if (hideTimeoutId) {
+        clearTimeout(hideTimeoutId);
+        hideTimeoutId = null;
+      }
+
+      // Show tooltip after 1.5 seconds
+      tooltipTimeoutId = setTimeout(() => {
+        button.classList.add('tooltip-visible');
+        console.log('[TOOLTIP] Showing tooltip');
+      }, 1500);
+    });
+
+    // Hide tooltip on mouseleave with fade-out
+    button.addEventListener('mouseleave', () => {
+      // Clear show timeout if user leaves before it shows
+      if (tooltipTimeoutId) {
+        clearTimeout(tooltipTimeoutId);
+        tooltipTimeoutId = null;
+      }
+
+      // Remove tooltip visible class to fade out (0.4s based on CSS transition)
+      button.classList.remove('tooltip-visible');
+    });
+
+    // Click handler
     button.addEventListener('click', () => {
       // Remove active class from all buttons
       modeButtons.forEach(btn => btn.classList.remove('mode-toggle-active'));
