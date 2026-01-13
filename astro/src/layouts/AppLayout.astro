@@ -33,6 +33,45 @@ const { title = "Beem - Create Videos" } = Astro.props;
                 },
             ]}
         />
+
+        <!-- Yandex.Metrika counter -->
+        <script type="text/javascript">
+          (function(m,e,t,r,i,k,a){
+            m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};
+            m[i].l=1*new Date();
+            for (var j = 0; j < document.scripts.length; j++) {
+              if (document.scripts[j].src === r) { return; }
+            }
+            k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)
+          })(window, document, 'script', 'https://mc.yandex.ru/metrika/tag.js?id=106161271', 'ym');
+
+          // global guards to avoid double-init in case of client-side navigation/hydration
+          window.__beemMetrikaInited = window.__beemMetrikaInited || false;
+          if (!window.__beemMetrikaInited) {
+            window.__beemMetrikaInited = true;
+            ym(106161271, 'init', {
+              webvisor:true,
+              clickmap:true,
+              accurateTrackBounce:true,
+              trackLinks:true
+            });
+          }
+
+          // define helper only once
+          if (!window.beemGoal) {
+            window.beemGoal = function(name, params) {
+              try {
+                if (window.ym) {
+                  window.ym(106161271, 'reachGoal', name, params || {});
+                }
+              } catch (e) {
+                console.warn('[METRIKA]', e);
+              }
+            };
+          }
+        </script>
+        <noscript><div><img src="https://mc.yandex.ru/watch/106161271" style="position:absolute; left:-9999px;" alt="" /></div></noscript>
+        <!-- /Yandex.Metrika counter -->
     </head>
     <body class="bg-white dark:bg-gray-950 flex flex-col h-screen overflow-hidden">
         <AppNavbar />

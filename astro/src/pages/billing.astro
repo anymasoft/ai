@@ -203,6 +203,7 @@ const plans = PRICING_PLANS.filter(plan => plan.id !== 'free');
 				const data = await response.json();
 
 				if (data.success && data.paymentUrl) {
+					window.beemGoal("payment_start");
 					setTimeout(() => {
 						window.location.href = data.paymentUrl;
 					}, 500);
@@ -264,6 +265,7 @@ const plans = PRICING_PLANS.filter(plan => plan.id !== 'free');
 					if (data.status === 'succeeded') {
 						clearInterval(checkInterval);
 						console.log(`[POLLING] ✅ Payment succeeded!`);
+						window.beemGoal("payment_success");
 
 						// Очищаем параметр из URL
 						setTimeout(() => {
