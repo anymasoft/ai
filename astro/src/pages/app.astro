@@ -1,6 +1,5 @@
 ---
 import AppLayout from '../layouts/AppLayout.astro';
-import ModeSelector from '../components/ModeSelector.astro';
 import PromptInput from '../components/PromptInput.astro';
 import QuickActions from '../components/QuickActions.astro';
 import { getUserFromSession } from '../lib/auth';
@@ -175,17 +174,6 @@ const userBalance = user.generation_balance || 0;
 
                                 <!-- Input Container (Full Width Minus Padding) -->
                                 <div class="pointer-events-auto relative space-y-3">
-
-                                    <!-- MODE SELECTOR: Powered by Tailus UI -->
-                                    <ModeSelector />
-
-                                    <!-- HELPER TEXT: Mode Description (DYNAMIC) -->
-                                    <div id="mode-description" class="text-center text-sm font-medium mt-3 px-2 h-6 transition-all duration-300
-                                                                         bg-gradient-to-r from-purple-400/70 to-blue-400/70
-                                                                         bg-clip-text text-transparent
-                                                                         drop-shadow-sm">
-                                        ИИ сам подберёт сценарий и создаст продающее видео для WB и Ozon
-                                    </div>
 
                                     <!-- PROMPT INPUT: Powered by Shadcn/ui -->
                                     <PromptInput />
