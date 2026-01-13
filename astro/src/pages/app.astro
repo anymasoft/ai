@@ -181,6 +181,14 @@ const userBalance = user.generation_balance || 0;
     const userBalance = parseInt(mainContainer?.dataset.userBalance || '0', 10);
     console.log(`[APP] User balance: ${userBalance} credits`);
 
+    // ========== Отслеживание успешной авторизации ==========
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('auth') === '1') {
+        window.beemGoal("auth_success");
+        // Очищаем параметр из URL
+        window.history.replaceState({}, document.title, '/app');
+    }
+
     // ========== Toast Notification System ==========
     function showToast(message: string, type: 'error' | 'success' = 'error') {
         const toast = document.createElement('div');
@@ -206,6 +214,7 @@ const userBalance = user.generation_balance || 0;
 
         // Show paywall
         paywall.classList.remove('hidden');
+        window.beemGoal("paywall_shown");
 
         // Auto-hide and reset after 3 seconds
         setTimeout(() => {
@@ -315,6 +324,7 @@ const userBalance = user.generation_balance || 0;
             }
 
             console.log('[UPLOAD] ✅ Image uploaded:', data.imagePath);
+            window.beemGoal("image_upload_success");
             return true;
         } catch (error) {
             const errorMessage = error instanceof Error ? error.message : 'Unknown error';
@@ -586,6 +596,7 @@ const userBalance = user.generation_balance || 0;
                             console.log(`[UI] ✅ Generation complete`);
                             console.log(`[UI]   - generationId: ${generationId}`);
                             console.log(`[UI]   - videoUrl: ${videoUrl}`);
+                            window.beemGoal("generation_success");
                         } else if (statusData.status === 'failed') {
                             console.error(`[UI] ❌ Generation failed`);
                             console.error(`[UI]   - generationId: ${generationId}`);

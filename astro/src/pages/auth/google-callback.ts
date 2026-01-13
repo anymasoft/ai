@@ -117,8 +117,8 @@ export const GET: APIRoute = async (context) => {
     console.log(`✅ User logged in successfully: ${user.email}`);
     console.log(`🔄 Redirecting to /app...`);
 
-    // Редиректим на /app
-    return context.redirect('/app');
+    // Редиректим на /app с параметром auth=1 для отслеживания события
+    return context.redirect('/app?auth=1');
   } catch (error) {
     console.error('OAuth callback error:', error);
     return context.redirect('/sign-in?error=callback_failed');
