@@ -1,0 +1,96 @@
+---
+// ModeSelector.astro
+// Основано на Tailus Button Groups и Segmented Control
+// https://tailus.io/components
+---
+
+<div class="flex gap-2 w-full">
+  <!-- Template Mode Button -->
+  <button
+    id="mode-template"
+    data-mode="template"
+    class="flex-1 relative flex items-center justify-center gap-2
+           px-4 py-3 rounded-lg
+           font-medium text-sm
+           transition-all duration-300
+           group
+           mode-btn
+           mode-active"
+  >
+    <!-- Active State Background -->
+    <div class="absolute inset-0 rounded-lg bg-gradient-to-r from-blue-500/20 to-blue-600/20 opacity-0 group-[.mode-active]:opacity-100 transition-opacity duration-300"></div>
+
+    <!-- Border -->
+    <div class="absolute inset-0 rounded-lg border border-blue-500/0 group-[.mode-active]:border-blue-500/50 transition-colors duration-300"></div>
+
+    <!-- Content -->
+    <span class="relative z-10 flex items-center justify-center gap-2">
+      <svg class="w-4 h-4 text-slate-600 dark:text-slate-300 group-[.mode-active]:text-blue-600 dark:group-[.mode-active]:text-blue-400 transition-colors duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 4v16m10-16v16M3 8h18M3 16h18"></path>
+      </svg>
+      <span class="text-slate-700 dark:text-slate-300 group-[.mode-active]:text-blue-600 dark:group-[.mode-active]:text-blue-400 transition-colors duration-300">
+        Рекламный шаблон
+      </span>
+    </span>
+  </button>
+
+  <!-- Prompt Mode Button -->
+  <button
+    id="mode-prompt"
+    data-mode="prompt"
+    class="flex-1 relative flex items-center justify-center gap-2
+           px-4 py-3 rounded-lg
+           font-medium text-sm
+           transition-all duration-300
+           group
+           mode-btn"
+  >
+    <!-- Active State Background -->
+    <div class="absolute inset-0 rounded-lg bg-gradient-to-r from-purple-500/20 to-purple-600/20 opacity-0 group-[.mode-active]:opacity-100 transition-opacity duration-300"></div>
+
+    <!-- Border -->
+    <div class="absolute inset-0 rounded-lg border border-purple-500/0 group-[.mode-active]:border-purple-500/50 transition-colors duration-300"></div>
+
+    <!-- Content -->
+    <span class="relative z-10 flex items-center justify-center gap-2">
+      <svg class="w-4 h-4 text-slate-600 dark:text-slate-300 group-[.mode-active]:text-purple-600 dark:group-[.mode-active]:text-purple-400 transition-colors duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+      </svg>
+      <span class="text-slate-700 dark:text-slate-300 group-[.mode-active]:text-purple-600 dark:group-[.mode-active]:text-purple-400 transition-colors duration-300">
+        Свободный сценарий
+      </span>
+    </span>
+  </button>
+</div>
+
+<style>
+  .mode-btn {
+    position: relative;
+  }
+
+  .mode-active {
+    color: inherit;
+  }
+</style>
+
+<script>
+  // Mode switching logic
+  const modeButtons = document.querySelectorAll('.mode-btn');
+
+  modeButtons.forEach(button => {
+    button.addEventListener('click', () => {
+      // Remove active class from all buttons
+      modeButtons.forEach(btn => btn.classList.remove('mode-active'));
+
+      // Add active class to clicked button
+      button.classList.add('mode-active');
+
+      const mode = button.getAttribute('data-mode');
+
+      // Dispatch custom event for parent component
+      window.dispatchEvent(new CustomEvent('modeChanged', {
+        detail: { mode }
+      }));
+    });
+  });
+</script>
