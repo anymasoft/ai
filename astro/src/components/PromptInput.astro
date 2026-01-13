@@ -43,6 +43,38 @@
 </div>
 
 <style>
+  @keyframes neon-glow {
+    0%, 100% {
+      box-shadow:
+        0 0 10px 0 rgba(59, 130, 246, 0.6),
+        0 0 20px 0 rgba(59, 130, 246, 0.4),
+        0 0 30px 0 rgba(59, 130, 246, 0.2),
+        inset 0 0 10px 0 rgba(59, 130, 246, 0.15);
+    }
+    50% {
+      box-shadow:
+        0 0 20px 0 rgba(59, 130, 246, 1),
+        0 0 40px 0 rgba(59, 130, 246, 0.8),
+        0 0 60px 0 rgba(59, 130, 246, 0.4),
+        inset 0 0 15px 0 rgba(59, 130, 246, 0.3);
+    }
+  }
+
+  #prompt {
+    border-color: rgba(59, 130, 246, 0.3);
+    transition: border-color 0.3s ease, box-shadow 0.3s ease;
+  }
+
+  #prompt:hover {
+    animation: neon-glow 2s ease-in-out infinite !important;
+    border-color: rgb(59, 130, 246) !important;
+  }
+
+  #prompt:focus {
+    animation: neon-glow 2s ease-in-out infinite !important;
+    border-color: rgb(59, 130, 246) !important;
+  }
+
   textarea {
     font-family: inherit;
     min-height: 100px;
