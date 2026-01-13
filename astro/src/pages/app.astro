@@ -87,11 +87,11 @@ const userBalance = user.generation_balance || 0;
                 </div>
 
                 <!-- RIGHT COLUMN: Video Stage (FILLS REMAINING SPACE) -->
-                <div class="flex-1 overflow-hidden">
+                <div class="flex-1 overflow-hidden no-video" id="video-section">
                     <div class="h-full border border-gray-100 dark:border-gray-700 rounded-3xl overflow-hidden bg-white dark:bg-gray-800 flex flex-col relative">
 
                         <!-- Video Area - flex-1 to fill space -->
-                        <div class="flex-1 bg-gradient-to-br from-gray-100 to-gray-50 dark:from-gray-800 dark:to-gray-900 flex items-center justify-center relative overflow-hidden">
+                        <div class="flex-1 video-area-mesh flex items-center justify-center relative overflow-hidden">
 
                             <!-- Video Placeholder (shown before generation) -->
                             <div id="video-placeholder" class="text-center space-y-4">
@@ -117,7 +117,6 @@ const userBalance = user.generation_balance || 0;
                                 controls
                                 controlsList="nodownload"
                             >
-                                <source src="/demo.mp4" type="video/mp4">
                                 Your browser does not support the video tag.
                             </video>
 
@@ -383,7 +382,7 @@ const userBalance = user.generation_balance || 0;
 
     // ========== Mode Selector ==========
     let selectedMode: 'template' | 'prompt' = 'template';
-    const modeButtons = document.querySelectorAll('.mode-btn') as NodeListOf<HTMLButtonElement>;
+    const modeButtons = document.querySelectorAll('.mode-toggle-btn') as NodeListOf<HTMLButtonElement>;
     const modeDescription = document.getElementById('mode-description') as HTMLElement;
 
     const modeDescriptions = {
@@ -415,19 +414,16 @@ const userBalance = user.generation_balance || 0;
     // Initialize with template mode active
     updateModeBarState('template');
 
+    // Set initial placeholder
+    if (promptTextarea) {
+        promptTextarea.placeholder = modePlaceholders['template'];
+    }
+
     modeButtons.forEach(btn => {
         btn.addEventListener('click', () => {
             const mode = btn.getAttribute('data-mode') as 'template' | 'prompt';
             selectedMode = mode;
             console.log(`[UI] Mode selected: ${selectedMode}`);
-
-            // Update visual state
-            updateModeBarState(mode);
-
-            // Update description
-            if (modeDescription) {
-                modeDescription.textContent = modeDescriptions[mode];
-            }
 
             // Update placeholder
             if (promptTextarea) {
@@ -445,11 +441,47 @@ const userBalance = user.generation_balance || 0;
     const videoControls = document.getElementById('video-controls') as HTMLElement;
     const downloadBtn = document.getElementById('download-btn') as HTMLButtonElement;
     const clearBtn = document.getElementById('clear-btn') as HTMLButtonElement;
+    const videoSection = document.getElementById('video-section') as HTMLElement;
+
+    // ========== UI Mode Manager (has-video / no-video) ==========
+    function updateUIMode() {
+        if (!videoSection) return;
+
+        const hasVideo = videoOutput.src && videoOutput.src.trim() !== '';
+
+        if (hasVideo) {
+            videoSection.classList.remove('no-video');
+            videoSection.classList.add('has-video');
+            console.log('[UI] Switched to HAS-VIDEO mode (glass blur UI)');
+        } else {
+            videoSection.classList.remove('has-video');
+            videoSection.classList.add('no-video');
+            console.log('[UI] Switched to NO-VIDEO mode (white contrast UI)');
+        }
+    }
+
+    // Initialize UI mode
+    updateUIMode();
 
     if (generateBtn) {
         generateBtn.addEventListener('click', async () => {
+            // ДИАГНОСТИКА
+            console.log('[GEN] Button clicked!', {
+                hasImage: !!selectedImage,
+                hasDuration: !!selectedDuration,
+                hasPrompt: !!(promptTextarea?.value),
+                promptLen: promptTextarea?.value?.length || 0,
+                buttonDisabled: generateBtn.disabled,
+                mode: selectedMode,
+                duration: selectedDuration
+            });
+
             if (!selectedImage || !selectedDuration || !promptTextarea?.value) {
-                console.error('[GEN] Missing required data');
+                console.error('[GEN] ❌ Missing required data', {
+                    selectedImage: selectedImage ? 'YES' : 'NO',
+                    selectedDuration: selectedDuration ? 'YES' : 'NO',
+                    promptValue: promptTextarea?.value ? `"${promptTextarea.value.substring(0, 50)}..."` : 'EMPTY'
+                });
                 return;
             }
 
@@ -585,6 +617,9 @@ const userBalance = user.generation_balance || 0;
                 // Сохраняем videoUrl для скачивания
                 (downloadBtn as any).videoUrl = videoUrl;
 
+                // Обновляем UI режим на HAS-VIDEO
+                updateUIMode();
+
                 console.log(`[UI] 🎬 Video displayed successfully`);
             } catch (error) {
                 const errorMessage = error instanceof Error ? error.message : 'Неизвестная ошибка';
@@ -650,6 +685,9 @@ const userBalance = user.generation_balance || 0;
             selectedImage = null;
             imageUpload.value = '';
 
+            // Обновляем UI режим обратно на NO-VIDEO
+            updateUIMode();
+
             // Update button state
             updateGenerateButtonState();
         });
@@ -669,21 +707,23 @@ const userBalance = user.generation_balance || 0;
     @keyframes neon-glow {
         0%, 100% {
             box-shadow:
-                0 0 8px 0 rgba(59, 130, 246, 0.4),
-                0 0 16px 0 rgba(59, 130, 246, 0.2),
-                inset 0 0 8px 0 rgba(59, 130, 246, 0.1);
+                0 0 10px 0 rgba(59, 130, 246, 0.6),
+                0 0 20px 0 rgba(59, 130, 246, 0.4),
+                0 0 30px 0 rgba(59, 130, 246, 0.2),
+                inset 0 0 10px 0 rgba(59, 130, 246, 0.15);
         }
         50% {
             box-shadow:
-                0 0 16px 0 rgba(59, 130, 246, 0.7),
-                0 0 32px 0 rgba(59, 130, 246, 0.5),
-                inset 0 0 12px 0 rgba(59, 130, 246, 0.25);
+                0 0 20px 0 rgba(59, 130, 246, 1),
+                0 0 40px 0 rgba(59, 130, 246, 0.8),
+                0 0 60px 0 rgba(59, 130, 246, 0.4),
+                inset 0 0 15px 0 rgba(59, 130, 246, 0.3);
         }
     }
 
     #prompt {
         border-color: rgba(59, 130, 246, 0.3);
-        transition: border-color 0.3s ease;
+        transition: border-color 0.3s ease, box-shadow 0.3s ease;
     }
 
     #prompt:hover {
@@ -783,5 +823,258 @@ const userBalance = user.generation_balance || 0;
     .mode-segment-active:hover {
         background: linear-gradient(135deg, rgba(168, 85, 247, 0.4) 0%, rgba(59, 130, 246, 0.4) 100%);
         box-shadow: 0 0 20px rgba(168, 85, 247, 0.35), inset 0 0 12px rgba(168, 85, 247, 0.15);
+    }
+
+    /* ========== MESH GRADIENT BACKGROUND FOR VIDEO PLAYER ========== */
+    .video-area-mesh {
+        background:
+            radial-gradient(circle at 20% 50%, rgba(59, 130, 246, 0.15) 0%, transparent 50%),
+            radial-gradient(circle at 80% 80%, rgba(168, 85, 247, 0.15) 0%, transparent 50%),
+            radial-gradient(circle at 40% 20%, rgba(139, 92, 246, 0.1) 0%, transparent 50%),
+            linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 100%);
+        background-attachment: fixed;
+    }
+
+    .dark .video-area-mesh {
+        background:
+            radial-gradient(circle at 20% 50%, rgba(59, 130, 246, 0.2) 0%, transparent 50%),
+            radial-gradient(circle at 80% 80%, rgba(168, 85, 247, 0.2) 0%, transparent 50%),
+            radial-gradient(circle at 40% 20%, rgba(139, 92, 246, 0.15) 0%, transparent 50%),
+            linear-gradient(135deg, #1f2937 0%, #111827 100%);
+        background-attachment: fixed;
+    }
+
+    /* ========== CONDITIONAL UI MODES ========== */
+
+    /* NO-VIDEO MODE: White/Contrast UI */
+    .no-video #prompt {
+        background-color: #ffffff !important;
+        border: 1px solid #e5e7eb !important;
+        color: #1f2937 !important;
+        backdrop-filter: none !important;
+        box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1) !important;
+    }
+
+    .dark .no-video #prompt {
+        background-color: #1f2937 !important;
+        border: 1px solid #374151 !important;
+        color: #f3f4f6 !important;
+    }
+
+    .no-video #prompt::placeholder {
+        color: #9ca3af !important;
+    }
+
+    .dark .no-video #prompt::placeholder {
+        color: #6b7280 !important;
+    }
+
+    .no-video #generate-btn {
+        background-color: #ffffff !important;
+        border: 1px solid #d1d5db !important;
+        color: #2563eb !important;
+        backdrop-filter: none !important;
+        box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1) !important;
+    }
+
+    .dark .no-video #generate-btn {
+        background-color: #374151 !important;
+        border: 1px solid #4b5563 !important;
+        color: #60a5fa !important;
+    }
+
+    .no-video #generate-btn:hover:not(:disabled) {
+        background-color: #f3f4f6 !important;
+    }
+
+    .dark .no-video #generate-btn:hover:not(:disabled) {
+        background-color: #4b5563 !important;
+    }
+
+    .no-video .mode-toggle-btn {
+        border: 1px solid #d1d5db !important;
+        background-color: #ffffff !important;
+        color: #374151 !important;
+        backdrop-filter: none !important;
+        box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05) !important;
+    }
+
+    .dark .no-video .mode-toggle-btn {
+        border-color: #4b5563 !important;
+        background-color: #374151 !important;
+        color: #e5e7eb !important;
+    }
+
+    .no-video .mode-toggle-btn:hover:not(.mode-toggle-active) {
+        background-color: #f3f4f6 !important;
+        border-color: #9ca3af !important;
+    }
+
+    .dark .no-video .mode-toggle-btn:hover:not(.mode-toggle-active) {
+        background-color: #4b5563 !important;
+        border-color: #6b7280 !important;
+    }
+
+    .no-video .mode-toggle-active {
+        background: #dbeafe !important;
+        border-color: #3b82f6 !important;
+        color: #1e40af !important;
+        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1) !important;
+    }
+
+    .dark .no-video .mode-toggle-active {
+        background: #1e3a8a !important;
+        border-color: #3b82f6 !important;
+        color: #93c5fd !important;
+        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2) !important;
+    }
+
+    .no-video .duration-toggle-btn {
+        border: 1px solid #d1d5db !important;
+        background-color: #ffffff !important;
+        color: #374151 !important;
+        backdrop-filter: none !important;
+        box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05) !important;
+    }
+
+    .dark .no-video .duration-toggle-btn {
+        border-color: #4b5563 !important;
+        background-color: #374151 !important;
+        color: #e5e7eb !important;
+    }
+
+    .no-video .duration-toggle-btn:hover:not(.duration-toggle-active) {
+        background-color: #f3f4f6 !important;
+        border-color: #9ca3af !important;
+    }
+
+    .dark .no-video .duration-toggle-btn:hover:not(.duration-toggle-active) {
+        background-color: #4b5563 !important;
+        border-color: #6b7280 !important;
+    }
+
+    .no-video .duration-toggle-active {
+        background: #dbeafe !important;
+        border-color: #3b82f6 !important;
+        color: #1e40af !important;
+        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1) !important;
+    }
+
+    .dark .no-video .duration-toggle-active {
+        background: #1e3a8a !important;
+        border-color: #3b82f6 !important;
+        color: #93c5fd !important;
+        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2) !important;
+    }
+
+    /* HAS-VIDEO MODE: Glass Blur UI */
+    .has-video #prompt {
+        border: 1px solid rgba(255, 255, 255, 0.3) !important;
+        background-color: rgba(255, 255, 255, 0.3) !important;
+        -webkit-backdrop-filter: blur(10px) !important;
+        backdrop-filter: blur(10px) !important;
+        color: #475569 !important;
+    }
+
+    .dark .has-video #prompt {
+        border-color: rgba(255, 255, 255, 0.2) !important;
+        background-color: rgba(255, 255, 255, 0.05) !important;
+        color: #cbd5e1 !important;
+    }
+
+    .has-video #generate-btn {
+        background-color: rgba(255, 255, 255, 0.2) !important;
+        border: 1px solid rgba(255, 255, 255, 0.3) !important;
+        -webkit-backdrop-filter: blur(10px) !important;
+        backdrop-filter: blur(10px) !important;
+    }
+
+    .dark .has-video #generate-btn {
+        background-color: rgba(255, 255, 255, 0.15) !important;
+        border: 1px solid rgba(255, 255, 255, 0.2) !important;
+    }
+
+    .has-video #generate-btn:hover:not(:disabled) {
+        background-color: rgba(255, 255, 255, 0.3) !important;
+    }
+
+    .dark .has-video #generate-btn:hover:not(:disabled) {
+        background-color: rgba(255, 255, 255, 0.25) !important;
+    }
+
+    .has-video .mode-toggle-btn {
+        border: 1px solid rgba(255, 255, 255, 0.3) !important;
+        background-color: rgba(255, 255, 255, 0.1) !important;
+        -webkit-backdrop-filter: blur(10px) !important;
+        backdrop-filter: blur(10px) !important;
+        color: #475569 !important;
+    }
+
+    .dark .has-video .mode-toggle-btn {
+        border-color: rgba(255, 255, 255, 0.2) !important;
+        background-color: rgba(255, 255, 255, 0.05) !important;
+        color: #cbd5e1 !important;
+    }
+
+    .has-video .mode-toggle-btn:hover:not(.mode-toggle-active) {
+        background-color: rgba(255, 255, 255, 0.15) !important;
+        border-color: rgba(255, 255, 255, 0.4) !important;
+    }
+
+    .dark .has-video .mode-toggle-btn:hover:not(.mode-toggle-active) {
+        background-color: rgba(255, 255, 255, 0.1) !important;
+        border-color: rgba(255, 255, 255, 0.3) !important;
+    }
+
+    .has-video .mode-toggle-active {
+        background: rgba(255, 255, 255, 0.25) !important;
+        border-color: rgba(255, 255, 255, 0.4) !important;
+        color: #1e40af !important;
+        box-shadow: 0 0 12px rgba(59, 130, 246, 0.3), inset 0 0 8px rgba(59, 130, 246, 0.1) !important;
+    }
+
+    .dark .has-video .mode-toggle-active {
+        background: rgba(255, 255, 255, 0.15) !important;
+        border-color: rgba(255, 255, 255, 0.3) !important;
+        color: #60a5fa !important;
+        box-shadow: 0 0 12px rgba(59, 130, 246, 0.3), inset 0 0 8px rgba(59, 130, 246, 0.1) !important;
+    }
+
+    .has-video .duration-toggle-btn {
+        border: 1px solid rgba(255, 255, 255, 0.3) !important;
+        background-color: rgba(255, 255, 255, 0.1) !important;
+        -webkit-backdrop-filter: blur(10px) !important;
+        backdrop-filter: blur(10px) !important;
+        color: #475569 !important;
+    }
+
+    .dark .has-video .duration-toggle-btn {
+        border-color: rgba(255, 255, 255, 0.2) !important;
+        background-color: rgba(255, 255, 255, 0.05) !important;
+        color: #cbd5e1 !important;
+    }
+
+    .has-video .duration-toggle-btn:hover:not(.duration-toggle-active) {
+        background-color: rgba(255, 255, 255, 0.15) !important;
+        border-color: rgba(255, 255, 255, 0.4) !important;
+    }
+
+    .dark .has-video .duration-toggle-btn:hover:not(.duration-toggle-active) {
+        background-color: rgba(255, 255, 255, 0.1) !important;
+        border-color: rgba(255, 255, 255, 0.3) !important;
+    }
+
+    .has-video .duration-toggle-active {
+        background: rgba(255, 255, 255, 0.25) !important;
+        border-color: rgba(255, 255, 255, 0.4) !important;
+        color: #1e40af !important;
+        box-shadow: 0 0 12px rgba(59, 130, 246, 0.3), inset 0 0 8px rgba(59, 130, 246, 0.1) !important;
+    }
+
+    .dark .has-video .duration-toggle-active {
+        background: rgba(255, 255, 255, 0.15) !important;
+        border-color: rgba(255, 255, 255, 0.3) !important;
+        color: #60a5fa !important;
+        box-shadow: 0 0 12px rgba(59, 130, 246, 0.3), inset 0 0 8px rgba(59, 130, 246, 0.1) !important;
     }
 </style>
