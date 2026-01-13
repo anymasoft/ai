@@ -65,9 +65,49 @@
     }
   }
 
+  /* NO-VIDEO MODE: White/Opaque UI */
+  .no-video #prompt {
+    background-color: #ffffff !important;
+    border: 1px solid #e5e7eb !important;
+    color: #1f2937 !important;
+    backdrop-filter: none !important;
+    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1) !important;
+  }
+
+  .dark .no-video #prompt {
+    background-color: #1f2937 !important;
+    border: 1px solid #374151 !important;
+    color: #f3f4f6 !important;
+  }
+
+  .no-video #prompt::placeholder {
+    color: #9ca3af !important;
+  }
+
+  .dark .no-video #prompt::placeholder {
+    color: #6b7280 !important;
+  }
+
+  /* HAS-VIDEO MODE: Glass Blur UI */
+  .has-video #prompt {
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    background-color: rgba(255, 255, 255, 0.3);
+    background-image: none;
+    -webkit-backdrop-filter: blur(10px);
+    backdrop-filter: blur(10px);
+    color: #475569;
+  }
+
+  .dark .has-video #prompt {
+    border-color: rgba(255, 255, 255, 0.2);
+    background-color: rgba(255, 255, 255, 0.05);
+    color: #cbd5e1;
+  }
+
+  /* Base textarea styles */
   #prompt {
     border-color: rgba(59, 130, 246, 0.3);
-    transition: border-color 0.3s ease, box-shadow 0.3s ease;
+    transition: border-color 0.3s ease, box-shadow 0.3s ease, background-color 0.3s ease, backdrop-filter 0.3s ease;
   }
 
   #prompt:hover {
@@ -109,6 +149,48 @@
 
   :dark textarea::-webkit-scrollbar-thumb:hover {
     background: #64748b;
+  }
+
+  /* NO-VIDEO MODE: Button white/opaque */
+  .no-video #generate-btn {
+    background-color: #ffffff !important;
+    border: 1px solid #d1d5db !important;
+    color: #2563eb !important;
+    backdrop-filter: none !important;
+    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1) !important;
+  }
+
+  .dark .no-video #generate-btn {
+    background-color: #374151 !important;
+    border: 1px solid #4b5563 !important;
+  }
+
+  .no-video #generate-btn:hover:not(:disabled) {
+    background-color: #f3f4f6 !important;
+  }
+
+  .dark .no-video #generate-btn:hover:not(:disabled) {
+    background-color: #4b5563 !important;
+  }
+
+  /* HAS-VIDEO MODE: Button glass blur */
+  .has-video #generate-btn {
+    background-color: rgba(255, 255, 255, 0.2) !important;
+    border: 1px solid rgba(255, 255, 255, 0.3) !important;
+    backdrop-filter: blur(10px) !important;
+  }
+
+  .dark .has-video #generate-btn {
+    background-color: rgba(255, 255, 255, 0.15) !important;
+    border: 1px solid rgba(255, 255, 255, 0.2) !important;
+  }
+
+  .has-video #generate-btn:hover:not(:disabled) {
+    background-color: rgba(255, 255, 255, 0.3) !important;
+  }
+
+  .dark .has-video #generate-btn:hover:not(:disabled) {
+    background-color: rgba(255, 255, 255, 0.25) !important;
   }
 </style>
 
