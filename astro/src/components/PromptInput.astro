@@ -9,9 +9,9 @@
     id="prompt"
     placeholder="Красивая девушка в чёрном платье медленно идёт вперёд, камера плавно приближается, волосы развеваются на ветру"
     class="w-full px-4 py-3
-           border border-slate-200 dark:border-slate-700
+           border border-white/30 dark:border-white/20
            rounded-lg
-           bg-white dark:bg-slate-950
+           bg-white/30 dark:bg-white/10 backdrop-blur-md
            text-slate-900 dark:text-slate-50
            placeholder:text-slate-500 dark:placeholder:text-slate-400
            focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2
@@ -28,16 +28,21 @@
     id="generate-btn"
     class="absolute right-3 top-3
            p-2 rounded-md
-           bg-blue-600 hover:bg-blue-700
-           text-white
+           bg-white/20 hover:bg-white/30 dark:bg-white/15 dark:hover:bg-white/25 backdrop-blur-md
+           border border-white/30 dark:border-white/20
+           text-blue-600 dark:text-blue-400
            transition-all duration-200
            hover:shadow-md
            disabled:opacity-50 disabled:cursor-not-allowed
            active:scale-95"
     disabled
   >
-    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <svg id="generate-icon" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path>
+    </svg>
+    <svg id="generate-spinner" class="hidden w-5 h-5 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+      <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
     </svg>
   </button>
 </div>
