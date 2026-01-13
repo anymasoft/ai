@@ -91,7 +91,7 @@ const userBalance = user.generation_balance || 0;
                     <div class="h-full border border-gray-100 dark:border-gray-700 rounded-3xl overflow-hidden bg-white dark:bg-gray-800 flex flex-col relative">
 
                         <!-- Video Area - flex-1 to fill space -->
-                        <div class="flex-1 bg-gradient-to-br from-gray-100 to-gray-50 dark:from-gray-800 dark:to-gray-900 flex items-center justify-center relative overflow-hidden">
+                        <div class="flex-1 video-area-mesh flex items-center justify-center relative overflow-hidden">
 
                             <!-- Video Placeholder (shown before generation) -->
                             <div id="video-placeholder" class="text-center space-y-4">
@@ -783,5 +783,24 @@ const userBalance = user.generation_balance || 0;
     .mode-segment-active:hover {
         background: linear-gradient(135deg, rgba(168, 85, 247, 0.4) 0%, rgba(59, 130, 246, 0.4) 100%);
         box-shadow: 0 0 20px rgba(168, 85, 247, 0.35), inset 0 0 12px rgba(168, 85, 247, 0.15);
+    }
+
+    /* ========== MESH GRADIENT BACKGROUND FOR VIDEO PLAYER ========== */
+    .video-area-mesh {
+        background:
+            radial-gradient(circle at 20% 50%, rgba(59, 130, 246, 0.15) 0%, transparent 50%),
+            radial-gradient(circle at 80% 80%, rgba(168, 85, 247, 0.15) 0%, transparent 50%),
+            radial-gradient(circle at 40% 20%, rgba(139, 92, 246, 0.1) 0%, transparent 50%),
+            linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 100%);
+        background-attachment: fixed;
+    }
+
+    .dark .video-area-mesh {
+        background:
+            radial-gradient(circle at 20% 50%, rgba(59, 130, 246, 0.2) 0%, transparent 50%),
+            radial-gradient(circle at 80% 80%, rgba(168, 85, 247, 0.2) 0%, transparent 50%),
+            radial-gradient(circle at 40% 20%, rgba(139, 92, 246, 0.15) 0%, transparent 50%),
+            linear-gradient(135deg, #1f2937 0%, #111827 100%);
+        background-attachment: fixed;
     }
 </style>
