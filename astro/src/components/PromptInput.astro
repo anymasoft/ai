@@ -67,15 +67,11 @@
   /* Base textarea styles */
   #prompt {
     border-color: rgba(59, 130, 246, 0.3);
-    transition: border-color 0.3s ease, box-shadow 0.3s ease, background-color 0.3s ease, backdrop-filter 0.3s ease, animation 0.6s ease-in-out;
+    transition: border-color 0.6s ease;
   }
 
-  #prompt:hover {
-    animation: neon-glow 2s ease-in-out infinite;
-    border-color: rgb(59, 130, 246);
-  }
-
-  #prompt:focus {
+  /* Smooth animation activation with fade-in */
+  #prompt.glow-active {
     animation: neon-glow 2s ease-in-out infinite;
     border-color: rgb(59, 130, 246);
   }
@@ -113,14 +109,42 @@
 </style>
 
 <script>
-  // Auto-resize textarea
+  // Auto-resize textarea and smooth glow animation
   const textarea = document.getElementById('prompt');
 
   if (textarea) {
+    // Auto-resize on input
     textarea.addEventListener('input', (e) => {
       const target = e.target as HTMLTextAreaElement;
       target.style.height = 'auto';
       target.style.height = Math.min(target.scrollHeight, 200) + 'px';
+    });
+
+    // Smooth glow animation on focus
+    textarea.addEventListener('focus', () => {
+      textarea.classList.add('glow-active');
+      console.log('[GLOW] Activating neon glow');
+    });
+
+    // Smooth glow fade on blur
+    textarea.addEventListener('blur', () => {
+      textarea.classList.remove('glow-active');
+      console.log('[GLOW] Deactivating neon glow');
+    });
+
+    // Smooth glow on hover
+    textarea.addEventListener('mouseenter', () => {
+      if (!textarea.classList.contains('glow-active')) {
+        textarea.classList.add('glow-active');
+        console.log('[GLOW] Activating neon glow on hover');
+      }
+    });
+
+    textarea.addEventListener('mouseleave', () => {
+      if (document.activeElement !== textarea) {
+        textarea.classList.remove('glow-active');
+        console.log('[GLOW] Deactivating neon glow on mouseleave');
+      }
     });
   }
 </script>

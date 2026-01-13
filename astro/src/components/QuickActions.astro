@@ -156,17 +156,27 @@
 
     // Show tooltip with delay on mouseenter
     button.addEventListener('mouseenter', () => {
-      // Clear any pending hide timeouts
+      // Clear any pending timeouts
+      if (tooltipTimeoutId) {
+        clearTimeout(tooltipTimeoutId);
+        tooltipTimeoutId = null;
+      }
       if (hideTimeoutId) {
         clearTimeout(hideTimeoutId);
         hideTimeoutId = null;
       }
 
-      // Show tooltip after 1.5 seconds
+      // Show tooltip after 0.5 seconds
       tooltipTimeoutId = setTimeout(() => {
         button.classList.add('tooltip-visible');
         console.log('[TOOLTIP] Showing tooltip');
-      }, 1500);
+
+        // Auto-hide tooltip after 3 seconds of being visible
+        hideTimeoutId = setTimeout(() => {
+          button.classList.remove('tooltip-visible');
+          console.log('[TOOLTIP] Auto-hiding tooltip');
+        }, 3000);
+      }, 500);
     });
 
     // Hide tooltip on mouseleave with fade-out
@@ -175,6 +185,12 @@
       if (tooltipTimeoutId) {
         clearTimeout(tooltipTimeoutId);
         tooltipTimeoutId = null;
+      }
+
+      // Clear auto-hide timeout and immediately hide
+      if (hideTimeoutId) {
+        clearTimeout(hideTimeoutId);
+        hideTimeoutId = null;
       }
 
       // Remove tooltip visible class to fade out (0.4s based on CSS transition)
