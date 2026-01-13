@@ -3,6 +3,7 @@ import AppLayout from '../layouts/AppLayout.astro';
 import PromptInput from '../components/PromptInput.astro';
 import QuickActions from '../components/QuickActions.astro';
 import DurationSelector from '../components/DurationSelector.astro';
+import VideoEmptyState from '../components/VideoEmptyState.astro';
 import { getUserFromSession } from '../lib/auth';
 
 // Эта страница должна быть динамичной для работы с middleware и cookies
@@ -93,14 +94,8 @@ const userBalance = user.generation_balance || 0;
                         <!-- Video Area - flex-1 to fill space -->
                         <div class="flex-1 video-area-mesh flex items-center justify-center relative overflow-hidden">
 
-                            <!-- Video Placeholder (shown before generation) -->
-                            <div id="video-placeholder" class="text-center space-y-4">
-                                <svg class="w-16 h-16 mx-auto text-gray-300 dark:text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"></path>
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                                </svg>
-                                <p class="text-gray-500 dark:text-gray-400 text-sm">Создайте видео</p>
-                            </div>
+                            <!-- Video Empty State (shown before generation) -->
+                            <VideoEmptyState />
 
                             <!-- Loading Spinner (shown during generation) -->
                             <div id="video-loading" class="hidden text-center space-y-4">
@@ -159,7 +154,7 @@ const userBalance = user.generation_balance || 0;
                             <div class="absolute bottom-6 left-1/2 -translate-x-1/2 z-30 pointer-events-none px-4 w-full" style="max-width: 60%">
 
                                 <!-- Input Container (Full Width Minus Padding) -->
-                                <div class="pointer-events-auto relative space-y-3">
+                                <div class="pointer-events-auto relative space-y-3 p-4 rounded-2xl bg-white/80 dark:bg-gray-800/80 backdrop-blur-md border border-gray-200/50 dark:border-gray-700/50 shadow-2xl">
 
                                     <!-- PROMPT INPUT: Powered by Shadcn/ui -->
                                     <PromptInput />
@@ -436,7 +431,7 @@ const userBalance = user.generation_balance || 0;
     // ========== Generate Button ==========
     const generateIcon = document.getElementById('generate-icon') as HTMLImageElement;
     const generateSpinner = document.getElementById('generate-spinner') as HTMLElement;
-    const videoPlaceholder = document.getElementById('video-placeholder') as HTMLElement;
+    const videoEmptyState = document.getElementById('video-empty-state') as HTMLElement;
     const videoLoading = document.getElementById('video-loading') as HTMLElement;
     const videoOutput = document.getElementById('video-output') as HTMLVideoElement;
     const videoControls = document.getElementById('video-controls') as HTMLElement;
@@ -468,7 +463,7 @@ const userBalance = user.generation_balance || 0;
             generateSpinner.classList.remove('hidden');
 
             // Hide placeholder, show loading indicator
-            videoPlaceholder.classList.add('hidden');
+            videoEmptyState.classList.add('hidden');
             videoLoading.classList.remove('hidden');
 
             try {
@@ -513,7 +508,7 @@ const userBalance = user.generation_balance || 0;
                     if (isBalanceError) {
                         showPaywallOverlay();
                     } else {
-                        videoPlaceholder.classList.remove('hidden');
+                        videoEmptyState.classList.remove('hidden');
                         showToast(errorMsg, 'error');
                     }
                     return;
@@ -596,7 +591,7 @@ const userBalance = user.generation_balance || 0;
                 if (isBalanceError) {
                     showPaywallOverlay();
                 } else {
-                    videoPlaceholder.classList.remove('hidden');
+                    videoEmptyState.classList.remove('hidden');
                     showToast(`Ошибка: ${errorMessage}`, 'error');
                 }
             } finally {
@@ -633,7 +628,7 @@ const userBalance = user.generation_balance || 0;
             videoControls.classList.add('hidden');
 
             // Show placeholder
-            videoPlaceholder.classList.remove('hidden');
+            videoEmptyState.classList.remove('hidden');
 
             // Reset video source
             videoOutput.src = '';

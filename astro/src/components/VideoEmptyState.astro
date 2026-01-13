@@ -1,0 +1,126 @@
+---
+// VideoEmptyState.astro
+// Красивая заглушка для пустого видеоплеера
+// Показывается, пока видео не сгенерировано
+---
+
+<div id="video-empty-state" class="w-full h-full flex flex-col items-center justify-center px-6 py-8 space-y-8">
+  <!-- Main Content -->
+  <div class="text-center space-y-4 max-w-2xl">
+    <!-- Heading -->
+    <h1 class="text-4xl md:text-5xl font-bold text-gray-900 dark:text-white leading-tight">
+      Здесь будет ваше<br />рекламное видео
+    </h1>
+
+    <!-- Subheading -->
+    <p class="text-lg md:text-xl text-gray-600 dark:text-gray-300 leading-relaxed">
+      Загрузите фото товара и опишите, как его показать — мы создаём вертикальный ролик для Wildberries и Ozon
+    </p>
+  </div>
+
+  <!-- Modes Description Cards -->
+  <div class="w-full max-w-3xl grid md:grid-cols-2 gap-4">
+    <!-- Template Mode Card -->
+    <div class="group relative p-6 rounded-2xl border border-gray-200 dark:border-gray-700 bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm hover:border-blue-300 dark:hover:border-blue-600 transition-all duration-300">
+      <!-- Card glow effect on hover -->
+      <div class="absolute inset-0 rounded-2xl bg-gradient-to-br from-blue-500/10 to-purple-500/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300 -z-10"></div>
+
+      <div class="space-y-3">
+        <div class="flex items-start gap-3">
+          <!-- Icon -->
+          <div class="flex-shrink-0 w-10 h-10 rounded-lg bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
+            <svg class="w-6 h-6 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3"></path>
+            </svg>
+          </div>
+
+          <!-- Title -->
+          <h3 class="text-lg font-semibold text-gray-900 dark:text-white">
+            Рекламный шаблон
+          </h3>
+        </div>
+
+        <!-- Description -->
+        <p class="text-sm text-gray-600 dark:text-gray-400 leading-relaxed">
+          Мы используем готовые шаблоны MiniMax. GPT анализирует ваш запрос и автоматически выбирает самый подходящий рекламный формат.
+        </p>
+      </div>
+    </div>
+
+    <!-- Prompt Mode Card -->
+    <div class="group relative p-6 rounded-2xl border border-gray-200 dark:border-gray-700 bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm hover:border-purple-300 dark:hover:border-purple-600 transition-all duration-300">
+      <!-- Card glow effect on hover -->
+      <div class="absolute inset-0 rounded-2xl bg-gradient-to-br from-purple-500/10 to-blue-500/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300 -z-10"></div>
+
+      <div class="space-y-3">
+        <div class="flex items-start gap-3">
+          <!-- Icon -->
+          <div class="flex-shrink-0 w-10 h-10 rounded-lg bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center">
+            <svg class="w-6 h-6 text-purple-600 dark:text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+            </svg>
+          </div>
+
+          <!-- Title -->
+          <h3 class="text-lg font-semibold text-gray-900 dark:text-white">
+            Свободный сценарий
+          </h3>
+        </div>
+
+        <!-- Description -->
+        <p class="text-sm text-gray-600 dark:text-gray-400 leading-relaxed">
+          Ваш промпт сначала улучшается и переводится на английский через GPT, после чего напрямую отправляется в MiniMax без шаблонов — для максимального контроля и кинематографичности.
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Helper Text -->
+  <div class="text-center text-sm text-gray-500 dark:text-gray-400 max-w-2xl">
+    Выберите режим в кнопках ниже, загрузите фото и напишите описание — видео будет готово в течение минуты
+  </div>
+</div>
+
+<style>
+  #video-empty-state {
+    animation: fadeIn 0.4s ease-in;
+  }
+
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+      transform: translateY(8px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+</style>
+
+<script>
+  // Hide empty state when video is loaded
+  const videoOutput = document.getElementById('video-output') as HTMLVideoElement;
+  const emptyState = document.getElementById('video-empty-state') as HTMLElement;
+
+  if (videoOutput && emptyState) {
+    // Hide on initial load if video exists
+    if (videoOutput.src) {
+      emptyState.classList.add('hidden');
+    }
+
+    // Hide when src changes
+    videoOutput.addEventListener('loadstart', () => {
+      emptyState.classList.add('hidden');
+    });
+
+    // Show when video is cleared
+    const observer = new MutationObserver(() => {
+      if (!videoOutput.src) {
+        emptyState.classList.remove('hidden');
+      }
+    });
+
+    observer.observe(videoOutput, { attributes: true, attributeFilter: ['src'] });
+  }
+</script>
