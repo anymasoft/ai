@@ -30,7 +30,7 @@
            p-2 rounded-md
            bg-white/20 hover:bg-white/30 dark:bg-white/15 dark:hover:bg-white/25 backdrop-blur-md
            border border-white/30 dark:border-white/20
-           text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300
+           text-blue-600 dark:text-blue-400
            transition-all duration-200
            hover:shadow-md
            disabled:opacity-50 disabled:cursor-not-allowed
@@ -41,8 +41,8 @@
       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path>
     </svg>
     <svg id="generate-spinner" class="hidden w-5 h-5 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2" fill="none" opacity="0.3"></circle>
-      <path stroke="currentColor" stroke-width="2" fill="none" d="M12 2a10 10 0 0110 10" stroke-linecap="round"></path>
+      <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+      <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
     </svg>
   </button>
 </div>

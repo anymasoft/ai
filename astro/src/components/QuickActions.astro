@@ -38,8 +38,45 @@
 <style>
   /* Base button styles */
   .mode-toggle-btn {
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    background-color: rgba(255, 255, 255, 0.1);
+    background-image: none;
+    -webkit-backdrop-filter: blur(10px);
+    backdrop-filter: blur(10px);
+    color: #475569;
     cursor: pointer;
-    transition: all 0.3s ease;
+  }
+
+  .dark .mode-toggle-btn {
+    border-color: rgba(255, 255, 255, 0.2);
+    background-color: rgba(255, 255, 255, 0.05);
+    color: #cbd5e1;
+  }
+
+  /* Inactive state */
+  .mode-toggle-btn:hover:not(.mode-toggle-active) {
+    background-color: rgba(255, 255, 255, 0.15);
+    border-color: rgba(255, 255, 255, 0.4);
+  }
+
+  .dark .mode-toggle-btn:hover:not(.mode-toggle-active) {
+    background-color: rgba(255, 255, 255, 0.1);
+    border-color: rgba(255, 255, 255, 0.3);
+  }
+
+  /* Active state */
+  .mode-toggle-active {
+    background: rgba(255, 255, 255, 0.25);
+    border-color: rgba(255, 255, 255, 0.4);
+    color: #1e40af;
+    box-shadow: 0 0 12px rgba(59, 130, 246, 0.3), inset 0 0 8px rgba(59, 130, 246, 0.1);
+  }
+
+  .dark .mode-toggle-active {
+    background: rgba(255, 255, 255, 0.15);
+    border-color: rgba(255, 255, 255, 0.3);
+    color: #60a5fa;
+    box-shadow: 0 0 12px rgba(59, 130, 246, 0.3), inset 0 0 8px rgba(59, 130, 246, 0.1);
   }
 
   .mode-toggle-btn:focus {
