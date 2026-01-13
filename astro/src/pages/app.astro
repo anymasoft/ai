@@ -2,6 +2,7 @@
 import AppLayout from '../layouts/AppLayout.astro';
 import PromptInput from '../components/PromptInput.astro';
 import QuickActions from '../components/QuickActions.astro';
+import DurationSelector from '../components/DurationSelector.astro';
 import { getUserFromSession } from '../lib/auth';
 
 // Эта страница должна быть динамичной для работы с middleware и cookies
@@ -80,23 +81,8 @@ const userBalance = user.generation_balance || 0;
                             />
                         </div>
 
-                        <!-- Duration Buttons - Horizontal Layout (flex-shrink-0 to maintain size) -->
-                        <div class="flex gap-2 justify-center flex-shrink-0">
-                            <button
-                                type="button"
-                                data-duration="6"
-                                class="duration-btn flex-1 px-3 py-2 rounded-full text-xs font-semibold border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 hover:border-primary hover:bg-primary/5 transition shadow-sm hover:shadow-md active:scale-95 duration-150"
-                            >
-                                6s (1 кредит)
-                            </button>
-                            <button
-                                type="button"
-                                data-duration="10"
-                                class="duration-btn flex-1 px-3 py-2 rounded-full text-xs font-semibold border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 hover:border-primary hover:bg-primary/5 transition shadow-sm hover:shadow-md active:scale-95 duration-150"
-                            >
-                                10s (2 кредита)
-                            </button>
-                        </div>
+                        <!-- Duration Selector - Powered by DurationSelector Component -->
+                        <DurationSelector />
                     </div>
                 </div>
 
@@ -288,19 +274,17 @@ const userBalance = user.generation_balance || 0;
     }
 
     // ========== Duration Selection ==========
-    const durationBtns = document.querySelectorAll('.duration-btn') as NodeListOf<HTMLButtonElement>;
+    const durationBtns = document.querySelectorAll('.duration-toggle-btn') as NodeListOf<HTMLButtonElement>;
 
     durationBtns.forEach(btn => {
         btn.addEventListener('click', () => {
             // Remove active state from all buttons
             durationBtns.forEach(b => {
-                b.classList.remove('bg-primary', 'text-white', 'border-primary');
-                b.classList.add('border-gray-300', 'dark:border-gray-600', 'text-gray-700', 'dark:text-gray-300', 'bg-white', 'dark:bg-gray-800');
+                b.classList.remove('duration-toggle-active');
             });
 
             // Add active state to clicked button
-            btn.classList.remove('border-gray-300', 'dark:border-gray-600', 'text-gray-700', 'dark:text-gray-300', 'bg-white', 'dark:bg-gray-800');
-            btn.classList.add('bg-primary', 'text-white', 'border-primary');
+            btn.classList.add('duration-toggle-active');
             selectedDuration = btn.dataset.duration || null;
             updateGenerateButtonState();
         });

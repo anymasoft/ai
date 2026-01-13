@@ -1,0 +1,99 @@
+---
+// DurationSelector.astro - Duration Selector
+// Переключатель длительности видео: 6s vs 10s
+// Первая кнопка выбрана по умолчанию
+---
+
+<div class="flex items-center justify-center gap-2 w-full">
+  <!-- 6s Button -->
+  <button
+    id="duration-6"
+    data-duration="6"
+    class="duration-toggle-btn duration-toggle-active flex-1 flex items-center justify-center gap-2
+           px-4 py-2 rounded-lg
+           font-medium text-sm
+           transition-all duration-200"
+  >
+    <span>6s (1 кредит)</span>
+  </button>
+
+  <!-- 10s Button -->
+  <button
+    id="duration-10"
+    data-duration="10"
+    class="duration-toggle-btn flex-1 flex items-center justify-center gap-2
+           px-4 py-2 rounded-lg
+           font-medium text-sm
+           transition-all duration-200"
+  >
+    <span>10s (2 кредита)</span>
+  </button>
+</div>
+
+<style>
+  .duration-toggle-btn {
+    border: 1px solid #e2e8f0;
+    background-color: white;
+    color: #475569;
+    cursor: pointer;
+  }
+
+  .dark .duration-toggle-btn {
+    border-color: #334155;
+    background-color: #0f172a;
+    color: #cbd5e1;
+  }
+
+  /* Inactive state */
+  .duration-toggle-btn:hover:not(.duration-toggle-active) {
+    background-color: #f1f5f9;
+    border-color: #cbd5e1;
+  }
+
+  .dark .duration-toggle-btn:hover:not(.duration-toggle-active) {
+    background-color: #1e293b;
+    border-color: #475569;
+  }
+
+  /* Active state */
+  .duration-toggle-active {
+    background: linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(59, 130, 246, 0.05) 100%);
+    border-color: #3b82f6;
+    color: #1e40af;
+  }
+
+  .dark .duration-toggle-active {
+    background: linear-gradient(135deg, rgba(59, 130, 246, 0.2) 0%, rgba(59, 130, 246, 0.1) 100%);
+    border-color: #3b82f6;
+    color: #60a5fa;
+  }
+
+  .duration-toggle-btn:focus {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+  }
+</style>
+
+<script>
+  // Duration toggle logic
+  const durationButtons = document.querySelectorAll('.duration-toggle-btn');
+
+  durationButtons.forEach(button => {
+    button.addEventListener('click', () => {
+      // Remove active class from all buttons
+      durationButtons.forEach(btn => btn.classList.remove('duration-toggle-active'));
+
+      // Add active class to clicked button
+      button.classList.add('duration-toggle-active');
+
+      const duration = button.getAttribute('data-duration');
+
+      // Dispatch custom event for parent component
+      window.dispatchEvent(new CustomEvent('durationChanged', {
+        detail: { duration }
+      }));
+
+      console.log(`[DURATION] Switched to: ${duration}s`);
+    });
+  });
+</script>
