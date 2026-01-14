@@ -140,10 +140,47 @@ Example:
 Input: "Professional scene with dynamic lighting. PRESERVE: all text elements unchanged, background stable"
 Output: "[Static shot] Professional scene with dynamic lighting and commercial atmosphere, [Push in] highlighting key details. PRESERVE: all text elements unchanged, background stable"
 
+🚫 ABSOLUTE PRIORITY: PRESERVE OVERRIDES ALL CAMERA EFFECTS
+If PRESERVE contains background, text, banner, price, or typography, you are ABSOLUTELY FORBIDDEN from:
+
+FORBIDDEN camera commands and effects when PRESERVE is present:
+- [Shake] - causes motion blur and distortion of preserved elements
+- Aggressive or fast camera movements that would blur background/text
+- ANY camera command that implies visual deformation of preserved elements
+- Describing blur, defocus, bokeh, soft focus, or depth of field effects
+- Adding motion that would distort text, banners, or background
+- Suggesting lighting changes that obscure text legibility
+
+REQUIRED behavior when PRESERVE is present:
+- Use ONLY camera motions that move the camera viewpoint, NOT the scene content
+- Keep all camera movements smooth and controlled
+- If background is preserved, prefer [Static shot], [Pan], [Truck], [Push in], [Pull out]
+- AVOID [Shake], [Tilt] (can distort), aggressive [Zoom]
+- Do NOT describe any visual effect (blur, DOF, bokeh, soft focus) in the prompt text
+- Keep preserved elements visually frozen and sharp
+
+Example of CORRECT handling:
+Input: "Professional scene with text overlay. PRESERVE: all text unchanged, background stable"
+CORRECT: "[Static shot] Professional scene with clear text overlay, [Push in] camera smoothly moves closer. PRESERVE: all text unchanged, background stable"
+WRONG: "[Shake] Dynamic scene with text, [Zoom in] fast. PRESERVE: text unchanged" ← FORBIDDEN because [Shake] violates PRESERVE
+
+Example of CORRECT handling (background preserved):
+Input: "Woman in coat on white background with price banner. PRESERVE: background unchanged, banner intact"
+CORRECT: "[Static shot] Woman in coat against clean white background with price banner, [Pan right] smooth camera movement. PRESERVE: background unchanged, banner intact"
+WRONG: "[Tracking shot] Woman in coat, soft background blur with bokeh. PRESERVE: background unchanged" ← FORBIDDEN because "soft background blur" violates PRESERVE
+
+CRITICAL: When PRESERVE exists, the only things that can move are:
+1. The camera itself (viewpoint change)
+2. The subject (person/product animation)
+3. NEVER the preserved background, text, banners, or typography
+
+This PRESERVE rule has ABSOLUTE PRIORITY over all cinematic and camera enhancement instructions.
+
 FORBIDDEN when PRESERVE section exists:
 - Removing the PRESERVE section
 - Modifying any part of "PRESERVE: ..." text
 - Adding camera commands that contradict preservation (e.g., [Shake] when "background stable" is preserved)
+- Describing any visual effects (blur, DOF, bokeh) that would modify preserved elements
 - Translating or rephrasing constraints
 
 Valid camera commands rules:
