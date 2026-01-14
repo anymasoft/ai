@@ -137,9 +137,24 @@ If the input contains a "PRESERVE: ..." section, you MUST:
 - DO NOT remove or shorten it
 
 Example:
-Input: "Professional scene with dynamic lighting. PRESERVE: all text elements unchanged, background stable"
-WRONG: "[Static shot] Professional scene..., [Push in] highlighting details. PRESERVE: all text unchanged" ← FORBIDDEN because [Push in] violates text/background PRESERVE
-CORRECT: "[Static shot] Professional scene with dynamic lighting and commercial atmosphere. PRESERVE: all text elements unchanged, background stable"
+Input: "Professional scene with dynamic lighting. PRESERVE: all text elements unchanged, background stable
+NO_GENERATION:
+- no new text
+- no new labels
+- no new graphics
+- no new overlays
+- no new symbols
+- no new UI elements"
+WRONG: "[Static shot] Professional scene..., [Push in] highlighting details. PRESERVE: all text unchanged
+NO_GENERATION: ..." ← FORBIDDEN because [Push in] violates text/background PRESERVE
+CORRECT: "[Static shot] Professional scene with dynamic lighting and commercial atmosphere. PRESERVE: all text elements unchanged, background stable
+NO_GENERATION:
+- no new text
+- no new labels
+- no new graphics
+- no new overlays
+- no new symbols
+- no new UI elements"
 
 🚫 ABSOLUTE PRIORITY: PRESERVE OVERRIDES ALL CAMERA EFFECTS
 
@@ -177,16 +192,48 @@ REQUIRED behavior when PRESERVE contains text/background/banner/price:
 - Only the subject (person/product) may move naturally
 
 Example of CORRECT handling:
-Input: "Professional scene with text overlay. PRESERVE: all text unchanged, background stable"
-CORRECT: "[Static shot] Professional scene with clear text overlay. PRESERVE: all text unchanged, background stable"
-WRONG: "[Static shot] Professional scene, [Push in] camera moves closer. PRESERVE: text unchanged" ← FORBIDDEN because [Push in] violates PRESERVE
-WRONG: "[Shake] Dynamic scene with text. PRESERVE: text unchanged" ← FORBIDDEN because [Shake] violates PRESERVE
+Input: "Professional scene with text overlay. PRESERVE: all text unchanged, background stable
+NO_GENERATION:
+- no new text
+- no new labels
+- no new graphics
+- no new overlays
+- no new symbols
+- no new UI elements"
+CORRECT: "[Static shot] Professional scene with clear text overlay. PRESERVE: all text unchanged, background stable
+NO_GENERATION:
+- no new text
+- no new labels
+- no new graphics
+- no new overlays
+- no new symbols
+- no new UI elements"
+WRONG: "[Static shot] Professional scene, [Push in] camera moves closer. PRESERVE: text unchanged
+NO_GENERATION: ..." ← FORBIDDEN because [Push in] violates PRESERVE
+WRONG: "[Shake] Dynamic scene with text. PRESERVE: text unchanged
+NO_GENERATION: ..." ← FORBIDDEN because [Shake] violates PRESERVE
 
 Example of CORRECT handling (background preserved):
-Input: "Woman in coat on white background with price banner. PRESERVE: background unchanged, banner intact"
-CORRECT: "[Static shot] Woman in coat against clean white background with price banner. PRESERVE: background unchanged, banner intact"
-WRONG: "[Static shot] Woman in coat, [Pan right] smooth movement. PRESERVE: background unchanged" ← FORBIDDEN because [Pan right] violates PRESERVE
-WRONG: "[Tracking shot] Woman in coat, soft background blur. PRESERVE: background unchanged" ← FORBIDDEN because [Tracking shot] and "blur" violate PRESERVE
+Input: "Woman in coat on white background with price banner. PRESERVE: background unchanged, banner intact
+NO_GENERATION:
+- no new text
+- no new labels
+- no new graphics
+- no new overlays
+- no new symbols
+- no new UI elements"
+CORRECT: "[Static shot] Woman in coat against clean white background with price banner. PRESERVE: background unchanged, banner intact
+NO_GENERATION:
+- no new text
+- no new labels
+- no new graphics
+- no new overlays
+- no new symbols
+- no new UI elements"
+WRONG: "[Static shot] Woman in coat, [Pan right] smooth movement. PRESERVE: background unchanged
+NO_GENERATION: ..." ← FORBIDDEN because [Pan right] violates PRESERVE
+WRONG: "[Tracking shot] Woman in coat, soft background blur. PRESERVE: background unchanged
+NO_GENERATION: ..." ← FORBIDDEN because [Tracking shot] and "blur" violate PRESERVE
 
 CRITICAL: When PRESERVE exists with text/background/banner/price:
 1. The camera CANNOT move - it must be completely static ([Static shot] only)
@@ -195,6 +242,32 @@ CRITICAL: When PRESERVE exists with text/background/banner/price:
 
 This PRESERVE rule has ABSOLUTE PRIORITY over all cinematic and camera enhancement instructions.
 Static camera is NON-NEGOTIABLE when text or background must be preserved.
+
+⚠️ CRITICAL: NO_GENERATION CONSTRAINT - MUST BE PRESERVED
+If the input contains a "NO_GENERATION:" section, you MUST:
+- Copy it VERBATIM to the final output
+- Keep it at the VERY END of the prompt (after PRESERVE section)
+- DO NOT modify, translate, rephrase, split, or shorten it
+- DO NOT remove any lines from the NO_GENERATION block
+- Copy the EXACT format with bullet points and line breaks
+
+The NO_GENERATION section looks like this:
+NO_GENERATION:
+- no new text
+- no new labels
+- no new graphics
+- no new overlays
+- no new symbols
+- no new UI elements
+
+FORBIDDEN when NO_GENERATION section exists:
+- Removing the NO_GENERATION section
+- Modifying any part of the NO_GENERATION text
+- Adding camera or scene instructions that imply creation of new text, graphics, UI, overlays, symbols, labels
+- Translating, rephrasing, or shortening the constraint list
+- Changing the format or wording
+
+WHY: MiniMax sometimes "invents" new text, labels, UI overlays even when told to preserve existing ones. NO_GENERATION explicitly forbids AI from creating ANY new graphical elements.
 
 FORBIDDEN when PRESERVE section exists:
 - Removing the PRESERVE section
@@ -217,6 +290,7 @@ Forbidden:
 Rules:
 - Preserve the original meaning and sequence of events
 - If input has "PRESERVE: ...", copy it unchanged to the end
+- If input has "NO_GENERATION:", copy it VERBATIM after PRESERVE (keep exact format with line breaks and bullet points)
 - Return ONLY the final prompt text
 
 Return ONLY the final prompt text.`,
