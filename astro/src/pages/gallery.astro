@@ -1,0 +1,208 @@
+---
+import { readdir, readFile } from 'fs/promises';
+import { join } from 'path';
+import Layout from '../layouts/Layout.astro';
+import Container from '../components/Container.astro';
+
+// Не кэшируем страницу, чтобы при добавлении новых папок они появлялись
+export const prerender = false;
+
+interface GalleryItem {
+  slug: string;
+  image: string;
+  video: string;
+  title: string;
+}
+
+// Функция для чтения файла как текст
+async function readTextFile(filePath: string): Promise<string> {
+  try {
+    const content = await readFile(filePath, 'utf-8');
+    return content.trim();
+  } catch {
+    return '';
+  }
+}
+
+// Получаем путь к public/gallery
+const galleryPath = join(process.cwd(), 'public/gallery');
+
+// Читаем содержимое папки gallery
+let galleryItems: GalleryItem[] = [];
+
+try {
+  const entries = await readdir(galleryPath, { withFileTypes: true });
+
+  // Фильтруем только папки и сортируем
+  const folders = entries
+    .filter(entry => entry.isDirectory())
+    .map(entry => entry.name)
+    .sort();
+
+  // Для каждой папки получаем данные
+  for (const folder of folders) {
+    const folderPath = join(galleryPath, folder);
+    const imagePath = join(folderPath, 'image.jpg');
+    const videoPath = join(folderPath, 'video.mp4');
+    const titlePath = join(folderPath, 'title.txt');
+
+    // Проверяем наличие обязательных файлов
+    try {
+      // Пытаемся прочитать title
+      const title = await readTextFile(titlePath);
+
+      // Если есть title и файлы видео/изображения, добавляем в массив
+      if (title) {
+        galleryItems.push({
+          slug: folder,
+          image: `/gallery/${folder}/image.jpg`,
+          video: `/gallery/${folder}/video.mp4`,
+          title: title,
+        });
+      }
+    } catch (err) {
+      // Пропускаем папки без title.txt
+      console.log(`Пропуск папки ${folder}: нет title.txt`);
+    }
+  }
+} catch (err) {
+  console.error('Ошибка при чтении галереи:', err);
+}
+---
+
+<Layout title="Галерея примеров - Beem">
+  <!-- Sticky Navbar -->
+  <header class="sticky top-0 z-50 w-full border-b border-black/5 dark:border-white/5 bg-white/80 dark:bg-gray-950/80 backdrop-blur-md">
+    <Container>
+      <div class="relative flex flex-wrap items-center justify-between gap-6 py-3 md:gap-0 md:py-4">
+        <!-- Logo -->
+        <a href="/" class="flex items-center space-x-2 hover:opacity-80 transition">
+          <img src="/vr_logo_small.png" alt="Beem" class="h-8 w-8" />
+          <span class="text-2xl font-bold text-gray-900 dark:text-white">Beem</span>
+        </a>
+
+        <!-- Right side navigation -->
+        <div class="flex items-center gap-4">
+          <a
+            href="/"
+            class="text-sm text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition"
+          >
+            Главная
+          </a>
+          <a
+            href="/sign-in"
+            class="relative flex h-9 w-auto items-center justify-center px-4 before:absolute before:inset-0 before:rounded-full before:bg-primary before:transition before:duration-300 hover:before:scale-105 active:duration-75 active:before:scale-95"
+          >
+            <span class="relative text-sm font-semibold text-white">Создать видео</span>
+          </a>
+        </div>
+      </div>
+    </Container>
+  </header>
+
+  <!-- Main content -->
+  <main class="py-20">
+    <Container>
+      <!-- Section header -->
+      <div class="mb-16 text-center">
+        <h1 class="mb-4 text-5xl md:text-6xl font-bold bg-gradient-to-r from-gray-900 via-gray-800 to-gray-900 dark:from-white dark:via-gray-100 dark:to-white bg-clip-text text-transparent">
+          Галерея примеров
+        </h1>
+        <p class="text-lg text-gray-600 dark:text-gray-300 max-w-2xl mx-auto">
+          Реальные примеры продающих видео, которые можно создавать в Beem
+        </p>
+      </div>
+
+      <!-- Gallery Grid -->
+      {galleryItems.length > 0 ? (
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          {galleryItems.map((item) => (
+            <div class="group flex flex-col h-full">
+              <!-- Card Container -->
+              <div class="relative overflow-hidden rounded-lg bg-gray-100 dark:bg-gray-800 aspect-square mb-4 cursor-pointer">
+                <!-- Image (default state) -->
+                <img
+                  src={item.image}
+                  alt={item.title}
+                  class="absolute inset-0 w-full h-full object-cover transition-opacity duration-300 group-hover:opacity-0"
+                  loading="lazy"
+                />
+
+                <!-- Video (hover state) -->
+                <video
+                  src={item.video}
+                  muted
+                  loop
+                  autoplay
+                  class="absolute inset-0 w-full h-full object-cover opacity-0 transition-opacity duration-300 group-hover:opacity-100"
+                  data-video-id={item.slug}
+                />
+              </div>
+
+              <!-- Title -->
+              <p class="text-sm text-gray-700 dark:text-gray-300 font-medium mb-3 min-h-10">
+                {item.title}
+              </p>
+
+              <!-- CTA Button -->
+              <a
+                href="/sign-in"
+                class="inline-flex items-center justify-center px-3 py-2 text-xs font-semibold text-primary border border-primary/30 rounded-md hover:bg-primary/5 dark:hover:bg-primary/10 transition-colors self-start"
+              >
+                Сделать такое же
+              </a>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div class="text-center py-20">
+          <p class="text-lg text-gray-600 dark:text-gray-300">
+            Галерея пуста. Добавьте папки в /public/gallery/
+          </p>
+        </div>
+      )}
+    </Container>
+  </main>
+
+  <script>
+    // Управление видео при hover
+    const cards = document.querySelectorAll('.group');
+
+    cards.forEach((card) => {
+      const video = card.querySelector('video') as HTMLVideoElement;
+
+      if (!video) return;
+
+      card.addEventListener('mouseenter', () => {
+        if (video) {
+          video.play();
+        }
+      });
+
+      card.addEventListener('mouseleave', () => {
+        if (video) {
+          video.pause();
+          video.currentTime = 0;
+        }
+      });
+
+      // Для мобильных: управление видео по клику
+      card.addEventListener('click', (e) => {
+        if (e.target === video || video.contains(e.target as Node)) {
+          if (video.paused) {
+            video.play();
+          } else {
+            video.pause();
+          }
+        }
+      });
+    });
+  </script>
+</Layout>
+
+<style>
+  /* Smooth scroll behavior */
+  html {
+    scroll-behavior: smooth;
+  }
+</style>
