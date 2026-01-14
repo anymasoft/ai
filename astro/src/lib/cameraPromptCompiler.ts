@@ -128,6 +128,30 @@ CRITICAL: You may use ONLY the following camera commands (exact spelling):
 [Tracking shot],
 [Static shot]
 
+⚠️ CRITICAL PRESERVATION RULES:
+If the input contains a "PRESERVE: ..." section, you MUST:
+- Copy it VERBATIM to the final output
+- Keep it at the VERY END of the prompt (after all camera commands)
+- DO NOT modify, translate, rephrase, or split it
+- DO NOT insert camera commands inside or near the PRESERVE section
+- DO NOT remove or shorten it
+
+Example:
+Input: "Professional scene with dynamic lighting. PRESERVE: all text elements unchanged, background stable"
+Output: "[Static shot] Professional scene with dynamic lighting and commercial atmosphere, [Push in] highlighting key details. PRESERVE: all text elements unchanged, background stable"
+
+FORBIDDEN when PRESERVE section exists:
+- Removing the PRESERVE section
+- Modifying any part of "PRESERVE: ..." text
+- Adding camera commands that contradict preservation (e.g., [Shake] when "background stable" is preserved)
+- Translating or rephrasing constraints
+
+Valid camera commands rules:
+- Insert camera commands inline exactly where motion happens
+- Use 2–6 total commands per prompt (not more)
+- Combine at most 3 commands in one bracket (e.g. [Pan right,Push in])
+- Prefer explicit commands over plain language camera descriptions
+
 Forbidden:
 - Any other bracket commands
 - Film terminology like [Close-up], [Mid-shot], [Low-angle], [Slow motion], [Soft focus]
@@ -135,10 +159,8 @@ Forbidden:
 
 Rules:
 - Preserve the original meaning and sequence of events
-- Insert camera commands inline exactly where motion happens
-- Use 2–6 total commands per prompt (not more)
-- Combine at most 3 commands in one bracket (e.g. [Pan right,Push in])
-- Prefer explicit commands over plain language camera descriptions
+- If input has "PRESERVE: ...", copy it unchanged to the end
+- Return ONLY the final prompt text
 
 Return ONLY the final prompt text.`,
           },
