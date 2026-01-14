@@ -11,7 +11,7 @@ interface GalleryItem {
   slug: string;
   image: string;
   video: string;
-  title: string;
+  title?: string;
 }
 
 // Функция для чтения файла как текст
@@ -42,28 +42,18 @@ try {
   // Для каждой папки получаем данные
   for (const folder of folders) {
     const folderPath = join(galleryPath, folder);
-    const imagePath = join(folderPath, 'image.jpg');
-    const videoPath = join(folderPath, 'video.mp4');
     const titlePath = join(folderPath, 'title.txt');
 
-    // Проверяем наличие обязательных файлов
-    try {
-      // Пытаемся прочитать title
-      const title = await readTextFile(titlePath);
+    // Пытаемся прочитать title (опциональный)
+    const title = await readTextFile(titlePath);
 
-      // Если есть title и файлы видео/изображения, добавляем в массив
-      if (title) {
-        galleryItems.push({
-          slug: folder,
-          image: `/gallery/${folder}/image.jpg`,
-          video: `/gallery/${folder}/video.mp4`,
-          title: title,
-        });
-      }
-    } catch (err) {
-      // Пропускаем папки без title.txt
-      console.log(`Пропуск папки ${folder}: нет title.txt`);
-    }
+    // Добавляем в массив всегда, title опциональный
+    galleryItems.push({
+      slug: folder,
+      image: `/gallery/${folder}/image.jpg`,
+      video: `/gallery/${folder}/video.mp4`,
+      title: title || undefined, // Пустая строка становится undefined
+    });
   }
 } catch (err) {
   console.error('Ошибка при чтении галереи:', err);
@@ -138,10 +128,12 @@ try {
                 />
               </div>
 
-              <!-- Title -->
-              <p class="text-sm text-gray-700 dark:text-gray-300 font-medium">
-                {item.title}
-              </p>
+              <!-- Title (optional) -->
+              {item.title && (
+                <p class="text-sm text-gray-700 dark:text-gray-300 font-medium">
+                  {item.title}
+                </p>
+              )}
             </div>
           ))}
         </div>
