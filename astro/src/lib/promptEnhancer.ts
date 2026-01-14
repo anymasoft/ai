@@ -156,14 +156,23 @@ FORBIDDEN effects when PRESERVE is present:
 - ANY visual modification of preserved elements
 
 ALLOWED when PRESERVE is present:
-- Camera movement (the camera moves, not the preserved elements)
 - Lighting on the SUBJECT (person/product), NOT on preserved background/text
 - Focus on the subject while keeping preserved elements sharp and clear
-- Subtle animations of the subject ONLY
+- Subtle animations of the subject ONLY (person gestures, fabric movement, etc.)
+
+🚫 CRITICAL: CAMERA MUST BE COMPLETELY STATIC WHEN PRESERVE IS PRESENT
+If PRESERVE includes text, background, banner, price, overlay, typography, label, or caption:
+- DO NOT describe ANY camera movement whatsoever
+- DO NOT mention: "camera movement", "tracking shot", "camera moves", "push in", "dolly", "pan", "tilt", "zoom", "camera choreography"
+- DO NOT suggest dynamic camera work or viewpoint changes
+- The camera MUST remain completely stationary and locked
+- Only the subject (person/product) may have subtle natural animation
+- This is CRITICAL: ANY camera movement causes parallax, perspective shift, and motion artifacts that DESTROY preserved text and banners
 
 Example of CORRECT handling:
 Input: "Девушка в наушниках. Текст и фон обязательно остаются на месте"
-CORRECT: "Young woman wearing professional headphones in a modern studio with clear, sharp lighting, camera movement adds visual interest while keeping all elements in focus. PRESERVE: all text elements visible and unchanged, background composition stable"
+CORRECT: "Young woman wearing professional headphones in a modern studio with clear, sharp lighting, subtle natural movement of the subject. PRESERVE: all text elements visible and unchanged, background composition stable"
+WRONG: "Young woman with headphones, camera movement adds visual interest. PRESERVE: text unchanged" ← FORBIDDEN because "camera movement" violates PRESERVE
 WRONG: "Young woman with headphones, cinematic depth of field with soft background blur. PRESERVE: text unchanged" ← FORBIDDEN because DOF/blur violates PRESERVE
 
 This preservation rule OVERRIDES all cinematic enhancement instructions.
@@ -171,7 +180,7 @@ When in doubt, keep preserved elements crystal clear and sharp.
 
 Example transformations:
 Input: "Девушка в наушниках. Текст и фон обязательно остаются на месте"
-Output: "Young woman wearing professional headphones in a modern studio setting with commercial lighting and subtle camera movement to add visual interest. PRESERVE: all text elements visible and unchanged, background composition stable"
+Output: "Young woman wearing professional headphones in a modern studio setting with commercial lighting, subtle natural movements. PRESERVE: all text elements visible and unchanged, background composition stable"
 
 Input: "Товар на белом фоне. Баннер −50% НЕ менять"
 Output: "Product displayed against a clean white background with professional commercial lighting highlighting the product details. PRESERVE: banner graphics and discount labels unchanged, all price markings intact"
@@ -181,12 +190,11 @@ Output: "Fashion model wearing a stylish jacket in professional e-commerce photo
 
 Guidelines:
 - Translate to English if needed
-- Add cinematic details: camera movement, angles, speed, focus, depth-of-field for MOTION ONLY
-- Describe movement, actions, transitions, and atmosphere vividly
-- Include lighting mood, color grading, effects, professional style
-- Describe motion sequences in detail (this drives the AI generation)
+- Add cinematic details: lighting, mood, color grading, effects, professional style
+- Describe SUBJECT movement, actions, transitions, and atmosphere vividly (NOT camera movement when PRESERVE is present)
+- CRITICAL: If PRESERVE contains text/background/banner/price, DO NOT add any camera motion descriptions
 - Keep the original meaning and intent from user
-- BUT: Separate "scene description" from "preservation constraints"
+- Separate "scene description" from "preservation constraints"
 - ALWAYS output constraints as "PRESERVE: ..." at the very end if user mentioned any preservation keywords
 - Constraints MUST be preserved verbatim and never converted into vague descriptions
 - Return ONLY the enhanced prompt text, nothing else (no JSON, explanations, or quotes)
