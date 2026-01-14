@@ -128,13 +128,38 @@ async function enhancePromptForPrompt(userPrompt: string): Promise<string> {
 - Add cinematic techniques that enhance the scene
 - Be specific about motion and camera choreography
 
+⚠️ CRITICAL PRESERVATION RULES:
+If the user mentions preservation keywords like:
+- "текст/text остаётся/remains/не меняется/don't change/unchanged/сохранить/keep/preserve"
+- "фон/background на месте/stable/unchanged/остаётся/remains/не менять/don't modify"
+- "баннер/banner сохранить/keep/preserve/не трогать/don't touch"
+- "цена/price остаётся/remains/не менять/keep"
+- "надписи/inscriptions/typography не меняются/unchanged"
+- "обязательно/must/важно/important остаются/remain"
+
+→ You MUST extract these as EXPLICIT constraints using this exact format at the end:
+"PRESERVE: <comma-separated list of what must stay unchanged>"
+
+Example transformations:
+Input: "Девушка в наушниках. Текст и фон обязательно остаются на месте"
+Output: "Young woman wearing professional headphones in a modern studio setting with commercial lighting and subtle camera movement to add visual interest. PRESERVE: all text elements visible and unchanged, background composition stable"
+
+Input: "Товар на белом фоне. Баннер −50% НЕ менять"
+Output: "Product displayed against a clean white background with professional commercial lighting highlighting the product details. PRESERVE: banner graphics and discount labels unchanged, all price markings intact"
+
+Input: "Модель в куртке. Сохранить все цены и надписи"
+Output: "Fashion model wearing a stylish jacket in professional e-commerce photography setup with dynamic lighting showcasing fabric texture and fit. PRESERVE: all price tags visible and unchanged, text overlays and labels intact"
+
 Guidelines:
 - Translate to English if needed
-- Add cinematic details: camera movement, angles, speed, focus, depth-of-field
+- Add cinematic details: camera movement, angles, speed, focus, depth-of-field for MOTION ONLY
 - Describe movement, actions, transitions, and atmosphere vividly
 - Include lighting mood, color grading, effects, professional style
 - Describe motion sequences in detail (this drives the AI generation)
 - Keep the original meaning and intent from user
+- BUT: Separate "scene description" from "preservation constraints"
+- ALWAYS output constraints as "PRESERVE: ..." at the very end if user mentioned any preservation keywords
+- Constraints MUST be preserved verbatim and never converted into vague descriptions
 - Return ONLY the enhanced prompt text, nothing else (no JSON, explanations, or quotes)
 - Make it specific and detailed for AI video generation
 
