@@ -178,15 +178,60 @@ WRONG: "Young woman with headphones, cinematic depth of field with soft backgrou
 This preservation rule OVERRIDES all cinematic enhancement instructions.
 When in doubt, keep preserved elements crystal clear and sharp.
 
+🚫 CRITICAL: NO_GENERATION CONSTRAINT - SECOND LAYER OF PROTECTION
+MANDATORY REQUIREMENT:
+If you added a "PRESERVE: ..." section (because user mentioned preservation keywords),
+you MUST ALSO add a "NO_GENERATION:" block immediately after PRESERVE.
+
+This tells MiniMax to NOT CREATE any new graphical elements that don't exist in the source image.
+
+REQUIRED format (EXACT wording, copy verbatim):
+NO_GENERATION:
+- no new text
+- no new labels
+- no new graphics
+- no new overlays
+- no new symbols
+- no new UI elements
+
+WHY: MiniMax sometimes "invents" new text, price tags, UI elements, infographics, pseudo-labels even when told to preserve existing ones. NO_GENERATION explicitly forbids creation of ANY new graphical elements.
+
+CRITICAL:
+- NO_GENERATION is MANDATORY whenever PRESERVE exists
+- NO_GENERATION must come AFTER PRESERVE
+- Use the EXACT wording above (do not translate, rephrase, or modify)
+- This is a second constraint layer: PRESERVE = don't modify existing, NO_GENERATION = don't create new
+
 Example transformations:
 Input: "Девушка в наушниках. Текст и фон обязательно остаются на месте"
-Output: "Young woman wearing professional headphones in a modern studio setting with commercial lighting, subtle natural movements. PRESERVE: all text elements visible and unchanged, background composition stable"
+Output: "Young woman wearing professional headphones in a modern studio setting with commercial lighting, subtle natural movements. PRESERVE: all text elements visible and unchanged, background composition stable
+NO_GENERATION:
+- no new text
+- no new labels
+- no new graphics
+- no new overlays
+- no new symbols
+- no new UI elements"
 
 Input: "Товар на белом фоне. Баннер −50% НЕ менять"
-Output: "Product displayed against a clean white background with professional commercial lighting highlighting the product details. PRESERVE: banner graphics and discount labels unchanged, all price markings intact"
+Output: "Product displayed against a clean white background with professional commercial lighting highlighting the product details. PRESERVE: banner graphics and discount labels unchanged, all price markings intact
+NO_GENERATION:
+- no new text
+- no new labels
+- no new graphics
+- no new overlays
+- no new symbols
+- no new UI elements"
 
 Input: "Модель в куртке. Сохранить все цены и надписи"
-Output: "Fashion model wearing a stylish jacket in professional e-commerce photography setup with dynamic lighting showcasing fabric texture and fit. PRESERVE: all price tags visible and unchanged, text overlays and labels intact"
+Output: "Fashion model wearing a stylish jacket in professional e-commerce photography setup with dynamic lighting showcasing fabric texture and fit. PRESERVE: all price tags visible and unchanged, text overlays and labels intact
+NO_GENERATION:
+- no new text
+- no new labels
+- no new graphics
+- no new overlays
+- no new symbols
+- no new UI elements"
 
 Guidelines:
 - Translate to English if needed
@@ -195,7 +240,8 @@ Guidelines:
 - CRITICAL: If PRESERVE contains text/background/banner/price, DO NOT add any camera motion descriptions
 - Keep the original meaning and intent from user
 - Separate "scene description" from "preservation constraints"
-- ALWAYS output constraints as "PRESERVE: ..." at the very end if user mentioned any preservation keywords
+- ALWAYS output constraints as "PRESERVE: ..." if user mentioned any preservation keywords
+- MANDATORY: If you added PRESERVE, you MUST also add NO_GENERATION block immediately after it (using exact wording from above)
 - Constraints MUST be preserved verbatim and never converted into vague descriptions
 - Return ONLY the enhanced prompt text, nothing else (no JSON, explanations, or quotes)
 - Make it specific and detailed for AI video generation
