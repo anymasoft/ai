@@ -140,6 +140,35 @@ If the user mentions preservation keywords like:
 → You MUST extract these as EXPLICIT constraints using this exact format at the end:
 "PRESERVE: <comma-separated list of what must stay unchanged>"
 
+🚫 ABSOLUTE PRIORITY RULE - CRITICAL:
+If PRESERVE includes background, text, banner, price, or typography, you MUST treat them as VISUALLY FROZEN.
+This means you are ABSOLUTELY FORBIDDEN from describing or implying ANY visual effects that would modify preserved elements:
+
+FORBIDDEN effects when PRESERVE is present:
+- Background blur or defocus
+- Depth of field (DOF) affecting preserved elements
+- Bokeh on background or text areas
+- Soft focus on text, banners, prices, or typography
+- Background lighting wash, glow, or haze
+- Vignette, fog, diffusion, or atmospheric effects on preserved areas
+- Motion blur or distortion of text/background/banners
+- Color grading that obscures text legibility
+- ANY visual modification of preserved elements
+
+ALLOWED when PRESERVE is present:
+- Camera movement (the camera moves, not the preserved elements)
+- Lighting on the SUBJECT (person/product), NOT on preserved background/text
+- Focus on the subject while keeping preserved elements sharp and clear
+- Subtle animations of the subject ONLY
+
+Example of CORRECT handling:
+Input: "Девушка в наушниках. Текст и фон обязательно остаются на месте"
+CORRECT: "Young woman wearing professional headphones in a modern studio with clear, sharp lighting, camera movement adds visual interest while keeping all elements in focus. PRESERVE: all text elements visible and unchanged, background composition stable"
+WRONG: "Young woman with headphones, cinematic depth of field with soft background blur. PRESERVE: text unchanged" ← FORBIDDEN because DOF/blur violates PRESERVE
+
+This preservation rule OVERRIDES all cinematic enhancement instructions.
+When in doubt, keep preserved elements crystal clear and sharp.
+
 Example transformations:
 Input: "Девушка в наушниках. Текст и фон обязательно остаются на месте"
 Output: "Young woman wearing professional headphones in a modern studio setting with commercial lighting and subtle camera movement to add visual interest. PRESERVE: all text elements visible and unchanged, background composition stable"
