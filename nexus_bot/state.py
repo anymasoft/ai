@@ -20,6 +20,12 @@ class UserState:
         self.last_generation_status: Optional[str] = None
         self.last_update: datetime = datetime.now()
 
+        # 💰 НОВАЯ СИСТЕМА БАЛАНСА ВИДЕО
+        self.video_balance: int = 0          # Оплаченные видео
+        self.free_remaining: int = 3         # Бесплатные видео (триал)
+        self.free_used: int = 0              # Сколько бесплатных использовано
+        self.seen_examples: list = []        # Примеры которые уже показали
+
 
 class StateManager:
     """Управление состоянием пользователей"""
