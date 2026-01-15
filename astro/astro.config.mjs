@@ -12,8 +12,7 @@ dotenv.config({ path: '.env' });
 export default defineConfig({
   output: 'server',
   adapter: node({
-    mode: 'standalone',
-    serverEntrypoint: 'src/server.ts'
+    mode: 'standalone'
   }),
 
   vite: {
