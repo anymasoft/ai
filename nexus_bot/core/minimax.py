@@ -418,5 +418,7 @@ class MinimaxVideoClient:
             return False
 
 
-# Глобальный экземпляр
+# Глобальный экземпляр (создается при импорте minimax.py)
+print(f"[MINIMAX] Creating global minimax_client instance...")
 minimax_client = MinimaxVideoClient()
+print(f"[MINIMAX] ✅ Global minimax_client created successfully")

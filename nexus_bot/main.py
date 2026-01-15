@@ -9,6 +9,10 @@ import os
 import dotenv
 dotenv.load_dotenv()
 
+# Логируем что .env загружена
+print(f"[MAIN] .env loaded")
+print(f"[MAIN] MINIMAX_CALLBACK_URL from env: {os.getenv('MINIMAX_CALLBACK_URL')}")
+
 import asyncio
 from contextlib import asynccontextmanager
 
