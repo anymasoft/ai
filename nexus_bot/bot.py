@@ -21,6 +21,7 @@ from aiogram.fsm.state import State, StatesGroup
 
 from state import state_manager
 from core.video_engine import video_engine
+from core.payments import create_payment, log_payment
 
 # ========== КОНФИГИ ==========
 TEMP_DIR = Path("/tmp/telegram-bot")
@@ -204,22 +205,32 @@ def get_tariffs_text() -> str:
    • {TARIFFS['starter']['videos']} видео
    • Приоритет обработки (1-2 минуты)
    • Экспорт в любое разрешение
-   👉 [Купить STARTER]
 
 📦 SELLER — {TARIFFS['seller']['price']} ₽
    • {TARIFFS['seller']['videos']} видео
    • Приоритет максимальный (30 сек)
    • Шаблоны для маркетплейсов
-   👉 [Купить SELLER]  ⭐ ПОПУЛЯРНО
+   ⭐ ПОПУЛЯРНО
 
 📦 PRO — {TARIFFS['pro']['price']} ₽
    • {TARIFFS['pro']['videos']} видео
    • Безлимитный приоритет
    • API доступ
-   👉 [Купить PRO]
 
 Никаких подписок. Видео не сгорают.
 Покупаешь один раз — пользуешься пока не закончится."""
+
+
+def get_purchase_keyboard():
+    """Клавиатура для покупки пакетов видео"""
+    return ReplyKeyboardMarkup(
+        keyboard=[
+            [KeyboardButton(text="💳 Купить 5 видео — 490 ₽"), KeyboardButton(text="💳 Купить 20 видео — 1490 ₽")],
+            [KeyboardButton(text="💳 Купить 50 видео — 2990 ₽")],
+            [KeyboardButton(text="🏠 В меню")],
+        ],
+        resize_keyboard=True,
+    )
 
 
 # ========== ГЛАВНАЯ ЛОГИКА БОТА ==========
@@ -396,7 +407,7 @@ async def setup_bot():
         user_id = message.from_user.id
         log_event("tariffs_click", user_id)
 
-        await message.answer(get_tariffs_text(), reply_markup=get_main_menu_keyboard())
+        await message.answer(get_tariffs_text(), reply_markup=get_purchase_keyboard())
         await state.set_state(BotStates.main_menu)
 
     @dp.message(F.text == "💰 Мой баланс")
@@ -653,6 +664,113 @@ async def setup_bot():
     async def btn_create_from_examples(message: types.Message, state: FSMContext):
         """Кнопка: Создать своё (из примеров)"""
         await btn_create_video(message, state)
+
+    # ========== ОБРАБОТЧИКИ ПОКУПКИ ==========
+
+    @dp.message(F.text == "💳 Купить 5 видео — 490 ₽")
+    async def btn_buy_starter(message: types.Message, state: FSMContext):
+        """Кнопка: Купить 5 видео"""
+        user_id = message.from_user.id
+        log_event("purchase_click", user_id, {"pack": "starter"})
+
+        payment = create_payment(user_id, "starter")
+
+        if not payment:
+            await message.answer(
+                "❌ Ошибка при создании платежа. Попробуй позже.",
+                reply_markup=get_purchase_keyboard(),
+            )
+            return
+
+        payment_id = payment["payment_id"]
+        confirmation_url = payment["confirmation_url"]
+
+        # Сохраняем payment_id в состояние пользователя
+        user_state = state_manager.get_state(user_id)
+
+        await message.answer(
+            f"""✅ Платёж создан!
+
+💳 Перейдите по ссылке для оплаты:
+{confirmation_url}
+
+После успешной оплаты вам будет начислено 5 видео.
+
+Payment ID: {payment_id}
+""",
+            reply_markup=get_main_menu_keyboard(),
+        )
+
+        log_payment("INFO", f"User {user_id} initiated purchase for starter pack", {"payment_id": payment_id})
+        await state.set_state(BotStates.main_menu)
+
+    @dp.message(F.text == "💳 Купить 20 видео — 1490 ₽")
+    async def btn_buy_seller(message: types.Message, state: FSMContext):
+        """Кнопка: Купить 20 видео"""
+        user_id = message.from_user.id
+        log_event("purchase_click", user_id, {"pack": "seller"})
+
+        payment = create_payment(user_id, "seller")
+
+        if not payment:
+            await message.answer(
+                "❌ Ошибка при создании платежа. Попробуй позже.",
+                reply_markup=get_purchase_keyboard(),
+            )
+            return
+
+        payment_id = payment["payment_id"]
+        confirmation_url = payment["confirmation_url"]
+
+        await message.answer(
+            f"""✅ Платёж создан!
+
+💳 Перейдите по ссылке для оплаты:
+{confirmation_url}
+
+После успешной оплаты вам будет начислено 20 видео.
+
+Payment ID: {payment_id}
+""",
+            reply_markup=get_main_menu_keyboard(),
+        )
+
+        log_payment("INFO", f"User {user_id} initiated purchase for seller pack", {"payment_id": payment_id})
+        await state.set_state(BotStates.main_menu)
+
+    @dp.message(F.text == "💳 Купить 50 видео — 2990 ₽")
+    async def btn_buy_pro(message: types.Message, state: FSMContext):
+        """Кнопка: Купить 50 видео"""
+        user_id = message.from_user.id
+        log_event("purchase_click", user_id, {"pack": "pro"})
+
+        payment = create_payment(user_id, "pro")
+
+        if not payment:
+            await message.answer(
+                "❌ Ошибка при создании платежа. Попробуй позже.",
+                reply_markup=get_purchase_keyboard(),
+            )
+            return
+
+        payment_id = payment["payment_id"]
+        confirmation_url = payment["confirmation_url"]
+
+        await message.answer(
+            f"""✅ Платёж создан!
+
+💳 Перейдите по ссылке для оплаты:
+{confirmation_url}
+
+После успешной оплаты вам будет начислено 50 видео.
+
+Payment ID: {payment_id}
+""",
+            reply_markup=get_main_menu_keyboard(),
+        )
+
+        log_payment("INFO", f"User {user_id} initiated purchase for pro pack", {"payment_id": payment_id})
+        await state.set_state(BotStates.main_menu)
 
     @dp.message(F.text == "🏠 В меню")
     async def btn_to_menu(message: types.Message, state: FSMContext):

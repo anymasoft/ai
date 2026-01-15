@@ -24,6 +24,7 @@ from bot import run_bot
 from state import state_manager
 from core.video_engine import start_video_engine, video_engine
 from core.minimax import minimax_client
+from core.payments import process_webhook, log_payment
 
 
 # Глобальные переменные для задач
@@ -225,6 +226,81 @@ async def minimax_callback(request: Request):
         import traceback
         traceback.print_exc()
         return {"ok": False, "error": str(e)}
+
+
+# ============ YOOKASSA WEBHOOK ============
+
+
+@app.post("/yookassa/webhook", response_class=JSONResponse)
+async def yookassa_webhook(request: Request):
+    """Получение webhook от YooKassa при успешной оплате"""
+    try:
+        print(f"[YOOKASSA-WEBHOOK] Received webhook")
+
+        # Получаем body для проверки подписи
+        body = await request.body()
+        body_str = body.decode('utf-8')
+
+        # Получаем заголовок с подписью
+        signature = request.headers.get("X-Yookassa-Signature", "")
+
+        print(f"[YOOKASSA-WEBHOOK] Signature header present: {bool(signature)}")
+
+        # Парсим JSON
+        try:
+            payload = await request.json()
+        except Exception as e:
+            print(f"[YOOKASSA-WEBHOOK] ❌ Failed to parse JSON: {str(e)}")
+            return {"ok": False, "error": "Invalid JSON"}
+
+        # Обрабатываем webhook (это проверит тип события и метаданные)
+        result = process_webhook(payload)
+
+        if not result:
+            # Платёж не успешен или это не payment.succeeded событие
+            print(f"[YOOKASSA-WEBHOOK] Event not processed (not payment.succeeded or already processed)")
+            return {"ok": True}
+
+        # 🎉 Платёж успешен! Начисляем видео
+        user_id = result["user_id"]
+        videos_count = result["videos_count"]
+        payment_id = result["payment_id"]
+
+        # Получаем состояние пользователя
+        user_state = state_manager.get_state(user_id)
+
+        # 🚨 Проверяем антидублирование
+        if payment_id in user_state.processed_payments:
+            log_payment("WARNING", f"Duplicate payment webhook detected", {"payment_id": payment_id})
+            return {"ok": True}  # Возвращаем OK, но не начисляем повторно
+
+        # ✅ Начисляем видео
+        user_state.video_balance += videos_count
+        user_state.processed_payments.add(payment_id)
+
+        log_payment(
+            "SUCCESS",
+            f"Payment processed and credited",
+            {
+                "user_id": user_id,
+                "payment_id": payment_id,
+                "videos_added": videos_count,
+                "new_balance": user_state.video_balance
+            }
+        )
+
+        print(f"[YOOKASSA-WEBHOOK] ✅ User {user_id} credited with {videos_count} videos. New balance: {user_state.video_balance}")
+
+        return {"ok": True}
+
+    except Exception as e:
+        log_payment("ERROR", f"Exception in webhook handler: {str(e)}")
+        print(f"[YOOKASSA-WEBHOOK] ❌ Error: {str(e)}")
+        import traceback
+        traceback.print_exc()
+
+        # Возвращаем OK чтобы YooKassa не повторял попытку
+        return {"ok": True}
 
 
 # ============ DEBUG ENDPOINTS ============
