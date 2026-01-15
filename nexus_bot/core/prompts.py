@@ -7,10 +7,10 @@ import os
 import re
 import asyncio
 from typing import Dict, Tuple
-import openai
+from openai import AsyncOpenAI
 
-# Инициализируем OpenAI клиент
-openai.api_key = os.getenv("OPENAI_API_KEY")
+# Инициализируем OpenAI клиент (автоматически читает OPENAI_API_KEY)
+client = AsyncOpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 
 class PromptEnhancer:
@@ -169,8 +169,7 @@ MODE: PROMPT (максимум cinematic движения, детальные и
         """Вызов OpenAI API (с retry logic)"""
         for attempt in range(self.max_retries):
             try:
-                response = await asyncio.to_thread(
-                    openai.ChatCompletion.create,
+                response = await client.chat.completions.create(
                     model=self.model,
                     messages=[
                         {"role": "system", "content": system},
