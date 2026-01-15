@@ -83,8 +83,9 @@ class MinimaxVideoClient:
                     "cost": response.get("cost", 0),
                 }
             else:
-                error = response.get("message", "Unknown error")
+                error = response.get("message", response.get("error", "Unknown error"))
                 print(f"[MINIMAX] Prompt mode - error: {error}")
+                print(f"[MINIMAX] Full response: {response}")
                 return {
                     "success": False,
                     "generation_id": None,
@@ -206,13 +207,19 @@ class MinimaxVideoClient:
             "Content-Type": "application/json",
         }
 
+        url = f"{MINIMAX_API_URL}{endpoint}"
+        print(f"[MINIMAX] POST {url}")
+
         async with aiohttp.ClientSession(timeout=self.timeout) as session:
             async with session.post(
-                f"{MINIMAX_API_URL}{endpoint}",
+                url,
                 json=payload,
                 headers=headers,
             ) as resp:
-                return await resp.json()
+                print(f"[MINIMAX] POST response status: {resp.status}")
+                response_data = await resp.json()
+                print(f"[MINIMAX] POST response body: {response_data}")
+                return response_data
 
     async def _get_from_minimax(self, endpoint: str, params: Dict) -> Dict:
         """Отправляет GET запрос к MiniMax API"""
@@ -220,13 +227,19 @@ class MinimaxVideoClient:
             "Authorization": f"Bearer {self.api_key}",
         }
 
+        url = f"{MINIMAX_API_URL}{endpoint}"
+        print(f"[MINIMAX] GET {url} params={params}")
+
         async with aiohttp.ClientSession(timeout=self.timeout) as session:
             async with session.get(
-                f"{MINIMAX_API_URL}{endpoint}",
+                url,
                 params=params,
                 headers=headers,
             ) as resp:
-                return await resp.json()
+                print(f"[MINIMAX] GET response status: {resp.status}")
+                response_data = await resp.json()
+                print(f"[MINIMAX] GET response body: {response_data}")
+                return response_data
 
     # ============ HEALTH CHECK ============
 
