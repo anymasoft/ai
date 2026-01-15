@@ -8,6 +8,7 @@ import re
 import asyncio
 from typing import List, Tuple
 from openai import AsyncOpenAI
+from core.prompts import SYSTEM_PROMPT_CAMERA_DIRECTOR
 
 # Инициализируем OpenAI клиент (автоматически читает OPENAI_API_KEY)
 api_key = os.getenv("OPENAI_API_KEY")
@@ -116,27 +117,8 @@ class CameraDirector:
             prompt_with_commands = prompt + "\n\n[Static shot]"
             return await self._sanitize_camera_commands(prompt_with_commands)
 
-        # Нормальная компиляция через GPT
-        system_message = """Ты — cinematic director для видео-генерации (MiniMax).
-
-Добавляй camera movement commands из этого списка:
-[Truck left], [Truck right]
-[Pan left], [Pan right]
-[Push in], [Pull out]
-[Pedestal up], [Pedestal down]
-[Tilt up], [Tilt down]
-[Zoom in], [Zoom out]
-[Shake], [Tracking shot], [Static shot]
-
-Правила:
-1. Добавляй 1-3 camera commands в конец промпта
-2. Каждую команду на отдельной строке
-3. Выбирай команды которые соответствуют описанию сцены
-4. НИКАКИХ других текстов, ТОЛЬКО команды
-
-Пример output:
-[Pan left]
-[Push in]"""
+        # Используем системный промпт из констант (core/prompts.py)
+        system_message = SYSTEM_PROMPT_CAMERA_DIRECTOR
 
         user_message = f"""Добавь camera movement commands для этого видео-промпта:
 
