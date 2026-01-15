@@ -12,7 +12,7 @@ dotenv.load_dotenv()
 import asyncio
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 
 from bot import run_bot
@@ -98,6 +98,41 @@ async def health():
         "bot_running": bot_task is not None and not bot_task.done(),
         "active_users": state_manager.get_active_count(),
     }
+
+
+# ============ MINIMAX CALLBACK ============
+
+
+@app.post("/minimax/callback", response_class=JSONResponse)
+async def minimax_callback(request: Request):
+    """Получение callback от MiniMax когда видео готово"""
+    try:
+        data = await request.json()
+        print(f"[MINIMAX-CALLBACK] Received: {data}")
+
+        # MiniMax verification challenge
+        if "challenge" in data:
+            print(f"[MINIMAX-CALLBACK] Verification challenge received")
+            return {"challenge": data["challenge"]}
+
+        # Обрабатываем результат генерации
+        status = data.get("status")
+        task_id = data.get("task_id")
+        file_id = data.get("file_id")
+
+        if status == "success":
+            print(f"[MINIMAX-CALLBACK] Success: task_id={task_id}, file_id={file_id}")
+            return {"ok": True}
+        elif status == "failed":
+            print(f"[MINIMAX-CALLBACK] Failed: {data.get('message', 'Unknown error')}")
+            return {"ok": False}
+        else:
+            print(f"[MINIMAX-CALLBACK] Unknown status: {status}")
+            return {"ok": True}
+
+    except Exception as e:
+        print(f"[MINIMAX-CALLBACK] Error processing callback: {str(e)}")
+        return {"ok": False, "error": str(e)}
 
 
 # ============ DEBUG ENDPOINTS ============
