@@ -21,6 +21,9 @@ class MinimaxVideoClient:
         self.callback_url = callback_url or os.getenv("MINIMAX_CALLBACK_URL")
         self.timeout = aiohttp.ClientTimeout(total=30)
 
+        # Логируем исходный callback_url
+        print(f"[MINIMAX] __init__ raw callback_url from env: {self.callback_url}")
+
         # Убеждаемся что callback_url содержит полный путь к endpoint'у /minimax/callback
         # MiniMax требует точный URL, не базовый домен
         if self.callback_url:
@@ -28,6 +31,10 @@ class MinimaxVideoClient:
                 # Удаляем trailing slash и добавляем полный путь
                 self.callback_url = self.callback_url.rstrip("/") + "/minimax/callback"
                 print(f"[MINIMAX] ✅ Auto-completed callback_url: {self.callback_url}")
+            else:
+                print(f"[MINIMAX] ✅ callback_url already complete: {self.callback_url}")
+        else:
+            print(f"[MINIMAX] ⚠️ NO CALLBACK_URL! MINIMAX_CALLBACK_URL env var is not set or empty!")
 
         # Маппинг task_id (от MiniMax) -> generation_id (наш)
         # Используется для связи callback'ов с генерациями
@@ -133,9 +140,9 @@ class MinimaxVideoClient:
             # Добавляем callback_url если он сконфигурирован
             if self.callback_url:
                 payload["callback_url"] = self.callback_url
-                print(f"[MINIMAX] ✅ Using callback_url: {self.callback_url}")
+                print(f"[MINIMAX] ✅ Adding callback_url to payload: {self.callback_url}")
             else:
-                print(f"[MINIMAX] ⚠️ No callback_url configured! MINIMAX_CALLBACK_URL env var not set")
+                print(f"[MINIMAX] ❌ NO callback_url! Will NOT add to payload! MINIMAX_CALLBACK_URL env var not set")
 
             # Логируем payload (для отладки)
             print(f"[MINIMAX] Sending request to /video_generation")
@@ -146,8 +153,7 @@ class MinimaxVideoClient:
             print(f"[MINIMAX]   - duration: {payload['duration']} sec")
             print(f"[MINIMAX]   - resolution: {payload['resolution']}")
             print(f"[MINIMAX]   - prompt_optimizer: {payload['prompt_optimizer']}")
-            if "callback_url" in payload:
-                print(f"[MINIMAX]   - callback_url: {payload['callback_url']}")
+            print(f"[MINIMAX]   - callback_url: {payload.get('callback_url', 'NOT SET!')}")
 
             print(f"[MINIMAX] Sending request...")
             response = await self._post_to_minimax("/video_generation", payload)
