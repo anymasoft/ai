@@ -146,28 +146,31 @@ class VideoEngine:
             # Обновляем статус
             self._generation_status[gen_id]["status"] = "processing"
 
-            # Фаза 3: Вызов MiniMax (с callback вместо polling)
+            # Фаза 3: Вызов MiniMax (отправляем запрос с callback_url)
+            # MiniMax вернет task_id, который мы сохраняем в маппинге
             print(f"[ENGINE] Phase 3: Calling MiniMax...")
             minimax_response = await minimax_client.generate_from_prompt(
                 queue_item.photo_path,
                 queue_item.prompt,
                 queue_item.duration,
-                generation_id=gen_id,  # Передаем generation_id для связи в callback
+                generation_id=gen_id,  # Используется для маппинга task_id -> generation_id в callback
             )
 
             if not minimax_response.get("success"):
                 raise Exception(minimax_response.get("error", "MiniMax error"))
 
-            minimax_generation_id = minimax_response.get("generation_id")
-            print(f"[ENGINE] minimax_request: {gen_id} → {minimax_generation_id}")
+            # minimax_response["generation_id"] содержит task_id от MiniMax
+            minimax_task_id = minimax_response.get("generation_id")
+            print(f"[ENGINE] MiniMax task created: {gen_id} ← task_id={minimax_task_id}")
 
             # Обновляем статус
             self._generation_status[gen_id].update({
                 "status": "processing",
-                "minimax_generation_id": minimax_generation_id,
+                "minimax_task_id": minimax_task_id,
             })
 
-            # Фаза 4: Ожидание callback от MiniMax (вместо polling)
+            # Фаза 4: Ожидание callback от MiniMax с результатом
+            # MiniMax отправит callback на /minimax/callback когда видео готово
             print(f"[ENGINE] Phase 4: Waiting for MiniMax callback...")
 
             # Ждем callback с таймаутом 10 минут
@@ -177,10 +180,10 @@ class VideoEngine:
             video_url = None
 
             while elapsed_time < max_wait_time:
-                # Проверяем поле "minimax_video_url" которое устанавливает callback
+                # Проверяем поле "minimax_video_url" которое устанавливает callback (Step 2)
                 if "minimax_video_url" in self._generation_status[gen_id]:
                     video_url = self._generation_status[gen_id]["minimax_video_url"]
-                    print(f"[ENGINE] minimax_done: {gen_id}")
+                    print(f"[ENGINE] ✅ MiniMax callback received with video URL: {gen_id}")
                     break
 
                 # Проверяем если ошибка пришла в callback
