@@ -21,6 +21,14 @@ class MinimaxVideoClient:
         self.callback_url = callback_url or os.getenv("MINIMAX_CALLBACK_URL")
         self.timeout = aiohttp.ClientTimeout(total=30)
 
+        # Убеждаемся что callback_url содержит полный путь к endpoint'у /minimax/callback
+        # MiniMax требует точный URL, не базовый домен
+        if self.callback_url:
+            if not self.callback_url.endswith("/minimax/callback"):
+                # Удаляем trailing slash и добавляем полный путь
+                self.callback_url = self.callback_url.rstrip("/") + "/minimax/callback"
+                print(f"[MINIMAX] ✅ Auto-completed callback_url: {self.callback_url}")
+
         # Маппинг task_id (от MiniMax) -> generation_id (наш)
         # Используется для связи callback'ов с генерациями
         self.task_id_to_generation_id = {}
