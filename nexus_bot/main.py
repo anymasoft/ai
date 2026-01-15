@@ -3,20 +3,21 @@ FastAPI сервер для Telegram-бота
 Запускает бота + видео-движок в фоне и предоставляет endpoints
 """
 
+# ⚠️ КРИТИЧНО: Загружаем .env ДО всех остальных импортов!
+# Иначе prompts.py не сможет инициализировать OpenAI клиент
 import os
+import dotenv
+dotenv.load_dotenv()
+
 import asyncio
 from contextlib import asynccontextmanager
 
-import dotenv
 from fastapi import FastAPI
 from fastapi.responses import JSONResponse
 
 from bot import run_bot
 from state import state_manager
 from core.video_engine import start_video_engine
-
-# Загружаем переменные окружения
-dotenv.load_dotenv()
 
 
 # Глобальные переменные для задач

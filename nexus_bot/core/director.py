@@ -10,7 +10,14 @@ from typing import List, Tuple
 from openai import AsyncOpenAI
 
 # Инициализируем OpenAI клиент (автоматически читает OPENAI_API_KEY)
-client = AsyncOpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+api_key = os.getenv("OPENAI_API_KEY")
+if not api_key:
+    raise RuntimeError(
+        "[CAMERA-DIRECTOR] ❌ ОШИБКА: OPENAI_API_KEY не установлен!\n"
+        "Убедитесь что .env файл находится в ai/nexus_bot/ и содержит OPENAI_API_KEY=sk-..."
+    )
+
+client = AsyncOpenAI(api_key=api_key)
 
 # Валидные 15 MiniMax camera команд
 VALID_CAMERA_COMMANDS = {
