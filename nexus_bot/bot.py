@@ -154,28 +154,26 @@ async def setup_bot():
 
             generation_id = generate_response.get("generation_id")
 
-            # Polling для получения результата
-            max_attempts = 120  # 2 минуты
-            for attempt in range(max_attempts):
-                # Получаем статус из video_engine
+            # ✅ Больше НЕТ polling'а!
+            # Callback от MiniMax автоматически скачает видео и обновит статус
+            # Просто отправляем пользователю сообщение что генерация началась
+
+            await query.message.edit_text(
+                "⏳ Видео генерируется на сервере MiniMax...\n\n"
+                "Это может занять 1-3 минуты.\n\n"
+                "Видео будет отправлено сюда как только будет готово."
+            )
+
+            # Ждём callback максимум 10 минут (таймаут safety)
+            max_wait_time = 600  # 10 минут
+            check_interval = 2   # проверяем каждые 2 секунды
+            elapsed_time = 0
+
+            while elapsed_time < max_wait_time:
                 status_info = video_engine.get_generation_status(generation_id)
                 status = status_info.get("status")
 
-                log_event("generation_polling", user_id, {
-                    "generation_id": generation_id,
-                    "status": status,
-                })
-
-                # Обновляем прогресс
-                progress = min(100, int(((attempt + 1) / max_attempts) * 100))
-                try:
-                    await query.message.edit_text(
-                        f"⏳ Генерирую видео...\n\n(Это может занять 1-3 минуты)\n\n{progress}%"
-                    )
-                except:
-                    pass  # Игнорируем ошибки редактирования
-
-                # Если видео готово
+                # Если видео готово - отправляем его
                 if status == "done":
                     video_path = video_engine.get_generation_video_path(generation_id)
 
@@ -229,12 +227,15 @@ async def setup_bot():
                     await state.set_state(UserStates.waiting_photo)
                     return
 
-                # Ждём перед следующей попыткой
-                await asyncio.sleep(1)
+                # Ждём перед следующей проверкой (редко - каждые 2 секунды)
+                await asyncio.sleep(check_interval)
+                elapsed_time += check_interval
 
             # Timeout
             await query.message.edit_text(
-                "⏰ Время ожидания истекло. Видео может всё ещё генерироваться.\nПопробуй позже."
+                "⏰ Время ожидания истекло (10 минут). "
+                "Видео может всё ещё генерироваться на сервере MiniMax.\n\n"
+                "Попробуй позже или свяжись с поддержкой."
             )
             state_manager.reset_state(user_id)
             cleanup_user_files(user_id)
