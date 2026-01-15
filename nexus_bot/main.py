@@ -112,6 +112,9 @@ async def health():
 async def minimax_callback(request: Request):
     """Получение callback от MiniMax (по документации)"""
     try:
+        # Логируем все заголовки для диагностики
+        print(f"[MINIMAX-CALLBACK] Request headers: {dict(request.headers)}")
+
         data = await request.json()
         print(f"[MINIMAX-CALLBACK] Received: {data}")
 
