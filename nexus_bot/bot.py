@@ -1,6 +1,6 @@
 """
 Telegram Bot на aiogram
-Генерирует видео из фото и текста через Beem API
+Генерирует видео из фото и текста с использованием встроенного Video Engine
 """
 
 import os
@@ -12,8 +12,8 @@ from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 from pathlib import Path
 
-from state import state_manager, UserState as TGUserState
-from api import api_client
+from state import state_manager
+from core.video_engine import video_engine
 
 
 # Создаём временную папку для фото и видео
@@ -41,7 +41,7 @@ def cleanup_user_files(user_id: int):
 def log_event(event_type: str, user_id: int, details: dict = None):
     """Логирование событий бота"""
     extra = f" {details}" if details else ""
-    print(f"[TELEGRAM-BOT] [{event_type}] user={user_id}{extra}")
+    print(f"[TG] [{event_type}] user={user_id}{extra}")
 
 
 class UserStates(StatesGroup):
@@ -70,7 +70,7 @@ async def setup_bot():
     async def cmd_start(message: types.Message, state: FSMContext):
         """Команда /start"""
         user_id = message.from_user.id
-        log_event("BOT_START", user_id)
+        log_event("user_start", user_id)
 
         state_manager.reset_state(user_id)
 
@@ -106,7 +106,7 @@ async def setup_bot():
     async def cb_start_photo(query: types.CallbackQuery, state: FSMContext):
         """Кнопка 'Загрузить фото'"""
         user_id = query.from_user.id
-        log_event("BOT_PHOTO_REQUESTED", user_id)
+        log_event("user_requested_photo", user_id)
 
         state_manager.set_state(user_id, step="waiting_photo")
 
@@ -126,7 +126,7 @@ async def setup_bot():
             await query.answer("❌ Ошибка: данные потеряны", show_alert=True)
             return
 
-        log_event("BOT_GENERATE_CLICK", user_id)
+        log_event("user_clicked_generate", user_id)
 
         state_manager.set_state(user_id, step="generating")
 
@@ -136,67 +136,56 @@ async def setup_bot():
         )
 
         try:
-            # Запускаем генерацию
-            generate_response = await api_client.generate_video(
-                user_id, tg_state.photo_path, tg_state.prompt_text, 6
+            # ✅ Используем встроенный video_engine вместо HTTP запроса
+            log_event("generation_started", user_id)
+            generate_response = await video_engine.generate_video(
+                user_id,
+                tg_state.photo_path,
+                tg_state.prompt_text,
+                duration=6,
             )
 
             if not generate_response.get("success"):
                 await query.message.edit_text(
-                    "❌ Ошибка при запуске генерации"
+                    f"❌ Ошибка при запуске генерации: {generate_response.get('message')}"
                 )
                 state_manager.set_state(user_id, step="confirm")
                 return
 
-            generation_id = generate_response.get("generationId")
-            state_manager.set_state(
-                user_id,
-                last_generation_id=generation_id,
-                last_generation_status="queued",
-            )
+            generation_id = generate_response.get("generation_id")
 
-            log_event("TG_GENERATE_CREATED", user_id, {"generation_id": generation_id})
-
-            # Начинаем polling
-            max_attempts = 120  # 2 минуты с интервалом 1 сек
+            # Polling для получения результата
+            max_attempts = 120  # 2 минуты
             for attempt in range(max_attempts):
+                # Получаем статус из video_engine
+                status_info = video_engine.get_generation_status(generation_id)
+                status = status_info.get("status")
+
+                log_event("generation_polling", user_id, {
+                    "generation_id": generation_id,
+                    "status": status,
+                })
+
+                # Обновляем прогресс
+                progress = min(100, int(((attempt + 1) / max_attempts) * 100))
                 try:
-                    status_response = await api_client.get_generation_status(
-                        generation_id
+                    await query.message.edit_text(
+                        f"⏳ Генерирую видео...\n\n(Это может занять 1-3 минуты)\n\n{progress}%"
                     )
-                    status = status_response.get("status")
+                except:
+                    pass  # Игнорируем ошибки редактирования
 
-                    state_manager.set_state(user_id, last_generation_status=status)
+                # Если видео готово
+                if status == "done":
+                    video_path = video_engine.get_generation_video_path(generation_id)
 
-                    log_event(
-                        "TG_STATUS",
-                        user_id,
-                        {"generation_id": generation_id, "status": status},
-                    )
-
-                    # Обновляем прогресс
-                    progress = min(100, int(((attempt + 1) / max_attempts) * 100))
-                    try:
-                        await query.message.edit_text(
-                            f"⏳ Генерирую видео...\n\n(Это может занять 1-3 минуты)\n\n{progress}%"
-                        )
-                    except:
-                        pass  # Игнорируем ошибки редактирования
-
-                    # Если видео готово
-                    if status == "done" and status_response.get("video_url"):
-                        log_event("BOT_DONE", user_id, {"generation_id": generation_id})
+                    if video_path and Path(video_path).exists():
+                        log_event("generation_complete", user_id)
 
                         try:
-                            await query.message.edit_text("✅ Видео готово! Скачиваю...")
+                            await query.message.edit_text("✅ Видео готово! Отправляю...")
                         except:
                             pass
-
-                        # Скачиваем видео
-                        video_path = get_user_video_path(user_id)
-                        await api_client.download_video(
-                            status_response.get("video_url"), video_path
-                        )
 
                         # Отправляем видео
                         video_file = FSInputFile(video_path)
@@ -223,26 +212,25 @@ async def setup_bot():
                         cleanup_user_files(user_id)
                         await state.set_state(UserStates.waiting_photo)
                         return
+                    else:
+                        raise Exception("Video file not found")
 
-                    # Если ошибка
-                    if status == "failed":
-                        log_event("BOT_FAIL", user_id, {"generation_id": generation_id})
+                # Если ошибка
+                if status == "failed":
+                    error_msg = status_info.get("error", "Unknown error")
+                    log_event("generation_failed", user_id, {"error": error_msg})
 
-                        await query.message.edit_text(
-                            "❌ Ошибка при генерации видео. Попробуй ещё раз."
-                        )
+                    await query.message.edit_text(
+                        f"❌ Ошибка при генерации: {error_msg}"
+                    )
 
-                        state_manager.reset_state(user_id)
-                        cleanup_user_files(user_id)
-                        await state.set_state(UserStates.waiting_photo)
-                        return
+                    state_manager.reset_state(user_id)
+                    cleanup_user_files(user_id)
+                    await state.set_state(UserStates.waiting_photo)
+                    return
 
-                    # Ждём перед следующей попыткой
-                    await asyncio.sleep(1)
-
-                except Exception as e:
-                    print(f"[TELEGRAM-BOT] Status check error: {str(e)}")
-                    await asyncio.sleep(2)
+                # Ждём перед следующей попыткой
+                await asyncio.sleep(1)
 
             # Timeout
             await query.message.edit_text(
@@ -265,7 +253,7 @@ async def setup_bot():
     async def cb_edit_prompt(query: types.CallbackQuery, state: FSMContext):
         """Кнопка 'Изменить текст'"""
         user_id = query.from_user.id
-        log_event("BOT_EDIT_PROMPT", user_id)
+        log_event("user_edit_prompt", user_id)
 
         state_manager.set_state(user_id, step="waiting_prompt")
 
@@ -277,7 +265,7 @@ async def setup_bot():
     async def cb_replace_photo(query: types.CallbackQuery, state: FSMContext):
         """Кнопка 'Заменить фото'"""
         user_id = query.from_user.id
-        log_event("BOT_REPLACE_PHOTO", user_id)
+        log_event("user_replace_photo", user_id)
 
         cleanup_user_files(user_id)
         state_manager.set_state(user_id, step="waiting_photo")
@@ -290,7 +278,7 @@ async def setup_bot():
     async def cb_cancel(query: types.CallbackQuery, state: FSMContext):
         """Кнопка 'Отмена'"""
         user_id = query.from_user.id
-        log_event("BOT_CANCEL", user_id)
+        log_event("user_cancelled", user_id)
 
         cleanup_user_files(user_id)
         state_manager.reset_state(user_id)
@@ -313,7 +301,7 @@ async def setup_bot():
     async def msg_photo(message: types.Message, state: FSMContext):
         """Получить фото"""
         user_id = message.from_user.id
-        log_event("BOT_PHOTO_RECEIVED", user_id)
+        log_event("user_uploaded_photo", user_id)
 
         try:
             # Получаем самый большой размер фото
@@ -337,7 +325,7 @@ async def setup_bot():
                 "✅ Фото загружено!\n\n📝 Теперь напиши, что должно происходить на видео (на русском).\n\nПримеры:\n- Красивый закат над горами с пением птиц\n- Кот прыгает по подушкам в комнате\n- Балет на сцене театра"
             )
 
-            log_event("BOT_PHOTO_SAVED", user_id, {"path": photo_path})
+            log_event("user_sent_photo", user_id, {"path": photo_path})
             await state.set_state(UserStates.waiting_prompt)
 
         except Exception as e:
@@ -352,7 +340,7 @@ async def setup_bot():
         user_id = message.from_user.id
         text = message.text
 
-        log_event("BOT_PROMPT_RECEIVED", user_id, {"length": len(text)})
+        log_event("user_sent_prompt", user_id, {"length": len(text)})
 
         # Валидируем промпт
         if len(text) < 3:

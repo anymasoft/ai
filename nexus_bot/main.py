@@ -1,6 +1,6 @@
 """
 FastAPI сервер для Telegram-бота
-Запускает бота в фоне и предоставляет основные endpoints
+Запускает бота + видео-движок в фоне и предоставляет endpoints
 """
 
 import os
@@ -13,21 +13,27 @@ from fastapi.responses import JSONResponse
 
 from bot import run_bot
 from state import state_manager
+from core.video_engine import start_video_engine
 
 # Загружаем переменные окружения
 dotenv.load_dotenv()
 
 
-# Глобальная переменная для задачи бота
+# Глобальные переменные для задач
 bot_task = None
+engine_task = None
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Управление жизненным циклом приложения"""
-    global bot_task
+    global bot_task, engine_task
 
     print("[MAIN] FastAPI server starting...")
+
+    # Запускаем видео-движок при старте сервера
+    await start_video_engine()
+    engine_task = asyncio.create_task(asyncio.sleep(3600))  # Фоновая задача
 
     # Запускаем бота при старте сервера
     bot_task = asyncio.create_task(run_bot())
@@ -35,7 +41,7 @@ async def lifespan(app: FastAPI):
     # Запускаем периодическую очистку состояний
     cleanup_task = asyncio.create_task(state_manager.start_cleanup_task())
 
-    print("[MAIN] ✅ Server ready")
+    print("[MAIN] ✅ Server ready (video engine + bot running)")
 
     try:
         yield
@@ -45,6 +51,12 @@ async def lifespan(app: FastAPI):
             bot_task.cancel()
             try:
                 await bot_task
+            except asyncio.CancelledError:
+                pass
+        if engine_task:
+            engine_task.cancel()
+            try:
+                await engine_task
             except asyncio.CancelledError:
                 pass
         cleanup_task.cancel()
