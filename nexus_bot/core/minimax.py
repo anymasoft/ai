@@ -41,6 +41,7 @@ class MinimaxVideoClient:
         image_path: str,
         prompt: str,
         duration: int = 6,
+        generation_id: str = None,
     ) -> Dict[str, Any]:
         """
         Генерирует видео из фото + текстового промпта (PROMPT MODE)
@@ -70,6 +71,10 @@ class MinimaxVideoClient:
                 "resolution": "768P",
                 "callback_url": self.callback_url,
             }
+
+            # Добавляем generation_id в URL параметры чтобы связать callback с генерацией
+            if generation_id and self.callback_url:
+                payload["callback_url"] = f"{self.callback_url}?generation_id={generation_id}"
 
             response = await self._post_to_minimax("/video_generation", payload)
 
