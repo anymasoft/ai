@@ -1,3 +1,7 @@
+// 🤖 Инициализируем Telegram-бота при загрузке middleware
+// Это гарантированная точка старта для Node runtime в Astro
+import './telegram/start';
+
 import { defineMiddleware } from 'astro:middleware';
 import { getUserFromSession, isAdmin } from './lib/auth';
 

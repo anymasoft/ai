@@ -4,6 +4,8 @@
  * Использует globalThis флаг чтобы избежать повторного запуска
  */
 
+console.log('🚀 TELEGRAM BOT MODULE LOADED');
+
 import { createAndStartBot, startBot } from './bot';
 
 /**
