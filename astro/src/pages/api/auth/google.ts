@@ -12,7 +12,10 @@ export const GET: APIRoute = async (context) => {
   // Генерируем state для защиты от CSRF атак
   const state = crypto.randomBytes(32).toString('hex');
 
-  console.log(`🔐 OAuth state generated: ${state.slice(0, 8)}...`);
+  console.log(`\n📊 AUTH_CHECKPOINT: OAUTH_REDIRECT`);
+  console.log(`   - provider: google`);
+  console.log(`   - state: ${state.slice(0, 8)}...`);
+  console.log(`   - redirectUri: ${redirectUri}`);
 
   // Сохраняем state в cookies
   context.cookies.set('oauth_state', state, {
@@ -23,7 +26,7 @@ export const GET: APIRoute = async (context) => {
     maxAge: 60 * 10, // 10 минут
   });
 
-  console.log(`✅ OAuth state saved to cookie (maxAge: 600s)`);
+  console.log(`✅ Google OAuth state saved to cookie`);
 
   // Параметры для Google OAuth
   const params = new URLSearchParams({
@@ -35,5 +38,8 @@ export const GET: APIRoute = async (context) => {
     prompt: 'consent', // Всегда показываем экран согласия
   });
 
-  return context.redirect(`https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`);
+  const googleAuthUrl = `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`;
+  console.log(`🔄 Redirecting to Google OAuth: ${googleAuthUrl.slice(0, 80)}...`);
+
+  return context.redirect(googleAuthUrl);
 };

@@ -1,18 +1,20 @@
 import type { APIRoute } from 'astro';
 import { upsertUser, createSession } from '../../lib/auth';
 
-interface GoogleTokenResponse {
+interface YandexTokenResponse {
   access_token: string;
-  id_token: string;
-  expires_in: number;
   token_type: string;
+  expires_in: number;
 }
 
-interface GoogleUserInfo {
-  sub: string;
-  name: string;
-  email: string;
-  picture?: string;
+interface YandexUserInfo {
+  id: string;
+  login?: string;
+  display_name?: string;
+  real_name?: string;
+  emails?: string[];
+  default_email?: string;
+  avatar_id?: string;
 }
 
 export const GET: APIRoute = async (context) => {
@@ -21,56 +23,56 @@ export const GET: APIRoute = async (context) => {
   const error = context.url.searchParams.get('error');
 
   console.log(`\n📊 AUTH_CHECKPOINT: OAUTH_CALLBACK_START`);
-  console.log(`   - provider: google`);
+  console.log(`   - provider: yandex`);
   console.log(`   - error: ${error || 'none'}`);
   console.log(`   - code: ${code ? code.slice(0, 10) + '...' : 'missing'}`);
   console.log(`   - state: ${state ? state.slice(0, 8) + '...' : 'missing'}`);
 
-  // Проверяем, есть ли ошибка от Google
+  // Проверяем, есть ли ошибка от Yandex
   if (error) {
     console.error(`❌ AUTH_FAILED`);
-    console.error(`   - provider: google`);
+    console.error(`   - provider: yandex`);
     console.error(`   - reason: ${error}`);
-    return context.redirect('/sign-in?error=google_auth_failed&provider=google');
+    return context.redirect(`/sign-in?error=yandex_auth_failed&provider=yandex`);
   }
 
   // Проверяем code и state
   if (!code || !state) {
     console.error(`❌ AUTH_FAILED`);
-    console.error(`   - provider: google`);
+    console.error(`   - provider: yandex`);
     console.error(`   - reason: missing_params`);
-    return context.redirect('/sign-in?error=missing_params&provider=google');
+    return context.redirect('/sign-in?error=missing_params&provider=yandex');
   }
 
   // Получаем saved state из cookies
-  const savedState = context.cookies.get('oauth_state')?.value;
+  const savedState = context.cookies.get('oauth_state_yandex')?.value;
   console.log(`   - savedState from cookie: ${savedState ? savedState.slice(0, 8) + '...' : 'MISSING'}`);
 
   if (!savedState || savedState !== state) {
     console.error(`❌ AUTH_FAILED`);
-    console.error(`   - provider: google`);
+    console.error(`   - provider: yandex`);
     console.error(`   - reason: state_mismatch`);
-    return context.redirect('/sign-in?error=state_mismatch&provider=google');
+    return context.redirect('/sign-in?error=state_mismatch&provider=yandex');
   }
 
   console.log(`✅ State verified successfully`);
 
   // Очищаем state cookie
-  context.cookies.delete('oauth_state');
+  context.cookies.delete('oauth_state_yandex');
 
   try {
-    const clientId = process.env.GOOGLE_CLIENT_ID;
-    const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
-    const redirectUri = `${new URL(context.url.toString()).origin}/auth/google-callback`;
+    const clientId = process.env.YANDEX_CLIENT_ID;
+    const clientSecret = process.env.YANDEX_CLIENT_SECRET;
+    const redirectUri = `${new URL(context.url.toString()).origin}/auth/yandex-callback`;
 
     if (!clientId || !clientSecret) {
-      throw new Error('Missing Google OAuth credentials');
+      throw new Error('Missing Yandex OAuth credentials');
     }
 
     console.log(`📡 Exchanging code for tokens...`);
 
     // Обмениваем код на токены
-    const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
+    const tokenResponse = await fetch('https://oauth.yandex.ru/token', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded',
@@ -80,48 +82,56 @@ export const GET: APIRoute = async (context) => {
         client_secret: clientSecret,
         code: code,
         grant_type: 'authorization_code',
-        redirect_uri: redirectUri,
       }).toString(),
     });
 
     if (!tokenResponse.ok) {
-      throw new Error(`Failed to get tokens from Google: ${tokenResponse.status}`);
+      const errorData = await tokenResponse.text();
+      throw new Error(`Failed to get tokens from Yandex: ${tokenResponse.status} ${errorData}`);
     }
 
-    const tokens = (await tokenResponse.json()) as GoogleTokenResponse;
+    const tokens = (await tokenResponse.json()) as YandexTokenResponse;
     console.log(`✅ Tokens received`);
 
-    console.log(`👤 Fetching user info from Google...`);
+    console.log(`👤 Fetching user info from Yandex...`);
 
     // Получаем информацию о пользователе
-    const userInfoResponse = await fetch('https://openidconnect.googleapis.com/v1/userinfo', {
+    const userInfoResponse = await fetch('https://login.yandex.ru/info', {
       headers: {
-        Authorization: `Bearer ${tokens.access_token}`,
+        Authorization: `OAuth ${tokens.access_token}`,
+        'Content-Type': 'application/json',
       },
     });
 
     if (!userInfoResponse.ok) {
-      throw new Error(`Failed to get user info from Google: ${userInfoResponse.status}`);
+      const errorData = await userInfoResponse.text();
+      throw new Error(`Failed to get user info from Yandex: ${userInfoResponse.status} ${errorData}`);
     }
 
-    const googleUser = (await userInfoResponse.json()) as GoogleUserInfo;
+    const yandexUser = (await userInfoResponse.json()) as YandexUserInfo;
     console.log(`✅ User info received`);
 
+    // Выбираем email - приоритет: default_email > первый из массива emails
+    const userEmail = yandexUser.default_email || yandexUser.emails?.[0] || `yandex_${yandexUser.id}@beem.local`;
+    const userName = yandexUser.display_name || yandexUser.real_name || yandexUser.login || 'Yandex User';
+
     console.log(`📊 AUTH_CHECKPOINT: USER_CREATED`);
-    console.log(`   - provider: google`);
-    console.log(`   - email: ${googleUser.email}`);
-    console.log(`   - name: ${googleUser.name}`);
-    console.log(`   - googleId: ${googleUser.sub}`);
+    console.log(`   - provider: yandex`);
+    console.log(`   - email: ${userEmail}`);
+    console.log(`   - name: ${userName}`);
+    console.log(`   - yandexId: ${yandexUser.id}`);
 
     try {
       // Создаём или обновляем пользователя в нашей БД
-      const user = upsertUser(googleUser.sub, googleUser.email, googleUser.name, googleUser.picture);
+      // Используем yandexId как уникальный идентификатор: "yandex_{id}"
+      const userId = `yandex_${yandexUser.id}`;
+      const user = upsertUser(userId, userEmail, userName, undefined);
       console.log(`✅ User upserted: ${user.email} (id: ${user.id})`);
 
       // Создаём сессию
       const sessionToken = createSession(user.id);
       console.log(`📊 AUTH_CHECKPOINT: SESSION_CREATED`);
-      console.log(`   - provider: google`);
+      console.log(`   - provider: yandex`);
       console.log(`   - sessionToken: ${sessionToken.slice(0, 16)}...`);
 
       // Сохраняем токен сессии в cookies
@@ -134,28 +144,28 @@ export const GET: APIRoute = async (context) => {
       });
       console.log(`🍪 Session cookie set`);
 
-      console.log(`✅ User logged in successfully via Google: ${user.email}`);
+      console.log(`✅ User logged in successfully via Yandex: ${user.email}`);
       console.log(`🔄 Redirecting to /app...`);
 
       // Редиректим на /app с параметром auth=1 для отслеживания события
-      return context.redirect('/app?auth=1&provider=google');
+      return context.redirect('/app?auth=1&provider=yandex');
     } catch (dbError) {
       console.error(`❌ AUTH_FAILED`);
-      console.error(`   - provider: google`);
+      console.error(`   - provider: yandex`);
       console.error(`   - stage: user_creation`);
       console.error(`   - reason: ${dbError instanceof Error ? dbError.message : String(dbError)}`);
 
       if (dbError instanceof Error && dbError.message.includes('UNIQUE')) {
-        return context.redirect('/sign-in?error=user_already_exists&provider=google');
+        return context.redirect('/sign-in?error=user_already_exists&provider=yandex');
       }
 
       throw dbError;
     }
   } catch (error) {
     console.error(`❌ AUTH_FAILED`);
-    console.error(`   - provider: google`);
+    console.error(`   - provider: yandex`);
     console.error(`   - error: ${error instanceof Error ? error.message : String(error)}`);
 
-    return context.redirect('/sign-in?error=callback_failed&provider=google');
+    return context.redirect('/sign-in?error=callback_failed&provider=yandex');
   }
 };
