@@ -169,51 +169,11 @@ class VideoEngine:
                 "minimax_task_id": minimax_task_id,
             })
 
-            # Фаза 4: Ожидание callback от MiniMax с результатом
+            # Фаза 4: Ожидание callback от MiniMax
             # MiniMax отправит callback на /minimax/callback когда видео готово
-            print(f"[ENGINE] Phase 4: Waiting for MiniMax callback...")
-
-            # Ждем callback с таймаутом 10 минут
-            max_wait_time = 600  # 10 минут
-            check_interval = 1   # проверяем каждую секунду
-            elapsed_time = 0
-            video_url = None
-
-            while elapsed_time < max_wait_time:
-                # Проверяем поле "minimax_video_url" которое устанавливает callback (Step 2)
-                if "minimax_video_url" in self._generation_status[gen_id]:
-                    video_url = self._generation_status[gen_id]["minimax_video_url"]
-                    print(f"[ENGINE] ✅ MiniMax callback received with video URL: {gen_id}")
-                    break
-
-                # Проверяем если ошибка пришла в callback
-                if "minimax_error" in self._generation_status[gen_id]:
-                    error = self._generation_status[gen_id]["minimax_error"]
-                    raise Exception(f"MiniMax callback error: {error}")
-
-                await asyncio.sleep(check_interval)
-                elapsed_time += check_interval
-
-            if not video_url:
-                raise Exception("MiniMax callback timeout (10 minutes)")
-
-            # Фаза 5: Скачивание видео
-            print(f"[ENGINE] Phase 5: Downloading video...")
-            video_path = os.path.join(self.temp_dir, f"{gen_id}.mp4")
-
-            success = await minimax_client.download_video(video_url, video_path)
-            if not success:
-                raise Exception("Failed to download video")
-
-            # Обновляем финальный статус
-            self._generation_status[gen_id].update({
-                "status": "done",
-                "video_path": video_path,
-                "video_url": video_url,
-                "completed_at": datetime.now(),
-            })
-
-            print(f"[ENGINE] ✅ Generation complete: {gen_id}")
+            # Callback обработчик в main.py скачает видео и обновит статус
+            print(f"[ENGINE] Phase 4: Waiting for MiniMax callback from webhook...")
+            print(f"[ENGINE] ✅ Task {minimax_task_id} sent to MiniMax, awaiting callback...")
 
         except Exception as e:
             print(f"[ENGINE] ❌ Generation failed: {gen_id} - {str(e)}")
