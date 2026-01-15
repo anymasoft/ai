@@ -15,6 +15,7 @@ print(f"[MAIN] MINIMAX_CALLBACK_URL from env: {os.getenv('MINIMAX_CALLBACK_URL')
 
 import asyncio
 from contextlib import asynccontextmanager
+from datetime import datetime
 
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
@@ -124,7 +125,7 @@ async def minimax_callback(request: Request):
             return {"challenge": data["challenge"]}
 
         # Step 2: Получаем task_id из callback'а
-        task_id = data.get("task_id")
+        task_id = str(data.get("task_id"))  # ⚠️ ВАЖНО: преобразуем в строку!
         status = data.get("status")
         file_id = data.get("file_id")
 
@@ -163,14 +164,29 @@ async def minimax_callback(request: Request):
             download_url = file_response.get("download_url")
             print(f"[MINIMAX-CALLBACK] Step 2: Got download URL: {download_url}")
 
-            # Обновляем статус (engine ждет этого поля)
+            # Step 3: Скачиваем видео (как в шаблоне кода)
+            print(f"[MINIMAX-CALLBACK] Step 3: Downloading video...")
+            video_path = os.path.join(video_engine.temp_dir, f"{generation_id}.mp4")
+
+            success = await minimax_client.download_video(download_url, video_path)
+            if not success:
+                error_msg = "Failed to download video"
+                print(f"[MINIMAX-CALLBACK] ❌ Error: {error_msg}")
+                if generation_id in video_engine._generation_status:
+                    video_engine._generation_status[generation_id]["minimax_error"] = error_msg
+                return {"ok": False, "error": error_msg}
+
+            # Step 4: Обновляем статус на "done"
             if generation_id in video_engine._generation_status:
                 video_engine._generation_status[generation_id].update({
-                    "minimax_video_url": download_url,
+                    "status": "done",
+                    "video_path": video_path,
+                    "video_url": download_url,
                     "minimax_task_id": task_id,
                     "minimax_file_id": file_id,
+                    "completed_at": datetime.now(),
                 })
-                print(f"[MINIMAX-CALLBACK] ✅ Updated generation status: {generation_id}")
+                print(f"[MINIMAX-CALLBACK] ✅ Generation complete: {generation_id}")
             else:
                 print(f"[MINIMAX-CALLBACK] ⚠️ Generation not found in status dict: {generation_id}")
 
