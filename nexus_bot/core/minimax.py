@@ -28,14 +28,51 @@ class MinimaxVideoClient:
     # ============ IMAGE CONVERSION ============
 
     def _image_to_base64(self, image_path: str) -> str:
-        """Конвертирует JPEG изображение в base64 data URL"""
+        """
+        Конвертирует изображение в base64 Data URL
+
+        Поддерживаемые форматы: JPEG, PNG, WebP
+        Возвращает: data:image/..;base64,...
+        """
         try:
+            # Определяем MIME тип по расширению файла
+            file_ext = image_path.lower().split('.')[-1]
+            mime_map = {
+                'jpg': 'image/jpeg',
+                'jpeg': 'image/jpeg',
+                'png': 'image/png',
+                'webp': 'image/webp',
+            }
+            mime_type = mime_map.get(file_ext, 'image/jpeg')
+
+            print(f"[MINIMAX] Converting image: {image_path}")
+            print(f"[MINIMAX]   - File extension: {file_ext}")
+            print(f"[MINIMAX]   - MIME type: {mime_type}")
+
+            # Читаем файл и конвертируем в base64
             with open(image_path, "rb") as f:
                 image_data = f.read()
+
+            file_size_kb = len(image_data) / 1024
+            print(f"[MINIMAX]   - File size: {file_size_kb:.1f} KB")
+
+            # Проверяем что размер не превышает 20MB (требование MiniMax)
+            if len(image_data) > 20 * 1024 * 1024:
+                raise ValueError(f"Image size {file_size_kb:.1f} KB exceeds 20MB limit")
+
             base64_data = base64.b64encode(image_data).decode("utf-8")
-            return f"data:image/jpeg;base64,{base64_data}"
+            data_url = f"data:{mime_type};base64,{base64_data}"
+
+            # Логируем первые символы для проверки
+            print(f"[MINIMAX]   - Data URL: {data_url[:80]}...")
+            print(f"[MINIMAX] ✅ Image converted successfully")
+
+            return data_url
+
         except Exception as e:
-            print(f"[MINIMAX] Image conversion error: {str(e)}")
+            print(f"[MINIMAX] ❌ Image conversion error: {str(e)}")
+            import traceback
+            traceback.print_exc()
             raise
 
     # ============ PROMPT MODE ============
@@ -74,30 +111,37 @@ class MinimaxVideoClient:
 
             image_data_url = self._image_to_base64(image_path)
 
+            # Формируем payload согласно OpenAPI спецификации
+            # https://platform.minimax.io/docs/api-reference/video-generation/image-to-video
             payload = {
                 "model": "MiniMax-Hailuo-02",
                 "first_frame_image": image_data_url,
                 "prompt": prompt,
                 "duration": duration,
                 "resolution": "768P",
+                "prompt_optimizer": False,  # Отключаем оптимизатор (у нас уже есть prompt_enhancer)
             }
 
             # Добавляем callback_url если он сконфигурирован
             if self.callback_url:
                 payload["callback_url"] = self.callback_url
-                print(f"[MINIMAX] Using callback_url: {self.callback_url}")
+                print(f"[MINIMAX] ✅ Using callback_url: {self.callback_url}")
             else:
-                print(f"[MINIMAX] ⚠️ No callback_url configured! MINIMAX_CALLBACK_URL env var is not set")
+                print(f"[MINIMAX] ⚠️ No callback_url configured! MINIMAX_CALLBACK_URL env var not set")
 
-            print(f"[MINIMAX] Sending payload:")
+            # Логируем payload (для отладки)
+            print(f"[MINIMAX] Sending request to /video_generation")
+            print(f"[MINIMAX] Payload details:")
             print(f"[MINIMAX]   - model: {payload['model']}")
+            print(f"[MINIMAX]   - first_frame_image: {image_data_url[:80]}...")
             print(f"[MINIMAX]   - prompt: {payload['prompt'][:100]}...")
-            print(f"[MINIMAX]   - duration: {payload['duration']}")
+            print(f"[MINIMAX]   - duration: {payload['duration']} sec")
             print(f"[MINIMAX]   - resolution: {payload['resolution']}")
-            print(f"[MINIMAX]   - first_frame_image: {image_data_url[:50]}...")
+            print(f"[MINIMAX]   - prompt_optimizer: {payload['prompt_optimizer']}")
             if "callback_url" in payload:
                 print(f"[MINIMAX]   - callback_url: {payload['callback_url']}")
 
+            print(f"[MINIMAX] Sending request...")
             response = await self._post_to_minimax("/video_generation", payload)
 
             # Логируем полный ответ для отладки
@@ -292,6 +336,8 @@ class MinimaxVideoClient:
 
     async def _post_to_minimax(self, endpoint: str, payload: Dict) -> Dict:
         """Отправляет POST запрос к MiniMax API"""
+        import json
+
         headers = {
             "Authorization": f"Bearer {self.api_key}",
             "Content-Type": "application/json",
@@ -300,15 +346,30 @@ class MinimaxVideoClient:
         url = f"{MINIMAX_API_URL}{endpoint}"
         print(f"[MINIMAX] POST {url}")
 
+        # Логируем payload (исключая длинную base64 строку)
+        payload_for_logging = dict(payload)
+        if "first_frame_image" in payload_for_logging:
+            # Обрезаем base64 для читаемости логов
+            payload_for_logging["first_frame_image"] = (
+                payload_for_logging["first_frame_image"][:100] + "..."
+            )
+
+        print(f"[MINIMAX] REQUEST BODY:")
+        print(f"[MINIMAX] {json.dumps(payload_for_logging, indent=2)}")
+
         async with aiohttp.ClientSession(timeout=self.timeout) as session:
             async with session.post(
                 url,
                 json=payload,
                 headers=headers,
             ) as resp:
-                print(f"[MINIMAX] POST response status: {resp.status}")
+                print(f"[MINIMAX] RESPONSE STATUS: {resp.status}")
+
                 response_data = await resp.json()
-                print(f"[MINIMAX] POST response body: {response_data}")
+
+                print(f"[MINIMAX] RESPONSE BODY:")
+                print(f"[MINIMAX] {json.dumps(response_data, indent=2, ensure_ascii=False)}")
+
                 return response_data
 
     async def _get_from_minimax(self, endpoint: str, params: Dict) -> Dict:
