@@ -21,6 +21,10 @@ class MinimaxVideoClient:
         self.callback_url = callback_url or os.getenv("MINIMAX_CALLBACK_URL")
         self.timeout = aiohttp.ClientTimeout(total=30)
 
+        # Маппинг task_id (от MiniMax) -> generation_id (наш)
+        # Используется для связи callback'ов с генерациями
+        self.task_id_to_generation_id = {}
+
     # ============ IMAGE CONVERSION ============
 
     def _image_to_base64(self, image_path: str) -> str:
@@ -69,21 +73,30 @@ class MinimaxVideoClient:
                 "prompt": prompt,
                 "duration": duration,
                 "resolution": "768P",
-                "callback_url": self.callback_url,
             }
 
-            # Добавляем generation_id в URL параметры чтобы связать callback с генерацией
-            if generation_id and self.callback_url:
-                payload["callback_url"] = f"{self.callback_url}?generation_id={generation_id}"
+            # Добавляем callback_url если он сконфигурирован
+            if self.callback_url:
+                payload["callback_url"] = self.callback_url
 
             response = await self._post_to_minimax("/video_generation", payload)
 
-            if response.get("success"):
-                generation_id = response.get("data", {}).get("task_id") or response.get("generation_id")
-                print(f"[MINIMAX] Prompt mode - generation started: {generation_id}")
+            # Проверяем успешность по status_code в base_resp (по документации)
+            base_resp = response.get("base_resp", {})
+            status_code = base_resp.get("status_code")
+
+            if status_code == 0:  # 0 = успех по документации
+                minimax_task_id = response.get("task_id")
+                print(f"[MINIMAX] Prompt mode - generation started: task_id={minimax_task_id}")
+
+                # ВАЖНО: Сохраняем маппинг task_id -> generation_id для callback'ов
+                if generation_id and minimax_task_id:
+                    self.task_id_to_generation_id[minimax_task_id] = generation_id
+                    print(f"[MINIMAX] Mapped task_id {minimax_task_id} -> generation_id {generation_id}")
+
                 return {
                     "success": True,
-                    "generation_id": generation_id,
+                    "generation_id": minimax_task_id,  # Возвращаем task_id как generation_id
                     "status": "queued",
                     "cost": response.get("cost", 0),
                 }
