@@ -57,7 +57,7 @@ class VideoEngine:
         try:
             # Фаза 1: Smart Prompt Enhancement
             print(f"[ENGINE] Phase 1: Enhancing prompt...")
-            enhanced_prompt = await prompt_enhancer.enhance_prompt(prompt_text, mode="prompt")
+            enhanced_prompt = await prompt_enhancer.enhance_prompt(prompt_text)
             print(f"[ENGINE] prompt_enhanced: {generation_id}")
 
             # Фаза 2: Camera Director (только для PROMPT MODE)
