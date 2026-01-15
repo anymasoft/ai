@@ -107,6 +107,51 @@ class MinimaxVideoClient:
                 "error": str(e),
             }
 
+    # ============ FILE RETRIEVAL ============
+
+    async def get_file_download_url(self, file_id: str) -> Dict[str, Any]:
+        """
+        Получить download_url по file_id (как в шаблоне кода)
+
+        Returns:
+            {
+                "success": bool,
+                "download_url": str (if success),
+                "error": str (if failed)
+            }
+        """
+        try:
+            print(f"[MINIMAX] Getting download URL for file_id: {file_id}")
+
+            response = await self._get_from_minimax("/files/retrieve", {"file_id": file_id})
+
+            # Пытаемся найти download_url в разных местах
+            download_url = (
+                response.get("file", {}).get("download_url")
+                or response.get("download_url")
+            )
+
+            if download_url:
+                print(f"[MINIMAX] Got download URL: {download_url}")
+                return {
+                    "success": True,
+                    "download_url": download_url,
+                }
+            else:
+                error = f"No download_url in response: {response}"
+                print(f"[MINIMAX] Error: {error}")
+                return {
+                    "success": False,
+                    "error": error,
+                }
+
+        except Exception as e:
+            print(f"[MINIMAX] Exception getting download URL: {str(e)}")
+            return {
+                "success": False,
+                "error": str(e),
+            }
+
     # ============ STATUS CHECKING ============
 
     async def get_generation_status(self, generation_id: str) -> Dict[str, Any]:

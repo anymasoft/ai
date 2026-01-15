@@ -18,6 +18,7 @@ from fastapi.responses import JSONResponse
 from bot import run_bot
 from state import state_manager
 from core.video_engine import start_video_engine, video_engine
+from core.minimax import minimax_client
 
 
 # Глобальные переменные для задач
@@ -105,12 +106,12 @@ async def health():
 
 @app.post("/minimax/callback", response_class=JSONResponse)
 async def minimax_callback(request: Request):
-    """Получение callback от MiniMax когда видео готово"""
+    """Получение callback от MiniMax когда видео готово (по шаблону кода)"""
     try:
         data = await request.json()
         print(f"[MINIMAX-CALLBACK] Received: {data}")
 
-        # MiniMax verification challenge
+        # MiniMax verification challenge (обязательный для безопасности)
         if "challenge" in data:
             print(f"[MINIMAX-CALLBACK] Verification challenge received")
             return {"challenge": data["challenge"]}
@@ -126,17 +127,33 @@ async def minimax_callback(request: Request):
         task_id = data.get("task_id")
         file_id = data.get("file_id")
 
+        print(f"[MINIMAX-CALLBACK] Processing: status={status}, generation_id={generation_id}, task_id={task_id}, file_id={file_id}")
+
         if status == "success":
-            # MiniMax отправляет video_url или download_url в callback'е
-            video_url = data.get("video_url") or data.get("download_url")
+            # Step 1: Получить download_url по file_id (как в шаблоне кода)
+            if not file_id:
+                error_msg = "No file_id in callback"
+                print(f"[MINIMAX-CALLBACK] ❌ Error: {error_msg}")
+                if generation_id in video_engine._generation_status:
+                    video_engine._generation_status[generation_id]["minimax_error"] = error_msg
+                return {"ok": False, "error": error_msg}
 
-            print(f"[MINIMAX-CALLBACK] Success: generation_id={generation_id}, task_id={task_id}, file_id={file_id}")
-            print(f"[MINIMAX-CALLBACK] Video URL: {video_url}")
+            file_response = await minimax_client.get_file_download_url(file_id)
 
-            # Обновляем статус генерации - engine ждет этого поля!
+            if not file_response.get("success"):
+                error_msg = file_response.get("error", "Failed to get download URL")
+                print(f"[MINIMAX-CALLBACK] ❌ Error: {error_msg}")
+                if generation_id in video_engine._generation_status:
+                    video_engine._generation_status[generation_id]["minimax_error"] = error_msg
+                return {"ok": False, "error": error_msg}
+
+            download_url = file_response.get("download_url")
+            print(f"[MINIMAX-CALLBACK] ✅ Got download URL: {download_url}")
+
+            # Step 2: Обновляем статус с download_url (engine будет скачивать видео)
             if generation_id in video_engine._generation_status:
                 video_engine._generation_status[generation_id].update({
-                    "minimax_video_url": video_url,
+                    "minimax_video_url": download_url,
                     "minimax_task_id": task_id,
                     "minimax_file_id": file_id,
                 })
@@ -148,21 +165,21 @@ async def minimax_callback(request: Request):
 
         elif status == "failed":
             error_msg = data.get("message", "Unknown error")
-            print(f"[MINIMAX-CALLBACK] Failed: generation_id={generation_id}, error={error_msg}")
+            print(f"[MINIMAX-CALLBACK] ❌ Failed: generation_id={generation_id}, error={error_msg}")
 
             # Обновляем статус с ошибкой
             if generation_id in video_engine._generation_status:
                 video_engine._generation_status[generation_id]["minimax_error"] = error_msg
-                print(f"[MINIMAX-CALLBACK] ❌ Updated generation error: {generation_id}")
+                print(f"[MINIMAX-CALLBACK] Updated generation error: {generation_id}")
 
             return {"ok": False, "error": error_msg}
 
         else:
-            print(f"[MINIMAX-CALLBACK] Unknown status: {status}, generation_id={generation_id}")
+            print(f"[MINIMAX-CALLBACK] ⚠️ Unknown status: {status}, generation_id={generation_id}")
             return {"ok": True}
 
     except Exception as e:
-        print(f"[MINIMAX-CALLBACK] Error processing callback: {str(e)}")
+        print(f"[MINIMAX-CALLBACK] ❌ Error processing callback: {str(e)}")
         return {"ok": False, "error": str(e)}
 
 
