@@ -65,6 +65,13 @@ class MinimaxVideoClient:
             }
         """
         try:
+            # Проверяем что API ключ установлен
+            if not self.api_key:
+                raise RuntimeError(
+                    "[MINIMAX] ❌ ОШИБКА: MINIMAX_API_KEY не установлен!\n"
+                    "Убедитесь что .env файл содержит MINIMAX_API_KEY=sk-..."
+                )
+
             image_data_url = self._image_to_base64(image_path)
 
             payload = {
@@ -78,6 +85,18 @@ class MinimaxVideoClient:
             # Добавляем callback_url если он сконфигурирован
             if self.callback_url:
                 payload["callback_url"] = self.callback_url
+                print(f"[MINIMAX] Using callback_url: {self.callback_url}")
+            else:
+                print(f"[MINIMAX] ⚠️ No callback_url configured! MINIMAX_CALLBACK_URL env var is not set")
+
+            print(f"[MINIMAX] Sending payload:")
+            print(f"[MINIMAX]   - model: {payload['model']}")
+            print(f"[MINIMAX]   - prompt: {payload['prompt'][:100]}...")
+            print(f"[MINIMAX]   - duration: {payload['duration']}")
+            print(f"[MINIMAX]   - resolution: {payload['resolution']}")
+            print(f"[MINIMAX]   - first_frame_image: {image_data_url[:50]}...")
+            if "callback_url" in payload:
+                print(f"[MINIMAX]   - callback_url: {payload['callback_url']}")
 
             response = await self._post_to_minimax("/video_generation", payload)
 
