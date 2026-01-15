@@ -1,5 +1,6 @@
 import { defineMiddleware } from 'astro:middleware';
 import { getUserFromSession, isAdmin } from './lib/auth';
+import { initializeTelegramBot } from './telegram/start';
 
 const COOKIE_NAME = 'session_token';
 const COOKIE_OPTIONS = {
@@ -9,7 +10,18 @@ const COOKIE_OPTIONS = {
   httpOnly: true,
 };
 
+// Флаг для инициализации бота один раз
+let botInitialized = false;
+
 export const onRequest = defineMiddleware((context, next) => {
+  // Инициализируем Telegram-бота при первом запросе
+  if (!botInitialized) {
+    botInitialized = true;
+    initializeTelegramBot().catch((err) => {
+      console.error('[MIDDLEWARE] Failed to initialize telegram bot:', err);
+    });
+  }
+
   const pathname = context.url.pathname;
 
   // ✅ MiniMax webhook - публичный endpoint, БЕЗ авторизации

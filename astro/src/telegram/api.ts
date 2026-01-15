@@ -69,11 +69,11 @@ export async function generateVideo(
       }
     );
 
-    console.log(`[API] Generation started: ${response.data.generationId}`);
+    console.log(`[TELEGRAM-API] Generation started: ${response.data.generationId}`);
     return response.data;
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error';
-    console.error(`[API] Generate error: ${message}`);
+    console.error(`[TELEGRAM-API] Generate error: ${message}`);
     throw error;
   }
 }
@@ -97,7 +97,7 @@ export async function getGenerationStatus(
     return response.data;
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error';
-    console.error(`[API] Status error: ${message}`);
+    console.error(`[TELEGRAM-API] Status error: ${message}`);
     throw error;
   }
 }
@@ -117,7 +117,7 @@ export async function downloadVideo(
       const filePath = videoUrl.replace(/^\/storage/, path.join(process.cwd(), 'storage'));
       if (fs.existsSync(filePath)) {
         fs.copyFileSync(filePath, outputPath);
-        console.log(`[API] Video copied from local path: ${filePath}`);
+        console.log(`[TELEGRAM-API] Video copied from local path: ${filePath}`);
         return;
       }
     }
@@ -136,10 +136,10 @@ export async function downloadVideo(
 
     // Сохраняем файл
     fs.writeFileSync(outputPath, response.data);
-    console.log(`[API] Video downloaded: ${outputPath}`);
+    console.log(`[TELEGRAM-API] Video downloaded: ${outputPath}`);
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error';
-    console.error(`[API] Download error: ${message}`);
+    console.error(`[TELEGRAM-API] Download error: ${message}`);
     throw error;
   }
 }
