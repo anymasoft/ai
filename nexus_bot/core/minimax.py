@@ -81,13 +81,18 @@ class MinimaxVideoClient:
 
             response = await self._post_to_minimax("/video_generation", payload)
 
+            # Логируем полный ответ для отладки
+            print(f"[MINIMAX] Raw response: {response}")
+
             # Проверяем успешность по status_code в base_resp (по документации)
             base_resp = response.get("base_resp", {})
             status_code = base_resp.get("status_code")
 
+            print(f"[MINIMAX] Extracted status_code={status_code}, base_resp={base_resp}")
+
             if status_code == 0:  # 0 = успех по документации
                 minimax_task_id = response.get("task_id")
-                print(f"[MINIMAX] Prompt mode - generation started: task_id={minimax_task_id}")
+                print(f"[MINIMAX] ✅ Prompt mode - generation started: task_id={minimax_task_id}")
 
                 # ВАЖНО: Сохраняем маппинг task_id -> generation_id для callback'ов
                 if generation_id and minimax_task_id:
@@ -101,18 +106,21 @@ class MinimaxVideoClient:
                     "cost": response.get("cost", 0),
                 }
             else:
-                error = response.get("message", response.get("error", "Unknown error"))
-                print(f"[MINIMAX] Prompt mode - error: {error}")
+                error_msg = base_resp.get("status_msg") or response.get("message") or response.get("error") or f"Unknown error (status_code={status_code})"
+                print(f"[MINIMAX] ❌ Error: {error_msg}")
+                print(f"[MINIMAX] Full base_resp: {base_resp}")
                 print(f"[MINIMAX] Full response: {response}")
                 return {
                     "success": False,
                     "generation_id": None,
                     "status": "failed",
-                    "error": error,
+                    "error": error_msg,
                 }
 
         except Exception as e:
-            print(f"[MINIMAX] Prompt mode exception: {str(e)}")
+            print(f"[MINIMAX] ❌ Prompt mode exception: {str(e)}")
+            import traceback
+            traceback.print_exc()
             return {
                 "success": False,
                 "generation_id": None,
