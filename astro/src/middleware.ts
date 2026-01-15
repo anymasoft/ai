@@ -1,6 +1,20 @@
-// 🤖 Инициализируем Telegram-бота при загрузке middleware
-// Это гарантированная точка старта для Node runtime в Astro
-import './telegram/start';
+/**
+ * Инициализация Telegram Bot Runtime
+ *
+ * Используем динамический import для загрузки runtime-loader.
+ * Это гарантирует что grammy НЕ попадает в Vite bundle,
+ * а загружается только в Node runtime при старте middleware.
+ *
+ * Middleware загружается гарантированно при старте Astro сервера,
+ * поэтому это правильная точка для инициализации фоновых сервисов.
+ */
+if (typeof globalThis !== 'undefined' && process.env.TELEGRAM_BOT_TOKEN) {
+  console.log('[MIDDLEWARE] 🤖 Loading Telegram Bot runtime...');
+  import('./telegram/runtime').catch(err => {
+    const msg = err instanceof Error ? err.message : 'Unknown error';
+    console.error(`[MIDDLEWARE] ⚠️ Failed to load Telegram runtime: ${msg}`);
+  });
+}
 
 import { defineMiddleware } from 'astro:middleware';
 import { getUserFromSession, isAdmin } from './lib/auth';
