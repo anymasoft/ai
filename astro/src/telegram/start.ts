@@ -42,3 +42,11 @@ export async function initializeTelegramBot(): Promise<void> {
     (globalThis as any).__telegramBotStarted = false;
   }
 }
+
+// Инициализируем бота при импорте этого модуля
+// (это важно для src/server.ts)
+if (typeof globalThis !== 'undefined') {
+  initializeTelegramBot().catch((err) => {
+    console.error('[TELEGRAM-INIT] Failed to initialize bot on module load:', err);
+  });
+}
