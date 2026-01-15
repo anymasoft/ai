@@ -29,7 +29,7 @@ async def test_prompt_enhancer():
     print(f"\n📝 Input (русский):\n{test_prompt}\n")
 
     try:
-        enhanced = await prompt_enhancer.enhance_prompt(test_prompt, mode="prompt")
+        enhanced = await prompt_enhancer.enhance_prompt(test_prompt)
         print(f"✅ Output (enhanced):\n{enhanced}\n")
         return True
     except Exception as e:
@@ -76,7 +76,7 @@ async def test_with_preserve():
     print(f"\n📝 Input (с PRESERVE):\n{test_prompt}\n")
 
     try:
-        enhanced = await prompt_enhancer.enhance_prompt(test_prompt, mode="prompt")
+        enhanced = await prompt_enhancer.enhance_prompt(test_prompt)
         print(f"✅ Output (enhanced with PRESERVE):\n{enhanced}\n")
 
         # Теперь тестируем camera director с PRESERVE

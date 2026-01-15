@@ -33,33 +33,19 @@ client = AsyncOpenAI(api_key=api_key)
 # ВСЕ системные промпты находятся здесь и нигде больше!
 # ========================================================
 
-# -------- ПРОМПТ 1: TEMPLATE MODE ENHANCEMENT --------
-# Используется для улучшения видео-промптов в режиме TEMPLATE
-# (фокус на сцене, минимум движения, стабильность)
-SYSTEM_PROMPT_TEMPLATE_MODE = """Ты — специалист по промптам для видео-генерации (MiniMax).
-Ты переводишь русский промпт на английский и расширяешь его деталями о сцене.
-
-MODE: TEMPLATE (фокус на сцене, минимум движения, стабильность)
-
-{preservation_rules}
-
-Отвечай ТОЛЬКО промптом на английском, без комментариев или объяснений."""
-
-# -------- ПРОМПТ 2: PROMPT MODE ENHANCEMENT --------
+# -------- ПРОМПТ 1: PROMPT MODE ENHANCEMENT --------
 # Используется для улучшения видео-промптов в режиме PROMPT
 # (максимум cinematic движения и деталей для камеры)
-SYSTEM_PROMPT_PROMPT_MODE = """Ты — специалист по промптам для видео-генерации (MiniMax).
+SYSTEM_PROMPT_ENHANCER = """Ты — специалист по промптам для видео-генерации (MiniMax).
 Ты переводишь русский промпт на английский и добавляешь максимум деталей движения.
-
-MODE: PROMPT (максимум cinematic движения, детальные инструкции для камеры)
-
-{preservation_rules}
 
 Добавляй детальные инструкции о:
 - Как должна двигаться камера
 - Какие объекты в фокусе
 - Динамика сцены
 - Timing движений
+
+{preservation_rules}
 
 Отвечай ТОЛЬКО промптом на английском, без комментариев или объяснений."""
 
@@ -139,53 +125,10 @@ class PromptEnhancer:
 
     # ============ ENHANCEMENT PHASE ============
 
-    async def enhance_prompt_for_template(self, prompt: str) -> str:
+    async def enhance_prompt(self, prompt: str) -> str:
         """
-        Улучшение промпта для TEMPLATE MODE
-        Фокус на сцене, минимум движения
-        """
-        has_preserve, preserve_block, keywords = self._detect_preserve_constraints(prompt)
-
-        # Удаляем PRESERVE блок из промпта (будет добавлен в сообщение GPT)
-        prompt_clean = re.sub(r'(?:PRESERVE|preserve):[^\n]+', '', prompt).strip()
-
-        preservation_rules = self._get_preservation_rules(keywords) if has_preserve else ""
-
-        # Используем системный промпт из констант
-        system_message = SYSTEM_PROMPT_TEMPLATE_MODE.format(preservation_rules=preservation_rules)
-
-        user_message = f"""Улучши этот видео-промпт (режим TEMPLATE):
-
-{prompt_clean}
-
-Вывод: ТОЛЬКО улучшенный промпт на английском."""
-
-        try:
-            response = await asyncio.wait_for(
-                self._call_openai(system_message, user_message),
-                timeout=self.timeout,
-            )
-            enhanced = response.strip()
-
-            # Добавляем NO_GENERATION блок для template mode (если есть PRESERVE)
-            if has_preserve:
-                enhanced += f"\n\nNO_GENERATION: {preserve_block}"
-
-            print(f"[PROMPT-ENHANCER] Template enhanced (preserve={has_preserve})")
-            return enhanced
-
-        except asyncio.TimeoutError:
-            print("[PROMPT-ENHANCER] ⚠️ GPT timeout, using original prompt")
-            return prompt_clean
-
-        except Exception as e:
-            print(f"[PROMPT-ENHANCER] Error: {str(e)}")
-            return prompt_clean
-
-    async def enhance_prompt_for_prompt(self, prompt: str) -> str:
-        """
-        Улучшение промпта для PROMPT MODE
-        Максимум деталей движения камеры + constraints
+        Главная функция энхансмента промптов для видео-генерации
+        Максимум деталей движения камеры + preservation constraints
         """
         has_preserve, preserve_block, keywords = self._detect_preserve_constraints(prompt)
 
@@ -195,13 +138,13 @@ class PromptEnhancer:
         preservation_rules = self._get_preservation_rules(keywords) if has_preserve else ""
 
         # Используем системный промпт из констант
-        system_message = SYSTEM_PROMPT_PROMPT_MODE.format(preservation_rules=preservation_rules)
+        system_message = SYSTEM_PROMPT_ENHANCER.format(preservation_rules=preservation_rules)
 
-        user_message = f"""Улучши этот видео-промпт (режим PROMPT с максимумом деталей движения):
+        user_message = f"""Улучши этот видео-промпт:
 
 {prompt_clean}
 
-Вывод: ТОЛЬКО улучшенный промпт на английском с инструкциями для камеры."""
+Вывод: ТОЛЬКО улучшенный промпт на английском с максимумом деталей движения и инструкциями для камеры."""
 
         try:
             response = await asyncio.wait_for(
@@ -250,16 +193,6 @@ class PromptEnhancer:
                     raise
 
     # ============ PUBLIC API ============
-
-    async def enhance_prompt(self, prompt: str, mode: str = "prompt") -> str:
-        """
-        Главная функция энхансмента
-        mode: "template" или "prompt"
-        """
-        if mode == "template":
-            return await self.enhance_prompt_for_template(prompt)
-        else:
-            return await self.enhance_prompt_for_prompt(prompt)
 
     def get_preservation_info(self, prompt: str) -> Dict[str, any]:
         """Получить информацию о preservation constraints"""
