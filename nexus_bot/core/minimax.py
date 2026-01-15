@@ -10,7 +10,7 @@ from typing import Optional, Dict, Any
 import aiohttp
 
 MINIMAX_API_KEY = os.getenv("MINIMAX_API_KEY")
-MINIMAX_API_URL = "https://api.minimax.chat"
+MINIMAX_API_URL = "https://api.minimax.io/v1"
 
 
 class MinimaxVideoClient:
