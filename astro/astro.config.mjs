@@ -24,6 +24,12 @@ export default defineConfig({
       // Исключаем Node.js модули из бандла для браузера
       // grammY - это Node.js модуль и должен подгружаться в runtime
       external: ['grammy', 'axios']
+    },
+    build: {
+      rollupOptions: {
+        // Исключаем Node.js модули из Rollup бандла
+        external: ['grammy', 'axios']
+      }
     }
   }
 });
