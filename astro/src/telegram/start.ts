@@ -42,14 +42,3 @@ export async function initializeTelegramBot(): Promise<void> {
     (globalThis as any).__telegramBotStarted = false;
   }
 }
-
-// Запускаем инициализацию при импорте этого модуля (но только в runtime)
-// Это срабатывает при первом обращении к этому файлу
-if (typeof globalThis !== 'undefined') {
-  // Отложенная инициализация на следующий tick
-  Promise.resolve().then(() => {
-    initializeTelegramBot().catch((err) => {
-      console.error('[TELEGRAM-INIT] Deferred initialization error:', err);
-    });
-  });
-}

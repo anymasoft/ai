@@ -19,6 +19,11 @@ export default defineConfig({
     plugins: [
       skipHostCheck(),  // ✅ ОТКЛЮЧАЕМ HOST CHECK VITE
       tailwindcss()
-    ]
+    ],
+    ssr: {
+      // Исключаем Node.js модули из бандла для браузера
+      // grammY - это Node.js модуль и должен подгружаться в runtime
+      external: ['grammy', 'axios']
+    }
   }
 });
