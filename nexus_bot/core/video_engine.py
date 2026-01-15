@@ -146,51 +146,56 @@ class VideoEngine:
             # Обновляем статус
             self._generation_status[gen_id]["status"] = "processing"
 
-            # Фаза 3: Вызов MiniMax
+            # Фаза 3: Вызов MiniMax (отправляем запрос с callback_url)
+            # MiniMax вернет task_id, который мы сохраняем в маппинге
             print(f"[ENGINE] Phase 3: Calling MiniMax...")
             minimax_response = await minimax_client.generate_from_prompt(
                 queue_item.photo_path,
                 queue_item.prompt,
                 queue_item.duration,
+                generation_id=gen_id,  # Используется для маппинга task_id -> generation_id в callback
             )
 
             if not minimax_response.get("success"):
                 raise Exception(minimax_response.get("error", "MiniMax error"))
 
-            minimax_generation_id = minimax_response.get("generation_id")
-            print(f"[ENGINE] minimax_request: {gen_id} → {minimax_generation_id}")
+            # minimax_response["generation_id"] содержит task_id от MiniMax
+            minimax_task_id = minimax_response.get("generation_id")
+            print(f"[ENGINE] MiniMax task created: {gen_id} ← task_id={minimax_task_id}")
 
             # Обновляем статус
             self._generation_status[gen_id].update({
                 "status": "processing",
-                "minimax_generation_id": minimax_generation_id,
+                "minimax_task_id": minimax_task_id,
             })
 
-            # Фаза 4: Polling для получения результата
-            print(f"[ENGINE] Phase 4: Polling MiniMax status...")
-            max_attempts = 120  # 2 минуты с интервалом 1 сек
+            # Фаза 4: Ожидание callback от MiniMax с результатом
+            # MiniMax отправит callback на /minimax/callback когда видео готово
+            print(f"[ENGINE] Phase 4: Waiting for MiniMax callback...")
+
+            # Ждем callback с таймаутом 10 минут
+            max_wait_time = 600  # 10 минут
+            check_interval = 1   # проверяем каждую секунду
+            elapsed_time = 0
             video_url = None
 
-            for attempt in range(max_attempts):
-                status_response = await minimax_client.get_generation_status(
-                    minimax_generation_id
-                )
-
-                status = status_response.get("status")
-                self._generation_status[gen_id]["minimax_status"] = status
-
-                if status == "done":
-                    video_url = status_response.get("video_url")
-                    print(f"[ENGINE] minimax_done: {gen_id}")
+            while elapsed_time < max_wait_time:
+                # Проверяем поле "minimax_video_url" которое устанавливает callback (Step 2)
+                if "minimax_video_url" in self._generation_status[gen_id]:
+                    video_url = self._generation_status[gen_id]["minimax_video_url"]
+                    print(f"[ENGINE] ✅ MiniMax callback received with video URL: {gen_id}")
                     break
 
-                if status == "failed":
-                    raise Exception(status_response.get("error", "MiniMax generation failed"))
+                # Проверяем если ошибка пришла в callback
+                if "minimax_error" in self._generation_status[gen_id]:
+                    error = self._generation_status[gen_id]["minimax_error"]
+                    raise Exception(f"MiniMax callback error: {error}")
 
-                await asyncio.sleep(1)
+                await asyncio.sleep(check_interval)
+                elapsed_time += check_interval
 
             if not video_url:
-                raise Exception("MiniMax polling timeout")
+                raise Exception("MiniMax callback timeout (10 minutes)")
 
             # Фаза 5: Скачивание видео
             print(f"[ENGINE] Phase 5: Downloading video...")

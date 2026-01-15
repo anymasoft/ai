@@ -21,6 +21,10 @@ class MinimaxVideoClient:
         self.callback_url = callback_url or os.getenv("MINIMAX_CALLBACK_URL")
         self.timeout = aiohttp.ClientTimeout(total=30)
 
+        # Маппинг task_id (от MiniMax) -> generation_id (наш)
+        # Используется для связи callback'ов с генерациями
+        self.task_id_to_generation_id = {}
+
     # ============ IMAGE CONVERSION ============
 
     def _image_to_base64(self, image_path: str) -> str:
@@ -41,6 +45,7 @@ class MinimaxVideoClient:
         image_path: str,
         prompt: str,
         duration: int = 6,
+        generation_id: str = None,
     ) -> Dict[str, Any]:
         """
         Генерирует видео из фото + текстового промпта (PROMPT MODE)
@@ -68,23 +73,37 @@ class MinimaxVideoClient:
                 "prompt": prompt,
                 "duration": duration,
                 "resolution": "768P",
-                "callback_url": self.callback_url,
             }
+
+            # Добавляем callback_url если он сконфигурирован
+            if self.callback_url:
+                payload["callback_url"] = self.callback_url
 
             response = await self._post_to_minimax("/video_generation", payload)
 
-            if response.get("success"):
-                generation_id = response.get("data", {}).get("task_id") or response.get("generation_id")
-                print(f"[MINIMAX] Prompt mode - generation started: {generation_id}")
+            # Проверяем успешность по status_code в base_resp (по документации)
+            base_resp = response.get("base_resp", {})
+            status_code = base_resp.get("status_code")
+
+            if status_code == 0:  # 0 = успех по документации
+                minimax_task_id = response.get("task_id")
+                print(f"[MINIMAX] Prompt mode - generation started: task_id={minimax_task_id}")
+
+                # ВАЖНО: Сохраняем маппинг task_id -> generation_id для callback'ов
+                if generation_id and minimax_task_id:
+                    self.task_id_to_generation_id[minimax_task_id] = generation_id
+                    print(f"[MINIMAX] Mapped task_id {minimax_task_id} -> generation_id {generation_id}")
+
                 return {
                     "success": True,
-                    "generation_id": generation_id,
+                    "generation_id": minimax_task_id,  # Возвращаем task_id как generation_id
                     "status": "queued",
                     "cost": response.get("cost", 0),
                 }
             else:
-                error = response.get("message", "Unknown error")
+                error = response.get("message", response.get("error", "Unknown error"))
                 print(f"[MINIMAX] Prompt mode - error: {error}")
+                print(f"[MINIMAX] Full response: {response}")
                 return {
                     "success": False,
                     "generation_id": None,
@@ -98,6 +117,51 @@ class MinimaxVideoClient:
                 "success": False,
                 "generation_id": None,
                 "status": "error",
+                "error": str(e),
+            }
+
+    # ============ FILE RETRIEVAL ============
+
+    async def get_file_download_url(self, file_id: str) -> Dict[str, Any]:
+        """
+        Получить download_url по file_id (как в шаблоне кода)
+
+        Returns:
+            {
+                "success": bool,
+                "download_url": str (if success),
+                "error": str (if failed)
+            }
+        """
+        try:
+            print(f"[MINIMAX] Getting download URL for file_id: {file_id}")
+
+            response = await self._get_from_minimax("/files/retrieve", {"file_id": file_id})
+
+            # Пытаемся найти download_url в разных местах
+            download_url = (
+                response.get("file", {}).get("download_url")
+                or response.get("download_url")
+            )
+
+            if download_url:
+                print(f"[MINIMAX] Got download URL: {download_url}")
+                return {
+                    "success": True,
+                    "download_url": download_url,
+                }
+            else:
+                error = f"No download_url in response: {response}"
+                print(f"[MINIMAX] Error: {error}")
+                return {
+                    "success": False,
+                    "error": error,
+                }
+
+        except Exception as e:
+            print(f"[MINIMAX] Exception getting download URL: {str(e)}")
+            return {
+                "success": False,
                 "error": str(e),
             }
 
@@ -206,13 +270,19 @@ class MinimaxVideoClient:
             "Content-Type": "application/json",
         }
 
+        url = f"{MINIMAX_API_URL}{endpoint}"
+        print(f"[MINIMAX] POST {url}")
+
         async with aiohttp.ClientSession(timeout=self.timeout) as session:
             async with session.post(
-                f"{MINIMAX_API_URL}{endpoint}",
+                url,
                 json=payload,
                 headers=headers,
             ) as resp:
-                return await resp.json()
+                print(f"[MINIMAX] POST response status: {resp.status}")
+                response_data = await resp.json()
+                print(f"[MINIMAX] POST response body: {response_data}")
+                return response_data
 
     async def _get_from_minimax(self, endpoint: str, params: Dict) -> Dict:
         """Отправляет GET запрос к MiniMax API"""
@@ -220,13 +290,19 @@ class MinimaxVideoClient:
             "Authorization": f"Bearer {self.api_key}",
         }
 
+        url = f"{MINIMAX_API_URL}{endpoint}"
+        print(f"[MINIMAX] GET {url} params={params}")
+
         async with aiohttp.ClientSession(timeout=self.timeout) as session:
             async with session.get(
-                f"{MINIMAX_API_URL}{endpoint}",
+                url,
                 params=params,
                 headers=headers,
             ) as resp:
-                return await resp.json()
+                print(f"[MINIMAX] GET response status: {resp.status}")
+                response_data = await resp.json()
+                print(f"[MINIMAX] GET response body: {response_data}")
+                return response_data
 
     # ============ HEALTH CHECK ============
 

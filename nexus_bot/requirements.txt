@@ -1,8 +1,9 @@
-fastapi
-uvicorn
-aiogram
-aiohttp
-python-dotenv
-requests
-Pillow
-openai
+fastapi==0.104.1
+uvicorn==0.24.0
+aiogram==3.3.0
+aiohttp==3.9.1
+python-dotenv==1.0.0
+requests==2.31.0
+Pillow==10.1.0
+openai==1.6.1
+httpx==0.24.1
