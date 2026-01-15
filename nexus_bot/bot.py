@@ -1,24 +1,43 @@
 """
-Telegram Bot на aiogram
-Генерирует видео из фото и текста с использованием встроенного Video Engine
+Telegram Bot на aiogram - версия 2.0
+Система генерации видео с монетизацией по пакетам видео (credits model)
+
+АРХИТЕКТУРА:
+- Главное меню с 4 кнопками (обычные кнопки Telegram)
+- Бесплатный лимит: 3 видео (триал)
+- Платные пакеты: 5, 20, 50 видео
+- Paywall: строгая проверка баланса перед генерацией
 """
 
 import os
 import asyncio
+import random
+from pathlib import Path
 from aiogram import Bot, Dispatcher, types, F
 from aiogram.filters import Command, StateFilter
-from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, FSInputFile
+from aiogram.types import ReplyKeyboardMarkup, KeyboardButton, FSInputFile
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
-from pathlib import Path
 
 from state import state_manager
 from core.video_engine import video_engine
 
-
-# Создаём временную папку для фото и видео
+# ========== КОНФИГИ ==========
 TEMP_DIR = Path("/tmp/telegram-bot")
 TEMP_DIR.mkdir(parents=True, exist_ok=True)
+
+GALLERY_DIR = Path(__file__).parent / "gallery"
+GALLERY_DIR.mkdir(parents=True, exist_ok=True)
+
+# Бесплатный лимит видео при регистрации
+FREE_TRIAL_VIDEOS = 3
+
+# Тарифы (пакеты видео)
+TARIFFS = {
+    "starter": {"videos": 5, "price": 490, "label": "Starter"},
+    "seller": {"videos": 20, "price": 1490, "label": "Seller"},
+    "pro": {"videos": 50, "price": 2990, "label": "Pro"},
+}
 
 
 def get_user_photo_path(user_id: int) -> str:
@@ -44,14 +63,166 @@ def log_event(event_type: str, user_id: int, details: dict = None):
     print(f"[TG] [{event_type}] user={user_id}{extra}")
 
 
-class UserStates(StatesGroup):
-    """FSM состояния"""
+# ========== ГЛАВНОЕ МЕНЮ ==========
 
+def get_main_menu_keyboard():
+    """Главное меню с 4 кнопками (обычные кнопки Telegram)"""
+    return ReplyKeyboardMarkup(
+        keyboard=[
+            [KeyboardButton(text="🎬 Создать видео"), KeyboardButton(text="💡 Примеры работ")],
+            [KeyboardButton(text="💳 Тарифы и оплата"), KeyboardButton(text="💰 Мой баланс")],
+        ],
+        resize_keyboard=True,
+        one_time_keyboard=False,
+    )
+
+
+def get_generate_menu_keyboard():
+    """Меню при создании видео"""
+    return ReplyKeyboardMarkup(
+        keyboard=[
+            [KeyboardButton(text="❌ Отмена")],
+        ],
+        resize_keyboard=True,
+    )
+
+
+# ========== FSM СОСТОЯНИЯ ==========
+
+class BotStates(StatesGroup):
+    """FSM состояния"""
+    main_menu = State()
     waiting_photo = State()
     waiting_prompt = State()
     confirm = State()
     generating = State()
+    viewing_examples = State()
+    viewing_tariffs = State()
 
+
+# ========== ФУНКЦИИ БАЛАНСА ==========
+
+def get_total_videos(user_state) -> int:
+    """Получить общее количество доступных видео"""
+    return user_state.free_remaining + user_state.video_balance
+
+
+def deduct_video(user_state) -> bool:
+    """Списать одно видео. Возвращает True если успешно, False если баланс кончился"""
+    # Сначала тратим бесплатные видео
+    if user_state.free_remaining > 0:
+        user_state.free_remaining -= 1
+        user_state.free_used += 1
+        return True
+
+    # Потом оплаченные видео
+    if user_state.video_balance > 0:
+        user_state.video_balance -= 1
+        return True
+
+    # Баланс кончился
+    return False
+
+
+def add_video_pack(user_state, pack_key: str):
+    """Добавить пакет видео (при оплате)"""
+    if pack_key in TARIFFS:
+        user_state.video_balance += TARIFFS[pack_key]["videos"]
+        return True
+    return False
+
+
+# ========== СОВЕТЫ ДЛЯ ВРЕМЕНИ ОЖИДАНИЯ ==========
+
+def get_waiting_tip() -> str:
+    """Случайный совет пока генерируется видео"""
+    tips = [
+        """⏳ Видео в работе...
+
+Пока готовится, вот совет:
+Добавь в описание больше деталей про движение камеры
+(например "камера слегка наклоняется вниз") —
+видео выглядит профессиональнее 👌""",
+
+        """⏳ Обрабатываю твоё видео...
+
+Знал ли ты? Видео с движением камеры
+повышают CTR маркетплейса на 23% 📊
+
+Хочешь лучше? Пиши в описании движения!""",
+
+        """⏳ Видео генерируется...
+
+Совет для следующего раза:
+Описания с глаголами действия (вращается, летит, скользит)
+дают более динамичное видео 🎬""",
+
+        """⏳ Создаю волшебство...
+
+Факт: видео меньше 10 сек смотрят
+на 80% чаще, чем длинные ролики 📱""",
+
+        """⏳ Видео почти готово...
+
+Лайфхак: пиши в описании конкретные
+действия вместо просто "красиво" —
+результат будет намного лучше ✨""",
+
+        """⏳ Обрабатываю...
+
+Знаешь, что общего у успешных видео маркетплейсов?
+Они заканчиваются на кульминации 🎯
+Помни об этом при описании!""",
+
+        """⏳ Видео в очереди на рендер...
+
+Совет: Короткие зум'ы и панорамы
+держат внимание зрителя намного дольше ☝️""",
+
+        """⏳ Ждём ответа от сервера...
+
+Интересный факт:
+Первые 1-2 секунды видео решают всё!
+Начни с самого захватывающего момента 🎬""",
+    ]
+    return random.choice(tips)
+
+
+# ========== МЕНЮ ТАРИФОВ ==========
+
+def get_tariffs_text() -> str:
+    """Текст с описанием тарифов"""
+    return f"""💳 ТАРИФНЫЕ ПЛАНЫ
+
+📦 СТАРТ (3 бесплатных видео)
+   • Попробовать сервис
+   • Без лимитов качества
+   • Приватные видео
+   👉 Для пробы
+
+📦 STARTER — {TARIFFS['starter']['price']} ₽
+   • {TARIFFS['starter']['videos']} видео
+   • Приоритет обработки (1-2 минуты)
+   • Экспорт в любое разрешение
+   👉 [Купить STARTER]
+
+📦 SELLER — {TARIFFS['seller']['price']} ₽
+   • {TARIFFS['seller']['videos']} видео
+   • Приоритет максимальный (30 сек)
+   • Шаблоны для маркетплейсов
+   👉 [Купить SELLER]  ⭐ ПОПУЛЯРНО
+
+📦 PRO — {TARIFFS['pro']['price']} ₽
+   • {TARIFFS['pro']['videos']} видео
+   • Безлимитный приоритет
+   • API доступ
+   👉 [Купить PRO]
+
+Никаких подписок. Видео не сгорают.
+Покупаешь один раз — пользуешься пока не закончится."""
+
+
+# ========== ГЛАВНАЯ ЛОГИКА БОТА ==========
 
 async def setup_bot():
     """Инициализировать и запустить бота"""
@@ -64,255 +235,210 @@ async def setup_bot():
     bot = Bot(token=token)
     dp = Dispatcher()
 
-    # ============ КОМАНДЫ ============
+    # ========== КОМАНДЫ ==========
 
     @dp.message(Command("start"))
     async def cmd_start(message: types.Message, state: FSMContext):
-        """Команда /start"""
+        """Команда /start - главное меню"""
         user_id = message.from_user.id
         log_event("user_start", user_id)
 
-        state_manager.reset_state(user_id)
+        user_state = state_manager.get_state(user_id)
+        total_videos = get_total_videos(user_state)
 
-        welcome_text = """🎬 Добро пожаловать в Beem Video AI!
+        welcome_text = f"""🎬 Привет! Я помогу тебе создать видео для маркетплейса за 30 секунд.
 
-Я помогу тебе создать видео из фото и описания за несколько минут.
+Просто загрузи картинку и напиши описание — я сгенерирую профессиональное видео.
 
-Вот как это работает:
-1️⃣ Отправь фото (любое JPEG изображение)
-2️⃣ Напиши, что должно происходить на видео
-3️⃣ Нажми "Сгенерировать"
-4️⃣ Жди готовое видео 🎥
+📊 Осталось видео: {total_videos}
+"""
 
-Ограничения:
-- Максимум 2000 символов в описании
-- Только JPEG фото
-- Генерация может занять 1-3 минуты
+        await message.answer(welcome_text, reply_markup=get_main_menu_keyboard())
+        await state.set_state(BotStates.main_menu)
 
-Начнём? 👇"""
+    # ========== ОБРАБОТКА КНОПОК ГЛАВНОГО МЕНЮ ==========
 
-        keyboard = InlineKeyboardMarkup(
-            inline_keyboard=[
-                [InlineKeyboardButton(text="📸 Загрузить фото", callback_data="start_photo")]
-            ]
-        )
+    @dp.message(F.text == "🎬 Создать видео")
+    async def btn_create_video(message: types.Message, state: FSMContext):
+        """Кнопка: Создать видео"""
+        user_id = message.from_user.id
+        user_state = state_manager.get_state(user_id)
 
-        await message.answer(welcome_text, reply_markup=keyboard)
-        await state.set_state(UserStates.waiting_photo)
+        log_event("create_video_click", user_id)
 
-    # ============ CALLBACK QUERIES ============
+        # 🚨 PAYWALL: Проверяем баланс
+        if get_total_videos(user_state) <= 0:
+            log_event("paywall_triggered", user_id)
 
-    @dp.callback_query(F.data == "start_photo")
-    async def cb_start_photo(query: types.CallbackQuery, state: FSMContext):
-        """Кнопка 'Загрузить фото'"""
-        user_id = query.from_user.id
-        log_event("user_requested_photo", user_id)
+            paywall_text = """🎁 Поздравляем! Ты уже создал видео!
 
-        state_manager.set_state(user_id, step="waiting_photo")
+Значит, они тебе нравятся и ты знаешь, что получается. Отлично!
 
-        await query.answer()
-        await query.message.answer(
-            "📸 Отправь мне фото в формате JPEG (можно сделать скриншот)"
-        )
-        await state.set_state(UserStates.waiting_photo)
+Теперь выбери тариф:"""
 
-    @dp.callback_query(F.data == "confirm_generate")
-    async def cb_confirm_generate(query: types.CallbackQuery, state: FSMContext):
-        """Кнопка 'Сгенерировать'"""
-        user_id = query.from_user.id
-        tg_state = state_manager.get_state(user_id)
-
-        if not tg_state.photo_path or not tg_state.prompt_text:
-            await query.answer("❌ Ошибка: данные потеряны", show_alert=True)
+            await message.answer(paywall_text)
+            await message.answer(get_tariffs_text())
+            await state.set_state(BotStates.main_menu)
             return
 
-        log_event("user_clicked_generate", user_id)
-
-        state_manager.set_state(user_id, step="generating")
-
-        await query.answer()
-        processing_msg = await query.message.answer(
-            "⏳ Генерирую видео...\n\n(Это может занять 1-3 минуты)\n\n0%"
+        # Просим фото
+        await message.answer(
+            "📸 Загрузи картинку (JPEG или PNG):",
+            reply_markup=get_generate_menu_keyboard(),
         )
+        state_manager.set_state(user_id, step="waiting_photo")
+        await state.set_state(BotStates.waiting_photo)
+
+    @dp.message(F.text == "💡 Примеры работ")
+    async def btn_examples(message: types.Message, state: FSMContext):
+        """Кнопка: Примеры работ"""
+        user_id = message.from_user.id
+        log_event("examples_click", user_id)
+
+        # Получаем список mp4 из gallery
+        gallery_files = list(GALLERY_DIR.glob("*.mp4"))
+
+        if not gallery_files:
+            await message.answer(
+                "😢 Примеров ещё нет.\n\nПокупай тариф и создай своё видео!",
+                reply_markup=get_main_menu_keyboard(),
+            )
+            return
+
+        # Выбираем случайное видео
+        random_video = random.choice(gallery_files)
+        user_state = state_manager.get_state(user_id)
+
+        # Добавляем в seen_examples чтобы не повторять в этой сессии
+        user_state.seen_examples.append(str(random_video))
 
         try:
-            # ✅ Используем встроенный video_engine вместо HTTP запроса
-            log_event("generation_started", user_id)
-            generate_response = await video_engine.generate_video(
-                user_id,
-                tg_state.photo_path,
-                tg_state.prompt_text,
-                duration=6,
+            video_file = FSInputFile(str(random_video))
+            await message.answer_video(
+                video_file,
+                caption="📹 Вот пример видео, которое может создать бот.\n\nПохоже? Ты тоже сможешь сделать такое же!",
             )
 
-            if not generate_response.get("success"):
-                await query.message.edit_text(
-                    f"❌ Ошибка при запуске генерации: {generate_response.get('message')}"
+            # Кнопки для примеров
+            if len(gallery_files) > 1:
+                buttons = ReplyKeyboardMarkup(
+                    keyboard=[
+                        [KeyboardButton(text="💡 Ещё пример")],
+                        [KeyboardButton(text="🎬 Создать своё"), KeyboardButton(text="🏠 В меню")],
+                    ],
+                    resize_keyboard=True,
                 )
-                state_manager.set_state(user_id, step="confirm")
-                return
+            else:
+                buttons = ReplyKeyboardMarkup(
+                    keyboard=[
+                        [KeyboardButton(text="🎬 Создать своё"), KeyboardButton(text="🏠 В меню")],
+                    ],
+                    resize_keyboard=True,
+                )
 
-            generation_id = generate_response.get("generation_id")
-
-            # ✅ Больше НЕТ polling'а!
-            # Callback от MiniMax автоматически скачает видео и обновит статус
-            # Просто отправляем пользователю сообщение что генерация началась
-
-            await query.message.edit_text(
-                "⏳ Видео генерируется на сервере MiniMax...\n\n"
-                "Это может занять 1-3 минуты.\n\n"
-                "Видео будет отправлено сюда как только будет готово."
-            )
-
-            # Ждём callback максимум 10 минут (таймаут safety)
-            max_wait_time = 600  # 10 минут
-            check_interval = 2   # проверяем каждые 2 секунды
-            elapsed_time = 0
-
-            while elapsed_time < max_wait_time:
-                status_info = video_engine.get_generation_status(generation_id)
-                status = status_info.get("status")
-
-                # Если видео готово - отправляем его
-                if status == "done":
-                    video_path = video_engine.get_generation_video_path(generation_id)
-
-                    if video_path and Path(video_path).exists():
-                        log_event("generation_complete", user_id)
-
-                        try:
-                            await query.message.edit_text("✅ Видео готово! Отправляю...")
-                        except:
-                            pass
-
-                        # Отправляем видео
-                        video_file = FSInputFile(video_path)
-                        await query.message.answer_video(
-                            video_file,
-                            caption="🎬 Вот твоё видео!\n\nХочешь создать ещё одно?",
-                        )
-
-                        # Показываем кнопку для новой генерации
-                        keyboard = InlineKeyboardMarkup(
-                            inline_keyboard=[
-                                [
-                                    InlineKeyboardButton(
-                                        text="📸 Создать новое видео", callback_data="start_photo"
-                                    )
-                                ]
-                            ]
-                        )
-                        await query.message.answer(
-                            "Начнём заново?", reply_markup=keyboard
-                        )
-
-                        state_manager.reset_state(user_id)
-                        cleanup_user_files(user_id)
-                        await state.set_state(UserStates.waiting_photo)
-                        return
-                    else:
-                        raise Exception("Video file not found")
-
-                # Если ошибка
-                if status == "failed":
-                    error_msg = status_info.get("error", "Unknown error")
-                    log_event("generation_failed", user_id, {"error": error_msg})
-
-                    await query.message.edit_text(
-                        f"❌ Ошибка при генерации: {error_msg}"
-                    )
-
-                    state_manager.reset_state(user_id)
-                    cleanup_user_files(user_id)
-                    await state.set_state(UserStates.waiting_photo)
-                    return
-
-                # Ждём перед следующей проверкой (редко - каждые 2 секунды)
-                await asyncio.sleep(check_interval)
-                elapsed_time += check_interval
-
-            # Timeout
-            await query.message.edit_text(
-                "⏰ Время ожидания истекло (10 минут). "
-                "Видео может всё ещё генерироваться на сервере MiniMax.\n\n"
-                "Попробуй позже или свяжись с поддержкой."
-            )
-            state_manager.reset_state(user_id)
-            cleanup_user_files(user_id)
+            await message.answer("Хочешь ещё?", reply_markup=buttons)
+            await state.set_state(BotStates.viewing_examples)
 
         except Exception as e:
-            print(f"[TELEGRAM-BOT] Generate error: {str(e)}")
-            await query.message.edit_text(
-                f"❌ Ошибка: {str(e)}"
+            print(f"[TG] Error sending video: {str(e)}")
+            await message.answer(
+                "❌ Ошибка при загрузке примера.",
+                reply_markup=get_main_menu_keyboard(),
             )
-            state_manager.reset_state(user_id)
-            cleanup_user_files(user_id)
 
-        await state.set_state(UserStates.waiting_photo)
+    @dp.message(F.text == "💡 Ещё пример")
+    async def btn_more_examples(message: types.Message, state: FSMContext):
+        """Кнопка: Ещё пример"""
+        user_id = message.from_user.id
+        user_state = state_manager.get_state(user_id)
 
-    @dp.callback_query(F.data == "edit_prompt")
-    async def cb_edit_prompt(query: types.CallbackQuery, state: FSMContext):
-        """Кнопка 'Изменить текст'"""
-        user_id = query.from_user.id
-        log_event("user_edit_prompt", user_id)
+        gallery_files = list(GALLERY_DIR.glob("*.mp4"))
 
-        state_manager.set_state(user_id, step="waiting_prompt")
+        if not gallery_files:
+            await message.answer(
+                "😢 Примеров больше нет.",
+                reply_markup=get_main_menu_keyboard(),
+            )
+            return
 
-        await query.answer()
-        await query.message.answer("📝 Напиши новое описание:")
-        await state.set_state(UserStates.waiting_prompt)
+        # Выбираем видео которое не показывали
+        unseen = [f for f in gallery_files if str(f) not in user_state.seen_examples]
 
-    @dp.callback_query(F.data == "replace_photo")
-    async def cb_replace_photo(query: types.CallbackQuery, state: FSMContext):
-        """Кнопка 'Заменить фото'"""
-        user_id = query.from_user.id
-        log_event("user_replace_photo", user_id)
+        if not unseen:
+            await message.answer(
+                "✅ Это были все примеры!\n\nЗдорово, да? Теперь твоя очередь!",
+                reply_markup=get_main_menu_keyboard(),
+            )
+            return
 
-        cleanup_user_files(user_id)
-        state_manager.set_state(user_id, step="waiting_photo")
+        random_video = random.choice(unseen)
+        user_state.seen_examples.append(str(random_video))
 
-        await query.answer()
-        await query.message.answer("📸 Отправь новое фото:")
-        await state.set_state(UserStates.waiting_photo)
+        try:
+            video_file = FSInputFile(str(random_video))
+            await message.answer_video(video_file)
 
-    @dp.callback_query(F.data == "cancel_generation")
-    async def cb_cancel(query: types.CallbackQuery, state: FSMContext):
-        """Кнопка 'Отмена'"""
-        user_id = query.from_user.id
-        log_event("user_cancelled", user_id)
+            buttons = ReplyKeyboardMarkup(
+                keyboard=[
+                    [KeyboardButton(text="💡 Ещё пример")],
+                    [KeyboardButton(text="🎬 Создать своё"), KeyboardButton(text="🏠 В меню")],
+                ],
+                resize_keyboard=True,
+            )
+            await message.answer("Ещё?", reply_markup=buttons)
 
-        cleanup_user_files(user_id)
-        state_manager.reset_state(user_id)
+        except Exception as e:
+            print(f"[TG] Error: {str(e)}")
 
-        await query.answer()
+    @dp.message(F.text == "💳 Тарифы и оплата")
+    async def btn_tariffs(message: types.Message, state: FSMContext):
+        """Кнопка: Тарифы и оплата"""
+        user_id = message.from_user.id
+        log_event("tariffs_click", user_id)
 
-        keyboard = InlineKeyboardMarkup(
-            inline_keyboard=[
-                [InlineKeyboardButton(text="📸 Загрузить фото", callback_data="start_photo")]
-            ]
-        )
-        await query.message.answer(
-            "❌ Отменено.\n\nХочешь начать заново?", reply_markup=keyboard
-        )
-        await state.set_state(UserStates.waiting_photo)
+        await message.answer(get_tariffs_text(), reply_markup=get_main_menu_keyboard())
+        await state.set_state(BotStates.main_menu)
 
-    # ============ ФОТО ============
+    @dp.message(F.text == "💰 Мой баланс")
+    async def btn_balance(message: types.Message, state: FSMContext):
+        """Кнопка: Мой баланс"""
+        user_id = message.from_user.id
+        user_state = state_manager.get_state(user_id)
 
-    @dp.message(F.photo, StateFilter(UserStates.waiting_photo))
+        log_event("balance_click", user_id)
+
+        free_left = user_state.free_remaining
+        paid = user_state.video_balance
+        total = get_total_videos(user_state)
+
+        balance_text = f"""💰 ТВой АККАУНТ
+
+📊 Текущий баланс: {total} видео
+   • {free_left} бесплатных
+   • {paid} оплачено
+
+💡 Совет: Если ты часто генерируешь видео,
+выбери пакет SELLER или PRO — окупится за пару дней!
+
+Готов купить? Нажми "💳 Тарифы и оплата"
+"""
+
+        await message.answer(balance_text, reply_markup=get_main_menu_keyboard())
+        await state.set_state(BotStates.main_menu)
+
+    # ========== ОБРАБОТКА ФОТО ==========
+
+    @dp.message(F.photo, StateFilter(BotStates.waiting_photo))
     async def msg_photo(message: types.Message, state: FSMContext):
         """Получить фото"""
         user_id = message.from_user.id
-        log_event("user_uploaded_photo", user_id)
+        log_event("photo_uploaded", user_id)
 
         try:
-            # Получаем самый большой размер фото
             photo = message.photo[-1]
-
-            # Скачиваем файл с Telegram
             file_info = await bot.get_file(photo.file_id)
             photo_path = get_user_photo_path(user_id)
 
-            # Используем встроенный метод для скачивания
             await bot.download_file(file_info.file_path, destination=photo_path)
 
             state_manager.set_state(
@@ -323,57 +449,238 @@ async def setup_bot():
             )
 
             await message.answer(
-                "✅ Фото загружено!\n\n📝 Теперь напиши, что должно происходить на видео (на русском).\n\nПримеры:\n- Красивый закат над горами с пением птиц\n- Кот прыгает по подушкам в комнате\n- Балет на сцене театра"
+                "✅ Картинка загружена!\n\n📝 Теперь напиши, что должно происходить на видео (на русском).\n\nПримеры:\n• Красивый закат над горами\n• Кот прыгает по подушкам\n• Движение камеры вверх над городом"
             )
 
-            log_event("user_sent_photo", user_id, {"path": photo_path})
-            await state.set_state(UserStates.waiting_prompt)
+            await state.set_state(BotStates.waiting_prompt)
 
         except Exception as e:
-            print(f"[TELEGRAM-BOT] Photo download error: {str(e)}")
-            await message.answer("❌ Ошибка при загрузке фото. Попробуй ещё раз.")
+            print(f"[TG] Photo error: {str(e)}")
+            await message.answer("❌ Ошибка при загрузке. Попробуй ещё раз.")
 
-    # ============ ТЕКСТ ============
+    # ========== ОБРАБОТКА ТЕКСТА ПРОМПТА ==========
 
-    @dp.message(F.text, StateFilter(UserStates.waiting_prompt))
+    @dp.message(F.text, StateFilter(BotStates.waiting_prompt))
     async def msg_prompt(message: types.Message, state: FSMContext):
         """Получить промпт"""
         user_id = message.from_user.id
         text = message.text
 
-        log_event("user_sent_prompt", user_id, {"length": len(text)})
+        log_event("prompt_received", user_id, {"length": len(text)})
 
-        # Валидируем промпт
         if len(text) < 3:
-            await message.answer("❌ Описание слишком короткое. Минимум 3 символа.")
+            await message.answer("❌ Описание слишком короткое.")
             return
 
         if len(text) > 2000:
-            await message.answer("❌ Описание слишком длинное. Максимум 2000 символов.")
+            await message.answer("❌ Описание слишком длинное (максимум 2000).")
             return
 
         state_manager.set_state(user_id, step="confirm", prompt_text=text)
 
-        # Показываем confirm экран
         summary_text = f"""📋 Резюме:
 
-📸 Фото: загружено
+📸 Фото: ✅
 📝 Описание: {text}
 ⏱️ Длительность: 6 секунд
 
 Всё верно?"""
 
-        keyboard = InlineKeyboardMarkup(
-            inline_keyboard=[
-                [InlineKeyboardButton(text="✅ Сгенерировать", callback_data="confirm_generate")],
-                [InlineKeyboardButton(text="✏️ Изменить текст", callback_data="edit_prompt")],
-                [InlineKeyboardButton(text="📸 Заменить фото", callback_data="replace_photo")],
-                [InlineKeyboardButton(text="❌ Отмена", callback_data="cancel_generation")],
-            ]
+        buttons = ReplyKeyboardMarkup(
+            keyboard=[
+                [KeyboardButton(text="✅ Сгенерировать")],
+                [KeyboardButton(text="✏️ Изменить текст"), KeyboardButton(text="📸 Другое фото")],
+                [KeyboardButton(text="❌ Отмена")],
+            ],
+            resize_keyboard=True,
         )
 
-        await message.answer(summary_text, reply_markup=keyboard)
-        await state.set_state(UserStates.confirm)
+        await message.answer(summary_text, reply_markup=buttons)
+        await state.set_state(BotStates.confirm)
+
+    # ========== ОБРАБОТКА ПОДТВЕРЖДЕНИЯ ==========
+
+    @dp.message(F.text == "✅ Сгенерировать")
+    async def btn_generate(message: types.Message, state: FSMContext):
+        """Кнопка: Сгенерировать"""
+        user_id = message.from_user.id
+        user_state = state_manager.get_state(user_id)
+
+        log_event("generate_click", user_id)
+
+        # 🚨 ФИНАЛЬНАЯ ПРОВЕРКА БАЛАНСА
+        if not deduct_video(user_state):
+            log_event("paywall_final", user_id)
+            await message.answer(
+                "🎁 Баланс закончился!\n\nКупи видео и продолжай:",
+                reply_markup=get_main_menu_keyboard(),
+            )
+            await message.answer(get_tariffs_text())
+            await state.set_state(BotStates.main_menu)
+            return
+
+        # Начинаем генерацию
+        try:
+            state_manager.set_state(user_id, step="generating")
+
+            # Показываем один из советов на время ожидания
+            await message.answer(
+                get_waiting_tip(),
+                reply_markup=None,
+            )
+
+            # Запускаем видео-генерацию
+            generate_response = await video_engine.generate_video(
+                user_id,
+                user_state.photo_path,
+                user_state.prompt_text,
+                duration=6,
+            )
+
+            if not generate_response.get("success"):
+                log_event("generation_error", user_id)
+                await message.answer(
+                    f"❌ Ошибка: {generate_response.get('message')}",
+                    reply_markup=get_main_menu_keyboard(),
+                )
+                # Возвращаем видео если ошибка
+                user_state.video_balance += 1 if user_state.free_remaining == 0 else 0
+                await state.set_state(BotStates.main_menu)
+                return
+
+            generation_id = generate_response.get("generation_id")
+
+            # Ждём готовности (callback будет обновлять статус)
+            max_wait = 600  # 10 минут
+            check_interval = 2
+            elapsed = 0
+
+            while elapsed < max_wait:
+                status_info = video_engine.get_generation_status(generation_id)
+                status = status_info.get("status")
+
+                if status == "done":
+                    video_path = video_engine.get_generation_video_path(generation_id)
+
+                    if video_path and Path(video_path).exists():
+                        log_event("generation_complete", user_id)
+
+                        try:
+                            video_file = FSInputFile(video_path)
+                            await message.answer_video(
+                                video_file,
+                                caption=f"🎬 Готово!\n\nОсталось видео: {get_total_videos(user_state)}",
+                            )
+                        except Exception as e:
+                            print(f"[TG] Video send error: {str(e)}")
+
+                        total_left = get_total_videos(user_state)
+                        if total_left > 0:
+                            await message.answer(
+                                f"✅ Видео готово!\n\nОсталось: {total_left} видео\n\nХочешь создать ещё?",
+                                reply_markup=get_main_menu_keyboard(),
+                            )
+                        else:
+                            await message.answer(
+                                "✅ Видео готово!\n\n🎁 Но баланс кончился. Купи ещё видео!",
+                                reply_markup=get_main_menu_keyboard(),
+                            )
+
+                        cleanup_user_files(user_id)
+                        state_manager.reset_state(user_id)
+                        await state.set_state(BotStates.main_menu)
+                        return
+
+                    else:
+                        raise Exception("Video file not found")
+
+                if status == "failed":
+                    error = status_info.get("error", "Unknown")
+                    log_event("generation_failed", user_id, {"error": error})
+                    await message.answer(
+                        f"❌ Ошибка при генерации: {error}",
+                        reply_markup=get_main_menu_keyboard(),
+                    )
+                    # Возвращаем видео
+                    user_state.video_balance += 1 if user_state.free_remaining == 0 else 0
+                    cleanup_user_files(user_id)
+                    state_manager.reset_state(user_id)
+                    await state.set_state(BotStates.main_menu)
+                    return
+
+                await asyncio.sleep(check_interval)
+                elapsed += check_interval
+
+            # Timeout
+            await message.answer(
+                "⏰ Время ожидания истекло (10 минут).\n\nПопробуй позже или свяжись с поддержкой.",
+                reply_markup=get_main_menu_keyboard(),
+            )
+
+        except Exception as e:
+            print(f"[TG] Generate error: {str(e)}")
+            await message.answer(
+                f"❌ Ошибка: {str(e)}",
+                reply_markup=get_main_menu_keyboard(),
+            )
+
+        cleanup_user_files(user_id)
+        state_manager.reset_state(user_id)
+        await state.set_state(BotStates.main_menu)
+
+    # ========== КНОПКИ РЕДАКТИРОВАНИЯ ==========
+
+    @dp.message(F.text == "✏️ Изменить текст")
+    async def btn_edit_prompt(message: types.Message, state: FSMContext):
+        """Кнопка: Изменить текст"""
+        user_id = message.from_user.id
+        log_event("edit_prompt", user_id)
+
+        await message.answer("📝 Напиши новое описание:")
+        await state.set_state(BotStates.waiting_prompt)
+
+    @dp.message(F.text == "📸 Другое фото")
+    async def btn_replace_photo(message: types.Message, state: FSMContext):
+        """Кнопка: Другое фото"""
+        user_id = message.from_user.id
+        log_event("replace_photo", user_id)
+
+        cleanup_user_files(user_id)
+        await message.answer("📸 Загрузи новую картинку:")
+        await state.set_state(BotStates.waiting_photo)
+
+    @dp.message(F.text == "🎬 Создать своё")
+    async def btn_create_from_examples(message: types.Message, state: FSMContext):
+        """Кнопка: Создать своё (из примеров)"""
+        await btn_create_video(message, state)
+
+    @dp.message(F.text == "🏠 В меню")
+    async def btn_to_menu(message: types.Message, state: FSMContext):
+        """Кнопка: В меню"""
+        user_id = message.from_user.id
+        user_state = state_manager.get_state(user_id)
+        total = get_total_videos(user_state)
+
+        await message.answer(
+            f"📊 Баланс: {total} видео",
+            reply_markup=get_main_menu_keyboard(),
+        )
+        await state.set_state(BotStates.main_menu)
+
+    @dp.message(F.text == "❌ Отмена")
+    async def btn_cancel(message: types.Message, state: FSMContext):
+        """Кнопка: Отмена"""
+        user_id = message.from_user.id
+        log_event("cancelled", user_id)
+
+        cleanup_user_files(user_id)
+        state_manager.reset_state(user_id)
+
+        await message.answer(
+            "❌ Отменено. Вернёмся в меню?",
+            reply_markup=get_main_menu_keyboard(),
+        )
+        await state.set_state(BotStates.main_menu)
 
     return bot, dp
 
