@@ -263,6 +263,16 @@ def get_payment(payment_id: str) -> Optional[Dict[str, Any]]:
     return dict(row) if row else None
 
 
+def get_pending_payments() -> List[Dict[str, Any]]:
+    """Получить ВСЕ платежи со статусом pending (для polling независимо от state в памяти)"""
+    conn = get_db()
+    c = conn.cursor()
+    c.execute("SELECT * FROM payments WHERE status = 'pending' ORDER BY created_at ASC")
+    rows = c.fetchall()
+    conn.close()
+    return [dict(row) for row in rows]
+
+
 def confirm_payment(payment_id: str) -> bool:
     """Подтвердить платёж (status=succeeded) и зачислить видео"""
     conn = get_db()
