@@ -12,6 +12,7 @@ Telegram Bot на aiogram - версия 2.0
 import os
 import asyncio
 import random
+from datetime import datetime
 from pathlib import Path
 from aiogram import Bot, Dispatcher, types, F
 from aiogram.filters import Command, StateFilter
@@ -21,8 +22,8 @@ from aiogram.fsm.state import State, StatesGroup
 
 from state import state_manager
 from core.video_engine import video_engine
-from core.payments import create_payment, log_payment
-from core.db import deduct_video as db_deduct_video, add_video_pack as db_add_video_pack, refund_video as db_refund_video
+from core.payments import create_payment, log_payment, get_payment_status
+from core.db import deduct_video as db_deduct_video, add_video_pack as db_add_video_pack, refund_video as db_refund_video, confirm_payment as db_confirm_payment
 
 # ========== КОНФИГИ ==========
 TEMP_DIR = Path("/tmp/telegram-bot")
@@ -678,8 +679,10 @@ async def setup_bot():
         payment_id = payment["payment_id"]
         confirmation_url = payment["confirmation_url"]
 
-        # Сохраняем payment_id в состояние пользователя
+        # Сохраняем payment_id в состояние пользователя для polling
         user_state = state_manager.get_state(user_id)
+        user_state.pending_payment_id = payment_id
+        user_state.pending_payment_timestamp = datetime.now()
 
         await message.answer(
             f"""✅ Платёж создан!
@@ -687,6 +690,7 @@ async def setup_bot():
 💳 Перейдите по ссылке для оплаты:
 {confirmation_url}
 
+Мы автоматически проверим статус оплаты.
 После успешной оплаты вам будет начислено 5 видео.
 
 Payment ID: {payment_id}
@@ -715,12 +719,18 @@ Payment ID: {payment_id}
         payment_id = payment["payment_id"]
         confirmation_url = payment["confirmation_url"]
 
+        # Сохраняем payment_id в состояние пользователя для polling
+        user_state = state_manager.get_state(user_id)
+        user_state.pending_payment_id = payment_id
+        user_state.pending_payment_timestamp = datetime.now()
+
         await message.answer(
             f"""✅ Платёж создан!
 
 💳 Перейдите по ссылке для оплаты:
 {confirmation_url}
 
+Мы автоматически проверим статус оплаты.
 После успешной оплаты вам будет начислено 20 видео.
 
 Payment ID: {payment_id}
@@ -749,12 +759,18 @@ Payment ID: {payment_id}
         payment_id = payment["payment_id"]
         confirmation_url = payment["confirmation_url"]
 
+        # Сохраняем payment_id в состояние пользователя для polling
+        user_state = state_manager.get_state(user_id)
+        user_state.pending_payment_id = payment_id
+        user_state.pending_payment_timestamp = datetime.now()
+
         await message.answer(
             f"""✅ Платёж создан!
 
 💳 Перейдите по ссылке для оплаты:
 {confirmation_url}
 
+Мы автоматически проверим статус оплаты.
 После успешной оплаты вам будет начислено 50 видео.
 
 Payment ID: {payment_id}
@@ -796,6 +812,100 @@ Payment ID: {payment_id}
     return bot, dp
 
 
+# ========== ПРОВЕРКА ПЛАТЕЖЕЙ (POLLING) ==========
+
+async def check_pending_payments(bot: Bot):
+    """
+    Фоновая задача для проверки статуса платежей (polling вместо webhook)
+
+    Периодически проверяет статус платежей для пользователей которые ждут оплату.
+    Когда платёж успешен (status=succeeded) → зачисляет видео.
+    """
+    from datetime import timedelta
+
+    while True:
+        try:
+            await asyncio.sleep(5)  # Проверяем каждые 5 секунд
+
+            # Проходим по всем активным пользователям
+            users_to_check = []
+            for user_id, state in state_manager.states.items():
+                if state.pending_payment_id and state.pending_payment_timestamp:
+                    users_to_check.append((user_id, state))
+
+            for user_id, state in users_to_check:
+                payment_id = state.pending_payment_id
+
+                # Проверяем timeout (максимум 15 минут ожидания)
+                elapsed = datetime.now() - state.pending_payment_timestamp
+                if elapsed > timedelta(minutes=15):
+                    print(f"[PAYMENTS-POLL] ⏰ Payment {payment_id} timeout for user {user_id}")
+                    state.pending_payment_id = None
+                    state.pending_payment_timestamp = None
+                    continue
+
+                # Получаем статус платежа из YooKassa
+                result = get_payment_status(payment_id)
+
+                if not result:
+                    continue  # Ошибка при получении статуса
+
+                payment_status = result.get("status")
+
+                if payment_status == "succeeded":
+                    # 🎉 ПЛАТЁЖ УСПЕШЕН! Зачисляем видео
+                    videos_count = result["videos_count"]
+
+                    # Подтверждаем платёж в БД
+                    if db_confirm_payment(payment_id):
+                        print(f"[PAYMENTS-POLL] ✅ Payment {payment_id} confirmed for user {user_id}, crediting {videos_count} videos")
+
+                        # Отправляем уведомление пользователю
+                        try:
+                            await bot.send_message(
+                                user_id,
+                                f"""✅ ПЛАТЁЖ УСПЕШЕН!
+
+🎁 Вам зачислено {videos_count} видео.
+
+Теперь можете создавать видео!
+""",
+                                reply_markup=get_main_menu_keyboard()
+                            )
+                        except Exception as e:
+                            print(f"[PAYMENTS-POLL] Error sending message: {str(e)}")
+
+                        # Очищаем pending payment
+                        state.pending_payment_id = None
+                        state.pending_payment_timestamp = None
+                    else:
+                        print(f"[PAYMENTS-POLL] ⚠️ Failed to confirm payment {payment_id} in DB")
+
+                elif payment_status == "canceled" or payment_status == "failed":
+                    # ❌ Платёж отменён или ошибка
+                    print(f"[PAYMENTS-POLL] ❌ Payment {payment_id} {payment_status} for user {user_id}")
+
+                    try:
+                        await bot.send_message(
+                            user_id,
+                            f"""❌ Платёж отменён или ошибка.
+
+Попробуй ещё раз или свяжись с поддержкой.""",
+                            reply_markup=get_main_menu_keyboard()
+                        )
+                    except Exception as e:
+                        print(f"[PAYMENTS-POLL] Error sending message: {str(e)}")
+
+                    state.pending_payment_id = None
+                    state.pending_payment_timestamp = None
+                # else: статус pending, ждём дальше
+
+        except Exception as e:
+            print(f"[PAYMENTS-POLL] Error in check_pending_payments: {str(e)}")
+            import traceback
+            traceback.print_exc()
+
+
 async def run_bot():
     """Запустить бота"""
     result = await setup_bot()
@@ -805,9 +915,13 @@ async def run_bot():
     bot, dp = result
     print("[TELEGRAM-BOT] ✅ Bot initialized, starting polling...")
 
+    # Запускаем фоновую задачу проверки платежей
+    payment_check_task = asyncio.create_task(check_pending_payments(bot))
+
     try:
         await dp.start_polling(bot, allowed_updates=dp.resolve_used_update_types())
     except Exception as e:
         print(f"[TELEGRAM-BOT] Error: {str(e)}")
     finally:
+        payment_check_task.cancel()
         await bot.session.close()

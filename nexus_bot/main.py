@@ -16,6 +16,7 @@ print(f"[MAIN] MINIMAX_CALLBACK_URL from env: {os.getenv('MINIMAX_CALLBACK_URL')
 import asyncio
 from contextlib import asynccontextmanager
 from datetime import datetime
+import json
 
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
@@ -236,15 +237,28 @@ async def minimax_callback(request: Request):
 # ============ YOOKASSA WEBHOOK ============
 
 
+@app.get("/yookassa/webhook", response_class=JSONResponse)
+async def yookassa_webhook_test():
+    """Тестовый GET endpoint для проверки что webhook URL доступен"""
+    return {
+        "ok": True,
+        "message": "YooKassa webhook endpoint is accessible",
+        "endpoint": "/yookassa/webhook"
+    }
+
+
 @app.post("/yookassa/webhook", response_class=JSONResponse)
 async def yookassa_webhook(request: Request):
     """Получение webhook от YooKassa при успешной оплате"""
     try:
-        print(f"[YOOKASSA-WEBHOOK] Received webhook")
+        print(f"\n[YOOKASSA-WEBHOOK] 🔔 Webhook received!")
 
         # Получаем body для проверки подписи
         body = await request.body()
         body_str = body.decode('utf-8')
+
+        print(f"[YOOKASSA-WEBHOOK] Body length: {len(body_str)} bytes")
+        print(f"[YOOKASSA-WEBHOOK] Headers: {dict(request.headers)}")
 
         # Получаем заголовок с подписью
         signature = request.headers.get("X-Yookassa-Signature", "")
@@ -254,6 +268,8 @@ async def yookassa_webhook(request: Request):
         # Парсим JSON
         try:
             payload = await request.json()
+            print(f"[YOOKASSA-WEBHOOK] Payload event type: {payload.get('event', 'UNKNOWN')}")
+            print(f"[YOOKASSA-WEBHOOK] Full payload: {json.dumps(payload, indent=2, default=str)}")
         except Exception as e:
             print(f"[YOOKASSA-WEBHOOK] ❌ Failed to parse JSON: {str(e)}")
             return {"ok": False, "error": "Invalid JSON"}
