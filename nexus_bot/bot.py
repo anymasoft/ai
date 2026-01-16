@@ -22,7 +22,7 @@ from aiogram.fsm.state import State, StatesGroup
 from state import state_manager
 from core.video_engine import video_engine
 from core.payments import create_payment, log_payment
-from core.db import deduct_video as db_deduct_video, add_video_pack as db_add_video_pack
+from core.db import deduct_video as db_deduct_video, add_video_pack as db_add_video_pack, refund_video as db_refund_video
 
 # ========== КОНФИГИ ==========
 TEMP_DIR = Path("/tmp/telegram-bot")
@@ -543,8 +543,8 @@ async def setup_bot():
                     f"❌ Ошибка: {generate_response.get('message')}",
                     reply_markup=get_main_menu_keyboard(),
                 )
-                # Возвращаем видео если ошибка
-                user_state.video_balance += 1 if user_state.free_remaining == 0 else 0
+                # Возвращаем видео в БД если ошибка при инициализации
+                db_refund_video(user_id)
                 await state.set_state(BotStates.main_menu)
                 return
 
@@ -601,8 +601,8 @@ async def setup_bot():
                         f"❌ Ошибка при генерации: {error}",
                         reply_markup=get_main_menu_keyboard(),
                     )
-                    # Возвращаем видео
-                    user_state.video_balance += 1 if user_state.free_remaining == 0 else 0
+                    # Возвращаем видео в БД при ошибке генерации
+                    db_refund_video(user_id)
                     cleanup_user_files(user_id)
                     state_manager.reset_state(user_id)
                     await state.set_state(BotStates.main_menu)
@@ -616,6 +616,8 @@ async def setup_bot():
                 "⏰ Время ожидания истекло (10 минут).\n\nПопробуй позже или свяжись с поддержкой.",
                 reply_markup=get_main_menu_keyboard(),
             )
+            # Возвращаем видео при timeout
+            db_refund_video(user_id)
 
         except Exception as e:
             print(f"[TG] Generate error: {str(e)}")
@@ -623,6 +625,8 @@ async def setup_bot():
                 f"❌ Ошибка: {str(e)}",
                 reply_markup=get_main_menu_keyboard(),
             )
+            # Возвращаем видео при exception
+            db_refund_video(user_id)
 
         cleanup_user_files(user_id)
         state_manager.reset_state(user_id)

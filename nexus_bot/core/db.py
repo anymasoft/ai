@@ -197,6 +197,33 @@ def add_video_pack(telegram_id: int, pack_id: str, videos_count: int) -> bool:
         return False
 
 
+def refund_video(telegram_id: int) -> bool:
+    """
+    Вернуть 1 видео при ошибке генерации.
+    Возвращает в video_balance (платный баланс).
+    """
+    conn = get_db()
+    c = conn.cursor()
+
+    try:
+        c.execute("BEGIN IMMEDIATE")
+
+        c.execute(
+            "UPDATE users SET video_balance = video_balance + 1 WHERE telegram_id = ?",
+            (telegram_id,)
+        )
+
+        conn.commit()
+        conn.close()
+        return True
+
+    except Exception as e:
+        conn.rollback()
+        conn.close()
+        print(f"[DB] Error refunding video: {e}")
+        return False
+
+
 # ============ PAYMENTS ============
 
 def create_payment(
