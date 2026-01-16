@@ -77,8 +77,7 @@ def get_main_menu_keyboard():
     return ReplyKeyboardMarkup(
         keyboard=[
             [KeyboardButton(text="🎬 Создать видео"), KeyboardButton(text="💡 Примеры работ")],
-            [KeyboardButton(text="💳 Тарифы и оплата"), KeyboardButton(text="💰 Мой баланс")],
-            [KeyboardButton(text="📞 Поддержка")],
+            [KeyboardButton(text="💳 Тарифы"), KeyboardButton(text="💰 Баланс"), KeyboardButton(text="📞 Поддержка")],
         ],
         resize_keyboard=True,
         one_time_keyboard=False,
@@ -397,18 +396,18 @@ async def setup_bot():
         except Exception as e:
             print(f"[TG] Error: {str(e)}")
 
-    @dp.message(F.text == "💳 Тарифы и оплата")
+    @dp.message(F.text == "💳 Тарифы")
     async def btn_tariffs(message: types.Message, state: FSMContext):
-        """Кнопка: Тарифы и оплата"""
+        """Кнопка: Тарифы"""
         user_id = message.from_user.id
         log_event("tariffs_click", user_id)
 
         await message.answer(get_tariffs_text(), reply_markup=get_purchase_keyboard())
         await state.set_state(BotStates.main_menu)
 
-    @dp.message(F.text == "💰 Мой баланс")
+    @dp.message(F.text == "💰 Баланс")
     async def btn_balance(message: types.Message, state: FSMContext):
-        """Кнопка: Мой баланс"""
+        """Кнопка: Баланс"""
         user_id = message.from_user.id
         user_state = state_manager.get_state(user_id)
 
@@ -427,7 +426,7 @@ async def setup_bot():
 💡 Совет: Если ты часто генерируешь видео,
 выбери пакет SELLER или PRO — окупится за пару дней!
 
-Готов купить? Нажми "💳 Тарифы и оплата"
+Готов купить? Нажми "💳 Тарифы"
 """
 
         await message.answer(balance_text, reply_markup=get_main_menu_keyboard())
