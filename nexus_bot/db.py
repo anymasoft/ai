@@ -50,6 +50,22 @@ def init_db():
         )
     """)
 
+    # Миграция: добавить поля для anti-spam polling (если их нет)
+    try:
+        c.execute("ALTER TABLE payments ADD COLUMN poll_attempts INTEGER NOT NULL DEFAULT 0")
+    except:
+        pass  # Колонка уже существует
+
+    try:
+        c.execute("ALTER TABLE payments ADD COLUMN last_poll_at DATETIME")
+    except:
+        pass
+
+    try:
+        c.execute("ALTER TABLE payments ADD COLUMN last_status TEXT")
+    except:
+        pass
+
     # generations
     c.execute("""
         CREATE TABLE IF NOT EXISTS generations (
@@ -330,6 +346,26 @@ def update_payment_status(payment_id: str, new_status: str) -> bool:
     except Exception as e:
         conn.close()
         print(f"[DB] Error updating payment status: {e}")
+        return False
+
+
+def update_payment_poll_info(payment_id: str, attempts: int, last_status: str) -> bool:
+    """Обновить информацию о polling (для anti-spam)"""
+    conn = get_db()
+    c = conn.cursor()
+
+    try:
+        c.execute(
+            "UPDATE payments SET poll_attempts = ?, last_poll_at = CURRENT_TIMESTAMP, last_status = ? WHERE payment_id = ?",
+            (attempts, last_status, payment_id)
+        )
+        conn.commit()
+        conn.close()
+        return True
+
+    except Exception as e:
+        conn.close()
+        print(f"[DB] Error updating payment poll info: {e}")
         return False
 
 
