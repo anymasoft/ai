@@ -73,11 +73,12 @@ def log_event(event_type: str, user_id: int, details: dict = None):
 # ========== ГЛАВНОЕ МЕНЮ ==========
 
 def get_main_menu_keyboard():
-    """Главное меню с 4 кнопками (обычные кнопки Telegram)"""
+    """Главное меню с 5 кнопками (обычные кнопки Telegram)"""
     return ReplyKeyboardMarkup(
         keyboard=[
             [KeyboardButton(text="🎬 Создать видео"), KeyboardButton(text="💡 Примеры работ")],
             [KeyboardButton(text="💳 Тарифы и оплата"), KeyboardButton(text="💰 Мой баланс")],
+            [KeyboardButton(text="📞 Поддержка")],
         ],
         resize_keyboard=True,
         one_time_keyboard=False,
@@ -105,6 +106,7 @@ class BotStates(StatesGroup):
     generating = State()
     viewing_examples = State()
     viewing_tariffs = State()
+    waiting_support = State()
 
 
 # ========== ФУНКЦИИ БАЛАНСА ==========
@@ -429,6 +431,84 @@ async def setup_bot():
 """
 
         await message.answer(balance_text, reply_markup=get_main_menu_keyboard())
+        await state.set_state(BotStates.main_menu)
+
+    @dp.message(F.text == "📞 Поддержка")
+    async def btn_support(message: types.Message, state: FSMContext):
+        """Кнопка: Поддержка"""
+        user_id = message.from_user.id
+        log_event("support_click", user_id)
+
+        await message.answer(
+            """📞 ТЕХПОДДЕРЖКА
+
+Напишите ваш вопрос или проблему, и мы вам ответим в течение 24 часов.
+
+Можете описать:
+• Проблему с генерацией видео
+• Вопрос по оплате
+• Пожелание или идею
+• Любой другой вопрос
+
+Просто отправьте сообщение текстом.""",
+            reply_markup=ReplyKeyboardMarkup(
+                keyboard=[[KeyboardButton(text="❌ Отмена")]],
+                resize_keyboard=True,
+            ),
+        )
+        await state.set_state(BotStates.waiting_support)
+
+    @dp.message(StateFilter(BotStates.waiting_support))
+    async def msg_support(message: types.Message, state: FSMContext):
+        """Получить сообщение для поддержки"""
+        user_id = message.from_user.id
+        username = message.from_user.username or "нет username"
+        full_name = message.from_user.full_name or "Неизвестный"
+        text = message.text
+
+        if text == "❌ Отмена":
+            await message.answer("❌ Отменено", reply_markup=get_main_menu_keyboard())
+            await state.set_state(BotStates.main_menu)
+            return
+
+        log_event("support_message_sent", user_id, {"length": len(text)})
+
+        # Отправляем сообщение админу
+        admin_chat_id = os.getenv("TELEGRAM_BOT_ADMIN_CHAT_ID")
+        if admin_chat_id:
+            try:
+                admin_message = f"""📞 НОВОЕ ОБРАЩЕНИЕ В ПОДДЕРЖКУ
+
+👤 От: {full_name}
+🆔 ID: {user_id}
+📱 Username: @{username}
+
+💬 Сообщение:
+{text}"""
+
+                await message.bot.send_message(int(admin_chat_id), admin_message)
+
+                await message.answer(
+                    """✅ Ваше сообщение отправлено!
+
+Мы получили ваше обращение и ответим в течение 24 часов.
+Спасибо за обратную связь!""",
+                    reply_markup=get_main_menu_keyboard(),
+                )
+                log_event("support_message_delivered", user_id)
+            except Exception as e:
+                print(f"[TG] Error sending to admin: {str(e)}")
+                await message.answer(
+                    "❌ Ошибка отправки. Попробуйте позже или напишите напрямую @admin",
+                    reply_markup=get_main_menu_keyboard(),
+                )
+        else:
+            print("[TG] TELEGRAM_BOT_ADMIN_CHAT_ID not configured")
+            await message.answer(
+                "⚠️ Поддержка временно недоступна. Попробуйте позже.",
+                reply_markup=get_main_menu_keyboard(),
+            )
+
         await state.set_state(BotStates.main_menu)
 
     # ========== ОБРАБОТКА ФОТО ==========
