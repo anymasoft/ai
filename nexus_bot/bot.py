@@ -683,6 +683,7 @@ async def setup_bot():
         user_state = state_manager.get_state(user_id)
         user_state.pending_payment_id = payment_id
         user_state.pending_payment_timestamp = datetime.now()
+        print(f"[TG] Payment {payment_id} saved to state for polling (user {user_id})")
 
         await message.answer(
             f"""✅ Платёж создан!
@@ -723,6 +724,7 @@ Payment ID: {payment_id}
         user_state = state_manager.get_state(user_id)
         user_state.pending_payment_id = payment_id
         user_state.pending_payment_timestamp = datetime.now()
+        print(f"[TG] Payment {payment_id} saved to state for polling (user {user_id})")
 
         await message.answer(
             f"""✅ Платёж создан!
@@ -763,6 +765,7 @@ Payment ID: {payment_id}
         user_state = state_manager.get_state(user_id)
         user_state.pending_payment_id = payment_id
         user_state.pending_payment_timestamp = datetime.now()
+        print(f"[TG] Payment {payment_id} saved to state for polling (user {user_id})")
 
         await message.answer(
             f"""✅ Платёж создан!
@@ -823,6 +826,8 @@ async def check_pending_payments(bot: Bot):
     """
     from datetime import timedelta
 
+    print("[PAYMENTS-POLL] ✅ Payment polling task started")
+
     while True:
         try:
             await asyncio.sleep(5)  # Проверяем каждые 5 секунд
@@ -832,6 +837,9 @@ async def check_pending_payments(bot: Bot):
             for user_id, state in state_manager.states.items():
                 if state.pending_payment_id and state.pending_payment_timestamp:
                     users_to_check.append((user_id, state))
+
+            if users_to_check:
+                print(f"[PAYMENTS-POLL] Checking {len(users_to_check)} pending payments...")
 
             for user_id, state in users_to_check:
                 payment_id = state.pending_payment_id
@@ -848,21 +856,25 @@ async def check_pending_payments(bot: Bot):
                 result = get_payment_status(payment_id)
 
                 if not result:
+                    print(f"[PAYMENTS-POLL] ⚠️ Failed to get status for {payment_id}")
                     continue  # Ошибка при получении статуса
 
                 payment_status = result.get("status")
+                print(f"[PAYMENTS-POLL] Payment {payment_id} status: {payment_status}")
 
                 if payment_status == "succeeded":
                     # 🎉 ПЛАТЁЖ УСПЕШЕН! Зачисляем видео
                     videos_count = result["videos_count"]
+                    print(f"[PAYMENTS-POLL] 🎉 Payment {payment_id} SUCCEEDED! Confirming in DB...")
 
                     # Подтверждаем платёж в БД
-                    if db_confirm_payment(payment_id):
+                    db_result = db_confirm_payment(payment_id)
+                    if db_result:
                         print(f"[PAYMENTS-POLL] ✅ Payment {payment_id} confirmed for user {user_id}, crediting {videos_count} videos")
 
                         # Отправляем уведомление пользователю
                         try:
-                            await bot.send_message(
+                            notification_msg = await bot.send_message(
                                 user_id,
                                 f"""✅ ПЛАТЁЖ УСПЕШЕН!
 
@@ -872,14 +884,15 @@ async def check_pending_payments(bot: Bot):
 """,
                                 reply_markup=get_main_menu_keyboard()
                             )
+                            print(f"[PAYMENTS-POLL] Message sent to user {user_id}")
                         except Exception as e:
-                            print(f"[PAYMENTS-POLL] Error sending message: {str(e)}")
+                            print(f"[PAYMENTS-POLL] ❌ Error sending message to {user_id}: {str(e)}")
 
                         # Очищаем pending payment
                         state.pending_payment_id = None
                         state.pending_payment_timestamp = None
                     else:
-                        print(f"[PAYMENTS-POLL] ⚠️ Failed to confirm payment {payment_id} in DB")
+                        print(f"[PAYMENTS-POLL] ❌ Failed to confirm payment {payment_id} in DB")
 
                 elif payment_status == "canceled" or payment_status == "failed":
                     # ❌ Платёж отменён или ошибка
