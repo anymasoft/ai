@@ -6,7 +6,7 @@ Thin wrapper над SQLite БД
 from typing import Optional, Dict, Any
 import asyncio
 from datetime import datetime, timedelta
-from db import get_user, init_db
+from db import get_user, init_db, get_or_create_user
 
 
 class UserState:
@@ -69,7 +69,6 @@ class StateManager:
             # Создаём в БД если не существует
             user = get_user(user_id)
             if not user:
-                from core.db import get_or_create_user
                 get_or_create_user(user_id)
 
             self.states[user_id] = UserState(user_id)
