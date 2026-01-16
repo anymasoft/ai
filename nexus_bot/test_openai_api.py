@@ -11,8 +11,8 @@ import sys
 # Добавляем корневую папку в path
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from core.prompts import prompt_enhancer
-from core.director import camera_director
+from prompts import prompt_enhancer
+from director import camera_director
 
 
 async def test_prompt_enhancer():

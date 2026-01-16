@@ -21,9 +21,9 @@ from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 
 from state import state_manager
-from core.video_engine import video_engine
-from core.payments import create_payment, log_payment, get_payment_status
-from core.db import deduct_video as db_deduct_video, add_video_pack as db_add_video_pack, refund_video as db_refund_video, confirm_payment as db_confirm_payment, get_pending_payments, update_payment_status
+from video_engine import video_engine
+from payments import create_payment, log_payment, get_payment_status
+from db import deduct_video as db_deduct_video, add_video_pack as db_add_video_pack, refund_video as db_refund_video, confirm_payment as db_confirm_payment, get_pending_payments, update_payment_status
 
 # ========== КОНФИГИ ==========
 TEMP_DIR = Path("/tmp/telegram-bot")

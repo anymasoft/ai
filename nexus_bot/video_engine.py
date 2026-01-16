@@ -9,10 +9,10 @@ import asyncio
 from datetime import datetime
 from typing import Optional, Dict, Any
 
-from .prompts import prompt_enhancer
-from .director import camera_director
-from .minimax import minimax_client
-from .queue import queue, QueueItem
+from prompts import prompt_enhancer
+from director import camera_director
+from minimax import minimax_client
+from generation_queue import queue, QueueItem
 
 print("[VIDEO-ENGINE] Initializing...")
 
