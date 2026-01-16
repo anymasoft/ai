@@ -139,6 +139,83 @@ def create_payment(user_id: int, pack_id: str) -> Optional[Dict]:
         return None
 
 
+# ========== ПОЛУЧЕНИЕ СТАТУСА ПЛАТЕЖА ==========
+
+def get_payment_status(payment_id: str) -> Optional[Dict]:
+    """
+    Получить статус платежа из YooKassa API
+
+    Используется для polling вместо webhook'а
+
+    Args:
+        payment_id: ID платежа в YooKassa
+
+    Returns:
+        {
+            "user_id": ...,
+            "videos_count": ...,
+            "payment_id": ...,
+            "status": "pending" | "succeeded" | "canceled" | "failed"
+        }
+        или None если ошибка
+    """
+
+    if not YOOKASSA_SHOP_ID or not YOOKASSA_API_KEY:
+        log_payment("ERROR", "YooKassa credentials not configured")
+        return None
+
+    try:
+        # GET запрос к YooKassa API
+        response = requests.get(
+            f"{YOOKASSA_API_URL}/payments/{payment_id}",
+            auth=(YOOKASSA_SHOP_ID, YOOKASSA_API_KEY),
+            headers={
+                "Content-Type": "application/json"
+            },
+            timeout=10
+        )
+
+        if response.status_code != 200:
+            log_payment(
+                "ERROR",
+                f"Failed to get payment status: {response.status_code}",
+                {"payment_id": payment_id, "response": response.text}
+            )
+            return None
+
+        data = response.json()
+        status = data.get("status")
+
+        # Извлекаем метаданные
+        metadata = data.get("metadata", {})
+        user_id_str = metadata.get("user_id")
+        videos_count = metadata.get("videos_count")
+        pack_id = metadata.get("pack_id")
+
+        if not user_id_str or not videos_count:
+            log_payment("WARNING", "Missing metadata in payment", {"payment_id": payment_id})
+            return None
+
+        try:
+            user_id = int(user_id_str)
+            videos_count = int(videos_count)
+        except (ValueError, TypeError):
+            log_payment("ERROR", "Invalid metadata format", {"payment_id": payment_id})
+            return None
+
+        return {
+            "user_id": user_id,
+            "videos_count": videos_count,
+            "payment_id": payment_id,
+            "pack_id": pack_id,
+            "status": status
+        }
+
+    except Exception as e:
+        log_payment("ERROR", f"Exception during payment status check: {str(e)}", {"payment_id": payment_id})
+        return None
+
+
 # ========== ОБРАБОТКА WEBHOOK ==========
 
 def verify_webhook_signature(body: str, signature: str) -> bool:

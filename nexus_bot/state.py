@@ -26,6 +26,10 @@ class UserState:
         # self.video_balance, self.free_remaining берутся из db при необходимости
         self.seen_examples: list = []  # В памяти, для текущей сессии
 
+        # 💳 ПЛАТЕЖИ - для polling статуса
+        self.pending_payment_id: Optional[str] = None  # ID платежа в процессе (для polling)
+        self.pending_payment_timestamp: Optional[datetime] = None  # Когда создан платёж (для timeout)
+
     @property
     def video_balance(self) -> int:
         """Получить баланс оплаченных видео из БД"""
