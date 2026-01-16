@@ -8,7 +8,7 @@ import os
 from datetime import datetime
 from typing import Optional, List, Dict, Any
 
-DB_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), "sqlite.db")
+DB_PATH = os.path.join(os.path.dirname(__file__), "sqlite.db")
 
 
 def get_db():
