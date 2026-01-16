@@ -11,6 +11,7 @@ import aiohttp
 
 MINIMAX_API_KEY = os.getenv("MINIMAX_API_KEY")
 MINIMAX_API_URL = "https://api.minimax.io/v1"
+MINIMAX_MODEL = os.getenv("MINIMAX_MODEL", "MiniMax-Hailuo-02")
 
 
 class MinimaxVideoClient:
@@ -129,7 +130,7 @@ class MinimaxVideoClient:
             # Формируем payload согласно OpenAPI спецификации
             # https://platform.minimax.io/docs/api-reference/video-generation/image-to-video
             payload = {
-                "model": "MiniMax-Hailuo-02",
+                "model": MINIMAX_MODEL,
                 "first_frame_image": image_data_url,
                 "prompt": prompt,
                 "duration": duration,
