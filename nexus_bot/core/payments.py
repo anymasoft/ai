@@ -18,6 +18,7 @@ from .db import create_payment as db_create_payment, get_or_create_user
 YOOKASSA_SHOP_ID = os.getenv("YOOKASSA_SHOP_ID")
 YOOKASSA_API_KEY = os.getenv("YOOKASSA_API_KEY")
 YOOKASSA_WEBHOOK_SECRET = os.getenv("YOOKASSA_WEBHOOK_SECRET", "secret")
+BOT_USERNAME = os.getenv("BOT_USERNAME", "gptnexus_bot")  # БЕЗ @ в начале!
 
 YOOKASSA_API_URL = "https://api.yookassa.ru/v3"
 
@@ -78,7 +79,7 @@ def create_payment(user_id: int, pack_id: str) -> Optional[Dict]:
         },
         "confirmation": {
             "type": "redirect",
-            "return_url": f"https://t.me/nexus_video_bot?start=payment_success"
+            "return_url": f"https://t.me/{BOT_USERNAME}?start=payment_success"
         },
         "description": f"Nexus video pack: {tariff['videos']} videos",
         "metadata": {
