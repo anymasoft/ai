@@ -148,13 +148,14 @@ def get_payment_status(payment_id: str) -> Optional[Dict]:
 
     Используется для polling вместо webhook'а
 
+    ⚠️ ВАЖНО: возвращает ТОЛЬКО статус платежа, НЕ videos_count!
+    videos_count ВСЕГДА берётся из таблицы payments в БД.
+
     Args:
         payment_id: ID платежа в YooKassa
 
     Returns:
         {
-            "user_id": ...,
-            "videos_count": ...,
             "payment_id": ...,
             "status": "pending" | "succeeded" | "canceled" | "failed"
         }
@@ -191,34 +192,10 @@ def get_payment_status(payment_id: str) -> Optional[Dict]:
         status = data.get("status")
         print(f"[YOOKASSA-API] Payment {payment_id} status: {status}")
 
-        # Извлекаем метаданные
-        metadata = data.get("metadata", {})
-        user_id_str = metadata.get("user_id")
-        videos_count = metadata.get("videos_count")
-        pack_id = metadata.get("pack_id")
-
-        if not user_id_str or not videos_count:
-            log_payment("WARNING", "Missing metadata in payment", {"payment_id": payment_id})
-            print(f"[YOOKASSA-API] ⚠️ Missing metadata: user_id={user_id_str}, videos={videos_count}")
-            return None
-
-        try:
-            user_id = int(user_id_str)
-            videos_count = int(videos_count)
-        except (ValueError, TypeError):
-            log_payment("ERROR", "Invalid metadata format", {"payment_id": payment_id})
-            print(f"[YOOKASSA-API] ❌ Invalid metadata format")
-            return None
-
-        result = {
-            "user_id": user_id,
-            "videos_count": videos_count,
+        return {
             "payment_id": payment_id,
-            "pack_id": pack_id,
             "status": status
         }
-        print(f"[YOOKASSA-API] ✅ Payment status retrieved: {result}")
-        return result
 
     except Exception as e:
         log_payment("ERROR", f"Exception during payment status check: {str(e)}", {"payment_id": payment_id})
