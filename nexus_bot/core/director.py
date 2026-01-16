@@ -10,15 +10,21 @@ from typing import List, Tuple
 from openai import AsyncOpenAI
 from core.prompts import SYSTEM_PROMPT_CAMERA_DIRECTOR
 
-# Инициализируем OpenAI клиент (автоматически читает OPENAI_API_KEY)
-api_key = os.getenv("OPENAI_API_KEY")
-if not api_key:
-    raise RuntimeError(
-        "[CAMERA-DIRECTOR] ❌ ОШИБКА: OPENAI_API_KEY не установлен!\n"
-        "Убедитесь что .env файл находится в ai/nexus_bot/ и содержит OPENAI_API_KEY=sk-..."
-    )
+# Отложенная инициализация OpenAI клиента
+client = None
 
-client = AsyncOpenAI(api_key=api_key)
+def _get_client():
+    """Получить OpenAI клиент (ленивая инициализация)"""
+    global client
+    if client is None:
+        api_key = os.getenv("OPENAI_API_KEY")
+        if not api_key:
+            raise RuntimeError(
+                "[CAMERA-DIRECTOR] ❌ ОШИБКА: OPENAI_API_KEY не установлен!\n"
+                "Убедитесь что .env файл находится в ai/nexus_bot/ и содержит OPENAI_API_KEY=sk-..."
+            )
+        client = AsyncOpenAI(api_key=api_key)
+    return client
 
 # Валидные 15 MiniMax camera команд
 VALID_CAMERA_COMMANDS = {
@@ -204,6 +210,7 @@ Output: ТОЛЬКО camera commands (1-3 команды на отдельных
 
     async def _call_openai(self, system: str, user: str) -> str:
         """Вызов OpenAI API (с retry logic)"""
+        client = _get_client()
         for attempt in range(self.max_retries):
             try:
                 response = await client.chat.completions.create(

@@ -17,15 +17,21 @@ import asyncio
 from typing import Dict, Tuple
 from openai import AsyncOpenAI
 
-# Инициализируем OpenAI клиент
-api_key = os.getenv("OPENAI_API_KEY")
-if not api_key:
-    raise RuntimeError(
-        "[PROMPT-ENHANCER] ❌ ОШИБКА: OPENAI_API_KEY не установлен!\n"
-        "Убедитесь что .env файл находится в ai/nexus_bot/ и содержит OPENAI_API_KEY=sk-..."
-    )
+# Отложенная инициализация OpenAI клиента
+client = None
 
-client = AsyncOpenAI(api_key=api_key)
+def _get_client():
+    """Получить OpenAI клиент (ленивая инициализация)"""
+    global client
+    if client is None:
+        api_key = os.getenv("OPENAI_API_KEY")
+        if not api_key:
+            raise RuntimeError(
+                "[PROMPT-ENHANCER] ❌ ОШИБКА: OPENAI_API_KEY не установлен!\n"
+                "Убедитесь что .env файл находится в ai/nexus_bot/ и содержит OPENAI_API_KEY=sk-..."
+            )
+        client = AsyncOpenAI(api_key=api_key)
+    return client
 
 # ========================================================
 # СИСТЕМНЫЕ ПРОМПТЫ ДЛЯ GPT
@@ -227,6 +233,7 @@ class PromptEnhancer:
             return prompt_clean
 
     async def _call_openai(self, system: str, user: str) -> str:
+        client = _get_client()
         for attempt in range(self.max_retries):
             try:
                 response = await client.chat.completions.create(
