@@ -6,7 +6,7 @@ Thin wrapper над SQLite БД
 from typing import Optional, Dict, Any
 import asyncio
 from datetime import datetime, timedelta
-from core.db import get_user, init_db
+from db import get_user, init_db
 
 
 class UserState:

@@ -11,7 +11,7 @@ import hashlib
 import hmac
 from typing import Optional, Dict
 from datetime import datetime
-from .db import create_payment as db_create_payment, get_or_create_user
+from db import create_payment as db_create_payment, get_or_create_user
 
 # ========== КОНФИГ ==========
 

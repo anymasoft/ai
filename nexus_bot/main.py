@@ -23,10 +23,10 @@ from fastapi.responses import JSONResponse
 
 from bot import run_bot
 from state import state_manager
-from core.video_engine import start_video_engine, video_engine
-from core.minimax import minimax_client
-from core.payments import process_webhook, log_payment
-from core.db import init_db, confirm_payment, get_payment
+from video_engine import start_video_engine, video_engine
+from minimax import minimax_client
+from payments import process_webhook, log_payment
+from db import init_db, confirm_payment, get_payment
 
 
 # Глобальные переменные для задач
