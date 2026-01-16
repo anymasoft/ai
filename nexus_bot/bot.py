@@ -23,7 +23,7 @@ from aiogram.fsm.state import State, StatesGroup
 from state import state_manager
 from core.video_engine import video_engine
 from core.payments import create_payment, log_payment, get_payment_status
-from core.db import deduct_video as db_deduct_video, add_video_pack as db_add_video_pack, refund_video as db_refund_video, confirm_payment as db_confirm_payment, get_pending_payments
+from core.db import deduct_video as db_deduct_video, add_video_pack as db_add_video_pack, refund_video as db_refund_video, confirm_payment as db_confirm_payment, get_pending_payments, update_payment_status
 
 # ========== КОНФИГИ ==========
 TEMP_DIR = Path("/tmp/telegram-bot")
@@ -846,22 +846,20 @@ async def check_pending_payments(bot: Bot):
                 videos_count = payment["videos_count"]  # ✅ Берём из БД, НЕ из API!
                 created_at = payment["created_at"]
 
-                # Проверяем timeout (максимум 15 минут ожидания)
-                # created_at может быть строка или datetime
                 if isinstance(created_at, str):
                     created_at = datetime.fromisoformat(created_at)
 
                 elapsed = datetime.now() - created_at
-                if elapsed > timedelta(minutes=15):
-                    print(f"[PAYMENTS-POLL] ⏰ Payment {payment_id} timeout (created {elapsed.total_seconds():.0f}s ago)")
-                    # Платёж не оплачен за 15 минут - оставляем как есть (user может оплатить позже)
-                    continue
 
-                # Получаем статус платежа из YooKassa API (ТОЛЬКО статус, НЕ видео-данные)
+                # ✅ ИСПРАВЛЕНИЕ: проверяем статус ВСЕГДА, независимо от elapsed!
                 result = get_payment_status(payment_id)
 
                 if not result:
                     print(f"[PAYMENTS-POLL] ⚠️ Failed to get status for {payment_id}")
+                    # Если платёж старше 30 минут и не можем получить статус - отметить как expired
+                    if elapsed > timedelta(minutes=30):
+                        print(f"[PAYMENTS-POLL] 🔴 Payment {payment_id} marked as expired (no response from API after 30 min)")
+                        update_payment_status(payment_id, "expired")
                     continue
 
                 payment_status = result.get("status")
@@ -904,6 +902,9 @@ async def check_pending_payments(bot: Bot):
                     # ❌ Платёж отменён или ошибка
                     print(f"[PAYMENTS-POLL] ❌ Payment {payment_id} {payment_status} for user {user_id}")
 
+                    # ✅ ИСПРАВЛЕНИЕ: обновляем статус в БД!
+                    update_payment_status(payment_id, payment_status)
+
                     try:
                         await bot.send_message(
                             user_id,
@@ -915,12 +916,12 @@ async def check_pending_payments(bot: Bot):
                     except Exception as e:
                         print(f"[PAYMENTS-POLL] Error sending message: {str(e)}")
 
-                    # ✅ Исправлено: очищаем из памяти если есть
+                    # Очищаем из памяти если есть
                     if user_id in state_manager.states:
                         state = state_manager.states[user_id]
                         state.pending_payment_id = None
                         state.pending_payment_timestamp = None
-                # else: статус pending, ждём дальше
+                # else: статус pending, ждём дальше (проверим снова через 5 сек)
 
         except Exception as e:
             print(f"[PAYMENTS-POLL] Error in check_pending_payments: {str(e)}")
