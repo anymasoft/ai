@@ -313,6 +313,26 @@ def confirm_payment(payment_id: str) -> bool:
         return False
 
 
+def update_payment_status(payment_id: str, new_status: str) -> bool:
+    """Обновить статус платежа (для failed/canceled/expired платежей)"""
+    conn = get_db()
+    c = conn.cursor()
+
+    try:
+        c.execute(
+            "UPDATE payments SET status = ? WHERE payment_id = ?",
+            (new_status, payment_id)
+        )
+        conn.commit()
+        conn.close()
+        return True
+
+    except Exception as e:
+        conn.close()
+        print(f"[DB] Error updating payment status: {e}")
+        return False
+
+
 # ============ GENERATIONS ============
 
 def create_generation(
