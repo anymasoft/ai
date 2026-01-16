@@ -119,14 +119,15 @@ def create_payment(user_id: int, pack_id: str) -> Optional[Dict]:
             return None
 
         # Создаём запись платежа в БД (status=pending)
-        if not db_create_payment(payment_id, user_id, pack_id, tariff["videos"], tariff["price"]):
+        db_result = db_create_payment(payment_id, user_id, pack_id, tariff["videos"], tariff["price"])
+        if not db_result:
             log_payment("ERROR", "Failed to save payment to DB", {"payment_id": payment_id, "user_id": user_id})
             return None
 
         log_payment(
-            "INFO",
-            "Payment created successfully",
-            {"payment_id": payment_id, "user_id": user_id, "pack_id": pack_id}
+            "SUCCESS",
+            f"Payment saved to DB",
+            {"payment_id": payment_id, "user_id": user_id, "status": "pending"}
         )
 
         return {
@@ -166,6 +167,8 @@ def get_payment_status(payment_id: str) -> Optional[Dict]:
 
     try:
         # GET запрос к YooKassa API
+        print(f"[YOOKASSA-API] Fetching status for payment {payment_id}...")
+
         response = requests.get(
             f"{YOOKASSA_API_URL}/payments/{payment_id}",
             auth=(YOOKASSA_SHOP_ID, YOOKASSA_API_KEY),
@@ -181,10 +184,12 @@ def get_payment_status(payment_id: str) -> Optional[Dict]:
                 f"Failed to get payment status: {response.status_code}",
                 {"payment_id": payment_id, "response": response.text}
             )
+            print(f"[YOOKASSA-API] ❌ Status {response.status_code} for {payment_id}")
             return None
 
         data = response.json()
         status = data.get("status")
+        print(f"[YOOKASSA-API] Payment {payment_id} status: {status}")
 
         # Извлекаем метаданные
         metadata = data.get("metadata", {})
@@ -194,6 +199,7 @@ def get_payment_status(payment_id: str) -> Optional[Dict]:
 
         if not user_id_str or not videos_count:
             log_payment("WARNING", "Missing metadata in payment", {"payment_id": payment_id})
+            print(f"[YOOKASSA-API] ⚠️ Missing metadata: user_id={user_id_str}, videos={videos_count}")
             return None
 
         try:
@@ -201,15 +207,18 @@ def get_payment_status(payment_id: str) -> Optional[Dict]:
             videos_count = int(videos_count)
         except (ValueError, TypeError):
             log_payment("ERROR", "Invalid metadata format", {"payment_id": payment_id})
+            print(f"[YOOKASSA-API] ❌ Invalid metadata format")
             return None
 
-        return {
+        result = {
             "user_id": user_id,
             "videos_count": videos_count,
             "payment_id": payment_id,
             "pack_id": pack_id,
             "status": status
         }
+        print(f"[YOOKASSA-API] ✅ Payment status retrieved: {result}")
+        return result
 
     except Exception as e:
         log_payment("ERROR", f"Exception during payment status check: {str(e)}", {"payment_id": payment_id})
