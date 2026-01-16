@@ -23,7 +23,7 @@ from aiogram.fsm.state import State, StatesGroup
 from state import state_manager
 from video_engine import video_engine
 from payments import create_payment, log_payment, get_payment_status
-from db import deduct_video as db_deduct_video, add_video_pack as db_add_video_pack, refund_video as db_refund_video, confirm_payment as db_confirm_payment, get_pending_payments, update_payment_status
+from db import deduct_video as db_deduct_video, add_video_pack as db_add_video_pack, refund_video as db_refund_video, confirm_payment as db_confirm_payment, get_pending_payments, update_payment_status, update_payment_poll_info
 
 # ========== КОНФИГИ ==========
 TEMP_DIR = Path("/tmp/telegram-bot")
@@ -34,6 +34,10 @@ GALLERY_DIR.mkdir(parents=True, exist_ok=True)
 
 # Бесплатный лимит видео при регистрации
 FREE_TRIAL_VIDEOS = 3
+
+# Настройки polling платежей (anti-spam)
+MAX_POLL_ATTEMPTS = 20  # Максимум попыток проверки
+TERMINAL_STATUSES = {"succeeded", "canceled", "failed", "expired", "waiting_for_capture"}  # Больше не проверяем
 
 # Тарифы (пакеты видео)
 TARIFFS = {
@@ -821,60 +825,90 @@ async def check_pending_payments(bot: Bot):
     """
     Фоновая задача для проверки статуса платежей (polling вместо webhook)
 
-    КЛЮЧЕВОЙ МОМЕНТ: проверяет ВСЕ платежи со статусом pending из БД,
-    НЕЗАВИСИМО от того есть ли пользователь в памяти.
-    Это обеспечивает, что платёж не потеряется если пользователь сделал /start
-    ПОСЛЕ создания платежа.
+    ANTI-SPAM АРХИТЕКТУРА:
+    - Terminal статусы (succeeded/canceled/failed/expired/waiting_for_capture) → больше не проверяем
+    - Max 20 попыток → abandoned
+    - Exponential backoff → снижаем нагрузку
+    - Логи только при смене статуса → нет спама
     """
     from datetime import timedelta
 
     print("[PAYMENTS-POLL] ✅ Payment polling task started")
 
+    # Для экспоненциального backoff
+    def get_next_delay(attempts: int) -> int:
+        """Exponential backoff: 5s → 10s → 30s → 60s → max 300s"""
+        if attempts == 0:
+            return 5
+        elif attempts == 1:
+            return 10
+        elif attempts <= 3:
+            return 30
+        elif attempts <= 6:
+            return 60
+        else:
+            return min(300, 60 * (2 ** (attempts - 6)))
+
     while True:
         try:
-            await asyncio.sleep(5)  # Проверяем каждые 5 секунд
+            await asyncio.sleep(5)  # Базовый интервал
 
-            # ВАЖНО: получаем ВСЕ pending платежи ИЗ БД, а не из памяти state
             pending_payments = get_pending_payments()
-
-            if pending_payments:
-                print(f"[PAYMENTS-POLL] Checking {len(pending_payments)} pending payments from DB...")
 
             for payment in pending_payments:
                 payment_id = payment["payment_id"]
                 user_id = payment["telegram_id"]
-                videos_count = payment["videos_count"]  # ✅ Берём из БД, НЕ из API!
+                videos_count = payment["videos_count"]
                 created_at = payment["created_at"]
+                poll_attempts = payment.get("poll_attempts", 0)
+                last_status = payment.get("last_status")
 
                 if isinstance(created_at, str):
                     created_at = datetime.fromisoformat(created_at)
 
                 elapsed = datetime.now() - created_at
 
-                # ✅ ИСПРАВЛЕНИЕ: проверяем статус ВСЕГДА, независимо от elapsed!
+                # A. MAX ATTEMPTS: abandoned после 20 попыток
+                if poll_attempts >= MAX_POLL_ATTEMPTS:
+                    print(f"[PAYMENTS] Payment {payment_id} abandoned after {MAX_POLL_ATTEMPTS} checks")
+                    update_payment_status(payment_id, "abandoned")
+                    continue
+
+                # B. BACKOFF: пропускаем если ещё рано проверять
+                if poll_attempts > 0:
+                    required_delay = get_next_delay(poll_attempts - 1)
+                    last_poll = payment.get("last_poll_at")
+                    if last_poll:
+                        if isinstance(last_poll, str):
+                            last_poll = datetime.fromisoformat(last_poll)
+                        time_since_last_poll = (datetime.now() - last_poll).total_seconds()
+                        if time_since_last_poll < required_delay:
+                            continue  # Ещё рано
+
+                # Проверяем статус в YooKassa API
                 result = get_payment_status(payment_id)
 
                 if not result:
-                    print(f"[PAYMENTS-POLL] ⚠️ Failed to get status for {payment_id}")
-                    # Если платёж старше 30 минут и не можем получить статус - отметить как expired
+                    # Не удалось получить статус
                     if elapsed > timedelta(minutes=30):
-                        print(f"[PAYMENTS-POLL] 🔴 Payment {payment_id} marked as expired (no response from API after 30 min)")
+                        print(f"[PAYMENTS] Payment {payment_id} expired (no API response after 30 min)")
                         update_payment_status(payment_id, "expired")
+                    else:
+                        # Увеличиваем счётчик попыток
+                        update_payment_poll_info(payment_id, poll_attempts + 1, last_status or "unknown")
                     continue
 
                 payment_status = result.get("status")
-                print(f"[PAYMENTS-POLL] Payment {payment_id} (user {user_id}) status: {payment_status}")
 
+                # C. ANTI-SPAM: логируем ТОЛЬКО при смене статуса
+                if payment_status != last_status:
+                    print(f"[PAYMENTS] Payment {payment_id} status changed: {last_status} → {payment_status}")
+
+                # D. TERMINAL СТАТУСЫ: обработка и удаление из pending
                 if payment_status == "succeeded":
-                    # 🎉 ПЛАТЁЖ УСПЕШЕН! Зачисляем видео
-                    print(f"[PAYMENTS-POLL] 🎉 Payment {payment_id} SUCCEEDED! Confirming in DB...")
-
-                    # Подтверждаем платёж в БД (это обновляет статус и начисляет видео)
+                    print(f"[PAYMENTS] Payment {payment_id} SUCCEEDED - confirming")
                     db_result = db_confirm_payment(payment_id)
                     if db_result:
-                        print(f"[PAYMENTS-POLL] ✅ Payment {payment_id} confirmed, {videos_count} videos credited to user {user_id}")
-
-                        # Отправляем уведомление пользователю (если он в памяти)
                         try:
                             await bot.send_message(
                                 user_id,
@@ -886,23 +920,16 @@ async def check_pending_payments(bot: Bot):
 """,
                                 reply_markup=get_main_menu_keyboard()
                             )
-                            print(f"[PAYMENTS-POLL] Notification sent to user {user_id}")
-                        except Exception as e:
-                            print(f"[PAYMENTS-POLL] ⚠️ Could not send notification to {user_id}: {str(e)}")
+                        except:
+                            pass
 
-                        # Очищаем pending_payment в памяти если есть
                         if user_id in state_manager.states:
                             state = state_manager.states[user_id]
                             state.pending_payment_id = None
                             state.pending_payment_timestamp = None
-                    else:
-                        print(f"[PAYMENTS-POLL] ❌ Failed to confirm payment {payment_id} in DB (may already be confirmed)")
 
                 elif payment_status == "canceled" or payment_status == "failed":
-                    # ❌ Платёж отменён или ошибка
-                    print(f"[PAYMENTS-POLL] ❌ Payment {payment_id} {payment_status} for user {user_id}")
-
-                    # ✅ ИСПРАВЛЕНИЕ: обновляем статус в БД!
+                    print(f"[PAYMENTS] Payment {payment_id} {payment_status.upper()} - marking terminal")
                     update_payment_status(payment_id, payment_status)
 
                     try:
@@ -913,18 +940,27 @@ async def check_pending_payments(bot: Bot):
 Попробуй ещё раз или свяжись с поддержкой.""",
                             reply_markup=get_main_menu_keyboard()
                         )
-                    except Exception as e:
-                        print(f"[PAYMENTS-POLL] Error sending message: {str(e)}")
+                    except:
+                        pass
 
-                    # Очищаем из памяти если есть
                     if user_id in state_manager.states:
                         state = state_manager.states[user_id]
                         state.pending_payment_id = None
                         state.pending_payment_timestamp = None
-                # else: статус pending, ждём дальше (проверим снова через 5 сек)
+
+                elif payment_status == "waiting_for_capture":
+                    # E. WAITING_FOR_CAPTURE: terminal (не подтверждаем автоматически)
+                    if last_status != "waiting_for_capture":
+                        print(f"[PAYMENTS] Payment {payment_id} in waiting_for_capture (requires manual capture)")
+                    update_payment_status(payment_id, "waiting_for_capture")
+
+                else:
+                    # Статус pending или другой - продолжаем проверять
+                    # Обновляем счётчик попыток
+                    update_payment_poll_info(payment_id, poll_attempts + 1, payment_status)
 
         except Exception as e:
-            print(f"[PAYMENTS-POLL] Error in check_pending_payments: {str(e)}")
+            print(f"[PAYMENTS-POLL] Error: {str(e)}")
             import traceback
             traceback.print_exc()
 
