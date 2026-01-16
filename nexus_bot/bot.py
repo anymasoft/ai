@@ -843,6 +843,7 @@ async def check_pending_payments(bot: Bot):
             for payment in pending_payments:
                 payment_id = payment["payment_id"]
                 user_id = payment["telegram_id"]
+                videos_count = payment["videos_count"]  # ✅ Берём из БД, НЕ из API!
                 created_at = payment["created_at"]
 
                 # Проверяем timeout (максимум 15 минут ожидания)
@@ -856,7 +857,7 @@ async def check_pending_payments(bot: Bot):
                     # Платёж не оплачен за 15 минут - оставляем как есть (user может оплатить позже)
                     continue
 
-                # Получаем статус платежа из YooKassa API
+                # Получаем статус платежа из YooKassa API (ТОЛЬКО статус, НЕ видео-данные)
                 result = get_payment_status(payment_id)
 
                 if not result:
@@ -868,7 +869,6 @@ async def check_pending_payments(bot: Bot):
 
                 if payment_status == "succeeded":
                     # 🎉 ПЛАТЁЖ УСПЕШЕН! Зачисляем видео
-                    videos_count = result["videos_count"]
                     print(f"[PAYMENTS-POLL] 🎉 Payment {payment_id} SUCCEEDED! Confirming in DB...")
 
                     # Подтверждаем платёж в БД (это обновляет статус и начисляет видео)
@@ -915,8 +915,11 @@ async def check_pending_payments(bot: Bot):
                     except Exception as e:
                         print(f"[PAYMENTS-POLL] Error sending message: {str(e)}")
 
-                    state.pending_payment_id = None
-                    state.pending_payment_timestamp = None
+                    # ✅ Исправлено: очищаем из памяти если есть
+                    if user_id in state_manager.states:
+                        state = state_manager.states[user_id]
+                        state.pending_payment_id = None
+                        state.pending_payment_timestamp = None
                 # else: статус pending, ждём дальше
 
         except Exception as e:
