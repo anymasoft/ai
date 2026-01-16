@@ -74,6 +74,7 @@ def create_payment(user_id: int, pack_id: str) -> Optional[Dict]:
             "value": str(tariff["price"] / 100),  # Преобразуем копейки в рубли (49000 → 490.00)
             "currency": "RUB"
         },
+        "capture": True,  # ОДНОСТАДИЙНЫЙ платёж - сразу succeeded после оплаты
         "payment_method_data": {
             "type": "bank_card"
         },
