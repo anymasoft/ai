@@ -22,6 +22,7 @@ from aiogram.fsm.state import State, StatesGroup
 from state import state_manager
 from core.video_engine import video_engine
 from core.payments import create_payment, log_payment
+from core.db import deduct_video as db_deduct_video, add_video_pack as db_add_video_pack
 
 # ========== КОНФИГИ ==========
 TEMP_DIR = Path("/tmp/telegram-bot")
@@ -109,27 +110,15 @@ def get_total_videos(user_state) -> int:
 
 
 def deduct_video(user_state) -> bool:
-    """Списать одно видео. Возвращает True если успешно, False если баланс кончился"""
-    # Сначала тратим бесплатные видео
-    if user_state.free_remaining > 0:
-        user_state.free_remaining -= 1
-        user_state.free_used += 1
-        return True
-
-    # Потом оплаченные видео
-    if user_state.video_balance > 0:
-        user_state.video_balance -= 1
-        return True
-
-    # Баланс кончился
-    return False
+    """Списать одно видео из БД. Возвращает True если успешно, False если баланс кончился"""
+    return db_deduct_video(user_state.telegram_id)
 
 
 def add_video_pack(user_state, pack_key: str):
-    """Добавить пакет видео (при оплате)"""
+    """Добавить пакет видео (при оплате) в БД"""
     if pack_key in TARIFFS:
-        user_state.video_balance += TARIFFS[pack_key]["videos"]
-        return True
+        videos = TARIFFS[pack_key]["videos"]
+        return db_add_video_pack(user_state.telegram_id, pack_key, videos)
     return False
 
 

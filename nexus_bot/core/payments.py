@@ -11,6 +11,7 @@ import hashlib
 import hmac
 from typing import Optional, Dict
 from datetime import datetime
+from .db import create_payment as db_create_payment, get_or_create_user
 
 # ========== КОНФИГ ==========
 
@@ -63,6 +64,9 @@ def create_payment(user_id: int, pack_id: str) -> Optional[Dict]:
     tariff = TARIFFS[pack_id]
     idempotence_key = str(uuid.uuid4())
 
+    # Убедимся что пользователь существует в БД
+    get_or_create_user(user_id)
+
     # Формируем payload для YooKassa
     payload = {
         "amount": {
@@ -111,6 +115,11 @@ def create_payment(user_id: int, pack_id: str) -> Optional[Dict]:
 
         if not payment_id or not confirmation_url:
             log_payment("ERROR", "Invalid response from YooKassa", {"response": data})
+            return None
+
+        # Создаём запись платежа в БД (status=pending)
+        if not db_create_payment(payment_id, user_id, pack_id, tariff["videos"], tariff["price"]):
+            log_payment("ERROR", "Failed to save payment to DB", {"payment_id": payment_id, "user_id": user_id})
             return None
 
         log_payment(

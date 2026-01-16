@@ -25,6 +25,7 @@ from state import state_manager
 from core.video_engine import start_video_engine, video_engine
 from core.minimax import minimax_client
 from core.payments import process_webhook, log_payment
+from core.db import init_db, confirm_payment, get_payment
 
 
 # Глобальные переменные для задач
@@ -38,6 +39,10 @@ async def lifespan(app: FastAPI):
     global bot_task, engine_task
 
     print("[MAIN] FastAPI server starting...")
+
+    # Инициализируем БД
+    init_db()
+    print("[MAIN] Database initialized")
 
     # Запускаем видео-движок при старте сервера
     await start_video_engine()
@@ -261,35 +266,27 @@ async def yookassa_webhook(request: Request):
             print(f"[YOOKASSA-WEBHOOK] Event not processed (not payment.succeeded or already processed)")
             return {"ok": True}
 
-        # 🎉 Платёж успешен! Начисляем видео
+        # 🎉 Платёж успешен! Начисляем видео через БД
         user_id = result["user_id"]
         videos_count = result["videos_count"]
         payment_id = result["payment_id"]
 
-        # Получаем состояние пользователя
-        user_state = state_manager.get_state(user_id)
-
-        # 🚨 Проверяем антидублирование
-        if payment_id in user_state.processed_payments:
-            log_payment("WARNING", f"Duplicate payment webhook detected", {"payment_id": payment_id})
-            return {"ok": True}  # Возвращаем OK, но не начисляем повторно
-
-        # ✅ Начисляем видео
-        user_state.video_balance += videos_count
-        user_state.processed_payments.add(payment_id)
-
-        log_payment(
-            "SUCCESS",
-            f"Payment processed and credited",
-            {
-                "user_id": user_id,
-                "payment_id": payment_id,
-                "videos_added": videos_count,
-                "new_balance": user_state.video_balance
-            }
-        )
-
-        print(f"[YOOKASSA-WEBHOOK] ✅ User {user_id} credited with {videos_count} videos. New balance: {user_state.video_balance}")
+        # Подтверждаем платёж в БД (включает зачисление видео + проверку дублирования)
+        if confirm_payment(payment_id):
+            payment = get_payment(payment_id)
+            log_payment(
+                "SUCCESS",
+                f"Payment confirmed and credited",
+                {
+                    "user_id": user_id,
+                    "payment_id": payment_id,
+                    "videos_added": videos_count
+                }
+            )
+            print(f"[YOOKASSA-WEBHOOK] ✅ User {user_id} credited with {videos_count} videos")
+        else:
+            log_payment("WARNING", f"Payment was already processed or not found", {"payment_id": payment_id})
+            print(f"[YOOKASSA-WEBHOOK] ⚠️ Payment {payment_id} already processed or not found")
 
         return {"ok": True}
 
