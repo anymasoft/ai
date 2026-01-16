@@ -8,7 +8,7 @@ import re
 import asyncio
 from typing import List, Tuple
 from openai import AsyncOpenAI
-from core.prompts import SYSTEM_PROMPT_CAMERA_DIRECTOR
+from .prompts import SYSTEM_PROMPT_CAMERA_DIRECTOR
 
 # Отложенная инициализация OpenAI клиента
 client = None
