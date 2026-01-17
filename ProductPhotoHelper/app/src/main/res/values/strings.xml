@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Product Photo Helper</string>
+    <string name="app_title">Product Photo Helper</string>
+    <string name="app_description">This app helps sellers prepare product photos for online marketplaces.\nWeb version with extended features is available online.</string>
+    <string name="button_text">Open Web Version</string>
+</resources>
