@@ -108,8 +108,11 @@ def init_db():
 
 # ============ USERS ============
 
-def get_or_create_user(telegram_id: int, username: str = None, full_name: str = None) -> Dict[str, Any]:
-    """Получить или создать пользователя (с обновлением username и full_name)"""
+def get_or_create_user(telegram_id: int, username: str = None, full_name: str = None) -> tuple[Dict[str, Any], bool]:
+    """
+    Получить или создать пользователя (с обновлением username и full_name)
+    Возвращает: (user, is_new) где is_new=True если пользователь только что создан
+    """
     conn = get_db()
     c = conn.cursor()
 
@@ -121,7 +124,7 @@ def get_or_create_user(telegram_id: int, username: str = None, full_name: str = 
         if username is not None or full_name is not None:
             update_user_info(telegram_id, username, full_name)
         conn.close()
-        return dict(row)
+        return dict(row), False  # Существующий пользователь
 
     # Создать нового
     c.execute(
@@ -133,7 +136,7 @@ def get_or_create_user(telegram_id: int, username: str = None, full_name: str = 
     c.execute("SELECT * FROM users WHERE telegram_id = ?", (telegram_id,))
     user = dict(c.fetchone())
     conn.close()
-    return user
+    return user, True  # Новый пользователь
 
 
 def get_user(telegram_id: int) -> Optional[Dict[str, Any]]:

@@ -278,7 +278,28 @@ async def setup_bot():
         # Сохраняем/обновляем username и full_name пользователя
         username = message.from_user.username
         full_name = message.from_user.full_name
-        get_or_create_user(user_id, username, full_name)
+        user, is_new = get_or_create_user(user_id, username, full_name)
+
+        # Уведомление админу о новом пользователе
+        if is_new:
+            admin_chat_id = os.getenv("TELEGRAM_BOT_ADMIN_CHAT_ID")
+            if admin_chat_id:
+                try:
+                    username_display = f"@{username}" if username else "без username"
+                    full_name_display = full_name or "Без имени"
+                    await bot.send_message(
+                        admin_chat_id,
+                        f"""🆕 <b>НОВЫЙ ПОЛЬЗОВАТЕЛЬ</b>
+
+👤 Имя: <b>{full_name_display}</b>
+📱 Username: {username_display}
+🆔 ID: <code>{user_id}</code>
+
+🎉 Зарегистрировался только что!""",
+                        parse_mode="HTML"
+                    )
+                except Exception as e:
+                    print(f"[ADMIN-NOTIFY] Failed to send new user notification: {e}")
 
         user_state = state_manager.get_state(user_id)
         total_videos = get_total_videos(user_state)
@@ -751,6 +772,33 @@ async def setup_bot():
             await message.answer(get_tariffs_text())
             await state.set_state(BotStates.main_menu)
             return
+
+        # Уведомление админу о запуске генерации
+        admin_chat_id = os.getenv("TELEGRAM_BOT_ADMIN_CHAT_ID")
+        if admin_chat_id:
+            try:
+                username = message.from_user.username
+                full_name = message.from_user.full_name
+                username_display = f"@{username}" if username else "без username"
+                full_name_display = full_name or "Без имени"
+                prompt_preview = user_state.prompt_text[:100] + "..." if len(user_state.prompt_text) > 100 else user_state.prompt_text
+
+                await bot.send_message(
+                    admin_chat_id,
+                    f"""🎬 <b>ЗАПУЩЕНА ГЕНЕРАЦИЯ</b>
+
+👤 Пользователь: <b>{full_name_display}</b>
+📱 Username: {username_display}
+🆔 ID: <code>{user_id}</code>
+
+📝 Промпт:
+<i>{prompt_preview}</i>
+
+⏱ Генерация началась...""",
+                    parse_mode="HTML"
+                )
+            except Exception as e:
+                print(f"[ADMIN-NOTIFY] Failed to send generation notification: {e}")
 
         # Начинаем генерацию
         try:
