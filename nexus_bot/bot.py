@@ -14,6 +14,7 @@ import asyncio
 import random
 from datetime import datetime
 from pathlib import Path
+from typing import Tuple
 from aiogram import Bot, Dispatcher, types, F
 from aiogram.filters import Command, StateFilter
 from aiogram.types import ReplyKeyboardMarkup, KeyboardButton, FSInputFile, InlineKeyboardMarkup, InlineKeyboardButton
@@ -174,6 +175,314 @@ def log_event(event_type: str, user_id: int, details: dict = None):
     """Логирование событий бота"""
     extra = f" {details}" if details else ""
     print(f"[TG] [{event_type}] user={user_id}{extra}")
+
+
+# ========== ADMIN PANEL HELPERS ==========
+
+def safe_int(value, default: int = 0) -> int:
+    """
+    Безопасно преобразовать значение в int
+    Защита от NULL/None/invalid values
+
+    Args:
+        value: Любое значение (может быть None, int, str, float)
+        default: Значение по умолчанию (обычно 0)
+
+    Returns:
+        int: Гарантированно целое число
+    """
+    try:
+        if value is None:
+            return default
+        return int(value)
+    except (ValueError, TypeError):
+        return default
+
+
+def safe_percent(numerator, denominator, precision: int = 1) -> str:
+    """
+    Безопасно вычислить процент с защитой от деления на ноль
+
+    Args:
+        numerator: Числитель (может быть None)
+        denominator: Знаменатель (может быть None или 0)
+        precision: Количество знаков после запятой
+
+    Returns:
+        str: Отформатированный процент ("42.5%" или "—" если деление на ноль)
+    """
+    num = safe_int(numerator, 0)
+    denom = safe_int(denominator, 0)
+
+    if denom == 0:
+        return "—"
+
+    percent = (num / denom) * 100
+    return f"{percent:.{precision}f}%"
+
+
+def safe_username_display(username: str, full_name: str) -> str:
+    """
+    Безопасно отобразить username или full_name
+
+    Args:
+        username: Username пользователя (может быть None или пустым)
+        full_name: Полное имя пользователя (fallback)
+
+    Returns:
+        str: "@username" или full_name если username пуст
+    """
+    if username and username.strip():
+        return f"@{username}"
+    return full_name or "Без имени"
+
+
+def get_admin_dashboard_keyboard():
+    """
+    Получить inline-клавиатуру для Dashboard
+
+    Returns:
+        InlineKeyboardMarkup: Клавиатура с кнопками навигации
+    """
+    keyboard = InlineKeyboardMarkup(
+        inline_keyboard=[
+            [InlineKeyboardButton(text="👥 Пользователи", callback_data="admin_users:1")],
+            [InlineKeyboardButton(text="💳 Платежи", callback_data="admin_payments:1")],
+            [InlineKeyboardButton(text="📢 Массовая рассылка", callback_data="admin_broadcast")],
+        ]
+    )
+    return keyboard
+
+
+def get_admin_users_keyboard(page: int, total_pages: int):
+    """
+    Получить inline-клавиатуру для списка пользователей с пагинацией
+
+    Args:
+        page: Текущая страница
+        total_pages: Всего страниц
+
+    Returns:
+        InlineKeyboardMarkup: Клавиатура с кнопками навигации
+    """
+    buttons = []
+
+    # Кнопки пагинации
+    nav_buttons = []
+    if page > 1:
+        nav_buttons.append(InlineKeyboardButton(text="◀️ Назад", callback_data=f"admin_users:{page-1}"))
+    if page < total_pages:
+        nav_buttons.append(InlineKeyboardButton(text="Вперёд ▶️", callback_data=f"admin_users:{page+1}"))
+
+    if nav_buttons:
+        buttons.append(nav_buttons)
+
+    # Кнопка возврата в Dashboard
+    buttons.append([InlineKeyboardButton(text="🏠 Dashboard", callback_data="admin_dashboard")])
+
+    return InlineKeyboardMarkup(inline_keyboard=buttons)
+
+
+def get_admin_payments_keyboard(page: int, total_pages: int):
+    """
+    Получить inline-клавиатуру для списка платежей с пагинацией
+
+    Args:
+        page: Текущая страница
+        total_pages: Всего страниц
+
+    Returns:
+        InlineKeyboardMarkup: Клавиатура с кнопками навигации
+    """
+    buttons = []
+
+    # Кнопки пагинации
+    nav_buttons = []
+    if page > 1:
+        nav_buttons.append(InlineKeyboardButton(text="◀️ Назад", callback_data=f"admin_payments:{page-1}"))
+    if page < total_pages:
+        nav_buttons.append(InlineKeyboardButton(text="Вперёд ▶️", callback_data=f"admin_payments:{page+1}"))
+
+    if nav_buttons:
+        buttons.append(nav_buttons)
+
+    # Кнопка возврата в Dashboard
+    buttons.append([InlineKeyboardButton(text="🏠 Dashboard", callback_data="admin_dashboard")])
+
+    return InlineKeyboardMarkup(inline_keyboard=buttons)
+
+
+def build_admin_dashboard() -> str:
+    """
+    Построить компактный Dashboard для админ-панели
+    Только ключевые метрики, НЕ детализация
+
+    Returns:
+        str: Отформатированный текст Dashboard (HTML)
+    """
+    try:
+        # Собираем статистику
+        total_users = get_total_users_count()
+        new_users_today = get_new_users_today()
+        total_generations = get_total_generations_count()
+        generations_today = get_generations_today()
+        paying_users = get_paying_users_count()
+        total_revenue = get_total_revenue()
+        revenue_today = get_revenue_today()
+        failed_today = get_failed_generations_today()
+
+        # Конверсии (защита от деления на ноль)
+        conv_reg_to_gen = safe_percent(total_generations, total_users)  # reg → generation
+        conv_gen_to_pay = safe_percent(paying_users, total_users)  # reg → payment
+
+        # Timestamp
+        now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+        # Компактный Dashboard (≤30 строк)
+        dashboard = f"""<b>🛠 АДМИН-ПАНЕЛЬ</b>
+
+<b>📊 ОБЩАЯ СТАТИСТИКА:</b>
+👤 Пользователей: <b>{total_users}</b> (сегодня: +{new_users_today})
+🎬 Генераций: <b>{total_generations}</b> (сегодня: {generations_today})
+💳 Плательщиков: <b>{paying_users}</b>
+💰 Выручка: <b>{total_revenue} ₽</b> (сегодня: {revenue_today} ₽)
+
+<b>📈 КОНВЕРСИИ:</b>
+🎯 Регистрация → Генерация: <b>{conv_reg_to_gen}</b>
+💸 Регистрация → Платёж: <b>{conv_gen_to_pay}</b>
+
+<b>⚙️ СИСТЕМА:</b>
+🟢 Статус бота: <b>ALIVE</b>
+❌ Ошибок сегодня: <b>{failed_today}</b>
+
+━━━━━━━━━━━━━━━━━━━━━━
+📅 Обновлено: {now}"""
+
+        return dashboard
+
+    except Exception as e:
+        print(f"[ADMIN] Error building dashboard: {e}")
+        import traceback
+        traceback.print_exc()
+        return "<b>❌ Ошибка загрузки Dashboard</b>\n\nПопробуйте позже."
+
+
+def build_admin_users_list(page: int = 1, limit: int = 10) -> Tuple[str, int]:
+    """
+    Построить список пользователей с пагинацией
+
+    Args:
+        page: Номер страницы (начиная с 1)
+        limit: Количество пользователей на страницу
+
+    Returns:
+        Tuple[str, int]: (Отформатированный список пользователей (HTML), Всего страниц)
+    """
+    try:
+        # Получаем всех пользователей со статистикой
+        all_users = get_all_users_with_stats()
+
+        if not all_users:
+            return ("<b>👥 ПОЛЬЗОВАТЕЛИ</b>\n\n• Нет данных", 0)
+
+        # Пагинация
+        total_users = len(all_users)
+        total_pages = (total_users + limit - 1) // limit  # Округляем вверх
+        page = max(1, min(page, total_pages))  # Ограничиваем диапазон страниц
+
+        start_idx = (page - 1) * limit
+        end_idx = start_idx + limit
+        page_users = all_users[start_idx:end_idx]
+
+        # Формируем список
+        user_list = f"<b>👥 ПОЛЬЗОВАТЕЛИ</b> (стр. {page}/{total_pages})\n\n"
+
+        for user in page_users:
+            username = user.get("username")
+            full_name = user.get("full_name") or "Без имени"
+            telegram_id = user['telegram_id']
+
+            # Баланс (защита от NULL)
+            video_balance = safe_int(user.get("video_balance"), 0)
+            free_remaining = safe_int(user.get("free_remaining"), 0)
+            total_balance = video_balance + free_remaining
+
+            # Статистика (защита от NULL)
+            gens_count = safe_int(user.get("generations_count"), 0)
+            pays_count = safe_int(user.get("payments_count"), 0)
+            pays_total = safe_int(user.get("payments_total"), 0)
+
+            # Формируем строку
+            user_display = safe_username_display(username, full_name)
+            balance_text = f"💎 {total_balance}"
+            stats_text = f"🎬 {gens_count}"
+
+            if pays_count > 0:
+                stats_text += f" | 💳 {pays_count} ({pays_total}₽)"
+
+            user_list += f"• {user_display} | ID: <code>{telegram_id}</code>\n  {balance_text} | {stats_text}\n\n"
+
+        user_list += f"━━━━━━━━━━━━━━━━━━━━━━\n📄 Показано {len(page_users)} из {total_users}"
+
+        return (user_list, total_pages)
+
+    except Exception as e:
+        print(f"[ADMIN] Error building users list: {e}")
+        import traceback
+        traceback.print_exc()
+        return ("<b>❌ Ошибка загрузки списка пользователей</b>", 0)
+
+
+def build_admin_payments_list(page: int = 1, limit: int = 10) -> Tuple[str, int]:
+    """
+    Построить список платежей с пагинацией
+
+    Args:
+        page: Номер страницы (начиная с 1)
+        limit: Количество платежей на страницу
+
+    Returns:
+        Tuple[str, int]: (Отформатированный список платежей (HTML), Всего страниц)
+    """
+    try:
+        # Получаем все платежи (используем большой limit для получения всех)
+        all_payments = get_recent_payments(1000)  # Предполагаем, что не больше 1000 платежей
+
+        if not all_payments:
+            return ("<b>💳 ПЛАТЕЖИ</b>\n\n• Нет данных", 0)
+
+        # Пагинация
+        total_payments = len(all_payments)
+        total_pages = (total_payments + limit - 1) // limit
+        page = max(1, min(page, total_pages))
+
+        start_idx = (page - 1) * limit
+        end_idx = start_idx + limit
+        page_payments = all_payments[start_idx:end_idx]
+
+        # Формируем список
+        payment_list = f"<b>💳 ПЛАТЕЖИ</b> (стр. {page}/{total_pages})\n\n"
+
+        for payment in page_payments:
+            telegram_id = safe_int(payment.get("telegram_id"), 0)
+            amount = safe_int(payment.get("amount"), 0)
+            status = payment.get("status", "unknown")
+            created = payment.get("created_at", "N/A")
+
+            # Emoji для статуса
+            status_emoji = "✅" if status == "succeeded" else "⏳" if status == "pending" else "❌"
+
+            payment_list += f"• {status_emoji} ID: <code>{telegram_id}</code> | {amount} ₽ | {status}\n  {created}\n\n"
+
+        payment_list += f"━━━━━━━━━━━━━━━━━━━━━━\n📄 Показано {len(page_payments)} из {total_payments}"
+
+        return (payment_list, total_pages)
+
+    except Exception as e:
+        print(f"[ADMIN] Error building payments list: {e}")
+        import traceback
+        traceback.print_exc()
+        return ("<b>❌ Ошибка загрузки списка платежей</b>", 0)
 
 
 # ========== ГЛАВНОЕ МЕНЮ ==========
@@ -1258,11 +1567,106 @@ Payment ID: {payment_id}
         )
         await state.set_state(BotStates.main_menu)
 
+    # ========== ADMIN COMMANDS ==========
+
+    @dp.message(Command("admin"))
+    async def cmd_admin(message: types.Message):
+        """
+        Команда /admin [subcommand] [args]
+
+        Поддерживает:
+        - /admin — компактный Dashboard
+        - /admin users [page] — список пользователей с пагинацией
+        - /admin payments [page] — список платежей с пагинацией
+
+        БЕЗОПАСНО: только SELECT запросы, БД не меняем
+        """
+        user_id = message.from_user.id
+        chat_id = message.chat.id
+
+        # Строгая проверка: только админ
+        admin_chat_id = os.getenv("TELEGRAM_BOT_ADMIN_CHAT_ID")
+        if not admin_chat_id or str(chat_id) != str(admin_chat_id):
+            await message.answer("❌ Доступ запрещён")
+            return
+
+        # Парсим аргументы
+        parts = message.text.split()
+
+        # Если просто /admin - показываем Dashboard
+        if len(parts) == 1:
+            log_event("admin_dashboard", user_id)
+            try:
+                dashboard = build_admin_dashboard()
+                await message.answer(dashboard, parse_mode="HTML")
+            except Exception as e:
+                print(f"[ADMIN] Error in /admin command: {e}")
+                import traceback
+                traceback.print_exc()
+                await message.answer("❌ Ошибка загрузки админ-панели")
+            return
+
+        subcommand = parts[1].lower()
+
+        # /admin users [page]
+        if subcommand == "users":
+            page = 1
+            if len(parts) >= 3:
+                try:
+                    page = int(parts[2])
+                except ValueError:
+                    page = 1
+
+            log_event("admin_users_list", user_id, {"page": page})
+
+            try:
+                users_text, total_pages = build_admin_users_list(page=page, limit=10)
+                keyboard = get_admin_users_keyboard(page, total_pages)
+                await message.answer(users_text, parse_mode="HTML", reply_markup=keyboard)
+            except Exception as e:
+                print(f"[ADMIN] Error in /admin users: {e}")
+                import traceback
+                traceback.print_exc()
+                await message.answer("❌ Ошибка загрузки списка пользователей")
+
+        # /admin payments [page]
+        elif subcommand == "payments":
+            page = 1
+            if len(parts) >= 3:
+                try:
+                    page = int(parts[2])
+                except ValueError:
+                    page = 1
+
+            log_event("admin_payments_list", user_id, {"page": page})
+
+            try:
+                payments_text, total_pages = build_admin_payments_list(page=page, limit=10)
+                keyboard = get_admin_payments_keyboard(page, total_pages)
+                await message.answer(payments_text, parse_mode="HTML", reply_markup=keyboard)
+            except Exception as e:
+                print(f"[ADMIN] Error in /admin payments: {e}")
+                import traceback
+                traceback.print_exc()
+                await message.answer("❌ Ошибка загрузки списка платежей")
+
+        else:
+            await message.answer(
+                f"❌ Неизвестная команда: /admin {subcommand}\n\n"
+                "Доступные команды:\n"
+                "/admin — Dashboard\n"
+                "/admin users [page] — список пользователей\n"
+                "/admin payments [page] — список платежей"
+            )
+
     # ========== ADMIN CALLBACK HANDLERS ==========
 
     @dp.callback_query(F.data == "admin_panel")
     async def callback_admin_panel(callback: types.CallbackQuery):
-        """Обработчик: Админка (только для админа)"""
+        """
+        Обработчик: Админка (только для админа)
+        Теперь показывает компактный Dashboard вместо всех пользователей
+        """
         user_id = callback.from_user.id
         chat_id = callback.message.chat.id
 
@@ -1274,89 +1678,14 @@ Payment ID: {payment_id}
 
         log_event("admin_panel_opened", user_id)
 
-        # Собираем статистику
         try:
-            total_users = get_total_users_count()
-            new_users_today = get_new_users_today()
-            total_generations = get_total_generations_count()
-            generations_today = get_generations_today()
-            paying_users = get_paying_users_count()
-            total_revenue = get_total_revenue()
-            revenue_today = get_revenue_today()
-            failed_today = get_failed_generations_today()
+            # Используем новый компактный Dashboard
+            dashboard = build_admin_dashboard()
 
-            recent_payments = get_recent_payments(5)
-            all_users_stats = get_all_users_with_stats()
+            # Inline-кнопки для навигации
+            keyboard = get_admin_dashboard_keyboard()
 
-            # Форматируем отчёт
-            admin_report = f"""<b>🛠 АДМИН-ПАНЕЛЬ</b>
-
-<b>📊 СТАТИСТИКА:</b>
-👤 Всего пользователей: <b>{total_users}</b>
-🆕 Новых за сегодня: <b>{new_users_today}</b>
-🎬 Всего генераций: <b>{total_generations}</b>
-🎬 Генераций за сегодня: <b>{generations_today}</b>
-💳 Платящих пользователей: <b>{paying_users}</b>
-💰 Общая выручка: <b>{total_revenue} ₽</b>
-💰 Выручка за сегодня: <b>{revenue_today} ₽</b>
-
-<b>⚙️ ТЕХНИКА:</b>
-🟢 Статус бота: <b>ALIVE</b>
-❌ Ошибок за сегодня: <b>{failed_today}</b>
-
-<b>👥 ВСЕ ЗАРЕГИСТРИРОВАННЫЕ ПОЛЬЗОВАТЕЛИ:</b>"""
-
-            if all_users_stats:
-                for user in all_users_stats:
-                    username = user.get("username")
-                    full_name = user.get("full_name") or "Без имени"
-                    telegram_id = user['telegram_id']
-
-                    # Баланс (защита от NULL)
-                    video_balance = int(user.get("video_balance") or 0)
-                    free_remaining = int(user.get("free_remaining") or 0)
-                    total_balance = video_balance + free_remaining
-
-                    # Статистика (защита от NULL)
-                    gens_count = int(user.get("generations_count") or 0)
-                    pays_count = int(user.get("payments_count") or 0)
-                    pays_total = int(user.get("payments_total") or 0)  # в рублях
-
-                    # Формируем строку (защита от None в username)
-                    if username and username.strip():
-                        user_display = f"@{username}"
-                    else:
-                        user_display = full_name
-
-                    balance_text = f"💎 {total_balance}"
-                    stats_text = f"🎬 {gens_count}"
-
-                    if pays_count > 0:
-                        stats_text += f" | 💳 {pays_count} ({pays_total}₽)"
-
-                    admin_report += f"\n• {user_display} | ID: <code>{telegram_id}</code> | {balance_text} | {stats_text}"
-            else:
-                admin_report += "\n• Нет данных"
-
-            admin_report += "\n\n<b>💳 ПОСЛЕДНИЕ ПЛАТЕЖИ:</b>"
-            if recent_payments:
-                for payment in recent_payments:
-                    amount = payment.get("amount", 0)
-                    status = payment.get("status", "unknown")
-                    created = payment.get("created_at", "N/A")
-                    status_emoji = "✅" if status == "succeeded" else "⏳" if status == "pending" else "❌"
-                    admin_report += f"\n• {status_emoji} ID: <code>{payment['telegram_id']}</code> | {amount} ₽ | {status} | {created}"
-            else:
-                admin_report += "\n• Нет данных"
-
-            # Inline-кнопка для массовой рассылки
-            broadcast_keyboard = InlineKeyboardMarkup(
-                inline_keyboard=[
-                    [InlineKeyboardButton(text="📢 Массовая рассылка", callback_data="admin_broadcast")]
-                ]
-            )
-
-            await callback.message.answer(admin_report, parse_mode="HTML", reply_markup=broadcast_keyboard)
+            await callback.message.answer(dashboard, parse_mode="HTML", reply_markup=keyboard)
             await callback.answer("✅ Статистика загружена")
 
         except Exception as e:
@@ -1487,6 +1816,113 @@ Payment ID: {payment_id}
         })
 
         await state.set_state(BotStates.main_menu)
+
+    @dp.callback_query(F.data == "admin_dashboard")
+    async def callback_admin_dashboard(callback: types.CallbackQuery):
+        """
+        Обработчик: Вернуться в Dashboard (кнопка "🏠 Dashboard")
+        """
+        user_id = callback.from_user.id
+        chat_id = callback.message.chat.id
+
+        # Строгая проверка: только админ
+        admin_chat_id = os.getenv("TELEGRAM_BOT_ADMIN_CHAT_ID")
+        if not admin_chat_id or str(chat_id) != str(admin_chat_id):
+            await callback.answer("❌ Доступ запрещён", show_alert=True)
+            return
+
+        log_event("admin_dashboard_clicked", user_id)
+
+        try:
+            # Компактный Dashboard
+            dashboard = build_admin_dashboard()
+            keyboard = get_admin_dashboard_keyboard()
+
+            # Редактируем существующее сообщение
+            await callback.message.edit_text(dashboard, parse_mode="HTML", reply_markup=keyboard)
+            await callback.answer()
+
+        except Exception as e:
+            print(f"[ADMIN] Error loading dashboard: {e}")
+            import traceback
+            traceback.print_exc()
+            await callback.answer("❌ Ошибка загрузки", show_alert=True)
+
+    @dp.callback_query(F.data.startswith("admin_users:"))
+    async def callback_admin_users(callback: types.CallbackQuery):
+        """
+        Обработчик: Показать список пользователей с пагинацией
+        Формат callback_data: admin_users:1, admin_users:2, etc.
+        """
+        user_id = callback.from_user.id
+        chat_id = callback.message.chat.id
+
+        # Строгая проверка: только админ
+        admin_chat_id = os.getenv("TELEGRAM_BOT_ADMIN_CHAT_ID")
+        if not admin_chat_id or str(chat_id) != str(admin_chat_id):
+            await callback.answer("❌ Доступ запрещён", show_alert=True)
+            return
+
+        # Парсим номер страницы из callback_data
+        try:
+            page = int(callback.data.split(":")[1])
+        except (IndexError, ValueError):
+            page = 1
+
+        log_event("admin_users_clicked", user_id, {"page": page})
+
+        try:
+            # Получаем список пользователей и количество страниц
+            users_text, total_pages = build_admin_users_list(page=page, limit=10)
+            keyboard = get_admin_users_keyboard(page, total_pages)
+
+            # Редактируем существующее сообщение
+            await callback.message.edit_text(users_text, parse_mode="HTML", reply_markup=keyboard)
+            await callback.answer()
+
+        except Exception as e:
+            print(f"[ADMIN] Error loading users list: {e}")
+            import traceback
+            traceback.print_exc()
+            await callback.answer("❌ Ошибка загрузки", show_alert=True)
+
+    @dp.callback_query(F.data.startswith("admin_payments:"))
+    async def callback_admin_payments(callback: types.CallbackQuery):
+        """
+        Обработчик: Показать список платежей с пагинацией
+        Формат callback_data: admin_payments:1, admin_payments:2, etc.
+        """
+        user_id = callback.from_user.id
+        chat_id = callback.message.chat.id
+
+        # Строгая проверка: только админ
+        admin_chat_id = os.getenv("TELEGRAM_BOT_ADMIN_CHAT_ID")
+        if not admin_chat_id or str(chat_id) != str(admin_chat_id):
+            await callback.answer("❌ Доступ запрещён", show_alert=True)
+            return
+
+        # Парсим номер страницы из callback_data
+        try:
+            page = int(callback.data.split(":")[1])
+        except (IndexError, ValueError):
+            page = 1
+
+        log_event("admin_payments_clicked", user_id, {"page": page})
+
+        try:
+            # Получаем список платежей и количество страниц
+            payments_text, total_pages = build_admin_payments_list(page=page, limit=10)
+            keyboard = get_admin_payments_keyboard(page, total_pages)
+
+            # Редактируем существующее сообщение
+            await callback.message.edit_text(payments_text, parse_mode="HTML", reply_markup=keyboard)
+            await callback.answer()
+
+        except Exception as e:
+            print(f"[ADMIN] Error loading payments list: {e}")
+            import traceback
+            traceback.print_exc()
+            await callback.answer("❌ Ошибка загрузки", show_alert=True)
 
     return bot, dp
 
