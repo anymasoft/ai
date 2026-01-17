@@ -150,6 +150,18 @@ def get_user_video_path(user_id: int) -> str:
     return str(TEMP_DIR / f"video_{user_id}.mp4")
 
 
+def add_gallery_link(text: str) -> str:
+    """
+    Добавляет ссылку на галерею к тексту сообщения
+    Используется в критических точках конверсии
+    """
+    return f"""{text}
+
+━━━━━━━━━━━━━━━━━━━━━━
+🎨 <b>Еще больше примеров на нашем сайте:</b>
+👉 https://beem.ink/gallery"""
+
+
 def cleanup_user_files(user_id: int):
     """Очистить файлы пользователя"""
     for path in [get_user_photo_path(user_id), get_user_video_path(user_id)]:
@@ -283,7 +295,7 @@ def get_waiting_tip() -> str:
 
 def get_tariffs_text() -> str:
     """Текст с описанием тарифов"""
-    return f"""💳 ТАРИФНЫЕ ПЛАНЫ
+    tariffs_base = f"""💳 ТАРИФНЫЕ ПЛАНЫ
 
 📦 СТАРТ (3 бесплатных видео)
 Попробовать сервис без оплаты
@@ -316,6 +328,9 @@ def get_tariffs_text() -> str:
 
 ✅ Видео не сгорают
 ✅ Купил один раз — используешь, когда нужно"""
+
+    # Добавляем ссылку на галерею
+    return add_gallery_link(tariffs_base)
 
 
 def get_purchase_keyboard():
@@ -387,7 +402,15 @@ async def setup_bot():
 📊 Осталось видео: {total_videos}
 """
 
-        await message.answer(welcome_text, reply_markup=get_main_menu_keyboard())
+        # Создаем inline-кнопку для галереи
+        gallery_button = InlineKeyboardMarkup(
+            inline_keyboard=[
+                [InlineKeyboardButton(text="🌐 Примеры на сайте", url="https://beem.ink/gallery")]
+            ]
+        )
+
+        await message.answer(welcome_text, reply_markup=gallery_button)
+        await message.answer("Выберите действие:", reply_markup=get_main_menu_keyboard())
         await state.set_state(BotStates.main_menu)
 
     # ========== ОБРАБОТКА КНОПОК ГЛАВНОГО МЕНЮ ==========
@@ -530,7 +553,25 @@ async def setup_bot():
         user_id = message.from_user.id
         log_event("tariffs_click", user_id)
 
-        await message.answer(get_tariffs_text(), reply_markup=get_purchase_keyboard())
+        # Создаем inline-кнопку для галереи
+        gallery_button = InlineKeyboardMarkup(
+            inline_keyboard=[
+                [InlineKeyboardButton(text="🌐 Примеры на сайте", url="https://beem.ink/gallery")]
+            ]
+        )
+
+        await message.answer(
+            get_tariffs_text(),
+            parse_mode="HTML",
+            reply_markup=gallery_button
+        )
+
+        # Отправляем клавиатуру покупки отдельным сообщением
+        await message.answer(
+            "Выберите пакет:",
+            reply_markup=get_purchase_keyboard()
+        )
+
         await state.set_state(BotStates.main_menu)
 
     @dp.message(F.text == "💰 Баланс")
@@ -648,7 +689,10 @@ async def setup_bot():
 Текст не изменяется.
 Приближение камеры."""
 
-        await message.answer(help_text, parse_mode="HTML", reply_markup=get_main_menu_keyboard())
+        # Добавляем ссылку на галерею
+        help_text_with_link = add_gallery_link(help_text)
+
+        await message.answer(help_text_with_link, parse_mode="HTML", reply_markup=get_main_menu_keyboard())
         await state.set_state(BotStates.main_menu)
 
     @dp.message(F.text == "📞 Поддержка")
@@ -933,13 +977,17 @@ async def setup_bot():
 
                         total_left = get_total_videos(user_state)
                         if total_left > 0:
+                            success_message = f"✅ Видео готово!\n\nОсталось: {total_left} видео\n\nХочешь создать ещё?"
                             await message.answer(
-                                f"✅ Видео готово!\n\nОсталось: {total_left} видео\n\nХочешь создать ещё?",
+                                add_gallery_link(success_message),
+                                parse_mode="HTML",
                                 reply_markup=get_main_menu_keyboard(),
                             )
                         else:
+                            success_message_no_balance = "✅ Видео готово!\n\n🎁 Но баланс кончился. Купи ещё видео!"
                             await message.answer(
-                                "✅ Видео готово!\n\n🎁 Но баланс кончился. Купи ещё видео!",
+                                add_gallery_link(success_message_no_balance),
+                                parse_mode="HTML",
                                 reply_markup=get_main_menu_keyboard(),
                             )
 
@@ -1180,10 +1228,18 @@ Payment ID: {payment_id}
         user_state = state_manager.get_state(user_id)
         total = get_total_videos(user_state)
 
+        # Создаем inline-кнопку для галереи
+        gallery_button = InlineKeyboardMarkup(
+            inline_keyboard=[
+                [InlineKeyboardButton(text="🌐 Примеры на сайте", url="https://beem.ink/gallery")]
+            ]
+        )
+
         await message.answer(
             f"📊 Баланс: {total} видео",
-            reply_markup=get_main_menu_keyboard(),
+            reply_markup=gallery_button
         )
+        await message.answer("Выберите действие:", reply_markup=get_main_menu_keyboard())
         await state.set_state(BotStates.main_menu)
 
     @dp.message(F.text == "❌ Отмена")
