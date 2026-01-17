@@ -57,10 +57,10 @@ export async function callMinimaxAPI(
 
     // Подготавливаем payload
     const payload: MinimaxRequest = {
-      model: 'MiniMax-Hailuo-02',
+      model: 'MiniMax-Hailuo-2.3',
       first_frame_image: imageDataUrl,
       duration: durationNumber,  // ← ТОЛЬКО ЧИСЛО
-      resolution: '768P',
+      resolution: '1080P',
       callback_url: callbackUrl,
     };
 
