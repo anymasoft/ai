@@ -431,13 +431,13 @@ def get_all_users_with_stats() -> List[Dict[str, Any]]:
 
         # Считаем платежи (только succeeded)
         c.execute("""
-            SELECT COUNT(*) as count, SUM(amount) as total
+            SELECT COUNT(*) as count, COALESCE(SUM(amount), 0) as total
             FROM payments
             WHERE telegram_id = ? AND status = 'succeeded'
         """, (telegram_id,))
         payment_row = c.fetchone()
-        user['payments_count'] = payment_row[0] or 0
-        user['payments_total'] = payment_row[1] or 0  # в рублях
+        user['payments_count'] = int(payment_row[0] or 0)
+        user['payments_total'] = int(payment_row[1] or 0)  # в рублях, гарантированно число
 
     conn.close()
     return users

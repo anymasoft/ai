@@ -1312,18 +1312,22 @@ Payment ID: {payment_id}
                     full_name = user.get("full_name") or "Без имени"
                     telegram_id = user['telegram_id']
 
-                    # Баланс
-                    video_balance = user.get("video_balance", 0)
-                    free_remaining = user.get("free_remaining", 0)
+                    # Баланс (защита от NULL)
+                    video_balance = int(user.get("video_balance") or 0)
+                    free_remaining = int(user.get("free_remaining") or 0)
                     total_balance = video_balance + free_remaining
 
-                    # Статистика
-                    gens_count = user.get("generations_count", 0)
-                    pays_count = user.get("payments_count", 0)
-                    pays_total = user.get("payments_total", 0)  # в рублях
+                    # Статистика (защита от NULL)
+                    gens_count = int(user.get("generations_count") or 0)
+                    pays_count = int(user.get("payments_count") or 0)
+                    pays_total = int(user.get("payments_total") or 0)  # в рублях
 
-                    # Формируем строку
-                    user_display = f"@{username}" if username else full_name
+                    # Формируем строку (защита от None в username)
+                    if username and username.strip():
+                        user_display = f"@{username}"
+                    else:
+                        user_display = full_name
+
                     balance_text = f"💎 {total_balance}"
                     stats_text = f"🎬 {gens_count}"
 
