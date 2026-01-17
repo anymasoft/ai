@@ -9,6 +9,7 @@ from datetime import datetime
 from typing import Optional, List, Dict, Any, Tuple
 
 DB_PATH = os.path.join(os.path.dirname(__file__), "sqlite.db")
+OLD_DB_PATH = os.path.join(os.path.dirname(__file__), "db.sqlite3")
 
 
 def get_db():
@@ -18,8 +19,203 @@ def get_db():
     return conn
 
 
+def auto_migrate_from_old_db():
+    """
+    Автоматическая миграция из старой БД (db.sqlite3) в новую (sqlite.db)
+    Вызывается автоматически при первом запуске, если новая БД не существует
+    """
+    # Если новая БД уже существует - ничего не делать
+    if os.path.exists(DB_PATH):
+        return
+
+    # Если старая БД не существует - ничего не мигрировать
+    if not os.path.exists(OLD_DB_PATH):
+        return
+
+    print(f"[DB-MIGRATION] Обнаружена старая БД, запуск автоматической миграции...")
+    print(f"[DB-MIGRATION] Из: {OLD_DB_PATH}")
+    print(f"[DB-MIGRATION] В:  {DB_PATH}")
+
+    # Сначала инициализируем новую БД со схемой
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+
+    # Создаем схему
+    c.execute("""
+        CREATE TABLE IF NOT EXISTS users (
+            id INTEGER PRIMARY KEY,
+            telegram_id INTEGER UNIQUE NOT NULL,
+            video_balance INTEGER NOT NULL DEFAULT 0,
+            free_remaining INTEGER NOT NULL DEFAULT 3,
+            free_used INTEGER NOT NULL DEFAULT 0,
+            username TEXT,
+            full_name TEXT,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+
+    c.execute("""
+        CREATE TABLE IF NOT EXISTS payments (
+            id INTEGER PRIMARY KEY,
+            payment_id TEXT UNIQUE NOT NULL,
+            telegram_id INTEGER NOT NULL,
+            pack_id TEXT NOT NULL,
+            videos_count INTEGER NOT NULL,
+            amount INTEGER NOT NULL,
+            status TEXT NOT NULL DEFAULT 'pending',
+            poll_attempts INTEGER NOT NULL DEFAULT 0,
+            last_poll_at DATETIME,
+            last_status TEXT,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (telegram_id) REFERENCES users(telegram_id)
+        )
+    """)
+
+    c.execute("""
+        CREATE TABLE IF NOT EXISTS generations (
+            id INTEGER PRIMARY KEY,
+            telegram_id INTEGER NOT NULL,
+            image_path TEXT NOT NULL,
+            prompt TEXT NOT NULL,
+            status TEXT NOT NULL DEFAULT 'queued',
+            video_path TEXT,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (telegram_id) REFERENCES users(telegram_id)
+        )
+    """)
+
+    c.execute("""
+        CREATE TABLE IF NOT EXISTS queue (
+            id INTEGER PRIMARY KEY,
+            generation_id INTEGER UNIQUE NOT NULL,
+            status TEXT NOT NULL DEFAULT 'queued',
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (generation_id) REFERENCES generations(id)
+        )
+    """)
+
+    conn.commit()
+    conn.close()
+
+    # Подключаемся к обеим БД для миграции
+    old_conn = sqlite3.connect(OLD_DB_PATH)
+    old_conn.row_factory = sqlite3.Row
+    new_conn = sqlite3.connect(DB_PATH)
+
+    old_c = old_conn.cursor()
+    new_c = new_conn.cursor()
+
+    stats = {"users": 0, "payments": 0, "generations": 0, "queue": 0}
+
+    try:
+        # Миграция USERS
+        print(f"[DB-MIGRATION] Миграция users...")
+        old_c.execute("SELECT * FROM users")
+        users = old_c.fetchall()
+
+        for user in users:
+            user_dict = dict(user)
+            new_c.execute("""
+                INSERT INTO users (telegram_id, video_balance, free_remaining, free_used, username, full_name, created_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+            """, (
+                user_dict['telegram_id'],
+                user_dict.get('video_balance', 0),
+                user_dict.get('free_remaining', 0),
+                user_dict.get('free_used', 0),
+                user_dict.get('username'),
+                user_dict.get('full_name'),
+                user_dict.get('created_at')
+            ))
+            stats['users'] += 1
+
+        # Миграция PAYMENTS
+        print(f"[DB-MIGRATION] Миграция payments...")
+        old_c.execute("SELECT * FROM payments")
+        payments = old_c.fetchall()
+
+        for payment in payments:
+            payment_dict = dict(payment)
+            new_c.execute("""
+                INSERT INTO payments (payment_id, telegram_id, pack_id, videos_count, amount, status, poll_attempts, last_poll_at, last_status, created_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """, (
+                payment_dict['payment_id'],
+                payment_dict['telegram_id'],
+                payment_dict['pack_id'],
+                payment_dict['videos_count'],
+                payment_dict['amount'],
+                payment_dict['status'],
+                payment_dict.get('poll_attempts', 0),
+                payment_dict.get('last_poll_at'),
+                payment_dict.get('last_status'),
+                payment_dict.get('created_at')
+            ))
+            stats['payments'] += 1
+
+        # Миграция GENERATIONS
+        print(f"[DB-MIGRATION] Миграция generations...")
+        old_c.execute("SELECT * FROM generations")
+        generations = old_c.fetchall()
+
+        for gen in generations:
+            gen_dict = dict(gen)
+            new_c.execute("""
+                INSERT INTO generations (id, telegram_id, image_path, prompt, status, video_path, created_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+            """, (
+                gen_dict['id'],
+                gen_dict['telegram_id'],
+                gen_dict['image_path'],
+                gen_dict['prompt'],
+                gen_dict['status'],
+                gen_dict.get('video_path'),
+                gen_dict.get('created_at')
+            ))
+            stats['generations'] += 1
+
+        # Миграция QUEUE
+        print(f"[DB-MIGRATION] Миграция queue...")
+        old_c.execute("SELECT * FROM queue")
+        queue_items = old_c.fetchall()
+
+        for item in queue_items:
+            item_dict = dict(item)
+            new_c.execute("""
+                INSERT INTO queue (generation_id, status, created_at)
+                VALUES (?, ?, ?)
+            """, (
+                item_dict['generation_id'],
+                item_dict['status'],
+                item_dict.get('created_at')
+            ))
+            stats['queue'] += 1
+
+        new_conn.commit()
+
+        print(f"[DB-MIGRATION] ✅ АВТОМАТИЧЕСКАЯ МИГРАЦИЯ ЗАВЕРШЕНА")
+        print(f"[DB-MIGRATION] Перенесено: Users={stats['users']}, Payments={stats['payments']}, Generations={stats['generations']}, Queue={stats['queue']}")
+        print(f"[DB-MIGRATION] Старая БД сохранена: {OLD_DB_PATH}")
+
+    except Exception as e:
+        print(f"[DB-MIGRATION] ❌ ОШИБКА МИГРАЦИИ: {e}")
+        import traceback
+        traceback.print_exc()
+        new_conn.rollback()
+        # Удаляем новую БД при ошибке
+        if os.path.exists(DB_PATH):
+            os.remove(DB_PATH)
+
+    finally:
+        old_conn.close()
+        new_conn.close()
+
+
 def init_db():
     """Инициализировать БД со схемой"""
+    # Автоматическая миграция при первом запуске
+    auto_migrate_from_old_db()
+
     conn = get_db()
     c = conn.cursor()
 
