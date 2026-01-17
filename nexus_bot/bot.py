@@ -31,6 +31,8 @@ from db import (
     get_pending_payments,
     update_payment_status,
     update_payment_poll_info,
+    get_or_create_user,
+    update_user_info,
     # Admin statistics
     get_total_users_count,
     get_new_users_today,
@@ -43,6 +45,8 @@ from db import (
     get_recent_generations,
     get_recent_payments,
     get_failed_generations_today,
+    get_all_users,
+    get_all_telegram_ids,
 )
 
 # ========== КОНФИГИ ==========
@@ -127,6 +131,7 @@ class BotStates(StatesGroup):
     viewing_examples = State()
     viewing_tariffs = State()
     waiting_support = State()
+    admin_broadcast = State()  # Состояние для массовой рассылки
 
 
 # ========== ФУНКЦИИ БАЛАНСА ==========
@@ -269,6 +274,11 @@ async def setup_bot():
         """Команда /start - главное меню"""
         user_id = message.from_user.id
         log_event("user_start", user_id)
+
+        # Сохраняем/обновляем username и full_name пользователя
+        username = message.from_user.username
+        full_name = message.from_user.full_name
+        get_or_create_user(user_id, username, full_name)
 
         user_state = state_manager.get_state(user_id)
         total_videos = get_total_videos(user_state)
@@ -1064,6 +1074,7 @@ Payment ID: {payment_id}
             recent_registrations = get_recent_registrations(5)
             recent_generations = get_recent_generations(5)
             recent_payments = get_recent_payments(5)
+            all_users = get_all_users()
 
             # Форматируем отчёт
             admin_report = f"""<b>🛠 АДМИН-ПАНЕЛЬ</b>
@@ -1081,7 +1092,22 @@ Payment ID: {payment_id}
 🟢 Статус бота: <b>ALIVE</b>
 ❌ Ошибок за сегодня: <b>{failed_today}</b>
 
-<b>📋 ПОСЛЕДНИЕ РЕГИСТРАЦИИ:</b>"""
+<b>👥 ВСЕ ЗАРЕГИСТРИРОВАННЫЕ ПОЛЬЗОВАТЕЛИ:</b>"""
+
+            if all_users:
+                for user in all_users:
+                    username = user.get("username")
+                    full_name = user.get("full_name") or "Без имени"
+                    created = user.get("created_at", "N/A")
+
+                    if username:
+                        admin_report += f"\n• @{username} ({full_name}) | ID: <code>{user['telegram_id']}</code> | {created}"
+                    else:
+                        admin_report += f"\n• {full_name} | ID: <code>{user['telegram_id']}</code> | {created}"
+            else:
+                admin_report += "\n• Нет данных"
+
+            admin_report += "\n\n<b>📋 ПОСЛЕДНИЕ РЕГИСТРАЦИИ:</b>"
 
             if recent_registrations:
                 for reg in recent_registrations:
@@ -1111,7 +1137,14 @@ Payment ID: {payment_id}
             else:
                 admin_report += "\n• Нет данных"
 
-            await callback.message.answer(admin_report, parse_mode="HTML")
+            # Inline-кнопка для массовой рассылки
+            broadcast_keyboard = InlineKeyboardMarkup(
+                inline_keyboard=[
+                    [InlineKeyboardButton(text="📢 Массовая рассылка", callback_data="admin_broadcast")]
+                ]
+            )
+
+            await callback.message.answer(admin_report, parse_mode="HTML", reply_markup=broadcast_keyboard)
             await callback.answer("✅ Статистика загружена")
 
         except Exception as e:
@@ -1119,6 +1152,112 @@ Payment ID: {payment_id}
             import traceback
             traceback.print_exc()
             await callback.answer("❌ Ошибка загрузки статистики", show_alert=True)
+
+    @dp.callback_query(F.data == "admin_broadcast")
+    async def callback_admin_broadcast(callback: types.CallbackQuery, state: FSMContext):
+        """Обработчик: Начать массовую рассылку (только для админа)"""
+        user_id = callback.from_user.id
+        chat_id = callback.message.chat.id
+
+        # Строгая проверка: только админ
+        admin_chat_id = os.getenv("TELEGRAM_BOT_ADMIN_CHAT_ID")
+        if not admin_chat_id or str(chat_id) != str(admin_chat_id):
+            await callback.answer("❌ Доступ запрещён", show_alert=True)
+            return
+
+        log_event("admin_broadcast_initiated", user_id)
+
+        total_users = get_total_users_count()
+
+        await callback.message.answer(
+            f"""📢 <b>МАССОВАЯ РАССЫЛКА</b>
+
+Всего пользователей: <b>{total_users}</b>
+
+Отправь текст сообщения, которое нужно разослать всем пользователям.
+
+⚠️ Рассылка начнётся сразу после отправки текста!
+
+Для отмены отправь: <code>/cancel</code>""",
+            parse_mode="HTML",
+            reply_markup=ReplyKeyboardMarkup(
+                keyboard=[[KeyboardButton(text="❌ Отмена")]],
+                resize_keyboard=True,
+            ),
+        )
+
+        await state.set_state(BotStates.admin_broadcast)
+        await callback.answer()
+
+    @dp.message(StateFilter(BotStates.admin_broadcast))
+    async def msg_admin_broadcast(message: types.Message, state: FSMContext):
+        """Обработчик: Получить текст для массовой рассылки и отправить всем"""
+        user_id = message.from_user.id
+        chat_id = message.chat.id
+
+        # Строгая проверка: только админ
+        admin_chat_id = os.getenv("TELEGRAM_BOT_ADMIN_CHAT_ID")
+        if not admin_chat_id or str(chat_id) != str(admin_chat_id):
+            await message.answer("❌ Доступ запрещён")
+            await state.clear()
+            return
+
+        # Проверка на отмену
+        if message.text in ["❌ Отмена", "/cancel"]:
+            await message.answer(
+                "❌ Массовая рассылка отменена",
+                reply_markup=get_main_menu_keyboard()
+            )
+            await state.set_state(BotStates.main_menu)
+            return
+
+        broadcast_text = message.text
+        log_event("admin_broadcast_started", user_id, {"text_length": len(broadcast_text)})
+
+        # Получаем всех пользователей
+        all_user_ids = get_all_telegram_ids()
+        total = len(all_user_ids)
+
+        await message.answer(
+            f"📢 Начинаю рассылку для {total} пользователей...",
+            reply_markup=ReplyKeyboardMarkup(
+                keyboard=[[KeyboardButton(text="🏠 В меню")]],
+                resize_keyboard=True,
+            ),
+        )
+
+        # Рассылка
+        success_count = 0
+        failed_count = 0
+
+        for target_user_id in all_user_ids:
+            try:
+                await bot.send_message(target_user_id, broadcast_text)
+                success_count += 1
+                # Небольшая задержка чтобы не словить rate limit от Telegram
+                await asyncio.sleep(0.05)
+            except Exception as e:
+                failed_count += 1
+                print(f"[BROADCAST] Failed to send to {target_user_id}: {e}")
+
+        # Отчёт
+        await message.answer(
+            f"""✅ <b>РАССЫЛКА ЗАВЕРШЕНА</b>
+
+📤 Отправлено: <b>{success_count}</b>
+❌ Ошибок: <b>{failed_count}</b>
+👥 Всего: <b>{total}</b>""",
+            parse_mode="HTML",
+            reply_markup=get_main_menu_keyboard()
+        )
+
+        log_event("admin_broadcast_completed", user_id, {
+            "total": total,
+            "success": success_count,
+            "failed": failed_count
+        })
+
+        await state.set_state(BotStates.main_menu)
 
     return bot, dp
 
