@@ -26,7 +26,7 @@ from state import state_manager
 from video_engine import start_video_engine, video_engine
 from minimax import minimax_client
 from payments import process_webhook, log_payment
-from db import init_db, confirm_payment, get_payment
+from db import init_db, confirm_payment, get_payment, update_generation_status
 
 
 # Глобальные переменные для задач
@@ -193,6 +193,13 @@ async def minimax_callback(request: Request):
                     "minimax_file_id": file_id,
                     "completed_at": datetime.now(),
                 })
+
+                # Обновляем в БД
+                db_id = video_engine._generation_status[generation_id].get("db_id")
+                if db_id:
+                    update_generation_status(db_id, "done", video_path)
+                    print(f"[MINIMAX-CALLBACK] ✅ Generation saved to DB: db_id={db_id}")
+
                 print(f"[MINIMAX-CALLBACK] ✅ Generation complete: {generation_id}")
             else:
                 print(f"[MINIMAX-CALLBACK] ⚠️ Generation not found in status dict: {generation_id}")
