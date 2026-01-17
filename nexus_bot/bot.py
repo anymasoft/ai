@@ -1226,13 +1226,30 @@ Payment ID: {payment_id}
             ),
         )
 
+        # Формируем красивое маркетинговое сообщение
+        formatted_message = f"""🎬 <b>Привет!</b>
+
+Тебе пишет <b>NexusBot</b> — твой помощник в создании видео для маркетплейсов.
+
+━━━━━━━━━━━━━━━━━━━━━━━━
+
+{broadcast_text}
+
+━━━━━━━━━━━━━━━━━━━━━━━━
+
+💬 <i>Если есть вопросы — пиши в поддержку через кнопку "📞 Поддержка"</i>"""
+
         # Рассылка
         success_count = 0
         failed_count = 0
 
         for target_user_id in all_user_ids:
             try:
-                await bot.send_message(target_user_id, broadcast_text)
+                await bot.send_message(
+                    target_user_id,
+                    formatted_message,
+                    parse_mode="HTML"
+                )
                 success_count += 1
                 # Небольшая задержка чтобы не словить rate limit от Telegram
                 await asyncio.sleep(0.05)
