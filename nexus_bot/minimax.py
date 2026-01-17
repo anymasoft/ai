@@ -129,13 +129,13 @@ class MinimaxVideoClient:
 
             # Формируем payload согласно OpenAPI спецификации
             # https://platform.minimax.io/docs/api-reference/video-generation/image-to-video
+            # ВАЖНО: prompt_optimizer НЕ указываем (как в Astro) - используется default от MiniMax API
             payload = {
                 "model": MINIMAX_MODEL,
                 "first_frame_image": image_data_url,
                 "prompt": prompt,
                 "duration": duration,
                 "resolution": "768P",
-                "prompt_optimizer": False,  # Отключаем оптимизатор (у нас уже есть prompt_enhancer)
             }
 
             # Добавляем callback_url если он сконфигурирован
@@ -153,7 +153,6 @@ class MinimaxVideoClient:
             print(f"[MINIMAX]   - prompt: {payload['prompt'][:100]}...")
             print(f"[MINIMAX]   - duration: {payload['duration']} sec")
             print(f"[MINIMAX]   - resolution: {payload['resolution']}")
-            print(f"[MINIMAX]   - prompt_optimizer: {payload['prompt_optimizer']}")
             print(f"[MINIMAX]   - callback_url: {payload.get('callback_url', 'NOT SET!')}")
 
             print(f"[MINIMAX] Sending request...")
