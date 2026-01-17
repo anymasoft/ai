@@ -13,6 +13,7 @@ from prompts import prompt_enhancer
 from director import camera_director
 from minimax import minimax_client
 from generation_queue import queue, QueueItem
+from db import create_generation, update_generation_status
 
 print("[VIDEO-ENGINE] Initializing...")
 
@@ -76,10 +77,19 @@ class VideoEngine:
 
             await queue.enqueue(queue_item)
 
-            # Сохраняем status
+            # Сохраняем в БД
+            db_generation_id = create_generation(
+                telegram_id=user_id,
+                image_path=photo_path,
+                prompt=prompt_text
+            )
+            print(f"[ENGINE] Generation saved to DB: db_id={db_generation_id}")
+
+            # Сохраняем status в памяти
             self._generation_status[generation_id] = {
                 "status": "queued",
                 "user_id": user_id,
+                "db_id": db_generation_id,  # ID из БД
                 "created_at": datetime.now(),
                 "prompt": prompt_text,
                 "prompt_enhanced": enhanced_prompt,
@@ -143,8 +153,13 @@ class VideoEngine:
         try:
             print(f"[ENGINE] Processing generation: {gen_id}")
 
-            # Обновляем статус
+            # Обновляем статус в памяти и БД
             self._generation_status[gen_id]["status"] = "processing"
+
+            # Обновляем в БД
+            db_id = self._generation_status[gen_id].get("db_id")
+            if db_id:
+                update_generation_status(db_id, "processing")
 
             # Фаза 3: Вызов MiniMax (отправляем запрос с callback_url)
             # MiniMax вернет task_id, который мы сохраняем в маппинге
@@ -181,6 +196,11 @@ class VideoEngine:
                 "status": "failed",
                 "error": str(e),
             })
+
+            # Обновляем в БД
+            db_id = self._generation_status[gen_id].get("db_id")
+            if db_id:
+                update_generation_status(db_id, "failed")
 
     # ============ STATUS TRACKING ============
 
