@@ -1320,7 +1320,7 @@ Payment ID: {payment_id}
                     # Статистика
                     gens_count = user.get("generations_count", 0)
                     pays_count = user.get("payments_count", 0)
-                    pays_total = user.get("payments_total", 0) // 100  # копейки → рубли
+                    pays_total = user.get("payments_total", 0)  # в рублях
 
                     # Формируем строку
                     user_display = f"@{username}" if username else full_name

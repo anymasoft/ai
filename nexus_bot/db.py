@@ -407,7 +407,7 @@ def get_all_users_with_stats() -> List[Dict[str, Any]]:
     - video_balance, free_remaining (общий баланс)
     - generations_count (количество генераций)
     - payments_count (количество платежей)
-    - payments_total (общая сумма платежей в копейках)
+    - payments_total (общая сумма платежей в рублях)
     """
     conn = get_db()
     c = conn.cursor()
@@ -437,7 +437,7 @@ def get_all_users_with_stats() -> List[Dict[str, Any]]:
         """, (telegram_id,))
         payment_row = c.fetchone()
         user['payments_count'] = payment_row[0] or 0
-        user['payments_total'] = payment_row[1] or 0  # в копейках
+        user['payments_total'] = payment_row[1] or 0  # в рублях
 
     conn.close()
     return users
