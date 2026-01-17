@@ -50,6 +50,17 @@ def init_db():
         )
     """)
 
+    # Миграция: добавить username и full_name в users (если их нет)
+    try:
+        c.execute("ALTER TABLE users ADD COLUMN username TEXT")
+    except:
+        pass  # Колонка уже существует
+
+    try:
+        c.execute("ALTER TABLE users ADD COLUMN full_name TEXT")
+    except:
+        pass
+
     # Миграция: добавить поля для anti-spam polling (если их нет)
     try:
         c.execute("ALTER TABLE payments ADD COLUMN poll_attempts INTEGER NOT NULL DEFAULT 0")
@@ -97,8 +108,8 @@ def init_db():
 
 # ============ USERS ============
 
-def get_or_create_user(telegram_id: int) -> Dict[str, Any]:
-    """Получить или создать пользователя"""
+def get_or_create_user(telegram_id: int, username: str = None, full_name: str = None) -> Dict[str, Any]:
+    """Получить или создать пользователя (с обновлением username и full_name)"""
     conn = get_db()
     c = conn.cursor()
 
@@ -106,13 +117,16 @@ def get_or_create_user(telegram_id: int) -> Dict[str, Any]:
     row = c.fetchone()
 
     if row:
+        # Обновляем username и full_name если они переданы
+        if username is not None or full_name is not None:
+            update_user_info(telegram_id, username, full_name)
         conn.close()
         return dict(row)
 
     # Создать нового
     c.execute(
-        "INSERT INTO users (telegram_id) VALUES (?)",
-        (telegram_id,)
+        "INSERT INTO users (telegram_id, username, full_name) VALUES (?, ?, ?)",
+        (telegram_id, username, full_name)
     )
     conn.commit()
 
@@ -130,6 +144,58 @@ def get_user(telegram_id: int) -> Optional[Dict[str, Any]]:
     row = c.fetchone()
     conn.close()
     return dict(row) if row else None
+
+
+def update_user_info(telegram_id: int, username: str = None, full_name: str = None) -> bool:
+    """Обновить username и full_name пользователя"""
+    conn = get_db()
+    c = conn.cursor()
+
+    try:
+        if username is not None and full_name is not None:
+            c.execute(
+                "UPDATE users SET username = ?, full_name = ? WHERE telegram_id = ?",
+                (username, full_name, telegram_id)
+            )
+        elif username is not None:
+            c.execute(
+                "UPDATE users SET username = ? WHERE telegram_id = ?",
+                (username, telegram_id)
+            )
+        elif full_name is not None:
+            c.execute(
+                "UPDATE users SET full_name = ? WHERE telegram_id = ?",
+                (full_name, telegram_id)
+            )
+
+        conn.commit()
+        conn.close()
+        return True
+
+    except Exception as e:
+        conn.close()
+        print(f"[DB] Error updating user info: {e}")
+        return False
+
+
+def get_all_users() -> List[Dict[str, Any]]:
+    """Получить всех пользователей"""
+    conn = get_db()
+    c = conn.cursor()
+    c.execute("SELECT telegram_id, username, full_name, created_at FROM users ORDER BY created_at DESC")
+    rows = c.fetchall()
+    conn.close()
+    return [dict(row) for row in rows]
+
+
+def get_all_telegram_ids() -> List[int]:
+    """Получить список всех telegram_id для массовой рассылки"""
+    conn = get_db()
+    c = conn.cursor()
+    c.execute("SELECT telegram_id FROM users")
+    rows = c.fetchall()
+    conn.close()
+    return [row[0] for row in rows]
 
 
 def get_total_videos(telegram_id: int) -> int:
