@@ -6,7 +6,7 @@ SQLite БД для persistence
 import sqlite3
 import os
 from datetime import datetime
-from typing import Optional, List, Dict, Any
+from typing import Optional, List, Dict, Any, Tuple
 
 DB_PATH = os.path.join(os.path.dirname(__file__), "sqlite.db")
 
@@ -108,7 +108,7 @@ def init_db():
 
 # ============ USERS ============
 
-def get_or_create_user(telegram_id: int, username: str = None, full_name: str = None) -> tuple[Dict[str, Any], bool]:
+def get_or_create_user(telegram_id: int, username: str = None, full_name: str = None) -> Tuple[Dict[str, Any], bool]:
     """
     Получить или создать пользователя (с обновлением username и full_name)
     Возвращает: (user, is_new) где is_new=True если пользователь только что создан
