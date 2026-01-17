@@ -552,3 +552,145 @@ def fail_generation(generation_id: int) -> bool:
         conn.close()
         print(f"[DB] Error failing generation: {e}")
         return False
+
+
+# ============ ADMIN STATISTICS ============
+
+def get_total_users_count() -> int:
+    """Получить общее количество пользователей"""
+    conn = get_db()
+    c = conn.cursor()
+    c.execute("SELECT COUNT(*) FROM users")
+    count = c.fetchone()[0]
+    conn.close()
+    return count
+
+
+def get_new_users_today() -> int:
+    """Получить количество новых пользователей за сегодня"""
+    conn = get_db()
+    c = conn.cursor()
+    c.execute("""
+        SELECT COUNT(*) FROM users
+        WHERE DATE(created_at) = DATE('now')
+    """)
+    count = c.fetchone()[0]
+    conn.close()
+    return count
+
+
+def get_total_generations_count() -> int:
+    """Получить общее количество генераций"""
+    conn = get_db()
+    c = conn.cursor()
+    c.execute("SELECT COUNT(*) FROM generations")
+    count = c.fetchone()[0]
+    conn.close()
+    return count
+
+
+def get_generations_today() -> int:
+    """Получить количество генераций за сегодня"""
+    conn = get_db()
+    c = conn.cursor()
+    c.execute("""
+        SELECT COUNT(*) FROM generations
+        WHERE DATE(created_at) = DATE('now')
+    """)
+    count = c.fetchone()[0]
+    conn.close()
+    return count
+
+
+def get_paying_users_count() -> int:
+    """Получить количество платящих пользователей (у кого есть succeeded платежи)"""
+    conn = get_db()
+    c = conn.cursor()
+    c.execute("""
+        SELECT COUNT(DISTINCT telegram_id) FROM payments
+        WHERE status = 'succeeded'
+    """)
+    count = c.fetchone()[0]
+    conn.close()
+    return count
+
+
+def get_total_revenue() -> int:
+    """Получить общую выручку (сумма всех succeeded платежей)"""
+    conn = get_db()
+    c = conn.cursor()
+    c.execute("""
+        SELECT COALESCE(SUM(amount), 0) FROM payments
+        WHERE status = 'succeeded'
+    """)
+    revenue = c.fetchone()[0]
+    conn.close()
+    return revenue
+
+
+def get_revenue_today() -> int:
+    """Получить выручку за сегодня"""
+    conn = get_db()
+    c = conn.cursor()
+    c.execute("""
+        SELECT COALESCE(SUM(amount), 0) FROM payments
+        WHERE status = 'succeeded' AND DATE(created_at) = DATE('now')
+    """)
+    revenue = c.fetchone()[0]
+    conn.close()
+    return revenue
+
+
+def get_recent_registrations(limit: int = 5) -> List[Dict[str, Any]]:
+    """Получить последние регистрации"""
+    conn = get_db()
+    c = conn.cursor()
+    c.execute("""
+        SELECT telegram_id, created_at FROM users
+        ORDER BY created_at DESC
+        LIMIT ?
+    """, (limit,))
+    rows = c.fetchall()
+    conn.close()
+    return [dict(row) for row in rows]
+
+
+def get_recent_generations(limit: int = 5) -> List[Dict[str, Any]]:
+    """Получить последние генерации"""
+    conn = get_db()
+    c = conn.cursor()
+    c.execute("""
+        SELECT telegram_id, status, created_at FROM generations
+        ORDER BY created_at DESC
+        LIMIT ?
+    """, (limit,))
+    rows = c.fetchall()
+    conn.close()
+    return [dict(row) for row in rows]
+
+
+def get_recent_payments(limit: int = 5) -> List[Dict[str, Any]]:
+    """Получить последние платежи"""
+    conn = get_db()
+    c = conn.cursor()
+    c.execute("""
+        SELECT telegram_id, amount, status, created_at FROM payments
+        ORDER BY created_at DESC
+        LIMIT ?
+    """, (limit,))
+    rows = c.fetchall()
+    conn.close()
+    return [dict(row) for row in rows]
+
+
+def get_failed_generations_today() -> int:
+    """Получить количество ошибок генерации за сегодня"""
+    conn = get_db()
+    c = conn.cursor()
+    c.execute("""
+        SELECT COUNT(*) FROM generations
+        WHERE status = 'failed' AND DATE(created_at) = DATE('now')
+    """)
+    count = c.fetchone()[0]
+    conn.close()
+    return count

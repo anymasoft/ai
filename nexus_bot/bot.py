@@ -16,14 +16,34 @@ from datetime import datetime
 from pathlib import Path
 from aiogram import Bot, Dispatcher, types, F
 from aiogram.filters import Command, StateFilter
-from aiogram.types import ReplyKeyboardMarkup, KeyboardButton, FSInputFile
+from aiogram.types import ReplyKeyboardMarkup, KeyboardButton, FSInputFile, InlineKeyboardMarkup, InlineKeyboardButton
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 
 from state import state_manager
 from video_engine import video_engine
 from payments import create_payment, log_payment, get_payment_status
-from db import deduct_video as db_deduct_video, add_video_pack as db_add_video_pack, refund_video as db_refund_video, confirm_payment as db_confirm_payment, get_pending_payments, update_payment_status, update_payment_poll_info
+from db import (
+    deduct_video as db_deduct_video,
+    add_video_pack as db_add_video_pack,
+    refund_video as db_refund_video,
+    confirm_payment as db_confirm_payment,
+    get_pending_payments,
+    update_payment_status,
+    update_payment_poll_info,
+    # Admin statistics
+    get_total_users_count,
+    get_new_users_today,
+    get_total_generations_count,
+    get_generations_today,
+    get_paying_users_count,
+    get_total_revenue,
+    get_revenue_today,
+    get_recent_registrations,
+    get_recent_generations,
+    get_recent_payments,
+    get_failed_generations_today,
+)
 
 # ========== КОНФИГИ ==========
 TEMP_DIR = Path("/tmp/telegram-bot")
@@ -530,8 +550,11 @@ async def setup_bot():
         user_id = message.from_user.id
         log_event("support_click", user_id)
 
-        await message.answer(
-            """📞 ТЕХПОДДЕРЖКА
+        # Проверка: является ли пользователь админом
+        admin_chat_id = os.getenv("TELEGRAM_BOT_ADMIN_CHAT_ID")
+        is_admin = admin_chat_id and str(message.chat.id) == str(admin_chat_id)
+
+        support_text = """📞 ТЕХПОДДЕРЖКА
 
 Напишите ваш вопрос или проблему, и мы вам ответим в течение 24 часов.
 
@@ -541,12 +564,36 @@ async def setup_bot():
 • Пожелание или идею
 • Любой другой вопрос
 
-Просто отправьте сообщение текстом.""",
-            reply_markup=ReplyKeyboardMarkup(
-                keyboard=[[KeyboardButton(text="❌ Отмена")]],
-                resize_keyboard=True,
-            ),
-        )
+Просто отправьте сообщение текстом."""
+
+        # Если пользователь - админ, показываем inline-кнопку админки
+        if is_admin:
+            inline_keyboard = InlineKeyboardMarkup(
+                inline_keyboard=[
+                    [InlineKeyboardButton(text="🛠 Админка", callback_data="admin_panel")]
+                ]
+            )
+            await message.answer(
+                support_text,
+                reply_markup=ReplyKeyboardMarkup(
+                    keyboard=[[KeyboardButton(text="❌ Отмена")]],
+                    resize_keyboard=True,
+                ),
+            )
+            await message.answer(
+                "🔐 <b>Режим администратора</b>",
+                parse_mode="HTML",
+                reply_markup=inline_keyboard,
+            )
+        else:
+            await message.answer(
+                support_text,
+                reply_markup=ReplyKeyboardMarkup(
+                    keyboard=[[KeyboardButton(text="❌ Отмена")]],
+                    resize_keyboard=True,
+                ),
+            )
+
         await state.set_state(BotStates.waiting_support)
 
     @dp.message(StateFilter(BotStates.waiting_support))
@@ -986,6 +1033,92 @@ Payment ID: {payment_id}
             reply_markup=get_main_menu_keyboard(),
         )
         await state.set_state(BotStates.main_menu)
+
+    # ========== ADMIN CALLBACK HANDLERS ==========
+
+    @dp.callback_query(F.data == "admin_panel")
+    async def callback_admin_panel(callback: types.CallbackQuery):
+        """Обработчик: Админка (только для админа)"""
+        user_id = callback.from_user.id
+        chat_id = callback.message.chat.id
+
+        # Строгая проверка: только админ
+        admin_chat_id = os.getenv("TELEGRAM_BOT_ADMIN_CHAT_ID")
+        if not admin_chat_id or str(chat_id) != str(admin_chat_id):
+            await callback.answer("❌ Доступ запрещён", show_alert=True)
+            return
+
+        log_event("admin_panel_opened", user_id)
+
+        # Собираем статистику
+        try:
+            total_users = get_total_users_count()
+            new_users_today = get_new_users_today()
+            total_generations = get_total_generations_count()
+            generations_today = get_generations_today()
+            paying_users = get_paying_users_count()
+            total_revenue = get_total_revenue()
+            revenue_today = get_revenue_today()
+            failed_today = get_failed_generations_today()
+
+            recent_registrations = get_recent_registrations(5)
+            recent_generations = get_recent_generations(5)
+            recent_payments = get_recent_payments(5)
+
+            # Форматируем отчёт
+            admin_report = f"""<b>🛠 АДМИН-ПАНЕЛЬ</b>
+
+<b>📊 СТАТИСТИКА:</b>
+👤 Всего пользователей: <b>{total_users}</b>
+🆕 Новых за сегодня: <b>{new_users_today}</b>
+🎬 Всего генераций: <b>{total_generations}</b>
+🎬 Генераций за сегодня: <b>{generations_today}</b>
+💳 Платящих пользователей: <b>{paying_users}</b>
+💰 Общая выручка: <b>{total_revenue} ₽</b>
+💰 Выручка за сегодня: <b>{revenue_today} ₽</b>
+
+<b>⚙️ ТЕХНИКА:</b>
+🟢 Статус бота: <b>ALIVE</b>
+❌ Ошибок за сегодня: <b>{failed_today}</b>
+
+<b>📋 ПОСЛЕДНИЕ РЕГИСТРАЦИИ:</b>"""
+
+            if recent_registrations:
+                for reg in recent_registrations:
+                    created = reg.get("created_at", "N/A")
+                    admin_report += f"\n• ID: <code>{reg['telegram_id']}</code> | {created}"
+            else:
+                admin_report += "\n• Нет данных"
+
+            admin_report += "\n\n<b>🎬 ПОСЛЕДНИЕ ГЕНЕРАЦИИ:</b>"
+            if recent_generations:
+                for gen in recent_generations:
+                    status = gen.get("status", "unknown")
+                    created = gen.get("created_at", "N/A")
+                    status_emoji = "✅" if status == "done" else "⏳" if status in ["queued", "processing"] else "❌"
+                    admin_report += f"\n• {status_emoji} ID: <code>{gen['telegram_id']}</code> | {status} | {created}"
+            else:
+                admin_report += "\n• Нет данных"
+
+            admin_report += "\n\n<b>💳 ПОСЛЕДНИЕ ПЛАТЕЖИ:</b>"
+            if recent_payments:
+                for payment in recent_payments:
+                    amount = payment.get("amount", 0)
+                    status = payment.get("status", "unknown")
+                    created = payment.get("created_at", "N/A")
+                    status_emoji = "✅" if status == "succeeded" else "⏳" if status == "pending" else "❌"
+                    admin_report += f"\n• {status_emoji} ID: <code>{payment['telegram_id']}</code> | {amount} ₽ | {status} | {created}"
+            else:
+                admin_report += "\n• Нет данных"
+
+            await callback.message.answer(admin_report, parse_mode="HTML")
+            await callback.answer("✅ Статистика загружена")
+
+        except Exception as e:
+            print(f"[ADMIN] Error loading admin panel: {e}")
+            import traceback
+            traceback.print_exc()
+            await callback.answer("❌ Ошибка загрузки статистики", show_alert=True)
 
     return bot, dp
 
