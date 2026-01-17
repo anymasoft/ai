@@ -33,6 +33,7 @@ from db import (
     update_payment_poll_info,
     get_or_create_user,
     update_user_info,
+    get_user,
     # Admin statistics
     get_total_users_count,
     get_new_users_today,
@@ -69,6 +70,74 @@ TARIFFS = {
     "seller": {"videos": 20, "price": 1490, "label": "Seller"},
     "pro": {"videos": 50, "price": 2990, "label": "Pro"},
 }
+
+
+async def notify_admin_payment_created(bot, user_id: int, username: str, full_name: str, pack_id: str, payment_id: str, amount: int):
+    """
+    Уведомление админу о создании платежа (начало оплаты)
+    ВАЖНО: В try-except чтобы не сломать основной flow
+    """
+    admin_chat_id = os.getenv("TELEGRAM_BOT_ADMIN_CHAT_ID")
+    if not admin_chat_id:
+        return
+
+    try:
+        username_display = f"@{username}" if username else "без username"
+        full_name_display = full_name or "Без имени"
+        pack_label = TARIFFS.get(pack_id, {}).get("label", pack_id.upper())
+        videos_count = TARIFFS.get(pack_id, {}).get("videos", "?")
+
+        await bot.send_message(
+            admin_chat_id,
+            f"""💳 <b>НАЧАЛО ОПЛАТЫ</b>
+
+👤 Пользователь: <b>{full_name_display}</b>
+📱 Username: {username_display}
+🆔 ID: <code>{user_id}</code>
+
+📦 Пакет: <b>{pack_label}</b> ({videos_count} видео)
+💰 Сумма: <b>{amount} ₽</b>
+🔑 Payment ID: <code>{payment_id}</code>
+
+🔄 Пользователь перешел на страницу оплаты ЮКасса""",
+            parse_mode="HTML"
+        )
+    except Exception as e:
+        print(f"[ADMIN-NOTIFY] Failed to send payment created notification: {e}")
+
+
+async def notify_admin_payment_succeeded(bot, user_id: int, username: str, full_name: str, pack_id: str, payment_id: str, amount: int, videos_count: int):
+    """
+    Уведомление админу об успешной оплате
+    ВАЖНО: В try-except чтобы не сломать основной flow
+    """
+    admin_chat_id = os.getenv("TELEGRAM_BOT_ADMIN_CHAT_ID")
+    if not admin_chat_id:
+        return
+
+    try:
+        username_display = f"@{username}" if username else "без username"
+        full_name_display = full_name or "Без имени"
+        pack_label = TARIFFS.get(pack_id, {}).get("label", pack_id.upper())
+
+        await bot.send_message(
+            admin_chat_id,
+            f"""✅ <b>ПЛАТЁЖ УСПЕШЕН!</b>
+
+👤 Пользователь: <b>{full_name_display}</b>
+📱 Username: {username_display}
+🆔 ID: <code>{user_id}</code>
+
+📦 Пакет: <b>{pack_label}</b>
+🎁 Зачислено: <b>{videos_count} видео</b>
+💰 Оплачено: <b>{amount} ₽</b>
+🔑 Payment ID: <code>{payment_id}</code>
+
+💸 Деньги получены!""",
+            parse_mode="HTML"
+        )
+    except Exception as e:
+        print(f"[ADMIN-NOTIFY] Failed to send payment succeeded notification: {e}")
 
 
 def get_user_photo_path(user_id: int) -> str:
@@ -972,6 +1041,17 @@ async def setup_bot():
         user_state.pending_payment_timestamp = datetime.now()
         print(f"[TG] Payment {payment_id} saved to state for polling (user {user_id})")
 
+        # Уведомление админу о начале оплаты
+        await notify_admin_payment_created(
+            bot,
+            user_id,
+            message.from_user.username,
+            message.from_user.full_name,
+            "starter",
+            payment_id,
+            TARIFFS["starter"]["price"]
+        )
+
         await message.answer(
             f"""✅ Платёж создан!
 
@@ -1013,6 +1093,17 @@ Payment ID: {payment_id}
         user_state.pending_payment_timestamp = datetime.now()
         print(f"[TG] Payment {payment_id} saved to state for polling (user {user_id})")
 
+        # Уведомление админу о начале оплаты
+        await notify_admin_payment_created(
+            bot,
+            user_id,
+            message.from_user.username,
+            message.from_user.full_name,
+            "seller",
+            payment_id,
+            TARIFFS["seller"]["price"]
+        )
+
         await message.answer(
             f"""✅ Платёж создан!
 
@@ -1053,6 +1144,17 @@ Payment ID: {payment_id}
         user_state.pending_payment_id = payment_id
         user_state.pending_payment_timestamp = datetime.now()
         print(f"[TG] Payment {payment_id} saved to state for polling (user {user_id})")
+
+        # Уведомление админу о начале оплаты
+        await notify_admin_payment_created(
+            bot,
+            user_id,
+            message.from_user.username,
+            message.from_user.full_name,
+            "pro",
+            payment_id,
+            TARIFFS["pro"]["price"]
+        )
 
         await message.answer(
             f"""✅ Платёж создан!
@@ -1437,6 +1539,25 @@ async def check_pending_payments(bot: Bot):
                             )
                         except:
                             pass
+
+                        # Уведомление админу об успешной оплате
+                        try:
+                            user_data = get_user(user_id)
+                            if user_data:
+                                pack_id = payment.get("pack_id", "unknown")
+                                amount = payment.get("amount", 0) // 100  # Конвертируем копейки в рубли
+                                await notify_admin_payment_succeeded(
+                                    bot,
+                                    user_id,
+                                    user_data.get("username"),
+                                    user_data.get("full_name"),
+                                    pack_id,
+                                    payment_id,
+                                    amount,
+                                    videos_count
+                                )
+                        except Exception as e:
+                            print(f"[ADMIN-NOTIFY] Error sending payment succeeded notification: {e}")
 
                         if user_id in state_manager.states:
                             state = state_manager.states[user_id]
