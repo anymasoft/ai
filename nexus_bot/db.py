@@ -397,6 +397,52 @@ def get_all_telegram_ids() -> List[int]:
     return [row[0] for row in rows]
 
 
+def get_all_users_with_stats() -> List[Dict[str, Any]]:
+    """
+    Получить всех пользователей со статистикой для админки
+    БЕЗОПАСНО: только SELECT запросы, БД не меняем
+
+    Возвращает для каждого пользователя:
+    - telegram_id, username, full_name
+    - video_balance, free_remaining (общий баланс)
+    - generations_count (количество генераций)
+    - payments_count (количество платежей)
+    - payments_total (общая сумма платежей в рублях)
+    """
+    conn = get_db()
+    c = conn.cursor()
+
+    # Получаем пользователей с балансом
+    c.execute("""
+        SELECT telegram_id, username, full_name, video_balance, free_remaining
+        FROM users
+        ORDER BY created_at DESC
+    """)
+    users = [dict(row) for row in c.fetchall()]
+
+    # Для каждого пользователя добавляем статистику
+    for user in users:
+        telegram_id = user['telegram_id']
+
+        # Считаем количество генераций
+        c.execute("SELECT COUNT(*) as count FROM generations WHERE telegram_id = ?", (telegram_id,))
+        gen_count = c.fetchone()[0]
+        user['generations_count'] = gen_count
+
+        # Считаем платежи (только succeeded)
+        c.execute("""
+            SELECT COUNT(*) as count, COALESCE(SUM(amount), 0) as total
+            FROM payments
+            WHERE telegram_id = ? AND status = 'succeeded'
+        """, (telegram_id,))
+        payment_row = c.fetchone()
+        user['payments_count'] = int(payment_row[0] or 0)
+        user['payments_total'] = int(payment_row[1] or 0)  # в рублях, гарантированно число
+
+    conn.close()
+    return users
+
+
 def get_total_videos(telegram_id: int) -> int:
     """Получить общее количество видео (свободных + оплаченных)"""
     user = get_user(telegram_id)

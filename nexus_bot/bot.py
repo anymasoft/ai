@@ -47,6 +47,7 @@ from db import (
     get_recent_payments,
     get_failed_generations_today,
     get_all_users,
+    get_all_users_with_stats,
     get_all_telegram_ids,
 )
 
@@ -1284,10 +1285,8 @@ Payment ID: {payment_id}
             revenue_today = get_revenue_today()
             failed_today = get_failed_generations_today()
 
-            recent_registrations = get_recent_registrations(5)
-            recent_generations = get_recent_generations(5)
             recent_payments = get_recent_payments(5)
-            all_users = get_all_users()
+            all_users_stats = get_all_users_with_stats()
 
             # Форматируем отчёт
             admin_report = f"""<b>🛠 АДМИН-ПАНЕЛЬ</b>
@@ -1307,35 +1306,35 @@ Payment ID: {payment_id}
 
 <b>👥 ВСЕ ЗАРЕГИСТРИРОВАННЫЕ ПОЛЬЗОВАТЕЛИ:</b>"""
 
-            if all_users:
-                for user in all_users:
+            if all_users_stats:
+                for user in all_users_stats:
                     username = user.get("username")
                     full_name = user.get("full_name") or "Без имени"
-                    created = user.get("created_at", "N/A")
+                    telegram_id = user['telegram_id']
 
-                    if username:
-                        admin_report += f"\n• @{username} ({full_name}) | ID: <code>{user['telegram_id']}</code> | {created}"
+                    # Баланс (защита от NULL)
+                    video_balance = int(user.get("video_balance") or 0)
+                    free_remaining = int(user.get("free_remaining") or 0)
+                    total_balance = video_balance + free_remaining
+
+                    # Статистика (защита от NULL)
+                    gens_count = int(user.get("generations_count") or 0)
+                    pays_count = int(user.get("payments_count") or 0)
+                    pays_total = int(user.get("payments_total") or 0)  # в рублях
+
+                    # Формируем строку (защита от None в username)
+                    if username and username.strip():
+                        user_display = f"@{username}"
                     else:
-                        admin_report += f"\n• {full_name} | ID: <code>{user['telegram_id']}</code> | {created}"
-            else:
-                admin_report += "\n• Нет данных"
+                        user_display = full_name
 
-            admin_report += "\n\n<b>📋 ПОСЛЕДНИЕ РЕГИСТРАЦИИ:</b>"
+                    balance_text = f"💎 {total_balance}"
+                    stats_text = f"🎬 {gens_count}"
 
-            if recent_registrations:
-                for reg in recent_registrations:
-                    created = reg.get("created_at", "N/A")
-                    admin_report += f"\n• ID: <code>{reg['telegram_id']}</code> | {created}"
-            else:
-                admin_report += "\n• Нет данных"
+                    if pays_count > 0:
+                        stats_text += f" | 💳 {pays_count} ({pays_total}₽)"
 
-            admin_report += "\n\n<b>🎬 ПОСЛЕДНИЕ ГЕНЕРАЦИИ:</b>"
-            if recent_generations:
-                for gen in recent_generations:
-                    status = gen.get("status", "unknown")
-                    created = gen.get("created_at", "N/A")
-                    status_emoji = "✅" if status == "done" else "⏳" if status in ["queued", "processing"] else "❌"
-                    admin_report += f"\n• {status_emoji} ID: <code>{gen['telegram_id']}</code> | {status} | {created}"
+                    admin_report += f"\n• {user_display} | ID: <code>{telegram_id}</code> | {balance_text} | {stats_text}"
             else:
                 admin_report += "\n• Нет данных"
 
