@@ -1010,7 +1010,8 @@
 
                 const article = await response.json();
                 console.log(`[PLAN_GEN] Успешно получен план: ${article.id} - ${article.title}`);
-                console.log(`[PLAN_GEN] Контент: ${article.content.substring(0, 100)}...`);
+                const contentPreview = (article.content || "").substring(0, 100);
+                console.log(`[PLAN_GEN] Контент: ${contentPreview}...`);
                 return article;
             } catch (error) {
                 console.error("[PLAN_GEN] Критическая ошибка:", error);
