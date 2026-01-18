@@ -719,7 +719,7 @@
 
         /**
          * Применить визуальную подсветку к сохраненному выделению
-         * ВАЖНО: Используем DOM методы для сохранения пробелов и переводов строк
+         * ВАЖНО: Используем DOM методы вместо innerHTML для сохранения пробелов/переносов!
          */
         function applySelectionHighlight() {
             clearSelectionHighlight(); // Сначала очищаем
@@ -740,7 +740,7 @@
             const selectedText = text.substring(startOffset, endOffset);
             const afterText = text.substring(endOffset);
 
-            // Создаем фрагмент документа (не используем innerHTML!)
+            // Создаем фрагмент документа
             const fragment = document.createDocumentFragment();
 
             // Добавляем текст ДО выделения
@@ -1148,38 +1148,26 @@
         async function animateTextReplacement(element, oldText, newText, speed = 10) {
             console.log('[REPLACE_TEXT] Анимирую замену всего текста');
 
-            try {
-                const maxLen = Math.max(oldText.length, newText.length);
+            const maxLen = Math.max(oldText.length, newText.length);
 
-                for (let i = 0; i < maxLen; i++) {
-                    // Проверяем что element еще в DOM
-                    if (!element.isConnected) {
-                        console.log('[REPLACE_TEXT] Element был удален из DOM, прерываем анимацию');
-                        break;
-                    }
+            for (let i = 0; i < maxLen; i++) {
+                const oldChar = oldText[i] || '';
+                const newChar = newText[i] || '';
 
-                    const oldChar = oldText[i] || '';
-                    const newChar = newText[i] || '';
-
-                    if (oldChar !== newChar) {
-                        // Стираем старый символ и печатаем новый
-                        let currentText = element.textContent;
-                        currentText = currentText.substring(0, i) + newChar + currentText.substring(i + 1);
-                        element.textContent = currentText;
-                    } else if (i === element.textContent.length && i < newText.length) {
-                        // Добавляем новый символ в конец
-                        element.textContent += newChar;
-                    }
-
-                    await new Promise(resolve => setTimeout(resolve, speed));
+                if (oldChar !== newChar) {
+                    // Стираем старый символ и печатаем новый
+                    let currentText = element.textContent;
+                    currentText = currentText.substring(0, i) + newChar + currentText.substring(i + 1);
+                    element.textContent = currentText;
+                } else if (i === element.textContent.length && i < newText.length) {
+                    // Добавляем новый символ в конец
+                    element.textContent += newChar;
                 }
 
-                console.log('[REPLACE_TEXT] Замена завершена');
-            } catch (error) {
-                console.error('[REPLACE_TEXT] Ошибка во время анимации:', error);
-                // Все равно устанавливаем финальный текст
-                element.textContent = newText;
+                await new Promise(resolve => setTimeout(resolve, speed));
             }
+
+            console.log('[REPLACE_TEXT] Замена завершена');
         }
 
         /**
@@ -1188,43 +1176,24 @@
         async function animateFragmentReplacement(element, fullOldText, startOffset, endOffset, newFragment, speed = 10) {
             console.log(`[REPLACE_FRAGMENT] Анимирую замену фрагмента. Позиция: ${startOffset}-${endOffset}`);
 
-            try {
-                const oldFragment = fullOldText.substring(startOffset, endOffset);
-                const maxLen = Math.max(oldFragment.length, newFragment.length);
+            const oldFragment = fullOldText.substring(startOffset, endOffset);
+            const maxLen = Math.max(oldFragment.length, newFragment.length);
 
-                for (let i = 0; i < maxLen; i++) {
-                    // Проверяем что element еще в DOM
-                    if (!element.isConnected) {
-                        console.log('[REPLACE_FRAGMENT] Element был удален из DOM, прерываем анимацию');
-                        break;
-                    }
+            for (let i = 0; i < maxLen; i++) {
+                const oldChar = oldFragment[i] || '';
+                const newChar = newFragment[i] || '';
 
-                    const newChar = newFragment[i] || '';
+                const currentFullText = element.textContent;
+                const before = currentFullText.substring(0, startOffset + i);
+                const char = newChar || '';
+                const after = currentFullText.substring(startOffset + i + 1);
 
-                    // Текст ДО позиции анимации
-                    const before = fullOldText.substring(0, startOffset + i);
+                element.textContent = before + char + after;
 
-                    // Остаток старого фрагмента (символы которые еще не заменены)
-                    const remainingOldFragment = oldFragment.substring(i + 1);
-
-                    // Текст ПОСЛЕ фрагмента (неизменяемая часть)
-                    const afterFragment = fullOldText.substring(endOffset);
-
-                    // Собираем финальный текст
-                    element.textContent = before + newChar + remainingOldFragment + afterFragment;
-
-                    await new Promise(resolve => setTimeout(resolve, speed));
-                }
-
-                console.log('[REPLACE_FRAGMENT] Замена фрагмента завершена');
-            } catch (error) {
-                console.error('[REPLACE_FRAGMENT] Ошибка во время анимации:', error);
-                // Устанавливаем финальный текст из базы данных
-                const article = articles[currentArticleId];
-                if (article) {
-                    element.textContent = article.content;
-                }
+                await new Promise(resolve => setTimeout(resolve, speed));
             }
+
+            console.log('[REPLACE_FRAGMENT] Замена фрагмента завершена');
         }
 
         // === UI FUNCTIONS ===
@@ -1250,13 +1219,6 @@
                 item.classList.remove('active');
             });
             element.classList.add('active');
-
-            // ВАЖНО: Очистить выделение при переключении статьи
-            if (savedSelection) {
-                console.log('[SELECT] Очищаем выделение при переключении');
-                clearSelectionHighlight();
-                savedSelection = null;
-            }
 
             currentArticleId = id;
             console.log(`[SELECT] currentArticleId установлен на: ${currentArticleId}`);
