@@ -18,7 +18,7 @@ load_dotenv()
 
 # Импортируем модули нашего приложения
 from database import init_db, create_article, get_all_articles, get_article, delete_article, DB_PATH
-from llm import generate_article_plan
+from llm import generate_article_plan, edit_full_text, edit_fragment
 
 # Инициализируем FastAPI приложение
 app = FastAPI(title="Depeche - AI Article Editor")
@@ -83,6 +83,19 @@ class ArticleListItem(BaseModel):
     """Элемент списка статей для sidebar"""
     id: int
     title: str
+
+
+class EditFullTextRequest(BaseModel):
+    """Запрос для редактирования всего текста статьи (РЕЖИМ 2)"""
+    instruction: str
+
+
+class EditFragmentRequest(BaseModel):
+    """Запрос для редактирования фрагмента статьи (РЕЖИМ 3)"""
+    before_context: str
+    fragment: str
+    after_context: str
+    instruction: str
 
 
 # === API ENDPOINTS ===
@@ -266,6 +279,138 @@ async def delete_single_article(article_id: int):
     except Exception as e:
         logger.error(f"[DELETE_ARTICLE] Критическая ошибка: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Ошибка при удалении статьи: {str(e)}")
+
+
+@app.post("/api/articles/{article_id}/edit-full")
+async def edit_article_full_text(article_id: int, request: EditFullTextRequest):
+    """
+    РЕЖИМ 2: Редактирование ВСЕГО текста статьи.
+
+    Применяет инструкцию редактирования ко ВСЕМУ тексту статьи.
+
+    Request: { "instruction": "Сделай текст более научным" }
+    Response: { "id": 1, "title": "...", "content": "отредактированный текст..." }
+    """
+    try:
+        logger.info(f"[EDIT_FULL] Получен запрос на редактирование всего текста. article_id={article_id}")
+        logger.info(f"[EDIT_FULL] Инструкция: {request.instruction[:100]}...")
+
+        # Получаем текущую статью
+        article = get_article(article_id)
+        if not article:
+            logger.error(f"[EDIT_FULL] Статья с ID {article_id} не найдена")
+            raise HTTPException(status_code=404, detail=f"Статья с ID {article_id} не найдена")
+
+        logger.info(f"[EDIT_FULL] Статья найдена: {article['title']}, текст = {len(article['content'])} символов")
+
+        # Вызываем LLM для редактирования
+        logger.info(f"[EDIT_FULL] Вызываем LLM для редактирования всего текста")
+        edited_text = edit_full_text(article['content'], request.instruction)
+
+        # Обновляем статью в БД
+        logger.info(f"[EDIT_FULL] Сохраняем отредактированный текст в БД")
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        cursor.execute("UPDATE articles SET content = ? WHERE id = ?", (edited_text, article_id))
+        conn.commit()
+        conn.close()
+        logger.info(f"[EDIT_FULL] Текст успешно сохранен в БД")
+
+        # Возвращаем обновленную статью
+        updated_article = get_article(article_id)
+        logger.info(f"[EDIT_FULL] Возвращаем обновленную статью")
+        return ArticleResponse(**updated_article)
+
+    except HTTPException as e:
+        logger.error(f"[EDIT_FULL] HTTPException: {e.detail}")
+        raise
+    except Exception as e:
+        logger.error(f"[EDIT_FULL] Критическая ошибка: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Ошибка при редактировании текста: {str(e)}")
+
+
+@app.post("/api/articles/{article_id}/edit-fragment")
+async def edit_article_fragment(article_id: int, request: EditFragmentRequest):
+    """
+    РЕЖИМ 3: Редактирование ВЫДЕЛЕННОГО ФРАГМЕНТА статьи.
+
+    Применяет инструкцию только к выделенному фрагменту, сохраняя остальной текст.
+
+    Request: {
+        "before_context": "...",
+        "fragment": "...",
+        "after_context": "...",
+        "instruction": "Раскрой подробнее"
+    }
+    Response: { "id": 1, "title": "...", "content": "обновленный текст..." }
+    """
+    try:
+        logger.info(f"[EDIT_FRAGMENT] Получен запрос на редактирование фрагмента. article_id={article_id}")
+        logger.info(f"[EDIT_FRAGMENT] Инструкция: {request.instruction[:100]}...")
+        logger.info(f"[EDIT_FRAGMENT] Размер фрагмента: {len(request.fragment)} символов")
+
+        # Получаем текущую статью
+        article = get_article(article_id)
+        if not article:
+            logger.error(f"[EDIT_FRAGMENT] Статья с ID {article_id} не найдена")
+            raise HTTPException(status_code=404, detail=f"Статья с ID {article_id} не найдена")
+
+        logger.info(f"[EDIT_FRAGMENT] Статья найдена: {article['title']}")
+
+        # Вызываем LLM для редактирования фрагмента
+        logger.info(f"[EDIT_FRAGMENT] Вызываем LLM для редактирования фрагмента")
+        edited_fragment = edit_fragment(
+            request.before_context,
+            request.fragment,
+            request.after_context,
+            request.instruction
+        )
+
+        # Заменяем фрагмент в тексте статьи
+        logger.info(f"[EDIT_FRAGMENT] Заменяем фрагмент в тексте статьи")
+        full_text = article['content']
+
+        # Находим и заменяем фрагмент
+        if request.fragment in full_text:
+            updated_text = full_text.replace(request.fragment, edited_fragment, 1)
+            logger.info(f"[EDIT_FRAGMENT] Фрагмент найден и заменен")
+        else:
+            logger.warning(f"[EDIT_FRAGMENT] Точное совпадение фрагмента не найдено, используем контекст")
+            # Если точного совпадения нет, пытаемся найти по контексту
+            before_idx = full_text.find(request.before_context)
+            if before_idx >= 0:
+                start = before_idx + len(request.before_context)
+                end = full_text.find(request.after_context, start)
+                if end >= start:
+                    updated_text = full_text[:start] + edited_fragment + full_text[end:]
+                    logger.info(f"[EDIT_FRAGMENT] Фрагмент найден по контексту и заменен")
+                else:
+                    logger.error(f"[EDIT_FRAGMENT] Не удалось найти фрагмент ни по точному совпадению, ни по контексту")
+                    raise HTTPException(status_code=400, detail="Не удалось найти фрагмент в тексте")
+            else:
+                logger.error(f"[EDIT_FRAGMENT] Контекст не найден в тексте")
+                raise HTTPException(status_code=400, detail="Контекст не найден в тексте")
+
+        # Обновляем статью в БД
+        logger.info(f"[EDIT_FRAGMENT] Сохраняем обновленный текст в БД")
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        cursor.execute("UPDATE articles SET content = ? WHERE id = ?", (updated_text, article_id))
+        conn.commit()
+        conn.close()
+        logger.info(f"[EDIT_FRAGMENT] Текст успешно сохранен в БД")
+
+        # Возвращаем обновленную статью
+        updated_article = get_article(article_id)
+        logger.info(f"[EDIT_FRAGMENT] Возвращаем обновленную статью")
+        return ArticleResponse(**updated_article)
+
+    except HTTPException as e:
+        logger.error(f"[EDIT_FRAGMENT] HTTPException: {e.detail}")
+        raise
+    except Exception as e:
+        logger.error(f"[EDIT_FRAGMENT] Критическая ошибка: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Ошибка при редактировании фрагмента: {str(e)}")
 
 
 if __name__ == "__main__":
