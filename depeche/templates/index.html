@@ -637,57 +637,6 @@
         let savedSelection = null; // { startOffset, endOffset, text }
         let highlightJustApplied = false; // Флаг для предотвращения немедленного сброса
 
-        // === DOM RANGE UTILITIES ===
-
-        /**
-         * Создать Range по текстовым офсетам в элементе
-         * Работает с реальной структурой DOM, сохраняет все пробелы и переносы
-         */
-        function createRangeFromOffsets(element, startOffset, endOffset) {
-            const range = document.createRange();
-            let currentOffset = 0;
-            let startNode = null, startNodeOffset = 0;
-            let endNode = null, endNodeOffset = 0;
-
-            function traverse(node) {
-                if (startNode && endNode) return;
-
-                if (node.nodeType === Node.TEXT_NODE) {
-                    const nodeLength = node.textContent.length;
-
-                    // Ищем начальный узел
-                    if (!startNode && currentOffset + nodeLength > startOffset) {
-                        startNode = node;
-                        startNodeOffset = startOffset - currentOffset;
-                    }
-
-                    // Ищем конечный узел
-                    if (!endNode && currentOffset + nodeLength > endOffset) {
-                        endNode = node;
-                        endNodeOffset = endOffset - currentOffset;
-                    }
-
-                    currentOffset += nodeLength;
-                } else if (node.nodeType === Node.ELEMENT_NODE) {
-                    // Пропускаем сам span с подсветкой при поиске
-                    if (node.classList && node.classList.contains('selection-highlight')) {
-                        return;
-                    }
-                    for (let child of node.childNodes) {
-                        traverse(child);
-                    }
-                }
-            }
-
-            traverse(element);
-
-            if (startNode && endNode) {
-                range.setStart(startNode, startNodeOffset);
-                range.setEnd(endNode, endNodeOffset);
-            }
-
-            return range;
-        }
 
         // === INITIALIZATION ===
         document.addEventListener('DOMContentLoaded', function() {
@@ -758,8 +707,8 @@
         }
 
         /**
-         * Применить визуальную подсветку к сохраненному выделению
-         * ИСПОЛЬЗУЕМ DOM RANGE API - не трогаем остальной текст!
+         * Применить визуальную подсветку к выделению
+         * СТРОГАЯ ВАЛИДАЦИЯ: Range должен быть безопасным перед insertNode
          */
         function applySelectionHighlight() {
             clearSelectionHighlight(); // Сначала очищаем
@@ -767,31 +716,56 @@
             if (!savedSelection) return;
 
             const editor = document.getElementById('editorContent');
-            const text = editor.textContent;
-            const { startOffset, endOffset } = savedSelection;
 
-            if (startOffset < 0 || endOffset > text.length || startOffset >= endOffset) {
-                console.log('[HIGHLIGHT] Позиции выделения некорректны');
+            // === ВАЛИДАЦИЯ 1: Получить selection и Range ===
+            const selection = window.getSelection();
+            if (!selection || selection.rangeCount === 0) {
+                console.log('[HIGHLIGHT] Нет активного selection, подсветка отменена');
                 return;
             }
 
-            // Создаем Range для выделенного фрагмента
-            const range = createRangeFromOffsets(editor, startOffset, endOffset);
+            const range = selection.getRangeAt(0);
 
-            // Извлекаем содержимое выделения (это сохраняет структуру!)
-            const selectedContent = range.extractContents();
+            // === ВАЛИДАЦИЯ 2: Range контейнеры должны быть ВнУТРИ editorContent ===
+            if (!editor.contains(range.startContainer) || !editor.contains(range.endContainer)) {
+                console.log('[HIGHLIGHT] Range вне editorContent, подсветка отменена');
+                return;
+            }
 
-            // Создаем span для подсветки
-            const highlightSpan = document.createElement('span');
-            highlightSpan.className = 'selection-highlight';
+            // === ВАЛИДАЦИЯ 3: startContainer и endContainer должны быть text nodes ===
+            if (range.startContainer.nodeType !== Node.TEXT_NODE ||
+                range.endContainer.nodeType !== Node.TEXT_NODE) {
+                console.log('[HIGHLIGHT] Range контейнеры не text nodes, подсветка отменена');
+                return;
+            }
 
-            // Вставляем исходное содержимое в span
-            highlightSpan.appendChild(selectedContent);
+            // === ВАЛИДАЦИЯ 4: Оба контейнера должны быть ОДИНАКОВЫМИ ===
+            if (range.startContainer !== range.endContainer) {
+                console.log('[HIGHLIGHT] Range пересекает несколько узлов, подсветка отменена');
+                return;
+            }
 
-            // Вставляем span обратно на место выделения
-            range.insertNode(highlightSpan);
+            // === ВСЕ ПРОВЕРКИ ПРОЙДЕНЫ - ПРИМЕНЯЕМ ПОДСВЕТКУ ===
+            try {
+                // Извлекаем содержимое выделения (сохраняет структуру!)
+                const selectedContent = range.extractContents();
 
-            console.log('[HIGHLIGHT] Подсветка применена через Range API');
+                // Создаем span для подсветки
+                const highlightSpan = document.createElement('span');
+                highlightSpan.className = 'selection-highlight';
+
+                // Вставляем исходное содержимое в span
+                highlightSpan.appendChild(selectedContent);
+
+                // Вставляем span обратно на место выделения
+                range.insertNode(highlightSpan);
+
+                console.log('[HIGHLIGHT] Подсветка применена успешно (Range API)');
+            } catch (error) {
+                console.error('[HIGHLIGHT] Ошибка при применении подсветки:', error);
+                // Восстанавливаем сохраненное выделение и выходим
+                return;
+            }
 
             // Устанавливаем флаг чтобы предотвратить немедленный сброс при click
             highlightJustApplied = true;
@@ -802,26 +776,34 @@
 
         /**
          * Убрать визуальную подсветку выделения
-         * ПРАВИЛЬНО: извлекаем содержимое span и вставляем его обратно
+         * БЕЗОПАСНО: заменяем span его текстовым содержимым
          */
         function clearSelectionHighlight() {
             const editor = document.getElementById('editorContent');
             const highlighted = editor.querySelector('.selection-highlight');
 
             if (highlighted) {
-                // Извлекаем все содержимое span (сохраняя структуру DOM)
-                while (highlighted.firstChild) {
-                    // Вставляем каждый child ПЕРЕД span
-                    editor.insertBefore(highlighted.firstChild, highlighted);
+                try {
+                    // Простой и безопасный способ:
+                    // Берем все текстовое содержимое span
+                    const text = highlighted.textContent;
+                    const parent = highlighted.parentNode;
+
+                    // Создаем текстовый узел с ПОЛНЫМ содержимым
+                    const textNode = document.createTextNode(text);
+
+                    // Заменяем span на текстовый узел
+                    highlighted.replaceWith(textNode);
+
+                    // Если есть родитель - нормализуем (объединяем соседние text nodes)
+                    if (parent) {
+                        parent.normalize();
+                    }
+
+                    console.log('[HIGHLIGHT] Подсветка убрана безопасно');
+                } catch (error) {
+                    console.error('[HIGHLIGHT] Ошибка при удалении подсветки:', error);
                 }
-
-                // Удаляем пустой span
-                highlighted.remove();
-
-                // Нормализуем - объединяем соседние текстовые узлы
-                editor.normalize();
-
-                console.log('[HIGHLIGHT] Подсветка убрана через DOM операции');
             }
         }
 
