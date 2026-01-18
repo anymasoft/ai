@@ -39,26 +39,31 @@ def generate_article_plan(topic: str) -> str:
     try:
         logger.info(f"Генерирую план для темы: {topic}")
 
-        message = client.messages.create(
+        response = client.chat.completions.create(
             model=OPENAI_MODEL,
-            max_tokens=OPENAI_MAX_TOKENS,
-            temperature=OPENAI_TEMPERATURE,
-            system=PLAN_SYSTEM_PROMPT,
             messages=[
+                {
+                    "role": "system",
+                    "content": PLAN_SYSTEM_PROMPT
+                },
                 {
                     "role": "user",
                     "content": f"Тема статьи: {topic}"
                 }
-            ]
+            ],
+            temperature=OPENAI_TEMPERATURE,
+            max_tokens=OPENAI_MAX_TOKENS
         )
 
         # Извлекаем контент из ответа
-        plan = message.content[0].text
+        plan = response.choices[0].message.content
         logger.info(f"План успешно сгенерирован для темы: {topic}")
+        logger.info(f"План (первые 100 символов): {plan[:100]}...")
 
         return plan
 
     except Exception as e:
         logger.error(f"Ошибка при генерации плана для темы '{topic}': {str(e)}", exc_info=True)
         raise
+
 
