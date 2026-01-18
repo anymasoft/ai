@@ -340,6 +340,56 @@ async def delete_single_article(article_id: int):
         raise HTTPException(status_code=500, detail=f"Ошибка при удалении статьи: {str(e)}")
 
 
+class SaveArticleRequest(BaseModel):
+    """Запрос для сохранения контента статьи"""
+    content: str
+
+
+@app.patch("/api/articles/{article_id}")
+async def save_article_content(article_id: int, request: SaveArticleRequest):
+    """
+    Явно сохранить контент статьи (PATCH).
+
+    Request: { "content": "новый контент" }
+    Response: { "id": 1, "title": "...", "content": "новый контент" }
+    """
+    try:
+        logger.info(f"[SAVE_ARTICLE] Получен запрос на сохранение контента. ID={article_id}")
+
+        # Проверяем что статья существует
+        article = get_article(article_id)
+        if not article:
+            logger.error(f"[SAVE_ARTICLE] Статья с ID {article_id} не найдена")
+            raise HTTPException(status_code=404, detail=f"Статья с ID {article_id} не найдена")
+
+        logger.info(f"[SAVE_ARTICLE] Сохраняю контент. Размер: {len(request.content)} символов")
+
+        # Обновляем content статьи в БД
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        cursor.execute(
+            "UPDATE articles SET content = ? WHERE id = ?",
+            (request.content, article_id)
+        )
+        conn.commit()
+        conn.close()
+
+        logger.info(f"[SAVE_ARTICLE] Контент успешно сохранён")
+
+        return ArticleResponse(
+            id=article_id,
+            title=article["title"],
+            content=request.content
+        )
+
+    except HTTPException as e:
+        logger.error(f"[SAVE_ARTICLE] HTTPException: {e.detail}")
+        raise
+    except Exception as e:
+        logger.error(f"[SAVE_ARTICLE] Критическая ошибка: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Ошибка при сохранении: {str(e)}")
+
+
 @app.post("/api/articles/{article_id}/edit-full", response_model=EditFullResponse)
 async def edit_article_full_text(article_id: int, request: EditFullTextRequest):
     """
