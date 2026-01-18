@@ -232,6 +232,7 @@
             resize: none;
             word-wrap: break-word;
             white-space: pre-wrap;
+            position: relative;
         }
 
         .editor-content:focus {
@@ -541,12 +542,13 @@
             }
         }
 
-        /* === SELECTION HIGHLIGHT === */
-        .selection-highlight {
-            background-color: rgba(100, 200, 255, 0.25) !important;
+        /* === SELECTION OVERLAY HIGHLIGHT === */
+        .selection-overlay {
+            position: absolute;
+            background-color: rgba(100, 200, 255, 0.25);
             border-radius: 2px;
-            box-shadow: inset 0 0 0 2px rgba(100, 150, 255, 0.4);
-            white-space: pre-wrap;
+            pointer-events: none;
+            z-index: 1;
         }
     </style>
 </head>
@@ -703,94 +705,81 @@
         }
 
         /**
+         * Очистить все визуальные overlay'и подсветки
+         * ТЕКСТ НЕ МЕНЯЕТСЯ - только удаляются визуальные элементы
+         */
+        function clearSelectionHighlight() {
+            const editor = document.getElementById('editorContent');
+            const overlays = editor.querySelectorAll('.selection-overlay');
+            overlays.forEach(overlay => overlay.remove());
+            console.log('[HIGHLIGHT] Все overlay'и удалены');
+        }
+
+        /**
          * Применить визуальную подсветку к сохраненному выделению
-         * ПРОСТОЙ И НАДЁЖНЫЙ ПОДХОД: используем офсеты и innerHTML
-         * Range используется ТОЛЬКО для получения офсетов, всё остальное через текст
+         * АРХИТЕКТУРА: Range.getClientRects() → overlay div'ы
+         * ТЕКСТ ВООБЩЕ НЕ МЕНЯЕТСЯ
          */
         function applySelectionHighlight() {
-            clearSelectionHighlight(); // Сначала очищаем
+            clearSelectionHighlight(); // Очищаем старые overlay'и
 
             if (!savedSelection) return;
 
             const editor = document.getElementById('editorContent');
-            const text = editor.textContent;
-            const { startOffset, endOffset } = savedSelection;
+            const selection = window.getSelection();
 
-            // Проверяем валидность офсетов
-            if (startOffset < 0 || endOffset > text.length || startOffset >= endOffset) {
-                console.log('[HIGHLIGHT] Офсеты некорректны, подсветка отменена');
+            // Проверяем что selection существует и находится в editor'е
+            if (!selection || selection.rangeCount === 0) {
+                console.log('[HIGHLIGHT] Нет активного selection');
                 return;
             }
 
-            // Берём части текста по офсетам (работает НЕЗАВИСИМО от структуры DOM)
-            const beforeText = text.substring(0, startOffset);
-            const selectedText = text.substring(startOffset, endOffset);
-            const afterText = text.substring(endOffset);
+            const range = selection.getRangeAt(0);
 
-            // Пересчитываем весь HTML с подсветкой
-            // ВАЖНО: используем renderTextForHTML для сохранения пробелов и переносов
-            editor.innerHTML =
-                renderTextForHTML(beforeText) +
-                '<span class="selection-highlight">' + renderTextForHTML(selectedText) + '</span>' +
-                renderTextForHTML(afterText);
+            // Проверяем что Range находится внутри editor'а
+            if (!editor.contains(range.commonAncestorContainer)) {
+                console.log('[HIGHLIGHT] Range вне editor');
+                return;
+            }
 
-            console.log('[HIGHLIGHT] Подсветка применена (офсеты + innerHTML)');
+            // Получаем все прямоугольники выделённого текста
+            const rects = range.getClientRects();
+            if (rects.length === 0) {
+                console.log('[HIGHLIGHT] Range не имеет видимых rect\'ов');
+                return;
+            }
 
-            // Устанавливаем флаг чтобы предотвратить немедленный сброс при click
+            // Получаем позицию editor'а для расчета relative координат
+            const editorRect = editor.getBoundingClientRect();
+
+            // Для каждого rect создаем overlay div
+            for (let rect of rects) {
+                const overlay = document.createElement('div');
+                overlay.className = 'selection-overlay';
+
+                // Позиция относительно editor'а
+                const top = rect.top - editorRect.top + editor.scrollTop;
+                const left = rect.left - editorRect.left + editor.scrollLeft;
+                const width = rect.width;
+                const height = rect.height;
+
+                // Устанавливаем стили
+                overlay.style.top = top + 'px';
+                overlay.style.left = left + 'px';
+                overlay.style.width = width + 'px';
+                overlay.style.height = height + 'px';
+
+                // Добавляем в editor
+                editor.appendChild(overlay);
+            }
+
+            console.log('[HIGHLIGHT] Подсветка применена (' + rects.length + ' rect\'ов)');
+
+            // Устанавливаем флаг
             highlightJustApplied = true;
             setTimeout(() => {
                 highlightJustApplied = false;
             }, 100);
-        }
-
-        /**
-         * Убрать визуальную подсветку выделения
-         * ПРОСТО: заменяем весь editor на plain textContent
-         */
-        function clearSelectionHighlight() {
-            const editor = document.getElementById('editorContent');
-            const highlighted = editor.querySelector('.selection-highlight');
-
-            if (highlighted) {
-                // Получаем весь текст редактора
-                const fullText = editor.textContent;
-
-                // Устанавливаем plain текст (без всех span'ов и тегов)
-                editor.textContent = fullText;
-
-                console.log('[HIGHLIGHT] Подсветка убрана');
-            }
-        }
-
-        /**
-         * Экранировать HTML специальные символы
-         */
-        function escapeHtml(text) {
-            const map = {
-                '&': '&amp;',
-                '<': '&lt;',
-                '>': '&gt;',
-                '"': '&quot;',
-                "'": '&#039;'
-            };
-            return text.replace(/[&<>"']/g, m => map[m]);
-        }
-
-        /**
-         * Преобразовать текст для HTML-рендера с сохранением пробелов и переносов
-         * ВАЖНО: используется ТОЛЬКО для innerHTML, не меняет сохранённый текст
-         */
-        function renderTextForHTML(text) {
-            // 1. Сначала экранируем HTML спецсимволы
-            let result = escapeHtml(text);
-
-            // 2. Заменяем переносы строк на <br> (делаем ДО замены пробелов!)
-            result = result.replace(/\n/g, '<br>');
-
-            // 3. Заменяем пробелы на &nbsp; (но НЕ внутри <br>)
-            result = result.replace(/ /g, '&nbsp;');
-
-            return result;
         }
 
         // === HELPER FUNCTIONS FOR MODE DETECTION ===
