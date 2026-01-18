@@ -853,6 +853,7 @@
             // Добавляем в кэш и в sidebar
             articles[article.id] = article;
             addArticleToSidebar(article.id, article.title, true);
+            currentArticleId = article.id;
 
             // Отображаем в редактор - пусто, БЕЗ typewriter effect
             document.getElementById('currentTitle').textContent = article.title;
