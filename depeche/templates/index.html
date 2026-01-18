@@ -1156,18 +1156,26 @@
          * РЕЖИМ 3: Посимвольная замена ВЫДЕЛЕННОГО ФРАГМЕНТА
          * АРХИТЕКТУРА: [before][печать нового][остаток старого][after]
          * Работает для любой длины newFragment (короче, равна, длиннее oldFragment)
+         *
+         * ФАЗЫ АНИМАЦИИ:
+         * 1. Если newLen < oldLen: печать нового + удаление хвоста старого посимвольно
+         * 2. Если newLen >= oldLen: печать нового (как обычно)
          */
         async function animateFragmentReplacement(element, fullOldText, startOffset, endOffset, newFragment, speed = 10) {
             console.log(`[REPLACE_FRAGMENT] Анимирую замену фрагмента. Позиция: ${startOffset}-${endOffset}`);
-            console.log(`[REPLACE_FRAGMENT] Старый: ${endOffset - startOffset} символов, Новый: ${newFragment.length} символов`);
 
             // Вычисляем неизменяемые части ДО начала цикла
             const before = fullOldText.substring(0, startOffset);
             const after = fullOldText.substring(endOffset);
             const oldFragment = fullOldText.substring(startOffset, endOffset);
 
-            // Итерируем по ДЛИНЕ НОВОГО ТЕКСТА, а не старого
-            for (let i = 0; i < newFragment.length; i++) {
+            const oldLen = oldFragment.length;
+            const newLen = newFragment.length;
+
+            console.log(`[REPLACE_FRAGMENT] Старый: ${oldLen} символов, Новый: ${newLen} символов`);
+
+            // ========== ФАЗА 1: Печать нового фрагмента ==========
+            for (let i = 0; i < newLen; i++) {
                 // Печатаем часть нового фрагмента (от 0 до i+1)
                 const printedPart = newFragment.substring(0, i + 1);
 
@@ -1178,6 +1186,21 @@
                 element.textContent = before + printedPart + remainingOld + after;
 
                 await new Promise(resolve => setTimeout(resolve, speed));
+            }
+
+            // ========== ФАЗА 2: Удаление хвоста (ТОЛЬКО если новый текст короче) ==========
+            if (newLen < oldLen) {
+                const tailLen = oldLen - newLen;
+                console.log(`[REPLACE_FRAGMENT] Удаляю хвост: ${tailLen} символов`);
+
+                for (let j = 0; j < tailLen; j++) {
+                    // На каждой итерации удаляем j-й символ хвоста
+                    // Остаток хвоста начинается с позиции (newLen + j + 1)
+                    const remainingTail = oldFragment.substring(newLen + j + 1);
+                    element.textContent = before + newFragment + remainingTail + after;
+
+                    await new Promise(resolve => setTimeout(resolve, speed));
+                }
             }
 
             console.log("[REPLACE_FRAGMENT] Замена фрагмента завершена успешно");
