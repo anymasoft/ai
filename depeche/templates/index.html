@@ -1465,15 +1465,6 @@
             }
         });
 
-        // Save content to articles database when editing
-        document.getElementById("editorContent").addEventListener("blur", function() {
-            const activeItem = document.querySelector(".article-item.active");
-            if (activeItem) {
-                const id = parseInt(activeItem.getAttribute("data-id"));
-                articles[id].content = this.textContent;
-            }
-        });
-
         // Allow Enter in modal to create article
         document.getElementById("newArticleTitle").addEventListener("keypress", function(e) {
             if (e.key === "Enter") {
