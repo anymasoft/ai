@@ -1397,8 +1397,14 @@
             console.log("[UI] Блокирую кнопку Apply");
             isGenerating = true;
             const btn = document.querySelector(".btn-apply");
-            btn.disabled = true;
-            btn.classList.add("generating");
+            if (btn) {
+                btn.disabled = true;
+                btn.classList.add("generating");
+                btn.textContent = "⏳ Processing...";
+                console.log("[UI] Кнопка заблокирована, текст изменён");
+            } else {
+                console.error("[UI] ОШИБКА: кнопка .btn-apply не найдена!");
+            }
         }
 
         // Разблокировать кнопку Apply
@@ -1406,8 +1412,14 @@
             console.log("[UI] Разблокирую кнопку Apply");
             isGenerating = false;
             const btn = document.querySelector(".btn-apply");
-            btn.disabled = false;
-            btn.classList.remove("generating");
+            if (btn) {
+                btn.disabled = false;
+                btn.classList.remove("generating");
+                btn.textContent = "Apply";
+                console.log("[UI] Кнопка разблокирована");
+            } else {
+                console.error("[UI] ОШИБКА: кнопка .btn-apply не найдена!");
+            }
         }
 
         // Extract topic from prompt and generate plan for current article
