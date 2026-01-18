@@ -376,28 +376,11 @@ async def edit_article_fragment(article_id: int, request: EditFragmentRequest):
 
         # Заменяем фрагмент в тексте статьи
         logger.info(f"[EDIT_FRAGMENT] Заменяем фрагмент в тексте статьи")
-        full_text = article['content']
 
-        # Находим и заменяем фрагмент
-        if request.fragment in full_text:
-            updated_text = full_text.replace(request.fragment, edited_fragment, 1)
-            logger.info(f"[EDIT_FRAGMENT] Фрагмент найден и заменен")
-        else:
-            logger.warning(f"[EDIT_FRAGMENT] Точное совпадение фрагмента не найдено, используем контекст")
-            # Если точного совпадения нет, пытаемся найти по контексту
-            before_idx = full_text.find(request.before_context)
-            if before_idx >= 0:
-                start = before_idx + len(request.before_context)
-                end = full_text.find(request.after_context, start)
-                if end >= start:
-                    updated_text = full_text[:start] + edited_fragment + full_text[end:]
-                    logger.info(f"[EDIT_FRAGMENT] Фрагмент найден по контексту и заменен")
-                else:
-                    logger.error(f"[EDIT_FRAGMENT] Не удалось найти фрагмент ни по точному совпадению, ни по контексту")
-                    raise HTTPException(status_code=400, detail="Не удалось найти фрагмент в тексте")
-            else:
-                logger.error(f"[EDIT_FRAGMENT] Контекст не найден в тексте")
-                raise HTTPException(status_code=400, detail="Контекст не найден в тексте")
+        # МИНИМАЛЬНЫЙ ПОДХОД: просто конкатенируем before + новый_fragment + after
+        # Не пытаемся искать текст в статье - это не надёжно при повторном редактировании
+        updated_text = request.before_context + edited_fragment + request.after_context
+        logger.info(f"[EDIT_FRAGMENT] Текст обновлен: concat(before={len(request.before_context)} + fragment={len(edited_fragment)} + after={len(request.after_context)})")
 
         # Обновляем статью в БД
         logger.info(f"[EDIT_FRAGMENT] Сохраняем обновленный текст в БД")
