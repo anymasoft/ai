@@ -705,30 +705,30 @@
         }
 
         /**
-         * Очистить все визуальные overlay"и подсветки
+         * Очистить все визуальные overlayи подсветки
          * ТЕКСТ НЕ МЕНЯЕТСЯ - только удаляются визуальные элементы
          */
         function clearSelectionHighlight() {
             const editor = document.getElementById("editorContent");
             const overlays = editor.querySelectorAll(".selection-overlay");
             overlays.forEach(overlay => overlay.remove());
-            console.log("[HIGHLIGHT] Все overlay'и удалены");
+            console.log("[HIGHLIGHT] Все overlayи удалены");
         }
 
         /**
          * Применить визуальную подсветку к сохраненному выделению
-         * АРХИТЕКТУРА: Range.getClientRects() → overlay div"ы
+         * АРХИТЕКТУРА: Range.getClientRects() → overlay divы
          * ТЕКСТ ВООБЩЕ НЕ МЕНЯЕТСЯ
          */
         function applySelectionHighlight() {
-            clearSelectionHighlight(); // Очищаем старые overlay"и
+            clearSelectionHighlight(); // Очищаем старые overlayи
 
             if (!savedSelection) return;
 
             const editor = document.getElementById("editorContent");
             const selection = window.getSelection();
 
-            // Проверяем что selection существует и находится в editor"е
+            // Проверяем что selection существует и находится в editorе
             if (!selection || selection.rangeCount === 0) {
                 console.log("[HIGHLIGHT] Нет активного selection");
                 return;
@@ -736,7 +736,7 @@
 
             const range = selection.getRangeAt(0);
 
-            // Проверяем что Range находится внутри editor"а
+            // Проверяем что Range находится внутри editorа
             if (!editor.contains(range.commonAncestorContainer)) {
                 console.log("[HIGHLIGHT] Range вне editor");
                 return;
@@ -745,11 +745,11 @@
             // Получаем все прямоугольники выделённого текста
             const rects = range.getClientRects();
             if (rects.length === 0) {
-                console.log("[HIGHLIGHT] Range не имеет видимых rect'ов");
+                console.log("[HIGHLIGHT] Range не имеет видимых rectов");
                 return;
             }
 
-            // Получаем позицию editor"а для расчета relative координат
+            // Получаем позицию editorа для расчета relative координат
             const editorRect = editor.getBoundingClientRect();
 
             // Для каждого rect создаем overlay div
@@ -757,7 +757,7 @@
                 const overlay = document.createElement("div");
                 overlay.className = "selection-overlay";
 
-                // Позиция относительно editor"а
+                // Позиция относительно editorа
                 const top = rect.top - editorRect.top + editor.scrollTop;
                 const left = rect.left - editorRect.left + editor.scrollLeft;
                 const width = rect.width;
@@ -773,7 +773,7 @@
                 editor.appendChild(overlay);
             }
 
-            console.log("[HIGHLIGHT] Подсветка применена (" + rects.length + " rect'ов)");
+            console.log("[HIGHLIGHT] Подсветка применена (" + rects.length + " rectов)");
 
             // Устанавливаем флаг
             highlightJustApplied = true;
