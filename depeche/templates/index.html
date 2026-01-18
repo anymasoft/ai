@@ -354,41 +354,23 @@
 
         .btn-apply:disabled,
         .btn-apply.generating {
-            opacity: 0.7;
             cursor: not-allowed;
-            box-shadow: 0 2px 8px rgba(102, 126, 234, 0.15);
+            animation: btn-pulse 1.5s ease-in-out infinite;
         }
 
         .btn-apply:disabled:hover,
         .btn-apply.generating:hover {
             transform: none;
-            box-shadow: 0 2px 8px rgba(102, 126, 234, 0.15);
         }
 
-        .spinner-border {
-            display: inline-block;
-            width: 1em;
-            height: 1em;
-            vertical-align: -0.125em;
-            border: 0.25em solid currentColor;
-            border-right-color: transparent;
-            border-radius: 50%;
-            animation: spinner-border 0.75s linear infinite;
-        }
-
-        .spinner-border-sm {
-            width: 1.2em;
-            height: 1.2em;
-            border-width: 0.2em;
-        }
-
-        .me-2 {
-            margin-right: 0.5rem;
-        }
-
-        @keyframes spinner-border {
-            to {
-                transform: rotate(360deg);
+        @keyframes btn-pulse {
+            0%, 100% {
+                opacity: 0.7;
+                box-shadow: 0 2px 8px rgba(102, 126, 234, 0.15);
+            }
+            50% {
+                opacity: 0.5;
+                box-shadow: 0 4px 12px rgba(102, 126, 234, 0.25);
             }
         }
 
@@ -1425,7 +1407,7 @@
         }
 
         /**
-         * Заблокировать кнопку Apply и добавить спиннер
+         * Заблокировать кнопку Apply
          */
         function lockApplyButton() {
             console.log("[UI] Блокирую кнопку Apply");
@@ -1433,12 +1415,10 @@
             const btn = document.querySelector(".btn-apply");
             btn.disabled = true;
             btn.classList.add("generating");
-            // Добавляем спиннер внутрь кнопки
-            btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Processing...';
         }
 
         /**
-         * Разблокировать кнопку Apply и убрать спиннер
+         * Разблокировать кнопку Apply
          */
         function unlockApplyButton() {
             console.log("[UI] Разблокирую кнопку Apply");
@@ -1446,7 +1426,6 @@
             const btn = document.querySelector(".btn-apply");
             btn.disabled = false;
             btn.classList.remove("generating");
-            btn.textContent = "Apply";
         }
 
         // Extract topic from prompt and generate plan for current article
