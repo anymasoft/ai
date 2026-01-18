@@ -540,6 +540,13 @@
                 max-width: none;
             }
         }
+
+        /* === SELECTION HIGHLIGHT === */
+        .selection-highlight {
+            background-color: rgba(100, 200, 255, 0.25) !important;
+            border-radius: 2px;
+            box-shadow: inset 0 0 0 2px rgba(100, 150, 255, 0.4);
+        }
     </style>
 </head>
 <body>
@@ -625,10 +632,131 @@
         let currentArticleId = null;
         let articles = {}; // Локальный кэш статей
 
+        // === PERSISTENT SELECTION STATE ===
+        let savedSelection = null; // { startOffset, endOffset, text }
+
         // === INITIALIZATION ===
         document.addEventListener('DOMContentLoaded', function() {
             loadArticlesList();
+            setupSelectionHandlers();
         });
+
+        // === SELECTION MANAGEMENT ===
+
+        /**
+         * Сохранить выделенный фрагмент при mouseup в editor
+         */
+        function setupSelectionHandlers() {
+            const editorContent = document.getElementById('editorContent');
+
+            editorContent.addEventListener('mouseup', function() {
+                const selection = window.getSelection();
+                if (selection.toString().trim()) {
+                    // Есть выделение - сохраняем его
+                    const range = selection.getRangeAt(0);
+                    const preCaretRange = range.cloneRange();
+                    preCaretRange.selectNodeContents(editorContent);
+                    preCaretRange.setEnd(range.endContainer, range.endOffset);
+
+                    const startOffset = preCaretRange.toString().length - range.toString().length;
+                    const endOffset = preCaretRange.toString().length;
+
+                    savedSelection = {
+                        startOffset: startOffset,
+                        endOffset: endOffset,
+                        text: range.toString()
+                    };
+
+                    console.log(`[SELECTION_SAVE] Выделено: "${savedSelection.text.substring(0, 50)}..."`);
+                    console.log(`[SELECTION_SAVE] startOffset=${startOffset}, endOffset=${endOffset}`);
+
+                    applySelectionHighlight();
+                } else {
+                    // Нет выделения - сбрасываем
+                    if (savedSelection) {
+                        console.log('[SELECTION_CLEAR] Выделение сброшено при mouseup без выделения');
+                        clearSelectionHighlight();
+                        savedSelection = null;
+                    }
+                }
+            });
+
+            // При клике на пустое место в editor - сбрасываем выделение
+            editorContent.addEventListener('click', function(e) {
+                if (e.target === editorContent) {
+                    // Клик на пустое место в editor
+                    setTimeout(() => {
+                        const selection = window.getSelection();
+                        if (!selection.toString().trim() && savedSelection) {
+                            console.log('[SELECTION_CLEAR] Выделение сброшено при клике на пустое место');
+                            clearSelectionHighlight();
+                            savedSelection = null;
+                        }
+                    }, 10);
+                }
+            });
+        }
+
+        /**
+         * Применить визуальную подсветку к сохраненному выделению
+         */
+        function applySelectionHighlight() {
+            clearSelectionHighlight(); // Сначала очищаем
+
+            if (!savedSelection) return;
+
+            const editor = document.getElementById('editorContent');
+            const text = editor.textContent;
+            const { startOffset, endOffset } = savedSelection;
+
+            if (startOffset < 0 || endOffset > text.length || startOffset >= endOffset) {
+                console.log('[HIGHLIGHT] Позиции выделения некорректны');
+                return;
+            }
+
+            // Создаем wrapper для выделения
+            const beforeText = text.substring(0, startOffset);
+            const selectedText = text.substring(startOffset, endOffset);
+            const afterText = text.substring(endOffset);
+
+            editor.innerHTML =
+                escapeHtml(beforeText) +
+                '<span class="selection-highlight">' + escapeHtml(selectedText) + '</span>' +
+                escapeHtml(afterText);
+
+            console.log('[HIGHLIGHT] Подсветка применена');
+        }
+
+        /**
+         * Убрать визуальную подсветку выделения
+         */
+        function clearSelectionHighlight() {
+            const editor = document.getElementById('editorContent');
+            const highlighted = editor.querySelector('.selection-highlight');
+
+            if (highlighted) {
+                const text = highlighted.textContent;
+                const parent = highlighted.parentNode;
+                const textNode = document.createTextNode(text);
+                highlighted.replaceWith(textNode);
+                parent.normalize();
+                console.log('[HIGHLIGHT] Подсветка убрана');
+            }
+        }
+
+        /**
+         * Экранировать HTML специальные символы
+         */
+        function escapeHtml(text) {
+            const map = {
+                '&': '&amp;',
+                '<': '&lt;',
+                '>': '&gt;',
+                '"': '&quot;',
+                "'": '&#039;'
+            };
+            return text.replace(/[&<>"']/g, m => map[m]);
+        }
 
         // === HELPER FUNCTIONS FOR MODE DETECTION ===
 
@@ -641,7 +769,6 @@
          */
         function detectMode() {
             const editorContent = document.getElementById('editorContent').textContent.trim();
-            const selection = window.getSelection();
 
             // РЕЖИМ 1: текст пуст
             if (!editorContent) {
@@ -651,19 +778,18 @@
                 };
             }
 
-            // Проверяем, есть ли выделение
-            const selectedText = selection.toString().trim();
-
-            // РЕЖИМ 3: текст есть И есть выделение
-            if (selectedText && selectedText.length > 0) {
+            // РЕЖИМ 3: текст есть И есть СОХРАНЕННОЕ выделение
+            if (savedSelection && savedSelection.text && savedSelection.text.length > 0) {
+                console.log(`[DETECT] Режим 3: найдено сохраненное выделение`);
                 return {
                     mode: 3,
                     description: 'ФРАГМЕНТ: редактирование выделенного текста',
-                    selectedText: selectedText
+                    selectedText: savedSelection.text
                 };
             }
 
             // РЕЖИМ 2: текст есть, но нет выделения
+            console.log(`[DETECT] Режим 2: весь текст`);
             return {
                 mode: 2,
                 description: 'ВЕСЬ ТЕКСТ: редактирование всей статьи'
@@ -671,33 +797,24 @@
         }
 
         /**
-         * Получить выделенный фрагмент вместе с контекстом (предыдущий и следующий абзацы)
+         * Получить выделенный фрагмент вместе с контекстом из СОХРАНЕННОГО выделения
          */
         function getSelectionWithContext() {
-            const selection = window.getSelection();
-            if (!selection.toString().trim()) {
-                console.log('[SELECTION] Нет выделенного текста');
+            if (!savedSelection || !savedSelection.text) {
+                console.log('[SELECTION] Нет сохраненного выделения');
                 return null;
             }
 
             const fullText = document.getElementById('editorContent').textContent;
-            const selectedText = selection.toString().trim();
+            const { startOffset, endOffset } = savedSelection;
 
-            console.log(`[SELECTION] Выделено ${selectedText.length} символов`);
-
-            // Находим начало и конец выделения в полном тексте
-            const startPos = fullText.indexOf(selectedText);
-            if (startPos === -1) {
-                console.log('[SELECTION] Не удалось найти выделенный текст в полном контенте');
-                return null;
-            }
-
-            const endPos = startPos + selectedText.length;
+            console.log(`[SELECTION] Используем сохраненное выделение. startOffset=${startOffset}, endOffset=${endOffset}`);
+            console.log(`[SELECTION] Размер фрагмента: ${endOffset - startOffset} символов`);
 
             // Берём предыдущий абзац (от последнего двойного переноса ДО выделения)
-            let beforeStart = startPos;
+            let beforeStart = startOffset;
             let doubleNewlineCount = 0;
-            for (let i = startPos - 1; i >= 0; i--) {
+            for (let i = startOffset - 1; i >= 0; i--) {
                 if (fullText[i] === '\n') {
                     doubleNewlineCount++;
                     if (doubleNewlineCount >= 2) {
@@ -708,15 +825,15 @@
                     doubleNewlineCount = 0;
                 }
             }
-            if (beforeStart === startPos) beforeStart = 0; // Если это начало документа
+            if (beforeStart === startOffset) beforeStart = 0; // Если это начало документа
 
-            const beforeContext = fullText.substring(beforeStart, startPos).trim();
+            const beforeContext = fullText.substring(beforeStart, startOffset).trim();
             console.log(`[SELECTION] До: ${beforeContext.substring(0, 50)}...`);
 
             // Берём следующий абзац (от конца выделения ДО следующего двойного переноса)
-            let afterEnd = endPos;
+            let afterEnd = endOffset;
             doubleNewlineCount = 0;
-            for (let i = endPos; i < fullText.length; i++) {
+            for (let i = endOffset; i < fullText.length; i++) {
                 if (fullText[i] === '\n') {
                     doubleNewlineCount++;
                     if (doubleNewlineCount >= 2) {
@@ -727,14 +844,14 @@
                     doubleNewlineCount = 0;
                 }
             }
-            if (afterEnd === endPos) afterEnd = fullText.length; // Если это конец документа
+            if (afterEnd === endOffset) afterEnd = fullText.length; // Если это конец документа
 
-            const afterContext = fullText.substring(endPos, afterEnd).trim();
+            const afterContext = fullText.substring(endOffset, afterEnd).trim();
             console.log(`[SELECTION] После: ${afterContext.substring(0, 50)}...`);
 
             return {
                 before: beforeContext,
-                fragment: selectedText,
+                fragment: savedSelection.text,
                 after: afterContext
             };
         }
@@ -968,12 +1085,70 @@
         }
 
         // === TYPEWRITER EFFECT ===
+        /**
+         * РЕЖИМ 1: Классический typewriter effect (текст был пуст)
+         */
         async function typewriterEffect(element, text, speed = 20) {
+            console.log('[TYPEWRITER] Классический эффект печати');
             element.textContent = '';
             for (let i = 0; i < text.length; i++) {
                 element.textContent += text[i];
                 await new Promise(resolve => setTimeout(resolve, speed));
             }
+        }
+
+        /**
+         * РЕЖИМ 2: Посимвольная замена ВСЕГО текста
+         */
+        async function animateTextReplacement(element, oldText, newText, speed = 10) {
+            console.log('[REPLACE_TEXT] Анимирую замену всего текста');
+
+            const maxLen = Math.max(oldText.length, newText.length);
+
+            for (let i = 0; i < maxLen; i++) {
+                const oldChar = oldText[i] || '';
+                const newChar = newText[i] || '';
+
+                if (oldChar !== newChar) {
+                    // Стираем старый символ и печатаем новый
+                    let currentText = element.textContent;
+                    currentText = currentText.substring(0, i) + newChar + currentText.substring(i + 1);
+                    element.textContent = currentText;
+                } else if (i === element.textContent.length && i < newText.length) {
+                    // Добавляем новый символ в конец
+                    element.textContent += newChar;
+                }
+
+                await new Promise(resolve => setTimeout(resolve, speed));
+            }
+
+            console.log('[REPLACE_TEXT] Замена завершена');
+        }
+
+        /**
+         * РЕЖИМ 3: Посимвольная замена ВЫДЕЛЕННОГО ФРАГМЕНТА
+         */
+        async function animateFragmentReplacement(element, fullOldText, startOffset, endOffset, newFragment, speed = 10) {
+            console.log(`[REPLACE_FRAGMENT] Анимирую замену фрагмента. Позиция: ${startOffset}-${endOffset}`);
+
+            const oldFragment = fullOldText.substring(startOffset, endOffset);
+            const maxLen = Math.max(oldFragment.length, newFragment.length);
+
+            for (let i = 0; i < maxLen; i++) {
+                const oldChar = oldFragment[i] || '';
+                const newChar = newFragment[i] || '';
+
+                const currentFullText = element.textContent;
+                const before = currentFullText.substring(0, startOffset + i);
+                const char = newChar || '';
+                const after = currentFullText.substring(startOffset + i + 1);
+
+                element.textContent = before + char + after;
+
+                await new Promise(resolve => setTimeout(resolve, speed));
+            }
+
+            console.log('[REPLACE_FRAGMENT] Замена фрагмента завершена');
         }
 
         // === UI FUNCTIONS ===
@@ -1165,11 +1340,24 @@
                 }
 
                 showNotification('Редактирую весь текст...');
+                const oldText = document.getElementById('editorContent').textContent;
                 const updatedArticle = await editFullTextViaAPI(currentArticleId, promptText);
                 if (!updatedArticle) return;
 
                 articles[currentArticleId] = updatedArticle;
-                document.getElementById('editorContent').textContent = updatedArticle.content;
+
+                // Применяем typewriter effect для замены текста
+                await animateTextReplacement(
+                    document.getElementById('editorContent'),
+                    oldText,
+                    updatedArticle.content,
+                    10  // speed
+                );
+
+                // Очищаем подсветку выделения
+                clearSelectionHighlight();
+                savedSelection = null;
+
                 showNotification('Текст отредактирован!');
             }
 
@@ -1190,6 +1378,10 @@
                 }
 
                 showNotification('Редактирую выделенный фрагмент...');
+                const oldText = document.getElementById('editorContent').textContent;
+                const startOffset = savedSelection.startOffset;
+                const endOffset = savedSelection.endOffset;
+
                 const updatedArticle = await editFragmentViaAPI(
                     currentArticleId,
                     selection.before,
@@ -1200,7 +1392,21 @@
                 if (!updatedArticle) return;
 
                 articles[currentArticleId] = updatedArticle;
-                document.getElementById('editorContent').textContent = updatedArticle.content;
+
+                // Применяем typewriter effect ТОЛЬКО для фрагмента
+                await animateFragmentReplacement(
+                    document.getElementById('editorContent'),
+                    oldText,
+                    startOffset,
+                    endOffset,
+                    updatedArticle.content.substring(startOffset, startOffset + (endOffset - startOffset)),
+                    10  // speed
+                );
+
+                // Очищаем подсветку выделения
+                clearSelectionHighlight();
+                savedSelection = null;
+
                 showNotification('Фрагмент отредактирован!');
             }
 
