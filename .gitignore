@@ -35,6 +35,7 @@ sandboxes/
 # ignore all environment files
 .env
 .env.*
+!.env.example
 *.env
 *.env.*
 
