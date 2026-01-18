@@ -702,6 +702,19 @@
                     }, 10);
                 }
             });
+
+            // Обработчик копирования (Ctrl+C) для сохранённого выделения
+            editorContent.addEventListener('copy', function(e) {
+                if (savedSelection && savedSelection.text) {
+                    console.log(`[COPY] Копируем выделенный фрагмент: "${savedSelection.text.substring(0, 50)}..."`);
+                    e.preventDefault();
+                    navigator.clipboard.writeText(savedSelection.text).then(() => {
+                        console.log('[COPY] Успешно скопировано в буфер обмена');
+                    }).catch(err => {
+                        console.error('[COPY] Ошибка при копировании:', err);
+                    });
+                }
+            });
         }
 
         /**
@@ -1391,6 +1404,11 @@
                 }
 
                 showNotification('Редактирую выделенный фрагмент...');
+
+                // ВАЖНО: Очищаем подсветку ДО получения текста для анимации
+                // иначе HTML теги сбивают расчет позиций
+                clearSelectionHighlight();
+
                 const oldText = document.getElementById('editorContent').textContent;
                 const startOffset = savedSelection.startOffset;
                 const endOffset = savedSelection.endOffset;
