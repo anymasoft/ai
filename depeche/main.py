@@ -126,6 +126,7 @@ class ArticleListItem(BaseModel):
 class EditFullTextRequest(BaseModel):
     """Запрос для редактирования всего текста статьи (РЕЖИМ 2)"""
     instruction: str
+    current_text: str = ""  # Текст из поля редактора (приоритет над текстом из БД)
 
 
 class EditFragmentRequest(BaseModel):
@@ -360,18 +361,22 @@ async def edit_article_full_text(article_id: int, request: EditFullTextRequest):
         logger.info(f"[EDIT_FULL] Получен запрос на редактирование всего текста. article_id={article_id}")
         logger.info(f"[EDIT_FULL] Инструкция: {request.instruction[:100]}...")
 
-        # Получаем текущую статью
+        # Получаем текущую статью (для заголовка и метаданных)
         article = get_article(article_id)
         if not article:
             logger.error(f"[EDIT_FULL] Статья с ID {article_id} не найдена")
             raise HTTPException(status_code=404, detail=f"Статья с ID {article_id} не найдена")
 
-        logger.info(f"[EDIT_FULL] Статья найдена: {article['title']}, текст = {len(article['content'])} символов")
+        # ВАЖНО: Используем текст из фронтенда (current_text), а не из БД!
+        text_to_edit = request.current_text if request.current_text else article['content']
+        logger.info(f"[EDIT_FULL] Статья найдена: {article['title']}")
+        logger.info(f"[EDIT_FULL] Текст из фронтенда: {len(request.current_text)} символов, из БД: {len(article['content'])} символов")
+        logger.info(f"[EDIT_FULL] Используем текст: {len(text_to_edit)} символов")
 
         # Вызываем LLM для редактирования
         logger.info(f"[EDIT_FULL] Вызываем LLM для редактирования всего текста")
         try:
-            llm_response, chunk_info = edit_full_text(article['content'], request.instruction)
+            llm_response, chunk_info = edit_full_text(text_to_edit, request.instruction)
             edited_text = llm_response.text
             logger.info(f"[EDIT_FULL] Текст успешно отредактирован ({len(edited_text)} символов)")
         except Exception as e:
