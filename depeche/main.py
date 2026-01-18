@@ -23,6 +23,14 @@ from llm import generate_article_plan
 # Инициализируем FastAPI приложение
 app = FastAPI(title="Depeche - AI Article Editor")
 
+# Добавляем middleware для логирования всех запросов
+@app.middleware("http")
+async def log_requests(request, call_next):
+    logger.info(f"[HTTP] {request.method} {request.url.path}")
+    response = await call_next(request)
+    logger.info(f"[HTTP] Response: {response.status_code}")
+    return response
+
 # Добавляем CORS middleware для работы с фронтенду
 app.add_middleware(
     CORSMiddleware,
