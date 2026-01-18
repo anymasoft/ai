@@ -1154,28 +1154,33 @@
 
         /**
          * РЕЖИМ 3: Посимвольная замена ВЫДЕЛЕННОГО ФРАГМЕНТА
+         * АРХИТЕКТУРА: [before][печать нового][остаток старого][after]
+         * Работает для любой длины newFragment (короче, равна, длиннее oldFragment)
          */
         async function animateFragmentReplacement(element, fullOldText, startOffset, endOffset, newFragment, speed = 10) {
             console.log(`[REPLACE_FRAGMENT] Анимирую замену фрагмента. Позиция: ${startOffset}-${endOffset}`);
+            console.log(`[REPLACE_FRAGMENT] Старый: ${endOffset - startOffset} символов, Новый: ${newFragment.length} символов`);
 
+            // Вычисляем неизменяемые части ДО начала цикла
+            const before = fullOldText.substring(0, startOffset);
+            const after = fullOldText.substring(endOffset);
             const oldFragment = fullOldText.substring(startOffset, endOffset);
-            const maxLen = Math.max(oldFragment.length, newFragment.length);
 
-            for (let i = 0; i < maxLen; i++) {
-                const oldChar = oldFragment[i] || "";
-                const newChar = newFragment[i] || "";
+            // Итерируем по ДЛИНЕ НОВОГО ТЕКСТА, а не старого
+            for (let i = 0; i < newFragment.length; i++) {
+                // Печатаем часть нового фрагмента (от 0 до i+1)
+                const printedPart = newFragment.substring(0, i + 1);
 
-                const currentFullText = element.textContent;
-                const before = currentFullText.substring(0, startOffset + i);
-                const char = newChar || "";
-                const after = currentFullText.substring(startOffset + i + 1);
+                // Оставляем остаток старого фрагмента (после i+1)
+                const remainingOld = oldFragment.substring(i + 1);
 
-                element.textContent = before + char + after;
+                // Собираем финальный текст
+                element.textContent = before + printedPart + remainingOld + after;
 
                 await new Promise(resolve => setTimeout(resolve, speed));
             }
 
-            console.log("[REPLACE_FRAGMENT] Замена фрагмента завершена");
+            console.log("[REPLACE_FRAGMENT] Замена фрагмента завершена успешно");
         }
 
         // === UI FUNCTIONS ===
