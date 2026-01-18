@@ -199,25 +199,31 @@
             background: #fafafa;
         }
 
+        .editor-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 20px 32px;
+            border-bottom: 1px solid #e8e8e8;
+            background: #fafafa;
+        }
+
         .article-title {
             font-size: 24px;
             font-weight: 700;
             color: #1a1a1a;
             margin: 0;
             letter-spacing: -0.5px;
+            flex: 1;
         }
 
         .dirty-indicator {
-            position: absolute;
-            left: 0;
-            top: 50%;
-            transform: translateY(-50%);
             width: 10px;
             height: 10px;
             border-radius: 50%;
             flex-shrink: 0;
             transition: background-color 0.2s ease;
-            z-index: 20;
+            margin-left: 16px;
         }
 
         .dirty-indicator.clean {
@@ -234,17 +240,6 @@
             flex-direction: column;
             overflow: hidden;
             padding: 32px;
-            position: relative;
-        }
-
-        .editor-toolbar {
-            display: flex;
-            align-items: center;
-            justify-content: flex-end;
-            gap: 8px;
-            height: 48px;
-            margin-bottom: 12px;
-            position: relative;
         }
 
         .editor-wrapper {
@@ -274,6 +269,9 @@
         }
 
         .btn-save {
+            position: absolute;
+            top: 12px;
+            right: 92px;
             width: 32px;
             height: 32px;
             padding: 8px;
@@ -286,7 +284,7 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            flex-shrink: 0;
+            z-index: 10;
         }
 
         .btn-save:hover:not(:disabled) {
@@ -305,6 +303,9 @@
         }
 
         .btn-copy {
+            position: absolute;
+            top: 12px;
+            right: 12px;
             width: 32px;
             height: 32px;
             padding: 8px;
@@ -317,7 +318,7 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            flex-shrink: 0;
+            z-index: 10;
         }
 
         .btn-copy:hover {
@@ -821,6 +822,9 @@
         }
 
         .btn-preview-toggle {
+            position: absolute;
+            top: 12px;
+            right: 52px;
             width: 32px;
             height: 32px;
             padding: 8px;
@@ -833,7 +837,7 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            flex-shrink: 0;
+            z-index: 10;
         }
 
         .btn-preview-toggle:hover {
@@ -999,11 +1003,13 @@
                 <h2 class="article-title" id="currentTitle">
                     <span id="titleText"></span>
                 </h2>
+                <div class="dirty-indicator clean" id="dirtyIndicator" title="Changes saved"></div>
             </div>
 
             <div class="editor-area">
-                <div class="editor-toolbar">
-                    <div class="dirty-indicator clean" id="dirtyIndicator" title="Changes saved"></div>
+                <div class="editor-wrapper">
+                    <div class="editor-content" id="editorContent" contenteditable="true"></div>
+                    <div class="markdown-preview" id="markdownPreview" style="display:none;"></div>
                     <button class="btn-preview-toggle" id="previewToggleButton" title="Toggle preview" type="button" aria-label="Toggle preview">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                             <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
@@ -1023,10 +1029,6 @@
                             <rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect>
                         </svg>
                     </button>
-                </div>
-                <div class="editor-wrapper">
-                    <div class="editor-content" id="editorContent" contenteditable="true"></div>
-                    <div class="markdown-preview" id="markdownPreview" style="display:none;"></div>
                 </div>
             </div>
 
