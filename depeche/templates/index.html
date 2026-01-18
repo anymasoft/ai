@@ -2152,6 +2152,7 @@
 
                     document.getElementById("currentTitle").textContent = updatedArticle.title;
                     await typewriterEffect(document.getElementById("editorContent"), updatedArticle.content, 15);
+                    updateDirtyState();
                     showNotification("План статьи готов! Теперь можете редактировать текст.");
                 }
 
@@ -2177,6 +2178,7 @@
                         updatedArticle.content,
                         10  // speed
                     );
+                    updateDirtyState();
 
                     // Очищаем подсветку выделения
                     clearSelectionHighlight();
@@ -2227,6 +2229,7 @@
                         updatedArticle.fragment,
                         10  // speed
                     );
+                    updateDirtyState();
 
                     // Очищаем подсветку выделения
                     clearSelectionHighlight();
