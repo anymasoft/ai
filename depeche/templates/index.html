@@ -634,6 +634,7 @@
 
         // === PERSISTENT SELECTION STATE ===
         let savedSelection = null; // { startOffset, endOffset, text }
+        let highlightJustApplied = false; // Флаг для предотвращения немедленного сброса
 
         // === INITIALIZATION ===
         document.addEventListener('DOMContentLoaded', function() {
@@ -686,6 +687,12 @@
                 if (e.target === editorContent) {
                     // Клик на пустое место в editor
                     setTimeout(() => {
+                        // НЕ сбрасываем если только что применили подсветку
+                        if (highlightJustApplied) {
+                            console.log('[SELECTION_CLICK] Игнорируем click т.к. только что применили подсветку');
+                            return;
+                        }
+
                         const selection = window.getSelection();
                         if (!selection.toString().trim() && savedSelection) {
                             console.log('[SELECTION_CLEAR] Выделение сброшено при клике на пустое место');
@@ -725,6 +732,12 @@
                 escapeHtml(afterText);
 
             console.log('[HIGHLIGHT] Подсветка применена');
+
+            // Устанавливаем флаг чтобы предотвратить немедленный сброс при click
+            highlightJustApplied = true;
+            setTimeout(() => {
+                highlightJustApplied = false;
+            }, 100);
         }
 
         /**
