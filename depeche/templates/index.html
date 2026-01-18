@@ -552,26 +552,6 @@
             </div>
 
             <div class="articles-list" id="articlesList">
-                <button class="article-item active" data-id="1" onclick="selectArticle(this, 1)">
-                    Getting Started with AI
-                    <span class="article-delete-btn" onclick="deleteArticle(event, 1)" title="Delete">×</span>
-                </button>
-                <button class="article-item" data-id="2" onclick="selectArticle(this, 2)">
-                    Best Practices for Writing
-                    <span class="article-delete-btn" onclick="deleteArticle(event, 2)" title="Delete">×</span>
-                </button>
-                <button class="article-item" data-id="3" onclick="selectArticle(this, 3)">
-                    Advanced Techniques
-                    <span class="article-delete-btn" onclick="deleteArticle(event, 3)" title="Delete">×</span>
-                </button>
-                <button class="article-item" data-id="4" onclick="selectArticle(this, 4)">
-                    Case Studies
-                    <span class="article-delete-btn" onclick="deleteArticle(event, 4)" title="Delete">×</span>
-                </button>
-                <button class="article-item" data-id="5" onclick="selectArticle(this, 5)">
-                    Resources and Tools
-                    <span class="article-delete-btn" onclick="deleteArticle(event, 5)" title="Delete">×</span>
-                </button>
             </div>
 
             <div class="sidebar-footer">
@@ -594,22 +574,11 @@
         <!-- === MAIN AREA === -->
         <div class="main-content">
             <div class="editor-header">
-                <h2 class="article-title" id="currentTitle">Getting Started with AI</h2>
+                <h2 class="article-title" id="currentTitle"></h2>
             </div>
 
             <div class="editor-area">
-                <div class="editor-content" id="editorContent" contenteditable="true">Artificial intelligence is transforming the way we work and create. Whether you're a writer, developer, or designer, AI tools can help you collaborate, brainstorm, and iterate faster than ever before.
-
-This workspace is designed for you to draft, edit, and refine your ideas. The prompt bar at the bottom allows you to interact with AI assistance for your writing.
-
-Key areas to explore:
-• Document management in the sidebar
-• Rich text editing in the main area
-• Quick actions through the prompt interface
-
-Start by clicking into the text area and begin typing your article. You can also try different prompts to see how they transform your work.
-
-Happy writing!</div>
+                <div class="editor-content" id="editorContent" contenteditable="true"></div>
             </div>
 
             <div class="prompt-bar-container">
@@ -672,23 +641,30 @@ Happy writing!</div>
                 const articlesList_elem = document.getElementById('articlesList');
                 articlesList_elem.innerHTML = '';
                 articles = {};
+                currentArticleId = null;
 
                 if (articlesList.length === 0) {
-                    document.getElementById('currentTitle').textContent = 'No articles';
+                    document.getElementById('currentTitle').textContent = '';
                     document.getElementById('editorContent').textContent = '';
                     return;
                 }
 
                 // Заполняем sidebar
-                articlesList.forEach(article => {
+                articlesList.forEach((article, index) => {
                     articles[article.id] = article;
-                    addArticleToSidebar(article.id, article.title, false);
+                    // Первую статью отмечаем как активную
+                    const isFirst = index === 0;
+                    addArticleToSidebar(article.id, article.title, isFirst);
                 });
 
                 // Загружаем первую статью
                 if (articlesList.length > 0) {
                     const firstId = articlesList[0].id;
-                    selectArticle(document.querySelector(`.article-item[data-id="${firstId}"]`), firstId);
+                    currentArticleId = firstId;
+                    const firstArticle = articles[firstId];
+                    document.getElementById('currentTitle').textContent = firstArticle.title;
+                    document.getElementById('editorContent').textContent = firstArticle.content;
+                    document.getElementById('promptInput').value = '';
                 }
             } catch (error) {
                 console.error('Ошибка при загрузке списка статей:', error);
