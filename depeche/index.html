@@ -621,28 +621,40 @@ Happy writing!</div>
         const articles = {
             1: {
                 title: 'Getting Started with AI',
-                content: 'Artificial intelligence is transforming the way we work and create. Whether you\'re a writer, developer, or designer, AI tools can help you collaborate, brainstorm, and iterate faster than ever before.\n\nThis workspace is designed for you to draft, edit, and refine your ideas. The prompt bar at the bottom allows you to interact with AI assistance for your writing.\n\nKey areas to explore:\n• Document management in the sidebar\n• Rich text editing in the main area\n• Quick actions through the prompt interface\n\nStart by clicking into the text area and begin typing your article. You can also try different prompts to see how they transform your work.\n\nHappy writing!'
+                content: 'Artificial intelligence is transforming the way we work and create. Whether you\'re a writer, developer, or designer, AI tools can help you collaborate, brainstorm, and iterate faster than ever before.\n\nThis workspace is designed for you to draft, edit, and refine your ideas. The prompt bar at the bottom allows you to interact with AI assistance for your writing.\n\nKey areas to explore:\n• Document management in the sidebar\n• Rich text editing in the main area\n• Quick actions through the prompt interface\n\nStart by clicking into the text area and begin typing your article. You can also try different prompts to see how they transform your work.\n\nHappy writing!',
+                prompt: ''
             },
             2: {
                 title: 'Best Practices for Writing',
-                content: 'Effective writing requires clarity, structure, and purpose. Here are some best practices to keep in mind:\n\n1. Start with an outline\nOrganize your thoughts before you write. A clear outline helps maintain focus and flow.\n\n2. Write for your audience\nUnderstand who you\'re writing for and tailor your language accordingly.\n\n3. Edit ruthlessly\nFirst drafts are rarely perfect. Take time to review, refine, and remove unnecessary content.\n\n4. Use active voice\nActive voice is more engaging and direct than passive voice.\n\n5. Show, don\'t tell\nUse specific examples and concrete details rather than abstract statements.\n\n6. Proofread carefully\nCheck for grammar, spelling, and punctuation errors before publishing.'
+                content: 'Effective writing requires clarity, structure, and purpose. Here are some best practices to keep in mind:\n\n1. Start with an outline\nOrganize your thoughts before you write. A clear outline helps maintain focus and flow.\n\n2. Write for your audience\nUnderstand who you\'re writing for and tailor your language accordingly.\n\n3. Edit ruthlessly\nFirst drafts are rarely perfect. Take time to review, refine, and remove unnecessary content.\n\n4. Use active voice\nActive voice is more engaging and direct than passive voice.\n\n5. Show, don\'t tell\nUse specific examples and concrete details rather than abstract statements.\n\n6. Proofread carefully\nCheck for grammar, spelling, and punctuation errors before publishing.',
+                prompt: ''
             },
             3: {
                 title: 'Advanced Techniques',
-                content: 'Once you\'ve mastered the basics, explore advanced writing techniques:\n\nTechnique 1: Narrative arcs\nUse story structure to make your content more compelling.\n\nTechnique 2: Layering ideas\nBuild complexity by introducing concepts progressively.\n\nTechnique 3: Contrasts and comparisons\nHighlight differences to deepen understanding.\n\nTechnique 4: Rhetorical devices\nUse metaphor, alliteration, and other devices for impact.\n\nTechnique 5: Research integration\nSeamlessly weave research into your narrative.\n\nTechnique 6: Voice development\nCultivate a distinctive, recognizable writing voice.'
+                content: 'Once you\'ve mastered the basics, explore advanced writing techniques:\n\nTechnique 1: Narrative arcs\nUse story structure to make your content more compelling.\n\nTechnique 2: Layering ideas\nBuild complexity by introducing concepts progressively.\n\nTechnique 3: Contrasts and comparisons\nHighlight differences to deepen understanding.\n\nTechnique 4: Rhetorical devices\nUse metaphor, alliteration, and other devices for impact.\n\nTechnique 5: Research integration\nSeamlessly weave research into your narrative.\n\nTechnique 6: Voice development\nCultivate a distinctive, recognizable writing voice.',
+                prompt: ''
             },
             4: {
                 title: 'Case Studies',
-                content: 'Real-world examples demonstrate the power of effective writing and AI collaboration:\n\nCase Study 1: Academic Research\nHow researchers use AI to accelerate literature reviews and data analysis while maintaining rigor.\n\nCase Study 2: Content Marketing\nHow marketers create more engaging, personalized content at scale.\n\nCase Study 3: Creative Writing\nHow authors use AI as a brainstorming partner while preserving their unique voice.\n\nCase Study 4: Technical Documentation\nHow engineers create clearer, more comprehensive documentation faster.\n\nCase Study 5: Business Communication\nHow professionals improve internal and external communications.\n\nThese examples show that AI works best when used as a collaborator, not a replacement.'
+                content: 'Real-world examples demonstrate the power of effective writing and AI collaboration:\n\nCase Study 1: Academic Research\nHow researchers use AI to accelerate literature reviews and data analysis while maintaining rigor.\n\nCase Study 2: Content Marketing\nHow marketers create more engaging, personalized content at scale.\n\nCase Study 3: Creative Writing\nHow authors use AI as a brainstorming partner while preserving their unique voice.\n\nCase Study 4: Technical Documentation\nHow engineers create clearer, more comprehensive documentation faster.\n\nCase Study 5: Business Communication\nHow professionals improve internal and external communications.\n\nThese examples show that AI works best when used as a collaborator, not a replacement.',
+                prompt: ''
             },
             5: {
                 title: 'Resources and Tools',
-                content: 'Build your writing toolkit:\n\nEssential Resources:\n• Grammar and style guides\n• Thesauruses and dictionaries\n• Research databases\n• Writing communities\n\nTools for Organization:\n• Outline creators\n• Brainstorming boards\n• Reference managers\n• Cloud storage solutions\n\nCollaboration Tools:\n• Commenting systems\n• Version control\n• Real-time editing\n• Feedback platforms\n\nTips for Success:\n1. Invest in tools that match your workflow\n2. Learn keyboard shortcuts to save time\n3. Organize your files consistently\n4. Backup your work regularly\n5. Join writing communities for support\n\nRemember: the best tool is the one you actually use consistently.'
+                content: 'Build your writing toolkit:\n\nEssential Resources:\n• Grammar and style guides\n• Thesauruses and dictionaries\n• Research databases\n• Writing communities\n\nTools for Organization:\n• Outline creators\n• Brainstorming boards\n• Reference managers\n• Cloud storage solutions\n\nCollaboration Tools:\n• Commenting systems\n• Version control\n• Real-time editing\n• Feedback platforms\n\nTips for Success:\n1. Invest in tools that match your workflow\n2. Learn keyboard shortcuts to save time\n3. Organize your files consistently\n4. Backup your work regularly\n5. Join writing communities for support\n\nRemember: the best tool is the one you actually use consistently.',
+                prompt: ''
             }
         };
 
         // Select article
         function selectArticle(element, id) {
+            // Сохранить промпт текущей активной статьи перед переключением
+            const currentActiveItem = document.querySelector('.article-item.active');
+            if (currentActiveItem) {
+                const currentId = parseInt(currentActiveItem.getAttribute('data-id'));
+                articles[currentId].prompt = document.getElementById('promptInput').value;
+            }
+
             // Remove active class from all items
             document.querySelectorAll('.article-item').forEach(item => {
                 item.classList.remove('active');
@@ -651,11 +663,12 @@ Happy writing!</div>
             // Add active class to clicked item
             element.classList.add('active');
 
-            // Update content
+            // Update content and restore prompt for this article
             const article = articles[id];
             document.getElementById('currentTitle').textContent = article.title;
             document.getElementById('editorContent').textContent = article.content;
-            document.getElementById('promptInput').value = '';
+            document.getElementById('promptInput').value = article.prompt;
+            document.getElementById('promptInput').style.height = 'auto';
         }
 
         // Open new article modal
@@ -677,7 +690,8 @@ Happy writing!</div>
             const newId = Math.max(...Object.keys(articles).map(Number)) + 1;
             articles[newId] = {
                 title: title,
-                content: ''
+                content: '',
+                prompt: ''
             };
 
             const list = document.getElementById('articlesList');
@@ -715,6 +729,13 @@ Happy writing!</div>
         function applyPrompt() {
             const promptText = document.getElementById('promptInput').value.trim();
             if (promptText) {
+                // Сохранить промпт в текущую статью перед очисткой
+                const activeItem = document.querySelector('.article-item.active');
+                if (activeItem) {
+                    const id = parseInt(activeItem.getAttribute('data-id'));
+                    articles[id].prompt = promptText;
+                }
+
                 showNotification('Processing: "' + promptText.substring(0, 50) + (promptText.length > 50 ? '..."' : '"'));
                 document.getElementById('promptInput').value = '';
                 document.getElementById('promptInput').style.height = 'auto';
