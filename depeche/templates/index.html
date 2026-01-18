@@ -649,91 +649,180 @@ Happy writing!</div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        // Article database (mock)
-        const articles = {
-            1: {
-                title: 'Getting Started with AI',
-                content: 'Artificial intelligence is transforming the way we work and create. Whether you\'re a writer, developer, or designer, AI tools can help you collaborate, brainstorm, and iterate faster than ever before.\n\nThis workspace is designed for you to draft, edit, and refine your ideas. The prompt bar at the bottom allows you to interact with AI assistance for your writing.\n\nKey areas to explore:\n• Document management in the sidebar\n• Rich text editing in the main area\n• Quick actions through the prompt interface\n\nStart by clicking into the text area and begin typing your article. You can also try different prompts to see how they transform your work.\n\nHappy writing!',
-                prompt: ''
-            },
-            2: {
-                title: 'Best Practices for Writing',
-                content: 'Effective writing requires clarity, structure, and purpose. Here are some best practices to keep in mind:\n\n1. Start with an outline\nOrganize your thoughts before you write. A clear outline helps maintain focus and flow.\n\n2. Write for your audience\nUnderstand who you\'re writing for and tailor your language accordingly.\n\n3. Edit ruthlessly\nFirst drafts are rarely perfect. Take time to review, refine, and remove unnecessary content.\n\n4. Use active voice\nActive voice is more engaging and direct than passive voice.\n\n5. Show, don\'t tell\nUse specific examples and concrete details rather than abstract statements.\n\n6. Proofread carefully\nCheck for grammar, spelling, and punctuation errors before publishing.',
-                prompt: ''
-            },
-            3: {
-                title: 'Advanced Techniques',
-                content: 'Once you\'ve mastered the basics, explore advanced writing techniques:\n\nTechnique 1: Narrative arcs\nUse story structure to make your content more compelling.\n\nTechnique 2: Layering ideas\nBuild complexity by introducing concepts progressively.\n\nTechnique 3: Contrasts and comparisons\nHighlight differences to deepen understanding.\n\nTechnique 4: Rhetorical devices\nUse metaphor, alliteration, and other devices for impact.\n\nTechnique 5: Research integration\nSeamlessly weave research into your narrative.\n\nTechnique 6: Voice development\nCultivate a distinctive, recognizable writing voice.',
-                prompt: ''
-            },
-            4: {
-                title: 'Case Studies',
-                content: 'Real-world examples demonstrate the power of effective writing and AI collaboration:\n\nCase Study 1: Academic Research\nHow researchers use AI to accelerate literature reviews and data analysis while maintaining rigor.\n\nCase Study 2: Content Marketing\nHow marketers create more engaging, personalized content at scale.\n\nCase Study 3: Creative Writing\nHow authors use AI as a brainstorming partner while preserving their unique voice.\n\nCase Study 4: Technical Documentation\nHow engineers create clearer, more comprehensive documentation faster.\n\nCase Study 5: Business Communication\nHow professionals improve internal and external communications.\n\nThese examples show that AI works best when used as a collaborator, not a replacement.',
-                prompt: ''
-            },
-            5: {
-                title: 'Resources and Tools',
-                content: 'Build your writing toolkit:\n\nEssential Resources:\n• Grammar and style guides\n• Thesauruses and dictionaries\n• Research databases\n• Writing communities\n\nTools for Organization:\n• Outline creators\n• Brainstorming boards\n• Reference managers\n• Cloud storage solutions\n\nCollaboration Tools:\n• Commenting systems\n• Version control\n• Real-time editing\n• Feedback platforms\n\nTips for Success:\n1. Invest in tools that match your workflow\n2. Learn keyboard shortcuts to save time\n3. Organize your files consistently\n4. Backup your work regularly\n5. Join writing communities for support\n\nRemember: the best tool is the one you actually use consistently.',
-                prompt: ''
-            }
-        };
+        // === API CONFIGURATION ===
+        const API_BASE_URL = 'http://localhost:8000/api';
 
-        // Select article
+        // === STATE ===
+        let currentArticleId = null;
+        let articles = {}; // Локальный кэш статей
+
+        // === INITIALIZATION ===
+        document.addEventListener('DOMContentLoaded', function() {
+            loadArticlesList();
+        });
+
+        // === API FUNCTIONS ===
+
+        async function loadArticlesList() {
+            try {
+                const response = await fetch(`${API_BASE_URL}/articles`);
+                const articlesList = await response.json();
+
+                // Очищаем sidebar и DOM кэш
+                const articlesList_elem = document.getElementById('articlesList');
+                articlesList_elem.innerHTML = '';
+                articles = {};
+
+                if (articlesList.length === 0) {
+                    document.getElementById('currentTitle').textContent = 'No articles';
+                    document.getElementById('editorContent').textContent = '';
+                    return;
+                }
+
+                // Заполняем sidebar
+                articlesList.forEach(article => {
+                    articles[article.id] = article;
+                    addArticleToSidebar(article.id, article.title, false);
+                });
+
+                // Загружаем первую статью
+                if (articlesList.length > 0) {
+                    const firstId = articlesList[0].id;
+                    selectArticle(document.querySelector(`.article-item[data-id="${firstId}"]`), firstId);
+                }
+            } catch (error) {
+                console.error('Ошибка при загрузке списка статей:', error);
+                showNotification('Ошибка при загрузке списка статей');
+            }
+        }
+
+        async function loadArticleContent(articleId) {
+            try {
+                const response = await fetch(`${API_BASE_URL}/articles/${articleId}`);
+                if (!response.ok) throw new Error('Статья не найдена');
+
+                const article = await response.json();
+                return article;
+            } catch (error) {
+                console.error('Ошибка при загрузке статьи:', error);
+                showNotification('Ошибка при загрузке статьи');
+                return null;
+            }
+        }
+
+        async function createArticleViaAPI(topic) {
+            try {
+                showNotification('Генерирую план статьи...');
+
+                const response = await fetch(`${API_BASE_URL}/articles`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ topic: topic })
+                });
+
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.detail || 'Ошибка при создании статьи');
+                }
+
+                const article = await response.json();
+                return article;
+            } catch (error) {
+                console.error('Ошибка при создании статьи:', error);
+                showNotification('Ошибка: ' + error.message);
+                return null;
+            }
+        }
+
+        async function deleteArticleViaAPI(articleId) {
+            try {
+                const response = await fetch(`${API_BASE_URL}/articles/${articleId}`, {
+                    method: 'DELETE'
+                });
+
+                if (!response.ok) throw new Error('Ошибка при удалении');
+
+                delete articles[articleId];
+                return true;
+            } catch (error) {
+                console.error('Ошибка при удалении статьи:', error);
+                showNotification('Ошибка при удалении статьи');
+                return false;
+            }
+        }
+
+        // === TYPEWRITER EFFECT ===
+        async function typewriterEffect(element, text, speed = 20) {
+            element.textContent = '';
+            for (let i = 0; i < text.length; i++) {
+                element.textContent += text[i];
+                await new Promise(resolve => setTimeout(resolve, speed));
+            }
+        }
+
+        // === UI FUNCTIONS ===
+
+        function addArticleToSidebar(articleId, title, select = true) {
+            const list = document.getElementById('articlesList');
+            const button = document.createElement('button');
+            button.className = 'article-item';
+            if (select) button.classList.add('active');
+            button.setAttribute('data-id', articleId);
+            button.innerHTML = title + '<span class="article-delete-btn" onclick="deleteArticle(event, ' + articleId + ')" title="Delete">×</span>';
+            button.onclick = function(e) {
+                if (e.target.classList.contains('article-delete-btn')) return;
+                selectArticle(this, articleId);
+            };
+            list.appendChild(button);
+        }
+
         function selectArticle(element, id) {
-            // Сохранить промпт текущей активной статьи перед переключением
-            const currentActiveItem = document.querySelector('.article-item.active');
-            if (currentActiveItem) {
-                const currentId = parseInt(currentActiveItem.getAttribute('data-id'));
-                articles[currentId].prompt = document.getElementById('promptInput').value;
-            }
-
-            // Remove active class from all items
+            // Переключить активный класс
             document.querySelectorAll('.article-item').forEach(item => {
                 item.classList.remove('active');
             });
-
-            // Add active class to clicked item
             element.classList.add('active');
 
-            // Update content and restore prompt for this article
+            currentArticleId = id;
+
+            // Загрузить контент статьи
             const article = articles[id];
-            document.getElementById('currentTitle').textContent = article.title;
-            document.getElementById('editorContent').textContent = article.content;
-            document.getElementById('promptInput').value = article.prompt;
-            document.getElementById('promptInput').style.height = 'auto';
+            if (article) {
+                document.getElementById('currentTitle').textContent = article.title;
+                // Отобразить текст БЕЗ typewriter effect (просто загрузка)
+                document.getElementById('editorContent').textContent = article.content;
+                document.getElementById('promptInput').value = '';
+                document.getElementById('promptInput').style.height = 'auto';
+            }
         }
 
         // Delete article
-        function deleteArticle(event, id) {
-            // Остановить распространение события (чтобы не открывать статью)
+        async function deleteArticle(event, id) {
             event.stopPropagation();
+            const success = await deleteArticleViaAPI(id);
 
-            // Найти элемент статьи в DOM
-            const articleButton = document.querySelector('.article-item[data-id="' + id + '"]');
+            if (success) {
+                const articleButton = document.querySelector('.article-item[data-id="' + id + '"]');
+                articleButton.remove();
 
-            // Удалить из базы данных
-            delete articles[id];
-
-            // Удалить из DOM
-            articleButton.remove();
-
-            // Если это была активная статья - переключиться на другую
-            const activeItem = document.querySelector('.article-item.active');
-            if (!activeItem) {
-                // Если нет активной статьи, активировать первую оставшуюся
-                const firstArticle = document.querySelector('.article-item');
-                if (firstArticle) {
-                    const firstId = parseInt(firstArticle.getAttribute('data-id'));
-                    selectArticle(firstArticle, firstId);
-                } else {
-                    // Если нет статей - показать пустую область
-                    document.getElementById('currentTitle').textContent = 'No articles';
-                    document.getElementById('editorContent').textContent = '';
-                    document.getElementById('promptInput').value = '';
+                // Если это была активная статья - переключиться на другую
+                const activeItem = document.querySelector('.article-item.active');
+                if (!activeItem) {
+                    const firstArticle = document.querySelector('.article-item');
+                    if (firstArticle) {
+                        const firstId = parseInt(firstArticle.getAttribute('data-id'));
+                        selectArticle(firstArticle, firstId);
+                    } else {
+                        document.getElementById('currentTitle').textContent = 'No articles';
+                        document.getElementById('editorContent').textContent = '';
+                        document.getElementById('promptInput').value = '';
+                    }
                 }
-            }
 
-            showNotification('Article deleted');
+                showNotification('Article deleted');
+            }
         }
 
         // Open new article modal
@@ -744,36 +833,31 @@ Happy writing!</div>
             modal.show();
         }
 
-        // Create new article
-        function createNewArticle() {
-            const title = document.getElementById('newArticleTitle').value.trim();
-            if (!title) {
-                showNotification('Please enter an article title');
+        // Create new article (through API)
+        async function createNewArticle() {
+            const topic = document.getElementById('newArticleTitle').value.trim();
+            if (!topic) {
+                showNotification('Please enter an article topic');
                 return;
             }
 
-            const newId = Math.max(...Object.keys(articles).map(Number)) + 1;
-            articles[newId] = {
-                title: title,
-                content: '',
-                prompt: ''
-            };
-
-            const list = document.getElementById('articlesList');
-            const button = document.createElement('button');
-            button.className = 'article-item';
-            button.setAttribute('data-id', newId);
-            button.innerHTML = title + '<span class="article-delete-btn" onclick="deleteArticle(event, ' + newId + ')" title="Delete">×</span>';
-            button.onclick = function(e) {
-                if (e.target.classList.contains('article-delete-btn')) return;
-                selectArticle(this, newId);
-            };
-            list.appendChild(button);
-
-            selectArticle(button, newId);
-
             const modal = bootstrap.Modal.getInstance(document.getElementById('newArticleModal'));
             modal.hide();
+
+            // Вызваем API для создания статьи
+            const article = await createArticleViaAPI(topic);
+            if (!article) return;
+
+            // Добавляем в кэш и в sidebar
+            articles[article.id] = article;
+            addArticleToSidebar(article.id, article.title, true);
+
+            // Загружаем в редактор с typewriter effect
+            document.getElementById('currentTitle').textContent = article.title;
+            await typewriterEffect(document.getElementById('editorContent'), article.content, 15);
+
+            document.getElementById('promptInput').value = '';
+            document.getElementById('promptInput').style.height = 'auto';
 
             showNotification('Article created successfully');
         }
@@ -793,21 +877,42 @@ Happy writing!</div>
             }, 3000);
         }
 
-        // Apply prompt
-        function applyPrompt() {
-            const promptText = document.getElementById('promptInput').value.trim();
-            if (promptText) {
-                // Сохранить промпт в текущую статью перед очисткой
-                const activeItem = document.querySelector('.article-item.active');
-                if (activeItem) {
-                    const id = parseInt(activeItem.getAttribute('data-id'));
-                    articles[id].prompt = promptText;
-                }
+        // Extract topic from prompt and apply
+        async function applyPrompt() {
+            let promptText = document.getElementById('promptInput').value.trim();
+            if (!promptText) return;
 
-                showNotification('Processing: "' + promptText.substring(0, 50) + (promptText.length > 50 ? '..."' : '"'));
-                document.getElementById('promptInput').value = '';
-                document.getElementById('promptInput').style.height = 'auto';
+            // Извлекаем тему из промпта
+            // Если промпт содержит "Напиши план статьи:" или "Тема статьи:"
+            let topic = promptText;
+            const patterns = [
+                /(?:план\s+)?статьи?\s*[:\-]?\s*(.+)/i,
+                /тема\s+статьи?\s*[:\-]?\s*(.+)/i,
+                /напиши\s+(?:план\s+)?статьи?\s+(?:про|о|об)\s+(.+)/i
+            ];
+
+            for (let pattern of patterns) {
+                const match = promptText.match(pattern);
+                if (match) {
+                    topic = match[1].trim();
+                    break;
+                }
             }
+
+            // Создаём новую статью с этой темой
+            const article = await createArticleViaAPI(topic);
+            if (!article) return;
+
+            // Добавляем в кэш и в sidebar
+            articles[article.id] = article;
+            addArticleToSidebar(article.id, article.title, true);
+
+            // Загружаем в редактор с typewriter effect
+            document.getElementById('currentTitle').textContent = article.title;
+            await typewriterEffect(document.getElementById('editorContent'), article.content, 15);
+
+            document.getElementById('promptInput').value = '';
+            document.getElementById('promptInput').style.height = 'auto';
         }
 
         // Auto-resize textarea
