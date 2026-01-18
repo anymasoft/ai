@@ -210,6 +210,151 @@ def _split_into_chunks(text: str) -> List[str]:
     return chunks
 
 
+# === САНИТИЗАЦИЯ МАРКЕРОВ ФРАГМЕНТОВ ===
+
+def sanitize_fragment(text: str) -> str:
+    """
+    Жесткая санитизация результата LLM для удаления маркеров [ФРАГМЕНТ_НАЧАЛО] и [ФРАГМЕНТ_КОНЕЦ].
+
+    Алгоритм:
+    1. Если текст содержит ОБА маркера - извлекает содержимое МЕЖДУ ними
+    2. Удаляет все отдельные вхождения маркеров (с пробелами/переводами строк)
+    3. Триммит только внешние переводы строк
+
+    Args:
+        text: Текст для санитизации
+
+    Returns:
+        Очищенный текст без маркеров
+    """
+    if not text:
+        return text
+
+    # Попытка 1: Если есть ОБА маркера - извлечь содержимое между ними
+    # Используем неж модификатор для поиска между маркерами
+    begin_marker = "[ФРАГМЕНТ_НАЧАЛО]"
+    end_marker = "[ФРАГМЕНТ_КОНЕЦ]"
+
+    if begin_marker in text and end_marker in text:
+        # Найти позиции маркеров
+        begin_pos = text.find(begin_marker)
+        end_pos = text.find(end_marker)
+
+        if begin_pos < end_pos:
+            # Извлечь содержимое между маркерами
+            content = text[begin_pos + len(begin_marker):end_pos]
+            logger.debug(f"[SANITIZE] Найдены ОБА маркера. Извлекаю содержимое между ними.")
+            text = content
+
+    # Попытка 2: Удалить любые отдельные вхождения маркеров
+    # Включаем пробелы и переводы строк вокруг маркеров
+    text = re.sub(r'\s*\[ФРАГМЕНТ_НАЧАЛО\]\s*', '', text)
+    text = re.sub(r'\s*\[ФРАГМЕНТ_КОНЕЦ\]\s*', '', text)
+
+    # Триммить только внешние переводы строк (не внутренние!)
+    text = text.strip('\n').strip()
+
+    # Если результат пустой - вернуть оригинальный текст для дальнейшего анализа
+    if not text.strip():
+        logger.warning(f"[SANITIZE] После санитизации текст пустой! Возвращаю оригинальный.")
+        return text
+
+    return text
+
+
+def _has_fragment_markers(text: str) -> Tuple[bool, Optional[str]]:
+    """
+    Проверить наличие маркеров фрагментов в тексте.
+
+    Args:
+        text: Текст для проверки
+
+    Returns:
+        Tuple[has_markers, marker_found] - True если маркеры найдены, имя первого маркера
+    """
+    begin_marker = "[ФРАГМЕНТ_НАЧАЛО]"
+    end_marker = "[ФРАГМЕНТ_КОНЕЦ]"
+
+    if begin_marker in text:
+        return True, begin_marker
+    if end_marker in text:
+        return True, end_marker
+
+    return False, None
+
+
+def _test_sanitize_fragment():
+    """
+    Мини-тесты для функции sanitize_fragment.
+    Проверяет различные сценарии удаления маркеров.
+    """
+    logger.info("[TEST] Запускаю мини-тесты для sanitize_fragment")
+
+    test_cases = [
+        # (input, expected_output, description)
+        (
+            "[ФРАГМЕНТ_НАЧАЛО]\nЭто текст\n[ФРАГМЕНТ_КОНЕЦ]",
+            "Это текст",
+            "Базовый случай: текст между маркерами"
+        ),
+        (
+            "[ФРАГМЕНТ_НАЧАЛО]\nПервая строка\nВторая строка\n[ФРАГМЕНТ_КОНЕЦ]",
+            "Первая строка\nВторая строка",
+            "Многострочный текст между маркерами"
+        ),
+        (
+            "[ФРАГМЕНТ_НАЧАЛО]\nТекст\n[ФРАГМЕНТ_КОНЕЦ]\n\nДополнительный текст",
+            "Текст",
+            "Маркеры с текстом после них"
+        ),
+        (
+            "Текст\n[ФРАГМЕНТ_НАЧАЛО]\nФрагмент\n[ФРАГМЕНТ_КОНЕЦ]",
+            "Фрагмент",
+            "Маркеры с текстом до них"
+        ),
+        (
+            "Просто текст без маркеров",
+            "Просто текст без маркеров",
+            "Текст без маркеров"
+        ),
+        (
+            "[ФРАГМЕНТ_НАЧАЛО] Текст [ФРАГМЕНТ_КОНЕЦ]",
+            "Текст",
+            "Маркеры с пробелами вокруг"
+        ),
+        (
+            "[ФРАГМЕНТ_НАЧАЛО]Текст без переводов[ФРАГМЕНТ_КОНЕЦ]",
+            "Текст без переводов",
+            "Маркеры без переводов строк"
+        ),
+        (
+            "[ФРАГМЕНТ_НАЧАЛО]\n[ФРАГМЕНТ_КОНЕЦ]",
+            "",
+            "Пустое содержимое между маркерами"
+        ),
+    ]
+
+    passed = 0
+    failed = 0
+
+    for input_text, expected, description in test_cases:
+        result = sanitize_fragment(input_text)
+        if result == expected:
+            logger.debug(f"[TEST] ✓ PASS: {description}")
+            passed += 1
+        else:
+            logger.warning(
+                f"[TEST] ✗ FAIL: {description}\n"
+                f"  Input: {repr(input_text)}\n"
+                f"  Expected: {repr(expected)}\n"
+                f"  Got: {repr(result)}"
+            )
+            failed += 1
+
+    logger.info(f"[TEST] Результаты: {passed} passed, {failed} failed из {len(test_cases)} тестов")
+    return passed, failed
+
+
 # === СТРУКТУРНАЯ ВАЛИДАЦИЯ (для режима edit-fragment) ===
 
 def _extract_expected_paragraph_count(instruction: str) -> Optional[int]:
@@ -557,6 +702,19 @@ def edit_fragment(
 
     response = _call_openai(messages, FRAGMENT_MAX_TOKENS, mode="fragment")
 
+    # === САНИТИЗАЦИЯ ОТВЕТА 1 ===
+    logger.debug(f"[FRAGMENT] До санитизации (попытка 1): {len(response.text)} символов")
+    has_markers_before, marker_name = _has_fragment_markers(response.text)
+    if has_markers_before:
+        logger.warning(f"[FRAGMENT] Обнаружены маркеры {marker_name} в ответе попытки 1!")
+
+    response.text = sanitize_fragment(response.text)
+    has_markers_after, _ = _has_fragment_markers(response.text)
+    if has_markers_after:
+        logger.error(f"[FRAGMENT] МАРКЕРЫ ВСЕ ЕЩЕ ПРИСУТСТВУЮТ ПОСЛЕ САНИТИЗАЦИИ (попытка 1)!")
+    else:
+        logger.debug(f"[FRAGMENT] После санитизации (попытка 1): {len(response.text)} символов, маркеры удалены")
+
     # Инициализировать переменные валидации
     is_valid = True
     actual_count = None
@@ -605,6 +763,19 @@ def edit_fragment(
 
         response = _call_openai(structure_messages, structure_retry_tokens, mode="fragment_structure_retry")
 
+        # === САНИТИЗАЦИЯ ОТВЕТА 2 (структурный retry) ===
+        logger.debug(f"[FRAGMENT] До санитизации (структурный retry): {len(response.text)} символов")
+        has_markers_before, marker_name = _has_fragment_markers(response.text)
+        if has_markers_before:
+            logger.warning(f"[FRAGMENT] Обнаружены маркеры {marker_name} в ответе структурного retry!")
+
+        response.text = sanitize_fragment(response.text)
+        has_markers_after, _ = _has_fragment_markers(response.text)
+        if has_markers_after:
+            logger.error(f"[FRAGMENT] МАРКЕРЫ ВСЕ ЕЩЕ ПРИСУТСТВУЮТ ПОСЛЕ САНИТИЗАЦИИ (структурный retry)!")
+        else:
+            logger.debug(f"[FRAGMENT] После санитизации (структурный retry): {len(response.text)} символов, маркеры удалены")
+
         if not response.truncated:
             # Ещё раз валидировать структуру
             is_valid, actual_count, error_msg = _is_structure_valid(response.text, expected_paragraphs)
@@ -624,6 +795,19 @@ def edit_fragment(
         logger.info(f"[FRAGMENT RETRY] Попытка 3: retry (truncation) с увеличенным лимитом {retry_tokens}")
 
         response = _call_openai(messages, retry_tokens, mode="fragment_retry")
+
+        # === САНИТИЗАЦИЯ ОТВЕТА 3 (truncation retry) ===
+        logger.debug(f"[FRAGMENT] До санитизации (truncation retry): {len(response.text)} символов")
+        has_markers_before, marker_name = _has_fragment_markers(response.text)
+        if has_markers_before:
+            logger.warning(f"[FRAGMENT] Обнаружены маркеры {marker_name} в ответе truncation retry!")
+
+        response.text = sanitize_fragment(response.text)
+        has_markers_after, _ = _has_fragment_markers(response.text)
+        if has_markers_after:
+            logger.error(f"[FRAGMENT] МАРКЕРЫ ВСЕ ЕЩЕ ПРИСУТСТВУЮТ ПОСЛЕ САНИТИЗАЦИИ (truncation retry)!")
+        else:
+            logger.debug(f"[FRAGMENT] После санитизации (truncation retry): {len(response.text)} символов, маркеры удалены")
 
         if not response.truncated:
             # Валидировать структуру если требуется
@@ -694,11 +878,37 @@ def edit_fragment(
 
         chunk_response = _call_openai(chunk_messages, FRAGMENT_MAX_TOKENS, mode=f"fragment_chunk_{i+1}")
 
+        # === САНИТИЗАЦИЯ ОТВЕТА ЧАНКА 1 ===
+        logger.debug(f"[FRAGMENT CHUNKING] До санитизации (чанк {i+1}): {len(chunk_response.text)} символов")
+        has_markers_before, marker_name = _has_fragment_markers(chunk_response.text)
+        if has_markers_before:
+            logger.warning(f"[FRAGMENT CHUNKING] Обнаружены маркеры {marker_name} в ответе чанка {i+1}!")
+
+        chunk_response.text = sanitize_fragment(chunk_response.text)
+        has_markers_after, _ = _has_fragment_markers(chunk_response.text)
+        if has_markers_after:
+            logger.error(f"[FRAGMENT CHUNKING] МАРКЕРЫ ВСЕ ЕЩЕ ПРИСУТСТВУЮТ ПОСЛЕ САНИТИЗАЦИИ (чанк {i+1})!")
+        else:
+            logger.debug(f"[FRAGMENT CHUNKING] После санитизации (чанк {i+1}): {len(chunk_response.text)} символов, маркеры удалены")
+
         # Retry для чанка если обрезано
         if chunk_response.truncated and RETRY_ON_TRUNCATION:
             retry_tokens = FRAGMENT_MAX_TOKENS * RETRY_TOKEN_MULTIPLIER
             logger.info(f"[FRAGMENT CHUNK RETRY] Чанк {i+1} обрезан, retry с {retry_tokens} токенов")
             chunk_response = _call_openai(chunk_messages, retry_tokens, mode=f"fragment_chunk_{i+1}_retry")
+
+            # === САНИТИЗАЦИЯ ОТВЕТА CHUNK RETRY ===
+            logger.debug(f"[FRAGMENT CHUNKING] До санитизации (чанк {i+1} retry): {len(chunk_response.text)} символов")
+            has_markers_before, marker_name = _has_fragment_markers(chunk_response.text)
+            if has_markers_before:
+                logger.warning(f"[FRAGMENT CHUNKING] Обнаружены маркеры {marker_name} в ответе retry чанка {i+1}!")
+
+            chunk_response.text = sanitize_fragment(chunk_response.text)
+            has_markers_after, _ = _has_fragment_markers(chunk_response.text)
+            if has_markers_after:
+                logger.error(f"[FRAGMENT CHUNKING] МАРКЕРЫ ВСЕ ЕЩЕ ПРИСУТСТВУЮТ ПОСЛЕ САНИТИЗАЦИИ (чанк {i+1} retry)!")
+            else:
+                logger.debug(f"[FRAGMENT CHUNKING] После санитизации (чанк {i+1} retry): {len(chunk_response.text)} символов, маркеры удалены")
 
         # Если чанк все ещё обрезан - критическая ошибка
         if chunk_response.truncated:
