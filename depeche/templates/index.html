@@ -1428,12 +1428,13 @@
                 articles[currentArticleId] = updatedArticle;
 
                 // Применяем typewriter effect ТОЛЬКО для фрагмента
+                // Используем новый фрагмент из backend (НЕ из content!)
                 await animateFragmentReplacement(
                     document.getElementById("editorContent"),
                     oldText,
                     startOffset,
                     endOffset,
-                    updatedArticle.content.substring(startOffset, startOffset + (endOffset - startOffset)),
+                    updatedArticle.fragment,
                     10  // speed
                 );
 

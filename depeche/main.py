@@ -79,6 +79,14 @@ class ArticleResponse(BaseModel):
     content: str
 
 
+class EditFragmentResponse(BaseModel):
+    """Ответ при редактировании фрагмента - включает новый фрагмент отдельно"""
+    id: int
+    title: str
+    content: str
+    fragment: str  # НОВЫЙ фрагмент (не полный текст)
+
+
 class ArticleListItem(BaseModel):
     """Элемент списка статей для sidebar"""
     id: int
@@ -400,10 +408,15 @@ async def edit_article_fragment(article_id: int, request: EditFragmentRequest):
         conn.close()
         logger.info(f"[EDIT_FRAGMENT] Текст успешно сохранен в БД")
 
-        # Возвращаем обновленную статью
+        # Возвращаем обновленную статью С НОВЫМ ФРАГМЕНТОМ ОТДЕЛЬНО
         updated_article = get_article(article_id)
-        logger.info(f"[EDIT_FRAGMENT] Возвращаем обновленную статью")
-        return ArticleResponse(**updated_article)
+        logger.info(f"[EDIT_FRAGMENT] Возвращаем обновленную статью с новым фрагментом")
+        return EditFragmentResponse(
+            id=updated_article["id"],
+            title=updated_article["title"],
+            content=updated_article["content"],
+            fragment=edited_fragment  # НОВЫЙ фрагмент, отдельно от content
+        )
 
     except HTTPException as e:
         logger.error(f"[EDIT_FRAGMENT] HTTPException: {e.detail}")
