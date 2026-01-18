@@ -1,0 +1,1539 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Depeche - AI Article Editor</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://assets.themesberg.com/public/products/pixel/css/pixel.css" rel="stylesheet">
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body, html {
+            height: 100%;
+            width: 100%;
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', sans-serif;
+            background: #ffffff;
+        }
+
+        .app-container {
+            display: flex;
+            height: 100vh;
+            width: 100%;
+        }
+
+        /* === SIDEBAR === */
+        .sidebar {
+            width: 280px;
+            background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%);
+            border-right: 1px solid #e0e0e0;
+            display: flex;
+            flex-direction: column;
+            padding: 24px 0;
+            overflow: hidden;
+        }
+
+        .sidebar-header {
+            padding: 0 20px 24px;
+            border-bottom: 1px solid #e8e8e8;
+            margin-bottom: 20px;
+        }
+
+        .sidebar-title {
+            font-size: 20px;
+            font-weight: 700;
+            color: #1a1a1a;
+            margin: 0 0 16px 0;
+            letter-spacing: -0.5px;
+        }
+
+        .btn-new-article {
+            width: 100%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: none;
+            color: white;
+            font-weight: 600;
+            padding: 10px 16px;
+            border-radius: 8px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.2);
+        }
+
+        .btn-new-article:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(102, 126, 234, 0.3);
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .articles-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 0 12px;
+        }
+
+        .article-item {
+            padding: 12px 40px 12px 16px;
+            margin-bottom: 8px;
+            background: white;
+            border: 1px solid #e8e8e8;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            color: #1a1a1a;
+            font-size: 14px;
+            line-height: 1.4;
+            display: block;
+            text-align: left;
+            text-decoration: none;
+            position: relative;
+        }
+
+        .article-item:hover {
+            background: #f5f5f5;
+            border-color: #d0d0d0;
+            transform: translateX(2px);
+        }
+
+        .article-item.active {
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%);
+            border-color: #667eea;
+            font-weight: 600;
+            color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .article-delete-btn {
+            position: absolute;
+            right: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: transparent;
+            border: none;
+            color: #999;
+            cursor: pointer;
+            padding: 4px 6px;
+            font-size: 18px;
+            line-height: 1;
+            transition: all 0.2s ease;
+            opacity: 0;
+            display: inline-block;
+        }
+
+        .article-item:hover .article-delete-btn {
+            opacity: 1;
+        }
+
+        .article-delete-btn:hover {
+            color: #e74c3c;
+            transform: translateY(-50%) scale(1.2);
+        }
+
+        .sidebar-footer {
+            padding: 16px 20px;
+            border-top: 1px solid #e8e8e8;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .user-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 700;
+            font-size: 16px;
+            flex-shrink: 0;
+            cursor: pointer;
+            transition: transform 0.2s ease;
+            border: none;
+            padding: 0;
+        }
+
+        .user-avatar:hover {
+            transform: scale(1.1);
+        }
+
+        .user-info {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .user-name {
+            font-size: 13px;
+            font-weight: 600;
+            color: #1a1a1a;
+            margin: 0;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .user-status {
+            font-size: 12px;
+            color: #888;
+            margin: 2px 0 0 0;
+        }
+
+        /* === MAIN CONTENT === */
+        .main-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            background: #ffffff;
+        }
+
+        .editor-header {
+            padding: 20px 32px;
+            border-bottom: 1px solid #e8e8e8;
+            background: #fafafa;
+        }
+
+        .article-title {
+            font-size: 24px;
+            font-weight: 700;
+            color: #1a1a1a;
+            margin: 0;
+            letter-spacing: -0.5px;
+        }
+
+        .editor-area {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            padding: 32px;
+        }
+
+        .editor-content {
+            flex: 1;
+            background: white;
+            border: 1px solid #e0e0e0;
+            border-radius: 12px;
+            padding: 24px;
+            overflow-y: auto;
+            font-size: 16px;
+            line-height: 1.6;
+            color: #2d2d2d;
+            outline: none;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+            transition: all 0.2s ease;
+            resize: none;
+            word-wrap: break-word;
+            white-space: pre-wrap;
+        }
+
+        .editor-content:focus {
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1), 0 1px 3px rgba(0, 0, 0, 0.05);
+        }
+
+        .editor-content::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .editor-content::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        .editor-content::-webkit-scrollbar-thumb {
+            background: #d0d0d0;
+            border-radius: 4px;
+        }
+
+        .editor-content::-webkit-scrollbar-thumb:hover {
+            background: #999;
+        }
+
+        /* === PROMPT BAR === */
+        .prompt-bar-container {
+            padding: 20px 32px;
+            background: white;
+            border-top: 1px solid #e8e8e8;
+        }
+
+        .prompt-bar {
+            display: flex;
+            gap: 12px;
+            align-items: flex-end;
+        }
+
+        .prompt-input-wrapper {
+            flex: 1;
+            display: flex;
+            align-items: flex-start;
+            background: white;
+            border: 1px solid #d0d0d0;
+            border-radius: 12px;
+            padding: 8px 16px;
+            transition: all 0.2s ease;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+        }
+
+        .prompt-input-wrapper:focus-within {
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1), 0 1px 3px rgba(0, 0, 0, 0.05);
+        }
+
+        .prompt-textarea {
+            flex: 1;
+            border: none;
+            outline: none;
+            padding: 8px 0;
+            font-size: 14px;
+            background: transparent;
+            color: #1a1a1a;
+            font-family: inherit;
+            resize: none;
+            overflow-y: auto;
+            max-height: 120px;
+            line-height: 1.5;
+            width: 100%;
+        }
+
+        .prompt-textarea::placeholder {
+            color: #999;
+        }
+
+        /* Стилизация скроллбара как в Anthropic/ChatGPT */
+        .prompt-textarea::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        .prompt-textarea::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        .prompt-textarea::-webkit-scrollbar-thumb {
+            background: #d0d0d0;
+            border-radius: 2px;
+        }
+
+        .prompt-textarea::-webkit-scrollbar-thumb:hover {
+            background: #b0b0b0;
+        }
+
+        .btn-apply {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: none;
+            color: white;
+            padding: 10px 24px;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.2);
+            white-space: nowrap;
+            height: fit-content;
+            margin-top: 2px;
+        }
+
+        .btn-apply:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(102, 126, 234, 0.3);
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-apply:active {
+            transform: translateY(0);
+        }
+
+        /* === DROPDOWN === */
+        .dropdown-menu {
+            border: 1px solid #e0e0e0;
+            border-radius: 10px;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+            padding: 8px 0;
+            min-width: 180px;
+            background: white;
+            backdrop-filter: blur(10px);
+        }
+
+        .dropdown-item {
+            padding: 12px 18px;
+            font-size: 14px;
+            font-weight: 500;
+            color: #1a1a1a;
+            transition: all 0.2s ease;
+            text-decoration: none;
+        }
+
+        .dropdown-item:hover {
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.08) 0%, rgba(118, 75, 162, 0.08) 100%);
+            color: #667eea;
+            padding-left: 22px;
+        }
+
+        .dropdown-divider {
+            margin: 8px 0;
+            border: none;
+            border-top: 1px solid #f0f0f0;
+        }
+
+        /* === TOAST NOTIFICATION === */
+        .notification-toast {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 12px 16px;
+            border-radius: 8px;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+            font-size: 13px;
+            animation: slideIn 0.3s ease;
+            z-index: 1050;
+            max-width: 300px;
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateY(-100px);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        /* === MODAL === */
+        .modal-content {
+            border: 1px solid #e8e8e8;
+            border-radius: 12px;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+        }
+
+        .modal-header {
+            border-bottom: 1px solid #e8e8e8;
+            padding: 20px 24px;
+        }
+
+        .modal-body {
+            padding: 24px;
+        }
+
+        .modal-footer {
+            border-top: 1px solid #e8e8e8;
+            padding: 16px 24px;
+            display: flex;
+            gap: 12px;
+            justify-content: flex-end;
+        }
+
+        .form-control {
+            border: 1px solid #d0d0d0;
+            border-radius: 8px;
+            padding: 8px 12px;
+            font-size: 14px;
+            transition: all 0.2s ease;
+        }
+
+        .form-control:focus {
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .btn-secondary {
+            background: #e8e8e8;
+            border: none;
+            color: #1a1a1a;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .btn-secondary:hover {
+            background: #d0d0d0;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: none;
+            color: white;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.2);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(102, 126, 234, 0.3);
+        }
+
+        /* === SCROLLBAR === */
+        .articles-list::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .articles-list::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        .articles-list::-webkit-scrollbar-thumb {
+            background: #d0d0d0;
+            border-radius: 3px;
+        }
+
+        .articles-list::-webkit-scrollbar-thumb:hover {
+            background: #999;
+        }
+
+        /* === RESPONSIVE === */
+        @media (max-width: 768px) {
+            .app-container {
+                flex-direction: column;
+            }
+
+            .sidebar {
+                width: 100%;
+                border-right: none;
+                border-bottom: 1px solid #e0e0e0;
+                padding: 16px 0;
+                max-height: 120px;
+            }
+
+            .articles-list {
+                max-height: 40px;
+            }
+
+            .sidebar-footer {
+                display: none;
+            }
+
+            .editor-header,
+            .editor-area,
+            .prompt-bar-container {
+                padding: 16px;
+            }
+
+            .article-title {
+                font-size: 18px;
+            }
+
+            .editor-content {
+                font-size: 14px;
+            }
+
+            .notification-toast {
+                right: 10px;
+                left: 10px;
+                top: 10px;
+                max-width: none;
+            }
+        }
+
+        /* === SELECTION HIGHLIGHT === */
+        .selection-highlight {
+            background-color: rgba(100, 200, 255, 0.25) !important;
+            border-radius: 2px;
+            box-shadow: inset 0 0 0 2px rgba(100, 150, 255, 0.4);
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <!-- === SIDEBAR === -->
+        <div class="sidebar">
+            <div class="sidebar-header">
+                <h1 class="sidebar-title">Depeche</h1>
+                <button class="btn-new-article" onclick="openNewArticleModal()">+ New Article</button>
+            </div>
+
+            <div class="articles-list" id="articlesList">
+            </div>
+
+            <div class="sidebar-footer">
+                <div class="dropdown">
+                    <button class="user-avatar dropdown-toggle" type="button" id="userDropdown" data-bs-toggle="dropdown" aria-expanded="false">A</button>
+                    <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userDropdown">
+                        <li><a class="dropdown-item" href="#">Pricing</a></li>
+                        <li><a class="dropdown-item" href="#">Settings</a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><a class="dropdown-item" href="#">Logout</a></li>
+                    </ul>
+                </div>
+                <div class="user-info">
+                    <p class="user-name">Alex Chen</p>
+                    <p class="user-status">Pro</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- === MAIN AREA === -->
+        <div class="main-content">
+            <div class="editor-header">
+                <h2 class="article-title" id="currentTitle"></h2>
+            </div>
+
+            <div class="editor-area">
+                <div class="editor-content" id="editorContent" contenteditable="true"></div>
+            </div>
+
+            <div class="prompt-bar-container">
+                <div class="prompt-bar">
+                    <div class="prompt-input-wrapper">
+                        <textarea
+                            class="prompt-textarea"
+                            id="promptInput"
+                            placeholder="Describe what you'd like to do... (e.g., 'Make it shorter', 'Add examples', 'Change tone')"
+                            rows="1"
+                        ></textarea>
+                    </div>
+                    <button class="btn-apply" onclick="applyPrompt()">Apply</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- === NEW ARTICLE MODAL === -->
+    <div class="modal fade" id="newArticleModal" tabindex="-1" aria-labelledby="newArticleLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="newArticleLabel">Create New Article</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <input type="text" class="form-control" id="newArticleTitle" placeholder="Article title">
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn-primary" onclick="createNewArticle()">Create</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // === API CONFIGURATION ===
+        const API_BASE_URL = 'http://localhost:8000/api';
+
+        // === STATE ===
+        let currentArticleId = null;
+        let articles = {}; // Локальный кэш статей
+
+        // === PERSISTENT SELECTION STATE ===
+        let savedSelection = null; // { startOffset, endOffset, text }
+        let highlightJustApplied = false; // Флаг для предотвращения немедленного сброса
+
+        // === INITIALIZATION ===
+        document.addEventListener('DOMContentLoaded', function() {
+            loadArticlesList();
+            setupSelectionHandlers();
+        });
+
+        // === SELECTION MANAGEMENT ===
+
+        /**
+         * Сохранить выделенный фрагмент при mouseup в editor
+         */
+        function setupSelectionHandlers() {
+            const editorContent = document.getElementById('editorContent');
+
+            editorContent.addEventListener('mouseup', function() {
+                const selection = window.getSelection();
+                if (selection.toString().trim()) {
+                    // Есть выделение - сохраняем его
+                    const range = selection.getRangeAt(0);
+                    const preCaretRange = range.cloneRange();
+                    preCaretRange.selectNodeContents(editorContent);
+                    preCaretRange.setEnd(range.endContainer, range.endOffset);
+
+                    const startOffset = preCaretRange.toString().length - range.toString().length;
+                    const endOffset = preCaretRange.toString().length;
+
+                    savedSelection = {
+                        startOffset: startOffset,
+                        endOffset: endOffset,
+                        text: range.toString()
+                    };
+
+                    console.log(`[SELECTION_SAVE] Выделено: "${savedSelection.text.substring(0, 50)}..."`);
+                    console.log(`[SELECTION_SAVE] startOffset=${startOffset}, endOffset=${endOffset}`);
+
+                    applySelectionHighlight();
+                } else {
+                    // Нет выделения - сбрасываем
+                    if (savedSelection) {
+                        console.log('[SELECTION_CLEAR] Выделение сброшено при mouseup без выделения');
+                        clearSelectionHighlight();
+                        savedSelection = null;
+                    }
+                }
+            });
+
+            // При клике на пустое место в editor - сбрасываем выделение
+            editorContent.addEventListener('click', function(e) {
+                if (e.target === editorContent) {
+                    // Клик на пустое место в editor
+                    setTimeout(() => {
+                        // НЕ сбрасываем если только что применили подсветку
+                        if (highlightJustApplied) {
+                            console.log('[SELECTION_CLICK] Игнорируем click т.к. только что применили подсветку');
+                            return;
+                        }
+
+                        const selection = window.getSelection();
+                        if (!selection.toString().trim() && savedSelection) {
+                            console.log('[SELECTION_CLEAR] Выделение сброшено при клике на пустое место');
+                            clearSelectionHighlight();
+                            savedSelection = null;
+                        }
+                    }, 10);
+                }
+            });
+
+            // Обработчик копирования (Ctrl+C) для сохранённого выделения
+            editorContent.addEventListener('copy', function(e) {
+                if (savedSelection && savedSelection.text) {
+                    console.log(`[COPY] Копируем выделенный фрагмент: "${savedSelection.text.substring(0, 50)}..."`);
+                    e.preventDefault();
+                    navigator.clipboard.writeText(savedSelection.text).then(() => {
+                        console.log('[COPY] Успешно скопировано в буфер обмена');
+                    }).catch(err => {
+                        console.error('[COPY] Ошибка при копировании:', err);
+                    });
+                }
+            });
+        }
+
+        /**
+         * Применить визуальную подсветку к сохраненному выделению
+         * ВАЖНО: Используем DOM методы для сохранения пробелов и переводов строк
+         */
+        function applySelectionHighlight() {
+            clearSelectionHighlight(); // Сначала очищаем
+
+            if (!savedSelection) return;
+
+            const editor = document.getElementById('editorContent');
+            const text = editor.textContent;
+            const { startOffset, endOffset } = savedSelection;
+
+            if (startOffset < 0 || endOffset > text.length || startOffset >= endOffset) {
+                console.log('[HIGHLIGHT] Позиции выделения некорректны');
+                return;
+            }
+
+            // Извлекаем части текста
+            const beforeText = text.substring(0, startOffset);
+            const selectedText = text.substring(startOffset, endOffset);
+            const afterText = text.substring(endOffset);
+
+            // Создаем фрагмент документа (не используем innerHTML!)
+            const fragment = document.createDocumentFragment();
+
+            // Добавляем текст ДО выделения
+            if (beforeText.length > 0) {
+                fragment.appendChild(document.createTextNode(beforeText));
+            }
+
+            // Создаем span для выделенного текста
+            const highlightSpan = document.createElement('span');
+            highlightSpan.className = 'selection-highlight';
+            highlightSpan.appendChild(document.createTextNode(selectedText));
+            fragment.appendChild(highlightSpan);
+
+            // Добавляем текст ПОСЛЕ выделения
+            if (afterText.length > 0) {
+                fragment.appendChild(document.createTextNode(afterText));
+            }
+
+            // Очищаем editor и добавляем фрагмент
+            editor.textContent = '';
+            editor.appendChild(fragment);
+
+            console.log('[HIGHLIGHT] Подсветка применена (DOM методы)');
+
+            // Устанавливаем флаг чтобы предотвратить немедленный сброс при click
+            highlightJustApplied = true;
+            setTimeout(() => {
+                highlightJustApplied = false;
+            }, 100);
+        }
+
+        /**
+         * Убрать визуальную подсветку выделения
+         */
+        function clearSelectionHighlight() {
+            const editor = document.getElementById('editorContent');
+            const highlighted = editor.querySelector('.selection-highlight');
+
+            if (highlighted) {
+                const text = highlighted.textContent;
+                const parent = highlighted.parentNode;
+                const textNode = document.createTextNode(text);
+                highlighted.replaceWith(textNode);
+                parent.normalize();
+                console.log('[HIGHLIGHT] Подсветка убрана');
+            }
+        }
+
+        /**
+         * Экранировать HTML специальные символы
+         */
+        function escapeHtml(text) {
+            const map = {
+                '&': '&amp;',
+                '<': '&lt;',
+                '>': '&gt;',
+                '"': '&quot;',
+                "'": '&#039;'
+            };
+            return text.replace(/[&<>"']/g, m => map[m]);
+        }
+
+        // === HELPER FUNCTIONS FOR MODE DETECTION ===
+
+        /**
+         * Определить режим редактирования по состоянию редактора
+         *
+         * РЕЖИМ 1: Текст пуст → ПЛАН (любой ввод = тема)
+         * РЕЖИМ 2: Текст есть + нет выделения → ПРАВКА ВСЕГО
+         * РЕЖИМ 3: Текст есть + есть выделение → ПРАВКА ФРАГМЕНТА
+         */
+        function detectMode() {
+            const editorContent = document.getElementById('editorContent').textContent.trim();
+
+            // РЕЖИМ 1: текст пуст
+            if (!editorContent) {
+                return {
+                    mode: 1,
+                    description: 'ПЛАН: генерация плана статьи'
+                };
+            }
+
+            // РЕЖИМ 3: текст есть И есть СОХРАНЕННОЕ выделение
+            if (savedSelection && savedSelection.text && savedSelection.text.length > 0) {
+                console.log(`[DETECT] Режим 3: найдено сохраненное выделение`);
+                return {
+                    mode: 3,
+                    description: 'ФРАГМЕНТ: редактирование выделенного текста',
+                    selectedText: savedSelection.text
+                };
+            }
+
+            // РЕЖИМ 2: текст есть, но нет выделения
+            console.log(`[DETECT] Режим 2: весь текст`);
+            return {
+                mode: 2,
+                description: 'ВЕСЬ ТЕКСТ: редактирование всей статьи'
+            };
+        }
+
+        /**
+         * Получить выделенный фрагмент вместе с контекстом из СОХРАНЕННОГО выделения
+         */
+        function getSelectionWithContext() {
+            if (!savedSelection || !savedSelection.text) {
+                console.log('[SELECTION] Нет сохраненного выделения');
+                return null;
+            }
+
+            const fullText = document.getElementById('editorContent').textContent;
+            const { startOffset, endOffset } = savedSelection;
+
+            console.log(`[SELECTION] Используем сохраненное выделение. startOffset=${startOffset}, endOffset=${endOffset}`);
+            console.log(`[SELECTION] Размер фрагмента: ${endOffset - startOffset} символов`);
+
+            // Берём предыдущий абзац (от последнего двойного переноса ДО выделения)
+            let beforeStart = startOffset;
+            let doubleNewlineCount = 0;
+            for (let i = startOffset - 1; i >= 0; i--) {
+                if (fullText[i] === '\n') {
+                    doubleNewlineCount++;
+                    if (doubleNewlineCount >= 2) {
+                        beforeStart = i + 1;
+                        break;
+                    }
+                } else if (fullText[i] !== ' ' && fullText[i] !== '\r') {
+                    doubleNewlineCount = 0;
+                }
+            }
+            if (beforeStart === startOffset) beforeStart = 0; // Если это начало документа
+
+            const beforeContext = fullText.substring(beforeStart, startOffset).trim();
+            console.log(`[SELECTION] До: ${beforeContext.substring(0, 50)}...`);
+
+            // Берём следующий абзац (от конца выделения ДО следующего двойного переноса)
+            let afterEnd = endOffset;
+            doubleNewlineCount = 0;
+            for (let i = endOffset; i < fullText.length; i++) {
+                if (fullText[i] === '\n') {
+                    doubleNewlineCount++;
+                    if (doubleNewlineCount >= 2) {
+                        afterEnd = i;
+                        break;
+                    }
+                } else if (fullText[i] !== ' ' && fullText[i] !== '\r') {
+                    doubleNewlineCount = 0;
+                }
+            }
+            if (afterEnd === endOffset) afterEnd = fullText.length; // Если это конец документа
+
+            const afterContext = fullText.substring(endOffset, afterEnd).trim();
+            console.log(`[SELECTION] После: ${afterContext.substring(0, 50)}...`);
+
+            return {
+                before: beforeContext,
+                fragment: savedSelection.text,
+                after: afterContext
+            };
+        }
+
+        // === API FUNCTIONS ===
+
+        async function loadArticlesList() {
+            try {
+                console.log('[LOAD] Загружаем список статей');
+                const response = await fetch(`${API_BASE_URL}/articles`);
+                const articlesList = await response.json();
+                console.log(`[LOAD] Получено ${articlesList.length} статей от API`);
+
+                // Очищаем sidebar и DOM кэш
+                const articlesList_elem = document.getElementById('articlesList');
+                articlesList_elem.innerHTML = '';
+                articles = {};
+                currentArticleId = null;
+                console.log('[LOAD] Очищен кэш и sidebar');
+
+                if (articlesList.length === 0) {
+                    console.log('[LOAD] Список статей пуст');
+                    document.getElementById('currentTitle').textContent = '';
+                    document.getElementById('editorContent').textContent = '';
+                    return;
+                }
+
+                // Заполняем sidebar
+                articlesList.forEach((article, index) => {
+                    console.log(`[LOAD] Добавляем статью: ID=${article.id}, title="${article.title}"`);
+                    articles[article.id] = article;
+                    // Первую статью отмечаем как активную
+                    const isFirst = index === 0;
+                    addArticleToSidebar(article.id, article.title, isFirst);
+                });
+
+                // Загружаем первую статью
+                if (articlesList.length > 0) {
+                    const firstId = articlesList[0].id;
+                    console.log(`[LOAD] Устанавливаем первую статью. ID=${firstId}`);
+                    currentArticleId = firstId;
+                    const firstArticle = articles[firstId];
+                    console.log(`[LOAD] currentArticleId установлен на: ${currentArticleId}`);
+                    document.getElementById('currentTitle').textContent = firstArticle.title;
+                    document.getElementById('editorContent').textContent = firstArticle.content;
+                    document.getElementById('promptInput').value = '';
+                    console.log('[LOAD] UI обновлен');
+                }
+            } catch (error) {
+                console.error('[LOAD] Критическая ошибка:', error);
+                showNotification('Ошибка при загрузке списка статей');
+            }
+        }
+
+        async function loadArticleContent(articleId) {
+            try {
+                const response = await fetch(`${API_BASE_URL}/articles/${articleId}`);
+                if (!response.ok) throw new Error('Статья не найдена');
+
+                const article = await response.json();
+                return article;
+            } catch (error) {
+                console.error('Ошибка при загрузке статьи:', error);
+                showNotification('Ошибка при загрузке статьи');
+                return null;
+            }
+        }
+
+        async function createEmptyArticleViaAPI(title) {
+            // Создаёт пустую статью БЕЗ генерации плана
+            try {
+                console.log(`[CREATE_API] Создаём пустую статью. title="${title}"`);
+
+                const url = `${API_BASE_URL}/articles`;
+                const body = { topic: title };
+                console.log(`[CREATE_API] URL: ${url}`);
+                console.log(`[CREATE_API] Тело: ${JSON.stringify(body)}`);
+
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(body)
+                });
+
+                console.log(`[CREATE_API] Статус ответа: ${response.status} ${response.statusText}`);
+
+                if (!response.ok) {
+                    const error = await response.json();
+                    console.error(`[CREATE_API] Ошибка от сервера: ${error.detail}`);
+                    throw new Error(error.detail || 'Ошибка при создании статьи');
+                }
+
+                const article = await response.json();
+                console.log(`[CREATE_API] Статья успешно создана! ID=${article.id}, title="${article.title}"`);
+                return article;
+            } catch (error) {
+                console.error('[CREATE_API] Критическая ошибка:', error);
+                showNotification('Ошибка: ' + error.message);
+                return null;
+            }
+        }
+
+        async function generatePlanForArticleViaAPI(articleId, topic) {
+            // Генерирует план статьи и обновляет её
+            try {
+                console.log(`[PLAN_GEN] Начинаем генерацию плана. articleId=${articleId}, topic="${topic}"`);
+                showNotification('Генерирую план статьи...');
+
+                const url = `${API_BASE_URL}/articles/${articleId}/plan`;
+                console.log(`[PLAN_GEN] URL запроса: ${url}`);
+                console.log(`[PLAN_GEN] Тело запроса: ${JSON.stringify({ topic: topic })}`);
+
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ topic: topic })
+                });
+
+                console.log(`[PLAN_GEN] Статус ответа: ${response.status} ${response.statusText}`);
+
+                if (!response.ok) {
+                    const error = await response.json();
+                    console.error(`[PLAN_GEN] Ошибка от сервера: ${error.detail}`);
+                    throw new Error(error.detail || 'Ошибка при генерации плана');
+                }
+
+                const article = await response.json();
+                console.log(`[PLAN_GEN] Успешно получен план: ${article.id} - ${article.title}`);
+                console.log(`[PLAN_GEN] Контент: ${article.content.substring(0, 100)}...`);
+                return article;
+            } catch (error) {
+                console.error('[PLAN_GEN] Критическая ошибка:', error);
+                showNotification('Ошибка при генерации: ' + error.message);
+                return null;
+            }
+        }
+
+        async function deleteArticleViaAPI(articleId) {
+            try {
+                const response = await fetch(`${API_BASE_URL}/articles/${articleId}`, {
+                    method: 'DELETE'
+                });
+
+                if (!response.ok) throw new Error('Ошибка при удалении');
+
+                delete articles[articleId];
+                return true;
+            } catch (error) {
+                console.error('Ошибка при удалении статьи:', error);
+                showNotification('Ошибка при удалении статьи');
+                return false;
+            }
+        }
+
+        /**
+         * РЕЖИМ 2: Редактирование ВСЕГО текста статьи
+         */
+        async function editFullTextViaAPI(articleId, instruction) {
+            try {
+                console.log(`[EDIT_FULL_API] Начинаем редактирование всего текста. articleId=${articleId}`);
+                console.log(`[EDIT_FULL_API] Инструкция: "${instruction}"`);
+
+                const url = `${API_BASE_URL}/articles/${articleId}/edit-full`;
+                const body = { instruction: instruction };
+
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(body)
+                });
+
+                console.log(`[EDIT_FULL_API] Статус ответа: ${response.status}`);
+
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.detail || 'Ошибка при редактировании');
+                }
+
+                const article = await response.json();
+                console.log(`[EDIT_FULL_API] Текст успешно отредактирован`);
+                return article;
+            } catch (error) {
+                console.error('[EDIT_FULL_API] Критическая ошибка:', error);
+                showNotification('Ошибка при редактировании: ' + error.message);
+                return null;
+            }
+        }
+
+        /**
+         * РЕЖИМ 3: Редактирование ВЫДЕЛЕННОГО ФРАГМЕНТА
+         */
+        async function editFragmentViaAPI(articleId, beforeContext, fragment, afterContext, instruction) {
+            try {
+                console.log(`[EDIT_FRAGMENT_API] Начинаем редактирование фрагмента. articleId=${articleId}`);
+                console.log(`[EDIT_FRAGMENT_API] Инструкция: "${instruction}"`);
+                console.log(`[EDIT_FRAGMENT_API] Размер фрагмента: ${fragment.length} символов`);
+
+                const url = `${API_BASE_URL}/articles/${articleId}/edit-fragment`;
+                const body = {
+                    before_context: beforeContext,
+                    fragment: fragment,
+                    after_context: afterContext,
+                    instruction: instruction
+                };
+
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(body)
+                });
+
+                console.log(`[EDIT_FRAGMENT_API] Статус ответа: ${response.status}`);
+
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.detail || 'Ошибка при редактировании фрагмента');
+                }
+
+                const article = await response.json();
+                console.log(`[EDIT_FRAGMENT_API] Фрагмент успешно отредактирован`);
+                return article;
+            } catch (error) {
+                console.error('[EDIT_FRAGMENT_API] Критическая ошибка:', error);
+                showNotification('Ошибка при редактировании: ' + error.message);
+                return null;
+            }
+        }
+
+        // === TYPEWRITER EFFECT ===
+        /**
+         * РЕЖИМ 1: Классический typewriter effect (текст был пуст)
+         */
+        async function typewriterEffect(element, text, speed = 20) {
+            console.log('[TYPEWRITER] Классический эффект печати');
+            element.textContent = '';
+            for (let i = 0; i < text.length; i++) {
+                element.textContent += text[i];
+                await new Promise(resolve => setTimeout(resolve, speed));
+            }
+        }
+
+        /**
+         * РЕЖИМ 2: Посимвольная замена ВСЕГО текста
+         */
+        async function animateTextReplacement(element, oldText, newText, speed = 10) {
+            console.log('[REPLACE_TEXT] Анимирую замену всего текста');
+
+            try {
+                const maxLen = Math.max(oldText.length, newText.length);
+
+                for (let i = 0; i < maxLen; i++) {
+                    // Проверяем что element еще в DOM
+                    if (!element.isConnected) {
+                        console.log('[REPLACE_TEXT] Element был удален из DOM, прерываем анимацию');
+                        break;
+                    }
+
+                    const oldChar = oldText[i] || '';
+                    const newChar = newText[i] || '';
+
+                    if (oldChar !== newChar) {
+                        // Стираем старый символ и печатаем новый
+                        let currentText = element.textContent;
+                        currentText = currentText.substring(0, i) + newChar + currentText.substring(i + 1);
+                        element.textContent = currentText;
+                    } else if (i === element.textContent.length && i < newText.length) {
+                        // Добавляем новый символ в конец
+                        element.textContent += newChar;
+                    }
+
+                    await new Promise(resolve => setTimeout(resolve, speed));
+                }
+
+                console.log('[REPLACE_TEXT] Замена завершена');
+            } catch (error) {
+                console.error('[REPLACE_TEXT] Ошибка во время анимации:', error);
+                // Все равно устанавливаем финальный текст
+                element.textContent = newText;
+            }
+        }
+
+        /**
+         * РЕЖИМ 3: Посимвольная замена ВЫДЕЛЕННОГО ФРАГМЕНТА
+         */
+        async function animateFragmentReplacement(element, fullOldText, startOffset, endOffset, newFragment, speed = 10) {
+            console.log(`[REPLACE_FRAGMENT] Анимирую замену фрагмента. Позиция: ${startOffset}-${endOffset}`);
+
+            try {
+                const oldFragment = fullOldText.substring(startOffset, endOffset);
+                const maxLen = Math.max(oldFragment.length, newFragment.length);
+
+                for (let i = 0; i < maxLen; i++) {
+                    // Проверяем что element еще в DOM
+                    if (!element.isConnected) {
+                        console.log('[REPLACE_FRAGMENT] Element был удален из DOM, прерываем анимацию');
+                        break;
+                    }
+
+                    const newChar = newFragment[i] || '';
+
+                    // Текст ДО позиции анимации
+                    const before = fullOldText.substring(0, startOffset + i);
+
+                    // Остаток старого фрагмента (символы которые еще не заменены)
+                    const remainingOldFragment = oldFragment.substring(i + 1);
+
+                    // Текст ПОСЛЕ фрагмента (неизменяемая часть)
+                    const afterFragment = fullOldText.substring(endOffset);
+
+                    // Собираем финальный текст
+                    element.textContent = before + newChar + remainingOldFragment + afterFragment;
+
+                    await new Promise(resolve => setTimeout(resolve, speed));
+                }
+
+                console.log('[REPLACE_FRAGMENT] Замена фрагмента завершена');
+            } catch (error) {
+                console.error('[REPLACE_FRAGMENT] Ошибка во время анимации:', error);
+                // Устанавливаем финальный текст из базы данных
+                const article = articles[currentArticleId];
+                if (article) {
+                    element.textContent = article.content;
+                }
+            }
+        }
+
+        // === UI FUNCTIONS ===
+
+        function addArticleToSidebar(articleId, title, select = true) {
+            const list = document.getElementById('articlesList');
+            const button = document.createElement('button');
+            button.className = 'article-item';
+            if (select) button.classList.add('active');
+            button.setAttribute('data-id', articleId);
+            button.innerHTML = title + '<span class="article-delete-btn" onclick="deleteArticle(event, ' + articleId + ')" title="Delete">×</span>';
+            button.onclick = function(e) {
+                if (e.target.classList.contains('article-delete-btn')) return;
+                selectArticle(this, articleId);
+            };
+            list.appendChild(button);
+        }
+
+        function selectArticle(element, id) {
+            console.log(`[SELECT] Переключение на статью ID=${id}`);
+            // Переключить активный класс
+            document.querySelectorAll('.article-item').forEach(item => {
+                item.classList.remove('active');
+            });
+            element.classList.add('active');
+
+            // ВАЖНО: Очистить выделение при переключении статьи
+            if (savedSelection) {
+                console.log('[SELECT] Очищаем выделение при переключении');
+                clearSelectionHighlight();
+                savedSelection = null;
+            }
+
+            currentArticleId = id;
+            console.log(`[SELECT] currentArticleId установлен на: ${currentArticleId}`);
+
+            // Загрузить контент статьи
+            const article = articles[id];
+            console.log(`[SELECT] Статья из кэша: ${article ? 'найдена' : 'НЕ найдена'}`);
+
+            if (article) {
+                console.log(`[SELECT] Отображаем: title="${article.title}", content="${article.content.substring(0, 50)}..."`);
+                document.getElementById('currentTitle').textContent = article.title;
+                // Отобразить текст БЕЗ typewriter effect (просто загрузка)
+                document.getElementById('editorContent').textContent = article.content;
+                document.getElementById('promptInput').value = '';
+                document.getElementById('promptInput').style.height = 'auto';
+            } else {
+                console.log(`[SELECT] ОШИБКА: Статья не найдена в кэше!`);
+            }
+        }
+
+        // Delete article
+        async function deleteArticle(event, id) {
+            event.stopPropagation();
+            const success = await deleteArticleViaAPI(id);
+
+            if (success) {
+                const articleButton = document.querySelector('.article-item[data-id="' + id + '"]');
+                articleButton.remove();
+
+                // Если это была активная статья - переключиться на другую
+                const activeItem = document.querySelector('.article-item.active');
+                if (!activeItem) {
+                    const firstArticle = document.querySelector('.article-item');
+                    if (firstArticle) {
+                        const firstId = parseInt(firstArticle.getAttribute('data-id'));
+                        selectArticle(firstArticle, firstId);
+                    } else {
+                        document.getElementById('currentTitle').textContent = 'No articles';
+                        document.getElementById('editorContent').textContent = '';
+                        document.getElementById('promptInput').value = '';
+                    }
+                }
+
+                showNotification('Article deleted');
+            }
+        }
+
+        // Open new article modal
+        function openNewArticleModal() {
+            const modal = new bootstrap.Modal(document.getElementById('newArticleModal'));
+            document.getElementById('newArticleTitle').value = '';
+            document.getElementById('newArticleTitle').focus();
+            modal.show();
+        }
+
+        // Create new article (through API) - пустая статья БЕЗ генерации
+        async function createNewArticle() {
+            console.log('[CREATE] Нажата кнопка создания статьи');
+            const title = document.getElementById('newArticleTitle').value.trim();
+            console.log(`[CREATE] Введённое название: "${title}"`);
+
+            if (!title) {
+                console.log('[CREATE] Ошибка: название пусто');
+                showNotification('Please enter an article title');
+                return;
+            }
+
+            const modal = bootstrap.Modal.getInstance(document.getElementById('newArticleModal'));
+            modal.hide();
+
+            // Вызваем API для создания ПУСТОЙ статьи (БЕЗ генерации плана)
+            console.log('[CREATE] Вызываем createEmptyArticleViaAPI');
+            const article = await createEmptyArticleViaAPI(title);
+            if (!article) {
+                console.log('[CREATE] Ошибка: API не вернул статью');
+                return;
+            }
+
+            console.log(`[CREATE] Статья создана! ID=${article.id}, title="${article.title}"`);
+
+            // Добавляем в кэш и в sidebar
+            articles[article.id] = article;
+            console.log(`[CREATE] Добавлена в кэш`);
+
+            addArticleToSidebar(article.id, article.title, true);
+            console.log(`[CREATE] Добавлена в sidebar`);
+
+            currentArticleId = article.id;
+            console.log(`[CREATE] currentArticleId установлен на: ${currentArticleId}`);
+
+            // Отображаем в редактор - пусто, БЕЗ typewriter effect
+            document.getElementById('currentTitle').textContent = article.title;
+            document.getElementById('editorContent').textContent = '';
+
+            document.getElementById('promptInput').value = '';
+            document.getElementById('promptInput').style.height = 'auto';
+
+            console.log('[CREATE] UI обновлен. Готово к вводу промпта');
+            showNotification('Статья создана. Введите план в prompt bar.');
+        }
+
+        // Show notification
+        function showNotification(message) {
+            const notification = document.createElement('div');
+            notification.className = 'notification-toast';
+            notification.textContent = message;
+            document.body.appendChild(notification);
+
+            setTimeout(() => {
+                notification.style.animation = 'slideIn 0.3s ease reverse';
+                setTimeout(() => {
+                    notification.remove();
+                }, 300);
+            }, 3000);
+        }
+
+        // Extract topic from prompt and generate plan for current article
+        async function applyPrompt() {
+            console.log('[PROMPT] Обработка промпта - НОВАЯ ЛОГИКА С 3 РЕЖИМАМИ');
+            const promptText = document.getElementById('promptInput').value.trim();
+            console.log(`[PROMPT] Текст промпта: "${promptText}"`);
+
+            if (!promptText) {
+                console.log('[PROMPT] Ошибка: промпт пуст');
+                return;
+            }
+
+            // ========== ОПРЕДЕЛЯЕМ РЕЖИМ ПО СОСТОЯНИЮ РЕДАКТОРА ==========
+            const modeInfo = detectMode();
+            console.log(`[PROMPT] Определен режим: ${modeInfo.mode} (${modeInfo.description})`);
+
+            // ========== РЕЖИМ 1: СОЗДАНИЕ ПЛАНА (текст пуст) ==========
+            if (modeInfo.mode === 1) {
+                console.log('[PROMPT] РЕЖИМ 1: весь текст промпта → тема для плана');
+
+                // Если нет активной статьи - создаём новую
+                if (!currentArticleId) {
+                    console.log('[PROMPT] Создаём новую статью для плана');
+                    const newArticle = await createEmptyArticleViaAPI(promptText);
+                    if (!newArticle) return;
+                    articles[newArticle.id] = newArticle;
+                    addArticleToSidebar(newArticle.id, newArticle.title, true);
+                    currentArticleId = newArticle.id;
+                }
+
+                // Генерируем план
+                showNotification('Генерирую план статьи...');
+                const updatedArticle = await generatePlanForArticleViaAPI(currentArticleId, promptText);
+                if (!updatedArticle) return;
+
+                articles[currentArticleId] = updatedArticle;
+                document.getElementById('currentTitle').textContent = updatedArticle.title;
+                await typewriterEffect(document.getElementById('editorContent'), updatedArticle.content, 15);
+                showNotification('План статьи готов! Теперь можете редактировать текст.');
+            }
+
+            // ========== РЕЖИМ 2: ПРАВКА ВСЕГО ТЕКСТА (текст есть, нет выделения) ==========
+            else if (modeInfo.mode === 2) {
+                console.log('[PROMPT] РЕЖИМ 2: промпт → инструкция для правки всего текста');
+
+                if (!currentArticleId) {
+                    showNotification('Выберите статью для редактирования');
+                    return;
+                }
+
+                showNotification('Редактирую весь текст...');
+                const oldText = document.getElementById('editorContent').textContent;
+                const updatedArticle = await editFullTextViaAPI(currentArticleId, promptText);
+                if (!updatedArticle) return;
+
+                articles[currentArticleId] = updatedArticle;
+
+                // Применяем typewriter effect для замены текста
+                await animateTextReplacement(
+                    document.getElementById('editorContent'),
+                    oldText,
+                    updatedArticle.content,
+                    10  // speed
+                );
+
+                // Очищаем подсветку выделения
+                clearSelectionHighlight();
+                savedSelection = null;
+
+                showNotification('Текст отредактирован!');
+            }
+
+            // ========== РЕЖИМ 3: ПРАВКА ФРАГМЕНТА (текст есть + есть выделение) ==========
+            else if (modeInfo.mode === 3) {
+                console.log('[PROMPT] РЕЖИМ 3: промпт → инструкция для правки фрагмента');
+
+                if (!currentArticleId) {
+                    showNotification('Выберите статью для редактирования');
+                    return;
+                }
+
+                // Получаем фрагмент с контекстом
+                const selection = getSelectionWithContext();
+                if (!selection) {
+                    showNotification('Не удалось получить выделенный текст');
+                    return;
+                }
+
+                showNotification('Редактирую выделенный фрагмент...');
+
+                // ВАЖНО: Очищаем подсветку ДО получения текста для анимации
+                // иначе HTML теги сбивают расчет позиций
+                clearSelectionHighlight();
+
+                const oldText = document.getElementById('editorContent').textContent;
+                const startOffset = savedSelection.startOffset;
+                const endOffset = savedSelection.endOffset;
+
+                const updatedArticle = await editFragmentViaAPI(
+                    currentArticleId,
+                    selection.before,
+                    selection.fragment,
+                    selection.after,
+                    promptText
+                );
+                if (!updatedArticle) return;
+
+                articles[currentArticleId] = updatedArticle;
+
+                // Применяем typewriter effect ТОЛЬКО для фрагмента
+                await animateFragmentReplacement(
+                    document.getElementById('editorContent'),
+                    oldText,
+                    startOffset,
+                    endOffset,
+                    updatedArticle.content.substring(startOffset, startOffset + (endOffset - startOffset)),
+                    10  // speed
+                );
+
+                // Очищаем подсветку выделения
+                clearSelectionHighlight();
+                savedSelection = null;
+
+                showNotification('Фрагмент отредактирован!');
+            }
+
+            // Очищаем поле промпта
+            document.getElementById('promptInput').value = '';
+            document.getElementById('promptInput').style.height = 'auto';
+            console.log('[PROMPT] Процесс завершен успешно');
+        }
+
+        // Auto-resize textarea
+        const promptInput = document.getElementById('promptInput');
+        promptInput.addEventListener('input', function() {
+            this.style.height = 'auto';
+            this.style.height = Math.min(this.scrollHeight, 120) + 'px';
+        });
+
+        // Allow Enter key to submit prompt (Shift+Enter for new line)
+        promptInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                applyPrompt();
+            }
+        });
+
+        // Save content to articles database when editing
+        document.getElementById('editorContent').addEventListener('blur', function() {
+            const activeItem = document.querySelector('.article-item.active');
+            if (activeItem) {
+                const id = parseInt(activeItem.getAttribute('data-id'));
+                articles[id].content = this.textContent;
+            }
+        });
+
+        // Allow Enter in modal to create article
+        document.getElementById('newArticleTitle').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                createNewArticle();
+            }
+        });
+    </script>
+</body>
+</html>
