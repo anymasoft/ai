@@ -702,24 +702,10 @@
                     }, 10);
                 }
             });
-
-            // Обработчик копирования (Ctrl+C) для сохранённого выделения
-            editorContent.addEventListener('copy', function(e) {
-                if (savedSelection && savedSelection.text) {
-                    console.log(`[COPY] Копируем выделенный фрагмент: "${savedSelection.text.substring(0, 50)}..."`);
-                    e.preventDefault();
-                    navigator.clipboard.writeText(savedSelection.text).then(() => {
-                        console.log('[COPY] Успешно скопировано в буфер обмена');
-                    }).catch(err => {
-                        console.error('[COPY] Ошибка при копировании:', err);
-                    });
-                }
-            });
         }
 
         /**
          * Применить визуальную подсветку к сохраненному выделению
-         * ВАЖНО: Используем DOM методы вместо innerHTML для сохранения пробелов/переносов!
          */
         function applySelectionHighlight() {
             clearSelectionHighlight(); // Сначала очищаем
@@ -735,35 +721,17 @@
                 return;
             }
 
-            // Извлекаем части текста
+            // Создаем wrapper для выделения
             const beforeText = text.substring(0, startOffset);
             const selectedText = text.substring(startOffset, endOffset);
             const afterText = text.substring(endOffset);
 
-            // Создаем фрагмент документа
-            const fragment = document.createDocumentFragment();
+            editor.innerHTML =
+                escapeHtml(beforeText) +
+                '<span class="selection-highlight">' + escapeHtml(selectedText) + '</span>' +
+                escapeHtml(afterText);
 
-            // Добавляем текст ДО выделения
-            if (beforeText.length > 0) {
-                fragment.appendChild(document.createTextNode(beforeText));
-            }
-
-            // Создаем span для выделенного текста
-            const highlightSpan = document.createElement('span');
-            highlightSpan.className = 'selection-highlight';
-            highlightSpan.appendChild(document.createTextNode(selectedText));
-            fragment.appendChild(highlightSpan);
-
-            // Добавляем текст ПОСЛЕ выделения
-            if (afterText.length > 0) {
-                fragment.appendChild(document.createTextNode(afterText));
-            }
-
-            // Очищаем editor и добавляем фрагмент
-            editor.textContent = '';
-            editor.appendChild(fragment);
-
-            console.log('[HIGHLIGHT] Подсветка применена (DOM методы)');
+            console.log('[HIGHLIGHT] Подсветка применена');
 
             // Устанавливаем флаг чтобы предотвратить немедленный сброс при click
             highlightJustApplied = true;
@@ -1423,11 +1391,6 @@
                 }
 
                 showNotification('Редактирую выделенный фрагмент...');
-
-                // ВАЖНО: Очищаем подсветку ДО получения текста для анимации
-                // иначе HTML теги сбивают расчет позиций
-                clearSelectionHighlight();
-
                 const oldText = document.getElementById('editorContent').textContent;
                 const startOffset = savedSelection.startOffset;
                 const endOffset = savedSelection.endOffset;
