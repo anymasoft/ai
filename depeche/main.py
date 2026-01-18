@@ -7,6 +7,11 @@ from pydantic import BaseModel
 import os
 import sqlite3
 from dotenv import load_dotenv
+import logging
+
+# Настраиваем логирование
+logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
 
 # Загружаем переменные окружения из .env
 load_dotenv()
@@ -88,19 +93,25 @@ async def create_new_article(request: ArticleCreateRequest):
     Response: { "id": 1, "title": "Название статьи", "content": "" }
     """
     try:
+        logger.info(f"[CREATE_ARTICLE] Получен запрос на создание статьи. topic='{request.topic}'")
         title = request.topic.strip()
 
         if not title:
+            logger.warning("[CREATE_ARTICLE] Ошибка: название пусто")
             raise HTTPException(status_code=400, detail="Название статьи не может быть пустым")
 
         # Создаём пустую статью - БЕЗ вызова LLM
+        logger.info(f"[CREATE_ARTICLE] Создаём пустую статью с названием '{title}'")
         article = create_article(title=title, content="")
 
+        logger.info(f"[CREATE_ARTICLE] Статья успешно создана! ID={article['id']}, title='{article['title']}'")
         return ArticleResponse(**article)
 
-    except HTTPException:
+    except HTTPException as e:
+        logger.error(f"[CREATE_ARTICLE] HTTPException: {e.detail}")
         raise
     except Exception as e:
+        logger.error(f"[CREATE_ARTICLE] Критическая ошибка: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Ошибка при создании статьи: {str(e)}")
 
 
@@ -113,33 +124,47 @@ async def generate_and_save_plan(article_id: int, request: ArticleCreateRequest)
     Response: { "id": 1, "title": "...", "content": "1. ...\n2. ..." }
     """
     try:
+        logger.info(f"[GENERATE_PLAN] Получен запрос на генерацию плана. article_id={article_id}, topic='{request.topic}'")
         topic = request.topic.strip()
 
         if not topic:
+            logger.warning("[GENERATE_PLAN] Ошибка: тема пуста")
             raise HTTPException(status_code=400, detail="Тема статьи не может быть пустой")
 
         # Проверяем существование статьи
+        logger.info(f"[GENERATE_PLAN] Проверяем существование статьи с ID={article_id}")
         article = get_article(article_id)
         if not article:
+            logger.error(f"[GENERATE_PLAN] Статья с ID {article_id} не найдена в БД")
             raise HTTPException(status_code=404, detail=f"Статья с ID {article_id} не найдена")
 
+        logger.info(f"[GENERATE_PLAN] Статья найдена: ID={article['id']}, title='{article['title']}'")
+
         # Генерируем план через LLM
+        logger.info(f"[GENERATE_PLAN] Вызываем LLM для генерации плана по теме '{topic}'")
         plan = generate_article_plan(topic)
+        logger.info(f"[GENERATE_PLAN] План успешно сгенерирован: {plan[:100]}...")
 
         # Обновляем статью в БД с полученным планом
+        logger.info(f"[GENERATE_PLAN] Обновляем БД - сохраняем план для статьи ID={article_id}")
         conn = sqlite3.connect(DB_PATH)
         cursor = conn.cursor()
         cursor.execute("UPDATE articles SET content = ? WHERE id = ?", (plan, article_id))
         conn.commit()
+        logger.info(f"[GENERATE_PLAN] Запись в БД успешна")
         conn.close()
 
         # Возвращаем обновлённую статью
+        logger.info(f"[GENERATE_PLAN] Получаем обновлённую статью из БД")
         updated_article = get_article(article_id)
+        logger.info(f"[GENERATE_PLAN] Возвращаем обновлённую статью: ID={updated_article['id']}")
         return ArticleResponse(**updated_article)
 
-    except HTTPException:
+    except HTTPException as e:
+        logger.error(f"[GENERATE_PLAN] HTTPException: {e.detail}")
         raise
     except Exception as e:
+        logger.error(f"[GENERATE_PLAN] Критическая ошибка: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Ошибка при генерации плана: {str(e)}")
 
 
@@ -151,9 +176,12 @@ async def get_articles_list():
     Response: [{ "id": 1, "title": "Тема статьи" }, ...]
     """
     try:
+        logger.info("[GET_ARTICLES_LIST] Получен запрос списка статей")
         articles = get_all_articles()
+        logger.info(f"[GET_ARTICLES_LIST] Возвращаем {len(articles)} статей")
         return articles
     except Exception as e:
+        logger.error(f"[GET_ARTICLES_LIST] Ошибка: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Ошибка при получении списка статей: {str(e)}")
 
 
@@ -165,16 +193,21 @@ async def get_single_article(article_id: int):
     Response: { "id": 1, "title": "Тема", "content": "1. ...\n2. ..." }
     """
     try:
+        logger.info(f"[GET_ARTICLE] Получен запрос статьи. ID={article_id}")
         article = get_article(article_id)
 
         if not article:
+            logger.error(f"[GET_ARTICLE] Статья с ID {article_id} не найдена в БД")
             raise HTTPException(status_code=404, detail=f"Статья с ID {article_id} не найдена")
 
+        logger.info(f"[GET_ARTICLE] Статья найдена: ID={article['id']}, title='{article['title']}'")
         return ArticleResponse(**article)
 
-    except HTTPException:
+    except HTTPException as e:
+        logger.error(f"[GET_ARTICLE] HTTPException: {e.detail}")
         raise
     except Exception as e:
+        logger.error(f"[GET_ARTICLE] Критическая ошибка: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Ошибка при получении статьи: {str(e)}")
 
 
@@ -186,16 +219,21 @@ async def delete_single_article(article_id: int):
     Response: { "success": true, "message": "Статья удалена" }
     """
     try:
+        logger.info(f"[DELETE_ARTICLE] Получен запрос на удаление статьи. ID={article_id}")
         success = delete_article(article_id)
 
         if not success:
+            logger.error(f"[DELETE_ARTICLE] Статья с ID {article_id} не найдена для удаления")
             raise HTTPException(status_code=404, detail=f"Статья с ID {article_id} не найдена")
 
+        logger.info(f"[DELETE_ARTICLE] Статья с ID {article_id} успешно удалена")
         return {"success": True, "message": "Статья удалена"}
 
-    except HTTPException:
+    except HTTPException as e:
+        logger.error(f"[DELETE_ARTICLE] HTTPException: {e.detail}")
         raise
     except Exception as e:
+        logger.error(f"[DELETE_ARTICLE] Критическая ошибка: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Ошибка при удалении статьи: {str(e)}")
 
 
