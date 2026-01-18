@@ -352,6 +352,27 @@
             transform: translateY(0);
         }
 
+        .btn-apply:disabled,
+        .btn-apply.generating {
+            cursor: not-allowed;
+            opacity: 0.8;
+            animation: btn-pulse 1.5s ease-in-out infinite;
+        }
+
+        .btn-apply:disabled:hover,
+        .btn-apply.generating:hover {
+            transform: none;
+        }
+
+        @keyframes btn-pulse {
+            0%, 100% {
+                box-shadow: 0 4px 12px rgba(102, 126, 234, 0.2);
+            }
+            50% {
+                box-shadow: 0 4px 20px rgba(102, 126, 234, 0.5);
+            }
+        }
+
         /* === DROPDOWN === */
         .dropdown-menu {
             border: 1px solid #e0e0e0;
@@ -1132,24 +1153,31 @@
          */
         async function animateTextReplacement(element, oldText, newText, speed = 10) {
             console.log("[REPLACE_TEXT] Анимирую замену всего текста");
+            console.log(`[REPLACE_TEXT] Старый текст: ${oldText.length} символов`);
+            console.log(`[REPLACE_TEXT] Новый текст: ${newText.length} символов`);
 
-            const maxLen = Math.max(oldText.length, newText.length);
+            // ФАЗА 1: Заменяем посимвольно до длины меньшего текста
+            const minLen = Math.min(oldText.length, newText.length);
 
-            for (let i = 0; i < maxLen; i++) {
-                const oldChar = oldText[i] || "";
-                const newChar = newText[i] || "";
-
-                if (oldChar !== newChar) {
-                    // Стираем старый символ и печатаем новый
+            for (let i = 0; i < minLen; i++) {
+                if (oldText[i] !== newText[i]) {
                     let currentText = element.textContent;
-                    currentText = currentText.substring(0, i) + newChar + currentText.substring(i + 1);
+                    currentText = currentText.substring(0, i) + newText[i] + currentText.substring(i + 1);
                     element.textContent = currentText;
-                } else if (i === element.textContent.length && i < newText.length) {
-                    // Добавляем новый символ в конец
-                    element.textContent += newChar;
                 }
-
                 await new Promise(resolve => setTimeout(resolve, speed));
+            }
+
+            // ФАЗА 2: Если новый текст длиннее - добавляем символы в конец
+            if (newText.length > oldText.length) {
+                for (let i = oldText.length; i < newText.length; i++) {
+                    element.textContent += newText[i];
+                    await new Promise(resolve => setTimeout(resolve, speed));
+                }
+            }
+            // ФАЗА 3: Если старый текст длиннее - удаляем лишние символы
+            else if (oldText.length > newText.length) {
+                element.textContent = newText;
             }
 
             console.log("[REPLACE_TEXT] Замена завершена");
@@ -1357,6 +1385,7 @@
             isGenerating = true;
             const btn = document.querySelector(".btn-apply");
             btn.disabled = true;
+            btn.classList.add("generating");
         }
 
         // Разблокировать кнопку Apply
@@ -1365,6 +1394,7 @@
             isGenerating = false;
             const btn = document.querySelector(".btn-apply");
             btn.disabled = false;
+            btn.classList.remove("generating");
         }
 
         // Extract topic from prompt and generate plan for current article
@@ -1510,11 +1540,11 @@
             }
         }
 
-        // Auto-resize textarea
+        // Auto-resize textarea (до разумных пределов, потом скролл)
         const promptInput = document.getElementById("promptInput");
         promptInput.addEventListener("input", function() {
             this.style.height = "auto";
-            this.style.height = Math.min(this.scrollHeight, 120) + "px";
+            this.style.height = Math.min(this.scrollHeight, 300) + "px";
         });
 
         // Allow Enter key to submit prompt (Shift+Enter for new line)
