@@ -5,13 +5,14 @@ from fastapi.middleware.cors import CORSMiddleware
 from starlette.requests import Request
 from pydantic import BaseModel
 import os
+import sqlite3
 from dotenv import load_dotenv
 
 # Загружаем переменные окружения из .env
 load_dotenv()
 
 # Импортируем модули нашего приложения
-from database import init_db, create_article, get_all_articles, get_article, delete_article
+from database import init_db, create_article, get_all_articles, get_article, delete_article, DB_PATH
 from llm import generate_article_plan
 
 # Инициализируем FastAPI приложение
@@ -81,22 +82,19 @@ async def health_check():
 @app.post("/api/articles")
 async def create_new_article(request: ArticleCreateRequest):
     """
-    Создать новую статью с генерацией плана через LLM.
+    Создать новую ПУСТУЮ статью (без генерации плана).
 
-    Request: { "topic": "Тема статьи" }
-    Response: { "id": 1, "title": "Тема статьи", "content": "1. ...\n2. ..." }
+    Request: { "topic": "Название статьи" }
+    Response: { "id": 1, "title": "Название статьи", "content": "" }
     """
     try:
-        topic = request.topic.strip()
+        title = request.topic.strip()
 
-        if not topic:
-            raise HTTPException(status_code=400, detail="Тема статьи не может быть пустой")
+        if not title:
+            raise HTTPException(status_code=400, detail="Название статьи не может быть пустым")
 
-        # Генерируем план статьи через LLM
-        plan = generate_article_plan(topic)
-
-        # Сохраняем статью в SQLite
-        article = create_article(title=topic, content=plan)
+        # Создаём пустую статью - БЕЗ вызова LLM
+        article = create_article(title=title, content="")
 
         return ArticleResponse(**article)
 
@@ -104,6 +102,45 @@ async def create_new_article(request: ArticleCreateRequest):
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Ошибка при создании статьи: {str(e)}")
+
+
+@app.post("/api/articles/{article_id}/plan")
+async def generate_and_save_plan(article_id: int, request: ArticleCreateRequest):
+    """
+    Генерирует план статьи по теме и сохраняет её содержимое.
+
+    Request: { "topic": "Обезьяны в Африке" }
+    Response: { "id": 1, "title": "...", "content": "1. ...\n2. ..." }
+    """
+    try:
+        topic = request.topic.strip()
+
+        if not topic:
+            raise HTTPException(status_code=400, detail="Тема статьи не может быть пустой")
+
+        # Проверяем существование статьи
+        article = get_article(article_id)
+        if not article:
+            raise HTTPException(status_code=404, detail=f"Статья с ID {article_id} не найдена")
+
+        # Генерируем план через LLM
+        plan = generate_article_plan(topic)
+
+        # Обновляем статью в БД с полученным планом
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        cursor.execute("UPDATE articles SET content = ? WHERE id = ?", (plan, article_id))
+        conn.commit()
+        conn.close()
+
+        # Возвращаем обновлённую статью
+        updated_article = get_article(article_id)
+        return ArticleResponse(**updated_article)
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Ошибка при генерации плана: {str(e)}")
 
 
 @app.get("/api/articles")
