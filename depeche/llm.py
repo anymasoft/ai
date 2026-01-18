@@ -304,7 +304,7 @@ def _is_structure_valid(text: str, expected_count: Optional[int]) -> Tuple[bool,
 
 # === ОСНОВНЫЕ РЕЖИМЫ РЕДАКТИРОВАНИЯ ===
 
-def generate_article_plan(topic: str) -> Tuple[LLMResponse, Optional[ChunkInfo]]:
+def generate_article_plan(topic: str, format: str = "plain") -> Tuple[LLMResponse, Optional[ChunkInfo]]:
     """
     РЕЖИМ 1: Генерирует план статьи по заданной теме используя OpenAI API.
 
@@ -312,6 +312,7 @@ def generate_article_plan(topic: str) -> Tuple[LLMResponse, Optional[ChunkInfo]]
 
     Args:
         topic: Тема статьи
+        format: "plain" для обычного текста или "markdown" для Markdown-форматирования
 
     Returns:
         Tuple[LLMResponse, None] - ответ и None (чанкинг для плана не нужен)
@@ -319,10 +320,18 @@ def generate_article_plan(topic: str) -> Tuple[LLMResponse, Optional[ChunkInfo]]
     Raises:
         Exception: При ошибке API OpenAI или если ответ обрезан после всех retry
     """
-    logger.info(f"[PLAN] Генерирую план для темы: {topic}")
+    logger.info(f"[PLAN] Генерирую план для темы: {topic}, format: {format}")
+
+    system_prompt = PLAN_SYSTEM_PROMPT
+
+    # Добавляем инструкцию о Markdown если требуется
+    if format == "markdown":
+        system_prompt += "\n\nФОРМАТ ВЫВОДА:\nИспользуй Markdown для форматирования:\n- ## для заголовков\n- Списки (- или 1.)\n- ``` для код-блоков"
+    else:
+        system_prompt += "\n\nФОРМАТ ВЫВОДА:\nИспользуй только обычный текст. НЕ используй символы Markdown-форматирования."
 
     messages = [
-        {"role": "system", "content": PLAN_SYSTEM_PROMPT},
+        {"role": "system", "content": system_prompt},
         {"role": "user", "content": f"Тема статьи: {topic}"}
     ]
 
@@ -347,7 +356,7 @@ def generate_article_plan(topic: str) -> Tuple[LLMResponse, Optional[ChunkInfo]]
     return response, None
 
 
-def edit_full_text(text: str, instruction: str) -> Tuple[LLMResponse, Optional[ChunkInfo]]:
+def edit_full_text(text: str, instruction: str, format: str = "plain") -> Tuple[LLMResponse, Optional[ChunkInfo]]:
     """
     РЕЖИМ 2: Редактирование ВСЕГО текста статьи с поддержкой chunking.
 
@@ -357,6 +366,7 @@ def edit_full_text(text: str, instruction: str) -> Tuple[LLMResponse, Optional[C
     Args:
         text: Полный текст статьи
         instruction: Инструкция редактирования
+        format: "plain" для обычного текста или "markdown" для Markdown-форматирования
 
     Returns:
         Tuple[LLMResponse, ChunkInfo] - отредактированный текст и инфо о чанкинге
@@ -366,18 +376,25 @@ def edit_full_text(text: str, instruction: str) -> Tuple[LLMResponse, Optional[C
     """
     logger.info(
         f"[FULLTEXT] Начинаю редактирование всего текста. "
-        f"Размер: {len(text)} символов, инструкция: {instruction[:50]}..."
+        f"Размер: {len(text)} символов, инструкция: {instruction[:50]}..., format: {format}"
     )
 
     text_len = len(text)
     chunk_info = ChunkInfo(chunks_count=1, strategy="single", total_chars=text_len)
+
+    # Подготавливаем системный промпт с учётом формата
+    system_prompt = EDIT_FULL_TEXT_SYSTEM_PROMPT
+    if format == "markdown":
+        system_prompt += "\n\nФОРМАТ ВЫВОДА:\nИспользуй Markdown для форматирования результата:\n- ## для заголовков\n- Списки (- или 1.)\n- ``` для код-блоков"
+    else:
+        system_prompt += "\n\nФОРМАТ ВЫВОДА:\nИспользуй только обычный текст. НЕ используй символы Markdown-форматирования."
 
     # Если текст достаточно короткий - обработать одним запросом
     if text_len <= CHUNK_MAX_CHARS:
         logger.debug(f"[FULLTEXT] Текст достаточно короткий ({text_len} символов), обработка одним запросом")
 
         messages = [
-            {"role": "system", "content": EDIT_FULL_TEXT_SYSTEM_PROMPT},
+            {"role": "system", "content": system_prompt},
             {"role": "user", "content": f"Инструкция: {instruction}\n\nТекст для редактирования:\n{text}"}
         ]
 
@@ -418,7 +435,7 @@ def edit_full_text(text: str, instruction: str) -> Tuple[LLMResponse, Optional[C
         logger.debug(f"[FULLTEXT CHUNKING] Обрабатываю чанк {i+1}/{len(chunks)} ({len(chunk)} символов)")
 
         chunk_messages = [
-            {"role": "system", "content": EDIT_FULL_TEXT_SYSTEM_PROMPT},
+            {"role": "system", "content": system_prompt},
             {"role": "user", "content": f"Инструкция: {instruction}\n\nТекст для редактирования:\n{chunk}"}
         ]
 
@@ -462,7 +479,8 @@ def edit_fragment(
     before_context: str,
     fragment: str,
     after_context: str,
-    instruction: str
+    instruction: str,
+    format: str = "plain"
 ) -> Tuple[LLMResponse, Optional[ChunkInfo]]:
     """
     РЕЖИМ 3: Редактирование ВЫДЕЛЕННОГО ФРАГМЕНТА с поддержкой retry, chunking и структурной валидации.
@@ -491,11 +509,18 @@ def edit_fragment(
     """
     logger.info(
         f"[FRAGMENT] Начинаю редактирование фрагмента. "
-        f"Размер фрагмента: {len(fragment)} символов, инструкция: {instruction[:50]}..."
+        f"Размер фрагмента: {len(fragment)} символов, инструкция: {instruction[:50]}..., format: {format}"
     )
     logger.debug(
         f"[FRAGMENT] Контекст: до={len(before_context)}, после={len(after_context)}"
     )
+
+    # Подготавливаем системный промпт с учётом формата
+    system_prompt = EDIT_FRAGMENT_SYSTEM_PROMPT
+    if format == "markdown":
+        system_prompt += "\n\nФОРМАТ ВЫВОДА:\nИспользуй Markdown для форматирования результата:\n- ## для заголовков\n- Списки (- или 1.)\n- ``` для код-блоков"
+    else:
+        system_prompt += "\n\nФОРМАТ ВЫВОДА:\nИспользуй только обычный текст. НЕ используй символы Markdown-форматирования."
 
     # === ПАРСИНГ ОЖИДАЕМОЙ СТРУКТУРЫ ===
     expected_paragraphs = None
@@ -526,7 +551,7 @@ def edit_fragment(
         user_message += f"\n\nСТРУКТУРНОЕ ТРЕБОВАНИЕ: Ответ должен содержать РОВНО {expected_paragraphs} абзацев."
 
     messages = [
-        {"role": "system", "content": EDIT_FRAGMENT_SYSTEM_PROMPT},
+        {"role": "system", "content": system_prompt},
         {"role": "user", "content": user_message}
     ]
 
@@ -574,7 +599,7 @@ def edit_fragment(
         )
 
         structure_messages = [
-            {"role": "system", "content": EDIT_FRAGMENT_SYSTEM_PROMPT},
+            {"role": "system", "content": system_prompt},
             {"role": "user", "content": structure_correction_message}
         ]
 
@@ -663,7 +688,7 @@ def edit_fragment(
 {chunk_after}"""
 
         chunk_messages = [
-            {"role": "system", "content": EDIT_FRAGMENT_SYSTEM_PROMPT},
+            {"role": "system", "content": system_prompt},
             {"role": "user", "content": f"Инструкция: {instruction}\n\n{chunk_full_text}"}
         ]
 
