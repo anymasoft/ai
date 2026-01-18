@@ -707,11 +707,15 @@
             document.addEventListener('keydown', function(e) {
                 // Проверяем Ctrl+C (Windows/Linux) или Cmd+C (Mac)
                 if ((e.ctrlKey || e.metaKey) && e.key === 'c') {
-                    // Проверяем находится ли фокус в editorContent
-                    const activeElement = document.activeElement;
                     const editorContent = document.getElementById('editorContent');
+                    const activeElement = document.activeElement;
 
-                    if (activeElement === editorContent && savedSelection && savedSelection.text) {
+                    // Check if we have saved selection and if focus is in editor or editor is active element
+                    const isFocusInEditor = activeElement === editorContent ||
+                                           activeElement.closest('#editorContent') === editorContent ||
+                                           editorContent.contains(activeElement);
+
+                    if (savedSelection && savedSelection.text && isFocusInEditor) {
                         console.log(`[COPY_KEY] Ctrl+C нажат, копируем: "${savedSelection.text.substring(0, 50)}..."`);
                         e.preventDefault();
 
@@ -1181,20 +1185,33 @@
         async function animateTextReplacement(element, oldText, newText, speed = 10) {
             console.log('[REPLACE_TEXT] Анимирую замену всего текста');
 
+            // GUARD: Check element is valid
+            if (!element || !element.isConnected) {
+                console.error('[REPLACE_TEXT] ERROR: Element is not in DOM');
+                throw new Error('Element not in DOM');
+            }
+
             const maxLen = Math.max(oldText.length, newText.length);
+            let currentText = oldText;
 
             for (let i = 0; i < maxLen; i++) {
+                // GUARD: Re-check element is still valid
+                if (!element || !element.isConnected) {
+                    console.error('[REPLACE_TEXT] ERROR: Element became disconnected during animation');
+                    throw new Error('Element disconnected during animation');
+                }
+
                 const oldChar = oldText[i] || '';
                 const newChar = newText[i] || '';
 
                 if (oldChar !== newChar) {
-                    // Стираем старый символ и печатаем новый
-                    let currentText = element.textContent;
+                    // Replace character at position i
                     currentText = currentText.substring(0, i) + newChar + currentText.substring(i + 1);
                     element.textContent = currentText;
-                } else if (i === element.textContent.length && i < newText.length) {
-                    // Добавляем новый символ в конец
-                    element.textContent += newChar;
+                } else if (i >= currentText.length && i < newText.length) {
+                    // Add character at end if new text is longer
+                    currentText += newChar;
+                    element.textContent = currentText;
                 }
 
                 await new Promise(resolve => setTimeout(resolve, speed));
@@ -1209,19 +1226,32 @@
         async function animateFragmentReplacement(element, fullOldText, startOffset, endOffset, newFragment, speed = 10) {
             console.log(`[REPLACE_FRAGMENT] Анимирую замену фрагмента. Позиция: ${startOffset}-${endOffset}`);
 
+            // GUARD: Check element is valid
+            if (!element || !element.isConnected) {
+                console.error('[REPLACE_FRAGMENT] ERROR: Element is not in DOM');
+                throw new Error('Element not in DOM');
+            }
+
             const oldFragment = fullOldText.substring(startOffset, endOffset);
             const maxLen = Math.max(oldFragment.length, newFragment.length);
+            let currentFullText = fullOldText;
 
             for (let i = 0; i < maxLen; i++) {
+                // GUARD: Re-check element is still valid
+                if (!element || !element.isConnected) {
+                    console.error('[REPLACE_FRAGMENT] ERROR: Element became disconnected during animation');
+                    throw new Error('Element disconnected during animation');
+                }
+
                 const oldChar = oldFragment[i] || '';
                 const newChar = newFragment[i] || '';
 
-                const currentFullText = element.textContent;
                 const before = currentFullText.substring(0, startOffset + i);
                 const char = newChar || '';
                 const after = currentFullText.substring(startOffset + i + 1);
 
-                element.textContent = before + char + after;
+                currentFullText = before + char + after;
+                element.textContent = currentFullText;
 
                 await new Promise(resolve => setTimeout(resolve, speed));
             }
@@ -1255,6 +1285,13 @@
 
             currentArticleId = id;
             console.log(`[SELECT] currentArticleId установлен на: ${currentArticleId}`);
+
+            // ВАЖНО: Очистить состояние выделения при переключении статьи
+            if (savedSelection) {
+                console.log('[SELECT] Очищаем сохраненное выделение при переключении статьи');
+                clearSelectionHighlight();
+                savedSelection = null;
+            }
 
             // Загрузить контент статьи
             const article = articles[id];
