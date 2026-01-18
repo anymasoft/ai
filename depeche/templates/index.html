@@ -242,6 +242,40 @@
             white-space: pre-wrap;
         }
 
+        .btn-save {
+            position: absolute;
+            top: 12px;
+            right: 92px;
+            width: 32px;
+            height: 32px;
+            padding: 8px;
+            background: transparent;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            color: #999;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10;
+        }
+
+        .btn-save:hover:not(:disabled) {
+            background: rgba(0, 0, 0, 0.05);
+            color: #667eea;
+        }
+
+        .btn-save:active:not(:disabled) {
+            background: rgba(102, 126, 234, 0.1);
+        }
+
+        .btn-save:disabled {
+            cursor: not-allowed;
+            color: #ddd;
+            opacity: 0.5;
+        }
+
         .btn-copy {
             position: absolute;
             top: 12px;
@@ -841,6 +875,13 @@
                             <circle cx="12" cy="12" r="3"></circle>
                         </svg>
                     </button>
+                    <button class="btn-save" id="saveButton" title="Save article" type="button" aria-label="Save" disabled>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
+                            <polyline points="17 21 17 13 7 13 7 21"></polyline>
+                            <polyline points="7 3 7 8 15 8"></polyline>
+                        </svg>
+                    </button>
                     <button class="btn-copy" id="copyButton" title="Copy to clipboard" type="button" aria-label="Copy">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                             <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path>
@@ -892,7 +933,7 @@
 
         // === STATE ===
         let currentArticleId = null;
-        let articles = {}; // Локальный кэш статей
+        let articles = {}; // Структура: { id, title, content (из БД), localContent (текущий текст), isDirty }
 
         // === PERSISTENT SELECTION STATE ===
         let savedSelection = null; // { startOffset, endOffset, text }
@@ -904,6 +945,10 @@
         // === PREVIEW STATE ===
         let isPreviewMode = false; // Флаг для переключения между edit и preview режимом
 
+        // === SAVE STATE ===
+        let isDirty = false; // Флаг несохранённых изменений для текущей статьи
+        let isSaving = false; // Флаг во время сохранения
+
 
         // === INITIALIZATION ===
         document.addEventListener("DOMContentLoaded", function() {
@@ -911,6 +956,8 @@
             setupSelectionHandlers();
             setupCopyButton();
             setupPreviewToggle();
+            setupDirtyTracking();
+            setupSaveButton();
         });
 
         // === SELECTION MANAGEMENT ===
@@ -1097,6 +1144,141 @@
             } catch (err) {
                 console.error("[PREVIEW] Ошибка при рендере markdown:", err);
                 markdownPreview.innerHTML = `<p style="color: red;">Ошибка: ${err.message}</p>`;
+            }
+        }
+
+        /**
+         * Инициализировать отслеживание изменений текста (onInput)
+         */
+        function setupDirtyTracking() {
+            const editorContent = document.getElementById("editorContent");
+            if (!editorContent) {
+                console.error("[DIRTY] Editor не найден");
+                return;
+            }
+
+            editorContent.addEventListener("input", function() {
+                updateDirtyState();
+            });
+
+            console.log("[DIRTY] Отслеживание изменений инициализировано");
+        }
+
+        /**
+         * Обновить состояние isDirty для текущей статьи
+         */
+        function updateDirtyState() {
+            if (!currentArticleId) return;
+
+            const editorContent = document.getElementById("editorContent");
+            const article = articles[currentArticleId];
+
+            if (!article) return;
+
+            const currentText = editorContent.textContent;
+            const wasClean = !isDirty;
+
+            // Сравниваем с последней сохранённой версией
+            isDirty = (currentText !== article.content);
+            article.isDirty = isDirty;
+
+            // Обновить UI только если состояние изменилось
+            if (wasClean !== !isDirty) {
+                updateSaveButtonState();
+            }
+
+            console.log(`[DIRTY] isDirty=${isDirty} для статьи ${currentArticleId}`);
+        }
+
+        /**
+         * Обновить состояние кнопки Save
+         */
+        function updateSaveButtonState() {
+            const saveBtn = document.getElementById("saveButton");
+            if (!saveBtn) return;
+
+            if (isDirty && !isSaving) {
+                saveBtn.disabled = false;
+                console.log("[SAVE] Кнопка Save активирована");
+            } else {
+                saveBtn.disabled = true;
+                console.log("[SAVE] Кнопка Save деактивирована");
+            }
+        }
+
+        /**
+         * Инициализировать кнопку Save
+         */
+        function setupSaveButton() {
+            const saveBtn = document.getElementById("saveButton");
+            if (!saveBtn) {
+                console.error("[SAVE] Save кнопка не найдена");
+                return;
+            }
+
+            saveBtn.addEventListener("click", async function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                await saveArticle();
+            });
+
+            console.log("[SAVE] Save кнопка инициализирована");
+        }
+
+        /**
+         * Сохранить текущую статью
+         */
+        async function saveArticle() {
+            if (!currentArticleId || isSaving) {
+                console.log("[SAVE] Попытка сохранения отклонена: нет статьи или уже сохраняется");
+                return;
+            }
+
+            const article = articles[currentArticleId];
+            if (!article || !isDirty) {
+                console.log("[SAVE] Нечего сохранять - статья чистая или не найдена");
+                return;
+            }
+
+            isSaving = true;
+            const saveBtn = document.getElementById("saveButton");
+            if (saveBtn) saveBtn.disabled = true;
+
+            console.log(`[SAVE] Начинаю сохранение статьи ${currentArticleId}`);
+
+            try {
+                const editorContent = document.getElementById("editorContent");
+                const textToSave = editorContent.textContent;
+
+                const response = await fetch(`${API_BASE_URL}/articles/${currentArticleId}`, {
+                    method: "PATCH",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ content: textToSave })
+                });
+
+                console.log(`[SAVE] Статус ответа: ${response.status}`);
+
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.detail || "Ошибка при сохранении");
+                }
+
+                const savedArticle = await response.json();
+                console.log("[SAVE] Статья успешно сохранена");
+
+                // Обновляем сохранённую версию
+                article.content = textToSave;
+                isDirty = false;
+                article.isDirty = false;
+
+                updateSaveButtonState();
+                showNotification("Статья сохранена!");
+            } catch (err) {
+                console.error("[SAVE] Ошибка при сохранении:", err);
+                showNotification("Ошибка при сохранении: " + err.message);
+            } finally {
+                isSaving = false;
+                updateSaveButtonState();
             }
         }
 
@@ -1302,9 +1484,8 @@
                 // Заполняем sidebar
                 articlesList.forEach((article, index) => {
                     console.log(`[LOAD] Добавляем статью: ID=${article.id}, title="${article.title}"`);
-                    // ВАЖНО: НЕ сохраняем content в articles - только metadata!
-                    // Content всегда находится в DOM поле редактора, а не в памяти
-                    delete article.content;
+                    // Сохраняем статью с полными метаданными для отслеживания сохранения
+                    article.isDirty = false; // На загрузке статья чистая
                     articles[article.id] = article;
                     // Первую статью отмечаем как активную
                     const isFirst = index === 0;
@@ -1372,6 +1553,9 @@
 
                 const article = await response.json();
                 console.log(`[CREATE_API] Статья успешно создана! ID=${article.id}, title="${article.title}"`);
+
+                // Инициализируем флаг isDirty для новой статьи
+                article.isDirty = false;
                 return article;
             } catch (error) {
                 console.error("[CREATE_API] Критическая ошибка:", error);
@@ -1653,8 +1837,51 @@
         }
 
         function selectArticle(element, id) {
-            console.log(`[SELECT] Переключение на статью ID=${id}`);
-            // Переключить активный класс
+            console.log(`[SELECT] Попытка переключения на статью ID=${id}`);
+
+            // Проверяем есть ли несохранённые изменения в текущей статье
+            if (currentArticleId && isDirty) {
+                console.log(`[SELECT] Обнаружены несохранённые изменения в статье ${currentArticleId}`);
+
+                // Показываем confirm диалог
+                const confirmMsg = "У вас есть несохранённые изменения. Что вы хотите сделать?";
+                console.log("[SELECT] " + confirmMsg);
+                showNotification(confirmMsg, "warning");
+
+                // Простой confirm для быстрого прототипа
+                const userChoice = confirm("У вас есть несохранённые изменения.\n\nНажмите OK чтобы сохранить, или Отмена чтобы отбросить изменения.");
+
+                if (userChoice) {
+                    // Save выбран - сохраняем и потом переключаемся
+                    console.log("[SELECT] Пользователь выбрал сохранение перед переключением");
+                    saveArticle().then(() => {
+                        performArticleSwitch(element, id);
+                    });
+                    return;
+                } else {
+                    // Discard выбран - отбрасываем и переключаемся
+                    console.log("[SELECT] Пользователь выбрал отбросить изменения");
+                    isDirty = false;
+                    if (articles[currentArticleId]) {
+                        articles[currentArticleId].isDirty = false;
+                    }
+                    updateSaveButtonState();
+                    performArticleSwitch(element, id);
+                    return;
+                }
+            }
+
+            // Нет несохранённых изменений - просто переключаемся
+            performArticleSwitch(element, id);
+        }
+
+        /**
+         * Выполнить переключение на другую статью (без проверки isDirty)
+         */
+        function performArticleSwitch(element, id) {
+            console.log(`[SELECT] Выполняю переключение на статью ID=${id}`);
+
+            // Переключить активный класс в sidebar
             document.querySelectorAll(".article-item").forEach(item => {
                 item.classList.remove("active");
             });
@@ -1663,17 +1890,35 @@
             currentArticleId = id;
             console.log(`[SELECT] currentArticleId установлен на: ${currentArticleId}`);
 
-            // Загрузить метаданные статьи
+            // Загрузить статью
             const article = articles[id];
             console.log(`[SELECT] Статья из кэша: ${article ? "найдена" : "НЕ найдена"}`);
 
             if (article) {
                 console.log(`[SELECT] Отображаем: title="${article.title}"`);
                 document.getElementById("currentTitle").textContent = article.title;
-                // ВАЖНО: НЕ загружаем content - только заголовок!
-                // Content остаётся в поле где он был (или пусто для новой статьи)
+
+                // Загружаем content (сохранённую версию) в editorContent
+                const editorContent = document.getElementById("editorContent");
+                editorContent.textContent = article.content || "";
+
+                console.log(`[SELECT] Текст загружен: ${(article.content || "").length} символов`);
+
+                // Сбрасываем isDirty для этой статьи
+                isDirty = false;
+                article.isDirty = false;
+                updateSaveButtonState();
+
+                // Очищаем promptInput
                 document.getElementById("promptInput").value = "";
                 document.getElementById("promptInput").style.height = "auto";
+
+                // Если был preview - выходим из него
+                if (isPreviewMode) {
+                    togglePreview();
+                }
+
+                console.log("[SELECT] Переключение завершено");
             } else {
                 console.log(`[SELECT] ОШИБКА: Статья не найдена в кэше!`);
             }
