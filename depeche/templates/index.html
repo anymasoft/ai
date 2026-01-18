@@ -634,16 +634,20 @@
 
         async function loadArticlesList() {
             try {
+                console.log('[LOAD] Загружаем список статей');
                 const response = await fetch(`${API_BASE_URL}/articles`);
                 const articlesList = await response.json();
+                console.log(`[LOAD] Получено ${articlesList.length} статей от API`);
 
                 // Очищаем sidebar и DOM кэш
                 const articlesList_elem = document.getElementById('articlesList');
                 articlesList_elem.innerHTML = '';
                 articles = {};
                 currentArticleId = null;
+                console.log('[LOAD] Очищен кэш и sidebar');
 
                 if (articlesList.length === 0) {
+                    console.log('[LOAD] Список статей пуст');
                     document.getElementById('currentTitle').textContent = '';
                     document.getElementById('editorContent').textContent = '';
                     return;
@@ -651,6 +655,7 @@
 
                 // Заполняем sidebar
                 articlesList.forEach((article, index) => {
+                    console.log(`[LOAD] Добавляем статью: ID=${article.id}, title="${article.title}"`);
                     articles[article.id] = article;
                     // Первую статью отмечаем как активную
                     const isFirst = index === 0;
@@ -660,14 +665,17 @@
                 // Загружаем первую статью
                 if (articlesList.length > 0) {
                     const firstId = articlesList[0].id;
+                    console.log(`[LOAD] Устанавливаем первую статью. ID=${firstId}`);
                     currentArticleId = firstId;
                     const firstArticle = articles[firstId];
+                    console.log(`[LOAD] currentArticleId установлен на: ${currentArticleId}`);
                     document.getElementById('currentTitle').textContent = firstArticle.title;
                     document.getElementById('editorContent').textContent = firstArticle.content;
                     document.getElementById('promptInput').value = '';
+                    console.log('[LOAD] UI обновлен');
                 }
             } catch (error) {
-                console.error('Ошибка при загрузке списка статей:', error);
+                console.error('[LOAD] Критическая ошибка:', error);
                 showNotification('Ошибка при загрузке списка статей');
             }
         }
@@ -689,23 +697,34 @@
         async function createEmptyArticleViaAPI(title) {
             // Создаёт пустую статью БЕЗ генерации плана
             try {
-                const response = await fetch(`${API_BASE_URL}/articles`, {
+                console.log(`[CREATE_API] Создаём пустую статью. title="${title}"`);
+
+                const url = `${API_BASE_URL}/articles`;
+                const body = { topic: title };
+                console.log(`[CREATE_API] URL: ${url}`);
+                console.log(`[CREATE_API] Тело: ${JSON.stringify(body)}`);
+
+                const response = await fetch(url, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
                     },
-                    body: JSON.stringify({ topic: title })
+                    body: JSON.stringify(body)
                 });
+
+                console.log(`[CREATE_API] Статус ответа: ${response.status} ${response.statusText}`);
 
                 if (!response.ok) {
                     const error = await response.json();
+                    console.error(`[CREATE_API] Ошибка от сервера: ${error.detail}`);
                     throw new Error(error.detail || 'Ошибка при создании статьи');
                 }
 
                 const article = await response.json();
+                console.log(`[CREATE_API] Статья успешно создана! ID=${article.id}, title="${article.title}"`);
                 return article;
             } catch (error) {
-                console.error('Ошибка при создании статьи:', error);
+                console.error('[CREATE_API] Критическая ошибка:', error);
                 showNotification('Ошибка: ' + error.message);
                 return null;
             }
@@ -714,9 +733,14 @@
         async function generatePlanForArticleViaAPI(articleId, topic) {
             // Генерирует план статьи и обновляет её
             try {
+                console.log(`[PLAN_GEN] Начинаем генерацию плана. articleId=${articleId}, topic="${topic}"`);
                 showNotification('Генерирую план статьи...');
 
-                const response = await fetch(`${API_BASE_URL}/articles/${articleId}/plan`, {
+                const url = `${API_BASE_URL}/articles/${articleId}/plan`;
+                console.log(`[PLAN_GEN] URL запроса: ${url}`);
+                console.log(`[PLAN_GEN] Тело запроса: ${JSON.stringify({ topic: topic })}`);
+
+                const response = await fetch(url, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
@@ -724,15 +748,20 @@
                     body: JSON.stringify({ topic: topic })
                 });
 
+                console.log(`[PLAN_GEN] Статус ответа: ${response.status} ${response.statusText}`);
+
                 if (!response.ok) {
                     const error = await response.json();
+                    console.error(`[PLAN_GEN] Ошибка от сервера: ${error.detail}`);
                     throw new Error(error.detail || 'Ошибка при генерации плана');
                 }
 
                 const article = await response.json();
+                console.log(`[PLAN_GEN] Успешно получен план: ${article.id} - ${article.title}`);
+                console.log(`[PLAN_GEN] Контент: ${article.content.substring(0, 100)}...`);
                 return article;
             } catch (error) {
-                console.error('Ошибка при генерации плана:', error);
+                console.error('[PLAN_GEN] Критическая ошибка:', error);
                 showNotification('Ошибка при генерации: ' + error.message);
                 return null;
             }
@@ -781,6 +810,7 @@
         }
 
         function selectArticle(element, id) {
+            console.log(`[SELECT] Переключение на статью ID=${id}`);
             // Переключить активный класс
             document.querySelectorAll('.article-item').forEach(item => {
                 item.classList.remove('active');
@@ -788,15 +818,21 @@
             element.classList.add('active');
 
             currentArticleId = id;
+            console.log(`[SELECT] currentArticleId установлен на: ${currentArticleId}`);
 
             // Загрузить контент статьи
             const article = articles[id];
+            console.log(`[SELECT] Статья из кэша: ${article ? 'найдена' : 'НЕ найдена'}`);
+
             if (article) {
+                console.log(`[SELECT] Отображаем: title="${article.title}", content="${article.content.substring(0, 50)}..."`);
                 document.getElementById('currentTitle').textContent = article.title;
                 // Отобразить текст БЕЗ typewriter effect (просто загрузка)
                 document.getElementById('editorContent').textContent = article.content;
                 document.getElementById('promptInput').value = '';
                 document.getElementById('promptInput').style.height = 'auto';
+            } else {
+                console.log(`[SELECT] ОШИБКА: Статья не найдена в кэше!`);
             }
         }
 
@@ -837,8 +873,12 @@
 
         // Create new article (through API) - пустая статья БЕЗ генерации
         async function createNewArticle() {
+            console.log('[CREATE] Нажата кнопка создания статьи');
             const title = document.getElementById('newArticleTitle').value.trim();
+            console.log(`[CREATE] Введённое название: "${title}"`);
+
             if (!title) {
+                console.log('[CREATE] Ошибка: название пусто');
                 showNotification('Please enter an article title');
                 return;
             }
@@ -847,13 +887,24 @@
             modal.hide();
 
             // Вызваем API для создания ПУСТОЙ статьи (БЕЗ генерации плана)
+            console.log('[CREATE] Вызываем createEmptyArticleViaAPI');
             const article = await createEmptyArticleViaAPI(title);
-            if (!article) return;
+            if (!article) {
+                console.log('[CREATE] Ошибка: API не вернул статью');
+                return;
+            }
+
+            console.log(`[CREATE] Статья создана! ID=${article.id}, title="${article.title}"`);
 
             // Добавляем в кэш и в sidebar
             articles[article.id] = article;
+            console.log(`[CREATE] Добавлена в кэш`);
+
             addArticleToSidebar(article.id, article.title, true);
+            console.log(`[CREATE] Добавлена в sidebar`);
+
             currentArticleId = article.id;
+            console.log(`[CREATE] currentArticleId установлен на: ${currentArticleId}`);
 
             // Отображаем в редактор - пусто, БЕЗ typewriter effect
             document.getElementById('currentTitle').textContent = article.title;
@@ -862,6 +913,7 @@
             document.getElementById('promptInput').value = '';
             document.getElementById('promptInput').style.height = 'auto';
 
+            console.log('[CREATE] UI обновлен. Готово к вводу промпта');
             showNotification('Статья создана. Введите план в prompt bar.');
         }
 
@@ -882,8 +934,14 @@
 
         // Extract topic from prompt and generate plan for current article
         async function applyPrompt() {
+            console.log('[PROMPT] Обработка промпта');
             let promptText = document.getElementById('promptInput').value.trim();
-            if (!promptText) return;
+            console.log(`[PROMPT] Текст промпта: "${promptText}"`);
+
+            if (!promptText) {
+                console.log('[PROMPT] Ошибка: промпт пуст');
+                return;
+            }
 
             // Извлекаем тему из промпта
             let topic = null;
@@ -897,37 +955,57 @@
                 const match = promptText.match(pattern);
                 if (match) {
                     topic = match[1].trim();
+                    console.log(`[PROMPT] Извлечена тема: "${topic}"`);
                     break;
                 }
             }
 
             if (!topic) {
+                console.log('[PROMPT] Ошибка: тема не найдена');
                 showNotification('Пока поддерживается только генерация плана. Напишите: "Напиши план статьи: название"');
                 return;
             }
 
+            console.log(`[PROMPT] currentArticleId перед проверкой: ${currentArticleId}`);
+
             // Если нет активной статьи - создаём новую пустую
             if (!currentArticleId) {
+                console.log('[PROMPT] currentArticleId не установлен, создаём новую статью');
                 const newArticle = await createEmptyArticleViaAPI(topic);
-                if (!newArticle) return;
+                if (!newArticle) {
+                    console.log('[PROMPT] Ошибка: не удалось создать новую статью');
+                    return;
+                }
                 articles[newArticle.id] = newArticle;
                 addArticleToSidebar(newArticle.id, newArticle.title, true);
                 currentArticleId = newArticle.id;
+                console.log(`[PROMPT] Создана новая статья с ID=${currentArticleId}`);
+            } else {
+                console.log(`[PROMPT] currentArticleId уже установлен: ${currentArticleId}`);
             }
 
             // Генерируем план для текущей статьи
+            console.log(`[PROMPT] Вызываем generatePlanForArticleViaAPI с articleId=${currentArticleId}, topic="${topic}"`);
             const updatedArticle = await generatePlanForArticleViaAPI(currentArticleId, topic);
-            if (!updatedArticle) return;
+            if (!updatedArticle) {
+                console.log('[PROMPT] Ошибка: не удалось генерировать план');
+                return;
+            }
+
+            console.log(`[PROMPT] План успешно получен`);
 
             // Обновляем кэш
             articles[currentArticleId] = updatedArticle;
+            console.log(`[PROMPT] Кэш обновлён`);
 
             // Отображаем план с typewriter effect
             document.getElementById('currentTitle').textContent = updatedArticle.title;
+            console.log(`[PROMPT] Заголовок обновлен, запускаем typewriter effect`);
             await typewriterEffect(document.getElementById('editorContent'), updatedArticle.content, 15);
 
             document.getElementById('promptInput').value = '';
             document.getElementById('promptInput').style.height = 'auto';
+            console.log('[PROMPT] Процесс завершен успешно');
         }
 
         // Auto-resize textarea
