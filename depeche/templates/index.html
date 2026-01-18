@@ -352,6 +352,27 @@
             transform: translateY(0);
         }
 
+        .btn-apply:disabled,
+        .btn-apply.generating {
+            cursor: not-allowed;
+            opacity: 0.8;
+            animation: btn-pulse 1.5s ease-in-out infinite;
+        }
+
+        .btn-apply:disabled:hover,
+        .btn-apply.generating:hover {
+            transform: none;
+        }
+
+        @keyframes btn-pulse {
+            0%, 100% {
+                box-shadow: 0 4px 12px rgba(102, 126, 234, 0.2);
+            }
+            50% {
+                box-shadow: 0 4px 20px rgba(102, 126, 234, 0.5);
+            }
+        }
+
         /* === DROPDOWN === */
         .dropdown-menu {
             border: 1px solid #e0e0e0;
@@ -909,8 +930,9 @@
                 // Заполняем sidebar
                 articlesList.forEach((article, index) => {
                     console.log(`[LOAD] Добавляем статью: ID=${article.id}, title="${article.title}"`);
-                    // Нормализуем content - всегда строка, даже если пустая
-                    article.content = article.content || "";
+                    // ВАЖНО: НЕ сохраняем content в articles - только metadata!
+                    // Content всегда находится в DOM поле редактора, а не в памяти
+                    delete article.content;
                     articles[article.id] = article;
                     // Первую статью отмечаем как активную
                     const isFirst = index === 0;
@@ -925,7 +947,8 @@
                     const firstArticle = articles[firstId];
                     console.log(`[LOAD] currentArticleId установлен на: ${currentArticleId}`);
                     document.getElementById("currentTitle").textContent = firstArticle.title;
-                    document.getElementById("editorContent").textContent = firstArticle.content || "";
+                    // ВАЖНО: НЕ загружаем content из articles - только заголовок!
+                    document.getElementById("editorContent").textContent = "";
                     document.getElementById("promptInput").value = "";
                     console.log("[LOAD] UI обновлен");
                 }
@@ -1043,13 +1066,17 @@
         /**
          * РЕЖИМ 2: Редактирование ВСЕГО текста статьи
          */
-        async function editFullTextViaAPI(articleId, instruction) {
+        async function editFullTextViaAPI(articleId, currentText, instruction) {
             try {
                 console.log(`[EDIT_FULL_API] Начинаем редактирование всего текста. articleId=${articleId}`);
+                console.log(`[EDIT_FULL_API] Текст из поля: ${currentText.length} символов`);
                 console.log(`[EDIT_FULL_API] Инструкция: "${instruction}"`);
 
                 const url = `${API_BASE_URL}/articles/${articleId}/edit-full`;
-                const body = { instruction: instruction };
+                const body = {
+                    current_text: currentText,
+                    instruction: instruction
+                };
 
                 const response = await fetch(url, {
                     method: "POST",
@@ -1132,24 +1159,31 @@
          */
         async function animateTextReplacement(element, oldText, newText, speed = 10) {
             console.log("[REPLACE_TEXT] Анимирую замену всего текста");
+            console.log(`[REPLACE_TEXT] Старый текст: ${oldText.length} символов`);
+            console.log(`[REPLACE_TEXT] Новый текст: ${newText.length} символов`);
 
-            const maxLen = Math.max(oldText.length, newText.length);
+            // ФАЗА 1: Заменяем посимвольно до длины меньшего текста
+            const minLen = Math.min(oldText.length, newText.length);
 
-            for (let i = 0; i < maxLen; i++) {
-                const oldChar = oldText[i] || "";
-                const newChar = newText[i] || "";
-
-                if (oldChar !== newChar) {
-                    // Стираем старый символ и печатаем новый
+            for (let i = 0; i < minLen; i++) {
+                if (oldText[i] !== newText[i]) {
                     let currentText = element.textContent;
-                    currentText = currentText.substring(0, i) + newChar + currentText.substring(i + 1);
+                    currentText = currentText.substring(0, i) + newText[i] + currentText.substring(i + 1);
                     element.textContent = currentText;
-                } else if (i === element.textContent.length && i < newText.length) {
-                    // Добавляем новый символ в конец
-                    element.textContent += newChar;
                 }
-
                 await new Promise(resolve => setTimeout(resolve, speed));
+            }
+
+            // ФАЗА 2: Если новый текст длиннее - добавляем символы в конец
+            if (newText.length > oldText.length) {
+                for (let i = oldText.length; i < newText.length; i++) {
+                    element.textContent += newText[i];
+                    await new Promise(resolve => setTimeout(resolve, speed));
+                }
+            }
+            // ФАЗА 3: Если старый текст длиннее - удаляем лишние символы
+            else if (oldText.length > newText.length) {
+                element.textContent = newText;
             }
 
             console.log("[REPLACE_TEXT] Замена завершена");
@@ -1236,16 +1270,15 @@
             currentArticleId = id;
             console.log(`[SELECT] currentArticleId установлен на: ${currentArticleId}`);
 
-            // Загрузить контент статьи
+            // Загрузить метаданные статьи
             const article = articles[id];
             console.log(`[SELECT] Статья из кэша: ${article ? "найдена" : "НЕ найдена"}`);
 
             if (article) {
-                const content = article.content || "";
-                console.log(`[SELECT] Отображаем: title="${article.title}", content="${content.substring(0, 50)}..."`);
+                console.log(`[SELECT] Отображаем: title="${article.title}"`);
                 document.getElementById("currentTitle").textContent = article.title;
-                // Отобразить текст БЕЗ typewriter effect (просто загрузка)
-                document.getElementById("editorContent").textContent = content;
+                // ВАЖНО: НЕ загружаем content - только заголовок!
+                // Content остаётся в поле где он был (или пусто для новой статьи)
                 document.getElementById("promptInput").value = "";
                 document.getElementById("promptInput").style.height = "auto";
             } else {
@@ -1314,8 +1347,8 @@
             console.log(`[CREATE] Статья создана! ID=${article.id}, title="${article.title}"`);
 
             // Добавляем в кэш и в sidebar
-            // Нормализуем content - всегда строка
-            article.content = article.content || "";
+            // ВАЖНО: НЕ сохраняем content в articles - только metadata!
+            delete article.content;
             articles[article.id] = article;
             console.log(`[CREATE] Добавлена в кэш`);
 
@@ -1357,6 +1390,7 @@
             isGenerating = true;
             const btn = document.querySelector(".btn-apply");
             btn.disabled = true;
+            btn.classList.add("generating");
         }
 
         // Разблокировать кнопку Apply
@@ -1365,6 +1399,7 @@
             isGenerating = false;
             const btn = document.querySelector(".btn-apply");
             btn.disabled = false;
+            btn.classList.remove("generating");
         }
 
         // Extract topic from prompt and generate plan for current article
@@ -1400,9 +1435,7 @@
                         console.log("[PROMPT] Создаём новую статью для плана");
                         const newArticle = await createEmptyArticleViaAPI(promptText);
                         if (!newArticle) return;
-                        newArticle.content = newArticle.content || "";
-                        articles[newArticle.id] = newArticle;
-                        addArticleToSidebar(newArticle.id, newArticle.title, true);
+                                addArticleToSidebar(newArticle.id, newArticle.title, true);
                         currentArticleId = newArticle.id;
                     }
 
@@ -1411,8 +1444,6 @@
                     const updatedArticle = await generatePlanForArticleViaAPI(currentArticleId, promptText);
                     if (!updatedArticle) return;
 
-                    updatedArticle.content = updatedArticle.content || "";
-                    articles[currentArticleId] = updatedArticle;
                     document.getElementById("currentTitle").textContent = updatedArticle.title;
                     await typewriterEffect(document.getElementById("editorContent"), updatedArticle.content, 15);
                     showNotification("План статьи готов! Теперь можете редактировать текст.");
@@ -1429,11 +1460,9 @@
 
                     showNotification("Редактирую весь текст...");
                     const oldText = document.getElementById("editorContent").textContent;
-                    const updatedArticle = await editFullTextViaAPI(currentArticleId, promptText);
+                    const updatedArticle = await editFullTextViaAPI(currentArticleId, oldText, promptText);
                     if (!updatedArticle) return;
 
-                    updatedArticle.content = updatedArticle.content || "";
-                    articles[currentArticleId] = updatedArticle;
 
                     // Применяем typewriter effect для замены текста
                     await animateTextReplacement(
@@ -1480,8 +1509,6 @@
                     );
                     if (!updatedArticle) return;
 
-                    updatedArticle.content = updatedArticle.content || "";
-                    articles[currentArticleId] = updatedArticle;
 
                     // Применяем typewriter effect ТОЛЬКО для фрагмента
                     // Используем новый фрагмент из backend (НЕ из content!)
@@ -1510,11 +1537,11 @@
             }
         }
 
-        // Auto-resize textarea
+        // Auto-resize textarea (до разумных пределов, потом скролл)
         const promptInput = document.getElementById("promptInput");
         promptInput.addEventListener("input", function() {
             this.style.height = "auto";
-            this.style.height = Math.min(this.scrollHeight, 120) + "px";
+            this.style.height = Math.min(this.scrollHeight, 300) + "px";
         });
 
         // Allow Enter key to submit prompt (Shift+Enter for new line)
