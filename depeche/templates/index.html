@@ -728,10 +728,11 @@
             const afterText = text.substring(endOffset);
 
             // Пересчитываем весь HTML с подсветкой
+            // ВАЖНО: используем renderTextForHTML для сохранения пробелов и переносов
             editor.innerHTML =
-                escapeHtml(beforeText) +
-                '<span class="selection-highlight">' + escapeHtml(selectedText) + '</span>' +
-                escapeHtml(afterText);
+                renderTextForHTML(beforeText) +
+                '<span class="selection-highlight">' + renderTextForHTML(selectedText) + '</span>' +
+                renderTextForHTML(afterText);
 
             console.log('[HIGHLIGHT] Подсветка применена (офсеты + innerHTML)');
 
@@ -773,6 +774,23 @@
                 "'": '&#039;'
             };
             return text.replace(/[&<>"']/g, m => map[m]);
+        }
+
+        /**
+         * Преобразовать текст для HTML-рендера с сохранением пробелов и переносов
+         * ВАЖНО: используется ТОЛЬКО для innerHTML, не меняет сохранённый текст
+         */
+        function renderTextForHTML(text) {
+            // 1. Сначала экранируем HTML спецсимволы
+            let result = escapeHtml(text);
+
+            // 2. Заменяем переносы строк на <br> (делаем ДО замены пробелов!)
+            result = result.replace(/\n/g, '<br>');
+
+            // 3. Заменяем пробелы на &nbsp; (но НЕ внутри <br>)
+            result = result.replace(/ /g, '&nbsp;');
+
+            return result;
         }
 
         // === HELPER FUNCTIONS FOR MODE DETECTION ===
