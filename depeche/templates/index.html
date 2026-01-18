@@ -353,6 +353,29 @@
             background: #999;
         }
 
+        /* === CODE BLOCKS IN EDITOR === */
+        .editor-content pre {
+            white-space: pre-wrap;          /* Переноси длинные строки */
+            word-break: break-word;         /* Разбивай очень длинные слова */
+            overflow-wrap: break-word;      /* Альтернативная обертка для слов */
+            background: #f5f5f5;            /* Визуальное выделение блока */
+            border: 1px solid #e0e0e0;
+            border-radius: 4px;
+            padding: 12px 16px;
+            font-size: 13px;
+            line-height: 1.5;
+            margin: 12px 0;
+            overflow-x: hidden;             /* Запрети горизонтальный скролл */
+            overflow-y: visible;            /* Разреши вертикальное расширение */
+        }
+
+        .editor-content code {
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            color: #2d2d2d;
+            background: transparent;       /* Не добавляй фон для inline кода */
+        }
+
         /* === PROMPT BAR === */
         .prompt-bar-container {
             padding: 20px 32px;
@@ -760,9 +783,13 @@
             border: 1px solid #e0e0e0;
             border-radius: 8px;
             padding: 16px;
-            overflow-x: auto;
+            overflow-x: hidden;             /* Запрети горизонтальный скролл */
+            overflow-y: visible;            /* Разреши вертикальное расширение */
             margin: 12px 0;
             line-height: 1.5;
+            white-space: pre-wrap;          /* Переноси длинные строки */
+            word-break: break-word;         /* Разбивай очень длинные слова */
+            overflow-wrap: break-word;      /* Альтернативная обертка для слов */
         }
 
         .markdown-preview pre code {
