@@ -652,10 +652,11 @@
         function setupSelectionHandlers() {
             const editorContent = document.getElementById('editorContent');
 
+            // При mouseup с новым выделением - применяем подсветку
             editorContent.addEventListener('mouseup', function() {
                 const selection = window.getSelection();
                 if (selection.toString().trim()) {
-                    // Есть выделение - сохраняем его
+                    // Есть выделение - сохраняем его и подсвечиваем
                     const range = selection.getRangeAt(0);
                     const preCaretRange = range.cloneRange();
                     preCaretRange.selectNodeContents(editorContent);
@@ -674,14 +675,9 @@
                     console.log(`[SELECTION_SAVE] startOffset=${startOffset}, endOffset=${endOffset}`);
 
                     applySelectionHighlight();
-                } else {
-                    // Нет выделения - сбрасываем
-                    if (savedSelection) {
-                        console.log('[SELECTION_CLEAR] Выделение сброшено при mouseup без выделения');
-                        clearSelectionHighlight();
-                        savedSelection = null;
-                    }
                 }
+                // НЕ сбрасываем подсветку если нет выделения!
+                // Подсветка остаётся видна до явного клика в пустое место
             });
 
             // При клике на пустое место в editor - сбрасываем выделение
@@ -707,8 +703,9 @@
         }
 
         /**
-         * Применить визуальную подсветку к выделению
-         * СТРОГАЯ ВАЛИДАЦИЯ: Range должен быть безопасным перед insertNode
+         * Применить визуальную подсветку к сохраненному выделению
+         * ПРОСТОЙ И НАДЁЖНЫЙ ПОДХОД: используем офсеты и innerHTML
+         * Range используется ТОЛЬКО для получения офсетов, всё остальное через текст
          */
         function applySelectionHighlight() {
             clearSelectionHighlight(); // Сначала очищаем
@@ -716,56 +713,27 @@
             if (!savedSelection) return;
 
             const editor = document.getElementById('editorContent');
+            const text = editor.textContent;
+            const { startOffset, endOffset } = savedSelection;
 
-            // === ВАЛИДАЦИЯ 1: Получить selection и Range ===
-            const selection = window.getSelection();
-            if (!selection || selection.rangeCount === 0) {
-                console.log('[HIGHLIGHT] Нет активного selection, подсветка отменена');
+            // Проверяем валидность офсетов
+            if (startOffset < 0 || endOffset > text.length || startOffset >= endOffset) {
+                console.log('[HIGHLIGHT] Офсеты некорректны, подсветка отменена');
                 return;
             }
 
-            const range = selection.getRangeAt(0);
+            // Берём части текста по офсетам (работает НЕЗАВИСИМО от структуры DOM)
+            const beforeText = text.substring(0, startOffset);
+            const selectedText = text.substring(startOffset, endOffset);
+            const afterText = text.substring(endOffset);
 
-            // === ВАЛИДАЦИЯ 2: Range контейнеры должны быть ВнУТРИ editorContent ===
-            if (!editor.contains(range.startContainer) || !editor.contains(range.endContainer)) {
-                console.log('[HIGHLIGHT] Range вне editorContent, подсветка отменена');
-                return;
-            }
+            // Пересчитываем весь HTML с подсветкой
+            editor.innerHTML =
+                escapeHtml(beforeText) +
+                '<span class="selection-highlight">' + escapeHtml(selectedText) + '</span>' +
+                escapeHtml(afterText);
 
-            // === ВАЛИДАЦИЯ 3: startContainer и endContainer должны быть text nodes ===
-            if (range.startContainer.nodeType !== Node.TEXT_NODE ||
-                range.endContainer.nodeType !== Node.TEXT_NODE) {
-                console.log('[HIGHLIGHT] Range контейнеры не text nodes, подсветка отменена');
-                return;
-            }
-
-            // === ВАЛИДАЦИЯ 4: Оба контейнера должны быть ОДИНАКОВЫМИ ===
-            if (range.startContainer !== range.endContainer) {
-                console.log('[HIGHLIGHT] Range пересекает несколько узлов, подсветка отменена');
-                return;
-            }
-
-            // === ВСЕ ПРОВЕРКИ ПРОЙДЕНЫ - ПРИМЕНЯЕМ ПОДСВЕТКУ ===
-            try {
-                // Извлекаем содержимое выделения (сохраняет структуру!)
-                const selectedContent = range.extractContents();
-
-                // Создаем span для подсветки
-                const highlightSpan = document.createElement('span');
-                highlightSpan.className = 'selection-highlight';
-
-                // Вставляем исходное содержимое в span
-                highlightSpan.appendChild(selectedContent);
-
-                // Вставляем span обратно на место выделения
-                range.insertNode(highlightSpan);
-
-                console.log('[HIGHLIGHT] Подсветка применена успешно (Range API)');
-            } catch (error) {
-                console.error('[HIGHLIGHT] Ошибка при применении подсветки:', error);
-                // Восстанавливаем сохраненное выделение и выходим
-                return;
-            }
+            console.log('[HIGHLIGHT] Подсветка применена (офсеты + innerHTML)');
 
             // Устанавливаем флаг чтобы предотвратить немедленный сброс при click
             highlightJustApplied = true;
@@ -776,34 +744,20 @@
 
         /**
          * Убрать визуальную подсветку выделения
-         * БЕЗОПАСНО: заменяем span его текстовым содержимым
+         * ПРОСТО: заменяем весь editor на plain textContent
          */
         function clearSelectionHighlight() {
             const editor = document.getElementById('editorContent');
             const highlighted = editor.querySelector('.selection-highlight');
 
             if (highlighted) {
-                try {
-                    // Простой и безопасный способ:
-                    // Берем все текстовое содержимое span
-                    const text = highlighted.textContent;
-                    const parent = highlighted.parentNode;
+                // Получаем весь текст редактора
+                const fullText = editor.textContent;
 
-                    // Создаем текстовый узел с ПОЛНЫМ содержимым
-                    const textNode = document.createTextNode(text);
+                // Устанавливаем plain текст (без всех span'ов и тегов)
+                editor.textContent = fullText;
 
-                    // Заменяем span на текстовый узел
-                    highlighted.replaceWith(textNode);
-
-                    // Если есть родитель - нормализуем (объединяем соседние text nodes)
-                    if (parent) {
-                        parent.normalize();
-                    }
-
-                    console.log('[HIGHLIGHT] Подсветка убрана безопасно');
-                } catch (error) {
-                    console.error('[HIGHLIGHT] Ошибка при удалении подсветки:', error);
-                }
+                console.log('[HIGHLIGHT] Подсветка убрана');
             }
         }
 
