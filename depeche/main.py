@@ -480,11 +480,18 @@ async def edit_article_fragment(article_id: int, request: EditFragmentRequest):
             edited_fragment = llm_response.text
             logger.info(f"[EDIT_FRAGMENT] Фрагмент успешно отредактирован ({len(edited_fragment)} символов)")
         except Exception as e:
-            if "TRUNCATED" in str(e):
-                logger.error(f"[EDIT_FRAGMENT] Фрагмент был обрезан даже после всех попыток: {str(e)}")
+            error_str = str(e)
+            if "TRUNCATED" in error_str:
+                logger.error(f"[EDIT_FRAGMENT] Фрагмент был обрезан даже после всех попыток: {error_str}")
                 raise HTTPException(
                     status_code=422,
                     detail=f"Ошибка: фрагмент был обрезан. Выделите меньший фрагмент и попробуйте снова."
+                )
+            elif "STRUCTURE_MISMATCH" in error_str:
+                logger.error(f"[EDIT_FRAGMENT] Структурное несоответствие после всех попыток: {error_str}")
+                raise HTTPException(
+                    status_code=422,
+                    detail=f"Ошибка: структура фрагмента не совпадает с требованием. Попробуйте ещё раз или уточните инструкцию."
                 )
             raise
 
