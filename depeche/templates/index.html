@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Depeche - AI Article Editor</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://assets.themesberg.com/public/products/pixel/css/pixel.css" rel="stylesheet">
     <style>
         * {
             box-sizing: border-box;
@@ -1637,8 +1636,8 @@
 
                 if (articlesList.length === 0) {
                     console.log("[LOAD] Список статей пуст");
-                    const titleText = document.getElementById("titleText");
-                    if (titleText) titleText.textContent = "";
+                    const titleElem = document.getElementById("titleText");
+                    if (titleElem) titleElem.textContent = "";
                     document.getElementById("editorContent").textContent = "";
                     return;
                 }
@@ -1661,7 +1660,8 @@
                     currentArticleId = firstId;
                     const firstArticle = articles[firstId];
                     console.log(`[LOAD] currentArticleId установлен на: ${currentArticleId}`);
-                    document.getElementById("titleText")?.textContent = firstArticle.title;
+                    const titleText = document.getElementById("titleText");
+                    if (titleText) titleText.textContent = firstArticle.title;
                     // ВАЖНО: НЕ загружаем content из articles - только заголовок!
                     document.getElementById("editorContent").textContent = "";
                     document.getElementById("promptInput").value = "";
@@ -2178,7 +2178,8 @@
                         const firstId = parseInt(firstArticle.getAttribute("data-id"));
                         selectArticle(firstArticle, firstId);
                     } else {
-                        document.getElementById("titleText")?.textContent = "No articles";
+                        const titleElem = document.getElementById("titleText");
+                        if (titleElem) titleElem.textContent = "No articles";
                         document.getElementById("editorContent").textContent = "";
                         document.getElementById("promptInput").value = "";
                     }
@@ -2234,7 +2235,8 @@
             console.log(`[CREATE] currentArticleId установлен на: ${currentArticleId}`);
 
             // Отображаем в редактор - пусто, БЕЗ typewriter effect
-            document.getElementById("titleText")?.textContent = article.title;
+            const titleElem = document.getElementById("titleText");
+            if (titleElem) titleElem.textContent = article.title;
             document.getElementById("editorContent").textContent = "";
 
             document.getElementById("promptInput").value = "";
@@ -2387,7 +2389,8 @@
                     const updatedArticle = await generatePlanForArticleViaAPI(currentArticleId, promptText, format);
                     if (!updatedArticle) return;
 
-                    document.getElementById("titleText")?.textContent = updatedArticle.title;
+                    const titleElem = document.getElementById("titleText");
+                    if (titleElem) titleElem.textContent = updatedArticle.title;
                     await typewriterEffect(document.getElementById("editorContent"), updatedArticle.content, 15);
                     updateDirtyState();
                     showNotification("План статьи готов! Теперь можете редактировать текст.");
