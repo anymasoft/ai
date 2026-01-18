@@ -209,8 +209,8 @@
 
         .dirty-indicator {
             position: absolute;
-            top: 12px;
-            right: 12px;
+            top: 32px;
+            right: 32px;
             width: 10px;
             height: 10px;
             border-radius: 50%;
@@ -233,6 +233,7 @@
             flex-direction: column;
             overflow: hidden;
             padding: 32px;
+            position: relative;
         }
 
         .editor-wrapper {
@@ -999,8 +1000,8 @@
             </div>
 
             <div class="editor-area">
+                <div class="dirty-indicator clean" id="dirtyIndicator" title="Changes saved"></div>
                 <div class="editor-wrapper">
-                    <div class="dirty-indicator clean" id="dirtyIndicator" title="Changes saved"></div>
                     <div class="editor-content" id="editorContent" contenteditable="true"></div>
                     <div class="markdown-preview" id="markdownPreview" style="display:none;"></div>
                     <button class="btn-preview-toggle" id="previewToggleButton" title="Toggle preview" type="button" aria-label="Toggle preview">
