@@ -4,6 +4,7 @@ from fastapi.templating import Jinja2Templates
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.requests import Request
 from pydantic import BaseModel
+from typing import Optional, Dict, Any
 import os
 import sqlite3
 from dotenv import load_dotenv
@@ -18,7 +19,7 @@ load_dotenv()
 
 # Импортируем модули нашего приложения
 from database import init_db, create_article, get_all_articles, get_article, delete_article, DB_PATH
-from llm import generate_article_plan, edit_full_text, edit_fragment
+from llm import generate_article_plan, edit_full_text, edit_fragment, LLMResponse, ChunkInfo, LLMUsage
 
 # Инициализируем FastAPI приложение
 app = FastAPI(title="Depeche - AI Article Editor")
@@ -79,12 +80,41 @@ class ArticleResponse(BaseModel):
     content: str
 
 
+class UsageInfo(BaseModel):
+    """Информация об использовании токенов"""
+    prompt_tokens: int
+    completion_tokens: int
+    total_tokens: int
+
+
+class ChunkInfoResponse(BaseModel):
+    """Информация о разбиении на чанки"""
+    chunks_count: int
+    strategy: str
+    total_chars: int
+
+
 class EditFragmentResponse(BaseModel):
-    """Ответ при редактировании фрагмента - включает новый фрагмент отдельно"""
+    """Ответ при редактировании фрагмента с полной метаинформацией"""
     id: int
     title: str
     content: str
     fragment: str  # НОВЫЙ фрагмент (не полный текст)
+    truncated: bool = False  # True если ответ был обрезан (недоступно сейчас, но готово к будущему)
+    finish_reason: Optional[str] = "stop"
+    usage: Optional[UsageInfo] = None
+    chunk_info: Optional[ChunkInfoResponse] = None
+
+
+class EditFullResponse(BaseModel):
+    """Ответ при редактировании полного текста с метаинформацией"""
+    id: int
+    title: str
+    content: str
+    truncated: bool = False
+    finish_reason: Optional[str] = "stop"
+    usage: Optional[UsageInfo] = None
+    chunk_info: Optional[ChunkInfoResponse] = None
 
 
 class ArticleListItem(BaseModel):
@@ -104,6 +134,14 @@ class EditFragmentRequest(BaseModel):
     fragment: str
     after_context: str
     instruction: str
+
+
+class TruncatedErrorResponse(BaseModel):
+    """Ошибка когда ответ был обрезан несмотря на все попытки"""
+    detail: str
+    error_code: str = "TRUNCATED"
+    mode: str  # "plan", "fragment", "fulltext"
+    diagnostics: Optional[Dict[str, Any]] = None
 
 
 # === API ENDPOINTS ===
@@ -174,6 +212,10 @@ async def generate_and_save_plan(article_id: int, request: ArticleCreateRequest)
 
     Request: { "topic": "Обезьяны в Африке" }
     Response: { "id": 1, "title": "...", "content": "1. ...\n2. ..." }
+
+    При обрезании ответа (finish_reason=length):
+    - Один автоматический retry с увеличенным лимитом
+    - Если все равно не получилось → 422 с error_code="TRUNCATED"
     """
     try:
         logger.info(f"[GENERATE_PLAN] Получен запрос на генерацию плана. article_id={article_id}, topic='{request.topic}'")
@@ -194,8 +236,18 @@ async def generate_and_save_plan(article_id: int, request: ArticleCreateRequest)
 
         # Генерируем план через LLM
         logger.info(f"[GENERATE_PLAN] Вызываем LLM для генерации плана по теме '{topic}'")
-        plan = generate_article_plan(topic)
-        logger.info(f"[GENERATE_PLAN] План успешно сгенерирован: {plan[:100]}...")
+        try:
+            llm_response, chunk_info = generate_article_plan(topic)
+            plan = llm_response.text
+            logger.info(f"[GENERATE_PLAN] План успешно сгенерирован: {plan[:100]}...")
+        except Exception as e:
+            if "TRUNCATED" in str(e):
+                logger.error(f"[GENERATE_PLAN] План был обрезан: {str(e)}")
+                raise HTTPException(
+                    status_code=422,
+                    detail=f"Ошибка: план был обрезан. Попробуйте сократить тему."
+                )
+            raise
 
         # Обновляем статью в БД с полученным планом
         logger.info(f"[GENERATE_PLAN] Обновляем БД - сохраняем план для статьи ID={article_id}")
@@ -216,7 +268,7 @@ async def generate_and_save_plan(article_id: int, request: ArticleCreateRequest)
         logger.error(f"[GENERATE_PLAN] HTTPException: {e.detail}")
         raise
     except Exception as e:
-        logger.error(f"[GENERATE_PLAN] Критическая ошибка: {str(e)}")
+        logger.error(f"[GENERATE_PLAN] Критическая ошибка: {str(e)}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Ошибка при генерации плана: {str(e)}")
 
 
@@ -289,15 +341,20 @@ async def delete_single_article(article_id: int):
         raise HTTPException(status_code=500, detail=f"Ошибка при удалении статьи: {str(e)}")
 
 
-@app.post("/api/articles/{article_id}/edit-full")
+@app.post("/api/articles/{article_id}/edit-full", response_model=EditFullResponse)
 async def edit_article_full_text(article_id: int, request: EditFullTextRequest):
     """
-    РЕЖИМ 2: Редактирование ВСЕГО текста статьи.
+    РЕЖИМ 2: Редактирование ВСЕГО текста статьи с поддержкой chunking.
 
     Применяет инструкцию редактирования ко ВСЕМУ тексту статьи.
+    Для длинных текстов (>2500 символов) автоматически разбивает на чанки.
 
     Request: { "instruction": "Сделай текст более научным" }
-    Response: { "id": 1, "title": "...", "content": "отредактированный текст..." }
+    Response: { "id": 1, "title": "...", "content": "отредактированный текст...",
+                "chunk_info": {...}, "truncated": false, ... }
+
+    При обрезании (даже после retry/chunking):
+    - Возвращает HTTP 422 с error_code="TRUNCATED"
     """
     try:
         logger.info(f"[EDIT_FULL] Получен запрос на редактирование всего текста. article_id={article_id}")
@@ -313,7 +370,18 @@ async def edit_article_full_text(article_id: int, request: EditFullTextRequest):
 
         # Вызываем LLM для редактирования
         logger.info(f"[EDIT_FULL] Вызываем LLM для редактирования всего текста")
-        edited_text = edit_full_text(article['content'], request.instruction)
+        try:
+            llm_response, chunk_info = edit_full_text(article['content'], request.instruction)
+            edited_text = llm_response.text
+            logger.info(f"[EDIT_FULL] Текст успешно отредактирован ({len(edited_text)} символов)")
+        except Exception as e:
+            if "TRUNCATED" in str(e):
+                logger.error(f"[EDIT_FULL] Текст был обрезан даже после всех попыток: {str(e)}")
+                raise HTTPException(
+                    status_code=422,
+                    detail=f"Ошибка: текст был обрезан. Попробуйте сократить запрос или разбить текст на части."
+                )
+            raise
 
         # Обновляем статью в БД
         logger.info(f"[EDIT_FULL] Сохраняем отредактированный текст в БД")
@@ -324,25 +392,55 @@ async def edit_article_full_text(article_id: int, request: EditFullTextRequest):
         conn.close()
         logger.info(f"[EDIT_FULL] Текст успешно сохранен в БД")
 
-        # Возвращаем обновленную статью
+        # Возвращаем обновленную статью с метаинформацией
         updated_article = get_article(article_id)
-        logger.info(f"[EDIT_FULL] Возвращаем обновленную статью")
-        return ArticleResponse(**updated_article)
+        logger.info(f"[EDIT_FULL] Возвращаем обновленную статью с метаинформацией о chunking")
+
+        chunk_info_response = None
+        if chunk_info:
+            chunk_info_response = ChunkInfoResponse(
+                chunks_count=chunk_info.chunks_count,
+                strategy=chunk_info.strategy,
+                total_chars=chunk_info.total_chars
+            )
+
+        usage_info = None
+        if llm_response.usage:
+            usage_info = UsageInfo(
+                prompt_tokens=llm_response.usage.prompt_tokens,
+                completion_tokens=llm_response.usage.completion_tokens,
+                total_tokens=llm_response.usage.total_tokens
+            )
+
+        return EditFullResponse(
+            id=updated_article["id"],
+            title=updated_article["title"],
+            content=updated_article["content"],
+            truncated=llm_response.truncated,
+            finish_reason=llm_response.finish_reason,
+            usage=usage_info,
+            chunk_info=chunk_info_response
+        )
 
     except HTTPException as e:
         logger.error(f"[EDIT_FULL] HTTPException: {e.detail}")
         raise
     except Exception as e:
-        logger.error(f"[EDIT_FULL] Критическая ошибка: {str(e)}")
+        logger.error(f"[EDIT_FULL] Критическая ошибка: {str(e)}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Ошибка при редактировании текста: {str(e)}")
 
 
-@app.post("/api/articles/{article_id}/edit-fragment")
+@app.post("/api/articles/{article_id}/edit-fragment", response_model=EditFragmentResponse)
 async def edit_article_fragment(article_id: int, request: EditFragmentRequest):
     """
-    РЕЖИМ 3: Редактирование ВЫДЕЛЕННОГО ФРАГМЕНТА статьи.
+    РЕЖИМ 3: Редактирование ВЫДЕЛЕННОГО ФРАГМЕНТА статьи с поддержкой retry и chunking.
 
     Применяет инструкцию только к выделенному фрагменту, сохраняя остальной текст.
+
+    Алгоритм:
+    1. Один запрос с FRAGMENT_MAX_TOKENS
+    2. Если обрезано (finish_reason=length) → retry с увеличенным лимитом
+    3. Если снова обрезано → chunking фрагмента
 
     Request: {
         "before_context": "...",
@@ -350,7 +448,12 @@ async def edit_article_fragment(article_id: int, request: EditFragmentRequest):
         "after_context": "...",
         "instruction": "Раскрой подробнее"
     }
-    Response: { "id": 1, "title": "...", "content": "обновленный текст..." }
+    Response: { "id": 1, "title": "...", "content": "обновленный текст...",
+                "fragment": "отредактированный фрагмент...", "chunk_info": {...}, ... }
+
+    При обрезании (даже после retry/chunking):
+    - Возвращает HTTP 422 с error_code="TRUNCATED"
+    - НЕ сохраняет partial в БД
     """
     try:
         logger.info(f"[EDIT_FRAGMENT] Получен запрос на редактирование фрагмента. article_id={article_id}")
@@ -366,13 +469,24 @@ async def edit_article_fragment(article_id: int, request: EditFragmentRequest):
         logger.info(f"[EDIT_FRAGMENT] Статья найдена: {article['title']}")
 
         # Вызываем LLM для редактирования фрагмента
-        logger.info(f"[EDIT_FRAGMENT] Вызываем LLM для редактирования фрагмента")
-        edited_fragment = edit_fragment(
-            request.before_context,
-            request.fragment,
-            request.after_context,
-            request.instruction
-        )
+        logger.info(f"[EDIT_FRAGMENT] Вызываем LLM для редактирования фрагмента (retry + chunking при необходимости)")
+        try:
+            llm_response, chunk_info = edit_fragment(
+                request.before_context,
+                request.fragment,
+                request.after_context,
+                request.instruction
+            )
+            edited_fragment = llm_response.text
+            logger.info(f"[EDIT_FRAGMENT] Фрагмент успешно отредактирован ({len(edited_fragment)} символов)")
+        except Exception as e:
+            if "TRUNCATED" in str(e):
+                logger.error(f"[EDIT_FRAGMENT] Фрагмент был обрезан даже после всех попыток: {str(e)}")
+                raise HTTPException(
+                    status_code=422,
+                    detail=f"Ошибка: фрагмент был обрезан. Выделите меньший фрагмент и попробуйте снова."
+                )
+            raise
 
         # Заменяем фрагмент в тексте статьи
         logger.info(f"[EDIT_FRAGMENT] Заменяем фрагмент в тексте статьи")
@@ -393,19 +507,40 @@ async def edit_article_fragment(article_id: int, request: EditFragmentRequest):
 
         # Возвращаем обновленную статью С НОВЫМ ФРАГМЕНТОМ ОТДЕЛЬНО
         updated_article = get_article(article_id)
-        logger.info(f"[EDIT_FRAGMENT] Возвращаем обновленную статью с новым фрагментом")
+        logger.info(f"[EDIT_FRAGMENT] Возвращаем обновленную статью с новым фрагментом и метаинформацией")
+
+        chunk_info_response = None
+        if chunk_info:
+            chunk_info_response = ChunkInfoResponse(
+                chunks_count=chunk_info.chunks_count,
+                strategy=chunk_info.strategy,
+                total_chars=chunk_info.total_chars
+            )
+
+        usage_info = None
+        if llm_response.usage:
+            usage_info = UsageInfo(
+                prompt_tokens=llm_response.usage.prompt_tokens,
+                completion_tokens=llm_response.usage.completion_tokens,
+                total_tokens=llm_response.usage.total_tokens
+            )
+
         return EditFragmentResponse(
             id=updated_article["id"],
             title=updated_article["title"],
             content=updated_article["content"],
-            fragment=edited_fragment  # НОВЫЙ фрагмент, отдельно от content
+            fragment=edited_fragment,  # НОВЫЙ фрагмент, отдельно от content
+            truncated=llm_response.truncated,
+            finish_reason=llm_response.finish_reason,
+            usage=usage_info,
+            chunk_info=chunk_info_response
         )
 
     except HTTPException as e:
         logger.error(f"[EDIT_FRAGMENT] HTTPException: {e.detail}")
         raise
     except Exception as e:
-        logger.error(f"[EDIT_FRAGMENT] Критическая ошибка: {str(e)}")
+        logger.error(f"[EDIT_FRAGMENT] Критическая ошибка: {str(e)}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Ошибка при редактировании фрагмента: {str(e)}")
 
 

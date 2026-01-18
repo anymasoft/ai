@@ -1057,12 +1057,28 @@
                 console.log(`[EDIT_FULL_API] Статус ответа: ${response.status}`);
 
                 if (!response.ok) {
+                    // НОВОЕ: Обработка 422 TRUNCATED ошибки
+                    if (response.status === 422) {
+                        const error = await response.json();
+                        console.warn("[EDIT_FULL_API] Ошибка TRUNCATED - ответ был обрезан:", error);
+                        showNotification(
+                            "Ответ был обрезан. " + (error.detail || "Попробуйте сократить запрос или разбить текст на части."),
+                            "error"
+                        );
+                        return null;  // НЕ применяем partial результат
+                    }
+
                     const error = await response.json();
                     throw new Error(error.detail || "Ошибка при редактировании");
                 }
 
                 const article = await response.json();
                 console.log(`[EDIT_FULL_API] Текст успешно отредактирован`);
+                console.log(`[EDIT_FULL_API] Метаинформация:`, {
+                    truncated: article.truncated,
+                    finish_reason: article.finish_reason,
+                    chunk_count: article.chunk_info?.chunks_count || 1
+                });
                 return article;
             } catch (error) {
                 console.error("[EDIT_FULL_API] Критическая ошибка:", error);
@@ -1097,12 +1113,29 @@
                 console.log(`[EDIT_FRAGMENT_API] Статус ответа: ${response.status}`);
 
                 if (!response.ok) {
+                    // НОВОЕ: Обработка 422 TRUNCATED ошибки
+                    if (response.status === 422) {
+                        const error = await response.json();
+                        console.warn("[EDIT_FRAGMENT_API] Ошибка TRUNCATED - ответ был обрезан:", error);
+                        showNotification(
+                            "Ответ был обрезан. " + (error.detail || "Выделите меньший фрагмент и попробуйте снова."),
+                            "error"
+                        );
+                        return null;  // НЕ применяем partial результат!
+                    }
+
                     const error = await response.json();
                     throw new Error(error.detail || "Ошибка при редактировании фрагмента");
                 }
 
                 const article = await response.json();
                 console.log(`[EDIT_FRAGMENT_API] Фрагмент успешно отредактирован`);
+                console.log(`[EDIT_FRAGMENT_API] Метаинформация:`, {
+                    truncated: article.truncated,
+                    finish_reason: article.finish_reason,
+                    fragment_length: article.fragment.length,
+                    chunk_count: article.chunk_info?.chunks_count || 1
+                });
                 return article;
             } catch (error) {
                 console.error("[EDIT_FRAGMENT_API] Критическая ошибка:", error);
