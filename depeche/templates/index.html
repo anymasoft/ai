@@ -352,28 +352,6 @@
             transform: translateY(0);
         }
 
-        .btn-apply:disabled,
-        .btn-apply.generating {
-            cursor: not-allowed;
-            animation: btn-pulse 1.5s ease-in-out infinite;
-        }
-
-        .btn-apply:disabled:hover,
-        .btn-apply.generating:hover {
-            transform: none;
-        }
-
-        @keyframes btn-pulse {
-            0%, 100% {
-                opacity: 0.7;
-                box-shadow: 0 2px 8px rgba(102, 126, 234, 0.15);
-            }
-            50% {
-                opacity: 0.5;
-                box-shadow: 0 4px 12px rgba(102, 126, 234, 0.25);
-            }
-        }
-
         /* === DROPDOWN === */
         .dropdown-menu {
             border: 1px solid #e0e0e0;
@@ -662,7 +640,7 @@
         let highlightJustApplied = false; // Флаг для предотвращения немедленного сброса
 
         // === GENERATION STATE ===
-        let isGenerating = false; // Флаг для предотвращения повторных вызовов Apply
+        let isGenerating = false; // Флаг для блокировки повторных вызовов Apply
 
 
         // === INITIALIZATION ===
@@ -1082,28 +1060,12 @@
                 console.log(`[EDIT_FULL_API] Статус ответа: ${response.status}`);
 
                 if (!response.ok) {
-                    // НОВОЕ: Обработка 422 TRUNCATED ошибки
-                    if (response.status === 422) {
-                        const error = await response.json();
-                        console.warn("[EDIT_FULL_API] Ошибка TRUNCATED - ответ был обрезан:", error);
-                        showNotification(
-                            "Ответ был обрезан. " + (error.detail || "Попробуйте сократить запрос или разбить текст на части."),
-                            "error"
-                        );
-                        return null;  // НЕ применяем partial результат
-                    }
-
                     const error = await response.json();
                     throw new Error(error.detail || "Ошибка при редактировании");
                 }
 
                 const article = await response.json();
                 console.log(`[EDIT_FULL_API] Текст успешно отредактирован`);
-                console.log(`[EDIT_FULL_API] Метаинформация:`, {
-                    truncated: article.truncated,
-                    finish_reason: article.finish_reason,
-                    chunk_count: article.chunk_info?.chunks_count || 1
-                });
                 return article;
             } catch (error) {
                 console.error("[EDIT_FULL_API] Критическая ошибка:", error);
@@ -1138,29 +1100,12 @@
                 console.log(`[EDIT_FRAGMENT_API] Статус ответа: ${response.status}`);
 
                 if (!response.ok) {
-                    // НОВОЕ: Обработка 422 TRUNCATED ошибки
-                    if (response.status === 422) {
-                        const error = await response.json();
-                        console.warn("[EDIT_FRAGMENT_API] Ошибка TRUNCATED - ответ был обрезан:", error);
-                        showNotification(
-                            "Ответ был обрезан. " + (error.detail || "Выделите меньший фрагмент и попробуйте снова."),
-                            "error"
-                        );
-                        return null;  // НЕ применяем partial результат!
-                    }
-
                     const error = await response.json();
                     throw new Error(error.detail || "Ошибка при редактировании фрагмента");
                 }
 
                 const article = await response.json();
                 console.log(`[EDIT_FRAGMENT_API] Фрагмент успешно отредактирован`);
-                console.log(`[EDIT_FRAGMENT_API] Метаинформация:`, {
-                    truncated: article.truncated,
-                    finish_reason: article.finish_reason,
-                    fragment_length: article.fragment.length,
-                    chunk_count: article.chunk_info?.chunks_count || 1
-                });
                 return article;
             } catch (error) {
                 console.error("[EDIT_FRAGMENT_API] Критическая ошибка:", error);
@@ -1406,26 +1351,21 @@
             }, 3000);
         }
 
-        /**
-         * Заблокировать кнопку Apply
-         */
+
+        // Заблокировать кнопку Apply
         function lockApplyButton() {
             console.log("[UI] Блокирую кнопку Apply");
             isGenerating = true;
             const btn = document.querySelector(".btn-apply");
             btn.disabled = true;
-            btn.classList.add("generating");
         }
 
-        /**
-         * Разблокировать кнопку Apply
-         */
+        // Разблокировать кнопку Apply
         function unlockApplyButton() {
             console.log("[UI] Разблокирую кнопку Apply");
             isGenerating = false;
             const btn = document.querySelector(".btn-apply");
             btn.disabled = false;
-            btn.classList.remove("generating");
         }
 
         // Extract topic from prompt and generate plan for current article
@@ -1438,139 +1378,138 @@
 
             try {
                 lockApplyButton();
+console.log("[PROMPT] Обработка промпта - НОВАЯ ЛОГИКА С 3 РЕЖИМАМИ");
+            const promptText = document.getElementById("promptInput").value.trim();
+            console.log(`[PROMPT] Текст промпта: "${promptText}"`);
 
-                console.log("[PROMPT] Обработка промпта - НОВАЯ ЛОГИКА С 3 РЕЖИМАМИ");
-                const promptText = document.getElementById("promptInput").value.trim();
-                console.log(`[PROMPT] Текст промпта: "${promptText}"`);
+            if (!promptText) {
+                console.log("[PROMPT] Ошибка: промпт пуст");
+                return;
+            }
 
-                if (!promptText) {
-                    console.log("[PROMPT] Ошибка: промпт пуст");
+            // ========== ОПРЕДЕЛЯЕМ РЕЖИМ ПО СОСТОЯНИЮ РЕДАКТОРА ==========
+            const modeInfo = detectMode();
+            console.log(`[PROMPT] Определен режим: ${modeInfo.mode} (${modeInfo.description})`);
+
+            // ========== РЕЖИМ 1: СОЗДАНИЕ ПЛАНА (текст пуст) ==========
+            if (modeInfo.mode === 1) {
+                console.log("[PROMPT] РЕЖИМ 1: весь текст промпта → тема для плана");
+
+                // Если нет активной статьи - создаём новую
+                if (!currentArticleId) {
+                    console.log("[PROMPT] Создаём новую статью для плана");
+                    const newArticle = await createEmptyArticleViaAPI(promptText);
+                    if (!newArticle) return;
+                    newArticle.content = newArticle.content || "";
+                    articles[newArticle.id] = newArticle;
+                    addArticleToSidebar(newArticle.id, newArticle.title, true);
+                    currentArticleId = newArticle.id;
+                }
+
+                // Генерируем план
+                showNotification("Генерирую план статьи...");
+                const updatedArticle = await generatePlanForArticleViaAPI(currentArticleId, promptText);
+                if (!updatedArticle) return;
+
+                updatedArticle.content = updatedArticle.content || "";
+                articles[currentArticleId] = updatedArticle;
+                document.getElementById("currentTitle").textContent = updatedArticle.title;
+                await typewriterEffect(document.getElementById("editorContent"), updatedArticle.content, 15);
+                showNotification("План статьи готов! Теперь можете редактировать текст.");
+            }
+
+            // ========== РЕЖИМ 2: ПРАВКА ВСЕГО ТЕКСТА (текст есть, нет выделения) ==========
+            else if (modeInfo.mode === 2) {
+                console.log("[PROMPT] РЕЖИМ 2: промпт → инструкция для правки всего текста");
+
+                if (!currentArticleId) {
+                    showNotification("Выберите статью для редактирования");
                     return;
                 }
 
-                // ========== ОПРЕДЕЛЯЕМ РЕЖИМ ПО СОСТОЯНИЮ РЕДАКТОРА ==========
-                const modeInfo = detectMode();
-                console.log(`[PROMPT] Определен режим: ${modeInfo.mode} (${modeInfo.description})`);
+                showNotification("Редактирую весь текст...");
+                const oldText = document.getElementById("editorContent").textContent;
+                const updatedArticle = await editFullTextViaAPI(currentArticleId, promptText);
+                if (!updatedArticle) return;
 
-                // ========== РЕЖИМ 1: СОЗДАНИЕ ПЛАНА (текст пуст) ==========
-                if (modeInfo.mode === 1) {
-                    console.log("[PROMPT] РЕЖИМ 1: весь текст промпта → тема для плана");
+                updatedArticle.content = updatedArticle.content || "";
+                articles[currentArticleId] = updatedArticle;
 
-                    // Если нет активной статьи - создаём новую
-                    if (!currentArticleId) {
-                        console.log("[PROMPT] Создаём новую статью для плана");
-                        const newArticle = await createEmptyArticleViaAPI(promptText);
-                        if (!newArticle) return;
-                        newArticle.content = newArticle.content || "";
-                        articles[newArticle.id] = newArticle;
-                        addArticleToSidebar(newArticle.id, newArticle.title, true);
-                        currentArticleId = newArticle.id;
-                    }
+                // Применяем typewriter effect для замены текста
+                await animateTextReplacement(
+                    document.getElementById("editorContent"),
+                    oldText,
+                    updatedArticle.content,
+                    10  // speed
+                );
 
-                    // Генерируем план
-                    showNotification("Генерирую план статьи...");
-                    const updatedArticle = await generatePlanForArticleViaAPI(currentArticleId, promptText);
-                    if (!updatedArticle) return;
+                // Очищаем подсветку выделения
+                clearSelectionHighlight();
+                savedSelection = null;
 
-                    updatedArticle.content = updatedArticle.content || "";
-                    articles[currentArticleId] = updatedArticle;
-                    document.getElementById("currentTitle").textContent = updatedArticle.title;
-                    await typewriterEffect(document.getElementById("editorContent"), updatedArticle.content, 15);
-                    showNotification("План статьи готов! Теперь можете редактировать текст.");
+                showNotification("Текст отредактирован!");
+            }
+
+            // ========== РЕЖИМ 3: ПРАВКА ФРАГМЕНТА (текст есть + есть выделение) ==========
+            else if (modeInfo.mode === 3) {
+                console.log("[PROMPT] РЕЖИМ 3: промпт → инструкция для правки фрагмента");
+
+                if (!currentArticleId) {
+                    showNotification("Выберите статью для редактирования");
+                    return;
                 }
 
-                // ========== РЕЖИМ 2: ПРАВКА ВСЕГО ТЕКСТА (текст есть, нет выделения) ==========
-                else if (modeInfo.mode === 2) {
-                    console.log("[PROMPT] РЕЖИМ 2: промпт → инструкция для правки всего текста");
-
-                    if (!currentArticleId) {
-                        showNotification("Выберите статью для редактирования");
-                        return;
-                    }
-
-                    showNotification("Редактирую весь текст...");
-                    const oldText = document.getElementById("editorContent").textContent;
-                    const updatedArticle = await editFullTextViaAPI(currentArticleId, promptText);
-                    if (!updatedArticle) return;
-
-                    updatedArticle.content = updatedArticle.content || "";
-                    articles[currentArticleId] = updatedArticle;
-
-                    // Применяем typewriter effect для замены текста
-                    await animateTextReplacement(
-                        document.getElementById("editorContent"),
-                        oldText,
-                        updatedArticle.content,
-                        10  // speed
-                    );
-
-                    // Очищаем подсветку выделения
-                    clearSelectionHighlight();
-                    savedSelection = null;
-
-                    showNotification("Текст отредактирован!");
+                // Получаем фрагмент с контекстом
+                const selection = getSelectionWithContext();
+                if (!selection) {
+                    showNotification("Не удалось получить выделенный текст");
+                    return;
                 }
 
-                // ========== РЕЖИМ 3: ПРАВКА ФРАГМЕНТА (текст есть + есть выделение) ==========
-                else if (modeInfo.mode === 3) {
-                    console.log("[PROMPT] РЕЖИМ 3: промпт → инструкция для правки фрагмента");
+                showNotification("Редактирую выделенный фрагмент...");
+                const oldText = document.getElementById("editorContent").textContent;
+                const startOffset = savedSelection.startOffset;
+                const endOffset = savedSelection.endOffset;
 
-                    if (!currentArticleId) {
-                        showNotification("Выберите статью для редактирования");
-                        return;
-                    }
+                const updatedArticle = await editFragmentViaAPI(
+                    currentArticleId,
+                    selection.before,
+                    selection.fragment,
+                    selection.after,
+                    promptText
+                );
+                if (!updatedArticle) return;
 
-                    // Получаем фрагмент с контекстом
-                    const selection = getSelectionWithContext();
-                    if (!selection) {
-                        showNotification("Не удалось получить выделенный текст");
-                        return;
-                    }
+                updatedArticle.content = updatedArticle.content || "";
+                articles[currentArticleId] = updatedArticle;
 
-                    showNotification("Редактирую выделенный фрагмент...");
-                    const oldText = document.getElementById("editorContent").textContent;
-                    const startOffset = savedSelection.startOffset;
-                    const endOffset = savedSelection.endOffset;
+                // Применяем typewriter effect ТОЛЬКО для фрагмента
+                // Используем новый фрагмент из backend (НЕ из content!)
+                await animateFragmentReplacement(
+                    document.getElementById("editorContent"),
+                    oldText,
+                    startOffset,
+                    endOffset,
+                    updatedArticle.fragment,
+                    10  // speed
+                );
 
-                    const updatedArticle = await editFragmentViaAPI(
-                        currentArticleId,
-                        selection.before,
-                        selection.fragment,
-                        selection.after,
-                        promptText
-                    );
-                    if (!updatedArticle) return;
+                // Очищаем подсветку выделения
+                clearSelectionHighlight();
+                savedSelection = null;
 
-                    updatedArticle.content = updatedArticle.content || "";
-                    articles[currentArticleId] = updatedArticle;
+                showNotification("Фрагмент отредактирован!");
+            }
 
-                    // Применяем typewriter effect ТОЛЬКО для фрагмента
-                    // Используем новый фрагмент из backend (НЕ из content!)
-                    await animateFragmentReplacement(
-                        document.getElementById("editorContent"),
-                        oldText,
-                        startOffset,
-                        endOffset,
-                        updatedArticle.fragment,
-                        10  // speed
-                    );
+            // Очищаем поле промпта
+            document.getElementById("promptInput").value = "";
+            document.getElementById("promptInput").style.height = "auto";
+            console.log("[PROMPT] Процесс завершен успешно");
 
-                    // Очищаем подсветку выделения
-                    clearSelectionHighlight();
-                    savedSelection = null;
-
-                    showNotification("Фрагмент отредактирован!");
-                }
-
-                // Очищаем поле промпта
-                document.getElementById("promptInput").value = "";
-                document.getElementById("promptInput").style.height = "auto";
-                console.log("[PROMPT] Процесс завершен успешно");
             } finally {
                 unlockApplyButton();
             }
-        }
-
+        
         // Auto-resize textarea
         const promptInput = document.getElementById("promptInput");
         promptInput.addEventListener("input", function() {
