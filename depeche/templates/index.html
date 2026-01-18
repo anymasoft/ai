@@ -16,7 +16,7 @@
             width: 100%;
             margin: 0;
             padding: 0;
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", "Oxygen", "Ubuntu", sans-serif;
             background: #ffffff;
         }
 
@@ -597,7 +597,7 @@
                         <textarea
                             class="prompt-textarea"
                             id="promptInput"
-                            placeholder="Describe what you'd like to do... (e.g., 'Make it shorter', 'Add examples', 'Change tone')"
+                            placeholder="Describe what you"d like to do... (e.g., "Make it shorter", "Add examples", "Change tone")"
                             rows="1"
                         ></textarea>
                     </div>
@@ -629,7 +629,7 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
         // === API CONFIGURATION ===
-        const API_BASE_URL = 'http://localhost:8000/api';
+        const API_BASE_URL = "http://localhost:8000/api";
 
         // === STATE ===
         let currentArticleId = null;
@@ -641,7 +641,7 @@
 
 
         // === INITIALIZATION ===
-        document.addEventListener('DOMContentLoaded', function() {
+        document.addEventListener(\"DOMContentLoaded\", function() {
             loadArticlesList();
             setupSelectionHandlers();
         });
@@ -652,10 +652,10 @@
          * Сохранить выделенный фрагмент при mouseup в editor
          */
         function setupSelectionHandlers() {
-            const editorContent = document.getElementById('editorContent');
+            const editorContent = document.getElementById("editorContent");
 
             // При mouseup с новым выделением - применяем подсветку
-            editorContent.addEventListener('mouseup', function() {
+            editorContent.addEventListener(\"mouseup\", function() {
                 const selection = window.getSelection();
                 if (selection.toString().trim()) {
                     // Есть выделение - сохраняем его и подсвечиваем
@@ -683,19 +683,19 @@
             });
 
             // При клике на пустое место в editor - сбрасываем выделение
-            editorContent.addEventListener('click', function(e) {
+            editorContent.addEventListener(\"click\", function(e) {
                 if (e.target === editorContent) {
                     // Клик на пустое место в editor
                     setTimeout(() => {
                         // НЕ сбрасываем если только что применили подсветку
                         if (highlightJustApplied) {
-                            console.log('[SELECTION_CLICK] Игнорируем click т.к. только что применили подсветку');
+                            console.log("[SELECTION_CLICK] Игнорируем click т.к. только что применили подсветку");
                             return;
                         }
 
                         const selection = window.getSelection();
                         if (!selection.toString().trim() && savedSelection) {
-                            console.log('[SELECTION_CLEAR] Выделение сброшено при клике на пустое место');
+                            console.log("[SELECTION_CLEAR] Выделение сброшено при клике на пустое место");
                             clearSelectionHighlight();
                             savedSelection = null;
                         }
@@ -705,75 +705,75 @@
         }
 
         /**
-         * Очистить все визуальные overlay'и подсветки
+         * Очистить все визуальные overlayи подсветки
          * ТЕКСТ НЕ МЕНЯЕТСЯ - только удаляются визуальные элементы
          */
         function clearSelectionHighlight() {
-            const editor = document.getElementById('editorContent');
-            const overlays = editor.querySelectorAll('.selection-overlay');
+            const editor = document.getElementById("editorContent");
+            const overlays = editor.querySelectorAll(".selection-overlay");
             overlays.forEach(overlay => overlay.remove());
-            console.log('[HIGHLIGHT] Все overlay'и удалены');
+            console.log("[HIGHLIGHT] Все overlayи удалены");
         }
 
         /**
          * Применить визуальную подсветку к сохраненному выделению
-         * АРХИТЕКТУРА: Range.getClientRects() → overlay div'ы
+         * АРХИТЕКТУРА: Range.getClientRects() → overlay divы
          * ТЕКСТ ВООБЩЕ НЕ МЕНЯЕТСЯ
          */
         function applySelectionHighlight() {
-            clearSelectionHighlight(); // Очищаем старые overlay'и
+            clearSelectionHighlight(); // Очищаем старые overlayи
 
             if (!savedSelection) return;
 
-            const editor = document.getElementById('editorContent');
+            const editor = document.getElementById("editorContent");
             const selection = window.getSelection();
 
-            // Проверяем что selection существует и находится в editor'е
+            // Проверяем что selection существует и находится в editorе
             if (!selection || selection.rangeCount === 0) {
-                console.log('[HIGHLIGHT] Нет активного selection');
+                console.log("[HIGHLIGHT] Нет активного selection");
                 return;
             }
 
             const range = selection.getRangeAt(0);
 
-            // Проверяем что Range находится внутри editor'а
+            // Проверяем что Range находится внутри editorа
             if (!editor.contains(range.commonAncestorContainer)) {
-                console.log('[HIGHLIGHT] Range вне editor');
+                console.log("[HIGHLIGHT] Range вне editor");
                 return;
             }
 
             // Получаем все прямоугольники выделённого текста
             const rects = range.getClientRects();
             if (rects.length === 0) {
-                console.log('[HIGHLIGHT] Range не имеет видимых rect\'ов');
+                console.log("[HIGHLIGHT] Range не имеет видимых rectов");
                 return;
             }
 
-            // Получаем позицию editor'а для расчета relative координат
+            // Получаем позицию editorа для расчета relative координат
             const editorRect = editor.getBoundingClientRect();
 
             // Для каждого rect создаем overlay div
             for (let rect of rects) {
-                const overlay = document.createElement('div');
-                overlay.className = 'selection-overlay';
+                const overlay = document.createElement("div");
+                overlay.className = "selection-overlay";
 
-                // Позиция относительно editor'а
+                // Позиция относительно editorа
                 const top = rect.top - editorRect.top + editor.scrollTop;
                 const left = rect.left - editorRect.left + editor.scrollLeft;
                 const width = rect.width;
                 const height = rect.height;
 
                 // Устанавливаем стили
-                overlay.style.top = top + 'px';
-                overlay.style.left = left + 'px';
-                overlay.style.width = width + 'px';
-                overlay.style.height = height + 'px';
+                overlay.style.top = top + "px";
+                overlay.style.left = left + "px";
+                overlay.style.width = width + "px";
+                overlay.style.height = height + "px";
 
                 // Добавляем в editor
                 editor.appendChild(overlay);
             }
 
-            console.log('[HIGHLIGHT] Подсветка применена (' + rects.length + ' rect\'ов)');
+            console.log("[HIGHLIGHT] Подсветка применена (" + rects.length + " rectов)");
 
             // Устанавливаем флаг
             highlightJustApplied = true;
@@ -792,13 +792,13 @@
          * РЕЖИМ 3: Текст есть + есть выделение → ПРАВКА ФРАГМЕНТА
          */
         function detectMode() {
-            const editorContent = document.getElementById('editorContent').textContent.trim();
+            const editorContent = document.getElementById("editorContent").textContent.trim();
 
             // РЕЖИМ 1: текст пуст
             if (!editorContent) {
                 return {
                     mode: 1,
-                    description: 'ПЛАН: генерация плана статьи'
+                    description: "ПЛАН: генерация плана статьи"
                 };
             }
 
@@ -807,7 +807,7 @@
                 console.log(`[DETECT] Режим 3: найдено сохраненное выделение`);
                 return {
                     mode: 3,
-                    description: 'ФРАГМЕНТ: редактирование выделенного текста',
+                    description: "ФРАГМЕНТ: редактирование выделенного текста",
                     selectedText: savedSelection.text
                 };
             }
@@ -816,7 +816,7 @@
             console.log(`[DETECT] Режим 2: весь текст`);
             return {
                 mode: 2,
-                description: 'ВЕСЬ ТЕКСТ: редактирование всей статьи'
+                description: "ВЕСЬ ТЕКСТ: редактирование всей статьи"
             };
         }
 
@@ -825,11 +825,11 @@
          */
         function getSelectionWithContext() {
             if (!savedSelection || !savedSelection.text) {
-                console.log('[SELECTION] Нет сохраненного выделения');
+                console.log("[SELECTION] Нет сохраненного выделения");
                 return null;
             }
 
-            const fullText = document.getElementById('editorContent').textContent;
+            const fullText = document.getElementById("editorContent").textContent;
             const { startOffset, endOffset } = savedSelection;
 
             console.log(`[SELECTION] Используем сохраненное выделение. startOffset=${startOffset}, endOffset=${endOffset}`);
@@ -839,13 +839,13 @@
             let beforeStart = startOffset;
             let doubleNewlineCount = 0;
             for (let i = startOffset - 1; i >= 0; i--) {
-                if (fullText[i] === '\n') {
+                if (fullText[i] === "\n") {
                     doubleNewlineCount++;
                     if (doubleNewlineCount >= 2) {
                         beforeStart = i + 1;
                         break;
                     }
-                } else if (fullText[i] !== ' ' && fullText[i] !== '\r') {
+                } else if (fullText[i] !== " " && fullText[i] !== "\r") {
                     doubleNewlineCount = 0;
                 }
             }
@@ -858,13 +858,13 @@
             let afterEnd = endOffset;
             doubleNewlineCount = 0;
             for (let i = endOffset; i < fullText.length; i++) {
-                if (fullText[i] === '\n') {
+                if (fullText[i] === "\n") {
                     doubleNewlineCount++;
                     if (doubleNewlineCount >= 2) {
                         afterEnd = i;
                         break;
                     }
-                } else if (fullText[i] !== ' ' && fullText[i] !== '\r') {
+                } else if (fullText[i] !== " " && fullText[i] !== "\r") {
                     doubleNewlineCount = 0;
                 }
             }
@@ -884,22 +884,22 @@
 
         async function loadArticlesList() {
             try {
-                console.log('[LOAD] Загружаем список статей');
+                console.log("[LOAD] Загружаем список статей");
                 const response = await fetch(`${API_BASE_URL}/articles`);
                 const articlesList = await response.json();
                 console.log(`[LOAD] Получено ${articlesList.length} статей от API`);
 
                 // Очищаем sidebar и DOM кэш
-                const articlesList_elem = document.getElementById('articlesList');
-                articlesList_elem.innerHTML = '';
+                const articlesList_elem = document.getElementById("articlesList");
+                articlesList_elem.innerHTML = "";
                 articles = {};
                 currentArticleId = null;
-                console.log('[LOAD] Очищен кэш и sidebar');
+                console.log("[LOAD] Очищен кэш и sidebar");
 
                 if (articlesList.length === 0) {
-                    console.log('[LOAD] Список статей пуст');
-                    document.getElementById('currentTitle').textContent = '';
-                    document.getElementById('editorContent').textContent = '';
+                    console.log("[LOAD] Список статей пуст");
+                    document.getElementById("currentTitle").textContent = "";
+                    document.getElementById("editorContent").textContent = "";
                     return;
                 }
 
@@ -919,27 +919,27 @@
                     currentArticleId = firstId;
                     const firstArticle = articles[firstId];
                     console.log(`[LOAD] currentArticleId установлен на: ${currentArticleId}`);
-                    document.getElementById('currentTitle').textContent = firstArticle.title;
-                    document.getElementById('editorContent').textContent = firstArticle.content;
-                    document.getElementById('promptInput').value = '';
-                    console.log('[LOAD] UI обновлен');
+                    document.getElementById("currentTitle").textContent = firstArticle.title;
+                    document.getElementById("editorContent").textContent = firstArticle.content;
+                    document.getElementById("promptInput").value = "";
+                    console.log("[LOAD] UI обновлен");
                 }
             } catch (error) {
-                console.error('[LOAD] Критическая ошибка:', error);
-                showNotification('Ошибка при загрузке списка статей');
+                console.error("[LOAD] Критическая ошибка:", error);
+                showNotification("Ошибка при загрузке списка статей");
             }
         }
 
         async function loadArticleContent(articleId) {
             try {
                 const response = await fetch(`${API_BASE_URL}/articles/${articleId}`);
-                if (!response.ok) throw new Error('Статья не найдена');
+                if (!response.ok) throw new Error("Статья не найдена");
 
                 const article = await response.json();
                 return article;
             } catch (error) {
-                console.error('Ошибка при загрузке статьи:', error);
-                showNotification('Ошибка при загрузке статьи');
+                console.error("Ошибка при загрузке статьи:", error);
+                showNotification("Ошибка при загрузке статьи");
                 return null;
             }
         }
@@ -955,9 +955,9 @@
                 console.log(`[CREATE_API] Тело: ${JSON.stringify(body)}`);
 
                 const response = await fetch(url, {
-                    method: 'POST',
+                    method: "POST",
                     headers: {
-                        'Content-Type': 'application/json'
+                        "Content-Type": "application/json"
                     },
                     body: JSON.stringify(body)
                 });
@@ -967,15 +967,15 @@
                 if (!response.ok) {
                     const error = await response.json();
                     console.error(`[CREATE_API] Ошибка от сервера: ${error.detail}`);
-                    throw new Error(error.detail || 'Ошибка при создании статьи');
+                    throw new Error(error.detail || "Ошибка при создании статьи");
                 }
 
                 const article = await response.json();
                 console.log(`[CREATE_API] Статья успешно создана! ID=${article.id}, title="${article.title}"`);
                 return article;
             } catch (error) {
-                console.error('[CREATE_API] Критическая ошибка:', error);
-                showNotification('Ошибка: ' + error.message);
+                console.error("[CREATE_API] Критическая ошибка:", error);
+                showNotification("Ошибка: " + error.message);
                 return null;
             }
         }
@@ -984,16 +984,16 @@
             // Генерирует план статьи и обновляет её
             try {
                 console.log(`[PLAN_GEN] Начинаем генерацию плана. articleId=${articleId}, topic="${topic}"`);
-                showNotification('Генерирую план статьи...');
+                showNotification("Генерирую план статьи...");
 
                 const url = `${API_BASE_URL}/articles/${articleId}/plan`;
                 console.log(`[PLAN_GEN] URL запроса: ${url}`);
                 console.log(`[PLAN_GEN] Тело запроса: ${JSON.stringify({ topic: topic })}`);
 
                 const response = await fetch(url, {
-                    method: 'POST',
+                    method: "POST",
                     headers: {
-                        'Content-Type': 'application/json'
+                        "Content-Type": "application/json"
                     },
                     body: JSON.stringify({ topic: topic })
                 });
@@ -1003,7 +1003,7 @@
                 if (!response.ok) {
                     const error = await response.json();
                     console.error(`[PLAN_GEN] Ошибка от сервера: ${error.detail}`);
-                    throw new Error(error.detail || 'Ошибка при генерации плана');
+                    throw new Error(error.detail || "Ошибка при генерации плана");
                 }
 
                 const article = await response.json();
@@ -1011,8 +1011,8 @@
                 console.log(`[PLAN_GEN] Контент: ${article.content.substring(0, 100)}...`);
                 return article;
             } catch (error) {
-                console.error('[PLAN_GEN] Критическая ошибка:', error);
-                showNotification('Ошибка при генерации: ' + error.message);
+                console.error("[PLAN_GEN] Критическая ошибка:", error);
+                showNotification("Ошибка при генерации: " + error.message);
                 return null;
             }
         }
@@ -1020,16 +1020,16 @@
         async function deleteArticleViaAPI(articleId) {
             try {
                 const response = await fetch(`${API_BASE_URL}/articles/${articleId}`, {
-                    method: 'DELETE'
+                    method: "DELETE"
                 });
 
-                if (!response.ok) throw new Error('Ошибка при удалении');
+                if (!response.ok) throw new Error("Ошибка при удалении");
 
                 delete articles[articleId];
                 return true;
             } catch (error) {
-                console.error('Ошибка при удалении статьи:', error);
-                showNotification('Ошибка при удалении статьи');
+                console.error("Ошибка при удалении статьи:", error);
+                showNotification("Ошибка при удалении статьи");
                 return false;
             }
         }
@@ -1046,8 +1046,8 @@
                 const body = { instruction: instruction };
 
                 const response = await fetch(url, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
                     body: JSON.stringify(body)
                 });
 
@@ -1055,15 +1055,15 @@
 
                 if (!response.ok) {
                     const error = await response.json();
-                    throw new Error(error.detail || 'Ошибка при редактировании');
+                    throw new Error(error.detail || "Ошибка при редактировании");
                 }
 
                 const article = await response.json();
                 console.log(`[EDIT_FULL_API] Текст успешно отредактирован`);
                 return article;
             } catch (error) {
-                console.error('[EDIT_FULL_API] Критическая ошибка:', error);
-                showNotification('Ошибка при редактировании: ' + error.message);
+                console.error("[EDIT_FULL_API] Критическая ошибка:", error);
+                showNotification("Ошибка при редактировании: " + error.message);
                 return null;
             }
         }
@@ -1086,8 +1086,8 @@
                 };
 
                 const response = await fetch(url, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
                     body: JSON.stringify(body)
                 });
 
@@ -1095,15 +1095,15 @@
 
                 if (!response.ok) {
                     const error = await response.json();
-                    throw new Error(error.detail || 'Ошибка при редактировании фрагмента');
+                    throw new Error(error.detail || "Ошибка при редактировании фрагмента");
                 }
 
                 const article = await response.json();
                 console.log(`[EDIT_FRAGMENT_API] Фрагмент успешно отредактирован`);
                 return article;
             } catch (error) {
-                console.error('[EDIT_FRAGMENT_API] Критическая ошибка:', error);
-                showNotification('Ошибка при редактировании: ' + error.message);
+                console.error("[EDIT_FRAGMENT_API] Критическая ошибка:", error);
+                showNotification("Ошибка при редактировании: " + error.message);
                 return null;
             }
         }
@@ -1113,8 +1113,8 @@
          * РЕЖИМ 1: Классический typewriter effect (текст был пуст)
          */
         async function typewriterEffect(element, text, speed = 20) {
-            console.log('[TYPEWRITER] Классический эффект печати');
-            element.textContent = '';
+            console.log("[TYPEWRITER] Классический эффект печати");
+            element.textContent = "";
             for (let i = 0; i < text.length; i++) {
                 element.textContent += text[i];
                 await new Promise(resolve => setTimeout(resolve, speed));
@@ -1125,13 +1125,13 @@
          * РЕЖИМ 2: Посимвольная замена ВСЕГО текста
          */
         async function animateTextReplacement(element, oldText, newText, speed = 10) {
-            console.log('[REPLACE_TEXT] Анимирую замену всего текста');
+            console.log("[REPLACE_TEXT] Анимирую замену всего текста");
 
             const maxLen = Math.max(oldText.length, newText.length);
 
             for (let i = 0; i < maxLen; i++) {
-                const oldChar = oldText[i] || '';
-                const newChar = newText[i] || '';
+                const oldChar = oldText[i] || "";
+                const newChar = newText[i] || "";
 
                 if (oldChar !== newChar) {
                     // Стираем старый символ и печатаем новый
@@ -1146,7 +1146,7 @@
                 await new Promise(resolve => setTimeout(resolve, speed));
             }
 
-            console.log('[REPLACE_TEXT] Замена завершена');
+            console.log("[REPLACE_TEXT] Замена завершена");
         }
 
         /**
@@ -1159,12 +1159,12 @@
             const maxLen = Math.max(oldFragment.length, newFragment.length);
 
             for (let i = 0; i < maxLen; i++) {
-                const oldChar = oldFragment[i] || '';
-                const newChar = newFragment[i] || '';
+                const oldChar = oldFragment[i] || "";
+                const newChar = newFragment[i] || "";
 
                 const currentFullText = element.textContent;
                 const before = currentFullText.substring(0, startOffset + i);
-                const char = newChar || '';
+                const char = newChar || "";
                 const after = currentFullText.substring(startOffset + i + 1);
 
                 element.textContent = before + char + after;
@@ -1172,20 +1172,20 @@
                 await new Promise(resolve => setTimeout(resolve, speed));
             }
 
-            console.log('[REPLACE_FRAGMENT] Замена фрагмента завершена');
+            console.log("[REPLACE_FRAGMENT] Замена фрагмента завершена");
         }
 
         // === UI FUNCTIONS ===
 
         function addArticleToSidebar(articleId, title, select = true) {
-            const list = document.getElementById('articlesList');
-            const button = document.createElement('button');
-            button.className = 'article-item';
-            if (select) button.classList.add('active');
-            button.setAttribute('data-id', articleId);
-            button.innerHTML = title + '<span class="article-delete-btn" onclick="deleteArticle(event, ' + articleId + ')" title="Delete">×</span>';
+            const list = document.getElementById("articlesList");
+            const button = document.createElement("button");
+            button.className = "article-item";
+            if (select) button.classList.add("active");
+            button.setAttribute("data-id", articleId);
+            button.innerHTML = title + "<span class="article-delete-btn" onclick="deleteArticle(event, " + articleId + ")" title="Delete">×</span>";
             button.onclick = function(e) {
-                if (e.target.classList.contains('article-delete-btn')) return;
+                if (e.target.classList.contains("article-delete-btn")) return;
                 selectArticle(this, articleId);
             };
             list.appendChild(button);
@@ -1194,25 +1194,25 @@
         function selectArticle(element, id) {
             console.log(`[SELECT] Переключение на статью ID=${id}`);
             // Переключить активный класс
-            document.querySelectorAll('.article-item').forEach(item => {
-                item.classList.remove('active');
+            document.querySelectorAll(".article-item").forEach(item => {
+                item.classList.remove("active");
             });
-            element.classList.add('active');
+            element.classList.add("active");
 
             currentArticleId = id;
             console.log(`[SELECT] currentArticleId установлен на: ${currentArticleId}`);
 
             // Загрузить контент статьи
             const article = articles[id];
-            console.log(`[SELECT] Статья из кэша: ${article ? 'найдена' : 'НЕ найдена'}`);
+            console.log(`[SELECT] Статья из кэша: ${article ? "найдена" : "НЕ найдена"}`);
 
             if (article) {
                 console.log(`[SELECT] Отображаем: title="${article.title}", content="${article.content.substring(0, 50)}..."`);
-                document.getElementById('currentTitle').textContent = article.title;
+                document.getElementById("currentTitle").textContent = article.title;
                 // Отобразить текст БЕЗ typewriter effect (просто загрузка)
-                document.getElementById('editorContent').textContent = article.content;
-                document.getElementById('promptInput').value = '';
-                document.getElementById('promptInput').style.height = 'auto';
+                document.getElementById("editorContent").textContent = article.content;
+                document.getElementById("promptInput").value = "";
+                document.getElementById("promptInput").style.height = "auto";
             } else {
                 console.log(`[SELECT] ОШИБКА: Статья не найдена в кэше!`);
             }
@@ -1224,55 +1224,55 @@
             const success = await deleteArticleViaAPI(id);
 
             if (success) {
-                const articleButton = document.querySelector('.article-item[data-id="' + id + '"]');
+                const articleButton = document.querySelector(".article-item[data-id="" + id + ""]");
                 articleButton.remove();
 
                 // Если это была активная статья - переключиться на другую
-                const activeItem = document.querySelector('.article-item.active');
+                const activeItem = document.querySelector(".article-item.active");
                 if (!activeItem) {
-                    const firstArticle = document.querySelector('.article-item');
+                    const firstArticle = document.querySelector(".article-item");
                     if (firstArticle) {
-                        const firstId = parseInt(firstArticle.getAttribute('data-id'));
+                        const firstId = parseInt(firstArticle.getAttribute("data-id"));
                         selectArticle(firstArticle, firstId);
                     } else {
-                        document.getElementById('currentTitle').textContent = 'No articles';
-                        document.getElementById('editorContent').textContent = '';
-                        document.getElementById('promptInput').value = '';
+                        document.getElementById("currentTitle").textContent = "No articles";
+                        document.getElementById("editorContent").textContent = "";
+                        document.getElementById("promptInput").value = "";
                     }
                 }
 
-                showNotification('Article deleted');
+                showNotification("Article deleted");
             }
         }
 
         // Open new article modal
         function openNewArticleModal() {
-            const modal = new bootstrap.Modal(document.getElementById('newArticleModal'));
-            document.getElementById('newArticleTitle').value = '';
-            document.getElementById('newArticleTitle').focus();
+            const modal = new bootstrap.Modal(document.getElementById("newArticleModal"));
+            document.getElementById("newArticleTitle").value = "";
+            document.getElementById("newArticleTitle").focus();
             modal.show();
         }
 
         // Create new article (through API) - пустая статья БЕЗ генерации
         async function createNewArticle() {
-            console.log('[CREATE] Нажата кнопка создания статьи');
-            const title = document.getElementById('newArticleTitle').value.trim();
+            console.log("[CREATE] Нажата кнопка создания статьи");
+            const title = document.getElementById("newArticleTitle").value.trim();
             console.log(`[CREATE] Введённое название: "${title}"`);
 
             if (!title) {
-                console.log('[CREATE] Ошибка: название пусто');
-                showNotification('Please enter an article title');
+                console.log("[CREATE] Ошибка: название пусто");
+                showNotification("Please enter an article title");
                 return;
             }
 
-            const modal = bootstrap.Modal.getInstance(document.getElementById('newArticleModal'));
+            const modal = bootstrap.Modal.getInstance(document.getElementById("newArticleModal"));
             modal.hide();
 
             // Вызваем API для создания ПУСТОЙ статьи (БЕЗ генерации плана)
-            console.log('[CREATE] Вызываем createEmptyArticleViaAPI');
+            console.log("[CREATE] Вызываем createEmptyArticleViaAPI");
             const article = await createEmptyArticleViaAPI(title);
             if (!article) {
-                console.log('[CREATE] Ошибка: API не вернул статью');
+                console.log("[CREATE] Ошибка: API не вернул статью");
                 return;
             }
 
@@ -1289,25 +1289,25 @@
             console.log(`[CREATE] currentArticleId установлен на: ${currentArticleId}`);
 
             // Отображаем в редактор - пусто, БЕЗ typewriter effect
-            document.getElementById('currentTitle').textContent = article.title;
-            document.getElementById('editorContent').textContent = '';
+            document.getElementById("currentTitle").textContent = article.title;
+            document.getElementById("editorContent").textContent = "";
 
-            document.getElementById('promptInput').value = '';
-            document.getElementById('promptInput').style.height = 'auto';
+            document.getElementById("promptInput").value = "";
+            document.getElementById("promptInput").style.height = "auto";
 
-            console.log('[CREATE] UI обновлен. Готово к вводу промпта');
-            showNotification('Статья создана. Введите план в prompt bar.');
+            console.log("[CREATE] UI обновлен. Готово к вводу промпта");
+            showNotification("Статья создана. Введите план в prompt bar.");
         }
 
         // Show notification
         function showNotification(message) {
-            const notification = document.createElement('div');
-            notification.className = 'notification-toast';
+            const notification = document.createElement("div");
+            notification.className = "notification-toast";
             notification.textContent = message;
             document.body.appendChild(notification);
 
             setTimeout(() => {
-                notification.style.animation = 'slideIn 0.3s ease reverse';
+                notification.style.animation = "slideIn 0.3s ease reverse";
                 setTimeout(() => {
                     notification.remove();
                 }, 300);
@@ -1316,12 +1316,12 @@
 
         // Extract topic from prompt and generate plan for current article
         async function applyPrompt() {
-            console.log('[PROMPT] Обработка промпта - НОВАЯ ЛОГИКА С 3 РЕЖИМАМИ');
-            const promptText = document.getElementById('promptInput').value.trim();
+            console.log("[PROMPT] Обработка промпта - НОВАЯ ЛОГИКА С 3 РЕЖИМАМИ");
+            const promptText = document.getElementById("promptInput").value.trim();
             console.log(`[PROMPT] Текст промпта: "${promptText}"`);
 
             if (!promptText) {
-                console.log('[PROMPT] Ошибка: промпт пуст');
+                console.log("[PROMPT] Ошибка: промпт пуст");
                 return;
             }
 
@@ -1331,11 +1331,11 @@
 
             // ========== РЕЖИМ 1: СОЗДАНИЕ ПЛАНА (текст пуст) ==========
             if (modeInfo.mode === 1) {
-                console.log('[PROMPT] РЕЖИМ 1: весь текст промпта → тема для плана');
+                console.log("[PROMPT] РЕЖИМ 1: весь текст промпта → тема для плана");
 
                 // Если нет активной статьи - создаём новую
                 if (!currentArticleId) {
-                    console.log('[PROMPT] Создаём новую статью для плана');
+                    console.log("[PROMPT] Создаём новую статью для плана");
                     const newArticle = await createEmptyArticleViaAPI(promptText);
                     if (!newArticle) return;
                     articles[newArticle.id] = newArticle;
@@ -1344,27 +1344,27 @@
                 }
 
                 // Генерируем план
-                showNotification('Генерирую план статьи...');
+                showNotification("Генерирую план статьи...");
                 const updatedArticle = await generatePlanForArticleViaAPI(currentArticleId, promptText);
                 if (!updatedArticle) return;
 
                 articles[currentArticleId] = updatedArticle;
-                document.getElementById('currentTitle').textContent = updatedArticle.title;
-                await typewriterEffect(document.getElementById('editorContent'), updatedArticle.content, 15);
-                showNotification('План статьи готов! Теперь можете редактировать текст.');
+                document.getElementById("currentTitle").textContent = updatedArticle.title;
+                await typewriterEffect(document.getElementById("editorContent"), updatedArticle.content, 15);
+                showNotification("План статьи готов! Теперь можете редактировать текст.");
             }
 
             // ========== РЕЖИМ 2: ПРАВКА ВСЕГО ТЕКСТА (текст есть, нет выделения) ==========
             else if (modeInfo.mode === 2) {
-                console.log('[PROMPT] РЕЖИМ 2: промпт → инструкция для правки всего текста');
+                console.log("[PROMPT] РЕЖИМ 2: промпт → инструкция для правки всего текста");
 
                 if (!currentArticleId) {
-                    showNotification('Выберите статью для редактирования');
+                    showNotification("Выберите статью для редактирования");
                     return;
                 }
 
-                showNotification('Редактирую весь текст...');
-                const oldText = document.getElementById('editorContent').textContent;
+                showNotification("Редактирую весь текст...");
+                const oldText = document.getElementById("editorContent").textContent;
                 const updatedArticle = await editFullTextViaAPI(currentArticleId, promptText);
                 if (!updatedArticle) return;
 
@@ -1372,7 +1372,7 @@
 
                 // Применяем typewriter effect для замены текста
                 await animateTextReplacement(
-                    document.getElementById('editorContent'),
+                    document.getElementById("editorContent"),
                     oldText,
                     updatedArticle.content,
                     10  // speed
@@ -1382,27 +1382,27 @@
                 clearSelectionHighlight();
                 savedSelection = null;
 
-                showNotification('Текст отредактирован!');
+                showNotification("Текст отредактирован!");
             }
 
             // ========== РЕЖИМ 3: ПРАВКА ФРАГМЕНТА (текст есть + есть выделение) ==========
             else if (modeInfo.mode === 3) {
-                console.log('[PROMPT] РЕЖИМ 3: промпт → инструкция для правки фрагмента');
+                console.log("[PROMPT] РЕЖИМ 3: промпт → инструкция для правки фрагмента");
 
                 if (!currentArticleId) {
-                    showNotification('Выберите статью для редактирования');
+                    showNotification("Выберите статью для редактирования");
                     return;
                 }
 
                 // Получаем фрагмент с контекстом
                 const selection = getSelectionWithContext();
                 if (!selection) {
-                    showNotification('Не удалось получить выделенный текст');
+                    showNotification("Не удалось получить выделенный текст");
                     return;
                 }
 
-                showNotification('Редактирую выделенный фрагмент...');
-                const oldText = document.getElementById('editorContent').textContent;
+                showNotification("Редактирую выделенный фрагмент...");
+                const oldText = document.getElementById("editorContent").textContent;
                 const startOffset = savedSelection.startOffset;
                 const endOffset = savedSelection.endOffset;
 
@@ -1419,7 +1419,7 @@
 
                 // Применяем typewriter effect ТОЛЬКО для фрагмента
                 await animateFragmentReplacement(
-                    document.getElementById('editorContent'),
+                    document.getElementById("editorContent"),
                     oldText,
                     startOffset,
                     endOffset,
@@ -1431,42 +1431,42 @@
                 clearSelectionHighlight();
                 savedSelection = null;
 
-                showNotification('Фрагмент отредактирован!');
+                showNotification("Фрагмент отредактирован!");
             }
 
             // Очищаем поле промпта
-            document.getElementById('promptInput').value = '';
-            document.getElementById('promptInput').style.height = 'auto';
-            console.log('[PROMPT] Процесс завершен успешно');
+            document.getElementById("promptInput").value = "";
+            document.getElementById("promptInput").style.height = "auto";
+            console.log("[PROMPT] Процесс завершен успешно");
         }
 
         // Auto-resize textarea
-        const promptInput = document.getElementById('promptInput');
-        promptInput.addEventListener('input', function() {
-            this.style.height = 'auto';
-            this.style.height = Math.min(this.scrollHeight, 120) + 'px';
+        const promptInput = document.getElementById("promptInput");
+        promptInput.addEventListener(\"input\", function() {
+            this.style.height = "auto";
+            this.style.height = Math.min(this.scrollHeight, 120) + "px";
         });
 
         // Allow Enter key to submit prompt (Shift+Enter for new line)
-        promptInput.addEventListener('keypress', function(e) {
-            if (e.key === 'Enter' && !e.shiftKey) {
+        promptInput.addEventListener(\"keypress\", function(e) {
+            if (e.key === "Enter" && !e.shiftKey) {
                 e.preventDefault();
                 applyPrompt();
             }
         });
 
         // Save content to articles database when editing
-        document.getElementById('editorContent').addEventListener('blur', function() {
-            const activeItem = document.querySelector('.article-item.active');
+        document.getElementById("editorContent").addEventListener(\"blur\", function() {
+            const activeItem = document.querySelector(".article-item.active");
             if (activeItem) {
-                const id = parseInt(activeItem.getAttribute('data-id'));
+                const id = parseInt(activeItem.getAttribute("data-id"));
                 articles[id].content = this.textContent;
             }
         });
 
         // Allow Enter in modal to create article
-        document.getElementById('newArticleTitle').addEventListener('keypress', function(e) {
-            if (e.key === 'Enter') {
+        document.getElementById("newArticleTitle").addEventListener(\"keypress\", function(e) {
+            if (e.key === "Enter") {
                 createNewArticle();
             }
         });
