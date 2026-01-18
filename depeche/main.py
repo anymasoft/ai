@@ -528,6 +528,19 @@ async def edit_article_fragment(article_id: int, request: EditFragmentRequest):
             )
             edited_fragment = llm_response.text
             logger.info(f"[EDIT_FRAGMENT] Фрагмент успешно отредактирован ({len(edited_fragment)} символов)")
+
+            # === ФИНАЛЬНАЯ САНИТИЗАЦИЯ В main.py ===
+            # Даже если llm.py уже санитизировал, проверим ещё раз перед конкатенацией и возвратом
+            from llm import sanitize_fragment as sanitize_frag, _has_fragment_markers
+            logger.debug(f"[EDIT_FRAGMENT] Финальная проверка: санитизация в main.py")
+            has_markers, marker_name = _has_fragment_markers(edited_fragment)
+            if has_markers:
+                logger.warning(f"[EDIT_FRAGMENT] ВНИМАНИЕ: В edited_fragment обнаружены маркеры {marker_name}!")
+                edited_fragment = sanitize_frag(edited_fragment)
+                has_markers_after, _ = _has_fragment_markers(edited_fragment)
+                if has_markers_after:
+                    logger.error(f"[EDIT_FRAGMENT] КРИТИЧЕСКАЯ ОШИБКА: Маркеры остались после финальной санитизации!")
+            logger.info(f"[EDIT_FRAGMENT] После финальной санитизации: {len(edited_fragment)} символов")
         except Exception as e:
             error_str = str(e)
             if "TRUNCATED" in error_str:
