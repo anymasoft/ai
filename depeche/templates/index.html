@@ -205,17 +205,18 @@
             color: #1a1a1a;
             margin: 0;
             letter-spacing: -0.5px;
-            display: flex;
-            align-items: center;
-            gap: 12px;
         }
 
         .dirty-indicator {
+            position: absolute;
+            top: 12px;
+            right: 12px;
             width: 10px;
             height: 10px;
             border-radius: 50%;
             flex-shrink: 0;
             transition: background-color 0.2s ease;
+            z-index: 20;
         }
 
         .dirty-indicator.clean {
@@ -994,12 +995,12 @@
             <div class="editor-header">
                 <h2 class="article-title" id="currentTitle">
                     <span id="titleText"></span>
-                    <div class="dirty-indicator clean" id="dirtyIndicator" title="Changes saved"></div>
                 </h2>
             </div>
 
             <div class="editor-area">
                 <div class="editor-wrapper">
+                    <div class="dirty-indicator clean" id="dirtyIndicator" title="Changes saved"></div>
                     <div class="editor-content" id="editorContent" contenteditable="true"></div>
                     <div class="markdown-preview" id="markdownPreview" style="display:none;"></div>
                     <button class="btn-preview-toggle" id="previewToggleButton" title="Toggle preview" type="button" aria-label="Toggle preview">
@@ -2007,6 +2008,8 @@
             if (modal) {
                 modal.classList.add("visible");
                 console.log(`[MODAL] Показываю modal для переключения на статью ${targetId}`);
+                // Добавляем обработчик Esc при открытии modal
+                document.addEventListener("keydown", handleEscapeKey);
             }
         }
 
@@ -2018,6 +2021,29 @@
             if (modal) {
                 modal.classList.remove("visible");
                 console.log("[MODAL] Modal закрыта");
+            }
+            // Удаляем обработчик Esc при закрытии modal
+            document.removeEventListener("keydown", handleEscapeKey);
+        }
+
+        /**
+         * Обработчик Esc при открытой modal
+         */
+        function handleEscapeKey(e) {
+            if (e.key === "Escape") {
+                e.preventDefault();
+                onModalCancel();
+            }
+        }
+
+        /**
+         * Обработчик клика на backdrop (вне modal content)
+         */
+        function onModalBackdropClick(event) {
+            // Клик только на overlay, не на content
+            if (event.target.id === "unsavedChangesModal") {
+                console.log("[MODAL] Клик на backdrop");
+                onModalCancel();
             }
         }
 
@@ -2511,13 +2537,12 @@
     </script>
 
     <!-- === UNSAVED CHANGES MODAL === -->
-    <div class="modal-overlay" id="unsavedChangesModal">
-        <div class="modal-content">
-            <h3 class="modal-title">Несохранённые изменения</h3>
-            <p class="modal-text">У вас есть несохранённые изменения. Они будут потеряны, если вы не сохраните.</p>
+    <div class="modal-overlay" id="unsavedChangesModal" onclick="onModalBackdropClick(event)">
+        <div class="modal-content" onclick="event.stopPropagation()">
+            <p class="modal-text">You have unsaved changes. If you leave, they will be lost.</p>
             <div class="modal-actions">
-                <button class="modal-btn modal-btn-cancel" id="modalBtnCancel" onclick="onModalCancel()">Остаться</button>
-                <button class="modal-btn modal-btn-discard" id="modalBtnDiscard" onclick="onModalDiscard()">Отбросить</button>
+                <button class="modal-btn modal-btn-cancel" id="modalBtnCancel" onclick="onModalCancel()">Отмена</button>
+                <button class="modal-btn modal-btn-discard" id="modalBtnDiscard" onclick="onModalDiscard()">Не сохранять</button>
                 <button class="modal-btn modal-btn-save" id="modalBtnSave" onclick="onModalSave()">Сохранить</button>
             </div>
         </div>
