@@ -703,18 +703,70 @@
                 }
             });
 
-            // Обработчик копирования (Ctrl+C) для сохранённого выделения
-            editorContent.addEventListener('copy', function(e) {
-                if (savedSelection && savedSelection.text) {
-                    console.log(`[COPY] Копируем выделенный фрагмент: "${savedSelection.text.substring(0, 50)}..."`);
-                    e.preventDefault();
-                    navigator.clipboard.writeText(savedSelection.text).then(() => {
-                        console.log('[COPY] Успешно скопировано в буфер обмена');
-                    }).catch(err => {
-                        console.error('[COPY] Ошибка при копировании:', err);
-                    });
+            // Обработчик Ctrl+C / Cmd+C для сохранённого выделения
+            document.addEventListener('keydown', function(e) {
+                // Проверяем Ctrl+C (Windows/Linux) или Cmd+C (Mac)
+                if ((e.ctrlKey || e.metaKey) && e.key === 'c') {
+                    // Проверяем находится ли фокус в editorContent
+                    const activeElement = document.activeElement;
+                    const editorContent = document.getElementById('editorContent');
+
+                    if (activeElement === editorContent && savedSelection && savedSelection.text) {
+                        console.log(`[COPY_KEY] Ctrl+C нажат, копируем: "${savedSelection.text.substring(0, 50)}..."`);
+                        e.preventDefault();
+
+                        // Пытаемся использовать modern Clipboard API
+                        if (navigator.clipboard && navigator.clipboard.writeText) {
+                            navigator.clipboard.writeText(savedSelection.text)
+                                .then(() => {
+                                    console.log('[COPY_KEY] Успешно скопировано через Clipboard API');
+                                    showNotification('✓ Скопировано в буфер обмена');
+                                })
+                                .catch(err => {
+                                    console.warn('[COPY_KEY] Clipboard API failed, trying execCommand:', err);
+                                    // Fallback на execCommand если Clipboard API не работает
+                                    copyViaExecCommand(savedSelection.text);
+                                });
+                        } else {
+                            // Fallback если нет Clipboard API (старые браузеры)
+                            copyViaExecCommand(savedSelection.text);
+                        }
+                    }
                 }
             });
+        }
+
+        /**
+         * Копирование через document.execCommand (fallback для старых браузеров)
+         */
+        function copyViaExecCommand(text) {
+            console.log('[COPY_EXEC] Используем execCommand для копирования');
+
+            // Создаём временный элемент с текстом
+            const tempElement = document.createElement('textarea');
+            tempElement.value = text;
+            tempElement.style.position = 'fixed';
+            tempElement.style.opacity = '0';
+            tempElement.style.pointerEvents = 'none';
+
+            document.body.appendChild(tempElement);
+            tempElement.select();
+
+            try {
+                const successful = document.execCommand('copy');
+                if (successful) {
+                    console.log('[COPY_EXEC] Успешно скопировано через execCommand');
+                    showNotification('✓ Скопировано в буфер обмена');
+                } else {
+                    console.warn('[COPY_EXEC] execCommand вернул false');
+                    showNotification('✗ Не удалось скопировать');
+                }
+            } catch (err) {
+                console.error('[COPY_EXEC] Ошибка при execCommand:', err);
+                showNotification('✗ Ошибка при копировании');
+            } finally {
+                document.body.removeChild(tempElement);
+            }
         }
 
         /**
