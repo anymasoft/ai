@@ -710,16 +710,15 @@ Happy writing!</div>
             }
         }
 
-        async function createArticleViaAPI(topic) {
+        async function createEmptyArticleViaAPI(title) {
+            // Создаёт пустую статью БЕЗ генерации плана
             try {
-                showNotification('Генерирую план статьи...');
-
                 const response = await fetch(`${API_BASE_URL}/articles`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
                     },
-                    body: JSON.stringify({ topic: topic })
+                    body: JSON.stringify({ topic: title })
                 });
 
                 if (!response.ok) {
@@ -732,6 +731,33 @@ Happy writing!</div>
             } catch (error) {
                 console.error('Ошибка при создании статьи:', error);
                 showNotification('Ошибка: ' + error.message);
+                return null;
+            }
+        }
+
+        async function generatePlanForArticleViaAPI(articleId, topic) {
+            // Генерирует план статьи и обновляет её
+            try {
+                showNotification('Генерирую план статьи...');
+
+                const response = await fetch(`${API_BASE_URL}/articles/${articleId}/plan`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ topic: topic })
+                });
+
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.detail || 'Ошибка при генерации плана');
+                }
+
+                const article = await response.json();
+                return article;
+            } catch (error) {
+                console.error('Ошибка при генерации плана:', error);
+                showNotification('Ошибка при генерации: ' + error.message);
                 return null;
             }
         }
@@ -833,33 +859,33 @@ Happy writing!</div>
             modal.show();
         }
 
-        // Create new article (through API)
+        // Create new article (through API) - пустая статья БЕЗ генерации
         async function createNewArticle() {
-            const topic = document.getElementById('newArticleTitle').value.trim();
-            if (!topic) {
-                showNotification('Please enter an article topic');
+            const title = document.getElementById('newArticleTitle').value.trim();
+            if (!title) {
+                showNotification('Please enter an article title');
                 return;
             }
 
             const modal = bootstrap.Modal.getInstance(document.getElementById('newArticleModal'));
             modal.hide();
 
-            // Вызваем API для создания статьи
-            const article = await createArticleViaAPI(topic);
+            // Вызваем API для создания ПУСТОЙ статьи (БЕЗ генерации плана)
+            const article = await createEmptyArticleViaAPI(title);
             if (!article) return;
 
             // Добавляем в кэш и в sidebar
             articles[article.id] = article;
             addArticleToSidebar(article.id, article.title, true);
 
-            // Загружаем в редактор с typewriter effect
+            // Отображаем в редактор - пусто, БЕЗ typewriter effect
             document.getElementById('currentTitle').textContent = article.title;
-            await typewriterEffect(document.getElementById('editorContent'), article.content, 15);
+            document.getElementById('editorContent').textContent = '';
 
             document.getElementById('promptInput').value = '';
             document.getElementById('promptInput').style.height = 'auto';
 
-            showNotification('Article created successfully');
+            showNotification('Статья создана. Введите план в prompt bar.');
         }
 
         // Show notification
@@ -877,14 +903,13 @@ Happy writing!</div>
             }, 3000);
         }
 
-        // Extract topic from prompt and apply
+        // Extract topic from prompt and generate plan for current article
         async function applyPrompt() {
             let promptText = document.getElementById('promptInput').value.trim();
             if (!promptText) return;
 
             // Извлекаем тему из промпта
-            // Если промпт содержит "Напиши план статьи:" или "Тема статьи:"
-            let topic = promptText;
+            let topic = null;
             const patterns = [
                 /(?:план\s+)?статьи?\s*[:\-]?\s*(.+)/i,
                 /тема\s+статьи?\s*[:\-]?\s*(.+)/i,
@@ -899,17 +924,30 @@ Happy writing!</div>
                 }
             }
 
-            // Создаём новую статью с этой темой
-            const article = await createArticleViaAPI(topic);
-            if (!article) return;
+            if (!topic) {
+                showNotification('Пока поддерживается только генерация плана. Напишите: "Напиши план статьи: название"');
+                return;
+            }
 
-            // Добавляем в кэш и в sidebar
-            articles[article.id] = article;
-            addArticleToSidebar(article.id, article.title, true);
+            // Если нет активной статьи - создаём новую пустую
+            if (!currentArticleId) {
+                const newArticle = await createEmptyArticleViaAPI(topic);
+                if (!newArticle) return;
+                articles[newArticle.id] = newArticle;
+                addArticleToSidebar(newArticle.id, newArticle.title, true);
+                currentArticleId = newArticle.id;
+            }
 
-            // Загружаем в редактор с typewriter effect
-            document.getElementById('currentTitle').textContent = article.title;
-            await typewriterEffect(document.getElementById('editorContent'), article.content, 15);
+            // Генерируем план для текущей статьи
+            const updatedArticle = await generatePlanForArticleViaAPI(currentArticleId, topic);
+            if (!updatedArticle) return;
+
+            // Обновляем кэш
+            articles[currentArticleId] = updatedArticle;
+
+            // Отображаем план с typewriter effect
+            document.getElementById('currentTitle').textContent = updatedArticle.title;
+            await typewriterEffect(document.getElementById('editorContent'), updatedArticle.content, 15);
 
             document.getElementById('promptInput').value = '';
             document.getElementById('promptInput').style.height = 'auto';
