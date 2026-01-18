@@ -906,6 +906,8 @@
                 // Заполняем sidebar
                 articlesList.forEach((article, index) => {
                     console.log(`[LOAD] Добавляем статью: ID=${article.id}, title="${article.title}"`);
+                    // Нормализуем content - всегда строка, даже если пустая
+                    article.content = article.content || "";
                     articles[article.id] = article;
                     // Первую статью отмечаем как активную
                     const isFirst = index === 0;
@@ -920,7 +922,7 @@
                     const firstArticle = articles[firstId];
                     console.log(`[LOAD] currentArticleId установлен на: ${currentArticleId}`);
                     document.getElementById("currentTitle").textContent = firstArticle.title;
-                    document.getElementById("editorContent").textContent = firstArticle.content;
+                    document.getElementById("editorContent").textContent = firstArticle.content || "";
                     document.getElementById("promptInput").value = "";
                     console.log("[LOAD] UI обновлен");
                 }
@@ -1008,7 +1010,8 @@
 
                 const article = await response.json();
                 console.log(`[PLAN_GEN] Успешно получен план: ${article.id} - ${article.title}`);
-                console.log(`[PLAN_GEN] Контент: ${article.content.substring(0, 100)}...`);
+                const contentPreview = (article.content || "").substring(0, 100);
+                console.log(`[PLAN_GEN] Контент: ${contentPreview}...`);
                 return article;
             } catch (error) {
                 console.error("[PLAN_GEN] Критическая ошибка:", error);
@@ -1207,10 +1210,11 @@
             console.log(`[SELECT] Статья из кэша: ${article ? "найдена" : "НЕ найдена"}`);
 
             if (article) {
-                console.log(`[SELECT] Отображаем: title="${article.title}", content="${article.content.substring(0, 50)}..."`);
+                const content = article.content || "";
+                console.log(`[SELECT] Отображаем: title="${article.title}", content="${content.substring(0, 50)}..."`);
                 document.getElementById("currentTitle").textContent = article.title;
                 // Отобразить текст БЕЗ typewriter effect (просто загрузка)
-                document.getElementById("editorContent").textContent = article.content;
+                document.getElementById("editorContent").textContent = content;
                 document.getElementById("promptInput").value = "";
                 document.getElementById("promptInput").style.height = "auto";
             } else {
@@ -1279,6 +1283,8 @@
             console.log(`[CREATE] Статья создана! ID=${article.id}, title="${article.title}"`);
 
             // Добавляем в кэш и в sidebar
+            // Нормализуем content - всегда строка
+            article.content = article.content || "";
             articles[article.id] = article;
             console.log(`[CREATE] Добавлена в кэш`);
 
@@ -1338,6 +1344,7 @@
                     console.log("[PROMPT] Создаём новую статью для плана");
                     const newArticle = await createEmptyArticleViaAPI(promptText);
                     if (!newArticle) return;
+                    newArticle.content = newArticle.content || "";
                     articles[newArticle.id] = newArticle;
                     addArticleToSidebar(newArticle.id, newArticle.title, true);
                     currentArticleId = newArticle.id;
@@ -1348,6 +1355,7 @@
                 const updatedArticle = await generatePlanForArticleViaAPI(currentArticleId, promptText);
                 if (!updatedArticle) return;
 
+                updatedArticle.content = updatedArticle.content || "";
                 articles[currentArticleId] = updatedArticle;
                 document.getElementById("currentTitle").textContent = updatedArticle.title;
                 await typewriterEffect(document.getElementById("editorContent"), updatedArticle.content, 15);
@@ -1368,6 +1376,7 @@
                 const updatedArticle = await editFullTextViaAPI(currentArticleId, promptText);
                 if (!updatedArticle) return;
 
+                updatedArticle.content = updatedArticle.content || "";
                 articles[currentArticleId] = updatedArticle;
 
                 // Применяем typewriter effect для замены текста
@@ -1415,6 +1424,7 @@
                 );
                 if (!updatedArticle) return;
 
+                updatedArticle.content = updatedArticle.content || "";
                 articles[currentArticleId] = updatedArticle;
 
                 // Применяем typewriter effect ТОЛЬКО для фрагмента
