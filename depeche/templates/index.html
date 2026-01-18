@@ -597,7 +597,7 @@
                         <textarea
                             class="prompt-textarea"
                             id="promptInput"
-                            placeholder="Describe what you"d like to do... (e.g., "Make it shorter", "Add examples", "Change tone")"
+                            placeholder="Describe what you would like to do... (e.g., &quot;Make it shorter&quot;, &quot;Add examples&quot;, &quot;Change tone&quot;)"
                             rows="1"
                         ></textarea>
                     </div>
@@ -641,7 +641,7 @@
 
 
         // === INITIALIZATION ===
-        document.addEventListener(\"DOMContentLoaded\", function() {
+        document.addEventListener("DOMContentLoaded", function() {
             loadArticlesList();
             setupSelectionHandlers();
         });
@@ -655,7 +655,7 @@
             const editorContent = document.getElementById("editorContent");
 
             // При mouseup с новым выделением - применяем подсветку
-            editorContent.addEventListener(\"mouseup\", function() {
+            editorContent.addEventListener("mouseup", function() {
                 const selection = window.getSelection();
                 if (selection.toString().trim()) {
                     // Есть выделение - сохраняем его и подсвечиваем
@@ -683,7 +683,7 @@
             });
 
             // При клике на пустое место в editor - сбрасываем выделение
-            editorContent.addEventListener(\"click\", function(e) {
+            editorContent.addEventListener("click", function(e) {
                 if (e.target === editorContent) {
                     // Клик на пустое место в editor
                     setTimeout(() => {
@@ -1183,7 +1183,7 @@
             button.className = "article-item";
             if (select) button.classList.add("active");
             button.setAttribute("data-id", articleId);
-            button.innerHTML = title + "<span class="article-delete-btn" onclick="deleteArticle(event, " + articleId + ")" title="Delete">×</span>";
+            button.innerHTML = title + `<span class="article-delete-btn" onclick="deleteArticle(event, ${articleId})" title="Delete">×</span>`;
             button.onclick = function(e) {
                 if (e.target.classList.contains("article-delete-btn")) return;
                 selectArticle(this, articleId);
@@ -1224,7 +1224,7 @@
             const success = await deleteArticleViaAPI(id);
 
             if (success) {
-                const articleButton = document.querySelector(".article-item[data-id="" + id + ""]");
+                const articleButton = document.querySelector(`.article-item[data-id="${id}"]`);
                 articleButton.remove();
 
                 // Если это была активная статья - переключиться на другую
@@ -1442,13 +1442,13 @@
 
         // Auto-resize textarea
         const promptInput = document.getElementById("promptInput");
-        promptInput.addEventListener(\"input\", function() {
+        promptInput.addEventListener("input", function() {
             this.style.height = "auto";
             this.style.height = Math.min(this.scrollHeight, 120) + "px";
         });
 
         // Allow Enter key to submit prompt (Shift+Enter for new line)
-        promptInput.addEventListener(\"keypress\", function(e) {
+        promptInput.addEventListener("keypress", function(e) {
             if (e.key === "Enter" && !e.shiftKey) {
                 e.preventDefault();
                 applyPrompt();
@@ -1456,7 +1456,7 @@
         });
 
         // Save content to articles database when editing
-        document.getElementById("editorContent").addEventListener(\"blur\", function() {
+        document.getElementById("editorContent").addEventListener("blur", function() {
             const activeItem = document.querySelector(".article-item.active");
             if (activeItem) {
                 const id = parseInt(activeItem.getAttribute("data-id"));
@@ -1465,7 +1465,7 @@
         });
 
         // Allow Enter in modal to create article
-        document.getElementById("newArticleTitle").addEventListener(\"keypress\", function(e) {
+        document.getElementById("newArticleTitle").addEventListener("keypress", function(e) {
             if (e.key === "Enter") {
                 createNewArticle();
             }
