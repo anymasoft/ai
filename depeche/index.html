@@ -89,12 +89,10 @@
             color: #1a1a1a;
             font-size: 14px;
             line-height: 1.4;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
+            display: block;
             text-align: left;
             text-decoration: none;
-            width: 100%;
+            position: relative;
         }
 
         .article-item:hover {
@@ -111,16 +109,11 @@
             box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
         }
 
-        .article-title-text {
-            flex: 1;
-            min-width: 0;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
-        }
-
         .article-delete-btn {
-            flex-shrink: 0;
+            position: absolute;
+            right: 12px;
+            top: 50%;
+            transform: translateY(-50%);
             background: transparent;
             border: none;
             color: #999;
@@ -130,7 +123,7 @@
             line-height: 1;
             transition: all 0.2s ease;
             opacity: 0;
-            margin-left: 8px;
+            display: inline-block;
         }
 
         .article-item:hover .article-delete-btn {
@@ -139,7 +132,7 @@
 
         .article-delete-btn:hover {
             color: #e74c3c;
-            transform: scale(1.2);
+            transform: translateY(-50%) scale(1.2);
         }
 
         .sidebar-footer {
@@ -560,24 +553,24 @@
 
             <div class="articles-list" id="articlesList">
                 <button class="article-item active" data-id="1" onclick="selectArticle(this, 1)">
-                    <span class="article-title-text">Getting Started with AI</span>
-                    <button class="article-delete-btn" onclick="deleteArticle(event, 1)" title="Delete">×</button>
+                    Getting Started with AI
+                    <span class="article-delete-btn" onclick="deleteArticle(event, 1)" title="Delete">×</span>
                 </button>
                 <button class="article-item" data-id="2" onclick="selectArticle(this, 2)">
-                    <span class="article-title-text">Best Practices for Writing</span>
-                    <button class="article-delete-btn" onclick="deleteArticle(event, 2)" title="Delete">×</button>
+                    Best Practices for Writing
+                    <span class="article-delete-btn" onclick="deleteArticle(event, 2)" title="Delete">×</span>
                 </button>
                 <button class="article-item" data-id="3" onclick="selectArticle(this, 3)">
-                    <span class="article-title-text">Advanced Techniques</span>
-                    <button class="article-delete-btn" onclick="deleteArticle(event, 3)" title="Delete">×</button>
+                    Advanced Techniques
+                    <span class="article-delete-btn" onclick="deleteArticle(event, 3)" title="Delete">×</span>
                 </button>
                 <button class="article-item" data-id="4" onclick="selectArticle(this, 4)">
-                    <span class="article-title-text">Case Studies</span>
-                    <button class="article-delete-btn" onclick="deleteArticle(event, 4)" title="Delete">×</button>
+                    Case Studies
+                    <span class="article-delete-btn" onclick="deleteArticle(event, 4)" title="Delete">×</span>
                 </button>
                 <button class="article-item" data-id="5" onclick="selectArticle(this, 5)">
-                    <span class="article-title-text">Resources and Tools</span>
-                    <button class="article-delete-btn" onclick="deleteArticle(event, 5)" title="Delete">×</button>
+                    Resources and Tools
+                    <span class="article-delete-btn" onclick="deleteArticle(event, 5)" title="Delete">×</span>
                 </button>
             </div>
 
@@ -770,7 +763,7 @@ Happy writing!</div>
             const button = document.createElement('button');
             button.className = 'article-item';
             button.setAttribute('data-id', newId);
-            button.innerHTML = '<span class="article-title-text">' + title + '</span><button class="article-delete-btn" onclick="deleteArticle(event, ' + newId + ')" title="Delete">×</button>';
+            button.innerHTML = title + '<span class="article-delete-btn" onclick="deleteArticle(event, ' + newId + ')" title="Delete">×</span>';
             button.onclick = function(e) {
                 if (e.target.classList.contains('article-delete-btn')) return;
                 selectArticle(this, newId);
