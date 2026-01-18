@@ -1,1 +1,0 @@
-# Depeche app package
