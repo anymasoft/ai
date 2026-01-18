@@ -216,6 +216,14 @@
             padding: 32px;
         }
 
+        .editor-wrapper {
+            flex: 1;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
         .editor-content {
             flex: 1;
             background: white;
@@ -232,7 +240,34 @@
             resize: none;
             word-wrap: break-word;
             white-space: pre-wrap;
-            position: relative;
+        }
+
+        .btn-copy {
+            position: absolute;
+            top: 12px;
+            right: 12px;
+            width: 32px;
+            height: 32px;
+            padding: 8px;
+            background: transparent;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            color: #999;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10;
+        }
+
+        .btn-copy:hover {
+            background: rgba(0, 0, 0, 0.05);
+            color: #667eea;
+        }
+
+        .btn-copy:active {
+            background: rgba(102, 126, 234, 0.1);
         }
 
         .editor-content:focus {
@@ -622,7 +657,15 @@
             </div>
 
             <div class="editor-area">
-                <div class="editor-content" id="editorContent" contenteditable="true"></div>
+                <div class="editor-wrapper">
+                    <div class="editor-content" id="editorContent" contenteditable="true"></div>
+                    <button class="btn-copy" id="copyButton" title="Copy to clipboard" type="button" aria-label="Copy">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path>
+                            <rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect>
+                        </svg>
+                    </button>
+                </div>
             </div>
 
             <div class="prompt-bar-container">
@@ -681,6 +724,7 @@
         document.addEventListener("DOMContentLoaded", function() {
             loadArticlesList();
             setupSelectionHandlers();
+            setupCopyButton();
         });
 
         // === SELECTION MANAGEMENT ===
@@ -739,6 +783,50 @@
                     }, 10);
                 }
             });
+        }
+
+        /**
+         * Инициализировать Copy-кнопку
+         */
+        function setupCopyButton() {
+            const copyBtn = document.getElementById("copyButton");
+            if (!copyBtn) {
+                console.error("[COPY] Copy кнопка не найдена");
+                return;
+            }
+
+            copyBtn.addEventListener("click", async function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+
+                const editorContent = document.getElementById("editorContent");
+                const textToCopy = editorContent.textContent;
+
+                if (!textToCopy.trim()) {
+                    console.log("[COPY] Нечего копировать - текст пуст");
+                    return;
+                }
+
+                try {
+                    await navigator.clipboard.writeText(textToCopy);
+                    console.log("[COPY] Текст скопирован в буфер обмена");
+
+                    // Показываем визуальную обратную связь
+                    const originalColor = copyBtn.style.color;
+                    copyBtn.style.color = "#52c41a"; // Зелёный цвет
+
+                    setTimeout(() => {
+                        copyBtn.style.color = originalColor;
+                    }, 1500);
+
+                    showNotification("Текст скопирован в буфер обмена");
+                } catch (err) {
+                    console.error("[COPY] Ошибка при копировании:", err);
+                    showNotification("Ошибка при копировании текста");
+                }
+            });
+
+            console.log("[COPY] Copy кнопка инициализирована");
         }
 
         /**
@@ -1021,22 +1109,27 @@
             }
         }
 
-        async function generatePlanForArticleViaAPI(articleId, topic) {
+        async function generatePlanForArticleViaAPI(articleId, topic, format = "plain") {
             // Генерирует план статьи и обновляет её
             try {
-                console.log(`[PLAN_GEN] Начинаем генерацию плана. articleId=${articleId}, topic="${topic}"`);
+                console.log(`[PLAN_GEN] Начинаем генерацию плана. articleId=${articleId}, topic="${topic}", format="${format}"`);
                 showNotification("Генерирую план статьи...");
 
                 const url = `${API_BASE_URL}/articles/${articleId}/plan`;
+                const requestBody = {
+                    topic: topic,
+                    format: format
+                };
+
                 console.log(`[PLAN_GEN] URL запроса: ${url}`);
-                console.log(`[PLAN_GEN] Тело запроса: ${JSON.stringify({ topic: topic })}`);
+                console.log(`[PLAN_GEN] Тело запроса: ${JSON.stringify(requestBody)}`);
 
                 const response = await fetch(url, {
                     method: "POST",
                     headers: {
                         "Content-Type": "application/json"
                     },
-                    body: JSON.stringify({ topic: topic })
+                    body: JSON.stringify(requestBody)
                 });
 
                 console.log(`[PLAN_GEN] Статус ответа: ${response.status} ${response.statusText}`);
@@ -1079,16 +1172,17 @@
         /**
          * РЕЖИМ 2: Редактирование ВСЕГО текста статьи
          */
-        async function editFullTextViaAPI(articleId, currentText, instruction) {
+        async function editFullTextViaAPI(articleId, currentText, instruction, format = "plain") {
             try {
-                console.log(`[EDIT_FULL_API] Начинаем редактирование всего текста. articleId=${articleId}`);
+                console.log(`[EDIT_FULL_API] Начинаем редактирование всего текста. articleId=${articleId}, format="${format}"`);
                 console.log(`[EDIT_FULL_API] Текст из поля: ${currentText.length} символов`);
                 console.log(`[EDIT_FULL_API] Инструкция: "${instruction}"`);
 
                 const url = `${API_BASE_URL}/articles/${articleId}/edit-full`;
                 const body = {
                     current_text: currentText,
-                    instruction: instruction
+                    instruction: instruction,
+                    format: format
                 };
 
                 const response = await fetch(url, {
@@ -1117,9 +1211,9 @@
         /**
          * РЕЖИМ 3: Редактирование ВЫДЕЛЕННОГО ФРАГМЕНТА
          */
-        async function editFragmentViaAPI(articleId, beforeContext, fragment, afterContext, instruction) {
+        async function editFragmentViaAPI(articleId, beforeContext, fragment, afterContext, instruction, format = "plain") {
             try {
-                console.log(`[EDIT_FRAGMENT_API] Начинаем редактирование фрагмента. articleId=${articleId}`);
+                console.log(`[EDIT_FRAGMENT_API] Начинаем редактирование фрагмента. articleId=${articleId}, format="${format}"`);
                 console.log(`[EDIT_FRAGMENT_API] Инструкция: "${instruction}"`);
                 console.log(`[EDIT_FRAGMENT_API] Размер фрагмента: ${fragment.length} символов`);
 
@@ -1128,7 +1222,8 @@
                     before_context: beforeContext,
                     fragment: fragment,
                     after_context: afterContext,
-                    instruction: instruction
+                    instruction: instruction,
+                    format: format
                 };
 
                 const response = await fetch(url, {
@@ -1425,6 +1520,59 @@
             }
         }
 
+        /**
+         * Анализировать промпт пользователя и определить, просит ли он Markdown-форматирования
+         * @param {string} prompt - Текст промпта пользователя
+         * @returns {boolean} - true если просит Markdown, false если plain text
+         */
+        function detectMarkdownRequest(prompt) {
+            if (!prompt) return false;
+
+            const lowerPrompt = prompt.toLowerCase();
+
+            // Триггеры для Markdown-форматирования
+            const markdownTriggers = [
+                "markdown",
+                "оформи",
+                "оформь",
+                "оформить",
+                "с заголовками",
+                "с подзаголовками",
+                "в виде списка",
+                "как список",
+                "как код",
+                "код-блок",
+                "кодблок",
+                "структурированно",
+                "структурировано",
+                "структуру",
+                "структуру",
+                "форматирование",
+                "##",
+                "```",
+                "-",
+                "список",
+                "нумерованный",
+                "маркированный",
+                "таблица",
+                "жирный",
+                "курсив",
+                "выделение",
+                "подсветка"
+            ];
+
+            // Проверяем наличие триггеров в промпте
+            for (const trigger of markdownTriggers) {
+                if (lowerPrompt.includes(trigger)) {
+                    console.log(`[MARKDOWN_DETECT] Найден триггер "${trigger}" в промпте`);
+                    return true;
+                }
+            }
+
+            console.log("[MARKDOWN_DETECT] Markdown НЕ запрошен - работаем с plain text");
+            return false;
+        }
+
         // Extract topic from prompt and generate plan for current article
         async function applyPrompt() {
             // Guard clause: предотвращаем повторные вызовы во время генерации
@@ -1449,6 +1597,11 @@
                 const modeInfo = detectMode();
                 console.log(`[PROMPT] Определен режим: ${modeInfo.mode} (${modeInfo.description})`);
 
+                // ========== ОПРЕДЕЛЯЕМ ФОРМАТ (MARKDOWN или PLAIN TEXT) ==========
+                const wantsMarkdown = detectMarkdownRequest(promptText);
+                const format = wantsMarkdown ? "markdown" : "plain";
+                console.log(`[PROMPT] Формат вывода: ${format}`);
+
                 // ========== РЕЖИМ 1: СОЗДАНИЕ ПЛАНА (текст пуст) ==========
                 if (modeInfo.mode === 1) {
                     console.log("[PROMPT] РЕЖИМ 1: весь текст промпта → тема для плана");
@@ -1464,7 +1617,7 @@
 
                     // Генерируем план
                     showNotification("Генерирую план статьи...");
-                    const updatedArticle = await generatePlanForArticleViaAPI(currentArticleId, promptText);
+                    const updatedArticle = await generatePlanForArticleViaAPI(currentArticleId, promptText, format);
                     if (!updatedArticle) return;
 
                     document.getElementById("currentTitle").textContent = updatedArticle.title;
@@ -1483,7 +1636,7 @@
 
                     showNotification("Редактирую весь текст...");
                     const oldText = document.getElementById("editorContent").textContent;
-                    const updatedArticle = await editFullTextViaAPI(currentArticleId, oldText, promptText);
+                    const updatedArticle = await editFullTextViaAPI(currentArticleId, oldText, promptText, format);
                     if (!updatedArticle) return;
 
 
@@ -1528,7 +1681,8 @@
                         selection.before,
                         selection.fragment,
                         selection.after,
-                        promptText
+                        promptText,
+                        format
                     );
                     if (!updatedArticle) return;
 

@@ -71,6 +71,7 @@ def startup_event():
 class ArticleCreateRequest(BaseModel):
     """Запрос для создания новой статьи"""
     topic: str
+    format: str = "plain"  # "plain" или "markdown"
 
 
 class ArticleResponse(BaseModel):
@@ -127,6 +128,7 @@ class EditFullTextRequest(BaseModel):
     """Запрос для редактирования всего текста статьи (РЕЖИМ 2)"""
     instruction: str
     current_text: str = ""  # Текст из поля редактора (приоритет над текстом из БД)
+    format: str = "plain"  # "plain" или "markdown"
 
 
 class EditFragmentRequest(BaseModel):
@@ -135,6 +137,7 @@ class EditFragmentRequest(BaseModel):
     fragment: str
     after_context: str
     instruction: str
+    format: str = "plain"  # "plain" или "markdown"
 
 
 class TruncatedErrorResponse(BaseModel):
@@ -235,10 +238,10 @@ async def generate_and_save_plan(article_id: int, request: ArticleCreateRequest)
 
         logger.info(f"[GENERATE_PLAN] Статья найдена: ID={article['id']}, title='{article['title']}'")
 
-        # Генерируем план через LLM
-        logger.info(f"[GENERATE_PLAN] Вызываем LLM для генерации плана по теме '{topic}'")
+        # Генерируем план через LLM с учётом формата
+        logger.info(f"[GENERATE_PLAN] Вызываем LLM для генерации плана по теме '{topic}', format: {request.format}")
         try:
-            llm_response, chunk_info = generate_article_plan(topic)
+            llm_response, chunk_info = generate_article_plan(topic, request.format)
             plan = llm_response.text
             logger.info(f"[GENERATE_PLAN] План успешно сгенерирован: {plan[:100]}...")
         except Exception as e:
@@ -369,11 +372,12 @@ async def edit_article_full_text(article_id: int, request: EditFullTextRequest):
 
         logger.info(f"[EDIT_FULL] Статья валидна: {article['title']}")
         logger.info(f"[EDIT_FULL] Текст из фронтенда: {len(request.current_text)} символов")
+        logger.info(f"[EDIT_FULL] Формат вывода: {request.format}")
 
         # Вызываем LLM для редактирования (только с текстом из фронтенда!)
         logger.info(f"[EDIT_FULL] Вызываем LLM для редактирования всего текста")
         try:
-            llm_response, chunk_info = edit_full_text(request.current_text, request.instruction)
+            llm_response, chunk_info = edit_full_text(request.current_text, request.instruction, request.format)
             edited_text = llm_response.text
             logger.info(f"[EDIT_FULL] Текст успешно отредактирован ({len(edited_text)} символов)")
         except Exception as e:
@@ -460,6 +464,7 @@ async def edit_article_fragment(article_id: int, request: EditFragmentRequest):
             raise HTTPException(status_code=404, detail=f"Статья с ID {article_id} не найдена")
 
         logger.info(f"[EDIT_FRAGMENT] Статья найдена: {article['title']}")
+        logger.info(f"[EDIT_FRAGMENT] Формат вывода: {request.format}")
 
         # Вызываем LLM для редактирования фрагмента
         logger.info(f"[EDIT_FRAGMENT] Вызываем LLM для редактирования фрагмента (retry + chunking при необходимости)")
@@ -468,7 +473,8 @@ async def edit_article_fragment(article_id: int, request: EditFragmentRequest):
                 request.before_context,
                 request.fragment,
                 request.after_context,
-                request.instruction
+                request.instruction,
+                request.format
             )
             edited_fragment = llm_response.text
             logger.info(f"[EDIT_FRAGMENT] Фрагмент успешно отредактирован ({len(edited_fragment)} символов)")
