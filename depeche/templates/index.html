@@ -355,7 +355,24 @@
         .btn-apply:disabled,
         .btn-apply.generating {
             cursor: not-allowed;
-            animation: btn-spin 1.2s cubic-bezier(0.68, -0.55, 0.265, 1.55) infinite;
+            position: relative;
+            pointer-events: none;
+        }
+
+        .btn-apply:disabled::after,
+        .btn-apply.generating::after {
+            content: '';
+            position: absolute;
+            width: 16px;
+            height: 16px;
+            top: 50%;
+            left: 50%;
+            margin-left: -8px;
+            margin-top: -8px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-top-color: white;
+            border-radius: 50%;
+            animation: spinner-rotate 0.8s linear infinite;
         }
 
         .btn-apply:disabled:hover,
@@ -363,21 +380,9 @@
             transform: none;
         }
 
-        @keyframes btn-spin {
-            0% {
-                box-shadow: 0 0 0 0 rgba(102, 126, 234, 0.7),
-                            0 4px 12px rgba(102, 126, 234, 0.2);
-                transform: scale(1);
-            }
-            50% {
-                box-shadow: 0 0 0 8px rgba(102, 126, 234, 0),
-                            0 4px 16px rgba(102, 126, 234, 0.6);
-                transform: scale(1.02);
-            }
-            100% {
-                box-shadow: 0 0 0 0 rgba(102, 126, 234, 0),
-                            0 4px 12px rgba(102, 126, 234, 0.2);
-                transform: scale(1);
+        @keyframes spinner-rotate {
+            to {
+                transform: rotate(360deg);
             }
         }
 
@@ -1400,8 +1405,7 @@
             if (btn) {
                 btn.disabled = true;
                 btn.classList.add("generating");
-                btn.textContent = "⏳ Processing...";
-                console.log("[UI] Кнопка заблокирована, текст изменён");
+                console.log("[UI] Кнопка заблокирована со спиннером");
             } else {
                 console.error("[UI] ОШИБКА: кнопка .btn-apply не найдена!");
             }
@@ -1415,7 +1419,6 @@
             if (btn) {
                 btn.disabled = false;
                 btn.classList.remove("generating");
-                btn.textContent = "Apply";
                 console.log("[UI] Кнопка разблокирована");
             } else {
                 console.error("[UI] ОШИБКА: кнопка .btn-apply не найдена!");
