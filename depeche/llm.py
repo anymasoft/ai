@@ -38,11 +38,21 @@ CONTEXT_WINDOW_CHARS = int(os.getenv("CONTEXT_WINDOW_CHARS", "400"))
 
 DEBUG_CHUNKING = os.getenv("DEBUG_CHUNKING", "true").lower() == "true"
 
+# === СТРУКТУРНАЯ ВАЛИДАЦИЯ (для режима edit-fragment) ===
+# Количество retry'ей при неправильной структуре (например, не совпадает количество абзацев)
+STRUCTURE_VALIDATION_RETRIES = int(os.getenv("STRUCTURE_VALIDATION_RETRIES", "1"))
+# Включить пост-валидацию структуры (подсчёт абзацев) для режима fragment
+ENABLE_STRUCTURE_VALIDATION = os.getenv("ENABLE_STRUCTURE_VALIDATION", "true").lower() == "true"
+# Максимальное увеличение токенов при структурном retry (обычно меньше, чем truncation retry)
+STRUCTURE_RETRY_TOKEN_MULTIPLIER = float(os.getenv("STRUCTURE_RETRY_TOKEN_MULTIPLIER", "1.3"))
+
 logger.info(
     f"[LLM CONFIG] model={OPENAI_MODEL}, temp={OPENAI_TEMPERATURE}, "
     f"plan_tokens={PLAN_MAX_TOKENS}, fragment_tokens={FRAGMENT_MAX_TOKENS}, "
     f"fulltext_tokens={FULLTEXT_MAX_TOKENS}, retry={RETRY_ON_TRUNCATION}, "
-    f"chunk_target={CHUNK_TARGET_CHARS}, chunk_max={CHUNK_MAX_CHARS}"
+    f"chunk_target={CHUNK_TARGET_CHARS}, chunk_max={CHUNK_MAX_CHARS}, "
+    f"structure_validation={ENABLE_STRUCTURE_VALIDATION}, "
+    f"structure_retries={STRUCTURE_VALIDATION_RETRIES}"
 )
 
 
@@ -198,6 +208,98 @@ def _split_into_chunks(text: str) -> List[str]:
         chunks.append(current_chunk.strip())
 
     return chunks
+
+
+# === СТРУКТУРНАЯ ВАЛИДАЦИЯ (для режима edit-fragment) ===
+
+def _extract_expected_paragraph_count(instruction: str) -> Optional[int]:
+    """
+    Извлечь ожидаемое количество абзацев из инструкции.
+
+    Ищет паттерны:
+    - "на 5 абзацев", "на 3 абзаца", "в 5 абзацев"
+    - "5 абзацев", "3 параграфа"
+    - "раскрой на 5"
+
+    Args:
+        instruction: Инструкция редактирования
+
+    Returns:
+        Количество абзацев если найдено, иначе None
+    """
+    if not instruction:
+        return None
+
+    instruction_lower = instruction.lower()
+
+    # Паттерны: "на 5 абзацев", "в 3 абзацах", "3 абзаца"
+    patterns = [
+        r'на\s+(\d+)\s+абзац',      # "на 5 абзацев"
+        r'в\s+(\d+)\s+абзац',       # "в 5 абзацах"
+        r'(\d+)\s+абзац',           # "5 абзацев"
+        r'раскрой\s+на\s+(\d+)',    # "раскрой на 5"
+        r'развернуть\s+на\s+(\d+)', # "развернуть на 5"
+        r'(\d+)\s+параграф',        # "5 параграфов"
+    ]
+
+    for pattern in patterns:
+        match = re.search(pattern, instruction_lower)
+        if match:
+            count = int(match.group(1))
+            logger.debug(f"[STRUCTURE_VALIDATION] Найдено требование: {count} абзацев в инструкции")
+            return count
+
+    return None
+
+
+def _count_paragraphs(text: str) -> int:
+    """
+    Подсчитать количество абзацев в тексте.
+
+    Абзац = блок текста, отделённый одной или несколькими пустыми строками.
+
+    Args:
+        text: Текст для анализа
+
+    Returns:
+        Количество абзацев (минимум 1)
+    """
+    if not text or not text.strip():
+        return 0
+
+    # Разбей по одной или более пустым строкам
+    # Пустая строка = строка, содержащая только whitespace
+    paragraphs = re.split(r'\n\s*\n', text.strip())
+    count = len([p for p in paragraphs if p.strip()])
+
+    return count
+
+
+def _is_structure_valid(text: str, expected_count: Optional[int]) -> Tuple[bool, int, Optional[str]]:
+    """
+    Проверить валидность структуры текста.
+
+    Args:
+        text: Текст для проверки
+        expected_count: Ожидаемое количество абзацев (None = не проверять)
+
+    Returns:
+        Tuple[is_valid, actual_count, error_message]
+        - is_valid: True если структура корректна
+        - actual_count: Реальное количество абзацев
+        - error_message: Описание ошибки если не валидна
+    """
+    if expected_count is None:
+        # Нет требования к структуре
+        return True, _count_paragraphs(text), None
+
+    actual_count = _count_paragraphs(text)
+
+    if actual_count == expected_count:
+        return True, actual_count, None
+
+    error_msg = f"Структурное несоответствие: ожидалось {expected_count} абзацев, получено {actual_count}"
+    return False, actual_count, error_msg
 
 
 # === ОСНОВНЫЕ РЕЖИМЫ РЕДАКТИРОВАНИЯ ===
@@ -363,12 +465,17 @@ def edit_fragment(
     instruction: str
 ) -> Tuple[LLMResponse, Optional[ChunkInfo]]:
     """
-    РЕЖИМ 3: Редактирование ВЫДЕЛЕННОГО ФРАГМЕНТА с поддержкой retry и chunking.
+    РЕЖИМ 3: Редактирование ВЫДЕЛЕННОГО ФРАГМЕНТА с поддержкой retry, chunking и структурной валидации.
 
     Алгоритм:
-    1. Попытка один раз с FRAGMENT_MAX_TOKENS
-    2. Если обрезано - retry с увеличенным лимитом
-    3. Если снова обрезано - chunking фрагмента
+    1. Парсить инструкцию для извлечения ожидаемого количества абзацев (если есть)
+    2. Попытка один раз с FRAGMENT_MAX_TOKENS
+    3. Если обрезано - retry с увеличенным лимитом
+    4. Если снова обрезано - chunking фрагмента
+    5. Если ожидаемое количество абзацев задано:
+       - Валидировать структуру полученного ответа
+       - Если не совпадает - retry с явной коррекцией
+       - Если после retry всё ещё не совпадает - Exception
 
     Args:
         before_context: Контекст до фрагмента
@@ -380,7 +487,7 @@ def edit_fragment(
         Tuple[LLMResponse, ChunkInfo] - отредактированный фрагмент и инфо о чанкинге
 
     Raises:
-        Exception: При критическом truncation после всех попыток
+        Exception: При критическом truncation или структурном несоответствии после всех попыток
     """
     logger.info(
         f"[FRAGMENT] Начинаю редактирование фрагмента. "
@@ -389,6 +496,13 @@ def edit_fragment(
     logger.debug(
         f"[FRAGMENT] Контекст: до={len(before_context)}, после={len(after_context)}"
     )
+
+    # === ПАРСИНГ ОЖИДАЕМОЙ СТРУКТУРЫ ===
+    expected_paragraphs = None
+    if ENABLE_STRUCTURE_VALIDATION:
+        expected_paragraphs = _extract_expected_paragraph_count(instruction)
+        if expected_paragraphs:
+            logger.info(f"[FRAGMENT] Структурное требование: {expected_paragraphs} абзацев")
 
     chunk_info = ChunkInfo(chunks_count=1, strategy="single", total_chars=len(fragment))
 
@@ -406,30 +520,107 @@ def edit_fragment(
 СЛЕДУЮЩИЙ АБЗАЦ (контекст):
 {after_context}"""
 
+    # Добавить структурное требование если есть
+    user_message = f"Инструкция: {instruction}\n\n{full_text}"
+    if expected_paragraphs:
+        user_message += f"\n\nСТРУКТУРНОЕ ТРЕБОВАНИЕ: Ответ должен содержать РОВНО {expected_paragraphs} абзацев."
+
     messages = [
         {"role": "system", "content": EDIT_FRAGMENT_SYSTEM_PROMPT},
-        {"role": "user", "content": f"Инструкция: {instruction}\n\n{full_text}"}
+        {"role": "user", "content": user_message}
     ]
 
     response = _call_openai(messages, FRAGMENT_MAX_TOKENS, mode="fragment")
 
-    if not response.truncated:
-        logger.info(f"[FRAGMENT SUCCESS] Фрагмент успешно отредактирован ({len(response.text)} символов)")
-        return response, chunk_info
+    # Инициализировать переменные валидации
+    is_valid = True
+    actual_count = None
+    error_msg = None
 
-    # === ПОПЫТКА 2: Retry с увеличенным лимитом ===
-    if RETRY_ON_TRUNCATION:
+    if not response.truncated:
+        # Валидировать структуру если требуется
+        if expected_paragraphs:
+            is_valid, actual_count, error_msg = _is_structure_valid(response.text, expected_paragraphs)
+            logger.info(f"[FRAGMENT VALIDATION] Попытка 1: ожидалось {expected_paragraphs}, получено {actual_count} абзацев")
+
+            if is_valid:
+                logger.info(f"[FRAGMENT SUCCESS] Фрагмент успешно отредактирован с правильной структурой ({len(response.text)} символов, {actual_count} абзацев)")
+                return response, chunk_info
+            else:
+                logger.warning(f"[FRAGMENT VALIDATION FAILED] {error_msg}")
+                # Продолжить к retry структурной коррекции ниже
+        else:
+            logger.info(f"[FRAGMENT SUCCESS] Фрагмент успешно отредактирован ({len(response.text)} символов)")
+            return response, chunk_info
+
+    # === ПОПЫТКА 2: Структурный retry при неправильном количестве абзацев ===
+    structure_retry_needed = expected_paragraphs and not response.truncated and not is_valid
+    if structure_retry_needed and STRUCTURE_VALIDATION_RETRIES > 0:
+        _, actual_count, _ = _is_structure_valid(response.text, expected_paragraphs)
+        structure_retry_tokens = max(FRAGMENT_MAX_TOKENS, int(FRAGMENT_MAX_TOKENS * STRUCTURE_RETRY_TOKEN_MULTIPLIER))
+        logger.info(
+            f"[FRAGMENT STRUCTURE RETRY] Попытка 2: коррекция структуры. "
+            f"Ожидалось {expected_paragraphs}, получено {actual_count} абзацев. "
+            f"Retry с {structure_retry_tokens} токенов"
+        )
+
+        # Явная инструкция по исправлению структуры
+        structure_correction_message = (
+            f"Инструкция: {instruction}\n\n{full_text}\n\n"
+            f"СТРУКТУРНОЕ ТРЕБОВАНИЕ: Ответ ДОЛЖЕН содержать РОВНО {expected_paragraphs} абзацев.\n\n"
+            f"⚠️ ВАЖНО: В предыдущем ответе ты вернул {actual_count} абзацев вместо {expected_paragraphs}.\n"
+            f"ИСПРАВЬ это. Верни РОВНО {expected_paragraphs} абзацев, разделённых пустыми строками.\n"
+            f"Сохрани смысл и содержание, но соблюди структуру."
+        )
+
+        structure_messages = [
+            {"role": "system", "content": EDIT_FRAGMENT_SYSTEM_PROMPT},
+            {"role": "user", "content": structure_correction_message}
+        ]
+
+        response = _call_openai(structure_messages, structure_retry_tokens, mode="fragment_structure_retry")
+
+        if not response.truncated:
+            # Ещё раз валидировать структуру
+            is_valid, actual_count, error_msg = _is_structure_valid(response.text, expected_paragraphs)
+            logger.info(f"[FRAGMENT STRUCTURE RETRY] Результат: ожидалось {expected_paragraphs}, получено {actual_count} абзацев")
+
+            if is_valid:
+                logger.info(f"[FRAGMENT SUCCESS] Структура исправлена! ({len(response.text)} символов, {actual_count} абзацев)")
+                return response, chunk_info
+            else:
+                logger.error(f"[FRAGMENT STRUCTURE RETRY FAILED] {error_msg}")
+                # Продолжить к truncation retry ниже
+        # Если всё ещё truncated или структура не совпадает, продолжить обработку
+
+    # === ПОПЫТКА 3: Retry с увеличенным лимитом (truncation) ===
+    if RETRY_ON_TRUNCATION and response.truncated:
         retry_tokens = FRAGMENT_MAX_TOKENS * RETRY_TOKEN_MULTIPLIER
-        logger.info(f"[FRAGMENT RETRY] Попытка 2: retry с увеличенным лимитом {retry_tokens}")
+        logger.info(f"[FRAGMENT RETRY] Попытка 3: retry (truncation) с увеличенным лимитом {retry_tokens}")
 
         response = _call_openai(messages, retry_tokens, mode="fragment_retry")
 
         if not response.truncated:
-            logger.info(f"[FRAGMENT SUCCESS] Фрагмент успешно отредактирован после retry ({len(response.text)} символов)")
-            return response, chunk_info
+            # Валидировать структуру если требуется
+            if expected_paragraphs:
+                is_valid, actual_count, error_msg = _is_structure_valid(response.text, expected_paragraphs)
+                logger.info(f"[FRAGMENT VALIDATION] Retry (truncation): ожидалось {expected_paragraphs}, получено {actual_count} абзацев")
 
-    # === ПОПЫТКА 3: Chunking для фрагмента ===
-    logger.info(f"[FRAGMENT CHUNKING] Попытка 3: включаю chunking для фрагмента")
+                if is_valid:
+                    logger.info(f"[FRAGMENT SUCCESS] Фрагмент отредактирован после retry с правильной структурой ({len(response.text)} символов)")
+                    return response, chunk_info
+                else:
+                    logger.warning(f"[FRAGMENT VALIDATION FAILED] {error_msg}")
+                    # Структура всё ещё неверна даже после retry
+                    raise Exception(
+                        f"STRUCTURE_MISMATCH: После retry фрагмент содержит {actual_count} абзацев вместо требуемых {expected_paragraphs}."
+                    )
+            else:
+                logger.info(f"[FRAGMENT SUCCESS] Фрагмент успешно отредактирован после retry ({len(response.text)} символов)")
+                return response, chunk_info
+
+    # === ПОПЫТКА 4: Chunking для фрагмента ===
+    logger.info(f"[FRAGMENT CHUNKING] Попытка 4: включаю chunking для фрагмента")
 
     fragment_chunks = _split_into_chunks(fragment)
     chunk_info.chunks_count = len(fragment_chunks)
@@ -501,6 +692,17 @@ def edit_fragment(
         f"[FRAGMENT SUCCESS] Фрагмент успешно отредактирован через {len(fragment_chunks)} чанков. "
         f"Итоговый размер: {len(edited_fragment)} символов"
     )
+
+    # Валидировать структуру результата после chunking
+    if expected_paragraphs:
+        is_valid_final, final_count, error_msg_final = _is_structure_valid(edited_fragment, expected_paragraphs)
+        logger.info(f"[FRAGMENT CHUNKING VALIDATION] После chunking: ожидалось {expected_paragraphs}, получено {final_count} абзацев")
+
+        if not is_valid_final:
+            logger.error(f"[FRAGMENT CHUNKING VALIDATION FAILED] {error_msg_final}")
+            raise Exception(
+                f"STRUCTURE_MISMATCH: После chunking фрагмент содержит {final_count} абзацев вместо требуемых {expected_paragraphs}."
+            )
 
     response = LLMResponse(
         text=edited_fragment,

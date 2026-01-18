@@ -1,7 +1,8 @@
-# Переменные окружения
+# Переменные окружения (исключить все кроме .env.example)
 .env
 .env.local
 .env.*.local
+!.env.example
 
 # БД
 *.db
