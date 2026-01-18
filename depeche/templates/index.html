@@ -620,7 +620,181 @@
             pointer-events: none;
             z-index: 1;
         }
+
+        /* === MARKDOWN PREVIEW === */
+        .markdown-preview {
+            flex: 1;
+            background: white;
+            border: 1px solid #e0e0e0;
+            border-radius: 12px;
+            padding: 24px;
+            overflow-y: auto;
+            font-size: 16px;
+            line-height: 1.6;
+            color: #2d2d2d;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+            white-space: normal;
+            word-wrap: break-word;
+        }
+
+        .markdown-preview h1 {
+            font-size: 32px;
+            font-weight: 700;
+            margin: 24px 0 16px 0;
+            color: #1a1a1a;
+            border-bottom: 2px solid #f0f0f0;
+            padding-bottom: 12px;
+        }
+
+        .markdown-preview h2 {
+            font-size: 24px;
+            font-weight: 700;
+            margin: 20px 0 12px 0;
+            color: #1a1a1a;
+        }
+
+        .markdown-preview h3 {
+            font-size: 20px;
+            font-weight: 600;
+            margin: 16px 0 10px 0;
+            color: #2d2d2d;
+        }
+
+        .markdown-preview h4, .markdown-preview h5, .markdown-preview h6 {
+            font-size: 16px;
+            font-weight: 600;
+            margin: 12px 0 8px 0;
+            color: #2d2d2d;
+        }
+
+        .markdown-preview p {
+            margin: 12px 0;
+        }
+
+        .markdown-preview ul, .markdown-preview ol {
+            margin: 12px 0;
+            padding-left: 32px;
+        }
+
+        .markdown-preview li {
+            margin: 6px 0;
+        }
+
+        .markdown-preview code {
+            background: #f5f5f5;
+            border: 1px solid #e0e0e0;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            color: #d63384;
+        }
+
+        .markdown-preview pre {
+            background: #f5f5f5;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 16px;
+            overflow-x: auto;
+            margin: 12px 0;
+            line-height: 1.5;
+        }
+
+        .markdown-preview pre code {
+            background: transparent;
+            border: none;
+            padding: 0;
+            color: #2d2d2d;
+            font-size: 13px;
+        }
+
+        .markdown-preview blockquote {
+            border-left: 4px solid #667eea;
+            padding-left: 16px;
+            margin-left: 0;
+            margin-right: 0;
+            color: #666;
+            font-style: italic;
+        }
+
+        .markdown-preview strong {
+            font-weight: 700;
+            color: #1a1a1a;
+        }
+
+        .markdown-preview em {
+            font-style: italic;
+        }
+
+        .markdown-preview a {
+            color: #667eea;
+            text-decoration: none;
+            border-bottom: 1px solid #667eea;
+        }
+
+        .markdown-preview a:hover {
+            color: #764ba2;
+            border-bottom-color: #764ba2;
+        }
+
+        .markdown-preview table {
+            border-collapse: collapse;
+            width: 100%;
+            margin: 12px 0;
+        }
+
+        .markdown-preview th, .markdown-preview td {
+            border: 1px solid #e0e0e0;
+            padding: 10px 12px;
+            text-align: left;
+        }
+
+        .markdown-preview th {
+            background: #f9f9f9;
+            font-weight: 600;
+            color: #1a1a1a;
+        }
+
+        .markdown-preview hr {
+            border: none;
+            border-top: 2px solid #e0e0e0;
+            margin: 20px 0;
+        }
+
+        .btn-preview-toggle {
+            position: absolute;
+            top: 12px;
+            right: 52px;
+            width: 32px;
+            height: 32px;
+            padding: 8px;
+            background: transparent;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            color: #999;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10;
+        }
+
+        .btn-preview-toggle:hover {
+            background: rgba(0, 0, 0, 0.05);
+            color: #667eea;
+        }
+
+        .btn-preview-toggle:active {
+            background: rgba(102, 126, 234, 0.1);
+        }
+
+        .btn-preview-toggle.active {
+            color: #667eea;
+            background: rgba(102, 126, 234, 0.15);
+        }
     </style>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 </head>
 <body>
     <div class="app-container">
@@ -660,6 +834,13 @@
             <div class="editor-area">
                 <div class="editor-wrapper">
                     <div class="editor-content" id="editorContent" contenteditable="true"></div>
+                    <div class="markdown-preview" id="markdownPreview" style="display:none;"></div>
+                    <button class="btn-preview-toggle" id="previewToggleButton" title="Toggle preview" type="button" aria-label="Toggle preview">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                            <circle cx="12" cy="12" r="3"></circle>
+                        </svg>
+                    </button>
                     <button class="btn-copy" id="copyButton" title="Copy to clipboard" type="button" aria-label="Copy">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                             <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path>
@@ -720,12 +901,16 @@
         // === GENERATION STATE ===
         let isGenerating = false; // Флаг для блокировки повторных вызовов Apply
 
+        // === PREVIEW STATE ===
+        let isPreviewMode = false; // Флаг для переключения между edit и preview режимом
+
 
         // === INITIALIZATION ===
         document.addEventListener("DOMContentLoaded", function() {
             loadArticlesList();
             setupSelectionHandlers();
             setupCopyButton();
+            setupPreviewToggle();
         });
 
         // === SELECTION MANAGEMENT ===
@@ -828,6 +1013,91 @@
             });
 
             console.log("[COPY] Copy кнопка инициализирована");
+        }
+
+        /**
+         * Инициализировать кнопку toggle Preview
+         */
+        function setupPreviewToggle() {
+            const previewToggleBtn = document.getElementById("previewToggleButton");
+            if (!previewToggleBtn) {
+                console.error("[PREVIEW] Preview toggle кнопка не найдена");
+                return;
+            }
+
+            previewToggleBtn.addEventListener("click", function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                togglePreview();
+            });
+
+            console.log("[PREVIEW] Preview toggle кнопка инициализирована");
+        }
+
+        /**
+         * Переключиться между edit и preview режимом
+         */
+        function togglePreview() {
+            isPreviewMode = !isPreviewMode;
+            console.log(`[PREVIEW] Переключение на режим: ${isPreviewMode ? 'PREVIEW' : 'EDIT'}`);
+
+            const editorContent = document.getElementById("editorContent");
+            const markdownPreview = document.getElementById("markdownPreview");
+            const previewToggleBtn = document.getElementById("previewToggleButton");
+
+            if (isPreviewMode) {
+                // Переход в Preview режим
+                console.log("[PREVIEW] Включаю preview mode");
+
+                // Скрыть editorContent, показать preview
+                editorContent.style.display = "none";
+                editorContent.setAttribute("contenteditable", "false");
+                markdownPreview.style.display = "block";
+                previewToggleBtn.classList.add("active");
+
+                // Отключить selection handlers (они не нужны в preview)
+                clearSelectionHighlight();
+                savedSelection = null;
+
+                // Отрендерить markdown
+                renderPreview();
+            } else {
+                // Переход в Edit режим
+                console.log("[PREVIEW] Включаю edit mode");
+
+                // Показать editorContent, скрыть preview
+                editorContent.style.display = "block";
+                editorContent.setAttribute("contenteditable", "true");
+                markdownPreview.style.display = "none";
+                previewToggleBtn.classList.remove("active");
+
+                // Вернуть фокус в editor
+                editorContent.focus();
+            }
+        }
+
+        /**
+         * Отрендерить markdown в preview контейнер
+         */
+        function renderPreview() {
+            const editorContent = document.getElementById("editorContent");
+            const markdownPreview = document.getElementById("markdownPreview");
+            const rawText = editorContent.textContent;
+
+            if (!rawText.trim()) {
+                markdownPreview.innerHTML = "<p style=\"color: #999;\">Текст пуст</p>";
+                return;
+            }
+
+            try {
+                // marked доступен из CDN
+                const htmlContent = marked.parse(rawText);
+                markdownPreview.innerHTML = htmlContent;
+                console.log("[PREVIEW] Markdown успешно отрендерен");
+            } catch (err) {
+                console.error("[PREVIEW] Ошибка при рендере markdown:", err);
+                markdownPreview.innerHTML = `<p style="color: red;">Ошибка: ${err.message}</p>`;
+            }
         }
 
         /**
@@ -1261,6 +1531,10 @@
                 element.textContent += text[i];
                 await new Promise(resolve => setTimeout(resolve, speed));
             }
+            // Обновить preview если он включен
+            if (isPreviewMode) {
+                renderPreview();
+            }
         }
 
         /**
@@ -1296,6 +1570,11 @@
             }
 
             console.log("[REPLACE_TEXT] Замена завершена");
+
+            // Обновить preview если он включен
+            if (isPreviewMode) {
+                renderPreview();
+            }
         }
 
         /**
@@ -1350,6 +1629,11 @@
             }
 
             console.log("[REPLACE_FRAGMENT] Замена фрагмента завершена успешно");
+
+            // Обновить preview если он включен
+            if (isPreviewMode) {
+                renderPreview();
+            }
         }
 
         // === UI FUNCTIONS ===
