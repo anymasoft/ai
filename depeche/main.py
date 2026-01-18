@@ -47,7 +47,14 @@ if os.path.exists(static_dir):
 @app.on_event("startup")
 def startup_event():
     """Инициализация БД при запуске сервера"""
+    logger.info("=== DEPECHE STARTUP ===")
+    logger.info(f"Всего endpoints: {len([r for r in app.routes if hasattr(r, 'path')])}")
+    for route in app.routes:
+        if hasattr(route, 'path'):
+            methods = list(route.methods) if hasattr(route, 'methods') and route.methods else ["GET"]
+            logger.info(f"  Registered: {methods} {route.path}")
     init_db()
+    logger.info("=== БД инициализирована ===")
 
 
 # === MODELS ===
@@ -82,6 +89,22 @@ async def get_index(request: Request):
 async def health_check():
     """Проверка здоровья сервера"""
     return {"status": "ok", "app": "Depeche"}
+
+
+@app.get("/debug/routes")
+async def debug_routes():
+    """Показать все зарегистрированные routes (для отладки)"""
+    routes = []
+    for route in app.routes:
+        if hasattr(route, 'path') and hasattr(route, 'methods'):
+            routes.append({
+                "path": route.path,
+                "methods": list(route.methods) if route.methods else ["GET"]
+            })
+    logger.info(f"[DEBUG] Всего routes: {len(routes)}")
+    for route in routes:
+        logger.info(f"[DEBUG] {route['methods']} {route['path']}")
+    return {"routes": routes, "total": len(routes)}
 
 
 @app.post("/api/articles")
