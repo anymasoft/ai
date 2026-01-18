@@ -719,6 +719,7 @@
 
         /**
          * Применить визуальную подсветку к сохраненному выделению
+         * ВАЖНО: Используем DOM методы вместо innerHTML для сохранения пробелов/переносов!
          */
         function applySelectionHighlight() {
             clearSelectionHighlight(); // Сначала очищаем
@@ -734,17 +735,35 @@
                 return;
             }
 
-            // Создаем wrapper для выделения
+            // Извлекаем части текста
             const beforeText = text.substring(0, startOffset);
             const selectedText = text.substring(startOffset, endOffset);
             const afterText = text.substring(endOffset);
 
-            editor.innerHTML =
-                escapeHtml(beforeText) +
-                '<span class="selection-highlight">' + escapeHtml(selectedText) + '</span>' +
-                escapeHtml(afterText);
+            // Создаем фрагмент документа
+            const fragment = document.createDocumentFragment();
 
-            console.log('[HIGHLIGHT] Подсветка применена');
+            // Добавляем текст ДО выделения
+            if (beforeText.length > 0) {
+                fragment.appendChild(document.createTextNode(beforeText));
+            }
+
+            // Создаем span для выделенного текста
+            const highlightSpan = document.createElement('span');
+            highlightSpan.className = 'selection-highlight';
+            highlightSpan.appendChild(document.createTextNode(selectedText));
+            fragment.appendChild(highlightSpan);
+
+            // Добавляем текст ПОСЛЕ выделения
+            if (afterText.length > 0) {
+                fragment.appendChild(document.createTextNode(afterText));
+            }
+
+            // Очищаем editor и добавляем фрагмент
+            editor.textContent = '';
+            editor.appendChild(fragment);
+
+            console.log('[HIGHLIGHT] Подсветка применена (DOM методы)');
 
             // Устанавливаем флаг чтобы предотвратить немедленный сброс при click
             highlightJustApplied = true;
