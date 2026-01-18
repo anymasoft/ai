@@ -355,8 +355,7 @@
         .btn-apply:disabled,
         .btn-apply.generating {
             cursor: not-allowed;
-            opacity: 0.8;
-            animation: btn-pulse 1.5s ease-in-out infinite;
+            animation: btn-spin 1.2s cubic-bezier(0.68, -0.55, 0.265, 1.55) infinite;
         }
 
         .btn-apply:disabled:hover,
@@ -364,12 +363,21 @@
             transform: none;
         }
 
-        @keyframes btn-pulse {
-            0%, 100% {
-                box-shadow: 0 4px 12px rgba(102, 126, 234, 0.2);
+        @keyframes btn-spin {
+            0% {
+                box-shadow: 0 0 0 0 rgba(102, 126, 234, 0.7),
+                            0 4px 12px rgba(102, 126, 234, 0.2);
+                transform: scale(1);
             }
             50% {
-                box-shadow: 0 4px 20px rgba(102, 126, 234, 0.5);
+                box-shadow: 0 0 0 8px rgba(102, 126, 234, 0),
+                            0 4px 16px rgba(102, 126, 234, 0.6);
+                transform: scale(1.02);
+            }
+            100% {
+                box-shadow: 0 0 0 0 rgba(102, 126, 234, 0),
+                            0 4px 12px rgba(102, 126, 234, 0.2);
+                transform: scale(1);
             }
         }
 
@@ -1389,8 +1397,14 @@
             console.log("[UI] Блокирую кнопку Apply");
             isGenerating = true;
             const btn = document.querySelector(".btn-apply");
-            btn.disabled = true;
-            btn.classList.add("generating");
+            if (btn) {
+                btn.disabled = true;
+                btn.classList.add("generating");
+                btn.textContent = "⏳ Processing...";
+                console.log("[UI] Кнопка заблокирована, текст изменён");
+            } else {
+                console.error("[UI] ОШИБКА: кнопка .btn-apply не найдена!");
+            }
         }
 
         // Разблокировать кнопку Apply
@@ -1398,8 +1412,14 @@
             console.log("[UI] Разблокирую кнопку Apply");
             isGenerating = false;
             const btn = document.querySelector(".btn-apply");
-            btn.disabled = false;
-            btn.classList.remove("generating");
+            if (btn) {
+                btn.disabled = false;
+                btn.classList.remove("generating");
+                btn.textContent = "Apply";
+                console.log("[UI] Кнопка разблокирована");
+            } else {
+                console.error("[UI] ОШИБКА: кнопка .btn-apply не найдена!");
+            }
         }
 
         // Extract topic from prompt and generate plan for current article

@@ -126,6 +126,7 @@ class ArticleListItem(BaseModel):
 class EditFullTextRequest(BaseModel):
     """Запрос для редактирования всего текста статьи (РЕЖИМ 2)"""
     instruction: str
+    current_text: str = ""  # Текст из поля редактора (приоритет над текстом из БД)
 
 
 class EditFragmentRequest(BaseModel):
@@ -249,20 +250,15 @@ async def generate_and_save_plan(article_id: int, request: ArticleCreateRequest)
                 )
             raise
 
-        # Обновляем статью в БД с полученным планом
-        logger.info(f"[GENERATE_PLAN] Обновляем БД - сохраняем план для статьи ID={article_id}")
-        conn = sqlite3.connect(DB_PATH)
-        cursor = conn.cursor()
-        cursor.execute("UPDATE articles SET content = ? WHERE id = ?", (plan, article_id))
-        conn.commit()
-        logger.info(f"[GENERATE_PLAN] Запись в БД успешна")
-        conn.close()
+        # КРИТИЧНО: НЕ сохраняем план в БД! Только возвращаем фронтенду
+        logger.info(f"[GENERATE_PLAN] Возвращаем сгенерированный план фронтенду (БЕЗ сохранения в БД)")
 
-        # Возвращаем обновлённую статью
-        logger.info(f"[GENERATE_PLAN] Получаем обновлённую статью из БД")
-        updated_article = get_article(article_id)
-        logger.info(f"[GENERATE_PLAN] Возвращаем обновлённую статью: ID={updated_article['id']}")
-        return ArticleResponse(**updated_article)
+        # Возвращаем статью с сгенерированным планом
+        return ArticleResponse(
+            id=article_id,
+            title=article["title"],
+            content=plan  # Сгенерированный план, не из БД
+        )
 
     except HTTPException as e:
         logger.error(f"[GENERATE_PLAN] HTTPException: {e.detail}")
@@ -360,18 +356,24 @@ async def edit_article_full_text(article_id: int, request: EditFullTextRequest):
         logger.info(f"[EDIT_FULL] Получен запрос на редактирование всего текста. article_id={article_id}")
         logger.info(f"[EDIT_FULL] Инструкция: {request.instruction[:100]}...")
 
-        # Получаем текущую статью
+        # Проверяем что статья существует (только для валидации ID)
         article = get_article(article_id)
         if not article:
             logger.error(f"[EDIT_FULL] Статья с ID {article_id} не найдена")
             raise HTTPException(status_code=404, detail=f"Статья с ID {article_id} не найдена")
 
-        logger.info(f"[EDIT_FULL] Статья найдена: {article['title']}, текст = {len(article['content'])} символов")
+        # КРИТИЧНО: Используем ТОЛЬКО текст из фронтенда, НИКОГДА из БД!
+        if not request.current_text:
+            logger.error(f"[EDIT_FULL] ОШИБКА: Текст из фронтенда не передан (пусто)")
+            raise HTTPException(status_code=400, detail="Текст для редактирования не может быть пустым")
 
-        # Вызываем LLM для редактирования
+        logger.info(f"[EDIT_FULL] Статья валидна: {article['title']}")
+        logger.info(f"[EDIT_FULL] Текст из фронтенда: {len(request.current_text)} символов")
+
+        # Вызываем LLM для редактирования (только с текстом из фронтенда!)
         logger.info(f"[EDIT_FULL] Вызываем LLM для редактирования всего текста")
         try:
-            llm_response, chunk_info = edit_full_text(article['content'], request.instruction)
+            llm_response, chunk_info = edit_full_text(request.current_text, request.instruction)
             edited_text = llm_response.text
             logger.info(f"[EDIT_FULL] Текст успешно отредактирован ({len(edited_text)} символов)")
         except Exception as e:
@@ -383,18 +385,8 @@ async def edit_article_full_text(article_id: int, request: EditFullTextRequest):
                 )
             raise
 
-        # Обновляем статью в БД
-        logger.info(f"[EDIT_FULL] Сохраняем отредактированный текст в БД")
-        conn = sqlite3.connect(DB_PATH)
-        cursor = conn.cursor()
-        cursor.execute("UPDATE articles SET content = ? WHERE id = ?", (edited_text, article_id))
-        conn.commit()
-        conn.close()
-        logger.info(f"[EDIT_FULL] Текст успешно сохранен в БД")
-
-        # Возвращаем обновленную статью с метаинформацией
-        updated_article = get_article(article_id)
-        logger.info(f"[EDIT_FULL] Возвращаем обновленную статью с метаинформацией о chunking")
+        # ВАЖНО: НЕ сохраняем в БД! Только возвращаем отредактированный текст фронтенду
+        logger.info(f"[EDIT_FULL] Возвращаем результат редактирования фронтенду (БЕЗ сохранения в БД)")
 
         chunk_info_response = None
         if chunk_info:
@@ -412,10 +404,11 @@ async def edit_article_full_text(article_id: int, request: EditFullTextRequest):
                 total_tokens=llm_response.usage.total_tokens
             )
 
+        # Возвращаем ТОЛЬКО отредактированный текст (не загружаем из БД!)
         return EditFullResponse(
-            id=updated_article["id"],
-            title=updated_article["title"],
-            content=updated_article["content"],
+            id=article_id,
+            title=article["title"],
+            content=edited_text,
             truncated=llm_response.truncated,
             finish_reason=llm_response.finish_reason,
             usage=usage_info,
@@ -499,22 +492,12 @@ async def edit_article_fragment(article_id: int, request: EditFragmentRequest):
         logger.info(f"[EDIT_FRAGMENT] Заменяем фрагмент в тексте статьи")
 
         # МИНИМАЛЬНЫЙ ПОДХОД: просто конкатенируем before + новый_fragment + after
-        # Не пытаемся искать текст в статье - это не надёжно при повторном редактировании
+        # Собираем полный текст из компонентов (без сохранения в БД!)
         updated_text = request.before_context + edited_fragment + request.after_context
         logger.info(f"[EDIT_FRAGMENT] Текст обновлен: concat(before={len(request.before_context)} + fragment={len(edited_fragment)} + after={len(request.after_context)})")
 
-        # Обновляем статью в БД
-        logger.info(f"[EDIT_FRAGMENT] Сохраняем обновленный текст в БД")
-        conn = sqlite3.connect(DB_PATH)
-        cursor = conn.cursor()
-        cursor.execute("UPDATE articles SET content = ? WHERE id = ?", (updated_text, article_id))
-        conn.commit()
-        conn.close()
-        logger.info(f"[EDIT_FRAGMENT] Текст успешно сохранен в БД")
-
-        # Возвращаем обновленную статью С НОВЫМ ФРАГМЕНТОМ ОТДЕЛЬНО
-        updated_article = get_article(article_id)
-        logger.info(f"[EDIT_FRAGMENT] Возвращаем обновленную статью с новым фрагментом и метаинформацией")
+        # КРИТИЧНО: НЕ сохраняем в БД! Только возвращаем результат фронтенду
+        logger.info(f"[EDIT_FRAGMENT] Возвращаем результат редактирования фронтенду (БЕЗ сохранения в БД)")
 
         chunk_info_response = None
         if chunk_info:
@@ -532,10 +515,11 @@ async def edit_article_fragment(article_id: int, request: EditFragmentRequest):
                 total_tokens=llm_response.usage.total_tokens
             )
 
+        # Возвращаем обновленный текст и новый фрагмент (не загружаем из БД!)
         return EditFragmentResponse(
-            id=updated_article["id"],
-            title=updated_article["title"],
-            content=updated_article["content"],
+            id=article_id,
+            title=article["title"],
+            content=updated_text,
             fragment=edited_fragment,  # НОВЫЙ фрагмент, отдельно от content
             truncated=llm_response.truncated,
             finish_reason=llm_response.finish_reason,
