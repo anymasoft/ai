@@ -89,9 +89,12 @@
             color: #1a1a1a;
             font-size: 14px;
             line-height: 1.4;
-            display: block;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
             text-align: left;
             text-decoration: none;
+            width: 100%;
         }
 
         .article-item:hover {
@@ -106,6 +109,37 @@
             font-weight: 600;
             color: #667eea;
             box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .article-title-text {
+            flex: 1;
+            min-width: 0;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .article-delete-btn {
+            flex-shrink: 0;
+            background: transparent;
+            border: none;
+            color: #999;
+            cursor: pointer;
+            padding: 4px 6px;
+            font-size: 18px;
+            line-height: 1;
+            transition: all 0.2s ease;
+            opacity: 0;
+            margin-left: 8px;
+        }
+
+        .article-item:hover .article-delete-btn {
+            opacity: 1;
+        }
+
+        .article-delete-btn:hover {
+            color: #e74c3c;
+            transform: scale(1.2);
         }
 
         .sidebar-footer {
@@ -526,19 +560,24 @@
 
             <div class="articles-list" id="articlesList">
                 <button class="article-item active" data-id="1" onclick="selectArticle(this, 1)">
-                    Getting Started with AI
+                    <span class="article-title-text">Getting Started with AI</span>
+                    <button class="article-delete-btn" onclick="deleteArticle(event, 1)" title="Delete">×</button>
                 </button>
                 <button class="article-item" data-id="2" onclick="selectArticle(this, 2)">
-                    Best Practices for Writing
+                    <span class="article-title-text">Best Practices for Writing</span>
+                    <button class="article-delete-btn" onclick="deleteArticle(event, 2)" title="Delete">×</button>
                 </button>
                 <button class="article-item" data-id="3" onclick="selectArticle(this, 3)">
-                    Advanced Techniques
+                    <span class="article-title-text">Advanced Techniques</span>
+                    <button class="article-delete-btn" onclick="deleteArticle(event, 3)" title="Delete">×</button>
                 </button>
                 <button class="article-item" data-id="4" onclick="selectArticle(this, 4)">
-                    Case Studies
+                    <span class="article-title-text">Case Studies</span>
+                    <button class="article-delete-btn" onclick="deleteArticle(event, 4)" title="Delete">×</button>
                 </button>
                 <button class="article-item" data-id="5" onclick="selectArticle(this, 5)">
-                    Resources and Tools
+                    <span class="article-title-text">Resources and Tools</span>
+                    <button class="article-delete-btn" onclick="deleteArticle(event, 5)" title="Delete">×</button>
                 </button>
             </div>
 
@@ -671,6 +710,39 @@ Happy writing!</div>
             document.getElementById('promptInput').style.height = 'auto';
         }
 
+        // Delete article
+        function deleteArticle(event, id) {
+            // Остановить распространение события (чтобы не открывать статью)
+            event.stopPropagation();
+
+            // Найти элемент статьи в DOM
+            const articleButton = document.querySelector('.article-item[data-id="' + id + '"]');
+
+            // Удалить из базы данных
+            delete articles[id];
+
+            // Удалить из DOM
+            articleButton.remove();
+
+            // Если это была активная статья - переключиться на другую
+            const activeItem = document.querySelector('.article-item.active');
+            if (!activeItem) {
+                // Если нет активной статьи, активировать первую оставшуюся
+                const firstArticle = document.querySelector('.article-item');
+                if (firstArticle) {
+                    const firstId = parseInt(firstArticle.getAttribute('data-id'));
+                    selectArticle(firstArticle, firstId);
+                } else {
+                    // Если нет статей - показать пустую область
+                    document.getElementById('currentTitle').textContent = 'No articles';
+                    document.getElementById('editorContent').textContent = '';
+                    document.getElementById('promptInput').value = '';
+                }
+            }
+
+            showNotification('Article deleted');
+        }
+
         // Open new article modal
         function openNewArticleModal() {
             const modal = new bootstrap.Modal(document.getElementById('newArticleModal'));
@@ -698,8 +770,11 @@ Happy writing!</div>
             const button = document.createElement('button');
             button.className = 'article-item';
             button.setAttribute('data-id', newId);
-            button.textContent = title;
-            button.onclick = function() { selectArticle(this, newId); };
+            button.innerHTML = '<span class="article-title-text">' + title + '</span><button class="article-delete-btn" onclick="deleteArticle(event, ' + newId + ')" title="Delete">×</button>';
+            button.onclick = function(e) {
+                if (e.target.classList.contains('article-delete-btn')) return;
+                selectArticle(this, newId);
+            };
             list.appendChild(button);
 
             selectArticle(button, newId);
