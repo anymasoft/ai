@@ -206,6 +206,25 @@
             color: #1a1a1a;
             margin: 0;
             letter-spacing: -0.5px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .dirty-indicator {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            flex-shrink: 0;
+            transition: background-color 0.2s ease;
+        }
+
+        .dirty-indicator.clean {
+            background-color: #22c55e;
+        }
+
+        .dirty-indicator.dirty {
+            background-color: #3b82f6;
         }
 
         .editor-area {
@@ -827,6 +846,118 @@
             color: #667eea;
             background: rgba(102, 126, 234, 0.15);
         }
+
+        /* === UNSAVED CHANGES MODAL === */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            animation: fadeIn 0.2s ease;
+        }
+
+        .modal-overlay.visible {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+            }
+            to {
+                opacity: 1;
+            }
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: scale(0.95);
+                opacity: 0;
+            }
+            to {
+                transform: scale(1);
+                opacity: 1;
+            }
+        }
+
+        .modal-content {
+            background: white;
+            border-radius: 8px;
+            padding: 32px;
+            max-width: 400px;
+            width: 90%;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+            animation: slideIn 0.2s ease;
+        }
+
+        .modal-title {
+            font-size: 18px;
+            font-weight: 700;
+            color: #1a1a1a;
+            margin: 0 0 12px 0;
+        }
+
+        .modal-text {
+            font-size: 14px;
+            color: #666;
+            margin: 0 0 24px 0;
+            line-height: 1.5;
+        }
+
+        .modal-actions {
+            display: flex;
+            gap: 12px;
+            justify-content: flex-end;
+        }
+
+        .modal-btn {
+            padding: 10px 20px;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 600;
+            border: none;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            white-space: nowrap;
+        }
+
+        .modal-btn-cancel {
+            background: #f3f4f6;
+            color: #666;
+        }
+
+        .modal-btn-cancel:hover {
+            background: #e5e7eb;
+        }
+
+        .modal-btn-discard {
+            background: #f3f4f6;
+            color: #666;
+        }
+
+        .modal-btn-discard:hover {
+            background: #e5e7eb;
+        }
+
+        .modal-btn-save {
+            background: #3b82f6;
+            color: white;
+        }
+
+        .modal-btn-save:hover {
+            background: #2563eb;
+        }
+
+        .modal-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
     </style>
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 </head>
@@ -862,7 +993,10 @@
         <!-- === MAIN AREA === -->
         <div class="main-content">
             <div class="editor-header">
-                <h2 class="article-title" id="currentTitle"></h2>
+                <h2 class="article-title" id="currentTitle">
+                    <span id="titleText"></span>
+                    <div class="dirty-indicator clean" id="dirtyIndicator" title="Changes saved"></div>
+                </h2>
             </div>
 
             <div class="editor-area">
@@ -948,6 +1082,7 @@
         // === SAVE STATE ===
         let isDirty = false; // Флаг несохранённых изменений для текущей статьи
         let isSaving = false; // Флаг во время сохранения
+        let pendingArticleId = null; // ID статьи для переключения после модального диалога
 
 
         // === INITIALIZATION ===
@@ -958,6 +1093,7 @@
             setupPreviewToggle();
             setupDirtyTracking();
             setupSaveButton();
+            updateIndicator();
         });
 
         // === SELECTION MANAGEMENT ===
@@ -1185,9 +1321,30 @@
             // Обновить UI только если состояние изменилось
             if (wasClean !== !isDirty) {
                 updateSaveButtonState();
+                updateIndicator();
             }
 
             console.log(`[DIRTY] isDirty=${isDirty} для статьи ${currentArticleId}`);
+        }
+
+        /**
+         * Обновить визуальный индикатор isDirty
+         */
+        function updateIndicator() {
+            const indicator = document.getElementById("dirtyIndicator");
+            if (!indicator) return;
+
+            if (isDirty) {
+                indicator.classList.remove("clean");
+                indicator.classList.add("dirty");
+                indicator.title = "Unsaved changes";
+            } else {
+                indicator.classList.remove("dirty");
+                indicator.classList.add("clean");
+                indicator.title = "Changes saved";
+            }
+
+            console.log(`[INDICATOR] isDirty=${isDirty}`);
         }
 
         /**
@@ -1227,17 +1384,18 @@
 
         /**
          * Сохранить текущую статью
+         * @returns {Promise<boolean>} true если сохранение успешно, false если ошибка
          */
         async function saveArticle() {
             if (!currentArticleId || isSaving) {
                 console.log("[SAVE] Попытка сохранения отклонена: нет статьи или уже сохраняется");
-                return;
+                return false;
             }
 
             const article = articles[currentArticleId];
             if (!article || !isDirty) {
                 console.log("[SAVE] Нечего сохранять - статья чистая или не найдена");
-                return;
+                return false;
             }
 
             isSaving = true;
@@ -1272,10 +1430,13 @@
                 article.isDirty = false;
 
                 updateSaveButtonState();
+                updateIndicator();
                 showNotification("Статья сохранена!");
+                return true;
             } catch (err) {
                 console.error("[SAVE] Ошибка при сохранении:", err);
                 showNotification("Ошибка при сохранении: " + err.message);
+                return false;
             } finally {
                 isSaving = false;
                 updateSaveButtonState();
@@ -1476,7 +1637,8 @@
 
                 if (articlesList.length === 0) {
                     console.log("[LOAD] Список статей пуст");
-                    document.getElementById("currentTitle").textContent = "";
+                    const titleText = document.getElementById("titleText");
+                    if (titleText) titleText.textContent = "";
                     document.getElementById("editorContent").textContent = "";
                     return;
                 }
@@ -1499,7 +1661,7 @@
                     currentArticleId = firstId;
                     const firstArticle = articles[firstId];
                     console.log(`[LOAD] currentArticleId установлен на: ${currentArticleId}`);
-                    document.getElementById("currentTitle").textContent = firstArticle.title;
+                    document.getElementById("titleText")?.textContent = firstArticle.title;
                     // ВАЖНО: НЕ загружаем content из articles - только заголовок!
                     document.getElementById("editorContent").textContent = "";
                     document.getElementById("promptInput").value = "";
@@ -1836,39 +1998,110 @@
             list.appendChild(button);
         }
 
+        /**
+         * Показать modal с предупреждением о несохранённых изменениях
+         */
+        function showUnsavedChangesModal(targetId) {
+            pendingArticleId = targetId;
+            const modal = document.getElementById("unsavedChangesModal");
+            if (modal) {
+                modal.classList.add("visible");
+                console.log(`[MODAL] Показываю modal для переключения на статью ${targetId}`);
+            }
+        }
+
+        /**
+         * Скрыть modal
+         */
+        function hideUnsavedChangesModal() {
+            const modal = document.getElementById("unsavedChangesModal");
+            if (modal) {
+                modal.classList.remove("visible");
+                console.log("[MODAL] Modal закрыта");
+            }
+        }
+
+        /**
+         * Обработчик кнопки Save в modal
+         */
+        async function onModalSave() {
+            console.log("[MODAL] Пользователь выбрал Save");
+
+            if (!currentArticleId) {
+                hideUnsavedChangesModal();
+                return;
+            }
+
+            // Сохраняем текущую статью
+            const saveSuccess = await saveArticle();
+            if (saveSuccess) {
+                // После успешного сохранения переключаемся
+                if (pendingArticleId && pendingArticleId !== currentArticleId) {
+                    const targetElement = document.querySelector(`.article-item[data-id="${pendingArticleId}"]`);
+                    if (targetElement) {
+                        performArticleSwitch(targetElement, pendingArticleId);
+                    }
+                }
+                pendingArticleId = null;
+                hideUnsavedChangesModal();
+            }
+        }
+
+        /**
+         * Обработчик кнопки Discard в modal
+         */
+        function onModalDiscard() {
+            console.log("[MODAL] Пользователь выбрал Discard");
+
+            // Восстанавливаем последнюю сохранённую версию
+            if (currentArticleId && articles[currentArticleId]) {
+                const article = articles[currentArticleId];
+                const editorContent = document.getElementById("editorContent");
+                editorContent.textContent = article.content || "";
+
+                // Сбрасываем isDirty
+                isDirty = false;
+                article.isDirty = false;
+                updateSaveButtonState();
+                updateIndicator();
+            }
+
+            // Переключаемся на целевую статью
+            if (pendingArticleId && pendingArticleId !== currentArticleId) {
+                const targetElement = document.querySelector(`.article-item[data-id="${pendingArticleId}"]`);
+                if (targetElement) {
+                    performArticleSwitch(targetElement, pendingArticleId);
+                }
+            }
+
+            pendingArticleId = null;
+            hideUnsavedChangesModal();
+        }
+
+        /**
+         * Обработчик кнопки Cancel в modal
+         */
+        function onModalCancel() {
+            console.log("[MODAL] Пользователь выбрал Cancel");
+            pendingArticleId = null;
+            hideUnsavedChangesModal();
+        }
+
         function selectArticle(element, id) {
             console.log(`[SELECT] Попытка переключения на статью ID=${id}`);
+
+            // Если это та же статья - ничего не делаем
+            if (currentArticleId === id) {
+                console.log("[SELECT] Это же текущая статья, игнорирую");
+                return;
+            }
 
             // Проверяем есть ли несохранённые изменения в текущей статье
             if (currentArticleId && isDirty) {
                 console.log(`[SELECT] Обнаружены несохранённые изменения в статье ${currentArticleId}`);
-
-                // Показываем confirm диалог
-                const confirmMsg = "У вас есть несохранённые изменения. Что вы хотите сделать?";
-                console.log("[SELECT] " + confirmMsg);
-                showNotification(confirmMsg, "warning");
-
-                // Простой confirm для быстрого прототипа
-                const userChoice = confirm("У вас есть несохранённые изменения.\n\nНажмите OK чтобы сохранить, или Отмена чтобы отбросить изменения.");
-
-                if (userChoice) {
-                    // Save выбран - сохраняем и потом переключаемся
-                    console.log("[SELECT] Пользователь выбрал сохранение перед переключением");
-                    saveArticle().then(() => {
-                        performArticleSwitch(element, id);
-                    });
-                    return;
-                } else {
-                    // Discard выбран - отбрасываем и переключаемся
-                    console.log("[SELECT] Пользователь выбрал отбросить изменения");
-                    isDirty = false;
-                    if (articles[currentArticleId]) {
-                        articles[currentArticleId].isDirty = false;
-                    }
-                    updateSaveButtonState();
-                    performArticleSwitch(element, id);
-                    return;
-                }
+                console.log(`[SELECT] Показываю modal для переключения на статью ${id}`);
+                showUnsavedChangesModal(id);
+                return;
             }
 
             // Нет несохранённых изменений - просто переключаемся
@@ -1896,7 +2129,10 @@
 
             if (article) {
                 console.log(`[SELECT] Отображаем: title="${article.title}"`);
-                document.getElementById("currentTitle").textContent = article.title;
+                const titleText = document.getElementById("titleText");
+                if (titleText) {
+                    titleText.textContent = article.title;
+                }
 
                 // Загружаем content (сохранённую версию) в editorContent
                 const editorContent = document.getElementById("editorContent");
@@ -1908,6 +2144,7 @@
                 isDirty = false;
                 article.isDirty = false;
                 updateSaveButtonState();
+                updateIndicator();
 
                 // Очищаем promptInput
                 document.getElementById("promptInput").value = "";
@@ -1941,7 +2178,7 @@
                         const firstId = parseInt(firstArticle.getAttribute("data-id"));
                         selectArticle(firstArticle, firstId);
                     } else {
-                        document.getElementById("currentTitle").textContent = "No articles";
+                        document.getElementById("titleText")?.textContent = "No articles";
                         document.getElementById("editorContent").textContent = "";
                         document.getElementById("promptInput").value = "";
                     }
@@ -1997,7 +2234,7 @@
             console.log(`[CREATE] currentArticleId установлен на: ${currentArticleId}`);
 
             // Отображаем в редактор - пусто, БЕЗ typewriter effect
-            document.getElementById("currentTitle").textContent = article.title;
+            document.getElementById("titleText")?.textContent = article.title;
             document.getElementById("editorContent").textContent = "";
 
             document.getElementById("promptInput").value = "";
@@ -2150,7 +2387,7 @@
                     const updatedArticle = await generatePlanForArticleViaAPI(currentArticleId, promptText, format);
                     if (!updatedArticle) return;
 
-                    document.getElementById("currentTitle").textContent = updatedArticle.title;
+                    document.getElementById("titleText")?.textContent = updatedArticle.title;
                     await typewriterEffect(document.getElementById("editorContent"), updatedArticle.content, 15);
                     updateDirtyState();
                     showNotification("План статьи готов! Теперь можете редактировать текст.");
@@ -2269,5 +2506,18 @@
             }
         });
     </script>
+
+    <!-- === UNSAVED CHANGES MODAL === -->
+    <div class="modal-overlay" id="unsavedChangesModal">
+        <div class="modal-content">
+            <h3 class="modal-title">Несохранённые изменения</h3>
+            <p class="modal-text">У вас есть несохранённые изменения. Они будут потеряны, если вы не сохраните.</p>
+            <div class="modal-actions">
+                <button class="modal-btn modal-btn-cancel" id="modalBtnCancel" onclick="onModalCancel()">Остаться</button>
+                <button class="modal-btn modal-btn-discard" id="modalBtnDiscard" onclick="onModalDiscard()">Отбросить</button>
+                <button class="modal-btn modal-btn-save" id="modalBtnSave" onclick="onModalSave()">Сохранить</button>
+            </div>
+        </div>
+    </div>
 </body>
 </html>
