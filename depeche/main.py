@@ -19,7 +19,7 @@ load_dotenv()
 
 # Импортируем модули нашего приложения
 from database import init_db, create_article, get_all_articles, get_article, delete_article, DB_PATH
-from llm import generate_article_plan, edit_full_text, edit_fragment, LLMResponse, ChunkInfo, LLMUsage
+from llm import generate_article_plan, edit_full_text, edit_fragment, import_youtube_video, LLMResponse, ChunkInfo, LLMUsage
 
 # Инициализируем FastAPI приложение
 app = FastAPI(title="Depeche - AI Article Editor")
@@ -146,6 +146,11 @@ class TruncatedErrorResponse(BaseModel):
     error_code: str = "TRUNCATED"
     mode: str  # "plan", "fragment", "fulltext"
     diagnostics: Optional[Dict[str, Any]] = None
+
+
+class YouTubeImportRequest(BaseModel):
+    """Запрос для импорта статьи из YouTube видео (РЕЖИМ 4)"""
+    youtube_url: str
 
 
 # === API ENDPOINTS ===
@@ -602,6 +607,67 @@ async def edit_article_fragment(article_id: int, request: EditFragmentRequest):
     except Exception as e:
         logger.error(f"[EDIT_FRAGMENT] Критическая ошибка: {str(e)}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Ошибка при редактировании фрагмента: {str(e)}")
+
+
+@app.post("/api/articles/{article_id}/import-youtube", response_model=EditFullResponse)
+async def import_youtube_article(article_id: int, request: YouTubeImportRequest):
+    """
+    РЕЖИМ 4: Импорт и обработка статьи из YouTube видео
+
+    Pipeline:
+    1. Получить транскрипт через ScrapeCreators API
+    2. Обработать через LLM (очистка + структурирование)
+    3. Сохранить как содержимое статьи
+
+    Request: { "youtube_url": "https://youtube.com/watch?v=..." }
+    Response: { "id": 1, "title": "...", "content": "готовая статья...", ... }
+
+    Существующая статья должна быть пуста или содержать только заголовок.
+    """
+    try:
+        logger.info(f"[YOUTUBE_IMPORT] Получен запрос на импорт из YouTube. article_id={article_id}")
+        logger.info(f"[YOUTUBE_IMPORT] YouTube URL: {request.youtube_url}")
+
+        # Проверяем что статья существует
+        article = get_article(article_id)
+        if not article:
+            logger.error(f"[YOUTUBE_IMPORT] Статья с ID {article_id} не найдена")
+            raise HTTPException(status_code=404, detail=f"Статья с ID {article_id} не найдена")
+
+        logger.info(f"[YOUTUBE_IMPORT] Статья найдена: {article['title']}")
+
+        # Вызываем pipeline для импорта YouTube
+        logger.info(f"[YOUTUBE_IMPORT] Начинаю pipeline импорта...")
+        try:
+            processed_text = import_youtube_video(request.youtube_url)
+            logger.info(f"[YOUTUBE_IMPORT] Текст успешно импортирован и обработан ({len(processed_text)} символов)")
+        except ValueError as e:
+            logger.error(f"[YOUTUBE_IMPORT] Ошибка конфигурации: {str(e)}")
+            raise HTTPException(status_code=500, detail=f"Ошибка конфигурации: {str(e)}")
+        except Exception as e:
+            error_msg = str(e)
+            logger.error(f"[YOUTUBE_IMPORT] Ошибка при импорте: {error_msg}")
+            raise HTTPException(status_code=422, detail=f"Ошибка при импорте: {error_msg}")
+
+        # Возвращаем результат фронтенду (НЕ сохраняем в БД автоматически!)
+        logger.info(f"[YOUTUBE_IMPORT] Возвращаем результат импорта фронтенду (БЕЗ сохранения в БД)")
+
+        return EditFullResponse(
+            id=article_id,
+            title=article["title"],
+            content=processed_text,
+            truncated=False,
+            finish_reason="stop",
+            usage=None,
+            chunk_info=None
+        )
+
+    except HTTPException as e:
+        logger.error(f"[YOUTUBE_IMPORT] HTTPException: {e.detail}")
+        raise
+    except Exception as e:
+        logger.error(f"[YOUTUBE_IMPORT] Критическая ошибка: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Ошибка при импорте из YouTube: {str(e)}")
 
 
 if __name__ == "__main__":

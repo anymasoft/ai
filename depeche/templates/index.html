@@ -1562,6 +1562,40 @@
         // === HELPER FUNCTIONS FOR MODE DETECTION ===
 
         /**
+         * Распознать YouTube URL из текста промпта
+         *
+         * РЕЖИМ 4: Если prompt = только YouTube URL → YouTube Import
+         */
+        function parseYoutubeUrl(text) {
+            const trimmed = text.trim();
+
+            // Паттерны YouTube URL
+            const youtubePatterns = [
+                /^https?:\/\/(?:www\.)?youtube\.com\/watch\?v=([a-zA-Z0-9_-]+)/,
+                /^https?:\/\/(?:www\.)?youtu\.be\/([a-zA-Z0-9_-]+)/,
+                /^https?:\/\/youtube\.com\/watch\?v=([a-zA-Z0-9_-]+)/,
+                /^https?:\/\/youtu\.be\/([a-zA-Z0-9_-]+)/
+            ];
+
+            for (const pattern of youtubePatterns) {
+                const match = trimmed.match(pattern);
+                if (match) {
+                    return {
+                        isYoutube: true,
+                        url: trimmed,
+                        videoId: match[1]
+                    };
+                }
+            }
+
+            return {
+                isYoutube: false,
+                url: null,
+                videoId: null
+            };
+        }
+
+        /**
          * Определить режим редактирования по состоянию редактора
          *
          * РЕЖИМ 1: Текст пуст → ПЛАН (любой ввод = тема)
@@ -1902,6 +1936,61 @@
                 console.error("[EDIT_FRAGMENT_API] Критическая ошибка:", error);
                 showNotification("Ошибка при редактировании: " + error.message);
                 return null;
+            }
+        }
+
+        /**
+         * РЕЖИМ 4: Импорт статьи из YouTube видео
+         */
+        async function handleYoutubeImport(youtubeUrl) {
+            try {
+                console.log(`[YOUTUBE_IMPORT] Начинаем импорт из YouTube: ${youtubeUrl}`);
+
+                // Если нет активной статьи - создаём новую
+                if (!currentArticleId) {
+                    console.log("[YOUTUBE_IMPORT] Создаём новую статью для YouTube импорта");
+                    const newArticle = await createEmptyArticleViaAPI(youtubeUrl);
+                    if (!newArticle) return;
+                    addArticleToSidebar(newArticle.id, newArticle.title, true);
+                    currentArticleId = newArticle.id;
+                }
+
+                showNotification("Загружаю транскрипт с YouTube и обрабатываю текст...");
+                console.log(`[YOUTUBE_IMPORT] Отправляю запрос на backend. articleId=${currentArticleId}`);
+
+                const url = `${API_BASE_URL}/articles/${currentArticleId}/import-youtube`;
+                const response = await fetch(url, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ youtube_url: youtubeUrl })
+                });
+
+                console.log(`[YOUTUBE_IMPORT] Статус ответа: ${response.status}`);
+
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.detail || "Ошибка при импорте из YouTube");
+                }
+
+                const article = await response.json();
+                console.log(`[YOUTUBE_IMPORT] Текст успешно импортирован (${article.content.length} символов)`);
+
+                // Применяем typewriter effect
+                await typewriterEffect(document.getElementById("editorContent"), article.content, 15);
+                updateDirtyState();
+
+                // Очищаем поле prompt
+                document.getElementById("promptInput").value = "";
+
+                showNotification("Статья из YouTube успешно импортирована! Можете её редактировать.");
+                return article;
+
+            } catch (error) {
+                console.error("[YOUTUBE_IMPORT] Критическая ошибка:", error);
+                showNotification("Ошибка при импорте: " + error.message);
+                return null;
+            } finally {
+                unlockApplyButton();
             }
         }
 
@@ -2417,13 +2506,20 @@
             try {
                 lockApplyButton();
 
-                console.log("[PROMPT] Обработка промпта - НОВАЯ ЛОГИКА С 3 РЕЖИМАМИ");
+                console.log("[PROMPT] Обработка промпта - НОВАЯ ЛОГИКА С 4 РЕЖИМАМИ");
                 const promptText = document.getElementById("promptInput").value.trim();
                 console.log(`[PROMPT] Текст промпта: "${promptText}"`);
 
                 if (!promptText) {
                     console.log("[PROMPT] Ошибка: промпт пуст");
                     return;
+                }
+
+                // ========== РЕЖИМ 4: ПРОВЕРЯЕМ, ЭТО YouTube URL? ==========
+                const youtubeInfo = parseYoutubeUrl(promptText);
+                if (youtubeInfo.isYoutube) {
+                    console.log(`[PROMPT] РЕЖИМ 4: YouTube URL обнаружен - ${youtubeInfo.url}`);
+                    return await handleYoutubeImport(youtubeInfo.url);
                 }
 
                 // ========== ОПРЕДЕЛЯЕМ РЕЖИМ ПО СОСТОЯНИЮ РЕДАКТОРА ==========
