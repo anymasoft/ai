@@ -2952,6 +2952,9 @@
             const enhanceButton = document.getElementById("enhanceButton");
 
             if (enhanceButton) {
+                // Убираем спиннер перед переустановкой состояния
+                enhanceButton.classList.remove("generating");
+
                 // Если содержимое - ТОЛЬКО YouTube ссылка, отключаем Enhance
                 if (youtubeInfo.isYoutube && promptText === youtubeInfo.url) {
                     enhanceButton.disabled = true;
