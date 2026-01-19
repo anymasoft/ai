@@ -6,10 +6,9 @@ export async function POST(request) {
     try {
         const { prompt } = await request.json();
         
-        const result = await chatSession.sendMessage([
-            Prompt.ENHANCE_PROMPT_RULES,
-            `Original prompt: ${prompt}`
-        ]);
+        const result = await chatSession.sendMessage(
+            Prompt.ENHANCE_PROMPT_RULES + "\n\nOriginal prompt: " + prompt
+        );
         
         const text = result.response.text();
         
