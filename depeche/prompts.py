@@ -210,7 +210,7 @@ YOUTUBE_TRANSCRIPT_SYSTEM_PROMPT = """
 
 # === РЕЖИМ: УСИЛЕНИЕ (ENHANCE) ===
 
-ENHANCE_FRAGMENT_SYSTEM_PROMPT = """
+ENHANCE_FRAGMENT_SYSTEM_PROMPT1 = """
 
 ТЫ — РЕДАКТОР СТАТЕЙ ДЛЯ ЯНДЕКС.ДЗЕН.
 
@@ -397,7 +397,7 @@ ENHANCE_PLAN_SYSTEM_PROMPT = """
 
 # === РЕЖИМ: УСИЛЕНИЕ (ENHANCE) 1 ===
 
-ENHANCE_FRAGMENT_SYSTEM_PROMPT1 = """
+ENHANCE_FRAGMENT_SYSTEM_PROMPT = """
 
 
 Ты помогаешь усилить текст фрагмента статьи.
