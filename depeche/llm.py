@@ -974,7 +974,8 @@ def fetch_youtube_transcript(youtube_url: str) -> str:
 
     try:
         # Prepare API request
-        api_url = "https://api.scrapecreators.com/v1/youtube/video"
+        # ВАЖНО: используем endpoint /transcript, не /video!
+        api_url = "https://api.scrapecreators.com/v1/youtube/video/transcript"
         headers = {
             "x-api-key": api_key,
             "Content-Type": "application/json"
@@ -984,6 +985,7 @@ def fetch_youtube_transcript(youtube_url: str) -> str:
         }
 
         logger.debug(f"[YOUTUBE] Отправляю запрос к API: {api_url}")
+        logger.debug(f"[YOUTUBE] Параметры: url={youtube_url}")
         response = requests.get(api_url, headers=headers, params=params, timeout=30)
 
         logger.debug(f"[YOUTUBE] Статус ответа: {response.status_code}")
@@ -1007,9 +1009,11 @@ def fetch_youtube_transcript(youtube_url: str) -> str:
 
         data = response.json()
 
-        # Extract transcript
+        # Extract transcript - по документации это поле называется transcript_only_text
         transcript = data.get("transcript_only_text")
         if not transcript:
+            # Дополнительный логирующий вывод для отладки
+            logger.debug(f"[YOUTUBE] Ответ API содержит: {list(data.keys())}")
             logger.error("[YOUTUBE] Транскрипт отсутствует в ответе API")
             raise Exception("Транскрипт недоступен для этого видео.")
 
