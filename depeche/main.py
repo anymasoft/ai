@@ -19,7 +19,18 @@ load_dotenv()
 
 # Импортируем модули нашего приложения
 from database import init_db, create_article, get_all_articles, get_article, delete_article, DB_PATH
-from llm import generate_article_plan, edit_full_text, edit_fragment, import_youtube_video, LLMResponse, ChunkInfo, LLMUsage
+from llm import (
+    generate_article_plan,
+    edit_full_text,
+    edit_fragment,
+    import_youtube_video,
+    enhance_fragment,
+    enhance_full_text,
+    enhance_plan,
+    LLMResponse,
+    ChunkInfo,
+    LLMUsage
+)
 
 # Инициализируем FastAPI приложение
 app = FastAPI(title="Depeche - AI Article Editor")
@@ -146,6 +157,30 @@ class TruncatedErrorResponse(BaseModel):
     error_code: str = "TRUNCATED"
     mode: str  # "plan", "fragment", "fulltext"
     diagnostics: Optional[Dict[str, Any]] = None
+
+
+class EnhanceRequest(BaseModel):
+    """Запрос для усиления текста (РЕЖИМ 5)"""
+    mode: str  # "fragment" | "full" | "plan"
+    text: str = ""  # Текст для усиления (фрагмент или полная статья)
+    beforeContext: str = ""  # Контекст перед фрагментом (опционально, для режима fragment)
+    afterContext: str = ""  # Контекст после фрагмента (опционально, для режима fragment)
+    userInstruction: str = ""  # Тема (для режима plan) или дополнительная инструкция
+
+
+class EnhanceFragmentResponse(BaseModel):
+    """Ответ при усилении фрагмента"""
+    replacementText: str
+
+
+class EnhanceFullResponse(BaseModel):
+    """Ответ при усилении полного текста"""
+    newText: str
+
+
+class EnhancePlanResponse(BaseModel):
+    """Ответ при усилении плана"""
+    newText: str  # Нумерованный список пункков
 
 
 class YouTubeImportRequest(BaseModel):
@@ -607,6 +642,110 @@ async def edit_article_fragment(article_id: int, request: EditFragmentRequest):
     except Exception as e:
         logger.error(f"[EDIT_FRAGMENT] Критическая ошибка: {str(e)}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Ошибка при редактировании фрагмента: {str(e)}")
+
+
+@app.post("/api/enhance")
+async def enhance_article(request: EnhanceRequest):
+    """
+    РЕЖИМ 5: Усиление текста (фрагмента, полного текста или плана)
+
+    Request JSON варианты:
+
+    1. Усиление фрагмента:
+    {
+        "mode": "fragment",
+        "text": "текст фрагмента",
+        "beforeContext": "...",
+        "afterContext": "..."
+    }
+    Response: { "replacementText": "..." }
+
+    2. Усиление полного текста:
+    {
+        "mode": "full",
+        "text": "полный текст статьи"
+    }
+    Response: { "newText": "..." }
+
+    3. Усиление плана:
+    {
+        "mode": "plan",
+        "userInstruction": "тема статьи"
+    }
+    Response: { "newText": "...(нумерованный список пунктов)..." }
+    """
+    try:
+        logger.info(f"[ENHANCE] Получен запрос на усиление. mode={request.mode}")
+
+        # РЕЖИМ 1: Усиление фрагмента
+        if request.mode == "fragment":
+            if not request.text:
+                logger.error("[ENHANCE] Для режима fragment требуется текст фрагмента")
+                raise HTTPException(status_code=400, detail="Для режима fragment требуется текст фрагмента в поле 'text'")
+
+            logger.info(f"[ENHANCE] Усиливаю фрагмент ({len(request.text)} символов)")
+
+            response = enhance_fragment(request.text, request.beforeContext, request.afterContext)
+
+            if response.truncated:
+                logger.error("[ENHANCE] Ответ был обрезан")
+                raise HTTPException(
+                    status_code=422,
+                    detail="Фрагмент слишком большой, ответ был обрезан. Сократите фрагмент и попробуйте снова."
+                )
+
+            logger.info(f"[ENHANCE] Фрагмент успешно усилен ({len(response.text)} символов)")
+
+            return EnhanceFragmentResponse(replacementText=response.text)
+
+        # РЕЖИМ 2: Усиление полного текста
+        elif request.mode == "full":
+            if not request.text:
+                logger.error("[ENHANCE] Для режима full требуется полный текст")
+                raise HTTPException(status_code=400, detail="Для режима full требуется полный текст статьи в поле 'text'")
+
+            logger.info(f"[ENHANCE] Усиливаю полный текст ({len(request.text)} символов)")
+
+            response = enhance_full_text(request.text)
+
+            if response.truncated:
+                logger.error("[ENHANCE] Ответ был обрезан")
+                raise HTTPException(
+                    status_code=422,
+                    detail="Текст слишком большой, ответ был обрезан. Сократите текст и попробуйте снова."
+                )
+
+            logger.info(f"[ENHANCE] Текст успешно усилен ({len(response.text)} символов)")
+
+            return EnhanceFullResponse(newText=response.text)
+
+        # РЕЖИМ 3: Усиление плана по теме
+        elif request.mode == "plan":
+            if not request.userInstruction:
+                logger.error("[ENHANCE] Для режима plan требуется тема/инструкция")
+                raise HTTPException(status_code=400, detail="Для режима plan требуется тема в поле 'userInstruction'")
+
+            logger.info(f"[ENHANCE] Создаю усиленный план по теме: {request.userInstruction}")
+
+            response = enhance_plan(request.userInstruction)
+
+            if response.truncated:
+                logger.warning("[ENHANCE] План был обрезан, но возвращаю как есть")
+
+            logger.info("[ENHANCE] План успешно создан")
+
+            return EnhancePlanResponse(newText=response.text)
+
+        else:
+            logger.error(f"[ENHANCE] Неизвестный режим: {request.mode}")
+            raise HTTPException(status_code=400, detail=f"Неизвестный режим: {request.mode}. Используйте 'fragment', 'full' или 'plan'")
+
+    except HTTPException as e:
+        logger.error(f"[ENHANCE] HTTPException: {e.detail}")
+        raise
+    except Exception as e:
+        logger.error(f"[ENHANCE] Критическая ошибка: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Ошибка при усилении: {str(e)}")
 
 
 @app.post("/api/articles/{article_id}/import-youtube", response_model=EditFullResponse)

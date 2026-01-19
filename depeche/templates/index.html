@@ -500,6 +500,65 @@
             transform: none;
         }
 
+        /* === ENHANCE BUTTON === */
+        .btn-enhance {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            border: none;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            box-shadow: 0 4px 12px rgba(245, 87, 108, 0.2);
+            white-space: nowrap;
+            height: fit-content;
+            margin-top: 2px;
+            margin-left: 8px;
+        }
+
+        .btn-enhance:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(245, 87, 108, 0.3);
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: white;
+        }
+
+        .btn-enhance:active {
+            transform: translateY(0);
+        }
+
+        .btn-enhance:disabled,
+        .btn-enhance.generating {
+            cursor: not-allowed;
+            position: relative;
+            pointer-events: none;
+            opacity: 0.6;
+        }
+
+        .btn-enhance:disabled::after,
+        .btn-enhance.generating::after {
+            content: '';
+            position: absolute;
+            width: 16px;
+            height: 16px;
+            top: 50%;
+            left: 50%;
+            margin-left: -8px;
+            margin-top: -8px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-top-color: white;
+            border-radius: 50%;
+            animation: spinner-rotate 0.8s linear infinite;
+        }
+
+        .btn-enhance:disabled:hover,
+        .btn-enhance.generating:hover {
+            cursor: not-allowed;
+            transform: none;
+        }
+
         @keyframes spinner-rotate {
             to {
                 transform: rotate(360deg);
@@ -1074,6 +1133,7 @@
                         ></textarea>
                     </div>
                     <button class="btn-apply" onclick="applyPrompt()">Apply</button>
+                    <button class="btn-enhance" id="enhanceButton" onclick="enhanceText()" title="Enhance selected text or article" aria-label="Enhance">✨ Enhance</button>
                 </div>
             </div>
         </div>
@@ -2643,6 +2703,193 @@
                     document.getElementById("promptInput").style.height = "auto";
                     console.log("[PROMPT] Процесс завершен успешно");
             } finally {
+                unlockApplyButton();
+            }
+        }
+
+        /**
+         * РЕЖИМ 5: Усиление текста
+         * Контекстная работа:
+         * - Если есть выделение → усилить ТОЛЬКО фрагмент
+         * - Если текст есть, выделения нет → усилить ВСЮ статью
+         * - Если текст пуст → усилить план по теме из промпта
+         */
+        async function enhanceText() {
+            if (isGenerating) {
+                console.log("[ENHANCE] Генерация уже в процессе, игнорирую повторный вызов");
+                return;
+            }
+
+            try {
+                lockApplyButton();
+                const enhanceButton = document.getElementById("enhanceButton");
+                if (enhanceButton) {
+                    enhanceButton.classList.add("generating");
+                    enhanceButton.disabled = true;
+                }
+
+                console.log("[ENHANCE] Запущена функция усиления");
+
+                const editorContent = document.getElementById("editorContent").textContent;
+                const promptText = document.getElementById("promptInput").value.trim();
+
+                let mode = null;
+                let requestBody = null;
+
+                // ========== ОПРЕДЕЛЯЕМ РЕЖИМ ==========
+
+                // Проверяем выделение
+                if (savedSelection && savedSelection.text && savedSelection.text.length > 0) {
+                    console.log("[ENHANCE] Режим: усилить фрагмент");
+                    mode = "fragment";
+
+                    // Получаем контекст
+                    const fullText = editorContent;
+                    const { startOffset, endOffset } = savedSelection;
+
+                    let beforeContext = "";
+                    let afterContext = "";
+
+                    // Берём предыдущий абзац как контекст
+                    let beforeStart = startOffset;
+                    let doubleNewlineCount = 0;
+                    for (let i = startOffset - 1; i >= 0; i--) {
+                        if (fullText[i] === "\n") doubleNewlineCount++;
+                        if (doubleNewlineCount === 2) {
+                            beforeStart = i + 1;
+                            break;
+                        }
+                    }
+                    beforeContext = fullText.substring(beforeStart, startOffset).trim();
+
+                    // Берём следующий абзац как контекст
+                    let afterEnd = endOffset;
+                    doubleNewlineCount = 0;
+                    for (let i = endOffset; i < fullText.length; i++) {
+                        if (fullText[i] === "\n") doubleNewlineCount++;
+                        if (doubleNewlineCount === 2) {
+                            afterEnd = i;
+                            break;
+                        }
+                    }
+                    afterContext = fullText.substring(endOffset, afterEnd).trim();
+
+                    requestBody = {
+                        mode: "fragment",
+                        text: savedSelection.text,
+                        beforeContext: beforeContext,
+                        afterContext: afterContext
+                    };
+                }
+
+                // Если нет выделения, но текст есть
+                else if (editorContent && editorContent.trim().length > 0) {
+                    console.log("[ENHANCE] Режим: усилить полный текст");
+                    mode = "full";
+                    requestBody = {
+                        mode: "full",
+                        text: editorContent
+                    };
+                }
+
+                // Если текст пуст
+                else {
+                    console.log("[ENHANCE] Режим: усилить план по теме");
+                    if (!promptText) {
+                        showNotification("Введите тему для создания плана");
+                        return;
+                    }
+                    mode = "plan";
+                    requestBody = {
+                        mode: "plan",
+                        userInstruction: promptText
+                    };
+                }
+
+                // ========== ОТПРАВЛЯЕМ ЗАПРОС НА BACKEND ==========
+                console.log(`[ENHANCE] Отправляю запрос. mode=${mode}`);
+
+                const url = `${API_BASE_URL}/enhance`;
+                const response = await fetch(url, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(requestBody)
+                });
+
+                console.log(`[ENHANCE] Статус ответа: ${response.status}`);
+
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.detail || "Ошибка при усилении текста");
+                }
+
+                const result = await response.json();
+
+                // ========== ПРИМЕНЯЕМ РЕЗУЛЬТАТ ==========
+
+                if (mode === "fragment") {
+                    console.log("[ENHANCE] Применяю усиленный фрагмент");
+                    const newFragmentText = result.replacementText;
+                    const fullText = editorContent;
+                    const { startOffset, endOffset } = savedSelection;
+
+                    const newText = fullText.substring(0, startOffset) +
+                                    newFragmentText +
+                                    fullText.substring(endOffset);
+
+                    await animateTextReplacement(
+                        document.getElementById("editorContent"),
+                        fullText,
+                        newText,
+                        10
+                    );
+                }
+
+                else if (mode === "full") {
+                    console.log("[ENHANCE] Применяю усиленный полный текст");
+                    const newText = result.newText;
+                    const oldText = editorContent;
+
+                    await animateTextReplacement(
+                        document.getElementById("editorContent"),
+                        oldText,
+                        newText,
+                        10
+                    );
+                }
+
+                else if (mode === "plan") {
+                    console.log("[ENHANCE] Применяю усиленный план");
+                    const planText = result.newText;
+
+                    // Если нет активной статьи - создаём новую
+                    if (!currentArticleId) {
+                        console.log("[ENHANCE] Создаём новую статью для плана");
+                        const newArticle = await createEmptyArticleViaAPI(promptText);
+                        if (!newArticle) return;
+                        addArticleToSidebar(newArticle.id, newArticle.title, true);
+                        currentArticleId = newArticle.id;
+                    }
+
+                    await typewriterEffect(document.getElementById("editorContent"), planText, 15);
+                }
+
+                updateDirtyState();
+                clearSelectionHighlight();
+                savedSelection = null;
+                document.getElementById("promptInput").value = "";
+
+                showNotification("Текст успешно усилен!");
+
+            } catch (error) {
+                console.error("[ENHANCE] Критическая ошибка:", error);
+                showNotification("Ошибка при усилении: " + error.message);
+            } finally {
+                const enhanceButton = document.getElementById("enhanceButton");
+                if (enhanceButton) {
+                    enhanceButton.classList.remove("generating");
+                    enhanceButton.disabled = false;
+                }
                 unlockApplyButton();
             }
         }
