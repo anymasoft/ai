@@ -1832,6 +1832,7 @@
                     }
 
                     document.getElementById("promptInput").value = "";
+                    checkEnhanceButtonState();
                     console.log("[LOAD] UI обновлен");
                 }
             } catch (error) {
@@ -2075,6 +2076,7 @@
 
                 // Очищаем поле prompt
                 document.getElementById("promptInput").value = "";
+                checkEnhanceButtonState();
 
                 showNotification("Статья из YouTube успешно импортирована! Можете её редактировать.");
                 return article;
@@ -2403,6 +2405,7 @@
                 // Очищаем promptInput
                 document.getElementById("promptInput").value = "";
                 document.getElementById("promptInput").style.height = "auto";
+                checkEnhanceButtonState();
 
                 // Если был preview - выходим из него
                 if (isPreviewMode) {
@@ -2436,6 +2439,7 @@
                         if (titleElem) titleElem.textContent = "No articles";
                         document.getElementById("editorContent").textContent = "";
                         document.getElementById("promptInput").value = "";
+                        checkEnhanceButtonState();
                     }
                 }
 
@@ -2498,6 +2502,7 @@
 
             document.getElementById("promptInput").value = "";
             document.getElementById("promptInput").style.height = "auto";
+            checkEnhanceButtonState();
 
             console.log("[CREATE] UI обновлен. Готово к вводу промпта");
             showNotification("Статья создана. Введите план в prompt bar.");
@@ -2745,6 +2750,7 @@
                     // Очищаем поле промпта
                     document.getElementById("promptInput").value = "";
                     document.getElementById("promptInput").style.height = "auto";
+                    checkEnhanceButtonState();
                     console.log("[PROMPT] Процесс завершен успешно");
             } finally {
                 unlockApplyButton();
@@ -2922,6 +2928,7 @@
                 clearSelectionHighlight();
                 savedSelection = null;
                 document.getElementById("promptInput").value = "";
+                checkEnhanceButtonState();
 
                 showNotification("Текст успешно усилен!");
 
@@ -2938,11 +2945,35 @@
             }
         }
 
+        // Проверить состояние кнопки Enhance на основе содержимого promptInput
+        function checkEnhanceButtonState() {
+            const promptText = document.getElementById("promptInput").value.trim();
+            const youtubeInfo = parseYoutubeUrl(promptText);
+            const enhanceButton = document.getElementById("enhanceButton");
+
+            if (enhanceButton) {
+                // Если содержимое - ТОЛЬКО YouTube ссылка, отключаем Enhance
+                if (youtubeInfo.isYoutube && promptText === youtubeInfo.url) {
+                    enhanceButton.disabled = true;
+                    console.log("[UI] Кнопка Enhance отключена - в промпте только YouTube ссылка");
+                } else if (promptText.length > 0) {
+                    // Если есть текст (не только YouTube), включаем Enhance
+                    enhanceButton.disabled = false;
+                    console.log("[UI] Кнопка Enhance включена - есть текст для обработки");
+                } else {
+                    // Если поле пусто, отключаем Enhance
+                    enhanceButton.disabled = true;
+                    console.log("[UI] Кнопка Enhance отключена - поле пусто");
+                }
+            }
+        }
+
         // Auto-resize textarea (до разумных пределов, потом скролл)
         const promptInput = document.getElementById("promptInput");
         promptInput.addEventListener("input", function() {
             this.style.height = "auto";
             this.style.height = Math.min(this.scrollHeight, 300) + "px";
+            checkEnhanceButtonState();
         });
 
         // Allow Enter key to submit prompt (Shift+Enter for new line)
