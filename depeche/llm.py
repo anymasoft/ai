@@ -5,7 +5,15 @@ import requests
 from typing import Dict, List, Tuple, Optional
 from dataclasses import dataclass
 from openai import OpenAI
-from prompts import PLAN_SYSTEM_PROMPT, EDIT_FULL_TEXT_SYSTEM_PROMPT, EDIT_FRAGMENT_SYSTEM_PROMPT, YOUTUBE_TRANSCRIPT_SYSTEM_PROMPT
+from prompts import (
+    PLAN_SYSTEM_PROMPT,
+    EDIT_FULL_TEXT_SYSTEM_PROMPT,
+    EDIT_FRAGMENT_SYSTEM_PROMPT,
+    YOUTUBE_TRANSCRIPT_SYSTEM_PROMPT,
+    ENHANCE_FRAGMENT_SYSTEM_PROMPT,
+    ENHANCE_FULL_SYSTEM_PROMPT,
+    ENHANCE_PLAN_SYSTEM_PROMPT
+)
 
 # Настраиваем логирование
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
@@ -46,6 +54,12 @@ STRUCTURE_VALIDATION_RETRIES = int(os.getenv("STRUCTURE_VALIDATION_RETRIES", "1"
 ENABLE_STRUCTURE_VALIDATION = os.getenv("ENABLE_STRUCTURE_VALIDATION", "true").lower() == "true"
 # Максимальное увеличение токенов при структурном retry (обычно меньше, чем truncation retry)
 STRUCTURE_RETRY_TOKEN_MULTIPLIER = float(os.getenv("STRUCTURE_RETRY_TOKEN_MULTIPLIER", "1.3"))
+
+# === ПАРАМЕТРЫ ДЛЯ РЕЖИМА УСИЛЕНИЯ (ENHANCE) ===
+ENHANCE_TEMPERATURE = float(os.getenv("ENHANCE_TEMPERATURE", "0.7"))  # Выше чем стандартные 0.3 для большей креативности
+ENHANCE_FRAGMENT_MAX_TOKENS = int(os.getenv("ENHANCE_FRAGMENT_MAX_TOKENS", "800"))
+ENHANCE_FULL_MAX_TOKENS = int(os.getenv("ENHANCE_FULL_MAX_TOKENS", "2500"))
+ENHANCE_PLAN_MAX_TOKENS = int(os.getenv("ENHANCE_PLAN_MAX_TOKENS", "500"))
 
 logger.info(
     f"[LLM CONFIG] model={OPENAI_MODEL}, temp={OPENAI_TEMPERATURE}, "
@@ -119,6 +133,60 @@ def _call_openai(messages: List[Dict], max_tokens: int, mode: str = "generic") -
             model=OPENAI_MODEL,
             messages=messages,
             temperature=OPENAI_TEMPERATURE,
+            max_tokens=max_tokens
+        )
+
+        text = response.choices[0].message.content or ""
+        finish_reason = response.choices[0].finish_reason or "unknown"
+        usage = _extract_usage(response)
+        truncated = finish_reason == "length"
+
+        logger.info(
+            f"[LLM RESPONSE] mode={mode}, finish_reason={finish_reason}, "
+            f"text_len={len(text)}, usage={usage.total_tokens}tokens, "
+            f"truncated={truncated}"
+        )
+
+        if truncated:
+            logger.warning(
+                f"[LLM TRUNCATED] mode={mode} - ответ был обрезан! "
+                f"completion_tokens={usage.completion_tokens}, max_tokens={max_tokens}"
+            )
+
+        return LLMResponse(
+            text=text,
+            finish_reason=finish_reason,
+            usage=usage,
+            truncated=truncated
+        )
+
+    except Exception as e:
+        logger.error(f"[LLM ERROR] mode={mode}: {str(e)}", exc_info=True)
+        raise
+
+
+def _call_openai_with_temperature(messages: List[Dict], max_tokens: int, temperature: float, mode: str = "generic") -> LLMResponse:
+    """
+    Вспомогательная функция для вызова OpenAI API с произвольной температурой.
+
+    Используется для режимов, где нужна повышенная креативность (например, усиление).
+
+    Args:
+        messages: Список сообщений для API
+        max_tokens: Максимум токенов в ответе
+        temperature: Температура (обычно 0.7 для усиления вместо стандартных 0.3)
+        mode: Режим (для логирования)
+
+    Returns:
+        LLMResponse с текстом, finish_reason и usage
+    """
+    try:
+        logger.debug(f"[LLM CALL] mode={mode}, max_tokens={max_tokens}, temperature={temperature}, messages_count={len(messages)}")
+
+        response = client.chat.completions.create(
+            model=OPENAI_MODEL,
+            messages=messages,
+            temperature=temperature,
             max_tokens=max_tokens
         )
 
@@ -948,6 +1016,110 @@ def edit_fragment(
     )
 
     return response, chunk_info
+
+
+# === РЕЖИМ 5: УСИЛЕНИЕ (ENHANCE) ===
+
+def enhance_fragment(fragment: str, before_context: str = "", after_context: str = "") -> LLMResponse:
+    """
+    Усилить фрагмент текста
+
+    Args:
+        fragment: Текст фрагмента для усиления
+        before_context: Контекст перед фрагментом (опционально)
+        after_context: Контекст после фрагмента (опционально)
+
+    Returns:
+        LLMResponse с усиленным текстом фрагмента
+    """
+    logger.info(f"[ENHANCE] Усиливаю фрагмент ({len(fragment)} символов)")
+
+    # Формируем промпт с контекстом для лучшего результата
+    user_content = fragment
+    if before_context:
+        user_content = f"КОНТЕКСТ ПЕРЕД:\n{before_context}\n\nФРАГМЕНТ ДЛЯ УСИЛЕНИЯ:\n{user_content}"
+    if after_context:
+        user_content = f"{user_content}\n\nКОНТЕКСТ ПОСЛЕ:\n{after_context}"
+
+    messages = [
+        {
+            "role": "system",
+            "content": ENHANCE_FRAGMENT_SYSTEM_PROMPT
+        },
+        {
+            "role": "user",
+            "content": user_content
+        }
+    ]
+
+    # Вызываем LLM с повышенной температурой для креативности
+    response = _call_openai_with_temperature(messages, ENHANCE_FRAGMENT_MAX_TOKENS, ENHANCE_TEMPERATURE, mode="enhance_fragment")
+
+    logger.info(f"[ENHANCE] Фрагмент усилен ({len(response.text)} символов)")
+
+    return response
+
+
+def enhance_full_text(text: str) -> LLMResponse:
+    """
+    Усилить полный текст статьи
+
+    Args:
+        text: Полный текст статьи
+
+    Returns:
+        LLMResponse с усиленным текстом
+    """
+    logger.info(f"[ENHANCE] Усиливаю полный текст ({len(text)} символов)")
+
+    messages = [
+        {
+            "role": "system",
+            "content": ENHANCE_FULL_SYSTEM_PROMPT
+        },
+        {
+            "role": "user",
+            "content": text
+        }
+    ]
+
+    # Вызываем LLM с повышенной температурой
+    response = _call_openai_with_temperature(messages, ENHANCE_FULL_MAX_TOKENS, ENHANCE_TEMPERATURE, mode="enhance_full")
+
+    logger.info(f"[ENHANCE] Текст усилен ({len(response.text)} символов)")
+
+    return response
+
+
+def enhance_plan(topic: str) -> LLMResponse:
+    """
+    Усилить план статьи по теме
+
+    Args:
+        topic: Тема или заготовка плана
+
+    Returns:
+        LLMResponse с усиленным планом
+    """
+    logger.info(f"[ENHANCE] Создаю усиленный план по теме: {topic}")
+
+    messages = [
+        {
+            "role": "system",
+            "content": ENHANCE_PLAN_SYSTEM_PROMPT
+        },
+        {
+            "role": "user",
+            "content": f"Сделай захватывающий план статьи по теме: {topic}"
+        }
+    ]
+
+    # Вызываем LLM с повышенной температурой
+    response = _call_openai_with_temperature(messages, ENHANCE_PLAN_MAX_TOKENS, ENHANCE_TEMPERATURE, mode="enhance_plan")
+
+    logger.info(f"[ENHANCE] План создан ({len(response.text)} символов)")
+
+    return response
 
 
 # === РЕЖИМ 4: YOUTUBE IMPORT ===
