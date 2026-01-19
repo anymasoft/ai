@@ -1,10 +1,11 @@
 import os
 import logging
 import re
+import requests
 from typing import Dict, List, Tuple, Optional
 from dataclasses import dataclass
 from openai import OpenAI
-from prompts import PLAN_SYSTEM_PROMPT, EDIT_FULL_TEXT_SYSTEM_PROMPT, EDIT_FRAGMENT_SYSTEM_PROMPT
+from prompts import PLAN_SYSTEM_PROMPT, EDIT_FULL_TEXT_SYSTEM_PROMPT, EDIT_FRAGMENT_SYSTEM_PROMPT, YOUTUBE_TRANSCRIPT_SYSTEM_PROMPT
 
 # Настраиваем логирование
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
@@ -947,3 +948,178 @@ def edit_fragment(
     )
 
     return response, chunk_info
+
+
+# === РЕЖИМ 4: YOUTUBE IMPORT ===
+
+def fetch_youtube_transcript(youtube_url: str) -> str:
+    """
+    Получить транскрипт с YouTube через ScrapeCreators API
+
+    Args:
+        youtube_url: URL YouTube видео
+
+    Returns:
+        Текст транскрипта
+
+    Raises:
+        Exception: Если транскрипт не найден или API ошибка
+    """
+    logger.info(f"[YOUTUBE] Получаю транскрипт для {youtube_url}")
+
+    api_key = os.getenv("SCRAPECREATORS_API_KEY")
+    if not api_key:
+        logger.error("[YOUTUBE] SCRAPECREATORS_API_KEY не установлен")
+        raise ValueError("SCRAPECREATORS_API_KEY не установлен в .env файле")
+
+    try:
+        # Prepare API request
+        api_url = "https://api.scrapecreators.com/v1/youtube/video"
+        headers = {
+            "x-api-key": api_key,
+            "Content-Type": "application/json"
+        }
+        params = {
+            "url": youtube_url
+        }
+
+        logger.debug(f"[YOUTUBE] Отправляю запрос к API: {api_url}")
+        response = requests.get(api_url, headers=headers, params=params, timeout=30)
+
+        logger.debug(f"[YOUTUBE] Статус ответа: {response.status_code}")
+
+        if response.status_code == 404:
+            logger.error(f"[YOUTUBE] Видео не найдено")
+            raise Exception("Видео не найдено. Проверьте YouTube URL.")
+        elif response.status_code == 401:
+            logger.error(f"[YOUTUBE] Ошибка аутентификации API")
+            raise Exception("Ошибка аутентификации API (проверьте SCRAPECREATORS_API_KEY).")
+        elif response.status_code == 429:
+            logger.error(f"[YOUTUBE] Превышен лимит API запросов")
+            raise Exception("Превышен лимит запросов. Попробуйте позже.")
+        elif response.status_code >= 500:
+            logger.error(f"[YOUTUBE] Ошибка сервера API")
+            raise Exception("Ошибка сервера ScrapeCreators. Попробуйте позже.")
+
+        if not response.ok:
+            logger.error(f"[YOUTUBE] API ошибка: {response.text}")
+            raise Exception(f"API ошибка: {response.status_code}")
+
+        data = response.json()
+
+        # Extract transcript
+        transcript = data.get("transcript_only_text")
+        if not transcript:
+            logger.error("[YOUTUBE] Транскрипт отсутствует в ответе API")
+            raise Exception("Транскрипт недоступен для этого видео.")
+
+        logger.info(f"[YOUTUBE] Получен транскрипт ({len(transcript)} символов)")
+        return transcript
+
+    except requests.exceptions.Timeout:
+        logger.error("[YOUTUBE] Timeout при запросе к API")
+        raise Exception("Timeout при загрузке транскрипта. Попробуйте позже.")
+    except requests.exceptions.ConnectionError:
+        logger.error("[YOUTUBE] Ошибка соединения с API")
+        raise Exception("Ошибка соединения с API. Проверьте интернет.")
+    except Exception as e:
+        logger.error(f"[YOUTUBE] Ошибка при получении транскрипта: {str(e)}")
+        raise
+
+
+def process_youtube_transcript(transcript: str) -> LLMResponse:
+    """
+    Обработать YouTube транскрипт через LLM
+
+    Преобразует устную речь в письменный текст:
+    - Удаляет таймкоды
+    - Удаляет слова-паразиты
+    - Исправляет опечатки
+    - Приводит к письменной форме
+    - Структурирует по абзацам
+
+    Args:
+        transcript: Исходный транскрипт
+
+    Returns:
+        LLMResponse с обработанным текстом
+    """
+    logger.info(f"[YOUTUBE_PROCESSING] Начинаю обработку транскрипта ({len(transcript)} символов)")
+
+    # Prepare messages
+    messages = [
+        {
+            "role": "system",
+            "content": YOUTUBE_TRANSCRIPT_SYSTEM_PROMPT
+        },
+        {
+            "role": "user",
+            "content": transcript
+        }
+    ]
+
+    # Use higher token limit for transcript processing (since we're converting, not just editing)
+    max_tokens = int(os.getenv("YOUTUBE_MAX_TOKENS", "3000"))
+
+    logger.debug(f"[YOUTUBE_PROCESSING] Вызываю LLM с max_tokens={max_tokens}")
+
+    # Call LLM
+    response = _call_openai(messages, max_tokens, mode="youtube")
+
+    logger.info(
+        f"[YOUTUBE_PROCESSING] Транскрипт обработан "
+        f"(результат: {len(response.text)} символов, finish_reason={response.finish_reason})"
+    )
+
+    # If truncated, retry with higher limit
+    if response.truncated and RETRY_ON_TRUNCATION > 0:
+        logger.warning(f"[YOUTUBE_PROCESSING] Ответ был обрезан, пробую retry")
+        new_max_tokens = int(max_tokens * RETRY_TOKEN_MULTIPLIER)
+        logger.debug(f"[YOUTUBE_PROCESSING] Retry с max_tokens={new_max_tokens}")
+
+        response = _call_openai(messages, new_max_tokens, mode="youtube")
+        logger.info(f"[YOUTUBE_PROCESSING] Retry завершен (finish_reason={response.finish_reason})")
+
+    if response.truncated:
+        logger.error("[YOUTUBE_PROCESSING] Даже после retry ответ остается обрезанным")
+        raise Exception(
+            "TRUNCATED: Обработанный текст слишком большой даже при увеличенном лимите токенов."
+        )
+
+    return response
+
+
+def import_youtube_video(youtube_url: str) -> str:
+    """
+    Полный pipeline импорта статьи из YouTube
+
+    1. Получает транскрипт через ScrapeCreators API
+    2. Обрабатывает его через LLM
+    3. Возвращает готовый текст статьи
+
+    Args:
+        youtube_url: URL YouTube видео
+
+    Returns:
+        Готовый текст статьи для публикации
+    """
+    logger.info(f"[IMPORT_YOUTUBE] Начинаю импорт из YouTube: {youtube_url}")
+
+    # Step 1: Get transcript
+    try:
+        transcript = fetch_youtube_transcript(youtube_url)
+    except Exception as e:
+        logger.error(f"[IMPORT_YOUTUBE] Ошибка при получении транскрипта: {str(e)}")
+        raise
+
+    # Step 2: Process transcript
+    try:
+        response = process_youtube_transcript(transcript)
+        processed_text = response.text
+    except Exception as e:
+        logger.error(f"[IMPORT_YOUTUBE] Ошибка при обработке транскрипта: {str(e)}")
+        raise
+
+    logger.info(f"[IMPORT_YOUTUBE] Импорт завершен успешно ({len(processed_text)} символов)")
+
+    return processed_text
