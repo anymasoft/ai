@@ -224,6 +224,19 @@
             margin-left: auto;
         }
 
+        /* === CHAR COUNT DISPLAY === */
+        .char-count {
+            font-family: 'JetBrains Mono', 'Courier New', monospace;
+            font-size: 18px;
+            font-weight: 700;
+            color: #667eea;
+            margin-right: 16px;
+            letter-spacing: 1px;
+            min-width: 40px;
+            text-align: right;
+            flex-shrink: 0;
+        }
+
         .dirty-indicator {
             width: 10px;
             height: 10px;
@@ -1092,6 +1105,7 @@
                     <span id="titleText"></span>
                 </h2>
                 <div class="header-actions">
+                    <div class="char-count" id="charCountDisplay">0</div>
                     <div class="dirty-indicator clean" id="dirtyIndicator" title="Changes saved"></div>
                     <button class="btn-preview-toggle" id="previewToggleButton" title="Toggle preview" type="button" aria-label="Toggle preview">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -1399,8 +1413,17 @@
         }
 
         /**
-         * Обновить состояние isDirty для текущей статьи
+         * Обновить счётчик символов в хедере
          */
+        function updateCharCount() {
+            const editorContent = document.getElementById("editorContent");
+            const charCountDisplay = document.getElementById("charCountDisplay");
+            if (!charCountDisplay) return;
+
+            const charCount = editorContent.textContent.length;
+            charCountDisplay.textContent = charCount.toLocaleString('ru-RU');
+        }
+
         function updateDirtyState() {
             if (!currentArticleId) return;
 
@@ -1421,6 +1444,9 @@
                 updateSaveButtonState();
                 updateIndicator();
             }
+
+            // Обновить счётчик символов
+            updateCharCount();
 
             console.log(`[DIRTY] isDirty=${isDirty} для статьи ${currentArticleId}`);
         }
@@ -1753,7 +1779,7 @@
 
         // === API FUNCTIONS ===
 
-        async function loadArticlesList() {
+        async function loadArticlesList() { // уже асинхронная, просто подтверждаю
             try {
                 console.log("[LOAD] Загружаем список статей");
                 const response = await fetch(`${API_BASE_URL}/articles`);
@@ -1795,8 +1821,16 @@
                     console.log(`[LOAD] currentArticleId установлен на: ${currentArticleId}`);
                     const titleText = document.getElementById("titleText");
                     if (titleText) titleText.textContent = firstArticle.title;
-                    // ВАЖНО: НЕ загружаем content из articles - только заголовок!
-                    document.getElementById("editorContent").textContent = "";
+
+                    // Загружаем content из БД
+                    const fullArticle = await loadArticleContent(firstId);
+                    if (fullArticle) {
+                        articles[firstId].content = fullArticle.content;
+                        document.getElementById("editorContent").textContent = fullArticle.content || "";
+                        updateCharCount();
+                        console.log(`[LOAD] Content загружен из БД (${(fullArticle.content || "").length} символов)`);
+                    }
+
                     document.getElementById("promptInput").value = "";
                     console.log("[LOAD] UI обновлен");
                 }
@@ -2324,7 +2358,7 @@
         /**
          * Выполнить переключение на другую статью (без проверки isDirty)
          */
-        function performArticleSwitch(element, id) {
+        async function performArticleSwitch(element, id) {
             console.log(`[SELECT] Выполняю переключение на статью ID=${id}`);
 
             // Переключить активный класс в sidebar
@@ -2347,11 +2381,18 @@
                     titleText.textContent = article.title;
                 }
 
-                // Загружаем content (сохранённую версию) в editorContent
-                const editorContent = document.getElementById("editorContent");
-                editorContent.textContent = article.content || "";
+                // Загружаем content из БД перед отображением
+                const fullArticle = await loadArticleContent(id);
+                if (fullArticle) {
+                    articles[id].content = fullArticle.content;
+                    document.getElementById("editorContent").textContent = fullArticle.content || "";
+                    console.log(`[SELECT] Content загружен из БД (${(fullArticle.content || "").length} символов)`);
+                } else {
+                    document.getElementById("editorContent").textContent = article.content || "";
+                }
 
-                console.log(`[SELECT] Текст загружен: ${(article.content || "").length} символов`);
+                // Обновляем счётчик символов
+                updateCharCount();
 
                 // Сбрасываем isDirty для этой статьи
                 isDirty = false;
@@ -2451,6 +2492,9 @@
             const titleElem = document.getElementById("titleText");
             if (titleElem) titleElem.textContent = article.title;
             document.getElementById("editorContent").textContent = "";
+
+            // Обновляем счётчик символов (сейчас 0)
+            updateCharCount();
 
             document.getElementById("promptInput").value = "";
             document.getElementById("promptInput").style.height = "auto";
