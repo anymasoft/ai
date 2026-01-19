@@ -563,6 +563,10 @@
             border: 2px solid rgba(255, 255, 255, 0.3);
             border-top-color: white;
             border-radius: 50%;
+        }
+
+        /* Спиннер вращается ТОЛЬКО когда активна операция (класс generating) */
+        .btn-enhance.generating::after {
             animation: spinner-rotate 0.8s linear infinite;
         }
 
