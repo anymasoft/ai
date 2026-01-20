@@ -105,5 +105,4 @@ export default config;
     "uuid": "^11.1.0",
     "@mui/material": "^6.4.6"
         }
-    }
 };
