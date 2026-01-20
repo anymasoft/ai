@@ -18,6 +18,7 @@ import { PROJECT_CONTRACT } from '@/data/ProjectContract';
 
 /**
  * Форматирует ошибки в читаемый текст для LLM
+ * ВАЖНО: включает raw stderr для полного контекста
  */
 function formatErrorsForLLM(errors) {
   const grouped = {};
@@ -37,8 +38,14 @@ function formatErrorsForLLM(errors) {
       text += `${i + 1}. ${err.message}\n`;
       if (err.file) text += `   File: ${err.file}\n`;
       if (err.line) text += `   Line: ${err.line}\n`;
+      if (err.column) text += `   Column: ${err.column}\n`;
     }
     text += '\n';
+  }
+
+  // КРИТИЧЕСКИ ВАЖНО: Добавляем полный raw stderr если он есть
+  if (errors.length > 0 && errors[0].raw) {
+    text += `## FULL BUILD OUTPUT\n\n\`\`\`\n${errors[0].raw}\n\`\`\`\n\n`;
   }
 
   return text;
@@ -150,6 +157,12 @@ export async function callLLMInFixMode(params) {
 ## Current Iteration
 - Iteration: ${iteration}/${maxIterations}
 - Errors to fix: ${errors.length}
+- Affected files: ${Object.keys(affectedFiles).length}
+
+## ERROR INFORMATION
+
+Look at the FULL BUILD OUTPUT section below - it contains the complete stacktrace and all error details.
+The affected files with full source code are provided after the PROJECT CONTRACT.
 
 ${formatErrorsForLLM(errors)}
 
@@ -162,25 +175,32 @@ ${PROJECT_CONTRACT}
 
 ## FIX MODE RULES (STRICT)
 
+### YOU MUST DO
+1. **Analyze the FULL BUILD OUTPUT** - it contains all error details and stacktrace
+2. **Review affected file contents** - provided in full below
+3. **Fix ONLY the errors** - focus on making errors == 0
+4. **Return COMPLETE code** - for each affected file
+
 ✅ **YOU CAN**:
 - Fix syntax errors
 - Fix import/export issues
-- Fix missing dependencies
-- Fix runtime errors
+- Fix missing components/modules
+- Fix runtime errors (null references, undefined properties)
 - Add missing exports
 - Correct incorrect return statements
 - Fix JSX element issues
+- Add missing files if absolutely necessary to fix errors
 
 ❌ **YOU CANNOT**:
 - Refactor code
-- Improve styling
+- Improve styling or add CSS
 - Add new features
 - Change code structure
-- Modify files not in the error list
-- Add new packages
-- Change dependencies
+- Modify files not directly causing errors
+- Add new packages/dependencies
 - Remove existing code
 - Rename variables/functions
+- Make cosmetic changes
 
 ## RESPONSE FORMAT
 
