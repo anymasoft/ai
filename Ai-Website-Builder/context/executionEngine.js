@@ -60,7 +60,8 @@ export function runExecution(projectDir, command = 'build') {
 
 /**
  * ЭТАП 2: Парсит ошибки из build output (6 типов)
- * @returns [ { type, file, line, column, message } ]
+ * ВАЖНО: ВСЕГДА включает raw stderr для контекста LLM
+ * @returns [ { type, file, line, column, message, raw } ]
  */
 export function parseExecutionErrors(output) {
   if (!output || output.length === 0) return [];
@@ -68,6 +69,7 @@ export function parseExecutionErrors(output) {
   const errors = [];
   const lines = output.split('\n');
   const errorMap = new Set();  // Для дедупликации
+  const fullStderr = output;   // Сохраняем полный stderr для LLM
 
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
@@ -97,7 +99,8 @@ export function parseExecutionErrors(output) {
           file: `/${file}`,
           line: parseInt(lineNum),
           column: parseInt(colNum),
-          severity: 'error'
+          severity: 'error',
+          raw: fullStderr
         });
       }
       continue;
@@ -116,7 +119,8 @@ export function parseExecutionErrors(output) {
             file: match[2],
             line: parseInt(match[3]),
             column: parseInt(match[4]),
-            severity: 'error'
+            severity: 'error',
+            raw: fullStderr
           });
         }
       }
@@ -136,7 +140,8 @@ export function parseExecutionErrors(output) {
           message: syntaxMatch ? syntaxMatch[1] : line,
           file: fileMatch?.[1] || 'unknown',
           line: fileMatch ? parseInt(fileMatch[2]) : 0,
-          severity: 'error'
+          severity: 'error',
+          raw: fullStderr
         });
       }
       continue;
@@ -164,7 +169,8 @@ export function parseExecutionErrors(output) {
           type: 'module_not_found',
           message: `Cannot find module: ${modulePathOrName}`,
           file: line.includes('/App.js') ? '/App.js' : 'component',
-          severity: 'error'
+          severity: 'error',
+          raw: fullStderr
         });
       }
       continue;
@@ -178,7 +184,8 @@ export function parseExecutionErrors(output) {
           type: 'export_error',
           message: 'Component export is undefined - check default export',
           file: 'component',
-          severity: 'error'
+          severity: 'error',
+          raw: fullStderr
         });
       }
       continue;
@@ -191,7 +198,8 @@ export function parseExecutionErrors(output) {
         errors.push({
           type: 'jsx_error',
           message: 'Invalid JSX element - likely missing export or wrong import',
-          severity: 'error'
+          severity: 'error',
+          raw: fullStderr
         });
       }
       continue;
@@ -202,7 +210,8 @@ export function parseExecutionErrors(output) {
       errors.push({
         type: 'type_error',
         message: line.trim(),
-        severity: 'warning'
+        severity: 'warning',
+        raw: fullStderr
       });
       continue;
     }
@@ -216,7 +225,8 @@ export function parseExecutionErrors(output) {
         errors.push({
           type: 'unknown_error',
           message: line.trim(),
-          severity: 'error'
+          severity: 'error',
+          raw: fullStderr
         });
       }
     }
@@ -226,26 +236,89 @@ export function parseExecutionErrors(output) {
 }
 
 /**
- * ЭТАП 3: Вспомогательная функция - извлечь затронутые файлы из ошибок
+ * ЭТАП 3: Вспомогательная функция - извлечь ВСЕ затронутые файлы из ошибок и stacktrace
+ * ПАРСИТ:
+ *   - ошибки (error.file)
+ *   - stacktrace паттерны: "at FileName (path/to/file.js:12:18)"
+ *   - пути импортов из сообщений об ошибках
  */
 function extractAffectedFiles(currentFiles, errors) {
   const affectedPaths = new Set();
 
-  // Всегда включаем App.js
+  // Всегда включаем entry point
   affectedPaths.add('/App.js');
 
-  // Извлекаем из ошибок
+  // Извлекаем из ошибок напрямую
   for (const err of errors) {
     if (err.file && err.file !== 'component' && err.file !== 'package.json') {
       affectedPaths.add(err.file);
     }
+
+    // Парсим stacktrace из raw stderr
+    if (err.raw) {
+      // Паттерн 1: "at FunctionName (path/to/file.js:line:column)"
+      const stacktraceMatches = err.raw.match(/at\s+\w+\s+\(([^)]+\.(?:js|jsx|ts|tsx)):\d+:\d+\)/g);
+      if (stacktraceMatches) {
+        for (const match of stacktraceMatches) {
+          const filePath = match.match(/\(([^)]+\.(?:js|jsx|ts|tsx))/)[1];
+          // Нормализуем path к /path/to/file формату
+          if (!filePath.startsWith('/')) {
+            affectedPaths.add('/' + filePath);
+          } else {
+            affectedPaths.add(filePath);
+          }
+        }
+      }
+
+      // Паттерн 2: "Cannot find module: './components/Login'"
+      const moduleMatches = err.raw.match(/['\"](\.[^'\"]+\.(?:js|jsx|ts|tsx))['\"]|\['\"]([^\]'\"]+\.(?:js|jsx|ts|tsx))['\"\]]/g);
+      if (moduleMatches) {
+        for (const match of moduleMatches) {
+          let modulePath = match.replace(/['"`[\]]/g, '');
+          // Конвертируем ./components/Login → /components/Login.js
+          if (modulePath.startsWith('./')) {
+            modulePath = modulePath.substring(1); // Remove ./
+          }
+          if (!modulePath.startsWith('/')) {
+            modulePath = '/' + modulePath;
+          }
+          // Добавляем расширение если его нет
+          if (!modulePath.includes('.')) {
+            modulePath += '.js';
+          }
+          affectedPaths.add(modulePath);
+        }
+      }
+
+      // Паттерн 3: "/path/to/file.js" из "Cannot find module in path"
+      const pathMatches = err.raw.match(/\/[^\s:]+\.(?:js|jsx|ts|tsx)/g);
+      if (pathMatches) {
+        for (const filePath of pathMatches) {
+          affectedPaths.add(filePath);
+        }
+      }
+    }
   }
 
+  // Фильтруем - оставляем только те файлы, которые есть в currentFiles или похожи
   const result = {};
   for (const path of affectedPaths) {
     if (currentFiles[path]) {
       result[path] = currentFiles[path];
+    } else {
+      // Пробуем найти похожий файл (например, ./components/Login.js → /components/Login.js или /Login.js)
+      for (const [currentPath, content] of Object.entries(currentFiles)) {
+        if (currentPath.endsWith(path.substring(path.lastIndexOf('/')))) {
+          result[currentPath] = content;
+          break;
+        }
+      }
     }
+  }
+
+  // Логируем для отладки
+  if (Object.keys(result).length > 0) {
+    console.log(`📄 Affected files extracted: ${Object.keys(result).join(', ')}`);
   }
 
   return result;
