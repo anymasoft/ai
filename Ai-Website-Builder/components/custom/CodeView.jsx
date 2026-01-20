@@ -201,8 +201,10 @@ function CodeView() {
                 recompileDelay: 300
             }}
             >
-                <SandpackLayout>
+                <SandpackLayout style={{ position: 'relative' }}>
                     <div style={{
+                        position: 'absolute',
+                        inset: 0,
                         display: activeTab === 'code' ? 'flex' : 'none'
                     }}>
                         <SandpackFileExplorer style={{ height: '80vh' }} />
@@ -216,11 +218,13 @@ function CodeView() {
                     </div>
 
                     <div style={{
+                        position: 'absolute',
+                        inset: 0,
                         display: activeTab === 'preview' ? 'block' : 'none'
                     }}>
                         <SandpackPreview
                             key="preview"
-                            style={{ height: '80vh' }}
+                            style={{ height: '80vh', width: '100%' }}
                             showNavigator={true}
                             showOpenInCodeSandbox={false}
                             showRefreshButton={true}
