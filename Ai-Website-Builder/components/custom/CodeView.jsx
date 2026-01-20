@@ -29,6 +29,11 @@ function CodeView() {
     const [loading,setLoading]=useState(false);
     const [refreshKey, setRefreshKey] = useState(0);
 
+    // 🆕 ДВУХРЕЖИМНАЯ АРХИТЕКТУРА
+    const [targetFile, setTargetFile] = useState(null);  // Какой файл редактируем
+    const [editMode, setEditMode] = useState('auto');   // 'template_filling' | 'fragment_editing' | 'auto'
+    const [conversationTurn, setConversationTurn] = useState(0);
+
     useEffect(() => {
         id&&GetFiles();
     }, [id])
@@ -74,30 +79,47 @@ function CodeView() {
         setLoading(true);
         const userMessage = messages?.length > 0 ? messages[messages.length - 1]?.content : "";
 
-        // Отправляем ПОЛНЫЙ контекст: историю, текущий код и новый запрос
-        const result=await axios.post('/api/gen-ai-code',{
-            messages: messages,           // Полная история сообщений
-            currentCode: files,           // Текущий сгенерированный код
-            userMessage: userMessage      // Новый запрос пользователя
-        });
-        
-        // Preprocess AI-generated files
-        const processedAiFiles = preprocessFiles(result.data?.files || {});
-        const mergedFiles = {...Lookup.DEFAULT_FILE, ...processedAiFiles};
-        setFiles(mergedFiles);
+        // 🆕 Определяем targetFile если не установлен
+        // По умолчанию редактируем App.js
+        const currentTargetFile = targetFile || '/App.js';
 
-        // Форсируем переинициализацию Sandpack
-        setRefreshKey(prev => prev + 1);
+        console.log(`📝 GenerateAiCode: target=${currentTargetFile}, mode=${editMode}, turn=${conversationTurn}`);
 
-        console.log("✅ Файлы обновлены, Sandpack переинициализирован");
-
-        if(result.data?.files) {
-            await UpdateFiles({
-                workspaceId:id,
-                files:result.data.files
+        try {
+            // 🆕 ДВУХРЕЖИМНАЯ АРХИТЕКТУРА: отправляем targetFile, mode и turn
+            const result = await axios.post('/api/gen-ai-code', {
+                targetFile: currentTargetFile,      // 🆕 Какой файл редактируем
+                userMessage: userMessage,            // Запрос пользователя
+                messages: messages,                 // История сообщений
+                currentCode: files,                 // Все текущие файлы
+                mode: editMode,                     // 🆕 'template_filling' | 'fragment_editing' | 'auto'
+                conversationTurn: conversationTurn  // 🆕 Номер в диалоге
             });
+
+            // Preprocess AI-generated files
+            const processedAiFiles = preprocessFiles(result.data?.files || {});
+            const mergedFiles = {...Lookup.DEFAULT_FILE, ...processedAiFiles};
+            setFiles(mergedFiles);
+
+            // Форсируем переинициализацию Sandpack
+            setRefreshKey(prev => prev + 1);
+
+            // Увеличиваем номер очереди разговора
+            setConversationTurn(prev => prev + 1);
+
+            console.log("✅ Файлы обновлены, режим:", result.data?.mode);
+
+            if(result.data?.files) {
+                await UpdateFiles({
+                    workspaceId:id,
+                    files:result.data.files
+                });
+            }
+        } catch(error) {
+            console.error("❌ Ошибка при генерации кода:", error.message);
+        } finally {
+            setLoading(false);
         }
-        setLoading(false);
     }
 
     const downloadFiles = async () => {
