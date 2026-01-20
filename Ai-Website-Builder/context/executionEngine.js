@@ -72,6 +72,37 @@ export function parseExecutionErrors(output) {
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
 
+    // 0️⃣ SANDPACK/VITE ERROR FORMAT: "/App.js: Could not find module in path: '...' relative to '/App.js' (2:0)"
+    const sandpackMatch = line.match(/^\/(.+?):\s+(.+?)\s+\((\d+):(\d+)\)$/);
+    if (sandpackMatch) {
+      const [, file, message, lineNum, colNum] = sandpackMatch;
+      const key = `sandpack:${file}:${lineNum}`;
+
+      if (!errorMap.has(key)) {
+        errorMap.add(key);
+
+        // Определяем тип ошибки из сообщения
+        let errorType = 'unknown_error';
+        if (message.includes('Could not find module')) {
+          errorType = 'module_not_found';
+        } else if (message.includes('is not exported')) {
+          errorType = 'export_error';
+        } else if (message.includes('SyntaxError')) {
+          errorType = 'syntax_error';
+        }
+
+        errors.push({
+          type: errorType,
+          message: message,
+          file: `/${file}`,
+          line: parseInt(lineNum),
+          column: parseInt(colNum),
+          severity: 'error'
+        });
+      }
+      continue;
+    }
+
     // 1️⃣ NEXT.JS BUILD ERRORS
     if (line.match(/error\s+-\s+/i)) {
       const match = line.match(/error\s+-\s+(.+?)\s+at\s+(.+?):\s*(\d+):(\d+)/);
@@ -111,18 +142,28 @@ export function parseExecutionErrors(output) {
       continue;
     }
 
-    // 3️⃣ MODULE NOT FOUND
-    if (line.includes('Cannot find module') || line.includes('Module not found')) {
-      const moduleMatch = line.match(/(?:Cannot find module|Module not found):\s*['\"](.+?)['\"]/) ||
-                          line.match(/['\"](.+?)['\"].*(?:not found|not exist)/);
+    // 3️⃣ MODULE NOT FOUND (все варианты)
+    if (line.includes('Cannot find module') ||
+        line.includes('Module not found') ||
+        line.includes('Could not find module')) {
+      // Parses:
+      // - "Cannot find module: 'xyz'"
+      // - "Module not found: 'xyz'"
+      // - "Could not find module in path: './components/Login' relative to '/App.js'"
 
-      const key = `module:${moduleMatch?.[1] || 'unknown'}`;
+      let moduleMatch = line.match(/(?:Cannot find module|Module not found|Could not find module):\s*['\"](.+?)['\"]/) ||
+                        line.match(/(?:Cannot find module|Module not found|Could not find module)[^']*['\"](.+?)['\"]/) ||
+                        line.match(/in path:\s*['\"](.+?)['\"]/) ||
+                        line.match(/['\"](.+?)['\"].*(?:not found|not exist)/);
+
+      const modulePathOrName = moduleMatch?.[1] || 'unknown';
+      const key = `module:${modulePathOrName}`;
       if (!errorMap.has(key)) {
         errorMap.add(key);
         errors.push({
           type: 'module_not_found',
-          message: `Cannot find module: ${moduleMatch?.[1] || 'unknown'}`,
-          file: 'package.json',
+          message: `Cannot find module: ${modulePathOrName}`,
+          file: line.includes('/App.js') ? '/App.js' : 'component',
           severity: 'error'
         });
       }

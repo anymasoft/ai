@@ -100,7 +100,7 @@ function CodeView() {
                 currentCode: files,                 // Все текущие файлы
                 mode: editMode,                     // 'template_filling' | 'fragment_editing' | 'auto'
                 conversationTurn: conversationTurn, // Номер в диалоге
-                enableFixLoop: false                // 🆕 Execution fix loop (false по умолчанию)
+                enableFixLoop: true                 // 🆕 Execution fix loop ENABLED (ИНВАРИАНТ: Errors == 0)
             });
 
             // Preprocess AI-generated files
