@@ -46,6 +46,114 @@ export function runExecution(projectDir, command = 'build') {
 }
 
 /**
+ * Проверяет что UI может рендериться (структурные файлы корректны)
+ * Проверяет структуру React приложения ПЕРЕД запуском build
+ *
+ * @param {Object} files - объект всех файлов проекта
+ * @returns {Object} { isValid, errors: [] }
+ */
+export function checkRuntimeUIStructure(files) {
+  const errors = [];
+
+  if (!files) {
+    return {
+      isValid: false,
+      errors: [{
+        type: 'runtime_render_error',
+        message: 'No files provided',
+        fileHints: ['index.js', 'App.js', 'index.html']
+      }]
+    };
+  }
+
+  // Проверяем index.js
+  const indexFile = files['/index.js'] || files['index.js'];
+  if (!indexFile) {
+    errors.push({
+      type: 'runtime_render_error',
+      message: 'Missing entry point: index.js (must contain React.createRoot)',
+      fileHints: ['index.js']
+    });
+  } else {
+    const indexCode = typeof indexFile === 'string' ? indexFile : indexFile.code;
+    if (!indexCode.includes('createRoot')) {
+      errors.push({
+        type: 'runtime_render_error',
+        message: 'index.js missing React.createRoot() call',
+        fileHints: ['index.js']
+      });
+    }
+  }
+
+  // Проверяем App.js
+  const appFile = files['/App.js'] || files['App.js'];
+  if (!appFile) {
+    errors.push({
+      type: 'runtime_render_error',
+      message: 'Missing App.js (main component)',
+      fileHints: ['App.js']
+    });
+  } else {
+    const appCode = typeof appFile === 'string' ? appFile : appFile.code;
+
+    // Проверяем что App экспортится
+    if (!appCode.includes('export')) {
+      errors.push({
+        type: 'runtime_render_error',
+        message: 'App.js does not export a component',
+        fileHints: ['App.js']
+      });
+    }
+
+    // Проверяем что App возвращает что-то (не undefined/null)
+    const hasReturn = appCode.includes('return');
+    const hasJSX = appCode.includes('return (') || appCode.includes('return <');
+
+    if (!hasReturn) {
+      errors.push({
+        type: 'runtime_render_error',
+        message: 'App.js function does not have a return statement',
+        fileHints: ['App.js']
+      });
+    } else if (!hasJSX && !appCode.includes('return {')) {
+      // Если есть return, но это не JSX и не object - может быть просто return;
+      // Проверяем что это не пусто
+      if (appCode.includes('return;') || appCode.includes('return }')) {
+        errors.push({
+          type: 'runtime_render_error',
+          message: 'App.js function returns empty value (null/undefined)',
+          fileHints: ['App.js']
+        });
+      }
+    }
+  }
+
+  // Проверяем index.html
+  const htmlFile = files['/public/index.html'] || files['index.html'];
+  if (!htmlFile) {
+    errors.push({
+      type: 'runtime_render_error',
+      message: 'Missing index.html',
+      fileHints: ['index.html']
+    });
+  } else {
+    const htmlCode = typeof htmlFile === 'string' ? htmlFile : htmlFile.code;
+    if (!htmlCode.includes('id="root"')) {
+      errors.push({
+        type: 'runtime_render_error',
+        message: 'index.html missing root element (id="root")',
+        fileHints: ['index.html']
+      });
+    }
+  }
+
+  return {
+    isValid: errors.length === 0,
+    errors
+  };
+}
+
+/**
  * Парсит ошибки из вывода выполнения
  *
  * @param {string} output - объединённый stdout + stderr
@@ -244,17 +352,34 @@ export async function runFixLoop({
     console.log(`${'─'.repeat(70)}`);
 
     // ════════════════════════════════════════════════════════════════
-    // ШАГ 1: Запуск проекта
+    // ШАГ 0: Проверка структуры (runtime UI validation)
     // ════════════════════════════════════════════════════════════════
 
-    const execution = runExecution(projectDir, 'build');
-    const combinedOutput = execution.stdout + '\n' + execution.stderr;
+    const runtimeCheck = checkRuntimeUIStructure(currentFiles);
+    let executionErrors = [];
+
+    if (!runtimeCheck.isValid) {
+      console.log(`⚠️  Runtime structure issues detected:`);
+      runtimeCheck.errors.forEach(err => {
+        console.log(`   ❌ ${err.message}`);
+        executionErrors.push(err);
+      });
+    }
 
     // ════════════════════════════════════════════════════════════════
-    // ШАГ 2: Парсим ошибки
+    // ШАГ 1: Запуск проекта (только если структура OK)
     // ════════════════════════════════════════════════════════════════
 
-    const executionErrors = parseExecutionErrors(combinedOutput);
+    if (executionErrors.length === 0) {
+      const execution = runExecution(projectDir, 'build');
+      const combinedOutput = execution.stdout + '\n' + execution.stderr;
+
+      // ════════════════════════════════════════════════════════════════
+      // ШАГ 2: Парсим ошибки из build
+      // ════════════════════════════════════════════════════════════════
+
+      executionErrors = parseExecutionErrors(combinedOutput);
+    }
 
     console.log(`📋 Errors found: ${executionErrors.length}`);
 

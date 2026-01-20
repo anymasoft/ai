@@ -71,6 +71,52 @@ export async function POST(req){
         const parsedData = JSON.parse(resp);
         console.log("📦 Распарсенные файлы:", Object.keys(parsedData.files || {}));
 
+        // ════════════════════════════════════════════════════════════════
+        // ЗАЩИТА СТРУКТУРНЫХ ФАЙЛОВ (index.js, index.html, App.css)
+        // ════════════════════════════════════════════════════════════════
+
+        // Если LLM вернул эти файлы, проверяем что они корректны
+        // Если нет - игнорируем и используем дефолт
+        const structuralFiles = ['index.js', '/index.js', 'index.html', '/public/index.html', 'App.css', '/App.css'];
+
+        if (parsedData.files) {
+            for (const file of structuralFiles) {
+                if (parsedData.files[file]) {
+                    const code = typeof parsedData.files[file] === 'string'
+                        ? parsedData.files[file]
+                        : parsedData.files[file].code;
+
+                    // Проверяем что index.js содержит React.createRoot
+                    if (file === '/index.js' || file === 'index.js') {
+                        if (!code.includes('createRoot') && !code.includes('ReactDOM.render')) {
+                            console.warn(`⚠️  ${file} corrupted (no React mount). Removing from response.`);
+                            delete parsedData.files[file];
+                        }
+                    }
+
+                    // Проверяем что index.html содержит root div
+                    if (file === '/public/index.html' || file === 'index.html') {
+                        if (!code.includes('id="root"')) {
+                            console.warn(`⚠️  ${file} corrupted (no root div). Removing from response.`);
+                            delete parsedData.files[file];
+                        }
+                    }
+                }
+            }
+        }
+
+        // Проверяем App.js - должен иметь return statement
+        const appFile = parsedData.files && (parsedData.files['/App.js'] || parsedData.files['App.js']);
+        if (appFile) {
+            const appCode = typeof appFile === 'string' ? appFile : appFile.code;
+
+            // Проверяем что App имеет return statement и не просто пусто
+            if (!appCode.includes('return') || appCode.trim().endsWith('}') && !appCode.includes('return (') && !appCode.includes('return <')) {
+                console.warn(`⚠️  App.js may return null/undefined. Flagging for fix loop.`);
+                // Не удаляем, но отмечаем для fix loop ниже
+            }
+        }
+
         let finalData = parsedData;
 
         // ════════════════════════════════════════════════════════════════
