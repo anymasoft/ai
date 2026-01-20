@@ -12,7 +12,8 @@ from prompts import (
     YOUTUBE_TRANSCRIPT_SYSTEM_PROMPT,
     ENHANCE_FRAGMENT_SYSTEM_PROMPT,
     ENHANCE_FULL_SYSTEM_PROMPT,
-    ENHANCE_PLAN_SYSTEM_PROMPT
+    ENHANCE_PLAN_SYSTEM_PROMPT,
+    HUMANIZE_SYSTEM_PROMPT
 )
 
 # Настраиваем логирование
@@ -1299,3 +1300,105 @@ def import_youtube_video(youtube_url: str) -> str:
     logger.info(f"[IMPORT_YOUTUBE] Импорт завершен успешно ({len(processed_text)} символов)")
 
     return processed_text
+
+
+def humanize_text(text: str) -> Tuple[LLMResponse, Optional[ChunkInfo]]:
+    """
+    РЕЖИМ 6: Сделать текст более естественным (убрать AI-паттерны, канцелярит).
+
+    Работает с полным текстом или фрагментом.
+    При truncation — retry с увеличенным лимитом.
+    При необходимости — chunking для длинных текстов.
+
+    Args:
+        text: Текст для гуманизации
+
+    Returns:
+        Tuple[LLMResponse, ChunkInfo] - гуманизированный текст и инфо о чанкинге
+    """
+    logger.info(f"[HUMANIZE] Начинаю гуманизацию текста. Размер: {len(text)} символов")
+
+    text_len = len(text)
+    chunk_info = ChunkInfo(chunks_count=1, strategy="single", total_chars=text_len)
+
+    system_prompt = HUMANIZE_SYSTEM_PROMPT
+
+    # Если текст достаточно короткий - обработать одним запросом
+    if text_len <= CHUNK_MAX_CHARS:
+        logger.debug(f"[HUMANIZE] Текст достаточно короткий ({text_len} символов), обработка одним запросом")
+
+        messages = [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": text}
+        ]
+
+        response = _call_openai(messages, FULLTEXT_MAX_TOKENS, mode="humanize")
+
+        # Retry если обрезано
+        if response.truncated and RETRY_ON_TRUNCATION:
+            retry_tokens = FULLTEXT_MAX_TOKENS * RETRY_TOKEN_MULTIPLIER
+            logger.info(f"[HUMANIZE RETRY] Повторяю с увеличенным лимитом: {retry_tokens} токенов")
+            response = _call_openai(messages, retry_tokens, mode="humanize_retry")
+
+        if response.truncated:
+            logger.warning(f"[HUMANIZE TRUNCATED] Текст остался обрезанным, включаю chunking...")
+        else:
+            logger.info(f"[HUMANIZE SUCCESS] Текст успешно гуманизирован ({len(response.text)} символов)")
+            return response, chunk_info
+
+    # Длинный текст или обрезано при попытке одним запросом -> chunking
+    logger.info(f"[HUMANIZE CHUNKING] Разбиваю текст на чанки для обработки")
+
+    chunks = _split_into_chunks(text)
+    chunk_info.chunks_count = len(chunks)
+    chunk_info.strategy = "paragraph" if len(chunks) > 1 else "single"
+
+    logger.info(
+        f"[HUMANIZE CHUNKING] Разбито на {len(chunks)} чанков. "
+        f"Средний размер: {text_len // len(chunks) if chunks else 0} символов"
+    )
+
+    # Обработать каждый чанк
+    humanized_chunks = []
+    for i, chunk in enumerate(chunks):
+        logger.debug(f"[HUMANIZE CHUNKING] Обрабатываю чанк {i+1}/{len(chunks)} ({len(chunk)} символов)")
+
+        chunk_messages = [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": chunk}
+        ]
+
+        chunk_response = _call_openai(chunk_messages, FULLTEXT_MAX_TOKENS, mode=f"humanize_chunk_{i+1}")
+
+        # Если даже чанк обрезан - retry
+        if chunk_response.truncated and RETRY_ON_TRUNCATION:
+            retry_tokens = FULLTEXT_MAX_TOKENS * RETRY_TOKEN_MULTIPLIER
+            logger.info(f"[HUMANIZE CHUNK RETRY] Чанк {i+1} обрезан, повтор с {retry_tokens} токенов")
+            chunk_response = _call_openai(chunk_messages, retry_tokens, mode=f"humanize_chunk_{i+1}_retry")
+
+        # Если после retry всё ещё обрезано - критическая ошибка
+        if chunk_response.truncated:
+            logger.error(f"[HUMANIZE CHUNK FAILED] Чанк {i+1} остался обрезанным!")
+            raise Exception(
+                f"TRUNCATED: Чанк {i+1} текста был обрезан даже с максимальным лимитом токенов. "
+                f"Попробуйте сократить текст или разбить на части."
+            )
+
+        humanized_chunks.append(chunk_response.text)
+        logger.debug(f"[HUMANIZE CHUNKING] Чанк {i+1} успешно обработан ({len(chunk_response.text)} символов)")
+
+    # Собрать гуманизированный текст из чанков
+    humanized_text = "\n\n".join(humanized_chunks)
+    logger.info(
+        f"[HUMANIZE SUCCESS] Весь текст успешно гуманизирован через {len(chunks)} чанков. "
+        f"Итоговый размер: {len(humanized_text)} символов"
+    )
+
+    response = LLMResponse(
+        text=humanized_text,
+        finish_reason="stop",
+        usage=None,
+        truncated=False
+    )
+
+    return response, chunk_info
