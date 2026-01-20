@@ -1,15 +1,12 @@
 "use client"
-import React, { useContext, useState, useEffect } from 'react';
-
-// 🔴 RUNTIME MARKER - если это выполняется в браузере, значит файл правильный
-console.log("🎯 CODEVIEW_LOADED_FROM:", "/components/custom/CodeView.jsx");
-console.log("🎯 THIS IS THE NEW CODE VERSION WITH DUAL MODE ARCHITECTURE");
+import React, { use, useContext, useState, useEffect } from 'react';
 import {
     SandpackProvider,
     SandpackLayout,
     SandpackCodeEditor,
     SandpackPreview,
-    SandpackFileExplorer
+    SandpackFileExplorer,
+    useSandpack
 } from "@codesandbox/sandpack-react";
 import Lookup from '@/data/Lookup';
 import { MessagesContext } from '@/context/MessagesContext';
@@ -32,11 +29,6 @@ function CodeView() {
     const convex=useConvex();
     const [loading,setLoading]=useState(false);
     const [refreshKey, setRefreshKey] = useState(0);
-
-    // 🆕 ДВУХРЕЖИМНАЯ АРХИТЕКТУРА
-    const [targetFile, setTargetFile] = useState(null);  // Какой файл редактируем
-    const [editMode, setEditMode] = useState('auto');   // 'template_filling' | 'fragment_editing' | 'auto'
-    const [conversationTurn, setConversationTurn] = useState(0);
 
     useEffect(() => {
         id&&GetFiles();
@@ -80,66 +72,80 @@ function CodeView() {
         }, [messages])
 
     const GenerateAiCode=async()=>{
-        // 🎯 EXECUTION MARKER
-        console.log("🎯 GENERATEAICODE CALLED - using NEW DUAL-MODE API");
         setLoading(true);
         const userMessage = messages?.length > 0 ? messages[messages.length - 1]?.content : "";
+        const PROMPT = userMessage + "\n\n" + Prompt.CODE_GEN_PROMPT;
+        const result=await axios.post('/api/gen-ai-code',{
+            prompt:PROMPT
+        });
+        
+        // Preprocess AI-generated files
+        const processedAiFiles = preprocessFiles(result.data?.files || {});
+        const mergedFiles = {...Lookup.DEFAULT_FILE, ...processedAiFiles};
+        setFiles(mergedFiles);
 
-        // 🆕 Определяем targetFile если не установлен
-        // По умолчанию редактируем App.js
-        const currentTargetFile = targetFile || '/App.js';
+        // Форсируем переинициализацию Sandpack
+        setRefreshKey(prev => prev + 1);
 
-        console.log(`📝 GenerateAiCode: target=${currentTargetFile}, mode=${editMode}, turn=${conversationTurn}`);
+        console.log("✅ Файлы обновлены, Sandpack переинициализирован");
 
-        try {
-            // 🆕 ДВУХРЕЖИМНАЯ АРХИТЕКТУРА + EXECUTION FIX LOOP
-            const result = await axios.post('/api/gen-ai-code', {
-                targetFile: currentTargetFile,      // Какой файл редактируем
-                userMessage: userMessage,            // Запрос пользователя
-                messages: messages,                 // История сообщений
-                currentCode: files,                 // Все текущие файлы
-                mode: editMode,                     // 'template_filling' | 'fragment_editing' | 'auto'
-                conversationTurn: conversationTurn, // Номер в диалоге
-                enableFixLoop: true                 // 🆕 Execution fix loop ENABLED (ИНВАРИАНТ: Errors == 0)
+        if(result.data?.files) {
+            await UpdateFiles({
+                workspaceId:id,
+                files:result.data.files
             });
+        }
+        setLoading(false);
+    }
+    
+    // Вспомогательный компонент для управления Sandpack
+    const SandpackContent = () => {
+        const { sandpack } = useSandpack();
 
-            // Preprocess AI-generated files
-            const processedAiFiles = preprocessFiles(result.data?.files || {});
-            const mergedFiles = {...Lookup.DEFAULT_FILE, ...processedAiFiles};
-            setFiles(mergedFiles);
-
-            // Форсируем переинициализацию Sandpack
-            setRefreshKey(prev => prev + 1);
-
-            // Увеличиваем номер очереди разговора
-            setConversationTurn(prev => prev + 1);
-
-            console.log("✅ Файлы обновлены, режим:", result.data?.mode);
-
-            // 🆕 Логируем результаты Fix Loop если он был запущен
-            if(result.data?.fixLoopResult) {
-                if(result.data.fixLoopResult.success) {
-                    console.log(`✅ Fix loop completed successfully (${result.data.fixLoopResult.iterations} iterations)`);
-                } else {
-                    console.warn(`⚠️  Fix loop failed after ${result.data.fixLoopResult.iterations} iterations`);
-                    if(result.data.fixLoopResult.errors) {
-                        console.error(`Remaining errors: ${result.data.fixLoopResult.errors.length}`);
-                    }
+        useEffect(() => {
+            // При переключении на Preview - рефрешим Sandpack
+            if (activeTab === 'preview' && sandpack) {
+                try {
+                    sandpack.refresh();
+                } catch (e) {
+                    console.log("Refresh triggered");
                 }
             }
+        }, [activeTab, sandpack]);
 
-            if(result.data?.files) {
-                await UpdateFiles({
-                    workspaceId:id,
-                    files:result.data.files
-                });
-            }
-        } catch(error) {
-            console.error("❌ Ошибка при генерации кода:", error.message);
-        } finally {
-            setLoading(false);
-        }
-    }
+        return (
+            <SandpackLayout>
+                <div style={{
+                    visibility: activeTab === 'code' ? 'visible' : 'hidden',
+                    width: activeTab === 'code' ? '100%' : '0',
+                    height: activeTab === 'code' ? '80vh' : '0',
+                    overflow: 'hidden'
+                }}>
+                    <SandpackFileExplorer style={{ height: '80vh' }} />
+                    <SandpackCodeEditor
+                    style={{ height: '80vh' }}
+                    showTabs
+                    showLineNumbers
+                    showInlineErrors
+                    wrapContent />
+                </div>
+
+                <div style={{
+                    visibility: activeTab === 'preview' ? 'visible' : 'hidden',
+                    width: activeTab === 'preview' ? '100%' : '0',
+                    height: activeTab === 'preview' ? '80vh' : '0',
+                    overflow: 'hidden'
+                }}>
+                    <SandpackPreview
+                        style={{ height: '80vh' }}
+                        showNavigator={true}
+                        showOpenInCodeSandbox={false}
+                        showRefreshButton={true}
+                    />
+                </div>
+            </SandpackLayout>
+        );
+    };
 
     const downloadFiles = async () => {
         try {
@@ -245,33 +251,7 @@ function CodeView() {
                 recompileDelay: 300
             }}
             >
-                <SandpackLayout>
-                    <div style={{
-                        display: activeTab === 'code' ? 'flex' : 'none'
-                    }}>
-                        <SandpackFileExplorer style={{ height: '80vh' }} />
-                        <SandpackCodeEditor
-                        key="code"
-                        style={{ height: '80vh' }}
-                        showTabs
-                        showLineNumbers
-                        showInlineErrors
-                        wrapContent />
-                    </div>
-
-                    <div style={{
-                        display: activeTab === 'preview' ? 'block' : 'none',
-                        width: '100%'
-                    }}>
-                        <SandpackPreview
-                            key="preview"
-                            style={{ height: '80vh' }}
-                            showNavigator={true}
-                            showOpenInCodeSandbox={false}
-                            showRefreshButton={true}
-                        />
-                    </div>
-                </SandpackLayout>
+                <SandpackContent />
             </SandpackProvider>
 
             {loading&&<div className='p-10 bg-gray-900 opacity-80 absolute top-0 
