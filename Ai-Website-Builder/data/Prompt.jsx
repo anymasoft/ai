@@ -78,13 +78,9 @@ Ensure the project follows best practices in component organization and styling.
       "generatedFiles": []
     }
 
-    Ensure the files field contains all the created files, and the generatedFiles field contains the list of generated files:{
-    "/App.js": {
-      "code": "import React from 'react';\n\nfunction App() {\n  return (\n    <div>\n      <h1>Hello World</h1>\n    </div>\n  );\n}\n\nexport default App;\n"
-    }
-    }
-    
-    Also updaate the Package.json file with the needed dependencies.
+    Ensure the files field contains all the created files, and the generatedFiles field contains the list of generated files.
+
+    Also update the Package.json file with the needed dependencies.
 
     Additionally, include an explanation of the project's structure, purpose, and additional instructions:
     - For placeholder images use appropirate URLs.
