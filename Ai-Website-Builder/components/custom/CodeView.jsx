@@ -1,18 +1,17 @@
 "use client"
-import React, { use, useContext } from 'react';
-import { useState } from 'react';
+import React, { use, useContext, useState, useEffect } from 'react';
 import {
     SandpackProvider,
     SandpackLayout,
     SandpackCodeEditor,
     SandpackPreview,
-    SandpackFileExplorer
+    SandpackFileExplorer,
+    useSandpack
 } from "@codesandbox/sandpack-react";
 import Lookup from '@/data/Lookup';
 import { MessagesContext } from '@/context/MessagesContext';
 import axios from 'axios';
 import Prompt from '@/data/Prompt';
-import { useEffect } from 'react';
 import { UpdateFiles } from '@/convex/workspace';
 import { useConvex, useMutation } from 'convex/react';
 import { useParams } from 'next/navigation';
@@ -99,6 +98,49 @@ function CodeView() {
         setLoading(false);
     }
     
+    // Вспомогательный компонент для управления Sandpack
+    const SandpackContent = () => {
+        const { sandpack } = useSandpack();
+
+        useEffect(() => {
+            // При переключении на Preview - рефрешим Sandpack
+            if (activeTab === 'preview' && sandpack) {
+                try {
+                    sandpack.refresh();
+                } catch (e) {
+                    console.log("Refresh triggered");
+                }
+            }
+        }, [activeTab, sandpack]);
+
+        return (
+            <SandpackLayout>
+                <div style={{
+                    display: activeTab === 'code' ? 'flex' : 'none'
+                }}>
+                    <SandpackFileExplorer style={{ height: '80vh' }} />
+                    <SandpackCodeEditor
+                    style={{ height: '80vh' }}
+                    showTabs
+                    showLineNumbers
+                    showInlineErrors
+                    wrapContent />
+                </div>
+
+                <div style={{
+                    display: activeTab === 'preview' ? 'block' : 'none'
+                }}>
+                    <SandpackPreview
+                        style={{ height: '80vh' }}
+                        showNavigator={true}
+                        showOpenInCodeSandbox={false}
+                        showRefreshButton={true}
+                    />
+                </div>
+            </SandpackLayout>
+        );
+    };
+
     const downloadFiles = async () => {
         try {
             // Create a new JSZip instance
@@ -203,34 +245,7 @@ function CodeView() {
                 recompileDelay: 300
             }}
             >
-                <div className="relative">
-                    <SandpackLayout>
-                        <div style={{
-                            display: 'contents',
-                            visibility: activeTab === 'code' ? 'visible' : 'hidden'
-                        }}>
-                            <SandpackFileExplorer style={{ height: '80vh' }} />
-                            <SandpackCodeEditor
-                            style={{ height: '80vh' }}
-                            showTabs
-                            showLineNumbers
-                            showInlineErrors
-                            wrapContent />
-                        </div>
-
-                        <div style={{
-                            display: 'contents',
-                            visibility: activeTab === 'preview' ? 'visible' : 'hidden'
-                        }}>
-                            <SandpackPreview
-                                style={{ height: '80vh' }}
-                                showNavigator={true}
-                                showOpenInCodeSandbox={false}
-                                showRefreshButton={true}
-                            />
-                        </div>
-                    </SandpackLayout>
-                </div>
+                <SandpackContent />
             </SandpackProvider>
 
             {loading&&<div className='p-10 bg-gray-900 opacity-80 absolute top-0 
