@@ -1,300 +1,183 @@
 /**
- * Execution Engine - запускает проект и парсит ошибки
- * Используется для автоматического исправления ошибок LLM
+ * EXECUTION ENGINE v2.0
+ *
+ * ИНВАРИАНТ: Execution считается УСПЕШНЫМ ТОЛЬКО если Errors == 0
+ * Белый экран / runtime errors / build errors → ВСЕ это errors
+ *
+ * СТРАТЕГИЯ:
+ * 1. Запустить build
+ * 2. Парсить errors
+ * 3. Если errors == 0 → SUCCESS
+ * 4. Если errors > 0 → вызвать LLM в FIX MODE
+ * 5. Повторить до success или maxIterations == 5
+ *
+ * СОХРАНЯТЬ: только SUCCESS результат, иначе лог + последняя зелёная версия
  */
 
 import { execSync } from 'child_process';
-import path from 'path';
+import { GenAiCode } from '@/configs/AiModel';
+import Prompt from '@/data/Prompt';
 
 /**
- * Запускает build/dev проекта и возвращает результат выполнения
- *
- * @param {string} projectDir - путь к папке проекта
- * @param {string} command - команда для запуска ('build' | 'dev' | 'test')
- * @returns {Object} { success, stdout, stderr, exitCode }
+ * ЭТАП 1: Запускает build и возвращает output
+ * @returns { success, stdout, stderr, exitCode, timestamp }
  */
 export function runExecution(projectDir, command = 'build') {
+  const timestamp = new Date().toISOString();
   try {
-    console.log(`\n🚀 Executing: npm run ${command}...`);
+    console.log(`\n🚀 [${timestamp}] Executing: npm run ${command}...`);
 
     const output = execSync(`npm run ${command}`, {
       cwd: projectDir,
       encoding: 'utf-8',
-      stdio: 'pipe'
+      stdio: 'pipe',
+      timeout: 120000  // 2 минуты max
     });
 
-    console.log(`✅ Execution successful`);
+    console.log(`✅ Build succeeded`);
 
     return {
       success: true,
       stdout: output,
       stderr: '',
       exitCode: 0,
-      command
+      command,
+      timestamp
     };
   } catch (error) {
-    console.log(`❌ Execution failed (exit code: ${error.status})`);
+    console.log(`❌ Build failed (exit code: ${error.status})`);
 
     return {
       success: false,
       stdout: error.stdout ? error.stdout.toString() : '',
       stderr: error.stderr ? error.stderr.toString() : error.message,
       exitCode: error.status || 1,
-      command
+      command,
+      timestamp
     };
   }
 }
 
 /**
- * Проверяет что UI может рендериться (структурные файлы корректны)
- * Проверяет структуру React приложения ПЕРЕД запуском build
- *
- * @param {Object} files - объект всех файлов проекта
- * @returns {Object} { isValid, errors: [] }
- */
-export function checkRuntimeUIStructure(files) {
-  const errors = [];
-
-  if (!files) {
-    return {
-      isValid: false,
-      errors: [{
-        type: 'runtime_render_error',
-        message: 'No files provided',
-        fileHints: ['index.js', 'App.js', 'index.html']
-      }]
-    };
-  }
-
-  // Проверяем index.js
-  const indexFile = files['/index.js'] || files['index.js'];
-  if (!indexFile) {
-    errors.push({
-      type: 'runtime_render_error',
-      message: 'Missing entry point: index.js (must contain React.createRoot)',
-      fileHints: ['index.js']
-    });
-  } else {
-    const indexCode = typeof indexFile === 'string' ? indexFile : indexFile.code;
-    if (!indexCode.includes('createRoot')) {
-      errors.push({
-        type: 'runtime_render_error',
-        message: 'index.js missing React.createRoot() call',
-        fileHints: ['index.js']
-      });
-    }
-  }
-
-  // Проверяем App.js
-  const appFile = files['/App.js'] || files['App.js'];
-  if (!appFile) {
-    errors.push({
-      type: 'runtime_render_error',
-      message: 'Missing App.js (main component)',
-      fileHints: ['App.js']
-    });
-  } else {
-    const appCode = typeof appFile === 'string' ? appFile : appFile.code;
-
-    // Проверяем что App экспортится
-    if (!appCode.includes('export')) {
-      errors.push({
-        type: 'runtime_render_error',
-        message: 'App.js does not export a component',
-        fileHints: ['App.js']
-      });
-    }
-
-    // Проверяем что App возвращает что-то (не undefined/null)
-    const hasReturn = appCode.includes('return');
-    const hasJSX = appCode.includes('return (') || appCode.includes('return <');
-
-    if (!hasReturn) {
-      errors.push({
-        type: 'runtime_render_error',
-        message: 'App.js function does not have a return statement',
-        fileHints: ['App.js']
-      });
-    } else if (!hasJSX && !appCode.includes('return {')) {
-      // Если есть return, но это не JSX и не object - может быть просто return;
-      // Проверяем что это не пусто
-      if (appCode.includes('return;') || appCode.includes('return }')) {
-        errors.push({
-          type: 'runtime_render_error',
-          message: 'App.js function returns empty value (null/undefined)',
-          fileHints: ['App.js']
-        });
-      }
-    }
-  }
-
-  // Проверяем index.html
-  const htmlFile = files['/public/index.html'] || files['index.html'];
-  if (!htmlFile) {
-    errors.push({
-      type: 'runtime_render_error',
-      message: 'Missing index.html',
-      fileHints: ['index.html']
-    });
-  } else {
-    const htmlCode = typeof htmlFile === 'string' ? htmlFile : htmlFile.code;
-    if (!htmlCode.includes('id="root"')) {
-      errors.push({
-        type: 'runtime_render_error',
-        message: 'index.html missing root element (id="root")',
-        fileHints: ['index.html']
-      });
-    }
-  }
-
-  return {
-    isValid: errors.length === 0,
-    errors
-  };
-}
-
-/**
- * Парсит ошибки из вывода выполнения
- *
- * @param {string} output - объединённый stdout + stderr
- * @returns {Array} массив структурированных ошибок
+ * ЭТАП 2: Парсит ошибки из build output (6 типов)
+ * @returns [ { type, file, line, column, message } ]
  */
 export function parseExecutionErrors(output) {
+  if (!output || output.length === 0) return [];
+
   const errors = [];
-
-  if (!output || output.length === 0) {
-    return errors;
-  }
-
   const lines = output.split('\n');
+  const errorMap = new Set();  // Для дедупликации
 
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
 
-    // ══════════════════════════════════════════════════════════════
-    // NEXT.JS BUILD ERRORS
-    // ══════════════════════════════════════════════════════════════
-
-    // Format: "error - SomeFile.jsx (12:5): Error message"
-    const nextErrorMatch = line.match(/error\s+-\s+(.+?)\s+\((\d+):(\d+)\):\s*(.+?)$/);
-    if (nextErrorMatch) {
-      errors.push({
-        type: 'next_build_error',
-        file: nextErrorMatch[1],
-        line: parseInt(nextErrorMatch[2]),
-        column: parseInt(nextErrorMatch[3]),
-        message: nextErrorMatch[4],
-        raw: line
-      });
+    // 1️⃣ NEXT.JS BUILD ERRORS
+    if (line.match(/error\s+-\s+/i)) {
+      const match = line.match(/error\s+-\s+(.+?)\s+at\s+(.+?):\s*(\d+):(\d+)/);
+      if (match) {
+        const key = `${match[2]}:${match[3]}`;
+        if (!errorMap.has(key)) {
+          errorMap.add(key);
+          errors.push({
+            type: 'next_build_error',
+            message: match[1],
+            file: match[2],
+            line: parseInt(match[3]),
+            column: parseInt(match[4]),
+            severity: 'error'
+          });
+        }
+      }
       continue;
     }
 
-    // ══════════════════════════════════════════════════════════════
-    // SYNTAX ERRORS (React/JSX)
-    // ══════════════════════════════════════════════════════════════
-
-    // Format: "SyntaxError: Unexpected token..."
+    // 2️⃣ SYNTAX ERRORS
     if (line.includes('SyntaxError')) {
-      const syntaxMatch = line.match(/SyntaxError:\s*(.+?)(?:\s+at|$)/);
-      errors.push({
-        type: 'syntax_error',
-        file: extractFilePath(lines, i),
-        line: null,
-        column: null,
-        message: syntaxMatch ? syntaxMatch[1] : line,
-        raw: line
-      });
+      const syntaxMatch = line.match(/SyntaxError:\s*(.+?)(?:\s+at|\s+in|$)/);
+      const fileMatch = lines[i - 1]?.match(/at\s+(.+?):\s*(\d+)/);
+
+      const key = `syntax:${fileMatch?.[1] || 'unknown'}`;
+      if (!errorMap.has(key)) {
+        errorMap.add(key);
+        errors.push({
+          type: 'syntax_error',
+          message: syntaxMatch ? syntaxMatch[1] : line,
+          file: fileMatch?.[1] || 'unknown',
+          line: fileMatch ? parseInt(fileMatch[2]) : 0,
+          severity: 'error'
+        });
+      }
       continue;
     }
 
-    // ══════════════════════════════════════════════════════════════
-    // MODULE NOT FOUND
-    // ══════════════════════════════════════════════════════════════
-
-    // Format: "error - Cannot find module 'lodash'"
+    // 3️⃣ MODULE NOT FOUND
     if (line.includes('Cannot find module') || line.includes('Module not found')) {
-      const moduleMatch = line.match(/(?:Cannot find module|Module not found):\s*['"](.+?)['"]/);
-      errors.push({
-        type: 'module_not_found',
-        file: extractFilePath(lines, i),
-        line: null,
-        column: null,
-        message: moduleMatch ? `Cannot find module: ${moduleMatch[1]}` : line,
-        raw: line
-      });
+      const moduleMatch = line.match(/(?:Cannot find module|Module not found):\s*['\"](.+?)['\"]/) ||
+                          line.match(/['\"](.+?)['\"].*(?:not found|not exist)/);
+
+      const key = `module:${moduleMatch?.[1] || 'unknown'}`;
+      if (!errorMap.has(key)) {
+        errorMap.add(key);
+        errors.push({
+          type: 'module_not_found',
+          message: `Cannot find module: ${moduleMatch?.[1] || 'unknown'}`,
+          file: 'package.json',
+          severity: 'error'
+        });
+      }
       continue;
     }
 
-    // ══════════════════════════════════════════════════════════════
-    // TYPE ERRORS (TypeScript / TypeScript inference)
-    // ══════════════════════════════════════════════════════════════
+    // 4️⃣ IMPORT/EXPORT ERRORS
+    if (line.includes('export') && (line.includes('undefined') || line.includes('not'))) {
+      if (!errorMap.has('export:undefined')) {
+        errorMap.add('export:undefined');
+        errors.push({
+          type: 'export_error',
+          message: 'Component export is undefined - check default export',
+          file: 'component',
+          severity: 'error'
+        });
+      }
+      continue;
+    }
 
-    // Format: "Type 'X' is not assignable to type 'Y'"
-    if (line.includes('is not assignable') || line.includes('Type ')) {
+    // 5️⃣ RUNTIME/JSX ERRORS
+    if (line.includes('Element type is invalid') || line.includes('is not a valid')) {
+      if (!errorMap.has('jsx:invalid')) {
+        errorMap.add('jsx:invalid');
+        errors.push({
+          type: 'jsx_error',
+          message: 'Invalid JSX element - likely missing export or wrong import',
+          severity: 'error'
+        });
+      }
+      continue;
+    }
+
+    // 6️⃣ TYPE ERRORS (TypeScript)
+    if (line.includes('is not assignable to') || line.includes('Type ')) {
       errors.push({
         type: 'type_error',
-        file: extractFilePath(lines, i),
-        line: null,
-        column: null,
-        message: line,
-        raw: line
+        message: line.trim(),
+        severity: 'warning'
       });
       continue;
     }
 
-    // ══════════════════════════════════════════════════════════════
-    // RUNTIME ERRORS
-    // ══════════════════════════════════════════════════════════════
-
-    // Format: "ReferenceError: X is not defined"
-    if (
-      line.includes('ReferenceError') ||
-      line.includes('TypeError') ||
-      line.includes('is not defined') ||
-      line.includes('Cannot read property')
-    ) {
-      const runtimeMatch = line.match(/(?:ReferenceError|TypeError):\s*(.+?)(?:\s+at|$)/);
-      errors.push({
-        type: 'runtime_error',
-        file: extractFilePath(lines, i),
-        line: null,
-        column: null,
-        message: runtimeMatch ? runtimeMatch[1] : line,
-        raw: line
-      });
-      continue;
-    }
-
-    // ══════════════════════════════════════════════════════════════
-    // ESLINT / LINTING ERRORS
-    // ══════════════════════════════════════════════════════════════
-
-    // Format: "error  'useState' is not defined  no-undef"
-    if (line.includes('error') && line.includes('is not defined')) {
-      errors.push({
-        type: 'lint_error',
-        file: extractFilePath(lines, i),
-        line: null,
-        column: null,
-        message: line,
-        raw: line
-      });
-      continue;
-    }
-
-    // ══════════════════════════════════════════════════════════════
-    // GENERIC ERROR PATTERNS
-    // ══════════════════════════════════════════════════════════════
-
-    if (line.trim().startsWith('error') || line.trim().startsWith('Error')) {
-      errors.push({
-        type: 'unknown_error',
-        file: extractFilePath(lines, i),
-        line: null,
-        column: null,
-        message: line,
-        raw: line
-      });
+    // 7️⃣ GENERIC ERROR PATTERNS
+    if (line.trim().startsWith('error') ||
+        (line.includes('Error:') && !line.includes('node_modules'))) {
+      const key = `generic:${line.substring(0, 50)}`;
+      if (!errorMap.has(key)) {
+        errorMap.add(key);
+        errors.push({
+          type: 'unknown_error',
+          message: line.trim(),
+          severity: 'error'
+        });
+      }
     }
   }
 
@@ -302,190 +185,187 @@ export function parseExecutionErrors(output) {
 }
 
 /**
- * Вытаскивает имя файла из контекста ошибки
+ * ЭТАП 3: Вспомогательная функция - извлечь затронутые файлы из ошибок
  */
-function extractFilePath(lines, currentIndex) {
-  // Ищем в текущей строке
-  const currentMatch = lines[currentIndex].match(/\/([^/]+\.(?:js|jsx|ts|tsx))/);
-  if (currentMatch) {
-    return currentMatch[1];
-  }
+function extractAffectedFiles(currentFiles, errors) {
+  const affectedPaths = new Set();
 
-  // Ищем в предыдущих строках
-  for (let i = Math.max(0, currentIndex - 3); i < currentIndex; i++) {
-    const match = lines[i].match(/([^/\s]+\.(?:js|jsx|ts|tsx))/);
-    if (match) {
-      return match[1];
+  // Всегда включаем App.js
+  affectedPaths.add('/App.js');
+
+  // Извлекаем из ошибок
+  for (const err of errors) {
+    if (err.file && err.file !== 'component' && err.file !== 'package.json') {
+      affectedPaths.add(err.file);
     }
   }
 
-  return 'unknown';
+  const result = {};
+  for (const path of affectedPaths) {
+    if (currentFiles[path]) {
+      result[path] = currentFiles[path];
+    }
+  }
+
+  return result;
 }
 
 /**
- * Запускает цикл исправления ошибок
+ * ЭТАП 4: ГЛАВНЫЙ FIX LOOP - повторяет до success или maxIterations
  *
- * @param {Object} params
- *   - initialFiles: текущие файлы проекта
- *   - generateFix: async функция для вызова LLM в FIX режиме
- *   - projectDir: путь к проекту (для exec)
- *   - maxIterations: макс кол-во попыток (default 3)
+ * @param {Object} options
+ *   - initialFiles: текущие файлы (путь → содержимое)
+ *   - callLLMInFixMode: функция LLM
+ *   - projectDir: директория проекта (для npm run build)
+ *   - maxIterations: макс попыток (default 5)
+ *   - onIterationComplete: callback для логирования
  *
- * @returns {Object} { success, finalFiles, errors, iterations }
+ * @returns { success, finalFiles, errors, iterations, executionLog }
  */
 export async function runFixLoop({
   initialFiles,
-  generateFix,
+  callLLMInFixMode,
   projectDir = process.cwd(),
-  maxIterations = 3
+  maxIterations = 5,
+  onIterationComplete = null
 }) {
   console.log(`\n${'═'.repeat(70)}`);
   console.log(`🔄 EXECUTION FIX LOOP STARTED (max ${maxIterations} iterations)`);
   console.log(`${'═'.repeat(70)}\n`);
 
   let currentFiles = { ...initialFiles };
-  let iterationCount = 0;
+  const executionLog = [];
   let lastErrors = [];
 
-  for (iterationCount = 0; iterationCount < maxIterations; iterationCount++) {
-    console.log(`\n📍 Iteration ${iterationCount + 1}/${maxIterations}`);
+  for (let iteration = 0; iteration < maxIterations; iteration++) {
+    console.log(`\n${'─'.repeat(70)}`);
+    console.log(`📍 ITERATION ${iteration + 1}/${maxIterations}`);
     console.log(`${'─'.repeat(70)}`);
 
-    // ════════════════════════════════════════════════════════════════
-    // ШАГ 0: Проверка структуры (runtime UI validation)
-    // ════════════════════════════════════════════════════════════════
+    // ШАГ 1: Запускаем build
+    const executionResult = runExecution(projectDir, 'build');
+    const combinedOutput = executionResult.stdout + '\n' + executionResult.stderr;
 
-    const runtimeCheck = checkRuntimeUIStructure(currentFiles);
-    let executionErrors = [];
+    // ШАГ 2: Парсим ошибки
+    const errors = parseExecutionErrors(combinedOutput);
+    console.log(`📋 Errors found: ${errors.length}`);
 
-    if (!runtimeCheck.isValid) {
-      console.log(`⚠️  Runtime structure issues detected:`);
-      runtimeCheck.errors.forEach(err => {
-        console.log(`   ❌ ${err.message}`);
-        executionErrors.push(err);
-      });
+    if (errors.length > 0) {
+      console.log(`\nError summary:`);
+      const errorsByType = {};
+      for (const err of errors) {
+        errorsByType[err.type] = (errorsByType[err.type] || 0) + 1;
+      }
+      for (const [type, count] of Object.entries(errorsByType)) {
+        console.log(`  • ${type}: ${count}`);
+      }
     }
 
-    // ════════════════════════════════════════════════════════════════
-    // ШАГ 1: Запуск проекта (только если структура OK)
-    // ════════════════════════════════════════════════════════════════
+    // Логируем итерацию
+    const iterationLog = {
+      iteration: iteration + 1,
+      timestamp: executionResult.timestamp,
+      command: executionResult.command,
+      exitCode: executionResult.exitCode,
+      errorsCount: errors.length,
+      errorTypes: errors.map(e => e.type),
+      success: errors.length === 0
+    };
+    executionLog.push(iterationLog);
 
-    if (executionErrors.length === 0) {
-      const execution = runExecution(projectDir, 'build');
-      const combinedOutput = execution.stdout + '\n' + execution.stderr;
-
-      // ════════════════════════════════════════════════════════════════
-      // ШАГ 2: Парсим ошибки из build
-      // ════════════════════════════════════════════════════════════════
-
-      executionErrors = parseExecutionErrors(combinedOutput);
-    }
-
-    console.log(`📋 Errors found: ${executionErrors.length}`);
-
-    if (executionErrors.length === 0) {
+    // ШАГ 3: Проверяем успех (Errors == 0)
+    if (errors.length === 0) {
       console.log(`\n${'═'.repeat(70)}`);
       console.log(`✅ SUCCESS - All errors fixed!`);
       console.log(`${'═'.repeat(70)}\n`);
+
+      if (onIterationComplete) {
+        onIterationComplete(iterationLog);
+      }
 
       return {
         success: true,
         finalFiles: currentFiles,
         errors: [],
-        iterations: iterationCount
+        iterations: iteration + 1,
+        executionLog
       };
     }
 
-    // Логируем ошибки
-    console.log(`\nErrors by type:`);
-    const errorsByType = {};
-    for (const err of executionErrors) {
-      errorsByType[err.type] = (errorsByType[err.type] || 0) + 1;
-    }
-    for (const [type, count] of Object.entries(errorsByType)) {
-      console.log(`  • ${type}: ${count}`);
-    }
-
-    lastErrors = executionErrors;
-
-    // ════════════════════════════════════════════════════════════════
-    // ШАГ 3: Если последняя итерация - выходим
-    // ════════════════════════════════════════════════════════════════
-
-    if (iterationCount === maxIterations - 1) {
+    // ШАГ 4: Если последняя итерация - выходим с ошибками
+    if (iteration === maxIterations - 1) {
       console.log(`\n${'═'.repeat(70)}`);
-      console.log(`❌ FAILED - Max iterations reached with ${executionErrors.length} errors`);
+      console.log(`❌ FAILED - Max iterations reached (${errors.length} errors remain)`);
       console.log(`${'═'.repeat(70)}\n`);
+
+      if (onIterationComplete) {
+        onIterationComplete(iterationLog);
+      }
 
       return {
         success: false,
         finalFiles: currentFiles,
-        errors: executionErrors,
-        iterations: iterationCount + 1
+        errors: errors,
+        iterations: iteration + 1,
+        executionLog
       };
     }
 
-    // ════════════════════════════════════════════════════════════════
-    // ШАГ 4: Вызываем LLM в FIX режиме
-    // ════════════════════════════════════════════════════════════════
-
+    // ШАГ 5: Вызываем LLM в FIX MODE
     console.log(`\n🤖 Calling LLM in FIX MODE...`);
-
     try {
-      const fixResult = await generateFix({
-        errors: executionErrors,
-        affectedFiles: extractAffectedFiles(currentFiles, executionErrors),
+      const affectedFiles = extractAffectedFiles(currentFiles, errors);
+
+      const fixResult = await callLLMInFixMode({
+        errors: errors,
+        affectedFiles: affectedFiles,
         currentFiles: currentFiles,
-        iteration: iterationCount
+        iteration: iteration + 1,
+        maxIterations: maxIterations
       });
 
       if (fixResult && fixResult.files) {
+        // Обновляем только затронутые файлы
+        const updatedCount = Object.keys(fixResult.files).length;
+        console.log(`✏️  LLM updated ${updatedCount} file(s)`);
+
         currentFiles = { ...currentFiles, ...fixResult.files };
-        console.log(`✏️  Files updated: ${Object.keys(fixResult.files).length}`);
+
+        iterationLog.changedFiles = Object.keys(fixResult.files);
+        iterationLog.llmExplanation = fixResult.explanation;
       } else {
-        console.warn(`⚠️  LLM returned no files to fix`);
+        console.warn(`⚠️  LLM returned no changes`);
       }
+
+      if (onIterationComplete) {
+        onIterationComplete(iterationLog);
+      }
+
     } catch (error) {
       console.error(`❌ LLM call failed: ${error.message}`);
+      iterationLog.llmError = error.message;
+
+      if (onIterationComplete) {
+        onIterationComplete(iterationLog);
+      }
+
       return {
         success: false,
         finalFiles: currentFiles,
-        errors: executionErrors,
-        iterations: iterationCount + 1
+        errors: errors,
+        iterations: iteration + 1,
+        executionLog,
+        error: error.message
       };
     }
   }
 
-  // Не должны дойти сюда
+  // На случай если что-то пошло не так
   return {
     success: false,
     finalFiles: currentFiles,
     errors: lastErrors,
-    iterations: maxIterations
+    iterations: maxIterations,
+    executionLog
   };
-}
-
-/**
- * Извлекает файлы, упомянутые в ошибках
- */
-function extractAffectedFiles(allFiles, errors) {
-  const affected = {};
-  const affectedFileNames = new Set();
-
-  for (const error of errors) {
-    if (error.file) {
-      affectedFileNames.add(error.file);
-    }
-  }
-
-  for (const [filePath, content] of Object.entries(allFiles)) {
-    for (const fileName of affectedFileNames) {
-      if (filePath.includes(fileName)) {
-        affected[filePath] = content;
-        break;
-      }
-    }
-  }
-
-  return Object.keys(affected).length > 0 ? affected : allFiles;
 }

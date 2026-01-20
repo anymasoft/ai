@@ -131,9 +131,9 @@ export async function POST(req){
             try {
                 const fixLoopResult = await runFixLoop({
                     initialFiles: parsedData.files || {},
-                    generateFix: callLLMInFixMode,
+                    callLLMInFixMode: callLLMInFixMode,
                     projectDir: process.cwd(),
-                    maxIterations: 3
+                    maxIterations: 5
                 });
 
                 if (fixLoopResult.success) {

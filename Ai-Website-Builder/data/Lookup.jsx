@@ -79,9 +79,9 @@ const config = {
 
 export default config;
 `
-}
+        }
 
-        },
+    },
 
     DEPENDANCY: {
             "@google/generative-ai": "^0.21.0",
