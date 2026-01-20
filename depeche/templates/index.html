@@ -572,6 +572,64 @@
             transform: none;
         }
 
+        /* === HUMANIZE BUTTON === */
+        .btn-humanize {
+            background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%);
+            border: none;
+            color: #1a1a1a;
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            box-shadow: 0 4px 12px rgba(168, 237, 234, 0.2);
+            white-space: nowrap;
+            height: fit-content;
+            margin-top: 2px;
+            margin-left: 8px;
+        }
+
+        .btn-humanize:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(168, 237, 234, 0.3);
+            background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%);
+            color: #1a1a1a;
+        }
+
+        .btn-humanize:active {
+            transform: translateY(0);
+        }
+
+        .btn-humanize:disabled,
+        .btn-humanize.generating {
+            cursor: not-allowed;
+            position: relative;
+            pointer-events: none;
+            opacity: 0.6;
+        }
+
+        .btn-humanize.generating::after {
+            content: '';
+            position: absolute;
+            width: 16px;
+            height: 16px;
+            top: 50%;
+            left: 50%;
+            margin-left: -8px;
+            margin-top: -8px;
+            border: 2px solid rgba(26, 26, 26, 0.3);
+            border-top-color: #1a1a1a;
+            border-radius: 50%;
+            animation: spinner-rotate 0.8s linear infinite;
+        }
+
+        .btn-humanize:disabled:hover,
+        .btn-humanize.generating:hover {
+            cursor: not-allowed;
+            transform: none;
+        }
+
         @keyframes spinner-rotate {
             to {
                 transform: rotate(360deg);
@@ -1148,6 +1206,7 @@
                     </div>
                     <button class="btn-apply" onclick="applyPrompt()">Apply</button>
                     <button class="btn-enhance" id="enhanceButton" onclick="enhanceText()" title="Enhance selected text or article" aria-label="Enhance">✨ Enhance</button>
+                    <button class="btn-humanize" id="humanizeButton" onclick="handleHumanizeClick()" title="Make text more natural" aria-label="Humanize">🧠 Humanize</button>
                 </div>
             </div>
         </div>
@@ -2967,6 +3026,127 @@
                     // Если поле пусто, отключаем Enhance
                     enhanceButton.disabled = true;
                     console.log("[UI] Кнопка Enhance отключена - поле пусто");
+                }
+            }
+        }
+
+        // === HUMANIZE FUNCTIONS ===
+
+        /**
+         * Отправить текст на гуманизацию в backend
+         */
+        async function humanizeTextViaAPI(text, scope = "full") {
+            try {
+                console.log(`[HUMANIZE_API] Начинаю гуманизацию. scope=${scope}, размер=${text.length} символов`);
+
+                const url = `${API_BASE_URL}/articles/${currentArticleId}/humanize`;
+                const body = {
+                    text: text,
+                    scope: scope
+                };
+
+                const response = await fetch(url, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(body)
+                });
+
+                console.log(`[HUMANIZE_API] Статус ответа: ${response.status}`);
+
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.detail || "Ошибка при гуманизации");
+                }
+
+                const article = await response.json();
+                console.log(`[HUMANIZE_API] Текст успешно гуманизирован`);
+                return article;
+            } catch (error) {
+                console.error("[HUMANIZE_API] Критическая ошибка:", error);
+                showNotification("Ошибка при гуманизации: " + error.message);
+                return null;
+            }
+        }
+
+        /**
+         * Обработчик кнопки Humanize
+         */
+        async function handleHumanizeClick() {
+            if (!currentArticleId) {
+                showNotification("Нет активной статьи");
+                return;
+            }
+
+            const editorContent = document.getElementById("editorContent");
+            const fullText = editorContent.textContent.trim();
+
+            if (!fullText) {
+                showNotification("Текст пуст");
+                return;
+            }
+
+            // Определяем что гуманизировать
+            let textToHumanize;
+            let scope = "full";
+
+            if (savedSelection && savedSelection.text && savedSelection.text.length > 0) {
+                // Есть выделение - обрабатываем только фрагмент
+                textToHumanize = savedSelection.text;
+                scope = "fragment";
+                console.log(`[HUMANIZE] Режим ФРАГМЕНТ: ${textToHumanize.length} символов`);
+            } else {
+                // Нет выделения - обрабатываем весь текст
+                textToHumanize = fullText;
+                scope = "full";
+                console.log(`[HUMANIZE] Режим ВСЕ: ${textToHumanize.length} символов`);
+            }
+
+            // Блокируем кнопки
+            isGenerating = true;
+            lockApplyButton();
+            const humanizeBtn = document.getElementById("humanizeButton");
+            if (humanizeBtn) {
+                humanizeBtn.classList.add("generating");
+                humanizeBtn.disabled = true;
+            }
+
+            showNotification("Гуманизирую текст...");
+
+            try {
+                // Отправляем запрос
+                const result = await humanizeTextViaAPI(textToHumanize, scope);
+                if (!result) {
+                    throw new Error("Ошибка при получении результата");
+                }
+
+                // Применяем анимацию в зависимости от scope
+                if (scope === "fragment") {
+                    // Замена фрагмента
+                    await animateFragmentReplacement(
+                        editorContent,
+                        fullText,
+                        savedSelection.startOffset,
+                        savedSelection.endOffset,
+                        result.content,
+                        10
+                    );
+                } else {
+                    // Замена всего текста
+                    await animateTextReplacement(editorContent, fullText, result.content, 10);
+                }
+
+                updateDirtyState();
+                showNotification("Текст успешно гуманизирован!");
+
+            } catch (error) {
+                console.error("[HUMANIZE] Ошибка:", error);
+                showNotification("Ошибка при гуманизации: " + error.message);
+            } finally {
+                isGenerating = false;
+                unlockApplyButton();
+                if (humanizeBtn) {
+                    humanizeBtn.classList.remove("generating");
+                    humanizeBtn.disabled = false;
                 }
             }
         }

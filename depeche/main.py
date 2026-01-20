@@ -27,6 +27,7 @@ from llm import (
     enhance_fragment,
     enhance_full_text,
     enhance_plan,
+    humanize_text,
     LLMResponse,
     ChunkInfo,
     LLMUsage
@@ -186,6 +187,12 @@ class EnhancePlanResponse(BaseModel):
 class YouTubeImportRequest(BaseModel):
     """Запрос для импорта статьи из YouTube видео (РЕЖИМ 4)"""
     youtube_url: str
+
+
+class HumanizeRequest(BaseModel):
+    """Запрос для гуманизации текста (РЕЖИМ 6)"""
+    text: str
+    scope: str = "full"  # "full" или "fragment"
 
 
 # === API ENDPOINTS ===
@@ -807,6 +814,75 @@ async def import_youtube_article(article_id: int, request: YouTubeImportRequest)
     except Exception as e:
         logger.error(f"[YOUTUBE_IMPORT] Критическая ошибка: {str(e)}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Ошибка при импорте из YouTube: {str(e)}")
+
+
+@app.post("/api/articles/{article_id}/humanize")
+async def humanize_article_text(article_id: int, request: HumanizeRequest):
+    """
+    РЕЖИМ 6: Гуманизация текста (убрать AI-паттерны, канцелярит, сделать естественнее)
+
+    Можно гуманизировать либо весь текст, либо выделенный фрагмент.
+    """
+    try:
+        logger.info(f"[HUMANIZE] Получен запрос на гуманизацию. article_id={article_id}, scope={request.scope}")
+        logger.info(f"[HUMANIZE] Размер текста: {len(request.text)} символов")
+
+        # Проверяем что статья существует
+        article = get_article(article_id)
+        if not article:
+            logger.error(f"[HUMANIZE] Статья с ID {article_id} не найдена")
+            raise HTTPException(status_code=404, detail=f"Статья с ID {article_id} не найдена")
+
+        logger.info(f"[HUMANIZE] Статья найдена: {article['title']}")
+
+        # Вызываем функцию гуманизации
+        logger.info(f"[HUMANIZE] Начинаю обработку текста...")
+        try:
+            llm_response, chunk_info = humanize_text(request.text)
+            logger.info(f"[HUMANIZE] Текст успешно гуманизирован ({len(llm_response.text)} символов)")
+        except ValueError as e:
+            logger.error(f"[HUMANIZE] Ошибка конфигурации: {str(e)}")
+            raise HTTPException(status_code=500, detail=f"Ошибка конфигурации: {str(e)}")
+        except Exception as e:
+            error_msg = str(e)
+            logger.error(f"[HUMANIZE] Ошибка при гуманизации: {error_msg}")
+            raise HTTPException(status_code=422, detail=f"Ошибка при гуманизации: {error_msg}")
+
+        # Формируем ответ
+        logger.info(f"[HUMANIZE] Возвращаем результат гуманизации фронтенду")
+
+        chunk_info_response = None
+        if chunk_info:
+            chunk_info_response = ChunkInfoResponse(
+                chunks_count=chunk_info.chunks_count,
+                strategy=chunk_info.strategy,
+                total_chars=chunk_info.total_chars
+            )
+
+        usage_info = None
+        if llm_response.usage:
+            usage_info = UsageInfo(
+                prompt_tokens=llm_response.usage.prompt_tokens,
+                completion_tokens=llm_response.usage.completion_tokens,
+                total_tokens=llm_response.usage.total_tokens
+            )
+
+        return EditFullResponse(
+            id=article_id,
+            title=article["title"],
+            content=llm_response.text,
+            truncated=llm_response.truncated,
+            finish_reason=llm_response.finish_reason,
+            usage=usage_info,
+            chunk_info=chunk_info_response
+        )
+
+    except HTTPException as e:
+        logger.error(f"[HUMANIZE] HTTPException: {e.detail}")
+        raise
+    except Exception as e:
+        logger.error(f"[HUMANIZE] Критическая ошибка: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Ошибка при гуманизации: {str(e)}")
 
 
 if __name__ == "__main__":
