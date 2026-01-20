@@ -10,6 +10,8 @@ export async function POST(req) {
         const isUpdate = currentFiles && Object.keys(currentFiles).length > 0;
         const basePrompt = isUpdate ? Prompt.CONTEXT_UPDATE_PROMPT : Prompt.CODE_GEN_PROMPT;
 
+        console.log(`📝 Mode: ${isUpdate ? 'UPDATE' : 'NEW'}, Files: ${Object.keys(currentFiles || {}).length}`);
+
         // Встраиваем текущее состояние кода в промпт для контекста
         let enrichedPrompt = basePrompt + "\n\n" + prompt;
         if (currentFiles && Object.keys(currentFiles).length > 0) {
@@ -20,17 +22,24 @@ export async function POST(req) {
             }
         }
 
+        console.log(`📤 Sending to AI (${enrichedPrompt.length} chars)`);
         const result = await GenAiCode.sendMessage(enrichedPrompt);
         let resp = result.response.text();
+
+        console.log(`✅ AI Response (${resp.length} chars): ${resp.substring(0, 100)}...`);
 
         // Парсим markdown код-блоки если они есть (совместимость с OpenAI)
         const jsonMatch = resp.match(/```(?:json)?\s*([\s\S]*?)```/);
         if (jsonMatch) {
             resp = jsonMatch[1].trim();
+            console.log(`📦 Extracted JSON from markdown`);
         }
 
-        return NextResponse.json(JSON.parse(resp));
+        const parsed = JSON.parse(resp);
+        console.log(`✅ Response parsed, files: ${Object.keys(parsed.files || {}).length}`);
+        return NextResponse.json(parsed);
     } catch(e) {
+        console.error(`❌ Error: ${e.message}`);
         return NextResponse.json({error: e.message || 'Code generation failed'}, {status: 500});
     }
 }
