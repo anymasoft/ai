@@ -1,54 +1,34 @@
 "use client"
-import React, { use, useContext, useState, useEffect } from 'react';
-import {
-    SandpackProvider,
-    SandpackLayout,
-    SandpackCodeEditor,
-    SandpackPreview,
-    SandpackFileExplorer,
-    useSandpack
-} from "@codesandbox/sandpack-react";
+import React, { useContext, useState, useEffect, useCallback, memo } from 'react';
+import dynamic from 'next/dynamic';
 import Lookup from '@/data/Lookup';
 import { MessagesContext } from '@/context/MessagesContext';
 import axios from 'axios';
 import Prompt from '@/data/Prompt';
-import { UpdateFiles } from '@/convex/workspace';
 import { useConvex, useMutation } from 'convex/react';
 import { useParams } from 'next/navigation';
 import { api } from '@/convex/_generated/api';
 import { Loader2Icon, Download } from 'lucide-react';
 import JSZip from 'jszip';
 
-function CodeView() {
+const SandpackProvider = dynamic(() => import("@codesandbox/sandpack-react").then(mod => mod.SandpackProvider), { ssr: false });
+const SandpackLayout = dynamic(() => import("@codesandbox/sandpack-react").then(mod => mod.SandpackLayout), { ssr: false });
+const SandpackCodeEditor = dynamic(() => import("@codesandbox/sandpack-react").then(mod => mod.SandpackCodeEditor), { ssr: false });
+const SandpackPreview = dynamic(() => import("@codesandbox/sandpack-react").then(mod => mod.SandpackPreview), { ssr: false });
+const SandpackFileExplorer = dynamic(() => import("@codesandbox/sandpack-react").then(mod => mod.SandpackFileExplorer), { ssr: false });
 
+function CodeView() {
     const { id } = useParams();
     const [activeTab, setActiveTab] = useState('code');
-    const [files,setFiles]=useState(Lookup?.DEFAULT_FILE);
-    const {messages,setMessages}=useContext(MessagesContext);
-    const UpdateFiles=useMutation(api.workspace.UpdateFiles);
-    const convex=useConvex();
-    const [loading,setLoading]=useState(false);
-    const [refreshKey, setRefreshKey] = useState(0);
+    const [files, setFiles] = useState(Lookup?.DEFAULT_FILE);
+    const { messages } = useContext(MessagesContext);
+    const UpdateFiles = useMutation(api.workspace.UpdateFiles);
+    const convex = useConvex();
+    const [loading, setLoading] = useState(false);
 
-    useEffect(() => {
-        id&&GetFiles();
-    }, [id])
-
-    const GetFiles=async()=>{
-        const result=await convex.query(api.workspace.GetWorkspace,{
-            workspaceId:id
-        });
-        // Preprocess and validate files before merging
-        const processedFiles = preprocessFiles(result?.fileData || {});
-        const mergedFiles = {...Lookup.DEFAULT_FILE, ...processedFiles};
-        setFiles(mergedFiles);
-    }
-
-    // Add file preprocessing function
-    const preprocessFiles = (files) => {
+    const preprocessFiles = useCallback((files) => {
         const processed = {};
         Object.entries(files).forEach(([path, content]) => {
-            // Ensure the file has proper content structure
             if (typeof content === 'string') {
                 processed[path] = { code: content };
             } else if (content && typeof content === 'object') {
@@ -60,94 +40,49 @@ function CodeView() {
             }
         });
         return processed;
-    }
+    }, []);
+
+    const GetFiles = useCallback(async () => {
+        const result = await convex.query(api.workspace.GetWorkspace, {
+            workspaceId: id
+        });
+        const processedFiles = preprocessFiles(result?.fileData || {});
+        const mergedFiles = { ...Lookup.DEFAULT_FILE, ...processedFiles };
+        setFiles(mergedFiles);
+    }, [id, convex, preprocessFiles]);
 
     useEffect(() => {
-            if (messages?.length > 0) {
-                const role = messages[messages?.length - 1].role;
-                if (role === 'user') {
-                    GenerateAiCode();
-                }
-            }
-        }, [messages])
+        id && GetFiles();
+    }, [id, GetFiles]);
 
-    const GenerateAiCode=async()=>{
+    const GenerateAiCode = useCallback(async () => {
         setLoading(true);
-        const userMessage = messages?.length > 0 ? messages[messages.length - 1]?.content : "";
-        const PROMPT = userMessage + "\n\n" + Prompt.CODE_GEN_PROMPT;
-        const result=await axios.post('/api/gen-ai-code',{
-            prompt:PROMPT
+        const PROMPT = JSON.stringify(messages) + " " + Prompt.CODE_GEN_PROMPT;
+        const result = await axios.post('/api/gen-ai-code', {
+            prompt: PROMPT
         });
         
-        // Preprocess AI-generated files
         const processedAiFiles = preprocessFiles(result.data?.files || {});
-        const mergedFiles = {...Lookup.DEFAULT_FILE, ...processedAiFiles};
+        const mergedFiles = { ...Lookup.DEFAULT_FILE, ...processedAiFiles };
         setFiles(mergedFiles);
 
-        // Форсируем переинициализацию Sandpack
-        setRefreshKey(prev => prev + 1);
-
-        console.log("✅ Файлы обновлены, Sandpack переинициализирован");
-
-        if(result.data?.files) {
-            await UpdateFiles({
-                workspaceId:id,
-                files:result.data.files
-            });
-        }
+        await UpdateFiles({
+            workspaceId: id,
+            files: result.data?.files
+        });
         setLoading(false);
-    }
-    
-    // Вспомогательный компонент для управления Sandpack
-    const SandpackContent = () => {
-        const { sandpack } = useSandpack();
+    }, [messages, id, UpdateFiles, preprocessFiles]);
 
-        useEffect(() => {
-            // При переключении на Preview - рефрешим Sandpack
-            if (activeTab === 'preview' && sandpack) {
-                try {
-                    sandpack.refresh();
-                } catch (e) {
-                    console.log("Refresh triggered");
-                }
+    useEffect(() => {
+        if (messages?.length > 0) {
+            const role = messages[messages?.length - 1].role;
+            if (role === 'user') {
+                GenerateAiCode();
             }
-        }, [activeTab, sandpack]);
-
-        return (
-            <SandpackLayout>
-                <div style={{
-                    visibility: activeTab === 'code' ? 'visible' : 'hidden',
-                    width: activeTab === 'code' ? '100%' : '0',
-                    height: activeTab === 'code' ? '80vh' : '0',
-                    overflow: 'hidden'
-                }}>
-                    <SandpackFileExplorer style={{ height: '80vh' }} />
-                    <SandpackCodeEditor
-                    style={{ height: '80vh' }}
-                    showTabs
-                    showLineNumbers
-                    showInlineErrors
-                    wrapContent />
-                </div>
-
-                <div style={{
-                    visibility: activeTab === 'preview' ? 'visible' : 'hidden',
-                    width: activeTab === 'preview' ? '100%' : '0',
-                    height: activeTab === 'preview' ? '80vh' : '0',
-                    overflow: 'hidden'
-                }}>
-                    <SandpackPreview
-                        style={{ height: '80vh' }}
-                        showNavigator={true}
-                        showOpenInCodeSandbox={false}
-                        showRefreshButton={true}
-                    />
-                </div>
-            </SandpackLayout>
-        );
-    };
-
-    const downloadFiles = async () => {
+        }
+    }, [messages, GenerateAiCode]);
+    
+    const downloadFiles = useCallback(async () => {
         try {
             // Create a new JSZip instance
             const zip = new JSZip();
@@ -204,7 +139,7 @@ function CodeView() {
         } catch (error) {
             console.error('Error downloading files:', error);
         }
-    };
+    }, [files]);
 
     return (
         <div className='relative'>
@@ -233,10 +168,9 @@ function CodeView() {
                     </button>
                 </div>
             </div>
-            <SandpackProvider
-            key={`${refreshKey}-${JSON.stringify(Object.keys(files))}`}
+            <SandpackProvider 
             files={files}
-            template="react"
+            template="react" 
             theme={'dark'}
             customSetup={{
                 dependencies: {
@@ -251,7 +185,27 @@ function CodeView() {
                 recompileDelay: 300
             }}
             >
-                <SandpackContent />
+                <div className="relative">
+                    <SandpackLayout>
+                        {activeTab=='code'?<>
+                            <SandpackFileExplorer style={{ height: '80vh' }} />
+                            <SandpackCodeEditor 
+                            style={{ height: '80vh' }}
+                            showTabs
+                            showLineNumbers
+                            showInlineErrors
+                            wrapContent />
+                        </>:
+                        <>
+                            <SandpackPreview 
+                                style={{ height: '80vh' }} 
+                                showNavigator={true}
+                                showOpenInCodeSandbox={false}
+                                showRefreshButton={true}
+                            />
+                        </>}
+                    </SandpackLayout>
+                </div>
             </SandpackProvider>
 
             {loading&&<div className='p-10 bg-gray-900 opacity-80 absolute top-0 
