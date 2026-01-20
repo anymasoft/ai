@@ -11,6 +11,6 @@ export async function POST(req) {
         return NextResponse.json({result:AIResp})
     }catch(e)
     {
-        return NextResponse.json({error:e})
+        return NextResponse.json({error:e.message})
     }
 }
