@@ -168,9 +168,9 @@ function CodeView() {
                     </button>
                 </div>
             </div>
-            <SandpackProvider 
+            <SandpackProvider
             files={files}
-            template="react" 
+            template="react"
             theme={'dark'}
             customSetup={{
                 dependencies: {
@@ -187,23 +187,37 @@ function CodeView() {
             >
                 <div className="relative">
                     <SandpackLayout>
-                        {activeTab=='code'?<>
+                        <div style={{
+                            opacity: activeTab === 'code' ? 1 : 0,
+                            pointerEvents: activeTab === 'code' ? 'auto' : 'none',
+                            flex: activeTab === 'code' ? 1 : 0,
+                            display: activeTab === 'code' ? 'flex' : 'none',
+                            transition: 'opacity 200ms'
+                        }}>
                             <SandpackFileExplorer style={{ height: '80vh' }} />
-                            <SandpackCodeEditor 
+                            <SandpackCodeEditor
                             style={{ height: '80vh' }}
                             showTabs
                             showLineNumbers
                             showInlineErrors
                             wrapContent />
-                        </>:
-                        <>
-                            <SandpackPreview 
-                                style={{ height: '80vh' }} 
+                        </div>
+
+                        <div style={{
+                            opacity: activeTab === 'preview' ? 1 : 0,
+                            pointerEvents: activeTab === 'preview' ? 'auto' : 'none',
+                            flex: activeTab === 'preview' ? 1 : 0,
+                            display: activeTab === 'preview' ? 'block' : 'none',
+                            transition: 'opacity 200ms',
+                            width: activeTab === 'preview' ? '100%' : '0'
+                        }}>
+                            <SandpackPreview
+                                style={{ height: '80vh' }}
                                 showNavigator={true}
                                 showOpenInCodeSandbox={false}
                                 showRefreshButton={true}
                             />
-                        </>}
+                        </div>
                     </SandpackLayout>
                 </div>
             </SandpackProvider>
