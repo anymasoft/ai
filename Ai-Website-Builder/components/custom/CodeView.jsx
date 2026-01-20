@@ -59,7 +59,8 @@ function CodeView() {
         setLoading(true);
         const PROMPT = JSON.stringify(messages) + " " + Prompt.CODE_GEN_PROMPT;
         const result = await axios.post('/api/gen-ai-code', {
-            prompt: PROMPT
+            prompt: PROMPT,
+            currentFiles: files
         });
         
         const processedAiFiles = preprocessFiles(result.data?.files || {});
@@ -71,7 +72,7 @@ function CodeView() {
             files: result.data?.files
         });
         setLoading(false);
-    }, [messages, id, UpdateFiles, preprocessFiles]);
+    }, [messages, id, UpdateFiles, preprocessFiles, files]);
 
     useEffect(() => {
         if (messages?.length > 0) {
