@@ -1850,7 +1850,11 @@
                 articlesList_elem.innerHTML = "";
                 articles = {};
                 currentArticleId = null;
-                console.log("[LOAD] Очищен кэш и sidebar");
+
+                // Очищаем выделение и overlay'и
+                clearSelectionHighlight();
+                savedSelection = null;
+                console.log("[LOAD] Очищен кэш, sidebar, выделение и savedSelection");
 
                 if (articlesList.length === 0) {
                     console.log("[LOAD] Список статей пуст");
@@ -1902,13 +1906,15 @@
 
         async function loadArticleContent(articleId) {
             try {
+                console.log(`[LOAD_CONTENT] Загружаю контент статьи ID=${articleId}`);
                 const response = await fetch(`${API_BASE_URL}/articles/${articleId}`);
                 if (!response.ok) throw new Error("Статья не найдена");
 
                 const article = await response.json();
+                console.log(`[LOAD_CONTENT] Контент статьи ${articleId} загружен: ${(article.content || "").length} символов`);
                 return article;
             } catch (error) {
-                console.error("Ошибка при загрузке статьи:", error);
+                console.error(`[LOAD_CONTENT] Ошибка при загрузке статьи ${articleId}:`, error);
                 showNotification("Ошибка при загрузке статьи");
                 return null;
             }
@@ -2442,14 +2448,28 @@
                     titleText.textContent = article.title;
                 }
 
+                // Очищаем выделение и overlay'и из предыдущей статьи
+                clearSelectionHighlight();
+                savedSelection = null;
+                console.log("[SELECT] Выделение и savedSelection очищены");
+
+                // Явно очищаем содержимое перед загрузкой новой статьи
+                const editorContent = document.getElementById("editorContent");
+                editorContent.textContent = "";
+                console.log("[SELECT] Содержимое редактора очищено");
+
                 // Загружаем content из БД перед отображением
+                console.log(`[SELECT] Начинаю загрузку контента для статьи ${id}...`);
                 const fullArticle = await loadArticleContent(id);
+
                 if (fullArticle) {
                     articles[id].content = fullArticle.content;
-                    document.getElementById("editorContent").textContent = fullArticle.content || "";
-                    console.log(`[SELECT] Content загружен из БД (${(fullArticle.content || "").length} символов)`);
+                    editorContent.textContent = fullArticle.content || "";
+                    console.log(`[SELECT] ✓ Content загружен из БД и отображен. Размер: ${(fullArticle.content || "").length} символов`);
                 } else {
-                    document.getElementById("editorContent").textContent = article.content || "";
+                    // Fallback: используем кэшированный контент, если загрузка не удалась
+                    editorContent.textContent = article.content || "";
+                    console.log("[SELECT] ⚠ Загрузка из БД не удалась, используем кэш. Размер: " + (article.content || "").length + " символов");
                 }
 
                 // Обновляем счётчик символов
