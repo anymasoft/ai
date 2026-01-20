@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { GenAiCode } from '@/configs/AiModel';
 import Prompt from '@/data/Prompt';
 import { buildUniversalContext } from '@/context/contextBuilder';
+import { runFixLoop } from '@/context/executionEngine';
+import { callLLMInFixMode } from '@/context/fixModeHandler';
 
 export async function POST(req){
     const {
@@ -10,11 +12,13 @@ export async function POST(req){
         messages = [],
         currentCode = {},
         mode = 'auto',
-        conversationTurn = 1
+        conversationTurn = 1,
+        enableFixLoop = false  // 🆕 НОВЫЙ параметр для включения execution fix loop
     } = await req.json();
 
     try{
         console.log(`📝 Запрос: targetFile=${targetFile}, mode=${mode}, turn=${conversationTurn}`);
+        console.log(`   enableFixLoop=${enableFixLoop}`);
 
         // ════════════════════════════════════════════════════════════════
         // СОБИРАЕМ УНИВЕРСАЛЬНЫЙ КОНТЕКСТ (4 СЛОЯ)
@@ -67,7 +71,52 @@ export async function POST(req){
         const parsedData = JSON.parse(resp);
         console.log("📦 Распарсенные файлы:", Object.keys(parsedData.files || {}));
 
-        return NextResponse.json(parsedData);
+        let finalData = parsedData;
+
+        // ════════════════════════════════════════════════════════════════
+        // 🆕 EXECUTION FIX LOOP (если включен)
+        // ════════════════════════════════════════════════════════════════
+
+        if (enableFixLoop && process.env.NODE_ENV === 'development') {
+            console.log(`\n${'═'.repeat(70)}`);
+            console.log(`🔄 EXECUTION FIX LOOP ENABLED`);
+            console.log(`${'═'.repeat(70)}`);
+
+            try {
+                const fixLoopResult = await runFixLoop({
+                    initialFiles: parsedData.files || {},
+                    generateFix: callLLMInFixMode,
+                    projectDir: process.cwd(),
+                    maxIterations: 3
+                });
+
+                if (fixLoopResult.success) {
+                    console.log(`✅ Fix loop completed successfully`);
+                    finalData.files = fixLoopResult.finalFiles;
+                    finalData.fixLoopResult = {
+                        success: true,
+                        iterations: fixLoopResult.iterations,
+                        errors: []
+                    };
+                } else {
+                    console.warn(`⚠️  Fix loop failed after ${fixLoopResult.iterations} iterations`);
+                    finalData.files = fixLoopResult.finalFiles;
+                    finalData.fixLoopResult = {
+                        success: false,
+                        iterations: fixLoopResult.iterations,
+                        errors: fixLoopResult.errors
+                    };
+                }
+            } catch (fixError) {
+                console.error(`❌ Fix loop error: ${fixError.message}`);
+                finalData.fixLoopResult = {
+                    success: false,
+                    error: fixError.message
+                };
+            }
+        }
+
+        return NextResponse.json(finalData);
     }catch(e){
         console.error("❌ Ошибка:", e.message);
         console.error("   Stack:", e.stack);

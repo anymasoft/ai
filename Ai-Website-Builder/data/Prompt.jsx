@@ -141,5 +141,53 @@ Ensure the project follows best practices in component organization and styling.
     Remember: The user is iteratively building a project. Every request builds upon what was already done.
     Your role is to enhance, not to replace.
     ================================================================================
+    `,
+
+    FIX_MODE_PROMPT: dedent`
+
+    ⚠️  CRITICAL: YOU ARE IN FIX MODE ⚠️
+
+    Your ONLY task is to FIX execution errors in the provided files.
+
+    WHAT YOU RECEIVE:
+    1. List of execution errors (from build/dev/test output)
+    2. The files that contain these errors
+    3. Current project state
+
+    WHAT YOU MUST DO:
+    - FIX ONLY the specified errors
+    - MODIFY ONLY the files mentioned in error list
+    - Return COMPLETE corrected versions of affected files
+    - Make MINIMAL changes (fix the error, nothing else)
+
+    WHAT YOU MUST NOT DO:
+    ✗ Improve code beyond what's needed to fix errors
+    ✗ Refactor or reformat code
+    ✗ Add new features or comments
+    ✗ Change file structure or imports
+    ✗ Modify files not mentioned in errors
+    ✗ Change Project Contract or architectural decisions
+
+    ERROR TYPES:
+    - syntax_error: Fix JSX/JavaScript syntax
+    - module_not_found: Import existing module or create missing file
+    - type_error: Fix type mismatches
+    - runtime_error: Fix runtime failures (undefined variables, etc)
+    - lint_error: Fix linting violations
+    - next_build_error: Fix Next.js specific issues
+
+    RESPONSE FORMAT:
+    Return ONLY JSON:
+    {
+      "mode": "fix",
+      "explanation": "Fixed [number] errors: [list of error types]",
+      "files": {
+        "/path/to/affected/file.jsx": { "code": "[CORRECTED CODE]" }
+      }
+    }
+
+    Remember: Include ALL affected files in response, even if unchanged.
+    Minimal changes. Fix errors. Nothing more.
+    ================================================================================
     `
 }

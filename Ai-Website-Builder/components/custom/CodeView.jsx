@@ -86,14 +86,15 @@ function CodeView() {
         console.log(`📝 GenerateAiCode: target=${currentTargetFile}, mode=${editMode}, turn=${conversationTurn}`);
 
         try {
-            // 🆕 ДВУХРЕЖИМНАЯ АРХИТЕКТУРА: отправляем targetFile, mode и turn
+            // 🆕 ДВУХРЕЖИМНАЯ АРХИТЕКТУРА + EXECUTION FIX LOOP
             const result = await axios.post('/api/gen-ai-code', {
-                targetFile: currentTargetFile,      // 🆕 Какой файл редактируем
+                targetFile: currentTargetFile,      // Какой файл редактируем
                 userMessage: userMessage,            // Запрос пользователя
                 messages: messages,                 // История сообщений
                 currentCode: files,                 // Все текущие файлы
-                mode: editMode,                     // 🆕 'template_filling' | 'fragment_editing' | 'auto'
-                conversationTurn: conversationTurn  // 🆕 Номер в диалоге
+                mode: editMode,                     // 'template_filling' | 'fragment_editing' | 'auto'
+                conversationTurn: conversationTurn, // Номер в диалоге
+                enableFixLoop: false                // 🆕 Execution fix loop (false по умолчанию)
             });
 
             // Preprocess AI-generated files
@@ -108,6 +109,18 @@ function CodeView() {
             setConversationTurn(prev => prev + 1);
 
             console.log("✅ Файлы обновлены, режим:", result.data?.mode);
+
+            // 🆕 Логируем результаты Fix Loop если он был запущен
+            if(result.data?.fixLoopResult) {
+                if(result.data.fixLoopResult.success) {
+                    console.log(`✅ Fix loop completed successfully (${result.data.fixLoopResult.iterations} iterations)`);
+                } else {
+                    console.warn(`⚠️  Fix loop failed after ${result.data.fixLoopResult.iterations} iterations`);
+                    if(result.data.fixLoopResult.errors) {
+                        console.error(`Remaining errors: ${result.data.fixLoopResult.errors.length}`);
+                    }
+                }
+            }
 
             if(result.data?.files) {
                 await UpdateFiles({
