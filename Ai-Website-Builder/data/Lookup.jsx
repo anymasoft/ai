@@ -106,3 +106,4 @@ export default config;
     "@mui/material": "^6.4.6"
         }
     }
+};
