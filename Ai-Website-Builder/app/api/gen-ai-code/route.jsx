@@ -8,9 +8,9 @@ export async function POST(req){
         // Формируем контекст с историей, текущим кодом и новым запросом
         let fullContext = "";
 
-        // Добавляем историю сообщений для контекста (последние 10 сообщений)
+        // Добавляем историю сообщений для контекста (последние 5 сообщений для оптимизации)
         if(messages && messages.length > 0) {
-            const recentMessages = messages.slice(-10);  // Берём последние 10 сообщений
+            const recentMessages = messages.slice(-5);  // Берём последние 5 сообщений (экономия токенов)
             fullContext += "=== ИСТОРИЯ ЗАПРОСОВ ===\n";
             recentMessages.forEach((msg, idx) => {
                 fullContext += `${msg.role === 'user' ? '👤' : '🤖'} ${msg.content}\n`;
@@ -18,13 +18,14 @@ export async function POST(req){
             fullContext += "\n";
         }
 
-        // Добавляем текущий сгенерированный код
+        // Добавляем ПОЛНЫЙ текущий сгенерированный код
         if(currentCode && Object.keys(currentCode).length > 0) {
             fullContext += "=== ТЕКУЩИЙ КОД ПРОЕКТА ===\n";
             Object.entries(currentCode).forEach(([filename, content]) => {
                 if(filename !== '/App.css' && filename !== '/index.css') {  // Пропускаем CSS файлы для краткости
                     const fileContent = typeof content === 'string' ? content : content.code;
-                    fullContext += `\n📄 ${filename}:\n\`\`\`\n${fileContent.substring(0, 500)}\n...\n\`\`\`\n`;
+                    // ИЗМЕНЕНО: отправляем ПОЛНЫЙ код файла вместо первых 500 символов
+                    fullContext += `\n📄 ${filename}:\n\`\`\`\n${fileContent}\n\`\`\`\n`;
                 }
             });
             fullContext += "\n";
@@ -36,7 +37,16 @@ export async function POST(req){
         // Добавляем инструкции для incrementальных обновлений
         fullContext += Prompt.CONTEXT_UPDATE_PROMPT;
 
-        console.log("📝 Полный контекст отправлен в AI (~", fullContext.length, "символов)");
+        // Логируем размер контекста с предупреждением если слишком большой
+        const contextSizeKB = (fullContext.length / 1024).toFixed(2);
+        const estimatedTokens = Math.ceil(fullContext.length / 4);
+
+        console.log("📝 Полный контекст отправлен в AI");
+        console.log(`   Размер: ${contextSizeKB} KB (~${estimatedTokens} токенов)`);
+
+        if(estimatedTokens > 50000) {
+            console.warn(`   ⚠️  ВНИМАНИЕ: Контекст большой (${estimatedTokens} токенов из 128K доступных)`);
+        }
 
         const result=await GenAiCode.sendMessage(fullContext);
         let resp=result.response.text();
