@@ -58,20 +58,28 @@ function CodeView() {
     const GenerateAiCode = useCallback(async () => {
         setLoading(true);
         const PROMPT = JSON.stringify(messages) + " " + Prompt.CODE_GEN_PROMPT;
-        const result = await axios.post('/api/gen-ai-code', {
-            prompt: PROMPT,
-            currentFiles: files
-        });
-        
-        const processedAiFiles = preprocessFiles(result.data?.files || {});
-        const mergedFiles = { ...Lookup.DEFAULT_FILE, ...processedAiFiles };
-        setFiles(mergedFiles);
+        try {
+            console.log("📝 Sending prompt with", Object.keys(files).length, "files");
+            const result = await axios.post('/api/gen-ai-code', {
+                prompt: PROMPT,
+                currentFiles: files
+            });
 
-        await UpdateFiles({
-            workspaceId: id,
-            files: result.data?.files
-        });
-        setLoading(false);
+            console.log("✅ AI Response received:", result.data);
+
+            const processedAiFiles = preprocessFiles(result.data?.files || {});
+            const mergedFiles = { ...Lookup.DEFAULT_FILE, ...processedAiFiles };
+            setFiles(mergedFiles);
+
+            await UpdateFiles({
+                workspaceId: id,
+                files: result.data?.files
+            });
+            setLoading(false);
+        } catch (error) {
+            console.error("❌ AI Generation Error:", error.response?.data || error.message);
+            setLoading(false);
+        }
     }, [messages, id, UpdateFiles, preprocessFiles, files]);
 
     useEffect(() => {
