@@ -73,9 +73,12 @@ function CodeView() {
     const GenerateAiCode=async()=>{
         setLoading(true);
         const userMessage = messages?.length > 0 ? messages[messages.length - 1]?.content : "";
-        const PROMPT = userMessage + "\n\n" + Prompt.CODE_GEN_PROMPT;
+
+        // Отправляем ПОЛНЫЙ контекст: историю, текущий код и новый запрос
         const result=await axios.post('/api/gen-ai-code',{
-            prompt:PROMPT
+            messages: messages,           // Полная история сообщений
+            currentCode: files,           // Текущий сгенерированный код
+            userMessage: userMessage      // Новый запрос пользователя
         });
         
         // Preprocess AI-generated files

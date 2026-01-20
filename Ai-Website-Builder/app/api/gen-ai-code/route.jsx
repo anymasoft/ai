@@ -1,12 +1,44 @@
 import { NextResponse } from "next/server";
 import { GenAiCode } from '@/configs/AiModel';
+import Prompt from '@/data/Prompt';
 
 export async function POST(req){
-    const {prompt}=await req.json();
+    const {messages, currentCode, userMessage}=await req.json();
     try{
-        console.log("📝 Промпт отправлен в AI:", prompt.substring(0, 100) + "...");
+        // Формируем контекст с историей, текущим кодом и новым запросом
+        let fullContext = "";
 
-        const result=await GenAiCode.sendMessage(prompt);
+        // Добавляем историю сообщений для контекста (последние 10 сообщений)
+        if(messages && messages.length > 0) {
+            const recentMessages = messages.slice(-10);  // Берём последние 10 сообщений
+            fullContext += "=== ИСТОРИЯ ЗАПРОСОВ ===\n";
+            recentMessages.forEach((msg, idx) => {
+                fullContext += `${msg.role === 'user' ? '👤' : '🤖'} ${msg.content}\n`;
+            });
+            fullContext += "\n";
+        }
+
+        // Добавляем текущий сгенерированный код
+        if(currentCode && Object.keys(currentCode).length > 0) {
+            fullContext += "=== ТЕКУЩИЙ КОД ПРОЕКТА ===\n";
+            Object.entries(currentCode).forEach(([filename, content]) => {
+                if(filename !== '/App.css' && filename !== '/index.css') {  // Пропускаем CSS файлы для краткости
+                    const fileContent = typeof content === 'string' ? content : content.code;
+                    fullContext += `\n📄 ${filename}:\n\`\`\`\n${fileContent.substring(0, 500)}\n...\n\`\`\`\n`;
+                }
+            });
+            fullContext += "\n";
+        }
+
+        // Добавляем новый запрос пользователя
+        fullContext += `=== НОВЫЙ ЗАПРОС ===\n${userMessage}\n\n`;
+
+        // Добавляем инструкции для incrementальных обновлений
+        fullContext += Prompt.CONTEXT_UPDATE_PROMPT;
+
+        console.log("📝 Полный контекст отправлен в AI (~", fullContext.length, "символов)");
+
+        const result=await GenAiCode.sendMessage(fullContext);
         let resp=result.response.text();
 
         console.log("✅ Ответ от AI:", resp.substring(0, 200) + "...");
