@@ -1,5 +1,9 @@
 "use client"
 import React, { useContext, useState, useEffect } from 'react';
+
+// 🔴 RUNTIME MARKER - если это выполняется в браузере, значит файл правильный
+console.log("🎯 CODEVIEW_LOADED_FROM:", "/components/custom/CodeView.jsx");
+console.log("🎯 THIS IS THE NEW CODE VERSION WITH DUAL MODE ARCHITECTURE");
 import {
     SandpackProvider,
     SandpackLayout,
@@ -76,6 +80,8 @@ function CodeView() {
         }, [messages])
 
     const GenerateAiCode=async()=>{
+        // 🎯 EXECUTION MARKER
+        console.log("🎯 GENERATEAICODE CALLED - using NEW DUAL-MODE API");
         setLoading(true);
         const userMessage = messages?.length > 0 ? messages[messages.length - 1]?.content : "";
 
