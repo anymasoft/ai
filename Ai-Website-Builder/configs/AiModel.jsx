@@ -26,26 +26,36 @@ class ChatSession {
 
         messages.push(...this.history);
 
+        console.log(`🔗 Отправляю запрос в OpenAI (${this.model})...`);
+        console.log(`   API Key: ${apiKey ? apiKey.substring(0, 10) + "..." : "НЕ УСТАНОВЛЕН"}`);
+
         // Вызываем OpenAI API
-        const response = await client.chat.completions.create({
-            model: this.model,
-            messages: messages,
-            temperature: this.config.temperature,
-            top_p: this.config.topP,
-            max_tokens: this.config.maxOutputTokens,
-        });
+        try {
+            const response = await client.chat.completions.create({
+                model: this.model,
+                messages: messages,
+                temperature: this.config.temperature,
+                top_p: this.config.topP,
+                max_tokens: this.config.maxOutputTokens,
+            });
 
-        const assistantMessage = response.choices[0].message.content;
+            const assistantMessage = response.choices[0].message.content;
 
-        // Добавляем ответ в историю
-        this.history.push({ role: "assistant", content: assistantMessage });
+            console.log(`✅ Получен ответ от OpenAI (${assistantMessage.length} символов)`);
 
-        // Возвращаем в формате совместимом с Gemini API
-        return {
-            response: {
-                text: () => assistantMessage
-            }
-        };
+            // Добавляем ответ в историю
+            this.history.push({ role: "assistant", content: assistantMessage });
+
+            // Возвращаем в формате совместимом с Gemini API
+            return {
+                response: {
+                    text: () => assistantMessage
+                }
+            };
+        } catch (error) {
+            console.error(`❌ Ошибка OpenAI API: ${error.message}`);
+            throw error;
+        }
     }
 }
 

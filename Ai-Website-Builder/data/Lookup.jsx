@@ -13,6 +13,30 @@ export default {
   ],
 
     DEFAULT_FILE: {
+        '/index.js': {
+            code: `import React from 'react';
+import ReactDOM from 'react-dom/client';
+import App from './App';
+import './App.css';
+
+const root = ReactDOM.createRoot(document.getElementById('root'));
+root.render(
+  <React.StrictMode>
+    <App />
+  </React.StrictMode>
+);`
+        },
+        '/App.js': {
+            code: `import React from 'react';
+
+export default function App() {
+  return (
+    <div>
+      <h1>Waiting for AI generation...</h1>
+    </div>
+  );
+}`
+        },
         '/public/index.html':
         {
             code: `<!DOCTYPE html>
