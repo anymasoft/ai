@@ -216,7 +216,8 @@ function CodeView() {
                     </div>
 
                     <div style={{
-                        display: activeTab === 'preview' ? 'block' : 'none'
+                        display: activeTab === 'preview' ? 'block' : 'none',
+                        width: '100%'
                     }}>
                         <SandpackPreview
                             key="preview"
