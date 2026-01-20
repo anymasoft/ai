@@ -29,6 +29,7 @@ function CodeView() {
     const UpdateFiles=useMutation(api.workspace.UpdateFiles);
     const convex=useConvex();
     const [loading,setLoading]=useState(false);
+    const [refreshKey, setRefreshKey] = useState(0);
 
     useEffect(() => {
         id&&GetFiles();
@@ -83,6 +84,11 @@ function CodeView() {
         const processedAiFiles = preprocessFiles(result.data?.files || {});
         const mergedFiles = {...Lookup.DEFAULT_FILE, ...processedAiFiles};
         setFiles(mergedFiles);
+
+        // Форсируем переинициализацию Sandpack
+        setRefreshKey(prev => prev + 1);
+
+        console.log("✅ Файлы обновлены, Sandpack переинициализирован");
 
         if(result.data?.files) {
             await UpdateFiles({
@@ -179,9 +185,10 @@ function CodeView() {
                     </button>
                 </div>
             </div>
-            <SandpackProvider 
+            <SandpackProvider
+            key={`${refreshKey}-${JSON.stringify(Object.keys(files))}`}
             files={files}
-            template="react" 
+            template="react"
             theme={'dark'}
             customSetup={{
                 dependencies: {
