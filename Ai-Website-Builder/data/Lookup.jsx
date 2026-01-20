@@ -79,9 +79,9 @@ const config = {
 
 export default config;
 `
-}
+        }
 
-        },
+    },
 
     DEPENDANCY: {
             "@google/generative-ai": "^0.21.0",
@@ -105,4 +105,4 @@ export default config;
     "uuid": "^11.1.0",
     "@mui/material": "^6.4.6"
         }
-    }
+};
