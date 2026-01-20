@@ -77,7 +77,11 @@ const EnhancePromptConfig = {
     maxOutputTokens: 1000,
 };
 
-const codeGenSystemPrompt = `You are an expert React developer. Generate a complete React project with proper structure. Return the response in JSON format with the following schema:
+const codeGenSystemPrompt = `You are an expert React developer. Generate a complete React project with proper structure.
+
+IMPORTANT: Return ONLY valid JSON (no markdown, no code blocks, no explanations).
+
+JSON Schema:
 {
   "projectTitle": "",
   "explanation": "",
@@ -96,7 +100,9 @@ Guidelines:
 - The lucide-react library is available to be imported IF NECESSARY
 - Create multiple components in a folder structure
 - Ensure the files field contains all created files
-- Include an explanation of the project's structure and purpose`;
+- Include an explanation of the project's structure and purpose
+- DO NOT wrap response in markdown code blocks
+- DO NOT add any text before or after JSON`;
 
 export const chatSession = new ChatSession(modelName, generationConfig);
 
