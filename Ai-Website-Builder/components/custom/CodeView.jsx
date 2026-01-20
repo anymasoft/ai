@@ -83,10 +83,12 @@ function CodeView() {
         const mergedFiles = {...Lookup.DEFAULT_FILE, ...processedAiFiles};
         setFiles(mergedFiles);
 
-        await UpdateFiles({
-            workspaceId:id,
-            files:result.data?.files
-        });
+        if(result.data?.files) {
+            await UpdateFiles({
+                workspaceId:id,
+                files:result.data.files
+            });
+        }
         setLoading(false);
     }
     
