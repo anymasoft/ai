@@ -97,15 +97,49 @@ Ensure the project follows best practices in component organization and styling.
     3. Maintaining the original intent of the prompt
     4. Using clear and precise language
     5. Adding specific UI/UX requirements if applicable
-    - Responsive navigation menu  
-   - Hero section with image background  
-   - Card grid with hover animations  
-   - Contact form with validation  
-   - Smooth page transitions  
+    - Responsive navigation menu
+   - Hero section with image background
+   - Card grid with hover animations
+   - Contact form with validation
+   - Smooth page transitions
     6. Dont use the backend or database related.
     7. Keep it less than 300 words
-    
+
 
     Return only the enhanced prompt as plain text without any JSON formatting or additional explanations.
+    `,
+
+    CONTEXT_UPDATE_PROMPT: dedent`
+
+    CRITICAL INSTRUCTIONS FOR INCREMENTAL UPDATES:
+    ================================================================================
+
+    You have been provided with:
+    1. ИСТОРИЯ ЗАПРОСОВ - Previous conversation history
+    2. ТЕКУЩИЙ КОД ПРОЕКТА - The current state of the project
+    3. НОВЫЙ ЗАПРОС - The new user request for modifications
+
+    YOUR TASK:
+    - PRESERVE all existing code and functionality that was NOT requested to change
+    - ONLY modify the files/components that are explicitly mentioned or affected by the new request
+    - MAINTAIN the same coding style, structure, and naming conventions from existing code
+    - If new components are needed, follow the same pattern as existing components
+    - DO NOT regenerate the entire project unless explicitly asked to "start over" or "restart from scratch"
+
+    RESPONSE FORMAT:
+    - Return ONLY the complete updated React project JSON
+    - Include ALL files (unchanged + modified) to ensure consistency
+    - If a file wasn't modified, return it exactly as it was
+    - All previously generated files must be preserved
+
+    ENHANCEMENT RULES:
+    - If asked to improve design, apply changes to styling without breaking functionality
+    - If asked to add features, integrate them with existing code
+    - If asked to change text/content, maintain all existing features
+    - Maintain the same dependencies and imports that were already in use
+
+    Remember: The user is iteratively building a project. Every request builds upon what was already done.
+    Your role is to enhance, not to replace.
+    ================================================================================
     `
 }
