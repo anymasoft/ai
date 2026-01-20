@@ -205,7 +205,10 @@ function CodeView() {
             >
                 <div className="relative">
                     <SandpackLayout>
-                        <div style={{ display: activeTab === 'code' ? 'flex' : 'none', width: '100%', height: '80vh', flexDirection: 'column' }}>
+                        <div style={{
+                            display: 'contents',
+                            visibility: activeTab === 'code' ? 'visible' : 'hidden'
+                        }}>
                             <SandpackFileExplorer style={{ height: '80vh' }} />
                             <SandpackCodeEditor
                             style={{ height: '80vh' }}
@@ -215,7 +218,10 @@ function CodeView() {
                             wrapContent />
                         </div>
 
-                        <div style={{ display: activeTab === 'preview' ? 'block' : 'none', width: '100%', height: '80vh' }}>
+                        <div style={{
+                            display: 'contents',
+                            visibility: activeTab === 'preview' ? 'visible' : 'hidden'
+                        }}>
                             <SandpackPreview
                                 style={{ height: '80vh' }}
                                 showNavigator={true}
