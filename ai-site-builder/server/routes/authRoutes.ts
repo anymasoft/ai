@@ -7,6 +7,7 @@ const authRouter = express.Router();
 authRouter.post("/sign-up", signUp);
 authRouter.post("/sign-in", signIn);
 authRouter.get("/session", getSession);
+authRouter.get("/get-session", getSession);
 authRouter.post("/sign-out", signOut);
 
 // Better Auth compatibility endpoints (lowercase)

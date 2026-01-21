@@ -3,6 +3,8 @@ import "dotenv/config";
 import cors, { CorsOptions } from "cors";
 import cookieParser from "cookie-parser";
 
+console.log(`🔧 NODE_ENV=${process.env.NODE_ENV}`);
+
 import { initDb } from "./lib/db.js";
 import authRouter from "./routes/authRoutes.js";
 import userRouter from "./routes/userRoutes.js";

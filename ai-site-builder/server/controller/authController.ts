@@ -5,6 +5,8 @@ const DEV_USER = {
     id: "dev-user-1",
     email: "user@example.com",
     name: "Dev User",
+    emailVerified: true,
+    image: null,
 };
 
 const DEV_PASSWORD = "111111";
@@ -96,6 +98,8 @@ export const getSession = async (req: Request, res: Response) => {
     try {
         let token = req.cookies.dev_session;
         console.log(`[GET_SESSION] token=${token ? token.substring(0, 10) + "..." : "null"}`);
+        console.log(`[GET_SESSION] All cookies:`, req.cookies);
+        console.log(`[GET_SESSION] NODE_ENV=${process.env.NODE_ENV}`);
 
         // В DEV режиме ВСЕГДА возвращаем валидную сессию
         if (process.env.NODE_ENV === "development") {
@@ -111,13 +115,15 @@ export const getSession = async (req: Request, res: Response) => {
                     path: "/",
                 });
                 console.log("[DEV AUTH] Returning fake session - created new token");
-                return res.json({
+                const response = {
                     user,
                     session: {
                         token,
                         expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
                     },
-                });
+                };
+                console.log("[DEV AUTH] Response:", JSON.stringify(response, null, 2));
+                return res.json(response);
             }
 
             const user = sessions.get(token);
