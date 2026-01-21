@@ -94,11 +94,48 @@ export const signIn = async (req: Request, res: Response) => {
 // Get Current Session (получить текущую сессию)
 export const getSession = async (req: Request, res: Response) => {
     try {
-        const token = req.cookies.dev_session;
+        let token = req.cookies.dev_session;
         console.log(`[GET_SESSION] token=${token ? token.substring(0, 10) + "..." : "null"}`);
 
+        // В DEV режиме ВСЕГДА возвращаем валидную сессию
+        if (process.env.NODE_ENV === "development") {
+            if (!token) {
+                // Создаём новую dev сессию
+                token = generateSessionToken();
+                const user = DEV_USER;
+                sessions.set(token, user);
+                res.cookie("dev_session", token, {
+                    httpOnly: true,
+                    maxAge: 24 * 60 * 60 * 1000,
+                    sameSite: "lax",
+                    path: "/",
+                });
+                console.log("[DEV AUTH] Returning fake session - created new token");
+                return res.json({
+                    user,
+                    session: {
+                        token,
+                        expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+                    },
+                });
+            }
+
+            const user = sessions.get(token);
+            if (!user) {
+                // Сессия испортилась в памяти, создаём новую
+                console.log("[DEV AUTH] Returning fake session - recreating expired session");
+                sessions.set(token, DEV_USER);
+                return res.json({
+                    user: DEV_USER,
+                    session: {
+                        token,
+                        expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+                    },
+                });
+            }
+        }
+
         if (!token) {
-            // Возвращаем null session для неавторизованного пользователя
             console.log("[GET_SESSION] No token, returning null");
             return res.json(null);
         }
@@ -107,7 +144,6 @@ export const getSession = async (req: Request, res: Response) => {
         console.log(`[GET_SESSION] user found=${!!user}`);
 
         if (!user) {
-            // Сессия истекла
             console.log("[GET_SESSION] Session expired, clearing cookie");
             res.clearCookie("dev_session");
             return res.json(null);
