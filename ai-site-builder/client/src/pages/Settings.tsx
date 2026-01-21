@@ -1,83 +1,101 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { toast } from "sonner";
 import {
     AccountSettingsCards,
     ChangePasswordCard,
     DeleteAccountCard,
 } from "@daveyplate/better-auth-ui";
-import CreditsTab from "@/components/CreditsTab";
-
-type SettingsTab = "account" | "password" | "credits" | "delete";
+import api from "@/config/axios";
 
 const Settings = () => {
-    const [activeTab, setActiveTab] = useState<SettingsTab>("account");
+    const [credits, setCredits] = useState<number>(0);
 
-    const tabs: Array<{ id: SettingsTab; label: string }> = [
-        { id: "account", label: "Аккаунт" },
-        { id: "credits", label: "Кредиты" },
-        { id: "password", label: "Пароль" },
-        { id: "delete", label: "Удалить" },
-    ];
+    useEffect(() => {
+        const fetchCredits = async () => {
+            try {
+                const { data } = await api.get("/api/user/credits");
+                setCredits(data.credits);
+            } catch (error: any) {
+                console.error("Error fetching credits:", error);
+            }
+        };
+        fetchCredits();
+    }, []);
+
+    const handleAddCredits = async (planId: string) => {
+        try {
+            const { data } = await api.post("/api/user/purchase-credits", {
+                planId,
+            });
+            toast.success(data.message);
+            const { data: newData } = await api.get("/api/user/credits");
+            setCredits(newData.credits);
+        } catch (error: any) {
+            toast.error(
+                error?.response?.data?.message || "Ошибка при добавлении кредитов"
+            );
+        }
+    };
 
     return (
         <div className="w-full p-4 flex justify-center items-center min-h-[90vh] flex-col gap-6 py-12">
-            {/* Tab Navigation */}
-            <div className="w-full max-w-xl mx-auto">
-                <div className="flex gap-2 border-b border-indigo-950 overflow-x-auto">
-                    {tabs.map((tab) => (
+            <AccountSettingsCards
+                classNames={{
+                    card: {
+                        base: "bg-black/10 ring ring-indigo-950 max-w-xl mx-auto",
+                        footer: "bg-black/10 ring ring-indigo-950",
+                    },
+                }}
+            />
+            <div className="w-full">
+                <ChangePasswordCard
+                    classNames={{
+                        base: "bg-black/10 ring ring-indigo-950 max-w-xl mx-auto",
+                        footer: "bg-black/10 ring ring-indigo-950",
+                    }}
+                />
+            </div>
+
+            {/* Кредиты - Карточка */}
+            <div className="w-full">
+                <div className="bg-black/10 ring ring-indigo-950 max-w-xl mx-auto rounded-lg p-6 text-white">
+                    <h3 className="text-lg font-semibold mb-4">Кредиты</h3>
+                    <div className="mb-6">
+                        <div className="text-sm text-gray-400 mb-2">Текущий баланс</div>
+                        <div className="text-3xl font-bold text-indigo-300">{credits}</div>
+                        <div className="text-xs text-gray-500 mt-1">
+                            • Создание: -5 | • Изменение: -5
+                        </div>
+                    </div>
+                    <div className="space-y-2">
                         <button
-                            key={tab.id}
-                            onClick={() => setActiveTab(tab.id)}
-                            className={`px-4 py-2 text-sm font-medium whitespace-nowrap transition-colors ${
-                                activeTab === tab.id
-                                    ? "text-indigo-400 border-b-2 border-indigo-400"
-                                    : "text-gray-400 hover:text-gray-300"
-                            }`}
+                            onClick={() => handleAddCredits("basic")}
+                            className="w-full px-4 py-2 bg-indigo-600 hover:bg-indigo-700 rounded text-sm font-medium transition"
                         >
-                            {tab.label}
+                            +100 кредитов ($9)
                         </button>
-                    ))}
+                        <button
+                            onClick={() => handleAddCredits("pro")}
+                            className="w-full px-4 py-2 bg-indigo-600 hover:bg-indigo-700 rounded text-sm font-medium transition"
+                        >
+                            +400 кредитов ($29)
+                        </button>
+                        <button
+                            onClick={() => handleAddCredits("enterprise")}
+                            className="w-full px-4 py-2 bg-indigo-600 hover:bg-indigo-700 rounded text-sm font-medium transition"
+                        >
+                            +1000 кредитов ($99)
+                        </button>
+                    </div>
                 </div>
             </div>
 
-            {/* Tab Content */}
             <div className="w-full">
-                {/* Account Tab */}
-                {activeTab === "account" && (
-                    <AccountSettingsCards
-                        classNames={{
-                            card: {
-                                base: "bg-black/10 ring ring-indigo-950 max-w-xl mx-auto",
-                                footer: "bg-black/10 ring ring-indigo-950",
-                            },
-                        }}
-                    />
-                )}
-
-                {/* Credits Tab */}
-                {activeTab === "credits" && <CreditsTab />}
-
-                {/* Password Tab */}
-                {activeTab === "password" && (
-                    <div className="w-full">
-                        <ChangePasswordCard
-                            classNames={{
-                                base: "bg-black/10 ring ring-indigo-950 max-w-xl mx-auto",
-                                footer: "bg-black/10 ring ring-indigo-950",
-                            }}
-                        />
-                    </div>
-                )}
-
-                {/* Delete Tab */}
-                {activeTab === "delete" && (
-                    <div className="w-full">
-                        <DeleteAccountCard
-                            classNames={{
-                                base: "bg-black/10 ring ring-indigo-950 max-w-xl mx-auto",
-                            }}
-                        />
-                    </div>
-                )}
+                <DeleteAccountCard
+                    classNames={{
+                        base: "bg-black/10 ring ring-indigo-950 max-w-xl mx-auto",
+                    }}
+                />
             </div>
         </div>
     );
