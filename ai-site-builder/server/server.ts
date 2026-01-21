@@ -17,6 +17,32 @@ const corsOption: CorsOptions = {
     credentials: true,
 };
 
+// LOGGING: Request/Response logger - FIRST middleware to catch all requests
+app.use((req: Request, res: Response, next: Function) => {
+    const startTime = Date.now();
+    const hasCookie = !!(req.headers.cookie);
+    const hasAuth = !!(req.headers.authorization);
+
+    console.log(
+        `[REQ] ${req.method} ${req.path} ` +
+        `origin=${req.headers.origin || "none"} ` +
+        `cookie=${hasCookie ? 1 : 0} auth=${hasAuth ? 1 : 0}`
+    );
+
+    // Log response when finished
+    const originalSend = res.send;
+    res.send = function (data: any) {
+        const duration = Date.now() - startTime;
+        console.log(
+            `[RES] ${res.statusCode} ${req.method} ${req.path} ` +
+            `duration=${duration}ms`
+        );
+        return originalSend.call(this, data);
+    };
+
+    next();
+});
+
 app.use(cors(corsOption));
 app.use(express.json({ limit: "50mb" }));
 app.use(cookieParser());
@@ -41,6 +67,7 @@ app.use((req: Request, res: Response, next: Function) => {
     }
 
     req.userId = userId;
+    console.log(`[AUTH] userId set to: ${userId}`);
     next();
 });
 
