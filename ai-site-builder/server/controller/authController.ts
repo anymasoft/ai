@@ -95,20 +95,25 @@ export const signIn = async (req: Request, res: Response) => {
 export const getSession = async (req: Request, res: Response) => {
     try {
         const token = req.cookies.dev_session;
+        console.log(`[GET_SESSION] token=${token ? token.substring(0, 10) + "..." : "null"}`);
 
         if (!token) {
             // Возвращаем null session для неавторизованного пользователя
+            console.log("[GET_SESSION] No token, returning null");
             return res.json(null);
         }
 
         const user = sessions.get(token);
+        console.log(`[GET_SESSION] user found=${!!user}`);
 
         if (!user) {
             // Сессия истекла
+            console.log("[GET_SESSION] Session expired, clearing cookie");
             res.clearCookie("dev_session");
             return res.json(null);
         }
 
+        console.log(`[GET_SESSION] Returning session for ${user.email}`);
         res.json({
             user,
             session: {
@@ -117,6 +122,7 @@ export const getSession = async (req: Request, res: Response) => {
             },
         });
     } catch (error: any) {
+        console.error("[GET_SESSION] Error:", error.message);
         res.status(500).json({ message: error.message });
     }
 };
