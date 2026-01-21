@@ -23,6 +23,10 @@ authRouter.post("/email", signIn);
 authRouter.post("/email/signin", signIn);
 authRouter.post("/email/signup", signUp);
 
+// Sign-in with email provider path
+authRouter.post("/sign-in/email", signIn);
+authRouter.post("/sign-up/email", signUp);
+
 // Generic endpoint for all auth types
 authRouter.post("/", signIn);
 
