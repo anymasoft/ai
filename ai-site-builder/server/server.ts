@@ -21,6 +21,29 @@ app.use(cors(corsOption));
 app.use(express.json({ limit: "50mb" }));
 app.use(cookieParser());
 
+// DEV AUTH: Global middleware - auto-attach dev user if not authenticated
+app.use((req: Request, res: Response, next: Function) => {
+    let userId = null;
+
+    // Check dev_session cookie first
+    if (req.cookies?.dev_session) {
+        userId = "dev-user-1";
+    }
+
+    // Check x-user-id header
+    if (!userId) {
+        userId = req.headers["x-user-id"] as string;
+    }
+
+    // Fallback: always use dev-user in dev mode
+    if (!userId) {
+        userId = "dev-user-1";
+    }
+
+    req.userId = userId;
+    next();
+});
+
 app.get("/", (req: Request, res: Response) => {
     res.send("Server is Live!");
 });
@@ -28,7 +51,7 @@ app.get("/", (req: Request, res: Response) => {
 // Auth routes (no authentication required)
 app.use("/api/auth", authRouter);
 
-// Protected routes
+// Protected routes (with user context from global middleware)
 app.use("/api/user", userRouter);
 app.use("/api/project", projectRouter);
 

@@ -36,12 +36,16 @@ export const getUserCredits = async (req: Request, res: Response) => {
 // Create a new project
 export const createUserProject = async (req: Request, res: Response) => {
     const userId = req.userId;
+    // DEV: Log auth context for debugging
+    console.log(`[CREATE_PROJECT] userId=${userId}, has_cookie=${!!req.cookies?.dev_session}`);
     try {
         if (!userId) {
+            console.log("[CREATE_PROJECT] ERROR: userId is empty");
             return res.status(401).json({ message: "Unauthorized" });
         }
 
         const { initial_prompt } = req.body;
+        console.log(`[CREATE_PROJECT] Starting with userId=${userId}, prompt_len=${initial_prompt?.length}`);
 
         // Ensure user exists
         const user = db.prepare("SELECT * FROM users WHERE id = ?").get(userId) as any;
