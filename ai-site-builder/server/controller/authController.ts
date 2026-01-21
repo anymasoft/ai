@@ -5,6 +5,8 @@ const DEV_USER = {
     id: "dev-user-1",
     email: "user@example.com",
     name: "Dev User",
+    emailVerified: true,
+    image: null,
 };
 
 const DEV_PASSWORD = "111111";
