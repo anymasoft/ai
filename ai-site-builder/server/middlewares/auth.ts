@@ -1,7 +1,4 @@
 import { NextFunction, Request, Response } from "express";
-import { fromNodeHeaders } from "better-auth/node";
-
-import { auth } from "../lib/auth.js";
 
 export const protect = async (
     req: Request,
@@ -9,16 +6,14 @@ export const protect = async (
     next: NextFunction
 ) => {
     try {
-        const session = await auth.api.getSession({
-            headers: fromNodeHeaders(req.headers),
-        });
+        // For development: get userId from headers or generate a default one
+        const userId = req.headers["x-user-id"] as string || "default-user";
 
-        if (!session || !session?.user) {
+        if (!userId) {
             return res.status(401).json({ message: "Unauthorized User" });
         }
 
-        req.userId = session.user.id;
-
+        req.userId = userId;
         next();
     } catch (error: any) {
         console.error("Error in protect middleware", error);

@@ -1,8 +1,8 @@
 import { Request, Response } from "express";
+import { v4 as uuidv4 } from "uuid";
 
-import prisma from "../lib/prisma.js";
+import db from "../lib/db.js";
 import openai from "../config/openai.js";
-import { role } from "better-auth/plugins";
 
 // To make revisions
 export const makeRevision = async (req: Request, res: Response) => {
@@ -16,60 +16,34 @@ export const makeRevision = async (req: Request, res: Response) => {
         const { projectId } = req.params;
         const { message } = req.body;
 
-        const user = await prisma.user.findUnique({
-            where: {
-                id: userId,
-            },
-        });
+        const user = db.prepare("SELECT credits FROM users WHERE id = ?").get(userId) as any;
 
         if (!user) {
             return res.status(404).json({ message: "User not found" });
         }
 
         if (user.credits < 5) {
-            return res
-                .status(403)
-                .json({ message: "Add more credits to make changes" });
+            return res.status(403).json({ message: "Add more credits to make changes" });
         }
 
         if (!message || message.trim() === "") {
-            return res
-                .status(400)
-                .json({ message: "Please enter a valid prompt" });
+            return res.status(400).json({ message: "Please enter a valid prompt" });
         }
 
-        const currentProject = await prisma.websiteProject.findUnique({
-            where: {
-                id: projectId,
-                userId,
-            },
-            include: {
-                versions: true,
-            },
-        });
+        const currentProject = db.prepare("SELECT * FROM projects WHERE id = ? AND user_id = ?").get(projectId, userId) as any;
 
         if (!currentProject) {
             return res.status(404).json({ message: "Project not found" });
         }
 
-        await prisma.conversation.create({
-            data: {
-                role: "user",
-                content: message,
-                projectId,
-            },
-        });
+        db.prepare("INSERT INTO conversations (id, project_id, role, content) VALUES (?, ?, ?, ?)").run(
+            uuidv4(),
+            projectId,
+            "user",
+            message
+        );
 
-        await prisma.user.update({
-            where: {
-                id: userId,
-            },
-            data: {
-                credits: {
-                    decrement: 5,
-                },
-            },
-        });
+        db.prepare("UPDATE users SET credits = credits - 5 WHERE id = ?").run(userId);
 
         // Enhance user prompt
         const promptEnhanceResponse = await openai.chat.completions.create({
@@ -95,24 +69,21 @@ export const makeRevision = async (req: Request, res: Response) => {
             ],
         });
 
-        const enhancedPrompt =
-            promptEnhanceResponse.choices[0].message.content || message;
+        const enhancedPrompt = promptEnhanceResponse.choices[0].message.content || message;
 
-        await prisma.conversation.create({
-            data: {
-                role: "assistant",
-                content: `I have enhanced your prompt to:\n\n"${enhancedPrompt}"`,
-                projectId,
-            },
-        });
+        db.prepare("INSERT INTO conversations (id, project_id, role, content) VALUES (?, ?, ?, ?)").run(
+            uuidv4(),
+            projectId,
+            "assistant",
+            `I have enhanced your prompt to:\n\n"${enhancedPrompt}"`
+        );
 
-        await prisma.conversation.create({
-            data: {
-                role: "assistant",
-                content: "Now making changes to your website...",
-                projectId,
-            },
-        });
+        db.prepare("INSERT INTO conversations (id, project_id, role, content) VALUES (?, ?, ?, ?)").run(
+            uuidv4(),
+            projectId,
+            "assistant",
+            "Now making changes to your website..."
+        );
 
         // Generate website code
         const codeGenerationResponse = await openai.chat.completions.create({
@@ -121,7 +92,7 @@ export const makeRevision = async (req: Request, res: Response) => {
                 {
                     role: "system",
                     content: `
-                    You are an expert web developer. 
+                    You are an expert web developer.
 
                     CRITICAL REQUIREMENTS:
                     - Return ONLY the complete updated HTML code with the requested changes.
@@ -144,78 +115,45 @@ export const makeRevision = async (req: Request, res: Response) => {
         const code = codeGenerationResponse.choices[0].message.content || "";
 
         if (!code) {
-            await prisma.conversation.create({
-                data: {
-                    role: "assistant",
-                    content: "Unable to generate code, please try again..",
-                    projectId,
-                },
-            });
+            db.prepare("INSERT INTO conversations (id, project_id, role, content) VALUES (?, ?, ?, ?)").run(
+                uuidv4(),
+                projectId,
+                "assistant",
+                "Unable to generate code, please try again.."
+            );
 
-            await prisma.user.update({
-                where: {
-                    id: userId,
-                },
-                data: {
-                    credits: {
-                        increment: 5,
-                    },
-                },
-            });
+            db.prepare("UPDATE users SET credits = credits + 5 WHERE id = ?").run(userId);
 
             return;
         }
 
-        const version = await prisma.version.create({
-            data: {
-                code: code
-                    .replace(/```[a-z]*\n?/gi, "")
-                    .replace(/```$/g, "")
-                    .trim(),
-                description: "Changes made",
-                projectId,
-            },
-        });
+        const cleanCode = code
+            .replace(/```[a-z]*\n?/gi, "")
+            .replace(/```$/g, "")
+            .trim();
 
-        await prisma.conversation.create({
-            data: {
-                role: "assistant",
-                content:
-                    "I have made changes to your website! You can now preview it.",
-                projectId,
-            },
-        });
+        const versionId = uuidv4();
+        db.prepare("INSERT INTO versions (id, project_id, code, description) VALUES (?, ?, ?, ?)").run(
+            versionId,
+            projectId,
+            cleanCode,
+            "Changes made"
+        );
 
-        await prisma.websiteProject.update({
-            where: {
-                id: projectId,
-            },
-            data: {
-                current_code: code
-                    .replace(/```[a-z]*\n?/gi, "")
-                    .replace(/```$/g, "")
-                    .trim(),
-                current_version_index: version.id,
-            },
-        });
+        db.prepare("INSERT INTO conversations (id, project_id, role, content) VALUES (?, ?, ?, ?)").run(
+            uuidv4(),
+            projectId,
+            "assistant",
+            "I have made changes to your website! You can now preview it."
+        );
+
+        db.prepare("UPDATE projects SET current_code = ? WHERE id = ?").run(cleanCode, projectId);
 
         res.json({ message: "Changes made successfully" });
     } catch (error: any) {
-        await prisma.user.update({
-            where: {
-                id: userId,
-            },
-            data: {
-                credits: {
-                    increment: 5,
-                },
-            },
-        });
+        db.prepare("UPDATE users SET credits = credits + 5 WHERE id = ?").run(userId);
 
-        console.error(
-            "Error in makeRevision controller",
-            error.message || error.code
-        );
+        console.error("Error in makeRevision controller", error.message || error.code);
 
         return res.status(500).json({ message: error.message || error.code });
     }
@@ -231,59 +169,33 @@ export const rollbackToVersion = async (req: Request, res: Response) => {
 
         const { projectId, versionId } = req.params;
         if (!projectId || !versionId) {
-            return res
-                .status(400)
-                .json({ message: "Missing project ID or version ID" });
+            return res.status(400).json({ message: "Missing project ID or version ID" });
         }
 
-        const project = await prisma.websiteProject.findUnique({
-            where: {
-                id: projectId,
-                userId,
-            },
-            include: {
-                versions: true,
-            },
-        });
+        const project = db.prepare("SELECT * FROM projects WHERE id = ? AND user_id = ?").get(projectId, userId) as any;
 
         if (!project) {
             return res.status(404).json({ message: "Project not found" });
         }
 
-        const version = project.versions.find(
-            (version) => version.id === versionId
-        );
+        const version = db.prepare("SELECT * FROM versions WHERE id = ? AND project_id = ?").get(versionId, projectId) as any;
 
         if (!version) {
             return res.status(404).json({ message: "Version not found" });
         }
 
-        await prisma.websiteProject.update({
-            where: {
-                id: projectId,
-                userId,
-            },
-            data: {
-                current_code: version.code,
-                current_version_index: version.id,
-            },
-        });
+        db.prepare("UPDATE projects SET current_code = ? WHERE id = ?").run(version.code, projectId);
 
-        await prisma.conversation.create({
-            data: {
-                role: "assistant",
-                content:
-                    "I have rolled back your website to the specified version. You can now preview it.",
-                projectId,
-            },
-        });
+        db.prepare("INSERT INTO conversations (id, project_id, role, content) VALUES (?, ?, ?, ?)").run(
+            uuidv4(),
+            projectId,
+            "assistant",
+            "I have rolled back your website to the specified version. You can now preview it."
+        );
 
         res.json({ message: "Version rolled back successfully" });
     } catch (error: any) {
-        console.error(
-            "Error in rollbackToVersion controller",
-            error.message || error.code
-        );
+        console.error("Error in rollbackToVersion controller", error.message || error.code);
 
         return res.status(500).json({ message: error.message || error.code });
     }
@@ -302,30 +214,20 @@ export const deleteProject = async (req: Request, res: Response) => {
             return res.status(400).json({ message: "Missing project ID" });
         }
 
-        const project = await prisma.websiteProject.findUnique({
-            where: {
-                id: projectId,
-                userId,
-            },
-        });
+        const project = db.prepare("SELECT * FROM projects WHERE id = ? AND user_id = ?").get(projectId, userId) as any;
 
         if (!project) {
             return res.status(404).json({ message: "Project not found" });
         }
 
-        await prisma.websiteProject.delete({
-            where: {
-                id: projectId,
-                userId,
-            },
-        });
+        // Delete conversations and versions first
+        db.prepare("DELETE FROM conversations WHERE project_id = ?").run(projectId);
+        db.prepare("DELETE FROM versions WHERE project_id = ?").run(projectId);
+        db.prepare("DELETE FROM projects WHERE id = ?").run(projectId);
 
         res.json({ message: "Project deleted successfully" });
     } catch (error: any) {
-        console.error(
-            "Error in deleteProject controller",
-            error.message || error.code
-        );
+        console.error("Error in deleteProject controller", error.message || error.code);
 
         return res.status(500).json({ message: error.message || error.code });
     }
@@ -344,26 +246,22 @@ export const getProjectPreview = async (req: Request, res: Response) => {
             return res.status(400).json({ message: "Missing project ID" });
         }
 
-        const project = await prisma.websiteProject.findFirst({
-            where: {
-                id: projectId,
-                userId,
-            },
-            include: {
-                versions: true,
-            },
-        });
+        const project = db.prepare("SELECT * FROM projects WHERE id = ? AND user_id = ?").get(projectId, userId) as any;
 
         if (!project) {
             return res.status(404).json({ message: "Project not found" });
         }
 
-        res.json({ project });
+        const versions = db.prepare("SELECT * FROM versions WHERE project_id = ?").all(projectId);
+
+        res.json({
+            project: {
+                ...project,
+                versions: versions,
+            }
+        });
     } catch (error: any) {
-        console.error(
-            "Error in getProjectPreview controller",
-            error.message || error.code
-        );
+        console.error("Error in getProjectPreview controller", error.message || error.code);
 
         return res.status(500).json({ message: error.message || error.code });
     }
@@ -372,21 +270,11 @@ export const getProjectPreview = async (req: Request, res: Response) => {
 // Get published projects
 export const getPublishedProjects = async (req: Request, res: Response) => {
     try {
-        const projects = await prisma.websiteProject.findMany({
-            where: {
-                isPublished: true,
-            },
-            include: {
-                user: true,
-            },
-        });
+        const projects = db.prepare("SELECT * FROM projects WHERE is_published = 1").all();
 
         res.json({ projects });
     } catch (error: any) {
-        console.error(
-            "Error in getPublishedProjects controller",
-            error.message || error.code
-        );
+        console.error("Error in getPublishedProjects controller", error.message || error.code);
 
         return res.status(500).json({ message: error.message || error.code });
     }
@@ -400,26 +288,15 @@ export const getProjectById = async (req: Request, res: Response) => {
             return res.status(400).json({ message: "Missing project ID" });
         }
 
-        const project = await prisma.websiteProject.findFirst({
-            where: {
-                id: projectId,
-            },
-        });
+        const project = db.prepare("SELECT * FROM projects WHERE id = ?").get(projectId) as any;
 
-        if (
-            !project ||
-            project.isPublished === false ||
-            !project?.current_code
-        ) {
+        if (!project || project.is_published === 0 || !project?.current_code) {
             return res.status(404).json({ message: "Project not found" });
         }
 
         res.json({ code: project.current_code });
     } catch (error: any) {
-        console.error(
-            "Error in getProjectById controller",
-            error.message || error.code
-        );
+        console.error("Error in getProjectById controller", error.message || error.code);
 
         return res.status(500).json({ message: error.message || error.code });
     }
@@ -443,33 +320,17 @@ export const saveProjectCode = async (req: Request, res: Response) => {
             return res.status(400).json({ message: "Missing code" });
         }
 
-        const project = await prisma.websiteProject.findUnique({
-            where: {
-                id: projectId,
-                userId,
-            },
-        });
+        const project = db.prepare("SELECT * FROM projects WHERE id = ? AND user_id = ?").get(projectId, userId) as any;
 
         if (!project) {
             return res.status(404).json({ message: "Project not found" });
         }
 
-        await prisma.websiteProject.update({
-            where: {
-                id: projectId,
-            },
-            data: {
-                current_code: code,
-                current_version_index: "",
-            },
-        });
+        db.prepare("UPDATE projects SET current_code = ? WHERE id = ?").run(code, projectId);
 
         res.json({ message: "Code saved successfully" });
     } catch (error: any) {
-        console.error(
-            "Error in saveProjectCode controller",
-            error.message || error.code
-        );
+        console.error("Error in saveProjectCode controller", error.message || error.code);
 
         return res.status(500).json({ message: error.message || error.code });
     }
