@@ -16,6 +16,15 @@ authRouter.post("/signin", signIn);
 // Better Auth callback format (most common)
 authRouter.post("/callback/credentials", signIn);
 authRouter.post("/callback/signup", signUp);
+authRouter.post("/callback/email", signIn);
+
+// Email-based auth (better-auth specific)
+authRouter.post("/email", signIn);
+authRouter.post("/email/signin", signIn);
+authRouter.post("/email/signup", signUp);
+
+// Generic endpoint for all auth types
+authRouter.post("/", signIn);
 
 // Handle all auth paths that might be called
 authRouter.get("/", (req, res) => {
