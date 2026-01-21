@@ -100,3 +100,9 @@ Thumbs.db
 *.njsproj
 *.sln
 *.sw?
+
+# Database files
+server/data/
+*.db
+*.db-shm
+*.db-wal
