@@ -6,8 +6,19 @@ export const protect = async (
     next: NextFunction
 ) => {
     try {
-        // For development: get userId from headers or generate a default one
-        const userId = req.headers["x-user-id"] as string || "default-user";
+        // Check for dev_session cookie (from auth endpoints)
+        let userId = null;
+
+        if (req.cookies?.dev_session) {
+            // Session exists, extract user ID from session
+            // In dev mode, we set ID directly in cookie data
+            userId = "dev-user-1"; // Fixed dev user ID
+        }
+
+        // Fallback to x-user-id header for backwards compatibility
+        if (!userId) {
+            userId = req.headers["x-user-id"] as string || "default-user";
+        }
 
         if (!userId) {
             return res.status(401).json({ message: "Unauthorized User" });
