@@ -1,8 +1,8 @@
 import { Request, Response } from "express";
-import Stripe from "stripe";
+import { v4 as uuidv4 } from "uuid";
 import "dotenv/config";
 
-import prisma from "../lib/prisma.js";
+import db from "../lib/db.js";
 import openai from "../config/openai.js";
 
 // Get the user credits
@@ -13,23 +13,23 @@ export const getUserCredits = async (req: Request, res: Response) => {
             return res.status(401).json({ message: "Unauthorized" });
         }
 
-        const user = await prisma.user.findUnique({
-            where: {
-                id: userId,
-            },
-        });
+        const user = db.prepare("SELECT credits FROM users WHERE id = ?").get(userId) as any;
 
         if (!user) {
-            return res.status(404).json({ message: "User Not Found" });
+            // Create user if doesn't exist
+            db.prepare("INSERT INTO users (id, name, email, credits) VALUES (?, ?, ?, ?)").run(
+                userId,
+                "User",
+                `${userId}@app.local`,
+                20
+            );
+            return res.json({ credits: 20 });
         }
 
-        res.json({ credits: user?.credits });
+        res.json({ credits: user.credits });
     } catch (error: any) {
-        console.error(
-            "Error in getUserCredits controller",
-            error.message || error.code
-        );
-        return res.status(500).json({ message: error.message || error.code });
+        console.error("Error in getUserCredits controller", error.message);
+        return res.status(500).json({ message: error.message });
     }
 };
 
@@ -43,74 +43,54 @@ export const createUserProject = async (req: Request, res: Response) => {
 
         const { initial_prompt } = req.body;
 
-        const user = await prisma.user.findUnique({
-            where: {
-                id: userId,
-            },
-        });
-
+        // Ensure user exists
+        const user = db.prepare("SELECT * FROM users WHERE id = ?").get(userId) as any;
         if (!user) {
-            return res.status(404).json({ message: "User Not Found" });
+            db.prepare("INSERT INTO users (id, name, email, credits) VALUES (?, ?, ?, ?)").run(
+                userId,
+                "User",
+                `${userId}@app.local`,
+                20
+            );
         }
 
-        if (user && user.credits < 5) {
-            return res
-                .status(403)
-                .json({ message: "Add more credits to create a project" });
+        const userCredits = user?.credits || 20;
+
+        if (userCredits < 5) {
+            return res.status(403).json({ message: "Add more credits to create a project" });
         }
 
         // Create a new project
-        const project = await prisma.websiteProject.create({
-            data: {
-                name:
-                    initial_prompt.length > 50
-                        ? initial_prompt.substring(0, 47) + "..."
-                        : initial_prompt,
-                initial_prompt,
-                userId,
-            },
-        });
+        const projectId = uuidv4();
+        const projectName = initial_prompt.length > 50 ? initial_prompt.substring(0, 47) + "..." : initial_prompt;
 
-        // Update users total creation
-        await prisma.user.update({
-            where: {
-                id: userId,
-            },
-            data: {
-                totalCreation: {
-                    increment: 1,
-                },
-            },
-        });
+        db.prepare(
+            "INSERT INTO projects (id, user_id, name, initial_prompt, current_code) VALUES (?, ?, ?, ?, ?)"
+        ).run(projectId, userId, projectName, initial_prompt, "");
 
-        await prisma.conversation.create({
-            data: {
-                role: "user",
-                content: initial_prompt,
-                projectId: project.id,
-            },
-        });
+        // Update user credits
+        db.prepare("UPDATE users SET credits = credits - 5 WHERE id = ?").run(userId);
 
-        await prisma.user.update({
-            where: {
-                id: userId,
-            },
-            data: {
-                credits: {
-                    decrement: 5,
-                },
-            },
-        });
+        // Add conversation
+        db.prepare("INSERT INTO conversations (id, project_id, role, content) VALUES (?, ?, ?, ?)").run(
+            uuidv4(),
+            projectId,
+            "user",
+            initial_prompt
+        );
 
-        res.json({ projectId: project.id });
+        res.json({ projectId });
 
-        // Enhance user prompt
-        const promptEnhanceResponse = await openai.chat.completions.create({
-            model: "kwaipilot/kat-coder-pro:free",
-            messages: [
-                {
-                    role: "system",
-                    content: `
+        // Generate website asynchronously
+        (async () => {
+            try {
+                // Enhance user prompt
+                const promptEnhanceResponse = await openai.chat.completions.create({
+                    model: "gpt-4o-mini",
+                    messages: [
+                        {
+                            role: "system",
+                            content: `
                     You are a prompt enhancement specialist. Take the user's website request and expand it into a detailed, comprehensive prompt that will help create the best possible website.
 
                     Enhance this prompt by:
@@ -120,45 +100,43 @@ export const createUserProject = async (req: Request, res: Response) => {
                     4. Including modern web design best practices
                     5. Mentioning responsive design requirements
                     6. Adding any missing but important elements
-                
+
                     Return ONLY the enhanced prompt, nothing else. Make it detailed but concise (2-3 paragraphs max).`,
-                },
-                {
-                    role: "user",
-                    content: initial_prompt,
-                },
-            ],
-        });
+                        },
+                        {
+                            role: "user",
+                            content: initial_prompt,
+                        },
+                    ],
+                });
 
-        const enhancedPrompt = promptEnhanceResponse.choices[0].message.content;
+                const enhancedPrompt = promptEnhanceResponse.choices[0].message.content;
 
-        await prisma.conversation.create({
-            data: {
-                role: "assistant",
-                content: `I have enhanced your prompt to:\n\n"${enhancedPrompt}"`,
-                projectId: project.id,
-            },
-        });
+                db.prepare("INSERT INTO conversations (id, project_id, role, content) VALUES (?, ?, ?, ?)").run(
+                    uuidv4(),
+                    projectId,
+                    "assistant",
+                    `I have enhanced your prompt to:\n\n"${enhancedPrompt}"`
+                );
 
-        await prisma.conversation.create({
-            data: {
-                role: "assistant",
-                content: "Now generating your website...",
-                projectId: project.id,
-            },
-        });
+                db.prepare("INSERT INTO conversations (id, project_id, role, content) VALUES (?, ?, ?, ?)").run(
+                    uuidv4(),
+                    projectId,
+                    "assistant",
+                    "Now generating your website..."
+                );
 
-        // Generating website code
-        const codeGenerationResponse = await openai.chat.completions.create({
-            model: "kwaipilot/kat-coder-pro:free",
-            messages: [
-                {
-                    role: "system",
-                    content: `
+                // Generate website code
+                const codeGenerationResponse = await openai.chat.completions.create({
+                    model: "gpt-4o-mini",
+                    messages: [
+                        {
+                            role: "system",
+                            content: `
                     You are an expert web developer. Create a complete, production-ready, single-page website based on this request: "${enhancedPrompt}"
 
                     CRITICAL REQUIREMENTS:
-                    - You MUST output valid HTML ONLY. 
+                    - You MUST output valid HTML ONLY.
                     - Use Tailwind CSS for ALL styling
                     - Include this EXACT script in the <head>: <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
                     - Use Tailwind utility classes extensively for styling, animations, and responsiveness
@@ -179,90 +157,58 @@ export const createUserProject = async (req: Request, res: Response) => {
                     4. Do NOT include markdown, explanations, notes, or code fences.
 
                     The HTML should be complete and ready to render as-is with Tailwind CSS.`,
-                },
-                {
-                    role: "user",
-                    content: enhancedPrompt || "",
-                },
-            ],
-        });
+                        },
+                        {
+                            role: "user",
+                            content: enhancedPrompt || "",
+                        },
+                    ],
+                });
 
-        const code = codeGenerationResponse.choices[0].message.content || "";
+                const code = codeGenerationResponse.choices[0].message.content || "";
 
-        if (!code) {
-            await prisma.conversation.create({
-                data: {
-                    role: "assistant",
-                    content: "Unable to generate code, please try again..",
-                    projectId: project.id,
-                },
-            });
+                if (!code) {
+                    db.prepare("INSERT INTO conversations (id, project_id, role, content) VALUES (?, ?, ?, ?)").run(
+                        uuidv4(),
+                        projectId,
+                        "assistant",
+                        "Unable to generate code, please try again.."
+                    );
 
-            await prisma.user.update({
-                where: {
-                    id: userId,
-                },
-                data: {
-                    credits: {
-                        increment: 5,
-                    },
-                },
-            });
+                    db.prepare("UPDATE users SET credits = credits + 5 WHERE id = ?").run(userId);
+                    return;
+                }
 
-            return;
-        }
-
-        // Create version for the project
-        const version = await prisma.version.create({
-            data: {
-                code: code
+                const cleanCode = code
                     .replace(/```[a-z]*\n?/gi, "")
                     .replace(/```$/g, "")
-                    .trim(),
-                description: "Initial version",
-                projectId: project.id,
-            },
-        });
+                    .trim();
 
-        await prisma.conversation.create({
-            data: {
-                role: "assistant",
-                content:
-                    "I have created your website! You can now preview it and request any changes.",
-                projectId: project.id,
-            },
-        });
+                // Create version for the project
+                const versionId = uuidv4();
+                db.prepare("INSERT INTO versions (id, project_id, code, description) VALUES (?, ?, ?, ?)").run(
+                    versionId,
+                    projectId,
+                    cleanCode,
+                    "Initial version"
+                );
 
-        await prisma.websiteProject.update({
-            where: {
-                id: project.id,
-            },
-            data: {
-                current_code: code
-                    .replace(/```[a-z]*\n?/gi, "")
-                    .replace(/```$/g, "")
-                    .trim(),
-                current_version_index: version.id,
-            },
-        });
+                db.prepare("INSERT INTO conversations (id, project_id, role, content) VALUES (?, ?, ?, ?)").run(
+                    uuidv4(),
+                    projectId,
+                    "assistant",
+                    "I have created your website! You can now preview it and request any changes."
+                );
+
+                db.prepare("UPDATE projects SET current_code = ? WHERE id = ?").run(cleanCode, projectId);
+            } catch (error: any) {
+                console.error("Error in project generation:", error);
+                db.prepare("UPDATE users SET credits = credits + 5 WHERE id = ?").run(userId);
+            }
+        })();
     } catch (error: any) {
-        await prisma.user.update({
-            where: {
-                id: userId,
-            },
-            data: {
-                credits: {
-                    increment: 5,
-                },
-            },
-        });
-
-        console.error(
-            "Error in createUserProject controller",
-            error.message || error.code
-        );
-
-        return res.status(500).json({ message: error.message || error.code });
+        console.error("Error in createUserProject controller", error.message);
+        return res.status(500).json({ message: error.message });
     }
 };
 
@@ -280,33 +226,25 @@ export const getUserProject = async (req: Request, res: Response) => {
             return res.status(400).json({ message: "Project ID is required" });
         }
 
-        const project = await prisma.websiteProject.findUnique({
-            where: {
-                id: projectId,
-                userId,
-            },
-            include: {
-                conversation: {
-                    orderBy: {
-                        timestamp: "asc",
-                    },
-                },
-                versions: {
-                    orderBy: {
-                        timestamp: "asc",
-                    },
-                },
-            },
-        });
+        const project = db.prepare("SELECT * FROM projects WHERE id = ? AND user_id = ?").get(projectId, userId) as any;
 
         if (!project) {
             return res.status(404).json({ message: "Project not found" });
         }
 
-        res.json({ project });
+        const conversations = db.prepare("SELECT * FROM conversations WHERE project_id = ? ORDER BY timestamp ASC").all(projectId);
+        const versions = db.prepare("SELECT * FROM versions WHERE project_id = ? ORDER BY timestamp ASC").all(projectId);
+
+        res.json({
+            project: {
+                ...project,
+                conversation: conversations,
+                versions: versions,
+            }
+        });
     } catch (error: any) {
         console.error("Error in getUserProject controller", error);
-        return res.status(500).json({ message: error.message || error.code });
+        return res.status(500).json({ message: error.message });
     }
 };
 
@@ -318,19 +256,12 @@ export const getUserProjects = async (req: Request, res: Response) => {
             return res.status(401).json({ message: "Unauthorized" });
         }
 
-        const projects = await prisma.websiteProject.findMany({
-            where: {
-                userId,
-            },
-            orderBy: {
-                updatedAt: "desc",
-            },
-        });
+        const projects = db.prepare("SELECT * FROM projects WHERE user_id = ? ORDER BY updated_at DESC").all(userId);
 
         res.json({ projects });
     } catch (error: any) {
         console.error("Error in getUserProjects controller", error);
-        return res.status(500).json({ message: error.message || error.code });
+        return res.status(500).json({ message: error.message });
     }
 };
 
@@ -348,104 +279,51 @@ export const togglePublish = async (req: Request, res: Response) => {
             return res.status(400).json({ message: "Project ID is required" });
         }
 
-        const project = await prisma.websiteProject.findUnique({
-            where: {
-                id: projectId,
-                userId,
-            },
-        });
+        const project = db.prepare("SELECT * FROM projects WHERE id = ? AND user_id = ?").get(projectId, userId) as any;
 
         if (!project) {
             return res.status(404).json({ message: "Project not found" });
         }
 
-        await prisma.websiteProject.update({
-            where: {
-                id: projectId,
-            },
-            data: {
-                isPublished: !project.isPublished,
-            },
-        });
+        const newPublishState = project.is_published === 0 ? 1 : 0;
+        db.prepare("UPDATE projects SET is_published = ? WHERE id = ?").run(newPublishState, projectId);
 
         res.json({
-            message: project.isPublished
-                ? "Project Unpublished"
-                : "Project Published",
+            message: newPublishState === 0 ? "Project Unpublished" : "Project Published",
         });
     } catch (error: any) {
         console.error("Error in togglePublish controller", error);
-        return res.status(500).json({ message: error.message || error.code });
+        return res.status(500).json({ message: error.message });
     }
 };
 
-// To purchase credits
+// To purchase credits (simplified - no Stripe)
 export const purchaseCredits = async (req: Request, res: Response) => {
     try {
-        interface Plan {
-            credits: number;
-            amount: number;
-        }
-
-        const plans = {
-            basic: { credits: 100, amount: 5 },
-            pro: { credits: 400, amount: 19 },
-            enterprise: { credits: 1000, amount: 49 },
-        };
-
         const userId = req.userId;
         if (!userId) {
             return res.status(401).json({ message: "Unauthorized" });
         }
 
-        const { planId } = req.body as { planId: keyof typeof plans };
-        const origin = req.headers.origin as string;
+        const { planId } = req.body;
 
-        const plan: Plan = plans[planId];
+        const plans: Record<string, { credits: number }> = {
+            basic: { credits: 100 },
+            pro: { credits: 400 },
+            enterprise: { credits: 1000 },
+        };
+
+        const plan = plans[planId];
         if (!plan) {
             return res.status(400).json({ message: "Plan not found" });
         }
 
-        const transaction = await prisma.transaction.create({
-            data: {
-                userId: userId!,
-                planId: req.body.planId,
-                amount: plan.amount,
-                credits: plan.credits,
-            },
-        });
+        // For development: just add credits directly
+        db.prepare("UPDATE users SET credits = credits + ? WHERE id = ?").run(plan.credits, userId);
 
-        const stripe = new Stripe(process.env.STRIPE_SECRET_KEY as string);
-
-        const session = await stripe.checkout.sessions.create({
-            success_url: `${origin}/loading`,
-            cancel_url: `${origin}`,
-            line_items: [
-                {
-                    price_data: {
-                        currency: "usd",
-                        product_data: {
-                            name: `AI Site Builder - ${plan.credits} credits`,
-                        },
-                        unit_amount: Math.floor(transaction.amount) * 100,
-                    },
-                    quantity: 1,
-                },
-            ],
-            mode: "payment",
-            metadata: {
-                transactionId: transaction.id,
-                appId: "ai-site-builder",
-            },
-            expires_at: Math.floor(Date.now() / 1000) + 30 * 60, // Expires in 30 minutes
-        });
-
-        if (!session.url) {
-            return res.status(500).json({ message: "Failed to create checkout session" });
-        }
-        res.json({ payment_link: session.url });
+        res.json({ message: `${plan.credits} credits added!` });
     } catch (error: any) {
         console.error("Error in purchaseCredits controller", error);
-        return res.status(500).json({ message: error.message || error.code });
+        return res.status(500).json({ message: error.message });
     }
 };
