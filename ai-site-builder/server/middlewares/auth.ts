@@ -10,18 +10,19 @@ export const protect = async (
         let userId = null;
 
         if (req.cookies?.dev_session) {
-            // Session exists, extract user ID from session
-            // In dev mode, we set ID directly in cookie data
+            // Session exists, use dev user
             userId = "dev-user-1"; // Fixed dev user ID
         }
 
         // Fallback to x-user-id header for backwards compatibility
         if (!userId) {
-            userId = req.headers["x-user-id"] as string || "default-user";
+            userId = req.headers["x-user-id"] as string;
         }
 
+        // IMPORTANT: In dev mode, always have a userId (no user = auto-auth as dev-user)
+        // This allows project creation and generation without real login
         if (!userId) {
-            return res.status(401).json({ message: "Unauthorized User" });
+            userId = "dev-user-1";
         }
 
         req.userId = userId;
