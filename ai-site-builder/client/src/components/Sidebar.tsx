@@ -29,6 +29,7 @@ const Sidebar = ({
 }: SidebarProps) => {
     const messageRef = useRef<HTMLDivElement>(null);
     const [input, setInput] = useState("");
+    const [showVersionAppliedToast, setShowVersionAppliedToast] = useState(false);
 
     const fetchProject = async () => {
         try {
@@ -46,11 +47,6 @@ const Sidebar = ({
 
     const handleRollback = async (versionId: string) => {
         try {
-            const confirm = window.confirm(
-                "Are you sure you want to rollback to this version?"
-            );
-            if (!confirm) return;
-
             setIsGenerating(true);
 
             const { data } = await api.post(
@@ -67,7 +63,13 @@ const Sidebar = ({
 
             setProject(data2.project);
 
-            toast.success(data.message);
+            // Show premium toast notification
+            setShowVersionAppliedToast(true);
+
+            // Auto-hide after 4 seconds
+            setTimeout(() => {
+                setShowVersionAppliedToast(false);
+            }, 4000);
 
             setIsGenerating(false);
         } catch (error: any) {
@@ -268,6 +270,75 @@ const Sidebar = ({
                     </div>
                 </form>
             </div>
+
+            {/* Version Applied Toast - Premium UI */}
+            {showVersionAppliedToast && (
+                <div className="fixed bottom-6 right-6 z-50 animate-in fade-in slide-in-from-bottom-4 duration-300">
+                    <div className="bg-white inline-flex space-x-3 p-4 text-sm rounded-lg border border-gray-200 shadow-lg">
+                        {/* Success Icon */}
+                        <svg
+                            width="18"
+                            height="18"
+                            viewBox="0 0 18 18"
+                            fill="none"
+                            xmlns="http://www.w3.org/2000/svg"
+                            className="flex-shrink-0 mt-0.5"
+                        >
+                            <path
+                                d="M16.5 8.31V9a7.5 7.5 0 1 1-4.447-6.855M16.5 3 9 10.508l-2.25-2.25"
+                                stroke="#22C55E"
+                                strokeWidth="1.5"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                            />
+                        </svg>
+
+                        {/* Text Content */}
+                        <div>
+                            <h3 className="text-slate-700 font-medium">Version applied</h3>
+                            <p className="text-slate-500 text-xs">
+                                You can switch between versions at any time
+                            </p>
+                        </div>
+
+                        {/* Close Button */}
+                        <button
+                            type="button"
+                            aria-label="close"
+                            onClick={() => setShowVersionAppliedToast(false)}
+                            className="flex-shrink-0 cursor-pointer text-slate-400 hover:text-slate-600 active:scale-95 transition"
+                        >
+                            <svg
+                                width="14"
+                                height="14"
+                                viewBox="0 0 14 14"
+                                fill="none"
+                                xmlns="http://www.w3.org/2000/svg"
+                            >
+                                <rect
+                                    y="12.532"
+                                    width="17.498"
+                                    height="2.1"
+                                    rx="1.05"
+                                    transform="rotate(-45.74 0 12.532)"
+                                    fill="currentColor"
+                                    fillOpacity=".7"
+                                />
+                                <rect
+                                    x="12.531"
+                                    y="13.914"
+                                    width="17.498"
+                                    height="2.1"
+                                    rx="1.05"
+                                    transform="rotate(-135.74 12.531 13.914)"
+                                    fill="currentColor"
+                                    fillOpacity=".7"
+                                />
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };
