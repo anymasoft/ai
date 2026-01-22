@@ -201,6 +201,50 @@ export const rollbackToVersion = async (req: Request, res: Response) => {
     }
 };
 
+// Apply specific version (alternative to rollback - for ad-blocker compatibility)
+export const applyVersion = async (req: Request, res: Response) => {
+    try {
+        const userId = req.userId;
+        if (!userId) {
+            return res.status(401).json({ message: "Unauthorized" });
+        }
+
+        const { projectId, versionId } = req.body;
+        if (!projectId || !versionId) {
+            return res.status(400).json({ message: "Missing project ID or version ID" });
+        }
+
+        console.log(`[APPLY_VERSION] projectId=${projectId}, versionId=${versionId}, userId=${userId}`);
+
+        const project = db.prepare("SELECT * FROM projects WHERE id = ? AND user_id = ?").get(projectId, userId) as any;
+
+        if (!project) {
+            return res.status(404).json({ message: "Project not found" });
+        }
+
+        const version = db.prepare("SELECT * FROM versions WHERE id = ? AND project_id = ?").get(versionId, projectId) as any;
+
+        if (!version) {
+            return res.status(404).json({ message: "Version not found" });
+        }
+
+        db.prepare("UPDATE projects SET current_code = ? WHERE id = ?").run(version.code, projectId);
+
+        db.prepare("INSERT INTO conversations (id, project_id, role, content) VALUES (?, ?, ?, ?)").run(
+            uuidv4(),
+            projectId,
+            "assistant",
+            "I have applied the version to your website. You can now preview it."
+        );
+
+        res.json({ message: "Version applied successfully" });
+    } catch (error: any) {
+        console.error("Error in applyVersion controller", error.message || error.code);
+
+        return res.status(500).json({ message: error.message || error.code });
+    }
+};
+
 // Delete a project
 export const deleteProject = async (req: Request, res: Response) => {
     try {
