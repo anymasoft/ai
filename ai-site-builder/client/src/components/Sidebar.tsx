@@ -53,8 +53,12 @@ const Sidebar = ({
 
             setIsGenerating(true);
 
-            const { data } = await api.get(
-                `/api/project/rollback/${project.id}/${versionId}`
+            const { data } = await api.post(
+                `/api/project/apply-version`,
+                {
+                    projectId: project.id,
+                    versionId: versionId
+                }
             );
 
             const { data: data2 } = await api.get(
