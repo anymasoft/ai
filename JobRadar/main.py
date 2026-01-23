@@ -29,6 +29,14 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+# Подавляем логи сторонних библиотек
+logging.getLogger("apscheduler").setLevel(logging.WARNING)
+logging.getLogger("apscheduler.executors").setLevel(logging.WARNING)
+logging.getLogger("httpx").setLevel(logging.WARNING)
+logging.getLogger("telegram").setLevel(logging.WARNING)
+logging.getLogger("telegram.ext").setLevel(logging.WARNING)
+logging.getLogger("telethon").setLevel(logging.WARNING)
+
 # Контекст для хранения состояния
 USER_CONTEXT = {}
 
