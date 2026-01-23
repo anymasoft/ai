@@ -350,18 +350,15 @@ async def main():
     # Запускаем polling-мониторинг каналов в фоне
     scheduler = start_polling_monitoring()
 
+    # Инициализируем и запускаем бота в существующем event loop
+    await app.initialize()
+    await app.start()
+
     print(f"\n✅ Бот запущен. Admin ID: {TELEGRAM_ADMIN_ID}")
     print("📍 Используй /start для открытия меню\n")
 
-    try:
-        # Запускаем бота
-        await app.run_polling(allowed_updates=Update.ALL_TYPES)
-    except KeyboardInterrupt:
-        print("\n\n🛑 Бот остановлен")
-    finally:
-        # Очистка при завершении
-        scheduler.shutdown()
-        await close_telegram_client()
+    # Ждём сигнала завершения (процесс остаётся работать)
+    await asyncio.Event().wait()
 
 
 if __name__ == "__main__":
