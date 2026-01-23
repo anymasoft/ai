@@ -426,6 +426,9 @@ async def format_jobradar_post(message, channel: Channel) -> tuple:
     # Оригинальный текст вакансии
     original_text = message.text
 
+    # ШАГ 0: нормализация markdown-ссылок [@username](url) → @username (url)
+    original_text = re.sub(r'\[@([a-zA-Z0-9_]+)\]\((https?://[^)]+)\)', r'@\1 (\2)', original_text)
+
     # ШАГ 1: найти все конструкции "@username (url)" в тексте
     pattern = r'@([a-zA-Z0-9_]+)\s*\((https?://[^)]+)\)'
 
