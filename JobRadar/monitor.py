@@ -299,193 +299,100 @@ async def build_message_link(channel: Channel, message_id: int) -> str:
 
 async def build_source_link(message, channel: Channel) -> tuple:
     """
-    Построить ссылку-источник в каноничном формате JobRadar.
+    Каноничная ссылка-источник JobRadar (исправленная).
 
-    КАНОНИЧНАЯ ЛОГИКА:
-    1. ЕСЛИ message.chat.broadcast == True (КАНАЛ):
-       → ссылка на конкретный пост в канале
-
-    2. ЕСЛИ message.chat.broadcast == False (чат/группа/супергруппа):
-       - ЕСЛИ message.sender.username есть:
-         → ссылка на профиль пользователя (@username)
-       - ИНАЧЕ:
-         → ссылка на пост в чате
-
-    Args:
-        message: Объект сообщения от Telethon
-        channel: Объект Channel из БД
-
-    Returns:
-        Кортеж (link_text, url, should_create_entity)
-        - link_text: текст, который выводится пользователю
-        - url: куда ведет ссылка
-        - should_create_entity: нужно ли создавать MessageEntityTextUrl
+    ПРАВИЛА:
+    1) Канал → ссылка на пост
+    2) Чат + username → профиль
+    3) Чат БЕЗ username → ссылка на пост (НЕ t.me/c в тексте)
     """
-    from telethon.tl.types import MessageEntityTextUrl
-
-    # Определяем тип источника: канал или чат
-    # КРИТИЧНО: message.is_channel может быть True и для супергрупп!
-    # Правильный способ: проверять message.chat.broadcast
+    # Определяем тип источника
     is_broadcast_channel = bool(message.chat and getattr(message.chat, "broadcast", False))
 
-    # ДИАГНОСТИКА: дамп полей сообщения при включенном DEBUG_MESSAGE_DUMP
-    dump_message_for_diagnostics(message, channel, is_broadcast_channel)
-
-    logger.debug(f"🔍 Определение источника: broadcast={is_broadcast_channel}, "
-                f"chat_type={getattr(message.chat, 'type', 'unknown')}, "
-                f"sender_username={getattr(message.sender, 'username', None) if message.sender else None}")
-
+    # --- 1. КАНАЛ ---
     if is_broadcast_channel:
-        # КАНАЛ: ссылка на конкретный пост
-        logger.debug(f"📢 Тип: КАНАЛ")
-        link_text = channel.title or (f"@{channel.username}" if channel.username else f"@{channel.value}")
+        link_text = (
+            channel.title
+            or (f"@{channel.username}" if channel.username else f"@{channel.value}")
+        )
+
         message_link = await build_message_link(channel, message.id)
-
-        if message_link:
-            if DEBUG_MESSAGE_DUMP:
-                logger.info(f"📋 РЕЗУЛЬТАТ (КАНАЛ): link_text='{link_text}' | url='{message_link}'")
-            return link_text, message_link, True
-        else:
-            logger.warning(f"⚠️ Не удалось построить ссылку на пост для канала {channel.title}")
+        if not message_link:
             return None, None, False
-    else:
-        # ЧАТ / ГРУППА / СУПЕРГРУППА
-        logger.debug(f"💬 Тип: ЧАТ/ГРУППА")
 
-        # Определяем автора: сначала пробуем sender, потом from_user
-        # (в группах message.from_user часто = None, реальный автор в message.sender)
-        author = getattr(message, 'sender', None) or getattr(message, 'from_user', None)
+        return link_text, message_link, True
 
-        logger.debug(f"   message.sender={type(getattr(message, 'sender', None)).__name__ if getattr(message, 'sender', None) else None}, "
-                    f"message.from_user={type(getattr(message, 'from_user', None)).__name__ if getattr(message, 'from_user', None) else None}, "
-                    f"author={type(author).__name__ if author else None}")
+    # --- 2. ЧАТ ---
+    # Пытаемся получить username автора
+    author = message.sender or message.from_user
+    sender_username = None
 
-        # Проверяем: есть ли username у ОТПРАВИТЕЛЯ сообщения
-        sender_username = None
-        if author and hasattr(author, 'username'):
-            sender_username = author.username
+    if author and getattr(author, "username", None):
+        sender_username = author.username
+    elif message.post_author:
+        sender_username = message.post_author.lstrip("@")
 
-        logger.debug(f"   Автор: {sender_username or 'нет username'}")
+    # 2a. Есть username → профиль
+    if sender_username:
+        return (
+            f"@{sender_username}",
+            f"https://t.me/{sender_username}",
+            True
+        )
 
-        if sender_username:
-            # Есть username автора → ссылка на профиль
-            logger.debug(f"   ✅ Публикуем со ссылкой на профиль @{sender_username}")
-            author_username = f"@{sender_username}"
-            profile_url = f"https://t.me/{sender_username}"
-            if DEBUG_MESSAGE_DUMP:
-                logger.info(f"📋 РЕЗУЛЬТАТ: link_text='{author_username}' | url='{profile_url}'")
-            return author_username, profile_url, True
-        else:
-            # Нет username → ссылка на пост в чате
-            logger.debug(f"   ⚠️ Нет username, используем ссылку на пост")
+    # 2b. НЕТ username → ссылка на пост (а не t.me/c в тексте)
+    post_link = await build_message_link(channel, message.id)
+    if not post_link:
+        return None, None, False
 
-            # Построить ссылку на пост
-            if channel.channel_id:
-                # Для приватных чатов используем internal ID
-                internal_id = channel.channel_id & 0x7FFFFFFF
-                post_link = f"https://t.me/c/{internal_id}/{message.id}"
-            else:
-                # Для публичных чатов используем username/title
-                chat_identifier = channel.username or channel.value or str(channel.channel_id)
-                post_link = f"https://t.me/{chat_identifier}/{message.id}"
+    # ВАЖНО: link_text — ТОЛЬКО текст, БЕЗ URL
+    link_text = channel.title or "Источник"
 
-            # Текст ссылки (название чата или сам URL)
-            link_text = channel.title or (f"@{channel.username}" if channel.username else post_link)
-            if DEBUG_MESSAGE_DUMP:
-                logger.info(f"📋 РЕЗУЛЬТАТ (FALLBACK): link_text='{link_text}' | url='{post_link}'")
-                logger.info(f"   Причина fallback: author.username={sender_username}, channel.channel_id={channel.channel_id}")
-            return link_text, post_link, True
+    return link_text, post_link, True
+
 
 
 async def format_jobradar_post(message, channel: Channel) -> tuple:
-    """
-    Форматирует пост вакансии в каноничный формат JobRadar.
+    from telethon.tl.types import MessageEntityTextUrl
 
-    Логика выбора ссылки:
-    A) ЕСЛИ сообщение из КАНАЛА (message.chat.broadcast == True):
-       - Текст вакансии + название канала как кликабельная ссылка на конкретный пост
-       - Формат: <текст вакансии>\n\n@channel_name (где ссылка ведёт на пост)
-
-    B) ЕСЛИ сообщение из ЧАТА/ГРУППЫ (message.chat.broadcast == False):
-       - Если у АВТОРА есть username: <текст вакансии>\n\n@username (ссылка на профиль)
-       - Если username нет: <текст вакансии>\n\nhttps://t.me/chat/POST_ID
-
-    Args:
-        message: Объект сообщения от Telethon
-        channel: Объект Channel из БД
-
-    Returns:
-        Кортеж (publish_text, new_entities) для отправки в telegram_client.send_message
-    """
-    if not message.text:
+    text = message.raw_text or ""
+    if not text:
         return None, None
 
-    new_entities = []
-    original_text = message.text
+    entities = []
 
-    pattern = r'(.*?)\s+\((https?://[^)]+)\)'
-    matches = list(re.finditer(pattern, original_text))
+    # 1. ЗЕРКАЛИМ entity из источника (НИЧЕГО НЕ МЕНЯЕМ)
+    if message.entities:
+        for ent in message.entities:
+            if isinstance(ent, MessageEntityTextUrl):
+                if ent.offset + ent.length <= len(text):
+                    entities.append(
+                        MessageEntityTextUrl(
+                            offset=ent.offset,
+                            length=ent.length,
+                            url=ent.url
+                        )
+                    )
 
-    if not matches:
-        body_text = original_text
-    else:
-        body_text = ""
-        last_end = 0
-
-        for match in matches:
-            group1_start = match.start(1)
-            group1_end = match.end(1)
-            match_end = match.end()
-            captured_text = match.group(1).rstrip()
-            url = match.group(2)
-
-            body_text += original_text[last_end:group1_start]
-
-            text_start_pos = len(body_text)
-            body_text += captured_text
-
-            from telethon.tl.types import MessageEntityTextUrl
-
-            if '@' in captured_text:
-                at_pos = captured_text.rfind('@')
-                entity_offset = text_start_pos + at_pos
-                entity_length = len(captured_text) - at_pos
-            else:
-                entity_offset = text_start_pos
-                entity_length = len(captured_text)
-
-            entity = MessageEntityTextUrl(
-                offset=entity_offset,
-                length=entity_length,
-                url=url
-            )
-            new_entities.append(entity)
-
-            last_end = match_end
-
-        body_text += original_text[last_end:]
-
-    offset = len(body_text) + 2
-
+    # 2. СТРОИМ ПОДПИСЬ ИСТОЧНИКА
     link_text, link_url, should_create_entity = await build_source_link(message, channel)
-
     if not link_text or not link_url:
-        logger.warning(f"⚠️ Не удалось построить ссылку-источник")
-        return body_text, new_entities
+        return text, entities
 
-    publish_text = f"{body_text}\n\n{link_text}"
+    separator = "\n\n"
+    publish_text = text + separator + link_text
 
     if should_create_entity:
-        from telethon.tl.types import MessageEntityTextUrl
-
-        text_url_entity = MessageEntityTextUrl(
-            offset=offset,
-            length=len(link_text),
-            url=link_url
+        entities.append(
+            MessageEntityTextUrl(
+                offset=len(text + separator),
+                length=len(link_text),
+                url=link_url
+            )
         )
-        new_entities.append(text_url_entity)
 
-    return publish_text, new_entities
+    return publish_text, entities
+
 
 
 async def publish_matched_post(message, channel: Channel):
