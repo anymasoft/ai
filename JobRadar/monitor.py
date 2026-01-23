@@ -427,42 +427,56 @@ async def format_jobradar_post(message, channel: Channel) -> tuple:
     text = message.text
 
     # ШАГ 1: найти все конструкции "@username (url)" в тексте
-    # Паттерн: @username, за которым может идти "(url)" или "https://..."
+    # Паттерн: @username, за которым может идти "(url)"
     pattern = r'@([a-zA-Z0-9_]+)\s*\((https?://[^\)]+)\)'
 
-    # Сначала извлечём все найденные ссылки с их позициями
-    found_links = []  # [(offset, length, url), ...]
+    # Извлечём все найденные пары (anchor, url)
+    links_to_embed = []  # [(anchor, url), ...]
     for match in re.finditer(pattern, text):
         username = match.group(1)
         url = match.group(2)
-        mention_start = match.start()
-        mention_text = f"@{username}"
-
-        found_links.append({
-            'mention_start': mention_start,
-            'mention_length': len(mention_text),
-            'match_end': match.end(),
+        anchor = f"@{username}"
+        links_to_embed.append({
+            'anchor': anchor,
             'url': url
         })
 
-    # ШАГ 2: удалить URLs из текста (в обратном порядке, чтобы не сбилась позиция)
-    cleaned_text = text
-    for link_info in reversed(found_links):
-        mention_end = link_info['mention_start'] + link_info['mention_length']
-        # Удаляем всё от конца @username до конца URL
-        cleaned_text = cleaned_text[:mention_end] + cleaned_text[link_info['match_end']:]
+    # ШАГ 2: очистить текст — заменить каждый "@username (url)" на "@username"
+    # Используем функцию-replace для корректной очистки
+    def remove_url_part(match):
+        username = match.group(1)
+        return f"@{username}"
 
-    # ШАГ 3: пересчитать позиции для @username в cleaned_text и создать entities
-    # После удаления URL позиции @username остаются теми же
-    for link_info in found_links:
-        from telethon.tl.types import MessageEntityTextUrl
+    cleaned_text = re.sub(pattern, remove_url_part, text)
 
-        entity = MessageEntityTextUrl(
-            offset=link_info['mention_start'],
-            length=link_info['mention_length'],
-            url=link_info['url']
-        )
-        new_entities.append(entity)
+    # ШАГ 3: в очищенном тексте найти каждый anchor и создать entities
+    search_start = 0
+    for link_info in links_to_embed:
+        anchor = link_info['anchor']
+        url = link_info['url']
+
+        # Ищем anchor в cleaned_text начиная с последней найденной позиции
+        offset = cleaned_text.find(anchor, search_start)
+
+        if offset != -1:
+            # Найдена позиция anchor в очищенном тексте
+            from telethon.tl.types import MessageEntityTextUrl
+
+            entity = MessageEntityTextUrl(
+                offset=offset,
+                length=len(anchor),
+                url=url
+            )
+            new_entities.append(entity)
+
+            # Обновляем стартовую позицию для следующего поиска
+            search_start = offset + len(anchor)
+        else:
+            # Это не должно случиться, но логируем на случай
+            logger.warning(
+                f"⚠️ Не найдена позиция для anchor '{anchor}' в очищенном тексте. "
+                f"Оригинальный текст: {text[:100]}..."
+            )
 
     # Актуализируем текст после очистки
     text = cleaned_text
