@@ -108,6 +108,10 @@ async def stop_monitoring(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
 
 async def show_channels_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Меню управления каналами"""
+    user_id = update.effective_user.id
+    # Сохраняем контекст меню для правильной обработки "Показать список"
+    USER_CONTEXT[user_id] = {"menu_type": "channels"}
+
     keyboard = [
         [KeyboardButton("➕ Добавить канал")],
         [KeyboardButton("📋 Показать список")],
@@ -129,6 +133,10 @@ async def show_channels_menu(update: Update, context: ContextTypes.DEFAULT_TYPE)
 
 async def show_keywords_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Меню управления ключевыми словами"""
+    user_id = update.effective_user.id
+    # Сохраняем контекст меню для правильной обработки "Показать список"
+    USER_CONTEXT[user_id] = {"menu_type": "keywords"}
+
     keyboard = [
         [KeyboardButton("➕ Добавить слово/фразу")],
         [KeyboardButton("📋 Показать список")],
@@ -198,21 +206,52 @@ async def start_add_channel(update: Update, context: ContextTypes.DEFAULT_TYPE) 
 
 async def list_channels(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Список всех каналов"""
+    user_id = update.effective_user.id
     db = get_db()
     channels = db.query(Channel).all()
 
+    logger.info(f"📡 Пользователь {user_id} запросил список каналов")
+
     if not channels:
-        text = "📡 Каналы не добавлены"
+        text = "📡 Каналы для мониторинга не добавлены"
     else:
-        text = "📡 Список каналов:\n\n"
-        for ch in channels:
-            status = "🟢" if ch.enabled else "🔴"
-            # Используем правильный display (username или id:xxx)
-            if ch.kind == "username":
-                display = f"@{ch.value}"
+        enabled_channels = [ch for ch in channels if ch.enabled]
+        disabled_channels = [ch for ch in channels if not ch.enabled]
+
+        text = "📡 Отслеживаемые каналы:\n\n"
+
+        # Отображение активных каналов
+        for i, ch in enumerate(enabled_channels, 1):
+            if ch.title:
+                text += f"{i}. {ch.title}\n"
+                if ch.username:
+                    text += f"   @{ch.username}\n"
+                if ch.channel_id:
+                    text += f"   id: {ch.channel_id}\n"
             else:
-                display = f"id:{ch.value}"
-            text += f"{status} {display}\n"
+                # Обратная совместимость - если нет title
+                if ch.kind == "username":
+                    text += f"{i}. @{ch.value}\n   id: {ch.channel_id if ch.channel_id else 'не получено'}\n"
+                else:
+                    text += f"{i}. id: {ch.value} (название не получено)\n"
+            text += "\n"
+
+        # Отображение отключённых каналов
+        if disabled_channels:
+            text += "🔴 Отключённые каналы:\n\n"
+            for i, ch in enumerate(disabled_channels, 1):
+                if ch.title:
+                    text += f"{i}. {ch.title}\n"
+                    if ch.username:
+                        text += f"   @{ch.username}\n"
+                    if ch.channel_id:
+                        text += f"   id: {ch.channel_id}\n"
+                else:
+                    if ch.kind == "username":
+                        text += f"{i}. @{ch.value}\n   id: {ch.channel_id if ch.channel_id else 'не получено'}\n"
+                    else:
+                        text += f"{i}. id: {ch.value} (название не получено)\n"
+                text += "\n"
 
     keyboard = [[KeyboardButton("⬅️ Назад")]]
     reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
@@ -234,16 +273,28 @@ async def start_add_keyword(update: Update, context: ContextTypes.DEFAULT_TYPE) 
 
 async def list_keywords(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Список всех ключевых слов"""
+    user_id = update.effective_user.id
     db = get_db()
     keywords = db.query(Keyword).all()
+
+    logger.info(f"📋 Пользователь {user_id} запросил список ключевых слов")
 
     if not keywords:
         text = "🔑 Ключевые слова не добавлены"
     else:
-        text = "🔑 Список ключевых слов:\n\n"
-        for kw in keywords:
-            status = "🟢" if kw.enabled else "🔴"
-            text += f"{status} {kw.word}\n"
+        enabled_keywords = [kw for kw in keywords if kw.enabled]
+        disabled_keywords = [kw for kw in keywords if not kw.enabled]
+
+        text = "🔑 Текущие ключевые слова:\n\n"
+
+        if enabled_keywords:
+            for i, kw in enumerate(enabled_keywords, 1):
+                text += f"• {kw.word}\n"
+
+        if disabled_keywords:
+            text += "\n🔴 Отключённые:\n"
+            for i, kw in enumerate(disabled_keywords, 1):
+                text += f"• {kw.word}\n"
 
     keyboard = [[KeyboardButton("⬅️ Назад")]]
     reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
@@ -293,18 +344,18 @@ async def handle_text_input(update: Update, context: ContextTypes.DEFAULT_TYPE) 
         await start_add_channel(update, context)
         return
 
-    if text == "📋 Показать список" and user_id in USER_CONTEXT and USER_CONTEXT[user_id].get("action") != "waiting_channel":
-        # Проверяем, в каком меню мы находимся
-        # Это простая эвристика: если последний контекст был о ключевых словах, показываем их
-        # Иначе показываем каналы
-        logger.info(f"📥 Получена команда '📋 Показать список' от пользователя {user_id}")
-        await list_channels(update, context)
-        return
-
     if text == "📋 Показать список":
         logger.info(f"📥 Получена команда '📋 Показать список' от пользователя {user_id}")
-        # Определяем контекст - если в меню ключевых слов, показываем слова, иначе каналы
-        # Для простоты показываем каналы (можно улучшить, добавив флаг в USER_CONTEXT)
+        # Проверяем контекст меню - какой список показывать
+        if user_id in USER_CONTEXT:
+            menu_type = USER_CONTEXT[user_id].get("menu_type")
+            if menu_type == "keywords":
+                await list_keywords(update, context)
+                return
+            elif menu_type == "channels":
+                await list_channels(update, context)
+                return
+        # Если контекст не установлен, показываем каналы по умолчанию
         await list_channels(update, context)
         return
 
@@ -344,8 +395,33 @@ async def handle_text_input(update: Update, context: ContextTypes.DEFAULT_TYPE) 
             db.close()
             return
 
+        # Пытаемся получить информацию о канале через Telethon
+        title = None
+        channel_id = None
+        username = None
+
+        try:
+            from monitor import telegram_client, resolve_channel_entity
+
+            if telegram_client:
+                entity = await resolve_channel_entity(Channel(kind=kind, value=value))
+                # Получаем информацию из entity
+                title = entity.title if hasattr(entity, "title") else None
+                channel_id = entity.id if hasattr(entity, "id") else None
+                username = entity.username if hasattr(entity, "username") else None
+                logger.info(f"✅ Получена информация о канале: title={title}, username={username}, id={channel_id}")
+        except Exception as e:
+            logger.warning(f"⚠️ Не удалось получить информацию о канале {display}: {e}")
+
         # Добавляем новый канал
-        new_channel = Channel(kind=kind, value=value, enabled=True)
+        new_channel = Channel(
+            kind=kind,
+            value=value,
+            title=title,
+            channel_id=channel_id,
+            username=username,
+            enabled=True
+        )
         db.add(new_channel)
         db.commit()
         db.close()

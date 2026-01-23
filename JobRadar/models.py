@@ -15,14 +15,16 @@ class Channel(Base):
     id = Column(Integer, primary_key=True)
     kind = Column(String(50), default="username")  # "username" или "id"
     value = Column(String(255), nullable=False)  # username (без @) или numeric id
-    username = Column(String(255), unique=True, nullable=True)  # DEPRECATED: для обратной совместимости
+    channel_id = Column(Integer, nullable=True)  # Numeric ID канала (для Telethon)
+    title = Column(String(255), nullable=True)  # Название канала
+    username = Column(String(255), nullable=True)  # Username канала (без @)
     enabled = Column(Boolean, default=True)
     last_message_id = Column(Integer, default=0)  # Последний обработанный ID сообщения
     created_at = Column(DateTime, default=datetime.utcnow)
 
     def __repr__(self):
         display = f"@{self.value}" if self.kind == "username" else f"id:{self.value}"
-        return f"<Channel(id={self.id}, {display}, enabled={self.enabled})>"
+        return f"<Channel(id={self.id}, {display}, title={self.title}, enabled={self.enabled})>"
 
 
 class Keyword(Base):
