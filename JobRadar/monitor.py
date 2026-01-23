@@ -269,8 +269,18 @@ async def background_monitoring_job():
     """
     Фоновая задача для периодической проверки каналов (как в LeadScanner)
     Вызывается каждые POLLING_INTERVAL_SECONDS секунд
+
+    Проверяет глобальный флаг monitoring_enabled перед выполнением
     """
     try:
+        # Импортируем флаг из main.py
+        from __main__ import monitoring_enabled
+
+        # Если мониторинг отключен, пропускаем цикл
+        if not monitoring_enabled:
+            # print(f"⏸ [{datetime.now().strftime('%H:%M:%S')}] Мониторинг выключен, пропускаю цикл")
+            return
+
         db = get_db()
 
         # Получаем все активные каналы
