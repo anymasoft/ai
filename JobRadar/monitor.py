@@ -204,18 +204,98 @@ async def build_message_link(channel: Channel, message_id: int) -> str:
         return None
 
 
+async def build_source_link(message, channel: Channel) -> tuple:
+    """
+    Построить ссылку-источник в каноничном формате JobRadar.
+
+    КАНОНИЧНАЯ ЛОГИКА:
+    1. ЕСЛИ message.is_channel == True (канал):
+       → ссылка на конкретный пост в канале
+
+    2. ЕСЛИ message.is_channel == False (чат/группа/супергруппа):
+       - ЕСЛИ message.sender.username есть:
+         → ссылка на профиль пользователя (@username)
+       - ИНАЧЕ:
+         → ссылка на пост в чате
+
+    Args:
+        message: Объект сообщения от Telethon
+        channel: Объект Channel из БД
+
+    Returns:
+        Кортеж (link_text, url, should_create_entity)
+        - link_text: текст, который выводится пользователю
+        - url: куда ведет ссылка
+        - should_create_entity: нужно ли создавать MessageEntityTextUrl
+    """
+    from telethon.tl.types import MessageEntityTextUrl
+
+    # Определяем тип источника: канал или чат
+    is_channel = message.is_channel if hasattr(message, 'is_channel') else False
+
+    logger.debug(f"🔍 Определение источника: is_channel={is_channel}, "
+                f"chat_type={getattr(message.chat, 'type', 'unknown')}, "
+                f"sender_username={getattr(message.sender, 'username', None) if message.sender else None}")
+
+    if is_channel:
+        # КАНАЛ: ссылка на конкретный пост
+        logger.debug(f"📢 Тип: КАНАЛ")
+        link_text = channel.title or (f"@{channel.username}" if channel.username else f"@{channel.value}")
+        message_link = await build_message_link(channel, message.id)
+
+        if message_link:
+            return link_text, message_link, True
+        else:
+            logger.warning(f"⚠️ Не удалось построить ссылку на пост для канала {channel.title}")
+            return None, None, False
+    else:
+        # ЧАТ / ГРУППА / СУПЕРГРУППА
+        logger.debug(f"💬 Тип: ЧАТ/ГРУППА")
+
+        # Проверяем: есть ли username у ОТПРАВИТЕЛЯ сообщения
+        sender_username = None
+        if message.sender and hasattr(message.sender, 'username'):
+            sender_username = message.sender.username
+
+        logger.debug(f"   Автор: {sender_username or 'нет username'}")
+
+        if sender_username:
+            # Есть username автора → ссылка на профиль
+            logger.debug(f"   ✅ Публикуем со ссылкой на профиль @{sender_username}")
+            author_username = f"@{sender_username}"
+            profile_url = f"https://t.me/{sender_username}"
+            return author_username, profile_url, True
+        else:
+            # Нет username → ссылка на пост в чате
+            logger.debug(f"   ⚠️ Нет username, используем ссылку на пост")
+
+            # Построить ссылку на пост
+            if channel.channel_id:
+                # Для приватных чатов используем internal ID
+                internal_id = channel.channel_id & 0x7FFFFFFF
+                post_link = f"https://t.me/c/{internal_id}/{message.id}"
+            else:
+                # Для публичных чатов используем username/title
+                chat_identifier = channel.username or channel.value or str(channel.channel_id)
+                post_link = f"https://t.me/{chat_identifier}/{message.id}"
+
+            # Текст ссылки (название чата или сам URL)
+            link_text = channel.title or (f"@{channel.username}" if channel.username else post_link)
+            return link_text, post_link, True
+
+
 async def format_jobradar_post(message, channel: Channel) -> tuple:
     """
     Форматирует пост вакансии в каноничный формат JobRadar.
 
     Логика выбора ссылки:
-    A) ЕСЛИ сообщение из КАНАЛА:
+    A) ЕСЛИ сообщение из КАНАЛА (message.is_channel == True):
        - Текст вакансии + название канала как кликабельная ссылка на конкретный пост
        - Формат: <текст вакансии>\n\n@channel_name (где ссылка ведёт на пост)
 
-    B) ЕСЛИ сообщение из ЧАТА/ГРУППЫ:
-       - Если у автора есть username: <текст вакансии>\n\n@username (ссылка на профиль)
-       - Если username нет: <текст вакансии>\n\nhttps://t.me/chatname/POST_ID
+    B) ЕСЛИ сообщение из ЧАТА/ГРУППЫ (message.is_channel == False):
+       - Если у АВТОРА есть username: <текст вакансии>\n\n@username (ссылка на профиль)
+       - Если username нет: <текст вакансии>\n\nhttps://t.me/chat/POST_ID
 
     Args:
         message: Объект сообщения от Telethon
@@ -227,19 +307,6 @@ async def format_jobradar_post(message, channel: Channel) -> tuple:
     if not message.text:
         return None, None
 
-    # Определяем тип источника
-    # message.peer_id.CHANNEL_ID >= 0 означает канал
-    # message.peer_id.CHAT_ID или CHANNEL_ID < 0 означает группу/чат
-    is_channel = False
-    try:
-        from telethon.tl.types import PeerChannel, PeerChat, PeerUser
-
-        peer = message.peer_id
-        if isinstance(peer, PeerChannel):
-            is_channel = True
-    except:
-        pass
-
     new_entities = list(message.entities) if message.entities else []
 
     # Оригинальный текст вакансии без изменений
@@ -248,60 +315,26 @@ async def format_jobradar_post(message, channel: Channel) -> tuple:
     # Вычисляем offset для ссылки (после текста + 2 переноса)
     offset = len(text) + 2
 
-    if is_channel:
-        # Случай A: Сообщение из канала
-        # Используем название канала или username как текст ссылки
-        link_text = channel.title or (f"@{channel.username}" if channel.username else f"@{channel.value}")
-        message_link = await build_message_link(channel, message.id)
+    # Получаем ссылку-источник через централизованную функцию
+    link_text, link_url, should_create_entity = await build_source_link(message, channel)
 
-        if message_link:
-            from telethon.tl.types import MessageEntityTextUrl
+    if not link_text or not link_url:
+        logger.warning(f"⚠️ Не удалось построить ссылку-источник")
+        return text, new_entities
 
-            # Строим финальный текст
-            publish_text = f"{text}\n\n{link_text}"
+    # Строим финальный текст
+    publish_text = f"{text}\n\n{link_text}"
 
-            # Создаем кликабельную ссылку на весь текст ссылки
-            text_url_entity = MessageEntityTextUrl(
-                offset=offset,
-                length=len(link_text),
-                url=message_link
-            )
-            new_entities.append(text_url_entity)
-        else:
-            logger.warning(f"⚠️ Ссылка на пост не построилась для канала")
-            publish_text = text
-    else:
-        # Случай B: Сообщение из чата/группы
-        if message.sender and hasattr(message.sender, 'username') and message.sender.username:
-            # Есть username автора
-            author_username = f"@{message.sender.username}"
-            publish_text = f"{text}\n\n{author_username}"
+    # Если нужно создавать entity (кликабельность)
+    if should_create_entity:
+        from telethon.tl.types import MessageEntityTextUrl
 
-            from telethon.tl.types import MessageEntityTextUrl
-
-            # Ссылка на профиль пользователя
-            profile_url = f"https://t.me/{message.sender.username}"
-            text_url_entity = MessageEntityTextUrl(
-                offset=offset,
-                length=len(author_username),
-                url=profile_url
-            )
-            new_entities.append(text_url_entity)
-        else:
-            # Нет username - используем прямую ссылку на пост
-            # Определяем имя чата (тип источника)
-            chat_name = channel.title or (f"@{channel.username}" if channel.username else f"c/{channel.channel_id}" if channel.channel_id else "chat")
-
-            # Формируем ссылку на пост
-            if channel.channel_id:
-                # Для приватных чатов
-                internal_id = channel.channel_id & 0x7FFFFFFF
-                post_link = f"https://t.me/c/{internal_id}/{message.id}"
-            else:
-                # Fallback для публичных
-                post_link = f"https://t.me/{chat_name}/{message.id}"
-
-            publish_text = f"{text}\n\n{post_link}"
+        text_url_entity = MessageEntityTextUrl(
+            offset=offset,
+            length=len(link_text),
+            url=link_url
+        )
+        new_entities.append(text_url_entity)
 
     return publish_text, new_entities
 
