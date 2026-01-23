@@ -420,86 +420,61 @@ async def format_jobradar_post(message, channel: Channel) -> tuple:
     if not message.text:
         return None, None
 
-    # НЕ копируем message.entities! Вместо этого обработаем текст вручную
     new_entities = []
-
-    # Оригинальный текст вакансии
     original_text = message.text
 
-    # ШАГ 0: нормализация markdown-ссылок [@username](url) → @username (url)
-    original_text = re.sub(r'\[@([a-zA-Z0-9_]+)\]\((https?://[^)]+)\)', r'@\1 (\2)', original_text)
+    pattern = r'(.*?)\s+\((https?://[^)]+)\)'
+    matches = list(re.finditer(pattern, original_text))
 
-    # ШАГ 1: найти все конструкции "@username (url)" в тексте
-    pattern = r'@([a-zA-Z0-9_]+)\s*\((https?://[^)]+)\)'
+    if not matches:
+        body_text = original_text
+    else:
+        body_text = ""
+        last_end = 0
 
-    # Извлечём все найденные пары (anchor, url)
-    links_to_embed = []
-    for match in re.finditer(pattern, original_text):
-        username = match.group(1)
-        url = match.group(2)
-        anchor = f"@{username}"
-        links_to_embed.append({
-            'anchor': anchor,
-            'url': url
-        })
+        for match in matches:
+            group1_start = match.start(1)
+            group1_end = match.end(1)
+            match_end = match.end()
+            captured_text = match.group(1).rstrip()
+            url = match.group(2)
 
-    # ШАГ 2: очистить текст — заменить "@username (url)" на "@username"
-    def remove_url_part(match):
-        username = match.group(1)
-        return f"@{username}"
+            body_text += original_text[last_end:group1_start]
 
-    body_text = re.sub(pattern, remove_url_part, original_text)
+            text_start_pos = len(body_text)
+            body_text += captured_text
 
-    # ПРОВЕРКА: убедимся что URL из ссылок в теле текста удалены
-    for link_info in links_to_embed:
-        if link_info['url'] in body_text:
-            logger.warning(
-                f"⚠️ ВНИМАНИЕ: URL '{link_info['url']}' остался в тексте после очистки!"
-            )
-
-    # ШАГ 3: в очищенном тексте найти каждый anchor и создать entities
-    search_start = 0
-    for link_info in links_to_embed:
-        anchor = link_info['anchor']
-        url = link_info['url']
-
-        # Ищем anchor в body_text начиная с последней найденной позиции
-        offset = body_text.find(anchor, search_start)
-
-        if offset != -1:
-            # Найдена позиция anchor в очищенном тексте
             from telethon.tl.types import MessageEntityTextUrl
 
+            if '@' in captured_text:
+                at_pos = captured_text.rfind('@')
+                entity_offset = text_start_pos + at_pos
+                entity_length = len(captured_text) - at_pos
+            else:
+                entity_offset = text_start_pos
+                entity_length = len(captured_text)
+
             entity = MessageEntityTextUrl(
-                offset=offset,
-                length=len(anchor),
+                offset=entity_offset,
+                length=entity_length,
                 url=url
             )
             new_entities.append(entity)
 
-            # Обновляем стартовую позицию для следующего поиска
-            search_start = offset + len(anchor)
-        else:
-            # Это не должно случиться, но логируем на случай
-            logger.warning(
-                f"⚠️ Не найдена позиция для anchor '{anchor}' в очищенном тексте. "
-                f"Оригинальный текст: {original_text[:100]}..."
-            )
+            last_end = match_end
 
-    # Вычисляем offset для ссылки-источника (после текста + 2 переноса)
+        body_text += original_text[last_end:]
+
     offset = len(body_text) + 2
 
-    # Получаем ссылку-источник через централизованную функцию
     link_text, link_url, should_create_entity = await build_source_link(message, channel)
 
     if not link_text or not link_url:
         logger.warning(f"⚠️ Не удалось построить ссылку-источник")
         return body_text, new_entities
 
-    # Строим финальный текст (используем ТОЛЬКО body_text, в котором URL уже удалены)
     publish_text = f"{body_text}\n\n{link_text}"
 
-    # Если нужно создавать entity для ссылки-источника (кликабельность)
     if should_create_entity:
         from telethon.tl.types import MessageEntityTextUrl
 
