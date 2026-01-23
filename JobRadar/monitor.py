@@ -4,6 +4,7 @@ JobRadar v0 - Polling-мониторинг каналов (на основе Lea
 import asyncio
 import json
 import re
+import logging
 from telethon import TelegramClient
 from telethon.errors import ChannelPrivateError, ChannelInvalidError
 from telethon.tl.types import PeerChannel
@@ -14,6 +15,9 @@ from config import TELEGRAM_API_ID, TELEGRAM_API_HASH, TELEGRAM_PHONE
 from config import POLLING_INTERVAL_SECONDS, MAX_MESSAGES_PER_CHECK
 from models import Channel, Keyword
 from database import get_db
+
+# Логирование
+logger = logging.getLogger(__name__)
 
 # Глобальный Telegram клиент
 telegram_client = None
@@ -183,6 +187,7 @@ async def get_channel_display(channel: Channel) -> str:
 async def check_channel_for_new_messages(channel: Channel, db: Session):
     """
     Проверить канал на новые сообщения (polling логика из LeadScanner)
+    Обрабатывает ТОЛЬКО сообщения, опубликованные после last_message_id
 
     Args:
         channel: Объект Channel из БД
@@ -204,11 +209,16 @@ async def check_channel_for_new_messages(channel: Channel, db: Session):
 
         current_last_id = messages[0].id
 
+        # Если last_message_id не инициализирован - устанавливаем стартовую точку
+        if channel.last_message_id == 0:
+            channel.last_message_id = current_last_id
+            db.commit()
+            logger.info(f"⏺ Стартовая инициализация {channel_display}: last_message_id={current_last_id}")
+            return
+
         # Если есть новые сообщения
         if current_last_id > channel.last_message_id:
-            print(f"\n📡 Проверяю канал {channel_display}...")
-
-            # Получаем все новые сообщения
+            # Получаем все новые сообщения (strict > для пропуска старых)
             new_messages = await telegram_client.get_messages(
                 entity,
                 limit=MAX_MESSAGES_PER_CHECK,
@@ -216,13 +226,20 @@ async def check_channel_for_new_messages(channel: Channel, db: Session):
                 max_id=current_last_id + 1
             )
 
+            # Фильтруем - оставляем ТОЛЬКО сообщения с id > last_message_id
+            filtered_messages = [msg for msg in new_messages if msg.id > channel.last_message_id]
+
+            if not filtered_messages:
+                logger.debug(f"⏩ Пропускаю старые сообщения канала {channel_display}")
+                return
+
             # Получаем все активные ключевые слова
             keywords = db.query(Keyword).filter(Keyword.enabled == True).all()
             keywords_list = [kw.word.lower() for kw in keywords]
 
             # Обрабатываем сообщения (в обратном порядке - от старых к новым)
             matched_count = 0
-            for msg in reversed(new_messages):
+            for msg in reversed(filtered_messages):
                 text = (msg.text or "").lower()
 
                 if not text:
@@ -233,22 +250,21 @@ async def check_channel_for_new_messages(channel: Channel, db: Session):
 
                 if matched_keywords:
                     matched_count += 1
-                    print(f"  🎯 СОВПАДЕНИЕ НАЙДЕНО!")
-                    print(f"     Канал: {channel_display}")
-                    print(f"     Время: {msg.date.strftime('%Y-%m-%d %H:%M:%S') if msg.date else 'N/A'}")
-                    print(f"     Автор: {msg.sender.username if msg.sender and hasattr(msg.sender, 'username') else 'Unknown'}")
-                    print(f"     Ключевые слова: {', '.join(matched_keywords)}")
-                    print(f"     Текст: {text[:200]}...")
-                    print()
+                    print(f"\n🎯 СОВПАДЕНИЕ НАЙДЕНО!")
+                    print(f"   Канал: {channel_display}")
+                    print(f"   Время: {msg.date.strftime('%Y-%m-%d %H:%M:%S') if msg.date else 'N/A'}")
+                    print(f"   Автор: {msg.sender.username if msg.sender and hasattr(msg.sender, 'username') else 'Unknown'}")
+                    print(f"   Ключевые слова: {', '.join(matched_keywords)}")
+                    print(f"   Текст: {text[:200]}...\n")
 
-            if matched_count == 0:
-                print(f"  ✅ Проверено {len(new_messages)} сообщений, совпадений не найдено")
-            else:
-                print(f"  🎯 Найдено совпадений: {matched_count}")
-
-            # Обновляем last_message_id в БД
-            channel.last_message_id = current_last_id
+            # Обновляем last_message_id на максимальный обработанный
+            new_last_id = max([msg.id for msg in filtered_messages])
+            channel.last_message_id = new_last_id
             db.commit()
+
+            # Логируем результаты только если есть обработанные сообщения
+            logger.info(f"🆕 Обработано {len(filtered_messages)} новых сообщений канала {channel_display}, совпадений: {matched_count}")
+            logger.debug(f"📌 Обновлён last_message_id={new_last_id} для канала {channel_display}")
 
     except ChannelPrivateError:
         channel_display = await get_channel_display(channel)
@@ -271,6 +287,7 @@ async def background_monitoring_job():
     Вызывается каждые POLLING_INTERVAL_SECONDS секунд
 
     Проверяет глобальный флаг monitoring_enabled перед выполнением
+    Обрабатывает ТОЛЬКО новые сообщения (опубликованные после last_message_id)
     """
     try:
         # Импортируем флаг из main.py
@@ -278,7 +295,6 @@ async def background_monitoring_job():
 
         # Если мониторинг отключен, пропускаем цикл
         if not monitoring_enabled:
-            # print(f"⏸ [{datetime.now().strftime('%H:%M:%S')}] Мониторинг выключен, пропускаю цикл")
             return
 
         db = get_db()
@@ -287,20 +303,17 @@ async def background_monitoring_job():
         channels = db.query(Channel).filter(Channel.enabled == True).all()
 
         if not channels:
-            # print(f"⏰ [{datetime.now().strftime('%H:%M:%S')}] Нет активных каналов")
             db.close()
             return
 
-        print(f"\n⏱️  [{datetime.now().strftime('%H:%M:%S')}] Начинаю проверку {len(channels)} каналов...")
-
-        # Проверяем каждый канал
+        # Проверяем каждый канал на новые сообщения
         for channel in channels:
             await check_channel_for_new_messages(channel, db)
 
         db.close()
 
     except Exception as e:
-        print(f"❌ Ошибка в фоновой задаче мониторинга: {e}")
+        logger.error(f"❌ Ошибка в фоновой задаче мониторинга: {e}")
 
 
 def start_polling_monitoring():

@@ -75,7 +75,7 @@ async def show_main_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
 
 
 async def start_monitoring(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Включить мониторинг"""
+    """Включить мониторинг и инициализировать стартовую точку для новых сообщений"""
     global monitoring_enabled
     user_id = update.effective_user.id
 
@@ -84,8 +84,35 @@ async def start_monitoring(update: Update, context: ContextTypes.DEFAULT_TYPE) -
         await update.message.reply_text("ℹ️ Мониторинг уже запущен")
     else:
         monitoring_enabled = True
-        logger.info(f"▶️ Мониторинг запущен пользователем {user_id}")
-        await update.message.reply_text("▶️ Мониторинг запущен. Каналы будут проверяться каждые 10 секунд.")
+
+        # Инициализируем last_message_id для всех активных каналов
+        db = get_db()
+        channels = db.query(Channel).filter(Channel.enabled == True).all()
+
+        initialized_count = 0
+        for channel in channels:
+            try:
+                from monitor import telegram_client, resolve_channel_entity
+
+                if telegram_client:
+                    # Получаем последний message ID для этого канала
+                    entity = await resolve_channel_entity(channel)
+                    messages = await telegram_client.get_messages(entity, limit=1)
+
+                    if messages:
+                        channel.last_message_id = messages[0].id
+                        db.commit()
+                        initialized_count += 1
+                        display = f"@{channel.value}" if channel.kind == "username" else f"id:{channel.value}"
+                        logger.info(f"⏺ Зафиксирована стартовая точка мониторинга для {display}: last_message_id={channel.last_message_id}")
+            except Exception as e:
+                display = f"@{channel.value}" if channel.kind == "username" else f"id:{channel.value}"
+                logger.warning(f"⚠️ Не удалось инициализировать стартовую точку для {display}: {e}")
+
+        db.close()
+
+        logger.info(f"▶️ Мониторинг запущен пользователем {user_id} (инициализировано {initialized_count} каналов)")
+        await update.message.reply_text(f"▶️ Мониторинг запущен. Инициализировано {initialized_count} каналов. Будут обрабатываться только новые посты, начиная с момента запуска.")
 
     await show_main_menu(update, context)
 
