@@ -424,7 +424,7 @@ async def format_jobradar_post(message, channel: Channel) -> tuple:
     new_entities = []
 
     # Оригинальный текст вакансии
-    text = message.text
+    original_text = message.text
 
     # ШАГ 1: найти все конструкции "@username (url)" в тексте
     # Паттерн: @username, за которым может идти "(url)"
@@ -432,7 +432,7 @@ async def format_jobradar_post(message, channel: Channel) -> tuple:
 
     # Извлечём все найденные пары (anchor, url)
     links_to_embed = []  # [(anchor, url), ...]
-    for match in re.finditer(pattern, text):
+    for match in re.finditer(pattern, original_text):
         username = match.group(1)
         url = match.group(2)
         anchor = f"@{username}"
@@ -447,7 +447,14 @@ async def format_jobradar_post(message, channel: Channel) -> tuple:
         username = match.group(1)
         return f"@{username}"
 
-    cleaned_text = re.sub(pattern, remove_url_part, text)
+    body_text = re.sub(pattern, remove_url_part, original_text)
+
+    # ПРОВЕРКА: убедимся что URL из ссылок в теле текста удалены
+    for link_info in links_to_embed:
+        if link_info['url'] in body_text:
+            logger.warning(
+                f"⚠️ ВНИМАНИЕ: URL '{link_info['url']}' остался в тексте после очистки!"
+            )
 
     # ШАГ 3: в очищенном тексте найти каждый anchor и создать entities
     search_start = 0
@@ -455,8 +462,8 @@ async def format_jobradar_post(message, channel: Channel) -> tuple:
         anchor = link_info['anchor']
         url = link_info['url']
 
-        # Ищем anchor в cleaned_text начиная с последней найденной позиции
-        offset = cleaned_text.find(anchor, search_start)
+        # Ищем anchor в body_text начиная с последней найденной позиции
+        offset = body_text.find(anchor, search_start)
 
         if offset != -1:
             # Найдена позиция anchor в очищенном тексте
@@ -475,24 +482,21 @@ async def format_jobradar_post(message, channel: Channel) -> tuple:
             # Это не должно случиться, но логируем на случай
             logger.warning(
                 f"⚠️ Не найдена позиция для anchor '{anchor}' в очищенном тексте. "
-                f"Оригинальный текст: {text[:100]}..."
+                f"Оригинальный текст: {original_text[:100]}..."
             )
 
-    # Актуализируем текст после очистки
-    text = cleaned_text
-
     # Вычисляем offset для ссылки-источника (после текста + 2 переноса)
-    offset = len(text) + 2
+    offset = len(body_text) + 2
 
     # Получаем ссылку-источник через централизованную функцию
     link_text, link_url, should_create_entity = await build_source_link(message, channel)
 
     if not link_text or not link_url:
         logger.warning(f"⚠️ Не удалось построить ссылку-источник")
-        return text, new_entities
+        return body_text, new_entities
 
-    # Строим финальный текст
-    publish_text = f"{text}\n\n{link_text}"
+    # Строим финальный текст (используем ТОЛЬКО body_text, в котором URL уже удалены)
+    publish_text = f"{body_text}\n\n{link_text}"
 
     # Если нужно создавать entity для ссылки-источника (кликабельность)
     if should_create_entity:
