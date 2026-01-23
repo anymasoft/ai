@@ -173,6 +173,7 @@ async def get_channel_display(channel: Channel) -> str:
 async def publish_matched_post(message, channel_display: str):
     """
     Публикует найденный пост в целевой канал JobRadar
+    со сбережением форматирования, ссылок и упоминаний
 
     Args:
         message: Объект сообщения от Telethon
@@ -186,13 +187,28 @@ async def publish_matched_post(message, channel_display: str):
         return
 
     try:
+        # Получаем информацию об entities для логирования
+        entities_info = None
+        if message.entities:
+            entity_types = set()
+            for entity in message.entities:
+                entity_types.add(type(entity).__name__)
+            entities_info = ", ".join(sorted(entity_types))
+
+        # Отправляем сообщение с сохранением форматирования и ссылок
         await telegram_client.send_message(
             TARGET_CHANNEL_ID,
             message.text,
             formatting_entities=message.entities,
-            link_preview=message.web_preview
+            link_preview=bool(message.web_preview) if message.web_preview else False
         )
-        logger.info(f"📤 Пост опубликован в JobRadar | channel={channel_display} message_id={message.id}")
+
+        # Логируем успешную публикацию с информацией об entities
+        if entities_info:
+            logger.info(f"📤 Опубликован пост с entities [{entities_info}] | channel={channel_display} message_id={message.id}")
+        else:
+            logger.info(f"ℹ️ Опубликован пост без entities (обычный текст) | channel={channel_display} message_id={message.id}")
+
     except Exception as e:
         logger.error(f"❌ Ошибка публикации в JobRadar: {e}")
 
