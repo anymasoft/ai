@@ -209,10 +209,10 @@ async def build_source_link(message, channel: Channel) -> tuple:
     Построить ссылку-источник в каноничном формате JobRadar.
 
     КАНОНИЧНАЯ ЛОГИКА:
-    1. ЕСЛИ message.is_channel == True (канал):
+    1. ЕСЛИ message.chat.broadcast == True (КАНАЛ):
        → ссылка на конкретный пост в канале
 
-    2. ЕСЛИ message.is_channel == False (чат/группа/супергруппа):
+    2. ЕСЛИ message.chat.broadcast == False (чат/группа/супергруппа):
        - ЕСЛИ message.sender.username есть:
          → ссылка на профиль пользователя (@username)
        - ИНАЧЕ:
@@ -231,13 +231,15 @@ async def build_source_link(message, channel: Channel) -> tuple:
     from telethon.tl.types import MessageEntityTextUrl
 
     # Определяем тип источника: канал или чат
-    is_channel = message.is_channel if hasattr(message, 'is_channel') else False
+    # КРИТИЧНО: message.is_channel может быть True и для супергрупп!
+    # Правильный способ: проверять message.chat.broadcast
+    is_broadcast_channel = bool(message.chat and getattr(message.chat, "broadcast", False))
 
-    logger.debug(f"🔍 Определение источника: is_channel={is_channel}, "
+    logger.debug(f"🔍 Определение источника: broadcast={is_broadcast_channel}, "
                 f"chat_type={getattr(message.chat, 'type', 'unknown')}, "
                 f"sender_username={getattr(message.sender, 'username', None) if message.sender else None}")
 
-    if is_channel:
+    if is_broadcast_channel:
         # КАНАЛ: ссылка на конкретный пост
         logger.debug(f"📢 Тип: КАНАЛ")
         link_text = channel.title or (f"@{channel.username}" if channel.username else f"@{channel.value}")
@@ -297,11 +299,11 @@ async def format_jobradar_post(message, channel: Channel) -> tuple:
     Форматирует пост вакансии в каноничный формат JobRadar.
 
     Логика выбора ссылки:
-    A) ЕСЛИ сообщение из КАНАЛА (message.is_channel == True):
+    A) ЕСЛИ сообщение из КАНАЛА (message.chat.broadcast == True):
        - Текст вакансии + название канала как кликабельная ссылка на конкретный пост
        - Формат: <текст вакансии>\n\n@channel_name (где ссылка ведёт на пост)
 
-    B) ЕСЛИ сообщение из ЧАТА/ГРУППЫ (message.is_channel == False):
+    B) ЕСЛИ сообщение из ЧАТА/ГРУППЫ (message.chat.broadcast == False):
        - Если у АВТОРА есть username: <текст вакансии>\n\n@username (ссылка на профиль)
        - Если username нет: <текст вакансии>\n\nhttps://t.me/chat/POST_ID
 
