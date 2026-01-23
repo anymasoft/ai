@@ -206,15 +206,17 @@ async def build_message_link(channel: Channel, message_id: int) -> str:
 
 async def publish_matched_post(message, channel: Channel):
     """
-    Публикует найденный пост в целевой канал JobRadar с единым форматом
+    Публикует найденный пост в целевой канал JobRadar с аккуратным форматом
 
     Формат:
     [оригинальный текст сообщения с форматированием]
-    🔗 Отклик: перейти к сообщению [ссылка на исходный пост]
+
+    Источник: <название канала>
+    🔗 Перейти к вакансии [кликабельная ссылка]
 
     Args:
         message: Объект сообщения от Telethon
-        channel: Объект Channel из БД (для построения ссылки)
+        channel: Объект Channel из БД (для построения ссылки и названия)
     """
     if not telegram_client or not TARGET_CHANNEL_ID:
         return
@@ -224,31 +226,57 @@ async def publish_matched_post(message, channel: Channel):
         return
 
     try:
+        from telethon.tl.types import MessageEntityTextUrl
+
         channel_display = await get_channel_display(channel)
+        source_title = channel.title or channel_display
 
         # Строим ссылку на исходный пост
         message_link = await build_message_link(channel, message.id)
 
         # Формируем текст для публикации
-        # Оригинальный текст + ссылка на ответ
         if message_link:
-            publish_text = f"{message.text}\n\n🔗 Отклик: {message_link}"
+            # Добавляем источник и ссылку в конец
+            footer_text = f"Источник: {source_title}\n🔗 Перейти к вакансии"
+            publish_text = f"{message.text}\n\n{footer_text}"
+
+            # Готовим entities для публикации
+            new_entities = list(message.entities) if message.entities else []
+
+            # Добавляем TextUrl entity для ссылки "Перейти к вакансии"
+            # Вычисляем offset для текста "Перейти к вакансии"
+            link_text = "Перейти к вакансии"
+            # Offset = длина оригинального текста + 2 переноса + длина строки "Источник: ..."
+            source_line = f"Источник: {source_title}\n"
+            offset = len(message.text) + 2 + len(source_line)
+
+            # Создаем entity для ссылки
+            text_url_entity = MessageEntityTextUrl(
+                offset=offset,
+                length=len(link_text),
+                url=message_link
+            )
+            new_entities.append(text_url_entity)
         else:
-            # Если не удалось построить ссылку, публикуем только текст
-            logger.warning(f"⚠️ Ссылка на пост не построилась, публикуем без ссылки")
-            publish_text = message.text
+            # Если ссылка не построилась, публикуем только с названием источника
+            logger.warning(f"⚠️ Ссылка на пост не построилась, публикуем без ссылки отклика")
+            footer_text = f"Источник: {source_title}"
+            publish_text = f"{message.text}\n\n{footer_text}"
+            new_entities = list(message.entities) if message.entities else []
 
         # Отправляем сообщение с сохранением форматирования
         await telegram_client.send_message(
             TARGET_CHANNEL_ID,
             publish_text,
-            formatting_entities=message.entities,
+            formatting_entities=new_entities,
             link_preview=bool(message.web_preview) if message.web_preview else False
         )
 
-        # Логируем успешную публикацию с ссылкой на пост
-        logger.info(f"📤 Опубликовано | source={channel_display} | message_id={message.id}" +
-                   (f" | message_link={message_link}" if message_link else ""))
+        # Логируем успешную публикацию с информацией об источнике и ссылке
+        log_msg = f"📤 Опубликовано | source_title={source_title} | message_id={message.id}"
+        if message_link:
+            log_msg += f" | message_link={message_link}"
+        logger.info(log_msg)
 
     except Exception as e:
         channel_display = await get_channel_display(channel)
