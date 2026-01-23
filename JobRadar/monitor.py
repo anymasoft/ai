@@ -12,7 +12,7 @@ from sqlalchemy.orm import Session
 from datetime import datetime
 
 from config import TELEGRAM_API_ID, TELEGRAM_API_HASH, TELEGRAM_PHONE
-from config import POLLING_INTERVAL_SECONDS, MAX_MESSAGES_PER_CHECK
+from config import POLLING_INTERVAL_SECONDS, MAX_MESSAGES_PER_CHECK, TARGET_CHANNEL_ID
 from models import Channel, Keyword
 from database import get_db
 
@@ -184,6 +184,33 @@ async def get_channel_display(channel: Channel) -> str:
         return f"id:{channel.value}"
 
 
+async def publish_matched_post(message, channel_display: str):
+    """
+    Публикует найденный пост в целевой канал JobRadar
+
+    Args:
+        message: Объект сообщения от Telethon
+        channel_display: Display-строка источника (для логирования)
+    """
+    if not telegram_client or not TARGET_CHANNEL_ID:
+        return
+
+    if not message.text:
+        logger.debug(f"⏩ Сообщение без текста, пропускаю публикацию")
+        return
+
+    try:
+        await telegram_client.send_message(
+            TARGET_CHANNEL_ID,
+            message.text,
+            formatting_entities=message.entities,
+            link_preview=message.web_preview
+        )
+        logger.info(f"📤 Пост опубликован в JobRadar | channel={channel_display} message_id={message.id}")
+    except Exception as e:
+        logger.error(f"❌ Ошибка публикации в JobRadar: {e}")
+
+
 async def check_channel_for_new_messages(channel: Channel, db: Session):
     """
     Проверить канал на новые сообщения (polling логика из LeadScanner)
@@ -256,6 +283,9 @@ async def check_channel_for_new_messages(channel: Channel, db: Session):
                     print(f"   Автор: {msg.sender.username if msg.sender and hasattr(msg.sender, 'username') else 'Unknown'}")
                     print(f"   Ключевые слова: {', '.join(matched_keywords)}")
                     print(f"   Текст: {text[:200]}...\n")
+
+                    # Публикуем найденный пост в канал JobRadar
+                    await publish_matched_post(msg, channel_display)
 
             # Обновляем last_message_id на максимальный обработанный
             new_last_id = max([msg.id for msg in filtered_messages])

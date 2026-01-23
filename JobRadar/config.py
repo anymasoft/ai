@@ -15,6 +15,9 @@ TELEGRAM_PHONE = os.getenv("TELEGRAM_PHONE", "")  # Номер телефона 
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "")
 TELEGRAM_ADMIN_ID = int(os.getenv("TELEGRAM_ADMIN_ID", "0"))
 
+# Целевой канал для публикации найденных постов
+TARGET_CHANNEL_ID = int(os.getenv("TARGET_CHANNEL_ID", "0"))  # например: -1003022594210
+
 # Базы данных
 DATABASE_URL = "sqlite:///./jobradar.db"
 
