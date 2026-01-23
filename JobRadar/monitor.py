@@ -5,6 +5,7 @@ import asyncio
 import json
 import re
 import logging
+import os
 from telethon import TelegramClient
 from telethon.errors import ChannelPrivateError, ChannelInvalidError
 from telethon.tl.types import PeerChannel
@@ -19,8 +20,100 @@ from database import get_db
 # Логирование
 logger = logging.getLogger(__name__)
 
+# Флаг для подробной диагностики
+DEBUG_MESSAGE_DUMP = os.getenv("DEBUG_MESSAGE_DUMP", "false").lower() == "true"
+
 # Глобальный Telegram клиент
 telegram_client = None
+
+
+def dump_message_for_diagnostics(msg, channel: Channel, is_broadcast: bool):
+    """
+    Выводит полный дамп данных сообщения для диагностики.
+    Вызывается только если DEBUG_MESSAGE_DUMP=true
+    """
+    if not DEBUG_MESSAGE_DUMP:
+        return
+
+    logger.info(f"\n{'='*80}")
+    logger.info(f"🔍 ДИАГНОСТИКА СООБЩЕНИЯ #{msg.id}")
+    logger.info(f"{'='*80}")
+
+    # Структура сообщения
+    logger.info(f"Структура Message:")
+    logger.info(f"  - type(msg) = {type(msg).__name__}")
+    logger.info(f"  - msg.id = {msg.id}")
+    logger.info(f"  - msg.date = {msg.date}")
+
+    # Проверка атрибутов is_*
+    logger.info(f"Атрибуты is_*:")
+    logger.info(f"  - hasattr(msg, 'is_channel') = {hasattr(msg, 'is_channel')}")
+    logger.info(f"  - msg.is_channel = {getattr(msg, 'is_channel', 'N/A')}")
+    logger.info(f"  - hasattr(msg, 'is_group') = {hasattr(msg, 'is_group')}")
+    logger.info(f"  - msg.is_group = {getattr(msg, 'is_group', 'N/A')}")
+    logger.info(f"  - hasattr(msg, 'is_private') = {hasattr(msg, 'is_private')}")
+    logger.info(f"  - msg.is_private = {getattr(msg, 'is_private', 'N/A')}")
+
+    # Peer/Chat информация
+    logger.info(f"Peer & Chat информация:")
+    logger.info(f"  - type(msg.peer_id) = {type(msg.peer_id).__name__ if hasattr(msg, 'peer_id') else 'N/A'}")
+    logger.info(f"  - type(msg.to_id) = {type(msg.to_id).__name__ if hasattr(msg, 'to_id') else 'N/A'}")
+    logger.info(f"  - msg.chat_id = {getattr(msg, 'chat_id', 'N/A')}")
+    logger.info(f"  - type(msg.chat) = {type(msg.chat).__name__ if hasattr(msg, 'chat') and msg.chat else 'None'}")
+    if hasattr(msg, 'chat') and msg.chat:
+        logger.info(f"    - msg.chat.title = {getattr(msg.chat, 'title', 'N/A')}")
+        logger.info(f"    - msg.chat.username = {getattr(msg.chat, 'username', 'N/A')}")
+        logger.info(f"    - msg.chat.id = {getattr(msg.chat, 'id', 'N/A')}")
+        logger.info(f"    - msg.chat.broadcast = {getattr(msg.chat, 'broadcast', 'N/A')}")
+
+    # Автор сообщения (sender, from_user, sender_id, from_id)
+    logger.info(f"Информация об авторе:")
+    logger.info(f"  - type(msg.sender) = {type(msg.sender).__name__ if hasattr(msg, 'sender') and msg.sender else 'None'}")
+    if hasattr(msg, 'sender') and msg.sender:
+        logger.info(f"    - msg.sender.id = {getattr(msg.sender, 'id', 'N/A')}")
+        logger.info(f"    - msg.sender.username = {getattr(msg.sender, 'username', 'N/A')}")
+        logger.info(f"    - msg.sender.first_name = {getattr(msg.sender, 'first_name', 'N/A')}")
+        logger.info(f"    - msg.sender.last_name = {getattr(msg.sender, 'last_name', 'N/A')}")
+        logger.info(f"    - msg.sender.is_bot = {getattr(msg.sender, 'is_bot', 'N/A')}")
+
+    logger.info(f"  - type(msg.from_user) = {type(getattr(msg, 'from_user', None)).__name__ if getattr(msg, 'from_user', None) else 'None/N/A'}")
+    if getattr(msg, 'from_user', None):
+        logger.info(f"    - msg.from_user.id = {getattr(msg.from_user, 'id', 'N/A')}")
+        logger.info(f"    - msg.from_user.username = {getattr(msg.from_user, 'username', 'N/A')}")
+
+    logger.info(f"  - msg.sender_id = {getattr(msg, 'sender_id', 'N/A')}")
+    logger.info(f"  - msg.from_id = {getattr(msg, 'from_id', 'N/A')}")
+
+    # Другие поля, которые могут содержать информацию об авторе
+    logger.info(f"Альтернативные источники информации об авторе:")
+    logger.info(f"  - msg.post_author = {getattr(msg, 'post_author', 'N/A')}")
+    logger.info(f"  - msg.via_bot_id = {getattr(msg, 'via_bot_id', 'N/A')}")
+    logger.info(f"  - msg.fwd_from = {getattr(msg, 'fwd_from', 'N/A')}")
+
+    # Определение типа в БД
+    logger.info(f"Данные из БД (канал):")
+    logger.info(f"  - channel.title = {channel.title}")
+    logger.info(f"  - channel.username = {channel.username}")
+    logger.info(f"  - channel.value = {channel.value}")
+    logger.info(f"  - channel.channel_id = {channel.channel_id}")
+    logger.info(f"  - channel.kind = {channel.kind}")
+
+    # Определение по нашей логике
+    logger.info(f"Определение типа по нашей логике:")
+    logger.info(f"  - is_broadcast (calculated) = {is_broadcast}")
+
+    # Определение автора по нашей логике
+    author = getattr(msg, 'sender', None) or getattr(msg, 'from_user', None)
+    sender_username = None
+    if author and hasattr(author, 'username'):
+        sender_username = author.username
+
+    logger.info(f"Выбранный автор:")
+    logger.info(f"  - author (sender or from_user) = {type(author).__name__ if author else 'None'}")
+    logger.info(f"  - author.id = {getattr(author, 'id', 'N/A') if author else 'N/A'}")
+    logger.info(f"  - author.username = {sender_username}")
+
+    logger.info(f"{'='*80}\n")
 
 
 def normalize_channel_ref(input_str: str) -> dict:
@@ -235,6 +328,9 @@ async def build_source_link(message, channel: Channel) -> tuple:
     # Правильный способ: проверять message.chat.broadcast
     is_broadcast_channel = bool(message.chat and getattr(message.chat, "broadcast", False))
 
+    # ДИАГНОСТИКА: дамп полей сообщения при включенном DEBUG_MESSAGE_DUMP
+    dump_message_for_diagnostics(message, channel, is_broadcast_channel)
+
     logger.debug(f"🔍 Определение источника: broadcast={is_broadcast_channel}, "
                 f"chat_type={getattr(message.chat, 'type', 'unknown')}, "
                 f"sender_username={getattr(message.sender, 'username', None) if message.sender else None}")
@@ -246,6 +342,8 @@ async def build_source_link(message, channel: Channel) -> tuple:
         message_link = await build_message_link(channel, message.id)
 
         if message_link:
+            if DEBUG_MESSAGE_DUMP:
+                logger.info(f"📋 РЕЗУЛЬТАТ (КАНАЛ): link_text='{link_text}' | url='{message_link}'")
             return link_text, message_link, True
         else:
             logger.warning(f"⚠️ Не удалось построить ссылку на пост для канала {channel.title}")
@@ -274,6 +372,8 @@ async def build_source_link(message, channel: Channel) -> tuple:
             logger.debug(f"   ✅ Публикуем со ссылкой на профиль @{sender_username}")
             author_username = f"@{sender_username}"
             profile_url = f"https://t.me/{sender_username}"
+            if DEBUG_MESSAGE_DUMP:
+                logger.info(f"📋 РЕЗУЛЬТАТ: link_text='{author_username}' | url='{profile_url}'")
             return author_username, profile_url, True
         else:
             # Нет username → ссылка на пост в чате
@@ -291,6 +391,9 @@ async def build_source_link(message, channel: Channel) -> tuple:
 
             # Текст ссылки (название чата или сам URL)
             link_text = channel.title or (f"@{channel.username}" if channel.username else post_link)
+            if DEBUG_MESSAGE_DUMP:
+                logger.info(f"📋 РЕЗУЛЬТАТ (FALLBACK): link_text='{link_text}' | url='{post_link}'")
+                logger.info(f"   Причина fallback: author.username={sender_username}, channel.channel_id={channel.channel_id}")
             return link_text, post_link, True
 
 
