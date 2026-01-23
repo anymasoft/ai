@@ -370,11 +370,22 @@ async def list_channels(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
 async def start_add_keyword(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Начать добавление ключевого слова"""
     user_id = update.effective_user.id
-    USER_CONTEXT[user_id] = {"action": "waiting_keyword"}
 
-    logger.info(f"➕ Начинаю добавление ключевого слова для пользователя {user_id}")
+    # Сохраняем текущий контекст меню, если существует
+    previous_menu = None
+    if user_id in USER_CONTEXT:
+        previous_menu = USER_CONTEXT[user_id].get("menu_type")
+
+    # Устанавливаем новое состояние ожидания ввода ключевого слова
+    USER_CONTEXT[user_id] = {
+        "action": "waiting_keyword",
+        "menu_type": previous_menu or "keywords"
+    }
+
+    logger.info(f"➕ Пользователь {user_id} начал добавление ключевого слова")
     await update.message.reply_text(
-        "🔑 Введите ключевое слово или фразу (например: Python, Data Science, Senior Developer):"
+        "🔑 Введите ключевое слово или фразу:\n"
+        "Примеры: 1С, ERP, УТ, Python, Data Science, Senior Developer"
     )
 
 
@@ -526,8 +537,18 @@ async def handle_text_input(update: Update, context: ContextTypes.DEFAULT_TYPE) 
         await list_channels(update, context)
         return
 
+    if text == "📋 Показать ключевые слова":
+        logger.info(f"📥 Получена команда '📋 Показать ключевые слова' от пользователя {user_id}")
+        await list_keywords(update, context)
+        return
+
     if text == "➕ Добавить слово/фразу":
         logger.info(f"📥 Получена команда '➕ Добавить слово/фразу' от пользователя {user_id}")
+        await start_add_keyword(update, context)
+        return
+
+    if text == "➕ Добавить ещё":
+        logger.info(f"📥 Получена команда '➕ Добавить ещё' от пользователя {user_id}")
         await start_add_keyword(update, context)
         return
 
@@ -602,33 +623,55 @@ async def handle_text_input(update: Update, context: ContextTypes.DEFAULT_TYPE) 
 
     elif action == "waiting_keyword":
         # Проверяем на пустой ввод
-        if not text or len(text.strip()) == 0:
-            logger.info(f"❌ Пустой ввод ключевого слова, пользователь {user_id}")
+        if not text:
+            logger.warning(f"❌ Пустой ввод ключевого слова, пользователь {user_id}")
             await update.message.reply_text("❌ Ключевое слово не может быть пустым")
             return
+
+        # Очищаем текст
+        keyword_text = text.strip()
 
         db = get_db()
 
         # Проверяем, не существует ли уже
-        existing = db.query(Keyword).filter(Keyword.word.ilike(text)).first()
+        existing = db.query(Keyword).filter(Keyword.word.ilike(keyword_text)).first()
         if existing:
-            logger.info(f"⚠️ Ключевое слово '{text}' уже существует, пользователь {user_id}")
-            await update.message.reply_text(f"⚠️ Ключевое слово «{text}» уже есть в списке")
+            logger.info(f"⚠️ Ключевое слово '{keyword_text}' уже существует, пользователь {user_id}")
+            await update.message.reply_text(f"⚠️ Ключевое слово «{keyword_text}» уже добавлено")
             db.close()
             return
 
         # Добавляем новое ключевое слово
-        new_keyword = Keyword(word=text, enabled=True)
+        new_keyword = Keyword(word=keyword_text, enabled=True)
         db.add(new_keyword)
         db.commit()
         db.close()
 
-        logger.info(f"🔑 Добавлено ключевое слово: {text} пользователем {user_id}")
-        await update.message.reply_text(f"✅ Ключевое слово «{text}» добавлено и будет использоваться при мониторинге")
+        logger.info(f"➕ Добавлено ключевое слово: '{keyword_text}' пользователем {user_id}")
+        await update.message.reply_text(f"✅ Ключевое слово «{keyword_text}» добавлено")
 
-        # Возвращаемся в меню
-        del USER_CONTEXT[user_id]
-        await show_keywords_menu(update, context)
+        # Предлагаем кнопки для продолжения
+        keyboard = [
+            [KeyboardButton("➕ Добавить ещё")],
+            [KeyboardButton("📋 Показать ключевые слова")],
+            [KeyboardButton("⬅️ Назад")],
+        ]
+
+        reply_markup = ReplyKeyboardMarkup(
+            keyboard,
+            resize_keyboard=True,
+            one_time_keyboard=False,
+            input_field_placeholder="Выбери действие…"
+        )
+
+        await update.message.reply_text(
+            "Хотите добавить ещё ключевое слово?",
+            reply_markup=reply_markup
+        )
+
+        # Сохраняем состояние меню для правильной обработки кнопок
+        menu_type = USER_CONTEXT[user_id].get("menu_type", "keywords")
+        USER_CONTEXT[user_id] = {"menu_type": menu_type}
 
     elif action == "waiting_delete_channel":
         # Обработка удаления канала
