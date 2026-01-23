@@ -252,10 +252,18 @@ async def build_source_link(message, channel: Channel) -> tuple:
         # ЧАТ / ГРУППА / СУПЕРГРУППА
         logger.debug(f"💬 Тип: ЧАТ/ГРУППА")
 
+        # Определяем автора: сначала пробуем sender, потом from_user
+        # (в группах message.from_user часто = None, реальный автор в message.sender)
+        author = message.sender or message.from_user
+
+        logger.debug(f"   message.sender={type(message.sender).__name__ if message.sender else None}, "
+                    f"message.from_user={type(message.from_user).__name__ if message.from_user else None}, "
+                    f"author={type(author).__name__ if author else None}")
+
         # Проверяем: есть ли username у ОТПРАВИТЕЛЯ сообщения
         sender_username = None
-        if message.sender and hasattr(message.sender, 'username'):
-            sender_username = message.sender.username
+        if author and hasattr(author, 'username'):
+            sender_username = author.username
 
         logger.debug(f"   Автор: {sender_username or 'нет username'}")
 
