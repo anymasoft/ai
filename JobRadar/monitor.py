@@ -426,17 +426,12 @@ async def format_jobradar_post(message, channel: Channel) -> tuple:
     # Оригинальный текст вакансии
     original_text = message.text
 
-    # ШАГ 1: найти все конструкции ссылок в тексте
-    # Паттерн 1: markdown-ссылки [@username](url)
-    markdown_pattern = r'\[@([a-zA-Z0-9_]+)\]\((https?://[^)]+)\)'
-    # Паттерн 2: обычные ссылки @username (url)
-    plain_pattern = r'@([a-zA-Z0-9_]+)\s*\((https?://[^\)]+)\)'
+    # ШАГ 1: найти все конструкции "@username (url)" в тексте
+    pattern = r'@([a-zA-Z0-9_]+)\s*\((https?://[^)]+)\)'
 
-    # Извлечём все найденные пары (anchor, url) из обоих паттернов
-    links_to_embed = []  # [(anchor, url), ...]
-
-    # Ищем markdown-ссылки
-    for match in re.finditer(markdown_pattern, original_text):
+    # Извлечём все найденные пары (anchor, url)
+    links_to_embed = []
+    for match in re.finditer(pattern, original_text):
         username = match.group(1)
         url = match.group(2)
         anchor = f"@{username}"
@@ -445,28 +440,12 @@ async def format_jobradar_post(message, channel: Channel) -> tuple:
             'url': url
         })
 
-    # Ищем обычные ссылки
-    for match in re.finditer(plain_pattern, original_text):
-        username = match.group(1)
-        url = match.group(2)
-        anchor = f"@{username}"
-        links_to_embed.append({
-            'anchor': anchor,
-            'url': url
-        })
-
-    # ШАГ 2: очистить текст — заменить обе конструкции на "@username"
-    # Используем функцию-replace для корректной очистки
-    def remove_markdown_url(match):
+    # ШАГ 2: очистить текст — заменить "@username (url)" на "@username"
+    def remove_url_part(match):
         username = match.group(1)
         return f"@{username}"
 
-    def remove_plain_url(match):
-        username = match.group(1)
-        return f"@{username}"
-
-    body_text = re.sub(markdown_pattern, remove_markdown_url, original_text)
-    body_text = re.sub(plain_pattern, remove_plain_url, body_text)
+    body_text = re.sub(pattern, remove_url_part, original_text)
 
     # ПРОВЕРКА: убедимся что URL из ссылок в теле текста удалены
     for link_info in links_to_embed:
