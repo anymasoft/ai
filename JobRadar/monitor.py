@@ -256,10 +256,10 @@ async def build_source_link(message, channel: Channel) -> tuple:
 
         # Определяем автора: сначала пробуем sender, потом from_user
         # (в группах message.from_user часто = None, реальный автор в message.sender)
-        author = message.sender or message.from_user
+        author = getattr(message, 'sender', None) or getattr(message, 'from_user', None)
 
-        logger.debug(f"   message.sender={type(message.sender).__name__ if message.sender else None}, "
-                    f"message.from_user={type(message.from_user).__name__ if message.from_user else None}, "
+        logger.debug(f"   message.sender={type(getattr(message, 'sender', None)).__name__ if getattr(message, 'sender', None) else None}, "
+                    f"message.from_user={type(getattr(message, 'from_user', None)).__name__ if getattr(message, 'from_user', None) else None}, "
                     f"author={type(author).__name__ if author else None}")
 
         # Проверяем: есть ли username у ОТПРАВИТЕЛЯ сообщения
