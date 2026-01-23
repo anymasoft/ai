@@ -354,6 +354,9 @@ async def main():
     await app.initialize()
     await app.start()
 
+    # Явно запускаем polling апдейтов (без создания нового event loop)
+    await app.updater.start_polling()
+
     print(f"\n✅ Бот запущен. Admin ID: {TELEGRAM_ADMIN_ID}")
     print("📍 Используй /start для открытия меню\n")
 
