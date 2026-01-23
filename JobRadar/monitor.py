@@ -170,14 +170,51 @@ async def get_channel_display(channel: Channel) -> str:
         return f"id:{channel.value}"
 
 
-async def publish_matched_post(message, channel_display: str):
+async def build_message_link(channel: Channel, message_id: int) -> str:
     """
-    Публикует найденный пост в целевой канал JobRadar
-    со сбережением форматирования, ссылок и упоминаний
+    Построить permalink на конкретный пост в канале
+
+    Args:
+        channel: Объект Channel из БД
+        message_id: ID сообщения в канале
+
+    Returns:
+        URL ссылка на пост
+        - для публичных каналов: https://t.me/{username}/{message_id}
+        - для приватных каналов: https://t.me/c/{internal_id}/{message_id}
+    """
+    try:
+        # Для username (публичные каналы)
+        if channel.kind == "username" or channel.username:
+            username = channel.username or channel.value
+            return f"https://t.me/{username}/{message_id}"
+
+        # Для приватных каналов используем internal_id
+        # Internal ID получается из channel_id через битовую операцию
+        if channel.channel_id:
+            internal_id = channel.channel_id & 0x7FFFFFFF
+            return f"https://t.me/c/{internal_id}/{message_id}"
+
+        # Fallback - если ничего не сработало
+        logger.warning(f"⚠️ Не удалось построить ссылку на пост - нет username и channel_id")
+        return None
+
+    except Exception as e:
+        logger.error(f"❌ Ошибка при построении ссылки на пост: {e}")
+        return None
+
+
+async def publish_matched_post(message, channel: Channel):
+    """
+    Публикует найденный пост в целевой канал JobRadar с единым форматом
+
+    Формат:
+    [оригинальный текст сообщения с форматированием]
+    🔗 Отклик: перейти к сообщению [ссылка на исходный пост]
 
     Args:
         message: Объект сообщения от Telethon
-        channel_display: Display-строка источника (для логирования)
+        channel: Объект Channel из БД (для построения ссылки)
     """
     if not telegram_client or not TARGET_CHANNEL_ID:
         return
@@ -187,30 +224,35 @@ async def publish_matched_post(message, channel_display: str):
         return
 
     try:
-        # Получаем информацию об entities для логирования
-        entities_info = None
-        if message.entities:
-            entity_types = set()
-            for entity in message.entities:
-                entity_types.add(type(entity).__name__)
-            entities_info = ", ".join(sorted(entity_types))
+        channel_display = await get_channel_display(channel)
 
-        # Отправляем сообщение с сохранением форматирования и ссылок
+        # Строим ссылку на исходный пост
+        message_link = await build_message_link(channel, message.id)
+
+        # Формируем текст для публикации
+        # Оригинальный текст + ссылка на ответ
+        if message_link:
+            publish_text = f"{message.text}\n\n🔗 Отклик: {message_link}"
+        else:
+            # Если не удалось построить ссылку, публикуем только текст
+            logger.warning(f"⚠️ Ссылка на пост не построилась, публикуем без ссылки")
+            publish_text = message.text
+
+        # Отправляем сообщение с сохранением форматирования
         await telegram_client.send_message(
             TARGET_CHANNEL_ID,
-            message.text,
+            publish_text,
             formatting_entities=message.entities,
             link_preview=bool(message.web_preview) if message.web_preview else False
         )
 
-        # Логируем успешную публикацию с информацией об entities
-        if entities_info:
-            logger.info(f"📤 Опубликован пост с entities [{entities_info}] | channel={channel_display} message_id={message.id}")
-        else:
-            logger.info(f"ℹ️ Опубликован пост без entities (обычный текст) | channel={channel_display} message_id={message.id}")
+        # Логируем успешную публикацию с ссылкой на пост
+        logger.info(f"📤 Опубликовано | source={channel_display} | message_id={message.id}" +
+                   (f" | message_link={message_link}" if message_link else ""))
 
     except Exception as e:
-        logger.error(f"❌ Ошибка публикации в JobRadar: {e}")
+        channel_display = await get_channel_display(channel)
+        logger.error(f"❌ Ошибка публикации в JobRadar из {channel_display}: {e}")
 
 
 async def check_channel_for_new_messages(channel: Channel, db: Session):
@@ -287,7 +329,7 @@ async def check_channel_for_new_messages(channel: Channel, db: Session):
                     print(f"   Текст: {text[:200]}...\n")
 
                     # Публикуем найденный пост в канал JobRadar
-                    await publish_matched_post(msg, channel_display)
+                    await publish_matched_post(msg, channel)
 
             # Обновляем last_message_id на максимальный обработанный
             new_last_id = max([msg.id for msg in filtered_messages])
