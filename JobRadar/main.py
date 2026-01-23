@@ -150,6 +150,7 @@ async def show_channels_menu(update: Update, context: ContextTypes.DEFAULT_TYPE)
     keyboard = [
         [KeyboardButton("➕ Добавить канал")],
         [KeyboardButton("📋 Показать список")],
+        [KeyboardButton("🗑 Удалить канал")],
         [KeyboardButton("⬅️ Назад")],
     ]
 
@@ -231,12 +232,72 @@ async def start_add_channel(update: Update, context: ContextTypes.DEFAULT_TYPE) 
 
     logger.info(f"➕ Начинаю добавление канала для пользователя {user_id}")
     await update.message.reply_text(
-        "📡 Введите канал:\n"
-        "• @username\n"
-        "• t.me/username\n"
-        "• числовой id (3022594210)\n"
-        "• bot-api формат (-1003022594210)"
+        "📡 Введите @username или ссылку t.me/username:\n"
+        "Примеры:\n"
+        "• @OneCHunter\n"
+        "• t.me/OneCHunter\n\n"
+        "(добавление по ID не поддерживается)"
     )
+
+
+async def start_delete_channel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Начать удаление канала"""
+    user_id = update.effective_user.id
+    db = get_db()
+    channels = db.query(Channel).all()
+
+    if not channels:
+        await update.message.reply_text("📡 Каналы для мониторинга не добавлены")
+        db.close()
+        return
+
+    # Показываем список каналов с номерами
+    enabled_channels = [ch for ch in channels if ch.enabled]
+    disabled_channels = [ch for ch in channels if not ch.enabled]
+
+    text = "📡 Выберите номер канала для удаления:\n\n"
+
+    channel_index_map = {}
+
+    # Отображение активных каналов
+    for i, ch in enumerate(enabled_channels, 1):
+        channel_index_map[i] = ch.id
+        if ch.title:
+            text += f"{i}. {ch.title}\n"
+            if ch.username:
+                text += f"   @{ch.username}\n"
+        else:
+            if ch.kind == "username":
+                text += f"{i}. @{ch.value}\n"
+            else:
+                text += f"{i}. id: {ch.value}\n"
+        text += "\n"
+
+    # Отображение отключённых каналов
+    if disabled_channels:
+        text += "🔴 Отключённые:\n\n"
+        for i, ch in enumerate(disabled_channels, 1):
+            channel_index_map[len(enabled_channels) + i] = ch.id
+            if ch.title:
+                text += f"{len(enabled_channels) + i}. {ch.title}\n"
+                if ch.username:
+                    text += f"   @{ch.username}\n"
+            else:
+                if ch.kind == "username":
+                    text += f"{len(enabled_channels) + i}. @{ch.value}\n"
+                else:
+                    text += f"{len(enabled_channels) + i}. id: {ch.value}\n"
+            text += "\n"
+
+    # Сохраняем mapping в контексте
+    USER_CONTEXT[user_id] = {"action": "waiting_delete_channel", "channel_index_map": channel_index_map}
+
+    logger.info(f"🗑 Начинаю удаление канала для пользователя {user_id}")
+    await update.message.reply_text(
+        text + "Введите номер канала для удаления (например: 1)"
+    )
+
+    db.close()
 
 
 async def list_channels(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -246,6 +307,9 @@ async def list_channels(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
     channels = db.query(Channel).all()
 
     logger.info(f"📡 Пользователь {user_id} запросил список каналов")
+
+    # Сохраняем mapping номеров на ID каналов для последующего использования
+    channel_index_map = {}
 
     if not channels:
         text = "📡 Каналы для мониторинга не добавлены"
@@ -257,6 +321,7 @@ async def list_channels(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
 
         # Отображение активных каналов
         for i, ch in enumerate(enabled_channels, 1):
+            channel_index_map[i] = ch.id  # Сохраняем mapping
             if ch.title:
                 text += f"{i}. {ch.title}\n"
                 if ch.username:
@@ -275,18 +340,25 @@ async def list_channels(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
         if disabled_channels:
             text += "🔴 Отключённые каналы:\n\n"
             for i, ch in enumerate(disabled_channels, 1):
+                channel_index_map[len(enabled_channels) + i] = ch.id  # Сохраняем mapping
                 if ch.title:
-                    text += f"{i}. {ch.title}\n"
+                    text += f"{len(enabled_channels) + i}. {ch.title}\n"
                     if ch.username:
                         text += f"   @{ch.username}\n"
                     if ch.channel_id:
                         text += f"   id: {ch.channel_id}\n"
                 else:
                     if ch.kind == "username":
-                        text += f"{i}. @{ch.value}\n   id: {ch.channel_id if ch.channel_id else 'не получено'}\n"
+                        text += f"{len(enabled_channels) + i}. @{ch.value}\n   id: {ch.channel_id if ch.channel_id else 'не получено'}\n"
                     else:
-                        text += f"{i}. id: {ch.value} (название не получено)\n"
+                        text += f"{len(enabled_channels) + i}. id: {ch.value} (название не получено)\n"
                 text += "\n"
+
+    # Сохраняем mapping в контексте пользователя
+    if user_id in USER_CONTEXT:
+        USER_CONTEXT[user_id]["channel_index_map"] = channel_index_map
+    else:
+        USER_CONTEXT[user_id] = {"channel_index_map": channel_index_map}
 
     keyboard = [[KeyboardButton("⬅️ Назад")]]
     reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
@@ -338,6 +410,61 @@ async def list_keywords(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
     db.close()
 
 
+async def delete_channel_by_input(update: Update, context: ContextTypes.DEFAULT_TYPE, text: str) -> None:
+    """Обработка удаления канала по введённому номеру"""
+    user_id = update.effective_user.id
+
+    # Проверяем, что введено число
+    try:
+        channel_number = int(text.strip())
+    except ValueError:
+        logger.info(f"❌ Некорректный ввод номера канала пользователем {user_id}: '{text}'")
+        await update.message.reply_text("❌ Введите номер канала цифрой")
+        return
+
+    # Получаем mapping номеров из контекста
+    if user_id not in USER_CONTEXT or "channel_index_map" not in USER_CONTEXT[user_id]:
+        logger.warning(f"⚠️ Не найден mapping номеров для пользователя {user_id}")
+        await update.message.reply_text("❌ Ошибка: список каналов не найден. Повторите попытку")
+        return
+
+    channel_index_map = USER_CONTEXT[user_id]["channel_index_map"]
+
+    # Проверяем, что номер в диапазоне
+    if channel_number not in channel_index_map:
+        logger.info(f"❌ Номер канала {channel_number} вне диапазона, пользователь {user_id}")
+        await update.message.reply_text("❌ Канал с таким номером не найден")
+        return
+
+    # Получаем ID канала
+    channel_id = channel_index_map[channel_number]
+
+    # Удаляем канал из БД
+    db = get_db()
+    channel = db.query(Channel).filter(Channel.id == channel_id).first()
+
+    if not channel:
+        logger.warning(f"⚠️ Канал с ID {channel_id} не найден в БД, пользователь {user_id}")
+        await update.message.reply_text("❌ Канал не найден в базе данных")
+        db.close()
+        return
+
+    # Сохраняем информацию о канале для логирования
+    channel_display = channel.title if channel.title else f"@{channel.value}" if channel.kind == "username" else f"id:{channel.value}"
+
+    # Удаляем канал
+    db.delete(channel)
+    db.commit()
+    db.close()
+
+    logger.info(f"🗑 Пользователь {user_id} удалил канал {channel_id}: {channel_display}")
+    await update.message.reply_text(f"🗑 Канал «{channel_display}» удалён из мониторинга")
+
+    # Очищаем контекст и возвращаемся в меню
+    del USER_CONTEXT[user_id]
+    await show_channels_menu(update, context)
+
+
 async def handle_text_input(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Обработка текстового ввода пользователя"""
     user_id = update.effective_user.id
@@ -377,6 +504,11 @@ async def handle_text_input(update: Update, context: ContextTypes.DEFAULT_TYPE) 
     if text == "➕ Добавить канал":
         logger.info(f"📥 Получена команда '➕ Добавить канал' от пользователя {user_id}")
         await start_add_channel(update, context)
+        return
+
+    if text == "🗑 Удалить канал":
+        logger.info(f"📥 Получена команда '🗑 Удалить канал' от пользователя {user_id}")
+        await start_delete_channel(update, context)
         return
 
     if text == "📋 Показать список":
@@ -461,7 +593,7 @@ async def handle_text_input(update: Update, context: ContextTypes.DEFAULT_TYPE) 
         db.commit()
         db.close()
 
-        logger.info(f"✅ Канал {display} добавлен пользователем {user_id} в мониторинг")
+        logger.info(f"➕ Пользователь {user_id} добавил канал {display}")
         await update.message.reply_text(f"✅ Канал «{display}» добавлен и будет использоваться при мониторинге")
 
         # Возвращаемся в меню
@@ -497,6 +629,10 @@ async def handle_text_input(update: Update, context: ContextTypes.DEFAULT_TYPE) 
         # Возвращаемся в меню
         del USER_CONTEXT[user_id]
         await show_keywords_menu(update, context)
+
+    elif action == "waiting_delete_channel":
+        # Обработка удаления канала
+        await delete_channel_by_input(update, context, text)
 
 
 async def main():
