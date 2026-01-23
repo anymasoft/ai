@@ -232,11 +232,11 @@ async def start_add_channel(update: Update, context: ContextTypes.DEFAULT_TYPE) 
 
     logger.info(f"➕ Начинаю добавление канала для пользователя {user_id}")
     await update.message.reply_text(
-        "📡 Введите канал:\n"
-        "• @username\n"
-        "• t.me/username\n"
-        "• числовой id (3022594210)\n"
-        "• bot-api формат (-1003022594210)"
+        "📡 Введите @username или ссылку t.me/username:\n"
+        "Примеры:\n"
+        "• @OneCHunter\n"
+        "• t.me/OneCHunter\n\n"
+        "(добавление по ID не поддерживается)"
     )
 
 
@@ -593,7 +593,7 @@ async def handle_text_input(update: Update, context: ContextTypes.DEFAULT_TYPE) 
         db.commit()
         db.close()
 
-        logger.info(f"✅ Канал {display} добавлен пользователем {user_id} в мониторинг")
+        logger.info(f"➕ Пользователь {user_id} добавил канал {display}")
         await update.message.reply_text(f"✅ Канал «{display}» добавлен и будет использоваться при мониторинге")
 
         # Возвращаемся в меню

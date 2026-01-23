@@ -28,18 +28,26 @@ def normalize_channel_ref(input_str: str) -> dict:
     Нормализация ввода канала в стандартный формат
 
     Args:
-        input_str: Ввод пользователя (@username, t.me/username, numeric id, -100id)
+        input_str: Ввод пользователя (@username или t.me/username)
 
     Returns:
         dict с полями:
-            - kind: "username" или "id"
-            - value: str (username без @) или str (numeric id)
+            - kind: "username"
+            - value: str (username без @)
             - display: строка для UI
 
     Raises:
-        ValueError: если формат неверный
+        ValueError: если формат неверный или попытка добавить по ID
     """
     input_str = input_str.strip()
+
+    # Проверка: запрет на ID форматы
+    # Попытка добавить по числам или -100xxxxx
+    if input_str.isdigit() or (input_str.startswith("-100") and len(input_str) > 4 and input_str[4:].isdigit()):
+        raise ValueError(
+            "❌ Добавление по ID не поддерживается.\n"
+            "Введите @username или ссылку t.me/username"
+        )
 
     # Попытка 1: t.me/ ссылка
     if "t.me/" in input_str:
@@ -62,26 +70,6 @@ def normalize_channel_ref(input_str: str) -> dict:
                 "display": f"@{username}"
             }
 
-    # Попытка 3: -100xxxxx (bot-api format для каналов)
-    if input_str.startswith("-100") and len(input_str) > 4:
-        rest = input_str[4:]
-        if rest.isdigit():
-            channel_id = int(rest)
-            return {
-                "kind": "id",
-                "value": str(channel_id),
-                "display": f"id:{channel_id}"
-            }
-
-    # Попытка 4: просто числа (numeric id)
-    if input_str.isdigit():
-        channel_id = int(input_str)
-        return {
-            "kind": "id",
-            "value": str(channel_id),
-            "display": f"id:{channel_id}"
-        }
-
     # Если просто username без @ и без особых символов
     if re.match(r'^[a-zA-Z0-9_]+$', input_str):
         return {
@@ -91,11 +79,9 @@ def normalize_channel_ref(input_str: str) -> dict:
         }
 
     raise ValueError(
-        "Неверный формат. Пришлите:\n"
+        "❌ Неверный формат. Введите:\n"
         "• @username\n"
-        "• t.me/username\n"
-        "• числовой id (например: 3022594210)\n"
-        "• bot-api формат (например: -1003022594210)"
+        "• t.me/username"
     )
 
 
@@ -298,17 +284,25 @@ async def check_channel_for_new_messages(channel: Channel, db: Session):
 
     except ChannelPrivateError:
         channel_display = await get_channel_display(channel)
-        print(f"❌ Канал {channel_display} приватный или был удален")
+        logger.warning(f"❌ Канал {channel_display} приватный или был удален - отключен")
         channel.enabled = False
         db.commit()
     except ChannelInvalidError:
         channel_display = await get_channel_display(channel)
-        print(f"❌ Канал {channel_display} не найден")
+        logger.warning(f"❌ Канал {channel_display} не найден - отключен")
         channel.enabled = False
         db.commit()
     except Exception as e:
         channel_display = await get_channel_display(channel)
-        print(f"⚠️  Ошибка при проверке {channel_display}: {e}")
+
+        # Если канал добавлен по ID и недоступен - отключаем его один раз
+        if channel.kind == "id":
+            logger.warning(f"⚠️ Канал {channel_display} отключён: недоступен по ID (аккаунт не подписан)")
+            channel.enabled = False
+            db.commit()
+        else:
+            # Для username каналов логируем каждый раз, так как это может быть временная ошибка
+            logger.error(f"⚠️  Ошибка при проверке {channel_display}: {e}")
 
 
 async def background_monitoring_job():
