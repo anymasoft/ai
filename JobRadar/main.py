@@ -3,7 +3,13 @@ JobRadar v0 - Telegram бот с управлением каналами и кл
 """
 import asyncio
 import logging
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
+from telegram import (
+    Update,
+    InlineKeyboardButton,
+    InlineKeyboardMarkup,
+    ReplyKeyboardMarkup,
+    KeyboardButton
+)
 from telegram.ext import (
     Application,
     CommandHandler,
@@ -17,7 +23,7 @@ from sqlalchemy.orm import Session
 from config import TELEGRAM_BOT_TOKEN, TELEGRAM_ADMIN_ID, TELEGRAM_API_ID, TELEGRAM_API_HASH, TELEGRAM_PHONE
 from database import init_db, get_db
 from models import Channel, Keyword
-from monitor import init_telegram_client, close_telegram_client, start_polling_monitoring
+from monitor import init_telegram_client, close_telegram_client, start_polling_monitoring, normalize_channel_ref
 
 # Логирование
 logging.basicConfig(
@@ -36,18 +42,23 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         await update.message.reply_text("❌ У вас нет доступа")
         return
 
+    logger.info(f"🤖 /start получена от пользователя {update.effective_user.id}")
     await show_main_menu(update, context)
 
 
 async def show_main_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Показать главное меню с inline-кнопками"""
+    """Показать главное меню с обычными кнопками (reply keyboard)"""
     keyboard = [
-        [InlineKeyboardButton("📡 Источники", callback_data="menu_channels")],
-        [InlineKeyboardButton("🔑 Ключевые слова", callback_data="menu_keywords")],
-        [InlineKeyboardButton("📢 Статус", callback_data="menu_status")],
+        [KeyboardButton("📡 Источники"), KeyboardButton("🔑 Ключевые слова")],
+        [KeyboardButton("📢 Статус")],
     ]
 
-    reply_markup = InlineKeyboardMarkup(keyboard)
+    reply_markup = ReplyKeyboardMarkup(
+        keyboard,
+        resize_keyboard=True,
+        one_time_keyboard=False,
+        input_field_placeholder="Выбери действие…"
+    )
 
     if update.message:
         await update.message.reply_text(
@@ -55,7 +66,9 @@ async def show_main_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
             reply_markup=reply_markup
         )
     else:
-        await update.callback_query.edit_message_text(
+        # Если это callback query (например, после нажатия кнопки в меню),
+        # отправляем новое сообщение с reply keyboard
+        await update.callback_query.message.reply_text(
             "🤖 JobRadar v0 - Мониторинг каналов\n\nВыберите действие:",
             reply_markup=reply_markup
         )
@@ -67,12 +80,16 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
     await query.answer()
 
     data = query.data
+    user_id = query.from_user.id
 
     if data == "menu_channels":
+        logger.info(f"📡 Inline-кнопка 'Источники' нажата пользователем {user_id}")
         await show_channels_menu(query, context)
     elif data == "menu_keywords":
+        logger.info(f"🔑 Inline-кнопка 'Ключевые слова' нажата пользователем {user_id}")
         await show_keywords_menu(query, context)
     elif data == "menu_status":
+        logger.info(f"📢 Inline-кнопка 'Статус' нажата пользователем {user_id}")
         await show_status(query, context)
     elif data == "add_channel":
         await start_add_channel(query, context)
@@ -89,10 +106,13 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
         keyword_id = int(data.split("_")[-1])
         await delete_keyword(query, context, keyword_id)
     elif data == "back_main":
+        logger.info(f"⬅️ Inline-кнопка 'Назад' в главное меню нажата пользователем {user_id}")
         await show_main_menu(query, context)
     elif data == "back_channels":
+        logger.info(f"⬅️ Inline-кнопка 'Назад' в меню каналов нажата пользователем {user_id}")
         await show_channels_menu(query, context)
     elif data == "back_keywords":
+        logger.info(f"⬅️ Inline-кнопка 'Назад' в меню ключевых слов нажата пользователем {user_id}")
         await show_keywords_menu(query, context)
 
 
@@ -164,9 +184,29 @@ async def start_add_channel(query, context: ContextTypes.DEFAULT_TYPE) -> None:
     keyboard = [[InlineKeyboardButton("❌ Отмена", callback_data="back_channels")]]
     reply_markup = InlineKeyboardMarkup(keyboard)
 
+    logger.info(f"➕ Начинаю добавление канала для пользователя {user_id}")
     await query.edit_message_text(
-        "📡 Введите имя канала (например: @username или https://t.me/username)",
+        "📡 Введите канал:\n"
+        "• @username\n"
+        "• t.me/username\n"
+        "• числовой id (3022594210)\n"
+        "• bot-api формат (-1003022594210)",
         reply_markup=reply_markup
+    )
+
+
+async def start_add_channel_from_text(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Начать добавление канала (версия для reply-кнопок)"""
+    user_id = update.effective_user.id
+    USER_CONTEXT[user_id] = {"action": "waiting_channel"}
+
+    logger.info(f"➕ Начинаю добавление канала для пользователя {user_id}")
+    await update.message.reply_text(
+        "📡 Введите канал:\n"
+        "• @username\n"
+        "• t.me/username\n"
+        "• числовой id (3022594210)\n"
+        "• bot-api формат (-1003022594210)"
     )
 
 
@@ -182,12 +222,21 @@ async def list_channels(query, context: ContextTypes.DEFAULT_TYPE) -> None:
         text = "📡 Список каналов:\n\n"
         for ch in channels:
             status = "🟢" if ch.enabled else "🔴"
-            text += f"{status} @{ch.username}\n"
+            # Используем правильный display (username или id:xxx)
+            if ch.kind == "username":
+                display = f"@{ch.value}"
+            else:
+                display = f"id:{ch.value}"
+            text += f"{status} {display}\n"
 
         # Клавиатура со ссылками на включение/отключение
         keyboard = []
         for ch in channels:
-            text_btn = f"{'✅' if ch.enabled else '❌'} @{ch.username}"
+            if ch.kind == "username":
+                display = f"@{ch.value}"
+            else:
+                display = f"id:{ch.value}"
+            text_btn = f"{'✅' if ch.enabled else '❌'} {display}"
             keyboard.append([InlineKeyboardButton(text_btn, callback_data=f"toggle_channel_{ch.id}")])
 
         keyboard.append([InlineKeyboardButton("⬅️ Назад", callback_data="back_channels")])
@@ -195,6 +244,44 @@ async def list_channels(query, context: ContextTypes.DEFAULT_TYPE) -> None:
     db.close()
     reply_markup = InlineKeyboardMarkup(keyboard)
     await query.edit_message_text(text, reply_markup=reply_markup)
+
+
+async def list_channels_from_text(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Список всех каналов (версия для reply-кнопок, но используем inline для управления)"""
+    db = get_db()
+    channels = db.query(Channel).all()
+
+    if not channels:
+        text = "📡 Каналы не добавлены"
+        keyboard = [[KeyboardButton("⬅️ Назад")]]
+        reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
+        await update.message.reply_text(text, reply_markup=reply_markup)
+    else:
+        text = "📡 Список каналов:\n\n"
+        for ch in channels:
+            status = "🟢" if ch.enabled else "🔴"
+            # Используем правильный display (username или id:xxx)
+            if ch.kind == "username":
+                display = f"@{ch.value}"
+            else:
+                display = f"id:{ch.value}"
+            text += f"{status} {display}\n"
+
+        # Клавиатура со ссылками на включение/отключение (inline для более удобного управления)
+        keyboard = []
+        for ch in channels:
+            if ch.kind == "username":
+                display = f"@{ch.value}"
+            else:
+                display = f"id:{ch.value}"
+            text_btn = f"{'✅' if ch.enabled else '❌'} {display}"
+            keyboard.append([InlineKeyboardButton(text_btn, callback_data=f"toggle_channel_{ch.id}")])
+
+        keyboard.append([InlineKeyboardButton("⬅️ Назад в меню каналов", callback_data="back_channels")])
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        await update.message.reply_text(text, reply_markup=reply_markup)
+
+    db.close()
 
 
 async def toggle_channel(query, context: ContextTypes.DEFAULT_TYPE, channel_id: int) -> None:
@@ -206,7 +293,13 @@ async def toggle_channel(query, context: ContextTypes.DEFAULT_TYPE, channel_id: 
         channel.enabled = not channel.enabled
         db.commit()
         status = "✅ включен" if channel.enabled else "❌ отключен"
-        await query.answer(f"Канал @{channel.username} {status}", show_alert=True)
+        # Используем правильный display
+        if channel.kind == "username":
+            display = f"@{channel.value}"
+        else:
+            display = f"id:{channel.value}"
+        logger.info(f"🔄 Канал {display} {status}")
+        await query.answer(f"Канал {display} {status}", show_alert=True)
 
     db.close()
     await list_channels(query, context)
@@ -220,9 +313,21 @@ async def start_add_keyword(query, context: ContextTypes.DEFAULT_TYPE) -> None:
     keyboard = [[InlineKeyboardButton("❌ Отмена", callback_data="back_keywords")]]
     reply_markup = InlineKeyboardMarkup(keyboard)
 
+    logger.info(f"➕ Начинаю добавление ключевого слова для пользователя {user_id}")
     await query.edit_message_text(
         "🔑 Введите ключевое слово или фразу (например: Python, Data Science, Senior Developer):",
         reply_markup=reply_markup
+    )
+
+
+async def start_add_keyword_from_text(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Начать добавление ключевого слова (версия для reply-кнопок)"""
+    user_id = update.effective_user.id
+    USER_CONTEXT[user_id] = {"action": "waiting_keyword"}
+
+    logger.info(f"➕ Начинаю добавление ключевого слова для пользователя {user_id}")
+    await update.message.reply_text(
+        "🔑 Введите ключевое слово или фразу (например: Python, Data Science, Senior Developer):"
     )
 
 
@@ -252,6 +357,34 @@ async def list_keywords(query, context: ContextTypes.DEFAULT_TYPE) -> None:
     await query.edit_message_text(text, reply_markup=reply_markup)
 
 
+async def list_keywords_from_text(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Список всех ключевых слов (версия для reply-кнопок)"""
+    db = get_db()
+    keywords = db.query(Keyword).all()
+
+    if not keywords:
+        text = "🔑 Ключевые слова не добавлены"
+        keyboard = [[KeyboardButton("⬅️ Назад")]]
+        reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
+        await update.message.reply_text(text, reply_markup=reply_markup)
+    else:
+        text = "🔑 Список ключевых слов:\n\n"
+        for kw in keywords:
+            status = "🟢" if kw.enabled else "🔴"
+            text += f"{status} {kw.word}\n"
+
+        # Клавиатура со ссылками на удаление (inline)
+        keyboard = []
+        for kw in keywords:
+            keyboard.append([InlineKeyboardButton(f"🗑 {kw.word}", callback_data=f"delete_keyword_{kw.id}")])
+
+        keyboard.append([InlineKeyboardButton("⬅️ Назад в меню слов", callback_data="back_keywords")])
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        await update.message.reply_text(text, reply_markup=reply_markup)
+
+    db.close()
+
+
 async def delete_keyword(query, context: ContextTypes.DEFAULT_TYPE, keyword_id: int) -> None:
     """Удалить ключевое слово"""
     db = get_db()
@@ -261,15 +394,143 @@ async def delete_keyword(query, context: ContextTypes.DEFAULT_TYPE, keyword_id: 
         word = keyword.word
         db.delete(keyword)
         db.commit()
+        logger.info(f"🗑 Ключевое слово '{word}' удалено")
         await query.answer(f"✅ Ключевое слово '{word}' удалено", show_alert=True)
 
     db.close()
     await list_keywords(query, context)
 
 
+async def handle_reply_button(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Обработка нажатия кнопок reply-клавиатуры"""
+    user_id = update.effective_user.id
+    text = update.message.text.strip()
+
+    # Проверяем, если пользователь в контексте ввода (добавление канала/ключевого слова)
+    if user_id in USER_CONTEXT:
+        # Переходим на handle_text_input
+        return False
+
+    # Обработка кнопок главного меню
+    if text == "📡 Источники":
+        logger.info(f"📡 Нажата кнопка 'Источники' пользователем {user_id}")
+        await show_channels_menu_from_text(update, context)
+        return True
+
+    elif text == "🔑 Ключевые слова":
+        logger.info(f"🔑 Нажата кнопка 'Ключевые слова' пользователем {user_id}")
+        await show_keywords_menu_from_text(update, context)
+        return True
+
+    elif text == "📢 Статус":
+        logger.info(f"📢 Нажата кнопка 'Статус' пользователем {user_id}")
+        await show_status_from_text(update, context)
+        return True
+
+    elif text == "⬅️ Назад":
+        logger.info(f"⬅️ Нажата кнопка 'Назад' пользователем {user_id}")
+        await show_main_menu(update, context)
+        return True
+
+    elif text == "➕ Добавить канал":
+        logger.info(f"➕ Нажата кнопка 'Добавить канал' пользователем {user_id}")
+        await start_add_channel_from_text(update, context)
+        return True
+
+    elif text == "📋 Показать список":
+        logger.info(f"📋 Нажата кнопка 'Показать список каналов' пользователем {user_id}")
+        await list_channels_from_text(update, context)
+        return True
+
+    elif text == "➕ Добавить слово/фразу":
+        logger.info(f"➕ Нажата кнопка 'Добавить ключевое слово' пользователем {user_id}")
+        await start_add_keyword_from_text(update, context)
+        return True
+
+    return False
+
+
+async def show_channels_menu_from_text(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Меню управления каналами (версия для reply-кнопок)"""
+    keyboard = [
+        [KeyboardButton("➕ Добавить канал")],
+        [KeyboardButton("📋 Показать список")],
+        [KeyboardButton("⬅️ Назад")],
+    ]
+
+    reply_markup = ReplyKeyboardMarkup(
+        keyboard,
+        resize_keyboard=True,
+        one_time_keyboard=False,
+        input_field_placeholder="Выбери действие…"
+    )
+
+    await update.message.reply_text(
+        "📡 Управление источниками (каналами):\n\nВыберите действие:",
+        reply_markup=reply_markup
+    )
+
+
+async def show_keywords_menu_from_text(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Меню управления ключевыми словами (версия для reply-кнопок)"""
+    keyboard = [
+        [KeyboardButton("➕ Добавить слово/фразу")],
+        [KeyboardButton("📋 Показать список")],
+        [KeyboardButton("⬅️ Назад")],
+    ]
+
+    reply_markup = ReplyKeyboardMarkup(
+        keyboard,
+        resize_keyboard=True,
+        one_time_keyboard=False,
+        input_field_placeholder="Выбери действие…"
+    )
+
+    await update.message.reply_text(
+        "🔑 Управление ключевыми словами:\n\nВыберите действие:",
+        reply_markup=reply_markup
+    )
+
+
+async def show_status_from_text(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Показать статус мониторинга (версия для reply-кнопок)"""
+    db = get_db()
+
+    channels_count = db.query(Channel).filter(Channel.enabled == True).count()
+    keywords_count = db.query(Keyword).filter(Keyword.enabled == True).count()
+
+    # Получаем последний обработанный пост
+    last_channel = db.query(Channel).filter(Channel.last_message_id > 0).order_by(
+        Channel.id.desc()
+    ).first()
+
+    status_text = f"""📢 СТАТУС МОНИТОРИНГА
+
+📡 Активные каналы: {channels_count}
+🔑 Активные ключевые слова: {keywords_count}
+⏰ Последний обработанный пост: {'Нет' if not last_channel else 'ID ' + str(last_channel.last_message_id)}
+
+🟢 Мониторинг: АКТИВЕН (polling каждые 10 сек)
+"""
+
+    keyboard = [[KeyboardButton("⬅️ Назад")]]
+    reply_markup = ReplyKeyboardMarkup(
+        keyboard,
+        resize_keyboard=True,
+        one_time_keyboard=False
+    )
+
+    db.close()
+    await update.message.reply_text(status_text, reply_markup=reply_markup)
+
+
 async def handle_text_input(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Обработка текстового ввода пользователя"""
     user_id = update.effective_user.id
+
+    # Сначала проверяем, это reply-кнопка?
+    if await handle_reply_button(update, context):
+        return
 
     if user_id not in USER_CONTEXT:
         return
@@ -278,29 +539,41 @@ async def handle_text_input(update: Update, context: ContextTypes.DEFAULT_TYPE) 
     text = update.message.text.strip()
 
     if action == "waiting_channel":
-        # Очищаем от @ и https://t.me/
-        channel_name = text.replace("@", "").replace("https://t.me/", "").split("/")[0]
+        # Используем нормализацию ввода
+        try:
+            parsed = normalize_channel_ref(text)
+        except ValueError as e:
+            await update.message.reply_text(f"❌ {str(e)}")
+            return
+
+        kind = parsed["kind"]
+        value = parsed["value"]
+        display = parsed["display"]
 
         db = get_db()
 
-        # Проверяем, не существует ли уже
-        existing = db.query(Channel).filter(Channel.username == channel_name).first()
+        # Проверяем, не существует ли уже (по kind и value)
+        existing = db.query(Channel).filter(
+            Channel.kind == kind,
+            Channel.value == value
+        ).first()
         if existing:
-            await update.message.reply_text(f"⚠️ Канал @{channel_name} уже добавлен")
+            await update.message.reply_text(f"⚠️ Канал {display} уже добавлен")
             db.close()
             return
 
         # Добавляем новый канал
-        new_channel = Channel(username=channel_name, enabled=True)
+        new_channel = Channel(kind=kind, value=value, enabled=True)
         db.add(new_channel)
         db.commit()
         db.close()
 
-        await update.message.reply_text(f"✅ Канал @{channel_name} добавлен в мониторинг")
+        logger.info(f"✅ Канал {display} добавлен в мониторинг")
+        await update.message.reply_text(f"✅ Канал {display} добавлен в мониторинг")
 
         # Возвращаемся в меню
         del USER_CONTEXT[user_id]
-        await show_channels_menu(update, context)
+        await show_channels_menu_from_text(update, context)
 
     elif action == "waiting_keyword":
         db = get_db()
@@ -318,11 +591,12 @@ async def handle_text_input(update: Update, context: ContextTypes.DEFAULT_TYPE) 
         db.commit()
         db.close()
 
+        logger.info(f"✅ Ключевое слово '{text}' добавлено")
         await update.message.reply_text(f"✅ Ключевое слово '{text}' добавлено")
 
         # Возвращаемся в меню
         del USER_CONTEXT[user_id]
-        await show_keywords_menu(update, context)
+        await show_keywords_menu_from_text(update, context)
 
 
 async def main():

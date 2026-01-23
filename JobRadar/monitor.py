@@ -3,8 +3,10 @@ JobRadar v0 - Polling-мониторинг каналов (на основе Lea
 """
 import asyncio
 import json
+import re
 from telethon import TelegramClient
 from telethon.errors import ChannelPrivateError, ChannelInvalidError
+from telethon.tl.types import PeerChannel
 from sqlalchemy.orm import Session
 from datetime import datetime
 
@@ -15,6 +17,82 @@ from database import get_db
 
 # Глобальный Telegram клиент
 telegram_client = None
+
+
+def normalize_channel_ref(input_str: str) -> dict:
+    """
+    Нормализация ввода канала в стандартный формат
+
+    Args:
+        input_str: Ввод пользователя (@username, t.me/username, numeric id, -100id)
+
+    Returns:
+        dict с полями:
+            - kind: "username" или "id"
+            - value: str (username без @) или str (numeric id)
+            - display: строка для UI
+
+    Raises:
+        ValueError: если формат неверный
+    """
+    input_str = input_str.strip()
+
+    # Попытка 1: t.me/ ссылка
+    if "t.me/" in input_str:
+        match = re.search(r't\.me/([a-zA-Z0-9_]+)', input_str)
+        if match:
+            username = match.group(1)
+            return {
+                "kind": "username",
+                "value": username,
+                "display": f"@{username}"
+            }
+
+    # Попытка 2: @username
+    if input_str.startswith("@"):
+        username = input_str[1:].strip()
+        if re.match(r'^[a-zA-Z0-9_]+$', username):
+            return {
+                "kind": "username",
+                "value": username,
+                "display": f"@{username}"
+            }
+
+    # Попытка 3: -100xxxxx (bot-api format для каналов)
+    if input_str.startswith("-100") and len(input_str) > 4:
+        rest = input_str[4:]
+        if rest.isdigit():
+            channel_id = int(rest)
+            return {
+                "kind": "id",
+                "value": str(channel_id),
+                "display": f"id:{channel_id}"
+            }
+
+    # Попытка 4: просто числа (numeric id)
+    if input_str.isdigit():
+        channel_id = int(input_str)
+        return {
+            "kind": "id",
+            "value": str(channel_id),
+            "display": f"id:{channel_id}"
+        }
+
+    # Если просто username без @ и без особых символов
+    if re.match(r'^[a-zA-Z0-9_]+$', input_str):
+        return {
+            "kind": "username",
+            "value": input_str,
+            "display": f"@{input_str}"
+        }
+
+    raise ValueError(
+        "Неверный формат. Пришлите:\n"
+        "• @username\n"
+        "• t.me/username\n"
+        "• числовой id (например: 3022594210)\n"
+        "• bot-api формат (например: -1003022594210)"
+    )
 
 
 async def init_telegram_client():
@@ -42,6 +120,66 @@ async def close_telegram_client():
         print("🔌 Telegram клиент отключен")
 
 
+async def resolve_channel_entity(channel: Channel):
+    """
+    Резолвить сущность канала в зависимости от kind (username или id)
+
+    Args:
+        channel: Объект Channel из БД
+
+    Returns:
+        entity для использования с telegram_client
+
+    Raises:
+        Exception: если не удалось получить доступ к каналу
+    """
+    if channel.kind == "username":
+        # Резолвим по username: просто @username или саму строку
+        return await telegram_client.get_entity(f"@{channel.value}")
+
+    elif channel.kind == "id":
+        # Резолвим по numeric id - нужно попробовать несколько способов
+        cid = int(channel.value)
+
+        # Попытка 1: прямой numeric id
+        try:
+            return await telegram_client.get_entity(cid)
+        except:
+            pass
+
+        # Попытка 2: PeerChannel с numeric id
+        try:
+            peer = PeerChannel(cid)
+            return await telegram_client.get_entity(peer)
+        except:
+            pass
+
+        # Попытка 3: get_input_entity с PeerChannel
+        try:
+            peer = PeerChannel(cid)
+            return await telegram_client.get_input_entity(peer)
+        except:
+            pass
+
+        # Все попытки провалились
+        raise Exception(
+            f"Не удалось получить доступ к каналу по id {cid}. "
+            "Для публичного канала используйте @username или t.me/username. "
+            "ID работает только если аккаунт видит этот канал (есть в диалогах/подписках)."
+        )
+
+    else:
+        raise ValueError(f"Неизвестный kind: {channel.kind}")
+
+
+async def get_channel_display(channel: Channel) -> str:
+    """Получить display-строку для канала (для логов)"""
+    if channel.kind == "username":
+        return f"@{channel.value}"
+    else:
+        return f"id:{channel.value}"
+
+
 async def check_channel_for_new_messages(channel: Channel, db: Session):
     """
     Проверить канал на новые сообщения (polling логика из LeadScanner)
@@ -55,8 +193,9 @@ async def check_channel_for_new_messages(channel: Channel, db: Session):
         return
 
     try:
-        # Получаем сущность канала по username
-        entity = await telegram_client.get_entity(channel.username)
+        # Получаем сущность канала (с поддержкой username и id)
+        entity = await resolve_channel_entity(channel)
+        channel_display = await get_channel_display(channel)
 
         # Получаем ID последнего сообщения в канале
         messages = await telegram_client.get_messages(entity, limit=1)
@@ -67,7 +206,7 @@ async def check_channel_for_new_messages(channel: Channel, db: Session):
 
         # Если есть новые сообщения
         if current_last_id > channel.last_message_id:
-            print(f"\n📡 Проверяю канал @{channel.username}...")
+            print(f"\n📡 Проверяю канал {channel_display}...")
 
             # Получаем все новые сообщения
             new_messages = await telegram_client.get_messages(
@@ -95,7 +234,7 @@ async def check_channel_for_new_messages(channel: Channel, db: Session):
                 if matched_keywords:
                     matched_count += 1
                     print(f"  🎯 СОВПАДЕНИЕ НАЙДЕНО!")
-                    print(f"     Канал: @{channel.username}")
+                    print(f"     Канал: {channel_display}")
                     print(f"     Время: {msg.date.strftime('%Y-%m-%d %H:%M:%S') if msg.date else 'N/A'}")
                     print(f"     Автор: {msg.sender.username if msg.sender and hasattr(msg.sender, 'username') else 'Unknown'}")
                     print(f"     Ключевые слова: {', '.join(matched_keywords)}")
@@ -112,15 +251,18 @@ async def check_channel_for_new_messages(channel: Channel, db: Session):
             db.commit()
 
     except ChannelPrivateError:
-        print(f"❌ Канал @{channel.username} приватный или был удален")
+        channel_display = await get_channel_display(channel)
+        print(f"❌ Канал {channel_display} приватный или был удален")
         channel.enabled = False
         db.commit()
     except ChannelInvalidError:
-        print(f"❌ Канал @{channel.username} не найден")
+        channel_display = await get_channel_display(channel)
+        print(f"❌ Канал {channel_display} не найден")
         channel.enabled = False
         db.commit()
     except Exception as e:
-        print(f"⚠️  Ошибка при проверке @{channel.username}: {e}")
+        channel_display = await get_channel_display(channel)
+        print(f"⚠️  Ошибка при проверке {channel_display}: {e}")
 
 
 async def background_monitoring_job():
