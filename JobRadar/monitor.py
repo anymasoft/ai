@@ -420,12 +420,54 @@ async def format_jobradar_post(message, channel: Channel) -> tuple:
     if not message.text:
         return None, None
 
-    new_entities = list(message.entities) if message.entities else []
+    # НЕ копируем message.entities! Вместо этого обработаем текст вручную
+    new_entities = []
 
-    # Оригинальный текст вакансии без изменений
+    # Оригинальный текст вакансии
     text = message.text
 
-    # Вычисляем offset для ссылки (после текста + 2 переноса)
+    # ШАГ 1: найти все конструкции "@username (url)" в тексте
+    # Паттерн: @username, за которым может идти "(url)" или "https://..."
+    pattern = r'@([a-zA-Z0-9_]+)\s*\((https?://[^\)]+)\)'
+
+    # Сначала извлечём все найденные ссылки с их позициями
+    found_links = []  # [(offset, length, url), ...]
+    for match in re.finditer(pattern, text):
+        username = match.group(1)
+        url = match.group(2)
+        mention_start = match.start()
+        mention_text = f"@{username}"
+
+        found_links.append({
+            'mention_start': mention_start,
+            'mention_length': len(mention_text),
+            'match_end': match.end(),
+            'url': url
+        })
+
+    # ШАГ 2: удалить URLs из текста (в обратном порядке, чтобы не сбилась позиция)
+    cleaned_text = text
+    for link_info in reversed(found_links):
+        mention_end = link_info['mention_start'] + link_info['mention_length']
+        # Удаляем всё от конца @username до конца URL
+        cleaned_text = cleaned_text[:mention_end] + cleaned_text[link_info['match_end']:]
+
+    # ШАГ 3: пересчитать позиции для @username в cleaned_text и создать entities
+    # После удаления URL позиции @username остаются теми же
+    for link_info in found_links:
+        from telethon.tl.types import MessageEntityTextUrl
+
+        entity = MessageEntityTextUrl(
+            offset=link_info['mention_start'],
+            length=link_info['mention_length'],
+            url=link_info['url']
+        )
+        new_entities.append(entity)
+
+    # Актуализируем текст после очистки
+    text = cleaned_text
+
+    # Вычисляем offset для ссылки-источника (после текста + 2 переноса)
     offset = len(text) + 2
 
     # Получаем ссылку-источник через централизованную функцию
@@ -438,7 +480,7 @@ async def format_jobradar_post(message, channel: Channel) -> tuple:
     # Строим финальный текст
     publish_text = f"{text}\n\n{link_text}"
 
-    # Если нужно создавать entity (кликабельность)
+    # Если нужно создавать entity для ссылки-источника (кликабельность)
     if should_create_entity:
         from telethon.tl.types import MessageEntityTextUrl
 
