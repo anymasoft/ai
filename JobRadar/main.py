@@ -21,6 +21,7 @@ from config import TELEGRAM_BOT_TOKEN, TELEGRAM_ADMIN_ID, TELEGRAM_API_ID, TELEG
 from database import init_db, get_db
 from models import Channel, Keyword
 from monitor import init_telegram_client, close_telegram_client, start_polling_monitoring, normalize_channel_ref
+from backfill import backfill_one_post
 
 # Логирование
 logging.basicConfig(
@@ -59,7 +60,7 @@ async def show_main_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     keyboard = [
         [KeyboardButton("▶️ Начать мониторинг"), KeyboardButton("⏹ Остановить мониторинг")],
         [KeyboardButton("📡 Источники"), KeyboardButton("🔑 Ключевые слова")],
-        [KeyboardButton("📊 Статус")],
+        [KeyboardButton("📊 Статус"), KeyboardButton("📦 Загрузить историю")],
     ]
 
     reply_markup = ReplyKeyboardMarkup(
@@ -507,6 +508,11 @@ async def handle_text_input(update: Update, context: ContextTypes.DEFAULT_TYPE) 
         await show_status(update, context)
         return
 
+    if text == "📦 Загрузить историю":
+        logger.info(f"📥 Получена команда '📦 Загрузить историю' от пользователя {user_id}")
+        await start_backfill(update, context)
+        return
+
     if text == "⬅️ Назад":
         logger.info(f"📥 Получена команда '⬅️ Назад' от пользователя {user_id}")
         await show_main_menu(update, context)
@@ -676,6 +682,73 @@ async def handle_text_input(update: Update, context: ContextTypes.DEFAULT_TYPE) 
     elif action == "waiting_delete_channel":
         # Обработка удаления канала
         await delete_channel_by_input(update, context, text)
+
+    elif action == "waiting_backfill_channel":
+        # Обработка ввода канала для backfill
+        await process_backfill_channel(update, context, text)
+
+
+async def start_backfill(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Начать процесс загрузки истории - запросить канал"""
+    user_id = update.effective_user.id
+    USER_CONTEXT[user_id] = {"action": "waiting_backfill_channel"}
+
+    keyboard = [
+        [KeyboardButton("⬅️ Назад")],
+    ]
+    reply_markup = ReplyKeyboardMarkup(
+        keyboard,
+        resize_keyboard=True,
+        one_time_keyboard=False
+    )
+
+    await update.message.reply_text(
+        "📦 Загрузить историю\n\nВведите канал-источник в формате:\n• @channel_name\n• t.me/channel_name",
+        reply_markup=reply_markup
+    )
+
+
+async def process_backfill_channel(update: Update, context: ContextTypes.DEFAULT_TYPE, text: str) -> None:
+    """Обработать ввод канала и запустить backfill"""
+    user_id = update.effective_user.id
+    text = text.strip()
+
+    # Нормализовать ввод
+    try:
+        parsed = normalize_channel_ref(text)
+    except ValueError as e:
+        await update.message.reply_text(f"❌ {str(e)}")
+        return
+
+    username = parsed["value"]  # без @
+
+    # Загружение истории может занять время
+    await update.message.reply_text("⏳ Поиск релевантных постов... (это может занять время)")
+
+    db = get_db()
+
+    try:
+        result = await backfill_one_post(username, db)
+
+        if result["status"] == "published":
+            await update.message.reply_text(result["message"])
+            logger.info(f"📥 Backfill: {result['message']}")
+        elif result["status"] == "not_found":
+            await update.message.reply_text(result["message"])
+            logger.info(f"📥 Backfill: {result['message']}")
+        elif result["status"] == "error":
+            await update.message.reply_text(result["message"])
+            logger.warning(f"📥 Backfill ошибка: {result['message']}")
+
+    except Exception as e:
+        logger.error(f"❌ Ошибка backfill: {e}")
+        await update.message.reply_text(f"❌ Ошибка: {str(e)}")
+
+    finally:
+        db.close()
+
+    # Вернуться в главное меню
+    await show_main_menu(update, context)
 
 
 async def main():

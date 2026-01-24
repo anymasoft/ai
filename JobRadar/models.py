@@ -1,7 +1,7 @@
 """
 JobRadar v0 - ORM модели для SQLite
 """
-from sqlalchemy import Column, Integer, String, Boolean, DateTime
+from sqlalchemy import Column, Integer, String, Boolean, DateTime, BigInteger, UniqueConstraint, Index
 from sqlalchemy.ext.declarative import declarative_base
 from datetime import datetime
 
@@ -38,3 +38,27 @@ class Keyword(Base):
 
     def __repr__(self):
         return f"<Keyword(id={self.id}, word={self.word}, enabled={self.enabled})>"
+
+
+class SourceMessage(Base):
+    """Модель для отслеживания обработанных сообщений из источников (backfill)"""
+    __tablename__ = "source_messages"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    source_chat_id = Column(BigInteger, nullable=False)
+    source_message_id = Column(Integer, nullable=False)
+    text = Column(String(4000), nullable=True)
+    has_keywords = Column(Boolean, nullable=False, default=False)
+    published = Column(Boolean, nullable=False, default=False)
+    checked_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+    published_at = Column(DateTime, nullable=True)
+    source_channel_username = Column(String(255), nullable=True)
+
+    __table_args__ = (
+        UniqueConstraint('source_chat_id', 'source_message_id', name='uq_source_message'),
+        Index('idx_source_chat_message', 'source_chat_id', 'source_message_id'),
+        Index('idx_published', 'published'),
+    )
+
+    def __repr__(self):
+        return f"<SourceMessage(id={self.id}, chat_id={self.source_chat_id}, msg_id={self.source_message_id}, has_keywords={self.has_keywords}, published={self.published})>"
