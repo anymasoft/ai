@@ -361,20 +361,19 @@ async def format_jobradar_post(message, channel: Channel) -> tuple:
 
     entities = []
 
-    # 1. ЗЕРКАЛИМ entity из источника (НИЧЕГО НЕ МЕНЯЕМ)
+    # 1. Зеркалим entity из источника (НЕ ТРОГАЕМ offsets)
     if message.entities:
         for ent in message.entities:
             if isinstance(ent, MessageEntityTextUrl):
-                if ent.offset + ent.length <= len(text):
-                    entities.append(
-                        MessageEntityTextUrl(
-                            offset=ent.offset,
-                            length=ent.length,
-                            url=ent.url
-                        )
+                entities.append(
+                    MessageEntityTextUrl(
+                        offset=ent.offset,
+                        length=ent.length,
+                        url=ent.url
                     )
+                )
 
-    # 2. СТРОИМ ПОДПИСЬ ИСТОЧНИКА
+    # 2. Строим подпись источника
     link_text, link_url, should_create_entity = await build_source_link(message, channel)
     if not link_text or not link_url:
         return text, entities
@@ -383,15 +382,20 @@ async def format_jobradar_post(message, channel: Channel) -> tuple:
     publish_text = text + separator + link_text
 
     if should_create_entity:
+        offset_utf16 = len((text + separator).encode("utf-16-le")) // 2
+        length_utf16 = len(link_text.encode("utf-16-le")) // 2
+
         entities.append(
             MessageEntityTextUrl(
-                offset=len(text + separator),
-                length=len(link_text),
+                offset=offset_utf16,
+                length=length_utf16,
                 url=link_url
             )
         )
 
     return publish_text, entities
+
+
 
 
 
