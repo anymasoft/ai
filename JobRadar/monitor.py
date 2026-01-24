@@ -373,6 +373,86 @@ async def format_jobradar_post(message, channel: Channel) -> tuple:
                     )
                 )
 
+    # 2. Обрабатываем markdown [@text](url) и plain @text (url) ссылки
+    original_text = text
+    plain_pattern = r'([^\[\]()]+?)\s+\((https?://[^)]+)\)'
+    markdown_pattern = r'\[([^\]]+)\]\((https?://[^)]+)\)'
+
+    markdown_matches = list(re.finditer(markdown_pattern, original_text))
+    plain_matches = list(re.finditer(plain_pattern, original_text))
+
+    markdown_spans = {(m.start(), m.end()) for m in markdown_matches}
+    plain_matches = [m for m in plain_matches if not any(m.start() < md_end and m.end() > md_start for md_start, md_end in markdown_spans)]
+
+    all_matches = []
+    for match in markdown_matches:
+        all_matches.append(('markdown', match))
+    for match in plain_matches:
+        all_matches.append(('plain', match))
+
+    body_text = original_text
+    if all_matches:
+        all_matches.sort(key=lambda x: x[1].start())
+
+        body_text = ""
+        last_end = 0
+
+        for match_type, match in all_matches:
+            match_start = match.start()
+            match_end = match.end()
+
+            body_text += original_text[last_end:match_start]
+
+            if match_type == 'markdown':
+                captured_text = match.group(1)
+                url = match.group(2)
+
+                text_start_pos = len(body_text)
+                body_text += captured_text
+
+                if '@' in captured_text:
+                    at_pos = captured_text.rfind('@')
+                    entity_offset = text_start_pos + at_pos
+                    entity_length = len(captured_text) - at_pos
+                else:
+                    entity_offset = text_start_pos
+                    entity_length = len(captured_text)
+
+                entity = MessageEntityTextUrl(
+                    offset=entity_offset,
+                    length=entity_length,
+                    url=url
+                )
+                entities.append(entity)
+
+            elif match_type == 'plain':
+                captured_text = match.group(1).rstrip()
+                url = match.group(2)
+
+                text_start_pos = len(body_text)
+                body_text += captured_text
+
+                if '@' in captured_text:
+                    at_pos = captured_text.rfind('@')
+                    entity_offset = text_start_pos + at_pos
+                    entity_length = len(captured_text) - at_pos
+                else:
+                    entity_offset = text_start_pos
+                    entity_length = len(captured_text)
+
+                entity = MessageEntityTextUrl(
+                    offset=entity_offset,
+                    length=entity_length,
+                    url=url
+                )
+                entities.append(entity)
+
+            last_end = match_end
+
+        body_text += original_text[last_end:]
+
+    text = body_text
+
     # 2. Строим подпись источника
     link_text, link_url, should_create_entity = await build_source_link(message, channel)
     if not link_text or not link_url:
