@@ -147,21 +147,6 @@ async def backfill_one_post(source_username: str, db: Session, count: int = 1) -
                 # Проверить ключевые слова (как в check_channel_for_new_messages)
                 matched_keywords = [kw for kw in keywords_list if kw in text]
 
-                # Записать в БД (обязательно, даже если не подходит)
-                source_msg = SourceMessage(
-                    source_chat_id=source_chat_id,
-                    source_message_id=message.id,
-                    text=(message.text or "")[:4000],  # Обрезать на 4000 символов
-                    has_keywords=bool(matched_keywords),
-                    published=False,
-                    checked_at=datetime.utcnow(),
-                    source_channel_username=source_username
-                )
-                db.add(source_msg)
-                db.commit()
-
-                logger.debug(f"[BACKFILL] Записано в БД: message_id={message.id}, has_keywords={bool(matched_keywords)}")
-
                 # Если релевантно — публикуем
                 if matched_keywords:
                     logger.info(f"[BACKFILL] Найден релевантный пост #{published_count + 1}: message_id={message.id}, ключи: {matched_keywords}")
@@ -173,9 +158,18 @@ async def backfill_one_post(source_username: str, db: Session, count: int = 1) -
                         # Форматировать и опубликовать (как в check_channel_for_new_messages -> publish_matched_post)
                         await monitor.publish_matched_post(message, temp_channel)
 
-                        # Обновить БД
-                        source_msg.published = True
-                        source_msg.published_at = datetime.utcnow()
+                        # Записать в БД только после успешной публикации
+                        source_msg = SourceMessage(
+                            source_chat_id=source_chat_id,
+                            source_message_id=message.id,
+                            text=(message.text or "")[:4000],
+                            has_keywords=True,
+                            published=True,
+                            checked_at=datetime.utcnow(),
+                            published_at=datetime.utcnow(),
+                            source_channel_username=source_username
+                        )
+                        db.add(source_msg)
                         db.commit()
 
                         published_count += 1
@@ -188,8 +182,7 @@ async def backfill_one_post(source_username: str, db: Session, count: int = 1) -
 
                     except Exception as e:
                         logger.error(f"[BACKFILL] Ошибка публикации message_id={message.id}: {e}")
-                        # Оставляем в БД как "обработано, но не опубликовано"
-                        # Но продолжаем искать дальше
+                        # Не записываем в БД, продолжаем искать дальше
 
                 # Если не подходит — идём дальше
 

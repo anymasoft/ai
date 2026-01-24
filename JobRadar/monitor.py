@@ -324,7 +324,7 @@ async def build_source_link(message, channel: Channel) -> tuple:
 
     # --- 2. ЧАТ ---
     # Пытаемся получить username автора
-    author = message.sender or message.from_user
+    author = message.sender or getattr(message, 'from_user', None)
     sender_username = None
 
     if author and getattr(author, "username", None):
