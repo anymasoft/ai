@@ -1,5 +1,8 @@
 """
 JobRadar - Функционал backfill (загрузка истории постов)
+
+НЕЗАВИСИМЫЙ КОНТУР: не зависит от мониторинга или состояния telegram_client.
+Создает собственный Telegram клиент при необходимости.
 """
 import asyncio
 import logging
@@ -7,18 +10,13 @@ import random
 from datetime import datetime
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
+from telethon import TelegramClient
+from telethon.tl.types import MessageEntityTextUrl
 
 from models import SourceMessage, Channel, Keyword
-from monitor import (
-    telegram_client,
-    format_jobradar_post,
-    build_message_link,
-    build_source_link,
-    get_channel_display,
-)
-from config import TARGET_CHANNEL_ID
+from monitor import format_jobradar_post
+from config import TARGET_CHANNEL_ID, TELEGRAM_API_ID, TELEGRAM_API_HASH, TELEGRAM_PHONE
 from database import get_db
-from telethon.tl.types import MessageEntityTextUrl
 
 logger = logging.getLogger(__name__)
 
@@ -26,18 +24,49 @@ MAX_BACKFILL_ATTEMPTS = 50
 BACKFILL_SLEEP_MIN = 0.7
 BACKFILL_SLEEP_MAX = 1.5
 
+# Собственный клиент для backfill (независимо от monitor.py)
+_backfill_client = None
+
+
+async def _ensure_backfill_client():
+    """
+    Убедиться, что клиент для backfill инициализирован.
+    Создает собственный клиент, если нужно.
+    Этот клиент ПОЛНОСТЬЮ НЕЗАВИСИМ от telegram_client из monitor.py.
+    """
+    global _backfill_client
+
+    if _backfill_client is None:
+        try:
+            session_name = "jobradar_backfill_session"
+            _backfill_client = TelegramClient(session_name, TELEGRAM_API_ID, TELEGRAM_API_HASH)
+            await _backfill_client.start(phone=TELEGRAM_PHONE)
+            logger.info("[BACKFILL] ✅ Собственный Telegram клиент инициализирован")
+        except Exception as e:
+            logger.error(f"[BACKFILL] ❌ Ошибка инициализации клиента: {e}")
+            raise
+
+    return _backfill_client
+
 
 async def backfill_one_post(source_username: str, db: Session) -> dict:
     """
     Загрузить один релевантный пост из истории источника.
 
+    НЕЗАВИСИМЫЙ КОНТУР:
+    - Использует собственный Telegram клиент (не зависит от monitor.py)
+    - Работает независимо от включенного/отключенного мониторинга
+    - Проверяет по тем же ключевым словам
+    - Публикует в целевой канал
+
     Алгоритм:
-    1. Resolve источника
-    2. Найти последний message_id
-    3. Идти назад по message_id и искать первый необработанный
-    4. Проверить на ключевые слова
-    5. Если подходит — опубликовать и обновить БД
-    6. Если не подходит — пометить и идти дальше
+    1. Инициализировать собственный клиент (если нужно)
+    2. Resolve источника
+    3. Найти последний message_id
+    4. Идти назад по message_id и искать первый необработанный
+    5. Проверить на ключевые слова
+    6. Если подходит — опубликовать и обновить БД
+    7. Если не подходит — пометить и идти дальше
 
     Args:
         source_username: username источника (без @)
@@ -52,23 +81,26 @@ async def backfill_one_post(source_username: str, db: Session) -> dict:
             ...
         }
     """
-    if not telegram_client:
+    # Инициализировать собственный клиент для backfill
+    try:
+        client = await _ensure_backfill_client()
+    except Exception as e:
         return {
             "status": "error",
-            "message": "❌ Telegram клиент не инициализирован"
+            "message": f"❌ Ошибка инициализации Telegram клиента: {str(e)}"
         }
 
     try:
         # Шаг A: Resolve источника
         logger.info(f"[BACKFILL] Resolve источника @{source_username}")
-        entity = await telegram_client.get_entity(f"@{source_username}")
+        entity = await client.get_entity(f"@{source_username}")
         source_chat_id = entity.id
         source_display = f"@{source_username}"
 
         logger.info(f"[BACKFILL] Источник resolved: {source_display}, chat_id={source_chat_id}")
 
         # Шаг C: Найти последний message_id
-        messages = await telegram_client.get_messages(entity, limit=1)
+        messages = await client.get_messages(entity, limit=1)
         if not messages:
             return {
                 "status": "error",
@@ -97,7 +129,7 @@ async def backfill_one_post(source_username: str, db: Session) -> dict:
 
             try:
                 # Получить одно сообщение
-                msg_list = await telegram_client.get_messages(entity, ids=current_id)
+                msg_list = await client.get_messages(entity, ids=current_id)
                 if not msg_list or msg_list[0] is None:
                     logger.debug(f"[BACKFILL] Сообщение {current_id} не существует (пропуск)")
                     checked_count += 1
@@ -157,7 +189,7 @@ async def backfill_one_post(source_username: str, db: Session) -> dict:
                             }
 
                         # Опубликовать
-                        await telegram_client.send_message(
+                        await client.send_message(
                             TARGET_CHANNEL_ID,
                             publish_text,
                             formatting_entities=new_entities if new_entities else None,
