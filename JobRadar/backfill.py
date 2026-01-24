@@ -103,9 +103,16 @@ async def backfill_one_post(source_username: str, db: Session) -> dict:
             await asyncio.sleep(random.uniform(BACKFILL_SLEEP_MIN, BACKFILL_SLEEP_MAX))
 
             try:
-                # Получить одно сообщение (как в check_channel_for_new_messages)
-                msg_list = await monitor.telegram_client.get_messages(entity, ids=current_id)
-                if not msg_list or msg_list[0] is None:
+                # Получить одно сообщение - ТОЧНО КАК в check_channel_for_new_messages
+                # используя min_id и max_id для получения конкретного сообщения
+                msg_list = await monitor.telegram_client.get_messages(
+                    entity,
+                    limit=1,
+                    min_id=current_id - 1,  # ID > current_id - 1, т.е. ID >= current_id
+                    max_id=current_id + 1   # ID < current_id + 1, т.е. ID <= current_id
+                )
+
+                if not msg_list:
                     logger.debug(f"[BACKFILL] Сообщение {current_id} не существует (пропуск)")
                     checked_count += 1
                     continue

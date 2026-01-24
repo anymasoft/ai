@@ -722,8 +722,8 @@ async def process_backfill_channel(update: Update, context: ContextTypes.DEFAULT
 
     username = parsed["value"]  # без @
 
-    # Загружение истории может занять время
-    await update.message.reply_text("⏳ Поиск релевантных постов... (это может занять время)")
+    # Поиск одного релевантного поста
+    await update.message.reply_text("⏳ Поиск релевантного поста...")
 
     db = get_db()
 
