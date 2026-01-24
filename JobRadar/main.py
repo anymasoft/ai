@@ -687,6 +687,10 @@ async def handle_text_input(update: Update, context: ContextTypes.DEFAULT_TYPE) 
         # Обработка ввода канала для backfill
         await process_backfill_channel(update, context, text)
 
+    elif action == "waiting_backfill_count":
+        # Обработка ввода количества сообщений для backfill
+        await process_backfill_count(update, context, text)
+
 
 async def start_backfill(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Начать процесс загрузки истории - запросить канал"""
@@ -709,7 +713,7 @@ async def start_backfill(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
 
 
 async def process_backfill_channel(update: Update, context: ContextTypes.DEFAULT_TYPE, text: str) -> None:
-    """Обработать ввод канала и запустить backfill"""
+    """Обработать ввод канала и спросить количество сообщений"""
     user_id = update.effective_user.id
     text = text.strip()
 
@@ -722,13 +726,58 @@ async def process_backfill_channel(update: Update, context: ContextTypes.DEFAULT
 
     username = parsed["value"]  # без @
 
-    # Поиск одного релевантного поста
-    await update.message.reply_text("⏳ Поиск релевантного поста...")
+    # Сохранить username в контексте
+    USER_CONTEXT[user_id] = {
+        "action": "waiting_backfill_count",
+        "backfill_username": username
+    }
+
+    # Спросить количество сообщений
+    keyboard = [
+        [KeyboardButton("1"), KeyboardButton("3"), KeyboardButton("5")],
+        [KeyboardButton("10"), KeyboardButton("20"), KeyboardButton("⬅️ Назад")],
+    ]
+    reply_markup = ReplyKeyboardMarkup(
+        keyboard,
+        resize_keyboard=True,
+        one_time_keyboard=False
+    )
+
+    await update.message.reply_text(
+        f"Канал: @{username}\n\nСколько постов загрузить?",
+        reply_markup=reply_markup
+    )
+
+
+async def process_backfill_count(update: Update, context: ContextTypes.DEFAULT_TYPE, text: str) -> None:
+    """Обработать ввод количества и запустить загрузку"""
+    user_id = update.effective_user.id
+    text = text.strip()
+
+    # Получить username из контекста
+    username = USER_CONTEXT.get(user_id, {}).get("backfill_username")
+    if not username:
+        await update.message.reply_text("❌ Ошибка: канал не найден")
+        await show_main_menu(update, context)
+        return
+
+    # Попробовать распарсить количество
+    try:
+        count = int(text)
+        if count <= 0 or count > 100:
+            await update.message.reply_text("❌ Укажите число от 1 до 100")
+            return
+    except ValueError:
+        await update.message.reply_text("❌ Укажите числовое значение")
+        return
+
+    # Загрузка начинается
+    await update.message.reply_text(f"⏳ Загрузка {count} постов из @{username}...")
 
     db = get_db()
 
     try:
-        result = await backfill_one_post(username, db)
+        result = await backfill_one_post(username, db, count=count)
 
         if result["status"] == "published":
             await update.message.reply_text(result["message"])
