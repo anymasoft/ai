@@ -78,8 +78,9 @@ def dump_message_for_diagnostics(msg, channel: Channel, is_broadcast: bool):
 
     logger.info(f"  - type(msg.from_user) = {type(getattr(msg, 'from_user', None)).__name__ if getattr(msg, 'from_user', None) else 'None/N/A'}")
     if getattr(msg, 'from_user', None):
-        logger.info(f"    - msg.from_user.id = {getattr(msg.from_user, 'id', 'N/A')}")
-        logger.info(f"    - msg.from_user.username = {getattr(msg.from_user, 'username', 'N/A')}")
+        from_user = getattr(msg, 'from_user', None)
+        logger.info(f"    - msg.from_user.id = {getattr(from_user, 'id', 'N/A')}")
+        logger.info(f"    - msg.from_user.username = {getattr(from_user, 'username', 'N/A')}")
 
     logger.info(f"  - msg.sender_id = {getattr(msg, 'sender_id', 'N/A')}")
     logger.info(f"  - msg.from_id = {getattr(msg, 'from_id', 'N/A')}")
@@ -324,7 +325,7 @@ async def build_source_link(message, channel: Channel) -> tuple:
 
     # --- 2. ЧАТ ---
     # Пытаемся получить username автора
-    author = message.sender or message.from_user
+    author = message.sender or getattr(message, 'from_user', None)
     sender_username = None
 
     if author and getattr(author, "username", None):
