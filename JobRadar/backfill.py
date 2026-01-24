@@ -16,14 +16,14 @@ from database import get_db
 
 logger = logging.getLogger(__name__)
 
-MAX_BACKFILL_ATTEMPTS = 50
-BACKFILL_SLEEP_MIN = 0.7
-BACKFILL_SLEEP_MAX = 1.5
+MAX_BACKFILL_ATTEMPTS = 1000  # Максимум попыток при поиске N постов
+BACKFILL_SLEEP_MIN = 2.0      # Пауза для человекоподобности (2-5 сек)
+BACKFILL_SLEEP_MAX = 5.0
 
 
-async def backfill_one_post(source_username: str, db: Session) -> dict:
+async def backfill_one_post(source_username: str, db: Session, count: int = 1) -> dict:
     """
-    Загрузить один релевантный пост из истории источника.
+    Загрузить N релевантных постов из истории источника.
 
     НЕЗАВИСИМЫЙ КОНТУР:
     - Работает независимо от статуса мониторинга (включен/выключен)
@@ -34,19 +34,21 @@ async def backfill_one_post(source_username: str, db: Session) -> dict:
     Алгоритм:
     1. Resolve источника (как в monitor.py)
     2. Получить последний message_id
-    3. Идти назад по message_id и искать первый необработанный
+    3. Идти назад по message_id и искать релевантные сообщения
     4. Проверить на ключевые слова (как в monitor.py)
     5. Если подходит — опубликовать и обновить БД
     6. Если не подходит — пометить и идти дальше
+    7. Повторять пока не найдется count постов или не кончатся попытки
 
     Args:
         source_username: username источника (без @)
         db: SQLAlchemy сессия
+        count: сколько постов загрузить (по умолчанию 1)
 
     Returns:
         dict с результатом: {
             "status": "published" | "not_found" | "error",
-            "source_message_id": int | None,
+            "published_count": int,
             "checked": int,
             "message": str,
             ...
@@ -91,8 +93,12 @@ async def backfill_one_post(source_username: str, db: Session) -> dict:
 
         # Шаг 3: Цикл по необработанным сообщениям
         checked_count = 0
+        published_count = 0
 
         for offset in range(1, MAX_BACKFILL_ATTEMPTS + 1):
+            # Если уже загрузили нужное количество - выходим
+            if published_count >= count:
+                break
             current_id = last_id - offset
 
             if current_id <= 0:
@@ -158,7 +164,7 @@ async def backfill_one_post(source_username: str, db: Session) -> dict:
 
                 # Если релевантно — публикуем
                 if matched_keywords:
-                    logger.info(f"[BACKFILL] Найден релевантный пост: message_id={message.id}, ключи: {matched_keywords}")
+                    logger.info(f"[BACKFILL] Найден релевантный пост #{published_count + 1}: message_id={message.id}, ключи: {matched_keywords}")
 
                     # Создать временный Channel объект для переиспользования publish_matched_post
                     temp_channel = _create_temp_channel(entity, source_username)
@@ -172,22 +178,18 @@ async def backfill_one_post(source_username: str, db: Session) -> dict:
                         source_msg.published_at = datetime.utcnow()
                         db.commit()
 
-                        logger.info(f"[BACKFILL] ✅ Опубликовано: message_id={message.id}, источник={source_display}")
+                        published_count += 1
+                        logger.info(f"[BACKFILL] ✅ Опубликовано {published_count}/{count}: message_id={message.id}")
 
-                        return {
-                            "status": "published",
-                            "source_message_id": message.id,
-                            "checked": checked_count,
-                            "message": f"✅ Опубликовано из {source_display}: ключи {', '.join(matched_keywords[:3])}"
-                        }
+                        # Если уже загрузили нужное количество - выходим
+                        if published_count >= count:
+                            logger.info(f"[BACKFILL] Загружено {published_count} постов из {source_display}")
+                            break
 
                     except Exception as e:
                         logger.error(f"[BACKFILL] Ошибка публикации message_id={message.id}: {e}")
                         # Оставляем в БД как "обработано, но не опубликовано"
-                        return {
-                            "status": "error",
-                            "message": f"❌ Ошибка при публикации: {str(e)}"
-                        }
+                        # Но продолжаем искать дальше
 
                 # Если не подходит — идём дальше
 
@@ -196,13 +198,23 @@ async def backfill_one_post(source_username: str, db: Session) -> dict:
                 checked_count += 1
                 continue
 
-        # Не найдено подходящих постов
-        logger.info(f"[BACKFILL] Не найдены релевантные посты. Проверено {checked_count} сообщений")
-        return {
-            "status": "not_found",
-            "checked": checked_count,
-            "message": f"ℹ️ Релевантных постов не найдено (проверено {checked_count} сообщений)"
-        }
+        # Результаты завершения
+        if published_count > 0:
+            logger.info(f"[BACKFILL] Загружено {published_count}/{count} постов из {source_display}. Проверено {checked_count} сообщений")
+            return {
+                "status": "published",
+                "published_count": published_count,
+                "checked": checked_count,
+                "message": f"✅ Загружено {published_count} пост(ов) из {source_display} (проверено {checked_count} сообщений)"
+            }
+        else:
+            logger.info(f"[BACKFILL] Не найдены релевантные посты. Проверено {checked_count} сообщений")
+            return {
+                "status": "not_found",
+                "published_count": 0,
+                "checked": checked_count,
+                "message": f"ℹ️ Релевантных постов не найдено (проверено {checked_count} сообщений)"
+            }
 
     except ValueError as e:
         logger.error(f"[BACKFILL] Ошибка нормализации: {e}")
