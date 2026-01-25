@@ -4,6 +4,7 @@ JobRadar v0 - Polling-мониторинг каналов (на основе Lea
 import asyncio
 import json
 import re
+import random
 import logging
 import os
 from telethon import TelegramClient
@@ -25,6 +26,9 @@ DEBUG_MESSAGE_DUMP = os.getenv("DEBUG_MESSAGE_DUMP", "false").lower() == "true"
 
 # Глобальный Telegram клиент
 telegram_client = None
+
+# Глобальный семафор для управления нагрузкой (зарезервирован на будущее)
+monitor_semaphore = asyncio.Semaphore(1)
 
 
 def dump_message_for_diagnostics(msg, channel: Channel, is_broadcast: bool):
@@ -667,11 +671,12 @@ async def monitoring_loop():
                     # Проверяем каждый канал на новые сообщения
                     for channel in channels:
                         await check_channel_for_new_messages(channel, db)
+                        await asyncio.sleep(0.2)
             finally:
                 db.close()
 
-            # Спим перед следующей проверкой
-            await asyncio.sleep(POLLING_INTERVAL_SECONDS)
+            # Спим перед следующей проверкой (с random jitter 0-2 сек для сглаживания нагрузки)
+            await asyncio.sleep(POLLING_INTERVAL_SECONDS + random.uniform(0, 2))
 
         except Exception as e:
             logger.error(f"❌ Ошибка в мониторинге: {e}")
