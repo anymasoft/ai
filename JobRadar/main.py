@@ -20,7 +20,7 @@ from sqlalchemy.orm import Session
 from config import TELEGRAM_BOT_TOKEN, TELEGRAM_ADMIN_ID, TELEGRAM_API_ID, TELEGRAM_API_HASH, TELEGRAM_PHONE
 from database import init_db, get_db
 from models import Channel, Keyword
-from monitor import init_telegram_client, close_telegram_client, start_polling_monitoring, normalize_channel_ref
+from monitor import init_telegram_client, close_telegram_client, monitoring_loop, normalize_channel_ref
 from backfill import backfill_one_post
 
 # Логирование
@@ -31,8 +31,6 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # Подавляем логи сторонних библиотек
-logging.getLogger("apscheduler").setLevel(logging.WARNING)
-logging.getLogger("apscheduler.executors").setLevel(logging.WARNING)
 logging.getLogger("httpx").setLevel(logging.WARNING)
 logging.getLogger("telegram").setLevel(logging.WARNING)
 logging.getLogger("telegram.ext").setLevel(logging.WARNING)
@@ -820,7 +818,7 @@ async def main():
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text_input))
 
     # Запускаем polling-мониторинг каналов в фоне
-    scheduler = start_polling_monitoring()
+    asyncio.create_task(monitoring_loop())
 
     # Инициализируем и запускаем бота в существующем event loop
     await app.initialize()
