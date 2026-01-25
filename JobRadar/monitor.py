@@ -548,72 +548,69 @@ async def check_channel_for_new_messages(channel: Channel, db: Session):
         entity = await resolve_channel_entity(channel)
         channel_display = await get_channel_display(channel)
 
-        # Получаем ID последнего сообщения в канале
-        messages = await telegram_client.get_messages(entity, limit=1)
-        if not messages:
-            return
-
-        current_last_id = messages[0].id
-
         # Если last_message_id не инициализирован - устанавливаем стартовую точку
         if channel.last_message_id == 0:
-            channel.last_message_id = current_last_id
-            db.commit()
-            logger.info(f"⏺ Стартовая инициализация {channel_display}: last_message_id={current_last_id}")
-            return
-
-        # Если есть новые сообщения
-        if current_last_id > channel.last_message_id:
-            # Получаем все новые сообщения (strict > для пропуска старых)
-            new_messages = await telegram_client.get_messages(
-                entity,
-                limit=MAX_MESSAGES_PER_CHECK,
-                min_id=channel.last_message_id,
-                max_id=current_last_id + 1
-            )
-
-            # Фильтруем - оставляем ТОЛЬКО сообщения с id > last_message_id
-            filtered_messages = [msg for msg in new_messages if msg.id > channel.last_message_id]
-
-            if not filtered_messages:
-                logger.debug(f"⏩ Пропускаю старые сообщения канала {channel_display}")
+            messages = await telegram_client.get_messages(entity, limit=1)
+            if not messages:
                 return
 
-            # Получаем все активные ключевые слова
-            keywords = db.query(Keyword).filter(Keyword.enabled == True).all()
-            keywords_list = [kw.word.lower() for kw in keywords]
-
-            # Обрабатываем сообщения (в обратном порядке - от старых к новым)
-            matched_count = 0
-            for msg in reversed(filtered_messages):
-                text = (msg.text or "").lower()
-
-                if not text:
-                    continue
-
-                # Проверяем совпадение с ключевыми словами
-                matched_keywords = [kw for kw in keywords_list if kw in text]
-
-                if matched_keywords:
-                    matched_count += 1
-                    print(f"\n🎯 СОВПАДЕНИЕ НАЙДЕНО!")
-                    print(f"   Канал: {channel_display}")
-                    print(f"   Время: {msg.date.strftime('%Y-%m-%d %H:%M:%S') if msg.date else 'N/A'}")
-                    print(f"   Автор: {msg.sender.username if msg.sender and hasattr(msg.sender, 'username') else 'Unknown'}")
-                    print(f"   Ключевые слова: {', '.join(matched_keywords)}")
-                    print(f"   Текст: {text[:200]}...\n")
-
-                    # Публикуем найденный пост в канал JobRadar
-                    await publish_matched_post(msg, channel)
-
-            # Обновляем last_message_id на максимальный обработанный
-            new_last_id = max([msg.id for msg in filtered_messages])
-            channel.last_message_id = new_last_id
+            channel.last_message_id = messages[0].id
             db.commit()
+            logger.info(f"⏺ Стартовая инициализация {channel_display}: last_message_id={channel.last_message_id}")
+            return
 
-            # Логируем результаты только если есть обработанные сообщения
-            logger.info(f"🆕 Обработано {len(filtered_messages)} новых сообщений канала {channel_display}, совпадений: {matched_count}")
-            logger.debug(f"📌 Обновлён last_message_id={new_last_id} для канала {channel_display}")
+        # Получаем новые сообщения с min_id=last_message_id
+        new_messages = await telegram_client.get_messages(
+            entity,
+            limit=MAX_MESSAGES_PER_CHECK,
+            min_id=channel.last_message_id
+        )
+
+        # Если нет новых сообщений - выходим
+        if not new_messages:
+            return
+
+        # Фильтруем - оставляем ТОЛЬКО сообщения с id > last_message_id
+        filtered_messages = [msg for msg in new_messages if msg.id > channel.last_message_id]
+
+        if not filtered_messages:
+            return
+
+        # Получаем все активные ключевые слова
+        keywords = db.query(Keyword).filter(Keyword.enabled == True).all()
+        keywords_list = [kw.word.lower() for kw in keywords]
+
+        # Обрабатываем сообщения (в обратном порядке - от старых к новым)
+        matched_count = 0
+        for msg in reversed(filtered_messages):
+            text = (msg.text or "").lower()
+
+            if not text:
+                continue
+
+            # Проверяем совпадение с ключевыми словами
+            matched_keywords = [kw for kw in keywords_list if kw in text]
+
+            if matched_keywords:
+                matched_count += 1
+                print(f"\n🎯 СОВПАДЕНИЕ НАЙДЕНО!")
+                print(f"   Канал: {channel_display}")
+                print(f"   Время: {msg.date.strftime('%Y-%m-%d %H:%M:%S') if msg.date else 'N/A'}")
+                print(f"   Автор: {msg.sender.username if msg.sender and hasattr(msg.sender, 'username') else 'Unknown'}")
+                print(f"   Ключевые слова: {', '.join(matched_keywords)}")
+                print(f"   Текст: {text[:200]}...\n")
+
+                # Публикуем найденный пост в канал JobRadar
+                await publish_matched_post(msg, channel)
+
+        # Обновляем last_message_id на максимальный обработанный
+        new_last_id = max([msg.id for msg in filtered_messages])
+        channel.last_message_id = new_last_id
+        db.commit()
+
+        # Логируем результаты только если есть обработанные сообщения
+        logger.info(f"🆕 Обработано {len(filtered_messages)} новых сообщений канала {channel_display}, совпадений: {matched_count}")
+        logger.debug(f"📌 Обновлён last_message_id={new_last_id} для канала {channel_display}")
 
     except ChannelPrivateError:
         channel_display = await get_channel_display(channel)
@@ -638,60 +635,45 @@ async def check_channel_for_new_messages(channel: Channel, db: Session):
             logger.error(f"⚠️  Ошибка при проверке {channel_display}: {e}")
 
 
-async def background_monitoring_job():
+async def monitoring_loop():
     """
-    Фоновая задача для периодической проверки каналов (как в LeadScanner)
-    Вызывается каждые POLLING_INTERVAL_SECONDS секунд
+    Бесконечный цикл мониторинга каналов.
 
-    Проверяет глобальный флаг monitoring_enabled перед выполнением
-    Обрабатывает ТОЛЬКО новые сообщения (опубликованные после last_message_id)
+    Работает последовательно:
+    - Проверяет глобальный флаг monitoring_enabled
+    - Если вкл: проверяет каждый активный канал
+    - Спит POLLING_INTERVAL_SECONDS секунд
+    - При ошибке: логирует и спит 30 секунд
+
+    Запускается через asyncio.create_task() при старте приложения.
     """
-    try:
-        # Импортируем флаг из main.py
-        from __main__ import monitoring_enabled
+    while True:
+        try:
+            # Импортируем флаг из main.py
+            from __main__ import monitoring_enabled
 
-        # Если мониторинг отключен, пропускаем цикл
-        if not monitoring_enabled:
-            return
+            # Если мониторинг выключен - просто спим
+            if not monitoring_enabled:
+                await asyncio.sleep(POLLING_INTERVAL_SECONDS)
+                continue
 
-        db = get_db()
+            db = get_db()
 
-        # Получаем все активные каналы
-        channels = db.query(Channel).filter(Channel.enabled == True).all()
+            try:
+                # Получаем все активные каналы
+                channels = db.query(Channel).filter(Channel.enabled == True).all()
 
-        if not channels:
-            db.close()
-            return
+                if channels:
+                    # Проверяем каждый канал на новые сообщения
+                    for channel in channels:
+                        await check_channel_for_new_messages(channel, db)
+            finally:
+                db.close()
 
-        # Проверяем каждый канал на новые сообщения
-        for channel in channels:
-            await check_channel_for_new_messages(channel, db)
+            # Спим перед следующей проверкой
+            await asyncio.sleep(POLLING_INTERVAL_SECONDS)
 
-        db.close()
-
-    except Exception as e:
-        logger.error(f"❌ Ошибка в фоновой задаче мониторинга: {e}")
-
-
-def start_polling_monitoring():
-    """
-    Запустить фоновый polling мониторинг через APScheduler
-    (как в LeadScanner main.py)
-    """
-    from apscheduler.schedulers.asyncio import AsyncIOScheduler
-
-    scheduler = AsyncIOScheduler()
-
-    # Добавляем периодическую задачу
-    scheduler.add_job(
-        background_monitoring_job,
-        'interval',
-        seconds=POLLING_INTERVAL_SECONDS,
-        coalesce=True,
-        max_instances=1
-    )
-
-    scheduler.start()
-    print(f"🚀 Polling-мониторинг запущен (интервал: {POLLING_INTERVAL_SECONDS} сек)")
-
-    return scheduler
+        except Exception as e:
+            logger.error(f"❌ Ошибка в мониторинге: {e}")
+            # При ошибке спим 30 секунд перед повторной попыткой
+            await asyncio.sleep(30)
