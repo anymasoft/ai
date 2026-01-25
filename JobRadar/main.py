@@ -55,6 +55,10 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 
 async def show_main_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Показать главное меню"""
+    if update.effective_user.id != TELEGRAM_ADMIN_ID:
+        await update.message.reply_text("❌ У вас нет доступа")
+        return
+
     keyboard = [
         [KeyboardButton("▶️ Начать мониторинг"), KeyboardButton("⏹ Остановить мониторинг")],
         [KeyboardButton("📡 Источники"), KeyboardButton("🔑 Ключевые слова")],
@@ -83,6 +87,10 @@ async def show_main_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
 
 async def start_monitoring(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Включить мониторинг и инициализировать стартовую точку для новых сообщений"""
+    if update.effective_user.id != TELEGRAM_ADMIN_ID:
+        await update.message.reply_text("❌ У вас нет доступа")
+        return
+
     global monitoring_enabled
     user_id = update.effective_user.id
 
@@ -126,6 +134,10 @@ async def start_monitoring(update: Update, context: ContextTypes.DEFAULT_TYPE) -
 
 async def stop_monitoring(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Выключить мониторинг"""
+    if update.effective_user.id != TELEGRAM_ADMIN_ID:
+        await update.message.reply_text("❌ У вас нет доступа")
+        return
+
     global monitoring_enabled
     user_id = update.effective_user.id
 
@@ -142,6 +154,10 @@ async def stop_monitoring(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
 
 async def show_channels_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Меню управления каналами"""
+    if update.effective_user.id != TELEGRAM_ADMIN_ID:
+        await update.message.reply_text("❌ У вас нет доступа")
+        return
+
     user_id = update.effective_user.id
     # Сохраняем контекст меню для правильной обработки "Показать список"
     USER_CONTEXT[user_id] = {"menu_type": "channels"}
@@ -168,6 +184,10 @@ async def show_channels_menu(update: Update, context: ContextTypes.DEFAULT_TYPE)
 
 async def show_keywords_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Меню управления ключевыми словами"""
+    if update.effective_user.id != TELEGRAM_ADMIN_ID:
+        await update.message.reply_text("❌ У вас нет доступа")
+        return
+
     user_id = update.effective_user.id
     # Сохраняем контекст меню для правильной обработки "Показать список"
     USER_CONTEXT[user_id] = {"menu_type": "keywords"}
@@ -193,6 +213,10 @@ async def show_keywords_menu(update: Update, context: ContextTypes.DEFAULT_TYPE)
 
 async def show_status(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Показать статус мониторинга"""
+    if update.effective_user.id != TELEGRAM_ADMIN_ID:
+        await update.message.reply_text("❌ У вас нет доступа")
+        return
+
     db = get_db()
 
     channels_count = db.query(Channel).filter(Channel.enabled == True).count()
@@ -226,6 +250,10 @@ async def show_status(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
 
 async def start_add_channel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Начать добавление канала"""
+    if update.effective_user.id != TELEGRAM_ADMIN_ID:
+        await update.message.reply_text("❌ У вас нет доступа")
+        return
+
     user_id = update.effective_user.id
     USER_CONTEXT[user_id] = {"action": "waiting_channel"}
 
@@ -241,6 +269,10 @@ async def start_add_channel(update: Update, context: ContextTypes.DEFAULT_TYPE) 
 
 async def start_delete_channel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Начать удаление канала"""
+    if update.effective_user.id != TELEGRAM_ADMIN_ID:
+        await update.message.reply_text("❌ У вас нет доступа")
+        return
+
     user_id = update.effective_user.id
     db = get_db()
     channels = db.query(Channel).all()
@@ -301,6 +333,10 @@ async def start_delete_channel(update: Update, context: ContextTypes.DEFAULT_TYP
 
 async def list_channels(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Список всех каналов"""
+    if update.effective_user.id != TELEGRAM_ADMIN_ID:
+        await update.message.reply_text("❌ У вас нет доступа")
+        return
+
     user_id = update.effective_user.id
     db = get_db()
     channels = db.query(Channel).all()
@@ -368,6 +404,10 @@ async def list_channels(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
 
 async def start_add_keyword(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Начать добавление ключевого слова"""
+    if update.effective_user.id != TELEGRAM_ADMIN_ID:
+        await update.message.reply_text("❌ У вас нет доступа")
+        return
+
     user_id = update.effective_user.id
 
     # Сохраняем текущий контекст меню, если существует
@@ -390,6 +430,10 @@ async def start_add_keyword(update: Update, context: ContextTypes.DEFAULT_TYPE) 
 
 async def list_keywords(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Список всех ключевых слов"""
+    if update.effective_user.id != TELEGRAM_ADMIN_ID:
+        await update.message.reply_text("❌ У вас нет доступа")
+        return
+
     user_id = update.effective_user.id
     db = get_db()
     keywords = db.query(Keyword).all()
@@ -422,6 +466,10 @@ async def list_keywords(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
 
 async def delete_channel_by_input(update: Update, context: ContextTypes.DEFAULT_TYPE, text: str) -> None:
     """Обработка удаления канала по введённому номеру"""
+    if update.effective_user.id != TELEGRAM_ADMIN_ID:
+        await update.message.reply_text("❌ У вас нет доступа")
+        return
+
     user_id = update.effective_user.id
 
     # Проверяем, что введено число
@@ -477,6 +525,10 @@ async def delete_channel_by_input(update: Update, context: ContextTypes.DEFAULT_
 
 async def handle_text_input(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Обработка текстового ввода пользователя"""
+    if update.effective_user.id != TELEGRAM_ADMIN_ID:
+        await update.message.reply_text("❌ У вас нет доступа")
+        return
+
     user_id = update.effective_user.id
     text = update.message.text.strip()
 
@@ -692,6 +744,10 @@ async def handle_text_input(update: Update, context: ContextTypes.DEFAULT_TYPE) 
 
 async def start_backfill(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Начать процесс загрузки истории - запросить канал"""
+    if update.effective_user.id != TELEGRAM_ADMIN_ID:
+        await update.message.reply_text("❌ У вас нет доступа")
+        return
+
     user_id = update.effective_user.id
     USER_CONTEXT[user_id] = {"action": "waiting_backfill_channel"}
 
@@ -712,6 +768,10 @@ async def start_backfill(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
 
 async def process_backfill_channel(update: Update, context: ContextTypes.DEFAULT_TYPE, text: str) -> None:
     """Обработать ввод канала и спросить количество сообщений"""
+    if update.effective_user.id != TELEGRAM_ADMIN_ID:
+        await update.message.reply_text("❌ У вас нет доступа")
+        return
+
     user_id = update.effective_user.id
     text = text.strip()
 
@@ -749,6 +809,10 @@ async def process_backfill_channel(update: Update, context: ContextTypes.DEFAULT
 
 async def process_backfill_count(update: Update, context: ContextTypes.DEFAULT_TYPE, text: str) -> None:
     """Обработать ввод количества и запустить загрузку"""
+    if update.effective_user.id != TELEGRAM_ADMIN_ID:
+        await update.message.reply_text("❌ У вас нет доступа")
+        return
+
     user_id = update.effective_user.id
     text = text.strip()
 
