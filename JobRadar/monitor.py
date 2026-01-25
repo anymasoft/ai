@@ -659,15 +659,16 @@ async def monitoring_loop():
 
             db = get_db()
 
-            # Получаем все активные каналы
-            channels = db.query(Channel).filter(Channel.enabled == True).all()
+            try:
+                # Получаем все активные каналы
+                channels = db.query(Channel).filter(Channel.enabled == True).all()
 
-            if channels:
-                # Проверяем каждый канал на новые сообщения
-                for channel in channels:
-                    await check_channel_for_new_messages(channel, db)
-
-            db.close()
+                if channels:
+                    # Проверяем каждый канал на новые сообщения
+                    for channel in channels:
+                        await check_channel_for_new_messages(channel, db)
+            finally:
+                db.close()
 
             # Спим перед следующей проверкой
             await asyncio.sleep(POLLING_INTERVAL_SECONDS)
