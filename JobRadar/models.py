@@ -70,7 +70,7 @@ class FilterRule(Base):
 
     id = Column(Integer, primary_key=True)
     name = Column(String(255), nullable=False)
-    mode = Column(String(50), default="legacy_or")  # "legacy_or" или "advanced"
+    mode = Column(String(50), default="keyword_or")  # "keyword_or" или "advanced"
     enabled = Column(Boolean, default=True)
     created_at = Column(DateTime, default=datetime.utcnow)
 
