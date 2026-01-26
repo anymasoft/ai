@@ -703,7 +703,10 @@ async def monitoring_loop():
                 if channels:
                     # Проверяем каждый канал на новые сообщения
                     for channel in channels:
-                        await check_channel_for_new_messages(channel, db)
+                        try:
+                            await check_channel_for_new_messages(channel, db)
+                        except Exception as e:
+                            logger.error(f"❌ Ошибка при проверке канала {channel.value}: {e}")
                         await asyncio.sleep(0.2)
             finally:
                 db.close()
