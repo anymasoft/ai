@@ -121,35 +121,39 @@ def match_text(text: str, filter_config: dict, legacy_keywords: list) -> bool:
         True если сообщение должно быть опубликовано, иначе False
     """
     normalized_text = normalize_text(text)
+
+    # 1. Базовый слой: legacy keywords
+    if legacy_keywords:
+        if not any(kw in normalized_text for kw in legacy_keywords):
+            logger.debug(f"❌ No legacy keywords found in text")
+            return False
+
     mode = filter_config.get("mode", "keyword_or")
 
+    # 2. Только legacy режим
     if mode == "keyword_or":
-        # Режим ключевых слов (OR): публикуем если хотя бы одно ключевое слово есть в тексте
-        return any(kw.lower() in normalized_text for kw in legacy_keywords)
+        logger.debug(f"✅ Matched legacy keyword (mode=keyword_or)")
+        return True
 
-    # Режим "advanced"
+    # 3. Advanced слой
     exclude_any = filter_config.get("exclude_any", [])
     require_all = filter_config.get("require_all", [])
     include_any = filter_config.get("include_any", [])
 
-    logger.debug(f"📊 Match check - exclude={exclude_any}, require={require_all}, include={include_any}")
+    logger.debug(f"📊 Advanced match check - exclude={exclude_any}, require={require_all}, include={include_any}")
 
-    # 1. Если есть исключаемое слово - не публикуем
     if any(exc in normalized_text for exc in exclude_any):
         logger.debug(f"❌ Found exclude word in text")
         return False
 
-    # 2. Если есть требуемые слова - проверяем все ли присутствуют
     if require_all and not all(req in normalized_text for req in require_all):
-        logger.debug(f"❌ Not all require words found. require={require_all}, text_sample={normalized_text[:100]}")
+        logger.debug(f"❌ Not all require words found. require={require_all}")
         return False
 
-    # 3. Если нет include слов - публикуем (были выполнены все остальные условия)
-    if not include_any:
-        logger.debug(f"✅ No include words - publishing")
-        return True
+    if include_any:
+        result = any(inc in normalized_text for inc in include_any)
+        logger.debug(f"{'✅' if result else '❌'} Include check result={result}")
+        return result
 
-    # 4. Если есть include слова - публикуем если хотя бы одно есть
-    result = any(inc in normalized_text for inc in include_any)
-    logger.debug(f"{'✅' if result else '❌'} Include check result={result}")
-    return result
+    logger.debug(f"✅ Passed all advanced checks")
+    return True
