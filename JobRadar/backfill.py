@@ -89,6 +89,12 @@ async def backfill_one_post(source_username: str, db: Session, count: int = 1) -
         # Загружаем конфигурацию фильтра (как в check_channel_for_new_messages)
         filter_config = load_active_filter(db)
 
+        if not keywords_list and filter_config.get("mode") == "keyword_or":
+            return {
+                "status": "error",
+                "message": "❌ Нет активных ключевых слов для проверки"
+            }
+
         # Шаг 3: Цикл по необработанным сообщениям
         checked_count = 0
         published_count = 0
