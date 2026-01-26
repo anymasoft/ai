@@ -13,7 +13,7 @@ app.mount("/static", StaticFiles(directory=os.path.join(BASE_DIR, "static")), na
 
 @app.get("/")
 async def index():
-    return FileResponse("templates/index.html")
+    return FileResponse(os.path.join(BASE_DIR, "templates/index.html"))
 
 @app.post("/login")
 async def login():
@@ -21,7 +21,7 @@ async def login():
 
 @app.get("/dashboard")
 async def dashboard():
-    return FileResponse("templates/dashboard.html")
+    return FileResponse(os.path.join(BASE_DIR, "templates/dashboard.html"))
 
 
 @app.get("/contact")
