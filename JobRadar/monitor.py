@@ -635,7 +635,6 @@ async def check_channel_for_new_messages(channel: Channel, db: Session):
                 print(f"   Канал: {channel_display}")
                 print(f"   Время: {msg.date.strftime('%Y-%m-%d %H:%M:%S') if msg.date else 'N/A'}")
                 print(f"   Автор: {msg.sender.username if msg.sender and hasattr(msg.sender, 'username') else 'Unknown'}")
-                print(f"   Ключевые слова: {', '.join(matched_keywords)}")
                 print(f"   Текст: {text[:200]}...\n")
 
                 # Публикуем найденный пост в канал JobRadar
