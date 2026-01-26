@@ -17,3 +17,8 @@ async def login():
 @app.get("/dashboard")
 async def dashboard():
     return FileResponse("templates/dashboard.html")
+
+
+@app.get("/contact")
+async def contact():
+    return RedirectResponse(url="/dashboard", status_code=302)
