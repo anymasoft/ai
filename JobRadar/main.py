@@ -1,10 +1,15 @@
+import os
 from fastapi import FastAPI
 from fastapi.responses import FileResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 
 app = FastAPI()
 
-app.mount("/static", StaticFiles(directory="static"), name="static")
+# Получить абсолютный путь к папке со скриптом
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
+# Подключить папку static с абсолютным путём
+app.mount("/static", StaticFiles(directory=os.path.join(BASE_DIR, "static")), name="static")
 
 @app.get("/")
 async def index():
