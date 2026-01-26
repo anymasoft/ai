@@ -1,7 +1,7 @@
 import os
 from fastapi import FastAPI
 from fastapi.responses import FileResponse, RedirectResponse
-# from fastapi.staticfiles import StaticFiles
+from starlette.staticfiles import StaticFiles
 
 app = FastAPI()
 
