@@ -27,3 +27,8 @@ async def dashboard():
 @app.get("/contact")
 async def contact():
     return RedirectResponse(url="/dashboard", status_code=302)
+
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="localhost", port=8000)
