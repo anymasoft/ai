@@ -11,6 +11,7 @@ logger = logging.getLogger(__name__)
 def init_keyword_filter(db: Session) -> None:
     """
     Создаёт Keywords правило (OR режим) при первом запуске, если filter_rules пуста
+    Также обновляет старые записи с "Legacy keywords" на "Keywords"
 
     Создаёт одну запись:
     - name="Keywords"
@@ -29,6 +30,20 @@ def init_keyword_filter(db: Session) -> None:
         db.add(keyword_rule)
         db.commit()
         logger.info("✅ Создано правило фильтрации Keywords (OR режим)")
+    else:
+        # Обновляем старые записи с "Legacy keywords" на "Keywords"
+        old_rules = db.query(FilterRule).filter(FilterRule.name == "Legacy keywords").all()
+        for rule in old_rules:
+            rule.name = "Keywords"
+
+        # Обновляем mode с "legacy_or" на "keyword_or"
+        legacy_mode_rules = db.query(FilterRule).filter(FilterRule.mode == "legacy_or").all()
+        for rule in legacy_mode_rules:
+            rule.mode = "keyword_or"
+
+        if old_rules or legacy_mode_rules:
+            db.commit()
+            logger.info(f"✅ Обновлено старых правил: name={len(old_rules)}, mode={len(legacy_mode_rules)}")
 
 
 def normalize_text(text: str) -> str:
@@ -52,7 +67,7 @@ def load_active_filter(db: Session) -> dict:
         "exclude_any": []
     }
 
-    Если активного правила нет - возвращает mode="legacy_or"
+    Если активного правила нет - возвращает mode="keyword_or"
     """
     active_rule = db.query(FilterRule).filter(FilterRule.enabled == True).first()
 
@@ -106,7 +121,7 @@ def match_text(text: str, filter_config: dict, legacy_keywords: list) -> bool:
         True если сообщение должно быть опубликовано, иначе False
     """
     normalized_text = normalize_text(text)
-    mode = filter_config.get("mode", "legacy_or")
+    mode = filter_config.get("mode", "keyword_or")
 
     if mode == "keyword_or":
         # Режим ключевых слов (OR): публикуем если хотя бы одно ключевое слово есть в тексте
