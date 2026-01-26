@@ -22,6 +22,7 @@ from database import init_db, get_db
 from models import Channel, Keyword
 from monitor import init_telegram_client, close_telegram_client, monitoring_loop, normalize_channel_ref
 from backfill import backfill_one_post
+from filter_engine import init_legacy_filter
 
 # Логирование
 logging.basicConfig(
@@ -868,6 +869,11 @@ async def main():
 
     # Инициализация БД
     init_db()
+
+    # Инициализация legacy правила фильтрации
+    db = get_db()
+    init_legacy_filter(db)
+    db.close()
 
     # Инициализация Telegram User Client для мониторинга
     await init_telegram_client()

@@ -15,8 +15,9 @@ from datetime import datetime
 
 from config import TELEGRAM_API_ID, TELEGRAM_API_HASH, TELEGRAM_PHONE
 from config import POLLING_INTERVAL_SECONDS, MAX_MESSAGES_PER_CHECK, TARGET_CHANNEL_ID
-from models import Channel, Keyword
+from models import Channel, Keyword, FilterRule
 from database import get_db
+from filter_engine import load_active_filter, match_text
 
 # Логирование
 logger = logging.getLogger(__name__)
@@ -614,7 +615,10 @@ async def check_channel_for_new_messages(channel: Channel, db: Session):
 
         # Получаем все активные ключевые слова
         keywords = db.query(Keyword).filter(Keyword.enabled == True).all()
-        keywords_list = [kw.word.lower() for kw in keywords]
+        legacy_keywords = [kw.word.lower() for kw in keywords]
+
+        # Загружаем конфигурацию фильтра
+        filter_config = load_active_filter(db)
 
         # Обрабатываем сообщения (в обратном порядке - от старых к новым)
         matched_count = 0
@@ -624,10 +628,8 @@ async def check_channel_for_new_messages(channel: Channel, db: Session):
             if not text:
                 continue
 
-            # Проверяем совпадение с ключевыми словами
-            matched_keywords = [kw for kw in keywords_list if kw in text]
-
-            if matched_keywords:
+            # Проверяем совпадение через фильтр
+            if match_text(text, filter_config, legacy_keywords):
                 matched_count += 1
                 print(f"\n🎯 СОВПАДЕНИЕ НАЙДЕНО!")
                 print(f"   Канал: {channel_display}")
