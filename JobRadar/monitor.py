@@ -15,8 +15,9 @@ from datetime import datetime
 
 from config import TELEGRAM_API_ID, TELEGRAM_API_HASH, TELEGRAM_PHONE
 from config import POLLING_INTERVAL_SECONDS, MAX_MESSAGES_PER_CHECK, TARGET_CHANNEL_ID
-from models import Channel, Keyword
+from models import Channel, Keyword, FilterRule
 from database import get_db
+from filter_engine import load_active_filter, match_text
 
 # Логирование
 logger = logging.getLogger(__name__)
@@ -478,6 +479,38 @@ async def format_jobradar_post(message, channel: Channel) -> tuple:
             )
         )
 
+    # 3. Добавляем URL из inline-кнопки, если она есть
+    button_url = None
+    if hasattr(message, 'buttons') and message.buttons:
+        for row in message.buttons:
+            if isinstance(row, list):
+                for button in row:
+                    if hasattr(button, 'url') and button.url:
+                        button_url = button.url
+                        break
+            elif hasattr(row, 'url') and row.url:
+                button_url = row.url
+                break
+            if button_url:
+                break
+
+    if button_url:
+        button_label = ": "
+        button_separator = "\n\n"
+        text_before_button = publish_text + button_separator
+        publish_text = text_before_button + button_label + button_url
+
+        offset_utf16 = len(text_before_button.encode("utf-16-le")) // 2
+        length_utf16 = len(button_label.encode("utf-16-le")) // 2
+
+        entities.append(
+            MessageEntityTextUrl(
+                offset=offset_utf16,
+                length=length_utf16,
+                url=button_url
+            )
+        )
+
     return publish_text, entities
 
 
@@ -582,7 +615,10 @@ async def check_channel_for_new_messages(channel: Channel, db: Session):
 
         # Получаем все активные ключевые слова
         keywords = db.query(Keyword).filter(Keyword.enabled == True).all()
-        keywords_list = [kw.word.lower() for kw in keywords]
+        legacy_keywords = [kw.word.lower() for kw in keywords]
+
+        # Загружаем конфигурацию фильтра
+        filter_config = load_active_filter(db)
 
         # Обрабатываем сообщения (в обратном порядке - от старых к новым)
         matched_count = 0
@@ -592,10 +628,8 @@ async def check_channel_for_new_messages(channel: Channel, db: Session):
             if not text:
                 continue
 
-            # Проверяем совпадение с ключевыми словами
-            matched_keywords = [kw for kw in keywords_list if kw in text]
-
-            if matched_keywords:
+            # Проверяем совпадение через фильтр
+            if match_text(text, filter_config, legacy_keywords):
                 matched_count += 1
                 print(f"\n🎯 СОВПАДЕНИЕ НАЙДЕНО!")
                 print(f"   Канал: {channel_display}")

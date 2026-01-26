@@ -1,7 +1,7 @@
 """
 JobRadar v0 - ORM модели для SQLite
 """
-from sqlalchemy import Column, Integer, String, Boolean, DateTime, BigInteger, UniqueConstraint, Index
+from sqlalchemy import Column, Integer, String, Boolean, DateTime, BigInteger, UniqueConstraint, Index, ForeignKey
 from sqlalchemy.ext.declarative import declarative_base
 from datetime import datetime
 
@@ -62,3 +62,32 @@ class SourceMessage(Base):
 
     def __repr__(self):
         return f"<SourceMessage(id={self.id}, chat_id={self.source_chat_id}, msg_id={self.source_message_id}, has_keywords={self.has_keywords}, published={self.published})>"
+
+
+class FilterRule(Base):
+    """Модель правила фильтрации сообщений"""
+    __tablename__ = "filter_rules"
+
+    id = Column(Integer, primary_key=True)
+    name = Column(String(255), nullable=False)
+    mode = Column(String(50), default="legacy_or")  # "legacy_or" или "advanced"
+    enabled = Column(Boolean, default=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    def __repr__(self):
+        return f"<FilterRule(id={self.id}, name={self.name}, mode={self.mode}, enabled={self.enabled})>"
+
+
+class FilterTerm(Base):
+    """Модель термина фильтра"""
+    __tablename__ = "filter_terms"
+
+    id = Column(Integer, primary_key=True)
+    rule_id = Column(Integer, ForeignKey("filter_rules.id"), nullable=False)
+    term_type = Column(String(50), nullable=False)  # "include", "require", "exclude"
+    value = Column(String(255), nullable=False)
+    enabled = Column(Boolean, default=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    def __repr__(self):
+        return f"<FilterTerm(id={self.id}, rule_id={self.rule_id}, type={self.term_type}, value={self.value}, enabled={self.enabled})>"
