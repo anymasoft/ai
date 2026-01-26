@@ -22,7 +22,7 @@ from database import init_db, get_db
 from models import Channel, Keyword, FilterRule, FilterTerm
 from monitor import init_telegram_client, close_telegram_client, monitoring_loop, normalize_channel_ref
 from backfill import backfill_one_post
-from filter_engine import init_legacy_filter
+from filter_engine import init_keyword_filter
 
 # Логирование
 logging.basicConfig(
@@ -625,9 +625,9 @@ async def handle_text_input(update: Update, context: ContextTypes.DEFAULT_TYPE) 
         await switch_to_advanced_filter(update, context)
         return
 
-    if text == "↩️ На OR":
-        logger.info(f"📥 Получена команда 'OR' от пользователя {user_id}")
-        await switch_to_legacy_filter(update, context)
+    if text == "↩️ На Keywords":
+        logger.info(f"📥 Получена команда 'Keywords' от пользователя {user_id}")
+        await switch_to_keyword_filter(update, context)
         return
 
     if text == "➕ Добавить терм":
@@ -917,13 +917,13 @@ async def show_filters_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) 
         info_text = "🔍 Управление фильтрами\n\n"
         if active_rule:
             info_text += f"Активное правило: {active_rule.name}\n"
-            info_text += f"Режим: {'OR (ключевые слова)' if active_rule.mode == 'legacy_or' else 'Advanced'}\n\n"
+            info_text += f"Режим: {'Keywords (OR)' if active_rule.mode == 'keyword_or' else 'Advanced'}\n\n"
         else:
             info_text += "Активного правила нет\n\n"
 
         keyboard = [
             [KeyboardButton("📋 Показать текущий фильтр")],
-            [KeyboardButton("⚙️ Переключиться на Advanced"), KeyboardButton("↩️ На OR")],
+            [KeyboardButton("⚙️ Переключиться на Advanced"), KeyboardButton("↩️ На Keywords")],
             [KeyboardButton("➕ Добавить терм"), KeyboardButton("📊 Список термов")],
             [KeyboardButton("⬅️ Назад")],
         ]
@@ -958,10 +958,10 @@ async def show_current_filter(update: Update, context: ContextTypes.DEFAULT_TYPE
             return
 
         text = f"📋 Текущий фильтр: {active_rule.name}\n"
-        text += f"Режим: {'Legacy OR' if active_rule.mode == 'legacy_or' else 'Advanced'}\n\n"
+        text += f"Режим: {'Keywords (OR)' if active_rule.mode == 'keyword_or' else 'Advanced'}\n\n"
 
-        if active_rule.mode == "legacy_or":
-            text += "В режиме OR используются ключевые слова из таблицы Keywords"
+        if active_rule.mode == "keyword_or":
+            text += "В режиме Keywords используются ключевые слова из таблицы Keywords"
         else:
             terms = db.query(FilterTerm).filter(
                 FilterTerm.rule_id == active_rule.id,
@@ -1026,8 +1026,8 @@ async def switch_to_advanced_filter(update: Update, context: ContextTypes.DEFAUL
         db.close()
 
 
-async def switch_to_legacy_filter(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Переключиться на legacy фильтр"""
+async def switch_to_keyword_filter(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Переключиться на режим Keywords (OR)"""
     if update.effective_user.id != TELEGRAM_ADMIN_ID:
         await update.message.reply_text("❌ У вас нет доступа")
         return
@@ -1040,20 +1040,20 @@ async def switch_to_legacy_filter(update: Update, context: ContextTypes.DEFAULT_
         db.query(FilterRule).update({FilterRule.enabled: False})
         db.commit()
 
-        # Ищем или создаём legacy правило
-        legacy_rule = db.query(FilterRule).filter(FilterRule.mode == "legacy_or").first()
-        if not legacy_rule:
-            legacy_rule = FilterRule(
-                name="OR (ключевые слова)",
-                mode="legacy_or",
+        # Ищем или создаём keyword правило
+        keyword_rule = db.query(FilterRule).filter(FilterRule.mode == "keyword_or").first()
+        if not keyword_rule:
+            keyword_rule = FilterRule(
+                name="Keywords",
+                mode="keyword_or",
                 enabled=True
             )
-            db.add(legacy_rule)
+            db.add(keyword_rule)
         else:
-            legacy_rule.enabled = True
+            keyword_rule.enabled = True
         db.commit()
 
-        await update.message.reply_text("✅ Переключились на режим OR\n\nИспользуются ключевые слова из таблицы Keywords")
+        await update.message.reply_text("✅ Переключились на режим Keywords (OR)\n\nИспользуются ключевые слова из таблицы Keywords")
         await show_filters_menu(update, context)
     finally:
         db.close()
@@ -1075,8 +1075,8 @@ async def start_add_filter_term(update: Update, context: ContextTypes.DEFAULT_TY
             await update.message.reply_text("❌ Активного правила нет")
             return
 
-        if active_rule.mode == "legacy_or":
-            await update.message.reply_text("❌ Нельзя добавлять термы в режиме OR")
+        if active_rule.mode == "keyword_or":
+            await update.message.reply_text("❌ Нельзя добавлять термы в режиме Keywords")
             return
 
         keyboard = [
@@ -1202,7 +1202,7 @@ async def show_filter_terms_list(update: Update, context: ContextTypes.DEFAULT_T
     try:
         active_rule = db.query(FilterRule).filter(FilterRule.enabled == True).first()
 
-        if not active_rule or active_rule.mode == "legacy_or":
+        if not active_rule or active_rule.mode == "keyword_or":
             await update.message.reply_text("❌ Нет active advanced фильтра")
             return
 
@@ -1235,9 +1235,9 @@ async def main():
     # Инициализация БД
     init_db()
 
-    # Инициализация legacy правила фильтрации
+    # Инициализация Keywords правила фильтрации
     db = get_db()
-    init_legacy_filter(db)
+    init_keyword_filter(db)
     db.close()
 
     # Инициализация Telegram User Client для мониторинга

@@ -8,27 +8,27 @@ from models import FilterRule, FilterTerm
 logger = logging.getLogger(__name__)
 
 
-def init_legacy_filter(db: Session) -> None:
+def init_keyword_filter(db: Session) -> None:
     """
-    Создаёт legacy правило при первом запуске, если filter_rules пуста
+    Создаёт Keywords правило (OR режим) при первом запуске, если filter_rules пуста
 
     Создаёт одну запись:
-    - name="Legacy keywords"
-    - mode="legacy_or"
+    - name="Keywords"
+    - mode="keyword_or"
     - enabled=True
 
     Без добавления термов
     """
     existing_rules = db.query(FilterRule).first()
     if not existing_rules:
-        legacy_rule = FilterRule(
-            name="OR (ключевые слова)",
-            mode="legacy_or",
+        keyword_rule = FilterRule(
+            name="Keywords",
+            mode="keyword_or",
             enabled=True
         )
-        db.add(legacy_rule)
+        db.add(keyword_rule)
         db.commit()
-        logger.info("✅ Создано правило фильтрации OR (ключевые слова)")
+        logger.info("✅ Создано правило фильтрации Keywords (OR режим)")
 
 
 def normalize_text(text: str) -> str:
@@ -46,7 +46,7 @@ def load_active_filter(db: Session) -> dict:
 
     Возвращает dict:
     {
-        "mode": "legacy_or" или "advanced",
+        "mode": "keyword_or" или "advanced",
         "include_any": [],
         "require_all": [],
         "exclude_any": []
@@ -57,7 +57,7 @@ def load_active_filter(db: Session) -> dict:
     active_rule = db.query(FilterRule).filter(FilterRule.enabled == True).first()
 
     result = {
-        "mode": "legacy_or",
+        "mode": "keyword_or",
         "include_any": [],
         "require_all": [],
         "exclude_any": []
@@ -108,8 +108,8 @@ def match_text(text: str, filter_config: dict, legacy_keywords: list) -> bool:
     normalized_text = normalize_text(text)
     mode = filter_config.get("mode", "legacy_or")
 
-    if mode == "legacy_or":
-        # Старый режим: публикуем если хотя бы одно ключевое слово есть в тексте
+    if mode == "keyword_or":
+        # Режим ключевых слов (OR): публикуем если хотя бы одно ключевое слово есть в тексте
         return any(kw.lower() in normalized_text for kw in legacy_keywords)
 
     # Режим "advanced"
