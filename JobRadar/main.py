@@ -197,6 +197,7 @@ async def show_keywords_menu(update: Update, context: ContextTypes.DEFAULT_TYPE)
     keyboard = [
         [KeyboardButton("➕ Добавить слово/фразу")],
         [KeyboardButton("📋 Показать список")],
+        [KeyboardButton("🗑️ Удалить слово/фразу")],
         [KeyboardButton("⬅️ Назад")],
     ]
 
@@ -466,6 +467,108 @@ async def list_keywords(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
     db.close()
 
 
+async def start_delete_keyword(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Начать удаление ключевого слова"""
+    if update.effective_user.id != TELEGRAM_ADMIN_ID:
+        await update.message.reply_text("❌ У вас нет доступа")
+        return
+
+    user_id = update.effective_user.id
+    db = get_db()
+    keywords = db.query(Keyword).all()
+
+    if not keywords:
+        await update.message.reply_text("🔑 Ключевые слова не добавлены")
+        db.close()
+        return
+
+    # Показываем список ключевых слов с номерами
+    enabled_keywords = [kw for kw in keywords if kw.enabled]
+    disabled_keywords = [kw for kw in keywords if not kw.enabled]
+
+    text = "🔑 Выберите номер ключевого слова для удаления:\n\n"
+
+    keyword_index_map = {}
+
+    # Отображение активных слов
+    for i, kw in enumerate(enabled_keywords, 1):
+        keyword_index_map[i] = kw.id
+        text += f"{i}. {kw.word}\n"
+
+    # Отображение отключённых слов
+    if disabled_keywords:
+        text += "\n🔴 Отключённые:\n\n"
+        for i, kw in enumerate(disabled_keywords, 1):
+            keyword_index_map[len(enabled_keywords) + i] = kw.id
+            text += f"{len(enabled_keywords) + i}. {kw.word}\n"
+
+    # Сохраняем mapping в контексте
+    USER_CONTEXT[user_id] = {"action": "waiting_delete_keyword", "keyword_index_map": keyword_index_map}
+
+    logger.info(f"🗑 Начинаю удаление ключевого слова для пользователя {user_id}")
+    await update.message.reply_text(
+        text + "Введите номер слова для удаления (например: 1)"
+    )
+
+    db.close()
+
+
+async def delete_keyword_by_input(update: Update, context: ContextTypes.DEFAULT_TYPE, text: str) -> None:
+    """Обработка удаления ключевого слова по введённому номеру"""
+    if update.effective_user.id != TELEGRAM_ADMIN_ID:
+        await update.message.reply_text("❌ У вас нет доступа")
+        return
+
+    user_id = update.effective_user.id
+
+    # Проверяем, что введено число
+    try:
+        keyword_number = int(text.strip())
+    except ValueError:
+        logger.info(f"❌ Некорректный ввод номера ключевого слова пользователем {user_id}: '{text}'")
+        await update.message.reply_text("❌ Введите номер ключевого слова цифрой")
+        return
+
+    # Получаем mapping номеров из контекста
+    if user_id not in USER_CONTEXT or "keyword_index_map" not in USER_CONTEXT[user_id]:
+        logger.warning(f"⚠️ Не найден mapping номеров для пользователя {user_id}")
+        await update.message.reply_text("❌ Ошибка: список слов не найден. Повторите попытку")
+        return
+
+    keyword_index_map = USER_CONTEXT[user_id]["keyword_index_map"]
+
+    # Проверяем, что номер в диапазоне
+    if keyword_number not in keyword_index_map:
+        logger.info(f"❌ Номер ключевого слова {keyword_number} вне диапазона, пользователь {user_id}")
+        await update.message.reply_text("❌ Ключевое слово с таким номером не найдено")
+        return
+
+    # Получаем ID ключевого слова
+    keyword_id = keyword_index_map[keyword_number]
+
+    # Удаляем ключевое слово из БД
+    db = get_db()
+    keyword = db.query(Keyword).filter(Keyword.id == keyword_id).first()
+
+    if not keyword:
+        logger.warning(f"⚠️ Ключевое слово с ID {keyword_id} не найдено в БД, пользователь {user_id}")
+        await update.message.reply_text("❌ Ключевое слово не найдено в базе данных")
+        db.close()
+        return
+
+    # Удаляем ключевое слово
+    db.delete(keyword)
+    db.commit()
+    db.close()
+
+    # Очищаем контекст
+    if user_id in USER_CONTEXT:
+        USER_CONTEXT[user_id] = {}
+
+    logger.info(f"🗑 Пользователь {user_id} удалил ключевое слово: {keyword.word}")
+    await update.message.reply_text(f"✅ Ключевое слово '{keyword.word}' удалено!")
+
+
 async def delete_channel_by_input(update: Update, context: ContextTypes.DEFAULT_TYPE, text: str) -> None:
     """Обработка удаления канала по введённому номеру"""
     if update.effective_user.id != TELEGRAM_ADMIN_ID:
@@ -608,6 +711,11 @@ async def handle_text_input(update: Update, context: ContextTypes.DEFAULT_TYPE) 
     if text == "➕ Добавить слово/фразу":
         logger.info(f"📥 Получена команда '➕ Добавить слово/фразу' от пользователя {user_id}")
         await start_add_keyword(update, context)
+        return
+
+    if text == "🗑️ Удалить слово/фразу":
+        logger.info(f"📥 Получена команда '🗑️ Удалить слово/фразу' от пользователя {user_id}")
+        await start_delete_keyword(update, context)
         return
 
     if text == "➕ Добавить ещё":
@@ -764,6 +872,10 @@ async def handle_text_input(update: Update, context: ContextTypes.DEFAULT_TYPE) 
     elif action == "waiting_delete_channel":
         # Обработка удаления канала
         await delete_channel_by_input(update, context, text)
+
+    elif action == "waiting_delete_keyword":
+        # Обработка удаления ключевого слова
+        await delete_keyword_by_input(update, context, text)
 
     elif action == "waiting_backfill_channel":
         # Обработка ввода канала для backfill
