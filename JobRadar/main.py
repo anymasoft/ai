@@ -19,7 +19,7 @@ from sqlalchemy.orm import Session
 
 from config import TELEGRAM_BOT_TOKEN, TELEGRAM_ADMIN_ID, TELEGRAM_API_ID, TELEGRAM_API_HASH, TELEGRAM_PHONE
 from database import init_db, get_db
-from models import Channel, Keyword
+from models import Channel, Keyword, FilterRule, FilterTerm
 from monitor import init_telegram_client, close_telegram_client, monitoring_loop, normalize_channel_ref
 from backfill import backfill_one_post
 from filter_engine import init_legacy_filter
@@ -64,6 +64,7 @@ async def show_main_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         [KeyboardButton("▶️ Начать мониторинг"), KeyboardButton("⏹ Остановить мониторинг")],
         [KeyboardButton("📡 Источники"), KeyboardButton("🔑 Ключевые слова")],
         [KeyboardButton("📊 Статус"), KeyboardButton("📦 Загрузить историю")],
+        [KeyboardButton("🔍 Фильтры")],
     ]
 
     reply_markup = ReplyKeyboardMarkup(
@@ -564,6 +565,11 @@ async def handle_text_input(update: Update, context: ContextTypes.DEFAULT_TYPE) 
         await start_backfill(update, context)
         return
 
+    if text == "🔍 Фильтры":
+        logger.info(f"📥 Получена команда '🔍 Фильтры' от пользователя {user_id}")
+        await show_filters_menu(update, context)
+        return
+
     if text == "⬅️ Назад":
         logger.info(f"📥 Получена команда '⬅️ Назад' от пользователя {user_id}")
         await show_main_menu(update, context)
@@ -607,6 +613,31 @@ async def handle_text_input(update: Update, context: ContextTypes.DEFAULT_TYPE) 
     if text == "➕ Добавить ещё":
         logger.info(f"📥 Получена команда '➕ Добавить ещё' от пользователя {user_id}")
         await start_add_keyword(update, context)
+        return
+
+    if text == "📋 Показать текущий фильтр":
+        logger.info(f"📥 Получена команда '📋 Показать текущий фильтр' от пользователя {user_id}")
+        await show_current_filter(update, context)
+        return
+
+    if text == "⚙️ Переключиться на Advanced":
+        logger.info(f"📥 Получена команда 'Advanced' от пользователя {user_id}")
+        await switch_to_advanced_filter(update, context)
+        return
+
+    if text == "↩️ На Legacy":
+        logger.info(f"📥 Получена команда 'Legacy' от пользователя {user_id}")
+        await switch_to_legacy_filter(update, context)
+        return
+
+    if text == "➕ Добавить терм":
+        logger.info(f"📥 Получена команда '➕ Добавить терм' от пользователя {user_id}")
+        await start_add_filter_term(update, context)
+        return
+
+    if text == "📊 Список термов":
+        logger.info(f"📥 Получена команда '📊 Список термов' от пользователя {user_id}")
+        await show_filter_terms_list(update, context)
         return
 
     # Обработка ввода в контексте (добавление канала/ключевого слова)
@@ -742,6 +773,14 @@ async def handle_text_input(update: Update, context: ContextTypes.DEFAULT_TYPE) 
         # Обработка ввода количества сообщений для backfill
         await process_backfill_count(update, context, text)
 
+    elif action == "waiting_term_type":
+        # Обработка выбора типа терма фильтра
+        await process_filter_term_type(update, context, text)
+
+    elif action == "waiting_term_value":
+        # Обработка ввода значения терма фильтра
+        await process_filter_term_value(update, context, text)
+
 
 async def start_backfill(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Начать процесс загрузки истории - запросить канал"""
@@ -861,6 +900,332 @@ async def process_backfill_count(update: Update, context: ContextTypes.DEFAULT_T
 
     # Вернуться в главное меню
     await show_main_menu(update, context)
+
+
+async def show_filters_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Меню управления фильтрами"""
+    if update.effective_user.id != TELEGRAM_ADMIN_ID:
+        await update.message.reply_text("❌ У вас нет доступа")
+        return
+
+    user_id = update.effective_user.id
+    db = get_db()
+
+    try:
+        active_rule = db.query(FilterRule).filter(FilterRule.enabled == True).first()
+
+        info_text = "🔍 Управление фильтрами\n\n"
+        if active_rule:
+            info_text += f"Активное правило: {active_rule.name}\n"
+            info_text += f"Режим: {'Legacy OR' if active_rule.mode == 'legacy_or' else 'Advanced'}\n\n"
+        else:
+            info_text += "Активного правила нет\n\n"
+
+        keyboard = [
+            [KeyboardButton("📋 Показать текущий фильтр")],
+            [KeyboardButton("⚙️ Переключиться на Advanced"), KeyboardButton("↩️ На Legacy")],
+            [KeyboardButton("➕ Добавить терм"), KeyboardButton("📊 Список термов")],
+            [KeyboardButton("⬅️ Назад")],
+        ]
+
+        reply_markup = ReplyKeyboardMarkup(
+            keyboard,
+            resize_keyboard=True,
+            one_time_keyboard=False,
+            input_field_placeholder="Выбери действие…"
+        )
+
+        await update.message.reply_text(info_text, reply_markup=reply_markup)
+
+        USER_CONTEXT[user_id] = {"menu_type": "filters"}
+    finally:
+        db.close()
+
+
+async def show_current_filter(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Показать текущий фильтр"""
+    if update.effective_user.id != TELEGRAM_ADMIN_ID:
+        await update.message.reply_text("❌ У вас нет доступа")
+        return
+
+    db = get_db()
+
+    try:
+        active_rule = db.query(FilterRule).filter(FilterRule.enabled == True).first()
+
+        if not active_rule:
+            await update.message.reply_text("❌ Активного правила нет")
+            return
+
+        text = f"📋 Текущий фильтр: {active_rule.name}\n"
+        text += f"Режим: {'Legacy OR' if active_rule.mode == 'legacy_or' else 'Advanced'}\n\n"
+
+        if active_rule.mode == "legacy_or":
+            text += "В режиме Legacy используются ключевые слова из таблицы Keywords"
+        else:
+            terms = db.query(FilterTerm).filter(
+                FilterTerm.rule_id == active_rule.id,
+                FilterTerm.enabled == True
+            ).all()
+
+            if not terms:
+                text += "Нет активных термов"
+            else:
+                includes = [t for t in terms if t.term_type == "include"]
+                requires = [t for t in terms if t.term_type == "require"]
+                excludes = [t for t in terms if t.term_type == "exclude"]
+
+                if includes:
+                    text += "\n✓ Include (опубликовать если есть):\n"
+                    for t in includes:
+                        text += f"  - {t.value}\n"
+
+                if requires:
+                    text += "\n✓ Require (обязательно должны быть):\n"
+                    for t in requires:
+                        text += f"  - {t.value}\n"
+
+                if excludes:
+                    text += "\n✗ Exclude (исключить):\n"
+                    for t in excludes:
+                        text += f"  - {t.value}\n"
+
+        keyboard = [[KeyboardButton("⬅️ Назад")]]
+        reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
+        await update.message.reply_text(text, reply_markup=reply_markup)
+    finally:
+        db.close()
+
+
+async def switch_to_advanced_filter(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Переключиться на advanced фильтр"""
+    if update.effective_user.id != TELEGRAM_ADMIN_ID:
+        await update.message.reply_text("❌ У вас нет доступа")
+        return
+
+    user_id = update.effective_user.id
+    db = get_db()
+
+    try:
+        # Отключаем все старые правила
+        db.query(FilterRule).update({FilterRule.enabled: False})
+        db.commit()
+
+        # Создаём новое advanced правило
+        new_rule = FilterRule(
+            name="Advanced filter",
+            mode="advanced",
+            enabled=True
+        )
+        db.add(new_rule)
+        db.commit()
+
+        await update.message.reply_text("✅ Переключились на режим Advanced\n\nТеперь добавьте условия фильтрации")
+        await show_filters_menu(update, context)
+    finally:
+        db.close()
+
+
+async def switch_to_legacy_filter(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Переключиться на legacy фильтр"""
+    if update.effective_user.id != TELEGRAM_ADMIN_ID:
+        await update.message.reply_text("❌ У вас нет доступа")
+        return
+
+    user_id = update.effective_user.id
+    db = get_db()
+
+    try:
+        # Отключаем все старые правила
+        db.query(FilterRule).update({FilterRule.enabled: False})
+        db.commit()
+
+        # Ищем или создаём legacy правило
+        legacy_rule = db.query(FilterRule).filter(FilterRule.mode == "legacy_or").first()
+        if not legacy_rule:
+            legacy_rule = FilterRule(
+                name="Legacy keywords",
+                mode="legacy_or",
+                enabled=True
+            )
+            db.add(legacy_rule)
+        else:
+            legacy_rule.enabled = True
+        db.commit()
+
+        await update.message.reply_text("✅ Переключились на режим Legacy\n\nИспользуются ключевые слова из таблицы Keywords")
+        await show_filters_menu(update, context)
+    finally:
+        db.close()
+
+
+async def start_add_filter_term(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Начать добавление терма фильтра"""
+    if update.effective_user.id != TELEGRAM_ADMIN_ID:
+        await update.message.reply_text("❌ У вас нет доступа")
+        return
+
+    user_id = update.effective_user.id
+    db = get_db()
+
+    try:
+        active_rule = db.query(FilterRule).filter(FilterRule.enabled == True).first()
+
+        if not active_rule:
+            await update.message.reply_text("❌ Активного правила нет")
+            return
+
+        if active_rule.mode == "legacy_or":
+            await update.message.reply_text("❌ Нельзя добавлять термы в режиме Legacy")
+            return
+
+        keyboard = [
+            [KeyboardButton("✓ Include"), KeyboardButton("⚠️ Require")],
+            [KeyboardButton("✗ Exclude")],
+            [KeyboardButton("⬅️ Назад")],
+        ]
+
+        reply_markup = ReplyKeyboardMarkup(
+            keyboard,
+            resize_keyboard=True,
+            one_time_keyboard=False
+        )
+
+        await update.message.reply_text(
+            "Выберите тип терма:\n\n"
+            "✓ Include - публиковать если есть\n"
+            "⚠️ Require - обязательно должно быть\n"
+            "✗ Exclude - исключить из публикации",
+            reply_markup=reply_markup
+        )
+
+        USER_CONTEXT[user_id] = {
+            "action": "waiting_term_type",
+            "menu_type": "filters"
+        }
+    finally:
+        db.close()
+
+
+async def process_filter_term_type(update: Update, context: ContextTypes.DEFAULT_TYPE, text: str) -> None:
+    """Обработать выбор типа терма"""
+    if update.effective_user.id != TELEGRAM_ADMIN_ID:
+        await update.message.reply_text("❌ У вас нет доступа")
+        return
+
+    user_id = update.effective_user.id
+    text = text.strip()
+
+    term_type_map = {
+        "✓ Include": "include",
+        "⚠️ Require": "require",
+        "✗ Exclude": "exclude"
+    }
+
+    if text not in term_type_map:
+        await update.message.reply_text("❌ Неправильный выбор")
+        return
+
+    term_type = term_type_map[text]
+
+    keyboard = [[KeyboardButton("⬅️ Назад")]]
+    reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
+
+    await update.message.reply_text(
+        f"Введите значение для {text}:\n(слово или фраза, которая будет искаться в тексте)",
+        reply_markup=reply_markup
+    )
+
+    USER_CONTEXT[user_id] = {
+        "action": "waiting_term_value",
+        "term_type": term_type,
+        "menu_type": "filters"
+    }
+
+
+async def process_filter_term_value(update: Update, context: ContextTypes.DEFAULT_TYPE, text: str) -> None:
+    """Обработать ввод значения терма"""
+    if update.effective_user.id != TELEGRAM_ADMIN_ID:
+        await update.message.reply_text("❌ У вас нет доступа")
+        return
+
+    user_id = update.effective_user.id
+    text = text.strip()
+
+    if not text:
+        await update.message.reply_text("❌ Значение не может быть пустым")
+        return
+
+    term_type = USER_CONTEXT.get(user_id, {}).get("term_type")
+    if not term_type:
+        await update.message.reply_text("❌ Ошибка: тип терма не найден")
+        return
+
+    db = get_db()
+
+    try:
+        active_rule = db.query(FilterRule).filter(FilterRule.enabled == True).first()
+
+        if not active_rule:
+            await update.message.reply_text("❌ Активного правила нет")
+            return
+
+        new_term = FilterTerm(
+            rule_id=active_rule.id,
+            term_type=term_type,
+            value=text,
+            enabled=True
+        )
+        db.add(new_term)
+        db.commit()
+
+        type_names = {
+            "include": "✓ Include",
+            "require": "⚠️ Require",
+            "exclude": "✗ Exclude"
+        }
+
+        await update.message.reply_text(f"✅ Добавлен терм {type_names[term_type]}: {text}")
+        await show_filters_menu(update, context)
+    finally:
+        db.close()
+
+
+async def show_filter_terms_list(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Показать список всех термов"""
+    if update.effective_user.id != TELEGRAM_ADMIN_ID:
+        await update.message.reply_text("❌ У вас нет доступа")
+        return
+
+    db = get_db()
+
+    try:
+        active_rule = db.query(FilterRule).filter(FilterRule.enabled == True).first()
+
+        if not active_rule or active_rule.mode == "legacy_or":
+            await update.message.reply_text("❌ Нет active advanced фильтра")
+            return
+
+        terms = db.query(FilterTerm).filter(FilterTerm.rule_id == active_rule.id).all()
+
+        if not terms:
+            text = "📊 Нет термов в этом фильтре"
+        else:
+            text = "📊 Список всех термов:\n\n"
+            for i, term in enumerate(terms, 1):
+                status = "✓" if term.enabled else "✗"
+                type_names = {
+                    "include": "Include",
+                    "require": "Require",
+                    "exclude": "Exclude"
+                }
+                text += f"{i}. [{status}] {type_names[term.term_type]}: {term.value}\n"
+
+        keyboard = [[KeyboardButton("⬅️ Назад")]]
+        reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
+        await update.message.reply_text(text, reply_markup=reply_markup)
+    finally:
+        db.close()
 
 
 async def main():
