@@ -13,6 +13,7 @@ from sqlalchemy.orm import Session
 from models import SourceMessage, Channel, Keyword
 import monitor
 from database import get_db
+from filter_engine import load_active_filter, match_text
 
 logger = logging.getLogger(__name__)
 
@@ -85,7 +86,10 @@ async def backfill_one_post(source_username: str, db: Session, count: int = 1) -
         keywords = db.query(Keyword).filter(Keyword.enabled == True).all()
         keywords_list = [kw.word.lower() for kw in keywords]
 
-        if not keywords_list:
+        # Загружаем конфигурацию фильтра (как в check_channel_for_new_messages)
+        filter_config = load_active_filter(db)
+
+        if not keywords_list and filter_config.get("mode") == "keyword_or":
             return {
                 "status": "error",
                 "message": "❌ Нет активных ключевых слов для проверки"
@@ -144,12 +148,9 @@ async def backfill_one_post(source_username: str, db: Session, count: int = 1) -
                     logger.debug(f"[BACKFILL] Сообщение {message.id} пусто (пропуск)")
                     continue
 
-                # Проверить ключевые слова (как в check_channel_for_new_messages)
-                matched_keywords = [kw for kw in keywords_list if kw in text]
-
-                # Если релевантно — публикуем
-                if matched_keywords:
-                    logger.info(f"[BACKFILL] Найден релевантный пост #{published_count + 1}: message_id={message.id}, ключи: {matched_keywords}")
+                # Проверить совпадение через фильтр (как в check_channel_for_new_messages)
+                if match_text(text, filter_config, keywords_list):
+                    logger.info(f"[BACKFILL] Найден релевантный пост #{published_count + 1}: message_id={message.id}")
 
                     # Создать временный Channel объект для переиспользования publish_matched_post
                     temp_channel = _create_temp_channel(entity, source_username)
