@@ -478,6 +478,38 @@ async def format_jobradar_post(message, channel: Channel) -> tuple:
             )
         )
 
+    # 3. Добавляем URL из inline-кнопки, если она есть
+    button_url = None
+    if hasattr(message, 'buttons') and message.buttons:
+        for row in message.buttons:
+            if isinstance(row, list):
+                for button in row:
+                    if hasattr(button, 'url') and button.url:
+                        button_url = button.url
+                        break
+            elif hasattr(row, 'url') and row.url:
+                button_url = row.url
+                break
+            if button_url:
+                break
+
+    if button_url:
+        button_label = ": "
+        button_separator = "\n\n"
+        text_before_button = publish_text + button_separator
+        publish_text = text_before_button + button_label + button_url
+
+        offset_utf16 = len(text_before_button.encode("utf-16-le")) // 2
+        length_utf16 = len(button_label.encode("utf-16-le")) // 2
+
+        entities.append(
+            MessageEntityTextUrl(
+                offset=offset_utf16,
+                length=length_utf16,
+                url=button_url
+            )
+        )
+
     return publish_text, entities
 
 
