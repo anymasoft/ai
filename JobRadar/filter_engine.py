@@ -22,13 +22,13 @@ def init_legacy_filter(db: Session) -> None:
     existing_rules = db.query(FilterRule).first()
     if not existing_rules:
         legacy_rule = FilterRule(
-            name="Legacy keywords",
+            name="OR (ключевые слова)",
             mode="legacy_or",
             enabled=True
         )
         db.add(legacy_rule)
         db.commit()
-        logger.info("✅ Создано legacy правило фильтрации")
+        logger.info("✅ Создано правило фильтрации OR (ключевые слова)")
 
 
 def normalize_text(text: str) -> str:

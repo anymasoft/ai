@@ -625,8 +625,8 @@ async def handle_text_input(update: Update, context: ContextTypes.DEFAULT_TYPE) 
         await switch_to_advanced_filter(update, context)
         return
 
-    if text == "↩️ На Legacy":
-        logger.info(f"📥 Получена команда 'Legacy' от пользователя {user_id}")
+    if text == "↩️ На OR":
+        logger.info(f"📥 Получена команда 'OR' от пользователя {user_id}")
         await switch_to_legacy_filter(update, context)
         return
 
@@ -917,13 +917,13 @@ async def show_filters_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) 
         info_text = "🔍 Управление фильтрами\n\n"
         if active_rule:
             info_text += f"Активное правило: {active_rule.name}\n"
-            info_text += f"Режим: {'Legacy OR' if active_rule.mode == 'legacy_or' else 'Advanced'}\n\n"
+            info_text += f"Режим: {'OR (ключевые слова)' if active_rule.mode == 'legacy_or' else 'Advanced'}\n\n"
         else:
             info_text += "Активного правила нет\n\n"
 
         keyboard = [
             [KeyboardButton("📋 Показать текущий фильтр")],
-            [KeyboardButton("⚙️ Переключиться на Advanced"), KeyboardButton("↩️ На Legacy")],
+            [KeyboardButton("⚙️ Переключиться на Advanced"), KeyboardButton("↩️ На OR")],
             [KeyboardButton("➕ Добавить терм"), KeyboardButton("📊 Список термов")],
             [KeyboardButton("⬅️ Назад")],
         ]
@@ -961,7 +961,7 @@ async def show_current_filter(update: Update, context: ContextTypes.DEFAULT_TYPE
         text += f"Режим: {'Legacy OR' if active_rule.mode == 'legacy_or' else 'Advanced'}\n\n"
 
         if active_rule.mode == "legacy_or":
-            text += "В режиме Legacy используются ключевые слова из таблицы Keywords"
+            text += "В режиме OR используются ключевые слова из таблицы Keywords"
         else:
             terms = db.query(FilterTerm).filter(
                 FilterTerm.rule_id == active_rule.id,
@@ -1044,7 +1044,7 @@ async def switch_to_legacy_filter(update: Update, context: ContextTypes.DEFAULT_
         legacy_rule = db.query(FilterRule).filter(FilterRule.mode == "legacy_or").first()
         if not legacy_rule:
             legacy_rule = FilterRule(
-                name="Legacy keywords",
+                name="OR (ключевые слова)",
                 mode="legacy_or",
                 enabled=True
             )
@@ -1053,7 +1053,7 @@ async def switch_to_legacy_filter(update: Update, context: ContextTypes.DEFAULT_
             legacy_rule.enabled = True
         db.commit()
 
-        await update.message.reply_text("✅ Переключились на режим Legacy\n\nИспользуются ключевые слова из таблицы Keywords")
+        await update.message.reply_text("✅ Переключились на режим OR\n\nИспользуются ключевые слова из таблицы Keywords")
         await show_filters_menu(update, context)
     finally:
         db.close()
@@ -1076,7 +1076,7 @@ async def start_add_filter_term(update: Update, context: ContextTypes.DEFAULT_TY
             return
 
         if active_rule.mode == "legacy_or":
-            await update.message.reply_text("❌ Нельзя добавлять термы в режиме Legacy")
+            await update.message.reply_text("❌ Нельзя добавлять термы в режиме OR")
             return
 
         keyboard = [
