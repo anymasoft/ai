@@ -1223,16 +1223,43 @@
             }
         }
 
-        async function getLeads() {
+        async function getLeads(page = 1, limit = 20) {
             try {
-                const response = await fetch(`${API_BASE}/api/leads`, {
+                const response = await fetch(`${API_BASE}/api/leads?page=${page}&limit=${limit}`, {
                     credentials: "include"
                 });
                 if (!response.ok) throw new Error('Failed to fetch leads');
                 return await response.json();
             } catch (error) {
                 console.error('Error fetching leads:', error);
-                return [];
+                return { leads: [], has_more: false };
+            }
+        }
+
+        async function markAllLeadsAsRead() {
+            try {
+                const response = await fetch(`${API_BASE}/api/leads/mark-read`, {
+                    method: 'POST',
+                    credentials: 'include'
+                });
+                if (!response.ok) throw new Error('Failed to mark leads as read');
+                return await response.json();
+            } catch (error) {
+                console.error('Error marking leads as read:', error);
+                return null;
+            }
+        }
+
+        async function getUnreadCount() {
+            try {
+                const response = await fetch(`${API_BASE}/api/leads/unread-count`, {
+                    credentials: "include"
+                });
+                if (!response.ok) throw new Error('Failed to fetch unread count');
+                return await response.json();
+            } catch (error) {
+                console.error('Error fetching unread count:', error);
+                return { count: 0 };
             }
         }
 
@@ -1308,7 +1335,7 @@
         let leadsPollingInterval = null;
 
         // Функция переключения вкладки с поддержкой hash
-        function switchToSection(section) {
+        async function switchToSection(section) {
             document.querySelectorAll('.content-section').forEach(el => el.classList.remove('active'));
             document.getElementById(section).classList.add('active');
 
@@ -1328,6 +1355,8 @@
             if (section === 'leads') {
                 loadLeads();
                 startLeadsPolling();
+                // Пометить все лиды как прочитанные при открытии вкладки Лиды
+                await markAllLeadsAsRead();
             } else {
                 stopLeadsPolling();
             }
@@ -1689,30 +1718,38 @@
 
         // Хранилище для пагинации и дебаунса
         let leadsState = {
-            offset: 0,
+            page: 1,
+            limit: 20,
             isLoading: false,
             hasMore: true,
-            lastLeadIds: new Set()
+            allLeads: []
         };
 
         // Функция загрузки и отрисовки лидов
-        async function loadLeads(append = false) {
+        async function loadLeads(reset = true) {
             const container = document.getElementById('leads-container');
 
             try {
-                const leads = await getLeads();
-                const tasks = await getTasks();
-
-                if (!append) {
-                    leadsState.lastLeadIds.clear();
+                if (reset) {
+                    leadsState.page = 1;
+                    leadsState.allLeads = [];
                 }
+
+                const response = await getLeads(leadsState.page, leadsState.limit);
+                const leads = response.leads || [];
+                leadsState.hasMore = response.has_more || false;
+
+                // Добавить новые лиды в хранилище
+                leadsState.allLeads = leadsState.allLeads.concat(leads);
+
+                const tasks = await getTasks();
 
                 // Получить значения фильтров
                 const taskFilter = document.getElementById('filter-task')?.value || '';
                 const searchFilter = document.getElementById('filter-search')?.value.toLowerCase() || '';
 
-                // Применить фильтры
-                let filtered = leads;
+                // Применить фильтры к ВСЕ загруженным лидам
+                let filtered = leadsState.allLeads;
 
                 if (taskFilter) {
                     filtered = filtered.filter(lead => lead.task_id === parseInt(taskFilter));
@@ -1730,7 +1767,7 @@
                 filtered.sort((a, b) => new Date(b.found_at) - new Date(a.found_at));
 
                 // Если нет лидов - показать пустое состояние
-                if (leads.length === 0) {
+                if (leadsState.allLeads.length === 0) {
                     container.innerHTML = `
                         <div class="empty-state" style="text-align: center; padding: 2rem;">
                             <div style="font-size: 2rem; margin-bottom: 0.5rem;">🔥</div>
@@ -1758,7 +1795,6 @@
                 filtered.forEach(lead => {
                     const taskName = tasks.find(t => t.id === lead.task_id)?.name || 'Неизвестная задача';
                     html += renderLeadCard(lead, taskName);
-                    leadsState.lastLeadIds.add(lead.id);
                 });
 
                 container.innerHTML = html;
@@ -1783,11 +1819,11 @@
                     });
                 });
 
-                // Добавить кнопку пагинации
-                if (filtered.length > 0) {
+                // Добавить кнопку пагинации если есть ещё лиды
+                if (leadsState.hasMore) {
                     const paginationHtml = `
                         <div style="text-align: center; margin-top: 1rem; padding: 1rem;">
-                            <button class="btn btn-primary" onclick="loadMoreLeads()" style="padding: 0.6rem 1.5rem;">
+                            <button class="btn btn-primary" id="load-more-btn" onclick="loadMoreLeads()" style="padding: 0.6rem 1.5rem;">
                                 Загрузить ещё
                             </button>
                         </div>
@@ -1809,8 +1845,8 @@
 
         // Функция загрузки больше лидов
         async function loadMoreLeads() {
-            leadsState.offset += 50;
-            loadLeads(true);
+            leadsState.page += 1;
+            loadLeads(false);
         }
 
         // Функция для пометки лида как просмотренного
@@ -1976,12 +2012,14 @@
         let leadsRealtimeInterval = null;
 
         // Переключение меню уведомлений
-        function toggleNotificationsMenu() {
+        async function toggleNotificationsMenu() {
             const menu = document.getElementById('notifications-menu');
             menu.style.display = menu.style.display === 'none' ? 'block' : 'none';
 
-            // Закрыть при клике вне меню
+            // Если открываем меню - пометить все как прочитанные
             if (menu.style.display === 'block') {
+                await markAllLeadsAsRead();
+
                 document.addEventListener('click', (e) => {
                     if (!e.target.closest('.notifications-menu') && !e.target.closest('#notifications-btn')) {
                         menu.style.display = 'none';
@@ -2004,11 +2042,13 @@
         // Обновить список уведомлений
         async function updateNotifications() {
             try {
-                const leads = await getLeads();
-                const newLeads = leads.filter(l => l.status === 'new' || !l.status).slice(0, 5);
-
-                unreadLeadsCount = leads.filter(l => l.status === 'new' || !l.status).length;
+                const result = await getUnreadCount();
+                unreadLeadsCount = result.count || 0;
                 updateNotificationsBell();
+
+                const response = await getLeads(1, 5);
+                const allLeads = response.leads || [];
+                const newLeads = allLeads.filter(l => !l.is_read).slice(0, 5);
 
                 const notificationsList = document.getElementById('notifications-list');
                 if (newLeads.length === 0) {

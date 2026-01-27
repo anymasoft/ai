@@ -138,9 +138,10 @@ class Lead(Base):
     found_at = Column(DateTime, default=datetime.utcnow)  # Когда найдено
     delivered_at = Column(DateTime, nullable=True)  # Когда доставлено пользователю
     status = Column(String(50), default="new")  # "new" или "viewed"
+    is_read = Column(Boolean, default=False)  # Прочитан ли лид
 
     def __repr__(self):
-        return f"<Lead(id={self.id}, task_id={self.task_id}, source={self.source_channel}, status={self.status})>"
+        return f"<Lead(id={self.id}, task_id={self.task_id}, source={self.source_channel}, is_read={self.is_read})>"
 
 
 class TaskSourceState(Base):

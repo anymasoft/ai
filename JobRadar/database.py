@@ -63,6 +63,16 @@ def migrate_schema():
             else:
                 print("   ✓ Колонка delivered_at уже существует")
 
+            # Добавить колонку is_read если её нет
+            if 'is_read' not in columns:
+                print("   ➕ Добавляю колонку is_read...")
+                connection.execute(text(
+                    "ALTER TABLE leads ADD COLUMN is_read BOOLEAN DEFAULT 0"
+                ))
+                print("   ✅ Колонка is_read добавлена")
+            else:
+                print("   ✓ Колонка is_read уже существует")
+
             connection.commit()
             print("   ✅ Миграция схемы завершена\n")
 
