@@ -820,9 +820,9 @@ async def check_channel_for_new_messages(channel: Channel, db: Session):
         channel.last_message_id = new_last_id
         db.commit()
 
-        # Логируем результаты только если есть обработанные сообщения
-        logger.info(f"🆕 Обработано {len(filtered_messages)} новых сообщений канала {channel_display}, совпадений: {matched_count}")
-        logger.debug(f"📌 Обновлён last_message_id={new_last_id} для канала {channel_display}")
+        # Логируем результаты только если найдены совпадения
+        if matched_count > 0:
+            logger.info(f"🎯 Канал {channel_display}: найдено совпадений: {matched_count}")
 
     except ChannelPrivateError:
         channel_display = await get_channel_display(channel)
@@ -998,8 +998,6 @@ async def process_task_for_leads(task: Task, db: Session):
             logger.warning(f"[LEAD] task={task.id} ({task.name}) не удалось нормализировать источник: {raw_source}")
             continue
 
-        logger.debug(f"[LEAD] normalized source: {raw_source} -> {source_username}")
-
         try:
             await check_source_for_task_leads(task, source_username, include_keywords, filter_config, db)
         except Exception as e:
@@ -1033,7 +1031,6 @@ async def check_source_for_task_leads(task: Task, source_username: str, include_
     """
     try:
         # Резолвим источник (source_username уже нормализирован)
-        logger.debug(f"[LEAD] task={task.id} checking source {source_username}")
         entity = await telegram_client.get_entity(f"@{source_username}")
         source_chat_id = entity.id
 
@@ -1098,7 +1095,6 @@ async def check_source_for_task_leads(task: Task, source_username: str, include_
 
         if not new_messages:
             # Нет новых сообщений
-            logger.debug(f"[SCAN] task={task.id} source=@{source_username} new_messages=0")
             return
 
         # Фильтруем - оставляем ТОЛЬКО сообщения с id > last_message_id
@@ -1106,7 +1102,6 @@ async def check_source_for_task_leads(task: Task, source_username: str, include_
 
         if not filtered_messages:
             # Все сообщения уже обработаны
-            logger.debug(f"[SCAN] task={task.id} source=@{source_username} new_messages=0 (filtered)")
             return
 
         # Обрабатываем сообщения (от старых к новым)
@@ -1151,8 +1146,8 @@ async def check_source_for_task_leads(task: Task, source_username: str, include_
                     db.commit()
 
                     matched_count += 1
-                    text_preview = (msg.text or "")[:80].replace("\n", " ")
-                    logger.info(f"[LEAD] task={task.id} ({task.name}) source=@{source_username} msg_id={msg.id} matched")
+                    text_preview = (msg.text or "")[:100].replace("\n", " ")
+                    logger.info(f"🎯 НОВЫЙ ЛИД | task={task.id} ({task.name}) | @{source_username} | ключ: '{matched_keyword}' | {text_preview}...")
 
                     # Отправляем лид пользователю в Telegram
                     await send_lead_to_telegram(task, lead, db)
@@ -1163,7 +1158,9 @@ async def check_source_for_task_leads(task: Task, source_username: str, include_
         task_source_state.updated_at = datetime.utcnow()
         db.commit()
 
-        logger.info(f"[SCAN] task={task.id} source=@{source_username} new_messages={len(filtered_messages)} matched={matched_count} last_message_id={new_last_id}")
+        # Логируем только если найдены совпадения
+        if matched_count > 0:
+            logger.info(f"🎯 task={task.id} ({task.name}) source=@{source_username} найдено лидов: {matched_count}")
 
     except Exception as e:
         logger.error(f"[LEAD] task={task.id} ({task.name}) ошибка при резолвинге @{source_username}: {e}")

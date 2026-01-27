@@ -24,6 +24,9 @@ import monitor
 logging.getLogger("uvicorn.access").disabled = True
 logging.getLogger("uvicorn").setLevel(logging.WARNING)
 
+# ============== Логирование приложения ==============
+logger = logging.getLogger(__name__)
+
 app = FastAPI()
 
 # ============== Глобальное хранилище pending клиентов ==============
@@ -349,6 +352,10 @@ async def delete_lead(lead_id: int, current_user: User = Depends(get_current_use
     task = db.query(Task).filter(Task.id == lead.task_id, Task.user_id == current_user.id).first()
     if not task:
         raise HTTPException(status_code=403, detail="Доступ запрещен")
+
+    # Логируем удаление лида
+    lead_preview = (lead.text or "")[:80].replace("\n", " ")
+    logger.info(f"🗑 ЛИД УДАЛЕН | lead_id={lead_id} | task={task.name} | {lead_preview}...")
 
     db.delete(lead)
     db.commit()
