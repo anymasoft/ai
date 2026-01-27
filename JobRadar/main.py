@@ -1,6 +1,6 @@
 import os
 import json
-from fastapi import FastAPI, HTTPException, Depends, Request
+from fastapi import FastAPI, HTTPException, Depends, Request, Cookie
 from fastapi.responses import FileResponse, RedirectResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.staticfiles import StaticFiles
@@ -31,10 +31,10 @@ monitoring_enabled = True
 # Получить абсолютный путь к папке со скриптом
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
-# Добавить CORS для работы fetch с API
+# Добавить CORS для работы fetch с API (с поддержкой cookies)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=["http://localhost:8000", "http://127.0.0.1:8000"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -80,9 +80,12 @@ def get_db():
         db.close()
 
 # Helper для получения текущего пользователя из cookie
-def get_current_user(request: Request, db: Session = Depends(get_db)) -> User:
+def get_current_user(
+    user_phone: Optional[str] = Cookie(default=None),
+    db: Session = Depends(get_db)
+) -> User:
     """Получить текущего пользователя из cookie авторизации"""
-    user_phone = request.cookies.get("user_phone")
+    print(f"[AUTH] cookie user_phone = {user_phone}")
     if not user_phone:
         raise HTTPException(status_code=401, detail="Пользователь не авторизован")
 
@@ -489,12 +492,15 @@ async def auth_save(request: AuthStartRequest):
 
         # Создаём ответ с установкой cookie авторизации
         response = JSONResponse({"ok": True, "user": user_info})
+        print(f"[AUTH] setting cookie for phone = {phone}")
         response.set_cookie(
             key="user_phone",
             value=phone,
             max_age=30*24*60*60,  # 30 дней
+            path="/",  # КРИТИЧНО: доступна для всех путей
             httponly=True,
-            samesite="Lax"
+            samesite="lax",
+            secure=False  # Локальная разработка (http, не https)
         )
         return response
     except Exception as e:
