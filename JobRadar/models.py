@@ -1,7 +1,7 @@
 """
 JobRadar v0 - ORM модели для SQLite
 """
-from sqlalchemy import Column, Integer, String, Boolean, DateTime, BigInteger, UniqueConstraint, Index, ForeignKey
+from sqlalchemy import Column, Integer, String, Boolean, DateTime, BigInteger, UniqueConstraint, Index, ForeignKey, LargeBinary
 from sqlalchemy.ext.declarative import declarative_base
 from datetime import datetime
 
@@ -111,3 +111,18 @@ class Task(Base):
 
     def __repr__(self):
         return f"<Task(id={self.id}, name={self.name}, status={self.status})>"
+
+
+class TelegramSession(Base):
+    """Модель сессии Telegram для Userbot авторизации"""
+    __tablename__ = "telegram_sessions"
+
+    id = Column(Integer, primary_key=True)
+    phone = Column(String(20), unique=True, nullable=False)  # Номер телефона
+    session_data = Column(LargeBinary, nullable=False)  # Бинарные данные session файла
+    is_authorized = Column(Boolean, default=False)  # Авторизован ли
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    def __repr__(self):
+        return f"<TelegramSession(id={self.id}, phone={self.phone}, authorized={self.is_authorized})>"

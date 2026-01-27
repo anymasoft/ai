@@ -609,6 +609,195 @@
             margin-bottom: 1.5rem;
         }
 
+        /* TOAST NOTIFICATIONS */
+        .toast-container {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            z-index: 2000;
+            pointer-events: none;
+        }
+
+        .toast {
+            background: white;
+            border: 1px solid var(--gray-border);
+            border-radius: 8px;
+            padding: 1rem 1.5rem;
+            margin-bottom: 0.5rem;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            min-width: 300px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            pointer-events: auto;
+            animation: slideInRight 0.3s ease-out;
+        }
+
+        .toast.success {
+            border-left: 4px solid #22c55e;
+            background: #f0fdf4;
+        }
+
+        .toast.error {
+            border-left: 4px solid #ef4444;
+            background: #fef2f2;
+        }
+
+        .toast.warning {
+            border-left: 4px solid #f97316;
+            background: #fffbeb;
+        }
+
+        .toast.info {
+            border-left: 4px solid var(--primary);
+            background: #f5f3ff;
+        }
+
+        .toast-icon {
+            font-size: 1.25rem;
+            flex-shrink: 0;
+        }
+
+        .toast.success .toast-icon { color: #22c55e; }
+        .toast.error .toast-icon { color: #ef4444; }
+        .toast.warning .toast-icon { color: #f97316; }
+        .toast.info .toast-icon { color: var(--primary); }
+
+        .toast-close {
+            background: none;
+            border: none;
+            cursor: pointer;
+            color: var(--text-gray);
+            font-size: 1.25rem;
+            padding: 0;
+            margin-left: auto;
+            flex-shrink: 0;
+        }
+
+        @keyframes slideInRight {
+            from {
+                opacity: 0;
+                transform: translateX(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        @keyframes slideOutRight {
+            from {
+                opacity: 1;
+                transform: translateX(0);
+            }
+            to {
+                opacity: 0;
+                transform: translateX(20px);
+            }
+        }
+
+        .toast.removing {
+            animation: slideOutRight 0.3s ease-in;
+        }
+
+        /* DIALOG/MODAL */
+        .dialog-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 1500;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .dialog-overlay.visible {
+            display: flex;
+            animation: fadeIn 0.2s ease-out;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        .dialog-content {
+            background: white;
+            border-radius: 8px;
+            padding: 2rem;
+            max-width: 400px;
+            width: 90%;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            animation: slideUp 0.3s ease-out;
+        }
+
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .dialog-header {
+            margin-bottom: 1.5rem;
+        }
+
+        .dialog-header h3 {
+            font-size: 1.25rem;
+            color: var(--text-dark);
+            margin-bottom: 0.5rem;
+        }
+
+        .dialog-header p {
+            color: var(--text-light);
+            font-size: 0.9rem;
+        }
+
+        .dialog-body {
+            margin-bottom: 1.5rem;
+            color: var(--text-gray);
+        }
+
+        .dialog-actions {
+            display: flex;
+            gap: 1rem;
+            justify-content: flex-end;
+        }
+
+        .dialog-actions button {
+            padding: 0.5rem 1.5rem;
+            border-radius: 4px;
+            border: 1px solid var(--gray-border);
+            background: white;
+            color: var(--text-gray);
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+
+        .dialog-actions button:hover {
+            border-color: var(--primary);
+            color: var(--primary);
+        }
+
+        .dialog-actions .btn-primary {
+            background: var(--primary);
+            color: white;
+            border-color: var(--primary);
+        }
+
+        .dialog-actions .btn-primary:hover {
+            background: var(--primary-dark);
+            border-color: var(--primary-dark);
+        }
+
         @media (max-width: 768px) {
             .sidebar {
                 position: relative;
@@ -628,6 +817,16 @@
 
             .stat-cards {
                 grid-template-columns: repeat(2, 1fr);
+            }
+
+            .toast-container {
+                left: 20px;
+                right: 20px;
+            }
+
+            .toast {
+                min-width: auto;
+                width: 100%;
             }
         }
     </style>
@@ -751,7 +950,7 @@
                                 <div style="color: var(--text-light); font-size: 0.85rem;">Used</div>
                             </div>
                         </div>
-                        <button class="btn btn-primary" onclick="alert('Payment integration TODO')">Upgrade Now</button>
+                        <button class="btn btn-primary" onclick="showToast('Интеграция платежей в разработке', 'info')">Upgrade Now</button>
                     </div>
 
                     <h4 style="margin-bottom: 1rem;">Pricing Plans</h4>
@@ -779,7 +978,7 @@
                                 <li>500 Keywords</li>
                                 <li>Priority support</li>
                             </ul>
-                            <button class="btn btn-primary" onclick="alert('Payment integration TODO')">Upgrade</button>
+                            <button class="btn btn-primary" onclick="showToast('Интеграция платежей в разработке', 'info')">Upgrade</button>
                         </div>
 
                         <div class="pricing-card">
@@ -792,7 +991,7 @@
                                 <li>Unlimited Keywords</li>
                                 <li>24/7 support</li>
                             </ul>
-                            <button class="btn btn-primary" onclick="alert('Payment integration TODO')">Contact</button>
+                            <button class="btn btn-primary" onclick="showToast('Интеграция платежей в разработке', 'info')">Contact</button>
                         </div>
                     </div>
                 </section>
@@ -803,8 +1002,8 @@
                         <h4 style="margin-bottom: 1rem;">Account</h4>
                         <div style="margin-bottom: 1rem;">
                             <label style="display: block; margin-bottom: 0.5rem; font-weight: 600;">Telegram Account</label>
-                            <button class="btn btn-primary" onclick="alert('Telegram auth TODO')">
-                                <i class="bi bi-telegram"></i> Login with Telegram
+                            <button class="btn btn-primary" onclick="window.location.href='/login'">
+                                <i class="bi bi-telegram"></i> Авторизоваться в Telegram
                             </button>
                         </div>
                     </div>
@@ -828,11 +1027,28 @@
 
                     <div style="background: #fff5f5; padding: 1.5rem; border-radius: 8px; border: 1px solid #fdd; margin-bottom: 1.5rem;">
                         <h4 style="margin-bottom: 1rem; color: #d32f2f;">Danger Zone</h4>
-                        <button class="btn btn-danger" onclick="if(confirm('Are you sure? This cannot be undone.')) alert('Account deletion TODO')">
+                        <button class="btn btn-danger" onclick="showDeleteConfirm('Вы уверены, что хотите удалить аккаунт? Это действие нельзя отменить.', () => showToast('Удаление аккаунта в разработке', 'info'))">
                             <i class="bi bi-trash"></i> Delete Account
                         </button>
                     </div>
                 </section>
+            </div>
+        </div>
+    </div>
+
+    <!-- TOAST CONTAINER -->
+    <div class="toast-container" id="toast-container"></div>
+
+    <!-- DIALOG -->
+    <div class="dialog-overlay" id="delete-dialog-overlay">
+        <div class="dialog-content">
+            <div class="dialog-header">
+                <h3>Подтверждение удаления</h3>
+            </div>
+            <div class="dialog-body" id="delete-dialog-message"></div>
+            <div class="dialog-actions">
+                <button onclick="closeDeleteDialog()">Отмена</button>
+                <button class="btn-primary" onclick="confirmDelete()">Удалить</button>
             </div>
         </div>
     </div>
@@ -893,6 +1109,55 @@
     </div>
 
     <script>
+        // ==================== UI COMPONENTS ====================
+        function showToast(message, type = 'info', duration = 3000) {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+
+            const icons = {
+                success: 'bi-check-circle',
+                error: 'bi-exclamation-circle',
+                warning: 'bi-exclamation-triangle',
+                info: 'bi-info-circle'
+            };
+
+            toast.innerHTML = `
+                <i class="bi ${icons[type]} toast-icon"></i>
+                <span>${message}</span>
+                <button class="toast-close" onclick="this.parentElement.remove()">×</button>
+            `;
+
+            container.appendChild(toast);
+
+            if (duration > 0) {
+                setTimeout(() => {
+                    toast.classList.add('removing');
+                    setTimeout(() => toast.remove(), 300);
+                }, duration);
+            }
+        }
+
+        let deletePendingCallback = null;
+
+        function showDeleteConfirm(message, onConfirm) {
+            deletePendingCallback = onConfirm;
+            document.getElementById('delete-dialog-message').textContent = message;
+            document.getElementById('delete-dialog-overlay').classList.add('visible');
+        }
+
+        function closeDeleteDialog() {
+            document.getElementById('delete-dialog-overlay').classList.remove('visible');
+            deletePendingCallback = null;
+        }
+
+        function confirmDelete() {
+            if (deletePendingCallback) {
+                deletePendingCallback();
+            }
+            closeDeleteDialog();
+        }
+
         // ==================== API FUNCTIONS ====================
         const API_BASE = '';
 
@@ -935,7 +1200,7 @@
                 return await response.json();
             } catch (error) {
                 console.error('Error creating task:', error);
-                alert('Error creating task: ' + error.message);
+                showToast('Ошибка создания задачи: ' + error.message, 'error');
                 return null;
             }
         }
@@ -951,7 +1216,7 @@
                 return await response.json();
             } catch (error) {
                 console.error('Error updating task:', error);
-                alert('Error updating task: ' + error.message);
+                showToast('Ошибка обновления задачи: ' + error.message, 'error');
                 return null;
             }
         }
@@ -965,7 +1230,7 @@
                 return await response.json();
             } catch (error) {
                 console.error('Error deleting task:', error);
-                alert('Error deleting task: ' + error.message);
+                showToast('Ошибка удаления задачи: ' + error.message, 'error');
                 return null;
             }
         }
@@ -1023,7 +1288,7 @@
                     document.getElementById('alert-webhook').checked = task.alerts_webhook;
                 } catch (error) {
                     console.error('Error loading task:', error);
-                    alert('Error loading task');
+                    showToast('Ошибка загрузки задачи', 'error');
                     return;
                 }
             } else {
@@ -1047,12 +1312,12 @@
             const exclude = document.getElementById('task-exclude').value.trim();
 
             if (!name) {
-                alert('Название задачи обязательно');
+                showToast('Название задачи обязательно', 'warning');
                 return;
             }
 
             if (!include) {
-                alert('Требуется хотя бы одно включающее ключевое слово');
+                showToast('Требуется хотя бы одно включающее ключевое слово', 'warning');
                 return;
             }
 
@@ -1078,17 +1343,19 @@
                 closeTaskModal();
                 await renderTasks();
                 await updateStats();
-                alert(currentEditTaskId ? 'Задача обновлена!' : 'Задача создана!');
+                showToast(currentEditTaskId ? 'Задача обновлена!' : 'Задача создана!', 'success');
             }
         });
 
         async function deleteTaskHandler(taskId) {
-            if (!confirm('Удалить эту задачу?')) return;
-            const result = await deleteTask(taskId);
-            if (result) {
-                await renderTasks();
-                await updateStats();
-            }
+            showDeleteConfirm('Вы уверены, что хотите удалить эту задачу? Это действие нельзя отменить.', async () => {
+                const result = await deleteTask(taskId);
+                if (result) {
+                    await renderTasks();
+                    await updateStats();
+                    showToast('Задача удалена', 'success');
+                }
+            });
         }
 
         async function toggleTaskStatus(taskId) {
@@ -1198,7 +1465,7 @@
         }
 
         function saveSettings() {
-            alert('Настройки сохранены!');
+            showToast('Настройки сохранены!', 'success');
         }
 
         // Update task filter in leads
