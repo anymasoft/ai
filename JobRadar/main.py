@@ -26,6 +26,17 @@ logging.getLogger("uvicorn").setLevel(logging.WARNING)
 
 # ============== Логирование приложения ==============
 logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
+
+# Консольный обработчик
+console_handler = logging.StreamHandler()
+console_handler.setLevel(logging.INFO)
+formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+console_handler.setFormatter(formatter)
+
+# Добавить обработчик если его еще нет
+if not logger.handlers:
+    logger.addHandler(console_handler)
 
 app = FastAPI()
 
@@ -55,18 +66,22 @@ app.mount("/static", StaticFiles(directory=os.path.join(BASE_DIR, "static")), na
 @app.on_event("startup")
 async def startup():
     init_db()
+    logger.info("✅ БД инициализирована")
 
     # Инициализация Telegram клиента
     try:
         await monitor.init_telegram_client()
+        logger.info("✅ Telegram клиент инициализирован")
     except Exception as e:
-        logging.error(f"Ошибка инициализации Telegram клиента: {e}")
+        logger.error(f"❌ Ошибка инициализации Telegram клиента: {e}")
 
     # Запуск мониторинга каналов (старый контур)
     asyncio.create_task(monitor.monitoring_loop())
+    logger.info("🚀 Запущен мониторинг каналов")
 
     # Запуск мониторинга задач (новый контур)
     asyncio.create_task(monitor.monitoring_loop_tasks())
+    logger.info("🚀 Запущен мониторинг задач")
 
 # Dependency для получения сессии БД
 def get_db():
