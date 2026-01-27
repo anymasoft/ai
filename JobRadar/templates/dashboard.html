@@ -1085,16 +1085,17 @@
 
                     <div style="background: white; padding: 1.5rem; border-radius: 8px; border: 1px solid var(--gray-border); margin-bottom: 1.5rem;">
                         <h4 style="margin-bottom: 1rem;">Notifications</h4>
+                        <p style="color: var(--text-gray); margin-bottom: 1rem; font-size: 0.9rem;">Where to send new leads:</p>
                         <div class="form-group" style="margin-bottom: 1rem;">
                             <label class="checkbox-group">
-                                <input type="checkbox" id="notify-telegram" checked>
-                                <span>New leads via Telegram</span>
+                                <input type="checkbox" id="notify-personal" checked>
+                                <span>Send to my personal chat</span>
                             </label>
                         </div>
-                        <div class="form-group" style="margin-bottom: 1rem;">
+                        <div class="form-group" style="margin-bottom: 1.5rem;">
                             <label class="checkbox-group">
-                                <input type="checkbox" id="notify-email">
-                                <span>Email digest (daily)</span>
+                                <input type="checkbox" id="notify-channel">
+                                <span>Forward to channel (from task settings)</span>
                             </label>
                         </div>
                         <button class="btn btn-primary" onclick="saveSettings()">Save Settings</button>
@@ -1160,18 +1161,20 @@
                 </div>
 
                 <div class="form-group">
-                    <label>Alerts</label>
+                    <label>Forward Channel (optional)</label>
+                    <input type="text" id="task-channel" placeholder="@mychannel or https://t.me/mychannel">
+                    <span class="form-hint">Channel to forward found leads</span>
+                </div>
+
+                <div class="form-group">
+                    <label>Notify To</label>
                     <div class="checkbox-group" style="margin-bottom: 0.75rem;">
-                        <input type="checkbox" id="alert-telegram" checked>
-                        <span>Telegram</span>
-                    </div>
-                    <div class="checkbox-group" style="margin-bottom: 0.75rem;">
-                        <input type="checkbox" id="alert-email">
-                        <span>Email</span>
+                        <input type="checkbox" id="alert-personal" checked>
+                        <span>Personal chat</span>
                     </div>
                     <div class="checkbox-group">
-                        <input type="checkbox" id="alert-webhook">
-                        <span>Webhook</span>
+                        <input type="checkbox" id="alert-channel">
+                        <span>Forward channel</span>
                     </div>
                 </div>
 
@@ -1358,9 +1361,9 @@
                     document.getElementById('task-sources').value = task.sources;
                     document.getElementById('task-include').value = task.include_keywords;
                     document.getElementById('task-exclude').value = task.exclude_keywords || '';
-                    document.getElementById('alert-telegram').checked = task.alerts_telegram;
-                    document.getElementById('alert-email').checked = task.alerts_email;
-                    document.getElementById('alert-webhook').checked = task.alerts_webhook;
+                    document.getElementById('task-channel').value = task.forward_channel || '';
+                    document.getElementById('alert-personal').checked = task.alerts_personal !== false;
+                    document.getElementById('alert-channel').checked = task.alerts_channel || false;
                 } catch (error) {
                     console.error('Error loading task:', error);
                     showToast('Ошибка загрузки задачи', 'error');
@@ -1385,6 +1388,7 @@
             const sources = document.getElementById('task-sources').value.trim();
             const include = document.getElementById('task-include').value.trim();
             const exclude = document.getElementById('task-exclude').value.trim();
+            const channel = document.getElementById('task-channel').value.trim();
 
             if (!name) {
                 showToast('Название задачи обязательно', 'warning');
@@ -1402,9 +1406,9 @@
                 sources: sources,
                 include_keywords: include,
                 exclude_keywords: exclude,
-                alerts_telegram: document.getElementById('alert-telegram').checked,
-                alerts_email: document.getElementById('alert-email').checked,
-                alerts_webhook: document.getElementById('alert-webhook').checked
+                forward_channel: channel,
+                alerts_personal: document.getElementById('alert-personal').checked,
+                alerts_channel: document.getElementById('alert-channel').checked
             };
 
             let result;
