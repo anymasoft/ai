@@ -1137,7 +1137,8 @@ async def check_source_for_task_leads(task: Task, source_username: str, include_
                         source_channel=f"@{source_username}",
                         source_message_id=msg.id,
                         matched_keyword=matched_keyword,
-                        found_at=datetime.utcnow()
+                        found_at=datetime.utcnow(),
+                        is_read=False
                     )
                     db.add(lead)
                     db.commit()

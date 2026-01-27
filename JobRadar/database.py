@@ -73,6 +73,13 @@ def migrate_schema():
             else:
                 print("   ✓ Колонка is_read уже существует")
 
+            # Исправить NULL значения is_read на 0 (False)
+            result = connection.execute(text(
+                "UPDATE leads SET is_read = 0 WHERE is_read IS NULL"
+            ))
+            if result.rowcount > 0:
+                print(f"   🔧 Исправлено {result.rowcount} лидов с NULL is_read")
+
             connection.commit()
             print("   ✅ Миграция схемы завершена\n")
 
