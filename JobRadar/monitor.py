@@ -123,6 +123,63 @@ def dump_message_for_diagnostics(msg, channel: Channel, is_broadcast: bool):
     logger.info(f"{'='*80}\n")
 
 
+def normalize_telegram_source(raw: str) -> str | None:
+    """
+    Нормализировать источник Telegram в чистый username.
+
+    Преобразует любой формат в username без @.
+
+    Вход:
+    - https://t.me/jobs1c
+    - http://t.me/jobs1c
+    - t.me/jobs1c
+    - @jobs1c
+    - jobs1c
+
+    Выход: jobs1c
+
+    Args:
+        raw: Строка с источником в любом формате
+
+    Returns:
+        Чистый username или None если не удалось нормализировать
+    """
+    if not raw:
+        return None
+
+    raw = raw.strip()
+    if not raw:
+        return None
+
+    # Удаляем хвостовые слэши
+    raw = raw.rstrip("/")
+
+    # Если начинается с https:// или http://
+    if raw.startswith("https://t.me/") or raw.startswith("http://t.me/"):
+        # t.me/username или t.me/username/extra
+        match = re.search(r't\.me/([a-zA-Z0-9_]+)', raw)
+        if match:
+            return match.group(1)
+
+    # Если начинается с t.me/
+    if raw.startswith("t.me/"):
+        match = re.search(r't\.me/([a-zA-Z0-9_]+)', raw)
+        if match:
+            return match.group(1)
+
+    # Если начинается с @
+    if raw.startswith("@"):
+        username = raw[1:].strip()
+        if re.match(r'^[a-zA-Z0-9_]+$', username):
+            return username
+
+    # Если это просто username без @ и без спецсимволов
+    if re.match(r'^[a-zA-Z0-9_]+$', raw):
+        return raw
+
+    return None
+
+
 def normalize_channel_ref(input_str: str) -> dict:
     """
     Нормализация ввода канала в стандартный формат
@@ -887,7 +944,15 @@ async def process_task_for_leads(task: Task, db: Session):
     }
 
     # Обрабатываем каждый источник
-    for source_username in sources:
+    for raw_source in sources:
+        # Нормализируем источник
+        source_username = normalize_telegram_source(raw_source)
+        if not source_username:
+            logger.warning(f"[LEAD] task={task.id} ({task.name}) не удалось нормализировать источник: {raw_source}")
+            continue
+
+        logger.debug(f"[LEAD] normalized source: {raw_source} -> {source_username}")
+
         try:
             await check_source_for_task_leads(task, source_username, include_keywords, filter_config, db)
         except Exception as e:
@@ -908,7 +973,8 @@ async def check_source_for_task_leads(task: Task, source_username: str, include_
         db: SQLAlchemy сессия
     """
     try:
-        # Резолвим источник
+        # Резолвим источник (source_username уже нормализирован)
+        logger.debug(f"[LEAD] task={task.id} checking channel {source_username}")
         entity = await telegram_client.get_entity(f"@{source_username}")
         source_chat_id = entity.id
 
