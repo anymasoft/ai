@@ -1240,6 +1240,19 @@
             }
         }
 
+        async function getLeads() {
+            try {
+                const response = await fetch(`${API_BASE}/api/leads`, {
+                    credentials: "include"
+                });
+                if (!response.ok) throw new Error('Failed to fetch leads');
+                return await response.json();
+            } catch (error) {
+                console.error('Error fetching leads:', error);
+                return [];
+            }
+        }
+
         async function getStats() {
             try {
                 const response = await fetch(`${API_BASE}/api/stats`, {
@@ -1502,16 +1515,168 @@
             `).join('');
         }
 
-        async function renderLeads() {
+        async function renderLeads(page = 1) {
             const container = document.getElementById('leads-container');
 
-            container.innerHTML = `
-                <div class="empty-state">
-                    <i class="bi bi-search"></i>
-                    <h4>Функция лидов в разработке</h4>
-                    <p>Скоро можно будет просматривать найденные лиды</p>
-                </div>
-            `;
+            try {
+                // Получить все данные
+                const leads = await getLeads();
+                const tasks = await getTasks();
+
+                // Получить значения фильтров
+                const taskFilter = document.getElementById('filter-task')?.value || '';
+                const searchFilter = document.getElementById('filter-search')?.value.toLowerCase() || '';
+
+                // Применить фильтры
+                let filtered = leads;
+
+                // Фильтр по задаче
+                if (taskFilter) {
+                    filtered = filtered.filter(lead => lead.task_id === parseInt(taskFilter));
+                }
+
+                // Поиск по тексту и источнику
+                if (searchFilter) {
+                    filtered = filtered.filter(lead =>
+                        lead.text.toLowerCase().includes(searchFilter) ||
+                        lead.source_channel.toLowerCase().includes(searchFilter) ||
+                        (lead.matched_keyword && lead.matched_keyword.toLowerCase().includes(searchFilter))
+                    );
+                }
+
+                // Пагинация
+                const ITEMS_PER_PAGE = 10;
+                const totalPages = Math.ceil(filtered.length / ITEMS_PER_PAGE);
+                const startIdx = (page - 1) * ITEMS_PER_PAGE;
+                const endIdx = startIdx + ITEMS_PER_PAGE;
+                const paginatedLeads = filtered.slice(startIdx, endIdx);
+
+                // Если нет лидов - показать пустое состояние
+                if (leads.length === 0) {
+                    container.innerHTML = `
+                        <div class="empty-state">
+                            <i class="bi bi-fire"></i>
+                            <h4>Лиды отсутствуют</h4>
+                            <p>Лиды будут появляться здесь после запуска мониторинга</p>
+                        </div>
+                    `;
+                    return;
+                }
+
+                // Если отфильтровалось 0 лидов
+                if (filtered.length === 0) {
+                    container.innerHTML = `
+                        <div class="empty-state">
+                            <i class="bi bi-search"></i>
+                            <h4>Лиды не найдены</h4>
+                            <p>Попробуйте изменить фильтры поиска</p>
+                        </div>
+                    `;
+                    return;
+                }
+
+                // Построить HTML лидов
+                let html = '';
+                paginatedLeads.forEach(lead => {
+                    const taskName = tasks.find(t => t.id === lead.task_id)?.name || 'Неизвестная задача';
+                    const foundDate = new Date(lead.found_at).toLocaleDateString('ru-RU', {
+                        year: 'numeric',
+                        month: 'short',
+                        day: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit'
+                    });
+
+                    const textPreview = lead.text.substring(0, 200);
+                    const textPreviewFull = textPreview.length < lead.text.length ? textPreview + '...' : textPreview;
+
+                    html += `
+                        <div class="lead-card" style="background: white; padding: 1.5rem; border-radius: 8px; border: 1px solid var(--gray-border); margin-bottom: 1rem;">
+                            <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 0.75rem;">
+                                <h5 style="margin: 0; color: var(--text-dark); font-size: 0.95rem;">Лид #${lead.id}</h5>
+                                <span style="font-size: 0.8rem; color: var(--text-light); background: var(--gray-100); padding: 0.25rem 0.75rem; border-radius: 4px;">
+                                    ${foundDate}
+                                </span>
+                            </div>
+
+                            <div style="margin-bottom: 1rem; line-height: 1.5;">
+                                <p style="margin: 0; color: var(--text-dark); word-wrap: break-word;">
+                                    ${textPreviewFull}
+                                </p>
+                            </div>
+
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; font-size: 0.9rem; margin-bottom: 0.75rem;">
+                                <div>
+                                    <span style="color: var(--text-light);">Задача:</span>
+                                    <div style="color: var(--primary); font-weight: 500;">${taskName}</div>
+                                </div>
+                                <div>
+                                    <span style="color: var(--text-light);">Источник:</span>
+                                    <div style="color: var(--text-dark); font-weight: 500;">${lead.source_channel}</div>
+                                </div>
+                                <div>
+                                    <span style="color: var(--text-light);">Ключевое слово:</span>
+                                    <div style="color: var(--text-dark); font-weight: 500;">
+                                        ${lead.matched_keyword || '—'}
+                                    </div>
+                                </div>
+                                <div>
+                                    <span style="color: var(--text-light);">ID сообщения:</span>
+                                    <div style="color: var(--text-dark); font-weight: 500;">${lead.source_message_id}</div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                });
+
+                container.innerHTML = html;
+
+                // Добавить пагинацию если нужна
+                if (totalPages > 1) {
+                    let paginationHtml = `
+                        <div style="display: flex; justify-content: center; gap: 0.5rem; margin-top: 2rem; flex-wrap: wrap;">
+                    `;
+
+                    // Кнопка Назад
+                    if (page > 1) {
+                        paginationHtml += `<button class="btn-secondary" style="width: auto; margin-top: 0;" onclick="renderLeads(${page - 1})">← Назад</button>`;
+                    }
+
+                    // Номера страниц
+                    const maxPages = Math.min(totalPages, 5);
+                    const startPage = Math.max(1, page - 2);
+                    const endPage = Math.min(totalPages, startPage + maxPages - 1);
+
+                    for (let i = startPage; i <= endPage; i++) {
+                        const isActive = i === page;
+                        paginationHtml += `
+                            <button class="btn-secondary"
+                                    style="width: auto; margin-top: 0; ${isActive ? 'background: var(--primary); color: white;' : ''}"
+                                    onclick="renderLeads(${i})">
+                                ${i}
+                            </button>
+                        `;
+                    }
+
+                    // Кнопка Далее
+                    if (page < totalPages) {
+                        paginationHtml += `<button class="btn-secondary" style="width: auto; margin-top: 0;" onclick="renderLeads(${page + 1})">Далее →</button>`;
+                    }
+
+                    paginationHtml += `</div>`;
+                    container.innerHTML += paginationHtml;
+                }
+
+            } catch (error) {
+                console.error('Error rendering leads:', error);
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <i class="bi bi-exclamation-circle"></i>
+                        <h4>Ошибка загрузки</h4>
+                        <p>Не удалось загрузить лиды. Попробуйте позже.</p>
+                    </div>
+                `;
+            }
         }
 
         async function setLeadStatus(leadId, status) {
