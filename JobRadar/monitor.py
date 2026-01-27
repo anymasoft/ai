@@ -886,8 +886,9 @@ async def monitoring_loop():
             finally:
                 db.close()
 
-            # Спим перед следующей проверкой (с random jitter 0-2 сек для сглаживания нагрузки)
-            await asyncio.sleep(POLLING_INTERVAL_SECONDS + random.uniform(0, 2))
+            # Спим перед следующей проверкой (с random jitter 0-20 сек для сглаживания нагрузки)
+            # Итоговый интервал: 10-30 секунд
+            await asyncio.sleep(POLLING_INTERVAL_SECONDS + random.uniform(0, 20))
 
         except Exception as e:
             logger.error(f"❌ Ошибка в мониторинге: {e}")
@@ -930,8 +931,9 @@ async def monitoring_loop_tasks():
             finally:
                 db.close()
 
-            # Спим перед следующей проверкой
-            await asyncio.sleep(POLLING_INTERVAL_SECONDS + random.uniform(0, 2))
+            # Спим перед следующей проверкой (с random jitter 0-20 сек)
+            # Итоговый интервал: 10-30 секунд
+            await asyncio.sleep(POLLING_INTERVAL_SECONDS + random.uniform(0, 20))
 
         except Exception as e:
             logger.error(f"❌ Ошибка в monitoring_loop_tasks: {e}")
