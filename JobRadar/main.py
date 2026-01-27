@@ -308,6 +308,7 @@ async def auth_submit_password(request: AuthPasswordRequest):
         phone = normalize_phone(request.phone)
         print(f"\n🔑 === /api/auth/submit-password ===")
         print(f"📱 Phone: {phone}")
+        print(f"🔐 Password: {'*' * len(request.password)}")
 
         client = pending_auth_clients.get(phone)
         if not client:
@@ -315,9 +316,19 @@ async def auth_submit_password(request: AuthPasswordRequest):
             print(f"📋 PENDING: {list(pending_auth_clients.keys())}")
             raise Exception("Сессия авторизации истекла.")
 
-        await client.sign_in(password=request.password)
+        print(f"📱 Клиент найден, статус подключения: {client.is_connected()}")
+
+        try:
+            await client.sign_in(password=request.password)
+            print(f"✅ Пароль 2FA принят")
+        except Exception as e:
+            print(f"❌ Ошибка при вводе пароля: {str(e)}")
+            raise
+
+        # Убедиться, что клиент всё ещё подключен
+        print(f"📱 После sign_in статус подключения: {client.is_connected()}")
+
         pending_auth_clients[phone] = client
-        print(f"✅ Пароль 2FA принят")
         print(f"📋 PENDING: {list(pending_auth_clients.keys())}")
         print(f"✅ === /api/auth/submit-password успешен ===\n")
 
@@ -325,6 +336,8 @@ async def auth_submit_password(request: AuthPasswordRequest):
     except Exception as e:
         print(f"❌ Ошибка при /api/auth/submit-password: {str(e)}")
         print(f"❌ === /api/auth/submit-password ошибка ===\n")
+        import traceback
+        traceback.print_exc()
         raise HTTPException(status_code=400, detail=str(e))
 
 
@@ -338,45 +351,66 @@ async def auth_save(request: AuthStartRequest):
         phone = normalize_phone(request.phone)
         print(f"\n💾 === /api/auth/save ===")
         print(f"📱 Phone: {phone}")
-        print(f"📋 PENDING: {list(pending_auth_clients.keys())}")
+        print(f"📋 PENDING KEYS: {list(pending_auth_clients.keys())}")
 
         client = pending_auth_clients.get(phone)
         if not client:
             print(f"❌ Клиент для {phone} не найден в памяти")
-            print(f"📋 PENDING: {list(pending_auth_clients.keys())}")
-            raise Exception("Клиент авторизации не найден.")
+            print(f"📋 AVAILABLE KEYS: {list(pending_auth_clients.keys())}")
+            raise Exception(f"Клиент авторизации не найден. Доступные ключи: {list(pending_auth_clients.keys())}")
 
-        # Получить строку сессии
-        session_string = client.session.save()
-        print(f"💾 Session string получена, длина: {len(session_string)}")
+        print(f"✅ Клиент найден в памяти")
 
-        # Сохранить в БД
-        success = await save_session_to_db(phone, session_string)
-        if not success:
-            raise Exception("Ошибка при сохранении в БД")
+        try:
+            # Получить строку сессии
+            session_string = client.session.save()
+            print(f"✅ Session string получена, длина: {len(session_string)}")
+        except Exception as e:
+            print(f"❌ Ошибка получения session string: {str(e)}")
+            raise
 
-        # Получить информацию о пользователе
-        print(f"👤 Получаю информацию о пользователе...")
-        me = await client.get_me()
-        user_info = {
-            "phone": phone,
-            "first_name": me.first_name or "",
-            "last_name": me.last_name or "",
-            "username": me.username or "",
-            "id": me.id
-        }
-        print(f"✅ Информация о пользователе: {user_info['first_name']} {user_info['last_name']}")
+        try:
+            # Сохранить в БД
+            success = await save_session_to_db(phone, session_string)
+            if not success:
+                raise Exception("Ошибка при сохранении в БД")
+            print(f"✅ Сессия сохранена в БД")
+        except Exception as e:
+            print(f"❌ Ошибка сохранения в БД: {str(e)}")
+            raise
 
-        # Удалить из памяти и отключить
-        del pending_auth_clients[phone]
-        await client.disconnect()
-        print(f"🗑️ Клиент удалён из памяти и отключен")
-        print(f"📋 PENDING: {list(pending_auth_clients.keys())}")
+        try:
+            # Получить информацию о пользователе
+            print(f"👤 Получаю информацию о пользователе...")
+            me = await client.get_me()
+            user_info = {
+                "phone": phone,
+                "first_name": me.first_name or "",
+                "last_name": me.last_name or "",
+                "username": me.username or "",
+                "id": me.id
+            }
+            print(f"✅ Информация о пользователе: {user_info['first_name']} {user_info['last_name']}")
+        except Exception as e:
+            print(f"❌ Ошибка получения информации о пользователе: {str(e)}")
+            raise
+
+        try:
+            # Удалить из памяти и отключить
+            del pending_auth_clients[phone]
+            await client.disconnect()
+            print(f"✅ Клиент удалён из памяти и отключен")
+        except Exception as e:
+            print(f"⚠️ Ошибка при отключении клиента (не критично): {str(e)}")
+
+        print(f"📋 REMAINING PENDING: {list(pending_auth_clients.keys())}")
         print(f"✅ === /api/auth/save успешен ===\n")
 
         return {"ok": True, "user": user_info}
     except Exception as e:
         print(f"❌ Ошибка при /api/auth/save: {str(e)}")
+        import traceback
+        traceback.print_exc()
         print(f"❌ === /api/auth/save ошибка ===\n")
         raise HTTPException(status_code=400, detail=str(e))
 
