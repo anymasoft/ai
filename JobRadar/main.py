@@ -355,6 +355,18 @@ async def auth_save(request: AuthStartRequest):
         if not success:
             raise Exception("Ошибка при сохранении в БД")
 
+        # Получить информацию о пользователе
+        print(f"👤 Получаю информацию о пользователе...")
+        me = await client.get_me()
+        user_info = {
+            "phone": phone,
+            "first_name": me.first_name or "",
+            "last_name": me.last_name or "",
+            "username": me.username or "",
+            "id": me.id
+        }
+        print(f"✅ Информация о пользователе: {user_info['first_name']} {user_info['last_name']}")
+
         # Удалить из памяти и отключить
         del pending_auth_clients[phone]
         await client.disconnect()
@@ -362,7 +374,7 @@ async def auth_save(request: AuthStartRequest):
         print(f"📋 PENDING: {list(pending_auth_clients.keys())}")
         print(f"✅ === /api/auth/save успешен ===\n")
 
-        return {"ok": True}
+        return {"ok": True, "user": user_info}
     except Exception as e:
         print(f"❌ Ошибка при /api/auth/save: {str(e)}")
         print(f"❌ === /api/auth/save ошибка ===\n")
