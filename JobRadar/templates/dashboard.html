@@ -1570,15 +1570,6 @@
             const userJSON = localStorage.getItem('user');
             const statusDiv = document.getElementById('telegram-account-status');
 
-            if (!userJSON) {
-                statusDiv.innerHTML = `
-                    <button class="btn btn-primary" onclick="window.location.href='/login'">
-                        <i class="bi bi-telegram"></i> Авторизоваться в Telegram
-                    </button>
-                `;
-                return;
-            }
-
             try {
                 const user = JSON.parse(userJSON);
                 const fullName = `${user.first_name || ''} ${user.last_name || ''}`.trim() || user.username || 'Пользователь';
@@ -1602,12 +1593,7 @@
                     </div>
                 `;
             } catch (e) {
-                console.error('❌ Ошибка при обновлении статуса:', e);
-                statusDiv.innerHTML = `
-                    <button class="btn btn-primary" onclick="window.location.href='/login'">
-                        <i class="bi bi-telegram"></i> Авторизоваться в Telegram
-                    </button>
-                `;
+                console.error('❌ Ошибка при обновлении статуса аккаунта:', e);
             }
         }
 
