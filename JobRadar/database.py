@@ -70,6 +70,17 @@ def ensure_tables():
             ))
             print("✅ Индекс idx_lead_found_at OK")
 
+            # Индексы для SourceMessage
+            connection.execute(text(
+                "CREATE INDEX IF NOT EXISTS idx_source_chat_message ON source_messages (source_chat_id, source_message_id)"
+            ))
+            print("✅ Индекс idx_source_chat_message OK")
+
+            connection.execute(text(
+                "CREATE INDEX IF NOT EXISTS idx_published ON source_messages (published)"
+            ))
+            print("✅ Индекс idx_published OK")
+
             connection.commit()
         finally:
             connection.close()

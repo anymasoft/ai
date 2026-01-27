@@ -69,8 +69,6 @@ class SourceMessage(Base):
 
     __table_args__ = (
         UniqueConstraint('source_chat_id', 'source_message_id', name='uq_source_message'),
-        Index('idx_source_chat_message', 'source_chat_id', 'source_message_id'),
-        Index('idx_published', 'published'),
     )
 
     def __repr__(self):
