@@ -5,7 +5,7 @@ from telethon import TelegramClient
 from telethon.sessions import StringSession
 from config import TELEGRAM_API_ID, TELEGRAM_API_HASH
 from database import SessionLocal
-from models import TelegramSession
+from models import TelegramSession, User
 
 
 async def get_telegram_client(phone: str):
@@ -44,7 +44,7 @@ async def save_session_to_db(phone: str, session_string: str, telegram_user_id: 
     Сохранить session строку в SQLite БД.
 
     Args:
-        phone: Номер телефона
+        phone: Номер телефона (нормализованный)
         session_string: Строка сессии из StringSession.save()
         telegram_user_id: Telegram ID пользователя (опционально)
     """
@@ -58,6 +58,17 @@ async def save_session_to_db(phone: str, session_string: str, telegram_user_id: 
         print(f"💾 Подключена БД для сохранения сессии")
 
         try:
+            # Получить или создать User по phone
+            user = db.query(User).filter(User.phone == phone).first()
+            if not user:
+                print(f"✨ Создаю новго пользователя для {phone}")
+                user = User(phone=phone)
+                db.add(user)
+                db.flush()  # Чтобы получить user.id
+
+            user_id = user.id
+            print(f"👤 User: id={user_id}, phone={phone}")
+
             # Проверить, есть ли уже сессия для этого номера
             existing = db.query(TelegramSession).filter(TelegramSession.phone == phone).first()
             if existing:
@@ -68,6 +79,7 @@ async def save_session_to_db(phone: str, session_string: str, telegram_user_id: 
             else:
                 print(f"✨ Создаю новую сессию для {phone}")
                 new_session = TelegramSession(
+                    user_id=user_id,
                     phone=phone,
                     session_string=session_string,
                     telegram_user_id=telegram_user_id
@@ -75,7 +87,7 @@ async def save_session_to_db(phone: str, session_string: str, telegram_user_id: 
                 db.add(new_session)
 
             db.commit()
-            print(f"✅ Сессия сохранена в БД для {phone} (длина: {len(session_string)}, user_id: {telegram_user_id})")
+            print(f"✅ Сессия сохранена: phone={phone}, user_id={user_id}, telegram_id={telegram_user_id}")
             return True
         except Exception as db_error:
             db.rollback()

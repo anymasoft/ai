@@ -76,13 +76,21 @@ def init_db():
     print("✅ База данных инициализирована")
 
     # Проверить, есть ли уже задачи
-    from models import Task
+    from models import Task, User
     db = SessionLocal()
     try:
         if db.query(Task).count() == 0:
+            # Создать демо-пользователя если его нет
+            demo_user = db.query(User).filter(User.phone == "+1234567890").first()
+            if not demo_user:
+                demo_user = User(phone="+1234567890")
+                db.add(demo_user)
+                db.flush()
+
             # Добавить тестовые данные
             demo_tasks = [
                 Task(
+                    user_id=demo_user.id,
                     name="Python Remote Jobs",
                     status="running",
                     sources="telegram.me/dev_jobs, telegram.me/python_jobs",
@@ -93,6 +101,7 @@ def init_db():
                     alerts_channel=False
                 ),
                 Task(
+                    user_id=demo_user.id,
                     name="Freelance Gigs",
                     status="running",
                     sources="telegram.me/freelance",

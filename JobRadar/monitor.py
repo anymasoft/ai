@@ -578,14 +578,18 @@ async def send_lead_to_telegram(task: Task, lead: Lead, db: Session):
         db: SQLAlchemy сессия
     """
     try:
-        # Получить первую доступную TelegramSession (для MVP - одна авторизованная сессия)
-        telegram_session = db.query(TelegramSession).first()
+        # Получить TelegramSession по user_id из Task (строгая привязка)
+        telegram_session = (
+            db.query(TelegramSession)
+            .filter(TelegramSession.user_id == task.user_id)
+            .first()
+        )
         if not telegram_session:
-            logger.warning(f"[SEND] task={task.id} - нет авторизованной Telegram сессии")
+            logger.warning(f"[SEND] task={task.id} lead={lead.id} - нет Telegram сессии для user_id={task.user_id}")
             return
 
         if not telegram_session.telegram_user_id:
-            logger.warning(f"[SEND] task={task.id} - telegram_user_id не установлен в сессии")
+            logger.warning(f"[SEND] task={task.id} lead={lead.id} - telegram_user_id не установлен в сессии user_id={task.user_id}")
             return
 
         # Восстановить клиента из сохранённой сессии

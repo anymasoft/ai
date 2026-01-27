@@ -8,6 +8,19 @@ from datetime import datetime
 Base = declarative_base()
 
 
+class User(Base):
+    """Модель пользователя системы"""
+    __tablename__ = "users"
+
+    id = Column(Integer, primary_key=True)
+    phone = Column(String(20), unique=True, nullable=False)  # Нормализованный номер телефона
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    def __repr__(self):
+        return f"<User(id={self.id}, phone={self.phone})>"
+
+
 class Channel(Base):
     """Модель канала для мониторинга"""
     __tablename__ = "channels"
@@ -98,6 +111,7 @@ class Task(Base):
     __tablename__ = "tasks"
 
     id = Column(Integer, primary_key=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)  # Владелец задачи
     name = Column(String(255), nullable=False)
     status = Column(String(50), default="running")  # "running" или "paused"
     sources = Column(String(4000), nullable=False, default="")  # JSON или newline-separated
@@ -109,8 +123,12 @@ class Task(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
+    __table_args__ = (
+        Index('idx_user_id', 'user_id'),
+    )
+
     def __repr__(self):
-        return f"<Task(id={self.id}, name={self.name}, status={self.status})>"
+        return f"<Task(id={self.id}, user_id={self.user_id}, name={self.name}, status={self.status})>"
 
 
 class Lead(Base):
@@ -140,11 +158,16 @@ class TelegramSession(Base):
     __tablename__ = "telegram_sessions"
 
     id = Column(Integer, primary_key=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)  # Владелец сессии
     phone = Column(String(20), unique=True, nullable=False)  # Номер телефона
     session_string = Column(Text, nullable=False)  # StringSession строка (текст)
     telegram_user_id = Column(BigInteger, nullable=True)  # Telegram ID пользователя
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
+    __table_args__ = (
+        Index('idx_user_id', 'user_id'),
+    )
+
     def __repr__(self):
-        return f"<TelegramSession(id={self.id}, phone={self.phone}, user_id={self.telegram_user_id})>"
+        return f"<TelegramSession(id={self.id}, user_id={self.user_id}, phone={self.phone}, telegram_id={self.telegram_user_id})>"
