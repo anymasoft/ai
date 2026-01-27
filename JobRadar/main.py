@@ -129,6 +129,7 @@ class LeadResponse(BaseModel):
     source_message_id: int
     matched_keyword: Optional[str]
     found_at: datetime
+    is_read: bool
 
     class Config:
         from_attributes = True
@@ -239,17 +240,33 @@ async def delete_task(task_id: int, current_user: User = Depends(get_current_use
 
 # ============== API для Leads ==============
 
-@app.get("/api/leads", response_model=List[LeadResponse])
-async def get_all_leads(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    """Получить все найденные лиды текущего пользователя"""
+@app.get("/api/leads")
+async def get_all_leads(
+    page: int = 1,
+    limit: int = 20,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Получить найденные лиды текущего пользователя с пагинацией"""
+    # Запросить limit + 1 для определения наличия ещё записей
     leads = (
         db.query(Lead)
         .join(Task)
         .filter(Task.user_id == current_user.id)
         .order_by(Lead.found_at.desc())
+        .offset((page - 1) * limit)
+        .limit(limit + 1)
         .all()
     )
-    return leads
+
+    # Если получили больше чем limit - есть ещё записи
+    has_more = len(leads) > limit
+
+    # Вернуть только limit записей
+    return {
+        "leads": leads[:limit],
+        "has_more": has_more
+    }
 
 @app.get("/api/leads/task/{task_id}", response_model=List[LeadResponse])
 async def get_task_leads(task_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
@@ -275,17 +292,27 @@ async def get_lead(lead_id: int, current_user: User = Depends(get_current_user),
 
     return lead
 
-@app.get("/api/leads/unread_count")
+@app.get("/api/leads/unread-count")
 async def get_unread_count(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     """Получить количество непрочитанных лидов"""
     unread = (
         db.query(Lead)
         .join(Task)
         .filter(Task.user_id == current_user.id)
-        .filter((Lead.status == 'new') | (Lead.status == None))
+        .filter(Lead.is_read == False)
         .count()
     )
-    return {"unread_count": unread}
+    return {"count": unread}
+
+@app.post("/api/leads/mark-read")
+async def mark_all_read(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """Пометить все лиды текущего пользователя как прочитанные"""
+    db.query(Lead).join(Task).filter(
+        Task.user_id == current_user.id,
+        Lead.is_read == False
+    ).update({Lead.is_read: True})
+    db.commit()
+    return {"ok": True}
 
 @app.put("/api/leads/{lead_id}/viewed")
 async def mark_lead_viewed(lead_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
