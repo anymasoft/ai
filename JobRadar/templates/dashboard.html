@@ -850,9 +850,7 @@
         <div class="main-content">
             <!-- HEADER -->
             <div class="header">
-                <div class="header-left">
-                    <h3 id="page-title">Дашборд</h3>
-                </div>
+                <div class="header-left"></div>
                 <div class="header-right">
                     <div style="position: relative;">
                         <button class="header-btn" id="notifications-btn" onclick="toggleNotificationsMenu()">
@@ -898,6 +896,18 @@
                     </div>
                 </div>
             </div>
+
+            <!-- BREADCRUMBS NAVIGATION -->
+            <nav id="breadcrumbs" style="
+                font-size: 0.9rem;
+                color: #6b7280;
+                padding: 0.75rem 2rem;
+                background: white;
+                border-bottom: 1px solid #e5e7eb;
+                margin-bottom: 0;
+            ">
+                <span style="color: #5856d6; font-weight: 600;">Дашборд</span>
+            </nav>
 
             <!-- CONTENT -->
             <div class="content">
@@ -1334,6 +1344,18 @@
         // ==================== NAVIGATION & HASH MANAGEMENT ====================
         let leadsPollingInterval = null;
 
+        // Функция для обновления breadcrumbs
+        function updateBreadcrumbs(breadcrumbsArray) {
+            const breadcrumbsNav = document.getElementById('breadcrumbs');
+            breadcrumbsNav.innerHTML = breadcrumbsArray.map((item, index) => {
+                if (item.href) {
+                    return `<a href="#" onclick="${item.href}; return false;" style="color: #5856d6; text-decoration: none; cursor: pointer;">${item.label}</a>${index < breadcrumbsArray.length - 1 ? '<span style="margin: 0 0.5rem; color: #d1d5db;">/</span>' : ''}`;
+                } else {
+                    return `<span style="color: #${index === breadcrumbsArray.length - 1 ? '5856d6; font-weight: 600;' : '6b7280;'}">${item.label}</span>${index < breadcrumbsArray.length - 1 ? '<span style="margin: 0 0.5rem; color: #d1d5db;">/</span>' : ''}`;
+                }
+            }).join('');
+        }
+
         // Функция переключения вкладки с поддержкой hash
         async function switchToSection(section) {
             // Восстановить нормальное отображение контента (убрать стиль display:none который добавляет displayLeadPage)
@@ -1352,7 +1374,9 @@
                 billing: 'Тарифы',
                 settings: 'Настройки'
             };
-            document.getElementById('page-title').textContent = titles[section];
+
+            // Обновить breadcrumbs
+            updateBreadcrumbs([{ label: titles[section] }]);
 
             // Запустить polling только если вкладка Leads
             if (section === 'leads') {
@@ -1879,6 +1903,12 @@
             // Скрыть все секции
             document.querySelectorAll('.content-section').forEach(el => el.classList.remove('active'));
 
+            // Обновить breadcrumbs
+            updateBreadcrumbs([
+                { label: 'Лиды', href: "switchToSection('leads')" },
+                { label: `Лид #${lead.id}` }
+            ]);
+
             // Создать контейнер для страницы лида если его нет
             let leadPageContainer = document.getElementById('lead-page-section');
             if (!leadPageContainer) {
@@ -1893,19 +1923,6 @@
             }
 
             leadPageContainer.innerHTML = `
-                <!-- Breadcrumbs -->
-                <nav style="
-                    font-size: 0.9rem;
-                    color: #6b7280;
-                    margin-bottom: 1.5rem;
-                    padding: 0;
-                ">
-                    <a href="#" onclick="switchToSection('leads'); return false;" style="color: #5856d6; text-decoration: none; cursor: pointer;">
-                        Лиды
-                    </a>
-                    <span style="margin: 0 0.5rem;">></span>
-                    <span>Лид #${lead.id}</span>
-                </nav>
 
                 <!-- Карточка лида -->
                 <div style="
