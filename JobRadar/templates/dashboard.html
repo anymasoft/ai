@@ -1349,7 +1349,8 @@
             const breadcrumbsNav = document.getElementById('breadcrumbs');
             breadcrumbsNav.innerHTML = breadcrumbsArray.map((item, index) => {
                 if (item.href) {
-                    return `<a href="#" onclick="${item.href}; return false;" style="color: #5856d6; text-decoration: none; cursor: pointer;">${item.label}</a>${index < breadcrumbsArray.length - 1 ? '<span style="margin: 0 0.5rem; color: #d1d5db;">/</span>' : ''}`;
+                    // Используем только изменение hash, hashchange handler сделает остальное
+                    return `<a href="#${item.href}" style="color: #5856d6; text-decoration: none; cursor: pointer;">${item.label}</a>${index < breadcrumbsArray.length - 1 ? '<span style="margin: 0 0.5rem; color: #d1d5db;">/</span>' : ''}`;
                 } else {
                     return `<span style="color: #${index === breadcrumbsArray.length - 1 ? '5856d6; font-weight: 600;' : '6b7280;'}">${item.label}</span>${index < breadcrumbsArray.length - 1 ? '<span style="margin: 0 0.5rem; color: #d1d5db;">/</span>' : ''}`;
                 }
@@ -1791,6 +1792,10 @@
 
         // Функция загрузки и отрисовки лидов
         async function loadLeads(reset = true) {
+            // Защита от параллельных вызовов
+            if (leadsState.isLoading) return;
+            leadsState.isLoading = true;
+
             const container = document.getElementById('leads-container');
 
             try {
@@ -1906,6 +1911,8 @@
                         <p style="color: #888;">Не удалось загрузить лиды. Попробуйте позже.</p>
                     </div>
                 `;
+            } finally {
+                leadsState.isLoading = false;
             }
         }
 
@@ -1947,7 +1954,7 @@
 
             // Обновить breadcrumbs
             updateBreadcrumbs([
-                { label: 'Лиды', href: "switchToSection('leads')" },
+                { label: 'Лиды', href: 'leads' },
                 { label: `Лид #${lead.id}` }
             ]);
 
@@ -2047,9 +2054,7 @@
                         padding: 1.5rem;
                         background: #f9fafb;
                         border-radius: 8px;
-                    ">
-                        ${escapeHtml(lead.text)}
-                    </div>
+                    ">${escapeHtml(lead.text)}</div>
 
                     <!-- Дополнительно -->
                     ${lead.matched_keyword ? `
