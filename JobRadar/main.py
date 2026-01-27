@@ -15,7 +15,7 @@ from telethon.errors import SessionPasswordNeededError
 from config import TELEGRAM_API_ID, TELEGRAM_API_HASH
 
 from database import SessionLocal, init_db
-from models import Task
+from models import Task, Lead
 from telegram_auth import save_session_to_db, get_telegram_client
 import monitor
 
@@ -108,6 +108,18 @@ class TaskResponse(BaseModel):
     alerts_channel: bool
     created_at: datetime
     updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+class LeadResponse(BaseModel):
+    id: int
+    task_id: int
+    text: str
+    source_channel: str
+    source_message_id: int
+    matched_keyword: Optional[str]
+    found_at: datetime
 
     class Config:
         from_attributes = True
@@ -213,6 +225,32 @@ async def delete_task(task_id: int, db: Session = Depends(get_db)):
     db.delete(db_task)
     db.commit()
     return {"message": "Задача удалена"}
+
+# ============== API для Leads ==============
+
+@app.get("/api/leads", response_model=List[LeadResponse])
+async def get_all_leads(db: Session = Depends(get_db)):
+    """Получить все найденные лиды"""
+    leads = db.query(Lead).order_by(Lead.found_at.desc()).all()
+    return leads
+
+@app.get("/api/leads/task/{task_id}", response_model=List[LeadResponse])
+async def get_task_leads(task_id: int, db: Session = Depends(get_db)):
+    """Получить лиды для конкретной задачи"""
+    task = db.query(Task).filter(Task.id == task_id).first()
+    if not task:
+        raise HTTPException(status_code=404, detail="Задача не найдена")
+
+    leads = db.query(Lead).filter(Lead.task_id == task_id).order_by(Lead.found_at.desc()).all()
+    return leads
+
+@app.get("/api/leads/{lead_id}", response_model=LeadResponse)
+async def get_lead(lead_id: int, db: Session = Depends(get_db)):
+    """Получить информацию о конкретном лиде"""
+    lead = db.query(Lead).filter(Lead.id == lead_id).first()
+    if not lead:
+        raise HTTPException(status_code=404, detail="Лид не найден")
+    return lead
 
 # ============== API для статистики ==============
 
