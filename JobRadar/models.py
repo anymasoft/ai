@@ -1,7 +1,7 @@
 """
 JobRadar v0 - ORM модели для SQLite
 """
-from sqlalchemy import Column, Integer, String, Boolean, DateTime, BigInteger, UniqueConstraint, Index, ForeignKey, Text
+from sqlalchemy import Column, Integer, String, Boolean, DateTime, BigInteger, UniqueConstraint, ForeignKey, Text
 from sqlalchemy.ext.declarative import declarative_base
 from datetime import datetime
 
@@ -123,10 +123,6 @@ class Task(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
-    __table_args__ = (
-        Index('idx_user_id', 'user_id'),
-    )
-
     def __repr__(self):
         return f"<Task(id={self.id}, user_id={self.user_id}, name={self.name}, status={self.status})>"
 
@@ -144,11 +140,6 @@ class Lead(Base):
     found_at = Column(DateTime, default=datetime.utcnow)  # Когда найдено
     delivered_at = Column(DateTime, nullable=True)  # Когда доставлено пользователю
 
-    __table_args__ = (
-        Index('idx_task_id', 'task_id'),
-        Index('idx_found_at', 'found_at'),
-    )
-
     def __repr__(self):
         return f"<Lead(id={self.id}, task_id={self.task_id}, source={self.source_channel}, msg_id={self.source_message_id})>"
 
@@ -164,10 +155,6 @@ class TelegramSession(Base):
     telegram_user_id = Column(BigInteger, nullable=True)  # Telegram ID пользователя
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-
-    __table_args__ = (
-        Index('idx_user_id', 'user_id'),
-    )
 
     def __repr__(self):
         return f"<TelegramSession(id={self.id}, user_id={self.user_id}, phone={self.phone}, telegram_id={self.telegram_user_id})>"
