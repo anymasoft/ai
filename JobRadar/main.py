@@ -246,24 +246,33 @@ async def auth_submit_code(request: AuthCodeRequest):
 async def auth_submit_password(request: AuthPasswordRequest):
     """Отправить пароль 2FA"""
     try:
+        print(f"\n🔐 === /api/auth/submit-password запрос ===")
+        print(f"📱 Phone: {request.phone}")
         print(f"🔑 Проверка пароля 2FA для: {request.phone}")
         result = await submit_password(request.phone, request.password)
         print(f"✅ Результат submit_password: {result}")
+        print(f"🔐 === /api/auth/submit-password завершен (успех) ===\n")
         return {"success": result}
     except Exception as e:
         print(f"❌ Ошибка при /api/auth/submit-password: {str(e)}")
+        print(f"🔐 === /api/auth/submit-password завершен (ошибка) ===\n")
         raise HTTPException(status_code=400, detail=str(e))
 
 @app.post("/api/auth/save")
 async def auth_save(request: AuthStartRequest):
     """Сохранить сессию в БД"""
     try:
-        print(f"💾 Сохранение сессии для: {request.phone}")
+        print(f"\n🔐 === /api/auth/save запрос ===")
+        print(f"📱 Request phone: {request.phone}")
+        print(f"📝 Request object: {request}")
+        print(f"💾 Вызываю save_session для: {request.phone}")
         result = await save_session(request.phone)
         print(f"✅ Сессия успешно сохранена для {request.phone}")
+        print(f"🔐 === /api/auth/save завершен (успех) ===\n")
         return {"success": result, "message": "Сессия успешно сохранена"}
     except Exception as e:
         print(f"❌ Ошибка при /api/auth/save: {str(e)}")
+        print(f"🔐 === /api/auth/save завершен (ошибка) ===\n")
         raise HTTPException(status_code=400, detail=str(e))
 
 @app.post("/api/auth/cancel")
