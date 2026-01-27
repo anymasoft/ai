@@ -21,8 +21,19 @@ from database import get_db
 from filter_engine import load_active_filter, match_text
 from telethon.sessions import StringSession
 
-# Логирование
+# Логирование с обработчиками для консоли
 logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
+
+# Консольный обработчик
+console_handler = logging.StreamHandler()
+console_handler.setLevel(logging.DEBUG)
+formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+console_handler.setFormatter(formatter)
+
+# Добавить обработчик если его еще нет
+if not logger.handlers:
+    logger.addHandler(console_handler)
 
 # Флаг для подробной диагностики
 DEBUG_MESSAGE_DUMP = os.getenv("DEBUG_MESSAGE_DUMP", "false").lower() == "true"

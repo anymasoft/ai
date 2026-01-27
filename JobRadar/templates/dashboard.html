@@ -2373,14 +2373,83 @@
             leadsRealtimeInterval = setInterval(async () => {
                 const section = window.location.hash.substring(1) || 'dashboard';
 
-                // Обновить уведомления на любой странице
-                await updateNotifications();
-
-                // Если на странице Leads - обновить список
-                if (section === 'leads') {
-                    loadLeads();
+                // Обновить уведомления на любой странице каждые 3 секунды
+                try {
+                    await updateNotifications();
+                } catch (e) {
+                    console.error('Error updating notifications:', e);
                 }
-            }, 10000);
+
+                // Если на странице Leads - обновить список (но только первую страницу чтобы не потерять позицию)
+                if (section === 'leads' && leadsState.page === 1) {
+                    try {
+                        // Проверить если есть новые лиды
+                        const response = await getLeads(1, leadsState.limit);
+                        const newLeads = response.leads || [];
+
+                        // Если появились новые лиды - перезагружаем
+                        if (newLeads.length > 0 &&
+                            (leadsState.allLeads.length === 0 || newLeads[0].id > leadsState.allLeads[0].id)) {
+                            loadLeads(true);
+                            console.log('🔄 Новые лиды загружены');
+                        }
+                    } catch (e) {
+                        console.error('Error loading leads:', e);
+                    }
+                }
+
+                // Если на Dashboard - обновить последние 5 лидов
+                if (section === 'dashboard') {
+                    try {
+                        const stats = await getStats();
+                        document.getElementById('stat-leads').textContent = stats.total_matches;
+
+                        // Обновить блок с последними лидами
+                        const response = await getLeads(1, 5);
+                        const recentLeads = response.leads || [];
+                        const recentLeadsContainer = document.getElementById('recent-leads');
+
+                        if (recentLeads.length === 0) {
+                            recentLeadsContainer.innerHTML = '<div style="color: var(--text-light); padding: 0.75rem;">Лиды появятся после запуска мониторинга</div>';
+                        } else {
+                            const tasks = await getTasks();
+                            let html = '';
+                            recentLeads.forEach(lead => {
+                                const taskName = tasks.find(t => t.id === lead.task_id)?.name || 'Неизвестная задача';
+                                html += renderLeadCard(lead, taskName);
+                            });
+                            recentLeadsContainer.innerHTML = html;
+
+                            // Добавить обработчики кликов на карточки
+                            document.querySelectorAll('#recent-leads .lead-card').forEach(card => {
+                                card.addEventListener('click', async (e) => {
+                                    if (e.target.tagName === 'A' || e.target.tagName === 'BUTTON') return;
+                                    const leadId = card.getAttribute('data-lead-id');
+                                    const lead = recentLeads.find(l => l.id === parseInt(leadId));
+                                    if (lead && !leadsState.allLeads.find(l => l.id === leadId)) {
+                                        leadsState.allLeads.unshift(lead);
+                                    }
+                                    openLeadPage(leadId);
+                                });
+
+                                card.addEventListener('mouseenter', () => {
+                                    card.style.transform = 'translateY(-1px)';
+                                    card.style.boxShadow = '0 2px 8px rgba(0, 0, 0, 0.1)';
+                                    card.style.backgroundColor = '#f9fafb';
+                                });
+
+                                card.addEventListener('mouseleave', () => {
+                                    card.style.transform = 'translateY(0)';
+                                    card.style.boxShadow = '0 1px 2px rgba(0, 0, 0, 0.05)';
+                                    card.style.backgroundColor = 'white';
+                                });
+                            });
+                        }
+                    } catch (e) {
+                        console.error('Error updating dashboard:', e);
+                    }
+                }
+            }, 3000);  // Опрашивать каждые 3 секунды вместо 10
         }
 
         function stopLeadsRealtimePolling() {
