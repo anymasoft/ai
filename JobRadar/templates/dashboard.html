@@ -1229,7 +1229,9 @@
 
         async function getTasks() {
             try {
-                const response = await fetch(`${API_BASE}/api/tasks`);
+                const response = await fetch(`${API_BASE}/api/tasks`, {
+                    credentials: "include"
+                });
                 if (!response.ok) throw new Error('Failed to fetch tasks');
                 return await response.json();
             } catch (error) {
@@ -1240,7 +1242,9 @@
 
         async function getStats() {
             try {
-                const response = await fetch(`${API_BASE}/api/stats`);
+                const response = await fetch(`${API_BASE}/api/stats`, {
+                    credentials: "include"
+                });
                 if (!response.ok) throw new Error('Failed to fetch stats');
                 return await response.json();
             } catch (error) {
@@ -1260,6 +1264,7 @@
                 const response = await fetch(`${API_BASE}/api/tasks`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
                     body: JSON.stringify(taskData)
                 });
                 if (!response.ok) throw new Error('Failed to create task');
@@ -1276,6 +1281,7 @@
                 const response = await fetch(`${API_BASE}/api/tasks/${taskId}`, {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
                     body: JSON.stringify(taskData)
                 });
                 if (!response.ok) throw new Error('Failed to update task');
@@ -1290,7 +1296,8 @@
         async function deleteTask(taskId) {
             try {
                 const response = await fetch(`${API_BASE}/api/tasks/${taskId}`, {
-                    method: 'DELETE'
+                    method: 'DELETE',
+                    credentials: 'include'
                 });
                 if (!response.ok) throw new Error('Failed to delete task');
                 return await response.json();
@@ -1340,7 +1347,9 @@
             if (taskId) {
                 // Fetch the specific task
                 try {
-                    const response = await fetch(`${API_BASE}/api/tasks/${taskId}`);
+                    const response = await fetch(`${API_BASE}/api/tasks/${taskId}`, {
+                        credentials: 'include'
+                    });
                     if (!response.ok) throw new Error('Failed to fetch task');
                     const task = await response.json();
 
@@ -1423,7 +1432,9 @@
 
         async function toggleTaskStatus(taskId) {
             try {
-                const response = await fetch(`${API_BASE}/api/tasks/${taskId}`);
+                const response = await fetch(`${API_BASE}/api/tasks/${taskId}`, {
+                    credentials: 'include'
+                });
                 if (!response.ok) throw new Error('Failed to fetch task');
                 const task = await response.json();
 
