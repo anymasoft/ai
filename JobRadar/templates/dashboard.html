@@ -911,10 +911,10 @@
             </div>
             <ul class="nav-menu">
                 <li><a class="nav-link active" data-section="dashboard"><i class="bi bi-speedometer2"></i> Dashboard</a></li>
-                <li><a class="nav-link" data-section="tasks"><i class="bi bi-list-check"></i> Tasks</a></li>
-                <li><a class="nav-link" data-section="leads"><i class="bi bi-fire"></i> Leads</a></li>
-                <li><a class="nav-link" data-section="billing"><i class="bi bi-credit-card"></i> Billing</a></li>
-                <li><a class="nav-link" data-section="settings"><i class="bi bi-gear"></i> Settings</a></li>
+                <li><a class="nav-link" data-section="tasks"><i class="bi bi-list-check"></i> Мои задачи</a></li>
+                <li><a class="nav-link" data-section="leads"><i class="bi bi-fire"></i> Лиды</a></li>
+                <li><a class="nav-link" data-section="billing"><i class="bi bi-credit-card"></i> Тарифы</a></li>
+                <li><a class="nav-link" data-section="settings"><i class="bi bi-gear"></i> Настройки</a></li>
             </ul>
         </aside>
 
@@ -923,7 +923,7 @@
             <!-- HEADER -->
             <div class="header">
                 <div class="header-left">
-                    <h3 id="page-title">Dashboard</h3>
+                    <h3 id="page-title">Дашборд</h3>
                 </div>
                 <div class="header-right">
                     <button class="header-btn" id="notifications-btn">
@@ -982,9 +982,9 @@
                 <!-- TASKS SECTION -->
                 <section id="tasks" class="content-section">
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
-                        <h4>Ваши задачи</h4>
+                        <h4>Мои задачи</h4>
                         <button class="btn btn-primary" onclick="openTaskModal()">
-                            <i class="bi bi-plus"></i> Новая задача
+                            <i class="bi bi-plus"></i> Создать задачу
                         </button>
                     </div>
                     <div id="tasks-container" class="tasks-grid"></div>
@@ -1002,7 +1002,7 @@
                             <option value="viewed">Просмотренные</option>
                             <option value="archived">Архивированные</option>
                         </select>
-                        <input type="text" id="filter-search" placeholder="Поиск лидов...">
+                        <input type="text" id="filter-search" placeholder="Искать лиды...">
                     </div>
                     <div id="leads-container" class="leads-list"></div>
                 </section>
@@ -1010,65 +1010,65 @@
                 <!-- BILLING SECTION -->
                 <section id="billing" class="content-section">
                     <div style="background: white; padding: 1.5rem; border-radius: 8px; border: 1px solid var(--gray-border); margin-bottom: 2rem;">
-                        <h4 style="margin-bottom: 1rem;">Current Plan</h4>
-                        <div style="font-size: 1.5rem; font-weight: 700; color: var(--primary); margin-bottom: 1rem;">Free</div>
-                        <p style="color: var(--text-light); margin-bottom: 1.5rem;">You're on the free plan. Upgrade to unlock more tasks and sources.</p>
+                        <h4 style="margin-bottom: 1rem;">Текущий тариф</h4>
+                        <div style="font-size: 1.5rem; font-weight: 700; color: var(--primary); margin-bottom: 1rem;">Бесплатный</div>
+                        <p style="color: var(--text-light); margin-bottom: 1.5rem;">Вы на бесплатном плане. Обновитесь, чтобы разблокировать больше задач и источников.</p>
                         <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; font-size: 0.9rem; margin-bottom: 1.5rem;">
                             <div>
-                                <div style="font-weight: 600;">2/3 Tasks</div>
-                                <div style="color: var(--text-light); font-size: 0.85rem;">Used</div>
+                                <div style="font-weight: 600;">2/3 Задачи</div>
+                                <div style="color: var(--text-light); font-size: 0.85rem;">Использовано</div>
                             </div>
                             <div>
-                                <div style="font-weight: 600;">5/10 Sources</div>
-                                <div style="color: var(--text-light); font-size: 0.85rem;">Used</div>
+                                <div style="font-weight: 600;">5/10 Источников</div>
+                                <div style="color: var(--text-light); font-size: 0.85rem;">Использовано</div>
                             </div>
                             <div>
-                                <div style="font-weight: 600;">10/25 Keywords</div>
-                                <div style="color: var(--text-light); font-size: 0.85rem;">Used</div>
+                                <div style="font-weight: 600;">10/25 Ключевых слов</div>
+                                <div style="color: var(--text-light); font-size: 0.85rem;">Использовано</div>
                             </div>
                         </div>
-                        <button class="btn btn-primary" onclick="showToast('Интеграция платежей в разработке', 'info')">Upgrade Now</button>
+                        <button class="btn btn-primary" onclick="showToast('Интеграция платежей в разработке', 'info')">Обновить</button>
                     </div>
 
-                    <h4 style="margin-bottom: 1rem;">Pricing Plans</h4>
+                    <h4 style="margin-bottom: 1rem;">Тарифные планы</h4>
                     <div class="pricing-grid">
                         <div class="pricing-card current">
-                            <div class="pricing-badge">Current</div>
-                            <div class="pricing-name">Starter</div>
-                            <div class="pricing-price">Free</div>
+                            <div class="pricing-badge">Текущий</div>
+                            <div class="pricing-name">Стартер</div>
+                            <div class="pricing-price">Бесплатно</div>
                             <ul class="pricing-features">
-                                <li>3 Tasks</li>
-                                <li>10 Sources</li>
-                                <li>25 Keywords</li>
-                                <li>Email support</li>
+                                <li>3 Задачи</li>
+                                <li>10 Источников</li>
+                                <li>25 Ключевых слов</li>
+                                <li>Поддержка по почте</li>
                             </ul>
-                            <button class="btn" disabled>Current Plan</button>
+                            <button class="btn" disabled>Текущий план</button>
                         </div>
 
                         <div class="pricing-card">
-                            <div class="pricing-name">Pro</div>
+                            <div class="pricing-name">Профессиональный</div>
                             <div class="pricing-price">$29</div>
-                            <div style="color: var(--text-light); margin-bottom: 1rem; font-size: 0.9rem;">per month</div>
+                            <div style="color: var(--text-light); margin-bottom: 1rem; font-size: 0.9rem;">в месяц</div>
                             <ul class="pricing-features">
-                                <li>20 Tasks</li>
-                                <li>100 Sources</li>
-                                <li>500 Keywords</li>
-                                <li>Priority support</li>
+                                <li>20 Задач</li>
+                                <li>100 Источников</li>
+                                <li>500 Ключевых слов</li>
+                                <li>Приоритетная поддержка</li>
                             </ul>
-                            <button class="btn btn-primary" onclick="showToast('Интеграция платежей в разработке', 'info')">Upgrade</button>
+                            <button class="btn btn-primary" onclick="showToast('Интеграция платежей в разработке', 'info')">Обновить</button>
                         </div>
 
                         <div class="pricing-card">
-                            <div class="pricing-name">Team</div>
+                            <div class="pricing-name">Команда</div>
                             <div class="pricing-price">$99</div>
-                            <div style="color: var(--text-light); margin-bottom: 1rem; font-size: 0.9rem;">per month</div>
+                            <div style="color: var(--text-light); margin-bottom: 1rem; font-size: 0.9rem;">в месяц</div>
                             <ul class="pricing-features">
-                                <li>Unlimited Tasks</li>
-                                <li>Unlimited Sources</li>
-                                <li>Unlimited Keywords</li>
-                                <li>24/7 support</li>
+                                <li>Неограниченные задачи</li>
+                                <li>Неограниченные источники</li>
+                                <li>Неограниченные ключевые слова</li>
+                                <li>Поддержка 24/7</li>
                             </ul>
-                            <button class="btn btn-primary" onclick="showToast('Интеграция платежей в разработке', 'info')">Contact</button>
+                            <button class="btn btn-primary" onclick="showToast('Интеграция платежей в разработке', 'info')">Связаться</button>
                         </div>
                     </div>
                 </section>
@@ -1076,35 +1076,35 @@
                 <!-- SETTINGS SECTION -->
                 <section id="settings" class="content-section">
                     <div style="background: white; padding: 1.5rem; border-radius: 8px; border: 1px solid var(--gray-border); margin-bottom: 1.5rem;">
-                        <h4 style="margin-bottom: 1rem;">Account</h4>
+                        <h4 style="margin-bottom: 1rem;">Аккаунт</h4>
                         <div style="margin-bottom: 1rem;">
-                            <label style="display: block; margin-bottom: 0.5rem; font-weight: 600;">Telegram Account</label>
+                            <label style="display: block; margin-bottom: 0.5rem; font-weight: 600;">Аккаунт Telegram</label>
                             <div id="telegram-account-status"></div>
                         </div>
                     </div>
 
                     <div style="background: white; padding: 1.5rem; border-radius: 8px; border: 1px solid var(--gray-border); margin-bottom: 1.5rem;">
-                        <h4 style="margin-bottom: 1rem;">Notifications</h4>
-                        <p style="color: var(--text-gray); margin-bottom: 1rem; font-size: 0.9rem;">Where to send new leads:</p>
+                        <h4 style="margin-bottom: 1rem;">Уведомления</h4>
+                        <p style="color: var(--text-gray); margin-bottom: 1rem; font-size: 0.9rem;">Куда отправлять новые лиды:</p>
                         <div class="form-group" style="margin-bottom: 1rem;">
                             <label class="checkbox-group">
                                 <input type="checkbox" id="notify-personal" checked>
-                                <span>Send to my personal chat</span>
+                                <span>Отправлять в мой личный чат</span>
                             </label>
                         </div>
                         <div class="form-group" style="margin-bottom: 1.5rem;">
                             <label class="checkbox-group">
                                 <input type="checkbox" id="notify-channel">
-                                <span>Forward to channel (from task settings)</span>
+                                <span>Пересылать в канал (из настроек задачи)</span>
                             </label>
                         </div>
-                        <button class="btn btn-primary" onclick="saveSettings()">Save Settings</button>
+                        <button class="btn btn-primary" onclick="saveSettings()">Сохранить</button>
                     </div>
 
                     <div style="background: #fff5f5; padding: 1.5rem; border-radius: 8px; border: 1px solid #fdd; margin-bottom: 1.5rem;">
-                        <h4 style="margin-bottom: 1rem; color: #d32f2f;">Danger Zone</h4>
+                        <h4 style="margin-bottom: 1rem; color: #d32f2f;">Опасная зона</h4>
                         <button class="btn btn-danger" onclick="showDeleteConfirm('Вы уверены, что хотите удалить аккаунт? Это действие нельзя отменить.', () => showToast('Удаление аккаунта в разработке', 'info'))">
-                            <i class="bi bi-trash"></i> Delete Account
+                            <i class="bi bi-trash"></i> Удалить аккаунт
                         </button>
                     </div>
                 </section>
@@ -1133,37 +1133,37 @@
     <div id="task-modal" class="modal">
         <div class="modal-content">
             <div class="modal-header">
-                <span id="modal-title">Create Task</span>
+                <span id="modal-title">Создать задачу</span>
                 <button class="modal-close" onclick="closeTaskModal()">&times;</button>
             </div>
             <form id="task-form">
                 <div class="form-group">
-                    <label>Task Name *</label>
+                    <label>Название задачи *</label>
                     <input type="text" id="task-name" required>
                 </div>
 
                 <div class="form-group">
-                    <label>Sources (channels/chats)</label>
-                    <textarea id="task-sources" placeholder="telegram.me/channel&#10;https://t.me/+xxxxx&#10;One per line"></textarea>
-                    <span class="form-hint">Enter Telegram channel links, one per line</span>
+                    <label>Источники (каналы/чаты)</label>
+                    <textarea id="task-sources" placeholder="telegram.me/channel&#10;https://t.me/+xxxxx&#10;По одному в строке"></textarea>
+                    <span class="form-hint">Введите ссылки на каналы Telegram, по одной в строку</span>
                 </div>
 
                 <div class="form-group">
-                    <label>Include Keywords *</label>
-                    <textarea id="task-include" placeholder="python&#10;remote&#10;One per line" required></textarea>
-                    <span class="form-hint">Find leads containing these keywords</span>
+                    <label>Включать ключевые слова *</label>
+                    <textarea id="task-include" placeholder="python&#10;remote&#10;По одному в строке" required></textarea>
+                    <span class="form-hint">Найти лиды с этими ключевыми словами</span>
                 </div>
 
                 <div class="form-group">
-                    <label>Exclude Keywords (minus-words)</label>
-                    <textarea id="task-exclude" placeholder="junior&#10;internship&#10;One per line"></textarea>
-                    <span class="form-hint">Ignore leads containing these keywords</span>
+                    <label>Исключить ключевые слова</label>
+                    <textarea id="task-exclude" placeholder="junior&#10;internship&#10;По одному в строке"></textarea>
+                    <span class="form-hint">Игнорировать лиды с этими ключевыми словами</span>
                 </div>
 
                 <div class="form-group">
-                    <label>Forward Channel (optional)</label>
-                    <input type="text" id="task-channel" placeholder="@mychannel or https://t.me/mychannel">
-                    <span class="form-hint">Channel to forward found leads</span>
+                    <label>Канал для пересылки (опционально)</label>
+                    <input type="text" id="task-channel" placeholder="@mychannel или https://t.me/mychannel">
+                    <span class="form-hint">Канал для пересылки найденных лидов</span>
                 </div>
 
                 <div class="form-group">
@@ -1179,8 +1179,8 @@
                 </div>
 
                 <div class="modal-actions">
-                    <button type="button" class="btn" onclick="closeTaskModal()">Cancel</button>
-                    <button type="submit" class="btn btn-primary">Save Task</button>
+                    <button type="button" class="btn" onclick="closeTaskModal()">Отмена</button>
+                    <button type="submit" class="btn btn-primary">Сохранить</button>
                 </div>
             </form>
         </div>
@@ -1326,11 +1326,11 @@
                 link.classList.add('active');
 
                 const titles = {
-                    dashboard: 'Dashboard',
-                    tasks: 'Tasks',
-                    leads: 'Leads',
-                    billing: 'Billing',
-                    settings: 'Settings'
+                    dashboard: 'Дашборд',
+                    tasks: 'Мои задачи',
+                    leads: 'Лиды',
+                    billing: 'Тарифы',
+                    settings: 'Настройки'
                 };
                 document.getElementById('page-title').textContent = titles[section];
 
@@ -1356,7 +1356,7 @@
                     if (!response.ok) throw new Error('Failed to fetch task');
                     const task = await response.json();
 
-                    document.getElementById('modal-title').textContent = 'Edit Task';
+                    document.getElementById('modal-title').textContent = 'Редактировать задачу';
                     document.getElementById('task-name').value = task.name;
                     document.getElementById('task-sources').value = task.sources;
                     document.getElementById('task-include').value = task.include_keywords;
@@ -1370,7 +1370,7 @@
                     return;
                 }
             } else {
-                document.getElementById('modal-title').textContent = 'Create Task';
+                document.getElementById('modal-title').textContent = 'Создать задачу';
             }
 
             modal.classList.add('active');
@@ -1476,7 +1476,7 @@
                 <div class="task-card">
                     <div class="task-header">
                         <div class="task-title">${task.name}</div>
-                        <span class="task-status ${task.status}">${task.status}</span>
+                        <span class="task-status ${task.status}">${task.status === 'running' ? 'Работает' : 'Пауза'}</span>
                     </div>
                     <div class="task-counts">
                         <div class="task-count">
