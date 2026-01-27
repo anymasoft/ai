@@ -296,9 +296,9 @@ async def init_telegram_client():
 
         try:
             await telegram_client.start(phone=TELEGRAM_PHONE)
-            print("✅ Telegram клиент инициализирован")
+            logger.info("✅ Telegram клиент инициализирован")
         except Exception as e:
-            print(f"❌ Ошибка инициализации Telegram: {e}")
+            logger.error(f"❌ Ошибка инициализации Telegram: {e}")
             raise
 
 
@@ -308,7 +308,7 @@ async def close_telegram_client():
 
     if telegram_client:
         await telegram_client.disconnect()
-        print("🔌 Telegram клиент отключен")
+        logger.info("🔌 Telegram клиент отключен")
 
 
 async def resolve_channel_entity(channel: Channel):
@@ -752,7 +752,7 @@ async def check_channel_for_new_messages(channel: Channel, db: Session):
         db: SQLAlchemy сессия
     """
     if not telegram_client:
-        print("⚠️  Telegram клиент не инициализирован")
+        logger.warning("⚠️ Telegram клиент не инициализирован")
         return
 
     try:
@@ -806,11 +806,8 @@ async def check_channel_for_new_messages(channel: Channel, db: Session):
             # Проверяем совпадение через фильтр
             if match_text(text, filter_config, legacy_keywords):
                 matched_count += 1
-                print(f"\n🎯 СОВПАДЕНИЕ НАЙДЕНО!")
-                print(f"   Канал: {channel_display}")
-                print(f"   Время: {msg.date.strftime('%Y-%m-%d %H:%M:%S') if msg.date else 'N/A'}")
-                print(f"   Автор: {msg.sender.username if msg.sender and hasattr(msg.sender, 'username') else 'Unknown'}")
-                print(f"   Текст: {text[:200]}...\n")
+                text_preview = (msg.text or "")[:100].replace("\n", " ")
+                logger.info(f"🎯 СОВПАДЕНИЕ | канал={channel_display} | msg_id={msg.id} | {text_preview}...")
 
                 # Публикуем найденный пост в канал JobRadar
                 await publish_matched_post(msg, channel)

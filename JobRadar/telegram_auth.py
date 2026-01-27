@@ -1,11 +1,14 @@
 """
 JobRadar - Вспомогательные функции для работы с Telegram
 """
+import logging
 from telethon import TelegramClient
 from telethon.sessions import StringSession
 from config import TELEGRAM_API_ID, TELEGRAM_API_HASH
 from database import SessionLocal
 from models import TelegramSession, User
+
+logger = logging.getLogger(__name__)
 
 
 async def get_telegram_client(phone: str):
@@ -23,19 +26,19 @@ async def get_telegram_client(phone: str):
     db.close()
 
     if not session:
-        print(f"❌ Сессия для {phone} не найдена в БД")
+        logger.warning(f"❌ Сессия для {phone} не найдена в БД")
         return None
 
     try:
         # Восстановить клиента из сохранённой сессии
         session_string = session.session_string
-        print(f"✅ Сессия для {phone} загружена из БД (длина: {len(session_string)})")
+        logger.info(f"✅ Сессия для {phone} загружена из БД")
 
         client = TelegramClient(StringSession(session_string), TELEGRAM_API_ID, TELEGRAM_API_HASH)
         await client.connect()
         return client
     except Exception as e:
-        print(f"❌ Ошибка восстановления сессии: {e}")
+        logger.error(f"❌ Ошибка восстановления сессии для {phone}: {e}")
         return None
 
 
@@ -51,33 +54,30 @@ async def save_session_to_db(phone: str, session_string: str, telegram_user_id: 
     try:
         # Страховка: убедиться, что таблица существует
         from database import ensure_tables
-        print(f"🔐 Проверяю наличие таблицы telegram_sessions...")
         ensure_tables()
 
         db = SessionLocal()
-        print(f"💾 Подключена БД для сохранения сессии")
 
         try:
             # Получить или создать User по phone
             user = db.query(User).filter(User.phone == phone).first()
             if not user:
-                print(f"✨ Создаю новго пользователя для {phone}")
+                logger.info(f"✨ Создаю нового пользователя: {phone}")
                 user = User(phone=phone)
                 db.add(user)
                 db.flush()  # Чтобы получить user.id
 
             user_id = user.id
-            print(f"👤 User: id={user_id}, phone={phone}")
 
             # Проверить, есть ли уже сессия для этого номера
             existing = db.query(TelegramSession).filter(TelegramSession.phone == phone).first()
             if existing:
-                print(f"🔄 Обновляю существующую сессию для {phone}")
+                logger.info(f"🔄 Обновляю сессию: phone={phone}")
                 existing.session_string = session_string
                 if telegram_user_id:
                     existing.telegram_user_id = telegram_user_id
             else:
-                print(f"✨ Создаю новую сессию для {phone}")
+                logger.info(f"✨ Сохраняю новую сессию: phone={phone}")
                 new_session = TelegramSession(
                     user_id=user_id,
                     phone=phone,
@@ -87,19 +87,15 @@ async def save_session_to_db(phone: str, session_string: str, telegram_user_id: 
                 db.add(new_session)
 
             db.commit()
-            print(f"✅ Сессия сохранена: phone={phone}, user_id={user_id}, telegram_id={telegram_user_id}")
+            logger.info(f"✅ Сессия сохранена | phone={phone} | user_id={user_id} | telegram_id={telegram_user_id}")
             return True
         except Exception as db_error:
             db.rollback()
-            print(f"❌ Ошибка при работе с БД: {type(db_error).__name__}: {db_error}")
-            import traceback
-            traceback.print_exc()
+            logger.error(f"❌ Ошибка при сохранении сессии: {type(db_error).__name__}: {db_error}")
             return False
         finally:
             db.close()
 
     except Exception as e:
-        print(f"❌ Критическая ошибка сохранения сессии в БД: {type(e).__name__}: {e}")
-        import traceback
-        traceback.print_exc()
+        logger.error(f"❌ Критическая ошибка сохранения сессии: {type(e).__name__}: {e}")
         return False
