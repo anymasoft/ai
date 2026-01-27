@@ -189,18 +189,6 @@
             background: var(--gray-300);
         }
 
-        .btn-link {
-            width: auto;
-            background: none;
-            color: var(--primary);
-            text-decoration: underline;
-            padding: 0.5rem;
-        }
-
-        .btn-link:hover {
-            color: var(--primary-dark);
-        }
-
         /* Этапы авторизации */
         .auth-stage {
             display: none;
@@ -423,7 +411,6 @@
                 <button class="btn btn-primary" id="btn-send-code">
                     <i class="bi bi-arrow-right"></i> Проверить код
                 </button>
-                <button class="btn btn-link" onclick="backToPhone()">← Вернуться</button>
             </div>
 
             <!-- Этап 3: Ввод пароля (если нужен) -->
@@ -439,7 +426,6 @@
                 <button class="btn btn-primary" id="btn-send-password">
                     <i class="bi bi-arrow-right"></i> Подтвердить
                 </button>
-                <button class="btn btn-link" onclick="backToCode()">← Вернуться</button>
             </div>
 
             <!-- Этап 4: Успешная авторизация -->
@@ -657,17 +643,6 @@
             } catch (error) {
                 showToast('Ошибка подключения: ' + error.message, 'error');
             }
-        }
-
-        // ==================== Навигация ====================
-        function backToPhone() {
-            document.getElementById('phone').focus();
-            showStage('phone');
-        }
-
-        function backToCode() {
-            document.getElementById('code').focus();
-            showStage('code');
         }
 
         // Автофокус на инпуты
