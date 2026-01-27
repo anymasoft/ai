@@ -137,9 +137,10 @@ class Lead(Base):
     matched_keyword = Column(String(255), nullable=True)  # Какое ключевое слово совпало
     found_at = Column(DateTime, default=datetime.utcnow)  # Когда найдено
     delivered_at = Column(DateTime, nullable=True)  # Когда доставлено пользователю
+    status = Column(String(50), default="new")  # "new" или "viewed"
 
     def __repr__(self):
-        return f"<Lead(id={self.id}, task_id={self.task_id}, source={self.source_channel}, msg_id={self.source_message_id})>"
+        return f"<Lead(id={self.id}, task_id={self.task_id}, source={self.source_channel}, status={self.status})>"
 
 
 class TaskSourceState(Base):

@@ -926,10 +926,31 @@
                     <h3 id="page-title">Дашборд</h3>
                 </div>
                 <div class="header-right">
-                    <button class="header-btn" id="notifications-btn">
-                        <i class="bi bi-bell"></i>
-                        <span class="badge-count" id="notification-count"></span>
-                    </button>
+                    <div style="position: relative;">
+                        <button class="header-btn" id="notifications-btn" onclick="toggleNotificationsMenu()">
+                            <i class="bi bi-bell"></i>
+                            <span class="badge-count" id="notification-count" style="display: none;"></span>
+                        </button>
+                        <div class="notifications-menu" id="notifications-menu" style="
+                            display: none;
+                            position: absolute;
+                            top: 100%;
+                            right: 0;
+                            background: white;
+                            border: 1px solid #ddd;
+                            border-radius: 8px;
+                            min-width: 300px;
+                            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+                            z-index: 1000;
+                            margin-top: 0.5rem;
+                        ">
+                            <div style="padding: 1rem; border-bottom: 1px solid #eee; font-weight: 600;">Уведомления</div>
+                            <div id="notifications-list" style="max-height: 400px; overflow-y: auto;"></div>
+                            <button class="btn btn-primary" style="width: 100%; margin: 0;" onclick="switchToSection('leads'); toggleNotificationsMenu();">
+                                Показать все лиды
+                            </button>
+                        </div>
+                    </div>
                     <div class="user-profile">
                         <button class="header-btn" id="profile-btn" onclick="toggleProfileMenu()">
                             <i class="bi bi-person-circle"></i>
@@ -991,20 +1012,54 @@
                 </section>
 
                 <!-- LEADS SECTION -->
-                <section id="leads" class="content-section">
-                    <div class="leads-filters">
-                        <select id="filter-task">
+                <section id="leads" class="content-section" style="background: #f7f8fb; padding: 2rem 1rem;">
+                    <!-- Фильтры компактные -->
+                    <div style="
+                        max-width: 820px;
+                        margin: 0 auto 2rem;
+                        display: flex;
+                        gap: 1rem;
+                        flex-wrap: wrap;
+                    ">
+                        <select id="filter-task" style="
+                            flex: 1;
+                            min-width: 150px;
+                            padding: 0.6rem;
+                            border: 1px solid #ddd;
+                            border-radius: 6px;
+                            font-size: 0.9rem;
+                        ">
                             <option value="">Все задачи</option>
                         </select>
-                        <select id="filter-status">
+                        <select id="filter-status" style="
+                            flex: 1;
+                            min-width: 150px;
+                            padding: 0.6rem;
+                            border: 1px solid #ddd;
+                            border-radius: 6px;
+                            font-size: 0.9rem;
+                        ">
                             <option value="">Все статусы</option>
                             <option value="new">Новые</option>
                             <option value="viewed">Просмотренные</option>
-                            <option value="archived">Архивированные</option>
                         </select>
-                        <input type="text" id="filter-search" placeholder="Искать лиды...">
+                        <input type="text" id="filter-search" placeholder="Искать лиды..." style="
+                            flex: 1;
+                            min-width: 200px;
+                            padding: 0.6rem;
+                            border: 1px solid #ddd;
+                            border-radius: 6px;
+                            font-size: 0.9rem;
+                        ">
                     </div>
-                    <div id="leads-container" class="leads-list"></div>
+
+                    <!-- Контейнер лидов с правильным лейаутом -->
+                    <div style="
+                        max-width: 820px;
+                        margin: 0 auto;
+                    ">
+                        <div id="leads-container" class="leads-list"></div>
+                    </div>
                 </section>
 
                 <!-- BILLING SECTION -->
@@ -1563,7 +1618,7 @@
 
         // ==================== LEADS MANAGEMENT ====================
 
-        // Функция рендеринга одной карточки лида в Telegram-стиле
+        // Функция рендеринга одной карточки лида в стиле Telegram-ленты
         function renderLeadCard(lead, taskName) {
             const foundDate = new Date(lead.found_at).toLocaleDateString('ru-RU', {
                 year: 'numeric',
@@ -1573,134 +1628,98 @@
                 minute: '2-digit'
             });
 
-            // Получить username источника без @
             const channelUsername = lead.source_channel.replace('@', '');
-
-            // Построить ссылки
             const telegramProfileUrl = `https://t.me/${channelUsername}`;
             const telegramPostUrl = lead.source_message_id
                 ? `https://t.me/${channelUsername}/${lead.source_message_id}`
                 : null;
 
-            // Стиль Telegram-карточки
-            const html = `
-                <div class="lead-card telegram-card" style="
+            return `
+                <div class="lead-card" data-lead-id="${lead.id}" data-status="${lead.status || 'new'}" style="
                     background: white;
-                    border-radius: 12px;
-                    padding: 14px;
-                    margin-bottom: 1rem;
-                    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-                    border: 1px solid #e0e0e0;
+                    border-radius: 14px;
+                    border: 1px solid #eef0f3;
+                    padding: 12px 14px;
+                    margin-bottom: 12px;
+                    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
                     transition: all 0.2s ease;
-                    display: flex;
-                    flex-direction: column;
-                    gap: 0.75rem;
+                    cursor: pointer;
                 ">
-                    <!-- Заголовок с иконкой огня -->
-                    <div style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.95rem; font-weight: 600;">
-                        <span style="font-size: 1.2rem;">🔥</span>
-                        <span style="color: var(--text-dark);">Новый лид</span>
-                    </div>
-
-                    <!-- Текст сообщения -->
-                    <div style="
-                        color: var(--text-dark);
-                        line-height: 1.5;
-                        white-space: pre-wrap;
-                        word-break: break-word;
-                        font-size: 0.95rem;
-                    ">${escapeHtml(lead.text)}</div>
-
-                    <!-- Информация о источнике и ключевом слове -->
-                    <div style="
-                        display: grid;
-                        grid-template-columns: 1fr 1fr;
-                        gap: 0.75rem;
-                        font-size: 0.85rem;
-                        padding-top: 0.5rem;
-                        border-top: 1px solid var(--gray-border);
-                    ">
-                        <div>
-                            <span style="color: var(--text-light);">Источник:</span>
-                            <div>
-                                <a href="${telegramProfileUrl}" target="_blank" style="
-                                    color: var(--primary);
-                                    text-decoration: none;
-                                    font-weight: 500;
-                                    cursor: pointer;
-                                ">${lead.source_channel}</a>
-                            </div>
-                        </div>
-                        <div>
-                            <span style="color: var(--text-light);">Ключ:</span>
-                            <div style="color: var(--text-dark); font-weight: 500;">
-                                ${lead.matched_keyword || '—'}
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Время и задача -->
-                    <div style="
-                        display: grid;
-                        grid-template-columns: 1fr 1fr;
-                        gap: 0.75rem;
-                        font-size: 0.85rem;
-                    ">
-                        <div>
-                            <span style="color: var(--text-light);">Время:</span>
-                            <div style="color: var(--text-dark);">${foundDate}</div>
-                        </div>
-                        <div>
-                            <span style="color: var(--text-light);">Задача:</span>
-                            <div style="color: var(--primary); font-weight: 500;">${taskName || 'Неизвестная'}</div>
-                        </div>
-                    </div>
-
-                    <!-- Кнопки действий -->
+                    <!-- ZONE 1: Header (🔥 + дата) -->
                     <div style="
                         display: flex;
-                        gap: 0.75rem;
-                        padding-top: 0.5rem;
-                        border-top: 1px solid var(--gray-border);
+                        justify-content: space-between;
+                        align-items: center;
+                        margin-bottom: 8px;
+                        font-size: 12px;
                     ">
-                        ${telegramPostUrl ? `
-                            <a href="${telegramPostUrl}" target="_blank" style="
-                                flex: 1;
-                                padding: 0.6rem 1rem;
-                                background: var(--primary);
-                                color: white;
-                                text-align: center;
-                                border-radius: 8px;
+                        <div style="display: flex; align-items: center; gap: 4px;">
+                            <span style="font-size: 14px;">🔥</span>
+                            <span style="color: #222; font-weight: 500;">Новый лид</span>
+                        </div>
+                        <span style="color: #888;">${foundDate}</span>
+                    </div>
+
+                    <!-- ZONE 2: Текст лида -->
+                    <div style="
+                        font-size: 14px;
+                        line-height: 1.45;
+                        color: #222;
+                        white-space: pre-wrap;
+                        word-break: break-word;
+                        margin-bottom: 10px;
+                        padding: 8px 0;
+                    ">
+                        ${escapeHtml(lead.text)}
+                    </div>
+
+                    <!-- ZONE 3: Footer (@channel + ключ слева, иконки справа) -->
+                    <div style="
+                        display: flex;
+                        justify-content: space-between;
+                        align-items: center;
+                        padding-top: 8px;
+                        border-top: 1px solid #f0f0f0;
+                        font-size: 12px;
+                    ">
+                        <div style="display: flex; gap: 12px; align-items: center;">
+                            <a href="${telegramProfileUrl}" target="_blank" style="
+                                color: #5856d6;
                                 text-decoration: none;
-                                font-size: 0.85rem;
                                 font-weight: 500;
-                                transition: all 0.2s;
-                                cursor: pointer;
-                            " onmouseover="this.style.background='var(--primary-dark)'" onmouseout="this.style.background='var(--primary)'">
-                                📌 К сообщению
+                            " onclick="event.stopPropagation();">
+                                ${lead.source_channel}
                             </a>
-                        ` : ''}
-                        <a href="https://t.me/${channelUsername}" target="_blank" style="
-                            flex: 1;
-                            padding: 0.6rem 1rem;
-                            background: #f5f5f5;
-                            color: var(--primary);
-                            text-align: center;
-                            border-radius: 8px;
-                            text-decoration: none;
-                            font-size: 0.85rem;
-                            font-weight: 500;
-                            transition: all 0.2s;
-                            border: 1px solid var(--gray-border);
-                            cursor: pointer;
-                        " onmouseover="this.style.background='var(--gray-light)'" onmouseout="this.style.background='#f5f5f5'">
-                            👤 Автор
-                        </a>
+                            ${lead.matched_keyword ? `
+                                <span style="color: #888;">
+                                    ключ: <strong>${escapeHtml(lead.matched_keyword)}</strong>
+                                </span>
+                            ` : ''}
+                        </div>
+
+                        <div style="display: flex; gap: 8px;">
+                            <a href="${telegramProfileUrl}" target="_blank" title="Диалог с автором" style="
+                                color: #5856d6;
+                                text-decoration: none;
+                                font-size: 16px;
+                                cursor: pointer;
+                            " onclick="event.stopPropagation();">
+                                💬
+                            </a>
+                            ${telegramPostUrl ? `
+                                <a href="${telegramPostUrl}" target="_blank" title="Открыть сообщение" style="
+                                    color: #5856d6;
+                                    text-decoration: none;
+                                    font-size: 16px;
+                                    cursor: pointer;
+                                " onclick="event.stopPropagation();">
+                                    ↗
+                                </a>
+                            ` : ''}
+                        </div>
                     </div>
                 </div>
             `;
-
-            return html;
         }
 
         // Функция для экранирования HTML
@@ -1715,13 +1734,25 @@
             return text.replace(/[&<>"']/g, m => map[m]);
         }
 
+        // Хранилище для пагинации и дебаунса
+        let leadsState = {
+            offset: 0,
+            isLoading: false,
+            hasMore: true,
+            lastLeadIds: new Set()
+        };
+
         // Функция загрузки и отрисовки лидов
-        async function loadLeads() {
+        async function loadLeads(append = false) {
             const container = document.getElementById('leads-container');
 
             try {
                 const leads = await getLeads();
                 const tasks = await getTasks();
+
+                if (!append) {
+                    leadsState.lastLeadIds.clear();
+                }
 
                 // Получить значения фильтров
                 const taskFilter = document.getElementById('filter-task')?.value || '';
@@ -1742,13 +1773,16 @@
                     );
                 }
 
+                // Сортировать по дате (новые сверху)
+                filtered.sort((a, b) => new Date(b.found_at) - new Date(a.found_at));
+
                 // Если нет лидов - показать пустое состояние
                 if (leads.length === 0) {
                     container.innerHTML = `
-                        <div class="empty-state">
-                            <i class="bi bi-fire"></i>
+                        <div class="empty-state" style="text-align: center; padding: 2rem;">
+                            <div style="font-size: 2rem; margin-bottom: 0.5rem;">🔥</div>
                             <h4>Лиды отсутствуют</h4>
-                            <p>Лиды будут появляться здесь после запуска мониторинга</p>
+                            <p style="color: #888;">Лиды будут появляться здесь после запуска мониторинга</p>
                         </div>
                     `;
                     return;
@@ -1757,10 +1791,10 @@
                 // Если отфильтровалось 0 лидов
                 if (filtered.length === 0) {
                     container.innerHTML = `
-                        <div class="empty-state">
-                            <i class="bi bi-search"></i>
+                        <div class="empty-state" style="text-align: center; padding: 2rem;">
+                            <div style="font-size: 2rem; margin-bottom: 0.5rem;">🔍</div>
                             <h4>Лиды не найдены</h4>
-                            <p>Попробуйте изменить фильтры поиска</p>
+                            <p style="color: #888;">Попробуйте изменить фильтры поиска</p>
                         </div>
                     `;
                     return;
@@ -1771,19 +1805,88 @@
                 filtered.forEach(lead => {
                     const taskName = tasks.find(t => t.id === lead.task_id)?.name || 'Неизвестная задача';
                     html += renderLeadCard(lead, taskName);
+                    leadsState.lastLeadIds.add(lead.id);
                 });
 
                 container.innerHTML = html;
 
+                // Добавить обработчики кликов на карточки для пометки как viewed
+                document.querySelectorAll('.lead-card').forEach(card => {
+                    card.addEventListener('click', async (e) => {
+                        if (e.target.tagName === 'A') return;
+                        const leadId = card.getAttribute('data-lead-id');
+                        markLeadAsViewed(leadId);
+                    });
+
+                    // Добавить hover эффект
+                    card.addEventListener('mouseenter', () => {
+                        card.style.transform = 'translateY(-1px)';
+                        card.style.boxShadow = '0 4px 10px rgba(0, 0, 0, 0.06)';
+                    });
+
+                    card.addEventListener('mouseleave', () => {
+                        card.style.transform = 'translateY(0)';
+                        card.style.boxShadow = '0 1px 2px rgba(0, 0, 0, 0.04)';
+                    });
+                });
+
+                // Добавить кнопку пагинации
+                if (filtered.length > 0) {
+                    const paginationHtml = `
+                        <div style="text-align: center; margin-top: 1rem; padding: 1rem;">
+                            <button class="btn btn-primary" onclick="loadMoreLeads()" style="padding: 0.6rem 1.5rem;">
+                                Загрузить ещё
+                            </button>
+                        </div>
+                    `;
+                    container.innerHTML += paginationHtml;
+                }
+
             } catch (error) {
                 console.error('Error loading leads:', error);
                 container.innerHTML = `
-                    <div class="empty-state">
-                        <i class="bi bi-exclamation-circle"></i>
+                    <div class="empty-state" style="text-align: center; padding: 2rem;">
+                        <div style="font-size: 2rem; margin-bottom: 0.5rem;">⚠️</div>
                         <h4>Ошибка загрузки</h4>
-                        <p>Не удалось загрузить лиды. Попробуйте позже.</p>
+                        <p style="color: #888;">Не удалось загрузить лиды. Попробуйте позже.</p>
                     </div>
                 `;
+            }
+        }
+
+        // Функция загрузки больше лидов
+        async function loadMoreLeads() {
+            leadsState.offset += 50;
+            loadLeads(true);
+        }
+
+        // Функция для пометки лида как просмотренного
+        async function markLeadAsViewed(leadId) {
+            try {
+                await fetch(`${API_BASE}/api/leads/${leadId}/viewed`, {
+                    method: 'PUT',
+                    credentials: 'include'
+                });
+                // Обновить UI для этого лида
+                const card = document.querySelector(`[data-lead-id="${leadId}"]`);
+                if (card) {
+                    card.setAttribute('data-status', 'viewed');
+                }
+            } catch (error) {
+                console.error('Error marking lead as viewed:', error);
+            }
+        }
+
+        // Функция скролла к лиду по ID
+        function scrollToLead(leadId) {
+            const card = document.querySelector(`[data-lead-id="${leadId}"]`);
+            if (card) {
+                card.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                // Highlight эффект
+                card.style.backgroundColor = '#fffacd';
+                setTimeout(() => {
+                    card.style.backgroundColor = 'white';
+                }, 1500);
             }
         }
 
@@ -1912,11 +2015,118 @@
             });
         }
 
+        // ==================== NOTIFICATIONS & REALTIME ====================
+
+        // Хранилище уведомлений
+        let unreadLeadsCount = 0;
+        let recentNotifications = [];
+        let leadsRealtimeInterval = null;
+
+        // Переключение меню уведомлений
+        function toggleNotificationsMenu() {
+            const menu = document.getElementById('notifications-menu');
+            menu.style.display = menu.style.display === 'none' ? 'block' : 'none';
+
+            // Закрыть при клике вне меню
+            if (menu.style.display === 'block') {
+                document.addEventListener('click', (e) => {
+                    if (!e.target.closest('.notifications-menu') && !e.target.closest('#notifications-btn')) {
+                        menu.style.display = 'none';
+                    }
+                }, { once: true });
+            }
+        }
+
+        // Обновить иконку колокольчика
+        function updateNotificationsBell() {
+            const badge = document.getElementById('notification-count');
+            if (unreadLeadsCount > 0) {
+                badge.style.display = 'flex';
+                badge.textContent = unreadLeadsCount > 99 ? '99+' : unreadLeadsCount;
+            } else {
+                badge.style.display = 'none';
+            }
+        }
+
+        // Обновить список уведомлений
+        async function updateNotifications() {
+            try {
+                const leads = await getLeads();
+                const newLeads = leads.filter(l => l.status === 'new' || !l.status).slice(0, 5);
+
+                unreadLeadsCount = leads.filter(l => l.status === 'new' || !l.status).length;
+                updateNotificationsBell();
+
+                const notificationsList = document.getElementById('notifications-list');
+                if (newLeads.length === 0) {
+                    notificationsList.innerHTML = `
+                        <div style="padding: 1rem; text-align: center; color: #888;">
+                            Нет новых лидов
+                        </div>
+                    `;
+                    return;
+                }
+
+                let html = '';
+                newLeads.forEach(lead => {
+                    const preview = lead.text.substring(0, 60).replace(/\n/g, ' ') + (lead.text.length > 60 ? '...' : '');
+                    html += `
+                        <div style="
+                            padding: 0.75rem 1rem;
+                            border-bottom: 1px solid #f0f0f0;
+                            cursor: pointer;
+                            transition: background 0.2s;
+                        " onclick="scrollToLead(${lead.id}); toggleNotificationsMenu();" onmouseover="this.style.background='#f7f8fb'" onmouseout="this.style.background='white'">
+                            <div style="font-size: 12px; color: #888;">${lead.source_channel}</div>
+                            <div style="font-size: 14px; color: #222; font-weight: 500;">🔥 ${escapeHtml(preview)}</div>
+                        </div>
+                    `;
+                });
+                notificationsList.innerHTML = html;
+            } catch (error) {
+                console.error('Error updating notifications:', error);
+            }
+        }
+
+        // Realtime polling лидов каждые 10 секунд
+        function startLeadsRealtimePolling() {
+            if (leadsRealtimeInterval) return;
+
+            leadsRealtimeInterval = setInterval(async () => {
+                const section = window.location.hash.substring(1) || 'dashboard';
+
+                // Обновить уведомления на любой странице
+                await updateNotifications();
+
+                // Если на странице Leads - обновить список
+                if (section === 'leads') {
+                    loadLeads();
+                }
+            }, 10000);
+        }
+
+        function stopLeadsRealtimePolling() {
+            if (leadsRealtimeInterval) {
+                clearInterval(leadsRealtimeInterval);
+                leadsRealtimeInterval = null;
+            }
+        }
+
+        // Закрыть меню уведомлений при клике вне его
+        document.addEventListener('click', (e) => {
+            const menu = document.getElementById('notifications-menu');
+            if (menu.style.display === 'block' && !e.target.closest('.notifications-menu') && !e.target.closest('#notifications-btn')) {
+                menu.style.display = 'none';
+            }
+        });
+
         // Init
         (async () => {
             loadUserProfile();
             await updateStats();
             await updateTaskFilter();
+            await updateNotifications();
+            startLeadsRealtimePolling();
         })();
     </script>
 </body>
