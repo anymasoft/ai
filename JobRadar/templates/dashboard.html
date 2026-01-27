@@ -1321,30 +1321,76 @@
             }
         }
 
-        // ==================== NAVIGATION ====================
+        // ==================== NAVIGATION & HASH MANAGEMENT ====================
+        let leadsPollingInterval = null;
+
+        // Функция переключения вкладки с поддержкой hash
+        function switchToSection(section) {
+            document.querySelectorAll('.content-section').forEach(el => el.classList.remove('active'));
+            document.getElementById(section).classList.add('active');
+
+            document.querySelectorAll('.nav-link').forEach(el => el.classList.remove('active'));
+            document.querySelector(`[data-section="${section}"]`).classList.add('active');
+
+            const titles = {
+                dashboard: 'Дашборд',
+                tasks: 'Мои задачи',
+                leads: 'Лиды',
+                billing: 'Тарифы',
+                settings: 'Настройки'
+            };
+            document.getElementById('page-title').textContent = titles[section];
+
+            // Запустить polling только если вкладка Leads
+            if (section === 'leads') {
+                loadLeads();
+                startLeadsPolling();
+            } else {
+                stopLeadsPolling();
+            }
+
+            // Обновить задачи если открыта вкладка Мои задачи
+            if (section === 'tasks') renderTasks();
+        }
+
+        // Запуск polling лидов каждые 3 секунды
+        function startLeadsPolling() {
+            if (leadsPollingInterval) return; // Уже запущен
+            leadsPollingInterval = setInterval(() => {
+                const section = window.location.hash.substring(1) || 'dashboard';
+                if (section === 'leads') {
+                    loadLeads();
+                }
+            }, 3000);
+        }
+
+        // Остановка polling лидов
+        function stopLeadsPolling() {
+            if (leadsPollingInterval) {
+                clearInterval(leadsPollingInterval);
+                leadsPollingInterval = null;
+            }
+        }
+
+        // Клики по вкладкам - установить hash и переключить
         document.querySelectorAll('[data-section]').forEach(link => {
             link.addEventListener('click', (e) => {
                 e.preventDefault();
                 const section = link.getAttribute('data-section');
-                
-                document.querySelectorAll('.content-section').forEach(el => el.classList.remove('active'));
-                document.getElementById(section).classList.add('active');
-
-                document.querySelectorAll('.nav-link').forEach(el => el.classList.remove('active'));
-                link.classList.add('active');
-
-                const titles = {
-                    dashboard: 'Дашборд',
-                    tasks: 'Мои задачи',
-                    leads: 'Лиды',
-                    billing: 'Тарифы',
-                    settings: 'Настройки'
-                };
-                document.getElementById('page-title').textContent = titles[section];
-
-                if (section === 'tasks') renderTasks();
-                if (section === 'leads') renderLeads();
+                window.location.hash = section;
             });
+        });
+
+        // Обработка изменения hash (F5, переход по ссылке, кнопка назад/вперед)
+        window.addEventListener('hashchange', () => {
+            const section = window.location.hash.substring(1) || 'dashboard';
+            switchToSection(section);
+        });
+
+        // При загрузке страницы - восстановить вкладку из hash
+        document.addEventListener('DOMContentLoaded', () => {
+            const section = window.location.hash.substring(1) || 'dashboard';
+            switchToSection(section);
         });
 
         // ==================== TASK MANAGEMENT ====================
@@ -1515,11 +1561,165 @@
             `).join('');
         }
 
-        async function renderLeads(page = 1) {
+        // ==================== LEADS MANAGEMENT ====================
+
+        // Функция рендеринга одной карточки лида в Telegram-стиле
+        function renderLeadCard(lead, taskName) {
+            const foundDate = new Date(lead.found_at).toLocaleDateString('ru-RU', {
+                year: 'numeric',
+                month: 'short',
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+
+            // Получить username источника без @
+            const channelUsername = lead.source_channel.replace('@', '');
+
+            // Построить ссылки
+            const telegramProfileUrl = `https://t.me/${channelUsername}`;
+            const telegramPostUrl = lead.source_message_id
+                ? `https://t.me/${channelUsername}/${lead.source_message_id}`
+                : null;
+
+            // Стиль Telegram-карточки
+            const html = `
+                <div class="lead-card telegram-card" style="
+                    background: white;
+                    border-radius: 12px;
+                    padding: 14px;
+                    margin-bottom: 1rem;
+                    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+                    border: 1px solid #e0e0e0;
+                    transition: all 0.2s ease;
+                    display: flex;
+                    flex-direction: column;
+                    gap: 0.75rem;
+                ">
+                    <!-- Заголовок с иконкой огня -->
+                    <div style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.95rem; font-weight: 600;">
+                        <span style="font-size: 1.2rem;">🔥</span>
+                        <span style="color: var(--text-dark);">Новый лид</span>
+                    </div>
+
+                    <!-- Текст сообщения -->
+                    <div style="
+                        color: var(--text-dark);
+                        line-height: 1.5;
+                        white-space: pre-wrap;
+                        word-break: break-word;
+                        font-size: 0.95rem;
+                    ">${escapeHtml(lead.text)}</div>
+
+                    <!-- Информация о источнике и ключевом слове -->
+                    <div style="
+                        display: grid;
+                        grid-template-columns: 1fr 1fr;
+                        gap: 0.75rem;
+                        font-size: 0.85rem;
+                        padding-top: 0.5rem;
+                        border-top: 1px solid var(--gray-border);
+                    ">
+                        <div>
+                            <span style="color: var(--text-light);">Источник:</span>
+                            <div>
+                                <a href="${telegramProfileUrl}" target="_blank" style="
+                                    color: var(--primary);
+                                    text-decoration: none;
+                                    font-weight: 500;
+                                    cursor: pointer;
+                                ">${lead.source_channel}</a>
+                            </div>
+                        </div>
+                        <div>
+                            <span style="color: var(--text-light);">Ключ:</span>
+                            <div style="color: var(--text-dark); font-weight: 500;">
+                                ${lead.matched_keyword || '—'}
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Время и задача -->
+                    <div style="
+                        display: grid;
+                        grid-template-columns: 1fr 1fr;
+                        gap: 0.75rem;
+                        font-size: 0.85rem;
+                    ">
+                        <div>
+                            <span style="color: var(--text-light);">Время:</span>
+                            <div style="color: var(--text-dark);">${foundDate}</div>
+                        </div>
+                        <div>
+                            <span style="color: var(--text-light);">Задача:</span>
+                            <div style="color: var(--primary); font-weight: 500;">${taskName || 'Неизвестная'}</div>
+                        </div>
+                    </div>
+
+                    <!-- Кнопки действий -->
+                    <div style="
+                        display: flex;
+                        gap: 0.75rem;
+                        padding-top: 0.5rem;
+                        border-top: 1px solid var(--gray-border);
+                    ">
+                        ${telegramPostUrl ? `
+                            <a href="${telegramPostUrl}" target="_blank" style="
+                                flex: 1;
+                                padding: 0.6rem 1rem;
+                                background: var(--primary);
+                                color: white;
+                                text-align: center;
+                                border-radius: 8px;
+                                text-decoration: none;
+                                font-size: 0.85rem;
+                                font-weight: 500;
+                                transition: all 0.2s;
+                                cursor: pointer;
+                            " onmouseover="this.style.background='var(--primary-dark)'" onmouseout="this.style.background='var(--primary)'">
+                                📌 К сообщению
+                            </a>
+                        ` : ''}
+                        <a href="https://t.me/${channelUsername}" target="_blank" style="
+                            flex: 1;
+                            padding: 0.6rem 1rem;
+                            background: #f5f5f5;
+                            color: var(--primary);
+                            text-align: center;
+                            border-radius: 8px;
+                            text-decoration: none;
+                            font-size: 0.85rem;
+                            font-weight: 500;
+                            transition: all 0.2s;
+                            border: 1px solid var(--gray-border);
+                            cursor: pointer;
+                        " onmouseover="this.style.background='var(--gray-light)'" onmouseout="this.style.background='#f5f5f5'">
+                            👤 Автор
+                        </a>
+                    </div>
+                </div>
+            `;
+
+            return html;
+        }
+
+        // Функция для экранирования HTML
+        function escapeHtml(text) {
+            const map = {
+                '&': '&amp;',
+                '<': '&lt;',
+                '>': '&gt;',
+                '"': '&quot;',
+                "'": '&#039;'
+            };
+            return text.replace(/[&<>"']/g, m => map[m]);
+        }
+
+        // Функция загрузки и отрисовки лидов
+        async function loadLeads() {
             const container = document.getElementById('leads-container');
 
             try {
-                // Получить все данные
                 const leads = await getLeads();
                 const tasks = await getTasks();
 
@@ -1530,12 +1730,10 @@
                 // Применить фильтры
                 let filtered = leads;
 
-                // Фильтр по задаче
                 if (taskFilter) {
                     filtered = filtered.filter(lead => lead.task_id === parseInt(taskFilter));
                 }
 
-                // Поиск по тексту и источнику
                 if (searchFilter) {
                     filtered = filtered.filter(lead =>
                         lead.text.toLowerCase().includes(searchFilter) ||
@@ -1543,13 +1741,6 @@
                         (lead.matched_keyword && lead.matched_keyword.toLowerCase().includes(searchFilter))
                     );
                 }
-
-                // Пагинация
-                const ITEMS_PER_PAGE = 10;
-                const totalPages = Math.ceil(filtered.length / ITEMS_PER_PAGE);
-                const startIdx = (page - 1) * ITEMS_PER_PAGE;
-                const endIdx = startIdx + ITEMS_PER_PAGE;
-                const paginatedLeads = filtered.slice(startIdx, endIdx);
 
                 // Если нет лидов - показать пустое состояние
                 if (leads.length === 0) {
@@ -1575,100 +1766,17 @@
                     return;
                 }
 
-                // Построить HTML лидов
+                // Построить HTML карточек лидов
                 let html = '';
-                paginatedLeads.forEach(lead => {
+                filtered.forEach(lead => {
                     const taskName = tasks.find(t => t.id === lead.task_id)?.name || 'Неизвестная задача';
-                    const foundDate = new Date(lead.found_at).toLocaleDateString('ru-RU', {
-                        year: 'numeric',
-                        month: 'short',
-                        day: 'numeric',
-                        hour: '2-digit',
-                        minute: '2-digit'
-                    });
-
-                    const textPreview = lead.text.substring(0, 200);
-                    const textPreviewFull = textPreview.length < lead.text.length ? textPreview + '...' : textPreview;
-
-                    html += `
-                        <div class="lead-card" style="background: white; padding: 1.5rem; border-radius: 8px; border: 1px solid var(--gray-border); margin-bottom: 1rem;">
-                            <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 0.75rem;">
-                                <h5 style="margin: 0; color: var(--text-dark); font-size: 0.95rem;">Лид #${lead.id}</h5>
-                                <span style="font-size: 0.8rem; color: var(--text-light); background: var(--gray-100); padding: 0.25rem 0.75rem; border-radius: 4px;">
-                                    ${foundDate}
-                                </span>
-                            </div>
-
-                            <div style="margin-bottom: 1rem; line-height: 1.5;">
-                                <p style="margin: 0; color: var(--text-dark); word-wrap: break-word;">
-                                    ${textPreviewFull}
-                                </p>
-                            </div>
-
-                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; font-size: 0.9rem; margin-bottom: 0.75rem;">
-                                <div>
-                                    <span style="color: var(--text-light);">Задача:</span>
-                                    <div style="color: var(--primary); font-weight: 500;">${taskName}</div>
-                                </div>
-                                <div>
-                                    <span style="color: var(--text-light);">Источник:</span>
-                                    <div style="color: var(--text-dark); font-weight: 500;">${lead.source_channel}</div>
-                                </div>
-                                <div>
-                                    <span style="color: var(--text-light);">Ключевое слово:</span>
-                                    <div style="color: var(--text-dark); font-weight: 500;">
-                                        ${lead.matched_keyword || '—'}
-                                    </div>
-                                </div>
-                                <div>
-                                    <span style="color: var(--text-light);">ID сообщения:</span>
-                                    <div style="color: var(--text-dark); font-weight: 500;">${lead.source_message_id}</div>
-                                </div>
-                            </div>
-                        </div>
-                    `;
+                    html += renderLeadCard(lead, taskName);
                 });
 
                 container.innerHTML = html;
 
-                // Добавить пагинацию если нужна
-                if (totalPages > 1) {
-                    let paginationHtml = `
-                        <div style="display: flex; justify-content: center; gap: 0.5rem; margin-top: 2rem; flex-wrap: wrap;">
-                    `;
-
-                    // Кнопка Назад
-                    if (page > 1) {
-                        paginationHtml += `<button class="btn-secondary" style="width: auto; margin-top: 0;" onclick="renderLeads(${page - 1})">← Назад</button>`;
-                    }
-
-                    // Номера страниц
-                    const maxPages = Math.min(totalPages, 5);
-                    const startPage = Math.max(1, page - 2);
-                    const endPage = Math.min(totalPages, startPage + maxPages - 1);
-
-                    for (let i = startPage; i <= endPage; i++) {
-                        const isActive = i === page;
-                        paginationHtml += `
-                            <button class="btn-secondary"
-                                    style="width: auto; margin-top: 0; ${isActive ? 'background: var(--primary); color: white;' : ''}"
-                                    onclick="renderLeads(${i})">
-                                ${i}
-                            </button>
-                        `;
-                    }
-
-                    // Кнопка Далее
-                    if (page < totalPages) {
-                        paginationHtml += `<button class="btn-secondary" style="width: auto; margin-top: 0;" onclick="renderLeads(${page + 1})">Далее →</button>`;
-                    }
-
-                    paginationHtml += `</div>`;
-                    container.innerHTML += paginationHtml;
-                }
-
             } catch (error) {
-                console.error('Error rendering leads:', error);
+                console.error('Error loading leads:', error);
                 container.innerHTML = `
                     <div class="empty-state">
                         <i class="bi bi-exclamation-circle"></i>
@@ -1677,6 +1785,11 @@
                     </div>
                 `;
             }
+        }
+
+        // Старая функция renderLeads для совместимости (вызывает loadLeads)
+        async function renderLeads(page = 1) {
+            loadLeads();
         }
 
         async function setLeadStatus(leadId, status) {
@@ -1717,9 +1830,10 @@
             select.value = current;
         }
 
-        document.getElementById('filter-task').addEventListener('change', renderLeads);
-        document.getElementById('filter-status').addEventListener('change', renderLeads);
-        document.getElementById('filter-search').addEventListener('input', renderLeads);
+        // Обработчики фильтров для загрузки лидов
+        document.getElementById('filter-task').addEventListener('change', loadLeads);
+        document.getElementById('filter-status').addEventListener('change', loadLeads);
+        document.getElementById('filter-search').addEventListener('input', loadLeads);
 
         // ==================== Управление профилем пользователя ====================
         function updateTelegramAccountStatus() {
