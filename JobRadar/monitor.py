@@ -7,6 +7,7 @@ import re
 import random
 import logging
 import os
+from typing import Optional
 from telethon import TelegramClient
 from telethon.errors import ChannelPrivateError, ChannelInvalidError
 from telethon.tl.types import PeerChannel
@@ -123,7 +124,7 @@ def dump_message_for_diagnostics(msg, channel: Channel, is_broadcast: bool):
     logger.info(f"{'='*80}\n")
 
 
-def normalize_telegram_source(raw: str) -> str | None:
+def normalize_telegram_source(raw: str) -> Optional[str]:
     """
     Нормализировать источник Telegram в чистый username.
 
