@@ -534,10 +534,18 @@
                 // Проверить требуется ли пароль
                 if (data.requires_password) {
                     showToast('Требуется пароль 2FA', 'warning');
+                    disableButton('btn-send-code', false);
                     showStage('password');
                 } else {
+                    showToast('Код принят, сохраняю сессию...', 'info');
                     // Сохранить сессию
-                    await saveSession(phone);
+                    try {
+                        await saveSession(phone);
+                    } catch (saveError) {
+                        console.error('Ошибка при сохранении сессии:', saveError);
+                        showToast('Ошибка сохранения сессии: ' + saveError.message, 'error');
+                        disableButton('btn-send-code', false);
+                    }
                 }
             } catch (error) {
                 showToast('Ошибка подключения: ' + error.message, 'error');
@@ -572,8 +580,16 @@
                     return;
                 }
 
+                showToast('Пароль принят, сохраняю сессию...', 'info');
+
                 // Сохранить сессию
-                await saveSession(phone);
+                try {
+                    await saveSession(phone);
+                } catch (saveError) {
+                    console.error('Ошибка при сохранении сессии:', saveError);
+                    showToast('Ошибка сохранения сессии: ' + saveError.message, 'error');
+                    disableButton('btn-send-password', false);
+                }
             } catch (error) {
                 showToast('Ошибка подключения: ' + error.message, 'error');
                 disableButton('btn-send-password', false);
