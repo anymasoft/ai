@@ -36,13 +36,14 @@
                         <input type="tel" id="phone" class="input input-bordered" placeholder="+7 (999) 123-45-67" autocomplete="off" />
                     </div>
 
-                    <button id="btn-start" class="btn btn-primary w-full">
-                        <i class="bi bi-telegram"></i> Продолжить
-                    </button>
-
-                    <button id="btn-back-phone" class="btn btn-ghost w-full mt-2 hidden">
-                        <i class="bi bi-arrow-left"></i> Назад
-                    </button>
+                    <div class="flex gap-2 justify-center">
+                        <button id="btn-back-phone" class="btn btn-ghost hidden">
+                            <i class="bi bi-arrow-left"></i> Назад
+                        </button>
+                        <button id="btn-start" class="btn btn-primary">
+                            <i class="bi bi-telegram"></i> Продолжить
+                        </button>
+                    </div>
                 </div>
 
                 <!-- Stage 2: Verification Code -->
@@ -57,13 +58,14 @@
                         <input type="text" id="code" class="input input-bordered text-center text-xl tracking-widest" placeholder="000000" maxlength="6" autocomplete="off" />
                     </div>
 
-                    <button id="btn-send-code" class="btn btn-primary w-full">
-                        <i class="bi bi-check-circle"></i> Отправить код
-                    </button>
-
-                    <button id="btn-back-code" class="btn btn-ghost w-full mt-2">
-                        <i class="bi bi-arrow-left"></i> Назад
-                    </button>
+                    <div class="flex gap-2 justify-center">
+                        <button id="btn-back-code" class="btn btn-ghost">
+                            <i class="bi bi-arrow-left"></i> Назад
+                        </button>
+                        <button id="btn-send-code" class="btn btn-primary">
+                            <i class="bi bi-check-circle"></i> Отправить код
+                        </button>
+                    </div>
                 </div>
 
                 <!-- Stage 3: 2FA Password (if needed) -->
@@ -78,13 +80,14 @@
                         <input type="password" id="password" class="input input-bordered" placeholder="Введите пароль" autocomplete="off" />
                     </div>
 
-                    <button id="btn-send-password" class="btn btn-primary w-full">
-                        <i class="bi bi-check-circle"></i> Отправить пароль
-                    </button>
-
-                    <button id="btn-back-password" class="btn btn-ghost w-full mt-2">
-                        <i class="bi bi-arrow-left"></i> Назад
-                    </button>
+                    <div class="flex gap-2 justify-center">
+                        <button id="btn-back-password" class="btn btn-ghost">
+                            <i class="bi bi-arrow-left"></i> Назад
+                        </button>
+                        <button id="btn-send-password" class="btn btn-primary">
+                            <i class="bi bi-check-circle"></i> Отправить пароль
+                        </button>
+                    </div>
                 </div>
 
                 <!-- Stage 4: Success -->
