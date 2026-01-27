@@ -1336,6 +1336,9 @@
 
         // Функция переключения вкладки с поддержкой hash
         async function switchToSection(section) {
+            // Восстановить нормальное отображение контента (убрать стиль display:none который добавляет displayLeadPage)
+            document.querySelectorAll('.content-section').forEach(el => el.style.display = '');
+
             document.querySelectorAll('.content-section').forEach(el => el.classList.remove('active'));
             document.getElementById(section).classList.add('active');
 
@@ -1350,10 +1353,6 @@
                 settings: 'Настройки'
             };
             document.getElementById('page-title').textContent = titles[section];
-
-            // Восстановить хлебные крошки (breadcrumbs)
-            let breadcrumbsHtml = `<span style="color: #5856d6; font-weight: 600;">${titles[section]}</span>`;
-            document.querySelector('.content').style.display = 'block';
 
             // Запустить polling только если вкладка Leads
             if (section === 'leads') {
@@ -1877,8 +1876,23 @@
             const channelUsername = lead.source_channel.replace('@', '');
             const telegramProfileUrl = `https://t.me/${channelUsername}`;
 
-            const content = document.querySelector('.content');
-            content.innerHTML = `
+            // Скрыть все секции
+            document.querySelectorAll('.content-section').forEach(el => el.classList.remove('active'));
+
+            // Создать контейнер для страницы лида если его нет
+            let leadPageContainer = document.getElementById('lead-page-section');
+            if (!leadPageContainer) {
+                leadPageContainer = document.createElement('div');
+                leadPageContainer.id = 'lead-page-section';
+                leadPageContainer.className = 'content-section active';
+                leadPageContainer.style.display = 'block';
+                document.querySelector('.content').appendChild(leadPageContainer);
+            } else {
+                leadPageContainer.classList.add('active');
+                leadPageContainer.style.display = 'block';
+            }
+
+            leadPageContainer.innerHTML = `
                 <!-- Breadcrumbs -->
                 <nav style="
                     font-size: 0.9rem;
@@ -1993,8 +2007,6 @@
                 </div>
             `;
 
-            // Скрыть все секции и показать новую
-            document.querySelectorAll('.content-section').forEach(el => el.style.display = 'none');
             document.getElementById('page-title').textContent = `Лид #${lead.id}`;
         }
 
