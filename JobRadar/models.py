@@ -1,7 +1,7 @@
 """
 JobRadar v0 - ORM модели для SQLite
 """
-from sqlalchemy import Column, Integer, String, Boolean, DateTime, BigInteger, UniqueConstraint, Index, ForeignKey, LargeBinary
+from sqlalchemy import Column, Integer, String, Boolean, DateTime, BigInteger, UniqueConstraint, Index, ForeignKey, Text
 from sqlalchemy.ext.declarative import declarative_base
 from datetime import datetime
 
@@ -119,10 +119,9 @@ class TelegramSession(Base):
 
     id = Column(Integer, primary_key=True)
     phone = Column(String(20), unique=True, nullable=False)  # Номер телефона
-    session_data = Column(LargeBinary, nullable=False)  # Бинарные данные session файла
-    is_authorized = Column(Boolean, default=False)  # Авторизован ли
+    session_string = Column(Text, nullable=False)  # StringSession строка (текст)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     def __repr__(self):
-        return f"<TelegramSession(id={self.id}, phone={self.phone}, authorized={self.is_authorized})>"
+        return f"<TelegramSession(id={self.id}, phone={self.phone})>"

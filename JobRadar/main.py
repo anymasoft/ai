@@ -9,12 +9,20 @@ from pydantic import BaseModel
 from typing import Optional, List
 from datetime import datetime
 import asyncio
+from telethon import TelegramClient
+from telethon.sessions import StringSession
+from telethon.errors import SessionPasswordNeededError
+from config import TELEGRAM_API_ID, TELEGRAM_API_HASH
 
 from database import SessionLocal, init_db
 from models import Task
-from telegram_auth import start_auth_flow, submit_code, submit_password, save_session, cancel_auth
+from telegram_auth import save_session_to_db, get_telegram_client
 
 app = FastAPI()
+
+# ============== Глобальное хранилище pending клиентов ==============
+# {phone: TelegramClient}
+pending_auth_clients: dict[str, TelegramClient] = {}
 
 # Получить абсолютный путь к папке со скриптом
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -219,71 +227,145 @@ async def get_stats(db: Session = Depends(get_db)):
 
 # ============== API для Telegram авторизации ==============
 
+def normalize_phone(phone: str) -> str:
+    """Нормализовать номер телефона"""
+    return phone.replace("+", "").replace(" ", "").replace("-", "").replace("(", "").replace(")", "")
+
+
 @app.post("/api/auth/start")
 async def auth_start(request: AuthStartRequest):
-    """Начать процесс авторизации в Telegram"""
+    """
+    ШАГ 1: Начать процесс авторизации в Telegram.
+    Создать клиента и отправить код.
+    """
     try:
-        print(f"📱 Начало авторизации для номера: {request.phone}")
-        result = await start_auth_flow(request.phone)
-        return {"success": result, "message": "Код отправлен на номер"}
+        phone = normalize_phone(request.phone)
+        print(f"\n📱 === /api/auth/start ===")
+        print(f"📱 Phone: {phone}")
+
+        # Создать клиента с пустой StringSession
+        client = TelegramClient(StringSession(), TELEGRAM_API_ID, TELEGRAM_API_HASH)
+        await client.connect()
+        await client.send_code_request(phone)
+
+        # Сохранить клиента в памяти
+        pending_auth_clients[phone] = client
+        print(f"✅ Клиент создан и сохранён")
+        print(f"📋 PENDING: {list(pending_auth_clients.keys())}")
+        print(f"✅ === /api/auth/start успешен ===\n")
+
+        return {"ok": True}
     except Exception as e:
         print(f"❌ Ошибка при /api/auth/start: {str(e)}")
         raise HTTPException(status_code=400, detail=str(e))
 
+
 @app.post("/api/auth/submit-code")
 async def auth_submit_code(request: AuthCodeRequest):
-    """Отправить код верификации"""
+    """
+    ШАГ 2: Отправить код верификации.
+    Вернуть информацию требуется ли пароль 2FA.
+    """
     try:
-        print(f"🔐 Проверка кода верификации для: {request.phone}")
-        result = await submit_code(request.phone, request.code)
-        print(f"✅ Результат submit_code: {result}")
-        return result
+        phone = normalize_phone(request.phone)
+        print(f"\n🔐 === /api/auth/submit-code ===")
+        print(f"📱 Phone: {phone}")
+        print(f"🔐 Code: {request.code}")
+
+        client = pending_auth_clients.get(phone)
+        if not client:
+            print(f"❌ Клиент для {phone} не найден в памяти")
+            print(f"📋 PENDING: {list(pending_auth_clients.keys())}")
+            raise Exception("Сессия авторизации истекла. Начните заново.")
+
+        try:
+            await client.sign_in(phone=phone, code=request.code)
+            pending_auth_clients[phone] = client
+            print(f"✅ Код верификации принят")
+            print(f"📋 PENDING: {list(pending_auth_clients.keys())}")
+            print(f"✅ === /api/auth/submit-code успешен ===\n")
+            return {"requires_password": False}
+
+        except SessionPasswordNeededError:
+            pending_auth_clients[phone] = client
+            print(f"⚠️ Требуется пароль 2FA")
+            print(f"📋 PENDING: {list(pending_auth_clients.keys())}")
+            print(f"⚠️ === /api/auth/submit-code требует пароль ===\n")
+            return {"requires_password": True}
+
     except Exception as e:
         print(f"❌ Ошибка при /api/auth/submit-code: {str(e)}")
+        print(f"❌ === /api/auth/submit-code ошибка ===\n")
         raise HTTPException(status_code=400, detail=str(e))
+
 
 @app.post("/api/auth/submit-password")
 async def auth_submit_password(request: AuthPasswordRequest):
-    """Отправить пароль 2FA"""
+    """
+    ШАГ 3: Отправить пароль 2FA (если требуется).
+    """
     try:
-        print(f"\n🔐 === /api/auth/submit-password запрос ===")
-        print(f"📱 Phone: {request.phone}")
-        print(f"🔑 Проверка пароля 2FA для: {request.phone}")
-        result = await submit_password(request.phone, request.password)
-        print(f"✅ Результат submit_password: {result}")
-        print(f"🔐 === /api/auth/submit-password завершен (успех) ===\n")
-        return {"success": result}
+        phone = normalize_phone(request.phone)
+        print(f"\n🔑 === /api/auth/submit-password ===")
+        print(f"📱 Phone: {phone}")
+
+        client = pending_auth_clients.get(phone)
+        if not client:
+            print(f"❌ Клиент для {phone} не найден в памяти")
+            print(f"📋 PENDING: {list(pending_auth_clients.keys())}")
+            raise Exception("Сессия авторизации истекла.")
+
+        await client.sign_in(password=request.password)
+        pending_auth_clients[phone] = client
+        print(f"✅ Пароль 2FA принят")
+        print(f"📋 PENDING: {list(pending_auth_clients.keys())}")
+        print(f"✅ === /api/auth/submit-password успешен ===\n")
+
+        return {"ok": True}
     except Exception as e:
         print(f"❌ Ошибка при /api/auth/submit-password: {str(e)}")
-        print(f"🔐 === /api/auth/submit-password завершен (ошибка) ===\n")
+        print(f"❌ === /api/auth/submit-password ошибка ===\n")
         raise HTTPException(status_code=400, detail=str(e))
+
 
 @app.post("/api/auth/save")
 async def auth_save(request: AuthStartRequest):
-    """Сохранить сессию в БД"""
+    """
+    ШАГ 4: Сохранить сессию в SQLite БД.
+    Получить StringSession и сохранить в таблице telegram_sessions.
+    """
     try:
-        print(f"\n🔐 === /api/auth/save запрос ===")
-        print(f"📱 Request phone: {request.phone}")
-        print(f"📝 Request object: {request}")
-        print(f"💾 Вызываю save_session для: {request.phone}")
-        result = await save_session(request.phone)
-        print(f"✅ Сессия успешно сохранена для {request.phone}")
-        print(f"🔐 === /api/auth/save завершен (успех) ===\n")
-        return {"success": result, "message": "Сессия успешно сохранена"}
+        phone = normalize_phone(request.phone)
+        print(f"\n💾 === /api/auth/save ===")
+        print(f"📱 Phone: {phone}")
+        print(f"📋 PENDING: {list(pending_auth_clients.keys())}")
+
+        client = pending_auth_clients.get(phone)
+        if not client:
+            print(f"❌ Клиент для {phone} не найден в памяти")
+            print(f"📋 PENDING: {list(pending_auth_clients.keys())}")
+            raise Exception("Клиент авторизации не найден.")
+
+        # Получить строку сессии
+        session_string = client.session.save()
+        print(f"💾 Session string получена, длина: {len(session_string)}")
+
+        # Сохранить в БД
+        success = await save_session_to_db(phone, session_string)
+        if not success:
+            raise Exception("Ошибка при сохранении в БД")
+
+        # Удалить из памяти и отключить
+        del pending_auth_clients[phone]
+        await client.disconnect()
+        print(f"🗑️ Клиент удалён из памяти и отключен")
+        print(f"📋 PENDING: {list(pending_auth_clients.keys())}")
+        print(f"✅ === /api/auth/save успешен ===\n")
+
+        return {"ok": True}
     except Exception as e:
         print(f"❌ Ошибка при /api/auth/save: {str(e)}")
-        print(f"🔐 === /api/auth/save завершен (ошибка) ===\n")
-        raise HTTPException(status_code=400, detail=str(e))
-
-@app.post("/api/auth/cancel")
-async def auth_cancel(request: AuthStartRequest):
-    """Отменить текущий процесс авторизации"""
-    try:
-        print(f"🚫 Отмена авторизации для: {request.phone}")
-        await cancel_auth(request.phone)
-        return {"success": True, "message": "Авторизация отменена"}
-    except Exception as e:
-        print(f"❌ Ошибка при /api/auth/cancel: {str(e)}")
+        print(f"❌ === /api/auth/save ошибка ===\n")
         raise HTTPException(status_code=400, detail=str(e))
 
 if __name__ == "__main__":
