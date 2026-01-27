@@ -9,7 +9,7 @@ import logging
 import os
 from typing import Optional
 from telethon import TelegramClient
-from telethon.errors import ChannelPrivateError, ChannelInvalidError
+from telethon.errors import ChannelPrivateError, ChannelInvalidError, FloodWaitError
 from telethon.tl.types import PeerChannel
 from sqlalchemy.orm import Session
 from datetime import datetime
@@ -179,6 +179,38 @@ def normalize_telegram_source(raw: str) -> Optional[str]:
         return raw
 
     return None
+
+
+async def safe_send_message(client: TelegramClient, chat_id, text: str, **kwargs):
+    """
+    Безопасная отправка сообщения с автоматической обработкой FloodWait.
+
+    Если Telegram просит ждать (FloodWaitError) — ждём указанное время и повторяем.
+
+    Args:
+        client: TelegramClient для отправки
+        chat_id: ID чата или username куда отправляем
+        text: Текст сообщения
+        **kwargs: Дополнительные параметры для send_message (formatting_entities, link_preview и т.д.)
+
+    Returns:
+        Результат send_message если успешно
+
+    Raises:
+        Exception: Если ошибка не FloodWait
+    """
+    while True:
+        try:
+            return await client.send_message(chat_id, text, **kwargs)
+        except FloodWaitError as e:
+            wait_time = e.seconds
+            logger.warning(f"⏸️ FloodWait: требуется ждать {wait_time} секунд")
+            await asyncio.sleep(wait_time)
+            logger.info(f"▶️ Повторная попытка отправки после FloodWait")
+            continue
+        except Exception as e:
+            logger.error(f"❌ Ошибка отправки сообщения: {e}")
+            raise
 
 
 def normalize_channel_ref(input_str: str) -> dict:
@@ -611,8 +643,9 @@ async def publish_matched_post(message, channel: Channel):
             logger.warning(f"⚠️ Не удалось форматировать пост из {channel_display}")
             return
 
-        # Отправляем сообщение с сохранением форматирования и ссылок
-        await telegram_client.send_message(
+        # Отправляем сообщение с сохранением форматирования и ссылок (с обработкой FloodWait)
+        await safe_send_message(
+            telegram_client,
             TARGET_CHANNEL_ID,
             publish_text,
             formatting_entities=new_entities if new_entities else None,
@@ -668,14 +701,14 @@ async def send_lead_to_telegram(task: Task, lead: Lead, db: Session):
 Источник: {lead.source_channel}
 Ключ: {lead.matched_keyword or 'не определено'}"""
 
-            # Отправляем в личный Telegram
-            await client.send_message(telegram_session.telegram_user_id, text)
+            # Отправляем в личный Telegram (с обработкой FloodWait)
+            await safe_send_message(client, telegram_session.telegram_user_id, text)
             logger.info(f"[SEND] task={task.id} lead={lead.id} доставлено в личный Telegram ({telegram_session.telegram_user_id})")
 
             # Если указан forward_channel - отправляем туда тоже
             if task.forward_channel and task.forward_channel.strip():
                 try:
-                    await client.send_message(task.forward_channel, text)
+                    await safe_send_message(client, task.forward_channel, text)
                     logger.info(f"[SEND] task={task.id} lead={lead.id} доставлено в канал {task.forward_channel}")
                 except Exception as e:
                     logger.warning(f"[SEND] task={task.id} lead={lead.id} ошибка отправки в канал {task.forward_channel}: {e}")
