@@ -1,365 +1,1202 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="light">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>JobRadar - Lead Monitoring SaaS</title>
-    <link href="https://cdn.tailwindcss.com" rel="stylesheet">
-    <link href="https://cdn.jsdelivr.net/npm/daisyui@4.4.0/dist/full.min.css" rel="stylesheet" type="text/css" />
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
     <style>
-        :root {
-            --primary: 88, 86, 214;
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
         }
-        .bg-primary { @apply bg-purple-600; }
-        .text-primary { @apply text-purple-600; }
-        .border-primary { @apply border-purple-600; }
+
+        :root {
+            --primary: #5856d6;
+            --primary-dark: #4c4ab3;
+            --gray-light: #f8f9fa;
+            --gray-bg: #f5f5f5;
+            --gray-border: #e0e0e0;
+            --text-dark: #222;
+            --text-gray: #666;
+            --text-light: #999;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: var(--gray-bg);
+            color: var(--text-dark);
+        }
+
+        .dashboard {
+            display: flex;
+            min-height: 100vh;
+        }
+
+        /* SIDEBAR */
+        .sidebar {
+            width: 250px;
+            background: white;
+            border-right: 1px solid var(--gray-border);
+            padding: 1.5rem 0;
+            position: fixed;
+            height: 100vh;
+            overflow-y: auto;
+        }
+
+        .sidebar-brand {
+            padding: 0 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .sidebar-brand h5 {
+            color: var(--primary);
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .nav-menu {
+            list-style: none;
+        }
+
+        .nav-link {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.75rem 1.5rem;
+            color: var(--text-gray);
+            cursor: pointer;
+            text-decoration: none;
+            border-left: 3px solid transparent;
+            transition: all 0.3s ease;
+            font-size: 0.95rem;
+        }
+
+        .nav-link:hover {
+            color: var(--primary);
+            background: rgba(88, 86, 214, 0.05);
+        }
+
+        .nav-link.active {
+            color: var(--primary);
+            background: rgba(88, 86, 214, 0.1);
+            border-left-color: var(--primary);
+            font-weight: 600;
+        }
+
+        .nav-link i {
+            width: 20px;
+        }
+
+        /* MAIN */
+        .main-content {
+            margin-left: 250px;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .header {
+            background: white;
+            border-bottom: 1px solid var(--gray-border);
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .header-left h3 {
+            margin: 0;
+            font-size: 1.5rem;
+        }
+
+        .header-right {
+            display: flex;
+            align-items: center;
+            gap: 1.5rem;
+        }
+
+        .header-btn {
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 1.25rem;
+            color: var(--text-gray);
+            position: relative;
+            transition: color 0.3s;
+        }
+
+        .header-btn:hover {
+            color: var(--primary);
+        }
+
+        .badge-count {
+            position: absolute;
+            top: -5px;
+            right: -8px;
+            background: #dc3545;
+            color: white;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.75rem;
+        }
+
+        /* Профиль пользователя */
+        .user-profile {
+            position: relative;
+        }
+
+        .profile-menu {
+            display: none;
+            position: absolute;
+            top: 100%;
+            right: 0;
+            background: white;
+            border: 1px solid var(--gray-border);
+            border-radius: 8px;
+            min-width: 250px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            z-index: 100;
+            margin-top: 0.5rem;
+            overflow: hidden;
+        }
+
+        .profile-menu.visible {
+            display: block;
+            animation: slideUp 0.2s ease-out;
+        }
+
+        .profile-header {
+            padding: 1rem;
+            background: rgba(88, 86, 214, 0.05);
+        }
+
+        .profile-info {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .profile-name {
+            font-weight: 600;
+            color: var(--text-dark);
+            font-size: 0.95rem;
+        }
+
+        .profile-phone {
+            font-size: 0.8rem;
+            color: var(--text-gray);
+            margin-top: 0.25rem;
+        }
+
+        .profile-menu-item {
+            width: 100%;
+            padding: 0.75rem 1rem;
+            background: none;
+            border: none;
+            text-align: left;
+            cursor: pointer;
+            color: var(--text-gray);
+            font-size: 0.9rem;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            transition: all 0.2s;
+        }
+
+        .profile-menu-item:hover {
+            background: var(--gray-100);
+            color: var(--primary);
+        }
+
+        .profile-menu-item i {
+            font-size: 1rem;
+        }
+
+        .content {
+            flex: 1;
+            padding: 2rem;
+            overflow-y: auto;
+        }
+
+        .content-section {
+            display: none;
+        }
+
+        .content-section.active {
+            display: block;
+        }
+
+        /* CARDS */
+        .stat-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .stat-card {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 8px;
+            border: 1px solid var(--gray-border);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .stat-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 4px;
+            height: 100%;
+            background: var(--primary);
+        }
+
+        .stat-label {
+            font-size: 0.9rem;
+            color: var(--text-light);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 0.5rem;
+        }
+
+        .stat-value {
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--text-dark);
+        }
+
+        /* TASK CARDS */
+        .tasks-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 1.5rem;
+        }
+
+        .task-card {
+            background: white;
+            border: 1px solid var(--gray-border);
+            border-radius: 8px;
+            padding: 1.5rem;
+            position: relative;
+        }
+
+        .task-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: start;
+            margin-bottom: 1rem;
+        }
+
+        .task-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: var(--text-dark);
+            flex: 1;
+        }
+
+        .task-status {
+            padding: 0.25rem 0.75rem;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .task-status.running {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .task-status.paused {
+            background: #fff3cd;
+            color: #856404;
+        }
+
+        .task-counts {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid var(--gray-border);
+            font-size: 0.85rem;
+        }
+
+        .task-count {
+            text-align: center;
+        }
+
+        .task-count-value {
+            font-weight: 700;
+            color: var(--primary);
+        }
+
+        .task-count-label {
+            color: var(--text-light);
+            font-size: 0.75rem;
+        }
+
+        .task-actions {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .btn {
+            padding: 0.5rem 1rem;
+            border: 1px solid var(--gray-border);
+            background: white;
+            color: var(--text-gray);
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            transition: all 0.3s;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .btn:hover {
+            border-color: var(--primary);
+            color: var(--primary);
+        }
+
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+            border-color: var(--primary);
+        }
+
+        .btn-primary:hover {
+            background: var(--primary-dark);
+            border-color: var(--primary-dark);
+        }
+
+        .btn-danger {
+            color: #dc3545;
+        }
+
+        .btn-danger:hover {
+            color: #c82333;
+            border-color: #dc3545;
+        }
+
+        .btn-sm {
+            padding: 0.4rem 0.8rem;
+            font-size: 0.8rem;
+            flex: 1;
+        }
+
+        /* MODAL */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: white;
+            border-radius: 8px;
+            padding: 2rem;
+            width: 90%;
+            max-width: 500px;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+
+        .modal-header {
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin-bottom: 1.5rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .modal-close {
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 1.5rem;
+            color: var(--text-gray);
+        }
+
+        .form-group {
+            margin-bottom: 1rem;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+            color: var(--text-gray);
+            font-size: 0.9rem;
+        }
+
+        .form-group input,
+        .form-group textarea {
+            width: 100%;
+            padding: 0.75rem;
+            border: 1px solid var(--gray-border);
+            border-radius: 4px;
+            font-family: inherit;
+            font-size: 0.95rem;
+        }
+
+        .form-group textarea {
+            resize: vertical;
+            min-height: 100px;
+        }
+
+        .form-group input:focus,
+        .form-group textarea:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(88, 86, 214, 0.1);
+        }
+
+        .form-hint {
+            display: block;
+            margin-top: 0.25rem;
+            font-size: 0.8rem;
+            color: var(--text-light);
+        }
+
+        .checkbox-group {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .checkbox-group input[type="checkbox"] {
+            width: auto;
+        }
+
+        .modal-actions {
+            display: flex;
+            gap: 1rem;
+            margin-top: 2rem;
+        }
+
+        .modal-actions button {
+            flex: 1;
+        }
+
+        /* LEADS TABLE */
+        .leads-filters {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+            flex-wrap: wrap;
+        }
+
+        .leads-filters select,
+        .leads-filters input {
+            padding: 0.75rem;
+            border: 1px solid var(--gray-border);
+            border-radius: 4px;
+            font-family: inherit;
+            font-size: 0.95rem;
+            flex: 1;
+            min-width: 150px;
+        }
+
+        .leads-list {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .lead-item {
+            background: white;
+            border: 1px solid var(--gray-border);
+            border-radius: 4px;
+            padding: 1rem;
+        }
+
+        .lead-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: start;
+            margin-bottom: 0.75rem;
+        }
+
+        .lead-text {
+            font-weight: 500;
+            color: var(--text-dark);
+            flex: 1;
+            margin-right: 1rem;
+        }
+
+        .lead-status {
+            padding: 0.25rem 0.75rem;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .lead-status.new {
+            background: #d1ecf1;
+            color: #0c5460;
+        }
+
+        .lead-status.viewed {
+            background: #e2e3e5;
+            color: #383d41;
+        }
+
+        .lead-status.archived {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .lead-meta {
+            display: flex;
+            gap: 1rem;
+            font-size: 0.85rem;
+            color: var(--text-light);
+            margin-bottom: 0.75rem;
+        }
+
+        .lead-actions {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+        }
+
+        .lead-actions button {
+            font-size: 0.8rem;
+            padding: 0.4rem 0.75rem;
+        }
+
+        /* BILLING */
+        .pricing-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1.5rem;
+            margin-top: 2rem;
+        }
+
+        .pricing-card {
+            background: white;
+            border: 2px solid var(--gray-border);
+            border-radius: 8px;
+            padding: 1.5rem;
+            text-align: center;
+            position: relative;
+        }
+
+        .pricing-card.current {
+            border-color: var(--primary);
+            background: rgba(88, 86, 214, 0.02);
+        }
+
+        .pricing-badge {
+            position: absolute;
+            top: -12px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--primary);
+            color: white;
+            padding: 0.25rem 0.75rem;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        .pricing-name {
+            font-size: 1.25rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+        }
+
+        .pricing-price {
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--primary);
+            margin-bottom: 1rem;
+        }
+
+        .pricing-features {
+            text-align: left;
+            margin-bottom: 1.5rem;
+        }
+
+        .pricing-features li {
+            list-style: none;
+            padding: 0.5rem 0;
+            font-size: 0.9rem;
+            color: var(--text-gray);
+        }
+
+        .pricing-features li:before {
+            content: '✓ ';
+            color: var(--primary);
+            font-weight: 700;
+            margin-right: 0.5rem;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 3rem 1rem;
+        }
+
+        .empty-state i {
+            font-size: 3rem;
+            color: var(--gray-border);
+            margin-bottom: 1rem;
+        }
+
+        .empty-state h4 {
+            color: var(--text-gray);
+            margin-bottom: 0.5rem;
+        }
+
+        .empty-state p {
+            color: var(--text-light);
+            margin-bottom: 1.5rem;
+        }
+
+        /* TOAST NOTIFICATIONS */
+        .toast-container {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            z-index: 2000;
+            pointer-events: none;
+        }
+
+        .toast {
+            background: white;
+            border: 1px solid var(--gray-border);
+            border-radius: 8px;
+            padding: 1rem 1.5rem;
+            margin-bottom: 0.5rem;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            min-width: 300px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            pointer-events: auto;
+            animation: slideInRight 0.3s ease-out;
+        }
+
+        .toast.success {
+            border-left: 4px solid #22c55e;
+            background: #f0fdf4;
+        }
+
+        .toast.error {
+            border-left: 4px solid #ef4444;
+            background: #fef2f2;
+        }
+
+        .toast.warning {
+            border-left: 4px solid #f97316;
+            background: #fffbeb;
+        }
+
+        .toast.info {
+            border-left: 4px solid var(--primary);
+            background: #f5f3ff;
+        }
+
+        .toast-icon {
+            font-size: 1.25rem;
+            flex-shrink: 0;
+        }
+
+        .toast.success .toast-icon { color: #22c55e; }
+        .toast.error .toast-icon { color: #ef4444; }
+        .toast.warning .toast-icon { color: #f97316; }
+        .toast.info .toast-icon { color: var(--primary); }
+
+        .toast-close {
+            background: none;
+            border: none;
+            cursor: pointer;
+            color: var(--text-gray);
+            font-size: 1.25rem;
+            padding: 0;
+            margin-left: auto;
+            flex-shrink: 0;
+        }
+
+        @keyframes slideInRight {
+            from {
+                opacity: 0;
+                transform: translateX(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        @keyframes slideOutRight {
+            from {
+                opacity: 1;
+                transform: translateX(0);
+            }
+            to {
+                opacity: 0;
+                transform: translateX(20px);
+            }
+        }
+
+        .toast.removing {
+            animation: slideOutRight 0.3s ease-in;
+        }
+
+        /* DIALOG/MODAL */
+        .dialog-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 1500;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .dialog-overlay.visible {
+            display: flex;
+            animation: fadeIn 0.2s ease-out;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        .dialog-content {
+            background: white;
+            border-radius: 8px;
+            padding: 2rem;
+            max-width: 400px;
+            width: 90%;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            animation: slideUp 0.3s ease-out;
+        }
+
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .dialog-header {
+            margin-bottom: 1.5rem;
+        }
+
+        .dialog-header h3 {
+            font-size: 1.25rem;
+            color: var(--text-dark);
+            margin-bottom: 0.5rem;
+        }
+
+        .dialog-header p {
+            color: var(--text-light);
+            font-size: 0.9rem;
+        }
+
+        .dialog-body {
+            margin-bottom: 1.5rem;
+            color: var(--text-gray);
+        }
+
+        .dialog-actions {
+            display: flex;
+            gap: 1rem;
+            justify-content: flex-end;
+        }
+
+        .dialog-actions button {
+            padding: 0.5rem 1.5rem;
+            border-radius: 4px;
+            border: 1px solid var(--gray-border);
+            background: white;
+            color: var(--text-gray);
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+
+        .dialog-actions button:hover {
+            border-color: var(--primary);
+            color: var(--primary);
+        }
+
+        .dialog-actions .btn-primary {
+            background: var(--primary);
+            color: white;
+            border-color: var(--primary);
+        }
+
+        .dialog-actions .btn-primary:hover {
+            background: var(--primary-dark);
+            border-color: var(--primary-dark);
+        }
+
+        @media (max-width: 768px) {
+            .sidebar {
+                position: relative;
+                width: 100%;
+                height: auto;
+                border-right: none;
+                border-bottom: 1px solid var(--gray-border);
+            }
+
+            .main-content {
+                margin-left: 0;
+            }
+
+            .tasks-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .stat-cards {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            .toast-container {
+                left: 20px;
+                right: 20px;
+            }
+
+            .toast {
+                min-width: auto;
+                width: 100%;
+            }
+        }
     </style>
 </head>
-<body class="bg-gray-50">
-    <div class="drawer drawer-end lg:drawer-open">
-        <input id="nav-drawer" type="checkbox" class="drawer-toggle" />
+<body>
+    <div class="dashboard">
+        <!-- SIDEBAR -->
+        <aside class="sidebar">
+            <div class="sidebar-brand">
+                <h5><i class="bi bi-speedometer2"></i> JobRadar</h5>
+            </div>
+            <ul class="nav-menu">
+                <li><a class="nav-link active" data-section="dashboard"><i class="bi bi-speedometer2"></i> Dashboard</a></li>
+                <li><a class="nav-link" data-section="tasks"><i class="bi bi-list-check"></i> Tasks</a></li>
+                <li><a class="nav-link" data-section="leads"><i class="bi bi-fire"></i> Leads</a></li>
+                <li><a class="nav-link" data-section="billing"><i class="bi bi-credit-card"></i> Billing</a></li>
+                <li><a class="nav-link" data-section="settings"><i class="bi bi-gear"></i> Settings</a></li>
+            </ul>
+        </aside>
 
-        <!-- MAIN CONTENT -->
-        <div class="drawer-content flex flex-col">
+        <!-- MAIN -->
+        <div class="main-content">
             <!-- HEADER -->
-            <div class="navbar bg-white shadow-sm sticky top-0 z-40">
-                <div class="flex-1">
-                    <h3 class="text-xl font-bold text-gray-800" id="page-title">Dashboard</h3>
+            <div class="header">
+                <div class="header-left">
+                    <h3 id="page-title">Dashboard</h3>
                 </div>
-                <div class="flex-none gap-2">
-                    <!-- Notifications -->
-                    <button class="btn btn-ghost btn-circle relative" id="notifications-btn">
-                        <i class="bi bi-bell text-lg"></i>
-                        <span class="absolute top-1 right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center hidden" id="notification-count"></span>
+                <div class="header-right">
+                    <button class="header-btn" id="notifications-btn">
+                        <i class="bi bi-bell"></i>
+                        <span class="badge-count" id="notification-count"></span>
                     </button>
-
-                    <!-- User Profile Dropdown -->
-                    <div class="dropdown dropdown-end">
-                        <button class="btn btn-ghost btn-circle" tabindex="0">
-                            <i class="bi bi-person-circle text-2xl"></i>
+                    <div class="user-profile">
+                        <button class="header-btn" id="profile-btn" onclick="toggleProfileMenu()">
+                            <i class="bi bi-person-circle"></i>
                         </button>
-                        <ul tabindex="0" class="dropdown-content z-[1] menu p-2 shadow bg-base-100 rounded-box w-52">
-                            <li class="menu-title">
-                                <span id="profile-name">Загрузка...</span>
-                                <span class="text-xs text-gray-500" id="profile-phone">-</span>
-                            </li>
-                            <li><a onclick="logout()"><i class="bi bi-box-arrow-right"></i> Выход</a></li>
-                        </ul>
+                        <div class="profile-menu" id="profile-menu">
+                            <div class="profile-header">
+                                <div class="profile-info">
+                                    <div class="profile-name" id="profile-name">Загрузка...</div>
+                                    <div class="profile-phone" id="profile-phone">-</div>
+                                </div>
+                            </div>
+                            <hr style="margin: 0.5rem 0; border: none; border-top: 1px solid var(--gray-border);">
+                            <button class="profile-menu-item" onclick="logout()">
+                                <i class="bi bi-box-arrow-right"></i> Выход
+                            </button>
+                        </div>
                     </div>
-
-                    <!-- Mobile Menu Button -->
-                    <label for="nav-drawer" class="btn btn-ghost btn-circle lg:hidden">
-                        <i class="bi bi-list text-lg"></i>
-                    </label>
                 </div>
             </div>
 
-            <!-- PAGE CONTENT -->
-            <div class="flex-1 p-4 lg:p-6 overflow-y-auto">
+            <!-- CONTENT -->
+            <div class="content">
                 <!-- DASHBOARD SECTION -->
                 <section id="dashboard" class="content-section active">
-                    <!-- Stats Cards -->
-                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-                        <div class="card bg-white shadow-sm border-l-4 border-purple-600">
-                            <div class="card-body p-4">
-                                <p class="text-xs font-semibold text-gray-500 uppercase">Active Tasks</p>
-                                <p class="text-3xl font-bold text-gray-800" id="stat-tasks">0</p>
-                            </div>
+                    <div class="stat-cards">
+                        <div class="stat-card">
+                            <div class="stat-label">Active Tasks</div>
+                            <div class="stat-value" id="stat-tasks">0</div>
                         </div>
-                        <div class="card bg-white shadow-sm border-l-4 border-blue-600">
-                            <div class="card-body p-4">
-                                <p class="text-xs font-semibold text-gray-500 uppercase">Sources</p>
-                                <p class="text-3xl font-bold text-gray-800" id="stat-sources">0</p>
-                            </div>
+                        <div class="stat-card">
+                            <div class="stat-label">Sources</div>
+                            <div class="stat-value" id="stat-sources">0</div>
                         </div>
-                        <div class="card bg-white shadow-sm border-l-4 border-green-600">
-                            <div class="card-body p-4">
-                                <p class="text-xs font-semibold text-gray-500 uppercase">Keywords</p>
-                                <p class="text-3xl font-bold text-gray-800" id="stat-keywords">0</p>
-                            </div>
+                        <div class="stat-card">
+                            <div class="stat-label">Keywords</div>
+                            <div class="stat-value" id="stat-keywords">0</div>
                         </div>
-                        <div class="card bg-white shadow-sm border-l-4 border-orange-600">
-                            <div class="card-body p-4">
-                                <p class="text-xs font-semibold text-gray-500 uppercase">Leads Today</p>
-                                <p class="text-3xl font-bold text-gray-800" id="stat-leads">0</p>
-                            </div>
+                        <div class="stat-card">
+                            <div class="stat-label">Leads Today</div>
+                            <div class="stat-value" id="stat-leads">0</div>
                         </div>
                     </div>
 
-                    <!-- Quick Start Card -->
-                    <div class="card bg-white shadow-sm mb-6">
-                        <div class="card-body">
-                            <h4 class="card-title text-lg">Начните за 60 секунд</h4>
-                            <p class="text-gray-600 text-sm">Создайте свою первую задачу мониторинга и начните находить лиды в каналах Telegram.</p>
-                            <div class="card-actions justify-start mt-4">
-                                <button class="btn btn-primary btn-sm" onclick="openTaskModal()">
-                                    <i class="bi bi-plus"></i> Создать первую задачу
-                                </button>
-                            </div>
-                        </div>
+                    <div style="background: white; padding: 1.5rem; border-radius: 8px; border: 1px solid var(--gray-border); margin-bottom: 2rem;">
+                        <h4 style="margin-bottom: 1rem;">Начните за 60 секунд</h4>
+                        <p style="color: var(--text-light); margin-bottom: 1rem;">Создайте свою первую задачу мониторинга и начните находить лиды в каналах Telegram.</p>
+                        <button class="btn btn-primary" onclick="openTaskModal()">
+                            <i class="bi bi-plus"></i> Создать первую задачу
+                        </button>
                     </div>
 
-                    <!-- Recent Leads -->
-                    <div class="card bg-white shadow-sm">
-                        <div class="card-body">
-                            <h4 class="card-title">Последние лиды</h4>
-                            <div id="recent-leads" class="text-gray-500 text-sm">Лиды появятся после запуска мониторинга</div>
-                        </div>
+                    <div style="background: white; padding: 1.5rem; border-radius: 8px; border: 1px solid var(--gray-border);">
+                        <h4 style="margin-bottom: 1rem;">Последние лиды</h4>
+                        <div id="recent-leads" style="display: flex; flex-direction: column; gap: 1rem;"></div>
                     </div>
                 </section>
 
                 <!-- TASKS SECTION -->
-                <section id="tasks" class="content-section hidden">
-                    <div class="flex justify-between items-center mb-6">
-                        <h2 class="text-2xl font-bold">Ваши задачи</h2>
-                        <button class="btn btn-primary btn-sm" onclick="openTaskModal()">
+                <section id="tasks" class="content-section">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+                        <h4>Ваши задачи</h4>
+                        <button class="btn btn-primary" onclick="openTaskModal()">
                             <i class="bi bi-plus"></i> Новая задача
                         </button>
                     </div>
-                    <div id="tasks-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"></div>
+                    <div id="tasks-container" class="tasks-grid"></div>
                 </section>
 
                 <!-- LEADS SECTION -->
-                <section id="leads" class="content-section hidden">
-                    <h2 class="text-2xl font-bold mb-6">Лиды</h2>
-                    <div class="flex gap-4 mb-6">
-                        <select id="filter-task" class="select select-bordered select-sm w-full max-w-xs">
-                            <option>Все задачи</option>
+                <section id="leads" class="content-section">
+                    <div class="leads-filters">
+                        <select id="filter-task">
+                            <option value="">Все задачи</option>
                         </select>
-                        <select id="filter-status" class="select select-bordered select-sm w-full max-w-xs">
+                        <select id="filter-status">
                             <option value="">Все статусы</option>
                             <option value="new">Новые</option>
                             <option value="viewed">Просмотренные</option>
                             <option value="archived">Архивированные</option>
                         </select>
-                        <input type="text" id="filter-search" placeholder="Поиск лидов..." class="input input-bordered input-sm w-full max-w-xs" />
+                        <input type="text" id="filter-search" placeholder="Поиск лидов...">
                     </div>
-                    <div id="leads-container" class="space-y-4"></div>
+                    <div id="leads-container" class="leads-list"></div>
                 </section>
 
                 <!-- BILLING SECTION -->
-                <section id="billing" class="content-section hidden">
-                    <h2 class="text-2xl font-bold mb-6">Billing</h2>
-
-                    <!-- Current Plan -->
-                    <div class="card bg-white shadow-sm mb-6">
-                        <div class="card-body">
-                            <h3 class="card-title">Current Plan</h3>
-                            <p class="text-4xl font-bold text-purple-600 my-2">Free</p>
-                            <p class="text-gray-600">You're on the free plan. Upgrade to unlock more tasks and sources.</p>
-                            <div class="grid grid-cols-3 gap-4 my-4 text-sm">
-                                <div><strong>2/3 Tasks</strong><br><span class="text-gray-500">Used</span></div>
-                                <div><strong>5/10 Sources</strong><br><span class="text-gray-500">Used</span></div>
-                                <div><strong>10/25 Keywords</strong><br><span class="text-gray-500">Used</span></div>
+                <section id="billing" class="content-section">
+                    <div style="background: white; padding: 1.5rem; border-radius: 8px; border: 1px solid var(--gray-border); margin-bottom: 2rem;">
+                        <h4 style="margin-bottom: 1rem;">Current Plan</h4>
+                        <div style="font-size: 1.5rem; font-weight: 700; color: var(--primary); margin-bottom: 1rem;">Free</div>
+                        <p style="color: var(--text-light); margin-bottom: 1.5rem;">You're on the free plan. Upgrade to unlock more tasks and sources.</p>
+                        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; font-size: 0.9rem; margin-bottom: 1.5rem;">
+                            <div>
+                                <div style="font-weight: 600;">2/3 Tasks</div>
+                                <div style="color: var(--text-light); font-size: 0.85rem;">Used</div>
                             </div>
-                            <button class="btn btn-primary btn-sm" onclick="showToast('Интеграция платежей в разработке', 'info')">Upgrade Now</button>
+                            <div>
+                                <div style="font-weight: 600;">5/10 Sources</div>
+                                <div style="color: var(--text-light); font-size: 0.85rem;">Used</div>
+                            </div>
+                            <div>
+                                <div style="font-weight: 600;">10/25 Keywords</div>
+                                <div style="color: var(--text-light); font-size: 0.85rem;">Used</div>
+                            </div>
                         </div>
+                        <button class="btn btn-primary" onclick="showToast('Интеграция платежей в разработке', 'info')">Upgrade Now</button>
                     </div>
 
-                    <!-- Pricing Plans -->
-                    <h3 class="text-lg font-bold mb-4">Pricing Plans</h3>
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <!-- Starter -->
-                        <div class="card bg-white shadow-sm border-2 border-purple-600">
-                            <div class="card-body">
-                                <span class="badge badge-primary absolute -top-3 left-4">Current</span>
-                                <h3 class="card-title">Starter</h3>
-                                <p class="text-3xl font-bold text-purple-600">Free</p>
-                                <ul class="list-disc list-inside text-sm text-gray-600 space-y-1 my-4">
-                                    <li>3 Tasks</li>
-                                    <li>10 Sources</li>
-                                    <li>25 Keywords</li>
-                                    <li>Email support</li>
-                                </ul>
-                                <button class="btn btn-disabled btn-sm w-full">Current Plan</button>
-                            </div>
+                    <h4 style="margin-bottom: 1rem;">Pricing Plans</h4>
+                    <div class="pricing-grid">
+                        <div class="pricing-card current">
+                            <div class="pricing-badge">Current</div>
+                            <div class="pricing-name">Starter</div>
+                            <div class="pricing-price">Free</div>
+                            <ul class="pricing-features">
+                                <li>3 Tasks</li>
+                                <li>10 Sources</li>
+                                <li>25 Keywords</li>
+                                <li>Email support</li>
+                            </ul>
+                            <button class="btn" disabled>Current Plan</button>
                         </div>
 
-                        <!-- Pro -->
-                        <div class="card bg-white shadow-sm">
-                            <div class="card-body">
-                                <h3 class="card-title">Pro</h3>
-                                <p class="text-3xl font-bold text-purple-600">$29<span class="text-sm text-gray-500">/mo</span></p>
-                                <ul class="list-disc list-inside text-sm text-gray-600 space-y-1 my-4">
-                                    <li>20 Tasks</li>
-                                    <li>100 Sources</li>
-                                    <li>500 Keywords</li>
-                                    <li>Priority support</li>
-                                </ul>
-                                <button class="btn btn-primary btn-sm w-full" onclick="showToast('Интеграция платежей в разработке', 'info')">Upgrade</button>
-                            </div>
+                        <div class="pricing-card">
+                            <div class="pricing-name">Pro</div>
+                            <div class="pricing-price">$29</div>
+                            <div style="color: var(--text-light); margin-bottom: 1rem; font-size: 0.9rem;">per month</div>
+                            <ul class="pricing-features">
+                                <li>20 Tasks</li>
+                                <li>100 Sources</li>
+                                <li>500 Keywords</li>
+                                <li>Priority support</li>
+                            </ul>
+                            <button class="btn btn-primary" onclick="showToast('Интеграция платежей в разработке', 'info')">Upgrade</button>
                         </div>
 
-                        <!-- Team -->
-                        <div class="card bg-white shadow-sm">
-                            <div class="card-body">
-                                <h3 class="card-title">Team</h3>
-                                <p class="text-3xl font-bold text-purple-600">$99<span class="text-sm text-gray-500">/mo</span></p>
-                                <ul class="list-disc list-inside text-sm text-gray-600 space-y-1 my-4">
-                                    <li>Unlimited Tasks</li>
-                                    <li>Unlimited Sources</li>
-                                    <li>Unlimited Keywords</li>
-                                    <li>24/7 support</li>
-                                </ul>
-                                <button class="btn btn-primary btn-sm w-full" onclick="showToast('Интеграция платежей в разработке', 'info')">Contact</button>
-                            </div>
+                        <div class="pricing-card">
+                            <div class="pricing-name">Team</div>
+                            <div class="pricing-price">$99</div>
+                            <div style="color: var(--text-light); margin-bottom: 1rem; font-size: 0.9rem;">per month</div>
+                            <ul class="pricing-features">
+                                <li>Unlimited Tasks</li>
+                                <li>Unlimited Sources</li>
+                                <li>Unlimited Keywords</li>
+                                <li>24/7 support</li>
+                            </ul>
+                            <button class="btn btn-primary" onclick="showToast('Интеграция платежей в разработке', 'info')">Contact</button>
                         </div>
                     </div>
                 </section>
 
                 <!-- SETTINGS SECTION -->
-                <section id="settings" class="content-section hidden">
-                    <h2 class="text-2xl font-bold mb-6">Settings</h2>
-
-                    <!-- Account -->
-                    <div class="card bg-white shadow-sm mb-4">
-                        <div class="card-body">
-                            <h3 class="card-title text-lg">Account</h3>
-                            <p class="text-sm text-gray-600 mb-4">Telegram Account</p>
+                <section id="settings" class="content-section">
+                    <div style="background: white; padding: 1.5rem; border-radius: 8px; border: 1px solid var(--gray-border); margin-bottom: 1.5rem;">
+                        <h4 style="margin-bottom: 1rem;">Account</h4>
+                        <div style="margin-bottom: 1rem;">
+                            <label style="display: block; margin-bottom: 0.5rem; font-weight: 600;">Telegram Account</label>
                             <div id="telegram-account-status"></div>
                         </div>
                     </div>
 
-                    <!-- Notifications -->
-                    <div class="card bg-white shadow-sm mb-4">
-                        <div class="card-body">
-                            <h3 class="card-title text-lg">Notifications</h3>
-                            <label class="form-control">
-                                <div class="label cursor-pointer gap-2">
-                                    <input type="checkbox" class="checkbox" id="notify-telegram" checked />
-                                    <span class="label-text">New leads via Telegram</span>
-                                </div>
+                    <div style="background: white; padding: 1.5rem; border-radius: 8px; border: 1px solid var(--gray-border); margin-bottom: 1.5rem;">
+                        <h4 style="margin-bottom: 1rem;">Notifications</h4>
+                        <div class="form-group" style="margin-bottom: 1rem;">
+                            <label class="checkbox-group">
+                                <input type="checkbox" id="notify-telegram" checked>
+                                <span>New leads via Telegram</span>
                             </label>
-                            <label class="form-control">
-                                <div class="label cursor-pointer gap-2">
-                                    <input type="checkbox" class="checkbox" id="notify-email" />
-                                    <span class="label-text">Email digest (daily)</span>
-                                </div>
-                            </label>
-                            <button class="btn btn-primary btn-sm mt-4" onclick="saveSettings()">Save Settings</button>
                         </div>
+                        <div class="form-group" style="margin-bottom: 1rem;">
+                            <label class="checkbox-group">
+                                <input type="checkbox" id="notify-email">
+                                <span>Email digest (daily)</span>
+                            </label>
+                        </div>
+                        <button class="btn btn-primary" onclick="saveSettings()">Save Settings</button>
                     </div>
 
-                    <!-- Danger Zone -->
-                    <div class="card bg-red-50 shadow-sm border border-red-200">
-                        <div class="card-body">
-                            <h3 class="card-title text-lg text-red-600">Danger Zone</h3>
-                            <button class="btn btn-error btn-sm" onclick="showDeleteConfirm('Вы уверены, что хотите удалить аккаунт? Это действие нельзя отменить.', () => showToast('Удаление аккаунта в разработке', 'info'))">
-                                <i class="bi bi-trash"></i> Delete Account
-                            </button>
-                        </div>
+                    <div style="background: #fff5f5; padding: 1.5rem; border-radius: 8px; border: 1px solid #fdd; margin-bottom: 1.5rem;">
+                        <h4 style="margin-bottom: 1rem; color: #d32f2f;">Danger Zone</h4>
+                        <button class="btn btn-danger" onclick="showDeleteConfirm('Вы уверены, что хотите удалить аккаунт? Это действие нельзя отменить.', () => showToast('Удаление аккаунта в разработке', 'info'))">
+                            <i class="bi bi-trash"></i> Delete Account
+                        </button>
                     </div>
                 </section>
             </div>
         </div>
+    </div>
 
-        <!-- SIDEBAR (NAVIGATION) -->
-        <div class="drawer-side">
-            <label for="nav-drawer" aria-label="close sidebar" class="drawer-overlay"></label>
-            <div class="menu p-4 w-80 min-h-full bg-white shadow-lg">
-                <!-- Logo -->
-                <div class="mb-8 pb-4 border-b">
-                    <h2 class="text-xl font-bold text-purple-600 flex items-center gap-2">
-                        <i class="bi bi-speedometer2"></i> JobRadar
-                    </h2>
-                </div>
+    <!-- TOAST CONTAINER -->
+    <div class="toast-container" id="toast-container"></div>
 
-                <!-- Navigation Menu -->
-                <ul class="space-y-2">
-                    <li><a data-section="dashboard" class="nav-item active" onclick="selectNav(this)"><i class="bi bi-speedometer2"></i> Dashboard</a></li>
-                    <li><a data-section="tasks" class="nav-item" onclick="selectNav(this)"><i class="bi bi-list-check"></i> Tasks</a></li>
-                    <li><a data-section="leads" class="nav-item" onclick="selectNav(this)"><i class="bi bi-fire"></i> Leads</a></li>
-                    <li><a data-section="billing" class="nav-item" onclick="selectNav(this)"><i class="bi bi-credit-card"></i> Billing</a></li>
-                    <li><a data-section="settings" class="nav-item" onclick="selectNav(this)"><i class="bi bi-gear"></i> Settings</a></li>
-                </ul>
+    <!-- DIALOG -->
+    <div class="dialog-overlay" id="delete-dialog-overlay">
+        <div class="dialog-content">
+            <div class="dialog-header">
+                <h3>Подтверждение удаления</h3>
+            </div>
+            <div class="dialog-body" id="delete-dialog-message"></div>
+            <div class="dialog-actions">
+                <button onclick="closeDeleteDialog()">Отмена</button>
+                <button class="btn-primary" onclick="confirmDelete()">Удалить</button>
             </div>
         </div>
     </div>
 
-    <!-- Toast Container -->
-    <div id="toast-container" class="toast toast-top toast-end gap-2"></div>
-
-    <!-- Modal: Task Form -->
-    <dialog id="task-modal" class="modal">
-        <div class="modal-box w-full max-w-md">
-            <h3 class="font-bold text-lg mb-4" id="modal-title">Create Task</h3>
-            <form id="task-form" class="space-y-4">
-                <div class="form-control">
-                    <label class="label"><span class="label-text">Task Name *</span></label>
-                    <input type="text" id="task-name" class="input input-bordered" required />
+    <!-- MODAL -->
+    <div id="task-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <span id="modal-title">Create Task</span>
+                <button class="modal-close" onclick="closeTaskModal()">&times;</button>
+            </div>
+            <form id="task-form">
+                <div class="form-group">
+                    <label>Task Name *</label>
+                    <input type="text" id="task-name" required>
                 </div>
 
-                <div class="form-control">
-                    <label class="label"><span class="label-text">Sources (channels/chats)</span></label>
-                    <textarea id="task-sources" class="textarea textarea-bordered" placeholder="telegram.me/channel&#10;https://t.me/+xxxxx&#10;One per line"></textarea>
-                    <label class="label"><span class="label-text-alt">Enter Telegram channel links, one per line</span></label>
+                <div class="form-group">
+                    <label>Sources (channels/chats)</label>
+                    <textarea id="task-sources" placeholder="telegram.me/channel&#10;https://t.me/+xxxxx&#10;One per line"></textarea>
+                    <span class="form-hint">Enter Telegram channel links, one per line</span>
                 </div>
 
-                <div class="form-control">
-                    <label class="label"><span class="label-text">Include Keywords *</span></label>
-                    <textarea id="task-include" class="textarea textarea-bordered" placeholder="python&#10;remote&#10;One per line" required></textarea>
-                    <label class="label"><span class="label-text-alt">Find leads containing these keywords</span></label>
+                <div class="form-group">
+                    <label>Include Keywords *</label>
+                    <textarea id="task-include" placeholder="python&#10;remote&#10;One per line" required></textarea>
+                    <span class="form-hint">Find leads containing these keywords</span>
                 </div>
 
-                <div class="form-control">
-                    <label class="label"><span class="label-text">Exclude Keywords (minus-words)</span></label>
-                    <textarea id="task-exclude" class="textarea textarea-bordered" placeholder="junior&#10;internship&#10;One per line"></textarea>
-                    <label class="label"><span class="label-text-alt">Ignore leads containing these keywords</span></label>
+                <div class="form-group">
+                    <label>Exclude Keywords (minus-words)</label>
+                    <textarea id="task-exclude" placeholder="junior&#10;internship&#10;One per line"></textarea>
+                    <span class="form-hint">Ignore leads containing these keywords</span>
                 </div>
 
-                <div class="form-control">
-                    <label class="label"><span class="label-text">Alerts</span></label>
-                    <label class="flex gap-2 items-center"><input type="checkbox" id="alert-telegram" class="checkbox" checked /><span>Telegram</span></label>
-                    <label class="flex gap-2 items-center"><input type="checkbox" id="alert-email" class="checkbox" /><span>Email</span></label>
-                    <label class="flex gap-2 items-center"><input type="checkbox" id="alert-webhook" class="checkbox" /><span>Webhook</span></label>
+                <div class="form-group">
+                    <label>Alerts</label>
+                    <div class="checkbox-group" style="margin-bottom: 0.75rem;">
+                        <input type="checkbox" id="alert-telegram" checked>
+                        <span>Telegram</span>
+                    </div>
+                    <div class="checkbox-group" style="margin-bottom: 0.75rem;">
+                        <input type="checkbox" id="alert-email">
+                        <span>Email</span>
+                    </div>
+                    <div class="checkbox-group">
+                        <input type="checkbox" id="alert-webhook">
+                        <span>Webhook</span>
+                    </div>
                 </div>
 
-                <div class="modal-action">
+                <div class="modal-actions">
                     <button type="button" class="btn" onclick="closeTaskModal()">Cancel</button>
                     <button type="submit" class="btn btn-primary">Save Task</button>
                 </div>
             </form>
         </div>
-        <form method="dialog" class="modal-backdrop"><button></button></form>
-    </dialog>
-
-    <!-- Modal: Delete Confirm -->
-    <dialog id="delete-modal" class="modal">
-        <div class="modal-box">
-            <h3 class="font-bold text-lg">Подтверждение удаления</h3>
-            <p id="delete-modal-message" class="py-4"></p>
-            <div class="modal-action">
-                <button class="btn" onclick="document.getElementById('delete-modal').close()">Отмена</button>
-                <button class="btn btn-error" onclick="confirmDelete()">Удалить</button>
-            </div>
-        </div>
-        <form method="dialog" class="modal-backdrop"><button></button></form>
-    </dialog>
-
-    <style>
-        .nav-item {
-            @apply btn btn-ghost btn-block justify-start gap-3 text-gray-700;
-        }
-        .nav-item.active {
-            @apply bg-purple-100 text-purple-600;
-        }
-        .content-section {
-            @apply hidden;
-        }
-        .content-section.active {
-            @apply block;
-        }
-    </style>
+    </div>
 
     <script>
-        const API_BASE = '';
-
         // ==================== UI COMPONENTS ====================
         function showToast(message, type = 'info', duration = 3000) {
             const container = document.getElementById('toast-container');
             const toast = document.createElement('div');
-            toast.className = `alert alert-${type === 'success' ? 'success' : type === 'error' ? 'error' : 'info'} shadow-lg`;
+            toast.className = `toast ${type}`;
 
             const icons = {
                 success: 'bi-check-circle',
@@ -369,17 +1206,18 @@
             };
 
             toast.innerHTML = `
-                <div class="flex items-center gap-2">
-                    <i class="bi ${icons[type]}"></i>
-                    <span>${message}</span>
-                    <button class="btn btn-ghost btn-sm" onclick="this.closest('.alert').remove()">×</button>
-                </div>
+                <i class="bi ${icons[type]} toast-icon"></i>
+                <span>${message}</span>
+                <button class="toast-close" onclick="this.parentElement.remove()">×</button>
             `;
 
             container.appendChild(toast);
 
             if (duration > 0) {
-                setTimeout(() => toast.remove(), duration);
+                setTimeout(() => {
+                    toast.classList.add('removing');
+                    setTimeout(() => toast.remove(), 300);
+                }, duration);
             }
         }
 
@@ -387,18 +1225,25 @@
 
         function showDeleteConfirm(message, onConfirm) {
             deletePendingCallback = onConfirm;
-            document.getElementById('delete-modal-message').textContent = message;
-            document.getElementById('delete-modal').showModal();
+            document.getElementById('delete-dialog-message').textContent = message;
+            document.getElementById('delete-dialog-overlay').classList.add('visible');
+        }
+
+        function closeDeleteDialog() {
+            document.getElementById('delete-dialog-overlay').classList.remove('visible');
+            deletePendingCallback = null;
         }
 
         function confirmDelete() {
             if (deletePendingCallback) {
                 deletePendingCallback();
             }
-            document.getElementById('delete-modal').close();
+            closeDeleteDialog();
         }
 
         // ==================== API FUNCTIONS ====================
+        const API_BASE = '';
+
         async function getTasks() {
             try {
                 const response = await fetch(`${API_BASE}/api/tasks`);
@@ -474,37 +1319,43 @@
         }
 
         // ==================== NAVIGATION ====================
-        function selectNav(element) {
-            document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
-            element.classList.add('active');
+        document.querySelectorAll('[data-section]').forEach(link => {
+            link.addEventListener('click', (e) => {
+                e.preventDefault();
+                const section = link.getAttribute('data-section');
+                
+                document.querySelectorAll('.content-section').forEach(el => el.classList.remove('active'));
+                document.getElementById(section).classList.add('active');
 
-            const section = element.getAttribute('data-section');
-            document.querySelectorAll('.content-section').forEach(el => el.classList.remove('active'));
-            document.getElementById(section).classList.add('active');
+                document.querySelectorAll('.nav-link').forEach(el => el.classList.remove('active'));
+                link.classList.add('active');
 
-            const titles = {
-                dashboard: 'Dashboard',
-                tasks: 'Tasks',
-                leads: 'Leads',
-                billing: 'Billing',
-                settings: 'Settings'
-            };
-            document.getElementById('page-title').textContent = titles[section];
+                const titles = {
+                    dashboard: 'Dashboard',
+                    tasks: 'Tasks',
+                    leads: 'Leads',
+                    billing: 'Billing',
+                    settings: 'Settings'
+                };
+                document.getElementById('page-title').textContent = titles[section];
 
-            if (section === 'tasks') renderTasks();
-            if (section === 'leads') renderLeads();
-        }
+                if (section === 'tasks') renderTasks();
+                if (section === 'leads') renderLeads();
+            });
+        });
 
         // ==================== TASK MANAGEMENT ====================
         let currentEditTaskId = null;
 
         async function openTaskModal(taskId = null) {
             currentEditTaskId = taskId;
+            const modal = document.getElementById('task-modal');
             const form = document.getElementById('task-form');
 
             form.reset();
 
             if (taskId) {
+                // Fetch the specific task
                 try {
                     const response = await fetch(`${API_BASE}/api/tasks/${taskId}`);
                     if (!response.ok) throw new Error('Failed to fetch task');
@@ -527,11 +1378,11 @@
                 document.getElementById('modal-title').textContent = 'Create Task';
             }
 
-            document.getElementById('task-modal').showModal();
+            modal.classList.add('active');
         }
 
         function closeTaskModal() {
-            document.getElementById('task-modal').close();
+            document.getElementById('task-modal').classList.remove('active');
             currentEditTaskId = null;
         }
 
@@ -613,11 +1464,11 @@
 
             if (tasks.length === 0) {
                 container.innerHTML = `
-                    <div class="col-span-full text-center py-12">
-                        <i class="bi bi-briefcase text-4xl text-gray-300 mb-4"></i>
-                        <h4 class="text-lg font-semibold text-gray-700">Нет задач</h4>
-                        <p class="text-gray-500 mb-4">Создайте свою первую задачу мониторинга, чтобы начать</p>
-                        <button class="btn btn-primary btn-sm" onclick="openTaskModal()">Создать задачу</button>
+                    <div class="empty-state" style="grid-column: 1/-1;">
+                        <i class="bi bi-briefcase"></i>
+                        <h4>Нет задач</h4>
+                        <p>Создайте свою первую задачу мониторинга, чтобы начать</p>
+                        <button class="btn btn-primary" onclick="openTaskModal()">Создать задачу</button>
                     </div>
                 `;
                 return;
@@ -626,37 +1477,35 @@
             const countItems = (str) => str ? str.split(',').filter(s => s.trim()).length : 0;
 
             container.innerHTML = tasks.map(task => `
-                <div class="card bg-white shadow-sm">
-                    <div class="card-body">
-                        <div class="flex justify-between items-start mb-2">
-                            <h3 class="card-title text-base">${task.name}</h3>
-                            <span class="badge ${task.status === 'running' ? 'badge-success' : 'badge-warning'}">${task.status}</span>
+                <div class="task-card">
+                    <div class="task-header">
+                        <div class="task-title">${task.name}</div>
+                        <span class="task-status ${task.status}">${task.status}</span>
+                    </div>
+                    <div class="task-counts">
+                        <div class="task-count">
+                            <div class="task-count-value">${countItems(task.sources)}</div>
+                            <div class="task-count-label">Источники</div>
                         </div>
-                        <div class="grid grid-cols-3 gap-2 py-3 border-y text-sm text-center">
-                            <div>
-                                <div class="font-bold text-purple-600">${countItems(task.sources)}</div>
-                                <div class="text-gray-500 text-xs">Источники</div>
-                            </div>
-                            <div>
-                                <div class="font-bold text-purple-600">${countItems(task.include_keywords)}</div>
-                                <div class="text-gray-500 text-xs">Включить</div>
-                            </div>
-                            <div>
-                                <div class="font-bold text-purple-600">${countItems(task.exclude_keywords)}</div>
-                                <div class="text-gray-500 text-xs">Исключить</div>
-                            </div>
+                        <div class="task-count">
+                            <div class="task-count-value">${countItems(task.include_keywords)}</div>
+                            <div class="task-count-label">Включить</div>
                         </div>
-                        <div class="card-actions justify-between mt-4">
-                            <button class="btn btn-xs btn-outline" onclick="toggleTaskStatus(${task.id})">
-                                <i class="bi bi-pause-circle"></i> ${task.status === 'running' ? 'Пауза' : 'Запуск'}
-                            </button>
-                            <button class="btn btn-xs btn-outline" onclick="openTaskModal(${task.id})">
-                                <i class="bi bi-pencil"></i> Редактировать
-                            </button>
-                            <button class="btn btn-xs btn-outline btn-error" onclick="deleteTaskHandler(${task.id})">
-                                <i class="bi bi-trash"></i> Удалить
-                            </button>
+                        <div class="task-count">
+                            <div class="task-count-value">${countItems(task.exclude_keywords)}</div>
+                            <div class="task-count-label">Исключить</div>
                         </div>
+                    </div>
+                    <div class="task-actions">
+                        <button class="btn btn-sm" onclick="toggleTaskStatus(${task.id})">
+                            <i class="bi bi-pause-circle"></i> ${task.status === 'running' ? 'Пауза' : 'Запуск'}
+                        </button>
+                        <button class="btn btn-sm" onclick="openTaskModal(${task.id})">
+                            <i class="bi bi-pencil"></i> Редактировать
+                        </button>
+                        <button class="btn btn-sm btn-danger" onclick="deleteTaskHandler(${task.id})">
+                            <i class="bi bi-trash"></i> Удалить
+                        </button>
                     </div>
                 </div>
             `).join('');
@@ -664,13 +1513,19 @@
 
         async function renderLeads() {
             const container = document.getElementById('leads-container');
+
             container.innerHTML = `
-                <div class="text-center py-12">
-                    <i class="bi bi-search text-4xl text-gray-300 mb-4"></i>
-                    <h4 class="text-lg font-semibold text-gray-700">Функция лидов в разработке</h4>
-                    <p class="text-gray-500">Скоро можно будет просматривать найденные лиды</p>
+                <div class="empty-state">
+                    <i class="bi bi-search"></i>
+                    <h4>Функция лидов в разработке</h4>
+                    <p>Скоро можно будет просматривать найденные лиды</p>
                 </div>
             `;
+        }
+
+        async function setLeadStatus(leadId, status) {
+            // TODO: Implement when leads API is ready
+            console.log('Set lead status:', leadId, status);
         }
 
         async function updateStats() {
@@ -681,19 +1536,22 @@
             document.getElementById('stat-keywords').textContent = stats.total_keywords;
             document.getElementById('stat-leads').textContent = stats.total_matches;
 
-            const newLeads = 0;
+            const newLeads = 0; // TODO: Get from API
             if (newLeads > 0) {
-                document.getElementById('notification-count').classList.remove('hidden');
                 document.getElementById('notification-count').textContent = newLeads;
             } else {
-                document.getElementById('notification-count').classList.add('hidden');
+                document.getElementById('notification-count').style.display = 'none';
             }
+
+            // Update recent leads
+            document.getElementById('recent-leads').innerHTML = '<div style="color: var(--text-light); padding: 0.75rem;">Лиды появятся после запуска мониторинга</div>';
         }
 
         function saveSettings() {
             showToast('Настройки сохранены!', 'success');
         }
 
+        // Update task filter in leads
         async function updateTaskFilter() {
             const tasks = await getTasks();
             const select = document.getElementById('filter-task');
@@ -707,7 +1565,7 @@
         document.getElementById('filter-status').addEventListener('change', renderLeads);
         document.getElementById('filter-search').addEventListener('input', renderLeads);
 
-        // ==================== УПРАВЛЕНИЕ ПРОФИЛЕМ ====================
+        // ==================== Управление профилем пользователя ====================
         function updateTelegramAccountStatus() {
             const userJSON = localStorage.getItem('user');
             const statusDiv = document.getElementById('telegram-account-status');
@@ -718,17 +1576,21 @@
                 const phone = user.phone || '-';
 
                 statusDiv.innerHTML = `
-                    <div class="alert alert-success mb-4">
-                        <i class="bi bi-check-circle-fill"></i>
-                        <span>Авторизирован</span>
+                    <div style="background: #f0fdf4; padding: 1rem; border-radius: 4px; border: 1px solid #22c55e; margin-bottom: 1rem;">
+                        <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.5rem;">
+                            <i class="bi bi-check-circle-fill" style="color: #22c55e; font-size: 1.2rem;"></i>
+                            <span style="font-weight: 600; color: #22c55e;">Авторизирован</span>
+                        </div>
+                        <div style="color: var(--text-dark); margin-bottom: 0.5rem;">
+                            <strong>${fullName}</strong>
+                        </div>
+                        <div style="color: var(--text-gray); font-size: 0.9rem; margin-bottom: 1rem;">
+                            ${phone}
+                        </div>
+                        <button class="btn btn-primary" onclick="window.location.href='/login'" style="width: 100%;">
+                            <i class="bi bi-arrow-repeat"></i> Переавторизоваться
+                        </button>
                     </div>
-                    <div class="space-y-2 mb-4">
-                        <p class="font-semibold">${fullName}</p>
-                        <p class="text-sm text-gray-600">${phone}</p>
-                    </div>
-                    <button class="btn btn-primary btn-block" onclick="window.location.href='/login'">
-                        <i class="bi bi-arrow-repeat"></i> Переавторизоваться
-                    </button>
                 `;
             } catch (e) {
                 console.error('❌ Ошибка при обновлении статуса аккаунта:', e);
@@ -750,6 +1612,7 @@
                 document.getElementById('profile-phone').textContent = user.phone || '-';
                 console.log('✅ Профиль пользователя загружен:', fullName);
 
+                // Обновить статус Telegram аккаунта в Settings
                 updateTelegramAccountStatus();
             } catch (e) {
                 console.error('❌ Ошибка при загрузке профиля:', e);
@@ -757,11 +1620,25 @@
             }
         }
 
+        function toggleProfileMenu() {
+            const menu = document.getElementById('profile-menu');
+            menu.classList.toggle('visible');
+
+            // Закрыть меню при клике вне него
+            document.addEventListener('click', (e) => {
+                if (!e.target.closest('.user-profile')) {
+                    menu.classList.remove('visible');
+                }
+            });
+        }
+
         function logout() {
             showDeleteConfirm('Вы уверены, что хотите выйти из аккаунта?', () => {
+                // Удалить информацию о пользователе из localStorage
                 localStorage.removeItem('user');
                 showToast('Вы вышли из аккаунта', 'info');
 
+                // Перейти на страницу логина
                 setTimeout(() => {
                     window.location.href = '/login';
                 }, 1000);
