@@ -91,3 +91,23 @@ class FilterTerm(Base):
 
     def __repr__(self):
         return f"<FilterTerm(id={self.id}, rule_id={self.rule_id}, type={self.term_type}, value={self.value}, enabled={self.enabled})>"
+
+
+class Task(Base):
+    """Модель задачи мониторинга для MVP Dashboard"""
+    __tablename__ = "tasks"
+
+    id = Column(Integer, primary_key=True)
+    name = Column(String(255), nullable=False)
+    status = Column(String(50), default="running")  # "running" или "paused"
+    sources = Column(String(4000), nullable=False, default="")  # JSON или newline-separated
+    include_keywords = Column(String(4000), nullable=False, default="")  # JSON или newline-separated
+    exclude_keywords = Column(String(4000), nullable=True, default="")  # JSON или newline-separated
+    alerts_telegram = Column(Boolean, default=True)
+    alerts_email = Column(Boolean, default=False)
+    alerts_webhook = Column(Boolean, default=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    def __repr__(self):
+        return f"<Task(id={self.id}, name={self.name}, status={self.status})>"
