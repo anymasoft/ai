@@ -1358,6 +1358,11 @@
 
         // Функция переключения вкладки с поддержкой hash
         async function switchToSection(section) {
+            // Установить hash для сохранения состояния (если не был установлен через hashchange)
+            if (window.location.hash.substring(1) !== section) {
+                window.location.hash = section;
+            }
+
             // Восстановить нормальное отображение контента (убрать стиль display:none который добавляет displayLeadPage)
             document.querySelectorAll('.content-section').forEach(el => el.style.display = '');
 
@@ -1421,15 +1426,54 @@
         });
 
         // Обработка изменения hash (F5, переход по ссылке, кнопка назад/вперед)
-        window.addEventListener('hashchange', () => {
-            const section = window.location.hash.substring(1) || 'dashboard';
-            switchToSection(section);
-        });
+        async function handleHashChange() {
+            const hash = window.location.hash.substring(1) || 'dashboard';
+
+            // Проверить если это lead/ID
+            if (hash.startsWith('lead/')) {
+                const leadId = parseInt(hash.split('/')[1]);
+
+                // Загрузить лид из API если его нет в leadsState
+                let lead = leadsState.allLeads.find(l => l.id === leadId);
+
+                if (!lead) {
+                    try {
+                        const response = await fetch(`${API_BASE}/api/leads/${leadId}`, {
+                            credentials: 'include'
+                        });
+                        if (response.ok) {
+                            lead = await response.json();
+                            // Добавить в leadsState чтобы он был доступен
+                            if (!leadsState.allLeads.find(l => l.id === leadId)) {
+                                leadsState.allLeads.unshift(lead);
+                            }
+                        } else {
+                            showToast('Лид не найден', 'error');
+                            window.location.hash = 'leads';
+                            return;
+                        }
+                    } catch (error) {
+                        console.error('Error loading lead:', error);
+                        showToast('Ошибка загрузки лида', 'error');
+                        window.location.hash = 'leads';
+                        return;
+                    }
+                }
+
+                // Показать страницу лида
+                displayLeadPage(leadId, lead);
+                await markAllLeadsAsRead();
+            } else {
+                // Обычное переключение секции
+                switchToSection(hash);
+            }
+        }
+
+        window.addEventListener('hashchange', handleHashChange);
 
         // При загрузке страницы - восстановить вкладку из hash
-        document.addEventListener('DOMContentLoaded', () => {
-            const section = window.location.hash.substring(1) || 'dashboard';
-            switchToSection(section);
+        document.addEventListener('DOMContentLoaded', async () => {
+            await handleHashChange();
         });
 
         // ==================== TASK MANAGEMENT ====================
@@ -1880,11 +1924,9 @@
                 return;
             }
 
-            // Пометить как прочитанный
-            await markAllLeadsAsRead();
-
-            // Показать страницу лида
-            displayLeadPage(leadId, lead);
+            // Установить hash - это вызовет handleHashChange
+            // который загрузит лид и отобразит страницу
+            window.location.hash = `lead/${leadId}`;
         }
 
         // Функция отображения страницы лида
@@ -2023,8 +2065,6 @@
                     ` : ''}
                 </div>
             `;
-
-            document.getElementById('page-title').textContent = `Лид #${lead.id}`;
         }
 
         // Функция удаления лида
@@ -2129,12 +2169,12 @@
                 card.addEventListener('click', async (e) => {
                     if (e.target.tagName === 'A' || e.target.tagName === 'BUTTON') return;
                     const leadId = card.getAttribute('data-lead-id');
-                    // Нужно загрузить лид из API или из leadsState
+                    // Добавить в leadsState чтобы openLeadPage мог его найти
                     const lead = recentLeads.find(l => l.id === parseInt(leadId));
-                    if (lead) {
-                        leadsState.allLeads = recentLeads;
-                        displayLeadPage(leadId, lead);
+                    if (lead && !leadsState.allLeads.find(l => l.id === leadId)) {
+                        leadsState.allLeads.unshift(lead);
                     }
+                    openLeadPage(leadId);
                 });
 
                 card.addEventListener('mouseenter', () => {
