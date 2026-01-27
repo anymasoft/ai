@@ -1,7 +1,7 @@
 import os
 import json
-from fastapi import FastAPI, HTTPException, Depends
-from fastapi.responses import FileResponse, RedirectResponse
+from fastapi import FastAPI, HTTPException, Depends, Request
+from fastapi.responses import FileResponse, RedirectResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.staticfiles import StaticFiles
 from sqlalchemy.orm import Session
@@ -79,12 +79,16 @@ def get_db():
     finally:
         db.close()
 
-# Helper для получения текущего пользователя (MVP - первый авторизованный)
-def get_current_user(db: Session = Depends(get_db)) -> User:
-    """Получить текущего пользователя из авторизованной Telegram сессии"""
-    user = db.query(User).first()
-    if not user:
+# Helper для получения текущего пользователя из cookie
+def get_current_user(request: Request, db: Session = Depends(get_db)) -> User:
+    """Получить текущего пользователя из cookie авторизации"""
+    user_phone = request.cookies.get("user_phone")
+    if not user_phone:
         raise HTTPException(status_code=401, detail="Пользователь не авторизован")
+
+    user = db.query(User).filter(User.phone == user_phone).first()
+    if not user:
+        raise HTTPException(status_code=401, detail="Пользователь не найден в БД")
     return user
 
 # Pydantic модели для API
@@ -483,7 +487,16 @@ async def auth_save(request: AuthStartRequest):
         print(f"📋 REMAINING PENDING: {list(pending_auth_clients.keys())}")
         print(f"✅ === /api/auth/save успешен ===\n")
 
-        return {"ok": True, "user": user_info}
+        # Создаём ответ с установкой cookie авторизации
+        response = JSONResponse({"ok": True, "user": user_info})
+        response.set_cookie(
+            key="user_phone",
+            value=phone,
+            max_age=30*24*60*60,  # 30 дней
+            httponly=True,
+            samesite="Lax"
+        )
+        return response
     except Exception as e:
         print(f"❌ Ошибка при /api/auth/save: {str(e)}")
         import traceback
