@@ -19,7 +19,8 @@ TELEGRAM_ADMIN_ID = int(os.getenv("TELEGRAM_ADMIN_ID", "0"))
 TARGET_CHANNEL_ID = int(os.getenv("TARGET_CHANNEL_ID", "0"))  # например: -1003022594210
 
 # Базы данных
-DATABASE_URL = "sqlite:///./jobradar.db"
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+DATABASE_URL = f"sqlite:///{os.path.join(BASE_DIR, 'jobradar.db').replace(os.sep, '/')}"
 
 # Monitoring
 POLLING_INTERVAL_SECONDS = 10  # Проверка каждые 10 сек (как в LeadScanner)

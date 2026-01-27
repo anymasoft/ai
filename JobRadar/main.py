@@ -42,6 +42,14 @@ app.mount("/static", StaticFiles(directory=os.path.join(BASE_DIR, "static")), na
 # Инициализация БД при запуске
 @app.on_event("startup")
 async def startup():
+    from database import get_db_path
+    from config import DATABASE_URL
+    print("\n" + "="*70)
+    print("🎯 FastAPI приложение JobRadar запускается...")
+    print("="*70)
+    print(f"📍 DATABASE_URL: {DATABASE_URL}")
+    print(f"📍 Абсолютный путь к БД: {get_db_path()}")
+    print("="*70 + "\n")
     init_db()
 
 # Dependency для получения сессии БД
