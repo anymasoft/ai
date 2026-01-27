@@ -22,7 +22,7 @@ app = FastAPI()
 
 # ============== Глобальное хранилище pending клиентов ==============
 # {phone: TelegramClient}
-pending_auth_clients: dict[str, TelegramClient] = {}
+pending_auth_clients = {}
 
 # Получить абсолютный путь к папке со скриптом
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))

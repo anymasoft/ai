@@ -39,51 +39,91 @@ async def get_telegram_client(phone: str):
         return None
 
 
+# async def save_session_to_db(phone: str, session_string: str):
+#     """
+#     Сохранить session строку в SQLite БД.
+#
+#     Args:
+#         phone: Номер телефона
+#         session_string: Строка сессии из StringSession.save()
+#     """
+#     try:
+#         # Страховка: убедиться, что таблица существует
+#         from database import ensure_tables
+#         print(f"🔐 Проверяю наличие таблицы telegram_sessions...")
+#         ensure_tables()
+#
+#         db = SessionLocal()
+#         print(f"💾 Подключена БД для сохранения сессии")
+#
+#         try:
+#             # Проверить, есть ли уже сессия для этого номера
+#             existing = db.query(TelegramSession).filter(TelegramSession.phone == phone).first()
+#             if existing:
+#                 print(f"🔄 Обновляю существующую сессию для {phone}")
+#                 existing.session_string = session_string
+#             else:
+#                 print(f"✨ Создаю новую сессию для {phone}")
+#                 new_session = TelegramSession(
+#                     phone=phone,
+#                     session_string=session_string
+#                 )
+#                 db.add(new_session)
+#
+#             db.commit()
+#             print(f"✅ Сессия сохранена в БД для {phone} (длина: {len(session_string)})")
+#             return True
+#         except Exception as db_error:
+#             db.rollback()
+#             print(f"❌ Ошибка при работе с БД: {type(db_error).__name__}: {db_error}")
+#             import traceback
+#             traceback.print_exc()
+#             return False
+#         finally:
+#             db.close()
+#
+#     except Exception as e:
+#         print(f"❌ Критическая ошибка сохранения сессии в БД: {type(e).__name__}: {e}")
+#         import traceback
+#         traceback.print_exc()
+#         return False
+
+
 async def save_session_to_db(phone: str, session_string: str):
-    """
-    Сохранить session строку в SQLite БД.
-
-    Args:
-        phone: Номер телефона
-        session_string: Строка сессии из StringSession.save()
-    """
+    db = SessionLocal()
     try:
-        # Страховка: убедиться, что таблица существует
-        from database import ensure_tables
-        print(f"🔐 Проверяю наличие таблицы telegram_sessions...")
-        ensure_tables()
+        print("🧪 Проверяю наличие таблицы telegram_sessions")
 
-        db = SessionLocal()
-        print(f"💾 Подключена БД для сохранения сессии")
+        # принудительное создание таблицы если нет
+        TelegramSession.__table__.create(
+            bind=db.get_bind(),
+            checkfirst=True
+        )
 
-        try:
-            # Проверить, есть ли уже сессия для этого номера
-            existing = db.query(TelegramSession).filter(TelegramSession.phone == phone).first()
-            if existing:
-                print(f"🔄 Обновляю существующую сессию для {phone}")
-                existing.session_string = session_string
-            else:
-                print(f"✨ Создаю новую сессию для {phone}")
-                new_session = TelegramSession(
+        existing = db.query(TelegramSession)\
+            .filter(TelegramSession.phone == phone)\
+            .first()
+
+        if existing:
+            print(f"🔄 Обновляю существующую сессию для {phone}")
+            existing.session_string = session_string
+        else:
+            print(f"✨ Создаю новую сессию для {phone}")
+            db.add(
+                TelegramSession(
                     phone=phone,
                     session_string=session_string
                 )
-                db.add(new_session)
+            )
 
-            db.commit()
-            print(f"✅ Сессия сохранена в БД для {phone} (длина: {len(session_string)})")
-            return True
-        except Exception as db_error:
-            db.rollback()
-            print(f"❌ Ошибка при работе с БД: {type(db_error).__name__}: {db_error}")
-            import traceback
-            traceback.print_exc()
-            return False
-        finally:
-            db.close()
+        db.commit()
+        print(f"✅ Сессия сохранена в БД для {phone}")
+        return True
 
     except Exception as e:
-        print(f"❌ Критическая ошибка сохранения сессии в БД: {type(e).__name__}: {e}")
-        import traceback
-        traceback.print_exc()
+        print("❌ Реальная ошибка сохранения TelegramSession:")
+        print(repr(e))
         return False
+
+    finally:
+        db.close()
