@@ -103,9 +103,9 @@ class Task(Base):
     sources = Column(String(4000), nullable=False, default="")  # JSON или newline-separated
     include_keywords = Column(String(4000), nullable=False, default="")  # JSON или newline-separated
     exclude_keywords = Column(String(4000), nullable=True, default="")  # JSON или newline-separated
-    alerts_telegram = Column(Boolean, default=True)
-    alerts_email = Column(Boolean, default=False)
-    alerts_webhook = Column(Boolean, default=False)
+    forward_channel = Column(String(255), nullable=True, default="")  # Канал для пересылки постов
+    alerts_personal = Column(Boolean, default=True)  # Отправлять в личку
+    alerts_channel = Column(Boolean, default=False)  # Отправлять в канал
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
