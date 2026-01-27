@@ -29,6 +29,57 @@ def get_db_path() -> str:
     return "unknown"
 
 
+def migrate_schema():
+    """Мягкая миграция схемы БД - добавление новых колонок без потери данных"""
+    try:
+        connection = engine.connect()
+        try:
+            # ==================== ТАБЛИЦА LEADS ====================
+
+            # Получить информацию о колонках таблицы leads
+            result = connection.execute(text("PRAGMA table_info(leads)"))
+            columns = {row[1] for row in result}  # row[1] = column name
+
+            print("\n📋 Миграция схемы БД:")
+            print(f"   Колонки в таблице leads: {columns}")
+
+            # Добавить колонку status если её нет
+            if 'status' not in columns:
+                print("   ➕ Добавляю колонку status...")
+                connection.execute(text(
+                    "ALTER TABLE leads ADD COLUMN status TEXT DEFAULT 'new'"
+                ))
+                print("   ✅ Колонка status добавлена")
+            else:
+                print("   ✓ Колонка status уже существует")
+
+            # Добавить колонку delivered_at если её нет
+            if 'delivered_at' not in columns:
+                print("   ➕ Добавляю колонку delivered_at...")
+                connection.execute(text(
+                    "ALTER TABLE leads ADD COLUMN delivered_at DATETIME DEFAULT NULL"
+                ))
+                print("   ✅ Колонка delivered_at добавлена")
+            else:
+                print("   ✓ Колонка delivered_at уже существует")
+
+            connection.commit()
+            print("   ✅ Миграция схемы завершена\n")
+
+        except Exception as e:
+            connection.rollback()
+            print(f"   ⚠️  Ошибка при миграции: {e}")
+            # Не прерываем выполнение - это может быть ошибка "column already exists"
+        finally:
+            connection.close()
+
+    except Exception as e:
+        print(f"❌ Критическая ошибка при миграции схемы: {e}")
+        import traceback
+        traceback.print_exc()
+        # Продолжаем - это может быть временная ошибка
+
+
 def ensure_tables():
     """Гарантировать наличие всех таблиц в БД (идемпотентно для SQLite)"""
     try:
@@ -111,6 +162,9 @@ def init_db():
 
     # Гарантировать наличие таблиц
     ensure_tables()
+
+    # Выполнить мягкую миграцию схемы (добавить новые колонки если их нет)
+    migrate_schema()
 
     print("✅ База данных инициализирована")
     print("="*60 + "\n")
