@@ -151,6 +151,77 @@
             font-size: 0.75rem;
         }
 
+        /* Профиль пользователя */
+        .user-profile {
+            position: relative;
+        }
+
+        .profile-menu {
+            display: none;
+            position: absolute;
+            top: 100%;
+            right: 0;
+            background: white;
+            border: 1px solid var(--gray-border);
+            border-radius: 8px;
+            min-width: 250px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            z-index: 100;
+            margin-top: 0.5rem;
+            overflow: hidden;
+        }
+
+        .profile-menu.visible {
+            display: block;
+            animation: slideUp 0.2s ease-out;
+        }
+
+        .profile-header {
+            padding: 1rem;
+            background: rgba(88, 86, 214, 0.05);
+        }
+
+        .profile-info {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .profile-name {
+            font-weight: 600;
+            color: var(--text-dark);
+            font-size: 0.95rem;
+        }
+
+        .profile-phone {
+            font-size: 0.8rem;
+            color: var(--text-gray);
+            margin-top: 0.25rem;
+        }
+
+        .profile-menu-item {
+            width: 100%;
+            padding: 0.75rem 1rem;
+            background: none;
+            border: none;
+            text-align: left;
+            cursor: pointer;
+            color: var(--text-gray);
+            font-size: 0.9rem;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            transition: all 0.2s;
+        }
+
+        .profile-menu-item:hover {
+            background: var(--gray-100);
+            color: var(--primary);
+        }
+
+        .profile-menu-item i {
+            font-size: 1rem;
+        }
+
         .content {
             flex: 1;
             padding: 2rem;
@@ -859,9 +930,23 @@
                         <i class="bi bi-bell"></i>
                         <span class="badge-count" id="notification-count"></span>
                     </button>
-                    <button class="header-btn">
-                        <i class="bi bi-person-circle"></i>
-                    </button>
+                    <div class="user-profile">
+                        <button class="header-btn" id="profile-btn" onclick="toggleProfileMenu()">
+                            <i class="bi bi-person-circle"></i>
+                        </button>
+                        <div class="profile-menu" id="profile-menu">
+                            <div class="profile-header">
+                                <div class="profile-info">
+                                    <div class="profile-name" id="profile-name">Загрузка...</div>
+                                    <div class="profile-phone" id="profile-phone">-</div>
+                                </div>
+                            </div>
+                            <hr style="margin: 0.5rem 0; border: none; border-top: 1px solid var(--gray-border);">
+                            <button class="profile-menu-item" onclick="logout()">
+                                <i class="bi bi-box-arrow-right"></i> Выход
+                            </button>
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -1482,8 +1567,55 @@
         document.getElementById('filter-status').addEventListener('change', renderLeads);
         document.getElementById('filter-search').addEventListener('input', renderLeads);
 
+        // ==================== Управление профилем пользователя ====================
+        function loadUserProfile() {
+            const userJSON = localStorage.getItem('user');
+            if (!userJSON) {
+                console.log('❌ Информация о пользователе не найдена');
+                return;
+            }
+
+            try {
+                const user = JSON.parse(userJSON);
+                const fullName = `${user.first_name || ''} ${user.last_name || ''}`.trim() || user.username || 'Пользователь';
+                document.getElementById('profile-name').textContent = fullName;
+                document.getElementById('profile-phone').textContent = user.phone || '-';
+                console.log('✅ Профиль пользователя загружен:', fullName);
+            } catch (e) {
+                console.error('❌ Ошибка при загрузке профиля:', e);
+            }
+        }
+
+        function toggleProfileMenu() {
+            const menu = document.getElementById('profile-menu');
+            menu.classList.toggle('visible');
+
+            // Закрыть меню при клике вне него
+            document.addEventListener('click', (e) => {
+                if (!e.target.closest('.user-profile')) {
+                    menu.classList.remove('visible');
+                }
+            });
+        }
+
+        function logout() {
+            if (!confirm('Вы уверены, что хотите выйти?')) {
+                return;
+            }
+
+            // Удалить информацию о пользователе из localStorage
+            localStorage.removeItem('user');
+            showToast('Вы вышли из аккаунта', 'info');
+
+            // Перейти на страницу логина
+            setTimeout(() => {
+                window.location.href = '/login';
+            }, 1000);
+        }
+
         // Init
         (async () => {
+            loadUserProfile();
             await updateStats();
             await updateTaskFilter();
         })();

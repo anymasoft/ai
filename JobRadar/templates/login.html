@@ -640,6 +640,12 @@
                     return;
                 }
 
+                // Сохранить информацию о пользователе в localStorage
+                if (data.user) {
+                    localStorage.setItem('user', JSON.stringify(data.user));
+                    console.log('👤 Информация о пользователе сохранена:', data.user);
+                }
+
                 showToast('Авторизация успешна!', 'success');
                 showStage('success');
 
