@@ -1571,7 +1571,8 @@
         function loadUserProfile() {
             const userJSON = localStorage.getItem('user');
             if (!userJSON) {
-                console.log('❌ Информация о пользователе не найдена');
+                console.log('❌ Информация о пользователе не найдена. Перенаправление на страницу входа...');
+                window.location.href = '/login';
                 return;
             }
 
@@ -1583,6 +1584,7 @@
                 console.log('✅ Профиль пользователя загружен:', fullName);
             } catch (e) {
                 console.error('❌ Ошибка при загрузке профиля:', e);
+                window.location.href = '/login';
             }
         }
 
@@ -1599,18 +1601,16 @@
         }
 
         function logout() {
-            if (!confirm('Вы уверены, что хотите выйти?')) {
-                return;
-            }
+            showDeleteConfirm('Вы уверены, что хотите выйти из аккаунта?', () => {
+                // Удалить информацию о пользователе из localStorage
+                localStorage.removeItem('user');
+                showToast('Вы вышли из аккаунта', 'info');
 
-            // Удалить информацию о пользователе из localStorage
-            localStorage.removeItem('user');
-            showToast('Вы вышли из аккаунта', 'info');
-
-            // Перейти на страницу логина
-            setTimeout(() => {
-                window.location.href = '/login';
-            }, 1000);
+                // Перейти на страницу логина
+                setTimeout(() => {
+                    window.location.href = '/login';
+                }, 1000);
+            });
         }
 
         // Init
