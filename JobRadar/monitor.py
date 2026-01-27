@@ -16,7 +16,7 @@ from datetime import datetime
 
 from config import TELEGRAM_API_ID, TELEGRAM_API_HASH, TELEGRAM_PHONE
 from config import POLLING_INTERVAL_SECONDS, MAX_MESSAGES_PER_CHECK, TARGET_CHANNEL_ID
-from models import Channel, Keyword, FilterRule, Task, Lead, SourceMessage, TelegramSession
+from models import Channel, Keyword, FilterRule, Task, Lead, SourceMessage, TelegramSession, TaskSourceState
 from database import get_db
 from filter_engine import load_active_filter, match_text
 from telethon.sessions import StringSession
@@ -997,7 +997,19 @@ async def process_task_for_leads(task: Task, db: Session):
 async def check_source_for_task_leads(task: Task, source_username: str, include_keywords: list, filter_config: dict, db: Session):
     """
     Проверить один источник (канал) на новые сообщения для конкретной задачи.
-    Применить фильтр и сохранить найденные leads.
+
+    ЛОГИКА:
+    1. Первый проход (last_message_id == 0):
+       - Получить последний пост канала
+       - Сохранить его id как last_message_id в TaskSourceState
+       - НИЧЕГО НЕ ОБРАБАТЫВАТЬ
+       - Возврат
+
+    2. Все остальные проходы:
+       - Получить новые сообщения с min_id = last_message_id
+       - Обработать ТОЛЬКО msg.id > last_message_id
+       - Сохранить найденные leads в БД
+       - Обновить last_message_id на max(msg.id) из обработанных
 
     Args:
         task: Объект Task
@@ -1008,24 +1020,63 @@ async def check_source_for_task_leads(task: Task, source_username: str, include_
     """
     try:
         # Резолвим источник (source_username уже нормализирован)
-        logger.debug(f"[LEAD] task={task.id} checking channel {source_username}")
+        logger.debug(f"[LEAD] task={task.id} checking source {source_username}")
         entity = await telegram_client.get_entity(f"@{source_username}")
         source_chat_id = entity.id
 
-        # Получаем последнее обработанное сообщение для этого task из SourceMessage
-        last_source_message = (
-            db.query(SourceMessage)
+        # Получаем текущее состояние TaskSourceState для этой пары (task, source)
+        task_source_state = (
+            db.query(TaskSourceState)
             .filter(
-                SourceMessage.source_chat_id == source_chat_id,
-                SourceMessage.source_channel_username == source_username
+                TaskSourceState.task_id == task.id,
+                TaskSourceState.source == source_username
             )
-            .order_by(SourceMessage.source_message_id.desc())
             .first()
         )
 
-        last_message_id = last_source_message.source_message_id if last_source_message else 0
+        # ИНИЦИАЛИЗАЦИЯ (первый проход)
+        if not task_source_state or task_source_state.last_message_id == 0:
+            # Получаем последний пост в канале
+            messages = await telegram_client.get_messages(entity, limit=1)
 
-        # Получаем новые сообщения
+            if not messages:
+                # Канал пуст
+                logger.info(f"[INIT] task={task.id} source=@{source_username} empty channel, initialized with 0")
+                if not task_source_state:
+                    task_source_state = TaskSourceState(
+                        task_id=task.id,
+                        source=source_username,
+                        last_message_id=0
+                    )
+                    db.add(task_source_state)
+                    db.commit()
+                return
+
+            # Запомнили позицию последнего сообщения
+            initial_message_id = messages[0].id
+
+            if task_source_state:
+                # Обновляем существующую запись
+                task_source_state.last_message_id = initial_message_id
+                task_source_state.updated_at = datetime.utcnow()
+            else:
+                # Создаём новую запись
+                task_source_state = TaskSourceState(
+                    task_id=task.id,
+                    source=source_username,
+                    last_message_id=initial_message_id
+                )
+                db.add(task_source_state)
+
+            db.commit()
+            logger.info(f"[INIT] task={task.id} source=@{source_username} last_message_id={initial_message_id}")
+            # ВЫХОД из функции - первый проход только инициализирует позицию
+            return
+
+        # РЕГУЛЯРНАЯ ПРОВЕРКА (все остальные проходы)
+        last_message_id = task_source_state.last_message_id
+
+        # Получаем новые сообщения с min_id = last_message_id
         new_messages = await telegram_client.get_messages(
             entity,
             limit=MAX_MESSAGES_PER_CHECK,
@@ -1033,15 +1084,19 @@ async def check_source_for_task_leads(task: Task, source_username: str, include_
         )
 
         if not new_messages:
+            # Нет новых сообщений
+            logger.debug(f"[SCAN] task={task.id} source=@{source_username} new_messages=0")
             return
 
         # Фильтруем - оставляем ТОЛЬКО сообщения с id > last_message_id
         filtered_messages = [msg for msg in new_messages if msg.id > last_message_id]
 
         if not filtered_messages:
+            # Все сообщения уже обработаны
+            logger.debug(f"[SCAN] task={task.id} source=@{source_username} new_messages=0 (filtered)")
             return
 
-        # Обрабатываем сообщения
+        # Обрабатываем сообщения (от старых к новым)
         matched_count = 0
         for msg in reversed(filtered_messages):
             text = (msg.text or "").lower()
@@ -1084,35 +1139,18 @@ async def check_source_for_task_leads(task: Task, source_username: str, include_
 
                     matched_count += 1
                     text_preview = (msg.text or "")[:80].replace("\n", " ")
-                    logger.info(f"[LEAD] task={task.id} ({task.name}) channel=@{source_username} text_preview={text_preview}")
+                    logger.info(f"[LEAD] task={task.id} ({task.name}) source=@{source_username} msg_id={msg.id} matched")
 
                     # Отправляем лид пользователю в Telegram
                     await send_lead_to_telegram(task, lead, db)
 
-            # Записываем в SourceMessage чтобы не обрабатывать сообщение снова
-            existing_source_msg = (
-                db.query(SourceMessage)
-                .filter(
-                    SourceMessage.source_chat_id == source_chat_id,
-                    SourceMessage.source_message_id == msg.id
-                )
-                .first()
-            )
+        # Обновляем last_message_id на максимальный обработанный
+        new_last_id = max([msg.id for msg in filtered_messages])
+        task_source_state.last_message_id = new_last_id
+        task_source_state.updated_at = datetime.utcnow()
+        db.commit()
 
-            if not existing_source_msg:
-                source_msg = SourceMessage(
-                    source_chat_id=source_chat_id,
-                    source_message_id=msg.id,
-                    text=(msg.text or "")[:4000],
-                    has_keywords=match_text(text, filter_config, include_keywords),
-                    published=False,
-                    checked_at=datetime.utcnow(),
-                    source_channel_username=source_username
-                )
-                db.add(source_msg)
-                db.commit()
-
-        logger.info(f"[LEAD] task={task.id} ({task.name}) channel=@{source_username} обработано {len(filtered_messages)} сообщений, найдено {matched_count}")
+        logger.info(f"[SCAN] task={task.id} source=@{source_username} new_messages={len(filtered_messages)} matched={matched_count} last_message_id={new_last_id}")
 
     except Exception as e:
         logger.error(f"[LEAD] task={task.id} ({task.name}) ошибка при резолвинге @{source_username}: {e}")

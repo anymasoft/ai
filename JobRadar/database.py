@@ -70,6 +70,12 @@ def ensure_tables():
             ))
             print("✅ Индекс idx_lead_found_at OK")
 
+            # Индексы для TaskSourceState
+            connection.execute(text(
+                "CREATE INDEX IF NOT EXISTS idx_task_source_state ON task_source_states (task_id, source)"
+            ))
+            print("✅ Индекс idx_task_source_state OK")
+
             # Индексы для SourceMessage
             connection.execute(text(
                 "CREATE INDEX IF NOT EXISTS idx_source_chat_message ON source_messages (source_chat_id, source_message_id)"

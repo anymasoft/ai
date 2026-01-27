@@ -194,10 +194,11 @@ async def get_task(task_id: int, current_user: User = Depends(get_current_user),
 @app.post("/api/tasks", response_model=TaskResponse)
 async def create_task(task: TaskCreate, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     """Создать новую задачу"""
+    # ВАЖНО: новые задачи ВСЕГДА создаются в статусе "paused", игнорируя input от клиента
     db_task = Task(
         user_id=current_user.id,
         name=task.name,
-        status=task.status,
+        status="paused",  # ВСЕГДА paused, никогда не running
         sources=task.sources,
         include_keywords=task.include_keywords,
         exclude_keywords=task.exclude_keywords,
@@ -206,6 +207,7 @@ async def create_task(task: TaskCreate, current_user: User = Depends(get_current
     db.add(db_task)
     db.commit()
     db.refresh(db_task)
+    print(f"✅ Задача создана: id={db_task.id}, name={db_task.name}, status=paused")
     return db_task
 
 @app.put("/api/tasks/{task_id}", response_model=TaskResponse)

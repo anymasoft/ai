@@ -142,6 +142,25 @@ class Lead(Base):
         return f"<Lead(id={self.id}, task_id={self.task_id}, source={self.source_channel}, msg_id={self.source_message_id})>"
 
 
+class TaskSourceState(Base):
+    """Модель состояния источника для задачи (отслеживание last_message_id)"""
+    __tablename__ = "task_source_states"
+
+    id = Column(Integer, primary_key=True)
+    task_id = Column(Integer, ForeignKey("tasks.id"), nullable=False)  # Ссылка на Task
+    source = Column(String(255), nullable=False)  # Нормализованный username источника (без @)
+    last_message_id = Column(BigInteger, default=0)  # Последний обработанный message_id
+    initialized_at = Column(DateTime, default=datetime.utcnow)  # Когда была инициализирована позиция
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    __table_args__ = (
+        UniqueConstraint('task_id', 'source', name='uq_task_source'),
+    )
+
+    def __repr__(self):
+        return f"<TaskSourceState(id={self.id}, task_id={self.task_id}, source={self.source}, last_message_id={self.last_message_id})>"
+
+
 class TelegramSession(Base):
     """Модель сессии Telegram для Userbot авторизации"""
     __tablename__ = "telegram_sessions"
