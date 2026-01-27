@@ -23,7 +23,7 @@ app = FastAPI()
 
 # ============== Глобальное хранилище pending клиентов ==============
 # {phone: TelegramClient}
-pending_auth_clients: dict[str, TelegramClient] = {}
+pending_auth_clients = {}
 
 # ============== Флаг управления мониторингом ==============
 monitoring_enabled = True
