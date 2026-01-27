@@ -307,11 +307,18 @@ async def get_unread_count(current_user: User = Depends(get_current_user), db: S
 @app.post("/api/leads/mark-read")
 async def mark_all_read(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     """Пометить все лиды текущего пользователя как прочитанные"""
-    db.query(Lead).join(Task).filter(
-        Task.user_id == current_user.id,
-        Lead.is_read == False
-    ).update({Lead.is_read: True})
-    db.commit()
+    # Получить ID задач пользователя
+    task_ids = db.query(Task.id).filter(Task.user_id == current_user.id).all()
+    task_ids = [t[0] for t in task_ids]
+
+    # Обновить лиды без join
+    if task_ids:
+        db.query(Lead).filter(
+            Lead.task_id.in_(task_ids),
+            Lead.is_read == False
+        ).update({Lead.is_read: True})
+        db.commit()
+
     return {"ok": True}
 
 @app.put("/api/leads/{lead_id}/viewed")
@@ -330,6 +337,22 @@ async def mark_lead_viewed(lead_id: int, current_user: User = Depends(get_curren
     db.commit()
     db.refresh(lead)
     return lead
+
+@app.delete("/api/leads/{lead_id}")
+async def delete_lead(lead_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """Удалить лид"""
+    lead = db.query(Lead).filter(Lead.id == lead_id).first()
+    if not lead:
+        raise HTTPException(status_code=404, detail="Лид не найден")
+
+    # Проверить что лид принадлежит пользователю
+    task = db.query(Task).filter(Task.id == lead.task_id, Task.user_id == current_user.id).first()
+    if not task:
+        raise HTTPException(status_code=403, detail="Доступ запрещен")
+
+    db.delete(lead)
+    db.commit()
+    return {"ok": True}
 
 # ============== API для статистики ==============
 

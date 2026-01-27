@@ -1351,6 +1351,10 @@
             };
             document.getElementById('page-title').textContent = titles[section];
 
+            // Восстановить хлебные крошки (breadcrumbs)
+            let breadcrumbsHtml = `<span style="color: #5856d6; font-weight: 600;">${titles[section]}</span>`;
+            document.querySelector('.content').style.display = 'block';
+
             // Запустить polling только если вкладка Leads
             if (section === 'leads') {
                 loadLeads();
@@ -1600,7 +1604,7 @@
 
         // ==================== LEADS MANAGEMENT ====================
 
-        // Функция рендеринга одной карточки лида в стиле Telegram-ленты
+        // Функция рендеринга компактной карточки лида для списка
         function renderLeadCard(lead, taskName) {
             const foundDate = new Date(lead.found_at).toLocaleDateString('ru-RU', {
                 year: 'numeric',
@@ -1610,96 +1614,89 @@
                 minute: '2-digit'
             });
 
-            const channelUsername = lead.source_channel.replace('@', '');
-            const telegramProfileUrl = `https://t.me/${channelUsername}`;
-            const telegramPostUrl = lead.source_message_id
-                ? `https://t.me/${channelUsername}/${lead.source_message_id}`
-                : null;
+            // Обрезать текст до 3 строк (~180 символов)
+            let displayText = lead.text.replace(/\n+/g, ' ').trim();
+            if (displayText.length > 180) {
+                displayText = displayText.substring(0, 180) + '...';
+            }
 
             return `
-                <div class="lead-card" data-lead-id="${lead.id}" data-status="${lead.status || 'new'}" style="
+                <div class="lead-card" data-lead-id="${lead.id}" style="
                     background: white;
-                    border-radius: 14px;
-                    border: 1px solid #eef0f3;
-                    padding: 12px 14px;
-                    margin-bottom: 12px;
-                    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+                    border-radius: 12px;
+                    border: 1px solid #e5e7eb;
+                    padding: 12px;
+                    margin-bottom: 10px;
+                    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
                     transition: all 0.2s ease;
                     cursor: pointer;
+                    display: grid;
+                    grid-template-columns: 1fr auto;
+                    gap: 8px;
+                    align-items: start;
                 ">
-                    <!-- ZONE 1: Header (🔥 + дата) -->
-                    <div style="
-                        display: flex;
-                        justify-content: space-between;
-                        align-items: center;
-                        margin-bottom: 8px;
-                        font-size: 12px;
-                    ">
-                        <div style="display: flex; align-items: center; gap: 4px;">
-                            <span style="font-size: 14px;">🔥</span>
-                            <span style="color: #222; font-weight: 500;">Новый лид</span>
-                        </div>
-                        <span style="color: #888;">${foundDate}</span>
-                    </div>
-
-                    <!-- ZONE 2: Текст лида -->
-                    <div style="
-                        font-size: 14px;
-                        line-height: 1.45;
-                        color: #222;
-                        white-space: pre-wrap;
-                        word-break: break-word;
-                        margin-bottom: 10px;
-                        padding: 8px 0;
-                    ">
-                        ${escapeHtml(lead.text)}
-                    </div>
-
-                    <!-- ZONE 3: Footer (@channel + ключ слева, иконки справа) -->
-                    <div style="
-                        display: flex;
-                        justify-content: space-between;
-                        align-items: center;
-                        padding-top: 8px;
-                        border-top: 1px solid #f0f0f0;
-                        font-size: 12px;
-                    ">
-                        <div style="display: flex; gap: 12px; align-items: center;">
-                            <a href="${telegramProfileUrl}" target="_blank" style="
-                                color: #5856d6;
-                                text-decoration: none;
-                                font-weight: 500;
-                            " onclick="event.stopPropagation();">
+                    <!-- Левая часть (кликабельная для открытия лида) -->
+                    <div style="min-width: 0; overflow: hidden;">
+                        <!-- Заголовок: источник + дата -->
+                        <div style="
+                            display: flex;
+                            justify-content: space-between;
+                            align-items: center;
+                            margin-bottom: 6px;
+                            gap: 8px;
+                        ">
+                            <span style="color: #5856d6; font-weight: 600; font-size: 12px; flex-shrink: 0;">
                                 ${lead.source_channel}
-                            </a>
-                            ${lead.matched_keyword ? `
-                                <span style="color: #888;">
-                                    ключ: <strong>${escapeHtml(lead.matched_keyword)}</strong>
-                                </span>
-                            ` : ''}
+                            </span>
+                            <span style="color: #9ca3af; font-size: 11px; flex-shrink: 0;">
+                                ${foundDate}
+                            </span>
                         </div>
 
-                        <div style="display: flex; gap: 8px;">
-                            <a href="${telegramProfileUrl}" target="_blank" title="Диалог с автором" style="
-                                color: #5856d6;
-                                text-decoration: none;
-                                font-size: 16px;
-                                cursor: pointer;
-                            " onclick="event.stopPropagation();">
-                                💬
-                            </a>
-                            ${telegramPostUrl ? `
-                                <a href="${telegramPostUrl}" target="_blank" title="Открыть сообщение" style="
-                                    color: #5856d6;
-                                    text-decoration: none;
-                                    font-size: 16px;
-                                    cursor: pointer;
-                                " onclick="event.stopPropagation();">
-                                    ↗
-                                </a>
-                            ` : ''}
+                        <!-- Обрезанный текст -->
+                        <div style="
+                            color: #374151;
+                            font-size: 13px;
+                            line-height: 1.4;
+                            text-overflow: ellipsis;
+                            overflow: hidden;
+                        ">
+                            ${escapeHtml(displayText)}
                         </div>
+
+                        <!-- Ключевое слово (если есть) -->
+                        ${lead.matched_keyword ? `
+                            <div style="
+                                color: #9ca3af;
+                                font-size: 11px;
+                                margin-top: 4px;
+                            ">
+                                ключ: <strong>${escapeHtml(lead.matched_keyword)}</strong>
+                            </div>
+                        ` : ''}
                     </div>
+
+                    <!-- Кнопка удаления -->
+                    <button
+                        class="delete-lead-btn"
+                        data-lead-id="${lead.id}"
+                        onclick="event.stopPropagation(); deleteLead(${lead.id})"
+                        style="
+                            background: none;
+                            border: none;
+                            cursor: pointer;
+                            font-size: 18px;
+                            color: #9ca3af;
+                            flex-shrink: 0;
+                            transition: color 0.2s;
+                            padding: 4px;
+                            line-height: 1;
+                        "
+                        onmouseover="this.style.color='#dc2626'"
+                        onmouseout="this.style.color='#9ca3af'"
+                        title="Удалить">
+                        🗑
+                    </button>
                 </div>
             `;
         }
@@ -1799,23 +1796,25 @@
 
                 container.innerHTML = html;
 
-                // Добавить обработчики кликов на карточки для пометки как viewed
+                // Добавить обработчики кликов на карточки для открытия лида
                 document.querySelectorAll('.lead-card').forEach(card => {
                     card.addEventListener('click', async (e) => {
-                        if (e.target.tagName === 'A') return;
+                        if (e.target.tagName === 'A' || e.target.tagName === 'BUTTON') return;
                         const leadId = card.getAttribute('data-lead-id');
-                        markLeadAsViewed(leadId);
+                        openLeadPage(leadId);
                     });
 
                     // Добавить hover эффект
                     card.addEventListener('mouseenter', () => {
                         card.style.transform = 'translateY(-1px)';
-                        card.style.boxShadow = '0 4px 10px rgba(0, 0, 0, 0.06)';
+                        card.style.boxShadow = '0 2px 8px rgba(0, 0, 0, 0.1)';
+                        card.style.backgroundColor = '#f9fafb';
                     });
 
                     card.addEventListener('mouseleave', () => {
                         card.style.transform = 'translateY(0)';
-                        card.style.boxShadow = '0 1px 2px rgba(0, 0, 0, 0.04)';
+                        card.style.boxShadow = '0 1px 2px rgba(0, 0, 0, 0.05)';
+                        card.style.backgroundColor = 'white';
                     });
                 });
 
@@ -1849,6 +1848,190 @@
             loadLeads(false);
         }
 
+        // Функция открытия отдельной страницы лида
+        async function openLeadPage(leadId) {
+            // Найти лид в leadsState
+            const lead = leadsState.allLeads.find(l => l.id === parseInt(leadId));
+            if (!lead) {
+                showToast('Лид не найден', 'error');
+                return;
+            }
+
+            // Пометить как прочитанный
+            await markAllLeadsAsRead();
+
+            // Показать страницу лида
+            displayLeadPage(leadId, lead);
+        }
+
+        // Функция отображения страницы лида
+        function displayLeadPage(leadId, lead) {
+            const foundDate = new Date(lead.found_at).toLocaleDateString('ru-RU', {
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+
+            const channelUsername = lead.source_channel.replace('@', '');
+            const telegramProfileUrl = `https://t.me/${channelUsername}`;
+
+            const content = document.querySelector('.content');
+            content.innerHTML = `
+                <!-- Breadcrumbs -->
+                <nav style="
+                    font-size: 0.9rem;
+                    color: #6b7280;
+                    margin-bottom: 1.5rem;
+                    padding: 0;
+                ">
+                    <a href="#" onclick="switchToSection('leads'); return false;" style="color: #5856d6; text-decoration: none; cursor: pointer;">
+                        Лиды
+                    </a>
+                    <span style="margin: 0 0.5rem;">></span>
+                    <span>Лид #${lead.id}</span>
+                </nav>
+
+                <!-- Карточка лида -->
+                <div style="
+                    background: white;
+                    border-radius: 12px;
+                    border: 1px solid #e5e7eb;
+                    padding: 2rem;
+                    max-width: 800px;
+                ">
+                    <!-- Header -->
+                    <div style="
+                        display: flex;
+                        justify-content: space-between;
+                        align-items: start;
+                        margin-bottom: 1.5rem;
+                        padding-bottom: 1rem;
+                        border-bottom: 1px solid #e5e7eb;
+                    ">
+                        <div>
+                            <h2 style="
+                                margin: 0 0 0.5rem 0;
+                                font-size: 1.5rem;
+                                font-weight: 700;
+                                color: #111827;
+                            ">
+                                Лид #${lead.id}
+                            </h2>
+                            <div style="
+                                display: flex;
+                                gap: 1.5rem;
+                                font-size: 0.9rem;
+                                color: #6b7280;
+                            ">
+                                <div>
+                                    <strong style="color: #111827;">Источник:</strong>
+                                    <a href="${telegramProfileUrl}" target="_blank" style="
+                                        color: #5856d6;
+                                        text-decoration: none;
+                                        margin-left: 0.5rem;
+                                    ">
+                                        ${lead.source_channel}
+                                    </a>
+                                </div>
+                                <div>
+                                    <strong style="color: #111827;">Дата:</strong>
+                                    <span style="margin-left: 0.5rem;">${foundDate}</span>
+                                </div>
+                            </div>
+                        </div>
+                        <button
+                            onclick="deleteLead(${lead.id}, true)"
+                            style="
+                                background: #fee2e2;
+                                color: #dc2626;
+                                border: 1px solid #fecaca;
+                                padding: 0.5rem 1rem;
+                                border-radius: 6px;
+                                cursor: pointer;
+                                font-weight: 500;
+                                transition: all 0.2s;
+                                flex-shrink: 0;
+                            "
+                            onmouseover="this.style.background='#fecaca'"
+                            onmouseout="this.style.background='#fee2e2'"
+                        >
+                            🗑 Удалить
+                        </button>
+                    </div>
+
+                    <!-- Содержание -->
+                    <div style="
+                        font-size: 1rem;
+                        line-height: 1.6;
+                        color: #374151;
+                        white-space: pre-wrap;
+                        word-break: break-word;
+                        margin-bottom: 1.5rem;
+                        padding: 1.5rem;
+                        background: #f9fafb;
+                        border-radius: 8px;
+                    ">
+                        ${escapeHtml(lead.text)}
+                    </div>
+
+                    <!-- Дополнительно -->
+                    ${lead.matched_keyword ? `
+                        <div style="
+                            font-size: 0.9rem;
+                            color: #6b7280;
+                            padding-top: 1rem;
+                            border-top: 1px solid #e5e7eb;
+                        ">
+                            <strong style="color: #111827;">Совпавшее ключевое слово:</strong>
+                            <span style="margin-left: 0.5rem; color: #5856d6; font-weight: 600;">
+                                ${escapeHtml(lead.matched_keyword)}
+                            </span>
+                        </div>
+                    ` : ''}
+                </div>
+            `;
+
+            // Скрыть все секции и показать новую
+            document.querySelectorAll('.content-section').forEach(el => el.style.display = 'none');
+            document.getElementById('page-title').textContent = `Лид #${lead.id}`;
+        }
+
+        // Функция удаления лида
+        async function deleteLead(leadId, fromPage = false) {
+            showDeleteConfirm('Вы уверены, что хотите удалить этот лид? Это действие нельзя отменить.', async () => {
+                try {
+                    const response = await fetch(`${API_BASE}/api/leads/${leadId}`, {
+                        method: 'DELETE',
+                        credentials: 'include'
+                    });
+
+                    if (!response.ok) throw new Error('Failed to delete lead');
+
+                    showToast('Лид удалён', 'success');
+
+                    if (fromPage) {
+                        // Если удаляем со страницы лида - вернуться на список
+                        switchToSection('leads');
+                    } else {
+                        // Если удаляем из списка - убрать из DOM
+                        const card = document.querySelector(`[data-lead-id="${leadId}"]`);
+                        if (card) {
+                            card.style.opacity = '0';
+                            card.style.transform = 'translateX(-20px)';
+                            setTimeout(() => card.remove(), 200);
+                        }
+                        // Удалить из leadsState
+                        leadsState.allLeads = leadsState.allLeads.filter(l => l.id !== parseInt(leadId));
+                    }
+                } catch (error) {
+                    console.error('Error deleting lead:', error);
+                    showToast('Ошибка удаления лида', 'error');
+                }
+            });
+        }
+
         // Функция для пометки лида как просмотренного
         async function markLeadAsViewed(leadId) {
             try {
@@ -1856,11 +2039,6 @@
                     method: 'PUT',
                     credentials: 'include'
                 });
-                // Обновить UI для этого лида
-                const card = document.querySelector(`[data-lead-id="${leadId}"]`);
-                if (card) {
-                    card.setAttribute('data-status', 'viewed');
-                }
             } catch (error) {
                 console.error('Error marking lead as viewed:', error);
             }
@@ -1897,15 +2075,51 @@
             document.getElementById('stat-keywords').textContent = stats.total_keywords;
             document.getElementById('stat-leads').textContent = stats.total_matches;
 
-            const newLeads = 0; // TODO: Get from API
-            if (newLeads > 0) {
-                document.getElementById('notification-count').textContent = newLeads;
-            } else {
-                document.getElementById('notification-count').style.display = 'none';
+            // Загрузить последние 5 лидов для Dashboard
+            const response = await getLeads(1, 5);
+            const recentLeads = response.leads || [];
+            const tasks = await getTasks();
+
+            const recentLeadsContainer = document.getElementById('recent-leads');
+
+            if (recentLeads.length === 0) {
+                recentLeadsContainer.innerHTML = '<div style="color: var(--text-light); padding: 0.75rem;">Лиды появятся после запуска мониторинга</div>';
+                return;
             }
 
-            // Update recent leads
-            document.getElementById('recent-leads').innerHTML = '<div style="color: var(--text-light); padding: 0.75rem;">Лиды появятся после запуска мониторинга</div>';
+            let html = '';
+            recentLeads.forEach(lead => {
+                const taskName = tasks.find(t => t.id === lead.task_id)?.name || 'Неизвестная задача';
+                html += renderLeadCard(lead, taskName);
+            });
+
+            recentLeadsContainer.innerHTML = html;
+
+            // Добавить обработчики кликов на карточки
+            document.querySelectorAll('#recent-leads .lead-card').forEach(card => {
+                card.addEventListener('click', async (e) => {
+                    if (e.target.tagName === 'A' || e.target.tagName === 'BUTTON') return;
+                    const leadId = card.getAttribute('data-lead-id');
+                    // Нужно загрузить лид из API или из leadsState
+                    const lead = recentLeads.find(l => l.id === parseInt(leadId));
+                    if (lead) {
+                        leadsState.allLeads = recentLeads;
+                        displayLeadPage(leadId, lead);
+                    }
+                });
+
+                card.addEventListener('mouseenter', () => {
+                    card.style.transform = 'translateY(-1px)';
+                    card.style.boxShadow = '0 2px 8px rgba(0, 0, 0, 0.1)';
+                    card.style.backgroundColor = '#f9fafb';
+                });
+
+                card.addEventListener('mouseleave', () => {
+                    card.style.transform = 'translateY(0)';
+                    card.style.boxShadow = '0 1px 2px rgba(0, 0, 0, 0.05)';
+                    card.style.backgroundColor = 'white';
+                });
+            });
         }
 
         function saveSettings() {
