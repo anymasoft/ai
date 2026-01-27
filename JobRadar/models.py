@@ -124,6 +124,7 @@ class Lead(Base):
     source_message_id = Column(BigInteger, nullable=False)  # ID сообщения в источнике
     matched_keyword = Column(String(255), nullable=True)  # Какое ключевое слово совпало
     found_at = Column(DateTime, default=datetime.utcnow)  # Когда найдено
+    delivered_at = Column(DateTime, nullable=True)  # Когда доставлено пользователю
 
     __table_args__ = (
         Index('idx_task_id', 'task_id'),
@@ -141,8 +142,9 @@ class TelegramSession(Base):
     id = Column(Integer, primary_key=True)
     phone = Column(String(20), unique=True, nullable=False)  # Номер телефона
     session_string = Column(Text, nullable=False)  # StringSession строка (текст)
+    telegram_user_id = Column(BigInteger, nullable=True)  # Telegram ID пользователя
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     def __repr__(self):
-        return f"<TelegramSession(id={self.id}, phone={self.phone})>"
+        return f"<TelegramSession(id={self.id}, phone={self.phone}, user_id={self.telegram_user_id})>"

@@ -39,13 +39,14 @@ async def get_telegram_client(phone: str):
         return None
 
 
-async def save_session_to_db(phone: str, session_string: str):
+async def save_session_to_db(phone: str, session_string: str, telegram_user_id: int = None):
     """
     Сохранить session строку в SQLite БД.
 
     Args:
         phone: Номер телефона
         session_string: Строка сессии из StringSession.save()
+        telegram_user_id: Telegram ID пользователя (опционально)
     """
     try:
         # Страховка: убедиться, что таблица существует
@@ -62,16 +63,19 @@ async def save_session_to_db(phone: str, session_string: str):
             if existing:
                 print(f"🔄 Обновляю существующую сессию для {phone}")
                 existing.session_string = session_string
+                if telegram_user_id:
+                    existing.telegram_user_id = telegram_user_id
             else:
                 print(f"✨ Создаю новую сессию для {phone}")
                 new_session = TelegramSession(
                     phone=phone,
-                    session_string=session_string
+                    session_string=session_string,
+                    telegram_user_id=telegram_user_id
                 )
                 db.add(new_session)
 
             db.commit()
-            print(f"✅ Сессия сохранена в БД для {phone} (длина: {len(session_string)})")
+            print(f"✅ Сессия сохранена в БД для {phone} (длина: {len(session_string)}, user_id: {telegram_user_id})")
             return True
         except Exception as db_error:
             db.rollback()

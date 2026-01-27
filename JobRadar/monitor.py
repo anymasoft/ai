@@ -15,9 +15,10 @@ from datetime import datetime
 
 from config import TELEGRAM_API_ID, TELEGRAM_API_HASH, TELEGRAM_PHONE
 from config import POLLING_INTERVAL_SECONDS, MAX_MESSAGES_PER_CHECK, TARGET_CHANNEL_ID
-from models import Channel, Keyword, FilterRule, Task, Lead, SourceMessage
+from models import Channel, Keyword, FilterRule, Task, Lead, SourceMessage, TelegramSession
 from database import get_db
 from filter_engine import load_active_filter, match_text
+from telethon.sessions import StringSession
 
 # Логирование
 logger = logging.getLogger(__name__)
@@ -567,6 +568,74 @@ async def publish_matched_post(message, channel: Channel):
         logger.error(f"❌ Ошибка публикации в JobRadar из {channel_display}: {e}")
 
 
+async def send_lead_to_telegram(task: Task, lead: Lead, db: Session):
+    """
+    Отправить найденный лид в личный Telegram пользователя.
+
+    Args:
+        task: Объект Task из БД
+        lead: Объект Lead из БД
+        db: SQLAlchemy сессия
+    """
+    try:
+        # Получить первую доступную TelegramSession (для MVP - одна авторизованная сессия)
+        telegram_session = db.query(TelegramSession).first()
+        if not telegram_session:
+            logger.warning(f"[SEND] task={task.id} - нет авторизованной Telegram сессии")
+            return
+
+        if not telegram_session.telegram_user_id:
+            logger.warning(f"[SEND] task={task.id} - telegram_user_id не установлен в сессии")
+            return
+
+        # Восстановить клиента из сохранённой сессии
+        try:
+            session_string = StringSession(telegram_session.session_string)
+            client = TelegramClient(session_string, TELEGRAM_API_ID, TELEGRAM_API_HASH)
+            await client.connect()
+        except Exception as e:
+            logger.error(f"[SEND] task={task.id} - ошибка подключения к Telegram: {e}")
+            return
+
+        try:
+            # Форматируем текст лида
+            text = f"""🔥 Новый лид
+
+{lead.text}
+
+Источник: {lead.source_channel}
+Ключ: {lead.matched_keyword or 'не определено'}"""
+
+            # Отправляем в личный Telegram
+            await client.send_message(telegram_session.telegram_user_id, text)
+            logger.info(f"[SEND] task={task.id} lead={lead.id} доставлено в личный Telegram ({telegram_session.telegram_user_id})")
+
+            # Если указан forward_channel - отправляем туда тоже
+            if task.forward_channel and task.forward_channel.strip():
+                try:
+                    await client.send_message(task.forward_channel, text)
+                    logger.info(f"[SEND] task={task.id} lead={lead.id} доставлено в канал {task.forward_channel}")
+                except Exception as e:
+                    logger.warning(f"[SEND] task={task.id} lead={lead.id} ошибка отправки в канал {task.forward_channel}: {e}")
+
+            # Обновляем поле delivered_at
+            lead.delivered_at = datetime.utcnow()
+            db.commit()
+            logger.info(f"[SEND] task={task.id} lead={lead.id} отмечено как доставленное")
+
+        except Exception as e:
+            logger.error(f"[SEND] task={task.id} lead={lead.id} ошибка отправки сообщения: {e}")
+
+        finally:
+            try:
+                await client.disconnect()
+            except:
+                pass
+
+    except Exception as e:
+        logger.error(f"[SEND] task={task.id} lead={lead.id} критическая ошибка: {e}")
+
+
 async def check_channel_for_new_messages(channel: Channel, db: Session):
     """
     Проверить канал на новые сообщения (polling логика из LeadScanner)
@@ -912,6 +981,9 @@ async def check_source_for_task_leads(task: Task, source_username: str, include_
                     matched_count += 1
                     text_preview = (msg.text or "")[:80].replace("\n", " ")
                     logger.info(f"[LEAD] task={task.id} ({task.name}) channel=@{source_username} text_preview={text_preview}")
+
+                    # Отправляем лид пользователю в Telegram
+                    await send_lead_to_telegram(task, lead, db)
 
             # Записываем в SourceMessage чтобы не обрабатывать сообщение снова
             existing_source_msg = (

@@ -417,24 +417,6 @@ async def auth_save(request: AuthStartRequest):
         print(f"✅ Клиент найден в памяти")
 
         try:
-            # Получить строку сессии
-            session_string = client.session.save()
-            print(f"✅ Session string получена, длина: {len(session_string)}")
-        except Exception as e:
-            print(f"❌ Ошибка получения session string: {str(e)}")
-            raise
-
-        try:
-            # Сохранить в БД
-            success = await save_session_to_db(phone, session_string)
-            if not success:
-                raise Exception("Ошибка при сохранении в БД")
-            print(f"✅ Сессия сохранена в БД")
-        except Exception as e:
-            print(f"❌ Ошибка сохранения в БД: {str(e)}")
-            raise
-
-        try:
             # Получить информацию о пользователе
             print(f"👤 Получаю информацию о пользователе...")
             me = await client.get_me()
@@ -445,9 +427,27 @@ async def auth_save(request: AuthStartRequest):
                 "username": me.username or "",
                 "id": me.id
             }
-            print(f"✅ Информация о пользователе: {user_info['first_name']} {user_info['last_name']}")
+            print(f"✅ Информация о пользователе: {user_info['first_name']} {user_info['last_name']} (ID: {me.id})")
         except Exception as e:
             print(f"❌ Ошибка получения информации о пользователе: {str(e)}")
+            raise
+
+        try:
+            # Получить строку сессии
+            session_string = client.session.save()
+            print(f"✅ Session string получена, длина: {len(session_string)}")
+        except Exception as e:
+            print(f"❌ Ошибка получения session string: {str(e)}")
+            raise
+
+        try:
+            # Сохранить в БД с telegram_user_id
+            success = await save_session_to_db(phone, session_string, me.id)
+            if not success:
+                raise Exception("Ошибка при сохранении в БД")
+            print(f"✅ Сессия сохранена в БД с telegram_user_id={me.id}")
+        except Exception as e:
+            print(f"❌ Ошибка сохранения в БД: {str(e)}")
             raise
 
         try:
