@@ -8,9 +8,11 @@ from sqlalchemy.orm import Session
 from pydantic import BaseModel
 from typing import Optional, List
 from datetime import datetime
+import asyncio
 
 from database import SessionLocal, init_db
 from models import Task
+from telegram_auth import start_auth_flow, submit_code, submit_password, save_session, cancel_auth
 
 app = FastAPI()
 
@@ -79,11 +81,28 @@ class TaskResponse(BaseModel):
     class Config:
         from_attributes = True
 
+# ============== Pydantic модели для Telegram авторизации ==============
+
+class AuthStartRequest(BaseModel):
+    phone: str
+
+class AuthCodeRequest(BaseModel):
+    phone: str
+    code: str
+
+class AuthPasswordRequest(BaseModel):
+    phone: str
+    password: str
+
 # ============== API Endpoints ==============
 
 @app.get("/")
 async def index():
     return FileResponse(os.path.join(BASE_DIR, "templates/index.html"))
+
+@app.get("/login")
+async def login_page():
+    return FileResponse(os.path.join(BASE_DIR, "templates/login.html"))
 
 @app.post("/login")
 async def login():
@@ -197,6 +216,53 @@ async def get_stats(db: Session = Depends(get_db)):
         "total_keywords": total_keywords,
         "total_matches": 0,  # Заполнится позже из SourceMessage
     }
+
+# ============== API для Telegram авторизации ==============
+
+@app.post("/api/auth/start")
+async def auth_start(request: AuthStartRequest):
+    """Начать процесс авторизации в Telegram"""
+    try:
+        result = await start_auth_flow(request.phone)
+        return {"success": result, "message": "Код отправлен на номер"}
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+@app.post("/api/auth/submit-code")
+async def auth_submit_code(request: AuthCodeRequest):
+    """Отправить код верификации"""
+    try:
+        result = await submit_code(request.phone, request.code)
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+@app.post("/api/auth/submit-password")
+async def auth_submit_password(request: AuthPasswordRequest):
+    """Отправить пароль 2FA"""
+    try:
+        result = await submit_password(request.phone, request.password)
+        return {"success": result}
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+@app.post("/api/auth/save")
+async def auth_save(request: AuthStartRequest):
+    """Сохранить сессию в БД"""
+    try:
+        result = await save_session(request.phone)
+        return {"success": result, "message": "Сессия успешно сохранена"}
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+@app.post("/api/auth/cancel")
+async def auth_cancel():
+    """Отменить текущий процесс авторизации"""
+    try:
+        await cancel_auth()
+        return {"success": True, "message": "Авторизация отменена"}
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
 if __name__ == "__main__":
     import uvicorn

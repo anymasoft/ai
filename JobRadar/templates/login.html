@@ -1,0 +1,626 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JobRadar - Авторизация через Telegram</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary: #5856d6;
+            --primary-dark: #4c4ab3;
+            --success: #22c55e;
+            --error: #ef4444;
+            --warning: #f97316;
+            --gray-50: #f9fafb;
+            --gray-100: #f3f4f6;
+            --gray-200: #e5e7eb;
+            --gray-300: #d1d5db;
+            --gray-400: #9ca3af;
+            --gray-500: #6b7280;
+            --gray-600: #4b5563;
+            --gray-700: #374151;
+            --gray-800: #1f2937;
+            --gray-900: #111827;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 420px;
+            padding: 1rem;
+        }
+
+        .auth-card {
+            background: white;
+            border-radius: 12px;
+            padding: 2rem;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        }
+
+        .auth-header {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+
+        .auth-logo {
+            width: 48px;
+            height: 48px;
+            background: var(--primary);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 1.5rem;
+            margin: 0 auto 1rem;
+        }
+
+        .auth-header h1 {
+            font-size: 1.75rem;
+            color: var(--gray-900);
+            margin-bottom: 0.5rem;
+        }
+
+        .auth-header p {
+            color: var(--gray-500);
+            font-size: 0.9rem;
+        }
+
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            color: var(--gray-700);
+            font-weight: 500;
+            font-size: 0.9rem;
+        }
+
+        .form-group input,
+        .form-group select {
+            width: 100%;
+            padding: 0.75rem;
+            border: 1px solid var(--gray-300);
+            border-radius: 6px;
+            font-size: 1rem;
+            font-family: inherit;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+
+        .form-group input:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(88, 86, 214, 0.1);
+        }
+
+        .form-hint {
+            display: block;
+            margin-top: 0.25rem;
+            font-size: 0.8rem;
+            color: var(--gray-500);
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        /* Кнопки */
+        .btn {
+            width: 100%;
+            padding: 0.75rem;
+            border: none;
+            border-radius: 6px;
+            font-size: 1rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+        }
+
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: var(--primary-dark);
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(88, 86, 214, 0.2);
+        }
+
+        .btn-primary:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .btn-secondary {
+            background: var(--gray-200);
+            color: var(--gray-700);
+            margin-top: 1rem;
+        }
+
+        .btn-secondary:hover {
+            background: var(--gray-300);
+        }
+
+        .btn-link {
+            background: none;
+            color: var(--primary);
+            text-decoration: underline;
+            width: auto;
+            padding: 0.5rem;
+        }
+
+        .btn-link:hover {
+            color: var(--primary-dark);
+        }
+
+        /* Этапы авторизации */
+        .auth-stage {
+            display: none;
+        }
+
+        .auth-stage.active {
+            display: block;
+            animation: slideIn 0.3s ease-out;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* Toast уведомления */
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: var(--gray-900);
+            color: white;
+            padding: 1rem 1.5rem;
+            border-radius: 6px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+            display: none;
+            animation: slideUp 0.3s ease-out;
+            max-width: 300px;
+            z-index: 9999;
+        }
+
+        .toast.success {
+            background: var(--success);
+        }
+
+        .toast.error {
+            background: var(--error);
+        }
+
+        .toast.warning {
+            background: var(--warning);
+        }
+
+        .toast.visible {
+            display: block;
+        }
+
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* Dialog (modal) */
+        .dialog-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 5000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .dialog-overlay.visible {
+            display: flex;
+        }
+
+        .dialog {
+            background: white;
+            border-radius: 12px;
+            padding: 2rem;
+            max-width: 400px;
+            width: 90%;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        }
+
+        .dialog-header {
+            margin-bottom: 1rem;
+        }
+
+        .dialog-header h2 {
+            font-size: 1.5rem;
+            color: var(--gray-900);
+            margin-bottom: 0.5rem;
+        }
+
+        .dialog-header p {
+            color: var(--gray-500);
+            font-size: 0.9rem;
+        }
+
+        .dialog-content {
+            margin-bottom: 1.5rem;
+        }
+
+        .dialog-actions {
+            display: flex;
+            gap: 1rem;
+        }
+
+        .dialog-actions button {
+            flex: 1;
+        }
+
+        /* Прогресс индикатор */
+        .progress-steps {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 2rem;
+        }
+
+        .step {
+            flex: 1;
+            height: 4px;
+            background: var(--gray-200);
+            border-radius: 2px;
+            margin: 0 0.25rem;
+            transition: background 0.3s;
+        }
+
+        .step.active {
+            background: var(--primary);
+        }
+
+        .step.completed {
+            background: var(--success);
+        }
+
+        .spinner {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-top-color: white;
+            border-radius: 50%;
+            animation: spin 0.6s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .input-group {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .input-group input {
+            flex: 1;
+        }
+
+        .input-group button {
+            flex: 0 0 auto;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="auth-card">
+            <!-- Заголовок -->
+            <div class="auth-header">
+                <div class="auth-logo">
+                    <i class="bi bi-speedometer2"></i>
+                </div>
+                <h1>JobRadar</h1>
+                <p>Авторизация через Telegram</p>
+            </div>
+
+            <!-- Индикатор прогресса -->
+            <div class="progress-steps">
+                <div class="step active" id="step-phone"></div>
+                <div class="step" id="step-code"></div>
+                <div class="step" id="step-password"></div>
+                <div class="step" id="step-done"></div>
+            </div>
+
+            <!-- Этап 1: Ввод номера телефона -->
+            <div class="auth-stage active" id="stage-phone">
+                <div class="form-group">
+                    <label>Номер телефона</label>
+                    <input type="tel" id="phone" placeholder="+7 (999) 123-45-67"
+                           pattern="[+0-9\s\-\(\)]*" required>
+                    <span class="form-hint">Укажите номер телефона, привязанный к аккаунту Telegram</span>
+                </div>
+                <button class="btn btn-primary" id="btn-send-phone">
+                    <i class="bi bi-arrow-right"></i> Отправить код
+                </button>
+            </div>
+
+            <!-- Этап 2: Ввод кода -->
+            <div class="auth-stage" id="stage-code">
+                <div class="form-group">
+                    <label>Код верификации</label>
+                    <p style="margin-bottom: 1rem; color: var(--gray-600); font-size: 0.9rem;">
+                        Проверьте Telegram. Вам отправили код подтверждения.
+                    </p>
+                    <input type="text" id="code" placeholder="12345" maxlength="6" required>
+                    <span class="form-hint">Введите 5-6 значный код из Telegram</span>
+                </div>
+                <button class="btn btn-primary" id="btn-send-code">
+                    <i class="bi bi-arrow-right"></i> Проверить код
+                </button>
+                <button class="btn btn-link" onclick="backToPhone()">← Вернуться</button>
+            </div>
+
+            <!-- Этап 3: Ввод пароля (если нужен) -->
+            <div class="auth-stage" id="stage-password">
+                <div class="form-group">
+                    <label>Пароль (2FA)</label>
+                    <p style="margin-bottom: 1rem; color: var(--gray-600); font-size: 0.9rem;">
+                        На вашем аккаунте включена двухфакторная аутентификация.
+                    </p>
+                    <input type="password" id="password" placeholder="Введите пароль" required>
+                    <span class="form-hint">Пароль для защиты вашего аккаунта</span>
+                </div>
+                <button class="btn btn-primary" id="btn-send-password">
+                    <i class="bi bi-arrow-right"></i> Подтвердить
+                </button>
+                <button class="btn btn-link" onclick="backToCode()">← Вернуться</button>
+            </div>
+
+            <!-- Этап 4: Успешная авторизация -->
+            <div class="auth-stage" id="stage-success">
+                <div style="text-align: center; padding: 2rem 0;">
+                    <div style="font-size: 3rem; margin-bottom: 1rem;">
+                        <i class="bi bi-check-circle" style="color: var(--success);"></i>
+                    </div>
+                    <h2 style="color: var(--gray-900); margin-bottom: 0.5rem;">Авторизация успешна!</h2>
+                    <p style="color: var(--gray-500); margin-bottom: 2rem;">
+                        Ваша сессия Telegram сохранена. Переходим в дашборд...
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast уведомления -->
+    <div class="toast" id="toast"></div>
+
+    <script>
+        const API_BASE = '';
+
+        // ==================== Управление этапами ====================
+        function showStage(stageName) {
+            document.querySelectorAll('.auth-stage').forEach(el => el.classList.remove('active'));
+            document.getElementById(`stage-${stageName}`).classList.add('active');
+
+            // Обновить прогресс
+            const steps = ['phone', 'code', 'password', 'done'];
+            steps.forEach((step, idx) => {
+                const stepEl = document.getElementById(`step-${step}`);
+                if (step === stageName || (stageName === 'success' && idx < 4)) {
+                    stepEl.classList.add(stageName === 'success' ? 'completed' : 'active');
+                    if (idx < steps.indexOf(stageName) && stageName !== 'success') {
+                        stepEl.classList.add('completed');
+                    }
+                }
+            });
+        }
+
+        function showToast(message, type = 'info') {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.className = `toast ${type} visible`;
+
+            setTimeout(() => {
+                toast.classList.remove('visible');
+            }, 3000);
+        }
+
+        function disableButton(btnId, disabled = true) {
+            const btn = document.getElementById(btnId);
+            btn.disabled = disabled;
+            if (disabled) {
+                btn.innerHTML = '<span class="spinner"></span> Обработка...';
+            }
+        }
+
+        // ==================== Этап 1: Номер телефона ====================
+        document.getElementById('btn-send-phone').addEventListener('click', async () => {
+            const phone = document.getElementById('phone').value.trim();
+
+            if (!phone) {
+                showToast('Введите номер телефона', 'error');
+                return;
+            }
+
+            disableButton('btn-send-phone');
+
+            try {
+                const response = await fetch(`${API_BASE}/api/auth/start`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ phone })
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    showToast(data.detail || 'Ошибка авторизации', 'error');
+                    disableButton('btn-send-phone', false);
+                    return;
+                }
+
+                showToast('Код отправлен на Telegram', 'success');
+                showStage('code');
+            } catch (error) {
+                showToast('Ошибка подключения: ' + error.message, 'error');
+                disableButton('btn-send-phone', false);
+            }
+        });
+
+        // ==================== Этап 2: Код верификации ====================
+        document.getElementById('btn-send-code').addEventListener('click', async () => {
+            const phone = document.getElementById('phone').value.trim();
+            const code = document.getElementById('code').value.trim();
+
+            if (!code || code.length < 5) {
+                showToast('Введите корректный код', 'error');
+                return;
+            }
+
+            disableButton('btn-send-code');
+
+            try {
+                const response = await fetch(`${API_BASE}/api/auth/submit-code`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ phone, code })
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    showToast(data.detail || 'Ошибка верификации кода', 'error');
+                    disableButton('btn-send-code', false);
+                    return;
+                }
+
+                // Проверить требуется ли пароль
+                if (data.requires_password) {
+                    showToast('Требуется пароль 2FA', 'warning');
+                    showStage('password');
+                } else {
+                    // Сохранить сессию
+                    await saveSession(phone);
+                }
+            } catch (error) {
+                showToast('Ошибка подключения: ' + error.message, 'error');
+                disableButton('btn-send-code', false);
+            }
+        });
+
+        // ==================== Этап 3: Пароль 2FA ====================
+        document.getElementById('btn-send-password').addEventListener('click', async () => {
+            const phone = document.getElementById('phone').value.trim();
+            const password = document.getElementById('password').value;
+
+            if (!password) {
+                showToast('Введите пароль', 'error');
+                return;
+            }
+
+            disableButton('btn-send-password');
+
+            try {
+                const response = await fetch(`${API_BASE}/api/auth/submit-password`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ phone, password })
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    showToast(data.detail || 'Ошибка верификации пароля', 'error');
+                    disableButton('btn-send-password', false);
+                    return;
+                }
+
+                // Сохранить сессию
+                await saveSession(phone);
+            } catch (error) {
+                showToast('Ошибка подключения: ' + error.message, 'error');
+                disableButton('btn-send-password', false);
+            }
+        });
+
+        // ==================== Сохранение сессии ====================
+        async function saveSession(phone) {
+            try {
+                const response = await fetch(`${API_BASE}/api/auth/save`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ phone })
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    showToast(data.detail || 'Ошибка сохранения', 'error');
+                    return;
+                }
+
+                showToast('Авторизация успешна!', 'success');
+                showStage('success');
+
+                // Перейти в дашборд через 2 секунды
+                setTimeout(() => {
+                    window.location.href = '/dashboard';
+                }, 2000);
+            } catch (error) {
+                showToast('Ошибка подключения: ' + error.message, 'error');
+            }
+        }
+
+        // ==================== Навигация ====================
+        function backToPhone() {
+            document.getElementById('phone').focus();
+            showStage('phone');
+        }
+
+        function backToCode() {
+            document.getElementById('code').focus();
+            showStage('code');
+        }
+
+        // Автофокус на инпуты
+        document.getElementById('phone').focus();
+    </script>
+</body>
+</html>
