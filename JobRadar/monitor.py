@@ -15,9 +15,10 @@ from datetime import datetime
 
 from config import TELEGRAM_API_ID, TELEGRAM_API_HASH, TELEGRAM_PHONE
 from config import POLLING_INTERVAL_SECONDS, MAX_MESSAGES_PER_CHECK, TARGET_CHANNEL_ID
-from models import Channel, Keyword, FilterRule
+from models import Channel, Keyword, FilterRule, Task, Lead, SourceMessage, TelegramSession
 from database import get_db
 from filter_engine import load_active_filter, match_text
+from telethon.sessions import StringSession
 
 # Логирование
 logger = logging.getLogger(__name__)
@@ -567,6 +568,78 @@ async def publish_matched_post(message, channel: Channel):
         logger.error(f"❌ Ошибка публикации в JobRadar из {channel_display}: {e}")
 
 
+async def send_lead_to_telegram(task: Task, lead: Lead, db: Session):
+    """
+    Отправить найденный лид в личный Telegram пользователя.
+
+    Args:
+        task: Объект Task из БД
+        lead: Объект Lead из БД
+        db: SQLAlchemy сессия
+    """
+    try:
+        # Получить TelegramSession по user_id из Task (строгая привязка)
+        telegram_session = (
+            db.query(TelegramSession)
+            .filter(TelegramSession.user_id == task.user_id)
+            .first()
+        )
+        if not telegram_session:
+            logger.warning(f"[SEND] task={task.id} lead={lead.id} - нет Telegram сессии для user_id={task.user_id}")
+            return
+
+        if not telegram_session.telegram_user_id:
+            logger.warning(f"[SEND] task={task.id} lead={lead.id} - telegram_user_id не установлен в сессии user_id={task.user_id}")
+            return
+
+        # Восстановить клиента из сохранённой сессии
+        try:
+            session_string = StringSession(telegram_session.session_string)
+            client = TelegramClient(session_string, TELEGRAM_API_ID, TELEGRAM_API_HASH)
+            await client.connect()
+        except Exception as e:
+            logger.error(f"[SEND] task={task.id} - ошибка подключения к Telegram: {e}")
+            return
+
+        try:
+            # Форматируем текст лида
+            text = f"""🔥 Новый лид
+
+{lead.text}
+
+Источник: {lead.source_channel}
+Ключ: {lead.matched_keyword or 'не определено'}"""
+
+            # Отправляем в личный Telegram
+            await client.send_message(telegram_session.telegram_user_id, text)
+            logger.info(f"[SEND] task={task.id} lead={lead.id} доставлено в личный Telegram ({telegram_session.telegram_user_id})")
+
+            # Если указан forward_channel - отправляем туда тоже
+            if task.forward_channel and task.forward_channel.strip():
+                try:
+                    await client.send_message(task.forward_channel, text)
+                    logger.info(f"[SEND] task={task.id} lead={lead.id} доставлено в канал {task.forward_channel}")
+                except Exception as e:
+                    logger.warning(f"[SEND] task={task.id} lead={lead.id} ошибка отправки в канал {task.forward_channel}: {e}")
+
+            # Обновляем поле delivered_at
+            lead.delivered_at = datetime.utcnow()
+            db.commit()
+            logger.info(f"[SEND] task={task.id} lead={lead.id} отмечено как доставленное")
+
+        except Exception as e:
+            logger.error(f"[SEND] task={task.id} lead={lead.id} ошибка отправки сообщения: {e}")
+
+        finally:
+            try:
+                await client.disconnect()
+            except:
+                pass
+
+    except Exception as e:
+        logger.error(f"[SEND] task={task.id} lead={lead.id} критическая ошибка: {e}")
+
+
 async def check_channel_for_new_messages(channel: Channel, db: Session):
     """
     Проверить канал на новые сообщения (polling логика из LeadScanner)
@@ -718,3 +791,228 @@ async def monitoring_loop():
             logger.error(f"❌ Ошибка в мониторинге: {e}")
             # При ошибке спим 30 секунд перед повторной попыткой
             await asyncio.sleep(30)
+
+
+async def monitoring_loop_tasks():
+    """
+    Бесконечный цикл мониторинга задач (Task-based leads).
+
+    НОВЫЙ КОНТУР: Работает параллельно с существующим monitoring_loop()
+    - Получает все Task с status="running"
+    - Для каждого task проверяет источники на новые сообщения
+    - При совпадении фильтра сохраняет Lead в БД
+    - НЕ публикует в Telegram (только сохранение в БД)
+
+    Запускается через asyncio.create_task() при старте приложения.
+    """
+    while True:
+        try:
+            if not telegram_client:
+                await asyncio.sleep(POLLING_INTERVAL_SECONDS)
+                continue
+
+            db = get_db()
+
+            try:
+                # Получаем все активные задачи
+                tasks = db.query(Task).filter(Task.status == "running").all()
+
+                if tasks:
+                    # Обрабатываем каждую задачу
+                    for task in tasks:
+                        try:
+                            await process_task_for_leads(task, db)
+                        except Exception as e:
+                            logger.error(f"❌ Ошибка при обработке задачи {task.id} ({task.name}): {e}")
+                        await asyncio.sleep(0.2)
+            finally:
+                db.close()
+
+            # Спим перед следующей проверкой
+            await asyncio.sleep(POLLING_INTERVAL_SECONDS + random.uniform(0, 2))
+
+        except Exception as e:
+            logger.error(f"❌ Ошибка в monitoring_loop_tasks: {e}")
+            # При ошибке спим 30 секунд перед повторной попыткой
+            await asyncio.sleep(30)
+
+
+async def process_task_for_leads(task: Task, db: Session):
+    """
+    Обработать одну задачу: проверить все источники на новые сообщения,
+    применить фильтр и сохранить найденные leads в БД.
+
+    Args:
+        task: Объект Task из БД
+        db: SQLAlchemy сессия
+    """
+    # Парсим sources (может быть comma-separated или newline-separated)
+    sources = []
+    if task.sources:
+        # Пробуем оба формата
+        if "," in task.sources:
+            sources = [s.strip() for s in task.sources.split(",") if s.strip()]
+        else:
+            sources = [s.strip() for s in task.sources.split("\n") if s.strip()]
+
+    if not sources:
+        logger.warning(f"[LEAD] task={task.id} ({task.name}) не имеет источников")
+        return
+
+    # Парсим ключевые слова
+    include_keywords = []
+    if task.include_keywords:
+        if "," in task.include_keywords:
+            include_keywords = [kw.strip().lower() for kw in task.include_keywords.split(",") if kw.strip()]
+        else:
+            include_keywords = [kw.strip().lower() for kw in task.include_keywords.split("\n") if kw.strip()]
+
+    exclude_keywords = []
+    if task.exclude_keywords:
+        if "," in task.exclude_keywords:
+            exclude_keywords = [kw.strip().lower() for kw in task.exclude_keywords.split(",") if kw.strip()]
+        else:
+            exclude_keywords = [kw.strip().lower() for kw in task.exclude_keywords.split("\n") if kw.strip()]
+
+    if not include_keywords:
+        logger.warning(f"[LEAD] task={task.id} ({task.name}) не имеет ключевых слов для поиска")
+        return
+
+    # Формируем filter_config прямо в коде
+    filter_config = {
+        "mode": "advanced",
+        "include_any": include_keywords,
+        "require_all": [],
+        "exclude_any": exclude_keywords
+    }
+
+    # Обрабатываем каждый источник
+    for source_username in sources:
+        try:
+            await check_source_for_task_leads(task, source_username, include_keywords, filter_config, db)
+        except Exception as e:
+            logger.error(f"[LEAD] task={task.id} ({task.name}) ошибка при проверке {source_username}: {e}")
+            continue
+
+
+async def check_source_for_task_leads(task: Task, source_username: str, include_keywords: list, filter_config: dict, db: Session):
+    """
+    Проверить один источник (канал) на новые сообщения для конкретной задачи.
+    Применить фильтр и сохранить найденные leads.
+
+    Args:
+        task: Объект Task
+        source_username: username источника (без @)
+        include_keywords: список ключевых слов для поиска
+        filter_config: конфигурация фильтра
+        db: SQLAlchemy сессия
+    """
+    try:
+        # Резолвим источник
+        entity = await telegram_client.get_entity(f"@{source_username}")
+        source_chat_id = entity.id
+
+        # Получаем последнее обработанное сообщение для этого task из SourceMessage
+        last_source_message = (
+            db.query(SourceMessage)
+            .filter(
+                SourceMessage.source_chat_id == source_chat_id,
+                SourceMessage.source_channel_username == source_username
+            )
+            .order_by(SourceMessage.source_message_id.desc())
+            .first()
+        )
+
+        last_message_id = last_source_message.source_message_id if last_source_message else 0
+
+        # Получаем новые сообщения
+        new_messages = await telegram_client.get_messages(
+            entity,
+            limit=MAX_MESSAGES_PER_CHECK,
+            min_id=last_message_id
+        )
+
+        if not new_messages:
+            return
+
+        # Фильтруем - оставляем ТОЛЬКО сообщения с id > last_message_id
+        filtered_messages = [msg for msg in new_messages if msg.id > last_message_id]
+
+        if not filtered_messages:
+            return
+
+        # Обрабатываем сообщения
+        matched_count = 0
+        for msg in reversed(filtered_messages):
+            text = (msg.text or "").lower()
+
+            if not text:
+                continue
+
+            # Проверяем совпадение через фильтр
+            if match_text(text, filter_config, include_keywords):
+                # Ищем какое ключевое слово совпало
+                matched_keyword = None
+                for kw in include_keywords:
+                    if kw in text:
+                        matched_keyword = kw
+                        break
+
+                # Проверяем, не сохраняли ли мы этот lead уже
+                existing_lead = (
+                    db.query(Lead)
+                    .filter(
+                        Lead.task_id == task.id,
+                        Lead.source_channel == f"@{source_username}",
+                        Lead.source_message_id == msg.id
+                    )
+                    .first()
+                )
+
+                if not existing_lead:
+                    # Сохраняем новый lead
+                    lead = Lead(
+                        task_id=task.id,
+                        text=(msg.text or "")[:4000],
+                        source_channel=f"@{source_username}",
+                        source_message_id=msg.id,
+                        matched_keyword=matched_keyword,
+                        found_at=datetime.utcnow()
+                    )
+                    db.add(lead)
+                    db.commit()
+
+                    matched_count += 1
+                    text_preview = (msg.text or "")[:80].replace("\n", " ")
+                    logger.info(f"[LEAD] task={task.id} ({task.name}) channel=@{source_username} text_preview={text_preview}")
+
+                    # Отправляем лид пользователю в Telegram
+                    await send_lead_to_telegram(task, lead, db)
+
+            # Записываем в SourceMessage чтобы не обрабатывать сообщение снова
+            existing_source_msg = (
+                db.query(SourceMessage)
+                .filter(
+                    SourceMessage.source_chat_id == source_chat_id,
+                    SourceMessage.source_message_id == msg.id
+                )
+                .first()
+            )
+
+            if not existing_source_msg:
+                source_msg = SourceMessage(
+                    source_chat_id=source_chat_id,
+                    source_message_id=msg.id,
+                    text=(msg.text or "")[:4000],
+                    has_keywords=match_text(text, filter_config, include_keywords),
+                    published=False,
+                    checked_at=datetime.utcnow(),
+                    source_channel_username=source_username
+                )
+                db.add(source_msg)
+                db.commit()
+
+        logger.info(f"[LEAD] task={task.id} ({task.name}) channel=@{source_username} обработано {len(filtered_messages)} сообщений, найдено {matched_count}")
+
+    except Exception as e:
+        logger.error(f"[LEAD] task={task.id} ({task.name}) ошибка при резолвинге @{source_username}: {e}")

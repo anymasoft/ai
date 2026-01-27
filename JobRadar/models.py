@@ -8,6 +8,19 @@ from datetime import datetime
 Base = declarative_base()
 
 
+class User(Base):
+    """Модель пользователя системы"""
+    __tablename__ = "users"
+
+    id = Column(Integer, primary_key=True)
+    phone = Column(String(20), unique=True, nullable=False)  # Нормализованный номер телефона
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    def __repr__(self):
+        return f"<User(id={self.id}, phone={self.phone})>"
+
+
 class Channel(Base):
     """Модель канала для мониторинга"""
     __tablename__ = "channels"
@@ -98,6 +111,7 @@ class Task(Base):
     __tablename__ = "tasks"
 
     id = Column(Integer, primary_key=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)  # Владелец задачи
     name = Column(String(255), nullable=False)
     status = Column(String(50), default="running")  # "running" или "paused"
     sources = Column(String(4000), nullable=False, default="")  # JSON или newline-separated
@@ -109,8 +123,34 @@ class Task(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
+    __table_args__ = (
+        Index('idx_user_id', 'user_id'),
+    )
+
     def __repr__(self):
-        return f"<Task(id={self.id}, name={self.name}, status={self.status})>"
+        return f"<Task(id={self.id}, user_id={self.user_id}, name={self.name}, status={self.status})>"
+
+
+class Lead(Base):
+    """Модель найденного лида из мониторинга"""
+    __tablename__ = "leads"
+
+    id = Column(Integer, primary_key=True)
+    task_id = Column(Integer, ForeignKey("tasks.id"), nullable=False)  # Ссылка на Task
+    text = Column(Text, nullable=False)  # Полный текст сообщения
+    source_channel = Column(String(255), nullable=False)  # Канал-источник (@username)
+    source_message_id = Column(BigInteger, nullable=False)  # ID сообщения в источнике
+    matched_keyword = Column(String(255), nullable=True)  # Какое ключевое слово совпало
+    found_at = Column(DateTime, default=datetime.utcnow)  # Когда найдено
+    delivered_at = Column(DateTime, nullable=True)  # Когда доставлено пользователю
+
+    __table_args__ = (
+        Index('idx_task_id', 'task_id'),
+        Index('idx_found_at', 'found_at'),
+    )
+
+    def __repr__(self):
+        return f"<Lead(id={self.id}, task_id={self.task_id}, source={self.source_channel}, msg_id={self.source_message_id})>"
 
 
 class TelegramSession(Base):
@@ -118,10 +158,16 @@ class TelegramSession(Base):
     __tablename__ = "telegram_sessions"
 
     id = Column(Integer, primary_key=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)  # Владелец сессии
     phone = Column(String(20), unique=True, nullable=False)  # Номер телефона
     session_string = Column(Text, nullable=False)  # StringSession строка (текст)
+    telegram_user_id = Column(BigInteger, nullable=True)  # Telegram ID пользователя
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
+    __table_args__ = (
+        Index('idx_user_id', 'user_id'),
+    )
+
     def __repr__(self):
-        return f"<TelegramSession(id={self.id}, phone={self.phone})>"
+        return f"<TelegramSession(id={self.id}, user_id={self.user_id}, phone={self.phone}, telegram_id={self.telegram_user_id})>"

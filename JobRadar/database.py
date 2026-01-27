@@ -74,41 +74,6 @@ def init_db():
     ensure_tables()
 
     print("✅ База данных инициализирована")
-
-    # Проверить, есть ли уже задачи
-    from models import Task
-    db = SessionLocal()
-    try:
-        if db.query(Task).count() == 0:
-            # Добавить тестовые данные
-            demo_tasks = [
-                Task(
-                    name="Python Remote Jobs",
-                    status="running",
-                    sources="telegram.me/dev_jobs, telegram.me/python_jobs",
-                    include_keywords="python, remote, developer",
-                    exclude_keywords="junior, internship",
-                    forward_channel="",
-                    alerts_personal=True,
-                    alerts_channel=False
-                ),
-                Task(
-                    name="Freelance Gigs",
-                    status="running",
-                    sources="telegram.me/freelance",
-                    include_keywords="freelance, contract",
-                    exclude_keywords="",
-                    forward_channel="",
-                    alerts_personal=True,
-                    alerts_channel=False
-                ),
-            ]
-            db.add_all(demo_tasks)
-            db.commit()
-            print("✅ Добавлены демо-задачи для примера")
-    finally:
-        db.close()
-
     print("="*60 + "\n")
 
 

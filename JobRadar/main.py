@@ -15,14 +15,18 @@ from telethon.errors import SessionPasswordNeededError
 from config import TELEGRAM_API_ID, TELEGRAM_API_HASH
 
 from database import SessionLocal, init_db
-from models import Task
+from models import Task, Lead, User, TelegramSession
 from telegram_auth import save_session_to_db, get_telegram_client
+import monitor
 
 app = FastAPI()
 
 # ============== Глобальное хранилище pending клиентов ==============
 # {phone: TelegramClient}
 pending_auth_clients = {}
+
+# ============== Флаг управления мониторингом ==============
+monitoring_enabled = True
 
 # Получить абсолютный путь к папке со скриптом
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -52,6 +56,21 @@ async def startup():
     print("="*70 + "\n")
     init_db()
 
+    # Инициализация Telegram клиента
+    try:
+        await monitor.init_telegram_client()
+        print("✅ Telegram клиент инициализирован\n")
+    except Exception as e:
+        print(f"❌ Ошибка инициализации Telegram клиента: {e}\n")
+
+    # Запуск мониторинга каналов (старый контур)
+    asyncio.create_task(monitor.monitoring_loop())
+    print("✅ Запущен мониторинг каналов (monitoring_loop)\n")
+
+    # Запуск мониторинга задач (новый контур)
+    asyncio.create_task(monitor.monitoring_loop_tasks())
+    print("✅ Запущен мониторинг задач (monitoring_loop_tasks)\n")
+
 # Dependency для получения сессии БД
 def get_db():
     db = SessionLocal()
@@ -59,6 +78,14 @@ def get_db():
         yield db
     finally:
         db.close()
+
+# Helper для получения текущего пользователя (MVP - первый авторизованный)
+def get_current_user(db: Session = Depends(get_db)) -> User:
+    """Получить текущего пользователя из авторизованной Telegram сессии"""
+    user = db.query(User).first()
+    if not user:
+        raise HTTPException(status_code=401, detail="Пользователь не авторизован")
+    return user
 
 # Pydantic модели для API
 class TaskCreate(BaseModel):
@@ -79,6 +106,7 @@ class TaskUpdate(BaseModel):
 
 class TaskResponse(BaseModel):
     id: int
+    user_id: int
     name: str
     status: str
     sources: str
@@ -89,6 +117,18 @@ class TaskResponse(BaseModel):
     alerts_channel: bool
     created_at: datetime
     updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+class LeadResponse(BaseModel):
+    id: int
+    task_id: int
+    text: str
+    source_channel: str
+    source_message_id: int
+    matched_keyword: Optional[str]
+    found_at: datetime
 
     class Config:
         from_attributes = True
@@ -131,23 +171,24 @@ async def contact():
 # ============== API для Tasks ==============
 
 @app.get("/api/tasks", response_model=List[TaskResponse])
-async def get_tasks(db: Session = Depends(get_db)):
-    """Получить все задачи"""
-    tasks = db.query(Task).all()
+async def get_tasks(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """Получить все задачи текущего пользователя"""
+    tasks = db.query(Task).filter(Task.user_id == current_user.id).all()
     return tasks
 
 @app.get("/api/tasks/{task_id}", response_model=TaskResponse)
-async def get_task(task_id: int, db: Session = Depends(get_db)):
+async def get_task(task_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     """Получить одну задачу по ID"""
-    task = db.query(Task).filter(Task.id == task_id).first()
+    task = db.query(Task).filter(Task.id == task_id, Task.user_id == current_user.id).first()
     if not task:
         raise HTTPException(status_code=404, detail="Задача не найдена")
     return task
 
 @app.post("/api/tasks", response_model=TaskResponse)
-async def create_task(task: TaskCreate, db: Session = Depends(get_db)):
+async def create_task(task: TaskCreate, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     """Создать новую задачу"""
     db_task = Task(
+        user_id=current_user.id,
         name=task.name,
         status=task.status,
         sources=task.sources,
@@ -161,9 +202,9 @@ async def create_task(task: TaskCreate, db: Session = Depends(get_db)):
     return db_task
 
 @app.put("/api/tasks/{task_id}", response_model=TaskResponse)
-async def update_task(task_id: int, task: TaskUpdate, db: Session = Depends(get_db)):
+async def update_task(task_id: int, task: TaskUpdate, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     """Обновить задачу"""
-    db_task = db.query(Task).filter(Task.id == task_id).first()
+    db_task = db.query(Task).filter(Task.id == task_id, Task.user_id == current_user.id).first()
     if not db_task:
         raise HTTPException(status_code=404, detail="Задача не найдена")
 
@@ -185,9 +226,9 @@ async def update_task(task_id: int, task: TaskUpdate, db: Session = Depends(get_
     return db_task
 
 @app.delete("/api/tasks/{task_id}")
-async def delete_task(task_id: int, db: Session = Depends(get_db)):
+async def delete_task(task_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     """Удалить задачу"""
-    db_task = db.query(Task).filter(Task.id == task_id).first()
+    db_task = db.query(Task).filter(Task.id == task_id, Task.user_id == current_user.id).first()
     if not db_task:
         raise HTTPException(status_code=404, detail="Задача не найдена")
 
@@ -195,19 +236,57 @@ async def delete_task(task_id: int, db: Session = Depends(get_db)):
     db.commit()
     return {"message": "Задача удалена"}
 
+# ============== API для Leads ==============
+
+@app.get("/api/leads", response_model=List[LeadResponse])
+async def get_all_leads(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """Получить все найденные лиды текущего пользователя"""
+    leads = (
+        db.query(Lead)
+        .join(Task)
+        .filter(Task.user_id == current_user.id)
+        .order_by(Lead.found_at.desc())
+        .all()
+    )
+    return leads
+
+@app.get("/api/leads/task/{task_id}", response_model=List[LeadResponse])
+async def get_task_leads(task_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """Получить лиды для конкретной задачи текущего пользователя"""
+    task = db.query(Task).filter(Task.id == task_id, Task.user_id == current_user.id).first()
+    if not task:
+        raise HTTPException(status_code=404, detail="Задача не найдена")
+
+    leads = db.query(Lead).filter(Lead.task_id == task_id).order_by(Lead.found_at.desc()).all()
+    return leads
+
+@app.get("/api/leads/{lead_id}", response_model=LeadResponse)
+async def get_lead(lead_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """Получить информацию о конкретном лиде"""
+    lead = db.query(Lead).filter(Lead.id == lead_id).first()
+    if not lead:
+        raise HTTPException(status_code=404, detail="Лид не найден")
+
+    # Проверить что лид принадлежит пользователю
+    task = db.query(Task).filter(Task.id == lead.task_id, Task.user_id == current_user.id).first()
+    if not task:
+        raise HTTPException(status_code=403, detail="Доступ запрещен")
+
+    return lead
+
 # ============== API для статистики ==============
 
 @app.get("/api/stats")
-async def get_stats(db: Session = Depends(get_db)):
+async def get_stats(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     """Получить статистику для дашборда"""
-    tasks_count = db.query(Task).count()
-    active_tasks = db.query(Task).filter(Task.status == "running").count()
+    tasks_count = db.query(Task).filter(Task.user_id == current_user.id).count()
+    active_tasks = db.query(Task).filter(Task.user_id == current_user.id, Task.status == "running").count()
 
     # Подсчитать источники и ключевые слова
     total_sources = 0
     total_keywords = 0
 
-    for task in db.query(Task).all():
+    for task in db.query(Task).filter(Task.user_id == current_user.id).all():
         if task.sources:
             sources_list = [s.strip() for s in task.sources.split(',') if s.strip()]
             total_sources += len(sources_list)
@@ -360,24 +439,6 @@ async def auth_save(request: AuthStartRequest):
         print(f"✅ Клиент найден в памяти")
 
         try:
-            # Получить строку сессии
-            session_string = client.session.save()
-            print(f"✅ Session string получена, длина: {len(session_string)}")
-        except Exception as e:
-            print(f"❌ Ошибка получения session string: {str(e)}")
-            raise
-
-        try:
-            # Сохранить в БД
-            success = await save_session_to_db(phone, session_string)
-            if not success:
-                raise Exception("Ошибка при сохранении в БД")
-            print(f"✅ Сессия сохранена в БД")
-        except Exception as e:
-            print(f"❌ Ошибка сохранения в БД: {str(e)}")
-            raise
-
-        try:
             # Получить информацию о пользователе
             print(f"👤 Получаю информацию о пользователе...")
             me = await client.get_me()
@@ -388,9 +449,27 @@ async def auth_save(request: AuthStartRequest):
                 "username": me.username or "",
                 "id": me.id
             }
-            print(f"✅ Информация о пользователе: {user_info['first_name']} {user_info['last_name']}")
+            print(f"✅ Информация о пользователе: {user_info['first_name']} {user_info['last_name']} (ID: {me.id})")
         except Exception as e:
             print(f"❌ Ошибка получения информации о пользователе: {str(e)}")
+            raise
+
+        try:
+            # Получить строку сессии
+            session_string = client.session.save()
+            print(f"✅ Session string получена, длина: {len(session_string)}")
+        except Exception as e:
+            print(f"❌ Ошибка получения session string: {str(e)}")
+            raise
+
+        try:
+            # Сохранить в БД с telegram_user_id
+            success = await save_session_to_db(phone, session_string, me.id)
+            if not success:
+                raise Exception("Ошибка при сохранении в БД")
+            print(f"✅ Сессия сохранена в БД с telegram_user_id={me.id}")
+        except Exception as e:
+            print(f"❌ Ошибка сохранения в БД: {str(e)}")
             raise
 
         try:
