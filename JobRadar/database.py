@@ -88,9 +88,9 @@ def init_db():
                     sources="telegram.me/dev_jobs, telegram.me/python_jobs",
                     include_keywords="python, remote, developer",
                     exclude_keywords="junior, internship",
-                    alerts_telegram=True,
-                    alerts_email=False,
-                    alerts_webhook=False
+                    forward_channel="",
+                    alerts_personal=True,
+                    alerts_channel=False
                 ),
                 Task(
                     name="Freelance Gigs",
@@ -98,9 +98,9 @@ def init_db():
                     sources="telegram.me/freelance",
                     include_keywords="freelance, contract",
                     exclude_keywords="",
-                    alerts_telegram=True,
-                    alerts_email=True,
-                    alerts_webhook=False
+                    forward_channel="",
+                    alerts_personal=True,
+                    alerts_channel=False
                 ),
             ]
             db.add_all(demo_tasks)
