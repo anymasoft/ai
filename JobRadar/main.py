@@ -275,6 +275,35 @@ async def get_lead(lead_id: int, current_user: User = Depends(get_current_user),
 
     return lead
 
+@app.get("/api/leads/unread_count")
+async def get_unread_count(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """Получить количество непрочитанных лидов"""
+    unread = (
+        db.query(Lead)
+        .join(Task)
+        .filter(Task.user_id == current_user.id)
+        .filter((Lead.status == 'new') | (Lead.status == None))
+        .count()
+    )
+    return {"unread_count": unread}
+
+@app.put("/api/leads/{lead_id}/viewed")
+async def mark_lead_viewed(lead_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """Пометить лид как просмотренный"""
+    lead = db.query(Lead).filter(Lead.id == lead_id).first()
+    if not lead:
+        raise HTTPException(status_code=404, detail="Лид не найден")
+
+    # Проверить что лид принадлежит пользователю
+    task = db.query(Task).filter(Task.id == lead.task_id, Task.user_id == current_user.id).first()
+    if not task:
+        raise HTTPException(status_code=403, detail="Доступ запрещен")
+
+    lead.status = "viewed"
+    db.commit()
+    db.refresh(lead)
+    return lead
+
 # ============== API для статистики ==============
 
 @app.get("/api/stats")
