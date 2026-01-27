@@ -17,12 +17,16 @@ from config import TELEGRAM_API_ID, TELEGRAM_API_HASH
 from database import SessionLocal, init_db
 from models import Task
 from telegram_auth import save_session_to_db, get_telegram_client
+import monitor
 
 app = FastAPI()
 
 # ============== Глобальное хранилище pending клиентов ==============
 # {phone: TelegramClient}
 pending_auth_clients: dict[str, TelegramClient] = {}
+
+# ============== Флаг управления мониторингом ==============
+monitoring_enabled = True
 
 # Получить абсолютный путь к папке со скриптом
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -51,6 +55,21 @@ async def startup():
     print(f"📍 Абсолютный путь к БД: {get_db_path()}")
     print("="*70 + "\n")
     init_db()
+
+    # Инициализация Telegram клиента
+    try:
+        await monitor.init_telegram_client()
+        print("✅ Telegram клиент инициализирован\n")
+    except Exception as e:
+        print(f"❌ Ошибка инициализации Telegram клиента: {e}\n")
+
+    # Запуск мониторинга каналов (старый контур)
+    asyncio.create_task(monitor.monitoring_loop())
+    print("✅ Запущен мониторинг каналов (monitoring_loop)\n")
+
+    # Запуск мониторинга задач (новый контур)
+    asyncio.create_task(monitor.monitoring_loop_tasks())
+    print("✅ Запущен мониторинг задач (monitoring_loop_tasks)\n")
 
 # Dependency для получения сессии БД
 def get_db():

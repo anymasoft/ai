@@ -113,6 +113,27 @@ class Task(Base):
         return f"<Task(id={self.id}, name={self.name}, status={self.status})>"
 
 
+class Lead(Base):
+    """Модель найденного лида из мониторинга"""
+    __tablename__ = "leads"
+
+    id = Column(Integer, primary_key=True)
+    task_id = Column(Integer, ForeignKey("tasks.id"), nullable=False)  # Ссылка на Task
+    text = Column(Text, nullable=False)  # Полный текст сообщения
+    source_channel = Column(String(255), nullable=False)  # Канал-источник (@username)
+    source_message_id = Column(BigInteger, nullable=False)  # ID сообщения в источнике
+    matched_keyword = Column(String(255), nullable=True)  # Какое ключевое слово совпало
+    found_at = Column(DateTime, default=datetime.utcnow)  # Когда найдено
+
+    __table_args__ = (
+        Index('idx_task_id', 'task_id'),
+        Index('idx_found_at', 'found_at'),
+    )
+
+    def __repr__(self):
+        return f"<Lead(id={self.id}, task_id={self.task_id}, source={self.source_channel}, msg_id={self.source_message_id})>"
+
+
 class TelegramSession(Base):
     """Модель сессии Telegram для Userbot авторизации"""
     __tablename__ = "telegram_sessions"
