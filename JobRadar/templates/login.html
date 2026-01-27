@@ -7,6 +7,18 @@
     <link href="https://cdn.tailwindcss.com" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/daisyui@4.4.0/dist/full.min.css" rel="stylesheet" type="text/css" />
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
+    <style>
+        .btn-group {
+            display: flex;
+            gap: 0.5rem;
+            justify-content: center;
+        }
+
+        .btn-group .btn {
+            flex: 0 1 auto;
+            min-width: 120px;
+        }
+    </style>
 </head>
 <body class="bg-gradient-to-br from-purple-600 to-purple-900 min-h-screen flex items-center justify-center p-4">
     <div class="w-full max-w-md">
@@ -36,7 +48,7 @@
                         <input type="tel" id="phone" class="input input-bordered" placeholder="+7 (999) 123-45-67" autocomplete="off" />
                     </div>
 
-                    <div class="flex gap-2 justify-center">
+                    <div class="btn-group">
                         <button id="btn-back-phone" class="btn btn-ghost hidden">
                             <i class="bi bi-arrow-left"></i> Назад
                         </button>
@@ -58,7 +70,7 @@
                         <input type="text" id="code" class="input input-bordered text-center text-xl tracking-widest" placeholder="000000" maxlength="6" autocomplete="off" />
                     </div>
 
-                    <div class="flex gap-2 justify-center">
+                    <div class="btn-group">
                         <button id="btn-back-code" class="btn btn-ghost">
                             <i class="bi bi-arrow-left"></i> Назад
                         </button>
@@ -80,7 +92,7 @@
                         <input type="password" id="password" class="input input-bordered" placeholder="Введите пароль" autocomplete="off" />
                     </div>
 
-                    <div class="flex gap-2 justify-center">
+                    <div class="btn-group">
                         <button id="btn-back-password" class="btn btn-ghost">
                             <i class="bi bi-arrow-left"></i> Назад
                         </button>
