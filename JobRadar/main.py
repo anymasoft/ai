@@ -223,45 +223,58 @@ async def get_stats(db: Session = Depends(get_db)):
 async def auth_start(request: AuthStartRequest):
     """Начать процесс авторизации в Telegram"""
     try:
+        print(f"📱 Начало авторизации для номера: {request.phone}")
         result = await start_auth_flow(request.phone)
         return {"success": result, "message": "Код отправлен на номер"}
     except Exception as e:
+        print(f"❌ Ошибка при /api/auth/start: {str(e)}")
         raise HTTPException(status_code=400, detail=str(e))
 
 @app.post("/api/auth/submit-code")
 async def auth_submit_code(request: AuthCodeRequest):
     """Отправить код верификации"""
     try:
+        print(f"🔐 Проверка кода верификации для: {request.phone}")
         result = await submit_code(request.phone, request.code)
+        print(f"✅ Результат submit_code: {result}")
         return result
     except Exception as e:
+        print(f"❌ Ошибка при /api/auth/submit-code: {str(e)}")
         raise HTTPException(status_code=400, detail=str(e))
 
 @app.post("/api/auth/submit-password")
 async def auth_submit_password(request: AuthPasswordRequest):
     """Отправить пароль 2FA"""
     try:
+        print(f"🔑 Проверка пароля 2FA для: {request.phone}")
         result = await submit_password(request.phone, request.password)
+        print(f"✅ Результат submit_password: {result}")
         return {"success": result}
     except Exception as e:
+        print(f"❌ Ошибка при /api/auth/submit-password: {str(e)}")
         raise HTTPException(status_code=400, detail=str(e))
 
 @app.post("/api/auth/save")
 async def auth_save(request: AuthStartRequest):
     """Сохранить сессию в БД"""
     try:
+        print(f"💾 Сохранение сессии для: {request.phone}")
         result = await save_session(request.phone)
+        print(f"✅ Сессия успешно сохранена для {request.phone}")
         return {"success": result, "message": "Сессия успешно сохранена"}
     except Exception as e:
+        print(f"❌ Ошибка при /api/auth/save: {str(e)}")
         raise HTTPException(status_code=400, detail=str(e))
 
 @app.post("/api/auth/cancel")
-async def auth_cancel():
+async def auth_cancel(request: AuthStartRequest):
     """Отменить текущий процесс авторизации"""
     try:
-        await cancel_auth()
+        print(f"🚫 Отмена авторизации для: {request.phone}")
+        await cancel_auth(request.phone)
         return {"success": True, "message": "Авторизация отменена"}
     except Exception as e:
+        print(f"❌ Ошибка при /api/auth/cancel: {str(e)}")
         raise HTTPException(status_code=400, detail=str(e))
 
 if __name__ == "__main__":
