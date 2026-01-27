@@ -21,8 +21,19 @@ from database import get_db
 from filter_engine import load_active_filter, match_text
 from telethon.sessions import StringSession
 
-# Логирование
+# Логирование с обработчиками для консоли
 logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
+
+# Консольный обработчик
+console_handler = logging.StreamHandler()
+console_handler.setLevel(logging.DEBUG)
+formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+console_handler.setFormatter(formatter)
+
+# Добавить обработчик если его еще нет
+if not logger.handlers:
+    logger.addHandler(console_handler)
 
 # Флаг для подробной диагностики
 DEBUG_MESSAGE_DUMP = os.getenv("DEBUG_MESSAGE_DUMP", "false").lower() == "true"
@@ -875,8 +886,9 @@ async def monitoring_loop():
             finally:
                 db.close()
 
-            # Спим перед следующей проверкой (с random jitter 0-2 сек для сглаживания нагрузки)
-            await asyncio.sleep(POLLING_INTERVAL_SECONDS + random.uniform(0, 2))
+            # Спим перед следующей проверкой (с random jitter 0-20 сек для сглаживания нагрузки)
+            # Итоговый интервал: 10-30 секунд
+            await asyncio.sleep(POLLING_INTERVAL_SECONDS + random.uniform(0, 20))
 
         except Exception as e:
             logger.error(f"❌ Ошибка в мониторинге: {e}")
@@ -919,8 +931,9 @@ async def monitoring_loop_tasks():
             finally:
                 db.close()
 
-            # Спим перед следующей проверкой
-            await asyncio.sleep(POLLING_INTERVAL_SECONDS + random.uniform(0, 2))
+            # Спим перед следующей проверкой (с random jitter 0-20 сек)
+            # Итоговый интервал: 10-30 секунд
+            await asyncio.sleep(POLLING_INTERVAL_SECONDS + random.uniform(0, 20))
 
         except Exception as e:
             logger.error(f"❌ Ошибка в monitoring_loop_tasks: {e}")
