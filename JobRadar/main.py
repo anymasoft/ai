@@ -1,5 +1,6 @@
 import os
 import json
+import logging
 from fastapi import FastAPI, HTTPException, Depends, Request, Cookie
 from fastapi.responses import FileResponse, RedirectResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
@@ -18,6 +19,10 @@ from database import SessionLocal, init_db
 from models import Task, Lead, User, TelegramSession
 from telegram_auth import save_session_to_db, get_telegram_client
 import monitor
+
+# ============== Отключить мусорные логи ==============
+logging.getLogger("uvicorn.access").disabled = True
+logging.getLogger("uvicorn").setLevel(logging.WARNING)
 
 app = FastAPI()
 
@@ -46,30 +51,19 @@ app.mount("/static", StaticFiles(directory=os.path.join(BASE_DIR, "static")), na
 # Инициализация БД при запуске
 @app.on_event("startup")
 async def startup():
-    from database import get_db_path
-    from config import DATABASE_URL
-    print("\n" + "="*70)
-    print("🎯 FastAPI приложение JobRadar запускается...")
-    print("="*70)
-    print(f"📍 DATABASE_URL: {DATABASE_URL}")
-    print(f"📍 Абсолютный путь к БД: {get_db_path()}")
-    print("="*70 + "\n")
     init_db()
 
     # Инициализация Telegram клиента
     try:
         await monitor.init_telegram_client()
-        print("✅ Telegram клиент инициализирован\n")
     except Exception as e:
-        print(f"❌ Ошибка инициализации Telegram клиента: {e}\n")
+        logging.error(f"Ошибка инициализации Telegram клиента: {e}")
 
     # Запуск мониторинга каналов (старый контур)
     asyncio.create_task(monitor.monitoring_loop())
-    print("✅ Запущен мониторинг каналов (monitoring_loop)\n")
 
     # Запуск мониторинга задач (новый контур)
     asyncio.create_task(monitor.monitoring_loop_tasks())
-    print("✅ Запущен мониторинг задач (monitoring_loop_tasks)\n")
 
 # Dependency для получения сессии БД
 def get_db():
@@ -85,7 +79,6 @@ def get_current_user(
     db: Session = Depends(get_db)
 ) -> User:
     """Получить текущего пользователя из cookie авторизации"""
-    print(f"[AUTH] cookie user_phone = {user_phone}")
     if not user_phone:
         raise HTTPException(status_code=401, detail="Пользователь не авторизован")
 
@@ -207,7 +200,6 @@ async def create_task(task: TaskCreate, current_user: User = Depends(get_current
     db.add(db_task)
     db.commit()
     db.refresh(db_task)
-    print(f"✅ Задача создана: id={db_task.id}, name={db_task.name}, status=paused")
     return db_task
 
 @app.put("/api/tasks/{task_id}", response_model=TaskResponse)
@@ -326,8 +318,6 @@ async def auth_start(request: AuthStartRequest):
     """
     try:
         phone = normalize_phone(request.phone)
-        print(f"\n📱 === /api/auth/start ===")
-        print(f"📱 Phone: {phone}")
 
         # Создать клиента с пустой StringSession
         client = TelegramClient(StringSession(), TELEGRAM_API_ID, TELEGRAM_API_HASH)
@@ -336,13 +326,9 @@ async def auth_start(request: AuthStartRequest):
 
         # Сохранить клиента в памяти
         pending_auth_clients[phone] = client
-        print(f"✅ Клиент создан и сохранён")
-        print(f"📋 PENDING: {list(pending_auth_clients.keys())}")
-        print(f"✅ === /api/auth/start успешен ===\n")
 
         return {"ok": True}
     except Exception as e:
-        print(f"❌ Ошибка при /api/auth/start: {str(e)}")
         raise HTTPException(status_code=400, detail=str(e))
 
 
@@ -354,34 +340,21 @@ async def auth_submit_code(request: AuthCodeRequest):
     """
     try:
         phone = normalize_phone(request.phone)
-        print(f"\n🔐 === /api/auth/submit-code ===")
-        print(f"📱 Phone: {phone}")
-        print(f"🔐 Code: {request.code}")
 
         client = pending_auth_clients.get(phone)
         if not client:
-            print(f"❌ Клиент для {phone} не найден в памяти")
-            print(f"📋 PENDING: {list(pending_auth_clients.keys())}")
             raise Exception("Сессия авторизации истекла. Начните заново.")
 
         try:
             await client.sign_in(phone=phone, code=request.code)
             pending_auth_clients[phone] = client
-            print(f"✅ Код верификации принят")
-            print(f"📋 PENDING: {list(pending_auth_clients.keys())}")
-            print(f"✅ === /api/auth/submit-code успешен ===\n")
             return {"requires_password": False}
 
         except SessionPasswordNeededError:
             pending_auth_clients[phone] = client
-            print(f"⚠️ Требуется пароль 2FA")
-            print(f"📋 PENDING: {list(pending_auth_clients.keys())}")
-            print(f"⚠️ === /api/auth/submit-code требует пароль ===\n")
             return {"requires_password": True}
 
     except Exception as e:
-        print(f"❌ Ошибка при /api/auth/submit-code: {str(e)}")
-        print(f"❌ === /api/auth/submit-code ошибка ===\n")
         raise HTTPException(status_code=400, detail=str(e))
 
 
@@ -392,38 +365,20 @@ async def auth_submit_password(request: AuthPasswordRequest):
     """
     try:
         phone = normalize_phone(request.phone)
-        print(f"\n🔑 === /api/auth/submit-password ===")
-        print(f"📱 Phone: {phone}")
-        print(f"🔐 Password: {'*' * len(request.password)}")
 
         client = pending_auth_clients.get(phone)
         if not client:
-            print(f"❌ Клиент для {phone} не найден в памяти")
-            print(f"📋 PENDING: {list(pending_auth_clients.keys())}")
             raise Exception("Сессия авторизации истекла.")
-
-        print(f"📱 Клиент найден, статус подключения: {client.is_connected()}")
 
         try:
             await client.sign_in(password=request.password)
-            print(f"✅ Пароль 2FA принят")
         except Exception as e:
-            print(f"❌ Ошибка при вводе пароля: {str(e)}")
             raise
 
-        # Убедиться, что клиент всё ещё подключен
-        print(f"📱 После sign_in статус подключения: {client.is_connected()}")
-
         pending_auth_clients[phone] = client
-        print(f"📋 PENDING: {list(pending_auth_clients.keys())}")
-        print(f"✅ === /api/auth/submit-password успешен ===\n")
 
         return {"ok": True}
     except Exception as e:
-        print(f"❌ Ошибка при /api/auth/submit-password: {str(e)}")
-        print(f"❌ === /api/auth/submit-password ошибка ===\n")
-        import traceback
-        traceback.print_exc()
         raise HTTPException(status_code=400, detail=str(e))
 
 
@@ -435,21 +390,13 @@ async def auth_save(request: AuthStartRequest):
     """
     try:
         phone = normalize_phone(request.phone)
-        print(f"\n💾 === /api/auth/save ===")
-        print(f"📱 Phone: {phone}")
-        print(f"📋 PENDING KEYS: {list(pending_auth_clients.keys())}")
 
         client = pending_auth_clients.get(phone)
         if not client:
-            print(f"❌ Клиент для {phone} не найден в памяти")
-            print(f"📋 AVAILABLE KEYS: {list(pending_auth_clients.keys())}")
-            raise Exception(f"Клиент авторизации не найден. Доступные ключи: {list(pending_auth_clients.keys())}")
-
-        print(f"✅ Клиент найден в памяти")
+            raise Exception(f"Клиент авторизации не найден.")
 
         try:
             # Получить информацию о пользователе
-            print(f"👤 Получаю информацию о пользователе...")
             me = await client.get_me()
             user_info = {
                 "phone": phone,
@@ -458,17 +405,13 @@ async def auth_save(request: AuthStartRequest):
                 "username": me.username or "",
                 "id": me.id
             }
-            print(f"✅ Информация о пользователе: {user_info['first_name']} {user_info['last_name']} (ID: {me.id})")
         except Exception as e:
-            print(f"❌ Ошибка получения информации о пользователе: {str(e)}")
             raise
 
         try:
             # Получить строку сессии
             session_string = client.session.save()
-            print(f"✅ Session string получена, длина: {len(session_string)}")
         except Exception as e:
-            print(f"❌ Ошибка получения session string: {str(e)}")
             raise
 
         try:
@@ -476,25 +419,18 @@ async def auth_save(request: AuthStartRequest):
             success = await save_session_to_db(phone, session_string, me.id)
             if not success:
                 raise Exception("Ошибка при сохранении в БД")
-            print(f"✅ Сессия сохранена в БД с telegram_user_id={me.id}")
         except Exception as e:
-            print(f"❌ Ошибка сохранения в БД: {str(e)}")
             raise
 
         try:
             # Удалить из памяти и отключить
             del pending_auth_clients[phone]
             await client.disconnect()
-            print(f"✅ Клиент удалён из памяти и отключен")
         except Exception as e:
-            print(f"⚠️ Ошибка при отключении клиента (не критично): {str(e)}")
-
-        print(f"📋 REMAINING PENDING: {list(pending_auth_clients.keys())}")
-        print(f"✅ === /api/auth/save успешен ===\n")
+            pass
 
         # Создаём ответ с установкой cookie авторизации
         response = JSONResponse({"ok": True, "user": user_info})
-        print(f"[AUTH] setting cookie for phone = {phone}")
         response.set_cookie(
             key="user_phone",
             value=phone,
@@ -506,10 +442,6 @@ async def auth_save(request: AuthStartRequest):
         )
         return response
     except Exception as e:
-        print(f"❌ Ошибка при /api/auth/save: {str(e)}")
-        import traceback
-        traceback.print_exc()
-        print(f"❌ === /api/auth/save ошибка ===\n")
         raise HTTPException(status_code=400, detail=str(e))
 
 if __name__ == "__main__":
