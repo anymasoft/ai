@@ -296,20 +296,6 @@ async def get_task_leads(task_id: int, current_user: User = Depends(get_current_
     leads = db.query(Lead).filter(Lead.task_id == task_id).order_by(Lead.found_at.desc()).all()
     return leads
 
-@app.get("/api/leads/{lead_id}", response_model=LeadResponse)
-async def get_lead(lead_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    """Получить информацию о конкретном лиде"""
-    lead = db.query(Lead).filter(Lead.id == lead_id).first()
-    if not lead:
-        raise HTTPException(status_code=404, detail="Лид не найден")
-
-    # Проверить что лид принадлежит пользователю
-    task = db.query(Task).filter(Task.id == lead.task_id, Task.user_id == current_user.id).first()
-    if not task:
-        raise HTTPException(status_code=403, detail="Доступ запрещен")
-
-    return lead
-
 @app.get("/api/leads/unread-count")
 async def get_unread_count(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     """Получить количество непрочитанных лидов"""
@@ -338,6 +324,20 @@ async def mark_all_read(current_user: User = Depends(get_current_user), db: Sess
         db.commit()
 
     return {"ok": True}
+
+@app.get("/api/leads/{lead_id}", response_model=LeadResponse)
+async def get_lead(lead_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """Получить информацию о конкретном лиде"""
+    lead = db.query(Lead).filter(Lead.id == lead_id).first()
+    if not lead:
+        raise HTTPException(status_code=404, detail="Лид не найден")
+
+    # Проверить что лид принадлежит пользователю
+    task = db.query(Task).filter(Task.id == lead.task_id, Task.user_id == current_user.id).first()
+    if not task:
+        raise HTTPException(status_code=403, detail="Доступ запрещен")
+
+    return lead
 
 @app.put("/api/leads/{lead_id}/viewed")
 async def mark_lead_viewed(lead_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
