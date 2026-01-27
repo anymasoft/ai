@@ -67,9 +67,9 @@ class TaskCreate(BaseModel):
     sources: str = ""
     include_keywords: str = ""
     exclude_keywords: Optional[str] = ""
-    alerts_telegram: bool = True
-    alerts_email: bool = False
-    alerts_webhook: bool = False
+    forward_channel: Optional[str] = ""
+    alerts_personal: bool = True
+    alerts_channel: bool = False
 
 class TaskUpdate(BaseModel):
     name: Optional[str] = None
@@ -77,9 +77,9 @@ class TaskUpdate(BaseModel):
     sources: Optional[str] = None
     include_keywords: Optional[str] = None
     exclude_keywords: Optional[str] = None
-    alerts_telegram: Optional[bool] = None
-    alerts_email: Optional[bool] = None
-    alerts_webhook: Optional[bool] = None
+    forward_channel: Optional[str] = None
+    alerts_personal: Optional[bool] = None
+    alerts_channel: Optional[bool] = None
 
 class TaskResponse(BaseModel):
     id: int
@@ -88,9 +88,9 @@ class TaskResponse(BaseModel):
     sources: str
     include_keywords: str
     exclude_keywords: Optional[str]
-    alerts_telegram: bool
-    alerts_email: bool
-    alerts_webhook: bool
+    forward_channel: Optional[str]
+    alerts_personal: bool
+    alerts_channel: bool
     created_at: datetime
     updated_at: datetime
 
@@ -157,9 +157,9 @@ async def create_task(task: TaskCreate, db: Session = Depends(get_db)):
         sources=task.sources,
         include_keywords=task.include_keywords,
         exclude_keywords=task.exclude_keywords,
-        alerts_telegram=task.alerts_telegram,
-        alerts_email=task.alerts_email,
-        alerts_webhook=task.alerts_webhook,
+        forward_channel=task.forward_channel,
+        alerts_personal=task.alerts_personal,
+        alerts_channel=task.alerts_channel,
     )
     db.add(db_task)
     db.commit()
@@ -183,12 +183,12 @@ async def update_task(task_id: int, task: TaskUpdate, db: Session = Depends(get_
         db_task.include_keywords = task.include_keywords
     if task.exclude_keywords is not None:
         db_task.exclude_keywords = task.exclude_keywords
-    if task.alerts_telegram is not None:
-        db_task.alerts_telegram = task.alerts_telegram
-    if task.alerts_email is not None:
-        db_task.alerts_email = task.alerts_email
-    if task.alerts_webhook is not None:
-        db_task.alerts_webhook = task.alerts_webhook
+    if task.forward_channel is not None:
+        db_task.forward_channel = task.forward_channel
+    if task.alerts_personal is not None:
+        db_task.alerts_personal = task.alerts_personal
+    if task.alerts_channel is not None:
+        db_task.alerts_channel = task.alerts_channel
 
     db.commit()
     db.refresh(db_task)
