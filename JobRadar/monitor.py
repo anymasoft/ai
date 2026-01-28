@@ -1131,11 +1131,14 @@ async def check_source_for_task_leads(task: Task, source_username: str, include_
 
                 if not existing_lead:
                     # Сохраняем новый lead
+                    source_url = f"https://t.me/{source_username}/{msg.id}"
+                    clean_text = (msg.text or "").lstrip()[:4000]
                     lead = Lead(
                         task_id=task.id,
-                        text=(msg.text or "")[:4000],
+                        text=clean_text,
                         source_channel=f"@{source_username}",
                         source_message_id=msg.id,
+                        source_url=source_url,
                         matched_keyword=matched_keyword,
                         found_at=datetime.utcnow(),
                         is_read=False

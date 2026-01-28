@@ -145,6 +145,7 @@ class LeadResponse(BaseModel):
     text: str
     source_channel: str
     source_message_id: int
+    source_url: Optional[str]
     matched_keyword: Optional[str]
     found_at: datetime
     is_read: bool

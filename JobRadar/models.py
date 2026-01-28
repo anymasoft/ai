@@ -134,6 +134,7 @@ class Lead(Base):
     text = Column(Text, nullable=False)  # Полный текст сообщения
     source_channel = Column(String(255), nullable=False)  # Канал-источник (@username)
     source_message_id = Column(BigInteger, nullable=False)  # ID сообщения в источнике
+    source_url = Column(String(255), nullable=True)  # Ссылка на оригинальный пост (https://t.me/...)
     matched_keyword = Column(String(255), nullable=True)  # Какое ключевое слово совпало
     found_at = Column(DateTime, default=datetime.utcnow)  # Когда найдено
     delivered_at = Column(DateTime, nullable=True)  # Когда доставлено пользователю
