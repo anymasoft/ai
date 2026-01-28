@@ -44,6 +44,12 @@ telegram_client = None
 # Глобальный семафор для управления нагрузкой (зарезервирован на будущее)
 monitor_semaphore = asyncio.Semaphore(1)
 
+# ВАЖНО:
+# Все обращения к Telegram API защищены семафором (1)
+# Это гарантирует отсутствие параллельных запросов
+# и стабильную работу одного Telegram аккаунта
+telegram_semaphore = asyncio.Semaphore(1)
+
 
 def dump_message_for_diagnostics(msg, channel: Channel, is_broadcast: bool):
     """
@@ -326,7 +332,8 @@ async def resolve_channel_entity(channel: Channel):
     """
     if channel.kind == "username":
         # Резолвим по username: просто @username или саму строку
-        return await telegram_client.get_entity(f"@{channel.value}")
+        async with telegram_semaphore:
+            return await telegram_client.get_entity(f"@{channel.value}")
 
     elif channel.kind == "id":
         # Резолвим по numeric id - нужно попробовать несколько способов
@@ -334,21 +341,24 @@ async def resolve_channel_entity(channel: Channel):
 
         # Попытка 1: прямой numeric id
         try:
-            return await telegram_client.get_entity(cid)
+            async with telegram_semaphore:
+                return await telegram_client.get_entity(cid)
         except:
             pass
 
         # Попытка 2: PeerChannel с numeric id
         try:
             peer = PeerChannel(cid)
-            return await telegram_client.get_entity(peer)
+            async with telegram_semaphore:
+                return await telegram_client.get_entity(peer)
         except:
             pass
 
         # Попытка 3: get_input_entity с PeerChannel
         try:
             peer = PeerChannel(cid)
-            return await telegram_client.get_input_entity(peer)
+            async with telegram_semaphore:
+                return await telegram_client.get_input_entity(peer)
         except:
             pass
 
@@ -710,7 +720,8 @@ async def send_lead_to_telegram(task: Task, lead: Lead, db: Session):
 
         # Отправляем в личный Telegram используя глобальный telegram_client
         try:
-            await safe_send_message(telegram_client, telegram_session.telegram_user_id, text)
+            async with telegram_semaphore:
+                await safe_send_message(telegram_client, telegram_session.telegram_user_id, text)
             logger.info(f"[SEND] task={task.id} lead={lead.id} доставлено в личный Telegram ({telegram_session.telegram_user_id})")
 
             # Обновляем поле delivered_at
@@ -744,7 +755,8 @@ async def check_channel_for_new_messages(channel: Channel, db: Session):
 
         # Если last_message_id не инициализирован - устанавливаем стартовую точку
         if channel.last_message_id == 0:
-            messages = await telegram_client.get_messages(entity, limit=1)
+            async with telegram_semaphore:
+                messages = await telegram_client.get_messages(entity, limit=1)
             if not messages:
                 return
 
@@ -754,11 +766,12 @@ async def check_channel_for_new_messages(channel: Channel, db: Session):
             return
 
         # Получаем новые сообщения с min_id=last_message_id
-        new_messages = await telegram_client.get_messages(
-            entity,
-            limit=MAX_MESSAGES_PER_CHECK,
-            min_id=channel.last_message_id
-        )
+        async with telegram_semaphore:
+            new_messages = await telegram_client.get_messages(
+                entity,
+                limit=MAX_MESSAGES_PER_CHECK,
+                min_id=channel.last_message_id
+            )
 
         # Если нет новых сообщений - выходим
         if not new_messages:
@@ -1010,7 +1023,8 @@ async def check_source_for_task_leads(task: Task, source_username: str, include_
     """
     try:
         # Резолвим источник (source_username уже нормализирован)
-        entity = await telegram_client.get_entity(f"@{source_username}")
+        async with telegram_semaphore:
+            entity = await telegram_client.get_entity(f"@{source_username}")
         source_chat_id = entity.id
 
         # Получаем текущее состояние TaskSourceState для этой пары (task, source)
@@ -1026,7 +1040,8 @@ async def check_source_for_task_leads(task: Task, source_username: str, include_
         # ИНИЦИАЛИЗАЦИЯ (первый проход)
         if not task_source_state or task_source_state.last_message_id == 0:
             # Получаем последний пост в канале
-            messages = await telegram_client.get_messages(entity, limit=1)
+            async with telegram_semaphore:
+                messages = await telegram_client.get_messages(entity, limit=1)
 
             if not messages:
                 # Канал пуст
@@ -1066,11 +1081,12 @@ async def check_source_for_task_leads(task: Task, source_username: str, include_
         last_message_id = task_source_state.last_message_id
 
         # Получаем новые сообщения с min_id = last_message_id
-        new_messages = await telegram_client.get_messages(
-            entity,
-            limit=MAX_MESSAGES_PER_CHECK,
-            min_id=last_message_id
-        )
+        async with telegram_semaphore:
+            new_messages = await telegram_client.get_messages(
+                entity,
+                limit=MAX_MESSAGES_PER_CHECK,
+                min_id=last_message_id
+            )
 
         if not new_messages:
             # Нет новых сообщений
