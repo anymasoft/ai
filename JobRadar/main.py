@@ -442,14 +442,19 @@ async def delete_lead(lead_id: int, current_user: User = Depends(get_current_use
 @app.get("/api/user/settings", response_model=UserSettingsResponse)
 async def get_user_settings(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     """Получить пользовательские настройки"""
+    print("USER_SETTINGS_GET_CALLED")
+
     # Найти сессию пользователя
     telegram_session = db.query(TelegramSession).filter(TelegramSession.user_id == current_user.id).first()
+    print("SESSION_FOUND", bool(telegram_session))
 
     # Если сессии нет, возвращаем дефолт
     if not telegram_session:
+        print("RETURNING_DEFAULT alerts_personal=True")
         return UserSettingsResponse(alerts_personal=True)
 
     # Возвращаем сохраненное значение
+    print(f"RETURNING alerts_personal={telegram_session.alerts_personal}")
     return UserSettingsResponse(alerts_personal=telegram_session.alerts_personal)
 
 @app.put("/api/user/settings", response_model=UserSettingsResponse)
@@ -459,16 +464,28 @@ async def update_user_settings(
     db: Session = Depends(get_db)
 ):
     """Обновить пользовательские настройки"""
+    print("USER_SETTINGS_PUT_CALLED")
+    print(f"REQUEST_BODY: alerts_personal={request.alerts_personal}")
+
     # Найти сессию пользователя
     telegram_session = db.query(TelegramSession).filter(TelegramSession.user_id == current_user.id).first()
+    print("SESSION_FOUND", bool(telegram_session))
 
     # Если сессии нет, ошибка
     if not telegram_session:
         raise HTTPException(status_code=400, detail="Telegram сессия не найдена. Сначала авторизуйтесь.")
 
     # Обновить настройку
+    print("BEFORE alerts_personal =", telegram_session.alerts_personal)
     telegram_session.alerts_personal = request.alerts_personal
+    print("AFTER alerts_personal =", telegram_session.alerts_personal)
+
     db.commit()
+    print("COMMIT_DONE")
+
+    # Обновить объект из БД для полной уверенности
+    db.refresh(telegram_session)
+    print("DB_VALUE alerts_personal =", telegram_session.alerts_personal)
 
     # Вернуть обновленное значение
     return UserSettingsResponse(alerts_personal=telegram_session.alerts_personal)
