@@ -80,6 +80,16 @@ def migrate_schema():
             if result.rowcount > 0:
                 print(f"   🔧 Исправлено {result.rowcount} лидов с NULL is_read")
 
+            # Добавить колонку source_url если её нет
+            if 'source_url' not in columns:
+                print("   ➕ Добавляю колонку source_url...")
+                connection.execute(text(
+                    "ALTER TABLE leads ADD COLUMN source_url VARCHAR(255) DEFAULT NULL"
+                ))
+                print("   ✅ Колонка source_url добавлена")
+            else:
+                print("   ✓ Колонка source_url уже существует")
+
             connection.commit()
             print("   ✅ Миграция схемы завершена\n")
 
