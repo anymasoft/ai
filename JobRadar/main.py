@@ -18,6 +18,7 @@ from config import TELEGRAM_API_ID, TELEGRAM_API_HASH
 from database import SessionLocal, init_db
 from models import Task, Lead, User, TelegramSession
 from telegram_auth import save_session_to_db, get_telegram_client
+from telegram_clients import disconnect_all_clients
 import monitor
 
 # ============== Отключить мусорные логи ==============
@@ -68,20 +69,15 @@ async def startup():
     init_db()
     logger.info("✅ БД инициализирована")
 
-    # Инициализация Telegram клиента
-    try:
-        await monitor.init_telegram_client()
-        logger.info("✅ Telegram клиент инициализирован")
-    except Exception as e:
-        logger.error(f"❌ Ошибка инициализации Telegram клиента: {e}")
-
-    # Запуск мониторинга каналов (старый контур)
-    asyncio.create_task(monitor.monitoring_loop())
-    logger.info("🚀 Запущен мониторинг каналов")
-
-    # Запуск мониторинга задач (новый контур)
+    # Запуск мониторинга задач (per-user Task-based leads)
     asyncio.create_task(monitor.monitoring_loop_tasks())
     logger.info("🚀 Запущен мониторинг задач")
+
+# Shutdown event - disconnect all Telegram clients
+@app.on_event("shutdown")
+async def shutdown():
+    await disconnect_all_clients()
+    logger.info("✅ Все Telegram клиенты отключены")
 
 # Dependency для получения сессии БД
 def get_db():

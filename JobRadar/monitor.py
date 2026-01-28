@@ -2,15 +2,13 @@
 JobRadar v0 - Polling-мониторинг каналов (на основе LeadScanner)
 """
 import asyncio
-import json
 import re
 import random
 import logging
 import os
 from typing import Optional
 from telethon import TelegramClient
-from telethon.errors import ChannelPrivateError, ChannelInvalidError, FloodWaitError
-from telethon.tl.types import PeerChannel
+from telethon.errors import FloodWaitError
 from sqlalchemy.orm import Session
 from datetime import datetime
 
@@ -19,7 +17,7 @@ from config import POLLING_INTERVAL_SECONDS, MAX_MESSAGES_PER_CHECK, TARGET_CHAN
 from models import Channel, Keyword, FilterRule, Task, Lead, SourceMessage, TelegramSession, TaskSourceState
 from database import get_db
 from filter_engine import load_active_filter, match_text
-from telethon.sessions import StringSession
+from telegram_clients import get_user_client, disconnect_all_clients
 
 # Логирование с обработчиками для консоли
 logger = logging.getLogger(__name__)
@@ -37,18 +35,6 @@ if not logger.handlers:
 
 # Флаг для подробной диагностики
 DEBUG_MESSAGE_DUMP = os.getenv("DEBUG_MESSAGE_DUMP", "false").lower() == "true"
-
-# Глобальный Telegram клиент
-telegram_client = None
-
-# Глобальный семафор для управления нагрузкой (зарезервирован на будущее)
-monitor_semaphore = asyncio.Semaphore(1)
-
-# ВАЖНО:
-# Все обращения к Telegram API защищены семафором (1)
-# Это гарантирует отсутствие параллельных запросов
-# и стабильную работу одного Telegram аккаунта
-telegram_semaphore = asyncio.Semaphore(1)
 
 
 def dump_message_for_diagnostics(msg, channel: Channel, is_broadcast: bool):
@@ -292,393 +278,6 @@ def normalize_channel_ref(input_str: str) -> dict:
     )
 
 
-async def init_telegram_client():
-    """Инициализация Telegram User Client (как в LeadScanner)"""
-    global telegram_client
-
-    if telegram_client is None:
-        session_name = "jobradar_session"
-        telegram_client = TelegramClient(session_name, TELEGRAM_API_ID, TELEGRAM_API_HASH)
-
-        try:
-            await telegram_client.start(phone=TELEGRAM_PHONE)
-            logger.info("✅ Telegram клиент инициализирован")
-        except Exception as e:
-            logger.error(f"❌ Ошибка инициализации Telegram: {e}")
-            raise
-
-
-async def close_telegram_client():
-    """Закрыть Telegram клиент"""
-    global telegram_client
-
-    if telegram_client:
-        await telegram_client.disconnect()
-        logger.info("🔌 Telegram клиент отключен")
-
-
-async def resolve_channel_entity(channel: Channel):
-    """
-    Резолвить сущность канала в зависимости от kind (username или id)
-
-    Args:
-        channel: Объект Channel из БД
-
-    Returns:
-        entity для использования с telegram_client
-
-    Raises:
-        Exception: если не удалось получить доступ к каналу
-    """
-    if channel.kind == "username":
-        # Резолвим по username: просто @username или саму строку
-        async with telegram_semaphore:
-            return await telegram_client.get_entity(f"@{channel.value}")
-
-    elif channel.kind == "id":
-        # Резолвим по numeric id - нужно попробовать несколько способов
-        cid = int(channel.value)
-
-        # Попытка 1: прямой numeric id
-        try:
-            async with telegram_semaphore:
-                return await telegram_client.get_entity(cid)
-        except:
-            pass
-
-        # Попытка 2: PeerChannel с numeric id
-        try:
-            peer = PeerChannel(cid)
-            async with telegram_semaphore:
-                return await telegram_client.get_entity(peer)
-        except:
-            pass
-
-        # Попытка 3: get_input_entity с PeerChannel
-        try:
-            peer = PeerChannel(cid)
-            async with telegram_semaphore:
-                return await telegram_client.get_input_entity(peer)
-        except:
-            pass
-
-        # Все попытки провалились
-        raise Exception(
-            f"Не удалось получить доступ к каналу по id {cid}. "
-            "Для публичного канала используйте @username или t.me/username. "
-            "ID работает только если аккаунт видит этот канал (есть в диалогах/подписках)."
-        )
-
-    else:
-        raise ValueError(f"Неизвестный kind: {channel.kind}")
-
-
-async def get_channel_display(channel: Channel) -> str:
-    """Получить display-строку для канала (для логов)"""
-    if channel.kind == "username":
-        return f"@{channel.value}"
-    else:
-        return f"id:{channel.value}"
-
-
-async def build_message_link(channel: Channel, message_id: int) -> str:
-    """
-    Построить permalink на конкретный пост в канале
-
-    Args:
-        channel: Объект Channel из БД
-        message_id: ID сообщения в канале
-
-    Returns:
-        URL ссылка на пост
-        - для публичных каналов: https://t.me/{username}/{message_id}
-        - для приватных каналов: https://t.me/c/{internal_id}/{message_id}
-    """
-    try:
-        # Для username (публичные каналы)
-        if channel.kind == "username" or channel.username:
-            username = channel.username or channel.value
-            return f"https://t.me/{username}/{message_id}"
-
-        # Для приватных каналов используем internal_id
-        # Internal ID получается из channel_id через битовую операцию
-        if channel.channel_id:
-            internal_id = channel.channel_id & 0x7FFFFFFF
-            return f"https://t.me/c/{internal_id}/{message_id}"
-
-        # Fallback - если ничего не сработало
-        logger.warning(f"⚠️ Не удалось построить ссылку на пост - нет username и channel_id")
-        return None
-
-    except Exception as e:
-        logger.error(f"❌ Ошибка при построении ссылки на пост: {e}")
-        return None
-
-
-async def build_source_link(message, channel: Channel) -> tuple:
-    """
-    Каноничная ссылка-источник JobRadar (исправленная).
-
-    ПРАВИЛА:
-    1) Канал → ссылка на пост
-    2) Чат + username → профиль
-    3) Чат БЕЗ username → ссылка на пост (НЕ t.me/c в тексте)
-    """
-    # Определяем тип источника
-    is_broadcast_channel = bool(message.chat and getattr(message.chat, "broadcast", False))
-
-    # --- 1. КАНАЛ ---
-    if is_broadcast_channel:
-        link_text = (
-            channel.title
-            or (f"@{channel.username}" if channel.username else f"@{channel.value}")
-        )
-
-        message_link = await build_message_link(channel, message.id)
-        if not message_link:
-            return None, None, False
-
-        return link_text, message_link, True
-
-    # --- 2. ЧАТ ---
-    # Пытаемся получить username автора
-    author = message.sender or getattr(message, 'from_user', None)
-    sender_username = None
-
-    if author and getattr(author, "username", None):
-        sender_username = author.username
-    elif message.post_author:
-        sender_username = message.post_author.lstrip("@")
-
-    # 2a. Есть username → профиль
-    if sender_username:
-        return (
-            f"@{sender_username}",
-            f"https://t.me/{sender_username}",
-            True
-        )
-
-    # 2b. НЕТ username → ссылка на пост (а не t.me/c в тексте)
-    post_link = await build_message_link(channel, message.id)
-    if not post_link:
-        return None, None, False
-
-    # ВАЖНО: link_text — ТОЛЬКО текст, БЕЗ URL
-    link_text = channel.title or "Источник"
-
-    return link_text, post_link, True
-
-
-
-async def format_jobradar_post(message, channel: Channel) -> tuple:
-    from telethon.tl.types import MessageEntityTextUrl
-
-    text = message.raw_text or ""
-    if not text:
-        return None, None
-
-    entities = []
-
-    # 1. Зеркалим entity из источника (НЕ ТРОГАЕМ offsets)
-    if message.entities:
-        for ent in message.entities:
-            if isinstance(ent, MessageEntityTextUrl):
-                entities.append(
-                    MessageEntityTextUrl(
-                        offset=ent.offset,
-                        length=ent.length,
-                        url=ent.url
-                    )
-                )
-
-    # 2. Обрабатываем markdown [@text](url) и plain @text (url) ссылки
-    original_text = text
-    plain_pattern = r'([^\[\]()]+?)\s+\((https?://[^)]+)\)'
-    markdown_pattern = r'\[([^\]]+)\]\((https?://[^)]+)\)'
-
-    markdown_matches = list(re.finditer(markdown_pattern, original_text))
-    plain_matches = list(re.finditer(plain_pattern, original_text))
-
-    markdown_spans = {(m.start(), m.end()) for m in markdown_matches}
-    plain_matches = [m for m in plain_matches if not any(m.start() < md_end and m.end() > md_start for md_start, md_end in markdown_spans)]
-
-    all_matches = []
-    for match in markdown_matches:
-        all_matches.append(('markdown', match))
-    for match in plain_matches:
-        all_matches.append(('plain', match))
-
-    body_text = original_text
-    if all_matches:
-        all_matches.sort(key=lambda x: x[1].start())
-
-        body_text = ""
-        last_end = 0
-
-        for match_type, match in all_matches:
-            match_start = match.start()
-            match_end = match.end()
-
-            body_text += original_text[last_end:match_start]
-
-            if match_type == 'markdown':
-                captured_text = match.group(1)
-                url = match.group(2)
-
-                text_start_pos = len(body_text)
-                body_text += captured_text
-
-                if '@' in captured_text:
-                    at_pos = captured_text.rfind('@')
-                    entity_offset = text_start_pos + at_pos
-                    entity_length = len(captured_text) - at_pos
-                else:
-                    entity_offset = text_start_pos
-                    entity_length = len(captured_text)
-
-                entity = MessageEntityTextUrl(
-                    offset=entity_offset,
-                    length=entity_length,
-                    url=url
-                )
-                entities.append(entity)
-
-            elif match_type == 'plain':
-                captured_text = match.group(1).rstrip()
-                url = match.group(2)
-
-                text_start_pos = len(body_text)
-                body_text += captured_text
-
-                if '@' in captured_text:
-                    at_pos = captured_text.rfind('@')
-                    entity_offset = text_start_pos + at_pos
-                    entity_length = len(captured_text) - at_pos
-                else:
-                    entity_offset = text_start_pos
-                    entity_length = len(captured_text)
-
-                entity = MessageEntityTextUrl(
-                    offset=entity_offset,
-                    length=entity_length,
-                    url=url
-                )
-                entities.append(entity)
-
-            last_end = match_end
-
-        body_text += original_text[last_end:]
-
-    text = body_text
-
-    # 2. Строим подпись источника
-    link_text, link_url, should_create_entity = await build_source_link(message, channel)
-    if not link_text or not link_url:
-        return text, entities
-
-    separator = "\n\n"
-    publish_text = text + separator + link_text
-
-    if should_create_entity:
-        offset_utf16 = len((text + separator).encode("utf-16-le")) // 2
-        length_utf16 = len(link_text.encode("utf-16-le")) // 2
-
-        entities.append(
-            MessageEntityTextUrl(
-                offset=offset_utf16,
-                length=length_utf16,
-                url=link_url
-            )
-        )
-
-    # 3. Добавляем URL из inline-кнопки, если она есть
-    button_url = None
-    if hasattr(message, 'buttons') and message.buttons:
-        for row in message.buttons:
-            if isinstance(row, list):
-                for button in row:
-                    if hasattr(button, 'url') and button.url:
-                        button_url = button.url
-                        break
-            elif hasattr(row, 'url') and row.url:
-                button_url = row.url
-                break
-            if button_url:
-                break
-
-    if button_url:
-        button_label = ": "
-        button_separator = "\n\n"
-        text_before_button = publish_text + button_separator
-        publish_text = text_before_button + button_label + button_url
-
-        offset_utf16 = len(text_before_button.encode("utf-16-le")) // 2
-        length_utf16 = len(button_label.encode("utf-16-le")) // 2
-
-        entities.append(
-            MessageEntityTextUrl(
-                offset=offset_utf16,
-                length=length_utf16,
-                url=button_url
-            )
-        )
-
-    return publish_text, entities
-
-
-
-
-
-async def publish_matched_post(message, channel: Channel):
-    """
-    Публикует найденный пост в целевой канал JobRadar в каноничном формате.
-
-    Формат:
-    [оригинальный текст вакансии БЕЗ ИЗМЕНЕНИЙ]
-
-    [кликабельная ссылка на источник - одна строка]
-
-    Логика ссылки:
-    - Для канала: название канала → ссылка на конкретный пост
-    - Для чата с автором: @username → ссылка на профиль
-    - Для чата без автора: прямая ссылка на пост
-
-    Args:
-        message: Объект сообщения от Telethon
-        channel: Объект Channel из БД
-    """
-    if not telegram_client or not TARGET_CHANNEL_ID:
-        return
-
-    if not message.text:
-        logger.debug(f"⏩ Сообщение без текста, пропускаю публикацию")
-        return
-
-    try:
-        channel_display = await get_channel_display(channel)
-
-        # Форматируем пост в каноничный формат JobRadar
-        publish_text, new_entities = await format_jobradar_post(message, channel)
-
-        if not publish_text:
-            logger.warning(f"⚠️ Не удалось форматировать пост из {channel_display}")
-            return
-
-        # Отправляем сообщение с сохранением форматирования и ссылок (с обработкой FloodWait)
-        await safe_send_message(
-            telegram_client,
-            TARGET_CHANNEL_ID,
-            publish_text,
-            formatting_entities=new_entities if new_entities else None,
-            link_preview=False  # Отключаем preview для чистого формата
-        )
-
-        logger.info(f"📤 Опубликовано вакансия из {channel_display} | message_id={message.id}")
-
-    except Exception as e:
-        channel_display = await get_channel_display(channel)
-        logger.error(f"❌ Ошибка публикации в JobRadar из {channel_display}: {e}")
-
 
 async def send_lead_to_telegram(task: Task, lead: Lead, db: Session):
     """
@@ -709,6 +308,12 @@ async def send_lead_to_telegram(task: Task, lead: Lead, db: Session):
             logger.info(f"[SEND] task={task.id} lead={lead.id} отправка в личный чат отключена (alerts_personal=False)")
             return
 
+        # Получить клиент пользователя
+        client = await get_user_client(task.user_id, db)
+        if not client:
+            logger.warning(f"[SEND] task={task.id} lead={lead.id} - Telegram клиент для user_id={task.user_id} не инициализирован")
+            return
+
         # Форматируем текст лида
         matched_keyword = lead.matched_keyword or 'не определено'
         text = f"""🔥 Новый лид
@@ -718,10 +323,9 @@ async def send_lead_to_telegram(task: Task, lead: Lead, db: Session):
 Источник: {lead.source_channel}
 Ключ: {matched_keyword}"""
 
-        # Отправляем в личный Telegram используя глобальный telegram_client
+        # Отправляем в личный Telegram используя клиент пользователя
         try:
-            async with telegram_semaphore:
-                await safe_send_message(telegram_client, telegram_session.telegram_user_id, text)
+            await safe_send_message(client, telegram_session.telegram_user_id, text)
             logger.info(f"[SEND] task={task.id} lead={lead.id} доставлено в личный Telegram ({telegram_session.telegram_user_id})")
 
             # Обновляем поле delivered_at
@@ -733,159 +337,6 @@ async def send_lead_to_telegram(task: Task, lead: Lead, db: Session):
 
     except Exception as e:
         logger.error(f"[SEND] task={task.id} lead={lead.id} критическая ошибка: {e}")
-
-
-async def check_channel_for_new_messages(channel: Channel, db: Session):
-    """
-    Проверить канал на новые сообщения (polling логика из LeadScanner)
-    Обрабатывает ТОЛЬКО сообщения, опубликованные после last_message_id
-
-    Args:
-        channel: Объект Channel из БД
-        db: SQLAlchemy сессия
-    """
-    if not telegram_client:
-        logger.warning("⚠️ Telegram клиент не инициализирован")
-        return
-
-    try:
-        # Получаем сущность канала (с поддержкой username и id)
-        entity = await resolve_channel_entity(channel)
-        channel_display = await get_channel_display(channel)
-
-        # Если last_message_id не инициализирован - устанавливаем стартовую точку
-        if channel.last_message_id == 0:
-            async with telegram_semaphore:
-                messages = await telegram_client.get_messages(entity, limit=1)
-            if not messages:
-                return
-
-            channel.last_message_id = messages[0].id
-            db.commit()
-            logger.info(f"⏺ Стартовая инициализация {channel_display}: last_message_id={channel.last_message_id}")
-            return
-
-        # Получаем новые сообщения с min_id=last_message_id
-        async with telegram_semaphore:
-            new_messages = await telegram_client.get_messages(
-                entity,
-                limit=MAX_MESSAGES_PER_CHECK,
-                min_id=channel.last_message_id
-            )
-
-        # Если нет новых сообщений - выходим
-        if not new_messages:
-            return
-
-        # Фильтруем - оставляем ТОЛЬКО сообщения с id > last_message_id
-        filtered_messages = [msg for msg in new_messages if msg.id > channel.last_message_id]
-
-        if not filtered_messages:
-            return
-
-        # Получаем все активные ключевые слова
-        keywords = db.query(Keyword).filter(Keyword.enabled == True).all()
-        legacy_keywords = [kw.word.lower() for kw in keywords]
-
-        # Загружаем конфигурацию фильтра
-        filter_config = load_active_filter(db)
-
-        # Обрабатываем сообщения (в обратном порядке - от старых к новым)
-        matched_count = 0
-        for msg in reversed(filtered_messages):
-            text = (msg.text or "").lower()
-
-            if not text:
-                continue
-
-            # Проверяем совпадение через фильтр
-            if match_text(text, filter_config, legacy_keywords):
-                matched_count += 1
-                text_preview = (msg.text or "")[:100].replace("\n", " ")
-                logger.info(f"🎯 СОВПАДЕНИЕ | канал={channel_display} | msg_id={msg.id} | {text_preview}...")
-
-                # Публикуем найденный пост в канал JobRadar
-                await publish_matched_post(msg, channel)
-
-        # Обновляем last_message_id на максимальный обработанный
-        new_last_id = max([msg.id for msg in filtered_messages])
-        channel.last_message_id = new_last_id
-        db.commit()
-
-        # Логируем результаты только если найдены совпадения
-        if matched_count > 0:
-            logger.info(f"🎯 Канал {channel_display}: найдено совпадений: {matched_count}")
-
-    except ChannelPrivateError:
-        channel_display = await get_channel_display(channel)
-        logger.warning(f"❌ Канал {channel_display} приватный или был удален - отключен")
-        channel.enabled = False
-        db.commit()
-    except ChannelInvalidError:
-        channel_display = await get_channel_display(channel)
-        logger.warning(f"❌ Канал {channel_display} не найден - отключен")
-        channel.enabled = False
-        db.commit()
-    except Exception as e:
-        channel_display = await get_channel_display(channel)
-
-        # Если канал добавлен по ID и недоступен - отключаем его один раз
-        if channel.kind == "id":
-            logger.warning(f"⚠️ Канал {channel_display} отключён: недоступен по ID (аккаунт не подписан)")
-            channel.enabled = False
-            db.commit()
-        else:
-            # Для username каналов логируем каждый раз, так как это может быть временная ошибка
-            logger.error(f"⚠️  Ошибка при проверке {channel_display}: {e}")
-
-
-async def monitoring_loop():
-    """
-    Бесконечный цикл мониторинга каналов.
-
-    Работает последовательно:
-    - Проверяет глобальный флаг monitoring_enabled
-    - Если вкл: проверяет каждый активный канал
-    - Спит POLLING_INTERVAL_SECONDS секунд
-    - При ошибке: логирует и спит 30 секунд
-
-    Запускается через asyncio.create_task() при старте приложения.
-    """
-    while True:
-        try:
-            # Импортируем флаг из main.py
-            from __main__ import monitoring_enabled
-
-            # Если мониторинг выключен - просто спим
-            if not monitoring_enabled:
-                await asyncio.sleep(POLLING_INTERVAL_SECONDS)
-                continue
-
-            db = get_db()
-
-            try:
-                # Получаем все активные каналы
-                channels = db.query(Channel).filter(Channel.enabled == True).all()
-
-                if channels:
-                    # Проверяем каждый канал на новые сообщения
-                    for channel in channels:
-                        try:
-                            await check_channel_for_new_messages(channel, db)
-                        except Exception as e:
-                            logger.error(f"❌ Ошибка при проверке канала {channel.value}: {e}")
-                        await asyncio.sleep(0.2)
-            finally:
-                db.close()
-
-            # Спим перед следующей проверкой (с random jitter 0-20 сек для сглаживания нагрузки)
-            # Итоговый интервал: 10-30 секунд
-            await asyncio.sleep(POLLING_INTERVAL_SECONDS + random.uniform(0, 20))
-
-        except Exception as e:
-            logger.error(f"❌ Ошибка в мониторинге: {e}")
-            # При ошибке спим 30 секунд перед повторной попыткой
-            await asyncio.sleep(30)
 
 
 async def monitoring_loop_tasks():
@@ -902,10 +353,6 @@ async def monitoring_loop_tasks():
     """
     while True:
         try:
-            if not telegram_client:
-                await asyncio.sleep(POLLING_INTERVAL_SECONDS)
-                continue
-
             db = get_db()
 
             try:
@@ -1022,9 +469,14 @@ async def check_source_for_task_leads(task: Task, source_username: str, include_
         db: SQLAlchemy сессия
     """
     try:
+        # Получить клиент пользователя
+        client = await get_user_client(task.user_id, db)
+        if not client:
+            logger.warning(f"[CHECK] task={task.id} source=@{source_username} - Telegram клиент для user_id={task.user_id} не инициализирован")
+            return
+
         # Резолвим источник (source_username уже нормализирован)
-        async with telegram_semaphore:
-            entity = await telegram_client.get_entity(f"@{source_username}")
+        entity = await client.get_entity(f"@{source_username}")
         source_chat_id = entity.id
 
         # Получаем текущее состояние TaskSourceState для этой пары (task, source)
@@ -1040,8 +492,7 @@ async def check_source_for_task_leads(task: Task, source_username: str, include_
         # ИНИЦИАЛИЗАЦИЯ (первый проход)
         if not task_source_state or task_source_state.last_message_id == 0:
             # Получаем последний пост в канале
-            async with telegram_semaphore:
-                messages = await telegram_client.get_messages(entity, limit=1)
+            messages = await client.get_messages(entity, limit=1)
 
             if not messages:
                 # Канал пуст
@@ -1081,12 +532,11 @@ async def check_source_for_task_leads(task: Task, source_username: str, include_
         last_message_id = task_source_state.last_message_id
 
         # Получаем новые сообщения с min_id = last_message_id
-        async with telegram_semaphore:
-            new_messages = await telegram_client.get_messages(
-                entity,
-                limit=MAX_MESSAGES_PER_CHECK,
-                min_id=last_message_id
-            )
+        new_messages = await client.get_messages(
+            entity,
+            limit=MAX_MESSAGES_PER_CHECK,
+            min_id=last_message_id
+        )
 
         if not new_messages:
             # Нет новых сообщений
