@@ -11,9 +11,9 @@ from datetime import datetime
 from sqlalchemy.orm import Session
 
 from models import SourceMessage, Channel, Keyword
-import monitor
 from database import get_db
 from filter_engine import load_active_filter, match_text
+from telegram_clients import get_user_client
 
 logger = logging.getLogger(__name__)
 
@@ -22,27 +22,28 @@ BACKFILL_SLEEP_MIN = 2.0      # Пауза для человекоподобно
 BACKFILL_SLEEP_MAX = 5.0
 
 
-async def backfill_one_post(source_username: str, db: Session, count: int = 1) -> dict:
+async def backfill_one_post(source_username: str, user_id: int, db: Session, count: int = 1) -> dict:
     """
     Загрузить N релевантных постов из истории источника.
 
     НЕЗАВИСИМЫЙ КОНТУР:
     - Работает независимо от статуса мониторинга (включен/выключен)
-    - Использует авторизованный telegram_client из monitor.py
+    - Использует per-user TelegramClient (получается через get_user_client)
     - Проверяет по тем же ключевым словам
-    - Публикует в целевой канал (переиспользует publish_matched_post)
+    - Сохраняет найденные посты в SourceMessage таблице
 
     Алгоритм:
     1. Resolve источника (как в monitor.py)
     2. Получить последний message_id
     3. Идти назад по message_id и искать релевантные сообщения
     4. Проверить на ключевые слова (как в monitor.py)
-    5. Если подходит — опубликовать и обновить БД
+    5. Если подходит — сохранить в БД
     6. Если не подходит — пометить и идти дальше
     7. Повторять пока не найдется count постов или не кончатся попытки
 
     Args:
         source_username: username источника (без @)
+        user_id: ID пользователя (владельца Telegram сессии)
         db: SQLAlchemy сессия
         count: сколько постов загрузить (по умолчанию 1)
 
@@ -55,24 +56,25 @@ async def backfill_one_post(source_username: str, db: Session, count: int = 1) -
             ...
         }
     """
-    # Проверить что telegram_client инициализирован
-    if not monitor.telegram_client:
-        return {
-            "status": "error",
-            "message": "❌ Telegram клиент не инициализирован"
-        }
-
     try:
+        # Получить TelegramClient пользователя
+        client = await get_user_client(user_id, db)
+        if not client:
+            return {
+                "status": "error",
+                "message": f"❌ Telegram клиент для user_id={user_id} не инициализирован"
+            }
+
         # Шаг 1: Resolve источника (как в resolve_channel_entity для username)
-        logger.info(f"[BACKFILL] Resolve источника @{source_username}")
-        entity = await monitor.telegram_client.get_entity(f"@{source_username}")
+        logger.info(f"[BACKFILL] Resolve источника @{source_username} для user_id={user_id}")
+        entity = await client.get_entity(f"@{source_username}")
         source_chat_id = entity.id
         source_display = f"@{source_username}"
 
         logger.info(f"[BACKFILL] Источник resolved: {source_display}, chat_id={source_chat_id}")
 
         # Шаг 2: Найти последний message_id
-        messages = await monitor.telegram_client.get_messages(entity, limit=1)
+        messages = await client.get_messages(entity, limit=1)
         if not messages:
             return {
                 "status": "error",
@@ -115,7 +117,7 @@ async def backfill_one_post(source_username: str, db: Session, count: int = 1) -
             try:
                 # Получить одно сообщение - ТОЧНО КАК в check_channel_for_new_messages
                 # используя min_id и max_id для получения конкретного сообщения
-                msg_list = await monitor.telegram_client.get_messages(
+                msg_list = await client.get_messages(
                     entity,
                     limit=1,
                     min_id=current_id - 1,  # ID > current_id - 1, т.е. ID >= current_id
@@ -152,14 +154,8 @@ async def backfill_one_post(source_username: str, db: Session, count: int = 1) -
                 if match_text(text, filter_config, keywords_list):
                     logger.info(f"[BACKFILL] Найден релевантный пост #{published_count + 1}: message_id={message.id}")
 
-                    # Создать временный Channel объект для переиспользования publish_matched_post
-                    temp_channel = _create_temp_channel(entity, source_username)
-
                     try:
-                        # Форматировать и опубликовать (как в check_channel_for_new_messages -> publish_matched_post)
-                        await monitor.publish_matched_post(message, temp_channel)
-
-                        # Записать в БД только после успешной публикации
+                        # Записать в БД
                         source_msg = SourceMessage(
                             source_chat_id=source_chat_id,
                             source_message_id=message.id,
@@ -174,7 +170,7 @@ async def backfill_one_post(source_username: str, db: Session, count: int = 1) -
                         db.commit()
 
                         published_count += 1
-                        logger.info(f"[BACKFILL] ✅ Опубликовано {published_count}/{count}: message_id={message.id}")
+                        logger.info(f"[BACKFILL] ✅ Найден пост {published_count}/{count}: message_id={message.id}")
 
                         # Если уже загрузили нужное количество - выходим
                         if published_count >= count:
@@ -182,7 +178,7 @@ async def backfill_one_post(source_username: str, db: Session, count: int = 1) -
                             break
 
                     except Exception as e:
-                        logger.error(f"[BACKFILL] Ошибка публикации message_id={message.id}: {e}")
+                        logger.error(f"[BACKFILL] Ошибка сохранения message_id={message.id}: {e}")
                         # Не записываем в БД, продолжаем искать дальше
 
                 # Если не подходит — идём дальше
@@ -223,28 +219,3 @@ async def backfill_one_post(source_username: str, db: Session, count: int = 1) -
             "status": "error",
             "message": f"❌ Ошибка: {str(e)}"
         }
-
-
-def _create_temp_channel(entity, username: str) -> Channel:
-    """
-    Создать временный объект Channel в памяти для переиспользования
-    существующих функций publish_matched_post.
-
-    Args:
-        entity: Telethon сущность канала
-        username: username канала (без @)
-
-    Returns:
-        Channel объект (не сохранённый в БД)
-    """
-    channel = Channel()
-    channel.kind = "username"
-    channel.value = username
-    channel.username = username
-    channel.title = getattr(entity, 'title', None) or f"@{username}"
-    channel.channel_id = entity.id if hasattr(entity, 'id') else None
-    channel.enabled = True
-    channel.last_message_id = 0
-    channel.id = None  # Не в БД
-
-    return channel

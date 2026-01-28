@@ -17,7 +17,7 @@ from config import TELEGRAM_API_ID, TELEGRAM_API_HASH
 
 from database import SessionLocal, init_db
 from models import Task, Lead, User, TelegramSession
-from telegram_auth import save_session_to_db, get_telegram_client
+from telegram_auth import save_session_to_db
 from telegram_clients import disconnect_all_clients
 import monitor
 

@@ -115,9 +115,9 @@ class Task(Base):
     sources = Column(String(4000), nullable=False, default="")  # JSON или newline-separated
     include_keywords = Column(String(4000), nullable=False, default="")  # JSON или newline-separated
     exclude_keywords = Column(String(4000), nullable=True, default="")  # JSON или newline-separated
-    forward_channel = Column(String(255), nullable=True, default="")  # Канал для пересылки постов
-    alerts_personal = Column(Boolean, default=True)  # Отправлять в личку
-    alerts_channel = Column(Boolean, default=False)  # Отправлять в канал
+    forward_channel = Column(String(255), nullable=True, default="")  # legacy, не используется в текущей архитектуре
+    alerts_personal = Column(Boolean, default=True)  # legacy, не используется в текущей архитектуре (используется telegram_sessions.alerts_personal)
+    alerts_channel = Column(Boolean, default=False)  # legacy, не используется в текущей архитектуре
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 

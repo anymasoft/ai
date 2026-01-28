@@ -11,37 +11,6 @@ from models import TelegramSession, User
 logger = logging.getLogger(__name__)
 
 
-async def get_telegram_client(phone: str):
-    """
-    Восстановить TelegramClient из сохранённой сессии.
-
-    Args:
-        phone: Номер телефона (нормализованный)
-
-    Returns:
-        TelegramClient или None если сессия не найдена
-    """
-    db = SessionLocal()
-    session = db.query(TelegramSession).filter(TelegramSession.phone == phone).first()
-    db.close()
-
-    if not session:
-        logger.warning(f"❌ Сессия для {phone} не найдена в БД")
-        return None
-
-    try:
-        # Восстановить клиента из сохранённой сессии
-        session_string = session.session_string
-        logger.info(f"✅ Сессия для {phone} загружена из БД")
-
-        client = TelegramClient(StringSession(session_string), TELEGRAM_API_ID, TELEGRAM_API_HASH)
-        await client.connect()
-        return client
-    except Exception as e:
-        logger.error(f"❌ Ошибка восстановления сессии для {phone}: {e}")
-        return None
-
-
 async def save_session_to_db(phone: str, session_string: str, telegram_user_id: int = None):
     """
     Сохранить session строку в SQLite БД.
