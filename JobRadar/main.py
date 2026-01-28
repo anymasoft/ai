@@ -645,7 +645,7 @@ async def auth_save(request: AuthStartRequest):
         response.set_cookie(
             key="user_phone",
             value=phone,
-            max_age=30*24*60*60,  # 30 дней
+            max_age=10*365*24*60*60,  # 10 лет (практически бессрочно, удаление только при logout)
             path="/",  # КРИТИЧНО: доступна для всех путей
             httponly=True,
             samesite="lax",
