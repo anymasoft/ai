@@ -101,6 +101,7 @@ async def disconnect_user_client(user_id: int):
             await client.disconnect()
             del telegram_clients_cache[user_id]
             logger.info(f"[CLIENT_DISCONNECT] user_id={user_id} - клиент отключен и удален из кеша")
+            print(f"TG CLIENT DISCONNECTED user_id={user_id}")
         except Exception as e:
             logger.error(f"[CLIENT_DISCONNECT] user_id={user_id} - ошибка отключения: {e}")
 

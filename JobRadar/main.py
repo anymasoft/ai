@@ -655,6 +655,42 @@ async def auth_save(request: AuthStartRequest):
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
+
+@app.post("/api/logout")
+async def logout(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """
+    Выйти из аккаунта.
+
+    Логика:
+    1. Получить current_user (через cookie)
+    2. Отключить активный TelegramClient (если есть)
+    3. Удалить TelegramSession из БД
+    4. Очистить cookie авторизации
+    """
+    try:
+        # 1. Отключить TelegramClient пользователя
+        from telegram_clients import disconnect_user_client
+        await disconnect_user_client(current_user.id)
+
+        # 2. Удалить TelegramSession из БД
+        db.query(TelegramSession).filter(
+            TelegramSession.user_id == current_user.id
+        ).delete()
+        db.commit()
+
+        print(f"LOGOUT user_id={current_user.id}")
+        print("TelegramSession deleted")
+
+        # 3. Создать ответ и очистить cookie
+        response = JSONResponse({"ok": True, "message": "Выход выполнен"})
+        response.delete_cookie(key="user_phone", path="/")
+        return response
+
+    except Exception as e:
+        logger.error(f"Ошибка при logout user_id={current_user.id}: {e}")
+        raise HTTPException(status_code=400, detail=str(e))
+
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="localhost", port=8000)
