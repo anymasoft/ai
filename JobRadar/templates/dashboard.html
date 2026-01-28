@@ -1432,35 +1432,8 @@
             if (hash.startsWith('lead/')) {
                 const leadId = parseInt(hash.split('/')[1]);
 
-                // Загрузить лид из API если его нет в leadsState
-                let lead = leadsState.allLeads.find(l => l.id === leadId);
-
-                if (!lead) {
-                    try {
-                        const response = await fetch(`${API_BASE}/api/leads/${leadId}`, {
-                            credentials: 'include'
-                        });
-                        if (response.ok) {
-                            lead = await response.json();
-                            // Добавить в leadsState чтобы он был доступен
-                            if (!leadsState.allLeads.find(l => l.id === leadId)) {
-                                leadsState.allLeads.unshift(lead);
-                            }
-                        } else {
-                            showToast('Лид не найден', 'error');
-                            window.location.hash = 'leads';
-                            return;
-                        }
-                    } catch (error) {
-                        console.error('Error loading lead:', error);
-                        showToast('Ошибка загрузки лида', 'error');
-                        window.location.hash = 'leads';
-                        return;
-                    }
-                }
-
-                // Показать страницу лида
-                displayLeadPage(leadId, lead);
+                // Загрузить и отобразить лид через displayLeadPage
+                await displayLeadPage(leadId);
             } else {
                 // Обычное переключение секции
                 switchToSection(hash);
@@ -1954,188 +1927,196 @@
 
         // Функция открытия отдельной страницы лида
         async function openLeadPage(leadId) {
-            // Найти лид в leadsState
-            const lead = leadsState.allLeads.find(l => l.id === parseInt(leadId));
-            if (!lead) {
-                showToast('Лид не найден', 'error');
-                return;
-            }
-
             // Установить hash - это вызовет handleHashChange
-            // который загрузит лид и отобразит страницу
+            // который загрузит лид с API и отобразит страницу
             window.location.hash = `lead/${leadId}`;
         }
 
         // Функция отображения страницы лида
-        function displayLeadPage(leadId, lead) {
-            const foundDate = new Date(lead.found_at).toLocaleDateString('ru-RU', {
-                year: 'numeric',
-                month: 'long',
-                day: 'numeric',
-                hour: '2-digit',
-                minute: '2-digit'
-            });
+        async function displayLeadPage(leadId) {
+            try {
+                // Загрузить лид с API
+                const response = await fetch(`${API_BASE}/api/leads/${leadId}`, {
+                    credentials: 'include'
+                });
 
-            const channelUsername = lead.source_channel.replace('@', '');
-            const telegramProfileUrl = `https://t.me/${channelUsername}`;
+                if (!response.ok) {
+                    showToast('Лид не найден', 'error');
+                    window.location.hash = 'leads';
+                    return;
+                }
 
-            // Скрыть все секции
-            document.querySelectorAll('.content-section').forEach(el => el.classList.remove('active'));
+                const lead = await response.json();
 
-            // Обновить breadcrumbs
-            updateBreadcrumbs([
-                { label: 'Лиды', href: 'leads' },
-                { label: `Лид #${lead.id}` }
-            ]);
+                const foundDate = new Date(lead.found_at).toLocaleDateString('ru-RU', {
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                });
 
-            // Создать контейнер для страницы лида если его нет
-            let leadPageContainer = document.getElementById('lead-page-section');
-            if (!leadPageContainer) {
-                leadPageContainer = document.createElement('div');
-                leadPageContainer.id = 'lead-page-section';
-                leadPageContainer.className = 'content-section active';
-                leadPageContainer.style.display = 'block';
-                document.querySelector('.content').appendChild(leadPageContainer);
-            } else {
-                leadPageContainer.classList.add('active');
-                leadPageContainer.style.display = 'block';
-            }
+                const channelUsername = lead.source_channel.replace('@', '');
+                const telegramProfileUrl = `https://t.me/${channelUsername}`;
 
-            // Определяем URL для перехода на пост
-            const postUrl = lead.source_url || telegramProfileUrl;
-            const isDirectPostLink = lead.source_url ? true : false;
+                // Скрыть все секции
+                document.querySelectorAll('.content-section').forEach(el => el.classList.remove('active'));
 
-            leadPageContainer.innerHTML = `
+                // Обновить breadcrumbs
+                updateBreadcrumbs([
+                    { label: 'Лиды', href: 'leads' },
+                    { label: `Лид #${lead.id}` }
+                ]);
 
-                <!-- Карточка лида -->
-                <div style="
-                    background: white;
-                    border-radius: 12px;
-                    border: 1px solid #e5e7eb;
-                    padding: 2rem;
-                    max-width: 800px;
-                ">
-                    <!-- Header -->
+                // Создать контейнер для страницы лида если его нет
+                let leadPageContainer = document.getElementById('lead-page-section');
+                if (!leadPageContainer) {
+                    leadPageContainer = document.createElement('div');
+                    leadPageContainer.id = 'lead-page-section';
+                    leadPageContainer.className = 'content-section active';
+                    leadPageContainer.style.display = 'block';
+                    document.querySelector('.content').appendChild(leadPageContainer);
+                } else {
+                    leadPageContainer.classList.add('active');
+                    leadPageContainer.style.display = 'block';
+                }
+
+                // Определяем URL для перехода на пост
+                const postUrl = lead.source_url || telegramProfileUrl;
+                const isDirectPostLink = lead.source_url ? true : false;
+
+                leadPageContainer.innerHTML = `
+
+                    <!-- Карточка лида -->
                     <div style="
-                        display: flex;
-                        justify-content: space-between;
-                        align-items: start;
-                        margin-bottom: 1.5rem;
-                        padding-bottom: 1rem;
-                        border-bottom: 1px solid #e5e7eb;
+                        background: white;
+                        border-radius: 12px;
+                        border: 1px solid #e5e7eb;
+                        padding: 2rem;
+                        max-width: 800px;
                     ">
-                        <div>
-                            ${isDirectPostLink ? `
-                            <a href="${postUrl}" target="_blank" style="
-                                margin: 0 0 0.5rem 0;
-                                font-size: 1.5rem;
-                                font-weight: 700;
-                                color: #5856d6;
-                                text-decoration: none;
-                                display: inline-block;
-                            ">
-                                Перейти к посту в Telegram →
-                            </a>
-                            ` : `
-                            <h2 style="
-                                margin: 0 0 0.5rem 0;
-                                font-size: 1.5rem;
-                                font-weight: 700;
-                                color: #111827;
-                            ">
-                                Лид #${lead.id}
-                            </h2>
-                            `}
-                            <div style="
-                                display: flex;
-                                gap: 1.5rem;
-                                font-size: 0.9rem;
-                                color: #6b7280;
-                            ">
-                                <div>
-                                    <strong style="color: #111827;">Источник:</strong>
-                                    <a href="${telegramProfileUrl}" target="_blank" style="
-                                        color: #5856d6;
-                                        text-decoration: none;
-                                        margin-left: 0.5rem;
-                                    ">
-                                        ${lead.source_channel}
-                                    </a>
-                                </div>
-                                <div>
-                                    <strong style="color: #111827;">Дата:</strong>
-                                    <span style="margin-left: 0.5rem;">${foundDate}</span>
+                        <!-- Header -->
+                        <div style="
+                            display: flex;
+                            justify-content: space-between;
+                            align-items: start;
+                            margin-bottom: 1.5rem;
+                            padding-bottom: 1rem;
+                            border-bottom: 1px solid #e5e7eb;
+                        ">
+                            <div>
+                                ${isDirectPostLink ? `
+                                <a href="${postUrl}" target="_blank" style="
+                                    margin: 0 0 0.5rem 0;
+                                    font-size: 1.5rem;
+                                    font-weight: 700;
+                                    color: #5856d6;
+                                    text-decoration: none;
+                                    display: inline-block;
+                                ">
+                                    Перейти к посту в Telegram →
+                                </a>
+                                ` : `
+                                <h2 style="
+                                    margin: 0 0 0.5rem 0;
+                                    font-size: 1.5rem;
+                                    font-weight: 700;
+                                    color: #111827;
+                                ">
+                                    Лид #${lead.id}
+                                </h2>
+                                `}
+                                <div style="
+                                    display: flex;
+                                    gap: 1.5rem;
+                                    font-size: 0.9rem;
+                                    color: #6b7280;
+                                ">
+                                    <div>
+                                        <strong style="color: #111827;">Источник:</strong>
+                                        <a href="${telegramProfileUrl}" target="_blank" style="
+                                            color: #5856d6;
+                                            text-decoration: none;
+                                            margin-left: 0.5rem;
+                                        ">
+                                            ${lead.source_channel}
+                                        </a>
+                                    </div>
+                                    <div>
+                                        <strong style="color: #111827;">Дата:</strong>
+                                        <span style="margin-left: 0.5rem;">${foundDate}</span>
+                                    </div>
                                 </div>
                             </div>
+                            <button
+                                onclick="deleteLead(${lead.id}, true)"
+                                style="
+                                    background: #fee2e2;
+                                    color: #dc2626;
+                                    border: 1px solid #fecaca;
+                                    padding: 0.5rem 0.75rem;
+                                    border-radius: 6px;
+                                    cursor: pointer;
+                                    font-weight: 500;
+                                    transition: all 0.2s;
+                                    flex-shrink: 0;
+                                    font-size: 1.2rem;
+                                    line-height: 1;
+                                "
+                                onmouseover="this.style.background='#fecaca'"
+                                onmouseout="this.style.background='#fee2e2'"
+                                title="Удалить лид">
+                                🗑
+                            </button>
                         </div>
-                        <button
-                            onclick="deleteLead(${lead.id}, true)"
-                            style="
-                                background: #fee2e2;
-                                color: #dc2626;
-                                border: 1px solid #fecaca;
-                                padding: 0.5rem 0.75rem;
-                                border-radius: 6px;
-                                cursor: pointer;
-                                font-weight: 500;
-                                transition: all 0.2s;
-                                flex-shrink: 0;
-                                font-size: 1.2rem;
-                                line-height: 1;
-                            "
-                            onmouseover="this.style.background='#fecaca'"
-                            onmouseout="this.style.background='#fee2e2'"
-                            title="Удалить лид">
-                            🗑
-                        </button>
+
+                        <!-- Содержание -->
+                        <div id="lead-content-div" style="
+                            font-size: 1rem;
+                            line-height: 1.6;
+                            color: #374151;
+                            white-space: pre-line;
+                            word-break: break-word;
+                            margin-bottom: 1.5rem;
+                            padding: 1.5rem;
+                            background: #f9fafb;
+                            border-radius: 8px;
+                        "></div>
+
+                        <!-- Дополнительно -->
+                        ${lead.matched_keyword ? `
+                            <div style="
+                                font-size: 0.9rem;
+                                color: #6b7280;
+                                padding-top: 1rem;
+                                border-top: 1px solid #e5e7eb;
+                            ">
+                                <strong style="color: #111827;">Совпавшее ключевое слово:</strong>
+                                <span style="margin-left: 0.5rem; color: #5856d6; font-weight: 600;">
+                                    ${escapeHtml(lead.matched_keyword)}
+                                </span>
+                            </div>
+                        ` : ''}
                     </div>
+                `;
 
-                    <!-- Содержание -->
-                    <div id="lead-content-div" style="
-                        font-size: 1rem;
-                        line-height: 1.6;
-                        color: #374151;
-                        white-space: pre-line;
-                        word-break: break-word;
-                        margin-bottom: 1.5rem;
-                        padding: 1.5rem;
-                        background: #f9fafb;
-                        border-radius: 8px;
-                    "></div>
+                // Вставить текст с linkify в содержимое
+                setTimeout(() => {
+                    const contentDiv = document.getElementById('lead-content-div');
+                    if (contentDiv) {
+                        contentDiv.innerHTML = linkifyText(lead.text);
+                    }
+                }, 0);
 
-                    <!-- Дополнительно -->
-                    ${lead.matched_keyword ? `
-                        <div style="
-                            font-size: 0.9rem;
-                            color: #6b7280;
-                            padding-top: 1rem;
-                            border-top: 1px solid #e5e7eb;
-                        ">
-                            <strong style="color: #111827;">Совпавшее ключевое слово:</strong>
-                            <span style="margin-left: 0.5rem; color: #5856d6; font-weight: 600;">
-                                ${escapeHtml(lead.matched_keyword)}
-                            </span>
-                        </div>
-                    ` : ''}
-                </div>
-            `;
-
-            // Вставить текст с linkify в содержимое
-            setTimeout(() => {
-                const contentDiv = document.getElementById('lead-content-div');
-                if (contentDiv) {
-                    contentDiv.innerHTML = linkifyText(lead.text);
-                }
-            }, 0);
-
-            // Пометить лид как просмотренный
-            try {
+                // Пометить лид как просмотренный
                 fetch(`${API_BASE}/api/leads/${leadId}/viewed`, {
                     method: 'PUT',
                     credentials: 'include'
                 }).catch(() => {}); // Silently ignore errors
-            } catch (e) {
-                console.debug('mark_viewed error:', e);
+            } catch (error) {
+                console.error('Error displaying lead:', error);
+                showToast('Ошибка загрузки лида', 'error');
+                window.location.hash = 'leads';
             }
         }
 
@@ -2241,11 +2222,6 @@
                 card.addEventListener('click', async (e) => {
                     if (e.target.tagName === 'A' || e.target.tagName === 'BUTTON') return;
                     const leadId = card.getAttribute('data-lead-id');
-                    // Добавить в leadsState чтобы openLeadPage мог его найти
-                    const lead = recentLeads.find(l => l.id === parseInt(leadId));
-                    if (lead && !leadsState.allLeads.find(l => l.id === leadId)) {
-                        leadsState.allLeads.unshift(lead);
-                    }
                     openLeadPage(leadId);
                 });
 
@@ -2495,10 +2471,6 @@
                                 card.addEventListener('click', async (e) => {
                                     if (e.target.tagName === 'A' || e.target.tagName === 'BUTTON') return;
                                     const leadId = card.getAttribute('data-lead-id');
-                                    const lead = recentLeads.find(l => l.id === parseInt(leadId));
-                                    if (lead && !leadsState.allLeads.find(l => l.id === leadId)) {
-                                        leadsState.allLeads.unshift(lead);
-                                    }
                                     openLeadPage(leadId);
                                 });
 
