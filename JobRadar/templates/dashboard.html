@@ -1386,6 +1386,9 @@
 
             // Обновить задачи если открыта вкладка Мои задачи
             if (section === 'tasks') renderTasks();
+
+            // Загрузить настройки если открыта вкладка Settings
+            if (section === 'settings') loadUserSettings();
         }
 
         // Запуск polling лидов каждые 3 секунды
@@ -2239,20 +2242,55 @@
             });
         }
 
+        async function loadUserSettings() {
+            console.log("LOAD_SETTINGS_CALLED");
+            try {
+                const response = await fetch(`${API_BASE}/api/user/settings`, {
+                    credentials: 'include'
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    console.log("SETTINGS_RESPONSE", data);
+
+                    const checkbox = document.getElementById('notify-personal');
+                    if (checkbox) {
+                        checkbox.checked = data.alerts_personal;
+                        console.log("CHECKBOX_SET_TO", data.alerts_personal);
+                    }
+                } else {
+                    console.log("SETTINGS_LOAD_ERROR", response.status);
+                }
+            } catch (error) {
+                console.error('Error loading settings:', error);
+            }
+        }
+
         async function saveSettings() {
+            console.log("SAVE_SETTINGS_CLICK");
             try {
                 const alertsPersonal = document.getElementById('notify-personal').checked;
+                console.log("CHECKBOX_VALUE", alertsPersonal);
+
+                const payload = { alerts_personal: alertsPersonal };
+                console.log("REQUEST_PAYLOAD", payload);
 
                 const response = await fetch(`${API_BASE}/api/user/settings`, {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json' },
                     credentials: 'include',
-                    body: JSON.stringify({ alerts_personal: alertsPersonal })
+                    body: JSON.stringify(payload)
                 });
 
+                console.log("RESPONSE_STATUS", response.status);
+
                 if (response.ok) {
+                    const result = await response.json();
+                    console.log("RESPONSE_JSON", result);
                     showToast('Настройки сохранены!', 'success');
                 } else {
+                    const errorData = await response.json().catch(() => ({}));
+                    console.log("ERROR_RESPONSE", response.status, errorData);
                     showToast('Ошибка при сохранении настроек', 'error');
                 }
             } catch (error) {
