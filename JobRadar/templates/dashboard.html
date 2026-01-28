@@ -2122,6 +2122,16 @@
                     contentDiv.innerHTML = linkifyText(lead.text);
                 }
             }, 0);
+
+            // Пометить лид как просмотренный
+            try {
+                fetch(`${API_BASE}/api/leads/${leadId}/viewed`, {
+                    method: 'PUT',
+                    credentials: 'include'
+                }).catch(() => {}); // Silently ignore errors
+            } catch (e) {
+                console.debug('mark_viewed error:', e);
+            }
         }
 
         // Функция удаления лида
@@ -2356,10 +2366,8 @@
             const menu = document.getElementById('notifications-menu');
             menu.style.display = menu.style.display === 'none' ? 'block' : 'none';
 
-            // Если открываем меню - пометить все как прочитанные
+            // Если открываем меню - только показываем список, статусы не меняем
             if (menu.style.display === 'block') {
-                await markAllLeadsAsRead();
-
                 document.addEventListener('click', (e) => {
                     if (!e.target.closest('.notifications-menu') && !e.target.closest('#notifications-btn')) {
                         menu.style.display = 'none';
@@ -2386,9 +2394,11 @@
                 unreadLeadsCount = result.count || 0;
                 updateNotificationsBell();
 
-                const response = await getLeads(1, 5);
-                const allLeads = response.leads || [];
-                const newLeads = allLeads.filter(l => !l.is_read).slice(0, 5);
+                const response = await fetch(`${API_BASE}/api/leads/new`, {
+                    credentials: 'include'
+                });
+                const data = await response.json();
+                const newLeads = data.leads || [];
 
                 const notificationsList = document.getElementById('notifications-list');
                 if (newLeads.length === 0) {

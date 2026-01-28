@@ -299,29 +299,55 @@ async def get_task_leads(task_id: int, current_user: User = Depends(get_current_
 
 @app.get("/api/leads/unread-count")
 async def get_unread_count(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    """Получить количество непрочитанных лидов"""
+    """Получить количество новых лидов (status='new')"""
     unread = (
         db.query(Lead)
         .join(Task)
         .filter(Task.user_id == current_user.id)
-        .filter(Lead.is_read == False)
+        .filter(Lead.status == "new")
         .count()
     )
     return {"count": unread}
 
+@app.get("/api/leads/new/count")
+async def get_new_count(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """Получить количество новых лидов (status='new')"""
+    count = (
+        db.query(Lead)
+        .join(Task)
+        .filter(Task.user_id == current_user.id)
+        .filter(Lead.status == "new")
+        .count()
+    )
+    return {"count": count}
+
+@app.get("/api/leads/new", response_model=dict)
+async def get_new_leads(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """Получить последние 5 новых лидов (status='new')"""
+    leads = (
+        db.query(Lead)
+        .join(Task)
+        .filter(Task.user_id == current_user.id)
+        .filter(Lead.status == "new")
+        .order_by(Lead.found_at.desc())
+        .limit(5)
+        .all()
+    )
+    return {"leads": [LeadResponse.from_orm(l) for l in leads]}
+
 @app.post("/api/leads/mark-read")
 async def mark_all_read(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    """Пометить все лиды текущего пользователя как прочитанные"""
+    """Пометить все лиды текущего пользователя как просмотренные"""
     # Получить ID задач пользователя
     task_ids = db.query(Task.id).filter(Task.user_id == current_user.id).all()
     task_ids = [t[0] for t in task_ids]
 
-    # Обновить лиды без join
+    # Обновить лиды - использовать status="viewed" вместо is_read
     if task_ids:
         db.query(Lead).filter(
             Lead.task_id.in_(task_ids),
-            Lead.is_read == False
-        ).update({Lead.is_read: True})
+            Lead.status == "new"
+        ).update({Lead.status: "viewed"})
         db.commit()
 
     return {"ok": True}
