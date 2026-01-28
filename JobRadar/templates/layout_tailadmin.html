@@ -14,41 +14,17 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@100..900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/static/tailadmin/css/style.css">
-    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
   </head>
-  <body
-    x-data="{ page: 'ecommerce', 'loaded': true, 'darkMode': false, 'stickyMenu': false, 'sidebarToggle': false, 'scrollTop': false }"
-    x-init="
-         darkMode = JSON.parse(localStorage.getItem('darkMode'));
-         $watch('darkMode', value => localStorage.setItem('darkMode', JSON.stringify(value)))"
-    :class="{'dark bg-gray-900': darkMode === true}"
-  >
-    <!-- ===== Preloader Start ===== -->
-    <div
-      x-show="loaded"
-      x-init="window.addEventListener('DOMContentLoaded', () => {setTimeout(() => loaded = false, 500)})"
-      class="fixed left-0 top-0 z-999999 flex h-screen w-screen items-center justify-center bg-white dark:bg-black"
-    >
-      <div
-        class="h-16 w-16 animate-spin rounded-full border-4 border-solid border-brand-500 border-t-transparent"
-      ></div>
-    </div>
-    <!-- ===== Preloader End ===== -->
-
+  <body class="bg-white dark:bg-gray-900">
     <!-- ===== Page Wrapper Start ===== -->
     <div class="flex h-screen overflow-hidden">
       <!-- ===== Sidebar Start ===== -->
-      <aside
-        :class="sidebarToggle ? 'translate-x-0 lg:w-[90px]' : '-translate-x-full'"
-        class="sidebar fixed left-0 top-0 z-9999 flex h-screen w-[290px] flex-col overflow-y-hidden border-r border-gray-200 bg-white px-5 dark:border-gray-800 dark:bg-black lg:static lg:translate-x-0"
-      >
+      <aside class="sidebar hidden lg:flex fixed left-0 top-0 z-9999 h-screen w-[290px] flex-col overflow-y-hidden border-r border-gray-200 bg-white px-5 dark:border-gray-800 dark:bg-black lg:static">
+
         <!-- SIDEBAR HEADER -->
-        <div
-          :class="sidebarToggle ? 'justify-center' : 'justify-between'"
-          class="flex items-center gap-2 pt-8 sidebar-header pb-7"
-        >
+        <div class="flex items-center justify-between gap-2 pt-8 sidebar-header pb-7">
           <a href="/">
-            <span class="logo" :class="sidebarToggle ? 'hidden' : ''">
+            <span class="logo">
               <img class="dark:hidden" src="/static/tailadmin/images/logo/logo.svg" alt="Logo" />
               <img
                 class="hidden dark:block"
@@ -56,10 +32,8 @@
                 alt="Logo"
               />
             </span>
-
             <img
-              class="logo-icon"
-              :class="sidebarToggle ? 'lg:block' : 'hidden'"
+              class="logo-icon hidden lg:block"
               src="/static/tailadmin/images/logo/logo-icon.svg"
               alt="Logo"
             />
@@ -71,19 +45,19 @@
           class="flex flex-col overflow-y-auto duration-300 ease-linear no-scrollbar"
         >
           <!-- Sidebar Menu -->
-          <nav x-data="{selected: $persist('Dashboard')}">
+          <nav>
             <!-- Menu Group -->
             <div>
               <h3 class="mb-4 text-xs uppercase leading-[20px] text-gray-400">
                 <span
                   class="menu-group-title"
-                  :class="sidebarToggle ? 'lg:hidden' : ''"
+                 
                 >
                   MENU
                 </span>
 
                 <svg
-                  :class="sidebarToggle ? 'lg:block hidden' : 'hidden'"
+                 
                   class="mx-auto fill-current menu-group-icon"
                   width="24"
                   height="24"
@@ -105,12 +79,12 @@
                 <li>
                   <a
                     href="/"
-                    @click.prevent="selected = (selected === 'Dashboard' ? '':'Dashboard')"
+                   
                     class="menu-item group"
-                    :class=" (selected === 'Dashboard') || (page === 'ecommerce' || page === 'analytics' || page === 'marketing' || page === 'crm' || page === 'stocks') ? 'menu-item-active' : 'menu-item-inactive'"
+                   
                   >
                     <svg
-                      :class="(selected === 'Dashboard') || (page === 'ecommerce' || page === 'analytics' || page === 'marketing' || page === 'crm' || page === 'stocks') ? 'menu-item-icon-active'  :'menu-item-icon-inactive'"
+                     
                       width="24"
                       height="24"
                       viewBox="0 0 24 24"
@@ -127,14 +101,14 @@
 
                     <span
                       class="menu-item-text"
-                      :class="sidebarToggle ? 'lg:hidden' : ''"
+                     
                     >
                       Dashboard
                     </span>
 
                     <svg
                       class="menu-item-arrow"
-                      :class="[(selected === 'Dashboard') ? 'menu-item-arrow-active' : 'menu-item-arrow-inactive', sidebarToggle ? 'lg:hidden' : '' ]"
+                     
                       width="20"
                       height="20"
                       viewBox="0 0 20 20"
@@ -153,18 +127,17 @@
 
                   <!-- Dropdown Menu Start -->
                   <div
-                    class="overflow-hidden transform translate"
-                    :class="(selected === 'Dashboard') ? 'block' :'hidden'"
+                    class="hidden overflow-hidden transform translate"
                   >
                     <ul
-                      :class="sidebarToggle ? 'lg:hidden' : 'flex'"
+                     
                       class="flex flex-col gap-1 mt-2 menu-dropdown pl-9"
                     >
                       <li>
                         <a
                           href="/dashboard"
                           class="menu-dropdown-item group"
-                          :class="page === 'ecommerce' ? 'menu-dropdown-item-active' : 'menu-dropdown-item-inactive'"
+                         
                         >
                           Dashboard
                         </a>
@@ -182,13 +155,13 @@
               <h3 class="mb-4 text-xs uppercase leading-[20px] text-gray-400">
                 <span
                   class="menu-group-title"
-                  :class="sidebarToggle ? 'lg:hidden' : ''"
+                 
                 >
                   others
                 </span>
 
                 <svg
-                  :class="sidebarToggle ? 'lg:block hidden' : 'hidden'"
+                 
                   class="mx-auto fill-current menu-group-icon"
                   width="24"
                   height="24"
@@ -213,7 +186,7 @@
 
           <!-- Promo Box -->
           <div
-            :class="sidebarToggle ? 'lg:hidden' : ''"
+           
             class="mx-auto mb-10 w-full max-w-60 rounded-2xl bg-gray-50 px-4 py-5 text-center dark:bg-white/[0.03]"
           >
             <h3 class="mb-2 font-semibold text-gray-900 dark:text-white">
@@ -242,15 +215,13 @@
       >
         <!-- Small Device Overlay Start -->
         <div
-          @click="sidebarToggle = false"
-          :class="sidebarToggle ? 'block lg:hidden' : 'hidden'"
-          class="fixed w-full h-screen z-9 bg-gray-900/50"
+          class="hidden fixed w-full h-screen z-9 bg-gray-900/50"
         ></div>
         <!-- Small Device Overlay End -->
 
         <!-- ===== Header Start ===== -->
         <header
-          x-data="{menuToggle: false}"
+         
           class="sticky top-0 z-99999 flex w-full border-gray-200 bg-white lg:border-b dark:border-gray-800 dark:bg-gray-900"
         >
           <div
@@ -261,9 +232,9 @@
             >
               <!-- Hamburger Toggle BTN -->
               <button
-                :class="sidebarToggle ? 'lg:bg-transparent dark:lg:bg-transparent bg-gray-100 dark:bg-gray-800' : ''"
+               
                 class="z-99999 flex h-10 w-10 items-center justify-center rounded-lg border-gray-200 text-gray-500 lg:h-11 lg:w-11 lg:border dark:border-gray-800 dark:text-gray-400"
-                @click.stop="sidebarToggle = !sidebarToggle"
+               
               >
                 <svg
                   class="hidden fill-current lg:block"
@@ -282,7 +253,7 @@
                 </svg>
 
                 <svg
-                  :class="sidebarToggle ? 'hidden' : 'block lg:hidden'"
+                 
                   class="fill-current lg:hidden"
                   width="24"
                   height="24"
@@ -300,7 +271,7 @@
 
                 <!-- cross icon -->
                 <svg
-                  :class="sidebarToggle ? 'block lg:hidden' : 'hidden'"
+                 
                   class="fill-current"
                   width="24"
                   height="24"
@@ -330,8 +301,8 @@
               <!-- Application nav menu button -->
               <button
                 class="z-99999 flex h-10 w-10 items-center justify-center rounded-lg text-gray-700 hover:bg-gray-100 lg:hidden dark:text-gray-400 dark:hover:bg-gray-800"
-                :class="menuToggle ? 'bg-gray-100 dark:bg-gray-800' : ''"
-                @click.stop="menuToggle = !menuToggle"
+               
+               
               >
                 <svg
                   class="fill-current"
@@ -391,14 +362,14 @@
             </div>
 
             <div
-              :class="menuToggle ? 'flex' : 'hidden'"
+             
               class="shadow-theme-md w-full items-center justify-between gap-4 px-5 py-4 lg:flex lg:justify-end lg:px-0 lg:shadow-none"
             >
               <div class="2xsm:gap-3 flex items-center gap-2">
                 <!-- Dark Mode Toggler -->
                 <button
                   class="hover:text-dark-900 relative flex h-11 w-11 items-center justify-center rounded-full border border-gray-200 bg-white text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-700 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-white"
-                  @click.prevent="darkMode = !darkMode"
+                 
                 >
                   <svg
                     class="hidden dark:block"
@@ -434,15 +405,15 @@
                 <!-- Notification Menu Area -->
                 <div
                   class="relative"
-                  x-data="{ dropdownOpen: false, notifying: true }"
-                  @click.outside="dropdownOpen = false"
+                 
+                 
                 >
                   <button
                     class="hover:text-dark-900 relative flex h-11 w-11 items-center justify-center rounded-full border border-gray-200 bg-white text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-700 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-white"
-                    @click.prevent="dropdownOpen = ! dropdownOpen; notifying = false"
+                   
                   >
                     <span
-                      :class="!notifying ? 'hidden' : 'flex'"
+                     
                       class="absolute top-0.5 right-0 z-1 h-2 w-2 rounded-full bg-orange-400"
                     >
                       <span
@@ -468,8 +439,7 @@
 
                   <!-- Dropdown Start -->
                   <div
-                    x-show="dropdownOpen"
-                    class="shadow-theme-lg dark:bg-gray-dark absolute -right-[240px] mt-[17px] flex h-[480px] w-[350px] flex-col rounded-2xl border border-gray-200 bg-white p-3 sm:w-[361px] lg:right-0 dark:border-gray-800"
+                    class="hidden shadow-theme-lg dark:bg-gray-dark absolute -right-[240px] mt-[17px] flex h-[480px] w-[350px] flex-col rounded-2xl border border-gray-200 bg-white p-3 sm:w-[361px] lg:right-0 dark:border-gray-800"
                   >
                     <div
                       class="mb-3 flex items-center justify-between border-b border-gray-100 pb-3 dark:border-gray-800"
@@ -481,7 +451,7 @@
                       </h5>
 
                       <button
-                        @click="dropdownOpen = false"
+                       
                         class="text-gray-500 dark:text-gray-400"
                       >
                         <svg
@@ -521,13 +491,13 @@
               <!-- User Area -->
               <div
                 class="relative"
-                x-data="{ dropdownOpen: false }"
-                @click.outside="dropdownOpen = false"
+               
+               
               >
                 <a
                   class="flex items-center text-gray-700 dark:text-gray-400"
                   href="#"
-                  @click.prevent="dropdownOpen = ! dropdownOpen"
+                 
                 >
                   <span class="mr-3 h-11 w-11 overflow-hidden rounded-full">
                     <img src="/static/tailadmin/images/user/owner.jpg" alt="User" />
@@ -536,7 +506,7 @@
                   <span class="text-theme-sm mr-1 block font-medium">User</span>
 
                   <svg
-                    :class="dropdownOpen && 'rotate-180'"
+                   
                     class="stroke-gray-500 dark:stroke-gray-400"
                     width="18"
                     height="20"
@@ -556,8 +526,7 @@
 
                 <!-- Dropdown Start -->
                 <div
-                  x-show="dropdownOpen"
-                  class="shadow-theme-lg dark:bg-gray-dark absolute right-0 mt-[17px] flex w-[260px] flex-col rounded-2xl border border-gray-200 bg-white p-3 dark:border-gray-800"
+                  class="hidden shadow-theme-lg dark:bg-gray-dark absolute right-0 mt-[17px] flex w-[260px] flex-col rounded-2xl border border-gray-200 bg-white p-3 dark:border-gray-800"
                 >
                   <div>
                     <span
