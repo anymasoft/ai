@@ -158,6 +158,14 @@ class LeadResponse(BaseModel):
     class Config:
         from_attributes = True
 
+# ============== Pydantic модели для пользовательских настроек ==============
+
+class UserSettingsRequest(BaseModel):
+    alerts_personal: bool
+
+class UserSettingsResponse(BaseModel):
+    alerts_personal: bool
+
 # ============== Pydantic модели для Telegram авторизации ==============
 
 class AuthStartRequest(BaseModel):
@@ -428,6 +436,42 @@ async def delete_lead(lead_id: int, current_user: User = Depends(get_current_use
     db.delete(lead)
     db.commit()
     return {"ok": True}
+
+# ============== API для пользовательских настроек ==============
+
+@app.get("/api/user/settings", response_model=UserSettingsResponse)
+async def get_user_settings(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """Получить пользовательские настройки"""
+    # Найти сессию пользователя
+    telegram_session = db.query(TelegramSession).filter(TelegramSession.user_id == current_user.id).first()
+
+    # Если сессии нет, возвращаем дефолт
+    if not telegram_session:
+        return UserSettingsResponse(alerts_personal=True)
+
+    # Возвращаем сохраненное значение
+    return UserSettingsResponse(alerts_personal=telegram_session.alerts_personal)
+
+@app.put("/api/user/settings", response_model=UserSettingsResponse)
+async def update_user_settings(
+    request: UserSettingsRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Обновить пользовательские настройки"""
+    # Найти сессию пользователя
+    telegram_session = db.query(TelegramSession).filter(TelegramSession.user_id == current_user.id).first()
+
+    # Если сессии нет, ошибка
+    if not telegram_session:
+        raise HTTPException(status_code=400, detail="Telegram сессия не найдена. Сначала авторизуйтесь.")
+
+    # Обновить настройку
+    telegram_session.alerts_personal = request.alerts_personal
+    db.commit()
+
+    # Вернуть обновленное значение
+    return UserSettingsResponse(alerts_personal=telegram_session.alerts_personal)
 
 # ============== API для статистики ==============
 
