@@ -1221,9 +1221,13 @@
             }
         }
 
-        async function getLeads(page = 1, limit = 20) {
+        async function getLeads(page = 1, limit = 20, status = null) {
             try {
-                const response = await fetch(`${API_BASE}/api/leads?page=${page}&limit=${limit}`, {
+                let url = `${API_BASE}/api/leads?page=${page}&limit=${limit}`;
+                if (status && status !== "") {
+                    url += `&status=${encodeURIComponent(status)}`;
+                }
+                const response = await fetch(url, {
                     credentials: "include"
                 });
                 if (!response.ok) throw new Error('Failed to fetch leads');
@@ -1792,7 +1796,10 @@
                     leadsState.allLeads = [];
                 }
 
-                const response = await getLeads(leadsState.page, leadsState.limit);
+                // Получить значения фильтров до загрузки
+                const statusFilter = document.getElementById('filter-status')?.value || '';
+
+                const response = await getLeads(leadsState.page, leadsState.limit, statusFilter);
                 const leads = response.leads || [];
                 leadsState.hasMore = response.has_more || false;
 
@@ -1818,6 +1825,11 @@
                         lead.source_channel.toLowerCase().includes(searchFilter) ||
                         (lead.matched_keyword && lead.matched_keyword.toLowerCase().includes(searchFilter))
                     );
+                }
+
+                // Клиентская фильтрация по статусу (дополнительная проверка)
+                if (statusFilter) {
+                    filtered = filtered.filter(lead => lead.status === statusFilter);
                 }
 
                 // Сортировать по дате (новые сверху)
