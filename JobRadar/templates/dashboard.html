@@ -2380,15 +2380,33 @@
         }
 
         function logout() {
-            showDeleteConfirm('Вы уверены, что хотите выйти из аккаунта?', () => {
-                // Удалить информацию о пользователе из localStorage
-                localStorage.removeItem('user');
-                showToast('Вы вышли из аккаунта', 'info');
+            showDeleteConfirm('Вы уверены, что хотите выйти из аккаунта?', async () => {
+                try {
+                    // Отправить POST запрос к /api/logout для очистки Telegram сессии
+                    const response = await fetch('/api/logout', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        credentials: 'include'
+                    });
 
-                // Перейти на страницу логина
-                setTimeout(() => {
-                    window.location.href = '/login';
-                }, 1000);
+                    if (!response.ok) {
+                        throw new Error('Ошибка при logout');
+                    }
+
+                    // Удалить информацию о пользователе из localStorage
+                    localStorage.removeItem('user');
+                    showToast('Вы вышли из аккаунта', 'info');
+
+                    // Перейти на страницу логина
+                    setTimeout(() => {
+                        window.location.href = '/login';
+                    }, 1000);
+                } catch (error) {
+                    console.error('Ошибка при logout:', error);
+                    showToast('Ошибка при выходе из аккаунта: ' + error.message, 'error');
+                }
             });
         }
 

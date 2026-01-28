@@ -671,15 +671,17 @@ async def logout(current_user: User = Depends(get_current_user), db: Session = D
         # 1. Отключить TelegramClient пользователя
         from telegram_clients import disconnect_user_client
         await disconnect_user_client(current_user.id)
+        logger.info(f"[LOGOUT] user_id={current_user.id} - TelegramClient отключен")
 
         # 2. Удалить TelegramSession из БД
-        db.query(TelegramSession).filter(
+        deleted_count = db.query(TelegramSession).filter(
             TelegramSession.user_id == current_user.id
-        ).delete()
+        ).delete(synchronize_session=False)
         db.commit()
 
+        logger.info(f"[LOGOUT] user_id={current_user.id} - удалено TelegramSession записей: {deleted_count}")
         print(f"LOGOUT user_id={current_user.id}")
-        print("TelegramSession deleted")
+        print(f"TelegramSession deleted (count={deleted_count})")
 
         # 3. Создать ответ и очистить cookie
         response = JSONResponse({"ok": True, "message": "Выход выполнен"})
