@@ -4,7 +4,6 @@ import logging
 from fastapi import FastAPI, HTTPException, Depends, Request, Cookie
 from fastapi.responses import FileResponse, RedirectResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.templating import Jinja2Templates
 from starlette.staticfiles import StaticFiles
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
@@ -41,9 +40,6 @@ if not logger.handlers:
     logger.addHandler(console_handler)
 
 app = FastAPI()
-
-# ============== Jinja2 Templates ==============
-templates = Jinja2Templates(directory="templates")
 
 # ============== Глобальное хранилище pending клиентов ==============
 # {phone: TelegramClient}
@@ -182,20 +178,20 @@ class AuthPasswordRequest(BaseModel):
 # ============== API Endpoints ==============
 
 @app.get("/")
-async def index(request: Request):
-    return templates.TemplateResponse("index.tailadmin.html", {"request": request})
+async def index():
+    return FileResponse(os.path.join(BASE_DIR, "templates/index.html"))
 
 @app.get("/login")
-async def login_page(request: Request):
-    return templates.TemplateResponse("login.tailadmin.html", {"request": request})
+async def login_page():
+    return FileResponse(os.path.join(BASE_DIR, "templates/login.html"))
 
 @app.post("/login")
 async def login():
     return RedirectResponse(url="/dashboard", status_code=302)
 
 @app.get("/dashboard")
-async def dashboard(request: Request):
-    return templates.TemplateResponse("dashboard.tailadmin.html", {"request": request})
+async def dashboard():
+    return FileResponse(os.path.join(BASE_DIR, "templates/dashboard.html"))
 
 @app.get("/contact")
 async def contact():
