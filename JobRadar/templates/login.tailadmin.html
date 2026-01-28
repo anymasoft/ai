@@ -1,0 +1,384 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta http-equiv="X-UA-Compatible" content="ie=edge" />
+    <title>JobRadar - Login | TailAdmin</title>
+    <link rel="stylesheet" href="/static/tailadmin/css/style.css">
+</head>
+<body x-data="{ darkMode: false }" x-init="darkMode = JSON.parse(localStorage.getItem('darkMode'))" :class="{'dark bg-gray-900': darkMode === true}">
+
+<div class="relative flex min-h-screen items-center justify-center bg-gray-50 px-4 dark:bg-gray-900 sm:px-6 lg:px-8">
+  <!-- Background decoration -->
+  <div class="absolute inset-0 overflow-hidden">
+    <div class="absolute -top-40 -right-40 h-80 w-80 rounded-full bg-blue-500 opacity-20 blur-3xl dark:opacity-10"></div>
+    <div class="absolute -bottom-40 -left-40 h-80 w-80 rounded-full bg-purple-500 opacity-20 blur-3xl dark:opacity-10"></div>
+  </div>
+
+  <div class="relative w-full max-w-md">
+    <!-- Card -->
+    <div class="rounded-2xl border border-gray-200 bg-white shadow-xl dark:border-gray-800 dark:bg-gray-800">
+      <!-- Header -->
+      <div class="border-b border-gray-200 px-6 py-8 text-center dark:border-gray-700 sm:px-8">
+        <div class="mb-4 inline-flex h-16 w-16 items-center justify-center rounded-2xl bg-blue-100 dark:bg-blue-900/30">
+          <svg class="h-8 w-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+          </svg>
+        </div>
+        <h1 class="mb-2 text-2xl font-bold text-gray-900 dark:text-white">JobRadar</h1>
+        <p class="text-gray-600 dark:text-gray-400">Authorize with Telegram</p>
+      </div>
+
+      <!-- Progress Steps -->
+      <div class="px-6 py-4 sm:px-8">
+        <div class="flex gap-2">
+          <div class="h-1 flex-1 rounded-full bg-blue-500 transition-all" id="step-phone-bar"></div>
+          <div class="h-1 flex-1 rounded-full bg-gray-300 transition-all dark:bg-gray-600" id="step-code-bar"></div>
+          <div class="h-1 flex-1 rounded-full bg-gray-300 transition-all dark:bg-gray-600" id="step-password-bar"></div>
+          <div class="h-1 flex-1 rounded-full bg-gray-300 transition-all dark:bg-gray-600" id="step-done-bar"></div>
+        </div>
+      </div>
+
+      <!-- Content -->
+      <div class="px-6 py-8 sm:px-8">
+        <!-- Stage: Phone -->
+        <div class="auth-stage active" id="stage-phone">
+          <div class="space-y-6">
+            <div>
+              <label for="phone" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Phone Number
+              </label>
+              <input
+                type="tel"
+                id="phone"
+                placeholder="+7 (999) 123-45-67"
+                pattern="[+0-9\s\-\(\)]*"
+                required
+                class="w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-gray-900 placeholder:text-gray-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder:text-gray-500"
+              />
+              <p class="mt-1 text-xs text-gray-600 dark:text-gray-400">
+                Enter your phone number linked to Telegram
+              </p>
+            </div>
+            <button
+              id="btn-send-phone"
+              class="w-full rounded-lg bg-blue-600 px-4 py-2.5 font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500/50 transition-colors dark:bg-blue-700 dark:hover:bg-blue-600"
+            >
+              Send Code
+            </button>
+          </div>
+        </div>
+
+        <!-- Stage: Code -->
+        <div class="auth-stage hidden" id="stage-code">
+          <div class="space-y-6">
+            <div>
+              <label for="code" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Verification Code
+              </label>
+              <p class="mb-3 text-xs text-gray-600 dark:text-gray-400">
+                Check your Telegram for the confirmation code
+              </p>
+              <input
+                type="text"
+                id="code"
+                placeholder="12345"
+                maxlength="6"
+                required
+                class="w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-gray-900 placeholder:text-gray-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder:text-gray-500"
+              />
+              <p class="mt-1 text-xs text-gray-600 dark:text-gray-400">
+                Enter the 5-6 digit code from Telegram
+              </p>
+            </div>
+            <button
+              id="btn-send-code"
+              class="w-full rounded-lg bg-blue-600 px-4 py-2.5 font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500/50 transition-colors dark:bg-blue-700 dark:hover:bg-blue-600"
+            >
+              Verify Code
+            </button>
+          </div>
+        </div>
+
+        <!-- Stage: Password -->
+        <div class="auth-stage hidden" id="stage-password">
+          <div class="space-y-6">
+            <div>
+              <label for="password" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Password (2FA)
+              </label>
+              <p class="mb-3 text-xs text-gray-600 dark:text-gray-400">
+                Two-factor authentication is enabled on your account
+              </p>
+              <input
+                type="password"
+                id="password"
+                placeholder="Enter your password"
+                required
+                class="w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-gray-900 placeholder:text-gray-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder:text-gray-500"
+              />
+              <p class="mt-1 text-xs text-gray-600 dark:text-gray-400">
+                Password for your account protection
+              </p>
+            </div>
+            <button
+              id="btn-send-password"
+              class="w-full rounded-lg bg-blue-600 px-4 py-2.5 font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500/50 transition-colors dark:bg-blue-700 dark:hover:bg-blue-600"
+            >
+              Confirm
+            </button>
+          </div>
+        </div>
+
+        <!-- Stage: Success -->
+        <div class="auth-stage hidden text-center" id="stage-success">
+          <div class="mb-4 inline-flex h-16 w-16 items-center justify-center rounded-full bg-green-100 dark:bg-green-900/30">
+            <svg class="h-8 w-8 text-green-600" fill="currentColor" viewBox="0 0 20 20">
+              <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path>
+            </svg>
+          </div>
+          <h2 class="mb-2 text-xl font-bold text-gray-900 dark:text-white">Authorization Successful!</h2>
+          <p class="text-gray-600 dark:text-gray-400">
+            Your Telegram session has been saved. Redirecting to dashboard...
+          </p>
+        </div>
+      </div>
+
+      <!-- Footer -->
+      <div class="border-t border-gray-200 px-6 py-4 text-center dark:border-gray-700 sm:px-8">
+        <p class="text-xs text-gray-600 dark:text-gray-400">
+          Back to <a href="/" class="font-medium text-blue-600 hover:text-blue-700 dark:text-blue-400">Home</a>
+        </p>
+      </div>
+    </div>
+
+    <!-- Footer Text -->
+    <div class="mt-8 text-center">
+      <p class="text-sm text-gray-600 dark:text-gray-400">
+        Powered by <a href="https://tailadmin.com" class="font-medium text-blue-600 hover:text-blue-700 dark:text-blue-400">TailAdmin</a>
+      </p>
+    </div>
+  </div>
+</div>
+
+<!-- Toast Notification -->
+<div id="toast" class="fixed bottom-4 right-4 hidden rounded-lg border border-gray-200 bg-white p-4 shadow-lg dark:border-gray-700 dark:bg-gray-800">
+  <p id="toast-message" class="text-sm text-gray-700 dark:text-gray-300"></p>
+</div>
+
+<script>
+  const API_BASE = '';
+
+  // ==================== UI State Management ====================
+  function showStage(stageName) {
+    // Hide all stages
+    document.querySelectorAll('.auth-stage').forEach(el => {
+      el.classList.add('hidden');
+      el.classList.remove('active');
+    });
+
+    // Show current stage
+    const stage = document.getElementById(`stage-${stageName}`);
+    if (stage) {
+      stage.classList.remove('hidden');
+      stage.classList.add('active');
+    }
+
+    // Update progress bars
+    const stages = ['phone', 'code', 'password', 'done'];
+    stages.forEach((step, idx) => {
+      const bar = document.getElementById(`step-${step}-bar`);
+      if (bar) {
+        if (stages.indexOf(stageName) >= idx) {
+          bar.classList.add('bg-blue-500');
+          bar.classList.remove('bg-gray-300', 'dark:bg-gray-600');
+        } else {
+          bar.classList.remove('bg-blue-500');
+          bar.classList.add('bg-gray-300', 'dark:bg-gray-600');
+        }
+      }
+    });
+  }
+
+  function showToast(message, type = 'info') {
+    const toast = document.getElementById('toast');
+    const msg = document.getElementById('toast-message');
+    msg.textContent = message;
+
+    // Set color based on type
+    const baseClasses = 'fixed bottom-4 right-4 rounded-lg border p-4 shadow-lg';
+    if (type === 'success') {
+      toast.className = baseClasses + ' border-green-200 bg-green-50 dark:border-green-700 dark:bg-green-900/20';
+      msg.className = 'text-sm text-green-700 dark:text-green-300';
+    } else if (type === 'error') {
+      toast.className = baseClasses + ' border-red-200 bg-red-50 dark:border-red-700 dark:bg-red-900/20';
+      msg.className = 'text-sm text-red-700 dark:text-red-300';
+    } else {
+      toast.className = baseClasses + ' border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800';
+      msg.className = 'text-sm text-gray-700 dark:text-gray-300';
+    }
+
+    toast.classList.remove('hidden');
+    setTimeout(() => toast.classList.add('hidden'), 3000);
+  }
+
+  function disableButton(btnId, disabled = true) {
+    const btn = document.getElementById(btnId);
+    btn.disabled = disabled;
+    btn.classList.toggle('opacity-50', disabled);
+    btn.classList.toggle('cursor-not-allowed', disabled);
+  }
+
+  // ==================== Stage 1: Phone ====================
+  document.getElementById('btn-send-phone').addEventListener('click', async () => {
+    const phone = document.getElementById('phone').value.trim();
+
+    if (!phone) {
+      showToast('Enter your phone number', 'error');
+      return;
+    }
+
+    disableButton('btn-send-phone');
+
+    try {
+      const response = await fetch(`${API_BASE}/api/auth/start`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ phone })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        showToast(data.detail || 'Authorization error', 'error');
+        disableButton('btn-send-phone', false);
+        return;
+      }
+
+      showToast('Code sent to Telegram', 'success');
+      showStage('code');
+      document.getElementById('code').focus();
+    } catch (error) {
+      showToast('Connection error: ' + error.message, 'error');
+      disableButton('btn-send-phone', false);
+    }
+  });
+
+  // ==================== Stage 2: Code ====================
+  document.getElementById('btn-send-code').addEventListener('click', async () => {
+    const phone = document.getElementById('phone').value.trim();
+    const code = document.getElementById('code').value.trim();
+
+    if (!code || code.length < 5) {
+      showToast('Enter a valid code', 'error');
+      return;
+    }
+
+    disableButton('btn-send-code');
+
+    try {
+      const response = await fetch(`${API_BASE}/api/auth/submit-code`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ phone, code })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        showToast(data.detail || 'Code verification error', 'error');
+        disableButton('btn-send-code', false);
+        return;
+      }
+
+      if (data.requires_password) {
+        showToast('Password required (2FA)', 'error');
+        disableButton('btn-send-code', false);
+        showStage('password');
+        document.getElementById('password').focus();
+      } else {
+        showToast('Code accepted, saving session...', 'info');
+        await saveSession(phone);
+      }
+    } catch (error) {
+      showToast('Connection error: ' + error.message, 'error');
+      disableButton('btn-send-code', false);
+    }
+  });
+
+  // ==================== Stage 3: Password ====================
+  document.getElementById('btn-send-password').addEventListener('click', async () => {
+    const phone = document.getElementById('phone').value.trim();
+    const password = document.getElementById('password').value;
+
+    if (!password) {
+      showToast('Enter your password', 'error');
+      return;
+    }
+
+    disableButton('btn-send-password');
+
+    try {
+      const response = await fetch(`${API_BASE}/api/auth/submit-password`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ phone, password })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        showToast(data.detail || 'Password verification error', 'error');
+        disableButton('btn-send-password', false);
+        return;
+      }
+
+      showToast('Password accepted, saving session...', 'info');
+      await saveSession(phone);
+    } catch (error) {
+      showToast('Connection error: ' + error.message, 'error');
+      disableButton('btn-send-password', false);
+    }
+  });
+
+  // ==================== Save Session ====================
+  async function saveSession(phone) {
+    try {
+      const response = await fetch(`${API_BASE}/api/auth/save`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ phone })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        showToast(data.detail || 'Save error', 'error');
+        return;
+      }
+
+      if (data.user) {
+        localStorage.setItem('user', JSON.stringify(data.user));
+      }
+
+      showToast('Authorization successful!', 'success');
+      showStage('success');
+
+      setTimeout(() => {
+        window.location.href = '/dashboard';
+      }, 2000);
+    } catch (error) {
+      showToast('Connection error: ' + error.message, 'error');
+    }
+  }
+
+  // Auto-focus on first input
+  document.getElementById('phone').focus();
+</script>
+</body>
+</html>
