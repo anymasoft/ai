@@ -1159,6 +1159,18 @@
                     <span class="form-hint">Канал для пересылки найденных лидов</span>
                 </div>
 
+                <div class="form-group">
+                    <label style="font-weight: 600; margin-bottom: 0.75rem; display: block;">Уведомления</label>
+                    <label class="checkbox-group" style="margin-bottom: 0.75rem;">
+                        <input type="checkbox" id="task-alerts-personal" checked>
+                        <span>Отправлять лиды в мой личный чат</span>
+                    </label>
+                    <label class="checkbox-group">
+                        <input type="checkbox" id="task-alerts-channel">
+                        <span>Отправлять лиды в канал для пересылки</span>
+                    </label>
+                </div>
+
                 <div class="modal-actions">
                     <button type="button" class="btn" onclick="closeTaskModal()">Отмена</button>
                     <button type="submit" class="btn btn-primary">Сохранить</button>
@@ -1472,6 +1484,8 @@
                     document.getElementById('task-include').value = task.include_keywords;
                     document.getElementById('task-exclude').value = task.exclude_keywords || '';
                     document.getElementById('task-channel').value = task.forward_channel || '';
+                    document.getElementById('task-alerts-personal').checked = task.alerts_personal;
+                    document.getElementById('task-alerts-channel').checked = task.alerts_channel;
                 } catch (error) {
                     console.error('Error loading task:', error);
                     showToast('Ошибка загрузки задачи', 'error');
@@ -1514,7 +1528,9 @@
                 sources: sources,
                 include_keywords: include,
                 exclude_keywords: exclude,
-                forward_channel: channel
+                forward_channel: channel,
+                alerts_personal: document.getElementById('task-alerts-personal').checked,
+                alerts_channel: document.getElementById('task-alerts-channel').checked
             };
 
             let result;
