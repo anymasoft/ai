@@ -179,11 +179,11 @@ class AuthPasswordRequest(BaseModel):
 
 @app.get("/")
 async def index():
-    return FileResponse(os.path.join(BASE_DIR, "templates/index.html"))
+    return FileResponse(os.path.join(BASE_DIR, "templates/index.tailadmin.html"))
 
 @app.get("/login")
 async def login_page():
-    return FileResponse(os.path.join(BASE_DIR, "templates/login.html"))
+    return FileResponse(os.path.join(BASE_DIR, "templates/login.tailadmin.html"))
 
 @app.post("/login")
 async def login():
@@ -191,7 +191,7 @@ async def login():
 
 @app.get("/dashboard")
 async def dashboard():
-    return FileResponse(os.path.join(BASE_DIR, "templates/dashboard.html"))
+    return FileResponse(os.path.join(BASE_DIR, "templates/dashboard.tailadmin.html"))
 
 @app.get("/contact")
 async def contact():
