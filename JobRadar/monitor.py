@@ -694,59 +694,31 @@ async def send_lead_to_telegram(task: Task, lead: Lead, db: Session):
             logger.warning(f"[SEND] task={task.id} lead={lead.id} - telegram_user_id не установлен в сессии user_id={task.user_id}")
             return
 
-        # Восстановить клиента из сохранённой сессии
-        try:
-            session_string = StringSession(telegram_session.session_string)
-            client = TelegramClient(session_string, TELEGRAM_API_ID, TELEGRAM_API_HASH)
-            await client.connect()
-        except Exception as e:
-            logger.error(f"[SEND] task={task.id} - ошибка подключения к Telegram: {e}")
+        # Проверить разрешены ли уведомления в личный Telegram
+        if not telegram_session.alerts_personal:
+            logger.info(f"[SEND] task={task.id} lead={lead.id} отправка в личный чат отключена (alerts_personal=False)")
             return
 
-        try:
-            # Логирование параметров отправки
-            logger.info(f"[SEND] task={task.id} lead={lead.id} personal={task.alerts_personal} channel={task.alerts_channel}")
-
-            # Форматируем текст лида
-            matched_keyword = lead.matched_keyword or 'не определено'
-            text = f"""🔥 Новый лид
+        # Форматируем текст лида
+        matched_keyword = lead.matched_keyword or 'не определено'
+        text = f"""🔥 Новый лид
 
 {lead.text}
 
 Источник: {lead.source_channel}
 Ключ: {matched_keyword}"""
 
-            # Отправляем в личный Telegram если включено (с обработкой FloodWait)
-            if task.alerts_personal:
-                await safe_send_message(client, telegram_session.telegram_user_id, text)
-                logger.info(f"[SEND] task={task.id} lead={lead.id} доставлено в личный Telegram ({telegram_session.telegram_user_id})")
-            else:
-                logger.info(f"[SEND] task={task.id} lead={lead.id} отправка в личный чат отключена (alerts_personal=False)")
+        # Отправляем в личный Telegram используя глобальный telegram_client
+        try:
+            await safe_send_message(telegram_client, telegram_session.telegram_user_id, text)
+            logger.info(f"[SEND] task={task.id} lead={lead.id} доставлено в личный Telegram ({telegram_session.telegram_user_id})")
 
-            # Отправляем в канал если включено и указан forward_channel
-            if task.alerts_channel and task.forward_channel and task.forward_channel.strip():
-                try:
-                    await safe_send_message(client, task.forward_channel, text)
-                    logger.info(f"[SEND] task={task.id} lead={lead.id} доставлено в канал {task.forward_channel}")
-                except Exception as e:
-                    logger.warning(f"[SEND] task={task.id} lead={lead.id} ошибка отправки в канал {task.forward_channel}: {e}")
-            elif task.alerts_channel and not (task.forward_channel and task.forward_channel.strip()):
-                logger.warning(f"[SEND] task={task.id} lead={lead.id} alerts_channel=True но forward_channel не указан")
-
-            # Обновляем поле delivered_at только если что-то отправили
-            if task.alerts_personal or (task.alerts_channel and task.forward_channel):
-                lead.delivered_at = datetime.utcnow()
-                db.commit()
-                logger.info(f"[SEND] task={task.id} lead={lead.id} отмечено как доставленное")
-
+            # Обновляем поле delivered_at
+            lead.delivered_at = datetime.utcnow()
+            db.commit()
+            logger.info(f"[SEND] task={task.id} lead={lead.id} отмечено как доставленное")
         except Exception as e:
             logger.error(f"[SEND] task={task.id} lead={lead.id} ошибка отправки сообщения: {e}")
-
-        finally:
-            try:
-                await client.disconnect()
-            except:
-                pass
 
     except Exception as e:
         logger.error(f"[SEND] task={task.id} lead={lead.id} критическая ошибка: {e}")
