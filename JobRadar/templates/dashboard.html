@@ -1078,17 +1078,11 @@
 
                     <div style="background: white; padding: 1.5rem; border-radius: 8px; border: 1px solid var(--gray-border); margin-bottom: 1.5rem;">
                         <h4 style="margin-bottom: 1rem;">Уведомления</h4>
-                        <p style="color: var(--text-gray); margin-bottom: 1rem; font-size: 0.9rem;">Куда отправлять новые лиды:</p>
-                        <div class="form-group" style="margin-bottom: 1rem;">
-                            <label class="checkbox-group">
-                                <input type="checkbox" id="notify-personal" checked>
-                                <span>Отправлять в мой личный чат</span>
-                            </label>
-                        </div>
+                        <p style="color: var(--text-gray); margin-bottom: 1rem; font-size: 0.9rem;">Новые лиды:</p>
                         <div class="form-group" style="margin-bottom: 1.5rem;">
                             <label class="checkbox-group">
-                                <input type="checkbox" id="notify-channel">
-                                <span>Пересылать в канал (из настроек задачи)</span>
+                                <input type="checkbox" id="notify-personal" checked>
+                                <span>Присылать в мой личный чат</span>
                             </label>
                         </div>
                         <button class="btn btn-primary" onclick="saveSettings()">Сохранить</button>
@@ -1151,24 +1145,6 @@
                     <label>Исключить ключевые слова</label>
                     <textarea id="task-exclude" placeholder="junior&#10;internship&#10;По одному в строке"></textarea>
                     <span class="form-hint">Игнорировать лиды с этими ключевыми словами</span>
-                </div>
-
-                <div class="form-group">
-                    <label>Канал для пересылки (опционально)</label>
-                    <input type="text" id="task-channel" placeholder="@mychannel или https://t.me/mychannel">
-                    <span class="form-hint">Канал для пересылки найденных лидов</span>
-                </div>
-
-                <div class="form-group">
-                    <label style="font-weight: 600; margin-bottom: 0.75rem; display: block;">Уведомления</label>
-                    <label class="checkbox-group" style="margin-bottom: 0.75rem;">
-                        <input type="checkbox" id="task-alerts-personal" checked>
-                        <span>Отправлять лиды в мой личный чат</span>
-                    </label>
-                    <label class="checkbox-group">
-                        <input type="checkbox" id="task-alerts-channel">
-                        <span>Отправлять лиды в канал для пересылки</span>
-                    </label>
                 </div>
 
                 <div class="modal-actions">
@@ -1483,9 +1459,6 @@
                     document.getElementById('task-sources').value = task.sources;
                     document.getElementById('task-include').value = task.include_keywords;
                     document.getElementById('task-exclude').value = task.exclude_keywords || '';
-                    document.getElementById('task-channel').value = task.forward_channel || '';
-                    document.getElementById('task-alerts-personal').checked = task.alerts_personal;
-                    document.getElementById('task-alerts-channel').checked = task.alerts_channel;
                 } catch (error) {
                     console.error('Error loading task:', error);
                     showToast('Ошибка загрузки задачи', 'error');
@@ -1510,7 +1483,6 @@
             const sources = document.getElementById('task-sources').value.trim();
             const include = document.getElementById('task-include').value.trim();
             const exclude = document.getElementById('task-exclude').value.trim();
-            const channel = document.getElementById('task-channel').value.trim();
 
             if (!name) {
                 showToast('Название задачи обязательно', 'warning');
@@ -1527,10 +1499,7 @@
                 status: 'running',
                 sources: sources,
                 include_keywords: include,
-                exclude_keywords: exclude,
-                forward_channel: channel,
-                alerts_personal: document.getElementById('task-alerts-personal').checked,
-                alerts_channel: document.getElementById('task-alerts-channel').checked
+                exclude_keywords: exclude
             };
 
             let result;
@@ -2255,8 +2224,26 @@
             });
         }
 
-        function saveSettings() {
-            showToast('Настройки сохранены!', 'success');
+        async function saveSettings() {
+            try {
+                const alertsPersonal = document.getElementById('notify-personal').checked;
+
+                const response = await fetch(`${API_BASE}/api/user/settings`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
+                    body: JSON.stringify({ alerts_personal: alertsPersonal })
+                });
+
+                if (response.ok) {
+                    showToast('Настройки сохранены!', 'success');
+                } else {
+                    showToast('Ошибка при сохранении настроек', 'error');
+                }
+            } catch (error) {
+                console.error('Error saving settings:', error);
+                showToast('Ошибка при сохранении настроек', 'error');
+            }
         }
 
         // Update task filter in leads
