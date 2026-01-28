@@ -18,6 +18,7 @@ from config import TELEGRAM_API_ID, TELEGRAM_API_HASH
 from database import SessionLocal, init_db
 from models import Task, Lead, User, TelegramSession
 from telegram_auth import save_session_to_db, get_telegram_client
+from telegram_clients import disconnect_all_clients
 import monitor
 
 # ============== Отключить мусорные логи ==============
@@ -68,20 +69,15 @@ async def startup():
     init_db()
     logger.info("✅ БД инициализирована")
 
-    # Инициализация Telegram клиента
-    try:
-        await monitor.init_telegram_client()
-        logger.info("✅ Telegram клиент инициализирован")
-    except Exception as e:
-        logger.error(f"❌ Ошибка инициализации Telegram клиента: {e}")
-
-    # Запуск мониторинга каналов (старый контур)
-    asyncio.create_task(monitor.monitoring_loop())
-    logger.info("🚀 Запущен мониторинг каналов")
-
-    # Запуск мониторинга задач (новый контур)
+    # Запуск мониторинга задач (per-user Task-based leads)
     asyncio.create_task(monitor.monitoring_loop_tasks())
     logger.info("🚀 Запущен мониторинг задач")
+
+# Shutdown event - disconnect all Telegram clients
+@app.on_event("shutdown")
+async def shutdown():
+    await disconnect_all_clients()
+    logger.info("✅ Все Telegram клиенты отключены")
 
 # Dependency для получения сессии БД
 def get_db():
@@ -658,6 +654,42 @@ async def auth_save(request: AuthStartRequest):
         return response
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
+
+
+@app.post("/api/logout")
+async def logout(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """
+    Выйти из аккаунта.
+
+    Логика:
+    1. Получить current_user (через cookie)
+    2. Отключить активный TelegramClient (если есть)
+    3. Удалить TelegramSession из БД
+    4. Очистить cookie авторизации
+    """
+    try:
+        # 1. Отключить TelegramClient пользователя
+        from telegram_clients import disconnect_user_client
+        await disconnect_user_client(current_user.id)
+
+        # 2. Удалить TelegramSession из БД
+        db.query(TelegramSession).filter(
+            TelegramSession.user_id == current_user.id
+        ).delete()
+        db.commit()
+
+        print(f"LOGOUT user_id={current_user.id}")
+        print("TelegramSession deleted")
+
+        # 3. Создать ответ и очистить cookie
+        response = JSONResponse({"ok": True, "message": "Выход выполнен"})
+        response.delete_cookie(key="user_phone", path="/")
+        return response
+
+    except Exception as e:
+        logger.error(f"Ошибка при logout user_id={current_user.id}: {e}")
+        raise HTTPException(status_code=400, detail=str(e))
+
 
 if __name__ == "__main__":
     import uvicorn
