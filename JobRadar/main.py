@@ -273,15 +273,24 @@ async def delete_task(task_id: int, current_user: User = Depends(get_current_use
 async def get_all_leads(
     page: int = 1,
     limit: int = 20,
+    status: str = None,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """Получить найденные лиды текущего пользователя с пагинацией"""
+    """Получить найденные лиды текущего пользователя с пагинацией и опциональной фильтрацией по статусу"""
     # Запросить limit + 1 для определения наличия ещё записей
-    leads = (
+    query = (
         db.query(Lead)
         .join(Task)
         .filter(Task.user_id == current_user.id)
+    )
+
+    # Если передан status - фильтруем по нему
+    if status and status != "":
+        query = query.filter(Lead.status == status)
+
+    leads = (
+        query
         .order_by(Lead.found_at.desc())
         .offset((page - 1) * limit)
         .limit(limit + 1)
@@ -298,13 +307,19 @@ async def get_all_leads(
     }
 
 @app.get("/api/leads/task/{task_id}", response_model=List[LeadResponse])
-async def get_task_leads(task_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    """Получить лиды для конкретной задачи текущего пользователя"""
+async def get_task_leads(task_id: int, status: str = None, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """Получить лиды для конкретной задачи текущего пользователя с опциональной фильтрацией по статусу"""
     task = db.query(Task).filter(Task.id == task_id, Task.user_id == current_user.id).first()
     if not task:
         raise HTTPException(status_code=404, detail="Задача не найдена")
 
-    leads = db.query(Lead).filter(Lead.task_id == task_id).order_by(Lead.found_at.desc()).all()
+    query = db.query(Lead).filter(Lead.task_id == task_id)
+
+    # Если передан status - фильтруем по нему
+    if status and status != "":
+        query = query.filter(Lead.status == status)
+
+    leads = query.order_by(Lead.found_at.desc()).all()
     return leads
 
 @app.get("/api/leads/unread-count")
