@@ -10,7 +10,11 @@
     <title>
       {% block title %}JobRadar Dashboard | TailAdmin{% endblock %}
     </title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@100..900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/static/tailadmin/css/style.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
   </head>
   <body
     x-data="{ page: 'ecommerce', 'loaded': true, 'darkMode': false, 'stickyMenu': false, 'sidebarToggle': false, 'scrollTop': false }"
@@ -640,7 +644,5 @@
     </div>
     <!-- ===== Page Wrapper End ===== -->
 
-    <!-- Scripts -->
-    <script src="/static/tailadmin/js/index.js"></script>
   </body>
 </html>
