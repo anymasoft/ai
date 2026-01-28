@@ -113,6 +113,8 @@ class TaskCreate(BaseModel):
     include_keywords: str = ""
     exclude_keywords: Optional[str] = ""
     forward_channel: Optional[str] = ""
+    alerts_personal: bool = True
+    alerts_channel: bool = False
 
 class TaskUpdate(BaseModel):
     name: Optional[str] = None
@@ -121,6 +123,8 @@ class TaskUpdate(BaseModel):
     include_keywords: Optional[str] = None
     exclude_keywords: Optional[str] = None
     forward_channel: Optional[str] = None
+    alerts_personal: Optional[bool] = None
+    alerts_channel: Optional[bool] = None
 
 class TaskResponse(BaseModel):
     id: int
@@ -216,6 +220,8 @@ async def create_task(task: TaskCreate, current_user: User = Depends(get_current
         include_keywords=task.include_keywords,
         exclude_keywords=task.exclude_keywords,
         forward_channel=task.forward_channel,
+        alerts_personal=task.alerts_personal,
+        alerts_channel=task.alerts_channel,
     )
     db.add(db_task)
     db.commit()
@@ -241,6 +247,10 @@ async def update_task(task_id: int, task: TaskUpdate, current_user: User = Depen
         db_task.exclude_keywords = task.exclude_keywords
     if task.forward_channel is not None:
         db_task.forward_channel = task.forward_channel
+    if task.alerts_personal is not None:
+        db_task.alerts_personal = task.alerts_personal
+    if task.alerts_channel is not None:
+        db_task.alerts_channel = task.alerts_channel
 
     db.commit()
     db.refresh(db_task)

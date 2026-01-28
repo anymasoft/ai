@@ -704,30 +704,40 @@ async def send_lead_to_telegram(task: Task, lead: Lead, db: Session):
             return
 
         try:
+            # Логирование параметров отправки
+            logger.info(f"[SEND] task={task.id} lead={lead.id} personal={task.alerts_personal} channel={task.alerts_channel}")
+
             # Форматируем текст лида
+            matched_keyword = lead.matched_keyword or 'не определено'
             text = f"""🔥 Новый лид
 
 {lead.text}
 
 Источник: {lead.source_channel}
-Ключ: {lead.matched_keyword or 'не определено'}"""
+Ключ: {matched_keyword}"""
 
-            # Отправляем в личный Telegram (с обработкой FloodWait)
-            await safe_send_message(client, telegram_session.telegram_user_id, text)
-            logger.info(f"[SEND] task={task.id} lead={lead.id} доставлено в личный Telegram ({telegram_session.telegram_user_id})")
+            # Отправляем в личный Telegram если включено (с обработкой FloodWait)
+            if task.alerts_personal:
+                await safe_send_message(client, telegram_session.telegram_user_id, text)
+                logger.info(f"[SEND] task={task.id} lead={lead.id} доставлено в личный Telegram ({telegram_session.telegram_user_id})")
+            else:
+                logger.info(f"[SEND] task={task.id} lead={lead.id} отправка в личный чат отключена (alerts_personal=False)")
 
-            # Если указан forward_channel - отправляем туда тоже
-            if task.forward_channel and task.forward_channel.strip():
+            # Отправляем в канал если включено и указан forward_channel
+            if task.alerts_channel and task.forward_channel and task.forward_channel.strip():
                 try:
                     await safe_send_message(client, task.forward_channel, text)
                     logger.info(f"[SEND] task={task.id} lead={lead.id} доставлено в канал {task.forward_channel}")
                 except Exception as e:
                     logger.warning(f"[SEND] task={task.id} lead={lead.id} ошибка отправки в канал {task.forward_channel}: {e}")
+            elif task.alerts_channel and not (task.forward_channel and task.forward_channel.strip()):
+                logger.warning(f"[SEND] task={task.id} lead={lead.id} alerts_channel=True но forward_channel не указан")
 
-            # Обновляем поле delivered_at
-            lead.delivered_at = datetime.utcnow()
-            db.commit()
-            logger.info(f"[SEND] task={task.id} lead={lead.id} отмечено как доставленное")
+            # Обновляем поле delivered_at только если что-то отправили
+            if task.alerts_personal or (task.alerts_channel and task.forward_channel):
+                lead.delivered_at = datetime.utcnow()
+                db.commit()
+                logger.info(f"[SEND] task={task.id} lead={lead.id} отмечено как доставленное")
 
         except Exception as e:
             logger.error(f"[SEND] task={task.id} lead={lead.id} ошибка отправки сообщения: {e}")
