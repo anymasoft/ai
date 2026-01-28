@@ -1803,6 +1803,9 @@
                 const leads = response.leads || [];
                 leadsState.hasMore = response.has_more || false;
 
+                // DEBUG: проверить что приходит от API
+                console.log(`[DEBUG] Загружено ${leads.length} лидов, статус фильтра: "${statusFilter}", first lead status:`, leads[0]?.status);
+
                 // Добавить новые лиды в хранилище
                 leadsState.allLeads = leadsState.allLeads.concat(leads);
 

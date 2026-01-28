@@ -152,6 +152,7 @@ class LeadResponse(BaseModel):
     source_url: Optional[str]
     matched_keyword: Optional[str]
     found_at: datetime
+    status: str
     is_read: bool
 
     class Config:
