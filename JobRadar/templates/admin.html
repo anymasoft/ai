@@ -30,6 +30,92 @@
             color: var(--text-dark);
         }
 
+        .dashboard {
+            display: flex;
+            min-height: 100vh;
+        }
+
+        /* SIDEBAR */
+        .sidebar {
+            width: 250px;
+            background: white;
+            border-right: 1px solid var(--gray-border);
+            padding: 1.5rem 0;
+            position: fixed;
+            height: 100vh;
+            overflow-y: auto;
+        }
+
+        .sidebar-brand {
+            padding: 0 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .sidebar-brand h5 {
+            color: var(--primary);
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .nav-menu {
+            list-style: none;
+        }
+
+        .nav-link {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.75rem 1.5rem;
+            color: var(--text-gray);
+            cursor: pointer;
+            text-decoration: none;
+            border-left: 3px solid transparent;
+            transition: all 0.3s ease;
+            font-size: 0.95rem;
+        }
+
+        .nav-link:hover {
+            color: var(--primary);
+            background: rgba(88, 86, 214, 0.05);
+        }
+
+        .nav-link.active {
+            color: var(--primary);
+            background: rgba(88, 86, 214, 0.1);
+            border-left-color: var(--primary);
+            font-weight: 600;
+        }
+
+        /* MAIN */
+        .main-content {
+            margin-left: 250px;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .header {
+            background: white;
+            border-bottom: 1px solid var(--gray-border);
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .header h3 {
+            margin: 0;
+            font-size: 1.5rem;
+        }
+
+        .content {
+            flex: 1;
+            padding: 2rem;
+            overflow-y: auto;
+        }
+
         .card {
             background: white;
             border-radius: 8px;
@@ -231,84 +317,107 @@
     </style>
 </head>
 <body>
-<div class="p-8">
-    <div class="mb-8">
-        <h1 class="text-3xl font-bold mb-2">📊 Админ-панель</h1>
-        <p class="text-gray-600">Управление пользователями и общая статистика</p>
-    </div>
+<div class="dashboard">
+    <!-- SIDEBAR -->
+    <aside class="sidebar">
+        <div class="sidebar-brand">
+            <h5><i class="bi bi-speedometer2"></i> JobRadar</h5>
+        </div>
+        <ul class="nav-menu">
+            <li><a class="nav-link" href="/dashboard"><i class="bi bi-speedometer2"></i> Dashboard</a></li>
+            <li><a class="nav-link" href="/dashboard" data-section="tasks"><i class="bi bi-list-check"></i> Мои задачи</a></li>
+            <li><a class="nav-link" href="/dashboard" data-section="leads"><i class="bi bi-fire"></i> Лиды</a></li>
+            <li><a class="nav-link active" href="/admin"><i class="bi bi-shield"></i> Админка</a></li>
+        </ul>
+    </aside>
 
-    <!-- Statistics Cards -->
-    <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-8" id="stats-container">
-        <div class="card">
-            <div class="stat-value" id="stat-users">-</div>
-            <div class="stat-label">Всего пользователей</div>
-        </div>
-        <div class="card">
-            <div class="stat-value" id="stat-sessions">-</div>
-            <div class="stat-label">С сессией</div>
-        </div>
-        <div class="card">
-            <div class="stat-value" id="stat-active">-</div>
-            <div class="stat-label">Активных</div>
-        </div>
-        <div class="card">
-            <div class="stat-value" id="stat-tasks">-</div>
-            <div class="stat-label">Всего задач</div>
-        </div>
-        <div class="card">
-            <div class="stat-value" id="stat-running">-</div>
-            <div class="stat-label">Запущённых</div>
-        </div>
-        <div class="card">
-            <div class="stat-value" id="stat-leads">-</div>
-            <div class="stat-label">Всего лидов</div>
-        </div>
-    </div>
-
-    <!-- Filters Section -->
-    <div class="card mb-8">
-        <h3 class="font-bold mb-4">🔍 Фильтры</h3>
-        <div class="input-group">
-            <input type="text" id="searchInput" placeholder="@username или username">
-            <select id="filterSession">
-                <option value="all">Все пользователи</option>
-                <option value="yes">С сессией</option>
-                <option value="no">Без сессии</option>
-            </select>
-            <button class="btn btn-primary" onclick="searchUsers()">Найти</button>
-        </div>
-    </div>
-
-    <!-- Users Table -->
-    <div class="card mb-8">
-        <h3 class="font-bold mb-4">👥 Пользователи</h3>
-        <div style="overflow-x: auto;">
-            <table>
-                <thead>
-                    <tr>
-                        <th>ID</th>
-                        <th>@Username</th>
-                        <th>Telegram ID</th>
-                        <th>Задачи</th>
-                        <th>Запущённых</th>
-                        <th>Лидов</th>
-                        <th>Создано</th>
-                        <th>Действия</th>
-                    </tr>
-                </thead>
-                <tbody id="usersTable">
-                    <tr>
-                        <td colspan="8" class="text-center text-gray-500">Загрузка...</td>
-                    </tr>
-                </tbody>
-            </table>
+    <!-- MAIN -->
+    <div class="main-content">
+        <!-- HEADER -->
+        <div class="header">
+            <div>
+                <h3>📊 Админка</h3>
+            </div>
         </div>
 
-        <!-- Pagination -->
-        <div class="pagination">
-            <button id="prevBtn" onclick="prevPage()" disabled>← Назад</button>
-            <span id="pageInfo">Страница 1</span>
-            <button id="nextBtn" onclick="nextPage()" disabled>Далее →</button>
+        <!-- CONTENT -->
+        <div class="content">
+            <p style="margin-bottom: 1.5rem; color: var(--text-gray);">Управление пользователями и общая статистика</p>
+
+            <!-- Statistics Cards -->
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1rem; margin-bottom: 2rem;" id="stats-container">
+                <div class="card">
+                    <div class="stat-value" id="stat-users">-</div>
+                    <div class="stat-label">Всего пользователей</div>
+                </div>
+                <div class="card">
+                    <div class="stat-value" id="stat-sessions">-</div>
+                    <div class="stat-label">С сессией</div>
+                </div>
+                <div class="card">
+                    <div class="stat-value" id="stat-active">-</div>
+                    <div class="stat-label">Активных</div>
+                </div>
+                <div class="card">
+                    <div class="stat-value" id="stat-tasks">-</div>
+                    <div class="stat-label">Всего задач</div>
+                </div>
+                <div class="card">
+                    <div class="stat-value" id="stat-running">-</div>
+                    <div class="stat-label">Запущённых</div>
+                </div>
+                <div class="card">
+                    <div class="stat-value" id="stat-leads">-</div>
+                    <div class="stat-label">Всего лидов</div>
+                </div>
+            </div>
+
+            <!-- Filters Section -->
+            <div class="card" style="margin-bottom: 2rem;">
+                <h3 style="font-weight: bold; margin-bottom: 1rem;">🔍 Фильтры</h3>
+                <div class="input-group">
+                    <input type="text" id="searchInput" placeholder="@username или username">
+                    <select id="filterSession">
+                        <option value="all">Все пользователи</option>
+                        <option value="yes">С сессией</option>
+                        <option value="no">Без сессии</option>
+                    </select>
+                    <button class="btn btn-primary" onclick="searchUsers()">Найти</button>
+                </div>
+            </div>
+
+            <!-- Users Table -->
+            <div class="card">
+                <h3 style="font-weight: bold; margin-bottom: 1rem;">👥 Пользователи</h3>
+                <div style="overflow-x: auto;">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>@Username</th>
+                                <th>Telegram ID</th>
+                                <th>Задачи</th>
+                                <th>Запущённых</th>
+                                <th>Лидов</th>
+                                <th>Создано</th>
+                                <th>Действия</th>
+                            </tr>
+                        </thead>
+                        <tbody id="usersTable">
+                            <tr>
+                                <td colspan="8" style="text-align: center; color: var(--text-light);">Загрузка...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Pagination -->
+                <div class="pagination">
+                    <button id="prevBtn" onclick="prevPage()" disabled>← Назад</button>
+                    <span id="pageInfo">Страница 1</span>
+                    <button id="nextBtn" onclick="nextPage()" disabled>Далее →</button>
+                </div>
+            </div>
         </div>
     </div>
 </div>
@@ -390,7 +499,7 @@
             // Fill table
             const tbody = document.getElementById("usersTable");
             if (data.users.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="8" class="text-center text-gray-500">Пользователей не найдено</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="8" style="text-align: center; color: var(--text-light);">Пользователей не найдено</td></tr>';
             } else {
                 tbody.innerHTML = data.users.map(user => `
                     <tr>
