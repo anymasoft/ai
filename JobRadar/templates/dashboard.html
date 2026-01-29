@@ -1337,7 +1337,8 @@
                 <section id="billing" class="content-section">
                     <div style="background: white; padding: 1.5rem; border-radius: 8px; border: 1px solid #e5e7eb; margin-bottom: 2rem;">
                         <h4 style="margin-bottom: 1rem;">Текущий тариф</h4>
-                        <div id="currentPlanName" style="font-size: 1.5rem; font-weight: 700; color: var(--primary); margin-bottom: 1rem;">Trial (Бесплатно)</div>
+                        <div id="currentPlanName" style="font-size: 1.5rem; font-weight: 700; color: var(--primary); margin-bottom: 0.5rem;">Trial (Бесплатно)</div>
+                        <div id="currentPlanExpires" style="font-size: 0.95rem; font-weight: 500; margin-bottom: 1rem; display: none;"></div>
                         <p id="currentPlanDescription" style="color: var(--text-light); margin-bottom: 1.5rem;">Пробный период 3 дня. Обновитесь на платный план, чтобы разблокировать больше задач.</p>
                         <div id="currentPlanFeatures" style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem; font-size: 0.9rem; margin-bottom: 1.5rem;">
                             <div>
@@ -3097,12 +3098,13 @@
         }
 
         // Обновить отображение текущего тарифа
-        function updateCurrentPlanDisplay(plan) {
+        function updateCurrentPlanDisplay(plan, paidUntil, trialExpiresAt) {
             const planInfo = getPlanInfo(plan);
 
             const nameEl = document.getElementById('currentPlanName');
             const descEl = document.getElementById('currentPlanDescription');
             const featuresEl = document.getElementById('currentPlanFeatures');
+            const expiresEl = document.getElementById('currentPlanExpires');
 
             if (nameEl) {
                 nameEl.textContent = planInfo.name;
@@ -3130,6 +3132,36 @@
                         <div style="color: var(--text-light); font-size: 0.85rem;">В одной задаче</div>
                     </div>
                 `;
+            }
+
+            // Показать информацию об истечении тарифа
+            if (expiresEl) {
+                let expiresText = '';
+                let expiresColor = '';
+
+                const now = new Date();
+                const expiresDate = plan === 'trial' ? new Date(trialExpiresAt) : new Date(paidUntil);
+
+                if (expiresDate && !isNaN(expiresDate.getTime())) {
+                    const daysLeft = Math.ceil((expiresDate - now) / (1000 * 60 * 60 * 24));
+
+                    if (daysLeft > 0) {
+                        expiresText = `📅 Осталось ${daysLeft} ${daysLeft === 1 ? 'день' : 'дней'}`;
+                        expiresColor = daysLeft <= 3 ? '#ea580c' : '#16a34a'; // orange if 3 days or less, green otherwise
+                    } else if (daysLeft === 0) {
+                        expiresText = '⚠️ Заканчивается сегодня!';
+                        expiresColor = '#dc2626'; // red
+                    } else {
+                        expiresText = '❌ Подписка истекла';
+                        expiresColor = '#dc2626'; // red
+                    }
+
+                    expiresEl.textContent = expiresText;
+                    expiresEl.style.color = expiresColor;
+                    expiresEl.style.display = 'block';
+                } else {
+                    expiresEl.style.display = 'none';
+                }
             }
 
             // Показать/скрыть alert об истечении подписки
@@ -3165,7 +3197,7 @@
 
                     // Обновить текущий тариф (единый источник истины - с сервера)
                     if (data.plan) {
-                        updateCurrentPlanDisplay(data.plan);
+                        updateCurrentPlanDisplay(data.plan, data.paid_until, data.trial_expires_at);
                     }
                 }
             } catch (err) {
