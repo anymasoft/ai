@@ -90,6 +90,42 @@ def migrate_schema():
             else:
                 print("   ✓ Колонка source_url уже существует")
 
+            # ==================== ТАБЛИЦА USERS ====================
+
+            # Получить информацию о колонках таблицы users
+            result = connection.execute(text("PRAGMA table_info(users)"))
+            columns_users = {row[1] for row in result}  # row[1] = column name
+
+            print(f"   Колонки в таблице users: {columns_users}")
+
+            # Добавить колонку disabled если её нет
+            if 'disabled' not in columns_users:
+                print("   ➕ Добавляю колонку disabled...")
+                connection.execute(text(
+                    "ALTER TABLE users ADD COLUMN disabled BOOLEAN DEFAULT 0"
+                ))
+                print("   ✅ Колонка disabled добавлена")
+            else:
+                print("   ✓ Колонка disabled уже существует")
+
+            # ==================== ТАБЛИЦА TELEGRAM_SESSIONS ====================
+
+            # Получить информацию о колонках таблицы telegram_sessions
+            result = connection.execute(text("PRAGMA table_info(telegram_sessions)"))
+            columns_sessions = {row[1] for row in result}  # row[1] = column name
+
+            print(f"   Колонки в таблице telegram_sessions: {columns_sessions}")
+
+            # Добавить колонку telegram_username если её нет
+            if 'telegram_username' not in columns_sessions:
+                print("   ➕ Добавляю колонку telegram_username...")
+                connection.execute(text(
+                    "ALTER TABLE telegram_sessions ADD COLUMN telegram_username VARCHAR(255) DEFAULT NULL"
+                ))
+                print("   ✅ Колонка telegram_username добавлена")
+            else:
+                print("   ✓ Колонка telegram_username уже существует")
+
             connection.commit()
             print("   ✅ Миграция схемы завершена\n")
 
