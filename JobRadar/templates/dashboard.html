@@ -1222,6 +1222,17 @@
 
             <!-- CONTENT -->
             <div class="content">
+                <!-- DISABLED ACCOUNT ALERT -->
+                <div id="disabledAccountAlert" style="display: none; background: #fee2e2; border-left: 4px solid #ef4444; padding: 1rem; margin-bottom: 1.5rem; border-radius: 0.375rem;">
+                    <div style="display: flex; gap: 1rem; align-items: flex-start;">
+                        <i class="bi bi-exclamation-triangle" style="color: #ef4444; font-size: 1.25rem; flex-shrink: 0; margin-top: 0.125rem;"></i>
+                        <div>
+                            <p style="font-weight: 600; color: #991b1b; margin: 0 0 0.25rem 0;">Ваш аккаунт отключен</p>
+                            <p style="color: #7f1d1d; margin: 0; font-size: 0.9rem;">Администратор отключил ваш аккаунт. Пожалуйста, свяжитесь со службой поддержки.</p>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- DASHBOARD SECTION -->
                 <section id="dashboard" class="content-section active">
                     <div class="stat-cards">
@@ -2912,6 +2923,7 @@
         })();
 
         // Проверить статус админа и показать/скрыть пункт "Админка"
+        // Также проверить статус disabled и показать уведомление
         async function checkAdminStatus() {
             try {
                 const response = await fetch('/api/user/me');
@@ -2920,6 +2932,14 @@
                     const adminNavItem = document.getElementById('admin-nav-item');
                     if (data.is_admin && adminNavItem) {
                         adminNavItem.style.display = 'block';
+                    }
+
+                    // Проверить статус disabled и показать уведомление
+                    const disabledAlert = document.getElementById('disabledAccountAlert');
+                    if (data.disabled && disabledAlert) {
+                        disabledAlert.style.display = 'block';
+                    } else if (disabledAlert) {
+                        disabledAlert.style.display = 'none';
                     }
                 }
             } catch (err) {

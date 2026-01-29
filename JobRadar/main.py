@@ -527,7 +527,8 @@ async def get_user_me(current_user: User = Depends(get_current_user), db: Sessio
         "id": current_user.id,
         "phone": current_user.phone,
         "is_admin": is_admin,
-        "has_session": session is not None
+        "has_session": session is not None,
+        "disabled": current_user.disabled
     }
 
 @app.get("/api/user/settings", response_model=UserSettingsResponse)
@@ -866,6 +867,7 @@ async def admin_user_detail(
             "id": user.id,
             "phone": user.phone,
             "disabled": user.disabled,
+            "plan": user.plan,
             "created_at": user.created_at.isoformat() if user.created_at else None
         },
         "telegram_session": {
@@ -935,6 +937,31 @@ async def admin_enable_user(
 
     logger.info(f"[ADMIN] user_id={user.id} - Пользователь включен")
     return {"ok": True}
+
+@app.post("/admin/api/users/{user_id}/plan")
+async def admin_change_user_plan(
+    user_id: int,
+    request: Request,
+    current_user: User = Depends(require_admin),
+    db: Session = Depends(get_db)
+):
+    """Изменить тарифный план пользователя"""
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="Пользователь не найден")
+
+    body = await request.json()
+    plan = body.get("plan", "").lower()
+    valid_plans = ["trial", "start", "pro", "business"]
+    if plan not in valid_plans:
+        raise HTTPException(status_code=400, detail=f"Неверный план. Допустимые значения: {', '.join(valid_plans)}")
+
+    old_plan = user.plan
+    user.plan = plan
+    db.commit()
+
+    logger.info(f"[ADMIN] user_id={user.id} - Тариф изменен: {old_plan} -> {plan}")
+    return {"ok": True, "old_plan": old_plan, "new_plan": plan}
 
 @app.post("/admin/api/users/{user_id}/delete")
 async def admin_delete_user(
