@@ -736,6 +736,19 @@
                     <p><strong>ID:</strong> ${user.id}</p>
                     <p><strong>Телефон:</strong> ${user.phone}</p>
                     <p><strong>Статус:</strong> ${user.disabled ? '<span class="badge badge-danger">Отключен</span>' : '<span class="badge badge-success">Активен</span>'}</p>
+                    <p><strong>Текущий тариф:</strong> <span class="badge" style="background: var(--primary); color: white;">${getPlanName(user.plan)}</span></p>
+
+                    <div style="margin: 1rem 0; padding: 1rem; background: var(--gray-50); border-radius: 0.5rem; border: 1px solid var(--gray-200);">
+                        <label style="display: block; font-weight: 600; font-size: 0.9rem; margin-bottom: 0.5rem;">Изменить тариф:</label>
+                        <select id="planSelect" style="width: 100%; padding: 0.5rem; border: 1px solid var(--gray-300); border-radius: 0.375rem; font-size: 0.9rem; margin-bottom: 0.75rem;">
+                            <option value="trial">Trial (Бесплатно)</option>
+                            <option value="start">Start (990 ₽)</option>
+                            <option value="pro">Pro (1 990 ₽)</option>
+                            <option value="business">Business (4 990 ₽)</option>
+                        </select>
+                        <button class="btn btn-primary" style="width: 100%;" onclick="savePlan(${user.id})">Сохранить план</button>
+                    </div>
+
                     <p><strong>Создано:</strong> ${formatDate(user.created_at)}</p>
 
                     ${session ? `
@@ -759,6 +772,14 @@
                     ` : ''}
                 </div>
             `;
+
+            // Установить текущий тариф в dropdown
+            setTimeout(() => {
+                const planSelect = document.getElementById("planSelect");
+                if (planSelect && user.plan) {
+                    planSelect.value = user.plan;
+                }
+            }, 0);
 
             document.getElementById("detailsContent").innerHTML = html;
             document.getElementById("detailsModal").classList.add("active");
@@ -845,6 +866,46 @@
 
     function closeAlertModal() {
         document.getElementById("alertModal").classList.remove("active");
+    }
+
+    // Функция для преобразования кода плана в название
+    function getPlanName(plan) {
+        const plans = {
+            "trial": "Trial (Бесплатно)",
+            "start": "Start (990 ₽)",
+            "pro": "Pro (1 990 ₽)",
+            "business": "Business (4 990 ₽)"
+        };
+        return plans[plan] || "Неизвестно";
+    }
+
+    // Функция для сохранения изменения плана
+    async function savePlan(userId) {
+        try {
+            const planSelect = document.getElementById("planSelect");
+            const newPlan = planSelect.value;
+
+            const response = await fetch(`/admin/api/users/${userId}/plan`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({ plan: newPlan })
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.detail || "Ошибка при сохранении плана");
+            }
+
+            const data = await response.json();
+            closeModal();
+            await loadUsers(currentPage);
+            showAlert("✅ Успех", `Тариф изменен на ${getPlanName(data.new_plan)}`);
+        } catch (err) {
+            showAlert("❌ Ошибка", err.message || "Не удалось сохранить тариф");
+            console.error(err);
+        }
     }
 
     // Функция для включения отключенного пользователя

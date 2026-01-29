@@ -15,11 +15,12 @@ class User(Base):
     id = Column(Integer, primary_key=True)
     phone = Column(String(20), unique=True, nullable=False)  # Нормализованный номер телефона
     disabled = Column(Boolean, default=False)  # Отключен ли пользователь (soft delete)
+    plan = Column(String(50), default="trial")  # Тарифный план (trial, start, pro, business)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     def __repr__(self):
-        return f"<User(id={self.id}, phone={self.phone})>"
+        return f"<User(id={self.id}, phone={self.phone}, plan={self.plan})>"
 
 
 class Channel(Base):

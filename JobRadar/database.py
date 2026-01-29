@@ -108,6 +108,16 @@ def migrate_schema():
             else:
                 print("   ✓ Колонка disabled уже существует")
 
+            # Добавить колонку plan если её нет
+            if 'plan' not in columns_users:
+                print("   ➕ Добавляю колонку plan...")
+                connection.execute(text(
+                    "ALTER TABLE users ADD COLUMN plan VARCHAR(50) DEFAULT 'trial'"
+                ))
+                print("   ✅ Колонка plan добавлена")
+            else:
+                print("   ✓ Колонка plan уже существует")
+
             # ==================== ТАБЛИЦА TELEGRAM_SESSIONS ====================
 
             # Получить информацию о колонках таблицы telegram_sessions

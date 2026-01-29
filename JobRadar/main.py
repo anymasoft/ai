@@ -41,6 +41,37 @@ if not logger.handlers:
 
 app = FastAPI()
 
+# ============== Лимиты тарифных планов ==============
+MAX_CHANNELS_PER_TASK = 10
+
+TASK_LIMITS_BY_PLAN = {
+    "trial": 1,
+    "start": 1,
+    "pro": 3,
+    "business": 6
+}
+
+def count_channels_in_task(sources: Optional[str]) -> int:
+    """Посчитать количество каналов в sources (разделены , или \\n)"""
+    if not sources or not sources.strip():
+        return 0
+
+    # Пробуем оба формата разделения
+    if "," in sources:
+        channels = [s.strip() for s in sources.split(",") if s.strip()]
+    else:
+        channels = [s.strip() for s in sources.split("\n") if s.strip()]
+
+    return len(channels)
+
+def get_task_limit_for_plan(plan: str) -> int:
+    """Получить лимит задач для тарифного плана"""
+    return TASK_LIMITS_BY_PLAN.get(plan, TASK_LIMITS_BY_PLAN["trial"])
+
+def count_user_tasks(user_id: int, db: Session) -> int:
+    """Посчитать количество активных задач пользователя"""
+    return db.query(Task).filter(Task.user_id == user_id).count()
+
 # ============== Глобальное хранилище pending клиентов ==============
 # {phone: TelegramClient}
 pending_auth_clients = {}
@@ -235,6 +266,24 @@ async def get_task(task_id: int, current_user: User = Depends(get_current_user),
 @app.post("/api/tasks", response_model=TaskResponse)
 async def create_task(task: TaskCreate, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     """Создать новую задачу"""
+    # Проверка: максимум 10 каналов в одной задаче
+    channels_count = count_channels_in_task(task.sources)
+    if channels_count > MAX_CHANNELS_PER_TASK:
+        raise HTTPException(
+            status_code=400,
+            detail="В одной задаче можно указать не более 10 каналов"
+        )
+
+    # Проверка: лимит задач по тарифу
+    current_task_count = count_user_tasks(current_user.id, db)
+    task_limit = get_task_limit_for_plan(current_user.plan)
+
+    if current_task_count >= task_limit:
+        raise HTTPException(
+            status_code=403,
+            detail="Лимит задач для вашего тарифа исчерпан"
+        )
+
     # ВАЖНО: новые задачи ВСЕГДА создаются в статусе "paused", игнорируя input от клиента
     db_task = Task(
         user_id=current_user.id,
@@ -258,6 +307,15 @@ async def update_task(task_id: int, task: TaskUpdate, current_user: User = Depen
     db_task = db.query(Task).filter(Task.id == task_id, Task.user_id == current_user.id).first()
     if not db_task:
         raise HTTPException(status_code=404, detail="Задача не найдена")
+
+    # Проверка: если обновляются sources, проверить лимит каналов
+    if task.sources is not None:
+        channels_count = count_channels_in_task(task.sources)
+        if channels_count > MAX_CHANNELS_PER_TASK:
+            raise HTTPException(
+                status_code=400,
+                detail="В одной задаче можно указать не более 10 каналов"
+            )
 
     if task.name is not None:
         db_task.name = task.name
@@ -469,7 +527,8 @@ async def get_user_me(current_user: User = Depends(get_current_user), db: Sessio
         "id": current_user.id,
         "phone": current_user.phone,
         "is_admin": is_admin,
-        "has_session": session is not None
+        "has_session": session is not None,
+        "disabled": current_user.disabled
     }
 
 @app.get("/api/user/settings", response_model=UserSettingsResponse)
@@ -808,6 +867,7 @@ async def admin_user_detail(
             "id": user.id,
             "phone": user.phone,
             "disabled": user.disabled,
+            "plan": user.plan,
             "created_at": user.created_at.isoformat() if user.created_at else None
         },
         "telegram_session": {
@@ -877,6 +937,31 @@ async def admin_enable_user(
 
     logger.info(f"[ADMIN] user_id={user.id} - Пользователь включен")
     return {"ok": True}
+
+@app.post("/admin/api/users/{user_id}/plan")
+async def admin_change_user_plan(
+    user_id: int,
+    request: Request,
+    current_user: User = Depends(require_admin),
+    db: Session = Depends(get_db)
+):
+    """Изменить тарифный план пользователя"""
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="Пользователь не найден")
+
+    body = await request.json()
+    plan = body.get("plan", "").lower()
+    valid_plans = ["trial", "start", "pro", "business"]
+    if plan not in valid_plans:
+        raise HTTPException(status_code=400, detail=f"Неверный план. Допустимые значения: {', '.join(valid_plans)}")
+
+    old_plan = user.plan
+    user.plan = plan
+    db.commit()
+
+    logger.info(f"[ADMIN] user_id={user.id} - Тариф изменен: {old_plan} -> {plan}")
+    return {"ok": True, "old_plan": old_plan, "new_plan": plan}
 
 @app.post("/admin/api/users/{user_id}/delete")
 async def admin_delete_user(
