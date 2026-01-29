@@ -450,6 +450,17 @@
     </div>
 </div>
 
+<!-- Alert Modal (для красивых уведомлений) -->
+<div class="modal" id="alertModal">
+    <div class="modal-content">
+        <div class="modal-title" id="alertTitle">Уведомление</div>
+        <div class="modal-body" id="alertMessage">Сообщение</div>
+        <div class="modal-footer">
+            <button class="btn btn-primary" onclick="closeAlertModal()">OK</button>
+        </div>
+    </div>
+</div>
+
 <script>
     let currentPage = 1;
     let currentQuery = "";
@@ -499,12 +510,24 @@
             const data = await response.json();
             currentPage = page;
 
-            // Fill table
+            // Загрузить детали каждого пользователя для получения статуса disabled
             const tbody = document.getElementById("usersTable");
             if (data.users.length === 0) {
                 tbody.innerHTML = '<tr><td colspan="8" style="text-align: center; color: var(--text-light);">Пользователей не найдено</td></tr>';
             } else {
-                tbody.innerHTML = data.users.map(user => `
+                // Получить детали для каждого пользователя
+                const usersWithDetails = await Promise.all(data.users.map(async (user) => {
+                    try {
+                        const detailRes = await fetch(`/admin/api/users/${user.id}`);
+                        if (detailRes.ok) {
+                            const detailData = await detailRes.json();
+                            return { ...user, disabled: detailData.user.disabled };
+                        }
+                    } catch (e) {}
+                    return { ...user, disabled: false };
+                }));
+
+                tbody.innerHTML = usersWithDetails.map(user => `
                     <tr>
                         <td>#${user.id}</td>
                         <td><strong>${user.telegram_username || "—"}</strong></td>
@@ -516,7 +539,10 @@
                         <td>
                             <button class="btn btn-secondary" style="font-size: 0.8rem;" onclick="openDetails(${user.id})">📋</button>
                             <button class="btn btn-danger" style="font-size: 0.8rem;" onclick="logout(${user.id})">🔓</button>
-                            <button class="btn btn-danger" style="font-size: 0.8rem;" onclick="disable(${user.id})">⛔</button>
+                            ${user.disabled
+                                ? `<button class="btn btn-primary" style="font-size: 0.8rem;" onclick="enable(${user.id})">✓ Включить</button>`
+                                : `<button class="btn btn-danger" style="font-size: 0.8rem;" onclick="disable(${user.id})">⛔ Отключить</button>`
+                            }
                         </td>
                     </tr>
                 `).join("");
@@ -592,7 +618,7 @@
             document.getElementById("detailsContent").innerHTML = html;
             document.getElementById("detailsModal").classList.add("active");
         } catch (err) {
-            alert("Ошибка при загрузке деталей");
+            showAlert("❌ Ошибка", "Не удалось загрузить детали пользователя");
             console.error(err);
         }
     }
@@ -635,6 +661,8 @@
                 endpoint = `/admin/api/users/${pendingAction.userId}/logout-telegram`;
             } else if (pendingAction.type === "disable") {
                 endpoint = `/admin/api/users/${pendingAction.userId}/disable`;
+            } else if (pendingAction.type === "enable") {
+                endpoint = `/admin/api/users/${pendingAction.userId}/enable`;
             }
 
             const response = await fetch(endpoint, { method: "POST" });
@@ -642,9 +670,9 @@
 
             closeActionModal();
             await loadUsers(currentPage);
-            alert("Действие выполнено");
+            showAlert("✅ Успех", "Действие выполнено успешно");
         } catch (err) {
-            alert("Ошибка при выполнении действия");
+            showAlert("❌ Ошибка", "Не удалось выполнить действие");
             console.error(err);
         }
     }
@@ -661,6 +689,28 @@
         sessionStorage.setItem('targetSection', section);
         // Перейти на страницу
         window.location.href = url;
+    }
+
+    // Красивое уведомление вместо alert()
+    function showAlert(title, message) {
+        document.getElementById("alertTitle").textContent = title;
+        document.getElementById("alertMessage").textContent = message;
+        document.getElementById("alertModal").classList.add("active");
+    }
+
+    function closeAlertModal() {
+        document.getElementById("alertModal").classList.remove("active");
+    }
+
+    // Функция для включения отключенного пользователя
+    async function enable(userId) {
+        pendingAction = {
+            type: "enable",
+            userId: userId
+        };
+        document.getElementById("actionTitle").textContent = "Включить пользователя?";
+        document.getElementById("actionMessage").textContent = "Пользователь снова сможет использовать приложение.";
+        document.getElementById("actionModal").classList.add("active");
     }
 </script>
 </body>

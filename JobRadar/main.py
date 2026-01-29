@@ -861,6 +861,23 @@ async def admin_disable_user(
     logger.info(f"[ADMIN] user_id={user.id} - Пользователь отключен")
     return {"ok": True}
 
+@app.post("/admin/api/users/{user_id}/enable")
+async def admin_enable_user(
+    user_id: int,
+    current_user: User = Depends(require_admin),
+    db: Session = Depends(get_db)
+):
+    """Включить пользователя"""
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="Пользователь не найден")
+
+    user.disabled = False
+    db.commit()
+
+    logger.info(f"[ADMIN] user_id={user.id} - Пользователь включен")
+    return {"ok": True}
+
 @app.post("/admin/api/users/{user_id}/delete")
 async def admin_delete_user(
     user_id: int,
