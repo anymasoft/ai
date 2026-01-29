@@ -1157,7 +1157,20 @@ async def create_payment(
         # Генерировать idempotence_key для защиты от двойных платежей
         idempotence_key = str(uuid.uuid4())
 
-        # Создать платеж в YooKassa
+        # Проверить, нет ли уже платежа с таким idempotence_key
+        existing_payment = db.query(Payment).filter(
+            Payment.idempotence_key == idempotence_key
+        ).first()
+
+        if existing_payment:
+            # Уже есть платеж с таким ключом - вернуть его
+            logger.info(f"[PAYMENT_IDEMPOTENT] user_id={current_user.id} idempotence_key={idempotence_key} (уже существует)")
+            return {
+                "confirmation_url": None,  # Платеж уже был создан
+                "yookassa_payment_id": existing_payment.yookassa_payment_id
+            }
+
+        # Создать платеж в YooKassa (без idempotence_key - SDK не поддерживает)
         payment = YooKassaPayment.create({
             "amount": {
                 "value": amount,
@@ -1172,7 +1185,7 @@ async def create_payment(
             "metadata": {
                 "user_id": current_user.id
             }
-        }, idempotence_key=idempotence_key)
+        })
 
         # Сохранить запись в БД
         db_payment = Payment(
