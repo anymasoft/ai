@@ -2,6 +2,7 @@
 JobRadar - Вспомогательные функции для работы с Telegram
 """
 import logging
+from datetime import datetime, timedelta
 from telethon import TelegramClient
 from telethon.sessions import StringSession
 from config import TELEGRAM_API_ID, TELEGRAM_API_HASH
@@ -32,10 +33,17 @@ async def save_session_to_db(phone: str, session_string: str, telegram_user_id: 
             # Получить или создать User по phone
             user = db.query(User).filter(User.phone == phone).first()
             if not user:
-                logger.info(f"✨ Создаю нового пользователя: {phone}")
-                user = User(phone=phone)
+                logger.info(f"✨ Создаю нового пользователя: {phone} с Trial на 3 дня")
+                # Новый пользователь получает Trial автоматически
+                user = User(
+                    phone=phone,
+                    plan="trial",
+                    trial_given=True,
+                    trial_expires_at=datetime.utcnow() + timedelta(days=3)
+                )
                 db.add(user)
                 db.flush()  # Чтобы получить user.id
+                logger.info(f"[TRIAL_GIVEN] user_id={user.id} trial_expires_at={user.trial_expires_at}")
 
             user_id = user.id
 

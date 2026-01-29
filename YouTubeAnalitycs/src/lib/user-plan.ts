@@ -7,27 +7,27 @@ import type { UserPlan } from "@/config/limits";
 
 /**
  * Получает план пользователя из сессии
- * По умолчанию возвращает "free" если план не определён
+ * По умолчанию возвращает "trial" если план не определён
  */
 export function getUserPlan(session: Session | null): UserPlan {
   if (!session?.user?.plan) {
-    return "free";
+    return "trial";
   }
 
   const plan = session.user.plan;
 
   // Проверяем что план валидный
-  if (plan === "free" || plan === "basic" || plan === "professional" || plan === "enterprise") {
+  if (plan === "trial" || plan === "basic" || plan === "professional" || plan === "enterprise") {
     return plan;
   }
 
-  // Fallback на free для неизвестных планов
-  console.warn(`[getUserPlan] Unknown plan "${plan}", falling back to "free"`);
-  return "free";
+  // Fallback на trial для неизвестных планов
+  console.warn(`[getUserPlan] Unknown plan "${plan}", falling back to "trial"`);
+  return "trial";
 }
 
 /**
- * Проверяет, является ли план "премиальным" (не free/basic)
+ * Проверяет, является ли план "премиальным" (не trial/basic)
  */
 export function isPremiumPlan(plan: UserPlan): boolean {
   return plan === "professional" || plan === "enterprise";

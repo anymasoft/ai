@@ -24,7 +24,7 @@ export default function BillingSettings() {
   const [scriptUsage, setScriptUsage] = useState<ScriptUsageInfo | null>(null);
   const [isLoadingUsage, setIsLoadingUsage] = useState(true);
 
-  const userPlan = (user?.plan || "free") as PlanType;
+  const userPlan = (user?.plan || "trial") as PlanType;
 
   // Получаем информацию об использовании сценариев
   useEffect(() => {
@@ -104,16 +104,16 @@ export default function BillingSettings() {
         <BillingHistoryCard />
       </div>
 
-      {/* Информация о бесплатном доступе */}
-      {userPlan !== 'free' && (
+      {/* Информация о пробном доступе */}
+      {userPlan !== 'trial' && (
         <Alert className="border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-950">
-          <CardTitle className="text-base mb-2">Free</CardTitle>
+          <CardTitle className="text-base mb-2">Trial</CardTitle>
           <AlertDescription className="space-y-2">
             <p>
-              Free — для знакомства с сервисом.
+              Trial — для знакомства с сервисом (доступен 3 дня).
             </p>
             <ul className="list-disc list-inside space-y-1 ml-2">
-              <li>До 3 AI-сценариев в месяц</li>
+              <li>До 50 AI-сценариев в месяц</li>
               <li>Генерация по YouTube-ссылке</li>
               <li>Без кнопок «Обновить» в аналитике</li>
               <li>Без повторной генерации</li>

@@ -3,7 +3,7 @@
  * ИСТОЧНИК ИСТИНЫ для лимитов сценариев и других возможностей
  */
 
-export type PlanType = 'trial' | 'free' | 'basic' | 'professional' | 'enterprise';
+export type PlanType = 'trial' | 'basic' | 'professional' | 'enterprise' | 'expired';
 
 export interface PlanLimits {
   id: PlanType;
@@ -20,13 +20,6 @@ export const PLAN_LIMITS: Record<PlanType, PlanLimits> = {
     price: '0 ₽',
     monthlyScriptLimit: 50,
     description: 'Пробный доступ на 3 дня',
-  },
-  free: {
-    id: 'free',
-    name: 'Free',
-    price: '0 ₽',
-    monthlyScriptLimit: 3,
-    description: 'Для знакомства с сервисом',
   },
   basic: {
     id: 'basic',
@@ -49,6 +42,13 @@ export const PLAN_LIMITS: Record<PlanType, PlanLimits> = {
     monthlyScriptLimit: 300,
     description: 'Для студий и команд',
   },
+  expired: {
+    id: 'expired',
+    name: 'Expired',
+    price: 'Подписка истекла',
+    monthlyScriptLimit: 0,
+    description: 'Подписка истекла. Пожалуйста, выберите новый тариф.',
+  },
 };
 
 /**
@@ -62,5 +62,5 @@ export function getMonthlyScriptLimit(plan: PlanType): number {
  * Получить информацию о плане
  */
 export function getPlanInfo(plan: PlanType): PlanLimits {
-  return PLAN_LIMITS[plan] || PLAN_LIMITS.free;
+  return PLAN_LIMITS[plan] || PLAN_LIMITS.trial;
 }

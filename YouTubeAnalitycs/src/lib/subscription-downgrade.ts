@@ -28,7 +28,7 @@ interface DowngradeContext {
 }
 
 /**
- * ЯВНЫЙ downgrade пользователя в plan='free'
+ * ЯВНЫЙ downgrade пользователя в plan='expired'
  *
  * Используется ТОЛЬКО в следующих случаях:
  * 1. Webhook от YooKassa при платеже (но там используется updateUserPlan)
@@ -50,7 +50,7 @@ export async function downgradeUserToFree(
 
     // Обновляем план в БД
     await db.execute(
-      `UPDATE users SET plan = 'free', expiresAt = NULL, updatedAt = ? WHERE id = ?`,
+      `UPDATE users SET plan = 'expired', expiresAt = NULL, updatedAt = ? WHERE id = ?`,
       [now, context.userId]
     );
 
@@ -91,8 +91,8 @@ export async function shouldDowngradeUser(userId: string): Promise<{
 
     const user = rows[0];
 
-    // Проверяем для платных тарифов и Trial (пропускаем только free)
-    if (user.plan === "free") {
+    // Проверяем для платных тарифов и Trial (пропускаем только expired)
+    if (user.plan === "expired") {
       return { shouldDowngrade: false };
     }
 
@@ -134,7 +134,7 @@ export async function downgradeExpiredSubscriptions(): Promise<{
 
     // Ищем всех пользователей с истёкшей подпиской
     const result = await db.execute(
-      `SELECT id, email FROM users WHERE plan != 'free' AND expiresAt > 0 AND expiresAt < ?`,
+      `SELECT id, email FROM users WHERE plan != 'expired' AND expiresAt > 0 AND expiresAt < ?`,
       [now]
     );
 

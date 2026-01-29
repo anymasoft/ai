@@ -9,7 +9,7 @@ from starlette.staticfiles import StaticFiles
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
 from typing import Optional, List
-from datetime import datetime
+from datetime import datetime, timedelta
 import asyncio
 from telethon import TelegramClient
 from telethon.sessions import StringSession
@@ -95,6 +95,46 @@ def get_task_limit_for_plan(plan: str) -> int:
 def count_user_tasks(user_id: int, db: Session) -> int:
     """Посчитать количество активных задач пользователя"""
     return db.query(Task).filter(Task.user_id == user_id).count()
+
+def check_and_apply_expiration(user: User, db: Session) -> bool:
+    """
+    Проверить истечение тарифа пользователя и применить downgrade если нужно.
+
+    Возвращает True если план был изменён, False если всё в порядке.
+    """
+    now = datetime.utcnow()
+    was_changed = False
+
+    # Проверка 1: Trial истёк?
+    if user.plan == "trial" and user.trial_expires_at and user.trial_expires_at < now:
+        user.plan = "expired"
+        logger.info(f"[TRIAL_EXPIRED] user_id={user.id} trial_expires_at={user.trial_expires_at}")
+        was_changed = True
+
+    # Проверка 2: Платный тариф истёк?
+    elif user.plan in ("start", "pro", "business") and user.paid_until and user.paid_until < now:
+        user.plan = "expired"
+        logger.info(f"[PAID_EXPIRED] user_id={user.id} paid_plan={user.plan} paid_until={user.paid_until}")
+        was_changed = True
+
+    if was_changed:
+        db.commit()
+
+    return was_changed
+
+def ensure_active_subscription(user: User, db: Session):
+    """
+    Проверить и применить expiration, затем убедиться что подписка активна.
+
+    Если подписка истекла → HTTP 403 с понятным сообщением.
+    """
+    check_and_apply_expiration(user, db)
+
+    if user.plan == "expired":
+        raise HTTPException(
+            status_code=403,
+            detail="Подписка истекла. Пожалуйста, выберите тариф."
+        )
 
 # ============== Глобальное хранилище pending клиентов ==============
 # {phone: TelegramClient}
@@ -305,6 +345,9 @@ async def get_task(task_id: int, current_user: User = Depends(get_current_user),
 @app.post("/api/tasks", response_model=TaskResponse)
 async def create_task(task: TaskCreate, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     """Создать новую задачу"""
+    # Проверка: подписка активна?
+    ensure_active_subscription(current_user, db)
+
     # Проверка: максимум 10 каналов в одной задаче
     channels_count = count_channels_in_task(task.sources)
     if channels_count > MAX_CHANNELS_PER_TASK:
@@ -343,6 +386,9 @@ async def create_task(task: TaskCreate, current_user: User = Depends(get_current
 @app.put("/api/tasks/{task_id}", response_model=TaskResponse)
 async def update_task(task_id: int, task: TaskUpdate, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     """Обновить задачу"""
+    # Проверка: подписка активна?
+    ensure_active_subscription(current_user, db)
+
     db_task = db.query(Task).filter(Task.id == task_id, Task.user_id == current_user.id).first()
     if not db_task:
         raise HTTPException(status_code=404, detail="Задача не найдена")
@@ -554,6 +600,9 @@ async def delete_lead(lead_id: int, current_user: User = Depends(get_current_use
 @app.get("/api/user/me")
 async def get_user_me(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     """Получить информацию о текущем пользователе, включая is_admin"""
+    # Проверка: обновить статус если истекло (но не бросать ошибку)
+    check_and_apply_expiration(current_user, db)
+
     # Найти TelegramSession пользователя
     session = db.query(TelegramSession).filter(TelegramSession.user_id == current_user.id).first()
 
@@ -568,7 +617,9 @@ async def get_user_me(current_user: User = Depends(get_current_user), db: Sessio
         "is_admin": is_admin,
         "has_session": session is not None,
         "disabled": current_user.disabled,
-        "plan": current_user.plan
+        "plan": current_user.plan,
+        "trial_expires_at": current_user.trial_expires_at.isoformat() if current_user.trial_expires_at else None,
+        "paid_until": current_user.paid_until.isoformat() if current_user.paid_until else None
     }
 
 @app.get("/api/user/settings", response_model=UserSettingsResponse)
@@ -1040,6 +1091,9 @@ async def create_payment(
     db: Session = Depends(get_db)
 ):
     """Создать платеж в YooKassa"""
+    # Синхронизировать статус подписки (но не блокировать, если истекла)
+    check_and_apply_expiration(current_user, db)
+
     if not YOOKASSA_AVAILABLE:
         raise HTTPException(status_code=503, detail="YooKassa недоступна")
 
@@ -1050,6 +1104,9 @@ async def create_payment(
     amount = PLAN_PRICES[body.plan]
 
     try:
+        # Генерировать idempotence_key для защиты от двойных платежей
+        idempotence_key = str(uuid.uuid4())
+
         # Создать платеж в YooKassa
         payment = YooKassaPayment.create({
             "amount": {
@@ -1061,13 +1118,17 @@ async def create_payment(
                 "return_url": "http://localhost:8000/dashboard"
             },
             "capture": True,
-            "description": f"JobRadar subscription: {body.plan}"
-        })
+            "description": f"JobRadar subscription: {body.plan}",
+            "metadata": {
+                "user_id": current_user.id
+            }
+        }, idempotence_key=idempotence_key)
 
         # Сохранить запись в БД
         db_payment = Payment(
             user_id=current_user.id,
             plan=body.plan,
+            idempotence_key=idempotence_key,
             amount=amount,
             yookassa_payment_id=payment.id,
             status="pending"
@@ -1110,13 +1171,36 @@ async def get_payment_status(
         # Получить статус из YooKassa
         yookassa_payment = YooKassaPayment.find_one(yookassa_payment_id)
 
+        # Сохранить старый статус для однократной активации
+        old_status = db_payment.status
+
         # Обновить статус в БД
         yookassa_status = yookassa_payment.status
         if yookassa_status == "succeeded":
-            db_payment.status = "succeeded"
-            # Активировать тариф для пользователя
-            current_user.plan = db_payment.plan
-            logger.info(f"[PAYMENT_SUCCEEDED] user_id={current_user.id} plan={db_payment.plan}")
+            # ЗАЩИТА: однократная активация платежа
+            # Активируем только если переход из pending → succeeded
+            if old_status != "succeeded":
+                db_payment.status = "succeeded"
+                now = datetime.utcnow()
+                db_payment.activated_at = now
+                db_payment.expires_at = now + timedelta(days=30)
+
+                # Активировать тариф для пользователя
+                current_user.plan = db_payment.plan
+
+                # Установить или продлить paid_until
+                if current_user.paid_until and current_user.paid_until > now:
+                    # Если уже есть активная подписка, продлеваем на 30 дней
+                    current_user.paid_until = current_user.paid_until + timedelta(days=30)
+                    logger.info(f"[PAYMENT_SUCCEEDED_EXTENDED] user_id={current_user.id} plan={db_payment.plan} new_paid_until={current_user.paid_until}")
+                else:
+                    # Новая подписка, начинается с сегодня
+                    current_user.paid_until = now + timedelta(days=30)
+                    logger.info(f"[PAYMENT_SUCCEEDED] user_id={current_user.id} plan={db_payment.plan} paid_until={current_user.paid_until}")
+            else:
+                # Платеж уже был активирован ранее
+                logger.info(f"[PAYMENT_ALREADY_ACTIVATED] user_id={current_user.id} yookassa_id={yookassa_payment_id} (повторный вызов, повторная активация запрещена)")
+
         elif yookassa_status == "canceled":
             db_payment.status = "canceled"
             logger.info(f"[PAYMENT_CANCELED] user_id={current_user.id} yookassa_id={yookassa_payment_id}")
