@@ -3021,11 +3021,11 @@
                     sessionStorage.removeItem('paymentPlan');
                     clearInterval(window.paymentPollingInterval);
 
-                    showToast('✅ Тариф активирован! Перезагружаю страницу...', 'success');
+                    showToast('✅ Тариф активирован! Перенаправляю на тарифы...', 'success');
 
-                    // Перезагрузить страницу через 2 секунды чтобы отобразить новый тариф
+                    // Перенаправить на страницу тарифов через 2 секунды
                     setTimeout(() => {
-                        location.reload();
+                        window.location.href = '/dashboard#billing';
                     }, 2000);
 
                 } else if (data.status === 'canceled') {
