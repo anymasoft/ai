@@ -14,7 +14,7 @@ from datetime import datetime
 
 from config import TELEGRAM_API_ID, TELEGRAM_API_HASH, TELEGRAM_PHONE
 from config import POLLING_INTERVAL_SECONDS, MAX_MESSAGES_PER_CHECK, TARGET_CHANNEL_ID
-from models import Channel, Keyword, FilterRule, Task, Lead, SourceMessage, TelegramSession, TaskSourceState, User
+from models import Channel, Keyword, FilterRule, Task, Lead, SourceMessage, TelegramSession, TaskSourceState
 from database import get_db
 from filter_engine import load_active_filter, match_text
 from telegram_clients import get_user_client, disconnect_all_clients
@@ -356,13 +356,8 @@ async def monitoring_loop_tasks():
             db = get_db()
 
             try:
-                # Получаем все активные задачи (исключая disabled пользователей)
-                tasks = (
-                    db.query(Task)
-                    .join(User)
-                    .filter(Task.status == "running", User.disabled == False)
-                    .all()
-                )
+                # Получаем все активные задачи
+                tasks = db.query(Task).filter(Task.status == "running").all()
 
                 if tasks:
                     # Обрабатываем каждую задачу
@@ -394,12 +389,6 @@ async def process_task_for_leads(task: Task, db: Session):
         task: Объект Task из БД
         db: SQLAlchemy сессия
     """
-    # Проверить что пользователь не отключен
-    user = db.query(User).filter(User.id == task.user_id).first()
-    if not user or user.disabled:
-        logger.info(f"[LEAD] task={task.id} ({task.name}) пользователь отключен или не найден, пропускаем")
-        return
-
     # Парсим sources (может быть comma-separated или newline-separated)
     sources = []
     if task.sources:
