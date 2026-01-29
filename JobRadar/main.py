@@ -1178,7 +1178,7 @@ async def create_payment(
             },
             "confirmation": {
                 "type": "redirect",
-                "return_url": "http://localhost:8000/dashboard"
+                "return_url": "http://localhost:8000/dashboard#billing"
             },
             "capture": True,
             "description": f"JobRadar subscription: {body.plan}",
