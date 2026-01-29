@@ -445,6 +445,9 @@ async def get_all_leads(
     db: Session = Depends(get_db)
 ):
     """Получить найденные лиды текущего пользователя с пагинацией и опциональной фильтрацией по статусу"""
+    # Проверка: подписка активна?
+    ensure_active_subscription(current_user, db)
+
     # Запросить limit + 1 для определения наличия ещё записей
     query = (
         db.query(Lead)
@@ -476,6 +479,9 @@ async def get_all_leads(
 @app.get("/api/leads/task/{task_id}", response_model=List[LeadResponse])
 async def get_task_leads(task_id: int, status: str = None, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     """Получить лиды для конкретной задачи текущего пользователя с опциональной фильтрацией по статусу"""
+    # Проверка: подписка активна?
+    ensure_active_subscription(current_user, db)
+
     task = db.query(Task).filter(Task.id == task_id, Task.user_id == current_user.id).first()
     if not task:
         raise HTTPException(status_code=404, detail="Задача не найдена")
@@ -492,6 +498,9 @@ async def get_task_leads(task_id: int, status: str = None, current_user: User = 
 @app.get("/api/leads/unread-count")
 async def get_unread_count(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     """Получить количество новых лидов (status='new')"""
+    # Проверка: подписка активна?
+    ensure_active_subscription(current_user, db)
+
     unread = (
         db.query(Lead)
         .join(Task)
@@ -504,6 +513,9 @@ async def get_unread_count(current_user: User = Depends(get_current_user), db: S
 @app.get("/api/leads/new/count")
 async def get_new_count(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     """Получить количество новых лидов (status='new')"""
+    # Проверка: подписка активна?
+    ensure_active_subscription(current_user, db)
+
     count = (
         db.query(Lead)
         .join(Task)
@@ -516,6 +528,9 @@ async def get_new_count(current_user: User = Depends(get_current_user), db: Sess
 @app.get("/api/leads/new", response_model=dict)
 async def get_new_leads(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     """Получить последние 5 новых лидов (status='new')"""
+    # Проверка: подписка активна?
+    ensure_active_subscription(current_user, db)
+
     leads = (
         db.query(Lead)
         .join(Task)
@@ -530,6 +545,9 @@ async def get_new_leads(current_user: User = Depends(get_current_user), db: Sess
 @app.post("/api/leads/mark-read")
 async def mark_all_read(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     """Пометить все лиды текущего пользователя как просмотренные"""
+    # Проверка: подписка активна?
+    ensure_active_subscription(current_user, db)
+
     # Получить ID задач пользователя
     task_ids = db.query(Task.id).filter(Task.user_id == current_user.id).all()
     task_ids = [t[0] for t in task_ids]
@@ -547,6 +565,9 @@ async def mark_all_read(current_user: User = Depends(get_current_user), db: Sess
 @app.get("/api/leads/{lead_id}", response_model=LeadResponse)
 async def get_lead(lead_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     """Получить информацию о конкретном лиде"""
+    # Проверка: подписка активна?
+    ensure_active_subscription(current_user, db)
+
     lead = db.query(Lead).filter(Lead.id == lead_id).first()
     if not lead:
         raise HTTPException(status_code=404, detail="Лид не найден")
@@ -561,6 +582,9 @@ async def get_lead(lead_id: int, current_user: User = Depends(get_current_user),
 @app.put("/api/leads/{lead_id}/viewed")
 async def mark_lead_viewed(lead_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     """Пометить лид как просмотренный"""
+    # Проверка: подписка активна?
+    ensure_active_subscription(current_user, db)
+
     lead = db.query(Lead).filter(Lead.id == lead_id).first()
     if not lead:
         raise HTTPException(status_code=404, detail="Лид не найден")
@@ -578,6 +602,9 @@ async def mark_lead_viewed(lead_id: int, current_user: User = Depends(get_curren
 @app.delete("/api/leads/{lead_id}")
 async def delete_lead(lead_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     """Удалить лид"""
+    # Проверка: подписка активна?
+    ensure_active_subscription(current_user, db)
+
     lead = db.query(Lead).filter(Lead.id == lead_id).first()
     if not lead:
         raise HTTPException(status_code=404, detail="Лид не найден")

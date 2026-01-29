@@ -14,7 +14,7 @@ from datetime import datetime, timedelta
 
 from config import TELEGRAM_API_ID, TELEGRAM_API_HASH, TELEGRAM_PHONE
 from config import POLLING_INTERVAL_SECONDS, MAX_MESSAGES_PER_CHECK, TARGET_CHANNEL_ID
-from models import Channel, Keyword, FilterRule, Task, Lead, SourceMessage, TelegramSession, TaskSourceState
+from models import Channel, Keyword, FilterRule, Task, Lead, SourceMessage, TelegramSession, TaskSourceState, User
 from database import get_db
 from filter_engine import load_active_filter, match_text
 from telegram_clients import get_user_client, disconnect_all_clients
@@ -279,6 +279,48 @@ def normalize_channel_ref(input_str: str) -> dict:
 
 
 
+def check_user_subscription(user_id: int, db: Session) -> bool:
+    """
+    Проверить активна ли подписка пользователя.
+
+    Возвращает True если подписка активна, False если истекла.
+    """
+    try:
+        user = db.query(User).filter(User.id == user_id).first()
+        if not user:
+            logger.warning(f"[SUBSCRIPTION_CHECK] user_id={user_id} не найден в БД")
+            return False
+
+        # Проверка Trial
+        now = datetime.utcnow()
+        if user.plan == "trial":
+            if user.trial_expires_at and user.trial_expires_at < now:
+                logger.info(f"[SUBSCRIPTION_CHECK] user_id={user_id} Trial истёк (trial_expires_at={user.trial_expires_at})")
+                user.plan = "expired"
+                db.commit()
+                return False
+            logger.info(f"[SUBSCRIPTION_CHECK] user_id={user_id} Trial активен до {user.trial_expires_at}")
+            return True
+
+        # Проверка платных тарифов
+        if user.plan in ("start", "pro", "business"):
+            if user.paid_until and user.paid_until < now:
+                logger.info(f"[SUBSCRIPTION_CHECK] user_id={user_id} Платный тариф '{user.plan}' истёк (paid_until={user.paid_until})")
+                user.plan = "expired"
+                db.commit()
+                return False
+            logger.info(f"[SUBSCRIPTION_CHECK] user_id={user_id} Тариф '{user.plan}' активен до {user.paid_until}")
+            return True
+
+        # Если plan == "expired" или неизвестный план
+        logger.warning(f"[SUBSCRIPTION_CHECK] user_id={user_id} план '{user.plan}' не активен")
+        return False
+
+    except Exception as e:
+        logger.error(f"[SUBSCRIPTION_CHECK] user_id={user_id} ошибка: {e}")
+        return False
+
+
 async def send_lead_to_telegram(task: Task, lead: Lead, db: Session):
     """
     Отправить найденный лид в личный Telegram пользователя.
@@ -288,6 +330,10 @@ async def send_lead_to_telegram(task: Task, lead: Lead, db: Session):
         lead: Объект Lead из БД
         db: SQLAlchemy сессия
     """
+    # ПРОВЕРКА: Активна ли подписка пользователя?
+    if not check_user_subscription(task.user_id, db):
+        logger.warning(f"[SEND] task={task.id} lead={lead.id} user_id={task.user_id} - подписка истекла, лид не отправляется")
+        return
     try:
         # Получить TelegramSession по user_id из Task (строгая привязка)
         telegram_session = (
