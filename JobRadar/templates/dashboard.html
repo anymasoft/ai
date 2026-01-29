@@ -1612,11 +1612,27 @@
                     credentials: 'include',
                     body: JSON.stringify(taskData)
                 });
-                if (!response.ok) throw new Error('Failed to create task');
+                if (!response.ok) {
+                    let errorMessage = 'Ошибка создания задачи';
+                    try {
+                        const errorData = await response.json();
+                        if (errorData.detail) {
+                            errorMessage = errorData.detail;
+                        }
+                    } catch (e) {
+                        // Если не получилось распарсить JSON, используем status code
+                        if (response.status === 400) {
+                            errorMessage = 'Ошибка валидации. Проверьте количество каналов (максимум 10)';
+                        } else if (response.status === 403) {
+                            errorMessage = 'Вы достигли лимита задач для вашего тарифа';
+                        }
+                    }
+                    throw new Error(errorMessage);
+                }
                 return await response.json();
             } catch (error) {
                 console.error('Error creating task:', error);
-                showToast('Ошибка создания задачи: ' + error.message, 'error');
+                showToast('❌ ' + error.message, 'error');
                 return null;
             }
         }
@@ -1629,11 +1645,27 @@
                     credentials: 'include',
                     body: JSON.stringify(taskData)
                 });
-                if (!response.ok) throw new Error('Failed to update task');
+                if (!response.ok) {
+                    let errorMessage = 'Ошибка обновления задачи';
+                    try {
+                        const errorData = await response.json();
+                        if (errorData.detail) {
+                            errorMessage = errorData.detail;
+                        }
+                    } catch (e) {
+                        // Если не получилось распарсить JSON, используем status code
+                        if (response.status === 400) {
+                            errorMessage = 'Ошибка валидации. Проверьте количество каналов (максимум 10)';
+                        } else if (response.status === 403) {
+                            errorMessage = 'Ошибка доступа. Проверьте лимиты вашего тарифа';
+                        }
+                    }
+                    throw new Error(errorMessage);
+                }
                 return await response.json();
             } catch (error) {
                 console.error('Error updating task:', error);
-                showToast('Ошибка обновления задачи: ' + error.message, 'error');
+                showToast('❌ ' + error.message, 'error');
                 return null;
             }
         }
