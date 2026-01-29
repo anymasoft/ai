@@ -40,7 +40,7 @@ export const authOptions: NextAuthOptions = {
               user.name || user.email.split("@")[0],
               "trial", // Новые пользователи получают Trial тариф
               trialExpiresAt,
-              "free",
+              "trial", // Платёжный провайдер: trial
               now,
               now,
             ]

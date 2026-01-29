@@ -15,7 +15,7 @@ class User(Base):
     id = Column(Integer, primary_key=True)
     phone = Column(String(20), unique=True, nullable=False)  # Нормализованный номер телефона
     disabled = Column(Boolean, default=False)  # Отключен ли пользователь (soft delete)
-    plan = Column(String(50), default="trial")  # Тарифный план (trial, start, pro, business)
+    plan = Column(String(50), default="trial")  # Тарифный план (trial, start, pro, business, expired)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 

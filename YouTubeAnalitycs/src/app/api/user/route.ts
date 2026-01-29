@@ -85,7 +85,7 @@ export async function GET(request: NextRequest) {
       id: user.id,
       email: user.email,
       name: user.name,
-      plan: user.plan || "free",
+      plan: user.plan || "trial",
       expiresAt: user.expiresAt || null,
       paymentProvider: user.paymentProvider || null,
       disabled: user.disabled === 1 || user.disabled === true,

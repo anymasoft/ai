@@ -81,7 +81,7 @@ async function getClient() {
           emailVerified INTEGER,
           image TEXT,
           role TEXT NOT NULL DEFAULT 'user',
-          plan TEXT NOT NULL DEFAULT 'free',
+          plan TEXT NOT NULL DEFAULT 'trial',
           language TEXT NOT NULL DEFAULT 'en',
           disabled INTEGER NOT NULL DEFAULT 0,
           createdAt INTEGER NOT NULL,
@@ -123,7 +123,7 @@ async function getClient() {
 
         // Добавляем колонки для работы с платежами через ЮKassa
         await addColumnIfNotExists(_client, 'users', 'expiresAt', 'INTEGER');
-        await addColumnIfNotExists(_client, 'users', 'paymentProvider', 'TEXT DEFAULT "free"');
+        await addColumnIfNotExists(_client, 'users', 'paymentProvider', 'TEXT DEFAULT "trial"');
 
         // Основные таблицы приложения
         await _client.execute(`CREATE TABLE IF NOT EXISTS competitors (
@@ -602,7 +602,7 @@ async function getClient() {
         // Таблица для переопределения подписок (ручное управление платежами)
         await _client.execute(`CREATE TABLE IF NOT EXISTS admin_subscriptions (
           userId TEXT PRIMARY KEY,
-          plan TEXT DEFAULT 'free',
+          plan TEXT DEFAULT 'trial',
           isPaid INTEGER DEFAULT 0,
           expiresAt INTEGER,
           provider TEXT DEFAULT 'manual',

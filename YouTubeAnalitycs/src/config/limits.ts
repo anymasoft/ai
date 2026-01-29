@@ -10,7 +10,7 @@ export const VIDEO_PAGE_SIZE = 12;
 
 // Максимальное количество видео по тарифам
 export const TIER_VIDEO_LIMITS = {
-  free: 12,           // Только первая порция, без "Load more"
+  trial: 12,          // Только первая порция, без "Load more"
   basic: 12,          // Только первая порция, без "Load more"
   professional: 60,   // До 5 порций (12 × 5)
   enterprise: 150,    // До 12+ порций
@@ -23,7 +23,7 @@ export type UserPlan = keyof typeof TIER_VIDEO_LIMITS;
  * Получает лимит видео для указанного плана
  */
 export function getVideoLimitForPlan(plan: UserPlan): number {
-  return TIER_VIDEO_LIMITS[plan] ?? TIER_VIDEO_LIMITS.free;
+  return TIER_VIDEO_LIMITS[plan] ?? TIER_VIDEO_LIMITS.trial;
 }
 
 /**

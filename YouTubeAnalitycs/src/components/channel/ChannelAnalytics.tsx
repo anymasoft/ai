@@ -71,7 +71,7 @@ export function ChannelAnalytics({
   deepAnalysisData,
   hasVideos,
   hasComments,
-  userPlan = "free",
+  userPlan = "trial",
 }: ChannelAnalyticsProps) {
   // Все разделы закрыты по умолчанию - пользователь видит полный обзор доступных аналитических блоков
   const [expanded, setExpanded] = useState({

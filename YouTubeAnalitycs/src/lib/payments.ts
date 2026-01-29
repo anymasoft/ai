@@ -6,7 +6,7 @@ import { db } from "./db";
 
 interface UpdateUserPlanParams {
   userId: string;
-  plan: "basic" | "professional" | "enterprise" | "free";
+  plan: "trial" | "basic" | "professional" | "enterprise" | "expired";
   expiresAt: number | null;
   paymentProvider?: string;
 }
@@ -90,9 +90,9 @@ export async function getUserPaymentInfo(userId: string): Promise<{
 
     // ЧИСТОЕ ЧТЕНИЕ - БЕЗ ЛОГИКИ DOWNGRADE
     return {
-      plan: user.plan || "free",
+      plan: user.plan || "trial",
       expiresAt: user.expiresAt || null,
-      paymentProvider: user.paymentProvider || "free",
+      paymentProvider: user.paymentProvider || "trial",
     };
   } catch (error) {
     console.error(`[Payments] Error getting user payment info:`, error);
@@ -202,7 +202,7 @@ export async function applySuccessfulPayment(
     // ШАГ 5: Обновляем users (через updateUserPlan)
     await updateUserPlan({
       userId,
-      plan: planId as "basic" | "professional" | "enterprise" | "free",
+      plan: planId as "basic" | "professional" | "enterprise",
       expiresAt,
       paymentProvider: "yookassa",
     });
