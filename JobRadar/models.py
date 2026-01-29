@@ -148,7 +148,7 @@ class Lead(Base):
 
 
 class TaskSourceState(Base):
-    """Модель состояния источника для задачи (отслеживание last_message_id)"""
+    """Модель состояния источника для задачи (отслеживание last_message_id и status)"""
     __tablename__ = "task_source_states"
 
     id = Column(Integer, primary_key=True)
@@ -158,12 +158,18 @@ class TaskSourceState(Base):
     initialized_at = Column(DateTime, default=datetime.utcnow)  # Когда была инициализирована позиция
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
+    # Состояние источника
+    status = Column(String(50), default="ok")  # "ok" | "invalid" | "error"
+    last_error = Column(Text, nullable=True)  # Текст последней ошибки
+    error_count = Column(Integer, default=0)  # Количество ошибок подряд
+    next_retry_at = Column(DateTime, nullable=True)  # Когда повторить попытку (для backoff)
+
     __table_args__ = (
         UniqueConstraint('task_id', 'source', name='uq_task_source'),
     )
 
     def __repr__(self):
-        return f"<TaskSourceState(id={self.id}, task_id={self.task_id}, source={self.source}, last_message_id={self.last_message_id})>"
+        return f"<TaskSourceState(id={self.id}, task_id={self.task_id}, source={self.source}, status={self.status}, last_message_id={self.last_message_id})>"
 
 
 class TelegramSession(Base):

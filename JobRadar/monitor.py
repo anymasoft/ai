@@ -10,7 +10,7 @@ from typing import Optional
 from telethon import TelegramClient
 from telethon.errors import FloodWaitError
 from sqlalchemy.orm import Session
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from config import TELEGRAM_API_ID, TELEGRAM_API_HASH, TELEGRAM_PHONE
 from config import POLLING_INTERVAL_SECONDS, MAX_MESSAGES_PER_CHECK, TARGET_CHANNEL_ID
@@ -437,10 +437,31 @@ async def process_task_for_leads(task: Task, db: Session):
             logger.warning(f"[LEAD] task={task.id} ({task.name}) не удалось нормализировать источник: {raw_source}")
             continue
 
+        # Получить состояние источника
+        task_source_state = (
+            db.query(TaskSourceState)
+            .filter(
+                TaskSourceState.task_id == task.id,
+                TaskSourceState.source == source_username
+            )
+            .first()
+        )
+
+        # Проверка: если источник помечен как invalid, пропускаем его
+        if task_source_state and task_source_state.status == "invalid":
+            # Источник невалиден - пропускаем без логирования (уже залогирован при первой ошибке)
+            continue
+
+        # Проверка: если источник в состоянии error с backoff, пропускаем если еще не пришло время
+        if task_source_state and task_source_state.status == "error" and task_source_state.next_retry_at:
+            if datetime.utcnow() < task_source_state.next_retry_at:
+                # Еще не пришло время повторить - пропускаем без логирования
+                continue
+
         try:
             await check_source_for_task_leads(task, source_username, include_keywords, filter_config, db)
         except Exception as e:
-            logger.error(f"[LEAD] task={task.id} ({task.name}) ошибка при проверке {source_username}: {e}")
+            logger.error(f"[LEAD] task={task.id} ({task.name}) необработанная ошибка при проверке {source_username}: {e}")
             continue
 
 
@@ -475,9 +496,93 @@ async def check_source_for_task_leads(task: Task, source_username: str, include_
             logger.warning(f"[CHECK] task={task.id} source=@{source_username} - Telegram клиент для user_id={task.user_id} не инициализирован")
             return
 
-        # Резолвим источник (source_username уже нормализирован)
-        entity = await client.get_entity(f"@{source_username}")
-        source_chat_id = entity.id
+        # Резолвим источник (source_username уже нормализирован) + обработка ошибок
+        try:
+            entity = await client.get_entity(f"@{source_username}")
+            source_chat_id = entity.id
+        except Exception as resolve_error:
+            # Проверить является ли ошибка типом "не существует/неприемлем"
+            error_str = str(resolve_error)
+            is_invalid = (
+                "Nobody is using this username" in error_str or
+                "username is unacceptable" in error_str
+            )
+
+            if is_invalid:
+                # Получить или создать состояние источника
+                task_source_state = (
+                    db.query(TaskSourceState)
+                    .filter(
+                        TaskSourceState.task_id == task.id,
+                        TaskSourceState.source == source_username
+                    )
+                    .first()
+                )
+
+                if task_source_state and task_source_state.status != "invalid":
+                    # Был переход в invalid - залогируем это
+                    logger.error(f"[SOURCE] task={task.id} source=@{source_username} помечен как INVALID: {error_str[:200]}")
+                elif not task_source_state:
+                    logger.error(f"[SOURCE] task={task.id} source=@{source_username} помечен как INVALID: {error_str[:200]}")
+
+                # Обновить состояние
+                if task_source_state:
+                    task_source_state.status = "invalid"
+                    task_source_state.last_error = error_str[:1000]
+                    task_source_state.error_count += 1
+                    task_source_state.next_retry_at = None
+                    task_source_state.updated_at = datetime.utcnow()
+                else:
+                    task_source_state = TaskSourceState(
+                        task_id=task.id,
+                        source=source_username,
+                        status="invalid",
+                        last_error=error_str[:1000],
+                        error_count=1,
+                        next_retry_at=None
+                    )
+                    db.add(task_source_state)
+
+                db.commit()
+                return
+
+            else:
+                # Временная ошибка - обновить состояние с backoff
+                task_source_state = (
+                    db.query(TaskSourceState)
+                    .filter(
+                        TaskSourceState.task_id == task.id,
+                        TaskSourceState.source == source_username
+                    )
+                    .first()
+                )
+
+                error_count = (task_source_state.error_count + 1) if task_source_state else 1
+                # backoff: 60s, 120s, 240s, 480s, 960s, 1800s, 3600s (max 1 hour)
+                backoff_seconds = min(3600, 60 * (2 ** min(error_count - 1, 6)))
+                next_retry_at = datetime.utcnow() + timedelta(seconds=backoff_seconds)
+
+                logger.warning(f"[SOURCE] task={task.id} source=@{source_username} временная ошибка, retry at {next_retry_at}: {error_str[:200]}")
+
+                if task_source_state:
+                    task_source_state.status = "error"
+                    task_source_state.last_error = error_str[:1000]
+                    task_source_state.error_count = error_count
+                    task_source_state.next_retry_at = next_retry_at
+                    task_source_state.updated_at = datetime.utcnow()
+                else:
+                    task_source_state = TaskSourceState(
+                        task_id=task.id,
+                        source=source_username,
+                        status="error",
+                        last_error=error_str[:1000],
+                        error_count=error_count,
+                        next_retry_at=next_retry_at
+                    )
+                    db.add(task_source_state)
+
+                db.commit()
+                return
 
         # Получаем текущее состояние TaskSourceState для этой пары (task, source)
         task_source_state = (
@@ -605,6 +710,13 @@ async def check_source_for_task_leads(task: Task, source_username: str, include_
         new_last_id = max([msg.id for msg in filtered_messages])
         task_source_state.last_message_id = new_last_id
         task_source_state.updated_at = datetime.utcnow()
+
+        # Сбрасываем статус на "ok" при успешной обработке
+        task_source_state.status = "ok"
+        task_source_state.last_error = None
+        task_source_state.error_count = 0
+        task_source_state.next_retry_at = None
+
         db.commit()
 
         # Логируем только если найдены совпадения
