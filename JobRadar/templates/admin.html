@@ -14,20 +14,36 @@
         }
 
         :root {
-            --primary: #5856d6;
-            --primary-dark: #4c4ab3;
-            --gray-light: #f8f9fa;
-            --gray-bg: #f5f5f5;
-            --gray-border: #e0e0e0;
-            --text-dark: #222;
-            --text-gray: #666;
-            --text-light: #999;
+            /* Landwind color palette */
+            --primary: #7c3aed; /* purple-600 */
+            --primary-light: #a78bfa; /* purple-400 */
+            --primary-dark: #6d28d9; /* purple-700 */
+
+            /* Gray scale */
+            --gray-50: #f9fafb;
+            --gray-100: #f3f4f6;
+            --gray-200: #e5e7eb;
+            --gray-500: #6b7280;
+            --gray-600: #4b5563;
+            --gray-700: #374151;
+            --gray-900: #111827;
+
+            /* Dark mode */
+            --dark-bg: #0f172a;
+            --dark-surface: #1e293b;
+            --dark-border: #334155;
         }
 
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-            background: var(--gray-bg);
-            color: var(--text-dark);
+            background: var(--gray-50);
+            color: var(--gray-900);
+            transition: background-color 0.3s, color 0.3s;
+        }
+
+        body.dark-mode {
+            background: var(--dark-bg);
+            color: #e5e7eb;
         }
 
         .dashboard {
@@ -39,11 +55,17 @@
         .sidebar {
             width: 250px;
             background: white;
-            border-right: 1px solid var(--gray-border);
+            border-right: 1px solid var(--gray-200);
             padding: 1.5rem 0;
             position: fixed;
             height: 100vh;
             overflow-y: auto;
+            transition: background-color 0.3s, border-color 0.3s;
+        }
+
+        body.dark-mode .sidebar {
+            background: var(--dark-surface);
+            border-right-color: var(--dark-border);
         }
 
         .sidebar-brand {
@@ -68,7 +90,7 @@
             align-items: center;
             gap: 0.75rem;
             padding: 0.75rem 1.5rem;
-            color: var(--text-gray);
+            color: var(--gray-600);
             cursor: pointer;
             text-decoration: none;
             border-left: 3px solid transparent;
@@ -76,17 +98,29 @@
             font-size: 0.95rem;
         }
 
+        body.dark-mode .nav-link {
+            color: #cbd5e1;
+        }
+
         .nav-link:hover {
             color: var(--primary);
-            background: rgba(88, 86, 214, 0.05);
+            background: rgba(124, 58, 237, 0.08);
+        }
+
+        body.dark-mode .nav-link:hover {
+            background: rgba(124, 58, 237, 0.15);
         }
 
         .nav-link.active {
             color: var(--primary);
-            background: rgba(88, 86, 214, 0.1);
+            background: rgba(124, 58, 237, 0.12);
             border-left-color: var(--primary);
             border-top: 3px solid var(--primary);
             font-weight: 600;
+        }
+
+        body.dark-mode .nav-link.active {
+            background: rgba(124, 58, 237, 0.2);
         }
 
         /* MAIN */
@@ -99,22 +133,40 @@
 
         .header {
             background: white;
-            border-bottom: 1px solid var(--gray-border);
+            border-bottom: 1px solid var(--gray-200);
             padding: 1rem 2rem;
             display: flex;
             justify-content: space-between;
             align-items: center;
+            transition: background-color 0.3s, border-color 0.3s;
+        }
+
+        body.dark-mode .header {
+            background: var(--dark-surface);
+            border-bottom-color: var(--dark-border);
         }
 
         .header h3 {
             margin: 0;
             font-size: 1.5rem;
+            color: var(--gray-900);
+            transition: color 0.3s;
+        }
+
+        body.dark-mode .header h3 {
+            color: #e5e7eb;
         }
 
         .content {
             flex: 1;
             padding: 2rem;
             overflow-y: auto;
+            background: var(--gray-50);
+            transition: background-color 0.3s;
+        }
+
+        body.dark-mode .content {
+            background: var(--dark-bg);
         }
 
         .card {
@@ -122,7 +174,17 @@
             border-radius: 8px;
             padding: 1.5rem;
             box-shadow: 0 1px 3px rgba(0,0,0,0.05);
-            border: 1px solid var(--gray-border);
+            border: 1px solid var(--gray-200);
+            transition: all 0.3s;
+        }
+
+        body.dark-mode .card {
+            background: var(--dark-surface);
+            border-color: var(--dark-border);
+        }
+
+        .card:hover {
+            border-color: var(--primary);
         }
 
         .stat-value {
@@ -133,8 +195,13 @@
 
         .stat-label {
             font-size: 0.85rem;
-            color: var(--text-gray);
+            color: var(--gray-600);
             margin-top: 0.25rem;
+            transition: color 0.3s;
+        }
+
+        body.dark-mode .stat-label {
+            color: #cbd5e1;
         }
 
         .btn {
@@ -159,21 +226,25 @@
         }
 
         .btn-danger {
-            background: #dc3545;
+            background: #ef4444;
             color: white;
         }
 
         .btn-danger:hover {
-            background: #c82333;
+            background: #dc2626;
         }
 
         .btn-secondary {
-            background: #6c757d;
+            background: var(--gray-600);
             color: white;
         }
 
+        body.dark-mode .btn-secondary {
+            background: #6b7280;
+        }
+
         .btn-secondary:hover {
-            background: #5a6268;
+            background: var(--gray-700);
         }
 
         .input-group {
@@ -185,16 +256,31 @@
         input[type="text"],
         select {
             padding: 0.5rem 0.75rem;
-            border: 1px solid var(--gray-border);
+            border: 1px solid var(--gray-200);
             border-radius: 6px;
             font-size: 0.9rem;
+            background: white;
+            color: var(--gray-900);
+            transition: all 0.3s;
+        }
+
+        body.dark-mode input[type="text"],
+        body.dark-mode select {
+            background: var(--dark-border);
+            border-color: var(--dark-border);
+            color: #e5e7eb;
         }
 
         input[type="text"]:focus,
         select:focus {
             outline: none;
             border-color: var(--primary);
-            box-shadow: 0 0 0 3px rgba(88, 86, 214, 0.1);
+            box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.1);
+        }
+
+        body.dark-mode input[type="text"]:focus,
+        body.dark-mode select:focus {
+            box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.2);
         }
 
         table {
@@ -203,19 +289,33 @@
         }
 
         th {
-            background: var(--gray-light);
+            background: var(--gray-100);
             padding: 0.75rem;
             text-align: left;
             font-weight: 600;
             font-size: 0.85rem;
-            color: var(--text-gray);
-            border-bottom: 1px solid var(--gray-border);
+            color: var(--gray-700);
+            border-bottom: 1px solid var(--gray-200);
+            transition: all 0.3s;
+        }
+
+        body.dark-mode th {
+            background: var(--dark-border);
+            color: #cbd5e1;
+            border-bottom-color: var(--dark-border);
         }
 
         td {
             padding: 0.75rem;
-            border-bottom: 1px solid var(--gray-border);
+            border-bottom: 1px solid var(--gray-200);
             font-size: 0.9rem;
+            color: var(--gray-900);
+            transition: color 0.3s;
+        }
+
+        body.dark-mode td {
+            border-bottom-color: var(--dark-border);
+            color: #e5e7eb;
         }
 
         tr:last-child td {
@@ -246,19 +346,35 @@
             max-width: 500px;
             width: 90%;
             box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+            transition: background-color 0.3s;
+        }
+
+        body.dark-mode .modal-content {
+            background: var(--dark-surface);
         }
 
         .modal-title {
             font-size: 1.25rem;
             font-weight: 700;
             margin-bottom: 1rem;
+            color: var(--gray-900);
+            transition: color 0.3s;
+        }
+
+        body.dark-mode .modal-title {
+            color: #e5e7eb;
         }
 
         .modal-body {
             font-size: 0.9rem;
-            color: var(--text-gray);
+            color: var(--gray-700);
             margin-bottom: 1.5rem;
             line-height: 1.6;
+            transition: color 0.3s;
+        }
+
+        body.dark-mode .modal-body {
+            color: #cbd5e1;
         }
 
         .modal-footer {
@@ -276,18 +392,33 @@
         }
 
         .badge-success {
-            background: #d4edda;
-            color: #155724;
+            background: #d1fae5;
+            color: #065f46;
+        }
+
+        body.dark-mode .badge-success {
+            background: rgba(34, 197, 94, 0.2);
+            color: #4ade80;
         }
 
         .badge-warning {
-            background: #fff3cd;
-            color: #856404;
+            background: #fef3c7;
+            color: #78350f;
+        }
+
+        body.dark-mode .badge-warning {
+            background: rgba(249, 115, 22, 0.2);
+            color: #fb923c;
         }
 
         .badge-danger {
-            background: #f8d7da;
-            color: #721c24;
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
+        body.dark-mode .badge-danger {
+            background: rgba(239, 68, 68, 0.2);
+            color: #f87171;
         }
 
         .pagination {
@@ -300,15 +431,29 @@
 
         .pagination button {
             padding: 0.5rem 0.75rem;
-            border: 1px solid var(--gray-border);
+            border: 1px solid var(--gray-200);
             background: white;
+            color: var(--gray-700);
             cursor: pointer;
             border-radius: 4px;
             font-size: 0.85rem;
+            transition: all 0.3s;
+        }
+
+        body.dark-mode .pagination button {
+            background: var(--dark-border);
+            border-color: var(--dark-border);
+            color: #e5e7eb;
         }
 
         .pagination button:hover {
-            background: var(--gray-light);
+            background: var(--gray-100);
+            border-color: var(--primary);
+            color: var(--primary);
+        }
+
+        body.dark-mode .pagination button:hover {
+            background: rgba(124, 58, 237, 0.15);
         }
 
         .pagination button:disabled {
@@ -345,7 +490,7 @@
 
         <!-- CONTENT -->
         <div class="content">
-            <p style="margin-bottom: 1.5rem; color: var(--text-gray);">Управление пользователями и общая статистика</p>
+            <p style="margin-bottom: 1.5rem; color: #4b5563;">Управление пользователями и общая статистика</p>
 
             <!-- Statistics Cards -->
             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1rem; margin-bottom: 2rem;" id="stats-container">
@@ -408,7 +553,7 @@
                         </thead>
                         <tbody id="usersTable">
                             <tr>
-                                <td colspan="8" style="text-align: center; color: var(--text-light);">Загрузка...</td>
+                                <td colspan="8" style="text-align: center; color: #6b7280;">Загрузка...</td>
                             </tr>
                         </tbody>
                     </table>
@@ -513,7 +658,7 @@
             // Загрузить детали каждого пользователя для получения статуса disabled
             const tbody = document.getElementById("usersTable");
             if (data.users.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="8" style="text-align: center; color: var(--text-light);">Пользователей не найдено</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="8" style="text-align: center; color: #6b7280;">Пользователей не найдено</td></tr>';
             } else {
                 // Получить детали для каждого пользователя
                 const usersWithDetails = await Promise.all(data.users.map(async (user) => {
@@ -594,22 +739,22 @@
                     <p><strong>Создано:</strong> ${formatDate(user.created_at)}</p>
 
                     ${session ? `
-                        <hr style="margin: 1rem 0; border: none; border-top: 1px solid #e0e0e0;">
+                        <hr style="margin: 1rem 0; border: none; border-top: 1px solid #e5e7eb;">
                         <p><strong>Telegram @:</strong> ${session.telegram_username || "—"}</p>
                         <p><strong>Telegram ID:</strong> ${session.telegram_user_id}</p>
                         <p><strong>Уведомления:</strong> ${session.alerts_personal ? '✓ Включены' : '✗ Отключены'}</p>
                     ` : '<p><em>Telegram сессия не найдена</em></p>'}
 
-                    <hr style="margin: 1rem 0; border: none; border-top: 1px solid #e0e0e0;">
+                    <hr style="margin: 1rem 0; border: none; border-top: 1px solid #e5e7eb;">
                     <p><strong>Всего задач:</strong> ${counts.tasks_total}</p>
                     <p><strong>Запущённых:</strong> <span class="badge badge-success">${counts.tasks_running}</span></p>
                     <p><strong>Лидов:</strong> ${counts.leads_total}</p>
 
                     ${tasks.length > 0 ? `
-                        <hr style="margin: 1rem 0; border: none; border-top: 1px solid #e0e0e0;">
+                        <hr style="margin: 1rem 0; border: none; border-top: 1px solid #e5e7eb;">
                         <strong>Последние задачи:</strong>
                         <ul style="margin-top: 0.5rem; font-size: 0.85rem;">
-                            ${tasks.map(t => `<li>• ${t.name} <span style="color: #999;">(${t.status})</span></li>`).join("")}
+                            ${tasks.map(t => `<li>• ${t.name} <span style="color: #6b7280;">(${t.status})</span></li>`).join("")}
                         </ul>
                     ` : ''}
                 </div>
