@@ -19,8 +19,13 @@ class User(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
+    # Поля для управления сроками
+    trial_given = Column(Boolean, default=False)  # Был ли уже выдан trial
+    trial_expires_at = Column(DateTime, nullable=True)  # Когда закончится trial (now + 3 дня)
+    paid_until = Column(DateTime, nullable=True)  # Когда закончится платный тариф (now + 30 дней)
+
     def __repr__(self):
-        return f"<User(id={self.id}, phone={self.phone}, plan={self.plan})>"
+        return f"<User(id={self.id}, phone={self.phone}, plan={self.plan}, trial_expires_at={self.trial_expires_at}, paid_until={self.paid_until})>"
 
 
 class Channel(Base):
@@ -203,5 +208,10 @@ class Payment(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
+    # Поля для управления сроками и идемпотентностью
+    activated_at = Column(DateTime, nullable=True)  # Когда платеж был активирован (succeeded)
+    expires_at = Column(DateTime, nullable=True)  # Когда закончится этот платёж (activated_at + 30 дней)
+    idempotence_key = Column(String(255), unique=True, nullable=True)  # Для защиты от дублей платежей
+
     def __repr__(self):
-        return f"<Payment(id={self.id}, user_id={self.user_id}, plan={self.plan}, status={self.status}, yookassa_id={self.yookassa_payment_id})>"
+        return f"<Payment(id={self.id}, user_id={self.user_id}, plan={self.plan}, status={self.status}, expires_at={self.expires_at}, yookassa_id={self.yookassa_payment_id})>"
