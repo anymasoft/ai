@@ -291,24 +291,59 @@ def check_user_subscription(user_id: int, db: Session) -> bool:
             logger.warning(f"[SUBSCRIPTION_CHECK] user_id={user_id} не найден в БД")
             return False
 
-        # Проверка Trial
         now = datetime.utcnow()
+        logger.info(f"[SUBSCRIPTION_CHECK] user_id={user_id} plan={user.plan} now={now} (тип: {type(now).__name__})")
+
+        # Проверка Trial
         if user.plan == "trial":
-            if user.trial_expires_at and user.trial_expires_at < now:
-                logger.info(f"[SUBSCRIPTION_CHECK] user_id={user_id} Trial истёк (trial_expires_at={user.trial_expires_at})")
-                user.plan = "expired"
-                db.commit()
-                return False
+            logger.info(f"[SUBSCRIPTION_CHECK] trial_expires_at={user.trial_expires_at} (тип: {type(user.trial_expires_at).__name__})")
+
+            if user.trial_expires_at:
+                # Если это строка, парсим вручную
+                if isinstance(user.trial_expires_at, str):
+                    logger.warning(f"[SUBSCRIPTION_CHECK] trial_expires_at - это СТРОКА! Парсим...")
+                    try:
+                        from dateutil import parser as dateutil_parser
+                        expires_dt = dateutil_parser.parse(user.trial_expires_at)
+                    except:
+                        # Альтернативный парсинг
+                        expires_dt = datetime.fromisoformat(user.trial_expires_at.replace('Z', '+00:00'))
+                else:
+                    expires_dt = user.trial_expires_at
+
+                logger.info(f"[SUBSCRIPTION_CHECK] Сравнение: {expires_dt} < {now} = {expires_dt < now}")
+
+                if expires_dt < now:
+                    logger.info(f"[SUBSCRIPTION_CHECK] user_id={user_id} Trial истёк (trial_expires_at={user.trial_expires_at})")
+                    user.plan = "expired"
+                    db.commit()
+                    return False
             logger.info(f"[SUBSCRIPTION_CHECK] user_id={user_id} Trial активен до {user.trial_expires_at}")
             return True
 
         # Проверка платных тарифов
         if user.plan in ("start", "pro", "business"):
-            if user.paid_until and user.paid_until < now:
-                logger.info(f"[SUBSCRIPTION_CHECK] user_id={user_id} Платный тариф '{user.plan}' истёк (paid_until={user.paid_until})")
-                user.plan = "expired"
-                db.commit()
-                return False
+            logger.info(f"[SUBSCRIPTION_CHECK] paid_until={user.paid_until} (тип: {type(user.paid_until).__name__})")
+
+            if user.paid_until:
+                # Если это строка, парсим вручную
+                if isinstance(user.paid_until, str):
+                    logger.warning(f"[SUBSCRIPTION_CHECK] paid_until - это СТРОКА! Парсим...")
+                    try:
+                        from dateutil import parser as dateutil_parser
+                        paid_dt = dateutil_parser.parse(user.paid_until)
+                    except:
+                        paid_dt = datetime.fromisoformat(user.paid_until.replace('Z', '+00:00'))
+                else:
+                    paid_dt = user.paid_until
+
+                logger.info(f"[SUBSCRIPTION_CHECK] Сравнение: {paid_dt} < {now} = {paid_dt < now}")
+
+                if paid_dt < now:
+                    logger.info(f"[SUBSCRIPTION_CHECK] user_id={user_id} Платный тариф '{user.plan}' истёк (paid_until={user.paid_until})")
+                    user.plan = "expired"
+                    db.commit()
+                    return False
             logger.info(f"[SUBSCRIPTION_CHECK] user_id={user_id} Тариф '{user.plan}' активен до {user.paid_until}")
             return True
 
@@ -317,7 +352,7 @@ def check_user_subscription(user_id: int, db: Session) -> bool:
         return False
 
     except Exception as e:
-        logger.error(f"[SUBSCRIPTION_CHECK] user_id={user_id} ошибка: {e}")
+        logger.error(f"[SUBSCRIPTION_CHECK] user_id={user_id} ошибка: {type(e).__name__}: {e}", exc_info=True)
         return False
 
 
