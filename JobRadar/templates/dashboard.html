@@ -1315,64 +1315,63 @@
                 <section id="billing" class="content-section">
                     <div style="background: white; padding: 1.5rem; border-radius: 8px; border: 1px solid #e5e7eb; margin-bottom: 2rem;">
                         <h4 style="margin-bottom: 1rem;">Текущий тариф</h4>
-                        <div style="font-size: 1.5rem; font-weight: 700; color: var(--primary); margin-bottom: 1rem;">Бесплатный</div>
-                        <p style="color: var(--text-light); margin-bottom: 1.5rem;">Вы на бесплатном плане. Обновитесь, чтобы разблокировать больше задач и источников.</p>
-                        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; font-size: 0.9rem; margin-bottom: 1.5rem;">
+                        <div style="font-size: 1.5rem; font-weight: 700; color: var(--primary); margin-bottom: 1rem;">Trial (Бесплатно)</div>
+                        <p style="color: var(--text-light); margin-bottom: 1.5rem;">Пробный период 3 дня. Обновитесь на платный план, чтобы разблокировать больше задач.</p>
+                        <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem; font-size: 0.9rem; margin-bottom: 1.5rem;">
                             <div>
-                                <div style="font-weight: 600;">2/3 Задачи</div>
-                                <div style="color: var(--text-light); font-size: 0.85rem;">Использовано</div>
+                                <div style="font-weight: 600;">1 Задача</div>
+                                <div style="color: var(--text-light); font-size: 0.85rem;">Максимум</div>
                             </div>
                             <div>
-                                <div style="font-weight: 600;">5/10 Источников</div>
-                                <div style="color: var(--text-light); font-size: 0.85rem;">Использовано</div>
-                            </div>
-                            <div>
-                                <div style="font-weight: 600;">10/25 Ключевых слов</div>
-                                <div style="color: var(--text-light); font-size: 0.85rem;">Использовано</div>
+                                <div style="font-weight: 600;">До 10 каналов</div>
+                                <div style="color: var(--text-light); font-size: 0.85rem;">В одной задаче</div>
                             </div>
                         </div>
-                        <button class="btn btn-primary" onclick="showToast('Интеграция платежей в разработке', 'info')">Обновить</button>
+                        <button class="btn btn-primary" onclick="showToast('Интеграция платежей в разработке', 'info')">Обновить на платный</button>
                     </div>
 
-                    <h4 style="margin-bottom: 1rem;">Тарифные планы</h4>
+                    <div style="background: #f0f3ff; padding: 1.5rem; border-radius: 8px; border: 1px solid #d0deff; margin-bottom: 2rem;">
+                        <h4 style="margin-bottom: 0.5rem;">🎯 Начните с Trial</h4>
+                        <p style="color: #5850d6; font-size: 0.95rem; margin: 0;">Бесплатно в течение 3 дней. 1 задача с неограниченным количеством ключевых слов. До 10 каналов в одной задаче. Telegram-уведомления включены.</p>
+                    </div>
+
+                    <h4 style="margin-bottom: 1rem;">Платные тарифные планы</h4>
                     <div class="pricing-grid">
-                        <div class="pricing-card current">
-                            <div class="pricing-badge">Текущий</div>
-                            <div class="pricing-name">Стартер</div>
-                            <div class="pricing-price">Бесплатно</div>
+                        <div class="pricing-card">
+                            <div class="pricing-name">Start</div>
+                            <div class="pricing-price">990 ₽</div>
+                            <div style="color: var(--text-light); margin-bottom: 1rem; font-size: 0.9rem;">в месяц</div>
                             <ul class="pricing-features">
-                                <li>3 Задачи</li>
-                                <li>10 Источников</li>
-                                <li>25 Ключевых слов</li>
-                                <li>Поддержка по почте</li>
+                                <li>1 задача</li>
+                                <li>До 10 каналов в задаче</li>
+                                <li>Telegram-уведомления</li>
                             </ul>
-                            <button class="btn" disabled>Текущий план</button>
+                            <button class="btn btn-primary" onclick="showToast('Интеграция платежей в разработке', 'info')">Выбрать</button>
                         </div>
 
                         <div class="pricing-card">
-                            <div class="pricing-name">Профессиональный</div>
-                            <div class="pricing-price">$29</div>
+                            <div class="pricing-badge">Популярный</div>
+                            <div class="pricing-name">Pro</div>
+                            <div class="pricing-price">1 990 ₽</div>
                             <div style="color: var(--text-light); margin-bottom: 1rem; font-size: 0.9rem;">в месяц</div>
                             <ul class="pricing-features">
-                                <li>20 Задач</li>
-                                <li>100 Источников</li>
-                                <li>500 Ключевых слов</li>
-                                <li>Приоритетная поддержка</li>
+                                <li>До 3 задач</li>
+                                <li>До 10 каналов в каждой задаче</li>
+                                <li>Telegram-уведомления</li>
                             </ul>
-                            <button class="btn btn-primary" onclick="showToast('Интеграция платежей в разработке', 'info')">Обновить</button>
+                            <button class="btn btn-primary" onclick="showToast('Интеграция платежей в разработке', 'info')">Выбрать</button>
                         </div>
 
                         <div class="pricing-card">
-                            <div class="pricing-name">Команда</div>
-                            <div class="pricing-price">$99</div>
+                            <div class="pricing-name">Business</div>
+                            <div class="pricing-price">4 990 ₽</div>
                             <div style="color: var(--text-light); margin-bottom: 1rem; font-size: 0.9rem;">в месяц</div>
                             <ul class="pricing-features">
-                                <li>Неограниченные задачи</li>
-                                <li>Неограниченные источники</li>
-                                <li>Неограниченные ключевые слова</li>
-                                <li>Поддержка 24/7</li>
+                                <li>До 6 задач</li>
+                                <li>До 10 каналов в каждой задаче</li>
+                                <li>Telegram-уведомления</li>
                             </ul>
-                            <button class="btn btn-primary" onclick="showToast('Интеграция платежей в разработке', 'info')">Связаться</button>
+                            <button class="btn btn-primary" onclick="showToast('Интеграция платежей в разработке', 'info')">Выбрать</button>
                         </div>
                     </div>
                 </section>
