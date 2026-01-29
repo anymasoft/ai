@@ -528,7 +528,8 @@ async def get_user_me(current_user: User = Depends(get_current_user), db: Sessio
         "phone": current_user.phone,
         "is_admin": is_admin,
         "has_session": session is not None,
-        "disabled": current_user.disabled
+        "disabled": current_user.disabled,
+        "plan": current_user.plan
     }
 
 @app.get("/api/user/settings", response_model=UserSettingsResponse)
