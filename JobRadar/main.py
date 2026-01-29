@@ -105,16 +105,11 @@ def check_and_apply_expiration(user: User, db: Session) -> bool:
     now = datetime.utcnow()
     was_changed = False
 
-    logger.info(f"[EXPIRATION_CHECK] user_id={user.id} plan={user.plan} now={now} (тип: {type(now).__name__})")
-
     # Проверка 1: Trial истёк?
     if user.plan == "trial":
-        logger.info(f"[EXPIRATION_CHECK] trial_expires_at={user.trial_expires_at} (тип: {type(user.trial_expires_at).__name__})")
-
         if user.trial_expires_at:
             # Если это строка, парсим вручную
             if isinstance(user.trial_expires_at, str):
-                logger.warning(f"[EXPIRATION_CHECK] trial_expires_at - это СТРОКА! Парсим...")
                 try:
                     from dateutil import parser as dateutil_parser
                     expires_dt = dateutil_parser.parse(user.trial_expires_at)
@@ -123,8 +118,6 @@ def check_and_apply_expiration(user: User, db: Session) -> bool:
             else:
                 expires_dt = user.trial_expires_at
 
-            logger.info(f"[EXPIRATION_CHECK] Сравнение Trial: {expires_dt} < {now} = {expires_dt < now}")
-
             if expires_dt < now:
                 user.plan = "expired"
                 logger.info(f"[TRIAL_EXPIRED] user_id={user.id} trial_expires_at={user.trial_expires_at}")
@@ -132,12 +125,9 @@ def check_and_apply_expiration(user: User, db: Session) -> bool:
 
     # Проверка 2: Платный тариф истёк?
     elif user.plan in ("start", "pro", "business"):
-        logger.info(f"[EXPIRATION_CHECK] paid_until={user.paid_until} (тип: {type(user.paid_until).__name__})")
-
         if user.paid_until:
             # Если это строка, парсим вручную
             if isinstance(user.paid_until, str):
-                logger.warning(f"[EXPIRATION_CHECK] paid_until - это СТРОКА! Парсим...")
                 try:
                     from dateutil import parser as dateutil_parser
                     paid_dt = dateutil_parser.parse(user.paid_until)
@@ -146,16 +136,10 @@ def check_and_apply_expiration(user: User, db: Session) -> bool:
             else:
                 paid_dt = user.paid_until
 
-            logger.info(f"[EXPIRATION_CHECK] Сравнение Paid: {paid_dt} < {now} = {paid_dt < now}")
-
             if paid_dt < now:
                 user.plan = "expired"
                 logger.info(f"[PAID_EXPIRED] user_id={user.id} paid_plan={user.plan} paid_until={user.paid_until}")
                 was_changed = True
-
-    else:
-        # План уже истек или неизвестный план
-        logger.info(f"[EXPIRATION_CHECK] user_id={user.id} план '{user.plan}' уже истёк или неизвестен - доступ заблокирован")
 
     if was_changed:
         db.commit()
