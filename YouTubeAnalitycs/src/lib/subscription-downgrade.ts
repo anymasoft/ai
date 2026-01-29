@@ -91,7 +91,7 @@ export async function shouldDowngradeUser(userId: string): Promise<{
 
     const user = rows[0];
 
-    // Проверяем только для платных тарифов
+    // Проверяем для платных тарифов и Trial (пропускаем только free)
     if (user.plan === "free") {
       return { shouldDowngrade: false };
     }
