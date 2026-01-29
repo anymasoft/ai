@@ -11,6 +11,7 @@ from pydantic import BaseModel
 from typing import Optional, List
 from datetime import datetime, timedelta
 import asyncio
+from dateutil import parser as dateutil_parser
 from telethon import TelegramClient
 from telethon.sessions import StringSession
 from telethon.errors import SessionPasswordNeededError
@@ -111,7 +112,6 @@ def check_and_apply_expiration(user: User, db: Session) -> bool:
             # Если это строка, парсим вручную
             if isinstance(user.trial_expires_at, str):
                 try:
-                    from dateutil import parser as dateutil_parser
                     expires_dt = dateutil_parser.parse(user.trial_expires_at)
                 except:
                     expires_dt = datetime.fromisoformat(user.trial_expires_at.replace('Z', '+00:00'))
@@ -129,7 +129,6 @@ def check_and_apply_expiration(user: User, db: Session) -> bool:
             # Если это строка, парсим вручную
             if isinstance(user.paid_until, str):
                 try:
-                    from dateutil import parser as dateutil_parser
                     paid_dt = dateutil_parser.parse(user.paid_until)
                 except:
                     paid_dt = datetime.fromisoformat(user.paid_until.replace('Z', '+00:00'))
