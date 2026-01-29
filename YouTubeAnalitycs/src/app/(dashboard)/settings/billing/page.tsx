@@ -99,6 +99,7 @@ export default function BillingSettings() {
           monthlyUsed={scriptUsage?.monthlyUsed || 0}
           monthlyLimit={scriptUsage?.monthlyLimit || 0}
           percentageUsed={scriptUsage?.percentageUsed || 0}
+          expiresAt={user?.expiresAt || null}
         />
         <BillingHistoryCard />
       </div>

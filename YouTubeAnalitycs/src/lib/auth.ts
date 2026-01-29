@@ -27,15 +27,22 @@ export const authOptions: NextAuthOptions = {
         const rows = Array.isArray(existing) ? existing : existing.rows || [];
 
         if (rows.length === 0) {
-          // Создаём нового пользователя в БД
+          // Создаём нового пользователя в БД с Trial тарифом на 3 дня
+          const now = Math.floor(Date.now() / 1000);
+          const threeDaysInSeconds = 3 * 24 * 60 * 60; // 259,200 секунд
+          const trialExpiresAt = now + threeDaysInSeconds;
+
           await db.execute(
-            "INSERT INTO users (id, email, name, createdAt, updatedAt) VALUES (?, ?, ?, ?, ?)",
+            "INSERT INTO users (id, email, name, plan, expiresAt, paymentProvider, createdAt, updatedAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
             [
               user.id,
               user.email,
               user.name || user.email.split("@")[0],
-              Math.floor(Date.now() / 1000),
-              Math.floor(Date.now() / 1000),
+              "trial", // Новые пользователи получают Trial тариф
+              trialExpiresAt,
+              "free",
+              now,
+              now,
             ]
           );
         } else {

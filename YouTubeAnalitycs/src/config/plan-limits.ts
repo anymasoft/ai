@@ -3,7 +3,7 @@
  * ИСТОЧНИК ИСТИНЫ для лимитов сценариев и других возможностей
  */
 
-export type PlanType = 'free' | 'basic' | 'professional' | 'enterprise';
+export type PlanType = 'trial' | 'free' | 'basic' | 'professional' | 'enterprise';
 
 export interface PlanLimits {
   id: PlanType;
@@ -14,6 +14,13 @@ export interface PlanLimits {
 }
 
 export const PLAN_LIMITS: Record<PlanType, PlanLimits> = {
+  trial: {
+    id: 'trial',
+    name: 'Trial',
+    price: '0 ₽',
+    monthlyScriptLimit: 50,
+    description: 'Пробный доступ на 3 дня',
+  },
   free: {
     id: 'free',
     name: 'Free',

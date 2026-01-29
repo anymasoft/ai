@@ -32,17 +32,20 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Импортируем БД
+    // Импортируем БД и функции для проверки подписки
     const { db } = await import("@/lib/db");
+    const { shouldDowngradeUser, downgradeUserToFree } = await import(
+      "@/lib/subscription-downgrade"
+    );
 
     // КРИТИЧЕСКОЕ: Читаем НАПРЯМУЮ ИЗ БД, БЕЗ кэширования
-    const result = await db.execute(
+    let result = await db.execute(
       `SELECT id, email, name, plan, expiresAt, paymentProvider, disabled
        FROM users WHERE id = ?`,
       [session.user.id]
     );
 
-    const rows = Array.isArray(result) ? result : result.rows || [];
+    let rows = Array.isArray(result) ? result : result.rows || [];
 
     if (rows.length === 0) {
       // Пользователь не найден в БД (что-то пошло не так)
@@ -53,7 +56,29 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const user = rows[0];
+    let user = rows[0];
+
+    // ПРОВЕРКА ИСТЕЧЕНИЯ: Если тариф истёк, автоматически downgrade
+    const downgradeCheck = await shouldDowngradeUser(session.user.id);
+    if (downgradeCheck.shouldDowngrade) {
+      console.log(
+        `[GET /api/user] User ${session.user.id} subscription expired, performing downgrade`
+      );
+      await downgradeUserToFree({
+        userId: session.user.id,
+        reason: "expired",
+        details: "Subscription expiration detected at API read time",
+      });
+
+      // Перечитываем данные пользователя после downgrade
+      result = await db.execute(
+        `SELECT id, email, name, plan, expiresAt, paymentProvider, disabled
+         FROM users WHERE id = ?`,
+        [session.user.id]
+      );
+      rows = Array.isArray(result) ? result : result.rows || [];
+      user = rows[0];
+    }
 
     // Нормализуем данные
     return NextResponse.json({
