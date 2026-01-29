@@ -1,0 +1,46 @@
+# Виртуальное окружение
+venv/
+env/
+ENV/
+.venv
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+dist/
+build/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Окружение
+.env
+.env.local
+.env.*.local
+!.env.example
+
+# БД
+*.db
+*.sqlite
+*.sqlite3
+
+# Telegram сессии
+*.session
+*.session-journal
+
+# Логи
+*.log
+logs/
+
+# Временные файлы
+tmp/
+temp/
+*.tmp
