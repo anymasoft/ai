@@ -153,6 +153,10 @@ def check_and_apply_expiration(user: User, db: Session) -> bool:
                 logger.info(f"[PAID_EXPIRED] user_id={user.id} paid_plan={user.plan} paid_until={user.paid_until}")
                 was_changed = True
 
+    else:
+        # План уже истек или неизвестный план
+        logger.info(f"[EXPIRATION_CHECK] user_id={user.id} план '{user.plan}' уже истёк или неизвестен - доступ заблокирован")
+
     if was_changed:
         db.commit()
 

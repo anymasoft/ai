@@ -348,7 +348,7 @@ def check_user_subscription(user_id: int, db: Session) -> bool:
             return True
 
         # Если plan == "expired" или неизвестный план
-        logger.warning(f"[SUBSCRIPTION_CHECK] user_id={user_id} план '{user.plan}' не активен")
+        logger.info(f"[SUBSCRIPTION_CHECK] user_id={user_id} план '{user.plan}' уже истёк или неизвестен - доступ заблокирован")
         return False
 
     except Exception as e:
