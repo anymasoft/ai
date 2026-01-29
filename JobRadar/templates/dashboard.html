@@ -1356,7 +1356,7 @@
                                 <li>До 10 каналов в задаче</li>
                                 <li>Telegram-уведомления</li>
                             </ul>
-                            <button class="btn btn-primary" onclick="showToast('Интеграция платежей в разработке', 'info')">Выбрать</button>
+                            <button class="btn btn-primary" onclick="initiatePayment('start')">Оплатить</button>
                         </div>
 
                         <div class="pricing-card">
@@ -1369,7 +1369,7 @@
                                 <li>До 10 каналов в каждой задаче</li>
                                 <li>Telegram-уведомления</li>
                             </ul>
-                            <button class="btn btn-primary" onclick="showToast('Интеграция платежей в разработке', 'info')">Выбрать</button>
+                            <button class="btn btn-primary" onclick="initiatePayment('pro')">Оплатить</button>
                         </div>
 
                         <div class="pricing-card">
@@ -1381,7 +1381,7 @@
                                 <li>До 10 каналов в каждой задаче</li>
                                 <li>Telegram-уведомления</li>
                             </ul>
-                            <button class="btn btn-primary" onclick="showToast('Интеграция платежей в разработке', 'info')">Выбрать</button>
+                            <button class="btn btn-primary" onclick="initiatePayment('business')">Оплатить</button>
                         </div>
                     </div>
                 </section>
@@ -1792,6 +1792,18 @@
         // При загрузке страницы - восстановить вкладку из hash
         document.addEventListener('DOMContentLoaded', async () => {
             await handleHashChange();
+
+            // Проверить если пользователь вернулся после оплаты
+            const paymentId = sessionStorage.getItem('paymentId');
+            if (paymentId) {
+                showToast('⏳ Проверяю статус платежа...', 'info');
+                // Начать polling каждые 3 секунды
+                window.paymentPollingInterval = setInterval(() => {
+                    pollPaymentStatus(paymentId);
+                }, 3000);
+                // Первая проверка сразу
+                await pollPaymentStatus(paymentId);
+            }
         });
 
         // ==================== TASK MANAGEMENT ====================
@@ -2952,6 +2964,84 @@
                 switchToSection(targetSection);
             }
         })();
+
+        // ============== Платежи ==============
+
+        async function initiatePayment(plan) {
+            try {
+                showToast('⏳ Инициирую платеж...', 'info');
+
+                // Создать платеж на сервере
+                const response = await fetch('/api/payments/create', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
+                    body: JSON.stringify({ plan: plan })
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.detail || 'Ошибка создания платежа');
+                }
+
+                const data = await response.json();
+                const yookassaPaymentId = data.yookassa_payment_id;
+                const confirmationUrl = data.confirmation_url;
+
+                showToast('✅ Перенаправляю на оплату...', 'success');
+
+                // Сохранить ID платежа в sessionStorage для polling после возврата
+                sessionStorage.setItem('paymentId', yookassaPaymentId);
+                sessionStorage.setItem('paymentPlan', plan);
+
+                // Перенаправить на YooKassa
+                setTimeout(() => {
+                    window.location.href = confirmationUrl;
+                }, 1000);
+
+            } catch (error) {
+                console.error('Payment error:', error);
+                showToast('❌ ' + error.message, 'error');
+            }
+        }
+
+        async function pollPaymentStatus(paymentId) {
+            try {
+                const response = await fetch(`/api/payments/status/${paymentId}`, {
+                    credentials: 'include'
+                });
+
+                if (!response.ok) throw new Error('Payment status check failed');
+
+                const data = await response.json();
+
+                if (data.status === 'succeeded') {
+                    // Платеж успешно обработан
+                    sessionStorage.removeItem('paymentId');
+                    sessionStorage.removeItem('paymentPlan');
+                    clearInterval(window.paymentPollingInterval);
+
+                    showToast('✅ Тариф активирован! Перезагружаю страницу...', 'success');
+
+                    // Перезагрузить страницу через 2 секунды чтобы отобразить новый тариф
+                    setTimeout(() => {
+                        location.reload();
+                    }, 2000);
+
+                } else if (data.status === 'canceled') {
+                    // Платеж отменен
+                    sessionStorage.removeItem('paymentId');
+                    sessionStorage.removeItem('paymentPlan');
+                    clearInterval(window.paymentPollingInterval);
+                    showToast('❌ Платеж отменен', 'error');
+                }
+                // Если pending - продолжаем polling
+
+            } catch (error) {
+                console.error('Payment polling error:', error);
+                // Продолжаем polling при ошибке
+            }
+        }
 
         // Получить информацию о тарифном плане
         function getPlanInfo(plan) {

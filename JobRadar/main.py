@@ -1,6 +1,7 @@
 import os
 import json
 import logging
+import uuid
 from fastapi import FastAPI, HTTPException, Depends, Request, Cookie
 from fastapi.responses import FileResponse, RedirectResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
@@ -15,8 +16,17 @@ from telethon.sessions import StringSession
 from telethon.errors import SessionPasswordNeededError
 from config import TELEGRAM_API_ID, TELEGRAM_API_HASH, TELEGRAM_ADMIN_ID
 
+# YooKassa
+try:
+    from yookassa import Configuration, Payment as YooKassaPayment
+    YOOKASSA_AVAILABLE = True
+except ImportError:
+    YOOKASSA_AVAILABLE = False
+    logger_startup = logging.getLogger(__name__)
+    logger_startup.warning("⚠️ YooKassa SDK не установлена. Установите: pip install yookassa")
+
 from database import SessionLocal, init_db
-from models import Task, Lead, User, TelegramSession
+from models import Task, Lead, User, TelegramSession, Payment
 from telegram_auth import save_session_to_db
 from telegram_clients import disconnect_all_clients, disconnect_user_client
 import monitor
@@ -40,6 +50,20 @@ if not logger.handlers:
     logger.addHandler(console_handler)
 
 app = FastAPI()
+
+# ============== Конфигурация YooKassa ==============
+if YOOKASSA_AVAILABLE:
+    YOOKASSA_SHOP_ID = os.getenv("YOOKASSA_SHOP_ID")
+    YOOKASSA_API_KEY = os.getenv("YOOKASSA_API_KEY")
+
+    if YOOKASSA_SHOP_ID and YOOKASSA_API_KEY:
+        Configuration.account_id = YOOKASSA_SHOP_ID
+        Configuration.secret_key = YOOKASSA_API_KEY
+        logger = logging.getLogger(__name__)
+        logger.info("✅ YooKassa конфигурирована")
+    else:
+        logger = logging.getLogger(__name__)
+        logger.warning("⚠️ YOOKASSA_SHOP_ID или YOOKASSA_API_KEY не установлены")
 
 # ============== Лимиты тарифных планов ==============
 MAX_CHANNELS_PER_TASK = 10
@@ -224,6 +248,21 @@ class AuthCodeRequest(BaseModel):
 class AuthPasswordRequest(BaseModel):
     phone: str
     password: str
+
+class PaymentCreateRequest(BaseModel):
+    plan: str  # "start" | "pro" | "business"
+
+class PaymentStatusResponse(BaseModel):
+    status: str  # "pending" | "succeeded" | "canceled"
+    yookassa_payment_id: str
+
+# ============== Тарифы и платежи ==============
+
+PLAN_PRICES = {
+    "start": "990.00",
+    "pro": "1990.00",
+    "business": "4990.00"
+}
 
 # ============== API Endpoints ==============
 
@@ -991,6 +1030,110 @@ async def admin_delete_user(
 
     logger.info(f"[ADMIN] user_id={user.id} - Пользователь удален (soft delete)")
     return {"ok": True}
+
+# ============== API для платежей ==============
+
+@app.post("/api/payments/create")
+async def create_payment(
+    body: PaymentCreateRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Создать платеж в YooKassa"""
+    if not YOOKASSA_AVAILABLE:
+        raise HTTPException(status_code=503, detail="YooKassa недоступна")
+
+    # Валидация плана
+    if body.plan not in PLAN_PRICES:
+        raise HTTPException(status_code=400, detail=f"Неверный план: {body.plan}")
+
+    amount = PLAN_PRICES[body.plan]
+
+    try:
+        # Создать платеж в YooKassa
+        payment = YooKassaPayment.create({
+            "amount": {
+                "value": amount,
+                "currency": "RUB"
+            },
+            "confirmation": {
+                "type": "redirect",
+                "return_url": "http://localhost:8000/dashboard"
+            },
+            "capture": True,
+            "description": f"JobRadar subscription: {body.plan}"
+        })
+
+        # Сохранить запись в БД
+        db_payment = Payment(
+            user_id=current_user.id,
+            plan=body.plan,
+            amount=amount,
+            yookassa_payment_id=payment.id,
+            status="pending"
+        )
+        db.add(db_payment)
+        db.commit()
+        db.refresh(db_payment)
+
+        logger.info(f"[PAYMENT] user_id={current_user.id} plan={body.plan} yookassa_id={payment.id}")
+
+        return {
+            "confirmation_url": payment.confirmation.confirmation_url,
+            "yookassa_payment_id": payment.id
+        }
+
+    except Exception as e:
+        logger.error(f"[PAYMENT_ERROR] user_id={current_user.id} error={str(e)}")
+        raise HTTPException(status_code=500, detail=f"Ошибка создания платежа: {str(e)}")
+
+@app.get("/api/payments/status/{yookassa_payment_id}")
+async def get_payment_status(
+    yookassa_payment_id: str,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Получить статус платежа"""
+    if not YOOKASSA_AVAILABLE:
+        raise HTTPException(status_code=503, detail="YooKassa недоступна")
+
+    try:
+        # Получить платеж из БД
+        db_payment = db.query(Payment).filter(
+            Payment.yookassa_payment_id == yookassa_payment_id,
+            Payment.user_id == current_user.id
+        ).first()
+
+        if not db_payment:
+            raise HTTPException(status_code=404, detail="Платеж не найден")
+
+        # Получить статус из YooKassa
+        yookassa_payment = YooKassaPayment.find_one(yookassa_payment_id)
+
+        # Обновить статус в БД
+        yookassa_status = yookassa_payment.status
+        if yookassa_status == "succeeded":
+            db_payment.status = "succeeded"
+            # Активировать тариф для пользователя
+            current_user.plan = db_payment.plan
+            logger.info(f"[PAYMENT_SUCCEEDED] user_id={current_user.id} plan={db_payment.plan}")
+        elif yookassa_status == "canceled":
+            db_payment.status = "canceled"
+            logger.info(f"[PAYMENT_CANCELED] user_id={current_user.id} yookassa_id={yookassa_payment_id}")
+
+        db.commit()
+
+        return {
+            "status": db_payment.status,
+            "yookassa_payment_id": yookassa_payment_id,
+            "plan": db_payment.plan
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"[PAYMENT_STATUS_ERROR] user_id={current_user.id} error={str(e)}")
+        raise HTTPException(status_code=500, detail=f"Ошибка получения статуса платежа: {str(e)}")
 
 @app.post("/api/logout")
 async def logout(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
