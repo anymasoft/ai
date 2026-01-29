@@ -182,3 +182,20 @@ class TelegramSession(Base):
 
     def __repr__(self):
         return f"<TelegramSession(id={self.id}, user_id={self.user_id}, phone={self.phone}, telegram_id={self.telegram_user_id})>"
+
+
+class Payment(Base):
+    """Модель платежа через YooKassa"""
+    __tablename__ = "payments"
+
+    id = Column(Integer, primary_key=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)  # Пользователь, оплативший
+    plan = Column(String(50), nullable=False)  # Тарифный план (start, pro, business)
+    amount = Column(String(10), nullable=False)  # Сумма (990.00, 1990.00, 4990.00)
+    yookassa_payment_id = Column(String(255), unique=True, nullable=False)  # ID платежа в YooKassa
+    status = Column(String(50), default="pending")  # pending | succeeded | canceled
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    def __repr__(self):
+        return f"<Payment(id={self.id}, user_id={self.user_id}, plan={self.plan}, status={self.status}, yookassa_id={self.yookassa_payment_id})>"
