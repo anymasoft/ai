@@ -1805,6 +1805,9 @@
         document.addEventListener('DOMContentLoaded', async () => {
             await handleHashChange();
 
+            // Инициализировать закрытие модальных окон при клике на backdrop
+            initializeModalBackdropHandlers();
+
             // Проверить если пользователь вернулся после оплаты
             const paymentId = sessionStorage.getItem('paymentId');
             if (paymentId) {
@@ -1817,6 +1820,30 @@
                 await pollPaymentStatus(paymentId);
             }
         });
+
+        // ==================== MODAL BACKDROP HANDLERS ====================
+        // Инициализировать обработчики клика по фону модальных окон
+        function initializeModalBackdropHandlers() {
+            // Task Modal
+            const taskModal = document.getElementById('task-modal');
+            if (taskModal) {
+                taskModal.addEventListener('click', function(event) {
+                    if (event.target === this) {
+                        closeTaskModal();
+                    }
+                });
+            }
+
+            // Delete Dialog Overlay
+            const deleteDialog = document.getElementById('delete-dialog-overlay');
+            if (deleteDialog) {
+                deleteDialog.addEventListener('click', function(event) {
+                    if (event.target === this) {
+                        closeDeleteDialog();
+                    }
+                });
+            }
+        }
 
         // ==================== TASK MANAGEMENT ====================
         let currentEditTaskId = null;

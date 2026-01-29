@@ -616,9 +616,45 @@
 
     // Load stats on page load
     document.addEventListener("DOMContentLoaded", async () => {
+        // Инициализировать обработчики клика по фону модальных окон
+        initializeModalBackdropHandlersAdmin();
+
         await loadStats();
         await loadUsers();
     });
+
+    // Инициализировать обработчики клика по фону модальных окон в админке
+    function initializeModalBackdropHandlersAdmin() {
+        // Details Modal
+        const detailsModal = document.getElementById('detailsModal');
+        if (detailsModal) {
+            detailsModal.addEventListener('click', function(event) {
+                if (event.target === this) {
+                    closeModal();
+                }
+            });
+        }
+
+        // Action Modal
+        const actionModal = document.getElementById('actionModal');
+        if (actionModal) {
+            actionModal.addEventListener('click', function(event) {
+                if (event.target === this) {
+                    closeActionModal();
+                }
+            });
+        }
+
+        // Alert Modal
+        const alertModal = document.getElementById('alertModal');
+        if (alertModal) {
+            alertModal.addEventListener('click', function(event) {
+                if (event.target === this) {
+                    closeAlertModal();
+                }
+            });
+        }
+    }
 
     async function loadStats() {
         try {
