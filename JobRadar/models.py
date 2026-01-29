@@ -14,6 +14,7 @@ class User(Base):
 
     id = Column(Integer, primary_key=True)
     phone = Column(String(20), unique=True, nullable=False)  # Нормализованный номер телефона
+    disabled = Column(Boolean, default=False)  # Отключен ли пользователь (soft delete)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
@@ -173,6 +174,7 @@ class TelegramSession(Base):
     phone = Column(String(20), unique=True, nullable=False)  # Номер телефона
     session_string = Column(Text, nullable=False)  # StringSession строка (текст)
     telegram_user_id = Column(BigInteger, nullable=True)  # Telegram ID пользователя
+    telegram_username = Column(String(255), nullable=True)  # Telegram @username пользователя (без @)
     alerts_personal = Column(Boolean, default=True)  # Присылать лиды в личный чат
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)

@@ -13,12 +13,12 @@ import asyncio
 from telethon import TelegramClient
 from telethon.sessions import StringSession
 from telethon.errors import SessionPasswordNeededError
-from config import TELEGRAM_API_ID, TELEGRAM_API_HASH
+from config import TELEGRAM_API_ID, TELEGRAM_API_HASH, TELEGRAM_ADMIN_ID
 
 from database import SessionLocal, init_db
 from models import Task, Lead, User, TelegramSession
 from telegram_auth import save_session_to_db
-from telegram_clients import disconnect_all_clients
+from telegram_clients import disconnect_all_clients, disconnect_user_client
 import monitor
 
 # ============== Отключить мусорные логи ==============
@@ -100,6 +100,25 @@ def get_current_user(
     if not user:
         raise HTTPException(status_code=401, detail="Пользователь не найден в БД")
     return user
+
+# Helper для проверки что пользователь - админ
+def require_admin(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+) -> User:
+    """Проверить что текущий пользователь - админ"""
+    # Найти TelegramSession пользователя
+    session = db.query(TelegramSession).filter(TelegramSession.user_id == current_user.id).first()
+
+    # Если нет сессии или нет telegram_user_id -> не админ
+    if not session or not session.telegram_user_id:
+        raise HTTPException(status_code=403, detail="Доступ запрещен")
+
+    # Проверить что telegram_user_id == TELEGRAM_ADMIN_ID
+    if session.telegram_user_id != TELEGRAM_ADMIN_ID:
+        raise HTTPException(status_code=403, detail="Доступ запрещен")
+
+    return current_user
 
 # Pydantic модели для API
 class TaskCreate(BaseModel):
@@ -435,6 +454,24 @@ async def delete_lead(lead_id: int, current_user: User = Depends(get_current_use
 
 # ============== API для пользовательских настроек ==============
 
+@app.get("/api/user/me")
+async def get_user_me(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """Получить информацию о текущем пользователе, включая is_admin"""
+    # Найти TelegramSession пользователя
+    session = db.query(TelegramSession).filter(TelegramSession.user_id == current_user.id).first()
+
+    # Определить is_admin
+    is_admin = False
+    if session and session.telegram_user_id and session.telegram_user_id == TELEGRAM_ADMIN_ID:
+        is_admin = True
+
+    return {
+        "id": current_user.id,
+        "phone": current_user.phone,
+        "is_admin": is_admin,
+        "has_session": session is not None
+    }
+
 @app.get("/api/user/settings", response_model=UserSettingsResponse)
 async def get_user_settings(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     """Получить пользовательские настройки"""
@@ -626,8 +663,8 @@ async def auth_save(request: AuthStartRequest):
             raise
 
         try:
-            # Сохранить в БД с telegram_user_id
-            success = await save_session_to_db(phone, session_string, me.id)
+            # Сохранить в БД с telegram_user_id и telegram_username
+            success = await save_session_to_db(phone, session_string, me.id, me.username)
             if not success:
                 raise Exception("Ошибка при сохранении в БД")
         except Exception as e:
@@ -655,6 +692,202 @@ async def auth_save(request: AuthStartRequest):
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
+
+# ============== Admin endpoints ==============
+
+@app.get("/admin")
+async def admin_page(current_user: User = Depends(require_admin)):
+    """Админ-панель"""
+    return FileResponse(os.path.join(BASE_DIR, "templates/admin.html"))
+
+@app.get("/admin/api/stats")
+async def admin_stats(current_user: User = Depends(require_admin), db: Session = Depends(get_db)):
+    """Админская статистика по всей системе"""
+    users_total = db.query(User).count()
+    users_with_session = db.query(TelegramSession).filter(TelegramSession.telegram_user_id.isnot(None)).distinct(TelegramSession.user_id).count()
+    tasks_total = db.query(Task).count()
+    tasks_running = db.query(Task).filter(Task.status == "running").count()
+    active_users = db.query(Task.user_id).filter(Task.status == "running").distinct().count()
+    leads_total = db.query(Lead).count()
+
+    return {
+        "users_total": users_total,
+        "users_with_session": users_with_session,
+        "active_users": active_users,
+        "tasks_total": tasks_total,
+        "tasks_running": tasks_running,
+        "leads_total": leads_total
+    }
+
+@app.get("/admin/api/users")
+async def admin_users(
+    page: int = 1,
+    limit: int = 20,
+    q: str = "",
+    has_session: str = "all",
+    current_user: User = Depends(require_admin),
+    db: Session = Depends(get_db)
+):
+    """Список пользователей с пагинацией и фильтрами"""
+    # Нормализовать поиск по username
+    search_username = q.strip()
+    if search_username.startswith("@"):
+        search_username = search_username[1:]
+    search_username = search_username.lower()
+
+    # Базовый запрос к TelegramSession
+    query = db.query(TelegramSession)
+
+    # Фильтр has_session
+    if has_session == "yes":
+        query = query.filter(TelegramSession.telegram_user_id.isnot(None))
+    elif has_session == "no":
+        query = query.filter(TelegramSession.telegram_user_id.is_(None))
+
+    # Поиск по username
+    if search_username:
+        query = query.filter(
+            TelegramSession.telegram_username.ilike(f"%{search_username}%")
+        )
+
+    # Получить sessions с пагинацией (limit+1 для has_more)
+    sessions = query.order_by(TelegramSession.created_at.desc()).offset((page - 1) * limit).limit(limit + 1).all()
+
+    has_more = len(sessions) > limit
+    sessions = sessions[:limit]
+
+    # Собрать данные по каждому пользователю
+    users_data = []
+    for session in sessions:
+        user = db.query(User).filter(User.id == session.user_id).first()
+        if not user:
+            continue
+
+        tasks_total = db.query(Task).filter(Task.user_id == user.id).count()
+        tasks_running = db.query(Task).filter(Task.user_id == user.id, Task.status == "running").count()
+        leads_total = db.query(Lead).join(Task).filter(Task.user_id == user.id).count()
+
+        users_data.append({
+            "id": user.id,
+            "telegram_username": session.telegram_username,
+            "telegram_user_id": session.telegram_user_id,
+            "tasks_total": tasks_total,
+            "tasks_running": tasks_running,
+            "leads_total": leads_total,
+            "created_at": session.created_at.isoformat() if session.created_at else None
+        })
+
+    return {
+        "users": users_data,
+        "has_more": has_more,
+        "page": page
+    }
+
+@app.get("/admin/api/users/{user_id}")
+async def admin_user_detail(
+    user_id: int,
+    current_user: User = Depends(require_admin),
+    db: Session = Depends(get_db)
+):
+    """Детали пользователя"""
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="Пользователь не найден")
+
+    session = db.query(TelegramSession).filter(TelegramSession.user_id == user.id).first()
+
+    tasks = db.query(Task).filter(Task.user_id == user.id).all()
+    tasks_data = [{"id": t.id, "name": t.name, "status": t.status} for t in tasks[-20:]]
+
+    tasks_total = len(tasks)
+    tasks_running = sum(1 for t in tasks if t.status == "running")
+    leads_total = db.query(Lead).join(Task).filter(Task.user_id == user.id).count()
+
+    return {
+        "user": {
+            "id": user.id,
+            "phone": user.phone,
+            "disabled": user.disabled,
+            "created_at": user.created_at.isoformat() if user.created_at else None
+        },
+        "telegram_session": {
+            "telegram_user_id": session.telegram_user_id if session else None,
+            "telegram_username": session.telegram_username if session else None,
+            "alerts_personal": session.alerts_personal if session else None
+        } if session else None,
+        "counts": {
+            "tasks_total": tasks_total,
+            "tasks_running": tasks_running,
+            "leads_total": leads_total
+        },
+        "last_tasks": tasks_data
+    }
+
+@app.post("/admin/api/users/{user_id}/logout-telegram")
+async def admin_logout_telegram(
+    user_id: int,
+    current_user: User = Depends(require_admin),
+    db: Session = Depends(get_db)
+):
+    """Отключить Telegram сессию пользователя"""
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="Пользователь не найден")
+
+    # Отключить TelegramClient
+    await disconnect_user_client(user_id)
+
+    # Удалить TelegramSession из БД
+    db.query(TelegramSession).filter(TelegramSession.user_id == user_id).delete(synchronize_session=False)
+    db.commit()
+
+    logger.info(f"[ADMIN] user_id={user.id} - Telegram сессия отключена админом")
+    return {"ok": True}
+
+@app.post("/admin/api/users/{user_id}/disable")
+async def admin_disable_user(
+    user_id: int,
+    current_user: User = Depends(require_admin),
+    db: Session = Depends(get_db)
+):
+    """Отключить пользователя"""
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="Пользователь не найден")
+
+    user.disabled = True
+    db.commit()
+
+    logger.info(f"[ADMIN] user_id={user.id} - Пользователь отключен")
+    return {"ok": True}
+
+@app.post("/admin/api/users/{user_id}/delete")
+async def admin_delete_user(
+    user_id: int,
+    current_user: User = Depends(require_admin),
+    db: Session = Depends(get_db)
+):
+    """Удалить пользователя (soft delete + logout)"""
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="Пользователь не найден")
+
+    # 1. Отключить пользователя
+    user.disabled = True
+
+    # 2. Отключить все его задачи
+    db.query(Task).filter(Task.user_id == user.id).update({Task.status: "paused"})
+
+    # 3. Отключить TelegramClient
+    await disconnect_user_client(user_id)
+
+    # 4. Удалить TelegramSession
+    db.query(TelegramSession).filter(TelegramSession.user_id == user_id).delete(synchronize_session=False)
+
+    db.commit()
+
+    logger.info(f"[ADMIN] user_id={user.id} - Пользователь удален (soft delete)")
+    return {"ok": True}
 
 @app.post("/api/logout")
 async def logout(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):

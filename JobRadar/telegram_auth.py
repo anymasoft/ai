@@ -11,7 +11,7 @@ from models import TelegramSession, User
 logger = logging.getLogger(__name__)
 
 
-async def save_session_to_db(phone: str, session_string: str, telegram_user_id: int = None):
+async def save_session_to_db(phone: str, session_string: str, telegram_user_id: int = None, telegram_username: str = None):
     """
     Сохранить session строку в SQLite БД.
 
@@ -19,6 +19,7 @@ async def save_session_to_db(phone: str, session_string: str, telegram_user_id: 
         phone: Номер телефона (нормализованный)
         session_string: Строка сессии из StringSession.save()
         telegram_user_id: Telegram ID пользователя (опционально)
+        telegram_username: Telegram @username пользователя без @ (опционально)
     """
     try:
         # Страховка: убедиться, что таблица существует
@@ -45,13 +46,16 @@ async def save_session_to_db(phone: str, session_string: str, telegram_user_id: 
                 existing.session_string = session_string
                 if telegram_user_id:
                     existing.telegram_user_id = telegram_user_id
+                if telegram_username:
+                    existing.telegram_username = telegram_username
             else:
                 logger.info(f"✨ Сохраняю новую сессию: phone={phone}")
                 new_session = TelegramSession(
                     user_id=user_id,
                     phone=phone,
                     session_string=session_string,
-                    telegram_user_id=telegram_user_id
+                    telegram_user_id=telegram_user_id,
+                    telegram_username=telegram_username
                 )
                 db.add(new_session)
 

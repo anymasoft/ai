@@ -843,6 +843,7 @@
                 <li><a class="nav-link" data-section="leads"><i class="bi bi-fire"></i> Лиды</a></li>
                 <li><a class="nav-link" data-section="billing"><i class="bi bi-credit-card"></i> Тарифы</a></li>
                 <li><a class="nav-link" data-section="settings"><i class="bi bi-gear"></i> Настройки</a></li>
+                <li style="display: none;" id="admin-nav-item"><hr style="margin: 0.5rem 0; border: none; border-top: 1px solid var(--gray-border);"><a class="nav-link" href="/admin" style="margin-top: 0.5rem;"><i class="bi bi-shield"></i> Админка</a></li>
             </ul>
         </aside>
 
@@ -2591,7 +2592,24 @@
             await updateTaskFilter();
             await updateNotifications();
             startLeadsRealtimePolling();
+            checkAdminStatus();
         })();
+
+        // Проверить статус админа и показать/скрыть пункт "Админка"
+        async function checkAdminStatus() {
+            try {
+                const response = await fetch('/api/user/me');
+                if (response.ok) {
+                    const data = await response.json();
+                    const adminNavItem = document.getElementById('admin-nav-item');
+                    if (data.is_admin && adminNavItem) {
+                        adminNavItem.style.display = 'block';
+                    }
+                }
+            } catch (err) {
+                console.log('Failed to check admin status');
+            }
+        }
     </script>
 </body>
 </html>
