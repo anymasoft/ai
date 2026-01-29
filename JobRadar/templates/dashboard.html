@@ -2593,6 +2593,13 @@
             await updateNotifications();
             startLeadsRealtimePolling();
             checkAdminStatus();
+
+            // Проверить если была переадресация из админки с нужной секцией
+            const targetSection = sessionStorage.getItem('targetSection');
+            if (targetSection) {
+                sessionStorage.removeItem('targetSection');
+                switchToSection(targetSection);
+            }
         })();
 
         // Проверить статус админа и показать/скрыть пункт "Админка"

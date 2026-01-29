@@ -324,12 +324,12 @@
             <h5><i class="bi bi-speedometer2"></i> JobRadar</h5>
         </div>
         <ul class="nav-menu">
-            <li><a class="nav-link" href="/dashboard"><i class="bi bi-speedometer2"></i> Dashboard</a></li>
-            <li><a class="nav-link" href="/dashboard"><i class="bi bi-list-check"></i> Мои задачи</a></li>
-            <li><a class="nav-link" href="/dashboard"><i class="bi bi-fire"></i> Лиды</a></li>
-            <li><a class="nav-link" href="/dashboard"><i class="bi bi-credit-card"></i> Тарифы</a></li>
-            <li><a class="nav-link" href="/dashboard"><i class="bi bi-gear"></i> Настройки</a></li>
-            <li><a class="nav-link active" href="/admin"><i class="bi bi-shield"></i> Админка</a></li>
+            <li><a class="nav-link" onclick="navigateTo('/dashboard', 'dashboard'); return false;"><i class="bi bi-speedometer2"></i> Dashboard</a></li>
+            <li><a class="nav-link" onclick="navigateTo('/dashboard', 'tasks'); return false;"><i class="bi bi-list-check"></i> Мои задачи</a></li>
+            <li><a class="nav-link" onclick="navigateTo('/dashboard', 'leads'); return false;"><i class="bi bi-fire"></i> Лиды</a></li>
+            <li><a class="nav-link" onclick="navigateTo('/dashboard', 'billing'); return false;"><i class="bi bi-credit-card"></i> Тарифы</a></li>
+            <li><a class="nav-link" onclick="navigateTo('/dashboard', 'settings'); return false;"><i class="bi bi-gear"></i> Настройки</a></li>
+            <li><a class="nav-link active" href="/admin" onclick="return true;"><i class="bi bi-shield"></i> Админка</a></li>
         </ul>
     </aside>
 
@@ -652,6 +652,14 @@
         if (!isoString) return "—";
         const date = new Date(isoString);
         return date.toLocaleDateString("ru-RU", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
+    }
+
+    // Функция для навигации и сохранения текущей секции
+    function navigateTo(url, section) {
+        // Сохранить какую секцию нужно открыть
+        sessionStorage.setItem('targetSection', section);
+        // Перейти на страницу
+        window.location.href = url;
     }
 </script>
 </body>
