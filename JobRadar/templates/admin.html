@@ -537,11 +537,11 @@
                         <td>${user.leads_total}</td>
                         <td>${formatDate(user.created_at)}</td>
                         <td>
-                            <button class="btn btn-secondary" style="font-size: 0.8rem;" onclick="openDetails(${user.id})">📋</button>
-                            <button class="btn btn-danger" style="font-size: 0.8rem;" onclick="logout(${user.id})">🔓</button>
+                            <button class="btn btn-secondary" style="font-size: 0.8rem;" onclick="openDetails(${user.id})" title="Детали">📋</button>
+                            <button class="btn btn-danger" style="font-size: 0.8rem;" onclick="logout(${user.id})" title="Отключить Telegram">🔓</button>
                             ${user.disabled
-                                ? `<button class="btn btn-primary" style="font-size: 0.8rem;" onclick="enable(${user.id})">✓ Включить</button>`
-                                : `<button class="btn btn-danger" style="font-size: 0.8rem;" onclick="disable(${user.id})">⛔ Отключить</button>`
+                                ? `<button class="btn btn-primary" style="font-size: 0.8rem;" onclick="enable(${user.id})" title="Включить пользователя">✓</button>`
+                                : `<button class="btn btn-danger" style="font-size: 0.8rem;" onclick="disable(${user.id})" title="Отключить пользователя">⛔</button>`
                             }
                         </td>
                     </tr>
