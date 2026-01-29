@@ -7,3 +7,4 @@ sqlalchemy==2.0.23
 sqlalchemy[asyncio]
 apscheduler==3.10.4
 python-dotenv
+python-dateutil
