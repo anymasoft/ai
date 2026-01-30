@@ -1,0 +1,961 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AdminPanel - JobRadar</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            /* Landwind color palette */
+            --primary: #7c3aed; /* purple-600 */
+            --primary-light: #a78bfa; /* purple-400 */
+            --primary-dark: #6d28d9; /* purple-700 */
+
+            /* Gray scale */
+            --gray-50: #f9fafb;
+            --gray-100: #f3f4f6;
+            --gray-200: #e5e7eb;
+            --gray-500: #6b7280;
+            --gray-600: #4b5563;
+            --gray-700: #374151;
+            --gray-900: #111827;
+
+            /* Dark mode */
+            --dark-bg: #0f172a;
+            --dark-surface: #1e293b;
+            --dark-border: #334155;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: var(--gray-50);
+            color: var(--gray-900);
+            transition: background-color 0.3s, color 0.3s;
+        }
+
+        body.dark-mode {
+            background: var(--dark-bg);
+            color: #e5e7eb;
+        }
+
+        .dashboard {
+            display: flex;
+            min-height: 100vh;
+        }
+
+        /* SIDEBAR */
+        .sidebar {
+            width: 250px;
+            background: white;
+            border-right: 1px solid var(--gray-200);
+            padding: 1.5rem 0;
+            position: fixed;
+            height: 100vh;
+            overflow-y: auto;
+            transition: background-color 0.3s, border-color 0.3s;
+        }
+
+        body.dark-mode .sidebar {
+            background: var(--dark-surface);
+            border-right-color: var(--dark-border);
+        }
+
+        .sidebar-brand {
+            padding: 0 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .sidebar-brand h5 {
+            color: var(--primary);
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .nav-menu {
+            list-style: none;
+        }
+
+        .nav-link {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.75rem 1.5rem;
+            color: var(--gray-600);
+            cursor: pointer;
+            text-decoration: none;
+            border-left: 3px solid transparent;
+            transition: all 0.3s ease;
+            font-size: 0.95rem;
+        }
+
+        body.dark-mode .nav-link {
+            color: #cbd5e1;
+        }
+
+        .nav-link:hover {
+            color: var(--primary);
+            background: rgba(124, 58, 237, 0.08);
+        }
+
+        body.dark-mode .nav-link:hover {
+            background: rgba(124, 58, 237, 0.15);
+        }
+
+        .nav-link.active {
+            color: var(--primary);
+            background: rgba(124, 58, 237, 0.12);
+            border-left-color: var(--primary);
+            border-top: 3px solid var(--primary);
+            font-weight: 600;
+        }
+
+        body.dark-mode .nav-link.active {
+            background: rgba(124, 58, 237, 0.2);
+        }
+
+        /* MAIN */
+        .main-content {
+            margin-left: 250px;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .header {
+            background: white;
+            border-bottom: 1px solid var(--gray-200);
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: background-color 0.3s, border-color 0.3s;
+        }
+
+        body.dark-mode .header {
+            background: var(--dark-surface);
+            border-bottom-color: var(--dark-border);
+        }
+
+        .header h3 {
+            margin: 0;
+            font-size: 1.5rem;
+            color: var(--gray-900);
+            transition: color 0.3s;
+        }
+
+        body.dark-mode .header h3 {
+            color: #e5e7eb;
+        }
+
+        .content {
+            flex: 1;
+            padding: 2rem;
+            overflow-y: auto;
+            background: var(--gray-50);
+            transition: background-color 0.3s;
+        }
+
+        body.dark-mode .content {
+            background: var(--dark-bg);
+        }
+
+        .card {
+            background: white;
+            border-radius: 8px;
+            padding: 1.5rem;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+            border: 1px solid var(--gray-200);
+            transition: all 0.3s;
+        }
+
+        body.dark-mode .card {
+            background: var(--dark-surface);
+            border-color: var(--dark-border);
+        }
+
+        .card:hover {
+            border-color: var(--primary);
+        }
+
+        .stat-value {
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--primary);
+        }
+
+        .stat-label {
+            font-size: 0.85rem;
+            color: var(--gray-600);
+            margin-top: 0.25rem;
+            transition: color 0.3s;
+        }
+
+        body.dark-mode .stat-label {
+            color: #cbd5e1;
+        }
+
+        .btn {
+            padding: 0.5rem 1rem;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: all 0.2s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: var(--primary-dark);
+        }
+
+        .btn-danger {
+            background: #ef4444;
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: #dc2626;
+        }
+
+        .btn-secondary {
+            background: var(--gray-600);
+            color: white;
+        }
+
+        body.dark-mode .btn-secondary {
+            background: #6b7280;
+        }
+
+        .btn-secondary:hover {
+            background: var(--gray-700);
+        }
+
+        .input-group {
+            display: flex;
+            gap: 0.5rem;
+            align-items: center;
+        }
+
+        input[type="text"],
+        select {
+            padding: 0.5rem 0.75rem;
+            border: 1px solid var(--gray-200);
+            border-radius: 6px;
+            font-size: 0.9rem;
+            background: white;
+            color: var(--gray-900);
+            transition: all 0.3s;
+        }
+
+        body.dark-mode input[type="text"],
+        body.dark-mode select {
+            background: var(--dark-border);
+            border-color: var(--dark-border);
+            color: #e5e7eb;
+        }
+
+        input[type="text"]:focus,
+        select:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.1);
+        }
+
+        body.dark-mode input[type="text"]:focus,
+        body.dark-mode select:focus {
+            box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.2);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th {
+            background: var(--gray-100);
+            padding: 0.75rem;
+            text-align: left;
+            font-weight: 600;
+            font-size: 0.85rem;
+            color: var(--gray-700);
+            border-bottom: 1px solid var(--gray-200);
+            transition: all 0.3s;
+        }
+
+        body.dark-mode th {
+            background: var(--dark-border);
+            color: #cbd5e1;
+            border-bottom-color: var(--dark-border);
+        }
+
+        td {
+            padding: 0.75rem;
+            border-bottom: 1px solid var(--gray-200);
+            font-size: 0.9rem;
+            color: var(--gray-900);
+            transition: color 0.3s;
+        }
+
+        body.dark-mode td {
+            border-bottom-color: var(--dark-border);
+            color: #e5e7eb;
+        }
+
+        tr:last-child td {
+            border-bottom: none;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: white;
+            border-radius: 8px;
+            padding: 2rem;
+            max-width: 500px;
+            width: 90%;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+            transition: background-color 0.3s;
+        }
+
+        body.dark-mode .modal-content {
+            background: var(--dark-surface);
+        }
+
+        .modal-title {
+            font-size: 1.25rem;
+            font-weight: 700;
+            margin-bottom: 1rem;
+            color: var(--gray-900);
+            transition: color 0.3s;
+        }
+
+        body.dark-mode .modal-title {
+            color: #e5e7eb;
+        }
+
+        .modal-body {
+            font-size: 0.9rem;
+            color: var(--gray-700);
+            margin-bottom: 1.5rem;
+            line-height: 1.6;
+            transition: color 0.3s;
+        }
+
+        body.dark-mode .modal-body {
+            color: #cbd5e1;
+        }
+
+        .modal-footer {
+            display: flex;
+            gap: 1rem;
+            justify-content: flex-end;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 0.25rem 0.75rem;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
+
+        .badge-success {
+            background: #d1fae5;
+            color: #065f46;
+        }
+
+        body.dark-mode .badge-success {
+            background: rgba(34, 197, 94, 0.2);
+            color: #4ade80;
+        }
+
+        .badge-warning {
+            background: #fef3c7;
+            color: #78350f;
+        }
+
+        body.dark-mode .badge-warning {
+            background: rgba(249, 115, 22, 0.2);
+            color: #fb923c;
+        }
+
+        .badge-danger {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
+        body.dark-mode .badge-danger {
+            background: rgba(239, 68, 68, 0.2);
+            color: #f87171;
+        }
+
+        .pagination {
+            display: flex;
+            gap: 0.5rem;
+            align-items: center;
+            justify-content: center;
+            margin-top: 1.5rem;
+        }
+
+        .pagination button {
+            padding: 0.5rem 0.75rem;
+            border: 1px solid var(--gray-200);
+            background: white;
+            color: var(--gray-700);
+            cursor: pointer;
+            border-radius: 4px;
+            font-size: 0.85rem;
+            transition: all 0.3s;
+        }
+
+        body.dark-mode .pagination button {
+            background: var(--dark-border);
+            border-color: var(--dark-border);
+            color: #e5e7eb;
+        }
+
+        .pagination button:hover {
+            background: var(--gray-100);
+            border-color: var(--primary);
+            color: var(--primary);
+        }
+
+        body.dark-mode .pagination button:hover {
+            background: rgba(124, 58, 237, 0.15);
+        }
+
+        .pagination button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+    </style>
+</head>
+<body>
+<div class="dashboard">
+    <!-- SIDEBAR -->
+    <aside class="sidebar">
+        <div class="sidebar-brand">
+            <h5><i class="bi bi-speedometer2"></i> JobRadar</h5>
+        </div>
+        <ul class="nav-menu">
+            <li><a class="nav-link" onclick="navigateTo('/dashboard', 'dashboard'); return false;"><i class="bi bi-speedometer2"></i> Dashboard</a></li>
+            <li><a class="nav-link" onclick="navigateTo('/dashboard', 'tasks'); return false;"><i class="bi bi-list-check"></i> Мои задачи</a></li>
+            <li><a class="nav-link" onclick="navigateTo('/dashboard', 'leads'); return false;"><i class="bi bi-fire"></i> Лиды</a></li>
+            <li><a class="nav-link" onclick="navigateTo('/dashboard', 'billing'); return false;"><i class="bi bi-credit-card"></i> Тарифы</a></li>
+            <li><a class="nav-link" onclick="navigateTo('/dashboard', 'settings'); return false;"><i class="bi bi-gear"></i> Настройки</a></li>
+            <li><a class="nav-link active" href="/admin" onclick="return true;"><i class="bi bi-shield"></i> Админка</a></li>
+        </ul>
+    </aside>
+
+    <!-- MAIN -->
+    <div class="main-content">
+        <!-- HEADER -->
+        <div class="header">
+            <div>
+                <h3>📊 Админка</h3>
+            </div>
+        </div>
+
+        <!-- CONTENT -->
+        <div class="content">
+            <p style="margin-bottom: 1.5rem; color: #4b5563;">Управление пользователями и общая статистика</p>
+
+            <!-- Statistics Cards -->
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1rem; margin-bottom: 2rem;" id="stats-container">
+                <div class="card">
+                    <div class="stat-value" id="stat-users">-</div>
+                    <div class="stat-label">Всего пользователей</div>
+                </div>
+                <div class="card">
+                    <div class="stat-value" id="stat-sessions">-</div>
+                    <div class="stat-label">С сессией</div>
+                </div>
+                <div class="card">
+                    <div class="stat-value" id="stat-active">-</div>
+                    <div class="stat-label">Активных</div>
+                </div>
+                <div class="card">
+                    <div class="stat-value" id="stat-tasks">-</div>
+                    <div class="stat-label">Всего задач</div>
+                </div>
+                <div class="card">
+                    <div class="stat-value" id="stat-running">-</div>
+                    <div class="stat-label">Запущённых</div>
+                </div>
+                <div class="card">
+                    <div class="stat-value" id="stat-leads">-</div>
+                    <div class="stat-label">Всего лидов</div>
+                </div>
+            </div>
+
+            <!-- Filters Section -->
+            <div class="card" style="margin-bottom: 2rem;">
+                <h3 style="font-weight: bold; margin-bottom: 1rem;">🔍 Фильтры</h3>
+                <div class="input-group">
+                    <input type="text" id="searchInput" placeholder="@username или username">
+                    <select id="filterSession">
+                        <option value="all">Все пользователи</option>
+                        <option value="yes">С сессией</option>
+                        <option value="no">Без сессии</option>
+                    </select>
+                    <button class="btn btn-primary" onclick="searchUsers()">Найти</button>
+                </div>
+            </div>
+
+            <!-- Users Table -->
+            <div class="card">
+                <h3 style="font-weight: bold; margin-bottom: 1rem;">👥 Пользователи</h3>
+                <div style="overflow-x: auto;">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>@Username</th>
+                                <th>Telegram ID</th>
+                                <th>Задачи</th>
+                                <th>Запущённых</th>
+                                <th>Лидов</th>
+                                <th>Создано</th>
+                                <th>Действия</th>
+                            </tr>
+                        </thead>
+                        <tbody id="usersTable">
+                            <tr>
+                                <td colspan="8" style="text-align: center; color: #6b7280;">Загрузка...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Pagination -->
+                <div class="pagination">
+                    <button id="prevBtn" onclick="prevPage()" disabled>← Назад</button>
+                    <span id="pageInfo">Страница 1</span>
+                    <button id="nextBtn" onclick="nextPage()" disabled>Далее →</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- User Details Modal -->
+<div class="modal" id="detailsModal">
+    <div class="modal-content">
+        <div class="modal-title">Детали пользователя</div>
+        <div id="detailsContent" class="modal-body">
+            <!-- Will be filled by JS -->
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="closeModal()">Закрыть</button>
+        </div>
+    </div>
+</div>
+
+<!-- Action Modal -->
+<div class="modal" id="actionModal">
+    <div class="modal-content">
+        <div class="modal-title" id="actionTitle">Подтверждение</div>
+        <div class="modal-body" id="actionMessage">Вы уверены?</div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="closeActionModal()">Отмена</button>
+            <button class="btn btn-danger" id="confirmBtn" onclick="confirmAction()">Подтвердить</button>
+        </div>
+    </div>
+</div>
+
+<!-- Alert Modal (для красивых уведомлений) -->
+<div class="modal" id="alertModal">
+    <div class="modal-content">
+        <div class="modal-title" id="alertTitle">Уведомление</div>
+        <div class="modal-body" id="alertMessage">Сообщение</div>
+        <div class="modal-footer">
+            <button class="btn btn-primary" onclick="closeAlertModal()">OK</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    let currentPage = 1;
+    let currentQuery = "";
+    let currentHasSession = "all";
+    let pendingAction = null;
+
+    // Load stats on page load
+    document.addEventListener("DOMContentLoaded", async () => {
+        // Инициализировать обработчики клика по фону модальных окон
+        initializeModalBackdropHandlersAdmin();
+
+        await loadStats();
+        await loadUsers();
+    });
+
+    // Инициализировать обработчики клика по фону модальных окон в админке
+    function initializeModalBackdropHandlersAdmin() {
+        // Details Modal
+        const detailsModal = document.getElementById('detailsModal');
+        if (detailsModal) {
+            detailsModal.addEventListener('click', function(event) {
+                if (event.target === this) {
+                    closeModal();
+                }
+            });
+        }
+
+        // Action Modal
+        const actionModal = document.getElementById('actionModal');
+        if (actionModal) {
+            actionModal.addEventListener('click', function(event) {
+                if (event.target === this) {
+                    closeActionModal();
+                }
+            });
+        }
+
+        // Alert Modal
+        const alertModal = document.getElementById('alertModal');
+        if (alertModal) {
+            alertModal.addEventListener('click', function(event) {
+                if (event.target === this) {
+                    closeAlertModal();
+                }
+            });
+        }
+    }
+
+    async function loadStats() {
+        try {
+            const response = await fetch("/admin/api/stats");
+            if (!response.ok) {
+                if (response.status === 403) {
+                    window.location.href = "/login";
+                }
+                throw new Error("Failed to load stats");
+            }
+            const data = await response.json();
+
+            document.getElementById("stat-users").textContent = data.users_total;
+            document.getElementById("stat-sessions").textContent = data.users_with_session;
+            document.getElementById("stat-active").textContent = data.active_users;
+            document.getElementById("stat-tasks").textContent = data.tasks_total;
+            document.getElementById("stat-running").textContent = data.tasks_running;
+            document.getElementById("stat-leads").textContent = data.leads_total;
+        } catch (err) {
+            console.error("Error loading stats:", err);
+        }
+    }
+
+    async function loadUsers(page = 1) {
+        try {
+            const query = new URLSearchParams({
+                page: page,
+                limit: 20,
+                q: currentQuery,
+                has_session: currentHasSession
+            });
+
+            const response = await fetch(`/admin/api/users?${query}`);
+            if (!response.ok) throw new Error("Failed to load users");
+
+            const data = await response.json();
+            currentPage = page;
+
+            // Загрузить детали каждого пользователя для получения статуса disabled
+            const tbody = document.getElementById("usersTable");
+            if (data.users.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="8" style="text-align: center; color: #6b7280;">Пользователей не найдено</td></tr>';
+            } else {
+                // Получить детали для каждого пользователя
+                const usersWithDetails = await Promise.all(data.users.map(async (user) => {
+                    try {
+                        const detailRes = await fetch(`/admin/api/users/${user.id}`);
+                        if (detailRes.ok) {
+                            const detailData = await detailRes.json();
+                            return { ...user, disabled: detailData.user.disabled };
+                        }
+                    } catch (e) {}
+                    return { ...user, disabled: false };
+                }));
+
+                tbody.innerHTML = usersWithDetails.map(user => `
+                    <tr>
+                        <td>#${user.id}</td>
+                        <td><strong>${user.telegram_username || "—"}</strong></td>
+                        <td>${user.telegram_user_id || "—"}</td>
+                        <td>${user.tasks_total}</td>
+                        <td><span class="badge badge-success">${user.tasks_running}</span></td>
+                        <td>${user.leads_total}</td>
+                        <td>${formatDate(user.created_at)}</td>
+                        <td>
+                            <button class="btn btn-secondary" style="font-size: 0.8rem;" onclick="openDetails(${user.id})" title="Детали">📋</button>
+                            <button class="btn btn-danger" style="font-size: 0.8rem;" onclick="logout(${user.id})" title="Отключить Telegram">🔓</button>
+                            ${user.disabled
+                                ? `<button class="btn btn-primary" style="font-size: 0.8rem;" onclick="enable(${user.id})" title="Включить пользователя">✓</button>`
+                                : `<button class="btn btn-danger" style="font-size: 0.8rem;" onclick="disable(${user.id})" title="Отключить пользователя">⛔</button>`
+                            }
+                        </td>
+                    </tr>
+                `).join("");
+            }
+
+            // Pagination
+            document.getElementById("prevBtn").disabled = page === 1;
+            document.getElementById("nextBtn").disabled = !data.has_more;
+            document.getElementById("pageInfo").textContent = `Страница ${page}`;
+
+        } catch (err) {
+            console.error("Error loading users:", err);
+        }
+    }
+
+    function searchUsers() {
+        currentQuery = document.getElementById("searchInput").value;
+        currentHasSession = document.getElementById("filterSession").value;
+        currentPage = 1;
+        loadUsers(1);
+    }
+
+    function prevPage() {
+        if (currentPage > 1) {
+            loadUsers(currentPage - 1);
+        }
+    }
+
+    function nextPage() {
+        loadUsers(currentPage + 1);
+    }
+
+    async function openDetails(userId) {
+        try {
+            const response = await fetch(`/admin/api/users/${userId}`);
+            if (!response.ok) throw new Error("Failed to load user details");
+
+            const data = await response.json();
+            const user = data.user;
+            const session = data.telegram_session;
+            const counts = data.counts;
+            const tasks = data.last_tasks;
+
+            const html = `
+                <div>
+                    <p><strong>ID:</strong> ${user.id}</p>
+                    <p><strong>Телефон:</strong> ${user.phone}</p>
+                    <p><strong>Статус:</strong> ${user.disabled ? '<span class="badge badge-danger">Отключен</span>' : '<span class="badge badge-success">Активен</span>'}</p>
+                    <p><strong>Текущий тариф:</strong> <span class="badge" style="background: var(--primary); color: white;">${getPlanName(user.plan)}</span></p>
+
+                    <div style="margin: 1rem 0; padding: 1rem; background: var(--gray-50); border-radius: 0.5rem; border: 1px solid var(--gray-200);">
+                        <label style="display: block; font-weight: 600; font-size: 0.9rem; margin-bottom: 0.5rem;">Изменить тариф:</label>
+                        <select id="planSelect" style="width: 100%; padding: 0.5rem; border: 1px solid var(--gray-300); border-radius: 0.375rem; font-size: 0.9rem; margin-bottom: 0.75rem;">
+                            <option value="trial">Trial (Бесплатно)</option>
+                            <option value="start">Start (990 ₽)</option>
+                            <option value="pro">Pro (1 990 ₽)</option>
+                            <option value="business">Business (4 990 ₽)</option>
+                        </select>
+                        <button class="btn btn-primary" style="width: 100%;" onclick="savePlan(${user.id})">Сохранить план</button>
+                    </div>
+
+                    <p><strong>Создано:</strong> ${formatDate(user.created_at)}</p>
+
+                    ${session ? `
+                        <hr style="margin: 1rem 0; border: none; border-top: 1px solid #e5e7eb;">
+                        <p><strong>Telegram @:</strong> ${session.telegram_username || "—"}</p>
+                        <p><strong>Telegram ID:</strong> ${session.telegram_user_id}</p>
+                        <p><strong>Уведомления:</strong> ${session.alerts_personal ? '✓ Включены' : '✗ Отключены'}</p>
+                    ` : '<p><em>Telegram сессия не найдена</em></p>'}
+
+                    <hr style="margin: 1rem 0; border: none; border-top: 1px solid #e5e7eb;">
+                    <p><strong>Всего задач:</strong> ${counts.tasks_total}</p>
+                    <p><strong>Запущённых:</strong> <span class="badge badge-success">${counts.tasks_running}</span></p>
+                    <p><strong>Лидов:</strong> ${counts.leads_total}</p>
+
+                    ${tasks.length > 0 ? `
+                        <hr style="margin: 1rem 0; border: none; border-top: 1px solid #e5e7eb;">
+                        <strong>Последние задачи:</strong>
+                        <ul style="margin-top: 0.5rem; font-size: 0.85rem;">
+                            ${tasks.map(t => `<li>• ${t.name} <span style="color: #6b7280;">(${t.status})</span></li>`).join("")}
+                        </ul>
+                    ` : ''}
+                </div>
+            `;
+
+            // Установить текущий тариф в dropdown
+            setTimeout(() => {
+                const planSelect = document.getElementById("planSelect");
+                if (planSelect && user.plan) {
+                    planSelect.value = user.plan;
+                }
+            }, 0);
+
+            document.getElementById("detailsContent").innerHTML = html;
+            document.getElementById("detailsModal").classList.add("active");
+        } catch (err) {
+            showAlert("❌ Ошибка", "Не удалось загрузить детали пользователя");
+            console.error(err);
+        }
+    }
+
+    function closeModal() {
+        document.getElementById("detailsModal").classList.remove("active");
+    }
+
+    async function logout(userId) {
+        pendingAction = {
+            type: "logout",
+            userId: userId
+        };
+        document.getElementById("actionTitle").textContent = "Отключить Telegram сессию?";
+        document.getElementById("actionMessage").textContent = "Пользователь будет разлогинен из Telegram. Он сможет авторизоваться заново.";
+        document.getElementById("actionModal").classList.add("active");
+    }
+
+    async function disable(userId) {
+        pendingAction = {
+            type: "disable",
+            userId: userId
+        };
+        document.getElementById("actionTitle").textContent = "Отключить пользователя?";
+        document.getElementById("actionMessage").textContent = "Пользователь больше не сможет использовать приложение. Все его задачи будут приостановлены.";
+        document.getElementById("actionModal").classList.add("active");
+    }
+
+    function closeActionModal() {
+        document.getElementById("actionModal").classList.remove("active");
+        pendingAction = null;
+    }
+
+    async function confirmAction() {
+        if (!pendingAction) return;
+
+        try {
+            let endpoint = "";
+            if (pendingAction.type === "logout") {
+                endpoint = `/admin/api/users/${pendingAction.userId}/logout-telegram`;
+            } else if (pendingAction.type === "disable") {
+                endpoint = `/admin/api/users/${pendingAction.userId}/disable`;
+            } else if (pendingAction.type === "enable") {
+                endpoint = `/admin/api/users/${pendingAction.userId}/enable`;
+            }
+
+            const response = await fetch(endpoint, { method: "POST" });
+            if (!response.ok) throw new Error("Failed to perform action");
+
+            closeActionModal();
+            await loadUsers(currentPage);
+            showAlert("✅ Успех", "Действие выполнено успешно");
+        } catch (err) {
+            showAlert("❌ Ошибка", "Не удалось выполнить действие");
+            console.error(err);
+        }
+    }
+
+    function formatDate(isoString) {
+        if (!isoString) return "—";
+        const date = new Date(isoString);
+        return date.toLocaleDateString("ru-RU", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
+    }
+
+    // Функция для навигации и сохранения текущей секции
+    function navigateTo(url, section) {
+        // Сохранить какую секцию нужно открыть
+        sessionStorage.setItem('targetSection', section);
+        // Перейти на страницу
+        window.location.href = url;
+    }
+
+    // Красивое уведомление вместо alert()
+    function showAlert(title, message) {
+        document.getElementById("alertTitle").textContent = title;
+        document.getElementById("alertMessage").textContent = message;
+        document.getElementById("alertModal").classList.add("active");
+    }
+
+    function closeAlertModal() {
+        document.getElementById("alertModal").classList.remove("active");
+    }
+
+    // Функция для преобразования кода плана в название
+    function getPlanName(plan) {
+        const plans = {
+            "trial": "Trial (Бесплатно)",
+            "start": "Start (990 ₽)",
+            "pro": "Pro (1 990 ₽)",
+            "business": "Business (4 990 ₽)"
+        };
+        return plans[plan] || "Неизвестно";
+    }
+
+    // Функция для сохранения изменения плана
+    async function savePlan(userId) {
+        try {
+            const planSelect = document.getElementById("planSelect");
+            const newPlan = planSelect.value;
+
+            const response = await fetch(`/admin/api/users/${userId}/plan`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({ plan: newPlan })
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.detail || "Ошибка при сохранении плана");
+            }
+
+            const data = await response.json();
+            closeModal();
+            await loadUsers(currentPage);
+            showAlert("✅ Успех", `Тариф изменен на ${getPlanName(data.new_plan)}`);
+        } catch (err) {
+            showAlert("❌ Ошибка", err.message || "Не удалось сохранить тариф");
+            console.error(err);
+        }
+    }
+
+    // Функция для включения отключенного пользователя
+    async function enable(userId) {
+        pendingAction = {
+            type: "enable",
+            userId: userId
+        };
+        document.getElementById("actionTitle").textContent = "Включить пользователя?";
+        document.getElementById("actionMessage").textContent = "Пользователь снова сможет использовать приложение.";
+        document.getElementById("actionModal").classList.add("active");
+    }
+</script>
+</body>
+</html>
