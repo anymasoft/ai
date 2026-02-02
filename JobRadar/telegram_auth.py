@@ -21,6 +21,9 @@ async def save_session_to_db(phone: str, session_string: str, telegram_user_id: 
         session_string: Строка сессии из StringSession.save()
         telegram_user_id: Telegram ID пользователя (опционально)
         telegram_username: Telegram @username пользователя без @ (опционально)
+
+    Returns:
+        int: user_id при успехе, или None при ошибке
     """
     try:
         # Страховка: убедиться, что таблица существует
@@ -69,14 +72,14 @@ async def save_session_to_db(phone: str, session_string: str, telegram_user_id: 
 
             db.commit()
             logger.info(f"✅ Сессия сохранена | phone={phone} | user_id={user_id} | telegram_id={telegram_user_id}")
-            return True
+            return user_id
         except Exception as db_error:
             db.rollback()
             logger.error(f"❌ Ошибка при сохранении сессии: {type(db_error).__name__}: {db_error}")
-            return False
+            return None
         finally:
             db.close()
 
     except Exception as e:
         logger.error(f"❌ Критическая ошибка сохранения сессии: {type(e).__name__}: {e}")
-        return False
+        return None
