@@ -1258,35 +1258,33 @@ async def get_payment_status(
         # Получить статус из YooKassa
         yookassa_payment = YooKassaPayment.find_one(yookassa_payment_id)
 
-        # Сохранить старый статус для однократной активации
-        old_status = db_payment.status
-
         # Обновить статус в БД
         yookassa_status = yookassa_payment.status
         if yookassa_status == "succeeded":
-            # ЗАЩИТА: однократная активация платежа
-            # Активируем только если переход из pending → succeeded
-            if old_status != "succeeded":
-                db_payment.status = "succeeded"
-                now = datetime.utcnow()
-                db_payment.activated_at = now
-                db_payment.expires_at = now + timedelta(days=30)
+            # ЗАЩИТА: перед активацией проверить текущий статус в БД
+            db.refresh(db_payment)
 
-                # Активировать тариф для пользователя
-                current_user.plan = db_payment.plan
-
-                # Установить или продлить paid_until
-                if current_user.paid_until and current_user.paid_until > now:
-                    # Если уже есть активная подписка, продлеваем на 30 дней
-                    current_user.paid_until = current_user.paid_until + timedelta(days=30)
-                    logger.info(f"[PAYMENT_SUCCEEDED_EXTENDED] user_id={current_user.id} plan={db_payment.plan} new_paid_until={current_user.paid_until}")
-                else:
-                    # Новая подписка, начинается с сегодня
-                    current_user.paid_until = now + timedelta(days=30)
-                    logger.info(f"[PAYMENT_SUCCEEDED] user_id={current_user.id} plan={db_payment.plan} paid_until={current_user.paid_until}")
-            else:
-                # Платеж уже был активирован ранее
+            # Если платеж уже активирован, вернуть ошибку (race condition protection)
+            if db_payment.status == "succeeded":
                 logger.info(f"[PAYMENT_ALREADY_ACTIVATED] user_id={current_user.id} yookassa_id={yookassa_payment_id} (повторный вызов, повторная активация запрещена)")
+                return {
+                    "status": "already_activated",
+                    "yookassa_payment_id": yookassa_payment_id,
+                    "plan": db_payment.plan
+                }
+
+            # Активировать платеж
+            db_payment.status = "succeeded"
+            now = datetime.utcnow()
+            db_payment.activated_at = now
+            db_payment.expires_at = now + timedelta(days=30)
+
+            # Активировать тариф для пользователя
+            current_user.plan = db_payment.plan
+
+            # Установить новый период (каждый платеж даёт 30 дней с текущего момента)
+            current_user.paid_until = now + timedelta(days=30)
+            logger.info(f"[PAYMENT_SUCCEEDED] user_id={current_user.id} plan={db_payment.plan} paid_until={current_user.paid_until}")
 
         elif yookassa_status == "canceled":
             db_payment.status = "canceled"
