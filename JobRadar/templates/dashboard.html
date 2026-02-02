@@ -1809,18 +1809,6 @@
 
             // Инициализировать закрытие модальных окон при клике на backdrop
             initializeModalBackdropHandlers();
-
-            // Проверить если пользователь вернулся после оплаты
-            const paymentId = sessionStorage.getItem('paymentId');
-            if (paymentId) {
-                showToast('⏳ Проверяю статус платежа...', 'info');
-                // Начать polling каждые 3 секунды
-                window.paymentPollingInterval = setInterval(() => {
-                    pollPaymentStatus(paymentId);
-                }, 3000);
-                // Первая проверка сразу
-                await pollPaymentStatus(paymentId);
-            }
         });
 
         // ==================== MODAL BACKDROP HANDLERS ====================
