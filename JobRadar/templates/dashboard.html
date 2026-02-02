@@ -3071,6 +3071,8 @@
 
                     // Перенаправить на страницу тарифов через 2 секунды
                     setTimeout(() => {
+                        sessionStorage.removeItem('fromPaymentRedirect');
+                        sessionStorage.removeItem('paymentId');
                         window.location.href = '/dashboard#billing';
                     }, 2000);
 
@@ -3086,7 +3088,10 @@
 
             } catch (error) {
                 console.error('Payment polling error:', error);
-                // Продолжаем polling при ошибке
+                // При ошибке очищаем флаги и останавливаем polling
+                sessionStorage.removeItem('fromPaymentRedirect');
+                sessionStorage.removeItem('paymentId');
+                clearInterval(window.paymentPollingInterval);
             }
         }
 
