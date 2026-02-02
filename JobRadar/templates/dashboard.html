@@ -1812,8 +1812,12 @@
 
             // Проверить если пользователь вернулся после оплаты
             const paymentId = sessionStorage.getItem('paymentId');
-            if (paymentId) {
-                // Начать polling каждые 3 секунды (БЕЗ показа Тоаста при загрузке)
+            const fromRedirect = sessionStorage.getItem('fromPaymentRedirect');
+
+            if (paymentId && fromRedirect) {
+                showToast('⏳ Проверяю статус платежа...', 'info');
+
+                // Начать polling каждые 3 секунды
                 window.paymentPollingInterval = setInterval(() => {
                     pollPaymentStatus(paymentId);
                 }, 3000);
@@ -3033,6 +3037,7 @@
                 // Сохранить ID платежа в sessionStorage для polling после возврата
                 sessionStorage.setItem('paymentId', yookassaPaymentId);
                 sessionStorage.setItem('paymentPlan', plan);
+                sessionStorage.setItem('fromPaymentRedirect', '1');
 
                 // Перенаправить на YooKassa
                 setTimeout(() => {
@@ -3059,6 +3064,7 @@
                     // Платеж успешно обработан
                     sessionStorage.removeItem('paymentId');
                     sessionStorage.removeItem('paymentPlan');
+                    sessionStorage.removeItem('fromPaymentRedirect');
                     clearInterval(window.paymentPollingInterval);
 
                     showToast('✅ Тариф активирован!', 'success');
@@ -3072,6 +3078,7 @@
                     // Платеж отменен
                     sessionStorage.removeItem('paymentId');
                     sessionStorage.removeItem('paymentPlan');
+                    sessionStorage.removeItem('fromPaymentRedirect');
                     clearInterval(window.paymentPollingInterval);
                     showToast('❌ Платеж отменен', 'error');
                 }
