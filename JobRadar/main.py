@@ -1346,6 +1346,6 @@ async def logout(current_user: User = Depends(get_current_user), db: Session = D
         raise HTTPException(status_code=400, detail=str(e))
 
 
-if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run(app, host="localhost", port=8000)
+# if __name__ == "__main__":
+#     import uvicorn
+#     uvicorn.run(app, host="localhost", port=8000)
