@@ -390,11 +390,11 @@ async def create_task(task: TaskCreate, current_user: User = Depends(get_current
             detail="Лимит задач для вашего тарифа исчерпан"
         )
 
-    # ВАЖНО: новые задачи ВСЕГДА создаются в статусе "paused", игнорируя input от клиента
+    # Новые задачи создаются со статусом "running" для немедленного запуска мониторинга
     db_task = Task(
         user_id=current_user.id,
         name=task.name,
-        status="paused",  # ВСЕГДА paused, никогда не running
+        status="running",  # Статус "running" для немедленного начала мониторинга
         sources=task.sources,
         include_keywords=task.include_keywords,
         exclude_keywords=task.exclude_keywords,
