@@ -2,7 +2,7 @@
 JobRadar v0 - Инициализация и работа с БД
 """
 import os
-from sqlalchemy import create_engine, inspect, text
+from sqlalchemy import create_engine, inspect, text, event
 from sqlalchemy.orm import sessionmaker, Session
 from config import DATABASE_URL
 from models import Base
@@ -12,6 +12,14 @@ engine = create_engine(
     DATABASE_URL,
     connect_args={"check_same_thread": False}  # Для SQLite async
 )
+
+# Включить PRAGMA foreign_keys для SQLite (для каскадного удаления)
+@event.listens_for(engine, "connect")
+def set_sqlite_pragma(dbapi_conn, connection_record):
+    """Включить PRAGMA foreign_keys при подключении к SQLite"""
+    cursor = dbapi_conn.cursor()
+    cursor.execute("PRAGMA foreign_keys=ON")
+    cursor.close()
 
 # Создание фабрики сессий
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
