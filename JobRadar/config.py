@@ -28,3 +28,9 @@ MAX_MESSAGES_PER_CHECK = 100  # Макс сообщений за одну про
 
 # Logs
 DEBUG = os.getenv("DEBUG", "False").lower() == "true"
+
+# Payment and CORS
+PAYMENT_RETURN_URL = os.getenv("PAYMENT_RETURN_URL", "http://localhost:8000/dashboard#billing")
+
+CORS_ORIGINS_STR = os.getenv("CORS_ORIGINS", "http://localhost:8000,http://127.0.0.1:8000")
+CORS_ORIGINS = [o.strip() for o in CORS_ORIGINS_STR.split(",")]

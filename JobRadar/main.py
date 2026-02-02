@@ -16,7 +16,7 @@ from dateutil import parser as dateutil_parser
 from telethon import TelegramClient
 from telethon.sessions import StringSession
 from telethon.errors import SessionPasswordNeededError
-from config import TELEGRAM_API_ID, TELEGRAM_API_HASH, TELEGRAM_ADMIN_ID
+from config import TELEGRAM_API_ID, TELEGRAM_API_HASH, TELEGRAM_ADMIN_ID, PAYMENT_RETURN_URL, CORS_ORIGINS
 
 # YooKassa
 try:
@@ -173,7 +173,7 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 # Добавить CORS для работы fetch с API (с поддержкой cookies)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:8000", "http://127.0.0.1:8000"],
+    allow_origins=CORS_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -1202,7 +1202,7 @@ async def create_payment(
             },
             "confirmation": {
                 "type": "redirect",
-                "return_url": "http://localhost:8000/dashboard#billing"
+                "return_url": PAYMENT_RETURN_URL
             },
             "capture": True,
             "description": f"JobRadar subscription: {body.plan}",
