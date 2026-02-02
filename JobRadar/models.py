@@ -140,7 +140,7 @@ class Lead(Base):
     __tablename__ = "leads"
 
     id = Column(Integer, primary_key=True)
-    task_id = Column(Integer, ForeignKey("tasks.id"), nullable=False)  # Ссылка на Task
+    task_id = Column(Integer, ForeignKey("tasks.id", ondelete="CASCADE"), nullable=False)  # Ссылка на Task
     text = Column(Text, nullable=False)  # Полный текст сообщения
     source_channel = Column(String(255), nullable=False)  # Канал-источник (@username)
     source_message_id = Column(BigInteger, nullable=False)  # ID сообщения в источнике
@@ -160,7 +160,7 @@ class TaskSourceState(Base):
     __tablename__ = "task_source_states"
 
     id = Column(Integer, primary_key=True)
-    task_id = Column(Integer, ForeignKey("tasks.id"), nullable=False)  # Ссылка на Task
+    task_id = Column(Integer, ForeignKey("tasks.id", ondelete="CASCADE"), nullable=False)  # Ссылка на Task
     source = Column(String(255), nullable=False)  # Нормализованный username источника (без @)
     last_message_id = Column(BigInteger, default=0)  # Последний обработанный message_id
     initialized_at = Column(DateTime, default=datetime.utcnow)  # Когда была инициализирована позиция
