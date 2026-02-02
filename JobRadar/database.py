@@ -118,6 +118,16 @@ def migrate_schema():
             else:
                 print("   ✓ Колонка plan уже существует")
 
+            # Добавить колонку auth_token если её нет
+            if 'auth_token' not in columns_users:
+                print("   ➕ Добавляю колонку auth_token...")
+                connection.execute(text(
+                    "ALTER TABLE users ADD COLUMN auth_token VARCHAR(128) DEFAULT NULL UNIQUE"
+                ))
+                print("   ✅ Колонка auth_token добавлена")
+            else:
+                print("   ✓ Колонка auth_token уже существует")
+
             # ==================== ТАБЛИЦА TELEGRAM_SESSIONS ====================
 
             # Получить информацию о колонках таблицы telegram_sessions

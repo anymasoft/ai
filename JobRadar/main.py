@@ -2,6 +2,7 @@ import os
 import json
 import logging
 import uuid
+import secrets
 from fastapi import FastAPI, HTTPException, Depends, Request, Cookie
 from fastapi.responses import FileResponse, RedirectResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
@@ -207,16 +208,16 @@ def get_db():
 
 # Helper для получения текущего пользователя из cookie
 def get_current_user(
-    user_phone: Optional[str] = Cookie(default=None),
+    auth_token: Optional[str] = Cookie(default=None),
     db: Session = Depends(get_db)
 ) -> User:
-    """Получить текущего пользователя из cookie авторизации"""
-    if not user_phone:
+    """Получить текущего пользователя из cookie авторизации (auth_token)"""
+    if not auth_token:
         raise HTTPException(status_code=401, detail="Пользователь не авторизован")
 
-    user = db.query(User).filter(User.phone == user_phone).first()
+    user = db.query(User).filter(User.auth_token == auth_token).first()
     if not user:
-        raise HTTPException(status_code=401, detail="Пользователь не найден в БД")
+        raise HTTPException(status_code=401, detail="Пользователь не найден или сессия истекла")
     return user
 
 # Helper для проверки что пользователь - админ
@@ -864,9 +865,32 @@ async def auth_save(request: AuthStartRequest):
 
         try:
             # Сохранить в БД с telegram_user_id и telegram_username
-            success = await save_session_to_db(phone, session_string, me.id, me.username)
-            if not success:
+            # Возвращает user_id при успехе или None при ошибке
+            user_id = await save_session_to_db(phone, session_string, me.id, me.username)
+            if user_id is None:
                 raise Exception("Ошибка при сохранении в БД")
+        except Exception as e:
+            raise
+
+        try:
+            # Получить пользователя из БД и генерировать auth_token
+            db = SessionLocal()
+            try:
+                user = db.query(User).filter(User.id == user_id).first()
+                if not user:
+                    raise Exception("Пользователь не найден в БД после сохранения")
+
+                # Генерировать криптографически стойкий auth_token
+                auth_token = secrets.token_urlsafe(32)
+                user.auth_token = auth_token
+                db.commit()
+
+                logger.info(f"✅ auth_token сгенерирован для пользователя {phone} (user_id={user_id})")
+            except Exception as e:
+                db.rollback()
+                raise
+            finally:
+                db.close()
         except Exception as e:
             raise
 
@@ -877,11 +901,11 @@ async def auth_save(request: AuthStartRequest):
         except Exception as e:
             pass
 
-        # Создаём ответ с установкой cookie авторизации
+        # Создаём ответ с установкой cookie авторизации (auth_token вместо user_phone)
         response = JSONResponse({"ok": True, "user": user_info})
         response.set_cookie(
-            key="user_phone",
-            value=phone,
+            key="auth_token",
+            value=auth_token,
             max_age=10*365*24*60*60,  # 10 лет (практически бессрочно, удаление только при logout)
             path="/",  # КРИТИЧНО: доступна для всех путей
             httponly=True,
@@ -1299,7 +1323,12 @@ async def logout(current_user: User = Depends(get_current_user), db: Session = D
         await disconnect_user_client(current_user.id)
         logger.info(f"[LOGOUT] user_id={current_user.id} - TelegramClient отключен")
 
-        # 2. Удалить TelegramSession из БД
+        # 2. Очистить auth_token пользователя в БД
+        current_user.auth_token = None
+        db.commit()
+        logger.info(f"[LOGOUT] user_id={current_user.id} - auth_token очищен")
+
+        # 3. Удалить TelegramSession из БД
         deleted_count = db.query(TelegramSession).filter(
             TelegramSession.user_id == current_user.id
         ).delete(synchronize_session=False)
@@ -1309,9 +1338,9 @@ async def logout(current_user: User = Depends(get_current_user), db: Session = D
         print(f"LOGOUT user_id={current_user.id}")
         print(f"TelegramSession deleted (count={deleted_count})")
 
-        # 3. Создать ответ и очистить cookie
+        # 4. Создать ответ и очистить cookie
         response = JSONResponse({"ok": True, "message": "Выход выполнен"})
-        response.delete_cookie(key="user_phone", path="/")
+        response.delete_cookie(key="auth_token", path="/")
         return response
 
     except Exception as e:

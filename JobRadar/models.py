@@ -24,6 +24,9 @@ class User(Base):
     trial_expires_at = Column(DateTime, nullable=True)  # Когда закончится trial (now + 3 дня)
     paid_until = Column(DateTime, nullable=True)  # Когда закончится платный тариф (now + 30 дней)
 
+    # Поле для авторизации
+    auth_token = Column(String(128), unique=True, index=True, nullable=True)  # Криптографически стойкий токен сессии
+
     def __repr__(self):
         return f"<User(id={self.id}, phone={self.phone}, plan={self.plan}, trial_expires_at={self.trial_expires_at}, paid_until={self.paid_until})>"
 
