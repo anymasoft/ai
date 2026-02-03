@@ -2814,7 +2814,7 @@
 
             try {
                 const user = JSON.parse(userJSON);
-                const fullName = `${user.first_name || ''} ${user.last_name || ''}`.trim() || user.username || 'Пользователь';
+                const fullName = user.phone || 'Пользователь';
                 const phone = user.phone || '-';
 
                 statusDiv.innerHTML = `
@@ -2846,7 +2846,7 @@
 
             try {
                 const user = JSON.parse(userJSON);
-                const fullName = `${user.first_name || ''} ${user.last_name || ''}`.trim() || user.username || 'Пользователь';
+                const fullName = user.phone || 'Пользователь';
                 document.getElementById('profile-name').textContent = fullName;
                 document.getElementById('profile-phone').textContent = user.phone || '-';
                 console.log('✅ Профиль пользователя загружен:', fullName);
