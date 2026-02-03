@@ -1123,11 +1123,20 @@ async def login_by_telegram(request: AuthLoginTelegramRequest):
 
             logger.info(f"✅ [LOGIN_TELEGRAM] phone={phone} (user_id={user.id}) - вход через Telegram ЛС, auth_token сгенерирован")
 
+            # Получить user info для фронтенда
+            user_info = {
+                "id": user.id,
+                "phone": user.phone,
+                "first_name": user.first_name or "",
+                "last_name": user.last_name or "",
+                "username": user.username or "",
+            }
+
             # 6. Удалить код из памяти (one-time use)
             del pending_login_codes[phone]
 
             # 7. Вернуть auth_token
-            response = JSONResponse({"ok": True})
+            response = JSONResponse({"ok": True, "user": user_info})
             response.set_cookie(
                 key="auth_token",
                 value=auth_token,
