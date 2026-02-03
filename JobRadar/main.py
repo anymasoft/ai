@@ -679,11 +679,11 @@ async def get_user_me(current_user: User = Depends(get_current_user), db: Sessio
     if session and session.telegram_username:
         display_name = session.telegram_username
 
-    first_name = session.telegram_first_name or "" if session else ""
-    last_name = session.telegram_last_name or "" if session else ""
-    username = session.telegram_username or "" if session else ""
+    first_name = str(session.telegram_first_name) if (session and session.telegram_first_name) else ""
+    last_name = str(session.telegram_last_name) if (session and session.telegram_last_name) else ""
+    username = str(session.telegram_username) if (session and session.telegram_username) else ""
 
-    logger.info(f"[USER_ME] user_id={current_user.id}: first_name='{first_name}' (empty={not first_name}), last_name='{last_name}' (empty={not last_name}), username='{username}'")
+    logger.info(f"[USER_ME] user_id={current_user.id}: first_name='{first_name}' (type={type(first_name).__name__}), last_name='{last_name}' (type={type(last_name).__name__}), username='{username}'")
 
     return {
         "id": current_user.id,
@@ -1033,14 +1033,19 @@ async def auth_save(request: AuthSaveRequest):
 
             logger.info(f"✅ [AUTH_SAVE] Получены данные пользователя: phone={phone}, first_name='{first_name}' (empty={not first_name}), last_name='{last_name}' (empty={not last_name}), username={me.username}")
 
+            # Очень важно: убедиться что значения не None, а именно строки
+            first_name_final = str(first_name) if first_name else ""
+            last_name_final = str(last_name) if last_name else ""
+            username_final = str(me.username) if me.username else ""
+
             user_info = {
                 "phone": phone,
-                "first_name": first_name,
-                "last_name": last_name,
-                "username": me.username or "",
+                "first_name": first_name_final,
+                "last_name": last_name_final,
+                "username": username_final,
                 "id": me.id
             }
-            logger.info(f"[AUTH_SAVE_RESPONSE] Возвращаю user_info: first_name='{user_info['first_name']}', last_name='{user_info['last_name']}', username='{user_info['username']}'")
+            logger.info(f"[AUTH_SAVE_RESPONSE] Возвращаю user_info: first_name='{user_info['first_name']}' (type={type(user_info['first_name']).__name__}), last_name='{user_info['last_name']}' (type={type(user_info['last_name']).__name__}), username='{user_info['username']}'")
         except Exception as e:
             raise
 
@@ -1165,15 +1170,19 @@ async def login_by_telegram(request: AuthLoginTelegramRequest):
             # Получить TelegramSession для получения имени
             telegram_session = db.query(TelegramSession).filter(TelegramSession.user_id == user.id).first()
 
-            # Получить user info для фронтенда
+            # Получить user info для фронтенда с гарантией типов
+            first_name_final = str(telegram_session.telegram_first_name) if (telegram_session and telegram_session.telegram_first_name) else ""
+            last_name_final = str(telegram_session.telegram_last_name) if (telegram_session and telegram_session.telegram_last_name) else ""
+            username_final = str(telegram_session.telegram_username) if (telegram_session and telegram_session.telegram_username) else ""
+
             user_info = {
                 "id": user.id,
                 "phone": user.phone,
-                "first_name": telegram_session.telegram_first_name or "" if telegram_session else "",
-                "last_name": telegram_session.telegram_last_name or "" if telegram_session else "",
-                "username": telegram_session.telegram_username or "" if telegram_session else "",
+                "first_name": first_name_final,
+                "last_name": last_name_final,
+                "username": username_final,
             }
-            logger.info(f"[LOGIN_TELEGRAM_RESPONSE] Возвращаю user_info: first_name='{user_info['first_name']}' (empty={not user_info['first_name']}), last_name='{user_info['last_name']}' (empty={not user_info['last_name']}), username='{user_info['username']}'")
+            logger.info(f"[LOGIN_TELEGRAM_RESPONSE] Возвращаю user_info: first_name='{user_info['first_name']}' (type={type(user_info['first_name']).__name__}), last_name='{user_info['last_name']}' (type={type(user_info['last_name']).__name__}), username='{user_info['username']}'")
 
             # 6. Удалить код из памяти (one-time use)
             del pending_login_codes[phone]
