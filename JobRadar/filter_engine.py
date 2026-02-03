@@ -112,48 +112,46 @@ def match_text(text: str, filter_config: dict, legacy_keywords: list) -> bool:
     """
     Проверяет, соответствует ли текст правилам фильтрации
 
+    Логика:
+    - include_groups: OR между группами, AND внутри группы
+      (python AND remote) OR (golang) OR (node AND backend)
+    - exclude_groups: аналогично - если выполняется условие → исключить
+    - legacy_keywords: не используются в новой системе
+
     Args:
         text: Текст сообщения
-        filter_config: Конфигурация фильтра из load_active_filter()
-        legacy_keywords: Список ключевых слов из таблицы Keyword (нижний регистр)
+        filter_config: Конфигурация фильтра
+        legacy_keywords: Не используется (для обратной совместимости)
 
     Returns:
         True если сообщение должно быть опубликовано, иначе False
     """
     normalized_text = normalize_text(text)
 
-    # 1. Базовый слой: legacy keywords
-    if legacy_keywords:
-        if not any(kw in normalized_text for kw in legacy_keywords):
-            logger.debug(f"❌ No legacy keywords found in text")
+    # 1. Проверяем exclude_groups: если найдена ЛЮБАЯ группа где ВСЕ слова найдены → исключить
+    exclude_groups = filter_config.get("exclude_groups", [])
+    if exclude_groups:
+        for group in exclude_groups:
+            # Проверяем, все ли слова из группы найдены в тексте
+            if all(word in normalized_text for word in group):
+                logger.debug(f"❌ Found exclude group in text: {group}")
+                return False
+
+    # 2. Проверяем include_groups: если НЕТ группы где ВСЕ слова найдены → исключить
+    include_groups = filter_config.get("include_groups", [])
+    if include_groups:
+        # Ищем хотя бы одну группу, где ВСЕ слова присутствуют
+        found_match = False
+        for group in include_groups:
+            if all(word in normalized_text for word in group):
+                logger.debug(f"✅ Found include group in text: {group}")
+                found_match = True
+                break
+
+        if not found_match:
+            logger.debug(f"❌ No include groups matched. groups={include_groups}")
             return False
+    # else: если include_groups пусто = мониторим ВСЕ посты
 
-    mode = filter_config.get("mode", "keyword_or")
-
-    # 2. Только legacy режим
-    if mode == "keyword_or":
-        logger.debug(f"✅ Matched legacy keyword (mode=keyword_or)")
-        return True
-
-    # 3. Advanced слой
-    exclude_any = filter_config.get("exclude_any", [])
-    require_all = filter_config.get("require_all", [])
-    include_any = filter_config.get("include_any", [])
-
-    logger.debug(f"📊 Advanced match check - exclude={exclude_any}, require={require_all}, include={include_any}")
-
-    if any(exc in normalized_text for exc in exclude_any):
-        logger.debug(f"❌ Found exclude word in text")
-        return False
-
-    if require_all and not all(req in normalized_text for req in require_all):
-        logger.debug(f"❌ Not all require words found. require={require_all}")
-        return False
-
-    if include_any:
-        result = any(inc in normalized_text for inc in include_any)
-        logger.debug(f"{'✅' if result else '❌'} Include check result={result}")
-        return result
-
-    logger.debug(f"✅ Passed all advanced checks")
+    logger.debug(f"✅ Text passed all filters")
     return True
