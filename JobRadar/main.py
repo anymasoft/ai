@@ -682,6 +682,9 @@ async def get_user_me(current_user: User = Depends(get_current_user), db: Sessio
     return {
         "id": current_user.id,
         "phone": current_user.phone,
+        "first_name": session.telegram_first_name or "" if session else "",
+        "last_name": session.telegram_last_name or "" if session else "",
+        "username": session.telegram_username or "" if session else "",
         "display_name": display_name,
         "is_admin": is_admin,
         "has_session": session is not None,
@@ -1003,7 +1006,9 @@ async def auth_save(request: AuthSaveRequest):
 
             user_info = {
                 "phone": phone,
-                "telegram_username": me.username or "",
+                "first_name": me.first_name or "",
+                "last_name": me.last_name or "",
+                "username": me.username or "",
                 "id": me.id
             }
         except Exception as e:
@@ -1016,9 +1021,9 @@ async def auth_save(request: AuthSaveRequest):
             raise
 
         try:
-            # Сохранить в БД с telegram_user_id и telegram_username
+            # Сохранить в БД с telegram_user_id, telegram_username, first_name, last_name
             # Возвращает user_id при успехе или None при ошибке
-            user_id = await save_session_to_db(phone, session_string, me.id, me.username)
+            user_id = await save_session_to_db(phone, session_string, me.id, me.username, me.first_name, me.last_name)
             if user_id is None:
                 raise Exception("Ошибка при сохранении в БД")
         except Exception as e:
@@ -1127,10 +1132,16 @@ async def login_by_telegram(request: AuthLoginTelegramRequest):
 
             logger.info(f"✅ [LOGIN_TELEGRAM] phone={phone} (user_id={user.id}) - вход через Telegram ЛС, auth_token сгенерирован")
 
+            # Получить TelegramSession для получения имени
+            telegram_session = db.query(TelegramSession).filter(TelegramSession.user_id == user.id).first()
+
             # Получить user info для фронтенда
             user_info = {
                 "id": user.id,
                 "phone": user.phone,
+                "first_name": telegram_session.telegram_first_name or "" if telegram_session else "",
+                "last_name": telegram_session.telegram_last_name or "" if telegram_session else "",
+                "username": telegram_session.telegram_username or "" if telegram_session else "",
             }
 
             # 6. Удалить код из памяти (one-time use)

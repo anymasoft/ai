@@ -12,7 +12,7 @@ from models import TelegramSession, User
 logger = logging.getLogger(__name__)
 
 
-async def save_session_to_db(phone: str, session_string: str, telegram_user_id: int = None, telegram_username: str = None):
+async def save_session_to_db(phone: str, session_string: str, telegram_user_id: int = None, telegram_username: str = None, telegram_first_name: str = None, telegram_last_name: str = None):
     """
     Сохранить session строку в SQLite БД.
 
@@ -21,6 +21,8 @@ async def save_session_to_db(phone: str, session_string: str, telegram_user_id: 
         session_string: Строка сессии из StringSession.save()
         telegram_user_id: Telegram ID пользователя (опционально)
         telegram_username: Telegram @username пользователя без @ (опционально)
+        telegram_first_name: Telegram first_name пользователя (опционально)
+        telegram_last_name: Telegram last_name пользователя (опционально)
 
     Returns:
         int: user_id при успехе, или None при ошибке
@@ -60,6 +62,10 @@ async def save_session_to_db(phone: str, session_string: str, telegram_user_id: 
                     existing.telegram_user_id = telegram_user_id
                 if telegram_username:
                     existing.telegram_username = telegram_username
+                if telegram_first_name:
+                    existing.telegram_first_name = telegram_first_name
+                if telegram_last_name:
+                    existing.telegram_last_name = telegram_last_name
             else:
                 logger.info(f"✨ Сохраняю новую сессию: phone={phone}")
                 new_session = TelegramSession(
@@ -67,7 +73,9 @@ async def save_session_to_db(phone: str, session_string: str, telegram_user_id: 
                     phone=phone,
                     session_string=session_string,
                     telegram_user_id=telegram_user_id,
-                    telegram_username=telegram_username
+                    telegram_username=telegram_username,
+                    telegram_first_name=telegram_first_name,
+                    telegram_last_name=telegram_last_name
                 )
                 db.add(new_session)
 
