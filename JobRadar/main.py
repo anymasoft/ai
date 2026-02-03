@@ -1550,33 +1550,18 @@ async def logout(current_user: User = Depends(get_current_user), db: Session = D
     Выйти из аккаунта.
 
     Логика:
-    1. Получить current_user (через cookie)
-    2. Отключить активный TelegramClient (если есть)
-    3. Удалить TelegramSession из БД
-    4. Очистить cookie авторизации
+    1. Очистить auth_token пользователя в БД (закончить веб-сессию)
+    2. Удалить cookie авторизации
+
+    Важно: TelegramSession НЕ удаляется - она используется для мониторинга независимо от веб-сессии
     """
     try:
-        # 1. Отключить TelegramClient пользователя
-        from telegram_clients import disconnect_user_client
-        await disconnect_user_client(current_user.id)
-        logger.info(f"[LOGOUT] user_id={current_user.id} - TelegramClient отключен")
-
-        # 2. Очистить auth_token пользователя в БД
+        # 1. Очистить auth_token пользователя в БД
         current_user.auth_token = None
         db.commit()
         logger.info(f"[LOGOUT] user_id={current_user.id} - auth_token очищен")
 
-        # 3. Удалить TelegramSession из БД
-        deleted_count = db.query(TelegramSession).filter(
-            TelegramSession.user_id == current_user.id
-        ).delete(synchronize_session=False)
-        db.commit()
-
-        logger.info(f"[LOGOUT] user_id={current_user.id} - удалено TelegramSession записей: {deleted_count}")
-        print(f"LOGOUT user_id={current_user.id}")
-        print(f"TelegramSession deleted (count={deleted_count})")
-
-        # 4. Создать ответ и очистить cookie
+        # 2. Создать ответ и очистить cookie
         response = JSONResponse({"ok": True, "message": "Выход выполнен"})
         response.delete_cookie(key="auth_token", path="/")
         return response
