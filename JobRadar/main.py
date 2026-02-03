@@ -1005,20 +1005,26 @@ async def auth_save(request: AuthSaveRequest):
             # Получить информацию о пользователе
             me = await client.get_me()
 
-            # Получить полный профиль пользователя для получения first_name и last_name
-            try:
-                from telethon.tl.functions.users import GetFullUserRequest
-                full_user = await client(GetFullUserRequest(me.id))
-                user_full_info = full_user.users[0]
-                first_name = user_full_info.first_name or ""
-                last_name = user_full_info.last_name or ""
-                logger.info(f"[AUTH_SAVE] GetFullUserRequest успешен: first_name='{first_name}' (type={type(first_name).__name__}, len={len(first_name) if first_name else 0}), last_name='{last_name}' (type={type(last_name).__name__}, len={len(last_name) if last_name else 0})")
-            except Exception as e:
-                # Fallback: использовать me объект
-                logger.warning(f"[AUTH_SAVE] Ошибка получения полного профиля, используем me объект: {e}")
-                first_name = me.first_name or ""
-                last_name = me.last_name or ""
-                logger.info(f"[AUTH_SAVE] Fallback на me объект: first_name='{first_name}', last_name='{last_name}'")
+            # Сначала пробуем получить имя из me объекта напрямую (это обычно работает)
+            first_name = me.first_name or ""
+            last_name = me.last_name or ""
+
+            logger.info(f"[AUTH_SAVE] Из me объекта: first_name='{first_name}', last_name='{last_name}'")
+
+            # Если имя пусто, пытаемся получить через GetFullUserRequest
+            if not first_name or not last_name:
+                try:
+                    from telethon.tl.functions.users import GetFullUserRequest
+                    full_user = await client(GetFullUserRequest(me.id))
+                    user_full_info = full_user.users[0]
+                    if user_full_info.first_name:
+                        first_name = user_full_info.first_name
+                    if user_full_info.last_name:
+                        last_name = user_full_info.last_name
+                    logger.info(f"[AUTH_SAVE] GetFullUserRequest дал результат: first_name='{first_name}', last_name='{last_name}'")
+                except Exception as e:
+                    logger.warning(f"[AUTH_SAVE] GetFullUserRequest не дал результата: {e}")
+                    # Используем то что было из me объекта
 
             # Проверить что telegram_user_id совпадает (если был сохранен)
             if auth_data.get("telegram_user_id"):

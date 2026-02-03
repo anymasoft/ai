@@ -2815,7 +2815,10 @@
             try {
                 const user = JSON.parse(userJSON);
                 const phone = user.phone || '-';
-                const fullName = `${user.first_name || ''} ${user.last_name || ''}`.trim() || user.username || 'Пользователь';
+                const firstName = (user.first_name || '').trim();
+                const lastName = (user.last_name || '').trim();
+                const fullNameFromTelegram = `${firstName} ${lastName}`.trim();
+                const fullName = fullNameFromTelegram || user.username || 'Пользователь';
 
                 statusDiv.innerHTML = `
                     <div style="background: #f0fdf4; padding: 1rem; border-radius: 4px; border: 1px solid #22c55e; margin-bottom: 1rem;">
@@ -2847,8 +2850,16 @@
             try {
                 const user = JSON.parse(userJSON);
 
-                // Формировать полное имя из first_name и last_name (старая логика)
-                const fullName = `${user.first_name || ''} ${user.last_name || ''}`.trim() || user.username || 'Пользователь';
+                // Получить имя из Telegram (гарантированно есть)
+                const firstName = (user.first_name || '').trim();
+                const lastName = (user.last_name || '').trim();
+                const fullNameFromTelegram = `${firstName} ${lastName}`.trim();
+
+                // Если есть полное имя - показывать его, иначе username
+                const fullName = fullNameFromTelegram || user.username || 'Пользователь';
+
+                console.log(`[PROFILE_DEBUG] firstName='${user.first_name}', lastName='${user.last_name}', fullNameFromTelegram='${fullNameFromTelegram}', username='${user.username}', result='${fullName}'`);
+
                 document.getElementById('profile-name').textContent = fullName;
                 console.log('✅ Профиль пользователя загружен:', fullName);
 
