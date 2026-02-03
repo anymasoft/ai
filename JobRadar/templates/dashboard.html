@@ -1475,9 +1475,9 @@
                 </div>
 
                 <div class="form-group">
-                    <label>Включать ключевые слова *</label>
-                    <textarea id="task-include" placeholder="python&#10;remote&#10;По одному в строке" required></textarea>
-                    <span class="form-hint">Найти лиды с этими ключевыми словами</span>
+                    <label>Включать ключевые слова</label>
+                    <textarea id="task-include" placeholder="python&#10;remote&#10;По одному в строке"></textarea>
+                    <span class="form-hint">Найти лиды с этими ключевыми словами (оставить пусто = получать все посты)</span>
                 </div>
 
                 <div class="form-group">
@@ -1906,11 +1906,6 @@
 
             if (!name) {
                 showToast('Название задачи обязательно', 'warning');
-                return;
-            }
-
-            if (!include) {
-                showToast('Требуется хотя бы одно включающее ключевое слово', 'warning');
                 return;
             }
 

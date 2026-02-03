@@ -244,7 +244,7 @@ class TaskCreate(BaseModel):
     name: str
     status: str = "running"
     sources: str = ""
-    include_keywords: str = ""
+    include_keywords: Optional[str] = ""
     exclude_keywords: Optional[str] = ""
     forward_channel: Optional[str] = ""
     alerts_personal: bool = True
