@@ -814,9 +814,10 @@ async def auth_start(request: AuthStartRequest):
                     # Генерировать 5-значный код
                     login_code = str(random.randint(10000, 99999))
 
-                    # Сохранить код в памяти с TTL 300 сек
+                    # Сохранить код в памяти с TTL 300 сек и привязкой к user_id
                     pending_login_codes[phone] = {
                         "code": login_code,
+                        "user_id": telegram_session.user_id,
                         "expires_at": datetime.utcnow() + timedelta(seconds=300)
                     }
 
@@ -1106,6 +1107,11 @@ async def login_by_telegram(request: AuthLoginTelegramRequest):
             if not user:
                 logger.error(f"[LOGIN_TELEGRAM] phone={phone} - User не найден")
                 raise HTTPException(status_code=400, detail="Пользователь не найден.")
+
+            # Проверить что user_id совпадает (защита от подмены)
+            if login_data.get("user_id") != user.id:
+                logger.error(f"[LOGIN_TELEGRAM] phone={phone} - user_id mismatch: expected {login_data.get('user_id')}, got {user.id}")
+                raise HTTPException(status_code=403, detail="User mismatch for login code")
 
             # Проверить активная ли подписка
             ensure_active_subscription(user, db)
