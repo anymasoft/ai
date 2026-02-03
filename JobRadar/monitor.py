@@ -751,6 +751,7 @@ async def check_source_for_task_leads(task: Task, source_username: str, filter_c
                 normalized_text = normalize_text(text)
 
                 matched_keyword = None
+                include_groups = filter_config.get("include_groups", [])
                 for group in include_groups:
                     if all(word in normalized_text for word in group):
                         matched_keyword = " ".join(group)
