@@ -1309,7 +1309,7 @@ async def get_telegram_contact():
     """Получить ссылку на Telegram администратора"""
     from config import TELEGRAM_ADMIN_USERNAME
     return {
-        "telegram_url": f"https://t.me/{TELEGRAM_ADMIN_USERNAME}"
+        "telegram_url": TELEGRAM_ADMIN_USERNAME
     }
 
 @app.post("/api/logout")
