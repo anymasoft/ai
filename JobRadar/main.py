@@ -674,9 +674,15 @@ async def get_user_me(current_user: User = Depends(get_current_user), db: Sessio
     if session and session.telegram_user_id and session.telegram_user_id == TELEGRAM_ADMIN_ID:
         is_admin = True
 
+    # Определить display_name: использовать telegram_username если есть, иначе phone
+    display_name = current_user.phone
+    if session and session.telegram_username:
+        display_name = session.telegram_username
+
     return {
         "id": current_user.id,
         "phone": current_user.phone,
+        "display_name": display_name,
         "is_admin": is_admin,
         "has_session": session is not None,
         "disabled": current_user.disabled,

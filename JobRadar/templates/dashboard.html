@@ -2836,7 +2836,7 @@
             }
         }
 
-        function loadUserProfile() {
+        async function loadUserProfile() {
             const userJSON = localStorage.getItem('user');
             if (!userJSON) {
                 console.log('❌ Информация о пользователе не найдена. Перенаправление на страницу входа...');
@@ -2846,10 +2846,29 @@
 
             try {
                 const user = JSON.parse(userJSON);
-                const fullName = user.phone || 'Пользователь';
-                document.getElementById('profile-name').textContent = fullName;
+
+                // Получить display_name с сервера через /api/user/me
+                try {
+                    const response = await fetch('/api/user/me');
+                    if (response.ok) {
+                        const serverData = await response.json();
+                        const displayName = serverData.display_name || user.phone || 'Пользователь';
+                        document.getElementById('profile-name').textContent = displayName;
+                        console.log('✅ Профиль пользователя загружен (с сервера):', displayName);
+                    } else {
+                        // Fallback: использовать phone из localStorage
+                        const fallbackName = user.phone || 'Пользователь';
+                        document.getElementById('profile-name').textContent = fallbackName;
+                        console.log('✅ Профиль пользователя загружен (fallback):', fallbackName);
+                    }
+                } catch (apiError) {
+                    // Если ошибка при получении с сервера - использовать phone из localStorage
+                    const fallbackName = user.phone || 'Пользователь';
+                    document.getElementById('profile-name').textContent = fallbackName;
+                    console.log('⚠️ Ошибка получения данных сервера, используется fallback:', fallbackName);
+                }
+
                 document.getElementById('profile-phone').textContent = user.phone || '-';
-                console.log('✅ Профиль пользователя загружен:', fullName);
 
                 // Обновить статус Telegram аккаунта в Settings
                 updateTelegramAccountStatus();
