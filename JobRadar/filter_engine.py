@@ -108,7 +108,7 @@ def load_active_filter(db: Session) -> dict:
     return result
 
 
-def match_text(text: str, filter_config: dict, legacy_keywords: list) -> bool:
+def match_text(text: str, filter_config: dict) -> bool:
     """
     Проверяет, соответствует ли текст правилам фильтрации
 
@@ -116,42 +116,30 @@ def match_text(text: str, filter_config: dict, legacy_keywords: list) -> bool:
     - include_groups: OR между группами, AND внутри группы
       (python AND remote) OR (golang) OR (node AND backend)
     - exclude_groups: аналогично - если выполняется условие → исключить
-    - legacy_keywords: не используются в новой системе
 
     Args:
         text: Текст сообщения
-        filter_config: Конфигурация фильтра
-        legacy_keywords: Не используется (для обратной совместимости)
+        filter_config: Конфигурация фильтра с include_groups и exclude_groups
 
     Returns:
         True если сообщение должно быть опубликовано, иначе False
     """
     normalized_text = normalize_text(text)
 
-    # 1. Проверяем exclude_groups: если найдена ЛЮБАЯ группа где ВСЕ слова найдены → исключить
-    exclude_groups = filter_config.get("exclude_groups", [])
-    if exclude_groups:
-        for group in exclude_groups:
-            # Проверяем, все ли слова из группы найдены в тексте
-            if all(word in normalized_text for word in group):
-                logger.debug(f"❌ Found exclude group in text: {group}")
-                return False
-
-    # 2. Проверяем include_groups: если НЕТ группы где ВСЕ слова найдены → исключить
-    include_groups = filter_config.get("include_groups", [])
-    if include_groups:
-        # Ищем хотя бы одну группу, где ВСЕ слова присутствуют
-        found_match = False
-        for group in include_groups:
-            if all(word in normalized_text for word in group):
-                logger.debug(f"✅ Found include group in text: {group}")
-                found_match = True
-                break
-
-        if not found_match:
-            logger.debug(f"❌ No include groups matched. groups={include_groups}")
+    # EXCLUDE: если найдена ЛЮБАЯ группа где ВСЕ слова найдены → исключить
+    for group in filter_config.get("exclude_groups", []):
+        if all(word in normalized_text for word in group):
             return False
-    # else: если include_groups пусто = мониторим ВСЕ посты
 
-    logger.debug(f"✅ Text passed all filters")
-    return True
+    include_groups = filter_config.get("include_groups", [])
+
+    # Если include пуст → мониторим всё
+    if not include_groups:
+        return True
+
+    # INCLUDE: ищем хотя бы одну группу, где ВСЕ слова присутствуют
+    for group in include_groups:
+        if all(word in normalized_text for word in group):
+            return True
+
+    return False

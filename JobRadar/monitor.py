@@ -510,7 +510,6 @@ async def process_task_for_leads(task: Task, db: Session):
 
     # Формируем filter_config с новой структурой
     filter_config = {
-        "mode": "advanced",
         "include_groups": include_groups,
         "exclude_groups": exclude_groups
     }
@@ -748,15 +747,12 @@ async def check_source_for_task_leads(task: Task, source_username: str, filter_c
                 continue
 
             # Проверяем совпадение через фильтр
-            if match_text(text, filter_config, []):
-                # Ищем какое ключевое слово совпало (из групп)
+            if match_text(text, filter_config):
+                # Ищем какую группу совпало (вся группа целиком)
                 matched_keyword = None
                 for group in include_groups:
-                    for kw in group:
-                        if kw in text:
-                            matched_keyword = kw
-                            break
-                    if matched_keyword:
+                    if all(word in text for word in group):
+                        matched_keyword = " ".join(group)
                         break
 
                 # Проверяем, не сохраняли ли мы этот lead уже
