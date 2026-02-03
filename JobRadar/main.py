@@ -1278,6 +1278,7 @@ async def admin_users(
     limit: int = 20,
     q: str = "",
     has_session: str = "all",
+    plan: str = "all",
     current_user: User = Depends(require_admin),
     db: Session = Depends(get_db)
 ):
@@ -1288,46 +1289,59 @@ async def admin_users(
         search_username = search_username[1:]
     search_username = search_username.lower()
 
-    # Базовый запрос к TelegramSession
-    query = db.query(TelegramSession)
+    # Базовый запрос к User
+    user_query = db.query(User)
 
-    # Фильтр has_session
-    if has_session == "yes":
-        query = query.filter(TelegramSession.telegram_user_id.isnot(None))
-    elif has_session == "no":
-        query = query.filter(TelegramSession.telegram_user_id.is_(None))
+    # Фильтр по плану
+    if plan != "all":
+        valid_plans = ["trial", "start", "pro", "business"]
+        if plan in valid_plans:
+            user_query = user_query.filter(User.plan == plan)
 
-    # Поиск по username
-    if search_username:
-        query = query.filter(
-            TelegramSession.telegram_username.ilike(f"%{search_username}%")
-        )
+    # Получить users, затем фильтровать по session и username
+    users = user_query.order_by(User.created_at.desc()).all()
 
-    # Получить sessions с пагинацией (limit+1 для has_more)
-    sessions = query.order_by(TelegramSession.created_at.desc()).offset((page - 1) * limit).limit(limit + 1).all()
+    # Применить фильтры по session и username
+    filtered_users = []
+    for user in users:
+        # Получить session
+        session = db.query(TelegramSession).filter(TelegramSession.user_id == user.id).first()
 
-    has_more = len(sessions) > limit
-    sessions = sessions[:limit]
+        # Фильтр has_session
+        if has_session == "yes" and (not session or session.telegram_user_id is None):
+            continue
+        elif has_session == "no" and session and session.telegram_user_id is not None:
+            continue
+
+        # Поиск по username
+        if search_username and (not session or not session.telegram_username or search_username not in session.telegram_username.lower()):
+            continue
+
+        filtered_users.append((user, session))
+
+    # Пагинация
+    has_more = len(filtered_users) > page * limit
+    start = (page - 1) * limit
+    end = page * limit
+    paginated_users = filtered_users[start:end + 1]
+    paginated_users = paginated_users[:limit]
 
     # Собрать данные по каждому пользователю
     users_data = []
-    for session in sessions:
-        user = db.query(User).filter(User.id == session.user_id).first()
-        if not user:
-            continue
-
+    for user, session in paginated_users:
         tasks_total = db.query(Task).filter(Task.user_id == user.id).count()
         tasks_running = db.query(Task).filter(Task.user_id == user.id, Task.status == "running").count()
         leads_total = db.query(Lead).join(Task).filter(Task.user_id == user.id).count()
 
         users_data.append({
             "id": user.id,
-            "telegram_username": session.telegram_username,
-            "telegram_user_id": session.telegram_user_id,
+            "telegram_username": session.telegram_username if session else None,
+            "telegram_user_id": session.telegram_user_id if session else None,
+            "plan": user.plan,
             "tasks_total": tasks_total,
             "tasks_running": tasks_running,
             "leads_total": leads_total,
-            "created_at": session.created_at.isoformat() if session.created_at else None
+            "created_at": user.created_at.isoformat() if user.created_at else None
         })
 
     return {
