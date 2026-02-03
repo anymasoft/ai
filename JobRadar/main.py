@@ -1452,9 +1452,18 @@ async def admin_change_user_plan(
 
     old_plan = user.plan
     user.plan = plan
+
+    # Установить/очистить paid_until в зависимости от плана
+    if plan == "trial":
+        # Trial использует trial_expires_at, не трогаем paid_until
+        user.paid_until = None
+    else:
+        # Платный тариф: установить период на 30 дней с текущего момента
+        user.paid_until = datetime.utcnow() + timedelta(days=30)
+
     db.commit()
 
-    logger.info(f"[ADMIN] user_id={user.id} - Тариф изменен: {old_plan} -> {plan}")
+    logger.info(f"[ADMIN] user_id={user.id} - Тариф изменен: {old_plan} -> {plan}, paid_until={user.paid_until}")
     return {"ok": True, "old_plan": old_plan, "new_plan": plan}
 
 @app.post("/admin/api/users/{user_id}/delete")
