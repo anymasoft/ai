@@ -2871,15 +2871,12 @@
             });
         }
 
-        function logout() {
+        async function logout() {
             showDeleteConfirm('Вы уверены, что хотите выйти из аккаунта?', async () => {
                 try {
-                    // Отправить POST запрос к /api/logout для очистки Telegram сессии
+                    // Отправить POST запрос к /api/logout для отключения TelegramClient и очистки Telegram сессии
                     const response = await fetch('/api/logout', {
                         method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json'
-                        },
                         credentials: 'include'
                     });
 
@@ -2887,8 +2884,12 @@
                         throw new Error('Ошибка при logout');
                     }
 
-                    // Удалить информацию о пользователе из localStorage
-                    localStorage.removeItem('user');
+                    console.log('✅ Logout успешен');
+
+                    // Полностью очистить все хранилище
+                    localStorage.clear();
+                    sessionStorage.clear();
+
                     showToast('Вы вышли из аккаунта', 'info');
 
                     // Перейти на страницу логина
