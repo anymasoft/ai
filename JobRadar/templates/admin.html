@@ -534,6 +534,13 @@
                         <option value="yes">С сессией</option>
                         <option value="no">Без сессии</option>
                     </select>
+                    <select id="filterPlan">
+                        <option value="all">Все тарифы</option>
+                        <option value="trial">Trial</option>
+                        <option value="start">Start</option>
+                        <option value="pro">Pro</option>
+                        <option value="business">Business</option>
+                    </select>
                     <button class="btn btn-primary" onclick="searchUsers()">Найти</button>
                 </div>
             </div>
@@ -547,7 +554,7 @@
                             <tr>
                                 <th>ID</th>
                                 <th>@Username</th>
-                                <th>Telegram ID</th>
+                                <th>Тариф</th>
                                 <th>Задачи</th>
                                 <th>Запущённых</th>
                                 <th>Лидов</th>
@@ -614,6 +621,7 @@
     let currentPage = 1;
     let currentQuery = "";
     let currentHasSession = "all";
+    let currentPlan = "all";
     let pendingAction = null;
 
     // Load stats on page load
@@ -686,7 +694,8 @@
                 page: page,
                 limit: 20,
                 q: currentQuery,
-                has_session: currentHasSession
+                has_session: currentHasSession,
+                plan: currentPlan
             });
 
             const response = await fetch(`/admin/api/users?${query}`);
@@ -716,7 +725,7 @@
                     <tr>
                         <td>#${user.id}</td>
                         <td><strong>${user.telegram_username || "—"}</strong></td>
-                        <td>${user.telegram_user_id || "—"}</td>
+                        <td><span class="badge" style="background: var(--primary); color: white;">${getPlanName(user.plan)}</span></td>
                         <td>${user.tasks_total}</td>
                         <td><span class="badge badge-success">${user.tasks_running}</span></td>
                         <td>${user.leads_total}</td>
@@ -746,6 +755,7 @@
     function searchUsers() {
         currentQuery = document.getElementById("searchInput").value;
         currentHasSession = document.getElementById("filterSession").value;
+        currentPlan = document.getElementById("filterPlan").value;
         currentPage = 1;
         loadUsers(1);
     }
