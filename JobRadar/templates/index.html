@@ -37,16 +37,33 @@
 
     <!-- Yandex.Metrika counter -->
     <script type="text/javascript">
-        (function(m,e,t,r,i,k,a){
-            m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};
-            m[i].l=1*new Date();
-            for (var j = 0; j < document.scripts.length; j++) {if (document.scripts[j].src === r) { return; }}
-            k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)
-        })(window, document,'script','https://mc.yandex.ru/metrika/tag.js?id=106593097', 'ym');
+        (function (m, e, t, r, i, k, a) {
+            m[i] = m[i] || function () {
+                (m[i].a = m[i].a || []).push(arguments)
+            };
+            m[i].l = 1 * new Date();
+            for (var j = 0; j < document.scripts.length; j++) {
+                if (document.scripts[j].src === r) {
+                    return;
+                }
+            }
+            k = e.createElement(t), a = e.getElementsByTagName(t)[0], k.async = 1, k.src = r, a.parentNode.insertBefore(k, a)
+        })(window, document, 'script', 'https://mc.yandex.ru/metrika/tag.js?id=106593097', 'ym');
 
-        ym(106593097, 'init', {ssr:true, webvisor:true, clickmap:true, ecommerce:"dataLayer", referrer: document.referrer, url: location.href, accurateTrackBounce:true, trackLinks:true});
+        ym(106593097, 'init', {
+            ssr: true,
+            webvisor: true,
+            clickmap: true,
+            ecommerce: "dataLayer",
+            referrer: document.referrer,
+            url: location.href,
+            accurateTrackBounce: true,
+            trackLinks: true
+        });
     </script>
-    <noscript><div><img src="https://mc.yandex.ru/watch/106593097" style="position:absolute; left:-9999px;" alt="" /></div></noscript>
+    <noscript>
+        <div><img src="https://mc.yandex.ru/watch/106593097" style="position:absolute; left:-9999px;" alt=""/></div>
+    </noscript>
     <!-- /Yandex.Metrika counter -->
 </head>
 <body>
@@ -120,10 +137,13 @@
         <div class="grid max-w-screen-xl px-4 pt-20 pb-8 mx-auto lg:gap-8 xl:gap-0 lg:py-16 lg:grid-cols-12 lg:pt-28">
             <div class="mr-auto place-self-center lg:col-span-7">
                 <h1 class="max-w-2xl mb-4 text-4xl font-extrabold leading-none tracking-tight md:text-5xl xl:text-6xl dark:text-white">
-                    Получайте вакансии и заявки из Telegram раньше других.</h1>
-                <p class="max-w-2xl mb-6 font-light text-gray-500 lg:mb-8 md:text-lg lg:text-xl dark:text-gray-400">Отслеживайте чаты и каналы по ключевым словам
-                    и получайте сообщения с запросами сразу после публикации. <br>
-                    Работу, специалистов, услуги, подрядчиков, аренду — всё по вашим ключевым словам.</p>
+                    Находите вакансии в Telegram раньше других соискателей.</h1>
+                <p class="max-w-2xl mb-6 font-light text-gray-500 lg:mb-8 md:text-lg lg:text-xl dark:text-gray-400">
+                    <b>JobRadar</b> автоматически отслеживает сообщения,
+                    где ищут разработчиков, маркетологов, менеджеров и других специалистов. <br>
+                    Достаточно создать задачу и запустить мониторинг —
+                    дальше сервис работает 24/7 и присылает вам подходящие вакансии в Telegram и в личный кабинет.</p>
+                <!--                <p>Вам не нужно часами следить за нужными каналами - все сообщения сразу у вас в личных сообщениях</p>-->
                 <div class="space-y-4 sm:flex sm:space-y-0 sm:space-x-4">
 
                     <a href="/dashboard"
@@ -236,9 +256,9 @@
             <!-- Row -->
             <div class="items-center gap-8 lg:grid lg:grid-cols-2 xl:gap-16">
                 <div class="text-gray-500 sm:text-lg dark:text-gray-400">
-                    <h2 class="mb-4 text-3xl font-extrabold tracking-tight text-gray-900 dark:text-white">Как JobRadar находит нужные запросы</h2>
-                    <p class="mb-8 font-light lg:text-xl">Сервис мониторит выбранные Telegram-чаты и каналы,
-                        ищет сообщения по вашим ключевым словам и отправляет подходящие запросы вам автоматически.</p>
+                    <h2 class="mb-4 text-3xl font-extrabold tracking-tight text-gray-900 dark:text-white">Как JobRadar находит подходящие вакансии</h2>
+                    <p class="mb-8 font-light lg:text-xl">Сервис круглосуточно мониторит выбранные Telegram-чаты и каналы,
+                        отбирает сообщения с вакансиями по вашим ключевым словам и отправляет их вам автоматически.</p>
                     <!-- List -->
                     <ul role="list" class="pt-8 space-y-5 border-t border-gray-200 my-7 dark:border-gray-700">
                         <li class="flex space-x-3">
@@ -248,7 +268,7 @@
                                       d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
                                       clip-rule="evenodd"></path>
                             </svg>
-                            <span class="text-base font-medium leading-tight text-gray-900 dark:text-white">Выбираете чаты и каналы, где есть ваша аудитория</span>
+                            <span class="text-base font-medium leading-tight text-gray-900 dark:text-white">Выбираете чаты и каналы с вакансиями</span>
                         </li>
                         <li class="flex space-x-3">
                             <!-- Icon -->
@@ -257,7 +277,7 @@
                                       d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
                                       clip-rule="evenodd"></path>
                             </svg>
-                            <span class="text-base font-medium leading-tight text-gray-900 dark:text-white">Задаёте слова: «нужен», «ищу», «посоветуйте» и другие</span>
+                            <span class="text-base font-medium leading-tight text-gray-900 dark:text-white">Задаёте слова: «вакансия», «ищем», «нужен разработчик» и другие</span>
                         </li>
                         <li class="flex space-x-3">
                             <!-- Icon -->
@@ -266,10 +286,10 @@
                                       d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
                                       clip-rule="evenodd"></path>
                             </svg>
-                            <span class="text-base font-medium leading-tight text-gray-900 dark:text-white">JobRadar присылает вам сообщения с запросами</span>
+                            <span class="text-base font-medium leading-tight text-gray-900 dark:text-white">JobRadar автоматически присылает вам новые вакансии</span>
                         </li>
                     </ul>
-                    <p class="mb-8 font-light lg:text-xl">Вместо ручного мониторинга десятков чатов вы получаете готовый поток релевантных запросов в одном месте.</p>
+                    <p class="mb-8 font-light lg:text-xl">Вместо ручного мониторинга десятков каналов вы получаете поток подходящих вакансий в одном месте.</p>
                 </div>
                 <img class="hidden w-full mb-4 rounded-lg lg:mb-0 lg:flex" src="/static/images/feature-11.png" alt="dashboard feature image">
             </div>
@@ -278,7 +298,7 @@
                 <img class="hidden w-full mb-4 rounded-lg lg:mb-0 lg:flex" src="/static/images/feature-22.png" alt="feature image 2">
                 <div class="text-gray-500 sm:text-lg dark:text-gray-400">
                     <h2 class="mb-4 text-3xl font-extrabold tracking-tight text-gray-900 dark:text-white">Что вы получаете</h2>
-                    <p class="mb-8 font-light lg:text-xl">Вы получаете постоянный поток релевантных запросов из Telegram без ручного мониторинга чатов.</p>
+                    <p class="mb-8 font-light lg:text-xl">Постоянный поток подходящих вакансий из Telegram без ручного мониторинга каналов.</p>
                     <!-- List -->
                     <ul role="list" class="pt-8 space-y-5 border-t border-gray-200 my-7 dark:border-gray-700">
                         <li class="flex space-x-3">
@@ -315,7 +335,7 @@
                                       d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
                                       clip-rule="evenodd"></path>
                             </svg>
-                            <span class="text-base font-medium leading-tight text-gray-900 dark:text-white">Дополнительные сделки без роста рекламного бюджета</span>
+                            <span class="text-base font-medium leading-tight text-gray-900 dark:text-white">Горячие вакансии от работодателей и рекрутеров</span>
                         </li>
                         <li class="flex space-x-3">
                             <!-- Icon -->
@@ -324,10 +344,10 @@
                                       d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
                                       clip-rule="evenodd"></path>
                             </svg>
-                            <span class="text-base font-medium leading-tight text-gray-900 dark:text-white">Понятный поток сообщений без мусора</span>
+                            <span class="text-base font-medium leading-tight text-gray-900 dark:text-white">Возможность откликаться <b>самым первым</b></span>
                         </li>
                     </ul>
-                    <p class="font-light lg:text-xl">Один найденный запрос может окупить подписку за месяц.</p>
+                    <p class="font-light lg:text-xl">Одна хорошая вакансия за час работы может окупить подписку на месяц.</p>
                 </div>
             </div>
         </div>
@@ -410,10 +430,17 @@
         <div class="max-w-screen-xl px-4 py-8 mx-auto lg:py-24 lg:px-6">
             <div class="max-w-screen-md mx-auto mb-8 text-center lg:mb-12">
                 <h2 class="mb-4 text-3xl font-extrabold tracking-tight text-gray-900 dark:text-white">Выберите подходящий тариф</h2>
-                <p class="mb-5 font-light text-gray-500 sm:text-xl dark:text-gray-400">Платите только за количество радаров и источников.<br>
-                    Стоимость зависит от того, сколько направлений вы отслеживаете.<br>
-                    Чем больше задач — тем больше источников и запросов вы покрываете.<br>
-                    Все тарифы включают полный функционал. Отличается только объём.</p>
+                <p class="mb-5 font-light text-gray-500 sm:text-xl dark:text-gray-400">
+                    Вы платите только за количество направлений поиска вакансий.<br>
+                    Чем больше задач — тем больше рынков вакансий вы отслеживаете.<br>
+                    Функциональность одинакова во всех тарифах.<br>
+                    Отличается только объём поиска.</p>
+
+
+                <!--                    Платите только за количество радаров и источников.<br>-->
+                <!--                    Стоимость зависит от того, сколько направлений вы отслеживаете.<br>-->
+                <!--                    Чем больше задач — тем больше источников и запросов вы покрываете.<br>-->
+                <!--                    Все тарифы включают полный функционал. Отличается только объём.</p>-->
             </div>
             <div class="space-y-8 lg:grid lg:grid-cols-3 sm:gap-6 xl:gap-10 lg:space-y-0">
                 <!-- Pricing Card -->
@@ -464,17 +491,18 @@
                                 <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
                                       clip-rule="evenodd"></path>
                             </svg>
-                            <span>Окупаемость: <span class="font-semibold">1 найденный запрос</span></span>
+                            <span>Окупаемость: <span class="font-semibold">1 найденная вакансия</span></span>
                         </li>
                     </ul>
                     <a href="/dashboard"
-                       class="text-white bg-purple-600 hover:bg-purple-700 focus:ring-4 focus:ring-purple-200 font-medium rounded-lg text-sm px-5 py-2.5 text-center dark:text-white  dark:focus:ring-purple-900" onclick="ym(106593097,'reachGoal','click_pay_start');">Получить
-                        заявки</a>
+                       class="text-white bg-purple-600 hover:bg-purple-700 focus:ring-4 focus:ring-purple-200 font-medium rounded-lg text-sm px-5 py-2.5 text-center dark:text-white  dark:focus:ring-purple-900"
+                       onclick="ym(106593097,'reachGoal','click_pay_start');">
+                        Получить вакансии</a>
                 </div>
                 <!-- Pricing Card -->
                 <div class="flex flex-col max-w-lg p-6 mx-auto text-center text-gray-900 bg-white border border-gray-100 rounded-lg shadow dark:border-gray-600 xl:p-8 dark:bg-gray-800 dark:text-white">
                     <h3 class="mb-4 text-2xl font-semibold">Pro</h3>
-                    <p class="font-light text-gray-500 sm:text-lg dark:text-gray-400">Для одновременного поиска в нескольких направлениях.</p>
+                    <p class="font-light text-gray-500 sm:text-lg dark:text-gray-400">Для поиска вакансий в нескольких направлениях.</p>
                     <div class="flex items-baseline justify-center my-8">
                         <span class="mr-2 text-5xl font-extrabold">2 990 ₽</span>
                         <span class="text-gray-500 dark:text-gray-400" dark:text-gray-400>/месяц</span>
@@ -511,7 +539,7 @@
                                 <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
                                       clip-rule="evenodd"></path>
                             </svg>
-                            <span>Реакция: <span class="font-semibold">Быстрее большинства</span></span>
+                            <span>Реакция: <span class="font-semibold">В реальном времени</span></span>
                         </li>
                         <li class="flex items-center space-x-3">
                             <!-- Icon -->
@@ -519,17 +547,17 @@
                                 <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
                                       clip-rule="evenodd"></path>
                             </svg>
-                            <span>Поток: <span class="font-semibold">Стабильные заявки</span></span>
+                            <span>Поток: <span class="font-semibold">Стабильные вакансии</span></span>
                         </li>
                     </ul>
                     <a href="/dashboard"
-                       class="text-white bg-purple-600 hover:bg-purple-700 focus:ring-4 focus:ring-purple-200 font-medium rounded-lg text-sm px-5 py-2.5 text-center dark:text-white  dark:focus:ring-purple-900" onclick="ym(106593097,'reachGoal','click_pay_pro');">Получить
-                        заявки</a>
+                       class="text-white bg-purple-600 hover:bg-purple-700 focus:ring-4 focus:ring-purple-200 font-medium rounded-lg text-sm px-5 py-2.5 text-center dark:text-white  dark:focus:ring-purple-900"
+                       onclick="ym(106593097,'reachGoal','click_pay_pro');">Получить вакансии</a>
                 </div>
                 <!-- Pricing Card -->
                 <div class="flex flex-col max-w-lg p-6 mx-auto text-center text-gray-900 bg-white border border-gray-100 rounded-lg shadow dark:border-gray-600 xl:p-8 dark:bg-gray-800 dark:text-white">
                     <h3 class="mb-4 text-2xl font-semibold">Business</h3>
-                    <p class="font-light text-gray-500 sm:text-lg dark:text-gray-400">Для активной работы и максимального охвата.</p>
+                    <p class="font-light text-gray-500 sm:text-lg dark:text-gray-400">Для активного поиска и максимального охвата.</p>
                     <div class="flex items-baseline justify-center my-8">
                         <span class="mr-2 text-5xl font-extrabold">5 990 ₽</span>
                         <span class="text-gray-500 dark:text-gray-400">/месяц</span>
@@ -566,7 +594,7 @@
                                 <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
                                       clip-rule="evenodd"></path>
                             </svg>
-                            <span>Заявки: <span class="font-semibold">Каждый день</span></span>
+                            <span>Вакансии: <span class="font-semibold">Каждые несколько минут</span></span>
                         </li>
                         <li class="flex items-center space-x-3">
                             <!-- Icon -->
@@ -578,7 +606,8 @@
                         </li>
                     </ul>
                     <a href="/dashboard"
-                       class="text-white bg-purple-600 hover:bg-purple-700 focus:ring-4 focus:ring-purple-200 font-medium rounded-lg text-sm px-5 py-2.5 text-center dark:text-white  dark:focus:ring-purple-900" onclick="ym(106593097,'reachGoal','click_pay_business');">Получить
+                       class="text-white bg-purple-600 hover:bg-purple-700 focus:ring-4 focus:ring-purple-200 font-medium rounded-lg text-sm px-5 py-2.5 text-center dark:text-white  dark:focus:ring-purple-900"
+                       onclick="ym(106593097,'reachGoal','click_pay_business');">Получить
                         заявки</a>
                 </div>
             </div>
@@ -622,7 +651,7 @@
                     </h3>
                     <div id="accordion-flush-body-2" class="hidden" aria-labelledby="accordion-flush-heading-2">
                         <div class="py-5 border-b border-gray-200 dark:border-gray-700">
-                            <p class="mb-2 text-gray-500 dark:text-gray-400">Работу, клиентов, подрядчиков, специалистов, аренду, услуги и любые другие темы.</p>
+                            <p class="mb-2 text-gray-500 dark:text-gray-400">Вакансии для разработчиков, сисадминов, маркетологов, менеджеров и других специалистов.</p>
                             <p class="text-gray-500 dark:text-gray-400">Вы сами задаёте ключевые слова и источники.</p>
                         </div>
                     </div>
@@ -678,8 +707,8 @@
     <section class="bg-gray-50 dark:bg-gray-800">
         <div class="max-w-screen-xl px-4 py-8 mx-auto lg:py-16 lg:px-6">
             <div class="max-w-screen-sm mx-auto text-center">
-                <h2 class="mb-4 text-3xl font-extrabold leading-tight tracking-tight text-gray-900 dark:text-white">Начните получать запросы из Telegram уже сегодня</h2>
-                <p class="mb-6 font-light text-gray-500 dark:text-gray-400 md:text-lg">Подключите источники, укажите ключевые слова и получайте подходящие сообщения.</p>
+                <h2 class="mb-4 text-3xl font-extrabold leading-tight tracking-tight text-gray-900 dark:text-white">Начните получать вакансии из Telegram уже сегодня</h2>
+                <p class="mb-6 font-light text-gray-500 dark:text-gray-400 md:text-lg">Подключите нужные Telegram-каналы, укажите ключевые слова и получайте подходящие сообщения.</p>
                 <a href="/dashboard"
                    class="text-white bg-purple-700 hover:bg-purple-800
                    focus:ring-4 focus:ring-purple-300 font-medium rounded-lg
