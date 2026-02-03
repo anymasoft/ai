@@ -335,9 +335,9 @@ class PaymentStatusResponse(BaseModel):
 # ============== Тарифы и платежи ==============
 
 PLAN_PRICES = {
-    "start": "990.00",
-    "pro": "1990.00",
-    "business": "4990.00"
+    "start": "1490.00",
+    "pro": "2990.00",
+    "business": "5990.00"
 }
 
 # ============== API Endpoints ==============
