@@ -2808,14 +2808,25 @@
         document.getElementById('filter-search').addEventListener('input', loadLeads);
 
         // ==================== Управление профилем пользователя ====================
-        function updateTelegramAccountStatus() {
+        async function updateTelegramAccountStatus() {
             const userJSON = localStorage.getItem('user');
             const statusDiv = document.getElementById('telegram-account-status');
 
             try {
                 const user = JSON.parse(userJSON);
-                const fullName = user.phone || 'Пользователь';
                 const phone = user.phone || '-';
+                let displayName = user.phone || 'Пользователь';
+
+                // Попытаться получить display_name с сервера
+                try {
+                    const response = await fetch('/api/user/me');
+                    if (response.ok) {
+                        const serverData = await response.json();
+                        displayName = serverData.display_name || user.phone || 'Пользователь';
+                    }
+                } catch (apiError) {
+                    // Использовать локальное значение если API недоступен
+                }
 
                 statusDiv.innerHTML = `
                     <div style="background: #f0fdf4; padding: 1rem; border-radius: 4px; border: 1px solid #22c55e; margin-bottom: 1rem;">
@@ -2824,7 +2835,7 @@
                             <span style="font-weight: 600; color: #22c55e;">Авторизирован</span>
                         </div>
                         <div style="color: var(--text-dark); margin-bottom: 0.5rem;">
-                            <strong>${fullName}</strong>
+                            <strong>${displayName}</strong>
                         </div>
                         <div style="color: var(--text-gray); font-size: 0.9rem;">
                             ${phone}
@@ -2836,7 +2847,7 @@
             }
         }
 
-        function loadUserProfile() {
+        async function loadUserProfile() {
             const userJSON = localStorage.getItem('user');
             if (!userJSON) {
                 console.log('❌ Информация о пользователе не найдена. Перенаправление на страницу входа...');
@@ -2846,13 +2857,32 @@
 
             try {
                 const user = JSON.parse(userJSON);
-                const fullName = user.phone || 'Пользователь';
-                document.getElementById('profile-name').textContent = fullName;
+
+                // Получить display_name с сервера через /api/user/me
+                try {
+                    const response = await fetch('/api/user/me');
+                    if (response.ok) {
+                        const serverData = await response.json();
+                        const displayName = serverData.display_name || user.phone || 'Пользователь';
+                        document.getElementById('profile-name').textContent = displayName;
+                        console.log('✅ Профиль пользователя загружен (с сервера):', displayName);
+                    } else {
+                        // Fallback: использовать phone из localStorage
+                        const fallbackName = user.phone || 'Пользователь';
+                        document.getElementById('profile-name').textContent = fallbackName;
+                        console.log('✅ Профиль пользователя загружен (fallback):', fallbackName);
+                    }
+                } catch (apiError) {
+                    // Если ошибка при получении с сервера - использовать phone из localStorage
+                    const fallbackName = user.phone || 'Пользователь';
+                    document.getElementById('profile-name').textContent = fallbackName;
+                    console.log('⚠️ Ошибка получения данных сервера, используется fallback:', fallbackName);
+                }
+
                 document.getElementById('profile-phone').textContent = user.phone || '-';
-                console.log('✅ Профиль пользователя загружен:', fullName);
 
                 // Обновить статус Telegram аккаунта в Settings
-                updateTelegramAccountStatus();
+                await updateTelegramAccountStatus();
             } catch (e) {
                 console.error('❌ Ошибка при загрузке профиля:', e);
                 window.location.href = '/login';
