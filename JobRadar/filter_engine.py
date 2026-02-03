@@ -109,35 +109,20 @@ def load_active_filter(db: Session) -> dict:
 
 
 def match_text(text: str, filter_config: dict) -> bool:
-    """
-    Проверяет, соответствует ли текст правилам фильтрации
-
-    Логика:
-    - include_groups: OR между группами, AND внутри группы
-      (python AND remote) OR (golang) OR (node AND backend)
-    - exclude_groups: аналогично - если выполняется условие → исключить
-
-    Args:
-        text: Текст сообщения
-        filter_config: Конфигурация фильтра с include_groups и exclude_groups
-
-    Returns:
-        True если сообщение должно быть опубликовано, иначе False
-    """
     normalized_text = normalize_text(text)
 
-    # EXCLUDE: если найдена ЛЮБАЯ группа где ВСЕ слова найдены → исключить
-    for group in filter_config.get("exclude_groups", []):
+    # 1. EXCLUDE GROUPS
+    exclude_groups = filter_config.get("exclude_groups", [])
+    for group in exclude_groups:
         if all(word in normalized_text for word in group):
             return False
 
+    # 2. INCLUDE GROUPS
     include_groups = filter_config.get("include_groups", [])
 
-    # Если include пуст → мониторим всё
     if not include_groups:
         return True
 
-    # INCLUDE: ищем хотя бы одну группу, где ВСЕ слова присутствуют
     for group in include_groups:
         if all(word in normalized_text for word in group):
             return True

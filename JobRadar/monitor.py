@@ -748,10 +748,11 @@ async def check_source_for_task_leads(task: Task, source_username: str, filter_c
 
             # Проверяем совпадение через фильтр
             if match_text(text, filter_config):
-                # Ищем какую группу совпало (вся группа целиком)
+                normalized_text = normalize_text(text)
+
                 matched_keyword = None
                 for group in include_groups:
-                    if all(word in text for word in group):
+                    if all(word in normalized_text for word in group):
                         matched_keyword = " ".join(group)
                         break
 
