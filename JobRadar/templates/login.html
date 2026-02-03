@@ -452,6 +452,9 @@
 
     <script>
         const API_BASE = '';
+        let currentLoginVia = 'telegram_sms';  // Трекер режима авторизации
+        let currentAuthId = null;               // auth_id для SMS режима
+        let currentPhone = null;                // phone для telegram_message режима
 
         // ==================== Управление этапами ====================
         function showStage(stageName) {
@@ -489,6 +492,18 @@
             }
         }
 
+        // Извлечение текста ошибки из JSON объекта
+        function getErrorMessage(data, defaultMsg = 'Неизвестная ошибка') {
+            if (!data) return defaultMsg;
+            return data.detail || data.message || defaultMsg;
+        }
+
+        // Безопасное отображение ошибки подключения
+        function getConnectionErrorMessage(error) {
+            if (!error) return 'Ошибка подключения';
+            return 'Ошибка подключения: ' + (error.message || 'неизвестная ошибка');
+        }
+
         // ==================== Этап 1: Номер телефона ====================
         document.getElementById('btn-send-phone').addEventListener('click', async () => {
             const phone = document.getElementById('phone').value.trim();
@@ -511,22 +526,33 @@
                 const data = await response.json();
 
                 if (!response.ok) {
-                    showToast(data.detail || 'Ошибка авторизации', 'error');
+                    showToast(getErrorMessage(data, 'Ошибка авторизации'), 'error');
                     disableButton('btn-send-phone', false);
                     return;
                 }
 
-                showToast('Код отправлен на Telegram', 'success');
+                // Сохранить режим авторизации и необходимые параметры
+                currentLoginVia = data.login_via || 'telegram_sms';
+                currentPhone = phone;
+
+                if (currentLoginVia === 'telegram_sms') {
+                    // SMS режим - сохранить auth_id из ответа
+                    currentAuthId = data.auth_id;
+                    console.log('📱 SMS режим. auth_id:', currentAuthId);
+                }
+                // При telegram_message auth_id не требуется (используется phone)
+
+                const modeMsg = currentLoginVia === 'telegram_message' ? 'Код отправлен в Telegram' : 'Код отправлен на Telegram';
+                showToast(modeMsg, 'success');
                 showStage('code');
             } catch (error) {
-                showToast('Ошибка подключения: ' + error.message, 'error');
+                showToast(getConnectionErrorMessage(error), 'error');
                 disableButton('btn-send-phone', false);
             }
         });
 
         // ==================== Этап 2: Код верификации ====================
         document.getElementById('btn-send-code').addEventListener('click', async () => {
-            const phone = document.getElementById('phone').value.trim();
             const code = document.getElementById('code').value.trim();
 
             if (!code || code.length < 5) {
@@ -537,46 +563,79 @@
             disableButton('btn-send-code');
 
             try {
-                const response = await fetch(`${API_BASE}/api/auth/submit-code`, {
+                let endpoint, payload;
+
+                if (currentLoginVia === 'telegram_message') {
+                    // Режим telegram_message: используем auth_id не требуется, только phone и code
+                    endpoint = `${API_BASE}/api/auth/login-by-telegram`;
+                    payload = {
+                        phone: currentPhone,
+                        code: code
+                    };
+                    console.log('📨 Отправляю запрос через telegram_message режим');
+                } else {
+                    // Режим telegram_sms: используем auth_id вместо phone
+                    endpoint = `${API_BASE}/api/auth/submit-code`;
+                    payload = {
+                        auth_id: currentAuthId,
+                        code: code
+                    };
+                    console.log('📱 Отправляю запрос через SMS режим. auth_id:', currentAuthId);
+                }
+
+                const response = await fetch(endpoint, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     credentials: 'include',
-                    body: JSON.stringify({ phone, code })
+                    body: JSON.stringify(payload)
                 });
 
                 const data = await response.json();
 
                 if (!response.ok) {
-                    showToast(data.detail || 'Ошибка верификации кода', 'error');
+                    showToast(getErrorMessage(data, 'Ошибка верификации кода'), 'error');
                     disableButton('btn-send-code', false);
                     return;
                 }
 
-                // Проверить требуется ли пароль
-                if (data.requires_password) {
-                    showToast('Требуется пароль 2FA', 'warning');
-                    disableButton('btn-send-code', false);
-                    showStage('password');
+                // Для telegram_message режима нет требования к паролю (он прямо дает авторизацию)
+                if (currentLoginVia === 'telegram_message') {
+                    // Логин через Telegram успешен - обновляем localStorage и редиректим
+                    if (data.user) {
+                        localStorage.setItem('user', JSON.stringify(data.user));
+                        console.log('👤 Информация о пользователе сохранена:', data.user);
+                    }
+                    showToast('Авторизация успешна!', 'success');
+                    showStage('success');
+                    setTimeout(() => {
+                        window.location.href = '/dashboard';
+                    }, 2000);
                 } else {
-                    showToast('Код принят, сохраняю сессию...', 'info');
-                    // Сохранить сессию
-                    try {
-                        await saveSession(phone);
-                    } catch (saveError) {
-                        console.error('Ошибка при сохранении сессии:', saveError);
-                        showToast('Ошибка сохранения сессии: ' + saveError.message, 'error');
+                    // Для SMS режима - проверить требуется ли пароль
+                    if (data.requires_password) {
+                        showToast('Требуется пароль 2FA', 'warning');
                         disableButton('btn-send-code', false);
+                        showStage('password');
+                    } else {
+                        showToast('Код принят, сохраняю сессию...', 'info');
+                        // Сохранить сессию
+                        try {
+                            await saveSession();
+                        } catch (saveError) {
+                            console.error('Ошибка при сохранении сессии:', saveError);
+                            showToast(getErrorMessage(saveError, 'Ошибка сохранения сессии'), 'error');
+                            disableButton('btn-send-code', false);
+                        }
                     }
                 }
             } catch (error) {
-                showToast('Ошибка подключения: ' + error.message, 'error');
+                showToast(getConnectionErrorMessage(error), 'error');
                 disableButton('btn-send-code', false);
             }
         });
 
         // ==================== Этап 3: Пароль 2FA ====================
         document.getElementById('btn-send-password').addEventListener('click', async () => {
-            const phone = document.getElementById('phone').value.trim();
             const password = document.getElementById('password').value;
 
             if (!password) {
@@ -587,17 +646,21 @@
             disableButton('btn-send-password');
 
             try {
+                // Используем auth_id для SMS режима
                 const response = await fetch(`${API_BASE}/api/auth/submit-password`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     credentials: 'include',
-                    body: JSON.stringify({ phone, password })
+                    body: JSON.stringify({
+                        auth_id: currentAuthId,
+                        password: password
+                    })
                 });
 
                 const data = await response.json();
 
                 if (!response.ok) {
-                    showToast(data.detail || 'Ошибка верификации пароля', 'error');
+                    showToast(getErrorMessage(data, 'Ошибка верификации пароля'), 'error');
                     disableButton('btn-send-password', false);
                     return;
                 }
@@ -606,32 +669,35 @@
 
                 // Сохранить сессию
                 try {
-                    await saveSession(phone);
+                    await saveSession();
                 } catch (saveError) {
                     console.error('Ошибка при сохранении сессии:', saveError);
-                    showToast('Ошибка сохранения сессии: ' + saveError.message, 'error');
+                    showToast(getErrorMessage(saveError, 'Ошибка сохранения сессии'), 'error');
                     disableButton('btn-send-password', false);
                 }
             } catch (error) {
-                showToast('Ошибка подключения: ' + error.message, 'error');
+                showToast(getConnectionErrorMessage(error), 'error');
                 disableButton('btn-send-password', false);
             }
         });
 
         // ==================== Сохранение сессии ====================
-        async function saveSession(phone) {
+        async function saveSession() {
             try {
+                // Используем auth_id для SMS режима (telegram_message не требует save)
                 const response = await fetch(`${API_BASE}/api/auth/save`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     credentials: 'include',
-                    body: JSON.stringify({ phone })
+                    body: JSON.stringify({
+                        auth_id: currentAuthId
+                    })
                 });
 
                 const data = await response.json();
 
                 if (!response.ok) {
-                    showToast(data.detail || 'Ошибка сохранения', 'error');
+                    showToast(getErrorMessage(data, 'Ошибка сохранения'), 'error');
                     return;
                 }
 
@@ -649,7 +715,7 @@
                     window.location.href = '/dashboard';
                 }, 2000);
             } catch (error) {
-                showToast('Ошибка подключения: ' + error.message, 'error');
+                showToast(getConnectionErrorMessage(error), 'error');
             }
         }
 
