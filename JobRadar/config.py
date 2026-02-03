@@ -34,3 +34,6 @@ PAYMENT_RETURN_URL = os.getenv("PAYMENT_RETURN_URL", "http://localhost:8000/dash
 
 CORS_ORIGINS_STR = os.getenv("CORS_ORIGINS", "http://localhost:8000,http://127.0.0.1:8000")
 CORS_ORIGINS = [o.strip() for o in CORS_ORIGINS_STR.split(",")]
+
+# Контакты
+TELEGRAM_ADMIN_USERNAME = os.getenv("TELEGRAM_ADMIN_USERNAME", "jobradar_support")

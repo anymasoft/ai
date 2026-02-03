@@ -1190,6 +1190,11 @@
                             </button>
                         </div>
                     </div>
+                    <a id="dashboard-telegram-link" href="#" class="header-btn" target="_blank" title="Связаться через Telegram">
+                        <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                            <path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a11.955 11.955 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.96 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.485-1.313.474-.431-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.164.399-.402.571-.495.172-.093 4.588-1.766 5.101-1.965.41-.165.921-.162 1.379-.055z"/>
+                        </svg>
+                    </a>
                     <div class="user-profile">
                         <button class="header-btn" id="profile-btn" onclick="toggleProfileMenu()">
                             <i class="bi bi-person-circle"></i>
@@ -3244,6 +3249,17 @@
                 console.log('Failed to check admin status');
             }
         }
+
+        // Подгрузить ссылку на Telegram администратора для иконки в хедере
+        fetch('/api/contacts/telegram')
+            .then(response => response.json())
+            .then(data => {
+                const telegramLink = document.getElementById('dashboard-telegram-link');
+                if (telegramLink && data.telegram_url) {
+                    telegramLink.href = data.telegram_url;
+                }
+            })
+            .catch(error => console.error('Error loading Telegram contact:', error));
     </script>
 </body>
 </html>
