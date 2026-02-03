@@ -161,7 +161,7 @@ def ensure_active_subscription(user: User, db: Session):
         )
 
 # ============== Глобальное хранилище pending клиентов ==============
-# {phone: TelegramClient}
+# {auth_id: {"phone": phone, "client": client, "created_at": timestamp}}
 pending_auth_clients = {}
 
 # ============== Флаг управления мониторингом ==============
@@ -306,12 +306,15 @@ class AuthStartRequest(BaseModel):
     phone: str
 
 class AuthCodeRequest(BaseModel):
-    phone: str
+    auth_id: str
     code: str
 
 class AuthPasswordRequest(BaseModel):
-    phone: str
+    auth_id: str
     password: str
+
+class AuthSaveRequest(BaseModel):
+    auth_id: str
 
 class PaymentCreateRequest(BaseModel):
     plan: str  # "start" | "pro" | "business"
@@ -763,7 +766,7 @@ def normalize_phone(phone: str) -> str:
 async def auth_start(request: AuthStartRequest):
     """
     ШАГ 1: Начать процесс авторизации в Telegram.
-    Создать клиента и отправить код.
+    Создать клиента, отправить код и вернуть auth_id.
     """
     try:
         phone = normalize_phone(request.phone)
@@ -773,10 +776,17 @@ async def auth_start(request: AuthStartRequest):
         await client.connect()
         await client.send_code_request(phone)
 
-        # Сохранить клиента в памяти
-        pending_auth_clients[phone] = client
+        # Генерировать уникальный auth_id
+        auth_id = str(uuid.uuid4())
 
-        return {"ok": True}
+        # Сохранить клиента в памяти с таймстэмпом
+        pending_auth_clients[auth_id] = {
+            "phone": phone,
+            "client": client,
+            "created_at": datetime.utcnow()
+        }
+
+        return {"ok": True, "auth_id": auth_id}
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
@@ -788,19 +798,44 @@ async def auth_submit_code(request: AuthCodeRequest):
     Вернуть информацию требуется ли пароль 2FA.
     """
     try:
-        phone = normalize_phone(request.phone)
+        auth_id = request.auth_id
 
-        client = pending_auth_clients.get(phone)
-        if not client:
+        # Получить pending клиент и проверить TTL (300 сек = 5 минут)
+        auth_data = pending_auth_clients.get(auth_id)
+        if not auth_data:
             raise Exception("Сессия авторизации истекла. Начните заново.")
+
+        # Проверить TTL
+        if datetime.utcnow() - auth_data["created_at"] > timedelta(seconds=300):
+            del pending_auth_clients[auth_id]
+            raise Exception("Сессия авторизации истекла. Начните заново.")
+
+        phone = auth_data["phone"]
+        client = auth_data["client"]
 
         try:
             await client.sign_in(phone=phone, code=request.code)
-            pending_auth_clients[phone] = client
+            pending_auth_clients[auth_id]["client"] = client
+
+            # Получить Telegram user_id для привязки к auth_id
+            try:
+                me = await client.get_me()
+                pending_auth_clients[auth_id]["telegram_user_id"] = me.id
+            except:
+                pass
+
             return {"requires_password": False}
 
         except SessionPasswordNeededError:
-            pending_auth_clients[phone] = client
+            pending_auth_clients[auth_id]["client"] = client
+
+            # Получить Telegram user_id для привязки к auth_id
+            try:
+                me = await client.get_me()
+                pending_auth_clients[auth_id]["telegram_user_id"] = me.id
+            except:
+                pass
+
             return {"requires_password": True}
 
     except Exception as e:
@@ -813,18 +848,35 @@ async def auth_submit_password(request: AuthPasswordRequest):
     ШАГ 3: Отправить пароль 2FA (если требуется).
     """
     try:
-        phone = normalize_phone(request.phone)
+        auth_id = request.auth_id
 
-        client = pending_auth_clients.get(phone)
-        if not client:
+        # Получить pending клиент и проверить TTL
+        auth_data = pending_auth_clients.get(auth_id)
+        if not auth_data:
             raise Exception("Сессия авторизации истекла.")
+
+        # Проверить TTL
+        if datetime.utcnow() - auth_data["created_at"] > timedelta(seconds=300):
+            del pending_auth_clients[auth_id]
+            raise Exception("Сессия авторизации истекла.")
+
+        client = auth_data["client"]
+
+        # Проверить что telegram_user_id совпадает (если был сохранен после кода)
+        if auth_data.get("telegram_user_id"):
+            try:
+                me = await client.get_me()
+                if me.id != auth_data.get("telegram_user_id"):
+                    raise Exception("Telegram аккаунт не совпадает с авторизацией через код")
+            except Exception as e:
+                raise
 
         try:
             await client.sign_in(password=request.password)
         except Exception as e:
             raise
 
-        pending_auth_clients[phone] = client
+        pending_auth_clients[auth_id]["client"] = client
 
         return {"ok": True}
     except Exception as e:
@@ -832,21 +884,36 @@ async def auth_submit_password(request: AuthPasswordRequest):
 
 
 @app.post("/api/auth/save")
-async def auth_save(request: AuthStartRequest):
+async def auth_save(request: AuthSaveRequest):
     """
     ШАГ 4: Сохранить сессию в SQLite БД.
     Получить StringSession и сохранить в таблице telegram_sessions.
     """
     try:
-        phone = normalize_phone(request.phone)
+        auth_id = request.auth_id
 
-        client = pending_auth_clients.get(phone)
-        if not client:
+        # Получить pending клиент и проверить TTL
+        auth_data = pending_auth_clients.get(auth_id)
+        if not auth_data:
             raise Exception(f"Клиент авторизации не найден.")
+
+        # Проверить TTL
+        if datetime.utcnow() - auth_data["created_at"] > timedelta(seconds=300):
+            del pending_auth_clients[auth_id]
+            raise Exception("Сессия авторизации истекла.")
+
+        phone = auth_data["phone"]
+        client = auth_data["client"]
 
         try:
             # Получить информацию о пользователе
             me = await client.get_me()
+
+            # Проверить что telegram_user_id совпадает (если был сохранен)
+            if auth_data.get("telegram_user_id"):
+                if me.id != auth_data.get("telegram_user_id"):
+                    raise Exception("Telegram аккаунт не совпадает с авторизацией")
+
             user_info = {
                 "phone": phone,
                 "first_name": me.first_name or "",
@@ -896,7 +963,7 @@ async def auth_save(request: AuthStartRequest):
 
         try:
             # Удалить из памяти и отключить
-            del pending_auth_clients[phone]
+            del pending_auth_clients[auth_id]
             await client.disconnect()
         except Exception as e:
             pass

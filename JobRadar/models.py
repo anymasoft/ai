@@ -185,7 +185,7 @@ class TelegramSession(Base):
     __tablename__ = "telegram_sessions"
 
     id = Column(Integer, primary_key=True)
-    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)  # Владелец сессии
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, unique=True)  # Владелец сессии (один User = одна сессия)
     phone = Column(String(20), unique=True, nullable=False)  # Номер телефона
     session_string = Column(Text, nullable=False)  # StringSession строка (текст)
     telegram_user_id = Column(BigInteger, nullable=True)  # Telegram ID пользователя

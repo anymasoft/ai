@@ -54,6 +54,7 @@ async def save_session_to_db(phone: str, session_string: str, telegram_user_id: 
             existing = db.query(TelegramSession).filter(TelegramSession.phone == phone).first()
             if existing:
                 logger.info(f"🔄 Обновляю сессию: phone={phone}")
+                existing.user_id = user_id
                 existing.session_string = session_string
                 if telegram_user_id:
                     existing.telegram_user_id = telegram_user_id
