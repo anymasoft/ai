@@ -679,12 +679,18 @@ async def get_user_me(current_user: User = Depends(get_current_user), db: Sessio
     if session and session.telegram_username:
         display_name = session.telegram_username
 
+    first_name = str(session.telegram_first_name) if (session and session.telegram_first_name) else ""
+    last_name = str(session.telegram_last_name) if (session and session.telegram_last_name) else ""
+    username = str(session.telegram_username) if (session and session.telegram_username) else ""
+
+    logger.info(f"[USER_ME] user_id={current_user.id}: first_name='{first_name}' (type={type(first_name).__name__}), last_name='{last_name}' (type={type(last_name).__name__}), username='{username}'")
+
     return {
         "id": current_user.id,
         "phone": current_user.phone,
-        "first_name": session.telegram_first_name or "" if session else "",
-        "last_name": session.telegram_last_name or "" if session else "",
-        "username": session.telegram_username or "" if session else "",
+        "first_name": first_name,
+        "last_name": last_name,
+        "username": username,
         "display_name": display_name,
         "is_admin": is_admin,
         "has_session": session is not None,
@@ -999,33 +1005,47 @@ async def auth_save(request: AuthSaveRequest):
             # Получить информацию о пользователе
             me = await client.get_me()
 
-            # Получить полный профиль пользователя для получения first_name и last_name
-            try:
-                from telethon.tl.functions.users import GetFullUserRequest
-                full_user = await client(GetFullUserRequest(me.id))
-                user_full_info = full_user.users[0]
-                first_name = user_full_info.first_name or ""
-                last_name = user_full_info.last_name or ""
-            except Exception as e:
-                # Fallback: использовать me объект
-                logger.warning(f"[AUTH_SAVE] Ошибка получения полного профиля, используем me объект: {e}")
-                first_name = me.first_name or ""
-                last_name = me.last_name or ""
+            # Сначала пробуем получить имя из me объекта напрямую (это обычно работает)
+            first_name = me.first_name or ""
+            last_name = me.last_name or ""
+
+            logger.info(f"[AUTH_SAVE] Из me объекта: first_name='{first_name}', last_name='{last_name}'")
+
+            # Если имя пусто, пытаемся получить через GetFullUserRequest
+            if not first_name or not last_name:
+                try:
+                    from telethon.tl.functions.users import GetFullUserRequest
+                    full_user = await client(GetFullUserRequest(me.id))
+                    user_full_info = full_user.users[0]
+                    if user_full_info.first_name:
+                        first_name = user_full_info.first_name
+                    if user_full_info.last_name:
+                        last_name = user_full_info.last_name
+                    logger.info(f"[AUTH_SAVE] GetFullUserRequest дал результат: first_name='{first_name}', last_name='{last_name}'")
+                except Exception as e:
+                    logger.warning(f"[AUTH_SAVE] GetFullUserRequest не дал результата: {e}")
+                    # Используем то что было из me объекта
 
             # Проверить что telegram_user_id совпадает (если был сохранен)
             if auth_data.get("telegram_user_id"):
                 if me.id != auth_data.get("telegram_user_id"):
                     raise Exception("Telegram аккаунт не совпадает с авторизацией")
 
-            logger.info(f"✅ [AUTH_SAVE] Получены данные пользователя: phone={phone}, first_name='{first_name}', last_name='{last_name}', username={me.username}")
+            logger.info(f"✅ [AUTH_SAVE] Получены данные пользователя: phone={phone}, first_name='{first_name}' (empty={not first_name}), last_name='{last_name}' (empty={not last_name}), username={me.username}")
+
+            # Очень важно: убедиться что значения не None, а именно строки
+            first_name_final = str(first_name) if first_name else ""
+            last_name_final = str(last_name) if last_name else ""
+            username_final = str(me.username) if me.username else ""
 
             user_info = {
                 "phone": phone,
-                "first_name": first_name,
-                "last_name": last_name,
-                "username": me.username or "",
+                "first_name": first_name_final,
+                "last_name": last_name_final,
+                "username": username_final,
                 "id": me.id
             }
+            logger.info(f"[AUTH_SAVE_RESPONSE] Возвращаю user_info: first_name='{user_info['first_name']}' (type={type(user_info['first_name']).__name__}), last_name='{user_info['last_name']}' (type={type(user_info['last_name']).__name__}), username='{user_info['username']}'")
         except Exception as e:
             raise
 
@@ -1150,14 +1170,55 @@ async def login_by_telegram(request: AuthLoginTelegramRequest):
             # Получить TelegramSession для получения имени
             telegram_session = db.query(TelegramSession).filter(TelegramSession.user_id == user.id).first()
 
-            # Получить user info для фронтенда
+            # Попытаемся получить свежие данные из Telegram
+            first_name_final = ""
+            last_name_final = ""
+            username_final = ""
+
+            if telegram_session:
+                try:
+                    # Получить Telegram client пользователя для свежих данных
+                    from telegram_clients import get_user_client
+                    client = await get_user_client(user.id, db)
+                    if client:
+                        me = await client.get_me()
+                        first_name_fresh = me.first_name or ""
+                        last_name_fresh = me.last_name or ""
+                        username_fresh = me.username or ""
+
+                        # Если получили свежие данные и они не пусты - используем их и обновляем БД
+                        if first_name_fresh or last_name_fresh or username_fresh:
+                            first_name_final = first_name_fresh
+                            last_name_final = last_name_fresh
+                            username_final = username_fresh
+
+                            # Обновить в БД свежие данные
+                            telegram_session.telegram_first_name = first_name_fresh
+                            telegram_session.telegram_last_name = last_name_fresh
+                            telegram_session.telegram_username = username_fresh
+                            db.commit()
+                            logger.info(f"[LOGIN_TELEGRAM] Обновил свежие данные из Telegram: first_name='{first_name_fresh}', last_name='{last_name_fresh}'")
+                        else:
+                            logger.warning(f"[LOGIN_TELEGRAM] Свежие данные пусты, используем сохраненные")
+                            first_name_final = str(telegram_session.telegram_first_name) if telegram_session.telegram_first_name else ""
+                            last_name_final = str(telegram_session.telegram_last_name) if telegram_session.telegram_last_name else ""
+                            username_final = str(telegram_session.telegram_username) if telegram_session.telegram_username else ""
+                except Exception as e:
+                    logger.warning(f"[LOGIN_TELEGRAM] Не смог получить свежие данные из Telegram: {e}, используем сохраненные")
+                    first_name_final = str(telegram_session.telegram_first_name) if telegram_session.telegram_first_name else ""
+                    last_name_final = str(telegram_session.telegram_last_name) if telegram_session.telegram_last_name else ""
+                    username_final = str(telegram_session.telegram_username) if telegram_session.telegram_username else ""
+            else:
+                logger.warning(f"[LOGIN_TELEGRAM] TelegramSession не найдена для user_id={user.id}")
+
             user_info = {
                 "id": user.id,
                 "phone": user.phone,
-                "first_name": telegram_session.telegram_first_name or "" if telegram_session else "",
-                "last_name": telegram_session.telegram_last_name or "" if telegram_session else "",
-                "username": telegram_session.telegram_username or "" if telegram_session else "",
+                "first_name": first_name_final,
+                "last_name": last_name_final,
+                "username": username_final,
             }
+            logger.info(f"[LOGIN_TELEGRAM_RESPONSE] Возвращаю user_info: first_name='{user_info['first_name']}' (type={type(user_info['first_name']).__name__}), last_name='{user_info['last_name']}' (type={type(user_info['last_name']).__name__}), username='{user_info['username']}'")
 
             # 6. Удалить код из памяти (one-time use)
             del pending_login_codes[phone]
