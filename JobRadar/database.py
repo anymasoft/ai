@@ -201,6 +201,12 @@ def ensure_tables():
             ))
             print("✅ Индекс idx_telegram_session_user_id OK")
 
+            # UNIQUE индекс для TelegramSession.user_id (один User = одна сессия)
+            connection.execute(text(
+                "CREATE UNIQUE INDEX IF NOT EXISTS telegram_sessions_user_id_uq ON telegram_sessions (user_id)"
+            ))
+            print("✅ Уникальный индекс telegram_sessions_user_id_uq OK")
+
             # Индексы для Lead
             connection.execute(text(
                 "CREATE INDEX IF NOT EXISTS idx_lead_task_id ON leads (task_id)"

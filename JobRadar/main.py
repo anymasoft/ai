@@ -816,10 +816,26 @@ async def auth_submit_code(request: AuthCodeRequest):
         try:
             await client.sign_in(phone=phone, code=request.code)
             pending_auth_clients[auth_id]["client"] = client
+
+            # Получить Telegram user_id для привязки к auth_id
+            try:
+                me = await client.get_me()
+                pending_auth_clients[auth_id]["telegram_user_id"] = me.id
+            except:
+                pass
+
             return {"requires_password": False}
 
         except SessionPasswordNeededError:
             pending_auth_clients[auth_id]["client"] = client
+
+            # Получить Telegram user_id для привязки к auth_id
+            try:
+                me = await client.get_me()
+                pending_auth_clients[auth_id]["telegram_user_id"] = me.id
+            except:
+                pass
+
             return {"requires_password": True}
 
     except Exception as e:
@@ -845,6 +861,15 @@ async def auth_submit_password(request: AuthPasswordRequest):
             raise Exception("Сессия авторизации истекла.")
 
         client = auth_data["client"]
+
+        # Проверить что telegram_user_id совпадает (если был сохранен после кода)
+        if auth_data.get("telegram_user_id"):
+            try:
+                me = await client.get_me()
+                if me.id != auth_data.get("telegram_user_id"):
+                    raise Exception("Telegram аккаунт не совпадает с авторизацией через код")
+            except Exception as e:
+                raise
 
         try:
             await client.sign_in(password=request.password)
@@ -883,6 +908,12 @@ async def auth_save(request: AuthSaveRequest):
         try:
             # Получить информацию о пользователе
             me = await client.get_me()
+
+            # Проверить что telegram_user_id совпадает (если был сохранен)
+            if auth_data.get("telegram_user_id"):
+                if me.id != auth_data.get("telegram_user_id"):
+                    raise Exception("Telegram аккаунт не совпадает с авторизацией")
+
             user_info = {
                 "phone": phone,
                 "first_name": me.first_name or "",
