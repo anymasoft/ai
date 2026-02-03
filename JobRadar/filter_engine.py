@@ -108,52 +108,23 @@ def load_active_filter(db: Session) -> dict:
     return result
 
 
-def match_text(text: str, filter_config: dict, legacy_keywords: list) -> bool:
-    """
-    Проверяет, соответствует ли текст правилам фильтрации
-
-    Args:
-        text: Текст сообщения
-        filter_config: Конфигурация фильтра из load_active_filter()
-        legacy_keywords: Список ключевых слов из таблицы Keyword (нижний регистр)
-
-    Returns:
-        True если сообщение должно быть опубликовано, иначе False
-    """
+def match_text(text: str, filter_config: dict) -> bool:
     normalized_text = normalize_text(text)
 
-    # 1. Базовый слой: legacy keywords
-    if legacy_keywords:
-        if not any(kw in normalized_text for kw in legacy_keywords):
-            logger.debug(f"❌ No legacy keywords found in text")
+    # 1. EXCLUDE GROUPS
+    exclude_groups = filter_config.get("exclude_groups", [])
+    for group in exclude_groups:
+        if all(word in normalized_text for word in group):
             return False
 
-    mode = filter_config.get("mode", "keyword_or")
+    # 2. INCLUDE GROUPS
+    include_groups = filter_config.get("include_groups", [])
 
-    # 2. Только legacy режим
-    if mode == "keyword_or":
-        logger.debug(f"✅ Matched legacy keyword (mode=keyword_or)")
+    if not include_groups:
         return True
 
-    # 3. Advanced слой
-    exclude_any = filter_config.get("exclude_any", [])
-    require_all = filter_config.get("require_all", [])
-    include_any = filter_config.get("include_any", [])
+    for group in include_groups:
+        if all(word in normalized_text for word in group):
+            return True
 
-    logger.debug(f"📊 Advanced match check - exclude={exclude_any}, require={require_all}, include={include_any}")
-
-    if any(exc in normalized_text for exc in exclude_any):
-        logger.debug(f"❌ Found exclude word in text")
-        return False
-
-    if require_all and not all(req in normalized_text for req in require_all):
-        logger.debug(f"❌ Not all require words found. require={require_all}")
-        return False
-
-    if include_any:
-        result = any(inc in normalized_text for inc in include_any)
-        logger.debug(f"{'✅' if result else '❌'} Include check result={result}")
-        return result
-
-    logger.debug(f"✅ Passed all advanced checks")
-    return True
+    return False

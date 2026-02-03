@@ -483,31 +483,35 @@ async def process_task_for_leads(task: Task, db: Session):
         logger.warning(f"[LEAD] task={task.id} ({task.name}) не имеет источников")
         return
 
-    # Парсим ключевые слова
-    include_keywords = []
+    # Парсим ключевые слова в группы (строка = группа слов с AND логикой)
+    include_groups = []
     if task.include_keywords:
-        if "," in task.include_keywords:
-            include_keywords = [kw.strip().lower() for kw in task.include_keywords.split(",") if kw.strip()]
-        else:
-            include_keywords = [kw.strip().lower() for kw in task.include_keywords.split("\n") if kw.strip()]
+        for line in task.include_keywords.split("\n"):
+            line = line.strip()
+            if line:
+                # Заменяем запятые на пробелы и разбиваем
+                words = [w.strip().lower() for w in line.replace(",", " ").split() if w.strip()]
+                if words:
+                    include_groups.append(words)
 
-    exclude_keywords = []
+    exclude_groups = []
     if task.exclude_keywords:
-        if "," in task.exclude_keywords:
-            exclude_keywords = [kw.strip().lower() for kw in task.exclude_keywords.split(",") if kw.strip()]
-        else:
-            exclude_keywords = [kw.strip().lower() for kw in task.exclude_keywords.split("\n") if kw.strip()]
+        for line in task.exclude_keywords.split("\n"):
+            line = line.strip()
+            if line:
+                # Заменяем запятые на пробелы и разбиваем
+                words = [w.strip().lower() for w in line.replace(",", " ").split() if w.strip()]
+                if words:
+                    exclude_groups.append(words)
 
-    if not include_keywords:
-        logger.warning(f"[LEAD] task={task.id} ({task.name}) не имеет ключевых слов для поиска")
-        return
+    # Если нет ключевых слов - мониторим ВСЕ посты без фильтра
+    if not include_groups:
+        logger.info(f"[LEAD] task={task.id} ({task.name}) будет мониторить ВСЕ посты (без фильтра ключевых слов)")
 
-    # Формируем filter_config прямо в коде
+    # Формируем filter_config с новой структурой
     filter_config = {
-        "mode": "advanced",
-        "include_any": include_keywords,
-        "require_all": [],
-        "exclude_any": exclude_keywords
+        "include_groups": include_groups,
+        "exclude_groups": exclude_groups
     }
 
     # Обрабатываем каждый источник
@@ -540,13 +544,13 @@ async def process_task_for_leads(task: Task, db: Session):
                 continue
 
         try:
-            await check_source_for_task_leads(task, source_username, include_keywords, filter_config, db)
+            await check_source_for_task_leads(task, source_username, filter_config, db)
         except Exception as e:
             logger.error(f"[LEAD] task={task.id} ({task.name}) необработанная ошибка при проверке {source_username}: {e}")
             continue
 
 
-async def check_source_for_task_leads(task: Task, source_username: str, include_keywords: list, filter_config: dict, db: Session):
+async def check_source_for_task_leads(task: Task, source_username: str, filter_config: dict, db: Session):
     """
     Проверить один источник (канал) на новые сообщения для конкретной задачи.
 
@@ -566,8 +570,7 @@ async def check_source_for_task_leads(task: Task, source_username: str, include_
     Args:
         task: Объект Task
         source_username: username источника (без @)
-        include_keywords: список ключевых слов для поиска
-        filter_config: конфигурация фильтра
+        filter_config: конфигурация фильтра (с include_groups и exclude_groups)
         db: SQLAlchemy сессия
     """
     try:
@@ -744,12 +747,13 @@ async def check_source_for_task_leads(task: Task, source_username: str, include_
                 continue
 
             # Проверяем совпадение через фильтр
-            if match_text(text, filter_config, include_keywords):
-                # Ищем какое ключевое слово совпало
+            if match_text(text, filter_config):
+                normalized_text = normalize_text(text)
+
                 matched_keyword = None
-                for kw in include_keywords:
-                    if kw in text:
-                        matched_keyword = kw
+                for group in include_groups:
+                    if all(word in normalized_text for word in group):
+                        matched_keyword = " ".join(group)
                         break
 
                 # Проверяем, не сохраняли ли мы этот lead уже
