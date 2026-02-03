@@ -997,9 +997,7 @@ async def auth_save(request: AuthSaveRequest):
 
             user_info = {
                 "phone": phone,
-                "first_name": me.first_name or "",
-                "last_name": me.last_name or "",
-                "username": me.username or "",
+                "telegram_username": me.username or "",
                 "id": me.id
             }
         except Exception as e:
@@ -1127,9 +1125,6 @@ async def login_by_telegram(request: AuthLoginTelegramRequest):
             user_info = {
                 "id": user.id,
                 "phone": user.phone,
-                "first_name": user.first_name or "",
-                "last_name": user.last_name or "",
-                "username": user.username or "",
             }
 
             # 6. Удалить код из памяти (one-time use)
