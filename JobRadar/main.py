@@ -679,12 +679,18 @@ async def get_user_me(current_user: User = Depends(get_current_user), db: Sessio
     if session and session.telegram_username:
         display_name = session.telegram_username
 
+    first_name = session.telegram_first_name or "" if session else ""
+    last_name = session.telegram_last_name or "" if session else ""
+    username = session.telegram_username or "" if session else ""
+
+    logger.info(f"[USER_ME] user_id={current_user.id}: first_name='{first_name}' (empty={not first_name}), last_name='{last_name}' (empty={not last_name}), username='{username}'")
+
     return {
         "id": current_user.id,
         "phone": current_user.phone,
-        "first_name": session.telegram_first_name or "" if session else "",
-        "last_name": session.telegram_last_name or "" if session else "",
-        "username": session.telegram_username or "" if session else "",
+        "first_name": first_name,
+        "last_name": last_name,
+        "username": username,
         "display_name": display_name,
         "is_admin": is_admin,
         "has_session": session is not None,
@@ -1006,18 +1012,20 @@ async def auth_save(request: AuthSaveRequest):
                 user_full_info = full_user.users[0]
                 first_name = user_full_info.first_name or ""
                 last_name = user_full_info.last_name or ""
+                logger.info(f"[AUTH_SAVE] GetFullUserRequest успешен: first_name='{first_name}' (type={type(first_name).__name__}, len={len(first_name) if first_name else 0}), last_name='{last_name}' (type={type(last_name).__name__}, len={len(last_name) if last_name else 0})")
             except Exception as e:
                 # Fallback: использовать me объект
                 logger.warning(f"[AUTH_SAVE] Ошибка получения полного профиля, используем me объект: {e}")
                 first_name = me.first_name or ""
                 last_name = me.last_name or ""
+                logger.info(f"[AUTH_SAVE] Fallback на me объект: first_name='{first_name}', last_name='{last_name}'")
 
             # Проверить что telegram_user_id совпадает (если был сохранен)
             if auth_data.get("telegram_user_id"):
                 if me.id != auth_data.get("telegram_user_id"):
                     raise Exception("Telegram аккаунт не совпадает с авторизацией")
 
-            logger.info(f"✅ [AUTH_SAVE] Получены данные пользователя: phone={phone}, first_name='{first_name}', last_name='{last_name}', username={me.username}")
+            logger.info(f"✅ [AUTH_SAVE] Получены данные пользователя: phone={phone}, first_name='{first_name}' (empty={not first_name}), last_name='{last_name}' (empty={not last_name}), username={me.username}")
 
             user_info = {
                 "phone": phone,
@@ -1026,6 +1034,7 @@ async def auth_save(request: AuthSaveRequest):
                 "username": me.username or "",
                 "id": me.id
             }
+            logger.info(f"[AUTH_SAVE_RESPONSE] Возвращаю user_info: first_name='{user_info['first_name']}', last_name='{user_info['last_name']}', username='{user_info['username']}'")
         except Exception as e:
             raise
 
@@ -1158,6 +1167,7 @@ async def login_by_telegram(request: AuthLoginTelegramRequest):
                 "last_name": telegram_session.telegram_last_name or "" if telegram_session else "",
                 "username": telegram_session.telegram_username or "" if telegram_session else "",
             }
+            logger.info(f"[LOGIN_TELEGRAM_RESPONSE] Возвращаю user_info: first_name='{user_info['first_name']}' (empty={not user_info['first_name']}), last_name='{user_info['last_name']}' (empty={not user_info['last_name']}), username='{user_info['username']}'")
 
             # 6. Удалить код из памяти (one-time use)
             del pending_login_codes[phone]
