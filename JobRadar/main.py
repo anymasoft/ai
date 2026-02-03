@@ -1304,6 +1304,14 @@ async def get_payment_status(
         logger.error(f"[PAYMENT_STATUS_ERROR] user_id={current_user.id} error={str(e)}")
         raise HTTPException(status_code=500, detail=f"Ошибка получения статуса платежа: {str(e)}")
 
+@app.get("/api/contacts/telegram")
+async def get_telegram_contact():
+    """Получить ссылку на Telegram администратора"""
+    from config import TELEGRAM_ADMIN_USERNAME
+    return {
+        "telegram_url": f"https://t.me/{TELEGRAM_ADMIN_USERNAME}"
+    }
+
 @app.post("/api/logout")
 async def logout(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     """
