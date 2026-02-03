@@ -452,6 +452,7 @@
 
     <script>
         const API_BASE = '';
+        let currentLoginVia = 'telegram_sms';  // Трекер режима авторизации
 
         // ==================== Управление этапами ====================
         function showStage(stageName) {
@@ -489,6 +490,18 @@
             }
         }
 
+        // Извлечение текста ошибки из JSON объекта
+        function getErrorMessage(data, defaultMsg = 'Неизвестная ошибка') {
+            if (!data) return defaultMsg;
+            return data.detail || data.message || defaultMsg;
+        }
+
+        // Безопасное отображение ошибки подключения
+        function getConnectionErrorMessage(error) {
+            if (!error) return 'Ошибка подключения';
+            return 'Ошибка подключения: ' + (error.message || 'неизвестная ошибка');
+        }
+
         // ==================== Этап 1: Номер телефона ====================
         document.getElementById('btn-send-phone').addEventListener('click', async () => {
             const phone = document.getElementById('phone').value.trim();
@@ -511,15 +524,18 @@
                 const data = await response.json();
 
                 if (!response.ok) {
-                    showToast(data.detail || 'Ошибка авторизации', 'error');
+                    showToast(getErrorMessage(data, 'Ошибка авторизации'), 'error');
                     disableButton('btn-send-phone', false);
                     return;
                 }
 
-                showToast('Код отправлен на Telegram', 'success');
+                // Сохранить режим авторизации
+                currentLoginVia = data.login_via || 'telegram_sms';
+                const modeMsg = currentLoginVia === 'telegram_message' ? 'Код отправлен в Telegram' : 'Код отправлен на Telegram';
+                showToast(modeMsg, 'success');
                 showStage('code');
             } catch (error) {
-                showToast('Ошибка подключения: ' + error.message, 'error');
+                showToast(getConnectionErrorMessage(error), 'error');
                 disableButton('btn-send-phone', false);
             }
         });
@@ -537,7 +553,12 @@
             disableButton('btn-send-code');
 
             try {
-                const response = await fetch(`${API_BASE}/api/auth/submit-code`, {
+                // Выбрать эндпоинт в зависимости от режима авторизации
+                const endpoint = currentLoginVia === 'telegram_message'
+                    ? `${API_BASE}/api/auth/login-by-telegram`
+                    : `${API_BASE}/api/auth/submit-code`;
+
+                const response = await fetch(endpoint, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     credentials: 'include',
@@ -547,29 +568,43 @@
                 const data = await response.json();
 
                 if (!response.ok) {
-                    showToast(data.detail || 'Ошибка верификации кода', 'error');
+                    showToast(getErrorMessage(data, 'Ошибка верификации кода'), 'error');
                     disableButton('btn-send-code', false);
                     return;
                 }
 
-                // Проверить требуется ли пароль
-                if (data.requires_password) {
-                    showToast('Требуется пароль 2FA', 'warning');
-                    disableButton('btn-send-code', false);
-                    showStage('password');
+                // Для telegram_message режима нет требования к паролю (он прямо дает авторизацию)
+                if (currentLoginVia === 'telegram_message') {
+                    // Логин через Telegram успешен - обновляем localStorage и редиректим
+                    if (data.user) {
+                        localStorage.setItem('user', JSON.stringify(data.user));
+                        console.log('👤 Информация о пользователе сохранена:', data.user);
+                    }
+                    showToast('Авторизация успешна!', 'success');
+                    showStage('success');
+                    setTimeout(() => {
+                        window.location.href = '/dashboard';
+                    }, 2000);
                 } else {
-                    showToast('Код принят, сохраняю сессию...', 'info');
-                    // Сохранить сессию
-                    try {
-                        await saveSession(phone);
-                    } catch (saveError) {
-                        console.error('Ошибка при сохранении сессии:', saveError);
-                        showToast('Ошибка сохранения сессии: ' + saveError.message, 'error');
+                    // Для SMS режима - проверить требуется ли пароль
+                    if (data.requires_password) {
+                        showToast('Требуется пароль 2FA', 'warning');
                         disableButton('btn-send-code', false);
+                        showStage('password');
+                    } else {
+                        showToast('Код принят, сохраняю сессию...', 'info');
+                        // Сохранить сессию
+                        try {
+                            await saveSession(phone);
+                        } catch (saveError) {
+                            console.error('Ошибка при сохранении сессии:', saveError);
+                            showToast(getErrorMessage(saveError, 'Ошибка сохранения сессии'), 'error');
+                            disableButton('btn-send-code', false);
+                        }
                     }
                 }
             } catch (error) {
-                showToast('Ошибка подключения: ' + error.message, 'error');
+                showToast(getConnectionErrorMessage(error), 'error');
                 disableButton('btn-send-code', false);
             }
         });
@@ -597,7 +632,7 @@
                 const data = await response.json();
 
                 if (!response.ok) {
-                    showToast(data.detail || 'Ошибка верификации пароля', 'error');
+                    showToast(getErrorMessage(data, 'Ошибка верификации пароля'), 'error');
                     disableButton('btn-send-password', false);
                     return;
                 }
@@ -609,11 +644,11 @@
                     await saveSession(phone);
                 } catch (saveError) {
                     console.error('Ошибка при сохранении сессии:', saveError);
-                    showToast('Ошибка сохранения сессии: ' + saveError.message, 'error');
+                    showToast(getErrorMessage(saveError, 'Ошибка сохранения сессии'), 'error');
                     disableButton('btn-send-password', false);
                 }
             } catch (error) {
-                showToast('Ошибка подключения: ' + error.message, 'error');
+                showToast(getConnectionErrorMessage(error), 'error');
                 disableButton('btn-send-password', false);
             }
         });
@@ -631,7 +666,7 @@
                 const data = await response.json();
 
                 if (!response.ok) {
-                    showToast(data.detail || 'Ошибка сохранения', 'error');
+                    showToast(getErrorMessage(data, 'Ошибка сохранения'), 'error');
                     return;
                 }
 
@@ -649,7 +684,7 @@
                     window.location.href = '/dashboard';
                 }, 2000);
             } catch (error) {
-                showToast('Ошибка подключения: ' + error.message, 'error');
+                showToast(getConnectionErrorMessage(error), 'error');
             }
         }
 
