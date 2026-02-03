@@ -190,6 +190,8 @@ class TelegramSession(Base):
     session_string = Column(Text, nullable=False)  # StringSession строка (текст)
     telegram_user_id = Column(BigInteger, nullable=True)  # Telegram ID пользователя
     telegram_username = Column(String(255), nullable=True)  # Telegram @username пользователя (без @)
+    telegram_first_name = Column(String(255), nullable=True)  # Telegram first_name пользователя
+    telegram_last_name = Column(String(255), nullable=True)  # Telegram last_name пользователя
     alerts_personal = Column(Boolean, default=True)  # Присылать лиды в личный чат
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
