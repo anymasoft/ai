@@ -8,3 +8,4 @@ sqlalchemy[asyncio]
 apscheduler==3.10.4
 python-dotenv
 python-dateutil
+yookassa
