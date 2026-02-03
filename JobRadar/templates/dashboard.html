@@ -1140,6 +1140,61 @@
                 width: 100%;
             }
         }
+
+        .tooltip-icon {
+            position: relative;
+            display: inline-block;
+            margin-left: 6px;
+            cursor: help;
+            color: #0066cc;
+            font-size: 14px;
+            vertical-align: super;
+        }
+
+        .tooltip-content {
+            visibility: hidden;
+            width: 280px;
+            background-color: #333;
+            color: #fff;
+            text-align: left;
+            border-radius: 6px;
+            padding: 12px;
+            position: absolute;
+            z-index: 1000;
+            bottom: 125%;
+            left: 50%;
+            margin-left: -140px;
+            opacity: 0;
+            transition: opacity 0.3s;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+            font-size: 12px;
+            line-height: 1.4;
+        }
+
+        .tooltip-content p {
+            margin: 6px 0;
+        }
+
+        .tooltip-content strong {
+            display: block;
+            margin: 8px 0 6px 0;
+        }
+
+        .tooltip-content::after {
+            content: "";
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            margin-left: -5px;
+            border-width: 5px;
+            border-style: solid;
+            border-color: #333 transparent transparent transparent;
+        }
+
+        .tooltip-icon:hover .tooltip-content {
+            visibility: visible;
+            opacity: 1;
+        }
     </style>
 </head>
 <body>
@@ -1475,13 +1530,42 @@
                 </div>
 
                 <div class="form-group">
-                    <label>Включать ключевые слова</label>
+                    <label>
+                        Включать ключевые слова
+                        <span class="tooltip-icon" title="">❓
+                            <div class="tooltip-content">
+                                <strong>Как работают ключевые слова</strong>
+                                <p>Каждая строка — это отдельное условие (ИЛИ)</p>
+                                <p>Внутри строки слова через пробел или запятую — это И</p>
+                                <strong>Примеры:</strong>
+                                <p style="font-family: monospace; margin: 5px 0;">python remote<br>golang</p>
+                                <p>означает:<br>(python И remote) ИЛИ (golang)</p>
+                                <p style="font-family: monospace; margin: 5px 0;">node, backend<br>frontend react</p>
+                                <p>означает:<br>(node И backend) ИЛИ (frontend И react)</p>
+                                <p style="border-top: 1px solid rgba(255,255,255,0.3); padding-top: 8px; margin-top: 8px;">Если поле пустое — будут подходить ВСЕ сообщения.</p>
+                            </div>
+                        </span>
+                    </label>
                     <textarea id="task-include" placeholder="python&#10;remote&#10;По одному в строке"></textarea>
                     <span class="form-hint">Найти лиды с этими ключевыми словами (оставить пусто = получать все посты)</span>
                 </div>
 
                 <div class="form-group">
-                    <label>Исключить ключевые слова</label>
+                    <label>
+                        Исключить ключевые слова
+                        <span class="tooltip-icon" title="">❓
+                            <div class="tooltip-content">
+                                <strong>Как работают минус-слова</strong>
+                                <p>Те же правила, что и для ключевых слов.</p>
+                                <p>Но если условие совпало — сообщение ИСКЛЮЧАЕТСЯ.</p>
+                                <strong>Примеры:</strong>
+                                <p style="font-family: monospace; margin: 5px 0;">junior internship</p>
+                                <p>означает:<br>НЕ (junior И internship)</p>
+                                <p style="font-family: monospace; margin: 5px 0;">freelance<br>test task</p>
+                                <p>означает:<br>НЕ (freelance) И НЕ (test task)</p>
+                            </div>
+                        </span>
+                    </label>
                     <textarea id="task-exclude" placeholder="junior&#10;internship&#10;По одному в строке"></textarea>
                     <span class="form-hint">Игнорировать лиды с этими ключевыми словами</span>
                 </div>
