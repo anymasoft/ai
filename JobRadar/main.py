@@ -999,15 +999,30 @@ async def auth_save(request: AuthSaveRequest):
             # Получить информацию о пользователе
             me = await client.get_me()
 
+            # Получить полный профиль пользователя для получения first_name и last_name
+            try:
+                from telethon.tl.functions.users import GetFullUserRequest
+                full_user = await client(GetFullUserRequest(me.id))
+                user_full_info = full_user.users[0]
+                first_name = user_full_info.first_name or ""
+                last_name = user_full_info.last_name or ""
+            except Exception as e:
+                # Fallback: использовать me объект
+                logger.warning(f"[AUTH_SAVE] Ошибка получения полного профиля, используем me объект: {e}")
+                first_name = me.first_name or ""
+                last_name = me.last_name or ""
+
             # Проверить что telegram_user_id совпадает (если был сохранен)
             if auth_data.get("telegram_user_id"):
                 if me.id != auth_data.get("telegram_user_id"):
                     raise Exception("Telegram аккаунт не совпадает с авторизацией")
 
+            logger.info(f"✅ [AUTH_SAVE] Получены данные пользователя: phone={phone}, first_name='{first_name}', last_name='{last_name}', username={me.username}")
+
             user_info = {
                 "phone": phone,
-                "first_name": me.first_name or "",
-                "last_name": me.last_name or "",
+                "first_name": first_name,
+                "last_name": last_name,
                 "username": me.username or "",
                 "id": me.id
             }
@@ -1023,7 +1038,7 @@ async def auth_save(request: AuthSaveRequest):
         try:
             # Сохранить в БД с telegram_user_id, telegram_username, first_name, last_name
             # Возвращает user_id при успехе или None при ошибке
-            user_id = await save_session_to_db(phone, session_string, me.id, me.username, me.first_name, me.last_name)
+            user_id = await save_session_to_db(phone, session_string, me.id, me.username, first_name, last_name)
             if user_id is None:
                 raise Exception("Ошибка при сохранении в БД")
         except Exception as e:
