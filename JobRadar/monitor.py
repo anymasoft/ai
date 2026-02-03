@@ -16,7 +16,7 @@ from config import TELEGRAM_API_ID, TELEGRAM_API_HASH, TELEGRAM_PHONE
 from config import POLLING_INTERVAL_SECONDS, MAX_MESSAGES_PER_CHECK, TARGET_CHANNEL_ID
 from models import Channel, Keyword, FilterRule, Task, Lead, SourceMessage, TelegramSession, TaskSourceState, User
 from database import get_db
-from filter_engine import load_active_filter, match_text
+from filter_engine import load_active_filter, match_text, normalize_text
 from telegram_clients import get_user_client, disconnect_all_clients
 
 # Логирование с обработчиками для консоли
