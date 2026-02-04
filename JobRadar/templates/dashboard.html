@@ -1479,6 +1479,17 @@
                                 <span>Присылать в мой личный чат</span>
                             </label>
                         </div>
+                        <div class="form-group" style="margin-bottom: 1.5rem;">
+                            <label class="checkbox-group">
+                                <input type="checkbox" id="notify-channel">
+                                <span>Присылать в группу или канал Telegram</span>
+                            </label>
+                        </div>
+                        <div id="channel-settings" style="display: none; margin-bottom: 1.5rem; padding: 1rem; background: #f5f5f5; border-radius: 4px;">
+                            <label style="display: block; margin-bottom: 0.5rem; font-weight: 600;">Ссылка на группу или канал:</label>
+                            <input type="text" id="forward-channel" placeholder="https://t.me/my_group или @my_group" style="width: 100%; padding: 0.5rem; border: 1px solid #ccc; border-radius: 4px; font-family: monospace;">
+                            <p style="color: var(--text-gray); margin-top: 0.5rem; font-size: 0.85rem;">Примеры: https://t.me/my_group, @my_group</p>
+                        </div>
                         <button class="btn btn-primary" onclick="saveSettings()">Сохранить</button>
                     </div>
 
@@ -2745,11 +2756,25 @@
                     const data = await response.json();
                     console.log("SETTINGS_RESPONSE", data);
 
-                    const checkbox = document.getElementById('notify-personal');
-                    if (checkbox) {
-                        checkbox.checked = data.alerts_personal;
-                        console.log("CHECKBOX_SET_TO", data.alerts_personal);
+                    const checkboxPersonal = document.getElementById('notify-personal');
+                    if (checkboxPersonal) {
+                        checkboxPersonal.checked = data.alerts_personal;
+                        console.log("CHECKBOX_PERSONAL_SET_TO", data.alerts_personal);
                     }
+
+                    const checkboxChannel = document.getElementById('notify-channel');
+                    if (checkboxChannel) {
+                        checkboxChannel.checked = data.alerts_channel || false;
+                        console.log("CHECKBOX_CHANNEL_SET_TO", data.alerts_channel);
+                    }
+
+                    const channelInput = document.getElementById('forward-channel');
+                    if (channelInput) {
+                        channelInput.value = data.forward_channel || '';
+                        console.log("FORWARD_CHANNEL_SET_TO", data.forward_channel);
+                    }
+
+                    updateChannelSettingsVisibility();
                 } else {
                     console.log("SETTINGS_LOAD_ERROR", response.status);
                 }
@@ -2758,14 +2783,39 @@
             }
         }
 
+        function updateChannelSettingsVisibility() {
+            const checkbox = document.getElementById('notify-channel');
+            const channelSettings = document.getElementById('channel-settings');
+            if (checkbox && channelSettings) {
+                channelSettings.style.display = checkbox.checked ? 'block' : 'none';
+            }
+        }
+
+        // Добавить обработчик для чекбокса отправки в канал
+        document.addEventListener('DOMContentLoaded', function() {
+            const notifyChannelCheckbox = document.getElementById('notify-channel');
+            if (notifyChannelCheckbox) {
+                notifyChannelCheckbox.addEventListener('change', updateChannelSettingsVisibility);
+            }
+        });
+
         async function saveSettings() {
             console.log("SAVE_SETTINGS_CLICK_VERSION_2");
             console.log("SAVE_SETTINGS_CLICK");
             try {
                 const alertsPersonal = document.getElementById('notify-personal').checked;
-                console.log("CHECKBOX_VALUE", alertsPersonal);
+                const alertsChannel = document.getElementById('notify-channel').checked;
+                const forwardChannel = document.getElementById('forward-channel').value.trim();
 
-                const payload = { alerts_personal: alertsPersonal };
+                console.log("CHECKBOX_PERSONAL_VALUE", alertsPersonal);
+                console.log("CHECKBOX_CHANNEL_VALUE", alertsChannel);
+                console.log("FORWARD_CHANNEL_VALUE", forwardChannel);
+
+                const payload = {
+                    alerts_personal: alertsPersonal,
+                    alerts_channel: alertsChannel,
+                    forward_channel: alertsChannel ? forwardChannel : null
+                };
                 console.log("REQUEST_PAYLOAD", payload);
 
                 const response = await fetch(`${API_BASE}/api/user/settings`, {

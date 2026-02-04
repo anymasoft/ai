@@ -416,6 +416,17 @@ async def send_lead_to_telegram(task: Task, lead: Lead, db: Session):
         except Exception as e:
             logger.error(f"[SEND] task={task.id} lead={lead.id} ошибка отправки сообщения: {e}")
 
+        # Отправляем в канал если включено и указан forward_channel (восстановленный функционал)
+        user = db.query(User).filter(User.id == task.user_id).first()
+        if user and user.alerts_channel and user.forward_channel and user.forward_channel.strip():
+            try:
+                await safe_send_message(client, user.forward_channel, text)
+                logger.info(f"[SEND] task={task.id} lead={lead.id} доставлено в канал {user.forward_channel}")
+            except Exception as e:
+                logger.warning(f"[SEND] task={task.id} lead={lead.id} ошибка отправки в канал {user.forward_channel}: {e}")
+        elif user and user.alerts_channel and not (user.forward_channel and user.forward_channel.strip()):
+            logger.warning(f"[SEND] task={task.id} lead={lead.id} alerts_channel=True но forward_channel не указан")
+
     except Exception as e:
         logger.error(f"[SEND] task={task.id} lead={lead.id} критическая ошибка: {e}")
 

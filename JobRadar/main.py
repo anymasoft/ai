@@ -301,9 +301,13 @@ class LeadResponse(BaseModel):
 
 class UserSettingsRequest(BaseModel):
     alerts_personal: bool
+    alerts_channel: bool = False
+    forward_channel: Optional[str] = None
 
 class UserSettingsResponse(BaseModel):
     alerts_personal: bool
+    alerts_channel: bool = False
+    forward_channel: Optional[str] = None
 
 # ============== Pydantic модели для Telegram авторизации ==============
 
@@ -712,11 +716,19 @@ async def get_user_settings(current_user: User = Depends(get_current_user), db: 
     # Если сессии нет, возвращаем дефолт
     if not telegram_session:
         print("RETURNING_DEFAULT alerts_personal=True")
-        return UserSettingsResponse(alerts_personal=True)
+        return UserSettingsResponse(
+            alerts_personal=True,
+            alerts_channel=current_user.alerts_channel,
+            forward_channel=current_user.forward_channel
+        )
 
     # Возвращаем сохраненное значение
     print(f"RETURNING alerts_personal={telegram_session.alerts_personal}")
-    return UserSettingsResponse(alerts_personal=telegram_session.alerts_personal)
+    return UserSettingsResponse(
+        alerts_personal=telegram_session.alerts_personal,
+        alerts_channel=current_user.alerts_channel,
+        forward_channel=current_user.forward_channel
+    )
 
 @app.put("/api/user/settings", response_model=UserSettingsResponse)
 async def update_user_settings(
@@ -726,7 +738,7 @@ async def update_user_settings(
 ):
     """Обновить пользовательские настройки"""
     print("USER_SETTINGS_PUT_CALLED")
-    print(f"REQUEST_BODY: alerts_personal={request.alerts_personal}")
+    print(f"REQUEST_BODY: alerts_personal={request.alerts_personal}, alerts_channel={request.alerts_channel}, forward_channel={request.forward_channel}")
 
     # Найти сессию пользователя
     telegram_session = db.query(TelegramSession).filter(TelegramSession.user_id == current_user.id).first()
@@ -736,20 +748,31 @@ async def update_user_settings(
     if not telegram_session:
         raise HTTPException(status_code=400, detail="Telegram сессия не найдена. Сначала авторизуйтесь.")
 
-    # Обновить настройку
+    # Обновить настройку alerts_personal в TelegramSession
     print("BEFORE alerts_personal =", telegram_session.alerts_personal)
     telegram_session.alerts_personal = request.alerts_personal
     print("AFTER alerts_personal =", telegram_session.alerts_personal)
 
+    # Обновить новые настройки в User
+    print("BEFORE alerts_channel =", current_user.alerts_channel, "forward_channel =", current_user.forward_channel)
+    current_user.alerts_channel = request.alerts_channel
+    current_user.forward_channel = request.forward_channel if request.forward_channel else ""
+    print("AFTER alerts_channel =", current_user.alerts_channel, "forward_channel =", current_user.forward_channel)
+
     db.commit()
     print("COMMIT_DONE")
 
-    # Обновить объект из БД для полной уверенности
+    # Обновить объекты из БД для полной уверенности
     db.refresh(telegram_session)
-    print("DB_VALUE alerts_personal =", telegram_session.alerts_personal)
+    db.refresh(current_user)
+    print("DB_VALUE alerts_personal =", telegram_session.alerts_personal, "alerts_channel =", current_user.alerts_channel, "forward_channel =", current_user.forward_channel)
 
     # Вернуть обновленное значение
-    return UserSettingsResponse(alerts_personal=telegram_session.alerts_personal)
+    return UserSettingsResponse(
+        alerts_personal=telegram_session.alerts_personal,
+        alerts_channel=current_user.alerts_channel,
+        forward_channel=current_user.forward_channel
+    )
 
 # ============== API для статистики ==============
 
