@@ -395,14 +395,8 @@ async def send_lead_to_telegram(task: Task, lead: Lead, db: Session):
             logger.warning(f"[SEND] task={task.id} lead={lead.id} - Telegram клиент для user_id={task.user_id} не инициализирован")
             return
 
-        # Форматируем текст лида
-        matched_keyword = lead.matched_keyword or 'не определено'
-        text = f"""🔥 Новый лид
-
-{lead.text}
-
-Источник: {lead.source_channel}
-Ключ: {matched_keyword}"""
+        # Используем оригинальный текст лида без добавлений
+        text = lead.text
 
         # Отправляем в личный Telegram используя клиент пользователя
         try:
