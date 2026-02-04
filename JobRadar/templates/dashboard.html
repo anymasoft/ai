@@ -1479,6 +1479,17 @@
                                 <span>Присылать в мой личный чат</span>
                             </label>
                         </div>
+                        <div class="form-group" style="margin-bottom: 1.5rem;">
+                            <label class="checkbox-group">
+                                <input type="checkbox" id="notify-channel">
+                                <span>Присылать в указанный Telegram-канал</span>
+                            </label>
+                        </div>
+                        <div id="channel-link-group" style="margin-bottom: 1.5rem; display: none;">
+                            <label style="display: block; margin-bottom: 0.5rem; font-weight: 600;">Ссылка на Telegram-канал:</label>
+                            <input type="text" id="telegram-channel-link" placeholder="https://t.me/my_channel или @my_channel" style="width: 100%; padding: 0.5rem; border: 1px solid #ccc; border-radius: 4px; font-family: monospace;">
+                            <p style="color: var(--text-gray); margin-top: 0.5rem; font-size: 0.85rem;">Примеры: https://t.me/my_channel или @my_channel</p>
+                        </div>
                         <button class="btn btn-primary" onclick="saveSettings()">Сохранить</button>
                     </div>
 
@@ -2745,10 +2756,30 @@
                     const data = await response.json();
                     console.log("SETTINGS_RESPONSE", data);
 
-                    const checkbox = document.getElementById('notify-personal');
-                    if (checkbox) {
-                        checkbox.checked = data.alerts_personal;
-                        console.log("CHECKBOX_SET_TO", data.alerts_personal);
+                    const checkboxPersonal = document.getElementById('notify-personal');
+                    if (checkboxPersonal) {
+                        checkboxPersonal.checked = data.alerts_personal;
+                        console.log("CHECKBOX_PERSONAL_SET_TO", data.alerts_personal);
+                    }
+
+                    // Загрузить настройки отправки в Telegram-канал
+                    const checkboxChannel = document.getElementById('notify-channel');
+                    const channelLinkInput = document.getElementById('telegram-channel-link');
+                    const channelLinkGroup = document.getElementById('channel-link-group');
+
+                    if (checkboxChannel && data.send_to_telegram_channel !== undefined) {
+                        checkboxChannel.checked = data.send_to_telegram_channel;
+                        console.log("CHECKBOX_CHANNEL_SET_TO", data.send_to_telegram_channel);
+
+                        // Показать/скрыть поле ввода канала
+                        if (channelLinkGroup) {
+                            channelLinkGroup.style.display = data.send_to_telegram_channel ? 'block' : 'none';
+                        }
+                    }
+
+                    if (channelLinkInput && data.telegram_channel_link) {
+                        channelLinkInput.value = data.telegram_channel_link;
+                        console.log("CHANNEL_LINK_SET_TO", data.telegram_channel_link);
                     }
                 } else {
                     console.log("SETTINGS_LOAD_ERROR", response.status);
@@ -2763,9 +2794,18 @@
             console.log("SAVE_SETTINGS_CLICK");
             try {
                 const alertsPersonal = document.getElementById('notify-personal').checked;
-                console.log("CHECKBOX_VALUE", alertsPersonal);
+                const sendToTelegramChannel = document.getElementById('notify-channel').checked;
+                const telegramChannelLink = document.getElementById('telegram-channel-link').value.trim();
 
-                const payload = { alerts_personal: alertsPersonal };
+                console.log("CHECKBOX_VALUE", alertsPersonal);
+                console.log("CHANNEL_CHECKBOX", sendToTelegramChannel);
+                console.log("CHANNEL_LINK", telegramChannelLink);
+
+                const payload = {
+                    alerts_personal: alertsPersonal,
+                    send_to_telegram_channel: sendToTelegramChannel,
+                    telegram_channel_link: sendToTelegramChannel ? telegramChannelLink : null
+                };
                 console.log("REQUEST_PAYLOAD", payload);
 
                 const response = await fetch(`${API_BASE}/api/user/settings`, {
@@ -2806,6 +2846,12 @@
         document.getElementById('filter-task').addEventListener('change', loadLeads);
         document.getElementById('filter-status').addEventListener('change', loadLeads);
         document.getElementById('filter-search').addEventListener('input', loadLeads);
+
+        // Обработчик для показа/скрытия поля ввода канала
+        document.getElementById('notify-channel').addEventListener('change', function() {
+            const channelLinkGroup = document.getElementById('channel-link-group');
+            channelLinkGroup.style.display = this.checked ? 'block' : 'none';
+        });
 
         // ==================== Управление профилем пользователя ====================
         async function updateTelegramAccountStatus() {

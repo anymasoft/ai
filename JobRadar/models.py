@@ -27,6 +27,10 @@ class User(Base):
     # Поле для авторизации
     auth_token = Column(String(128), unique=True, index=True, nullable=True)  # Криптографически стойкий токен сессии
 
+    # Поля для автопостинга найденных лидов в Telegram-канал (восстановленный функционал)
+    send_to_telegram_channel = Column(Boolean, default=False)  # Отправлять ли лиды в Telegram-канал
+    telegram_channel_link = Column(String(255), nullable=True)  # Ссылка на Telegram-канал (например, https://t.me/my_channel или @my_channel)
+
     def __repr__(self):
         return f"<User(id={self.id}, phone={self.phone}, plan={self.plan}, trial_expires_at={self.trial_expires_at}, paid_until={self.paid_until})>"
 

@@ -416,6 +416,28 @@ async def send_lead_to_telegram(task: Task, lead: Lead, db: Session):
         except Exception as e:
             logger.error(f"[SEND] task={task.id} lead={lead.id} ошибка отправки сообщения: {e}")
 
+        # Отправить в Telegram-канал пользователя, если он включил эту опцию (восстановленный функционал)
+        try:
+            user = db.query(User).filter(User.id == task.user_id).first()
+            if user and user.send_to_telegram_channel and user.telegram_channel_link:
+                logger.info(f"[SEND_CHANNEL] task={task.id} lead={lead.id} - попытка отправить в канал: {user.telegram_channel_link}")
+
+                # Нормализуем ссылку на канал (удаляем @ если есть)
+                channel_link = user.telegram_channel_link
+                if channel_link.startswith('@'):
+                    channel_link = channel_link[1:]  # Удаляем @
+                    logger.debug(f"[SEND_CHANNEL] нормализована ссылка с @ удален: {channel_link}")
+
+                try:
+                    # Попытаемся отправить в канал через клиент пользователя
+                    await safe_send_message(client, channel_link, text)
+                    logger.info(f"[SEND_CHANNEL] task={task.id} lead={lead.id} доставлено в канал {user.telegram_channel_link}")
+                except Exception as channel_error:
+                    logger.warning(f"[SEND_CHANNEL] task={task.id} lead={lead.id} ошибка отправки в канал {user.telegram_channel_link}: {channel_error}")
+                    # Не прерываем выполнение - ошибка отправки в канал не является критической
+        except Exception as channel_section_error:
+            logger.error(f"[SEND_CHANNEL] task={task.id} lead={lead.id} критическая ошибка при отправке в канал: {channel_section_error}")
+
     except Exception as e:
         logger.error(f"[SEND] task={task.id} lead={lead.id} критическая ошибка: {e}")
 
