@@ -27,6 +27,10 @@ class User(Base):
     # Поле для авторизации
     auth_token = Column(String(128), unique=True, index=True, nullable=True)  # Криптографически стойкий токен сессии
 
+    # Поля для отправки лидов в канал/группу Telegram (восстановленный функционал)
+    alerts_channel = Column(Boolean, default=False)  # Отправлять в канал
+    forward_channel = Column(String(255), nullable=True, default="")  # Канал для пересылки постов
+
     def __repr__(self):
         return f"<User(id={self.id}, phone={self.phone}, plan={self.plan}, trial_expires_at={self.trial_expires_at}, paid_until={self.paid_until})>"
 
