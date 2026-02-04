@@ -301,13 +301,9 @@ class LeadResponse(BaseModel):
 
 class UserSettingsRequest(BaseModel):
     alerts_personal: bool
-    send_to_telegram_channel: bool = False
-    telegram_channel_link: Optional[str] = None
 
 class UserSettingsResponse(BaseModel):
     alerts_personal: bool
-    send_to_telegram_channel: bool = False
-    telegram_channel_link: Optional[str] = None
 
 # ============== Pydantic модели для Telegram авторизации ==============
 
@@ -713,22 +709,14 @@ async def get_user_settings(current_user: User = Depends(get_current_user), db: 
     telegram_session = db.query(TelegramSession).filter(TelegramSession.user_id == current_user.id).first()
     print("SESSION_FOUND", bool(telegram_session))
 
-    # Получить значение alerts_personal из сессии (или дефолт True)
-    alerts_personal = True
-    if telegram_session:
-        alerts_personal = telegram_session.alerts_personal
-        print(f"alerts_personal from session: {alerts_personal}")
+    # Если сессии нет, возвращаем дефолт
+    if not telegram_session:
+        print("RETURNING_DEFAULT alerts_personal=True")
+        return UserSettingsResponse(alerts_personal=True)
 
-    # Получить значения из User
-    send_to_telegram_channel = current_user.send_to_telegram_channel or False
-    telegram_channel_link = current_user.telegram_channel_link or None
-
-    print(f"RETURNING alerts_personal={alerts_personal}, send_to_telegram_channel={send_to_telegram_channel}, telegram_channel_link={telegram_channel_link}")
-    return UserSettingsResponse(
-        alerts_personal=alerts_personal,
-        send_to_telegram_channel=send_to_telegram_channel,
-        telegram_channel_link=telegram_channel_link
-    )
+    # Возвращаем сохраненное значение
+    print(f"RETURNING alerts_personal={telegram_session.alerts_personal}")
+    return UserSettingsResponse(alerts_personal=telegram_session.alerts_personal)
 
 @app.put("/api/user/settings", response_model=UserSettingsResponse)
 async def update_user_settings(
@@ -738,7 +726,7 @@ async def update_user_settings(
 ):
     """Обновить пользовательские настройки"""
     print("USER_SETTINGS_PUT_CALLED")
-    print(f"REQUEST_BODY: alerts_personal={request.alerts_personal}, send_to_telegram_channel={request.send_to_telegram_channel}, telegram_channel_link={request.telegram_channel_link}")
+    print(f"REQUEST_BODY: alerts_personal={request.alerts_personal}")
 
     # Найти сессию пользователя
     telegram_session = db.query(TelegramSession).filter(TelegramSession.user_id == current_user.id).first()
@@ -748,31 +736,20 @@ async def update_user_settings(
     if not telegram_session:
         raise HTTPException(status_code=400, detail="Telegram сессия не найдена. Сначала авторизуйтесь.")
 
-    # Обновить alerts_personal в TelegramSession
+    # Обновить настройку
     print("BEFORE alerts_personal =", telegram_session.alerts_personal)
     telegram_session.alerts_personal = request.alerts_personal
     print("AFTER alerts_personal =", telegram_session.alerts_personal)
 
-    # Обновить send_to_telegram_channel и telegram_channel_link в User
-    print(f"BEFORE send_to_telegram_channel={current_user.send_to_telegram_channel}, telegram_channel_link={current_user.telegram_channel_link}")
-    current_user.send_to_telegram_channel = request.send_to_telegram_channel
-    current_user.telegram_channel_link = request.telegram_channel_link if request.send_to_telegram_channel else None
-    print(f"AFTER send_to_telegram_channel={current_user.send_to_telegram_channel}, telegram_channel_link={current_user.telegram_channel_link}")
-
     db.commit()
     print("COMMIT_DONE")
 
-    # Обновить объекты из БД для полной уверенности
+    # Обновить объект из БД для полной уверенности
     db.refresh(telegram_session)
-    db.refresh(current_user)
-    print(f"DB_VALUE alerts_personal={telegram_session.alerts_personal}, send_to_telegram_channel={current_user.send_to_telegram_channel}")
+    print("DB_VALUE alerts_personal =", telegram_session.alerts_personal)
 
-    # Вернуть обновленные значения
-    return UserSettingsResponse(
-        alerts_personal=telegram_session.alerts_personal,
-        send_to_telegram_channel=current_user.send_to_telegram_channel,
-        telegram_channel_link=current_user.telegram_channel_link
-    )
+    # Вернуть обновленное значение
+    return UserSettingsResponse(alerts_personal=telegram_session.alerts_personal)
 
 # ============== API для статистики ==============
 
