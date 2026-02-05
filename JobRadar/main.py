@@ -903,51 +903,89 @@ async def auth_start(request: AuthStartRequest):
                 .first()
             )
 
-            # ВАРИАНТ А: TelegramSession найден → режим LOGIN_BY_TELEGRAM_MESSAGE
+            # ВАРИАНТ А: TelegramSession найден → ПРЯМОЙ ВХОД БЕЗ КОДА
             if telegram_session:
-                logger.info(f"[AUTH_START] phone={phone} - найдена TelegramSession, используем режим Telegram ЛС")
+                logger.info(f"[AUTH_START] phone={phone} - найдена TelegramSession, выполняем ПРЯМОЙ ВХОД")
 
                 try:
-                    # Получить User (уже должен быть, так как TelegramSession связана с user_id)
+                    # 1. Получить User
                     user = db.query(User).filter(User.id == telegram_session.user_id).first()
                     if not user:
                         raise Exception("User не найден для TelegramSession")
 
-                    # Получить Telegram client пользователя
+                    # 2. Проверить подписку
+                    ensure_active_subscription(user, db)
+
+                    # 3. Проверить что TelegramClient доступен (валидируем что сессия еще работает)
                     from telegram_clients import get_user_client
                     client = await get_user_client(user.id, db)
                     if not client:
-                        logger.warning(f"[AUTH_START] phone={phone} - не удалось получить TelegramClient, возвращаемся к SMS")
-                        # Если клиент не получился - возвращаемся к старому флоу
+                        logger.warning(f"[AUTH_START] phone={phone} - TelegramClient недоступен, fallback на SMS")
+                        # Если клиент не получился - возвращаемся к старому флоу (SMS)
                         raise Exception("TelegramClient not available, fallback to SMS")
 
-                    # Генерировать 5-значный код
-                    login_code = str(random.randint(10000, 99999))
+                    # 4. Генерировать auth_token СРАЗУ (БЕЗ кода!)
+                    auth_token = create_user_session(user.id, db)
+                    logger.info(f"[AUTH_START] phone={phone} - auth_token сгенерирован, выполняется прямой вход")
 
-                    # Сохранить код в памяти с TTL 300 сек и привязкой к user_id
-                    pending_login_codes[phone] = {
-                        "code": login_code,
-                        "user_id": telegram_session.user_id,
-                        "expires_at": datetime.utcnow() + timedelta(seconds=300)
-                    }
+                    # 5. Получить свежие данные из Telegram для user_info
+                    first_name_final = ""
+                    last_name_final = ""
+                    username_final = ""
 
-                    # Отправить код в личку пользователю
                     try:
-                        await client.send_message("me", f"Ваш код входа в JobRadar: {login_code}\n\nКод действителен 5 минут.")
-                        logger.info(f"[AUTH_START] phone={phone} - код отправлен в Telegram ЛС")
-                    except Exception as e:
-                        logger.error(f"[AUTH_START] phone={phone} - ошибка отправки в Telegram: {e}")
-                        del pending_login_codes[phone]
-                        raise Exception("Не удалось отправить код в Telegram")
+                        me = await client.get_me()
+                        first_name_fresh = me.first_name or ""
+                        last_name_fresh = me.last_name or ""
+                        username_fresh = me.username or ""
 
-                    return {
-                        "ok": True,
-                        "login_via": "telegram_message"
+                        if first_name_fresh or last_name_fresh or username_fresh:
+                            first_name_final = first_name_fresh
+                            last_name_final = last_name_fresh
+                            username_final = username_fresh
+                            logger.info(f"[AUTH_START] phone={phone} - получены свежие данные из Telegram")
+                        else:
+                            # Используем сохраненные данные
+                            first_name_final = str(telegram_session.telegram_first_name) if telegram_session.telegram_first_name else ""
+                            last_name_final = str(telegram_session.telegram_last_name) if telegram_session.telegram_last_name else ""
+                            username_final = str(telegram_session.telegram_username) if telegram_session.telegram_username else ""
+                    except Exception as e:
+                        logger.warning(f"[AUTH_START] phone={phone} - не удалось получить свежие данные: {e}, используем сохраненные")
+                        first_name_final = str(telegram_session.telegram_first_name) if telegram_session.telegram_first_name else ""
+                        last_name_final = str(telegram_session.telegram_last_name) if telegram_session.telegram_last_name else ""
+                        username_final = str(telegram_session.telegram_username) if telegram_session.telegram_username else ""
+
+                    user_info = {
+                        "id": user.id,
+                        "phone": user.phone,
+                        "first_name": first_name_final,
+                        "last_name": last_name_final,
+                        "username": username_final,
                     }
+
+                    # 6. Вернуть auth_token + user_info (БЕЗ КОДА!)
+                    logger.info(f"✅ [AUTH_START] phone={phone} - прямой вход УСПЕШЕН, возвращаем auth_token")
+
+                    response = JSONResponse({
+                        "ok": True,
+                        "login_via": "telegram_direct",  # Новый тип - прямой вход!
+                        "auth_token": auth_token,
+                        "user": user_info
+                    })
+                    response.set_cookie(
+                        key="auth_token",
+                        value=auth_token,
+                        max_age=10*365*24*60*60,
+                        path="/",
+                        httponly=True,
+                        samesite="lax",
+                        secure=False
+                    )
+                    return response
 
                 except Exception as e:
                     # Если что-то пошло не так - возвращаемся к старому флоу
-                    logger.warning(f"[AUTH_START] phone={phone} - ошибка режима Telegram ЛС, fallback на SMS: {e}")
+                    logger.warning(f"[AUTH_START] phone={phone} - ошибка при прямом входе, fallback на SMS: {e}")
                     pass  # Продолжим к варианту Б
 
             # ВАРИАНТ Б: TelegramSession не найден или ошибка → режим Telegram SMS (старый флоу)
