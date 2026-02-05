@@ -3,6 +3,9 @@ JobRadar - Вспомогательные функции для работы с 
 """
 import logging
 from datetime import datetime, timedelta
+from telethon import TelegramClient
+from telethon.sessions import StringSession
+from config import TELEGRAM_API_ID, TELEGRAM_API_HASH
 from database import SessionLocal
 from models import TelegramSession, User
 
@@ -52,6 +55,8 @@ async def save_session_to_db(phone: str, session_string: str, telegram_user_id: 
             # Проверить, есть ли уже сессия для этого номера
             existing = db.query(TelegramSession).filter(TelegramSession.phone == phone).first()
             if existing:
+                logger.info(f"🔄 Обновляю сессию: phone={phone}")
+                logger.debug(f"[SAVE_SESSION] Было: first_name='{existing.telegram_first_name}', last_name='{existing.telegram_last_name}'")
                 existing.user_id = user_id
                 existing.session_string = session_string
                 if telegram_user_id:
@@ -62,7 +67,10 @@ async def save_session_to_db(phone: str, session_string: str, telegram_user_id: 
                     existing.telegram_first_name = telegram_first_name
                 if telegram_last_name:
                     existing.telegram_last_name = telegram_last_name
+                logger.info(f"[SAVE_SESSION] Сохранено (обновление): first_name='{existing.telegram_first_name}' (empty={not existing.telegram_first_name}), last_name='{existing.telegram_last_name}' (empty={not existing.telegram_last_name})")
             else:
+                logger.info(f"✨ Сохраняю новую сессию: phone={phone}")
+                logger.info(f"[SAVE_SESSION] Параметры: first_name='{telegram_first_name}' (empty={not telegram_first_name}), last_name='{telegram_last_name}' (empty={not telegram_last_name})")
                 new_session = TelegramSession(
                     user_id=user_id,
                     phone=phone,
@@ -73,6 +81,7 @@ async def save_session_to_db(phone: str, session_string: str, telegram_user_id: 
                     telegram_last_name=telegram_last_name
                 )
                 db.add(new_session)
+                logger.info(f"[SAVE_SESSION] Сохранено (новая): first_name='{telegram_first_name}', last_name='{telegram_last_name}'")
 
             db.commit()
             logger.info(f"✅ Сессия сохранена | phone={phone} | user_id={user_id} | telegram_id={telegram_user_id}")

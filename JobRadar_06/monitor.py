@@ -10,13 +10,13 @@ from typing import Optional
 from telethon import TelegramClient
 from telethon.errors import FloodWaitError
 from sqlalchemy.orm import Session
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from config import TELEGRAM_API_ID, TELEGRAM_API_HASH, TELEGRAM_PHONE
 from config import POLLING_INTERVAL_SECONDS, MAX_MESSAGES_PER_CHECK, TARGET_CHANNEL_ID
-from models import Channel, Keyword, FilterRule, Task, Lead, SourceMessage, TelegramSession, TaskSourceState
+from models import Channel, Keyword, FilterRule, Task, Lead, SourceMessage, TelegramSession, TaskSourceState, User
 from database import get_db
-from filter_engine import load_active_filter, match_text
+from filter_engine import load_active_filter, match_text, normalize_text
 from telegram_clients import get_user_client, disconnect_all_clients
 
 # Логирование с обработчиками для консоли
@@ -279,6 +279,83 @@ def normalize_channel_ref(input_str: str) -> dict:
 
 
 
+def check_user_subscription(user_id: int, db: Session) -> bool:
+    """
+    Проверить активна ли подписка пользователя.
+
+    Возвращает True если подписка активна, False если истекла.
+    """
+    try:
+        user = db.query(User).filter(User.id == user_id).first()
+        if not user:
+            logger.warning(f"[SUBSCRIPTION_CHECK] user_id={user_id} не найден в БД")
+            return False
+
+        now = datetime.utcnow()
+        logger.info(f"[SUBSCRIPTION_CHECK] user_id={user_id} plan={user.plan} now={now} (тип: {type(now).__name__})")
+
+        # Проверка Trial
+        if user.plan == "trial":
+            logger.info(f"[SUBSCRIPTION_CHECK] trial_expires_at={user.trial_expires_at} (тип: {type(user.trial_expires_at).__name__})")
+
+            if user.trial_expires_at:
+                # Если это строка, парсим вручную
+                if isinstance(user.trial_expires_at, str):
+                    logger.warning(f"[SUBSCRIPTION_CHECK] trial_expires_at - это СТРОКА! Парсим...")
+                    try:
+                        from dateutil import parser as dateutil_parser
+                        expires_dt = dateutil_parser.parse(user.trial_expires_at)
+                    except:
+                        # Альтернативный парсинг
+                        expires_dt = datetime.fromisoformat(user.trial_expires_at.replace('Z', '+00:00'))
+                else:
+                    expires_dt = user.trial_expires_at
+
+                logger.info(f"[SUBSCRIPTION_CHECK] Сравнение: {expires_dt} < {now} = {expires_dt < now}")
+
+                if expires_dt < now:
+                    logger.info(f"[SUBSCRIPTION_CHECK] user_id={user_id} Trial истёк (trial_expires_at={user.trial_expires_at})")
+                    user.plan = "expired"
+                    db.commit()
+                    return False
+            logger.info(f"[SUBSCRIPTION_CHECK] user_id={user_id} Trial активен до {user.trial_expires_at}")
+            return True
+
+        # Проверка платных тарифов
+        if user.plan in ("start", "pro", "business"):
+            logger.info(f"[SUBSCRIPTION_CHECK] paid_until={user.paid_until} (тип: {type(user.paid_until).__name__})")
+
+            if user.paid_until:
+                # Если это строка, парсим вручную
+                if isinstance(user.paid_until, str):
+                    logger.warning(f"[SUBSCRIPTION_CHECK] paid_until - это СТРОКА! Парсим...")
+                    try:
+                        from dateutil import parser as dateutil_parser
+                        paid_dt = dateutil_parser.parse(user.paid_until)
+                    except:
+                        paid_dt = datetime.fromisoformat(user.paid_until.replace('Z', '+00:00'))
+                else:
+                    paid_dt = user.paid_until
+
+                logger.info(f"[SUBSCRIPTION_CHECK] Сравнение: {paid_dt} < {now} = {paid_dt < now}")
+
+                if paid_dt < now:
+                    logger.info(f"[SUBSCRIPTION_CHECK] user_id={user_id} Платный тариф '{user.plan}' истёк (paid_until={user.paid_until})")
+                    user.plan = "expired"
+                    db.commit()
+                    return False
+            logger.info(f"[SUBSCRIPTION_CHECK] user_id={user_id} Тариф '{user.plan}' активен до {user.paid_until}")
+            return True
+
+        # Если plan == "expired" или неизвестный план
+        logger.info(f"[SUBSCRIPTION_CHECK] user_id={user_id} план '{user.plan}' уже истёк или неизвестен - доступ заблокирован")
+        return False
+
+    except Exception as e:
+        logger.error(f"[SUBSCRIPTION_CHECK] user_id={user_id} ошибка: {type(e).__name__}: {e}", exc_info=True)
+        return False
+
+
 async def send_lead_to_telegram(task: Task, lead: Lead, db: Session):
     """
     Отправить найденный лид в личный Telegram пользователя.
@@ -288,6 +365,10 @@ async def send_lead_to_telegram(task: Task, lead: Lead, db: Session):
         lead: Объект Lead из БД
         db: SQLAlchemy сессия
     """
+    # ПРОВЕРКА: Активна ли подписка пользователя?
+    if not check_user_subscription(task.user_id, db):
+        logger.warning(f"[SEND] task={task.id} lead={lead.id} user_id={task.user_id} - подписка истекла, лид не отправляется")
+        return
     try:
         # Получить TelegramSession по user_id из Task (строгая привязка)
         telegram_session = (
@@ -402,31 +483,35 @@ async def process_task_for_leads(task: Task, db: Session):
         logger.warning(f"[LEAD] task={task.id} ({task.name}) не имеет источников")
         return
 
-    # Парсим ключевые слова
-    include_keywords = []
+    # Парсим ключевые слова в группы (строка = группа слов с AND логикой)
+    include_groups = []
     if task.include_keywords:
-        if "," in task.include_keywords:
-            include_keywords = [kw.strip().lower() for kw in task.include_keywords.split(",") if kw.strip()]
-        else:
-            include_keywords = [kw.strip().lower() for kw in task.include_keywords.split("\n") if kw.strip()]
+        for line in task.include_keywords.split("\n"):
+            line = line.strip()
+            if line:
+                # Заменяем запятые на пробелы и разбиваем
+                words = [w.strip().lower() for w in line.replace(",", " ").split() if w.strip()]
+                if words:
+                    include_groups.append(words)
 
-    exclude_keywords = []
+    exclude_groups = []
     if task.exclude_keywords:
-        if "," in task.exclude_keywords:
-            exclude_keywords = [kw.strip().lower() for kw in task.exclude_keywords.split(",") if kw.strip()]
-        else:
-            exclude_keywords = [kw.strip().lower() for kw in task.exclude_keywords.split("\n") if kw.strip()]
+        for line in task.exclude_keywords.split("\n"):
+            line = line.strip()
+            if line:
+                # Заменяем запятые на пробелы и разбиваем
+                words = [w.strip().lower() for w in line.replace(",", " ").split() if w.strip()]
+                if words:
+                    exclude_groups.append(words)
 
-    if not include_keywords:
-        logger.warning(f"[LEAD] task={task.id} ({task.name}) не имеет ключевых слов для поиска")
-        return
+    # Если нет ключевых слов - мониторим ВСЕ посты без фильтра
+    if not include_groups:
+        logger.info(f"[LEAD] task={task.id} ({task.name}) будет мониторить ВСЕ посты (без фильтра ключевых слов)")
 
-    # Формируем filter_config прямо в коде
+    # Формируем filter_config с новой структурой
     filter_config = {
-        "mode": "advanced",
-        "include_any": include_keywords,
-        "require_all": [],
-        "exclude_any": exclude_keywords
+        "include_groups": include_groups,
+        "exclude_groups": exclude_groups
     }
 
     # Обрабатываем каждый источник
@@ -437,14 +522,35 @@ async def process_task_for_leads(task: Task, db: Session):
             logger.warning(f"[LEAD] task={task.id} ({task.name}) не удалось нормализировать источник: {raw_source}")
             continue
 
+        # Получить состояние источника
+        task_source_state = (
+            db.query(TaskSourceState)
+            .filter(
+                TaskSourceState.task_id == task.id,
+                TaskSourceState.source == source_username
+            )
+            .first()
+        )
+
+        # Проверка: если источник помечен как invalid, пропускаем его
+        if task_source_state and task_source_state.status == "invalid":
+            # Источник невалиден - пропускаем без логирования (уже залогирован при первой ошибке)
+            continue
+
+        # Проверка: если источник в состоянии error с backoff, пропускаем если еще не пришло время
+        if task_source_state and task_source_state.status == "error" and task_source_state.next_retry_at:
+            if datetime.utcnow() < task_source_state.next_retry_at:
+                # Еще не пришло время повторить - пропускаем без логирования
+                continue
+
         try:
-            await check_source_for_task_leads(task, source_username, include_keywords, filter_config, db)
+            await check_source_for_task_leads(task, source_username, filter_config, db)
         except Exception as e:
-            logger.error(f"[LEAD] task={task.id} ({task.name}) ошибка при проверке {source_username}: {e}")
+            logger.error(f"[LEAD] task={task.id} ({task.name}) необработанная ошибка при проверке {source_username}: {e}")
             continue
 
 
-async def check_source_for_task_leads(task: Task, source_username: str, include_keywords: list, filter_config: dict, db: Session):
+async def check_source_for_task_leads(task: Task, source_username: str, filter_config: dict, db: Session):
     """
     Проверить один источник (канал) на новые сообщения для конкретной задачи.
 
@@ -464,8 +570,7 @@ async def check_source_for_task_leads(task: Task, source_username: str, include_
     Args:
         task: Объект Task
         source_username: username источника (без @)
-        include_keywords: список ключевых слов для поиска
-        filter_config: конфигурация фильтра
+        filter_config: конфигурация фильтра (с include_groups и exclude_groups)
         db: SQLAlchemy сессия
     """
     try:
@@ -475,9 +580,93 @@ async def check_source_for_task_leads(task: Task, source_username: str, include_
             logger.warning(f"[CHECK] task={task.id} source=@{source_username} - Telegram клиент для user_id={task.user_id} не инициализирован")
             return
 
-        # Резолвим источник (source_username уже нормализирован)
-        entity = await client.get_entity(f"@{source_username}")
-        source_chat_id = entity.id
+        # Резолвим источник (source_username уже нормализирован) + обработка ошибок
+        try:
+            entity = await client.get_entity(f"@{source_username}")
+            source_chat_id = entity.id
+        except Exception as resolve_error:
+            # Проверить является ли ошибка типом "не существует/неприемлем"
+            error_str = str(resolve_error)
+            is_invalid = (
+                "Nobody is using this username" in error_str or
+                "username is unacceptable" in error_str
+            )
+
+            if is_invalid:
+                # Получить или создать состояние источника
+                task_source_state = (
+                    db.query(TaskSourceState)
+                    .filter(
+                        TaskSourceState.task_id == task.id,
+                        TaskSourceState.source == source_username
+                    )
+                    .first()
+                )
+
+                if task_source_state and task_source_state.status != "invalid":
+                    # Был переход в invalid - залогируем это
+                    logger.error(f"[SOURCE] task={task.id} source=@{source_username} помечен как INVALID: {error_str[:200]}")
+                elif not task_source_state:
+                    logger.error(f"[SOURCE] task={task.id} source=@{source_username} помечен как INVALID: {error_str[:200]}")
+
+                # Обновить состояние
+                if task_source_state:
+                    task_source_state.status = "invalid"
+                    task_source_state.last_error = error_str[:1000]
+                    task_source_state.error_count += 1
+                    task_source_state.next_retry_at = None
+                    task_source_state.updated_at = datetime.utcnow()
+                else:
+                    task_source_state = TaskSourceState(
+                        task_id=task.id,
+                        source=source_username,
+                        status="invalid",
+                        last_error=error_str[:1000],
+                        error_count=1,
+                        next_retry_at=None
+                    )
+                    db.add(task_source_state)
+
+                db.commit()
+                return
+
+            else:
+                # Временная ошибка - обновить состояние с backoff
+                task_source_state = (
+                    db.query(TaskSourceState)
+                    .filter(
+                        TaskSourceState.task_id == task.id,
+                        TaskSourceState.source == source_username
+                    )
+                    .first()
+                )
+
+                error_count = (task_source_state.error_count + 1) if task_source_state else 1
+                # backoff: 60s, 120s, 240s, 480s, 960s, 1800s, 3600s (max 1 hour)
+                backoff_seconds = min(3600, 60 * (2 ** min(error_count - 1, 6)))
+                next_retry_at = datetime.utcnow() + timedelta(seconds=backoff_seconds)
+
+                logger.warning(f"[SOURCE] task={task.id} source=@{source_username} временная ошибка, retry at {next_retry_at}: {error_str[:200]}")
+
+                if task_source_state:
+                    task_source_state.status = "error"
+                    task_source_state.last_error = error_str[:1000]
+                    task_source_state.error_count = error_count
+                    task_source_state.next_retry_at = next_retry_at
+                    task_source_state.updated_at = datetime.utcnow()
+                else:
+                    task_source_state = TaskSourceState(
+                        task_id=task.id,
+                        source=source_username,
+                        status="error",
+                        last_error=error_str[:1000],
+                        error_count=error_count,
+                        next_retry_at=next_retry_at
+                    )
+                    db.add(task_source_state)
+
+                db.commit()
+                return
 
         # Получаем текущее состояние TaskSourceState для этой пары (task, source)
         task_source_state = (
@@ -558,12 +747,14 @@ async def check_source_for_task_leads(task: Task, source_username: str, include_
                 continue
 
             # Проверяем совпадение через фильтр
-            if match_text(text, filter_config, include_keywords):
-                # Ищем какое ключевое слово совпало
+            if match_text(text, filter_config):
+                normalized_text = normalize_text(text)
+
                 matched_keyword = None
-                for kw in include_keywords:
-                    if kw in text:
-                        matched_keyword = kw
+                include_groups = filter_config.get("include_groups", [])
+                for group in include_groups:
+                    if all(word in normalized_text for word in group):
+                        matched_keyword = " ".join(group)
                         break
 
                 # Проверяем, не сохраняли ли мы этот lead уже
@@ -605,6 +796,13 @@ async def check_source_for_task_leads(task: Task, source_username: str, include_
         new_last_id = max([msg.id for msg in filtered_messages])
         task_source_state.last_message_id = new_last_id
         task_source_state.updated_at = datetime.utcnow()
+
+        # Сбрасываем статус на "ok" при успешной обработке
+        task_source_state.status = "ok"
+        task_source_state.last_error = None
+        task_source_state.error_count = 0
+        task_source_state.next_retry_at = None
+
         db.commit()
 
         # Логируем только если найдены совпадения
