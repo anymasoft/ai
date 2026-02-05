@@ -818,18 +818,45 @@ async def auth_start(request: AuthStartRequest):
                     if not user:
                         raise Exception("User не найден для TelegramSession")
 
+                    # Проверить подписку
+                    ensure_active_subscription(user, db)
 
                     # Генерировать 5-значный код
-                    login_code = str(random.randint(10000, 99999))
+                    code = str(random.randint(10000, 99999))
+                    logger.info(f"[AUTH_START] phone={phone} - сгенерирован код: {code}")
 
-                    # Сохранить код в памяти с TTL 300 сек и привязкой к user_id
+                    # Отправить код пользователю в Telegram ЛС
+                    try:
+                        from monitor import safe_send_message
+                        from telegram_clients import get_user_client
+
+                        # Восстановить TelegramClient пользователя из session_string
+                        client = await get_user_client(user.id, db)
+                        if not client:
+                            raise Exception("TelegramClient пользователя недоступен")
+
+                        # Отправить код в личные сообщения (используем telegram_user_id)
+                        chat_id = telegram_session.telegram_user_id
+                        if not chat_id:
+                            raise Exception(f"Нет telegram_user_id для отправки кода")
+
+                        message_text = f"🔐 Код входа в JobRadar: {code}"
+                        await safe_send_message(client, chat_id, message_text)
+                        logger.info(f"✅ [AUTH_START] phone={phone} - код {code} отправлен в Telegram ЛС (user_id={chat_id})")
+
+                    except Exception as e:
+                        logger.error(f"❌ [AUTH_START] phone={phone} - не удалось отправить код в Telegram: {e}")
+                        raise
+
+                    # Сохранить код в памяти с TTL = 300 сек (5 минут)
                     pending_login_codes[phone] = {
-                        "code": login_code,
-                        "user_id": telegram_session.user_id,
+                        "code": code,
+                        "user_id": user.id,
                         "expires_at": datetime.utcnow() + timedelta(seconds=300)
                     }
+                    logger.info(f"[AUTH_START] phone={phone} - код сохранен в памяти, TTL = 300 сек")
 
-
+                    # Вернуть ответ БЕЗ auth_token (требуется ввод кода)
                     return {
                         "ok": True,
                         "login_via": "telegram_message"
