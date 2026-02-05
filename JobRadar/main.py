@@ -191,11 +191,9 @@ app.mount("/static", StaticFiles(directory=os.path.join(BASE_DIR, "static")), na
 @app.on_event("startup")
 async def startup():
     init_db()
-    logger.info("✅ БД инициализирована")
 
     # Запуск мониторинга задач (per-user Task-based leads)
     asyncio.create_task(monitor.monitoring_loop_tasks())
-    logger.info("🚀 Запущен мониторинг задач")
 
 # Shutdown event - disconnect all Telegram clients
 @app.on_event("shutdown")
