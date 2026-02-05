@@ -3,9 +3,6 @@ JobRadar - Вспомогательные функции для работы с 
 """
 import logging
 from datetime import datetime, timedelta
-from telethon import TelegramClient
-from telethon.sessions import StringSession
-from config import TELEGRAM_API_ID, TELEGRAM_API_HASH
 from database import SessionLocal
 from models import TelegramSession, User
 
