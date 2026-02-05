@@ -248,6 +248,7 @@ def create_user_session(user_id: int, db: Session) -> str:
         # 4. Сохранить в БД
         db.commit()
 
+        logger.info(f"[SESSION_CREATE] user_id={user_id} - новая сессия создана, token={auth_token[:8]}...")
         return auth_token
 
     except Exception as e:
@@ -1751,11 +1752,12 @@ async def logout(
             user_id = user_session.user_id
             db.delete(user_session)
             db.commit()
+            logger.info(f"[SESSION_DELETE] user_id={user_id} - сессия удалена из user_sessions")
         else:
             # Fallback: попытаться найти юзера по legacy field
             user = db.query(User).filter(User.auth_token == auth_token).first()
             if user:
-                pass  # Найдена в legacy, но не удаляем
+                logger.info(f"[SESSION_DELETE] user_id={user.id} - найдена в users.auth_token (legacy), но НЕ удаляем legacy field")
 
     except Exception as e:
         # Даже если произошла ошибка при удалении из БД, все равно удаляем cookie
