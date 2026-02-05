@@ -19,6 +19,27 @@ from database import get_db
 from filter_engine import load_active_filter, match_text
 from telegram_clients import get_user_client, disconnect_all_clients
 
+# ========================================================================
+# АРХИТЕКТУРНЫЙ ПРИНЦИП:
+# Мониторинг ПОЛНОСТЬЮ НЕЗАВИСИМ от веб-авторизации.
+#
+# Мониторинг использует ТОЛЬКО:
+#   - TelegramSession из БД (сессии Telegram пользователей)
+#   - Task из БД (задачи мониторинга)
+#   - TelegramClient, восстановленные из session_string
+#
+# Мониторинг НЕ зависит от:
+#   - Web auth_token
+#   - Web cookies
+#   - Web sessions (user_sessions таблица)
+#   - Текущего статуса пользователя в веб-приложении
+#
+# СЛЕДСТВИЕ:
+#   - Logout пользователя НЕ влияет на мониторинг
+#   - Мониторинг продолжает доставлять лиды после logout
+#   - Logout НЕ должен трогать TelegramSession или TelegramClient
+# ========================================================================
+
 # Логирование с обработчиками для консоли
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
@@ -292,12 +313,13 @@ async def send_lead_to_telegram(task: Task, lead: Lead, db: Session):
         db: SQLAlchemy сессия
     """
     try:
-        # Получить TelegramSession по user_id из Task (строгая привязка)
+        # Получить TelegramSession по user_id из Task (строгая привязка к БД, не к веб-авторизации)
         telegram_session = (
             db.query(TelegramSession)
             .filter(TelegramSession.user_id == task.user_id)
             .first()
         )
+        logger.debug(f"[MONITOR_SESSION] Получена TelegramSession из БД для task.user_id={task.user_id} (независимо от web auth)")
         if not telegram_session:
             logger.warning(f"[SEND] task={task.id} lead={lead.id} - нет Telegram сессии для user_id={task.user_id}")
             return
@@ -355,7 +377,11 @@ async def monitoring_loop_tasks():
     - НЕ публикует в Telegram (только сохранение в БД)
 
     Запускается через asyncio.create_task() при старте приложения.
+
+    ВАЖНО: Мониторинг работает НЕЗАВИСИМО от веб-авторизации.
+    Используются ТОЛЬКО TelegramSession и Task из БД.
     """
+    logger.info("[MONITOR] Запущен цикл мониторинга (независим от веб-авторизации)")
     while True:
         try:
             db = get_db()
