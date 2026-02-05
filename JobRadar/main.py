@@ -759,8 +759,6 @@ async def get_user_me(current_user: User = Depends(get_current_user), db: Sessio
     last_name = str(session.telegram_last_name) if (session and session.telegram_last_name) else ""
     username = str(session.telegram_username) if (session and session.telegram_username) else ""
 
-    logger.info(f"[USER_ME] user_id={current_user.id}: first_name='{first_name}' (type={type(first_name).__name__}), last_name='{last_name}' (type={type(last_name).__name__}), username='{username}'")
-
     return {
         "id": current_user.id,
         "phone": current_user.phone,
@@ -779,15 +777,12 @@ async def get_user_me(current_user: User = Depends(get_current_user), db: Sessio
 @app.get("/api/user/settings", response_model=UserSettingsResponse)
 async def get_user_settings(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     """Получить пользовательские настройки"""
-    print("USER_SETTINGS_GET_CALLED")
 
     # Найти сессию пользователя
     telegram_session = db.query(TelegramSession).filter(TelegramSession.user_id == current_user.id).first()
-    print("SESSION_FOUND", bool(telegram_session))
 
     # Если сессии нет, возвращаем дефолт
     if not telegram_session:
-        print("RETURNING_DEFAULT alerts_personal=True")
         return UserSettingsResponse(
             alerts_personal=True,
             alerts_channel=current_user.alerts_channel,
@@ -795,7 +790,6 @@ async def get_user_settings(current_user: User = Depends(get_current_user), db: 
         )
 
     # Возвращаем сохраненное значение
-    print(f"RETURNING alerts_personal={telegram_session.alerts_personal}")
     return UserSettingsResponse(
         alerts_personal=telegram_session.alerts_personal,
         alerts_channel=current_user.alerts_channel,
@@ -809,35 +803,26 @@ async def update_user_settings(
     db: Session = Depends(get_db)
 ):
     """Обновить пользовательские настройки"""
-    print("USER_SETTINGS_PUT_CALLED")
-    print(f"REQUEST_BODY: alerts_personal={request.alerts_personal}, alerts_channel={request.alerts_channel}, forward_channel={request.forward_channel}")
 
     # Найти сессию пользователя
     telegram_session = db.query(TelegramSession).filter(TelegramSession.user_id == current_user.id).first()
-    print("SESSION_FOUND", bool(telegram_session))
 
     # Если сессии нет, ошибка
     if not telegram_session:
         raise HTTPException(status_code=400, detail="Telegram сессия не найдена. Сначала авторизуйтесь.")
 
     # Обновить настройку alerts_personal в TelegramSession
-    print("BEFORE alerts_personal =", telegram_session.alerts_personal)
     telegram_session.alerts_personal = request.alerts_personal
-    print("AFTER alerts_personal =", telegram_session.alerts_personal)
 
     # Обновить новые настройки в User
-    print("BEFORE alerts_channel =", current_user.alerts_channel, "forward_channel =", current_user.forward_channel)
     current_user.alerts_channel = request.alerts_channel
     current_user.forward_channel = request.forward_channel if request.forward_channel else ""
-    print("AFTER alerts_channel =", current_user.alerts_channel, "forward_channel =", current_user.forward_channel)
 
     db.commit()
-    print("COMMIT_DONE")
 
     # Обновить объекты из БД для полной уверенности
     db.refresh(telegram_session)
     db.refresh(current_user)
-    print("DB_VALUE alerts_personal =", telegram_session.alerts_personal, "alerts_channel =", current_user.alerts_channel, "forward_channel =", current_user.forward_channel)
 
     # Вернуть обновленное значение
     return UserSettingsResponse(
