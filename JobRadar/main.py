@@ -29,7 +29,7 @@ except ImportError:
     logger_startup.warning("⚠️ YooKassa SDK не установлена. Установите: pip install yookassa")
 
 from database import SessionLocal, init_db
-from models import Task, Lead, User, TelegramSession, Payment
+from models import Task, Lead, User, TelegramSession, Payment, UserSession
 from telegram_auth import save_session_to_db
 from telegram_clients import disconnect_all_clients, disconnect_user_client
 import monitor
@@ -211,19 +211,91 @@ def get_db():
     finally:
         db.close()
 
+# Helper для создания новой сессии пользователя
+def create_user_session(user_id: int, db: Session) -> str:
+    """
+    Создать новую сессию пользователя в таблице user_sessions
+
+    Логика:
+    1. Генерировать криптографически стойкий token
+    2. Создать запись UserSession
+    3. Установить user.auth_token = token (для обратной совместимости)
+    4. Вернуть token
+
+    Args:
+        user_id: ID пользователя
+        db: Сессия БД
+
+    Returns:
+        auth_token (строка)
+    """
+    try:
+        # 1. Генерировать стойкий токен
+        auth_token = secrets.token_urlsafe(32)
+
+        # 2. Создать запись в user_sessions
+        user_session = UserSession(user_id=user_id, auth_token=auth_token)
+        db.add(user_session)
+
+        # 3. Установить legacy поле для обратной совместимости
+        user = db.query(User).filter(User.id == user_id).first()
+        if not user:
+            logger.error(f"[SESSION_CREATE] user_id={user_id} - пользователь не найден")
+            raise HTTPException(status_code=500, detail="Ошибка создания сессии")
+
+        user.auth_token = auth_token
+
+        # 4. Сохранить в БД
+        db.commit()
+
+        logger.info(f"[SESSION_CREATE] user_id={user_id} - новая сессия создана, token={auth_token[:8]}...")
+        return auth_token
+
+    except Exception as e:
+        db.rollback()
+        logger.error(f"[SESSION_CREATE] user_id={user_id} - ошибка при создании сессии: {e}")
+        raise
+
 # Helper для получения текущего пользователя из cookie
 def get_current_user(
     auth_token: Optional[str] = Cookie(default=None),
     db: Session = Depends(get_db)
 ) -> User:
-    """Получить текущего пользователя из cookie авторизации (auth_token)"""
+    """
+    Получить текущего пользователя из cookie авторизации (auth_token)
+
+    Новая логика:
+    1. Проверить auth_token в cookie
+    2. Попытаться найти в user_sessions (новая система)
+    3. Если не найдено - fallback на user.auth_token (старая система)
+    4. Если нигде не найдено - вернуть 401
+
+    Это обеспечивает поддержку обеих систем одновременно.
+    """
     if not auth_token:
         raise HTTPException(status_code=401, detail="Пользователь не авторизован")
 
+    # ПОПЫТКА 1: Ищем в новой таблице user_sessions
+    user_session = db.query(UserSession).filter(UserSession.auth_token == auth_token).first()
+    if user_session:
+        user = db.query(User).filter(User.id == user_session.user_id).first()
+        if user:
+            logger.info(f"[SESSION_LOOKUP] token={auth_token[:8]}... - найдена в user_sessions, user_id={user.id}")
+            return user
+        else:
+            logger.warning(f"[SESSION_LOOKUP] token={auth_token[:8]}... - запись в user_sessions найдена, но пользователь удален")
+            raise HTTPException(status_code=401, detail="Пользователь не найден или сессия истекла")
+
+    # ПОПЫТКА 2: Fallback на старую таблицу users.auth_token
+    logger.info(f"[SESSION_FALLBACK_LEGACY] token={auth_token[:8]}... - не найдена в user_sessions, проверяем legacy")
     user = db.query(User).filter(User.auth_token == auth_token).first()
-    if not user:
-        raise HTTPException(status_code=401, detail="Пользователь не найден или сессия истекла")
-    return user
+    if user:
+        logger.info(f"[SESSION_FALLBACK_LEGACY] token={auth_token[:8]}... - найдена в users.auth_token, user_id={user.id}")
+        return user
+
+    # ОШИБКА: Токен не найден нигде
+    logger.warning(f"[SESSION_LOOKUP] token={auth_token[:8]}... - не найдена ни в user_sessions ни в users.auth_token")
+    raise HTTPException(status_code=401, detail="Пользователь не найден или сессия истекла")
 
 # Helper для проверки что пользователь - админ
 def require_admin(
@@ -1096,9 +1168,8 @@ async def auth_save(request: AuthSaveRequest):
                     raise Exception("Пользователь не найден в БД после сохранения")
 
                 # Генерировать криптографически стойкий auth_token
-                auth_token = secrets.token_urlsafe(32)
-                user.auth_token = auth_token
-                db.commit()
+                # Используем новую функцию create_user_session для поддержки нескольких сессий
+                auth_token = create_user_session(user_id, db)
 
                 logger.info(f"✅ auth_token сгенерирован для пользователя {phone} (user_id={user_id})")
             except Exception as e:
@@ -1184,9 +1255,8 @@ async def login_by_telegram(request: AuthLoginTelegramRequest):
             ensure_active_subscription(user, db)
 
             # 5. Генерировать auth_token
-            auth_token = secrets.token_urlsafe(32)
-            user.auth_token = auth_token
-            db.commit()
+            # Используем новую функцию create_user_session для поддержки нескольких сессий
+            auth_token = create_user_session(user.id, db)
 
             logger.info(f"✅ [LOGIN_TELEGRAM] phone={phone} (user_id={user.id}) - вход через Telegram ЛС, auth_token сгенерирован")
 
@@ -1688,30 +1758,52 @@ async def get_telegram_contact():
     }
 
 @app.post("/api/logout")
-async def logout(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+async def logout(
+    auth_token: Optional[str] = Cookie(default=None),
+    db: Session = Depends(get_db)
+):
     """
-    Выйти из аккаунта.
+    Выйти из аккаунта (завершить текущую сессию).
 
     Логика:
-    1. Очистить auth_token пользователя в БД (закончить веб-сессию)
-    2. Удалить cookie авторизации
+    1. Получить auth_token из cookie (НЕ используем get_current_user чтобы избежать race condition)
+    2. Удалить запись из user_sessions
+    3. Удалить cookie авторизации
+    4. users.auth_token НЕ трогаем (legacy field)
+    5. TelegramSession НЕ удаляется - она используется для мониторинга независимо от веб-сессии
 
-    Важно: TelegramSession НЕ удаляется - она используется для мониторинга независимо от веб-сессии
+    Важно: Logout работает даже если токен битый - мы просто удаляем cookie и session.
     """
-    try:
-        # 1. Очистить auth_token пользователя в БД
-        current_user.auth_token = None
-        db.commit()
-        logger.info(f"[LOGOUT] user_id={current_user.id} - auth_token очищен")
+    response = JSONResponse({"ok": True, "message": "Выход выполнен"})
+    response.delete_cookie(key="auth_token", path="/")
 
-        # 2. Создать ответ и очистить cookie
-        response = JSONResponse({"ok": True, "message": "Выход выполнен"})
-        response.delete_cookie(key="auth_token", path="/")
+    # Если auth_token не предоставлен, просто удаляем cookie и выходим
+    if not auth_token:
+        logger.info("[SESSION_DELETE] auth_token не предоставлен, просто удаляем cookie")
         return response
 
+    try:
+        # 1. Найти запись в user_sessions
+        user_session = db.query(UserSession).filter(UserSession.auth_token == auth_token).first()
+
+        if user_session:
+            # 2. Удалить запись из user_sessions
+            user_id = user_session.user_id
+            db.delete(user_session)
+            db.commit()
+            logger.info(f"[SESSION_DELETE] user_id={user_id} - сессия удалена из user_sessions")
+        else:
+            # Fallback: попытаться найти юзера по legacy field
+            logger.info(f"[SESSION_DELETE] token={auth_token[:8]}... - не найдена в user_sessions, проверяем legacy")
+            user = db.query(User).filter(User.auth_token == auth_token).first()
+            if user:
+                logger.info(f"[SESSION_DELETE] user_id={user.id} - найдена в users.auth_token (legacy), но НЕ удаляем legacy field")
+
     except Exception as e:
-        logger.error(f"Ошибка при logout user_id={current_user.id}: {e}")
-        raise HTTPException(status_code=400, detail=str(e))
+        # Даже если произошла ошибка при удалении из БД, все равно удаляем cookie
+        logger.warning(f"[SESSION_DELETE] Ошибка при удалении сессии: {e}, но cookie удаляется все равно")
+
+    return response
 
 
 # if __name__ == "__main__":

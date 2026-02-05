@@ -204,6 +204,20 @@ class TelegramSession(Base):
         return f"<TelegramSession(id={self.id}, user_id={self.user_id}, phone={self.phone}, telegram_id={self.telegram_user_id})>"
 
 
+class UserSession(Base):
+    """Модель сессии пользователя для поддержки нескольких активных сессий"""
+    __tablename__ = "user_sessions"
+
+    id = Column(Integer, primary_key=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)  # Владелец сессии
+    auth_token = Column(String(128), unique=True, index=True, nullable=False)  # Криптографически стойкий токен
+    created_at = Column(DateTime, default=datetime.utcnow)  # Когда создана сессия
+    last_seen_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)  # Последняя активность
+
+    def __repr__(self):
+        return f"<UserSession(id={self.id}, user_id={self.user_id}, created_at={self.created_at})>"
+
+
 class Payment(Base):
     """Модель платежа через YooKassa"""
     __tablename__ = "payments"
