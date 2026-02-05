@@ -1101,7 +1101,6 @@ async def auth_save(request: AuthSaveRequest):
             first_name = me.first_name or ""
             last_name = me.last_name or ""
 
-            logger.info(f"[AUTH_SAVE] Из me объекта: first_name='{first_name}', last_name='{last_name}'")
 
             # Если имя пусто, пытаемся получить через GetFullUserRequest
             if not first_name or not last_name:
@@ -1113,7 +1112,6 @@ async def auth_save(request: AuthSaveRequest):
                         first_name = user_full_info.first_name
                     if user_full_info.last_name:
                         last_name = user_full_info.last_name
-                    logger.info(f"[AUTH_SAVE] GetFullUserRequest дал результат: first_name='{first_name}', last_name='{last_name}'")
                 except Exception as e:
                     logger.warning(f"[AUTH_SAVE] GetFullUserRequest не дал результата: {e}")
                     # Используем то что было из me объекта
@@ -1123,7 +1121,7 @@ async def auth_save(request: AuthSaveRequest):
                 if me.id != auth_data.get("telegram_user_id"):
                     raise Exception("Telegram аккаунт не совпадает с авторизацией")
 
-            logger.info(f"✅ [AUTH_SAVE] Получены данные пользователя: phone={phone}, first_name='{first_name}' (empty={not first_name}), last_name='{last_name}' (empty={not last_name}), username={me.username}")
+            logger.info(f"✅ [AUTH_SAVE] phone={phone} - сессия сохранена в БД")
 
             # Очень важно: убедиться что значения не None, а именно строки
             first_name_final = str(first_name) if first_name else ""
@@ -1137,7 +1135,6 @@ async def auth_save(request: AuthSaveRequest):
                 "username": username_final,
                 "id": me.id
             }
-            logger.info(f"[AUTH_SAVE_RESPONSE] Возвращаю user_info: first_name='{user_info['first_name']}' (type={type(user_info['first_name']).__name__}), last_name='{user_info['last_name']}' (type={type(user_info['last_name']).__name__}), username='{user_info['username']}'")
         except Exception as e:
             raise
 
@@ -1280,7 +1277,6 @@ async def login_by_telegram(request: AuthLoginTelegramRequest):
                 "last_name": last_name_final,
                 "username": username_final,
             }
-            logger.info(f"[LOGIN_TELEGRAM_RESPONSE] Возвращаю user_info: first_name='{user_info['first_name']}' (type={type(user_info['first_name']).__name__}), last_name='{user_info['last_name']}' (type={type(user_info['last_name']).__name__}), username='{user_info['username']}'")
 
             # 6. Удалить код из памяти (one-time use)
             del pending_login_codes[phone]

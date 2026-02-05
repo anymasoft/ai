@@ -212,47 +212,39 @@ def ensure_tables():
             connection.execute(text(
                 "CREATE INDEX IF NOT EXISTS idx_task_user_id ON tasks (user_id)"
             ))
-            print("✅ Индекс idx_task_user_id OK")
 
             # Индекс для TelegramSession.user_id
             connection.execute(text(
                 "CREATE INDEX IF NOT EXISTS idx_telegram_session_user_id ON telegram_sessions (user_id)"
             ))
-            print("✅ Индекс idx_telegram_session_user_id OK")
 
             # UNIQUE индекс для TelegramSession.user_id (один User = одна сессия)
             connection.execute(text(
                 "CREATE UNIQUE INDEX IF NOT EXISTS telegram_sessions_user_id_uq ON telegram_sessions (user_id)"
             ))
-            print("✅ Уникальный индекс telegram_sessions_user_id_uq OK")
 
             # Индексы для Lead
             connection.execute(text(
                 "CREATE INDEX IF NOT EXISTS idx_lead_task_id ON leads (task_id)"
             ))
-            print("✅ Индекс idx_lead_task_id OK")
 
             connection.execute(text(
                 "CREATE INDEX IF NOT EXISTS idx_lead_found_at ON leads (found_at)"
             ))
-            print("✅ Индекс idx_lead_found_at OK")
 
             # Индексы для TaskSourceState
             connection.execute(text(
                 "CREATE INDEX IF NOT EXISTS idx_task_source_state ON task_source_states (task_id, source)"
             ))
-            print("✅ Индекс idx_task_source_state OK")
 
             # Индексы для SourceMessage
             connection.execute(text(
                 "CREATE INDEX IF NOT EXISTS idx_source_chat_message ON source_messages (source_chat_id, source_message_id)"
             ))
-            print("✅ Индекс idx_source_chat_message OK")
 
             connection.execute(text(
                 "CREATE INDEX IF NOT EXISTS idx_published ON source_messages (published)"
             ))
-            print("✅ Индекс idx_published OK")
 
             # Индексы для UserSession (новая таблица для поддержки нескольких сессий)
             connection.execute(text(
@@ -269,10 +261,7 @@ def ensure_tables():
         finally:
             connection.close()
 
-        # Финальная проверка
-        inspector = inspect(engine)
-        final_tables = inspector.get_table_names()
-        print(f"📊 Финальный список таблиц: {final_tables}\n")
+        # Финальная проверка (молча)
 
     except Exception as e:
         print(f"❌ Ошибка при ensure_tables(): {e}")
@@ -283,18 +272,11 @@ def ensure_tables():
 
 def init_db():
     """Инициализация таблиц в БД"""
-    print("\n" + "="*60)
-    print("🚀 Инициализация базы данных...")
-    print("="*60)
-
     # Гарантировать наличие таблиц
     ensure_tables()
 
     # Выполнить мягкую миграцию схемы (добавить новые колонки если их нет)
     migrate_schema()
-
-    print("✅ База данных инициализирована")
-    print("="*60 + "\n")
 
 
 def get_db() -> Session:
