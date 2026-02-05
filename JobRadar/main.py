@@ -913,13 +913,6 @@ async def auth_start(request: AuthStartRequest):
                     if not user:
                         raise Exception("User не найден для TelegramSession")
 
-                    # Получить Telegram client пользователя
-                    from telegram_clients import get_user_client
-                    client = await get_user_client(user.id, db)
-                    if not client:
-                        logger.warning(f"[AUTH_START] phone={phone} - не удалось получить TelegramClient, возвращаемся к SMS")
-                        # Если клиент не получился - возвращаемся к старому флоу
-                        raise Exception("TelegramClient not available, fallback to SMS")
 
                     # Генерировать 5-значный код
                     login_code = str(random.randint(10000, 99999))
@@ -931,14 +924,6 @@ async def auth_start(request: AuthStartRequest):
                         "expires_at": datetime.utcnow() + timedelta(seconds=300)
                     }
 
-                    # Отправить код в личку пользователю
-                    try:
-                        await client.send_message("me", f"Ваш код входа в JobRadar: {login_code}\n\nКод действителен 5 минут.")
-                        logger.info(f"[AUTH_START] phone={phone} - код отправлен в Telegram ЛС")
-                    except Exception as e:
-                        logger.error(f"[AUTH_START] phone={phone} - ошибка отправки в Telegram: {e}")
-                        del pending_login_codes[phone]
-                        raise Exception("Не удалось отправить код в Telegram")
 
                     return {
                         "ok": True,
@@ -1269,38 +1254,10 @@ async def login_by_telegram(request: AuthLoginTelegramRequest):
             username_final = ""
 
             if telegram_session:
-                try:
-                    # Получить Telegram client пользователя для свежих данных
-                    from telegram_clients import get_user_client
-                    client = await get_user_client(user.id, db)
-                    if client:
-                        me = await client.get_me()
-                        first_name_fresh = me.first_name or ""
-                        last_name_fresh = me.last_name or ""
-                        username_fresh = me.username or ""
-
-                        # Если получили свежие данные и они не пусты - используем их и обновляем БД
-                        if first_name_fresh or last_name_fresh or username_fresh:
-                            first_name_final = first_name_fresh
-                            last_name_final = last_name_fresh
-                            username_final = username_fresh
-
-                            # Обновить в БД свежие данные
-                            telegram_session.telegram_first_name = first_name_fresh
-                            telegram_session.telegram_last_name = last_name_fresh
-                            telegram_session.telegram_username = username_fresh
-                            db.commit()
-                            logger.info(f"[LOGIN_TELEGRAM] Обновил свежие данные из Telegram: first_name='{first_name_fresh}', last_name='{last_name_fresh}'")
-                        else:
-                            logger.warning(f"[LOGIN_TELEGRAM] Свежие данные пусты, используем сохраненные")
-                            first_name_final = str(telegram_session.telegram_first_name) if telegram_session.telegram_first_name else ""
-                            last_name_final = str(telegram_session.telegram_last_name) if telegram_session.telegram_last_name else ""
-                            username_final = str(telegram_session.telegram_username) if telegram_session.telegram_username else ""
-                except Exception as e:
-                    logger.warning(f"[LOGIN_TELEGRAM] Не смог получить свежие данные из Telegram: {e}, используем сохраненные")
-                    first_name_final = str(telegram_session.telegram_first_name) if telegram_session.telegram_first_name else ""
-                    last_name_final = str(telegram_session.telegram_last_name) if telegram_session.telegram_last_name else ""
-                    username_final = str(telegram_session.telegram_username) if telegram_session.telegram_username else ""
+                # Использовать данные из сохраненной TelegramSession
+                first_name_final = str(telegram_session.telegram_first_name) if telegram_session.telegram_first_name else ""
+                last_name_final = str(telegram_session.telegram_last_name) if telegram_session.telegram_last_name else ""
+                username_final = str(telegram_session.telegram_username) if telegram_session.telegram_username else ""
             else:
                 logger.warning(f"[LOGIN_TELEGRAM] TelegramSession не найдена для user_id={user.id}")
 
