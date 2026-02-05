@@ -558,7 +558,7 @@ async def check_source_for_task_leads(task: Task, source_username: str, include_
                 continue
 
             # Проверяем совпадение через фильтр
-            if match_text(text, filter_config, include_keywords):
+            if match_text(text, filter_config):
                 # Ищем какое ключевое слово совпало
                 matched_keyword = None
                 for kw in include_keywords:
