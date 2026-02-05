@@ -225,7 +225,7 @@ class Payment(Base):
     id = Column(Integer, primary_key=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)  # Пользователь, оплативший
     plan = Column(String(50), nullable=False)  # Тарифный план (start, pro, business)
-    amount = Column(String(10), nullable=False)  # Сумма (990.00, 1990.00, 4990.00)
+    amount = Column(String(10), nullable=False)  # Сумма (1490, 2990.00, 5990.00)
     yookassa_payment_id = Column(String(255), unique=True, nullable=False)  # ID платежа в YooKassa
     status = Column(String(50), default="pending")  # pending | succeeded | canceled
     created_at = Column(DateTime, default=datetime.utcnow)
