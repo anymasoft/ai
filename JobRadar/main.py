@@ -903,43 +903,55 @@ async def auth_start(request: AuthStartRequest):
                 .first()
             )
 
-            # ВАРИАНТ А: TelegramSession найден → режим LOGIN_BY_TELEGRAM_MESSAGE
+            # ВАРИАНТ А: TelegramSession найден → ОТПРАВИТЬ КОД В TELEGRAM ЛС
             if telegram_session:
-                logger.info(f"[AUTH_START] phone={phone} - найдена TelegramSession, используем режим Telegram ЛС")
+                logger.info(f"[AUTH_START] phone={phone} - найдена TelegramSession, отправляем код в Telegram ЛС")
 
                 try:
-                    # Получить User (уже должен быть, так как TelegramSession связана с user_id)
+                    # 1. Получить User
                     user = db.query(User).filter(User.id == telegram_session.user_id).first()
                     if not user:
                         raise Exception("User не найден для TelegramSession")
 
-                    # Получить Telegram client пользователя
-                    from telegram_clients import get_user_client
-                    client = await get_user_client(user.id, db)
-                    if not client:
-                        logger.warning(f"[AUTH_START] phone={phone} - не удалось получить TelegramClient, возвращаемся к SMS")
-                        # Если клиент не получился - возвращаемся к старому флоу
-                        raise Exception("TelegramClient not available, fallback to SMS")
+                    # 2. Проверить подписку
+                    ensure_active_subscription(user, db)
 
-                    # Генерировать 5-значный код
-                    login_code = str(random.randint(10000, 99999))
+                    # 3. Генерировать 5-значный код
+                    code = str(random.randint(10000, 99999))
+                    logger.info(f"[AUTH_START] phone={phone} - сгенерирован код: {code}")
 
-                    # Сохранить код в памяти с TTL 300 сек и привязкой к user_id
+                    # 4. Отправить код пользователю в Telegram ЛС
+                    try:
+                        from monitor import safe_send_message
+                        from telegram_clients import get_user_client
+
+                        # Восстановить TelegramClient пользователя из session_string
+                        client = await get_user_client(user.id, db)
+                        if not client:
+                            raise Exception("TelegramClient пользователя недоступен")
+
+                        # Отправить код в личные сообщения (используем telegram_user_id)
+                        chat_id = telegram_session.telegram_user_id
+                        if not chat_id:
+                            raise Exception(f"Нет telegram_user_id для отправки кода")
+
+                        message_text = f"🔐 Код входа в JobRadar: {code}"
+                        await safe_send_message(client, chat_id, message_text)
+                        logger.info(f"✅ [AUTH_START] phone={phone} - код {code} отправлен в Telegram ЛС (user_id={chat_id})")
+
+                    except Exception as e:
+                        logger.error(f"❌ [AUTH_START] phone={phone} - не удалось отправить код в Telegram: {e}")
+                        raise
+
+                    # 5. Сохранить код в памяти с TTL = 300 сек (5 минут)
                     pending_login_codes[phone] = {
-                        "code": login_code,
-                        "user_id": telegram_session.user_id,
+                        "code": code,
+                        "user_id": user.id,
                         "expires_at": datetime.utcnow() + timedelta(seconds=300)
                     }
+                    logger.info(f"[AUTH_START] phone={phone} - код сохранен в памяти, TTL = 300 сек")
 
-                    # Отправить код в личку пользователю
-                    try:
-                        await client.send_message("me", f"Ваш код входа в JobRadar: {login_code}\n\nКод действителен 5 минут.")
-                        logger.info(f"[AUTH_START] phone={phone} - код отправлен в Telegram ЛС")
-                    except Exception as e:
-                        logger.error(f"[AUTH_START] phone={phone} - ошибка отправки в Telegram: {e}")
-                        del pending_login_codes[phone]
-                        raise Exception("Не удалось отправить код в Telegram")
-
+                    # 6. Вернуть ответ БЕЗ auth_token (требуется ввод кода)
                     return {
                         "ok": True,
                         "login_via": "telegram_message"
@@ -947,7 +959,7 @@ async def auth_start(request: AuthStartRequest):
 
                 except Exception as e:
                     # Если что-то пошло не так - возвращаемся к старому флоу
-                    logger.warning(f"[AUTH_START] phone={phone} - ошибка режима Telegram ЛС, fallback на SMS: {e}")
+                    logger.warning(f"[AUTH_START] phone={phone} - ошибка при отправке кода, fallback на SMS: {e}")
                     pass  # Продолжим к варианту Б
 
             # ВАРИАНТ Б: TelegramSession не найден или ошибка → режим Telegram SMS (старый флоу)
