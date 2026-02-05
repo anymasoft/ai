@@ -1144,6 +1144,8 @@ async def auth_save(request: AuthSaveRequest):
         try:
             # Сохранить в БД с telegram_user_id, telegram_username, first_name, last_name
             # Возвращает user_id при успехе или None при ошибке
+            # ВАЖНО: save_session_to_db вызывается ТОЛЬКО для новых пользователей (SMS флоу)
+            # При повторном логине через Telegram ЛС TelegramSession НЕ трогается!
             user_id = await save_session_to_db(phone, session_string, me.id, me.username, first_name, last_name)
             if user_id is None:
                 raise Exception("Ошибка при сохранении в БД")
@@ -1250,8 +1252,9 @@ async def login_by_telegram(request: AuthLoginTelegramRequest):
             auth_token = create_user_session(user.id, db)
 
             logger.info(f"✅ [LOGIN_TELEGRAM] phone={phone} (user_id={user.id}) - вход через Telegram ЛС, auth_token сгенерирован")
+            logger.debug(f"[LOGIN] TelegramSession НЕ трогается при повторном логине - остается неизменной для мониторинга")
 
-            # Получить TelegramSession для получения имени
+            # Получить TelegramSession для получения имени (ТОЛЬКО читаем, НЕ меняем!)
             telegram_session = db.query(TelegramSession).filter(TelegramSession.user_id == user.id).first()
 
             # Попытаемся получить свежие данные из Telegram
@@ -1735,9 +1738,11 @@ async def logout(
     5. TelegramSession НЕ удаляется - она используется для мониторинга независимо от веб-сессии
 
     Важно: Logout работает даже если токен битый - мы просто удаляем cookie и session.
+    Мониторинг продолжит работать с TelegramSession (это критично!).
     """
     response = JSONResponse({"ok": True, "message": "Выход выполнен"})
     response.delete_cookie(key="auth_token", path="/")
+    logger.info(f"[LOGOUT] auth cookie удален")
 
     # Если auth_token не предоставлен, просто удаляем cookie и выходим
     if not auth_token:
