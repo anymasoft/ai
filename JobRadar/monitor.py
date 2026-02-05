@@ -461,12 +461,15 @@ async def process_task_for_leads(task: Task, db: Session):
         logger.warning(f"[LEAD] task={task.id} ({task.name}) не имеет ключевых слов для поиска")
         return
 
-    # Формируем filter_config прямо в коде
+    # Формируем filter_config с правильной структурой для match_text
+    # Упаковываем слова в группы: ["python"] -> [["python"]]
+    include_groups = [[kw] for kw in include_keywords]
+    exclude_groups = [[kw] for kw in exclude_keywords]
+
     filter_config = {
         "mode": "advanced",
-        "include_any": include_keywords,
-        "require_all": [],
-        "exclude_any": exclude_keywords
+        "include_groups": include_groups,
+        "exclude_groups": exclude_groups
     }
 
     # Обрабатываем каждый источник
