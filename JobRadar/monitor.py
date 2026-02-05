@@ -14,7 +14,7 @@ from datetime import datetime
 
 from config import TELEGRAM_API_ID, TELEGRAM_API_HASH, TELEGRAM_PHONE
 from config import POLLING_INTERVAL_SECONDS, MAX_MESSAGES_PER_CHECK, TARGET_CHANNEL_ID
-from models import Channel, Keyword, FilterRule, Task, Lead, SourceMessage, TelegramSession, TaskSourceState
+from models import Channel, Keyword, FilterRule, Task, Lead, SourceMessage, TelegramSession, TaskSourceState, User
 from database import get_db
 from filter_engine import load_active_filter, match_text
 from telegram_clients import get_user_client, disconnect_all_clients
@@ -328,6 +328,12 @@ async def send_lead_to_telegram(task: Task, lead: Lead, db: Session):
             logger.warning(f"[SEND] task={task.id} lead={lead.id} - telegram_user_id не установлен в сессии user_id={task.user_id}")
             return
 
+        # Получить User для доступа к forward_channel
+        user = db.query(User).filter(User.id == task.user_id).first()
+        if not user:
+            logger.warning(f"[SEND] task={task.id} lead={lead.id} - User не найден для user_id={task.user_id}")
+            return
+
         # Проверить разрешены ли уведомления в личный Telegram
         if not telegram_session.alerts_personal:
             logger.info(f"[SEND] task={task.id} lead={lead.id} отправка в личный чат отключена (alerts_personal=False)")
@@ -341,14 +347,8 @@ async def send_lead_to_telegram(task: Task, lead: Lead, db: Session):
 
         logger.debug(f"[SEND] task={task.id} lead={lead.id} - клиент получен, is_connected={client.is_connected()}")
 
-        # Форматируем текст лида
-        matched_keyword = lead.matched_keyword or 'не определено'
-        text = f"""🔥 Новый лид
-
-{lead.text}
-
-Источник: {lead.source_channel}
-Ключ: {matched_keyword}"""
+        # Текст лида - просто содержимое без форматирования
+        text = lead.text
 
         # Отправляем в личный Telegram используя клиент пользователя
         try:
@@ -361,6 +361,15 @@ async def send_lead_to_telegram(task: Task, lead: Lead, db: Session):
             logger.info(f"[SEND] task={task.id} lead={lead.id} отмечено как доставленное")
         except Exception as e:
             logger.error(f"[SEND] task={task.id} lead={lead.id} ошибка отправки сообщения: {e}")
+
+        # Отправка в канал если указан forward_channel
+        if user.forward_channel:
+            logger.debug(f"[SEND] task={task.id} lead={lead.id} попытка доставки в канал user.forward_channel={user.forward_channel}")
+            try:
+                await safe_send_message(client, user.forward_channel, text)
+                logger.info(f"[SEND] task={task.id} lead={lead.id} доставлено в канал {user.forward_channel}")
+            except Exception as e:
+                logger.error(f"[SEND] task={task.id} lead={lead.id} ошибка отправки в канал {user.forward_channel}: {e}")
 
     except Exception as e:
         logger.error(f"[SEND] task={task.id} lead={lead.id} критическая ошибка: {e}")
