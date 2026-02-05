@@ -57,7 +57,6 @@ async def get_user_client(user_id: int, db: Session) -> Optional[TelegramClient]
         telegram_session = (
             db.query(TelegramSession)
             .filter(TelegramSession.user_id == user_id)
-            .order_by(TelegramSession.id.desc())
             .first()
         )
 
@@ -77,13 +76,6 @@ async def get_user_client(user_id: int, db: Session) -> Optional[TelegramClient]
 
         # Подключиться
         await client.connect()
-
-        # Проверить что клиент авторизован
-        if not await client.is_user_authorized():
-            logger.error(f"[CLIENT_CREATE] user_id={user_id} - клиент подключен но НЕ авторизован в Telegram")
-            await client.disconnect()
-            return None
-
         logger.info(f"[CLIENT_CREATE] user_id={user_id} - создан и подключен новый клиент")
 
         # Сохранить в кеш
@@ -109,7 +101,6 @@ async def disconnect_user_client(user_id: int):
             await client.disconnect()
             del telegram_clients_cache[user_id]
             logger.info(f"[CLIENT_DISCONNECT] user_id={user_id} - клиент отключен и удален из кеша")
-            print(f"TG CLIENT DISCONNECTED user_id={user_id}")
         except Exception as e:
             logger.error(f"[CLIENT_DISCONNECT] user_id={user_id} - ошибка отключения: {e}")
 
