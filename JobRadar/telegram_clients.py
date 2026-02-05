@@ -76,7 +76,7 @@ async def get_user_client(user_id: int, db: Session) -> Optional[TelegramClient]
 
         # Подключиться
         await client.connect()
-        logger.info(f"[CLIENT_CREATE] user_id={user_id} - создан и подключен новый клиент")
+        logger.info(f"[CLIENT_CREATE] user_id={user_id} - создан и подключен новый клиент, is_connected={client.is_connected()}, is_user_authorized={await client.is_user_authorized()}")
 
         # Сохранить в кеш
         telegram_clients_cache[user_id] = client

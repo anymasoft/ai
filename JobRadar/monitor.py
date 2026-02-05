@@ -202,9 +202,12 @@ async def safe_send_message(client: TelegramClient, chat_id, text: str, **kwargs
     Raises:
         Exception: Если ошибка не FloodWait
     """
+    logger.debug(f"[SEND_MESSAGE] Попытка отправки в chat_id={chat_id}, client.is_connected()={client.is_connected()}")
     while True:
         try:
-            return await client.send_message(chat_id, text, **kwargs)
+            result = await client.send_message(chat_id, text, **kwargs)
+            logger.debug(f"[SEND_MESSAGE] Успешно отправлено в chat_id={chat_id}, message_id={result.id}")
+            return result
         except FloodWaitError as e:
             wait_time = e.seconds
             logger.warning(f"⏸️ FloodWait: требуется ждать {wait_time} секунд")
@@ -212,7 +215,7 @@ async def safe_send_message(client: TelegramClient, chat_id, text: str, **kwargs
             logger.info(f"▶️ Повторная попытка отправки после FloodWait")
             continue
         except Exception as e:
-            logger.error(f"❌ Ошибка отправки сообщения: {e}")
+            logger.error(f"❌ Ошибка отправки сообщения в chat_id={chat_id}: {type(e).__name__}: {e}")
             raise
 
 
@@ -313,6 +316,8 @@ async def send_lead_to_telegram(task: Task, lead: Lead, db: Session):
         if not client:
             logger.warning(f"[SEND] task={task.id} lead={lead.id} - Telegram клиент для user_id={task.user_id} не инициализирован")
             return
+
+        logger.debug(f"[SEND] task={task.id} lead={lead.id} - клиент получен, is_connected={client.is_connected()}")
 
         # Форматируем текст лида
         matched_keyword = lead.matched_keyword or 'не определено'
