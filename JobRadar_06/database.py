@@ -154,25 +154,6 @@ def migrate_schema():
             else:
                 print("   ✓ Колонка telegram_username уже существует")
 
-            # ==================== ТАБЛИЦА USER_SESSIONS ====================
-            # Примечание: таблица создается через Base.metadata.create_all() в ensure_tables(),
-            # но мы проверяем здесь чтобы убедиться что индексы созданы
-
-            # Получить информацию о таблице user_sessions
-            try:
-                result = connection.execute(text("PRAGMA table_info(user_sessions)"))
-                columns_user_sessions = {row[1] for row in result}
-                print(f"   Колонки в таблице user_sessions: {columns_user_sessions}")
-
-                # user_sessions должна быть создана автоматически через Base.metadata.create_all()
-                # Здесь мы просто логируем что она существует
-                if columns_user_sessions:
-                    print("   ✓ Таблица user_sessions уже существует")
-                else:
-                    print("   ⚠️  Таблица user_sessions пуста или не найдена - будет создана в ensure_tables()")
-            except Exception as e:
-                print(f"   ℹ️ Таблица user_sessions еще не создана (это нормально, создается в ensure_tables()): {e}")
-
             connection.commit()
             print("   ✅ Миграция схемы завершена\n")
 
@@ -253,17 +234,6 @@ def ensure_tables():
                 "CREATE INDEX IF NOT EXISTS idx_published ON source_messages (published)"
             ))
             print("✅ Индекс idx_published OK")
-
-            # Индексы для UserSession (новая таблица для поддержки нескольких сессий)
-            connection.execute(text(
-                "CREATE INDEX IF NOT EXISTS idx_user_session_user_id ON user_sessions (user_id)"
-            ))
-            print("✅ Индекс idx_user_session_user_id OK")
-
-            connection.execute(text(
-                "CREATE UNIQUE INDEX IF NOT EXISTS idx_user_session_auth_token ON user_sessions (auth_token)"
-            ))
-            print("✅ Уникальный индекс idx_user_session_auth_token OK")
 
             connection.commit()
         finally:

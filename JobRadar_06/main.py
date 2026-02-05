@@ -29,7 +29,7 @@ except ImportError:
     logger_startup.warning("⚠️ YooKassa SDK не установлена. Установите: pip install yookassa")
 
 from database import SessionLocal, init_db
-from models import Task, Lead, User, TelegramSession, Payment, UserSession
+from models import Task, Lead, User, TelegramSession, Payment
 from telegram_auth import save_session_to_db
 from telegram_clients import disconnect_all_clients, disconnect_user_client
 import monitor
@@ -211,91 +211,19 @@ def get_db():
     finally:
         db.close()
 
-# Helper для создания новой сессии пользователя
-def create_user_session(user_id: int, db: Session) -> str:
-    """
-    Создать новую сессию пользователя в таблице user_sessions
-
-    Логика:
-    1. Генерировать криптографически стойкий token
-    2. Создать запись UserSession
-    3. Установить user.auth_token = token (для обратной совместимости)
-    4. Вернуть token
-
-    Args:
-        user_id: ID пользователя
-        db: Сессия БД
-
-    Returns:
-        auth_token (строка)
-    """
-    try:
-        # 1. Генерировать стойкий токен
-        auth_token = secrets.token_urlsafe(32)
-
-        # 2. Создать запись в user_sessions
-        user_session = UserSession(user_id=user_id, auth_token=auth_token)
-        db.add(user_session)
-
-        # 3. Установить legacy поле для обратной совместимости
-        user = db.query(User).filter(User.id == user_id).first()
-        if not user:
-            logger.error(f"[SESSION_CREATE] user_id={user_id} - пользователь не найден")
-            raise HTTPException(status_code=500, detail="Ошибка создания сессии")
-
-        user.auth_token = auth_token
-
-        # 4. Сохранить в БД
-        db.commit()
-
-        logger.info(f"[SESSION_CREATE] user_id={user_id} - новая сессия создана, token={auth_token[:8]}...")
-        return auth_token
-
-    except Exception as e:
-        db.rollback()
-        logger.error(f"[SESSION_CREATE] user_id={user_id} - ошибка при создании сессии: {e}")
-        raise
-
 # Helper для получения текущего пользователя из cookie
 def get_current_user(
     auth_token: Optional[str] = Cookie(default=None),
     db: Session = Depends(get_db)
 ) -> User:
-    """
-    Получить текущего пользователя из cookie авторизации (auth_token)
-
-    Новая логика:
-    1. Проверить auth_token в cookie
-    2. Попытаться найти в user_sessions (новая система)
-    3. Если не найдено - fallback на user.auth_token (старая система)
-    4. Если нигде не найдено - вернуть 401
-
-    Это обеспечивает поддержку обеих систем одновременно.
-    """
+    """Получить текущего пользователя из cookie авторизации (auth_token)"""
     if not auth_token:
         raise HTTPException(status_code=401, detail="Пользователь не авторизован")
 
-    # ПОПЫТКА 1: Ищем в новой таблице user_sessions
-    user_session = db.query(UserSession).filter(UserSession.auth_token == auth_token).first()
-    if user_session:
-        user = db.query(User).filter(User.id == user_session.user_id).first()
-        if user:
-            logger.info(f"[SESSION_LOOKUP] token={auth_token[:8]}... - найдена в user_sessions, user_id={user.id}")
-            return user
-        else:
-            logger.warning(f"[SESSION_LOOKUP] token={auth_token[:8]}... - запись в user_sessions найдена, но пользователь удален")
-            raise HTTPException(status_code=401, detail="Пользователь не найден или сессия истекла")
-
-    # ПОПЫТКА 2: Fallback на старую таблицу users.auth_token
-    logger.info(f"[SESSION_FALLBACK_LEGACY] token={auth_token[:8]}... - не найдена в user_sessions, проверяем legacy")
     user = db.query(User).filter(User.auth_token == auth_token).first()
-    if user:
-        logger.info(f"[SESSION_FALLBACK_LEGACY] token={auth_token[:8]}... - найдена в users.auth_token, user_id={user.id}")
-        return user
-
-    # ОШИБКА: Токен не найден нигде
-    logger.warning(f"[SESSION_LOOKUP] token={auth_token[:8]}... - не найдена ни в user_sessions ни в users.auth_token")
-    raise HTTPException(status_code=401, detail="Пользователь не найден или сессия истекла")
+    if not user:
+        raise HTTPException(status_code=401, detail="Пользователь не найден или сессия истекла")
+    return user
 
 # Helper для проверки что пользователь - админ
 def require_admin(
@@ -373,13 +301,9 @@ class LeadResponse(BaseModel):
 
 class UserSettingsRequest(BaseModel):
     alerts_personal: bool
-    alerts_channel: bool = False
-    forward_channel: Optional[str] = None
 
 class UserSettingsResponse(BaseModel):
     alerts_personal: bool
-    alerts_channel: bool = False
-    forward_channel: Optional[str] = None
 
 # ============== Pydantic модели для Telegram авторизации ==============
 
@@ -411,9 +335,9 @@ class PaymentStatusResponse(BaseModel):
 # ============== Тарифы и платежи ==============
 
 PLAN_PRICES = {
-    "start": "1490.00",
-    "pro": "2990.00",
-    "business": "5990.00"
+    "start": "990.00",
+    "pro": "1990.00",
+    "business": "4990.00"
 }
 
 # ============== API Endpoints ==============
@@ -759,6 +683,8 @@ async def get_user_me(current_user: User = Depends(get_current_user), db: Sessio
     last_name = str(session.telegram_last_name) if (session and session.telegram_last_name) else ""
     username = str(session.telegram_username) if (session and session.telegram_username) else ""
 
+    logger.info(f"[USER_ME] user_id={current_user.id}: first_name='{first_name}' (type={type(first_name).__name__}), last_name='{last_name}' (type={type(last_name).__name__}), username='{username}'")
+
     return {
         "id": current_user.id,
         "phone": current_user.phone,
@@ -777,24 +703,20 @@ async def get_user_me(current_user: User = Depends(get_current_user), db: Sessio
 @app.get("/api/user/settings", response_model=UserSettingsResponse)
 async def get_user_settings(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     """Получить пользовательские настройки"""
+    print("USER_SETTINGS_GET_CALLED")
 
     # Найти сессию пользователя
     telegram_session = db.query(TelegramSession).filter(TelegramSession.user_id == current_user.id).first()
+    print("SESSION_FOUND", bool(telegram_session))
 
     # Если сессии нет, возвращаем дефолт
     if not telegram_session:
-        return UserSettingsResponse(
-            alerts_personal=True,
-            alerts_channel=current_user.alerts_channel,
-            forward_channel=current_user.forward_channel
-        )
+        print("RETURNING_DEFAULT alerts_personal=True")
+        return UserSettingsResponse(alerts_personal=True)
 
     # Возвращаем сохраненное значение
-    return UserSettingsResponse(
-        alerts_personal=telegram_session.alerts_personal,
-        alerts_channel=current_user.alerts_channel,
-        forward_channel=current_user.forward_channel
-    )
+    print(f"RETURNING alerts_personal={telegram_session.alerts_personal}")
+    return UserSettingsResponse(alerts_personal=telegram_session.alerts_personal)
 
 @app.put("/api/user/settings", response_model=UserSettingsResponse)
 async def update_user_settings(
@@ -803,33 +725,31 @@ async def update_user_settings(
     db: Session = Depends(get_db)
 ):
     """Обновить пользовательские настройки"""
+    print("USER_SETTINGS_PUT_CALLED")
+    print(f"REQUEST_BODY: alerts_personal={request.alerts_personal}")
 
     # Найти сессию пользователя
     telegram_session = db.query(TelegramSession).filter(TelegramSession.user_id == current_user.id).first()
+    print("SESSION_FOUND", bool(telegram_session))
 
     # Если сессии нет, ошибка
     if not telegram_session:
         raise HTTPException(status_code=400, detail="Telegram сессия не найдена. Сначала авторизуйтесь.")
 
-    # Обновить настройку alerts_personal в TelegramSession
+    # Обновить настройку
+    print("BEFORE alerts_personal =", telegram_session.alerts_personal)
     telegram_session.alerts_personal = request.alerts_personal
-
-    # Обновить новые настройки в User
-    current_user.alerts_channel = request.alerts_channel
-    current_user.forward_channel = request.forward_channel if request.forward_channel else ""
+    print("AFTER alerts_personal =", telegram_session.alerts_personal)
 
     db.commit()
+    print("COMMIT_DONE")
 
-    # Обновить объекты из БД для полной уверенности
+    # Обновить объект из БД для полной уверенности
     db.refresh(telegram_session)
-    db.refresh(current_user)
+    print("DB_VALUE alerts_personal =", telegram_session.alerts_personal)
 
     # Вернуть обновленное значение
-    return UserSettingsResponse(
-        alerts_personal=telegram_session.alerts_personal,
-        alerts_channel=current_user.alerts_channel,
-        forward_channel=current_user.forward_channel
-    )
+    return UserSettingsResponse(alerts_personal=telegram_session.alerts_personal)
 
 # ============== API для статистики ==============
 
@@ -888,55 +808,43 @@ async def auth_start(request: AuthStartRequest):
                 .first()
             )
 
-            # ВАРИАНТ А: TelegramSession найден → ОТПРАВИТЬ КОД В TELEGRAM ЛС
+            # ВАРИАНТ А: TelegramSession найден → режим LOGIN_BY_TELEGRAM_MESSAGE
             if telegram_session:
-                logger.info(f"[AUTH_START] phone={phone} - найдена TelegramSession, отправляем код в Telegram ЛС")
+                logger.info(f"[AUTH_START] phone={phone} - найдена TelegramSession, используем режим Telegram ЛС")
 
                 try:
-                    # 1. Получить User
+                    # Получить User (уже должен быть, так как TelegramSession связана с user_id)
                     user = db.query(User).filter(User.id == telegram_session.user_id).first()
                     if not user:
                         raise Exception("User не найден для TelegramSession")
 
-                    # 2. Проверить подписку
-                    ensure_active_subscription(user, db)
+                    # Получить Telegram client пользователя
+                    from telegram_clients import get_user_client
+                    client = await get_user_client(user.id, db)
+                    if not client:
+                        logger.warning(f"[AUTH_START] phone={phone} - не удалось получить TelegramClient, возвращаемся к SMS")
+                        # Если клиент не получился - возвращаемся к старому флоу
+                        raise Exception("TelegramClient not available, fallback to SMS")
 
-                    # 3. Генерировать 5-значный код
-                    code = str(random.randint(10000, 99999))
-                    logger.info(f"[AUTH_START] phone={phone} - сгенерирован код: {code}")
+                    # Генерировать 5-значный код
+                    login_code = str(random.randint(10000, 99999))
 
-                    # 4. Отправить код пользователю в Telegram ЛС
-                    try:
-                        from monitor import safe_send_message
-                        from telegram_clients import get_user_client
-
-                        # Восстановить TelegramClient пользователя из session_string
-                        client = await get_user_client(user.id, db)
-                        if not client:
-                            raise Exception("TelegramClient пользователя недоступен")
-
-                        # Отправить код в личные сообщения (используем telegram_user_id)
-                        chat_id = telegram_session.telegram_user_id
-                        if not chat_id:
-                            raise Exception(f"Нет telegram_user_id для отправки кода")
-
-                        message_text = f"🔐 Код входа в JobRadar: {code}"
-                        await safe_send_message(client, chat_id, message_text)
-                        logger.info(f"✅ [AUTH_START] phone={phone} - код {code} отправлен в Telegram ЛС (user_id={chat_id})")
-
-                    except Exception as e:
-                        logger.error(f"❌ [AUTH_START] phone={phone} - не удалось отправить код в Telegram: {e}")
-                        raise
-
-                    # 5. Сохранить код в памяти с TTL = 300 сек (5 минут)
+                    # Сохранить код в памяти с TTL 300 сек и привязкой к user_id
                     pending_login_codes[phone] = {
-                        "code": code,
-                        "user_id": user.id,
+                        "code": login_code,
+                        "user_id": telegram_session.user_id,
                         "expires_at": datetime.utcnow() + timedelta(seconds=300)
                     }
-                    logger.info(f"[AUTH_START] phone={phone} - код сохранен в памяти, TTL = 300 сек")
 
-                    # 6. Вернуть ответ БЕЗ auth_token (требуется ввод кода)
+                    # Отправить код в личку пользователю
+                    try:
+                        await client.send_message("me", f"Ваш код входа в JobRadar: {login_code}\n\nКод действителен 5 минут.")
+                        logger.info(f"[AUTH_START] phone={phone} - код отправлен в Telegram ЛС")
+                    except Exception as e:
+                        logger.error(f"[AUTH_START] phone={phone} - ошибка отправки в Telegram: {e}")
+                        del pending_login_codes[phone]
+                        raise Exception("Не удалось отправить код в Telegram")
+
                     return {
                         "ok": True,
                         "login_via": "telegram_message"
@@ -944,7 +852,7 @@ async def auth_start(request: AuthStartRequest):
 
                 except Exception as e:
                     # Если что-то пошло не так - возвращаемся к старому флоу
-                    logger.warning(f"[AUTH_START] phone={phone} - ошибка при отправке кода, fallback на SMS: {e}")
+                    logger.warning(f"[AUTH_START] phone={phone} - ошибка режима Telegram ЛС, fallback на SMS: {e}")
                     pass  # Продолжим к варианту Б
 
             # ВАРИАНТ Б: TelegramSession не найден или ошибка → режим Telegram SMS (старый флоу)
@@ -1165,8 +1073,9 @@ async def auth_save(request: AuthSaveRequest):
                     raise Exception("Пользователь не найден в БД после сохранения")
 
                 # Генерировать криптографически стойкий auth_token
-                # Используем новую функцию create_user_session для поддержки нескольких сессий
-                auth_token = create_user_session(user_id, db)
+                auth_token = secrets.token_urlsafe(32)
+                user.auth_token = auth_token
+                db.commit()
 
                 logger.info(f"✅ auth_token сгенерирован для пользователя {phone} (user_id={user_id})")
             except Exception as e:
@@ -1252,8 +1161,9 @@ async def login_by_telegram(request: AuthLoginTelegramRequest):
             ensure_active_subscription(user, db)
 
             # 5. Генерировать auth_token
-            # Используем новую функцию create_user_session для поддержки нескольких сессий
-            auth_token = create_user_session(user.id, db)
+            auth_token = secrets.token_urlsafe(32)
+            user.auth_token = auth_token
+            db.commit()
 
             logger.info(f"✅ [LOGIN_TELEGRAM] phone={phone} (user_id={user.id}) - вход через Telegram ЛС, auth_token сгенерирован")
 
@@ -1266,10 +1176,38 @@ async def login_by_telegram(request: AuthLoginTelegramRequest):
             username_final = ""
 
             if telegram_session:
-                # Использовать данные из сохраненной TelegramSession
-                first_name_final = str(telegram_session.telegram_first_name) if telegram_session.telegram_first_name else ""
-                last_name_final = str(telegram_session.telegram_last_name) if telegram_session.telegram_last_name else ""
-                username_final = str(telegram_session.telegram_username) if telegram_session.telegram_username else ""
+                try:
+                    # Получить Telegram client пользователя для свежих данных
+                    from telegram_clients import get_user_client
+                    client = await get_user_client(user.id, db)
+                    if client:
+                        me = await client.get_me()
+                        first_name_fresh = me.first_name or ""
+                        last_name_fresh = me.last_name or ""
+                        username_fresh = me.username or ""
+
+                        # Если получили свежие данные и они не пусты - используем их и обновляем БД
+                        if first_name_fresh or last_name_fresh or username_fresh:
+                            first_name_final = first_name_fresh
+                            last_name_final = last_name_fresh
+                            username_final = username_fresh
+
+                            # Обновить в БД свежие данные
+                            telegram_session.telegram_first_name = first_name_fresh
+                            telegram_session.telegram_last_name = last_name_fresh
+                            telegram_session.telegram_username = username_fresh
+                            db.commit()
+                            logger.info(f"[LOGIN_TELEGRAM] Обновил свежие данные из Telegram: first_name='{first_name_fresh}', last_name='{last_name_fresh}'")
+                        else:
+                            logger.warning(f"[LOGIN_TELEGRAM] Свежие данные пусты, используем сохраненные")
+                            first_name_final = str(telegram_session.telegram_first_name) if telegram_session.telegram_first_name else ""
+                            last_name_final = str(telegram_session.telegram_last_name) if telegram_session.telegram_last_name else ""
+                            username_final = str(telegram_session.telegram_username) if telegram_session.telegram_username else ""
+                except Exception as e:
+                    logger.warning(f"[LOGIN_TELEGRAM] Не смог получить свежие данные из Telegram: {e}, используем сохраненные")
+                    first_name_final = str(telegram_session.telegram_first_name) if telegram_session.telegram_first_name else ""
+                    last_name_final = str(telegram_session.telegram_last_name) if telegram_session.telegram_last_name else ""
+                    username_final = str(telegram_session.telegram_username) if telegram_session.telegram_username else ""
             else:
                 logger.warning(f"[LOGIN_TELEGRAM] TelegramSession не найдена для user_id={user.id}")
 
@@ -1340,7 +1278,6 @@ async def admin_users(
     limit: int = 20,
     q: str = "",
     has_session: str = "all",
-    plan: str = "all",
     current_user: User = Depends(require_admin),
     db: Session = Depends(get_db)
 ):
@@ -1351,59 +1288,46 @@ async def admin_users(
         search_username = search_username[1:]
     search_username = search_username.lower()
 
-    # Базовый запрос к User
-    user_query = db.query(User)
+    # Базовый запрос к TelegramSession
+    query = db.query(TelegramSession)
 
-    # Фильтр по плану
-    if plan != "all":
-        valid_plans = ["trial", "start", "pro", "business"]
-        if plan in valid_plans:
-            user_query = user_query.filter(User.plan == plan)
+    # Фильтр has_session
+    if has_session == "yes":
+        query = query.filter(TelegramSession.telegram_user_id.isnot(None))
+    elif has_session == "no":
+        query = query.filter(TelegramSession.telegram_user_id.is_(None))
 
-    # Получить users, затем фильтровать по session и username
-    users = user_query.order_by(User.created_at.desc()).all()
+    # Поиск по username
+    if search_username:
+        query = query.filter(
+            TelegramSession.telegram_username.ilike(f"%{search_username}%")
+        )
 
-    # Применить фильтры по session и username
-    filtered_users = []
-    for user in users:
-        # Получить session
-        session = db.query(TelegramSession).filter(TelegramSession.user_id == user.id).first()
+    # Получить sessions с пагинацией (limit+1 для has_more)
+    sessions = query.order_by(TelegramSession.created_at.desc()).offset((page - 1) * limit).limit(limit + 1).all()
 
-        # Фильтр has_session
-        if has_session == "yes" and (not session or session.telegram_user_id is None):
-            continue
-        elif has_session == "no" and session and session.telegram_user_id is not None:
-            continue
-
-        # Поиск по username
-        if search_username and (not session or not session.telegram_username or search_username not in session.telegram_username.lower()):
-            continue
-
-        filtered_users.append((user, session))
-
-    # Пагинация
-    has_more = len(filtered_users) > page * limit
-    start = (page - 1) * limit
-    end = page * limit
-    paginated_users = filtered_users[start:end + 1]
-    paginated_users = paginated_users[:limit]
+    has_more = len(sessions) > limit
+    sessions = sessions[:limit]
 
     # Собрать данные по каждому пользователю
     users_data = []
-    for user, session in paginated_users:
+    for session in sessions:
+        user = db.query(User).filter(User.id == session.user_id).first()
+        if not user:
+            continue
+
         tasks_total = db.query(Task).filter(Task.user_id == user.id).count()
         tasks_running = db.query(Task).filter(Task.user_id == user.id, Task.status == "running").count()
         leads_total = db.query(Lead).join(Task).filter(Task.user_id == user.id).count()
 
         users_data.append({
             "id": user.id,
-            "telegram_username": session.telegram_username if session else None,
-            "telegram_user_id": session.telegram_user_id if session else None,
-            "plan": user.plan,
+            "telegram_username": session.telegram_username,
+            "telegram_user_id": session.telegram_user_id,
             "tasks_total": tasks_total,
             "tasks_running": tasks_running,
             "leads_total": leads_total,
-            "created_at": user.created_at.isoformat() if user.created_at else None
+            "created_at": session.created_at.isoformat() if session.created_at else None
         })
 
     return {
@@ -1528,18 +1452,9 @@ async def admin_change_user_plan(
 
     old_plan = user.plan
     user.plan = plan
-
-    # Установить/очистить paid_until в зависимости от плана
-    if plan == "trial":
-        # Trial использует trial_expires_at, не трогаем paid_until
-        user.paid_until = None
-    else:
-        # Платный тариф: установить период на 30 дней с текущего момента
-        user.paid_until = datetime.utcnow() + timedelta(days=30)
-
     db.commit()
 
-    logger.info(f"[ADMIN] user_id={user.id} - Тариф изменен: {old_plan} -> {plan}, paid_until={user.paid_until}")
+    logger.info(f"[ADMIN] user_id={user.id} - Тариф изменен: {old_plan} -> {plan}")
     return {"ok": True, "old_plan": old_plan, "new_plan": plan}
 
 @app.post("/admin/api/users/{user_id}/delete")
@@ -1727,52 +1642,30 @@ async def get_telegram_contact():
     }
 
 @app.post("/api/logout")
-async def logout(
-    auth_token: Optional[str] = Cookie(default=None),
-    db: Session = Depends(get_db)
-):
+async def logout(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     """
-    Выйти из аккаунта (завершить текущую сессию).
+    Выйти из аккаунта.
 
     Логика:
-    1. Получить auth_token из cookie (НЕ используем get_current_user чтобы избежать race condition)
-    2. Удалить запись из user_sessions
-    3. Удалить cookie авторизации
-    4. users.auth_token НЕ трогаем (legacy field)
-    5. TelegramSession НЕ удаляется - она используется для мониторинга независимо от веб-сессии
+    1. Очистить auth_token пользователя в БД (закончить веб-сессию)
+    2. Удалить cookie авторизации
 
-    Важно: Logout работает даже если токен битый - мы просто удаляем cookie и session.
+    Важно: TelegramSession НЕ удаляется - она используется для мониторинга независимо от веб-сессии
     """
-    response = JSONResponse({"ok": True, "message": "Выход выполнен"})
-    response.delete_cookie(key="auth_token", path="/")
+    try:
+        # 1. Очистить auth_token пользователя в БД
+        current_user.auth_token = None
+        db.commit()
+        logger.info(f"[LOGOUT] user_id={current_user.id} - auth_token очищен")
 
-    # Если auth_token не предоставлен, просто удаляем cookie и выходим
-    if not auth_token:
-        logger.info("[SESSION_DELETE] auth_token не предоставлен, просто удаляем cookie")
+        # 2. Создать ответ и очистить cookie
+        response = JSONResponse({"ok": True, "message": "Выход выполнен"})
+        response.delete_cookie(key="auth_token", path="/")
         return response
 
-    try:
-        # 1. Найти запись в user_sessions
-        user_session = db.query(UserSession).filter(UserSession.auth_token == auth_token).first()
-
-        if user_session:
-            # 2. Удалить запись из user_sessions
-            user_id = user_session.user_id
-            db.delete(user_session)
-            db.commit()
-            logger.info(f"[SESSION_DELETE] user_id={user_id} - сессия удалена из user_sessions")
-        else:
-            # Fallback: попытаться найти юзера по legacy field
-            logger.info(f"[SESSION_DELETE] token={auth_token[:8]}... - не найдена в user_sessions, проверяем legacy")
-            user = db.query(User).filter(User.auth_token == auth_token).first()
-            if user:
-                logger.info(f"[SESSION_DELETE] user_id={user.id} - найдена в users.auth_token (legacy), но НЕ удаляем legacy field")
-
     except Exception as e:
-        # Даже если произошла ошибка при удалении из БД, все равно удаляем cookie
-        logger.warning(f"[SESSION_DELETE] Ошибка при удалении сессии: {e}, но cookie удаляется все равно")
-
-    return response
+        logger.error(f"Ошибка при logout user_id={current_user.id}: {e}")
+        raise HTTPException(status_code=400, detail=str(e))
 
 
 # if __name__ == "__main__":

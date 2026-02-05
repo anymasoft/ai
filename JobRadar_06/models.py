@@ -27,10 +27,6 @@ class User(Base):
     # Поле для авторизации
     auth_token = Column(String(128), unique=True, index=True, nullable=True)  # Криптографически стойкий токен сессии
 
-    # Поля для отправки лидов в канал/группу Telegram (восстановленный функционал)
-    alerts_channel = Column(Boolean, default=False)  # Отправлять в канал
-    forward_channel = Column(String(255), nullable=True, default="")  # Канал для пересылки постов
-
     def __repr__(self):
         return f"<User(id={self.id}, phone={self.phone}, plan={self.plan}, trial_expires_at={self.trial_expires_at}, paid_until={self.paid_until})>"
 
@@ -202,20 +198,6 @@ class TelegramSession(Base):
 
     def __repr__(self):
         return f"<TelegramSession(id={self.id}, user_id={self.user_id}, phone={self.phone}, telegram_id={self.telegram_user_id})>"
-
-
-class UserSession(Base):
-    """Модель сессии пользователя для поддержки нескольких активных сессий"""
-    __tablename__ = "user_sessions"
-
-    id = Column(Integer, primary_key=True)
-    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)  # Владелец сессии
-    auth_token = Column(String(128), unique=True, index=True, nullable=False)  # Криптографически стойкий токен
-    created_at = Column(DateTime, default=datetime.utcnow)  # Когда создана сессия
-    last_seen_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)  # Последняя активность
-
-    def __repr__(self):
-        return f"<UserSession(id={self.id}, user_id={self.user_id}, created_at={self.created_at})>"
 
 
 class Payment(Base):
