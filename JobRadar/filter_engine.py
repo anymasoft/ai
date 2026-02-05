@@ -121,7 +121,7 @@ def match_text(text: str, filter_config: dict) -> bool:
     include_groups = filter_config.get("include_groups", [])
 
     if not include_groups:
-        return True
+        return False
 
     for group in include_groups:
         if all(word in normalized_text for word in group):
