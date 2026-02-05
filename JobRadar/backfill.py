@@ -151,7 +151,7 @@ async def backfill_one_post(source_username: str, user_id: int, db: Session, cou
                     continue
 
                 # Проверить совпадение через фильтр (как в check_channel_for_new_messages)
-                if match_text(text, filter_config, keywords_list):
+                if match_text(text, filter_config):
                     logger.info(f"[BACKFILL] Найден релевантный пост #{published_count + 1}: message_id={message.id}")
 
                     try:
