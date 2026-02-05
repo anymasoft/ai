@@ -248,7 +248,6 @@ def create_user_session(user_id: int, db: Session) -> str:
         # 4. Сохранить в БД
         db.commit()
 
-        logger.info(f"[SESSION_CREATE] user_id={user_id} - новая сессия создана, token={auth_token[:8]}...")
         return auth_token
 
     except Exception as e:
@@ -280,17 +279,14 @@ def get_current_user(
     if user_session:
         user = db.query(User).filter(User.id == user_session.user_id).first()
         if user:
-            logger.info(f"[SESSION_LOOKUP] token={auth_token[:8]}... - найдена в user_sessions, user_id={user.id}")
             return user
         else:
             logger.warning(f"[SESSION_LOOKUP] token={auth_token[:8]}... - запись в user_sessions найдена, но пользователь удален")
             raise HTTPException(status_code=401, detail="Пользователь не найден или сессия истекла")
 
     # ПОПЫТКА 2: Fallback на старую таблицу users.auth_token
-    logger.info(f"[SESSION_FALLBACK_LEGACY] token={auth_token[:8]}... - не найдена в user_sessions, проверяем legacy")
     user = db.query(User).filter(User.auth_token == auth_token).first()
     if user:
-        logger.info(f"[SESSION_FALLBACK_LEGACY] token={auth_token[:8]}... - найдена в users.auth_token, user_id={user.id}")
         return user
 
     # ОШИБКА: Токен не найден нигде
@@ -1744,7 +1740,6 @@ async def logout(
 
     # Если auth_token не предоставлен, просто удаляем cookie и выходим
     if not auth_token:
-        logger.info("[SESSION_DELETE] auth_token не предоставлен, просто удаляем cookie")
         return response
 
     try:
@@ -1756,13 +1751,11 @@ async def logout(
             user_id = user_session.user_id
             db.delete(user_session)
             db.commit()
-            logger.info(f"[SESSION_DELETE] user_id={user_id} - сессия удалена из user_sessions")
         else:
             # Fallback: попытаться найти юзера по legacy field
-            logger.info(f"[SESSION_DELETE] token={auth_token[:8]}... - не найдена в user_sessions, проверяем legacy")
             user = db.query(User).filter(User.auth_token == auth_token).first()
             if user:
-                logger.info(f"[SESSION_DELETE] user_id={user.id} - найдена в users.auth_token (legacy), но НЕ удаляем legacy field")
+                pass  # Найдена в legacy, но не удаляем
 
     except Exception as e:
         # Даже если произошла ошибка при удалении из БД, все равно удаляем cookie
