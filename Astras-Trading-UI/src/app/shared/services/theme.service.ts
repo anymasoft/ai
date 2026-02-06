@@ -16,6 +16,10 @@ import {mapWith} from "../utils/observable-helper";
 import {LocalStorageService} from "./local-storage.service";
 import {DesignSettingsConstants} from "../constants/local-storage.constants";
 import {HttpContextTokens} from "../constants/http.constants";
+import {environment} from "../../../environments/environment";
+
+// DEV_AUTH: При devAuth=true используем светлую тему по умолчанию
+const DEV_DEFAULT_THEME = !!(environment as any).devAuth ? ThemeType.default : ThemeType.dark;
 
 @Injectable({
   providedIn: 'root',
@@ -33,7 +37,8 @@ export class ThemeService {
   subscribeToThemeChanges(): Subscription {
     return this.getThemeSettings().pipe(
       map(s => s.theme),
-      startWith(this.localStorageService.getStringItem(DesignSettingsConstants.LastThemeStorageKey) as ThemeType ?? ThemeType.dark)
+      // ORIGINAL THEME LOGIC: fallback ThemeType.dark → заменён на DEV_DEFAULT_THEME
+      startWith(this.localStorageService.getStringItem(DesignSettingsConstants.LastThemeStorageKey) as ThemeType ?? DEV_DEFAULT_THEME)
     )
       .subscribe(theme => {
         this.setTheme(theme);
@@ -48,7 +53,8 @@ export class ThemeService {
 
       this.themeSettings$ = this.terminalSettings.getSettings().pipe(
         distinctUntilChanged((previous, current) => previous.designSettings?.theme === current.designSettings?.theme),
-        map(x => x.designSettings?.theme ?? ThemeType.dark),
+        // ORIGINAL THEME LOGIC: fallback ThemeType.dark → заменён на DEV_DEFAULT_THEME
+        map(x => x.designSettings?.theme ?? DEV_DEFAULT_THEME),
         mapWith(
           theme => theme === ThemeType.default ? lightThemeColorsMap$ : darkThemeColorsMap$,
           (theme, colorsMap) => {
@@ -94,7 +100,8 @@ export class ThemeService {
   }
 
   attachDefaultStyles(): void {
-    this.currentTheme = ThemeType.dark;
+    // ORIGINAL THEME LOGIC: this.currentTheme = ThemeType.dark;
+    this.currentTheme = DEV_DEFAULT_THEME;
     const style = document.createElement('link');
     this.setupThemeCssElement(style, this.currentTheme);
     document.head.prepend(style);

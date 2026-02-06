@@ -31,6 +31,7 @@
               nz-dropdown
               nzSize="small"
               nzType="text"
+              nzPlacement="bottomLeft"
               [nzClickHide]="false"
               [nzTrigger]="(dropdownTrigger$ | async) ?? 'hover'"
               [nzDropdownMenu]="dashboardsMenu"
@@ -48,16 +49,17 @@
                 </span>
               }
               <span><i nz-icon nzType="down" nzTheme="outline" class="arrow-icon"></i></span>
-              <nz-dropdown-menu #dashboardsMenu="nzDropdownMenu">
-                <ats-select-dashboard-menu (hideMenu)="changeDashboardSelectionMenuVisibility(false)"
-                  [visibilityChange]="(isDashboardSelectionMenuVisible$ | async) ?? false"
-                  (isNewDashboardFocused)="dropdownTrigger$.next($event ? 'click' : 'hover')"
-                 />
-              </nz-dropdown-menu>
             </button>
           }
         </label>
       }
     </nz-segmented>
+    <!-- Dropdown menu вынесен из nz-segmented для корректного позиционирования CDK overlay -->
+    <nz-dropdown-menu #dashboardsMenu="nzDropdownMenu">
+      <ats-select-dashboard-menu (hideMenu)="changeDashboardSelectionMenuVisibility(false)"
+        [visibilityChange]="(isDashboardSelectionMenuVisible$ | async) ?? false"
+        (isNewDashboardFocused)="dropdownTrigger$.next($event ? 'click' : 'hover')"
+       />
+    </nz-dropdown-menu>
   }
 </div>
