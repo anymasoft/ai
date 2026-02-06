@@ -4,6 +4,8 @@
 
 export const environment = {
   production: false,
+  // DEV_AUTH: При true — авторизация Alor SSO отключена, UI доступен сразу без логина
+  devAuth: true,
   apiUrl: 'https://apidev.alor.ru',
   wsUrl: 'wss://apidev.alor.ru/ws',
   cwsUrl: 'wss://apidev.alor.ru/cws',

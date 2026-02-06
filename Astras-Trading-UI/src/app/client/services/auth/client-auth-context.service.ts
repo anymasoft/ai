@@ -13,6 +13,7 @@ import {ApiTokenProviderService} from "../../../shared/services/auth/api-token-p
 import {HttpContextTokens} from "../../../shared/constants/http.constants";
 import {JwtHelper} from "../../../shared/utils/jwt-helper";
 import {catchHttpError} from "../../../shared/utils/observable-helper";
+import {environment} from "../../../../environments/environment";
 
 enum AuthStateStatus {
   Initial = 'initial',
@@ -44,6 +45,9 @@ export class ClientAuthContextService implements UserContext, SessionContext, On
   private readonly apiTokenProviderService = inject(ApiTokenProviderService);
   private readonly window = inject(Window);
 
+  // DEV_AUTH: Флаг отключения авторизации для локальной разработки
+  private readonly devAuth = !!(environment as any).devAuth;
+
   private readonly state = new ComponentStore<AuthContext>({
     status: AuthStateStatus.Initial,
     state: null
@@ -59,10 +63,19 @@ export class ClientAuthContextService implements UserContext, SessionContext, On
     );
 
   constructor() {
-    this.initForceLogout();
+    // ORIGINAL AUTH LOGIC: this.initForceLogout();
+    if (!this.devAuth) {
+      this.initForceLogout();
+    }
   }
 
   fullLogout(): void {
+    // DEV_AUTH: При devAuth=true logout не делает ничего (нет SSO сессии)
+    if (this.devAuth) {
+      return;
+    }
+
+    // ORIGINAL AUTH LOGIC (начало)
     this.localStorage.removeItem(this.ssoTokenStorageKey);
 
     this.state.select(s => s).pipe(
@@ -83,6 +96,7 @@ export class ClientAuthContextService implements UserContext, SessionContext, On
 
       this.redirectToSso(false);
     });
+    // ORIGINAL AUTH LOGIC (конец)
   }
 
   ngOnDestroy(): void {
@@ -127,6 +141,12 @@ export class ClientAuthContextService implements UserContext, SessionContext, On
   }
 
   checkAccess(): Observable<boolean> {
+    // DEV_AUTH: При devAuth=true пропускаем SSO, сразу авторизуем мок-пользователя
+    if (this.devAuth) {
+      return this.initDevAuth();
+    }
+
+    // ORIGINAL AUTH LOGIC (начало)
     return this.state.select(s => s).pipe(
       filter(s => [AuthStateStatus.Initial, AuthStateStatus.Ready].includes(s.status)),
       take(1),
@@ -145,9 +165,16 @@ export class ClientAuthContextService implements UserContext, SessionContext, On
         return of(true);
       })
     );
+    // ORIGINAL AUTH LOGIC (конец)
   }
 
   logout(): void {
+    // DEV_AUTH: При devAuth=true logout не делает ничего (нет SSO сессии)
+    if (this.devAuth) {
+      return;
+    }
+
+    // ORIGINAL AUTH LOGIC (начало)
     this.state.patchState({
       status: AuthStateStatus.Exited,
       state: null
@@ -155,6 +182,7 @@ export class ClientAuthContextService implements UserContext, SessionContext, On
 
     this.localStorage.removeItem(this.ssoTokenStorageKey);
     this.redirectToSso(true);
+    // ORIGINAL AUTH LOGIC (конец)
   }
 
   /*
@@ -244,5 +272,45 @@ export class ClientAuthContextService implements UserContext, SessionContext, On
       + `?url=http://${window.location.host}/auth/callback&scope=Astras`
       + (withSsoExitScreen ? '&exit=1' : '')
     );
+  }
+
+  // DEV_AUTH: Инициализация фиктивной авторизации для локальной разработки
+  private initDevAuth(): Observable<boolean> {
+    const devUser: User = {
+      login: 'dev-user',
+      clientId: 'DEV000',
+      portfolios: ['D39004', 'D39004_FOND', '7500031'],
+      roles: [Role.Client]
+    };
+
+    const devToken = 'dev-token-local-development';
+    const farFutureExpiration = Date.now() + 365 * 24 * 60 * 60 * 1000; // +1 год
+
+    // Регистрируем фиктивный токен в провайдере — AuthInterceptor и WsOrdersConnector будут использовать его
+    this.apiTokenProviderService.updateTokenState({
+      token: devToken,
+      expirationTime: farFutureExpiration,
+      refreshCallback: () => {
+        // DEV_AUTH: рефреш не нужен, просто обновляем срок
+        this.apiTokenProviderService.updateTokenState({
+          token: devToken,
+          expirationTime: Date.now() + 365 * 24 * 60 * 60 * 1000,
+          refreshCallback: () => {}
+        });
+      }
+    });
+
+    // Устанавливаем состояние Ready с мок-пользователем
+    this.state.patchState({
+      status: AuthStateStatus.Ready,
+      state: {
+        refreshToken: 'dev-refresh-token',
+        jwt: devToken,
+        user: devUser,
+        expirationTime: farFutureExpiration
+      }
+    });
+
+    return of(true);
   }
 }
