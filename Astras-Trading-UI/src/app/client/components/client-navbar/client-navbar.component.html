@@ -31,8 +31,10 @@
        />
     </div>
 
+    <!-- DEV_AUTH FIX: убран overflow-hidden для корректного позиционирования dropdown -->
+    <!-- ORIGINAL: class="left-side-item overflow-hidden" -->
     <div
-      class="left-side-item overflow-hidden"
+      class="left-side-item min-w-0"
       joyrideStep="step4"
       [title]="t('joyride.step4.title')"
       [text]="t('joyride.step4.text')"

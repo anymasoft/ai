@@ -12,6 +12,10 @@ import { ThemeType } from '../models/settings/theme-settings.model';
 import { TimezoneDisplayOption } from '../models/enums/timezone-display-option';
 import { TableRowHeight } from "../models/enums/table-row-height";
 import { instrumentsBadges } from "./instruments";
+import { environment } from "../../../environments/environment";
+
+// DEV_AUTH: При devAuth=true — светлая тема по умолчанию
+const DEV_DEFAULT_THEME = !!(environment as any).devAuth ? ThemeType.default : ThemeType.dark;
 
 export class TerminalSettingsHelper {
   static getDefaultSettings(): TerminalSettings {
@@ -25,7 +29,8 @@ export class TerminalSettingsHelper {
       hotKeysSettings: this.getDefaultHotkeys(),
       scalperOrderBookMouseActions: this.getScalperOrderBookMouseActionsScheme1(),
       designSettings: {
-        theme: ThemeType.dark,
+        // ORIGINAL THEME LOGIC: theme: ThemeType.dark,
+        theme: DEV_DEFAULT_THEME,
         fontFamily: FontFamilies.NotoSans,
         gridType: GridType.Fit
       },

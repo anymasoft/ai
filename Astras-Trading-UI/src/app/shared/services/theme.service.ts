@@ -35,10 +35,14 @@ export class ThemeService {
   private readonly styleLinkClassName = 'theme';
 
   subscribeToThemeChanges(): Subscription {
+    // DEV_AUTH: В devAuth-режиме игнорируем кэш localStorage чтобы не было мигания dark→light
+    // ORIGINAL THEME LOGIC: startWith(localStorage ?? ThemeType.dark)
+    const cachedTheme = DEV_DEFAULT_THEME === ThemeType.default
+      ? DEV_DEFAULT_THEME
+      : (this.localStorageService.getStringItem(DesignSettingsConstants.LastThemeStorageKey) as ThemeType ?? DEV_DEFAULT_THEME);
     return this.getThemeSettings().pipe(
       map(s => s.theme),
-      // ORIGINAL THEME LOGIC: fallback ThemeType.dark → заменён на DEV_DEFAULT_THEME
-      startWith(this.localStorageService.getStringItem(DesignSettingsConstants.LastThemeStorageKey) as ThemeType ?? DEV_DEFAULT_THEME)
+      startWith(cachedTheme)
     )
       .subscribe(theme => {
         this.setTheme(theme);
