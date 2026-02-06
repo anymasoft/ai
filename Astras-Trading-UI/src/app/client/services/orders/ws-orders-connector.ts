@@ -30,6 +30,10 @@ import { ApiTokenProviderService } from "../../../shared/services/auth/api-token
 import { LoggerService } from "../../../shared/services/logging/logger.service";
 import { GuidGenerator } from "../../../shared/utils/guid";
 import { isOnline$ } from "../../../shared/utils/network";
+import {environment} from "../../../../environments/environment";
+
+// DEV_AUTH: Флаг отключения WebSocket для локальной разработки
+const DEV_AUTH = !!(environment as any).devAuth;
 
 export interface CommandRequest {
   opcode: string;
@@ -112,10 +116,26 @@ export class WsOrdersConnector implements OnDestroy {
   }
 
   warmUp(): void {
+    // DEV_AUTH: Не создаём WS-подключение при devAuth=true
+    if (DEV_AUTH) {
+      return;
+    }
+    // ORIGINAL WS LOGIC
     this.getSocketState();
   }
 
   submitCommand<T extends CommandRequest>(request: T): Observable<CommandResponse> {
+    // DEV_AUTH: При devAuth=true возвращаем мок-ответ (ордера не отправляются)
+    if (DEV_AUTH) {
+      return of({
+        httpCode: 200,
+        message: 'DEV MODE: Order mock accepted',
+        requestGuid: GuidGenerator.newGuid(),
+        orderNumber: 'DEV-' + Date.now()
+      });
+    }
+
+    // ORIGINAL WS LOGIC (начало)
     const socketState = this.getSocketState();
     if (!this.isStateValid(socketState)) {
       this.reconnect(socketState);
@@ -139,6 +159,7 @@ export class WsOrdersConnector implements OnDestroy {
         this.lastRequestDelayMSec$.next(Date.now() - startTime);
       })
     );
+    // ORIGINAL WS LOGIC (конец)
   }
 
   private getCurrentAccessToken(): Observable<string> {
