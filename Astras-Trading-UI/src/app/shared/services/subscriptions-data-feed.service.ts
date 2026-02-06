@@ -32,6 +32,10 @@ import {
   WsOptions
 } from "../constants/ws.constants";
 import { ApiTokenProviderService } from "./auth/api-token-provider.service";
+import {environment} from "../../../environments/environment";
+
+// DEV_AUTH: Флаг отключения WebSocket для локальной разработки
+const DEV_AUTH = !!(environment as any).devAuth;
 
 export interface SubscriptionRequest {
   opcode: string;
@@ -91,6 +95,12 @@ export class SubscriptionsDataFeedService implements OnDestroy {
   }
 
   public subscribe<T extends SubscriptionRequest, R>(request: T, getSubscriptionId: (request: T) => string): Observable<R> {
+    // DEV_AUTH: При devAuth=true не подключаемся к WS, возвращаем пустой поток
+    if (DEV_AUTH) {
+      return new Observable<R>();  // EMPTY — никогда не эмитит, не завершается
+    }
+
+    // ORIGINAL WS LOGIC (начало)
     return this.ngZone.runOutsideAngular(() => {
       const socketState = this.getSocket();
       const subscriptionId = getSubscriptionId(request);
@@ -125,6 +135,7 @@ export class SubscriptionsDataFeedService implements OnDestroy {
 
       return subscriptionState.sharedStream$ as Observable<R>;
     });
+    // ORIGINAL WS LOGIC (конец)
   }
 
   private subscribeToMessages(source: Observable<WsResponseMessage>, target: Subject<any>, subscriptionId: string): Subscription {

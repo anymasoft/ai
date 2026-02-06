@@ -19,6 +19,7 @@ import {routes} from "./app.routes";
 import {LocaleService} from "./shared/services/locale.service";
 import {HTTP_INTERCEPTORS, provideHttpClient, withInterceptorsFromDi} from "@angular/common/http";
 import {AuthInterceptor} from "./shared/interceptors/auth.interceptor";
+import {DevMockInterceptor} from "./shared/interceptors/dev-mock.interceptor";
 import {ErrorHandlerService} from "./shared/services/handle-error/error-handler.service";
 import {LOGGER} from "./shared/services/logging/logger-base";
 import {ConsoleLogger} from "./shared/services/logging/console-logger";
@@ -100,6 +101,13 @@ const appProviders = [
     deps: [LocaleService],
     useFactory: (localeService: LocaleService): string => localeService.currentLocale,
   },
+  // DEV_AUTH: Мок-интерцептор перехватывает ВСЕ внешние HTTP-запросы при devAuth=true
+  // Должен стоять ПЕРЕД AuthInterceptor, чтобы запросы не дошли до реального API
+  ...((environment as any).devAuth ? [{
+    provide: HTTP_INTERCEPTORS,
+    useClass: DevMockInterceptor,
+    multi: true
+  }] : []),
   {
     provide: HTTP_INTERCEPTORS,
     useClass: AuthInterceptor,
