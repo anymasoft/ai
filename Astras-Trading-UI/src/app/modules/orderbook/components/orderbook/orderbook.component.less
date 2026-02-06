@@ -1,0 +1,51 @@
+@import "theme-mixin";
+
+.themeMixin({
+  .volumes {
+    display: flex;
+    justify-content: space-between;
+    margin: 10px 0;
+
+    span {
+      padding: 0 10px;
+    }
+
+    .ask-volume {
+      color: @sell-color;
+      background-color: fade(@sell-color, 20%);
+    }
+
+    .bid-volume {
+      color: @buy-color;
+      background-color: fade(@buy-color-background-light, 20%);
+    }
+  }
+
+  .value-wrapper {
+    position: relative;
+
+    .value {
+      position: absolute;
+      width: 100%;
+      text-align: center;
+
+      &.red {
+        color: @sell-color
+      }
+    }
+  }
+});
+
+.spread-size-row {
+  display: flex;
+  margin: 5px 0;
+
+  div {
+    flex-grow: 2;
+    flex-shrink: 2;
+    width: 100%;
+  }
+}
+
+
+

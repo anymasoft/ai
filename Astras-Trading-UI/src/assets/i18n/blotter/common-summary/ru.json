@@ -1,0 +1,12 @@
+{
+  "portfolioLiquidationTitle": "Оценка портфеля",
+  "portfolioEvaluationTitle": "Оценка ликв. портфеля",
+  "profitTitle": "P/L за день",
+  "profitRateTitle": "P/L за день, %",
+  "buyingPowerAtMorningTitle": "Покуп. сила на утро",
+  "initialMarginTitle": "Начальная маржа",
+  "correctedMarginTitle": "Скорректированная маржа",
+  "riskBeforeForcePositionClosingTitle": "НПР2 (до закрытия)",
+  "commissionTitle": "Комиссия",
+  "buyingPowerTitle": "Покуп. сила"
+}

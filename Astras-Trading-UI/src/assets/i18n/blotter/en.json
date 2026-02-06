@@ -1,0 +1,10 @@
+{
+  "infoTab": "Portfolio info",
+  "ordersTab": "Orders",
+  "stopOrdersTab": "Stop-orders",
+  "positionsTab": "Positions",
+  "tradesTab": "Trades",
+  "tradesHistoryTab": "Trades history",
+  "repoTradesTab": "REPO trades",
+  "notificationsTab": "Notifications"
+}

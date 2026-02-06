@@ -1,0 +1,16 @@
+{
+  "settingsDialogTitle": "Անձնական էջ",
+  "usefulLinksTabTitle": "Օգտակար հղումներ",
+  "generalSettingsTabTitle": "Ընդհանուր",
+  "hotkeysTabTitle": "Գործառնական ստեղներ",
+  "notificationsTabTitle": "Ծանուցումներ",
+  "mobileDashboardLayoutTabTitle": "Դասավորություն",
+  "defaultCurrencyHeader": "Պորտֆելների նախընտրած արժույթ",
+  "scalperMouseActionsHeader": "Մկնիկի գործողություններ",
+  "hardRebootBtnText": "Վերականգնել բոլոր պարամետրերը",
+  "hardRebootWarningTitle": "Համոզվա՞ծ եք, որ ցանկանում եք ամբողջական վերագործարկում կատարել:",
+  "hardRebootWarningDesc": "Ամբողջական վերագործարկման դեպքում կջնջվեն ձեր բոլոր կարգավորումները, դիտացանկերը, վիդջեթները և այլն:",
+  "exportSettingsBtnText": "Արտահանել կարգավորումները",
+  "yesBtnText": "Այո",
+  "noBtnText": "Ոչ"
+}

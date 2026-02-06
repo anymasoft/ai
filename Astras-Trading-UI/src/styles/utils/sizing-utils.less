@@ -1,0 +1,17 @@
+each(range(25, 100, 25), {
+  .w-@{value} {
+    width: @value * 1%;
+  }
+
+  .h-@{value} {
+    height: @value * 1%;
+  }
+});
+
+.max-w-100 {
+  max-width: 100%;
+}
+
+.min-w-0 {
+  min-width: 0;
+}

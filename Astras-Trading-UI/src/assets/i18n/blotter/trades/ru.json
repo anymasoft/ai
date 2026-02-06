@@ -1,0 +1,50 @@
+{
+  "columns": {
+    "id": {
+      "name": "Id",
+      "tooltip": "Идентификационный номер сделки",
+      "searchDescription": "Поиск по Номеру"
+    },
+    "orderNo": {
+      "name": "Заявка",
+      "tooltip": "Номер заявки",
+      "searchDescription": "Поиск по Заявке"
+    },
+    "symbol": {
+      "name": "Тикер",
+      "tooltip": "Биржевой идентификатор ценной бумаги",
+      "searchDescription": "Поиск по Тикеру"
+    },
+    "shortName": {
+      "name": "Название",
+      "tooltip": "Название ценной бумаги",
+      "searchDescription": "Поиск по Названию"
+    },
+    "side": {
+      "name": "Сторона",
+      "tooltip": "Сторона сделки (покупка/продажа)",
+      "listOfFilter": {
+        "buy": "Покупка",
+        "sell": "Продажа"
+      }
+    },
+    "qty": {
+      "name": "Кол-во",
+      "tooltip": "Количество сделок"
+    },
+    "price": {
+      "name": "Цена",
+      "tooltip": "Цена"
+    },
+    "date": {
+      "name": "Время",
+      "tooltip": "Время совершения сделки"
+    },
+    "volume": {
+      "name": "Объем",
+      "tooltip": "Объём"
+    }
+  },
+  "emptyTrades": "Сделок сегодня не было",
+  "emptyTradesWithFilters": "С такими фильтрами ничего не найдено"
+}

@@ -1,0 +1,7 @@
+﻿{
+  "messages": {
+    "botGreeting": "Hello! Ask me a question and I'll try to answer it...",
+    "botThinking": "Bot is thinking",
+    "requestError": "Unfortunately I cannot answer your question at the moment. Try to start a new conversation, ask later or in other words..."
+  }
+}
