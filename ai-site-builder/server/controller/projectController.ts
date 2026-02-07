@@ -59,7 +59,6 @@ CRITICAL RULES:
 Enhance by being specific about elements, colors, spacing, sizes, and desired outcome.
 Return ONLY the enhanced text request. No code. No HTML.`,
             user: `User's request: "${message}"`,
-            highQuality: false,
             maxTokens: 512,
             temperature: 0.5,
             format: "text",
@@ -83,7 +82,6 @@ Return ONLY the enhanced text request. No code. No HTML.`,
         const code = await callAI({
             system: SYSTEM_PROMPT_REVISE,
             user: `CURRENT HTML CODE:\n${currentProject.current_code}\n\nREQUESTED CHANGES:\n${enhancedPrompt}`,
-            highQuality: false,
             format: "html",
         });
 

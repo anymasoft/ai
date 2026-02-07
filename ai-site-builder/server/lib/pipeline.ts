@@ -85,7 +85,6 @@ export async function generateLanding(
     const enhancedPrompt = await callAI({
         system: ENHANCE_SYSTEM,
         user: userPrompt,
-        highQuality: false,           // для экономии — быстрая модель
         maxTokens: 1024,
         temperature: 0.6,
         format: "text",
@@ -148,7 +147,6 @@ async function generateStandard(enhancedPrompt: string): Promise<string> {
     const html = await callAI({
         system: SYSTEM_PROMPT_GENERATE,
         user: enhancedPrompt,
-        highQuality: false,
         format: "html",
     });
 
@@ -167,7 +165,6 @@ async function generateHighQuality(
     const plan = await callAIJSON<SectionPlan>({
         system: PLAN_SYSTEM,
         user: enhancedPrompt,
-        highQuality: true,
         maxTokens: 512,
         temperature: 0.3,
     });
@@ -222,7 +219,6 @@ async function generateSection(
     const html = await callAI({
         system,
         user: siteDescription,
-        highQuality: true,
         maxTokens: 3072,
         temperature: 0.5,
         format: "html",
