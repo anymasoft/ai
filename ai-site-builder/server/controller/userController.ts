@@ -3,10 +3,7 @@ import { v4 as uuidv4 } from "uuid";
 import "dotenv/config";
 
 import db from "../lib/db.js";
-import openai from "../config/openai.js";
-import { SYSTEM_PROMPT_GENERATE } from "../prompts/designSystem.js";
-
-const AI_MODEL = process.env.OPENAI_MODEL || "gpt-4o-mini";
+import { generateLanding } from "../lib/pipeline.js";
 
 // Get the user credits
 export const getUserCredits = async (req: Request, res: Response) => {
@@ -88,107 +85,47 @@ export const createUserProject = async (req: Request, res: Response) => {
 
         res.json({ projectId });
 
+        // Определить режим: highQuality через query param ?hq=true
+        const forceHQ = req.query.hq === "true" || undefined;
+
         // Generate website asynchronously
         (async () => {
             try {
-                // Enhance user prompt
-                const promptEnhanceResponse = await openai.chat.completions.create({
-                    model: AI_MODEL,
-                    messages: [
-                        {
-                            role: "system",
-                            content: `You are a prompt enhancement specialist. Your job is to take a website request and rewrite it as a more detailed TEXT DESCRIPTION.
-
-CRITICAL RULES:
-- Return ONLY plain text description, 2-3 paragraphs max.
-- NEVER generate HTML, CSS, JavaScript or any code.
-- NEVER include code tags, backticks, or markup.
-- NEVER start your response with <!DOCTYPE>, <html>, <head>, or any HTML tag.
-- Your output is a BRIEF describing what the website should look like, NOT the website itself.
-
-Enhance the request by adding:
-1. Specific design details (layout, color scheme, typography)
-2. Key sections and features
-3. User experience and interactions
-4. Modern web design best practices
-5. Responsive design requirements
-
-Return ONLY the enhanced text description. No code. No HTML. No markup.`,
-                        },
-                        {
-                            role: "user",
-                            content: initial_prompt,
-                        },
-                    ],
-                });
-
-                const enhancedPrompt = promptEnhanceResponse.choices[0].message.content;
+                const result = await generateLanding(initial_prompt, forceHQ);
 
                 db.prepare("INSERT INTO conversations (id, project_id, role, content) VALUES (?, ?, ?, ?)").run(
                     uuidv4(),
                     projectId,
                     "assistant",
-                    `I have enhanced your prompt to:\n\n"${enhancedPrompt}"`
+                    `Промпт улучшен (режим: ${result.mode}):\n\n"${result.enhancedPrompt}"`
                 );
 
-                db.prepare("INSERT INTO conversations (id, project_id, role, content) VALUES (?, ?, ?, ?)").run(
-                    uuidv4(),
-                    projectId,
-                    "assistant",
-                    "Now generating your website..."
-                );
-
-                // Generate website code
-                const codeGenerationResponse = await openai.chat.completions.create({
-                    model: AI_MODEL,
-                    messages: [
-                        {
-                            role: "system",
-                            content: SYSTEM_PROMPT_GENERATE,
-                        },
-                        {
-                            role: "user",
-                            content: enhancedPrompt || "",
-                        },
-                    ],
-                });
-
-                const code = codeGenerationResponse.choices[0].message.content || "";
-
-                if (!code) {
+                if (!result.html) {
                     db.prepare("INSERT INTO conversations (id, project_id, role, content) VALUES (?, ?, ?, ?)").run(
-                        uuidv4(),
-                        projectId,
-                        "assistant",
-                        "Unable to generate code, please try again.."
+                        uuidv4(), projectId, "assistant",
+                        "Не удалось сгенерировать код, попробуйте ещё раз."
                     );
-
                     db.prepare("UPDATE users SET credits = credits + 5 WHERE id = ?").run(userId);
                     return;
                 }
 
-                const cleanCode = code
-                    .replace(/```[a-z]*\n?/gi, "")
-                    .replace(/```$/g, "")
-                    .trim();
+                // Логируем результат валидации
+                if (result.validation.warnings.length > 0) {
+                    console.log(`[PIPELINE] Final warnings: ${result.validation.warnings.join("; ")}`);
+                }
 
-                // Create version for the project
                 const versionId = uuidv4();
                 db.prepare("INSERT INTO versions (id, project_id, code, description) VALUES (?, ?, ?, ?)").run(
-                    versionId,
-                    projectId,
-                    cleanCode,
-                    "Initial version"
+                    versionId, projectId, result.html,
+                    `Initial version (${result.mode}${result.plan ? ", " + Object.keys(result.plan).length + " sections" : ""})`
                 );
 
                 db.prepare("INSERT INTO conversations (id, project_id, role, content) VALUES (?, ?, ?, ?)").run(
-                    uuidv4(),
-                    projectId,
-                    "assistant",
-                    "I have created your website! You can now preview it and request any changes."
+                    uuidv4(), projectId, "assistant",
+                    "Сайт создан! Вы можете просмотреть его и запросить изменения."
                 );
 
-                db.prepare("UPDATE projects SET current_code = ? WHERE id = ?").run(cleanCode, projectId);
+                db.prepare("UPDATE projects SET current_code = ? WHERE id = ?").run(result.html, projectId);
             } catch (error: any) {
                 console.error("Error in project generation:", error);
                 db.prepare("UPDATE users SET credits = credits + 5 WHERE id = ?").run(userId);
