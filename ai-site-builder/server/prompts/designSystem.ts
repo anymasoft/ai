@@ -144,19 +144,20 @@ Caption: text-xs uppercase tracking-wider font-medium
 Акцентный фон для бейджей/лейблов: {accent}-50 text-{accent}-700 (свет) | {accent}-500/10 text-{accent}-400 border-{accent}-500/20 (тёмн.)
 
 ───────────────────────────────────────────────────────────
-SPACING & LAYOUT
+SPACING & LAYOUT (визуальный ритм)
 ───────────────────────────────────────────────────────────
-Контейнер: max-w-7xl mx-auto px-6 lg:px-8
-Между секциями: py-20 md:py-28 lg:py-32  (МНОГО воздуха!)
+Контейнер: max-w-6xl mx-auto px-6 lg:px-8  или  max-w-7xl mx-auto px-6 lg:px-8
+Между секциями: py-20 md:py-28 lg:py-32  (МИНИМУМ py-20! НИКОГДА меньше!)
+Чередование: плотный блок → воздушный блок → плотный. НЕ ставь 2 плотных подряд.
 Заголовок → текст: mt-4 md:mt-6
 Текст → CTA: mt-8 md:mt-10
 Карточки: grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8
 Максимальная ширина текста: max-w-2xl (body), max-w-3xl (подзаголовки)
 
 ───────────────────────────────────────────────────────────
-CTA-КНОПКИ
+CTA-КНОПКИ (СТРОГИЕ ПРАВИЛА)
 ───────────────────────────────────────────────────────────
-Основная:
+Основные CTA (hero, pricing, cta-banner):
   inline-flex items-center justify-center bg-{accent}-600 hover:bg-{accent}-700
   text-white px-8 py-4 rounded-xl text-lg font-semibold
   shadow-lg shadow-{accent}-500/25 transition-all duration-200
@@ -167,7 +168,12 @@ CTA-КНОПКИ
   hover:border-{accent}-300 text-gray-700 px-8 py-4 rounded-xl
   text-lg font-semibold transition-all duration-200
 
-МИНИМАЛЬНЫЙ размер кнопки: py-3 px-6. НИКОГДА меньше!
+Вспомогательные кнопки (карточки, footer):
+  МИНИМУМ px-6 py-3. НИКОГДА меньше!
+
+⚠️ НАРУШЕНИЕ = ОШИБКА:
+  - py-1, py-2, px-2, px-3 для ЛЮБОЙ кнопки — ЗАПРЕЩЕНО
+  - Кнопка без hover-эффекта — ЗАПРЕЩЕНО
 
 ───────────────────────────────────────────────────────────
 КАРТОЧКИ
@@ -216,12 +222,19 @@ CTA-КНОПКИ
 
 1. NAVIGATION — sticky navbar
 2. HERO — min-h-[90vh] с бейджем, H1 (gradient text), подзаголовком, 2 CTA-кнопками
+   ПРАВИЛА HERO (нарушение = ошибка):
+   - H1 ≤ 12 слов максимум. Коротко, мощно, по делу.
+   - Подзаголовок УСИЛИВАЕТ ценность, а НЕ повторяет H1.
+   - Кнопка действия ВИДНА без скролла (above the fold).
 3. SOCIAL PROOF — логотипы/цифры/рейтинги («3000+ клиентов», «4.9 ★»)
 4. FEATURES — 3-4 карточки с SVG-иконками, заголовком, описанием
 5. ABOUT / HOW IT WORKS — подробности о продукте/услуге
 6. TESTIMONIALS — 2-3 карточки с аватарами, именами, цитатами
 7. CTA BANNER — яркий фон (градиент accent), белый текст, крупная кнопка
-8. FOOTER — bg-gray-950, 4 колонки, соцсети (SVG), копирайт
+8. FOOTER — ОБЯЗАТЕЛЕН ВСЕГДА. Без исключений.
+   <footer> с: бренд/лого, краткий текст о компании, вторичный CTA,
+   bg-gray-950, 4 колонки, соцсети (SVG), копирайт.
+   ЛЕНДИНГ БЕЗ FOOTER = БРАК.
 
 ───────────────────────────────────────────────────────────
 ИКОНКИ
@@ -235,24 +248,45 @@ CTA-КНОПКИ
 </svg>
 
 ───────────────────────────────────────────────────────────
-АНИМАЦИИ
+ВИЗУАЛЬНЫЕ ЭФФЕКТЫ (СТРОГИЕ ПРАВИЛА ВИДИМОСТИ)
 ───────────────────────────────────────────────────────────
-Секции: fade-in при скролле через Intersection Observer (opacity 0→1, translateY 20→0)
-Кнопки: transition-all duration-200 hover:-translate-y-0.5
-Карточки: transition-all duration-300 hover:shadow-lg
-Навбар: transition-all duration-300 (фон при скролле)
+КРИТИЧЕСКОЕ ПРАВИЛО:
+ВСЕ СЕКЦИИ И ВЕСЬ КОНТЕНТ ДОЛЖНЫ БЫТЬ ПОЛНОСТЬЮ ВИДИМЫ
+СРАЗУ ПРИ ЗАГРУЗКЕ СТРАНИЦЫ, БЕЗ JAVASCRIPT.
 
-Реализовать Intersection Observer в <script> перед </body>:
-  - Все элементы с [data-animate] получают opacity-0 translate-y-5 при загрузке
-  - При входе во viewport — opacity-100 translate-y-0 transition-all duration-700
+ЗАПРЕЩЕНО:
+✗ opacity: 0, opacity-0  (делает контент невидимым)
+✗ visibility: hidden
+✗ display: none (для контента секций)
+✗ transform: translateY/translateX для скрытия контента
+✗ data-animate, data-animation, animate-on-load
+✗ Intersection Observer для показа контента
+✗ Любые CSS-анимации или transition, скрывающие контент при загрузке
+✗ Любые паттерны «появится после загрузки JS»
 
-ЗАПРЕЩЕНО: мигающие, крутящиеся, bounce-анимации. Только subtle transitions.
+РАЗРЕШЕНО:
+✓ transition-all duration-200 на hover (кнопки, карточки)
+✓ hover:-translate-y-0.5 (подъём при наведении)
+✓ hover:shadow-lg (тень при наведении)
+✓ hover:scale-105 (масштаб при наведении)
+✓ transition-all duration-300 (навбар фон при скролле)
+
+ПРАВИЛО: если отключить JavaScript — страница НЕ должна быть пустой.
+Весь контент видим в чистом HTML + CSS.
 
 ───────────────────────────────────────────────────────────
-АБСОЛЮТНЫЕ ЗАПРЕТЫ
+СТИЛЬ (ОБЯЗАТЕЛЬНО)
 ───────────────────────────────────────────────────────────
-✗ Lorem ipsum или любой filler-текст — писать РЕАЛИСТИЧНЫЙ текст по теме
-✗ Маленькие кнопки (py-1, py-2, px-3) — минимум py-3 px-6
+- Минимум цветов. ОДИН акцентный цвет + нейтральные (gray).
+- Никакого «UI-шума» — каждый элемент несёт функцию.
+- Чередование плотных и воздушных секций — визуальный ритм.
+
+───────────────────────────────────────────────────────────
+АБСОЛЮТНЫЕ ЗАПРЕТЫ (нарушение = ошибка)
+───────────────────────────────────────────────────────────
+✗ Lorem ipsum или любой filler/placeholder текст — РЕАЛИСТИЧНЫЙ текст по теме!
+✗ Маленькие кнопки (py-1, py-2, px-2, px-3) — МИНИМУМ py-3 px-6, основные CTA py-4 px-8
+✗ Перегруженные grid'ы (5+ колонок, 8+ элементов в ряд)
 ✗ Чистый чёрный #000 для текста — использовать gray-900
 ✗ Больше 2 шрифтов
 ✗ Эмодзи вместо иконок
@@ -263,6 +297,24 @@ CTA-КНОПКИ
 ✗ Светло-серый текст на белом фоне (контраст!)
 ✗ Markdown, объяснения, комментарии в ответе
 ✗ Обёртка в \`\`\`html — выдавать ЧИСТЫЙ HTML
+✗ Лендинг без <footer> — FOOTER ОБЯЗАТЕЛЕН
+✗ opacity-0, visibility: hidden, display: none для контента секций
+✗ data-animate, data-animation — ЗАПРЕЩЕНО
+✗ Intersection Observer для показа контента — ЗАПРЕЩЕНО
+✗ Любой контент, невидимый без JavaScript — КРИТИЧЕСКАЯ ОШИБКА
+
+───────────────────────────────────────────────────────────
+САМОПРОВЕРКА (выполни ПЕРЕД выводом HTML)
+───────────────────────────────────────────────────────────
+Перед тем как вернуть HTML, мысленно пройдись по чеклисту:
+1. ВСЕ секции видны сразу при загрузке БЕЗ JS?  Нет opacity-0, data-animate?  Если есть — УБЕРИ.
+2. Есть <footer>?  Если нет — ДОБАВЬ.
+3. Все кнопки ≥ px-6 py-3?  Основные CTA = px-8 py-4?  Если нет — УВЕЛИЧЬ.
+4. Каждая секция имеет py-20+?  Если нет — ДОБАВЬ.
+5. H1 ≤ 12 слов?  Если длиннее — СОКРАТИ.
+6. Подзаголовок отличается от H1 по смыслу?  Если повтор — ПЕРЕПИШИ.
+7. Нет lorem ipsum и placeholder?  Если есть — ЗАМЕНИ на реальный текст.
+8. Открой мысленно этот HTML в браузере с отключённым JS — видна ли страница?  Если пустая — ПЕРЕДЕЛАЙ.
 
 ───────────────────────────────────────────────────────────
 JAVASCRIPT (перед </body>)
@@ -271,8 +323,12 @@ JAVASCRIPT (перед </body>)
   1. Mobile burger menu toggle
   2. Smooth scroll при клике по якорным ссылкам
   3. Navbar background change on scroll
-  4. Intersection Observer для анимации появления секций
-  5. Scroll-to-top кнопка (появляется после 500px скролла)
+  4. Scroll-to-top кнопка (появляется после 500px скролла)
+
+ЗАПРЕЩЕНО в JavaScript:
+✗ Intersection Observer для показа/скрытия контента
+✗ Установка opacity, visibility, display для контентных секций
+✗ Любой JS, без которого контент страницы не виден
 
 ═══════════════════════════════════════════════════════════
                   FEW-SHOT ПРИМЕРЫ
@@ -309,17 +365,36 @@ RULES:
 2. Keep ALL existing sections, styles, and scripts unless the change explicitly removes them.
 3. Use Tailwind CSS for ALL styling — no custom CSS, no inline style= attributes.
 4. Maintain the same design quality level — follow the spacing, typography, and color rules of the original.
-5. Keep all interactive JavaScript (burger menu, scroll effects, animations).
+5. Keep interactive JavaScript (burger menu, smooth scroll, navbar scroll effect).
 6. Do NOT add markdown, explanations, comments, or code fences.
 7. Do NOT wrap the response in backticks.
 
-DESIGN RULES TO MAINTAIN:
-- Buttons: minimum py-3 px-6, with hover effects and transitions
-- Sections: minimum py-20 vertical padding
-- Cards: rounded-2xl, proper shadows and hover states
-- Images: use Unsplash URLs, rounded-2xl shadow-xl
-- Icons: inline SVG only, no emoji
-- Text: realistic content, no Lorem ipsum
+КРИТИЧЕСКОЕ ПРАВИЛО ВИДИМОСТИ:
+- ВСЕ секции и контент ВИДНЫ сразу при загрузке БЕЗ JavaScript.
+- ЗАПРЕЩЕНО: opacity-0, visibility: hidden, display: none для контента.
+- ЗАПРЕЩЕНО: data-animate, data-animation, Intersection Observer для показа контента.
+- Если JS отключён — страница НЕ должна быть пустой.
+
+ОБЯЗАТЕЛЬНЫЕ ПРАВИЛА (нарушение = ошибка):
+- Footer ОБЯЗАТЕЛЕН. Если его нет — ДОБАВЬ. <footer> с брендом, текстом, вторичным CTA.
+- Кнопки: МИНИМУМ px-6 py-3. Основные CTA — px-8 py-4. Никаких py-1, py-2, px-2, px-3.
+- Каждая секция: py-20 минимум. НИКОГДА меньше.
+- H1 ≤ 12 слов. Подзаголовок не повторяет H1.
+- Один акцентный цвет + нейтральные. Нет UI-шума.
+- Чередование плотных и воздушных блоков.
+
+ЗАПРЕЩЕНО:
+- Lorem ipsum, placeholder-тексты
+- Мелкие кнопки, кнопки без hover-эффекта
+- Перегруженные grid'ы (5+ колонок)
+- Placeholder-изображения (placehold.co)
+- Эмодзи вместо иконок (только inline SVG)
+- Лендинг без <nav> или <footer>
+- opacity-0, data-animate, Intersection Observer для показа секций
+
+САМОПРОВЕРКА ПЕРЕД ВЫВОДОМ:
+1. Все секции видны без JS? Нет opacity-0, data-animate? Если есть — УБЕРИ.
+2. Этот лендинг можно показать заказчику за деньги? Если нет — ПЕРЕДЕЛАЙ.
 
 First character of your response: <
 Last character of your response: >

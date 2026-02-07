@@ -245,8 +245,6 @@ function assembleHTML(sectionsHTML: string): string {
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
     <style>
         body { font-family: 'Inter', system-ui, sans-serif; }
-        [data-animate] { opacity: 0; transform: translateY(20px); transition: opacity 0.7s ease, transform 0.7s ease; }
-        [data-animate].visible { opacity: 1; transform: translateY(0); }
     </style>
 </head>
 <body class="bg-white text-gray-900">
@@ -254,17 +252,7 @@ function assembleHTML(sectionsHTML: string): string {
 ${sectionsHTML}
 
 <script>
-// Intersection Observer for scroll animations
 document.addEventListener('DOMContentLoaded', () => {
-    const observer = new IntersectionObserver((entries) => {
-        entries.forEach(entry => {
-            if (entry.isIntersecting) {
-                entry.target.classList.add('visible');
-            }
-        });
-    }, { threshold: 0.1 });
-    document.querySelectorAll('[data-animate]').forEach(el => observer.observe(el));
-
     // Mobile menu toggle
     const menuBtn = document.getElementById('mobile-menu-btn');
     const mobileMenu = document.getElementById('mobile-menu');

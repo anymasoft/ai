@@ -33,24 +33,35 @@ OUTPUT RULES:
 - Use Inter font (already loaded globally).
 
 DESIGN TOKENS:
-- Container: max-w-7xl mx-auto px-6 lg:px-8
-- Section padding: py-20 md:py-28 lg:py-32
+- Container: max-w-6xl mx-auto px-6 lg:px-8  или  max-w-7xl mx-auto px-6 lg:px-8
+- Section padding: py-20 md:py-28 lg:py-32  (МИНИМУМ py-20!)
 - H2: text-3xl md:text-4xl lg:text-5xl font-bold tracking-tight text-gray-900
 - H3: text-xl md:text-2xl font-semibold
 - Body text: text-base md:text-lg text-gray-600 leading-relaxed
-- Primary button: inline-flex items-center justify-center bg-{accent}-600 hover:bg-{accent}-700 text-white px-8 py-4 rounded-xl text-lg font-semibold shadow-lg shadow-{accent}-500/25 transition-all duration-200 hover:-translate-y-0.5
+- Primary CTA button: inline-flex items-center justify-center bg-{accent}-600 hover:bg-{accent}-700 text-white px-8 py-4 rounded-xl text-lg font-semibold shadow-lg shadow-{accent}-500/25 transition-all duration-200 hover:-translate-y-0.5
 - Secondary button: border-2 border-gray-200 hover:border-{accent}-300 text-gray-700 px-8 py-4 rounded-xl text-lg font-semibold transition-all
+- Minimum button size: px-6 py-3. НИКОГДА меньше! Основные CTA = px-8 py-4.
 - Cards: bg-white rounded-2xl p-8 shadow-sm border border-gray-100 hover:shadow-lg transition-all duration-300
 - Icons: inline SVG only, w-6 h-6, Heroicons style. NO emoji.
 - Images: Unsplash URLs, rounded-2xl shadow-xl. NO placehold.co.
-- Add data-animate attribute to the <section> for scroll animations.
+- Style: один акцентный цвет + нейтральные (gray). Никакого UI-шума.
 
-FORBIDDEN:
-- Lorem ipsum
-- Buttons smaller than py-3 px-6
+CRITICAL VISIBILITY RULE:
+- ALL content MUST be fully visible immediately on page load WITHOUT JavaScript.
+- NEVER use: opacity-0, visibility: hidden, display: none for section content.
+- NEVER use: data-animate, data-animation, Intersection Observer for showing content.
+- ALLOWED: transition/hover effects ONLY on hover (buttons, cards).
+
+FORBIDDEN (нарушение = ошибка):
+- Lorem ipsum или placeholder-текст
+- py-1, py-2, px-2, px-3 для кнопок — ЗАПРЕЩЕНО
+- Перегруженные grid'ы (5+ колонок)
 - Emoji as icons
-- Placeholder images
+- Placeholder images (placehold.co)
 - Pure black #000 text
+- Кнопки без hover-эффекта
+- Секции без py-20+ отступов
+- opacity-0, data-animate — ЗАПРЕЩЕНО, контент должен быть видим сразу
 
 Write all text content in RUSSIAN language, realistic and relevant to the site topic.
 First character: <
@@ -70,7 +81,10 @@ HERO REQUIREMENTS:
 - If "hero-split": two columns (text left, image right on lg:). Use relevant Unsplash photo.
 - If "hero-centered": centered text, wider max-w, image or illustration below.
 - H1: text-5xl md:text-6xl lg:text-7xl font-extrabold tracking-tight leading-[1.1]
+- H1 ≤ 12 СЛОВ максимум. Коротко, мощно, по делу. Если длиннее — СОКРАТИ.
+- Подзаголовок УСИЛИВАЕТ ценность, а НЕ повторяет H1. Другой смысл, другие слова.
 - Use bg-gradient-to-r from-{accent}-600 to-{second}-500 bg-clip-text text-transparent for the KEY WORD in H1.
+- Кнопка действия ВИДНА без скролла (above the fold).
 - Below buttons add small trust text: "Без карты • 14 дней бесплатно" or similar.
 - Include a <nav> at the top of the section: logo left, links center, CTA button right, mobile burger.
 
@@ -153,8 +167,11 @@ ${BASE_RULES}`,
 
     footer: `You generate a FOOTER. Variant: {variant}.
 
+FOOTER ОБЯЗАТЕЛЕН ВСЕГДА. Лендинг без footer = БРАК.
+
 REQUIREMENTS:
 - Tag: <footer class="bg-gray-950 text-gray-400 py-16">
+- ОБЯЗАТЕЛЬНО внутри: бренд/лого, краткий текст о компании (1-2 предложения), вторичный CTA (кнопка или ссылка).
 - If "footer-4col": 4 columns (grid lg:grid-cols-4): Company info, Services/Product, Resources, Contacts.
 - If "footer-simple": logo + links + social icons in one row.
 - Include: phone, email, address (realistic Russian).
