@@ -10,11 +10,15 @@ import "dotenv/config";
 // ---------------------------------------------------------------------------
 // Конфигурация
 // ---------------------------------------------------------------------------
+/** Основная модель для HQ-генерации (секции, ревизия). Должна быть лучшей доступной. */
 const AI_MODEL         = process.env.OPENAI_MODEL         || "gpt-4o-mini";
-const AI_MODEL_HQ      = process.env.OPENAI_MODEL_HQ      || AI_MODEL;
+/** Быстрая/дешёвая модель для вспомогательных задач (enhance prompt, plan JSON). */
+const AI_MODEL_FAST    = process.env.OPENAI_MODEL_FAST    || AI_MODEL;
 const HIGH_QUALITY      = process.env.HIGH_QUALITY === "true";
 const AI_MAX_TOKENS     = parseInt(process.env.AI_MAX_TOKENS || "8192", 10);
 const AI_TEMPERATURE    = parseFloat(process.env.AI_TEMPERATURE || "0.5");
+
+console.log(`[AI CONFIG] model=${AI_MODEL} model_fast=${AI_MODEL_FAST} hq_default=${HIGH_QUALITY} max_tokens=${AI_MAX_TOKENS} temp=${AI_TEMPERATURE}`);
 
 export interface AICallOptions {
     system: string;
@@ -31,7 +35,9 @@ export interface AICallOptions {
  */
 export async function callAI(opts: AICallOptions): Promise<string> {
     const useHQ = opts.highQuality ?? HIGH_QUALITY;
-    const model = useHQ ? AI_MODEL_HQ : AI_MODEL;
+    // highQuality=true  → основная модель (лучшая, для генерации контента)
+    // highQuality=false → быстрая модель (для enhance prompt, plan JSON)
+    const model = useHQ ? AI_MODEL : AI_MODEL_FAST;
     const maxTokens = opts.maxTokens ?? AI_MAX_TOKENS;
     const temperature = opts.temperature ?? AI_TEMPERATURE;
 
@@ -77,4 +83,4 @@ export async function callAIJSON<T = any>(opts: Omit<AICallOptions, "format">): 
     }
 }
 
-export { AI_MODEL, AI_MODEL_HQ, HIGH_QUALITY };
+export { AI_MODEL, AI_MODEL_FAST, HIGH_QUALITY };
