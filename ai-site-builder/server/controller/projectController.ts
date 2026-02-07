@@ -3,6 +3,7 @@ import { v4 as uuidv4 } from "uuid";
 
 import db from "../lib/db.js";
 import openai from "../config/openai.js";
+import { SYSTEM_PROMPT_REVISE } from "../prompts/designSystem.js";
 
 const AI_MODEL = process.env.OPENAI_MODEL || "gpt-4o-mini";
 
@@ -93,23 +94,11 @@ Return ONLY the enhanced text request. No code. No HTML.`,
             messages: [
                 {
                     role: "system",
-                    content: `
-                    You are an expert web developer.
-
-                    CRITICAL REQUIREMENTS:
-                    - Return ONLY the complete updated HTML code with the requested changes.
-                    - Use Tailwind CSS for ALL styling (NO custom CSS).
-                    - Use Tailwind utility classes for all styling changes.
-                    - Include all JavaScript in <script> tags before closing </body>
-                    - Make sure it's a complete, standalone HTML document with Tailwind CSS
-                    - Return the HTML Code Only, nothing else
-
-                    Apply the requested changes while maintaining the Tailwind CSS styling approach.`,
+                    content: SYSTEM_PROMPT_REVISE,
                 },
                 {
                     role: "user",
-                    content: `
-                    Here is the current website code: "${currentProject.current_code}", The user want these changes: "${enhancedPrompt}"`,
+                    content: `CURRENT HTML CODE:\n${currentProject.current_code}\n\nREQUESTED CHANGES:\n${enhancedPrompt}`,
                 },
             ],
         });
