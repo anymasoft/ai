@@ -121,6 +121,22 @@ export function validateGeneratedHTML(html: string): ValidationResult {
         }
     }
 
+    // --- 12. Нет hidden lg:block на изображениях и контенте (АДАПТИВНОСТЬ) ---
+    // Ищем теги с class="... hidden ... lg:block/md:flex/sm:grid ..."
+    // Исключения: id="mobile-menu", id="scroll-top" — UI-элементы, которым hidden допустим
+    const hiddenBpRegex = /<[^>]*class="[^"]*\bhidden\b[^"]*\b(?:lg|md|sm):(?:block|flex|grid)\b[^"]*"[^>]*>/gi;
+    let hiddenMatch: RegExpExecArray | null;
+    let hiddenContentCount = 0;
+    while ((hiddenMatch = hiddenBpRegex.exec(html)) !== null) {
+        const tag = hiddenMatch[0];
+        // Пропускаем допустимые UI-элементы
+        if (/id="(mobile-menu|scroll-top|burger)/i.test(tag)) continue;
+        hiddenContentCount++;
+    }
+    if (hiddenContentCount > 0) {
+        errors.push(`Найден hidden + breakpoint на контенте (${hiddenContentCount} шт.) — изображения/блоки скрыты на мобильных`);
+    }
+
     return {
         passed: errors.length === 0,
         errors,

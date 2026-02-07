@@ -52,6 +52,14 @@ CRITICAL VISIBILITY RULE:
 - NEVER use: data-animate, data-animation, Intersection Observer for showing content.
 - ALLOWED: transition/hover effects ONLY on hover (buttons, cards).
 
+CRITICAL RESPONSIVENESS RULE:
+- NEVER hide images or key content on mobile: hidden lg:block, hidden md:flex — FORBIDDEN.
+- ALL images must be VISIBLE on ALL screen sizes (mobile, tablet, desktop).
+- Adapt via sizing: w-full, max-h-[300px] lg:max-h-none, object-cover.
+- Adapt via spacing/order: mt-10 lg:mt-0, order-first lg:order-last.
+- NEVER adapt via display:none.
+- EXCEPTION: hidden is OK ONLY for mobile burger menu (toggled by JS).
+
 FORBIDDEN (нарушение = ошибка):
 - Lorem ipsum или placeholder-текст
 - py-1, py-2, px-2, px-3 для кнопок — ЗАПРЕЩЕНО
