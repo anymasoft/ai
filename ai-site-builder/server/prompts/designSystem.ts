@@ -48,8 +48,8 @@ const HERO_EXAMPLE_LIGHT = `
         </span>
       </div>
     </div>
-    <div class="relative hidden lg:block">
-      <img src="https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=800&h=600&fit=crop" alt="Dashboard" class="rounded-2xl shadow-2xl">
+    <div class="relative mt-10 lg:mt-0">
+      <img src="https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=800&h=600&fit=crop" alt="Dashboard" class="rounded-2xl shadow-2xl w-full max-h-[400px] lg:max-h-none object-cover">
       <div class="absolute -bottom-6 -left-6 bg-white rounded-xl shadow-lg border border-gray-100 p-4 flex items-center gap-3">
         <div class="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
           <svg class="w-5 h-5 text-green-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/></svg>
@@ -216,6 +216,28 @@ CTA-КНОПКИ (СТРОГИЕ ПРАВИЛА)
 ЗАПРЕЩЕНО: placehold.co, placeholder.com, via.placeholder.com, серые прямоугольники.
 
 ───────────────────────────────────────────────────────────
+АДАПТИВНОСТЬ (КРИТИЧЕСКОЕ ПРАВИЛО)
+───────────────────────────────────────────────────────────
+ЗАПРЕЩЕНО скрывать ключевой контент на мобильных/планшетах:
+✗ hidden lg:block / hidden md:flex / hidden md:grid
+✗ hidden + любой breakpoint для изображений, hero-визуала, блоков доверия
+✗ Любые паттерны, где элемент невидим на мобильных
+
+ВСЕ ИЗОБРАЖЕНИЯ ДОЛЖНЫ:
+✓ Быть ВИДИМЫМИ на всех экранах (mobile, tablet, desktop)
+✓ Адаптироваться через размеры: w-full, max-h-[300px] lg:max-h-none, object-cover
+✓ Адаптироваться через spacing: mt-10 lg:mt-0
+✓ Адаптироваться через order: order-first lg:order-last
+✓ НИКОГДА через display:none / hidden
+
+Для hero-split на мобильных:
+  Вместо hidden lg:block → показать изображение под текстом с mt-10 lg:mt-0.
+  Использовать: grid grid-cols-1 lg:grid-cols-2 — колонки стакаются на мобильном.
+  Изображение: w-full max-h-[300px] md:max-h-[400px] lg:max-h-none object-cover rounded-2xl.
+
+ИСКЛЮЧЕНИЕ: hidden допустим ТОЛЬКО для бургер-меню (hidden по дефолту, показ через JS).
+
+───────────────────────────────────────────────────────────
 ОБЯЗАТЕЛЬНАЯ СТРУКТУРА СЕКЦИЙ
 ───────────────────────────────────────────────────────────
 КАЖДЫЙ лендинг ОБЯЗАН содержать ВСЕ следующие секции:
@@ -302,6 +324,8 @@ CTA-КНОПКИ (СТРОГИЕ ПРАВИЛА)
 ✗ data-animate, data-animation — ЗАПРЕЩЕНО
 ✗ Intersection Observer для показа контента — ЗАПРЕЩЕНО
 ✗ Любой контент, невидимый без JavaScript — КРИТИЧЕСКАЯ ОШИБКА
+✗ hidden lg:block / hidden md:flex на изображениях и ключевом контенте — ЗАПРЕЩЕНО
+✗ Скрытие изображений и визуалов на мобильных — КРИТИЧЕСКАЯ ОШИБКА
 
 ───────────────────────────────────────────────────────────
 САМОПРОВЕРКА (выполни ПЕРЕД выводом HTML)
@@ -315,6 +339,7 @@ CTA-КНОПКИ (СТРОГИЕ ПРАВИЛА)
 6. Подзаголовок отличается от H1 по смыслу?  Если повтор — ПЕРЕПИШИ.
 7. Нет lorem ipsum и placeholder?  Если есть — ЗАМЕНИ на реальный текст.
 8. Открой мысленно этот HTML в браузере с отключённым JS — видна ли страница?  Если пустая — ПЕРЕДЕЛАЙ.
+9. Есть ли hidden lg:block на изображениях или контенте?  Если да — замени на адаптивные размеры (w-full, max-h, object-cover).
 
 ───────────────────────────────────────────────────────────
 JAVASCRIPT (перед </body>)
@@ -391,10 +416,17 @@ RULES:
 - Эмодзи вместо иконок (только inline SVG)
 - Лендинг без <nav> или <footer>
 - opacity-0, data-animate, Intersection Observer для показа секций
+- hidden lg:block / hidden md:flex на изображениях и ключевом контенте
+
+КРИТИЧЕСКОЕ ПРАВИЛО АДАПТИВНОСТИ:
+- ВСЕ изображения видимы на ВСЕХ экранах (mobile, tablet, desktop).
+- ЗАПРЕЩЕНО: hidden lg:block, hidden md:flex для контента.
+- Адаптация ТОЛЬКО через размеры (w-full, max-h, object-cover), НЕ через display:none.
 
 САМОПРОВЕРКА ПЕРЕД ВЫВОДОМ:
 1. Все секции видны без JS? Нет opacity-0, data-animate? Если есть — УБЕРИ.
-2. Этот лендинг можно показать заказчику за деньги? Если нет — ПЕРЕДЕЛАЙ.
+2. Все изображения видны на мобильном? Нет hidden lg:block? Если есть — ЗАМЕНИ на адаптивные размеры.
+3. Этот лендинг можно показать заказчику за деньги? Если нет — ПЕРЕДЕЛАЙ.
 
 First character of your response: <
 Last character of your response: >
