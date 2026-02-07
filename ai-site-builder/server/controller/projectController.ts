@@ -2,9 +2,8 @@ import { Request, Response } from "express";
 import { v4 as uuidv4 } from "uuid";
 
 import db from "../lib/db.js";
-import openai from "../config/openai.js";
-
-const AI_MODEL = process.env.OPENAI_MODEL || "gpt-4o-mini";
+import { callAI } from "../config/ai.js";
+import { SYSTEM_PROMPT_REVISE } from "../prompts/designSystem.js";
 
 // To make revisions
 export const makeRevision = async (req: Request, res: Response) => {
@@ -48,30 +47,23 @@ export const makeRevision = async (req: Request, res: Response) => {
         db.prepare("UPDATE users SET credits = credits - 5 WHERE id = ?").run(userId);
 
         // Enhance user prompt
-        const promptEnhanceResponse = await openai.chat.completions.create({
-            model: AI_MODEL,
-            messages: [
-                {
-                    role: "system",
-                    content: `
-                    You are a prompt enhancement specialist. The user wants to make changes to their website. Enhance their request to be more specific and actionable for a web developer.
+        const enhancedPrompt = await callAI({
+            system: `You are a prompt enhancement specialist. The user wants to make changes to their website. Rewrite their request to be more specific and actionable.
 
-                    Enhance this by:
-                    1. Being specific about what elements to change
-                    2. Mentioning design details (colors, spacing, sizes)
-                    3. Clarifying the desired outcome
-                    4. Using clear technical terms
+CRITICAL RULES:
+- Return ONLY plain text description, 1-2 sentences max.
+- NEVER generate HTML, CSS, JavaScript or any code.
+- NEVER include code tags, backticks, or markup.
+- Your output is a TEXT instruction for a developer, NOT code.
 
-                    Return ONLY the enhanced request, nothing else. Keep it concise (1-2 sentences).`,
-                },
-                {
-                    role: "user",
-                    content: `User's request: "${message}"`,
-                },
-            ],
-        });
-
-        const enhancedPrompt = promptEnhanceResponse.choices[0].message.content || message;
+Enhance by being specific about elements, colors, spacing, sizes, and desired outcome.
+Return ONLY the enhanced text request. No code. No HTML.`,
+            user: `User's request: "${message}"`,
+            highQuality: false,
+            maxTokens: 512,
+            temperature: 0.5,
+            format: "text",
+        }) || message;
 
         db.prepare("INSERT INTO conversations (id, project_id, role, content) VALUES (?, ?, ?, ?)").run(
             uuidv4(),
@@ -88,33 +80,12 @@ export const makeRevision = async (req: Request, res: Response) => {
         );
 
         // Generate website code
-        const codeGenerationResponse = await openai.chat.completions.create({
-            model: AI_MODEL,
-            messages: [
-                {
-                    role: "system",
-                    content: `
-                    You are an expert web developer.
-
-                    CRITICAL REQUIREMENTS:
-                    - Return ONLY the complete updated HTML code with the requested changes.
-                    - Use Tailwind CSS for ALL styling (NO custom CSS).
-                    - Use Tailwind utility classes for all styling changes.
-                    - Include all JavaScript in <script> tags before closing </body>
-                    - Make sure it's a complete, standalone HTML document with Tailwind CSS
-                    - Return the HTML Code Only, nothing else
-
-                    Apply the requested changes while maintaining the Tailwind CSS styling approach.`,
-                },
-                {
-                    role: "user",
-                    content: `
-                    Here is the current website code: "${currentProject.current_code}", The user want these changes: "${enhancedPrompt}"`,
-                },
-            ],
+        const code = await callAI({
+            system: SYSTEM_PROMPT_REVISE,
+            user: `CURRENT HTML CODE:\n${currentProject.current_code}\n\nREQUESTED CHANGES:\n${enhancedPrompt}`,
+            highQuality: false,
+            format: "html",
         });
-
-        const code = codeGenerationResponse.choices[0].message.content || "";
 
         if (!code) {
             db.prepare("INSERT INTO conversations (id, project_id, role, content) VALUES (?, ?, ?, ?)").run(
@@ -129,16 +100,11 @@ export const makeRevision = async (req: Request, res: Response) => {
             return;
         }
 
-        const cleanCode = code
-            .replace(/```[a-z]*\n?/gi, "")
-            .replace(/```$/g, "")
-            .trim();
-
         const versionId = uuidv4();
         db.prepare("INSERT INTO versions (id, project_id, code, description) VALUES (?, ?, ?, ?)").run(
             versionId,
             projectId,
-            cleanCode,
+            code,
             "Changes made"
         );
 
@@ -149,7 +115,7 @@ export const makeRevision = async (req: Request, res: Response) => {
             "I have made changes to your website! You can now preview it."
         );
 
-        db.prepare("UPDATE projects SET current_code = ? WHERE id = ?").run(cleanCode, projectId);
+        db.prepare("UPDATE projects SET current_code = ? WHERE id = ?").run(code, projectId);
 
         res.json({ message: "Changes made successfully" });
     } catch (error: any) {

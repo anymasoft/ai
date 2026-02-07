@@ -3,9 +3,7 @@ import { v4 as uuidv4 } from "uuid";
 import "dotenv/config";
 
 import db from "../lib/db.js";
-import openai from "../config/openai.js";
-
-const AI_MODEL = process.env.OPENAI_MODEL || "gpt-4o-mini";
+import { generateLanding } from "../lib/pipeline.js";
 
 // Get the user credits
 export const getUserCredits = async (req: Request, res: Response) => {
@@ -87,126 +85,47 @@ export const createUserProject = async (req: Request, res: Response) => {
 
         res.json({ projectId });
 
+        // Определить режим: highQuality через query param ?hq=true
+        const forceHQ = req.query.hq === "true" || undefined;
+
         // Generate website asynchronously
         (async () => {
             try {
-                // Enhance user prompt
-                const promptEnhanceResponse = await openai.chat.completions.create({
-                    model: AI_MODEL,
-                    messages: [
-                        {
-                            role: "system",
-                            content: `
-                    You are a prompt enhancement specialist. Take the user's website request and expand it into a detailed, comprehensive prompt that will help create the best possible website.
-
-                    Enhance this prompt by:
-                    1. Adding specific design details (layout, color scheme, typography)
-                    2. Specifying key sections and features
-                    3. Describing the user experience and interactions
-                    4. Including modern web design best practices
-                    5. Mentioning responsive design requirements
-                    6. Adding any missing but important elements
-
-                    Return ONLY the enhanced prompt, nothing else. Make it detailed but concise (2-3 paragraphs max).`,
-                        },
-                        {
-                            role: "user",
-                            content: initial_prompt,
-                        },
-                    ],
-                });
-
-                const enhancedPrompt = promptEnhanceResponse.choices[0].message.content;
+                const result = await generateLanding(initial_prompt, forceHQ);
 
                 db.prepare("INSERT INTO conversations (id, project_id, role, content) VALUES (?, ?, ?, ?)").run(
                     uuidv4(),
                     projectId,
                     "assistant",
-                    `I have enhanced your prompt to:\n\n"${enhancedPrompt}"`
+                    `Промпт улучшен (режим: ${result.mode}):\n\n"${result.enhancedPrompt}"`
                 );
 
-                db.prepare("INSERT INTO conversations (id, project_id, role, content) VALUES (?, ?, ?, ?)").run(
-                    uuidv4(),
-                    projectId,
-                    "assistant",
-                    "Now generating your website..."
-                );
-
-                // Generate website code
-                const codeGenerationResponse = await openai.chat.completions.create({
-                    model: AI_MODEL,
-                    messages: [
-                        {
-                            role: "system",
-                            content: `
-                    You are an expert web developer. Create a complete, production-ready, single-page website based on this request: "${enhancedPrompt}"
-
-                    CRITICAL REQUIREMENTS:
-                    - You MUST output valid HTML ONLY.
-                    - Use Tailwind CSS for ALL styling
-                    - Include this EXACT script in the <head>: <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
-                    - Use Tailwind utility classes extensively for styling, animations, and responsiveness
-                    - Make it fully functional and interactive with JavaScript in <script> tag before closing </body>
-                    - Use modern, beautiful design with great UX using Tailwind classes
-                    - Make it responsive using Tailwind responsive classes (sm:, md:, lg:, xl:)
-                    - Use Tailwind animations and transitions (animate-*, transition-*)
-                    - Include all necessary meta tags
-                    - Use Google Fonts CDN if needed for custom fonts
-                    - Use placeholder images from https://placehold.co/600x400
-                    - Use Tailwind gradient classes for beautiful backgrounds
-                    - Make sure all buttons, cards, and components use Tailwind styling
-
-                    CRITICAL HARD RULES:
-                    1. You MUST put ALL output ONLY into message.content.
-                    2. You MUST NOT place anything in "reasoning", "analysis", "reasoning_details", or any hidden fields.
-                    3. You MUST NOT include internal thoughts, explanations, analysis, comments, or markdown.
-                    4. Do NOT include markdown, explanations, notes, or code fences.
-
-                    The HTML should be complete and ready to render as-is with Tailwind CSS.`,
-                        },
-                        {
-                            role: "user",
-                            content: enhancedPrompt || "",
-                        },
-                    ],
-                });
-
-                const code = codeGenerationResponse.choices[0].message.content || "";
-
-                if (!code) {
+                if (!result.html) {
                     db.prepare("INSERT INTO conversations (id, project_id, role, content) VALUES (?, ?, ?, ?)").run(
-                        uuidv4(),
-                        projectId,
-                        "assistant",
-                        "Unable to generate code, please try again.."
+                        uuidv4(), projectId, "assistant",
+                        "Не удалось сгенерировать код, попробуйте ещё раз."
                     );
-
                     db.prepare("UPDATE users SET credits = credits + 5 WHERE id = ?").run(userId);
                     return;
                 }
 
-                const cleanCode = code
-                    .replace(/```[a-z]*\n?/gi, "")
-                    .replace(/```$/g, "")
-                    .trim();
+                // Логируем результат валидации
+                if (result.validation.warnings.length > 0) {
+                    console.log(`[PIPELINE] Final warnings: ${result.validation.warnings.join("; ")}`);
+                }
 
-                // Create version for the project
                 const versionId = uuidv4();
                 db.prepare("INSERT INTO versions (id, project_id, code, description) VALUES (?, ?, ?, ?)").run(
-                    versionId,
-                    projectId,
-                    cleanCode,
-                    "Initial version"
+                    versionId, projectId, result.html,
+                    `Initial version (${result.mode}${result.plan ? ", " + Object.keys(result.plan).length + " sections" : ""})`
                 );
 
                 db.prepare("INSERT INTO conversations (id, project_id, role, content) VALUES (?, ?, ?, ?)").run(
-                    uuidv4(),
-                    projectId,
-                    "assistant",
-                    "I have created your website! You can now preview it and request any changes."
+                    uuidv4(), projectId, "assistant",
+                    "Сайт создан! Вы можете просмотреть его и запросить изменения."
                 );
 
-                db.prepare("UPDATE projects SET current_code = ? WHERE id = ?").run(cleanCode, projectId);
+                db.prepare("UPDATE projects SET current_code = ? WHERE id = ?").run(result.html, projectId);
             } catch (error: any) {
                 console.error("Error in project generation:", error);
                 db.prepare("UPDATE users SET credits = credits + 5 WHERE id = ?").run(userId);
