@@ -45,7 +45,12 @@ DESIGN TOKENS:
 - Icons: inline SVG only, w-6 h-6, Heroicons style. NO emoji.
 - Images: Unsplash URLs, rounded-2xl shadow-xl. NO placehold.co.
 - Style: один акцентный цвет + нейтральные (gray). Никакого UI-шума.
-- Add data-animate attribute to the <section> for scroll animations.
+
+CRITICAL VISIBILITY RULE:
+- ALL content MUST be fully visible immediately on page load WITHOUT JavaScript.
+- NEVER use: opacity-0, visibility: hidden, display: none for section content.
+- NEVER use: data-animate, data-animation, Intersection Observer for showing content.
+- ALLOWED: transition/hover effects ONLY on hover (buttons, cards).
 
 FORBIDDEN (нарушение = ошибка):
 - Lorem ipsum или placeholder-текст
@@ -56,6 +61,7 @@ FORBIDDEN (нарушение = ошибка):
 - Pure black #000 text
 - Кнопки без hover-эффекта
 - Секции без py-20+ отступов
+- opacity-0, data-animate — ЗАПРЕЩЕНО, контент должен быть видим сразу
 
 Write all text content in RUSSIAN language, realistic and relevant to the site topic.
 First character: <

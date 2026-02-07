@@ -100,6 +100,27 @@ export function validateGeneratedHTML(html: string): ValidationResult {
         warnings.push("Используются placeholder-изображения вместо реальных фото");
     }
 
+    // --- 11. Нет скрытого контента (КРИТИЧЕСКАЯ ПРОВЕРКА) ---
+    // data-animate — паттерн скрытия через JS (opacity-0 при загрузке)
+    if (/data-animate/i.test(html)) {
+        errors.push("Найден data-animate — контент скрыт до загрузки JS, запрещено");
+    }
+    // opacity-0 на секциях/контейнерах (НЕ на декоративных элементах типа animate-ping)
+    const opacityHiddenSections = html.match(/<(section|div|main|article)[^>]*class="[^"]*\bopacity-0\b[^"]*"[^>]*>/gi);
+    if (opacityHiddenSections && opacityHiddenSections.length > 0) {
+        errors.push("Найден opacity-0 на контентных элементах — контент невидим без JS");
+    }
+    // CSS-правило opacity: 0 в <style> (скрывает контент при загрузке)
+    const styleBlocks = html.match(/<style[^>]*>([\s\S]*?)<\/style>/gi);
+    if (styleBlocks) {
+        for (const block of styleBlocks) {
+            if (/opacity:\s*0/.test(block) && !/hover/.test(block)) {
+                errors.push("Найден CSS opacity: 0 в <style> — контент скрыт при загрузке");
+                break;
+            }
+        }
+    }
+
     return {
         passed: errors.length === 0,
         errors,

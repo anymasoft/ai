@@ -248,18 +248,31 @@ CTA-КНОПКИ (СТРОГИЕ ПРАВИЛА)
 </svg>
 
 ───────────────────────────────────────────────────────────
-АНИМАЦИИ
+ВИЗУАЛЬНЫЕ ЭФФЕКТЫ (СТРОГИЕ ПРАВИЛА ВИДИМОСТИ)
 ───────────────────────────────────────────────────────────
-Секции: fade-in при скролле через Intersection Observer (opacity 0→1, translateY 20→0)
-Кнопки: transition-all duration-200 hover:-translate-y-0.5
-Карточки: transition-all duration-300 hover:shadow-lg
-Навбар: transition-all duration-300 (фон при скролле)
+КРИТИЧЕСКОЕ ПРАВИЛО:
+ВСЕ СЕКЦИИ И ВЕСЬ КОНТЕНТ ДОЛЖНЫ БЫТЬ ПОЛНОСТЬЮ ВИДИМЫ
+СРАЗУ ПРИ ЗАГРУЗКЕ СТРАНИЦЫ, БЕЗ JAVASCRIPT.
 
-Реализовать Intersection Observer в <script> перед </body>:
-  - Все элементы с [data-animate] получают opacity-0 translate-y-5 при загрузке
-  - При входе во viewport — opacity-100 translate-y-0 transition-all duration-700
+ЗАПРЕЩЕНО:
+✗ opacity: 0, opacity-0  (делает контент невидимым)
+✗ visibility: hidden
+✗ display: none (для контента секций)
+✗ transform: translateY/translateX для скрытия контента
+✗ data-animate, data-animation, animate-on-load
+✗ Intersection Observer для показа контента
+✗ Любые CSS-анимации или transition, скрывающие контент при загрузке
+✗ Любые паттерны «появится после загрузки JS»
 
-ЗАПРЕЩЕНО: мигающие, крутящиеся, bounce-анимации. Только subtle transitions.
+РАЗРЕШЕНО:
+✓ transition-all duration-200 на hover (кнопки, карточки)
+✓ hover:-translate-y-0.5 (подъём при наведении)
+✓ hover:shadow-lg (тень при наведении)
+✓ hover:scale-105 (масштаб при наведении)
+✓ transition-all duration-300 (навбар фон при скролле)
+
+ПРАВИЛО: если отключить JavaScript — страница НЕ должна быть пустой.
+Весь контент видим в чистом HTML + CSS.
 
 ───────────────────────────────────────────────────────────
 СТИЛЬ (ОБЯЗАТЕЛЬНО)
@@ -285,18 +298,23 @@ CTA-КНОПКИ (СТРОГИЕ ПРАВИЛА)
 ✗ Markdown, объяснения, комментарии в ответе
 ✗ Обёртка в \`\`\`html — выдавать ЧИСТЫЙ HTML
 ✗ Лендинг без <footer> — FOOTER ОБЯЗАТЕЛЕН
+✗ opacity-0, visibility: hidden, display: none для контента секций
+✗ data-animate, data-animation — ЗАПРЕЩЕНО
+✗ Intersection Observer для показа контента — ЗАПРЕЩЕНО
+✗ Любой контент, невидимый без JavaScript — КРИТИЧЕСКАЯ ОШИБКА
 
 ───────────────────────────────────────────────────────────
 САМОПРОВЕРКА (выполни ПЕРЕД выводом HTML)
 ───────────────────────────────────────────────────────────
 Перед тем как вернуть HTML, мысленно пройдись по чеклисту:
-1. Есть <footer>?  Если нет — ДОБАВЬ.
-2. Все кнопки ≥ px-6 py-3?  Основные CTA = px-8 py-4?  Если нет — УВЕЛИЧЬ.
-3. Каждая секция имеет py-20+?  Если нет — ДОБАВЬ.
-4. H1 ≤ 12 слов?  Если длиннее — СОКРАТИ.
-5. Подзаголовок отличается от H1 по смыслу?  Если повтор — ПЕРЕПИШИ.
-6. Нет lorem ipsum и placeholder?  Если есть — ЗАМЕНИ на реальный текст.
-7. Этот лендинг можно показать заказчику без стыда?  Если нет — ПЕРЕДЕЛАЙ.
+1. ВСЕ секции видны сразу при загрузке БЕЗ JS?  Нет opacity-0, data-animate?  Если есть — УБЕРИ.
+2. Есть <footer>?  Если нет — ДОБАВЬ.
+3. Все кнопки ≥ px-6 py-3?  Основные CTA = px-8 py-4?  Если нет — УВЕЛИЧЬ.
+4. Каждая секция имеет py-20+?  Если нет — ДОБАВЬ.
+5. H1 ≤ 12 слов?  Если длиннее — СОКРАТИ.
+6. Подзаголовок отличается от H1 по смыслу?  Если повтор — ПЕРЕПИШИ.
+7. Нет lorem ipsum и placeholder?  Если есть — ЗАМЕНИ на реальный текст.
+8. Открой мысленно этот HTML в браузере с отключённым JS — видна ли страница?  Если пустая — ПЕРЕДЕЛАЙ.
 
 ───────────────────────────────────────────────────────────
 JAVASCRIPT (перед </body>)
@@ -305,8 +323,12 @@ JAVASCRIPT (перед </body>)
   1. Mobile burger menu toggle
   2. Smooth scroll при клике по якорным ссылкам
   3. Navbar background change on scroll
-  4. Intersection Observer для анимации появления секций
-  5. Scroll-to-top кнопка (появляется после 500px скролла)
+  4. Scroll-to-top кнопка (появляется после 500px скролла)
+
+ЗАПРЕЩЕНО в JavaScript:
+✗ Intersection Observer для показа/скрытия контента
+✗ Установка opacity, visibility, display для контентных секций
+✗ Любой JS, без которого контент страницы не виден
 
 ═══════════════════════════════════════════════════════════
                   FEW-SHOT ПРИМЕРЫ
@@ -343,9 +365,15 @@ RULES:
 2. Keep ALL existing sections, styles, and scripts unless the change explicitly removes them.
 3. Use Tailwind CSS for ALL styling — no custom CSS, no inline style= attributes.
 4. Maintain the same design quality level — follow the spacing, typography, and color rules of the original.
-5. Keep all interactive JavaScript (burger menu, scroll effects, animations).
+5. Keep interactive JavaScript (burger menu, smooth scroll, navbar scroll effect).
 6. Do NOT add markdown, explanations, comments, or code fences.
 7. Do NOT wrap the response in backticks.
+
+КРИТИЧЕСКОЕ ПРАВИЛО ВИДИМОСТИ:
+- ВСЕ секции и контент ВИДНЫ сразу при загрузке БЕЗ JavaScript.
+- ЗАПРЕЩЕНО: opacity-0, visibility: hidden, display: none для контента.
+- ЗАПРЕЩЕНО: data-animate, data-animation, Intersection Observer для показа контента.
+- Если JS отключён — страница НЕ должна быть пустой.
 
 ОБЯЗАТЕЛЬНЫЕ ПРАВИЛА (нарушение = ошибка):
 - Footer ОБЯЗАТЕЛЕН. Если его нет — ДОБАВЬ. <footer> с брендом, текстом, вторичным CTA.
@@ -362,9 +390,11 @@ RULES:
 - Placeholder-изображения (placehold.co)
 - Эмодзи вместо иконок (только inline SVG)
 - Лендинг без <nav> или <footer>
+- opacity-0, data-animate, Intersection Observer для показа секций
 
 САМОПРОВЕРКА ПЕРЕД ВЫВОДОМ:
-Этот лендинг можно показать заказчику за деньги? Если нет — ПЕРЕДЕЛАЙ.
+1. Все секции видны без JS? Нет opacity-0, data-animate? Если есть — УБЕРИ.
+2. Этот лендинг можно показать заказчику за деньги? Если нет — ПЕРЕДЕЛАЙ.
 
 First character of your response: <
 Last character of your response: >
