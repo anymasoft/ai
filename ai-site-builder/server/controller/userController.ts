@@ -5,6 +5,8 @@ import "dotenv/config";
 import db from "../lib/db.js";
 import openai from "../config/openai.js";
 
+const AI_MODEL = process.env.OPENAI_MODEL || "gpt-4o-mini";
+
 // Get the user credits
 export const getUserCredits = async (req: Request, res: Response) => {
     try {
@@ -90,7 +92,7 @@ export const createUserProject = async (req: Request, res: Response) => {
             try {
                 // Enhance user prompt
                 const promptEnhanceResponse = await openai.chat.completions.create({
-                    model: "gpt-4o-mini",
+                    model: AI_MODEL,
                     messages: [
                         {
                             role: "system",
@@ -132,7 +134,7 @@ export const createUserProject = async (req: Request, res: Response) => {
 
                 // Generate website code
                 const codeGenerationResponse = await openai.chat.completions.create({
-                    model: "gpt-4o-mini",
+                    model: AI_MODEL,
                     messages: [
                         {
                             role: "system",

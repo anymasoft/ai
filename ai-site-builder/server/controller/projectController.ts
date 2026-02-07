@@ -4,6 +4,8 @@ import { v4 as uuidv4 } from "uuid";
 import db from "../lib/db.js";
 import openai from "../config/openai.js";
 
+const AI_MODEL = process.env.OPENAI_MODEL || "gpt-4o-mini";
+
 // To make revisions
 export const makeRevision = async (req: Request, res: Response) => {
     const userId = req.userId;
@@ -47,7 +49,7 @@ export const makeRevision = async (req: Request, res: Response) => {
 
         // Enhance user prompt
         const promptEnhanceResponse = await openai.chat.completions.create({
-            model: "gpt-4o-mini",
+            model: AI_MODEL,
             messages: [
                 {
                     role: "system",
@@ -87,7 +89,7 @@ export const makeRevision = async (req: Request, res: Response) => {
 
         // Generate website code
         const codeGenerationResponse = await openai.chat.completions.create({
-            model: "gpt-4o-mini",
+            model: AI_MODEL,
             messages: [
                 {
                     role: "system",
