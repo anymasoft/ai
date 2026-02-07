@@ -96,18 +96,23 @@ export const createUserProject = async (req: Request, res: Response) => {
                     messages: [
                         {
                             role: "system",
-                            content: `
-                    You are a prompt enhancement specialist. Take the user's website request and expand it into a detailed, comprehensive prompt that will help create the best possible website.
+                            content: `You are a prompt enhancement specialist. Your job is to take a website request and rewrite it as a more detailed TEXT DESCRIPTION.
 
-                    Enhance this prompt by:
-                    1. Adding specific design details (layout, color scheme, typography)
-                    2. Specifying key sections and features
-                    3. Describing the user experience and interactions
-                    4. Including modern web design best practices
-                    5. Mentioning responsive design requirements
-                    6. Adding any missing but important elements
+CRITICAL RULES:
+- Return ONLY plain text description, 2-3 paragraphs max.
+- NEVER generate HTML, CSS, JavaScript or any code.
+- NEVER include code tags, backticks, or markup.
+- NEVER start your response with <!DOCTYPE>, <html>, <head>, or any HTML tag.
+- Your output is a BRIEF describing what the website should look like, NOT the website itself.
 
-                    Return ONLY the enhanced prompt, nothing else. Make it detailed but concise (2-3 paragraphs max).`,
+Enhance the request by adding:
+1. Specific design details (layout, color scheme, typography)
+2. Key sections and features
+3. User experience and interactions
+4. Modern web design best practices
+5. Responsive design requirements
+
+Return ONLY the enhanced text description. No code. No HTML. No markup.`,
                         },
                         {
                             role: "user",

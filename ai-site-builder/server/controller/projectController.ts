@@ -53,16 +53,16 @@ export const makeRevision = async (req: Request, res: Response) => {
             messages: [
                 {
                     role: "system",
-                    content: `
-                    You are a prompt enhancement specialist. The user wants to make changes to their website. Enhance their request to be more specific and actionable for a web developer.
+                    content: `You are a prompt enhancement specialist. The user wants to make changes to their website. Rewrite their request to be more specific and actionable.
 
-                    Enhance this by:
-                    1. Being specific about what elements to change
-                    2. Mentioning design details (colors, spacing, sizes)
-                    3. Clarifying the desired outcome
-                    4. Using clear technical terms
+CRITICAL RULES:
+- Return ONLY plain text description, 1-2 sentences max.
+- NEVER generate HTML, CSS, JavaScript or any code.
+- NEVER include code tags, backticks, or markup.
+- Your output is a TEXT instruction for a developer, NOT code.
 
-                    Return ONLY the enhanced request, nothing else. Keep it concise (1-2 sentences).`,
+Enhance by being specific about elements, colors, spacing, sizes, and desired outcome.
+Return ONLY the enhanced text request. No code. No HTML.`,
                 },
                 {
                     role: "user",
