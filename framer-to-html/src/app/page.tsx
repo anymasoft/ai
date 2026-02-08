@@ -133,7 +133,8 @@ export default function Home() {
         throw new Error(data?.error || `Clean failed (${res.status})`);
       }
       const blob = await res.blob();
-      const outName = file.name.replace(/\.[^.]+$/, "") + "-clean.html";
+      const baseName = file.name.replace(/\.[^.]+$/, "");
+      const outName = `${baseName}-clean.zip`;
       const link = document.createElement("a");
       link.href = URL.createObjectURL(blob);
       link.download = outName;
@@ -142,7 +143,7 @@ export default function Home() {
       link.remove();
       URL.revokeObjectURL(link.href);
 
-      trackDownload(outName, "html", "file_clean");
+      trackDownload(outName, "zip", "file_clean");
       trackFormInteraction("file_clean_form", "submit", {
         fileName: file.name,
         success: true,
