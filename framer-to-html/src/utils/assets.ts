@@ -217,6 +217,38 @@ export async function extractAssets(
     }
   });
 
+  // <video src>, <video poster>
+  $("video[src]").each((_, el) => {
+    const src = $(el).attr("src");
+    if (src && !src.startsWith("data:")) {
+      const abs = resolveUrl(src, siteOrigin);
+      if (abs) toDownload.add(abs);
+    }
+  });
+  $("video[poster]").each((_, el) => {
+    const poster = $(el).attr("poster");
+    if (poster && !poster.startsWith("data:")) {
+      const abs = resolveUrl(poster, siteOrigin);
+      if (abs) toDownload.add(abs);
+    }
+  });
+
+  // Framer lazy-loading attributes: data-framer-src, data-src
+  $("[data-framer-src]").each((_, el) => {
+    const src = $(el).attr("data-framer-src");
+    if (src && !src.startsWith("data:")) {
+      const abs = resolveUrl(src, siteOrigin);
+      if (abs) toDownload.add(abs);
+    }
+  });
+  $("[data-src]").each((_, el) => {
+    const src = $(el).attr("data-src");
+    if (src && !src.startsWith("data:")) {
+      const abs = resolveUrl(src, siteOrigin);
+      if (abs) toDownload.add(abs);
+    }
+  });
+
   // CSS url() inside <style> tags
   $("style").each((_, el) => {
     const css = $(el).text();
@@ -287,31 +319,21 @@ export async function extractAssets(
   for (const entry of entries) {
     if (classifyAsset(entry.originalUrl) !== "css") continue;
     let css = entry.data.toString("utf-8");
-    let changed = false;
-    for (const [absUrl, localPath] of urlToLocal) {
-      if (absUrl === entry.originalUrl) continue;
-      // Compute relative path from the CSS file location to the asset
-      const from = path.dirname(entry.localPath);
-      const rel = path.relative(from, localPath);
-      // Replace all occurrences in CSS
-      if (css.includes(absUrl)) {
-        css = css.split(absUrl).join(rel);
-        changed = true;
+    const cssBaseUrl = entry.originalUrl;
+    const cssDir = path.dirname(entry.localPath);
+
+    css = css.replace(/url\(\s*(['"]?)(.*?)\1\s*\)/g, (match, quote, ref) => {
+      const trimmed = ref.trim();
+      if (!trimmed || trimmed.startsWith("data:")) return match;
+      const abs = resolveUrl(trimmed, cssBaseUrl);
+      if (abs && urlToLocal.has(abs)) {
+        const rel = path.relative(cssDir, urlToLocal.get(abs)!);
+        return `url(${quote}${rel}${quote})`;
       }
-      // Also try the original ref (before resolving) — some CSS uses relative refs
-      try {
-        const origRef = new URL(absUrl).pathname;
-        if (css.includes(origRef)) {
-          css = css.split(origRef).join(rel);
-          changed = true;
-        }
-      } catch {
-        // skip
-      }
-    }
-    if (changed) {
-      entry.data = Buffer.from(css, "utf-8");
-    }
+      return match;
+    });
+
+    entry.data = Buffer.from(css, "utf-8");
   }
 
   // --- 5. Rewrite HTML attributes to point to local assets ---
@@ -352,33 +374,47 @@ export async function extractAssets(
   rewriteAttr('link[rel="stylesheet"][href]', "href");
   rewriteAttr('link[rel="icon"][href], link[rel="apple-touch-icon"][href], link[rel="shortcut icon"][href]', "href");
   rewriteAttr("script[src]", "src");
+  rewriteAttr("video[src]", "src");
+  rewriteAttr("video[poster]", "poster");
+  rewriteAttr("[data-framer-src]", "data-framer-src");
+  rewriteAttr("[data-src]", "data-src");
 
-  // Rewrite url() in <style> tags
+  // Rewrite url() in <style> tags — resolve each ref before lookup
   $("style").each((_, el) => {
     const node = $(el);
-    let css = node.text();
-    let changed = false;
-    for (const [absUrl, localPath] of urlToLocal) {
-      if (css.includes(absUrl)) {
-        css = css.split(absUrl).join(localPath);
-        changed = true;
+    const original = node.text();
+    const rewritten = original.replace(
+      /url\(\s*(['"]?)(.*?)\1\s*\)/g,
+      (match, quote, ref) => {
+        const trimmed = ref.trim();
+        if (!trimmed || trimmed.startsWith("data:")) return match;
+        const abs = resolveUrl(trimmed, siteOrigin);
+        if (abs && urlToLocal.has(abs)) {
+          return `url(${quote}${urlToLocal.get(abs)}${quote})`;
+        }
+        return match;
       }
-    }
-    if (changed) node.text(css);
+    );
+    if (rewritten !== original) node.text(rewritten);
   });
 
-  // Rewrite url() in inline styles
+  // Rewrite url() in inline styles — resolve each ref before lookup
   $("[style]").each((_, el) => {
     const node = $(el);
-    let style = node.attr("style") ?? "";
-    let changed = false;
-    for (const [absUrl, localPath] of urlToLocal) {
-      if (style.includes(absUrl)) {
-        style = style.split(absUrl).join(localPath);
-        changed = true;
+    const original = node.attr("style") ?? "";
+    const rewritten = original.replace(
+      /url\(\s*(['"]?)(.*?)\1\s*\)/g,
+      (match, quote, ref) => {
+        const trimmed = ref.trim();
+        if (!trimmed || trimmed.startsWith("data:")) return match;
+        const abs = resolveUrl(trimmed, siteOrigin);
+        if (abs && urlToLocal.has(abs)) {
+          return `url(${quote}${urlToLocal.get(abs)}${quote})`;
+        }
+        return match;
       }
-    }
-    if (changed) node.attr("style", style);
+    );
+    if (rewritten !== original) node.attr("style", rewritten);
   });
 
   return entries;
