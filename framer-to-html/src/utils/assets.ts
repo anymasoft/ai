@@ -7,6 +7,7 @@ import path from "path";
 const ALLOWED_ASSET_HOSTS = [
   "framerusercontent.com",
   "framer.com",
+  "framerstatic.com",
   "fonts.googleapis.com",
   "fonts.gstatic.com",
   "cdn.jsdelivr.net",
@@ -197,6 +198,17 @@ export async function extractAssets(
     }
   });
 
+  // <link rel="modulepreload/preload" href> — ES modules & preloaded assets
+  $('link[rel="modulepreload"][href], link[rel="preload"][href]').each(
+    (_, el) => {
+      const href = $(el).attr("href");
+      if (href) {
+        const abs = resolveUrl(href, siteOrigin);
+        if (abs) toDownload.add(abs);
+      }
+    }
+  );
+
   // <link rel="icon/apple-touch-icon" href>
   $('link[rel="icon"][href], link[rel="apple-touch-icon"][href], link[rel="shortcut icon"][href]').each(
     (_, el) => {
@@ -372,6 +384,8 @@ export async function extractAssets(
   rewriteAttr("source[src]", "src");
   rewriteSrcset("source[srcset]");
   rewriteAttr('link[rel="stylesheet"][href]', "href");
+  rewriteAttr('link[rel="modulepreload"][href]', "href");
+  rewriteAttr('link[rel="preload"][href]', "href");
   rewriteAttr('link[rel="icon"][href], link[rel="apple-touch-icon"][href], link[rel="shortcut icon"][href]', "href");
   rewriteAttr("script[src]", "src");
   rewriteAttr("video[src]", "src");
