@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { cleanFramerHtml } from "@/utils/rewriter";
+import * as cheerio from "cheerio";
+import { removeFramerElements, injectDefenses } from "@/utils/rewriter";
+import { normalizeStructure } from "@/utils/normalizer";
+import { validateResult, hasErrors } from "@/utils/validator";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -28,8 +31,25 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const cleaned = cleanFramerHtml(html);
+    // DOM-based pipeline
+    const $ = cheerio.load(html);
+    removeFramerElements($);
+    normalizeStructure($);
+    injectDefenses($);
 
+    // Validate
+    const warnings = validateResult($);
+    if (hasErrors(warnings)) {
+      const errors = warnings
+        .filter((w) => w.level === "error")
+        .map((w) => w.message);
+      return NextResponse.json(
+        { error: `Validation failed: ${errors.join("; ")}` },
+        { status: 422 }
+      );
+    }
+
+    const cleaned = $.html();
     const outName = file.name.replace(/\.[^.]+$/, "") + "-clean.html";
 
     return new NextResponse(cleaned, {
