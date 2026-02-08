@@ -1,7 +1,11 @@
 import * as cheerio from "cheerio";
 
-/** CSS-селекторы всех Framer UI-элементов, которые нужно удалить */
-const FRAMER_REMOVE_SELECTORS = [
+// ---------------------------------------------------------------------------
+// 1. Selectors for DOM elements to remove entirely
+// ---------------------------------------------------------------------------
+
+/** Framer UI overlays: badges, editor bar */
+const FRAMER_UI_SELECTORS = [
   "#__framer-badge-container",
   ".__framer-badge",
   "a.__framer-badge",
@@ -16,24 +20,104 @@ const FRAMER_REMOVE_SELECTORS = [
   "iframe[id^='__framer-editorbar']",
 ];
 
+/** Framer domains whose <script src> should be removed */
+const FRAMER_SCRIPT_DOMAINS = [
+  "framer.com",
+  "events.framer.com",
+  "router.framer.com",
+];
+
+/** Patterns in inline <script> content that indicate Framer runtime */
+const FRAMER_INLINE_PATTERNS = [
+  "__framer_importFromPackage",
+  "__framer_registry",
+  "framer-page-transition",
+  "window.__framer_events",
+  "window.__framer_ssr",
+  "framerInternalRenderReady",
+];
+
+// ---------------------------------------------------------------------------
+// 2. Core cleaning function
+// ---------------------------------------------------------------------------
+
+/**
+ * Remove ALL Framer artifacts from a cheerio document:
+ * - UI overlays (badges, editor bar)
+ * - <script> tags loading from framer.com domains
+ * - <script> tags with inline Framer runtime code
+ * - <link rel="preconnect"> to framer domains
+ * - <meta name="generator" content="Framer">
+ * - Framer analytics / tracking scripts
+ */
+export function removeFramerElements($: cheerio.CheerioAPI): void {
+  // 1. Remove UI overlay elements by selector
+  for (const sel of FRAMER_UI_SELECTORS) {
+    $(sel).remove();
+  }
+
+  // 2. Remove <script src="...framer.com..."> (runtime, modules, analytics)
+  $("script[src]").each((_, el) => {
+    const src = $(el).attr("src") ?? "";
+    for (const domain of FRAMER_SCRIPT_DOMAINS) {
+      if (src.includes(domain)) {
+        $(el).remove();
+        return;
+      }
+    }
+  });
+
+  // 3. Remove inline <script> with Framer runtime code
+  $("script:not([src])").each((_, el) => {
+    const text = $(el).text();
+    for (const pattern of FRAMER_INLINE_PATTERNS) {
+      if (text.includes(pattern)) {
+        $(el).remove();
+        return;
+      }
+    }
+  });
+
+  // 4. Remove <link rel="preconnect"> to framer domains
+  $('link[rel="preconnect"], link[rel="dns-prefetch"]').each((_, el) => {
+    const href = $(el).attr("href") ?? "";
+    if (href.includes("framer.com") || href.includes("framerusercontent.com")) {
+      $(el).remove();
+    }
+  });
+
+  // 5. Remove <meta name="generator" content="Framer">
+  $('meta[name="generator"]').each((_, el) => {
+    const content = $(el).attr("content") ?? "";
+    if (content.toLowerCase().includes("framer")) {
+      $(el).remove();
+    }
+  });
+
+  // 6. Remove Framer-specific <noscript> (often contains redirect/fallback)
+  $("noscript").each((_, el) => {
+    const html = $(el).html() ?? "";
+    if (html.includes("framer.com") || html.includes("__framer")) {
+      $(el).remove();
+    }
+  });
+}
+
+// ---------------------------------------------------------------------------
+// 3. Defensive injections (CSS + JS fallback)
+// ---------------------------------------------------------------------------
+
 const DEFENSIVE_CSS = `<style data-export="framer-hide">
-a.__framer-badge, .__framer-badge, #__framer-badge-container,
-div#__framer-badge-container, [data-framer-name="Badge"],
-[data-framer-appear-id][class*="__framer-badge"],
-[class*="__framer-badge"], div[id^="__framer-badge"],
-div[class^="framer-"][class*="__framer-badge"],
-#__framer-editorbar-container, #__framer-editorbar-button,
-#__framer-editorbar-label, [id^="__framer-editorbar"],
-div[id^="__framer-editorbar"] {
+[class*="__framer-badge"], [id^="__framer-badge"],
+[id^="__framer-editorbar"], [data-framer-name="Badge"] {
   display: none !important;
-  pointer-events: none !important;
   visibility: hidden !important;
 }
 </style>`;
 
 const RUNTIME_REMOVER = `<script data-export="framer-hide">
 (function(){
-  var sel = ${JSON.stringify(FRAMER_REMOVE_SELECTORS)};
+  var sel = ${JSON.stringify(FRAMER_UI_SELECTORS)};
   function rm(){
     try { document.querySelectorAll(sel.join(",")).forEach(function(n){ n.remove(); }); } catch(_){}
   }
@@ -45,19 +129,6 @@ const RUNTIME_REMOVER = `<script data-export="framer-hide">
 })();
 </script>`;
 
-/**
- * Remove Framer badge/editor artifacts from a cheerio instance.
- * DOM-based: no regex for HTML manipulation.
- */
-export function removeFramerElements($: cheerio.CheerioAPI): void {
-  for (const sel of FRAMER_REMOVE_SELECTORS) {
-    $(sel).remove();
-  }
-}
-
-/**
- * Inject defensive CSS + runtime remover script into a cheerio instance.
- */
 export function injectDefenses($: cheerio.CheerioAPI): void {
   const head = $("head");
   if (head.length) {
@@ -74,10 +145,10 @@ export function injectDefenses($: cheerio.CheerioAPI): void {
   }
 }
 
-/**
- * Rewrite internal navigation links for multi-page static export.
- * Converts absolute same-origin and relative hrefs/actions to local filenames.
- */
+// ---------------------------------------------------------------------------
+// 4. Navigation link rewriting (multi-page export)
+// ---------------------------------------------------------------------------
+
 export function rewriteNavLinks(
   $: cheerio.CheerioAPI,
   origin: string,
@@ -102,10 +173,10 @@ export function rewriteNavLinks(
   rewrite("action");
 }
 
-/**
- * Full clean pipeline for a single HTML string (used by /api/clean for local files).
- * DOM-based, no regex.
- */
+// ---------------------------------------------------------------------------
+// 5. Convenience wrappers (kept for backward compatibility)
+// ---------------------------------------------------------------------------
+
 export function cleanFramerHtml(html: string): string {
   const $ = cheerio.load(html);
   removeFramerElements($);
@@ -113,9 +184,6 @@ export function cleanFramerHtml(html: string): string {
   return $.html();
 }
 
-/**
- * Full rewrite pipeline for URL-export (clean + rewrite links).
- */
 export function buildRewriters(
   origin: string,
   pathToFilename: Map<string, string>
