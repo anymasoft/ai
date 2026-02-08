@@ -76,13 +76,13 @@ export async function POST(req: NextRequest) {
     // --- Pipeline ---
     const $ = cheerio.load(html);
 
-    // Step 1: Remove Framer UI + runtime + analytics
-    removeFramerElements($);
-
-    // Step 2: Detect origin for asset resolution
+    // Step 1: Detect origin BEFORE removing Framer elements (scripts contain origin URLs)
     const siteOrigin = detectOrigin($);
 
-    // Step 3: Download & localize all assets
+    // Step 2: Remove Framer UI + runtime + analytics
+    removeFramerElements($);
+
+    // Step 3: Download & localize all assets (images, CSS, JS, fonts, video)
     const zip = new JSZip();
     const assetEntries = await extractAssets($, siteOrigin);
     for (const entry of assetEntries) {
