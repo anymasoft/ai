@@ -1,0 +1,96 @@
+{
+  "Firebase Analytics": [
+    "com.google.firebase.analytics",
+    "com.google.android.gms.measurement"
+  ],
+  "Firebase Crashlytics": [
+    "com.google.firebase.crashlytics",
+    "com.crashlytics.sdk"
+  ],
+  "Google Ads (AdMob)": [
+    "com.google.android.gms.ads",
+    "com.google.ads"
+  ],
+  "Facebook SDK": [
+    "com.facebook.sdk",
+    "com.facebook.appevents",
+    "com.facebook.internal"
+  ],
+  "Facebook Analytics": [
+    "com.facebook.appevents.ml"
+  ],
+  "Yandex AppMetrica": [
+    "com.yandex.metrica",
+    "io.appmetrica.analytics"
+  ],
+  "Adjust": [
+    "com.adjust.sdk"
+  ],
+  "AppsFlyer": [
+    "com.appsflyer"
+  ],
+  "Branch.io": [
+    "io.branch.referral"
+  ],
+  "Amplitude": [
+    "com.amplitude.api"
+  ],
+  "Mixpanel": [
+    "com.mixpanel.android"
+  ],
+  "Segment": [
+    "com.segment.analytics"
+  ],
+  "OneSignal": [
+    "com.onesignal"
+  ],
+  "Flurry": [
+    "com.flurry.sdk",
+    "com.flurry.android"
+  ],
+  "Unity Ads": [
+    "com.unity3d.services",
+    "com.unity3d.ads"
+  ],
+  "ironSource": [
+    "com.ironsource.mediationsdk"
+  ],
+  "Chartboost": [
+    "com.chartboost.sdk"
+  ],
+  "AppLovin": [
+    "com.applovin.sdk"
+  ],
+  "Mopub": [
+    "com.mopub.mobileads"
+  ],
+  "Sentry": [
+    "io.sentry.android"
+  ],
+  "Bugsnag": [
+    "com.bugsnag.android"
+  ],
+  "New Relic": [
+    "com.newrelic.agent.android"
+  ],
+  "Braze (Appboy)": [
+    "com.braze",
+    "com.appboy"
+  ],
+  "CleverTap": [
+    "com.clevertap.android"
+  ],
+  "Singular": [
+    "com.singular.sdk"
+  ],
+  "Kochava": [
+    "com.kochava.base"
+  ],
+  "MyTracker (Mail.ru)": [
+    "com.my.tracker"
+  ],
+  "VK SDK": [
+    "com.vk.sdk",
+    "com.vk.api"
+  ]
+}
