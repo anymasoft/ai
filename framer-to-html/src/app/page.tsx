@@ -13,8 +13,13 @@ import {
   Badge,
   ThemeIcon,
 } from "@mantine/core";
-import { useCallback, useState, useEffect } from "react";
-import { IconDownload, IconCode, IconSparkles } from "@tabler/icons-react";
+import { useCallback, useRef, useState, useEffect } from "react";
+import {
+  IconDownload,
+  IconCode,
+  IconSparkles,
+  IconUpload,
+} from "@tabler/icons-react";
 import {
   trackButtonClick,
   trackDownload,
@@ -30,6 +35,53 @@ export default function Home() {
   const [url, setUrl] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [file, setFile] = useState<File | null>(null);
+  const [fileLoading, setFileLoading] = useState(false);
+  const [fileError, setFileError] = useState<string | null>(null);
+  const [dragging, setDragging] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const dragCounter = useRef(0);
+
+  const acceptFile = useCallback((f: File | null) => {
+    if (!f) return;
+    if (!f.name.endsWith(".html") && !f.name.endsWith(".htm")) {
+      setFileError("Only .html / .htm files are accepted");
+      return;
+    }
+    setFile(f);
+    setFileError(null);
+  }, []);
+
+  const handleDragEnter = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    dragCounter.current++;
+    setDragging(true);
+  }, []);
+
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    dragCounter.current--;
+    if (dragCounter.current === 0) setDragging(false);
+  }, []);
+
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+  }, []);
+
+  const handleDrop = useCallback(
+    (e: React.DragEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      dragCounter.current = 0;
+      setDragging(false);
+      const dropped = e.dataTransfer.files?.[0] ?? null;
+      acceptFile(dropped);
+    },
+    [acceptFile]
+  );
 
   // Track scroll behavior
   const handleScroll = useScrollTracking("home");
@@ -61,6 +113,48 @@ export default function Home() {
       };
     }
   }, [handleScroll, handleVisibilityChange, trackTime]);
+
+  const onFileClean = useCallback(async () => {
+    setFileError(null);
+    if (!file) {
+      setFileError("Select an HTML file");
+      return;
+    }
+    setFileLoading(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      const res = await fetch("/api/clean", {
+        method: "POST",
+        body: formData,
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data?.error || `Clean failed (${res.status})`);
+      }
+      const blob = await res.blob();
+      const outName = file.name.replace(/\.[^.]+$/, "") + "-clean.html";
+      const link = document.createElement("a");
+      link.href = URL.createObjectURL(blob);
+      link.download = outName;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(link.href);
+
+      trackDownload(outName, "html", "file_clean");
+      trackFormInteraction("file_clean_form", "submit", {
+        fileName: file.name,
+        success: true,
+      });
+    } catch (e: any) {
+      const errorMessage = e?.message || "Unexpected error";
+      setFileError(errorMessage);
+      trackError("file_clean_error", errorMessage, "file_clean_form");
+    } finally {
+      setFileLoading(false);
+    }
+  }, [file]);
 
   const onSubmit = useCallback(async () => {
     setError(null);
@@ -272,6 +366,128 @@ export default function Home() {
                 leftSection={<IconDownload size={20} />}
               >
                 {loading ? "Exporting..." : "Export to HTML"}
+              </Button>
+            </Stack>
+          </Paper>
+
+          {/* Divider */}
+          <Center>
+            <Text size="sm" c="dimmed" fw={500}>
+              — or upload a local Framer HTML file —
+            </Text>
+          </Center>
+
+          {/* File Upload Form */}
+          <Paper
+            p="xl"
+            radius="xl"
+            style={{
+              background: "rgba(255, 255, 255, 0.9)",
+              backdropFilter: "blur(20px)",
+              border: "1px solid rgba(255, 255, 255, 0.2)",
+              boxShadow: "var(--shadow-large)",
+            }}
+          >
+            <Stack gap="lg">
+              <Text size="sm" fw={600} c="dark">
+                Local HTML File
+              </Text>
+
+              {/* Drop zone */}
+              <Box
+                onDragEnter={handleDragEnter}
+                onDragLeave={handleDragLeave}
+                onDragOver={handleDragOver}
+                onDrop={handleDrop}
+                onClick={() => fileInputRef.current?.click()}
+                style={{
+                  border: dragging
+                    ? "2px solid rgba(102, 126, 234, 0.8)"
+                    : "2px dashed rgba(0, 0, 0, 0.15)",
+                  borderRadius: "var(--border-radius)",
+                  padding: "32px 16px",
+                  textAlign: "center",
+                  cursor: "pointer",
+                  transition: "all 0.2s ease",
+                  background: dragging
+                    ? "rgba(102, 126, 234, 0.06)"
+                    : "rgba(0, 0, 0, 0.01)",
+                }}
+              >
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept=".html,.htm"
+                  style={{ display: "none" }}
+                  onChange={(e) => {
+                    acceptFile(e.target.files?.[0] ?? null);
+                    e.target.value = "";
+                  }}
+                />
+
+                <Stack gap="xs" align="center">
+                  <ThemeIcon
+                    size={48}
+                    radius="xl"
+                    variant="light"
+                    color={dragging ? "blue" : "gray"}
+                  >
+                    <IconUpload size={24} />
+                  </ThemeIcon>
+
+                  {file ? (
+                    <>
+                      <Text size="sm" fw={600}>
+                        {file.name}
+                      </Text>
+                      <Text size="xs" c="dimmed">
+                        {(file.size / 1024).toFixed(1)} KB — click or drop to
+                        replace
+                      </Text>
+                    </>
+                  ) : (
+                    <>
+                      <Text size="sm" fw={500} c={dragging ? "blue" : "dark"}>
+                        {dragging
+                          ? "Drop the file here"
+                          : "Drag & drop an .html file here"}
+                      </Text>
+                      <Text size="xs" c="dimmed">
+                        or click to browse
+                      </Text>
+                    </>
+                  )}
+                </Stack>
+              </Box>
+
+              {fileError ? (
+                <Text
+                  c="red"
+                  size="sm"
+                  style={{ display: "flex", alignItems: "center", gap: "8px" }}
+                >
+                  {fileError}
+                </Text>
+              ) : null}
+
+              <Button
+                loading={fileLoading}
+                disabled={!file}
+                onClick={() => {
+                  trackButtonClick("clean_file_button", "file_form");
+                  onFileClean();
+                }}
+                size="lg"
+                radius="md"
+                style={{
+                  background: "var(--gradient-accent)",
+                  border: "none",
+                  boxShadow: "var(--shadow-medium)",
+                  transition: "all 0.2s ease",
+                }}
+                leftSection={<IconSparkles size={20} />}
+              >
+                {fileLoading ? "Cleaning..." : "Clean HTML"}
               </Button>
             </Stack>
           </Paper>
