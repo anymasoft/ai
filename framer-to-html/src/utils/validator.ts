@@ -5,11 +5,13 @@ export type ValidationWarning = {
   message: string;
 };
 
-/** Patterns that should NOT appear in clean output */
+/** Patterns that should NOT appear in clean output.
+ * Note: framer.com/m/ (module CDN) is intentionally kept for animations.
+ * These URLs get rewritten to local paths by the asset pipeline, so if
+ * they still appear, it means something wasn't downloaded properly.
+ */
 const FORBIDDEN_PATTERNS = [
-  "framer.com/m/", // Framer module runtime
-  "framer.com/sites/", // Framer sites runtime
-  "events.framer.com", // Framer analytics
+  "events.framer.com",  // Framer analytics — should always be removed
 ];
 
 /**

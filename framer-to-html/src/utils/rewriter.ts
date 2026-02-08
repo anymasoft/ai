@@ -20,21 +20,25 @@ const FRAMER_UI_SELECTORS = [
   "iframe[id^='__framer-editorbar']",
 ];
 
-/** Framer domains whose <script src> should be removed */
+/** Framer domains whose <script src> should be removed.
+ * IMPORTANT: Do NOT add "framer.com" here — it matches module CDN
+ * (framer.com/m/framer-motion, etc.) which is needed for animations.
+ */
 const FRAMER_SCRIPT_DOMAINS = [
-  "framer.com",
-  "events.framer.com",
-  "router.framer.com",
+  "events.framer.com",    // analytics only
+  "router.framer.com",    // SPA router — not needed for static export
 ];
 
-/** Patterns in inline <script> content that indicate Framer runtime */
+/** Patterns in inline <script> content that should be removed.
+ * IMPORTANT: Only remove analytics/editor scripts.
+ * Keep: __framer_importFromPackage (module loader — needed for animations),
+ *       __framer_registry (component registration — needed for animations),
+ *       __framer_ssr (SSR state — may contain animation parameters),
+ *       framer-page-transition (page transition animations).
+ */
 const FRAMER_INLINE_PATTERNS = [
-  "__framer_importFromPackage",
-  "__framer_registry",
-  "framer-page-transition",
-  "window.__framer_events",
-  "window.__framer_ssr",
-  "framerInternalRenderReady",
+  "window.__framer_events",       // analytics tracking
+  "framerInternalRenderReady",    // editor communication
 ];
 
 // ---------------------------------------------------------------------------
