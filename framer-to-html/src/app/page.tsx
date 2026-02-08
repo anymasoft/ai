@@ -13,7 +13,7 @@ import {
   Badge,
   ThemeIcon,
 } from "@mantine/core";
-import { useCallback, useState, useEffect } from "react";
+import { useCallback, useRef, useState, useEffect } from "react";
 import {
   IconDownload,
   IconCode,
@@ -38,6 +38,50 @@ export default function Home() {
   const [file, setFile] = useState<File | null>(null);
   const [fileLoading, setFileLoading] = useState(false);
   const [fileError, setFileError] = useState<string | null>(null);
+  const [dragging, setDragging] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const dragCounter = useRef(0);
+
+  const acceptFile = useCallback((f: File | null) => {
+    if (!f) return;
+    if (!f.name.endsWith(".html") && !f.name.endsWith(".htm")) {
+      setFileError("Only .html / .htm files are accepted");
+      return;
+    }
+    setFile(f);
+    setFileError(null);
+  }, []);
+
+  const handleDragEnter = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    dragCounter.current++;
+    setDragging(true);
+  }, []);
+
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    dragCounter.current--;
+    if (dragCounter.current === 0) setDragging(false);
+  }, []);
+
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+  }, []);
+
+  const handleDrop = useCallback(
+    (e: React.DragEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      dragCounter.current = 0;
+      setDragging(false);
+      const dropped = e.dataTransfer.files?.[0] ?? null;
+      acceptFile(dropped);
+    },
+    [acceptFile]
+  );
 
   // Track scroll behavior
   const handleScroll = useScrollTracking("home");
@@ -345,48 +389,76 @@ export default function Home() {
             }}
           >
             <Stack gap="lg">
-              <Stack gap="xs">
-                <Text size="sm" fw={600} c="dark">
-                  Local HTML File
-                </Text>
-                <Group gap="sm" align="flex-end">
-                  <Box style={{ flex: 1 }}>
-                    <input
-                      type="file"
-                      accept=".html,.htm"
-                      id="framer-file-input"
-                      style={{ display: "none" }}
-                      onChange={(e) => {
-                        const f = e.target.files?.[0] ?? null;
-                        setFile(f);
-                        setFileError(null);
-                      }}
-                    />
-                    <Button
-                      variant="outline"
-                      size="lg"
-                      radius="md"
-                      fullWidth
-                      leftSection={<IconUpload size={20} />}
-                      onClick={() =>
-                        document.getElementById("framer-file-input")?.click()
-                      }
-                      styles={{
-                        root: {
-                          border: "2px dashed rgba(0, 0, 0, 0.15)",
-                          color: file ? "var(--mantine-color-dark-7)" : "var(--mantine-color-dimmed)",
-                          "&:hover": {
-                            borderColor: "rgba(102, 126, 234, 0.5)",
-                            background: "rgba(102, 126, 234, 0.03)",
-                          },
-                        },
-                      }}
-                    >
-                      {file ? file.name : "Choose .html file"}
-                    </Button>
-                  </Box>
-                </Group>
-              </Stack>
+              <Text size="sm" fw={600} c="dark">
+                Local HTML File
+              </Text>
+
+              {/* Drop zone */}
+              <Box
+                onDragEnter={handleDragEnter}
+                onDragLeave={handleDragLeave}
+                onDragOver={handleDragOver}
+                onDrop={handleDrop}
+                onClick={() => fileInputRef.current?.click()}
+                style={{
+                  border: dragging
+                    ? "2px solid rgba(102, 126, 234, 0.8)"
+                    : "2px dashed rgba(0, 0, 0, 0.15)",
+                  borderRadius: "var(--border-radius)",
+                  padding: "32px 16px",
+                  textAlign: "center",
+                  cursor: "pointer",
+                  transition: "all 0.2s ease",
+                  background: dragging
+                    ? "rgba(102, 126, 234, 0.06)"
+                    : "rgba(0, 0, 0, 0.01)",
+                }}
+              >
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept=".html,.htm"
+                  style={{ display: "none" }}
+                  onChange={(e) => {
+                    acceptFile(e.target.files?.[0] ?? null);
+                    e.target.value = "";
+                  }}
+                />
+
+                <Stack gap="xs" align="center">
+                  <ThemeIcon
+                    size={48}
+                    radius="xl"
+                    variant="light"
+                    color={dragging ? "blue" : "gray"}
+                  >
+                    <IconUpload size={24} />
+                  </ThemeIcon>
+
+                  {file ? (
+                    <>
+                      <Text size="sm" fw={600}>
+                        {file.name}
+                      </Text>
+                      <Text size="xs" c="dimmed">
+                        {(file.size / 1024).toFixed(1)} KB — click or drop to
+                        replace
+                      </Text>
+                    </>
+                  ) : (
+                    <>
+                      <Text size="sm" fw={500} c={dragging ? "blue" : "dark"}>
+                        {dragging
+                          ? "Drop the file here"
+                          : "Drag & drop an .html file here"}
+                      </Text>
+                      <Text size="xs" c="dimmed">
+                        or click to browse
+                      </Text>
+                    </>
+                  )}
+                </Stack>
+              </Box>
 
               {fileError ? (
                 <Text
@@ -394,7 +466,7 @@ export default function Home() {
                   size="sm"
                   style={{ display: "flex", alignItems: "center", gap: "8px" }}
                 >
-                  ⚠️ {fileError}
+                  {fileError}
                 </Text>
               ) : null}
 
