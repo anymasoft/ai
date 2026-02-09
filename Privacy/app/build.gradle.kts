@@ -27,7 +27,7 @@ if (keystorePropertiesFile.exists()) {
 }
 
 android {
-    namespace = "com.privacyhelper"
+    namespace = "ink.beem.privacyhelper"
     compileSdk = 34
 
     signingConfigs {
