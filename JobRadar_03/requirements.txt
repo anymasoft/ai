@@ -1,9 +1,0 @@
-fastapi
-uvicorn
-jinja2
-telethon
-python-telegram-bot==20.7
-sqlalchemy==2.0.23
-sqlalchemy[asyncio]
-apscheduler==3.10.4
-python-dotenv
