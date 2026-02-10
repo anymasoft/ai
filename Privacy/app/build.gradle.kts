@@ -1,50 +1,17 @@
-import java.util.Properties
-import java.io.FileInputStream
-
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
     id("org.jetbrains.kotlin.plugin.compose")
 }
 
-// Create a file named keystore.properties in your project's root directory
-// (alongside your root build.gradle.kts and settings.gradle.kts)
-// with the following content, replacing the placeholders:
-//
-// storePassword=<your_store_password>
-// keyAlias=<your_key_alias>
-// keyPassword=<your_key_password>
-// storeFile=<path_to_your_keystore_file_relative_to_root_project>
-//
-// For example:
-// storeFile=../my-release-key.jks
-//
-// You can generate a keystore file using Android Studio's "Generate Signed Bundle / APK" wizard.
-val keystorePropertiesFile = rootProject.file("keystore.properties")
-val keystoreProperties = Properties()
-if (keystorePropertiesFile.exists()) {
-    keystoreProperties.load(FileInputStream(keystorePropertiesFile))
-}
-
 android {
     namespace = "ink.beem.privacyhelper"
-    compileSdk = 34
-
-    signingConfigs {
-        create("release") {
-            if (keystorePropertiesFile.exists()) {
-                keyAlias = keystoreProperties.getProperty("keyAlias")
-                keyPassword = keystoreProperties.getProperty("keyPassword")
-                storeFile = file(keystoreProperties.getProperty("storeFile"))
-                storePassword = keystoreProperties.getProperty("storePassword")
-            }
-        }
-    }
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "com.privacyhelper"
         minSdk = 26
-        targetSdk = 34
+        targetSdk = 36
         versionCode = 1
         versionName = "1.0.0"
 
@@ -62,7 +29,6 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
-            signingConfig = signingConfigs.getByName("release")
         }
     }
 
@@ -85,7 +51,7 @@ android {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
         }
     }
-    buildToolsVersion = "34.0.0"
+    buildToolsVersion = "36.0.0"
     dependenciesInfo {
         includeInApk = true
         includeInBundle = true
