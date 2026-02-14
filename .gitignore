@@ -53,3 +53,6 @@ astro/.astro/content.d.ts
 astro/.astro/types.d.ts
 astro/.astro/types.d.ts
 astro/package-lock.json
+
+# Audit repos (cloned for review, not part of project)
+audit_repos/
